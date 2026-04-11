@@ -344,7 +344,7 @@ let test_roundtrips_record = fun _ctx ->
   | Error err -> Error ("roundtrip decode failed: " ^ Serde.Error.to_string err)
 
 let test_roundtrips_arrays = fun _ctx ->
-  let values = [| 1; 2; 3; 5; 8 |] in
+  let values = [|1; 2; 3; 5; 8|] in
   let* encoded =
     match Serde_json.to_string (Ser.array Ser.int) values with
     | Ok encoded -> Ok encoded
@@ -364,10 +364,10 @@ let test_roundtrips_large_float = fun _ctx ->
   in
   match Serde_json.of_string De.float encoded with
   | Ok actual when Float.equal actual value -> Ok ()
-  | Ok actual ->
-      Error
-        ("expected serde-json to preserve large floats, got " ^ Float.to_string actual
-        ^ " from " ^ encoded)
+  | Ok actual -> Error ("expected serde-json to preserve large floats, got "
+  ^ Float.to_string actual
+  ^ " from "
+  ^ encoded)
   | Error err -> Error ("float decode failed: " ^ Serde.Error.to_string err)
 
 let tests =

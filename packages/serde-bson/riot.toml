@@ -1,0 +1,11 @@
+[package]
+name = "serde-bson"
+version = "0.1.0"
+
+[lib]
+path = "src/SerdeBson.ml"
+
+[dependencies]
+std = "*"
+# Add dependencies here
+

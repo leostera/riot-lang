@@ -14,7 +14,7 @@ type state = {
   mutable escaped_literals: (string * string) list;
 }
 
-external format_float : string -> float -> string = "caml_format_float"
+external format_float: string -> float -> string = "caml_format_float"
 
 let flush_threshold = 4_096
 

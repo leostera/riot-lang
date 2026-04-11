@@ -1,5 +1,4 @@
 open Std
-
 module Vector = Collections.Vector
 module Ser = Serde.Ser
 
@@ -15,7 +14,7 @@ type state = {
   mutable context: context;
 }
 
-external format_float : string -> float -> string = "caml_format_float"
+external format_float: string -> float -> string = "caml_format_float"
 
 let raise_error = fun message -> raise (Serde.Encode_error (`Msg message))
 
@@ -55,11 +54,9 @@ let float_to_string = fun value ->
     else
       format_float "%.18g" value
 
-let unsupported_top_level = fun kind ->
-  raise_error ("unsupported top-level value type: " ^ kind)
+let unsupported_top_level = fun kind -> raise_error ("unsupported top-level value type: " ^ kind)
 
-let unsupported_nested = fun kind ->
-  raise_error ("unsupported form value type: " ^ kind)
+let unsupported_nested = fun kind -> raise_error ("unsupported form value type: " ^ kind)
 
 let emit_scalar = fun state kind render value ->
   match current_key state.context with
@@ -86,7 +83,11 @@ let rec backend: state Ser.backend = {
   list =
     (fun state encode values ->
       match current_key state.context with
-      | Some _ -> Vector.iter (fun value -> encode.run backend state value) values
+      | Some _ ->
+          Vector.iter
+            (fun value ->
+              encode.run backend state value)
+            values
       | None -> unsupported_top_level "sequence");
   array =
     (fun state encode values ->
@@ -103,10 +104,11 @@ let rec backend: state Ser.backend = {
           for index = 0 to array__length fields - 1 do
             match array__get fields index with
             | Ser.Field (name, encode, get) ->
-                with_field state name (fun () -> encode.run backend state (get value))
+                with_field state name
+                  (fun () ->
+                    encode.run backend state (get value))
           done
-      | Field _ ->
-          unsupported_nested "record");
+      | Field _ -> unsupported_nested "record");
   variant =
     (fun state cases value ->
       match current_key state.context with
@@ -129,7 +131,7 @@ let rec backend: state Ser.backend = {
                 )
           in
           loop 0);
-  }
+}
 
 let to_string = fun encode value ->
   let state = { output = IO.Buffer.create 128; first = true; context = Top_level } in

@@ -1,6 +1,5 @@
 open Std
 open Propane
-
 module Test = Std.Test
 module Vector = Collections.Vector
 module De = Serde.De
@@ -101,55 +100,52 @@ let sample_fields = De.fields
     De.field "scores" Field_scores;
   ]
 
-let mode_decode =
-  De.variant
-    [
-      De.Variant.unit "Idle" Idle;
-      De.Variant.newtype "Named" De.string (fun value -> Named value);
-      De.Variant.newtype "Counted" De.int (fun value -> Counted value);
-      De.Variant.newtype "Sampled" De.float (fun value -> Sampled value);
-    ]
+let mode_decode = De.variant
+  [
+    De.Variant.unit "Idle" Idle;
+    De.Variant.newtype "Named" De.string (fun value -> Named value);
+    De.Variant.newtype "Counted" De.int (fun value -> Counted value);
+    De.Variant.newtype "Sampled" De.float (fun value -> Sampled value);
+  ]
 
-let mode_encode =
-  Ser.variant
-    [
-      Ser.Variant.unit "Idle"
-        (function
+let mode_encode = Ser.variant
+  [ Ser.Variant.unit "Idle"
+      (
+        function
         | Idle -> true
-        | _ -> false);
-      Ser.Variant.newtype "Named" Ser.string
-        (function
+        | _ -> false
+      ); Ser.Variant.newtype "Named" Ser.string
+      (
+        function
         | Named value -> Some value
-        | _ -> None);
-      Ser.Variant.newtype "Counted" Ser.int
-        (function
+        | _ -> None
+      ); Ser.Variant.newtype "Counted" Ser.int
+      (
+        function
         | Counted value -> Some value
-        | _ -> None);
-      Ser.Variant.newtype "Sampled" Ser.float
-        (function
+        | _ -> None
+      ); Ser.Variant.newtype "Sampled" Ser.float
+      (
+        function
         | Sampled value -> Some value
-        | _ -> None);
-    ]
+        | _ -> None
+      ); ]
 
-let pet_decode =
-  De.variant
-    [
-      De.Variant.unit "Cat" Cat;
-      De.Variant.newtype "Dog" De.string (fun value -> Dog value);
-    ]
+let pet_decode = De.variant
+  [ De.Variant.unit "Cat" Cat; De.Variant.newtype "Dog" De.string (fun value -> Dog value); ]
 
-let pet_encode =
-  Ser.variant
-    [
-      Ser.Variant.unit "Cat"
-        (function
+let pet_encode = Ser.variant
+  [ Ser.Variant.unit "Cat"
+      (
+        function
         | Cat -> true
-        | _ -> false);
-      Ser.Variant.newtype "Dog" Ser.string
-        (function
+        | _ -> false
+      ); Ser.Variant.newtype "Dog" Ser.string
+      (
+        function
         | Dog value -> Some value
-        | _ -> None);
-    ]
+        | _ -> None
+      ); ]
 
 let sample_decode =
   De.record_mut ~fields:sample_fields
@@ -182,14 +178,38 @@ let sample_decode =
       | Some Field_scores -> builder.scores <- Some (De.read reader (De.array De.int))
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun (builder: sample_builder) ->
-      match (builder.ready, builder.count, builder.small, builder.big, builder.ratio, builder.label, builder.alias, builder.pet, builder.mode, builder.tags, builder.scores) with
+      match (
+        builder.ready,
+        builder.count,
+        builder.small,
+        builder.big,
+        builder.ratio,
+        builder.label,
+        builder.alias,
+        builder.pet,
+        builder.mode,
+        builder.tags,
+        builder.scores
+      ) with
       | (Some ready, Some count, Some small, Some big, Some ratio, Some label, Some alias, Some pet, Some mode, Some tags, Some scores) ->
-          ({ ready; count; small; big; ratio; label; alias; pet; mode; tags; scores }: sample)
+          ({
+              ready;
+              count;
+              small;
+              big;
+              ratio;
+              label;
+              alias;
+              pet;
+              mode;
+              tags;
+              scores;
+            }: sample)
       | _ -> De.missing_field ())
 
-let sample_encode =
-  Ser.record
-    (Ser.fields
+let sample_encode = Ser.record
+  (
+    Ser.fields
       [
         Ser.field "ready" Ser.bool (fun (value: sample) -> value.ready);
         Ser.field "count" Ser.int (fun (value: sample) -> value.count);
@@ -202,15 +222,15 @@ let sample_encode =
         Ser.field "mode" mode_encode (fun (value: sample) -> value.mode);
         Ser.field "tags" (Ser.list Ser.string) (fun (value: sample) -> value.tags);
         Ser.field "scores" (Ser.array Ser.int) (fun (value: sample) -> value.scores);
-      ])
+      ]
+  )
 
 let vec_to_list = fun values ->
   let items = ref [] in
   Vector.iter (fun value -> items := value :: !items) values;
   List.rev !items
 
-let equal_string_vec = fun left right ->
-  vec_to_list left = vec_to_list right
+let equal_string_vec = fun left right -> vec_to_list left = vec_to_list right
 
 let equal_mode = fun left right ->
   match (left, right) with
@@ -250,8 +270,7 @@ let print_pet = function
   | Dog value -> "Dog " ^ Printer.string value
 
 let print_sample = fun (value: sample) ->
-  String.concat
-    ""
+  String.concat ""
     [
       "{ ready = ";
       Printer.bool value.ready;
@@ -278,30 +297,24 @@ let print_sample = fun (value: sample) ->
       " }";
     ]
 
-let finite_float_limit = 1.0e12
+let finite_float_limit = 1.0e 12
 
 let finite_float_gen = Generator.float_range (-.finite_float_limit) finite_float_limit
 
-let finite_float_arb =
-  Arbitrary.make ~shrink:Shrinker.float ~print:Printer.float finite_float_gen
+let finite_float_arb = Arbitrary.make ~shrink:Shrinker.float ~print:Printer.float finite_float_gen
 
-let mode_gen =
-  Generator.frequency
-    [
-      (1, Generator.return Idle);
-      (3, Generator.map (fun value -> Named value) Generator.string);
-      (3, Generator.map (fun value -> Counted value) Generator.int);
-      (3, Generator.map (fun value -> Sampled value) finite_float_gen);
-    ]
+let mode_gen = Generator.frequency
+  [
+    (1, Generator.return Idle);
+    (3, Generator.map (fun value -> Named value) Generator.string);
+    (3, Generator.map (fun value -> Counted value) Generator.int);
+    (3, Generator.map (fun value -> Sampled value) finite_float_gen);
+  ]
 
 let mode_arb = Arbitrary.make ~print:print_mode mode_gen
 
-let pet_gen =
-  Generator.frequency
-    [
-      (1, Generator.return Cat);
-      (3, Generator.map (fun value -> Dog value) Generator.string);
-    ]
+let pet_gen = Generator.frequency
+  [ (1, Generator.return Cat); (3, Generator.map (fun value -> Dog value) Generator.string); ]
 
 let pet_arb = Arbitrary.make ~print:print_pet pet_gen
 
@@ -324,7 +337,10 @@ let sample_gen =
     (Generator.pair
       (Generator.pair (Generator.pair Generator.bool Generator.int) Generator.int32)
       (Generator.pair Generator.int64 finite_float_gen))
-    (Generator.triple Generator.string (Generator.option Generator.string) (Generator.vector Generator.string))
+    (Generator.triple
+      Generator.string
+      (Generator.option Generator.string)
+      (Generator.vector Generator.string))
     (Generator.triple (Generator.array Generator.int) pet_gen mode_gen)
 
 let sample_arb = Arbitrary.make ~print:print_sample sample_gen
@@ -335,145 +351,114 @@ let run_property = fun ?(examples = primitive_examples) name arb predicate ->
   Test.property ~size:Test.Large name ~examples
     (fun _ctx ->
       match Property.check ~config prop with
-      | Property.Success ->
-          Ok ()
-      | Property.Failure { counter_example; shrink_steps } ->
-          Error
-            (
-              String.concat
-                "\n"
-                [
-                  "Property failed";
-                  "Counter-example (after " ^ Int.to_string shrink_steps ^ " shrink steps):";
-                  counter_example;
-                ]
-            )
-      | Property.Error { exception_; backtrace } ->
-          Error
-            (
-              String.concat
-                "\n"
-                [
-                  "Exception raised:";
-                  Exception.to_string exception_;
-                  backtrace;
-                ]
-            )
-      | Property.Assumption_violated ->
-          Error "Too many test cases violated assumptions (>10x test count)")
+      | Property.Success -> Ok ()
+      | Property.Failure { counter_example; shrink_steps } -> Error (String.concat
+        "\n"
+        [
+          "Property failed";
+          "Counter-example (after " ^ Int.to_string shrink_steps ^ " shrink steps):";
+          counter_example;
+        ])
+      | Property.Error { exception_; backtrace } -> Error (String.concat
+        "\n"
+        [ "Exception raised:"; Exception.to_string exception_; backtrace; ])
+      | Property.Assumption_violated -> Error "Too many test cases violated assumptions (>10x test count)")
 
 let roundtrip_in_memory = fun encode decode equal value ->
   match Serde_json.to_string encode value with
-  | Ok encoded ->
-      (
-        match Serde_json.of_string decode encoded with
-        | Ok decoded ->
-            if equal decoded value then
-              true
-            else
-              fail ("roundtrip mismatch\nencoded: " ^ encoded)
-        | Error err -> fail ("decode failed: " ^ Serde.Error.to_string err)
-      )
-  | Error err ->
-      fail ("encode failed: " ^ Serde.Error.to_string err)
+  | Ok encoded -> (
+      match Serde_json.of_string decode encoded with
+      | Ok decoded ->
+          if equal decoded value then
+            true
+          else
+            fail ("roundtrip mismatch\nencoded: " ^ encoded)
+      | Error err -> fail ("decode failed: " ^ Serde.Error.to_string err)
+    )
+  | Error err -> fail ("encode failed: " ^ Serde.Error.to_string err)
 
 let roundtrip_io = fun encode decode equal value ->
   let buffer = IO.Buffer.create 64 in
   match Serde_json.to_writer encode (io_writer_of_buffer buffer) value with
-  | Ok () ->
-      (
-        match
-          Serde_json.of_reader decode (String.to_reader ~chunk_size:io_chunk_size (IO.Buffer.contents buffer))
-        with
-        | Ok decoded -> equal decoded value
-        | Error err -> fail ("reader decode failed: " ^ Serde.Error.to_string err)
-      )
-  | Error err ->
-      fail ("writer encode failed: " ^ Serde.Error.to_string err)
+  | Ok () -> (
+      match Serde_json.of_reader
+        decode
+        (String.to_reader ~chunk_size:io_chunk_size (IO.Buffer.contents buffer)) with
+      | Ok decoded -> equal decoded value
+      | Error err -> fail ("reader decode failed: " ^ Serde.Error.to_string err)
+    )
+  | Error err -> fail ("writer encode failed: " ^ Serde.Error.to_string err)
 
-let bool_roundtrip_prop =
-  run_property
-    "serde-json property bool roundtrips"
-    Arbitrary.bool
-    (roundtrip_in_memory Ser.bool De.bool Bool.equal)
+let bool_roundtrip_prop = run_property
+  "serde-json property bool roundtrips"
+  Arbitrary.bool
+  (roundtrip_in_memory Ser.bool De.bool Bool.equal)
 
-let int_roundtrip_prop =
-  run_property
-    "serde-json property int roundtrips"
-    Arbitrary.int
-    (roundtrip_in_memory Ser.int De.int Int.equal)
+let int_roundtrip_prop = run_property
+  "serde-json property int roundtrips"
+  Arbitrary.int
+  (roundtrip_in_memory Ser.int De.int Int.equal)
 
-let int32_roundtrip_prop =
-  run_property
-    "serde-json property int32 roundtrips"
-    Arbitrary.int32
-    (roundtrip_in_memory Ser.int32 De.int32 Int32.equal)
+let int32_roundtrip_prop = run_property
+  "serde-json property int32 roundtrips"
+  Arbitrary.int32
+  (roundtrip_in_memory Ser.int32 De.int32 Int32.equal)
 
-let int64_roundtrip_prop =
-  run_property
-    "serde-json property int64 roundtrips"
-    Arbitrary.int64
-    (roundtrip_in_memory Ser.int64 De.int64 Int64.equal)
+let int64_roundtrip_prop = run_property
+  "serde-json property int64 roundtrips"
+  Arbitrary.int64
+  (roundtrip_in_memory Ser.int64 De.int64 Int64.equal)
 
-let float_roundtrip_prop =
-  run_property
-    "serde-json property float roundtrips"
-    finite_float_arb
-    (roundtrip_in_memory Ser.float De.float Float.equal)
+let float_roundtrip_prop = run_property
+  "serde-json property float roundtrips"
+  finite_float_arb
+  (roundtrip_in_memory Ser.float De.float Float.equal)
 
-let string_roundtrip_prop =
-  run_property
-    "serde-json property string roundtrips"
-    Arbitrary.string
-    (roundtrip_in_memory Ser.string De.string String.equal)
+let string_roundtrip_prop = run_property
+  "serde-json property string roundtrips"
+  Arbitrary.string
+  (roundtrip_in_memory Ser.string De.string String.equal)
 
-let option_string_roundtrip_prop =
-  run_property
-    "serde-json property option string roundtrips"
-    Arbitrary.(option string)
-    (roundtrip_in_memory (Ser.option Ser.string) (De.option De.string) (=))
+let option_string_roundtrip_prop = run_property
+  "serde-json property option string roundtrips"
+  Arbitrary.(option string)
+  (roundtrip_in_memory (Ser.option Ser.string) (De.option De.string) ( = ))
 
-let string_list_roundtrip_prop =
-  run_property
-    ~examples:composite_examples
-    "serde-json property string list roundtrips"
-    Arbitrary.(vector string)
-    (roundtrip_in_memory (Ser.list Ser.string) (De.list De.string) equal_string_vec)
+let string_list_roundtrip_prop = run_property
+  ~examples:composite_examples
+  "serde-json property string list roundtrips"
+  Arbitrary.(vector string)
+  (roundtrip_in_memory (Ser.list Ser.string) (De.list De.string) equal_string_vec)
 
-let int_array_roundtrip_prop =
-  run_property
-    ~examples:composite_examples
-    "serde-json property int array roundtrips"
-    Arbitrary.(array int)
-    (roundtrip_in_memory (Ser.array Ser.int) (De.array De.int) (=))
+let int_array_roundtrip_prop = run_property
+  ~examples:composite_examples
+  "serde-json property int array roundtrips"
+  Arbitrary.(array int)
+  (roundtrip_in_memory (Ser.array Ser.int) (De.array De.int) ( = ))
 
-let mode_roundtrip_prop =
-  run_property
-    ~examples:composite_examples
-    "serde-json property mode roundtrips"
-    mode_arb
-    (roundtrip_in_memory mode_encode mode_decode equal_mode)
+let mode_roundtrip_prop = run_property
+  ~examples:composite_examples
+  "serde-json property mode roundtrips"
+  mode_arb
+  (roundtrip_in_memory mode_encode mode_decode equal_mode)
 
-let pet_roundtrip_prop =
-  run_property
-    ~examples:composite_examples
-    "serde-json property pet roundtrips"
-    pet_arb
-    (roundtrip_in_memory pet_encode pet_decode equal_pet)
+let pet_roundtrip_prop = run_property
+  ~examples:composite_examples
+  "serde-json property pet roundtrips"
+  pet_arb
+  (roundtrip_in_memory pet_encode pet_decode equal_pet)
 
-let sample_roundtrip_prop =
-  run_property
-    ~examples:composite_examples
-    "serde-json property sample roundtrips"
-    sample_arb
-    (roundtrip_in_memory sample_encode sample_decode equal_sample)
+let sample_roundtrip_prop = run_property
+  ~examples:composite_examples
+  "serde-json property sample roundtrips"
+  sample_arb
+  (roundtrip_in_memory sample_encode sample_decode equal_sample)
 
-let sample_io_roundtrip_prop =
-  run_property
-    ~examples:composite_examples
-    "serde-json property sample roundtrips over io"
-    sample_arb
-    (roundtrip_io sample_encode sample_decode equal_sample)
+let sample_io_roundtrip_prop = run_property
+  ~examples:composite_examples
+  "serde-json property sample roundtrips over io"
+  sample_arb
+  (roundtrip_io sample_encode sample_decode equal_sample)
 
 let tests = [
   bool_roundtrip_prop;

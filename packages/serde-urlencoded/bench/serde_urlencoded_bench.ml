@@ -1,5 +1,4 @@
 open Std
-
 module Vector = Collections.Vector
 module De = Serde.De
 module Ser = Serde.Ser
@@ -94,33 +93,32 @@ let tags_of_count = fun count ->
   done;
   tags
 
-let scores_of_count = fun count ->
-  array__init count (fun index -> (index * 97) mod 1_000_000)
+let scores_of_count = fun count -> array__init count (fun index -> (index * 97) mod 1_000_000)
 
-let status_decode =
-  De.variant
-    [
-      De.Variant.unit "Active" Active;
-      De.Variant.unit "Draft" Draft;
-      De.Variant.unit "Archived" Archived;
-    ]
+let status_decode = De.variant
+  [
+    De.Variant.unit "Active" Active;
+    De.Variant.unit "Draft" Draft;
+    De.Variant.unit "Archived" Archived;
+  ]
 
-let status_encode =
-  Ser.variant
-    [
-      Ser.Variant.unit "Active"
-        (function
+let status_encode = Ser.variant
+  [ Ser.Variant.unit "Active"
+      (
+        function
         | Active -> true
-        | _ -> false);
-      Ser.Variant.unit "Draft"
-        (function
+        | _ -> false
+      ); Ser.Variant.unit "Draft"
+      (
+        function
         | Draft -> true
-        | _ -> false);
-      Ser.Variant.unit "Archived"
-        (function
+        | _ -> false
+      ); Ser.Variant.unit "Archived"
+      (
+        function
         | Archived -> true
-        | _ -> false);
-    ]
+        | _ -> false
+      ); ]
 
 let payload_fields = De.fields
   [
@@ -171,19 +169,44 @@ let payload_decode =
       | Some Field_status -> builder.status <- Some (De.read reader status_decode)
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun (builder: payload_builder) ->
-      match (builder.name, builder.role, builder.crew, builder.age, builder.active, builder.small, builder.big, builder.ratio, builder.tags, builder.scores, builder.status) with
+      match (
+        builder.name,
+        builder.role,
+        builder.crew,
+        builder.age,
+        builder.active,
+        builder.small,
+        builder.big,
+        builder.ratio,
+        builder.tags,
+        builder.scores,
+        builder.status
+      ) with
       | (Some name, Some role, Some crew, Some age, Some active, Some small, Some big, Some ratio, Some tags, Some scores, Some status) ->
           let nickname =
             match builder.nickname with
             | Some nickname -> nickname
             | None -> None
           in
-          ({ name; role; crew; age; active; small; big; ratio; tags; scores; nickname; status }: payload)
+          ({
+              name;
+              role;
+              crew;
+              age;
+              active;
+              small;
+              big;
+              ratio;
+              tags;
+              scores;
+              nickname;
+              status;
+            }: payload)
       | _ -> De.missing_field ())
 
-let payload_encode =
-  Ser.record
-    (Ser.fields
+let payload_encode = Ser.record
+  (
+    Ser.fields
       [
         Ser.field "name" Ser.string (fun (value: payload) -> value.name);
         Ser.field "role" Ser.string (fun (value: payload) -> value.role);
@@ -197,7 +220,8 @@ let payload_encode =
         Ser.field "scores" (Ser.array Ser.int) (fun (value: payload) -> value.scores);
         Ser.field "nickname" (Ser.option Ser.string) (fun (value: payload) -> value.nickname);
         Ser.field "status" status_encode (fun (value: payload) -> value.status);
-      ])
+      ]
+  )
 
 let build_fixture = fun ({ label; tag_count; score_count; string_repeat }: fixture_spec) ->
   let value: payload = {
@@ -213,16 +237,20 @@ let build_fixture = fun ({ label; tag_count; score_count; string_repeat }: fixtu
     scores = scores_of_count score_count;
     nickname = Some "future-pirate-king";
     status = Active;
-  } in
-  let encoded =
-    Serde_urlencoded.to_string payload_encode value
-    |> Result.expect ~msg:("expected " ^ label ^ " fixture to encode")
+  }
   in
+  let encoded = Serde_urlencoded.to_string payload_encode value
+  |> Result.expect ~msg:("expected " ^ label ^ " fixture to encode") in
   { label; value; encoded }
 
 let small_fixture_spec = { label = "small"; tag_count = 64; score_count = 64; string_repeat = 4 }
 
-let large_fixture_spec = { label = "large"; tag_count = 16_384; score_count = 16_384; string_repeat = 256 }
+let large_fixture_spec = {
+  label = "large";
+  tag_count = 16_384;
+  score_count = 16_384;
+  string_repeat = 256
+}
 
 let io_writer_of_buffer =
   let module Write = struct
@@ -258,7 +286,10 @@ let bench_decode_in_memory = fun fixture () ->
   ignore (Serde_urlencoded.of_string payload_decode fixture.encoded)
 
 let bench_decode_reader = fun fixture () ->
-  ignore (Serde_urlencoded.of_reader payload_decode (String.to_reader ~chunk_size:io_chunk_size fixture.encoded))
+  ignore
+    (Serde_urlencoded.of_reader
+      payload_decode
+      (String.to_reader ~chunk_size:io_chunk_size fixture.encoded))
 
 let benchmark_suite = fun fixture ->
   let size = human_size (String.length fixture.encoded) in

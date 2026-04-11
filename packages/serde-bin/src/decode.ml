@@ -13,10 +13,7 @@ type 'src reader_state = {
 }
 
 type input =
-  | String_input of {
-      input: string;
-      mutable pos: int;
-    }
+  | String_input of { input: string; mutable pos: int }
   | Reader_input: 'src reader_state -> input
 
 type state = {
@@ -91,8 +88,7 @@ let read_byte = fun state expected ->
   | Some byte ->
       advance state.input;
       byte
-  | None ->
-      unexpected_end state expected
+  | None -> unexpected_end state expected
 
 let read_exact_into = fun state dst ~off ~len expected ->
   match state.input with
@@ -171,11 +167,9 @@ let decode_length = fun state kind ->
   else
     value
 
-let raise_int_out_of_range = fun pos ->
-  error_at pos "decoded int does not fit in an OCaml int"
+let raise_int_out_of_range = fun pos -> error_at pos "decoded int does not fit in an OCaml int"
 
-let variant_uses_u8 = fun cases ->
-  Int.compare (array__length cases) 0x100 <= 0
+let variant_uses_u8 = fun cases -> Int.compare (array__length cases) 0x100 <= 0
 
 let read_string = fun state ->
   let len = decode_length state "string" in
@@ -234,8 +228,10 @@ let read_int = fun state ->
       value
   | _ ->
       read_exact_into state state.bytes ~off:0 ~len:8 "i64";
-      (try Stubs.read_int_le_from_bytes state.bytes 0 with
-      | Invalid_argument _ -> raise_int_out_of_range (position state.input))
+      (
+        try Stubs.read_int_le_from_bytes state.bytes 0 with
+        | Invalid_argument _ -> raise_int_out_of_range (position state.input)
+      )
 
 let rec list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode ->
   let len = decode_length state "list" in
@@ -247,17 +243,17 @@ let rec list_backend: 'value. state -> 'value De.t -> 'value vec = fun state dec
 
 and array_backend: 'value. state -> 'value De.t -> 'value array = fun state decode ->
   let len = decode_length state "array" in
-  array__init len (fun _index -> decode.run backend state)
+  array__init len
+    (fun _index ->
+      decode.run backend state)
 
 and record_backend:
-  'field 'acc 'value.
-  state ->
+  'field 'acc 'value. state ->
   fields:'field De.Fields.t ->
   init:'acc ->
   step:('acc -> 'field option -> 'acc) ->
   finish:('acc -> 'value) ->
-  'value =
-  fun _state ~fields ~init ~step ~finish ->
+  'value = fun _state ~fields ~init ~step ~finish ->
   let rec loop index acc =
     if Int.equal index (De.Fields.length fields) then
       finish acc
@@ -268,14 +264,12 @@ and record_backend:
   loop 0 init
 
 and record_mut_backend:
-  'field 'builder 'value.
-  state ->
+  'field 'builder 'value. state ->
   fields:'field De.Fields.t ->
   create:(unit -> 'builder) ->
   step:('builder -> 'field option -> unit) ->
   finish:('builder -> 'value) ->
-  'value =
-  fun _state ~fields ~create ~step ~finish ->
+  'value = fun _state ~fields ~create ~step ~finish ->
   let builder = create () in
   for index = 0 to De.Fields.length fields - 1 do
     step builder (Some (De.Fields.tag_at_unchecked fields index))
@@ -325,7 +319,8 @@ and backend: state De.backend = {
 let finish = fun state value ->
   match peek_byte state.input with
   | None -> Ok value
-  | Some _ -> Error (`Msg ("extra input after binary value at byte " ^ Int.to_string (position state.input)))
+  | Some _ -> Error (`Msg ("extra input after binary value at byte "
+  ^ Int.to_string (position state.input)))
 
 let of_input = fun decode input ->
   let state = { input; scratch = IO.Buffer.create 64; bytes = IO.Bytes.create 8 } in
@@ -334,7 +329,11 @@ let of_input = fun decode input ->
   | Ok value -> finish state value
 
 let decode_prefix = fun decode input ->
-  let state = { input = String_input { input; pos = 0 }; scratch = IO.Buffer.create 64; bytes = IO.Bytes.create 8 } in
+  let state = {
+    input = String_input { input; pos = 0 };
+    scratch = IO.Buffer.create 64;
+    bytes = IO.Bytes.create 8
+  } in
   match De.run decode backend state with
   | Error err -> Error err
   | Ok value -> Ok (value, position state.input)
@@ -351,5 +350,6 @@ let of_reader = fun decode reader ->
     pos = 0;
     limit = 0;
     eof = false;
-  } in
+  }
+  in
   of_input decode input

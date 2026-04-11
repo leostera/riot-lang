@@ -3,10 +3,7 @@ module Vector = Collections.Vector
 
 type encode_target =
   | Buffer_target
-  | Bytes_target of {
-      dst: bytes;
-      mutable pos: int;
-    }
+  | Bytes_target of { dst: bytes; mutable pos: int }
   | Writer_target: ('dst, IO.error) IO.Writer.t -> encode_target
 
 type state = {
@@ -23,22 +20,24 @@ let flush_threshold = 4_096
 
 let raise_io_error = fun err -> raise (Serde.Encode_error (`Io_error err))
 
-let raise_no_space = fun () -> raise (Serde.Encode_error (`Msg "serde-bin destination buffer is too small"))
+let raise_no_space = fun () ->
+  raise (Serde.Encode_error (`Msg "serde-bin destination buffer is too small"))
 
 let raise_length_out_of_range = fun kind value ->
-  raise (Serde.Encode_error (`Msg ("serde-bin " ^ kind ^ " length is out of range: " ^ Int.to_string value)))
+  raise
+    (Serde.Encode_error (`Msg ("serde-bin " ^ kind ^ " length is out of range: " ^ Int.to_string value)))
 
-let[@inline] int_is_nonzero = fun value -> not (Int.equal value 0)
+let int_is_nonzero = fun value -> not (Int.equal value 0)
 
-let[@inline] int_lt = fun left right ->
+let int_lt = fun left right ->
   let ordering = Int.compare left right in
   int_is_nonzero ordering && Int.equal (Int.min ordering 0) ordering
 
-let[@inline] int_gt = fun left right ->
+let int_gt = fun left right ->
   let ordering = Int.compare left right in
   int_is_nonzero ordering && Int.equal (Int.max ordering 0) ordering
 
-let[@inline] int_le = fun left right -> not (int_gt left right)
+let int_le = fun left right -> not (int_gt left right)
 
 let flush_output = fun state ->
   match state.target with
@@ -156,7 +155,10 @@ let variant_uses_u8 = fun cases -> int_le (array__length cases) 0x100
 
 let rec list_backend: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
   write_uint32_le state (encode_u32 "list" (Vector.len values));
-  Vector.iter (fun value -> encode.run backend state value) values
+  Vector.iter
+    (fun value ->
+      encode.run backend state value)
+    values
 
 and array_backend: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit = fun state encode values ->
   let len = array__length values in
@@ -230,7 +232,10 @@ and backend: state Serde.Ser.backend = {
 
 let rec size_list_backend: 'value. size_state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
   state.bytes_written <- state.bytes_written + 4;
-  Vector.iter (fun value -> encode.run size_backend state value) values
+  Vector.iter
+    (fun value ->
+      encode.run size_backend state value)
+    values
 
 and size_array_backend: 'value. size_state -> 'value Serde.Ser.t -> 'value array -> unit = fun state encode values ->
   state.bytes_written <- state.bytes_written + 4;
@@ -273,9 +278,7 @@ and size_variant_backend: 'value. size_state -> 'value Serde.Ser.variant_cases -
 
 and size_backend: size_state Serde.Ser.backend = {
   bool = (fun state _value -> state.bytes_written <- state.bytes_written + 1);
-  string =
-    (fun state value ->
-      state.bytes_written <- state.bytes_written + 4 + String.length value);
+  string = (fun state value -> state.bytes_written <- state.bytes_written + 4 + String.length value);
   int = (fun state _value -> state.bytes_written <- state.bytes_written + 8);
   int32 = (fun state _value -> state.bytes_written <- state.bytes_written + 4);
   int64 = (fun state _value -> state.bytes_written <- state.bytes_written + 8);
@@ -303,7 +306,7 @@ let encode_into_bytes = fun encode dst value ->
   let state = {
     target = Bytes_target { dst; pos = 0 };
     output = IO.Buffer.create 0;
-    scratch = IO.Bytes.create 8;
+    scratch = IO.Bytes.create 8
   } in
   match Serde.Ser.run encode backend state value with
   | Error err -> Error err
@@ -321,14 +324,17 @@ let to_string = fun encode value ->
       let dst = IO.Bytes.create len in
       match encode_into_bytes encode dst value with
       | Ok written when Int.equal written len -> Ok (IO.Bytes.unsafe_to_string dst)
-      | Ok written -> Error (`Msg ("serde-bin wrote " ^ Int.to_string written ^ " bytes but expected " ^ Int.to_string len))
+      | Ok written -> Error (`Msg ("serde-bin wrote "
+      ^ Int.to_string written
+      ^ " bytes but expected "
+      ^ Int.to_string len))
       | Error err -> Error err
 
 let to_writer = fun encode writer value ->
   let state = {
     target = Writer_target writer;
     output = IO.Buffer.create 4_096;
-    scratch = IO.Bytes.create 8;
+    scratch = IO.Bytes.create 8
   } in
   match Serde.Ser.run encode backend state value with
   | Error err -> Error err

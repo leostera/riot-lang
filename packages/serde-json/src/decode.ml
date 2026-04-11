@@ -1711,7 +1711,7 @@ and record_mut_backend:
           finish builder
 
 and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value = fun state cases ->
-  let find_unit = fun tag ->
+  let find_unit tag =
     let rec loop index =
       if Int.equal index (array__length cases) then
         raise (Serde.Decode_error `invalid_tag)
@@ -1722,7 +1722,7 @@ and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value
     in
     loop 0
   in
-  let find_object = fun tag ->
+  let find_object tag =
     let rec loop index =
       if Int.equal index (array__length cases) then
         raise (Serde.Decode_error `invalid_tag)

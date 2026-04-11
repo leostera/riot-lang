@@ -1,5 +1,4 @@
 open Std
-
 module HashMap = Collections.HashMap
 module Vector = Collections.Vector
 module De = Serde.De
@@ -28,17 +27,13 @@ let invalid_field_type = fun () -> raise (Serde.Decode_error `invalid_field_type
 
 let raise_error = fun message -> raise (Serde.Decode_error (`Msg message))
 
-let unsupported_top_level = fun kind ->
-  raise_error ("unsupported top-level value type: " ^ kind)
+let unsupported_top_level = fun kind -> raise_error ("unsupported top-level value type: " ^ kind)
 
-let unsupported_nested = fun kind ->
-  raise_error ("unsupported nested form value type: " ^ kind)
+let unsupported_nested = fun kind -> raise_error ("unsupported nested form value type: " ^ kind)
 
 let parse_fields = fun input ->
-  let pairs =
-    Net.Uri.Query.parse input
-    |> List.filter (fun ((key, value)) -> not (String.equal key "" && String.equal value ""))
-  in
+  let pairs = Net.Uri.Query.parse input
+  |> List.filter (fun ((key, value)) -> not (String.equal key "" && String.equal value "")) in
   let groups = Vector.create () in
   let indices = HashMap.create () in
   List.iter
@@ -51,11 +46,10 @@ let parse_fields = fun input ->
           let index = Vector.len groups in
           let values = Vector.with_capacity 4 in
           Vector.push values value;
-          Vector.push groups ({ key; values }: grouped_field_acc);
+          Vector.push groups (({ key; values }: grouped_field_acc));
           ignore (HashMap.insert indices key index))
     pairs;
-  array__init
-    (Vector.len groups)
+  array__init (Vector.len groups)
     (fun index ->
       let group = Vector.get_unchecked groups index in
       ({ key = group.key; values = Vector.to_array group.values }: grouped_field))
@@ -80,7 +74,8 @@ let expect_single_value = fun state kind ->
         invalid_field_type ();
       array__get values 0
 
-let state_of_value = fun value -> { fields = [||]; root_consumed = true; context = Field_values [| value |] }
+let state_of_value = fun value ->
+  { fields = [||]; root_consumed = true; context = Field_values [|value|] }
 
 let parse_bool = function
   | "true" -> true
@@ -124,8 +119,7 @@ let rec backend: state De.backend = {
             None
           else
             Some (decode.run backend state)
-      | Field_values _ ->
-          Some (decode.run backend state));
+      | Field_values _ -> Some (decode.run backend state));
   list =
     (fun state decode ->
       match state.context with
@@ -142,8 +136,7 @@ let rec backend: state De.backend = {
       match state.context with
       | Top_level -> unsupported_top_level "array"
       | Field_values values ->
-          array__init
-            (array__length values)
+          array__init (array__length values)
             (fun index ->
               let value = array__get values index in
               decode.run backend (state_of_value value)));
@@ -156,7 +149,11 @@ let rec backend: state De.backend = {
           let acc = ref init in
           for index = 0 to array__length state.fields - 1 do
             let field = array__get state.fields index in
-            let tag = De.Fields.match_slice fields field.key ~offset:0 ~length:(String.length field.key) in
+            let tag = De.Fields.match_slice
+              fields
+              field.key
+              ~offset:0
+              ~length:(String.length field.key) in
             acc := with_values state field.values (fun () -> step !acc tag)
           done;
           finish !acc);
@@ -169,7 +166,11 @@ let rec backend: state De.backend = {
           let builder = create () in
           for index = 0 to array__length state.fields - 1 do
             let field = array__get state.fields index in
-            let tag = De.Fields.match_slice fields field.key ~offset:0 ~length:(String.length field.key) in
+            let tag = De.Fields.match_slice
+              fields
+              field.key
+              ~offset:0
+              ~length:(String.length field.key) in
             with_values state field.values (fun () -> step builder tag)
           done;
           finish builder);
@@ -189,8 +190,7 @@ let rec backend: state De.backend = {
                 result
               else
                 loop (index + 1) saw_payload_case
-          | De.Newtype _ ->
-              loop (index + 1) true
+          | De.Newtype _ -> loop (index + 1) true
       in
       loop 0 false);
 }

@@ -73,22 +73,21 @@ let person_fields = De.fields
     De.field "score" Field_score;
   ]
 
-let pet_decode =
-  De.variant
-    [ De.Variant.unit "Cat" Cat; De.Variant.newtype "Dog" De.string (fun value -> Dog value) ]
+let pet_decode = De.variant
+  [ De.Variant.unit "Cat" Cat; De.Variant.newtype "Dog" De.string (fun value -> Dog value) ]
 
-let pet_encode =
-  Ser.variant
-    [
-      Ser.Variant.unit "Cat"
-        (function
+let pet_encode = Ser.variant
+  [ Ser.Variant.unit "Cat"
+      (
+        function
         | Cat -> true
-        | Dog _ -> false);
-      Ser.Variant.newtype "Dog" Ser.string
-        (function
+        | Dog _ -> false
+      ); Ser.Variant.newtype "Dog" Ser.string
+      (
+        function
         | Dog value -> Some value
-        | Cat -> None);
-    ]
+        | Cat -> None
+      ); ]
 
 let person_decode =
   De.record_mut ~fields:person_fields
@@ -113,23 +112,38 @@ let person_decode =
       | Some Field_score -> builder.score <- Some (De.read reader De.int64)
       | None -> ignore (De.read reader De.skip_any))
     ~finish:(fun (builder: person_builder) ->
-      match (builder.name, builder.age, builder.active, builder.tags, builder.nickname, builder.pet, builder.score) with
+      match (
+        builder.name,
+        builder.age,
+        builder.active,
+        builder.tags,
+        builder.nickname,
+        builder.pet,
+        builder.score
+      ) with
       | (Some name, Some age, Some active, Some tags, Some nickname, Some pet, Some score) ->
-          ({ name; age; active; tags; nickname; pet; score }: person)
+          ({
+              name;
+              age;
+              active;
+              tags;
+              nickname;
+              pet;
+              score;
+            }: person)
       | _ -> De.missing_field ())
 
-let person_encode =
-  Ser.record
-    (Ser.fields
-      [
-        Ser.field "name" Ser.string (fun (value: person) -> value.name);
-        Ser.field "age" Ser.int (fun (value: person) -> value.age);
-        Ser.field "active" Ser.bool (fun (value: person) -> value.active);
-        Ser.field "tags" (Ser.list Ser.string) (fun (value: person) -> value.tags);
-        Ser.field "nickname" (Ser.option Ser.string) (fun (value: person) -> value.nickname);
-        Ser.field "pet" pet_encode (fun (value: person) -> value.pet);
-        Ser.field "score" Ser.int64 (fun (value: person) -> value.score);
-      ])
+let person_encode = Ser.record
+  (Ser.fields
+    [
+      Ser.field "name" Ser.string (fun (value: person) -> value.name);
+      Ser.field "age" Ser.int (fun (value: person) -> value.age);
+      Ser.field "active" Ser.bool (fun (value: person) -> value.active);
+      Ser.field "tags" (Ser.list Ser.string) (fun (value: person) -> value.tags);
+      Ser.field "nickname" (Ser.option Ser.string) (fun (value: person) -> value.nickname);
+      Ser.field "pet" pet_encode (fun (value: person) -> value.pet);
+      Ser.field "score" Ser.int64 (fun (value: person) -> value.score);
+    ])
 
 let vec_to_list = fun values ->
   let items = ref [] in
@@ -163,7 +177,8 @@ let test_roundtrips_record = fun _ctx ->
     nickname = Some "strawhat";
     pet = Dog "Chouchou";
     score = 42L;
-  } in
+  }
+  in
   let* encoded =
     match Serde_bin.to_string person_encode person with
     | Ok encoded -> Ok encoded
@@ -182,21 +197,16 @@ let test_decodes_from_reader = fun _ctx ->
   | Error err -> Error ("reader decode failed: " ^ Serde.Error.to_string err)
 
 let test_int32_uses_raw_little_endian_bytes = fun _ctx ->
-  match Serde_bin.to_string Ser.int32 0x01020304l with
-  | Ok encoded ->
-      expect_equal
-        ~expected:[ 4; 3; 2; 1 ]
-        ~actual:(byte_values encoded)
-        ~message:"expected int32 to use raw little-endian bytes"
+  match Serde_bin.to_string Ser.int32 0x0102_0304l with
+  | Ok encoded -> expect_equal ~expected:[ 4; 3; 2; 1 ] ~actual:(byte_values encoded) ~message:"expected int32 to use raw little-endian bytes"
   | Error err -> Error ("int32 encode failed: " ^ Serde.Error.to_string err)
 
 let test_int_uses_raw_little_endian_bytes = fun _ctx ->
   match Serde_bin.to_string Ser.int (-1) with
-  | Ok encoded ->
-      expect_equal
-        ~expected:[ 255; 255; 255; 255; 255; 255; 255; 255 ]
-        ~actual:(byte_values encoded)
-        ~message:"expected int to use raw 8-byte little-endian bytes"
+  | Ok encoded -> expect_equal
+    ~expected:[ 255; 255; 255; 255; 255; 255; 255; 255 ]
+    ~actual:(byte_values encoded)
+    ~message:"expected int to use raw 8-byte little-endian bytes"
   | Error err -> Error ("int encode failed: " ^ Serde.Error.to_string err)
 
 let test_int32_roundtrips_negative_values = fun _ctx ->
@@ -206,21 +216,19 @@ let test_int32_roundtrips_negative_values = fun _ctx ->
   | Error err -> Error ("int32 decode failed: " ^ Serde.Error.to_string err)
 
 let test_int64_uses_raw_little_endian_bytes = fun _ctx ->
-  match Serde_bin.to_string Ser.int64 0x0102030405060708L with
-  | Ok encoded ->
-      expect_equal
-        ~expected:[ 8; 7; 6; 5; 4; 3; 2; 1 ]
-        ~actual:(byte_values encoded)
-        ~message:"expected int64 to use raw little-endian bytes"
+  match Serde_bin.to_string Ser.int64 0x0102_0304_0506_0708L with
+  | Ok encoded -> expect_equal
+    ~expected:[ 8; 7; 6; 5; 4; 3; 2; 1 ]
+    ~actual:(byte_values encoded)
+    ~message:"expected int64 to use raw little-endian bytes"
   | Error err -> Error ("int64 encode failed: " ^ Serde.Error.to_string err)
 
 let test_float_uses_raw_ieee754_bytes = fun _ctx ->
   match Serde_bin.to_string Ser.float 1.0 with
-  | Ok encoded ->
-      expect_equal
-        ~expected:[ 0; 0; 0; 0; 0; 0; 240; 63 ]
-        ~actual:(byte_values encoded)
-        ~message:"expected float to use raw IEEE754 little-endian bytes"
+  | Ok encoded -> expect_equal
+    ~expected:[ 0; 0; 0; 0; 0; 0; 240; 63 ]
+    ~actual:(byte_values encoded)
+    ~message:"expected float to use raw IEEE754 little-endian bytes"
   | Error err -> Error ("float encode failed: " ^ Serde.Error.to_string err)
 
 let test_writes_to_writer = fun _ctx ->
@@ -228,7 +236,21 @@ let test_writes_to_writer = fun _ctx ->
   match Serde_bin.to_writer pet_encode (io_writer_of_buffer buffer) (Dog "Chouchou") with
   | Ok () ->
       expect_equal
-        ~expected:[ 1; 8; 0; 0; 0; 67; 104; 111; 117; 99; 104; 111; 117 ]
+        ~expected:[
+          1;
+          8;
+          0;
+          0;
+          0;
+          67;
+          104;
+          111;
+          117;
+          99;
+          104;
+          111;
+          117
+        ]
         ~actual:(byte_values (IO.Buffer.contents buffer))
         ~message:"expected serde-bin to emit compact variant bytes"
   | Error err -> Error ("writer encode failed: " ^ Serde.Error.to_string err)
@@ -242,7 +264,8 @@ let test_size_matches_encoded_length = fun _ctx ->
     nickname = None;
     pet = Cat;
     score = 99L;
-  } in
+  }
+  in
   let* expected_len =
     match Serde_bin.size_of person_encode person with
     | Ok len -> Ok len
@@ -253,10 +276,7 @@ let test_size_matches_encoded_length = fun _ctx ->
     | Ok encoded -> Ok encoded
     | Error err -> Error ("to_string failed: " ^ Serde.Error.to_string err)
   in
-  expect_equal
-    ~expected:expected_len
-    ~actual:(String.length encoded)
-    ~message:"expected size_of to match encoded string length"
+  expect_equal ~expected:expected_len ~actual:(String.length encoded) ~message:"expected size_of to match encoded string length"
 
 let test_encode_into_bytes = fun _ctx ->
   let dst = IO.Bytes.create 16 in
@@ -264,7 +284,21 @@ let test_encode_into_bytes = fun _ctx ->
   | Ok written ->
       let actual = IO.Bytes.sub_string dst 0 written |> byte_values in
       expect_equal
-        ~expected:[ 1; 8; 0; 0; 0; 67; 104; 111; 117; 99; 104; 111; 117 ]
+        ~expected:[
+          1;
+          8;
+          0;
+          0;
+          0;
+          67;
+          104;
+          111;
+          117;
+          99;
+          104;
+          111;
+          117
+        ]
         ~actual
         ~message:"expected encode_into_bytes to write the compact variant payload"
   | Error err -> Error ("encode_into_bytes failed: " ^ Serde.Error.to_string err)
@@ -295,7 +329,9 @@ let test_rejects_invalid_bool = fun _ctx ->
 
 let test_rejects_truncated_string = fun _ctx ->
   match Serde_bin.of_string De.string "\005\000\000\000ab" with
-  | Error (`Msg msg) when String.starts_with ~prefix:"unexpected end of input while decoding string" msg -> Ok ()
+  | Error (`Msg msg) when String.starts_with
+    ~prefix:"unexpected end of input while decoding string"
+    msg -> Ok ()
   | Error err -> Error ("expected truncated string error, got " ^ Serde.Error.to_string err)
   | Ok _ -> Error "expected truncated string input to fail"
 
@@ -306,7 +342,7 @@ let test_rejects_trailing_bytes = fun _ctx ->
   | Ok _ -> Error "expected trailing bytes to fail strict decoding"
 
 let test_roundtrips_arrays = fun _ctx ->
-  let values = [| 7; 11; 42; 99 |] in
+  let values = [|7; 11; 42; 99|] in
   let* encoded =
     match Serde_bin.to_string (Ser.array Ser.int) values with
     | Ok encoded -> Ok encoded
@@ -338,7 +374,4 @@ let tests =
   ]
 
 let () =
-  Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"serde_bin_tests" ~tests ~args)
-    ~args:Env.args
-    ()
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"serde_bin_tests" ~tests ~args) ~args:Env.args ()
