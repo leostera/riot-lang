@@ -7,4 +7,5 @@ path = "src/RamlWasm.ml"
 
 [dependencies]
 std = "*"
+contentstore = { path = "../../packages/contentstore", version = "*" }
 raml-core = { path = "../raml-core", version = "*" }

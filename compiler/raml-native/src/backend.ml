@@ -3,7 +3,15 @@ module Frontend_pipeline = Raml_core.Frontend_pipeline
 module Backend_result = Raml_core.Backend_result
 module Pipeline_stage = Raml_core.Pipeline_stage
 module Event = Raml_core.Event
+module Artifact_store = Artifact_store
 open Std
+
+let artifact_store_error_to_json = fun error ->
+  Std.Data.Json.obj
+    [
+      ("kind", Std.Data.Json.string "artifact_store_error");
+      ("error", Artifact_store.error_to_json error);
+    ]
 
 let compile = fun ~config ~(frontend:Frontend_pipeline.t) ->
   let core_ir = Frontend_pipeline.core_ir frontend in
@@ -41,7 +49,20 @@ let compile = fun ~config ~(frontend:Frontend_pipeline.t) ->
               ~host:(Compiler_config.host config)
               ~target:(Compiler_config.target config)
               program with
-            | Ok output -> Pipeline_stage.ok ~key:"output" ~render:Std.Data.Json.string output
+            | Ok output -> (
+                match Artifact_store.of_config config with
+                | None -> Pipeline_stage.ok ~key:"output" ~render:Std.Data.Json.string output
+                | Some store ->
+                    let unit_name = compilation_unit.unit_id.unit_name in
+                    match Artifact_store.save_assembly store ~unit_name ~assembly:output with
+                    | Ok artifact -> Pipeline_stage.ok_with_json
+                      ~json:Std.Data.Json.(obj
+                        [ ("output", string output); ("stored_assembly_id", string artifact.id); ])
+                      output
+                    | Error error -> Pipeline_stage.error
+                      ~stage:"native_artifact_store"
+                      [ artifact_store_error_to_json error ]
+              )
             | Error error -> Pipeline_stage.error
               ~stage:"native_codegen"
               [ Native.Emitter.error_to_json error ]

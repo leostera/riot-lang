@@ -15,6 +15,7 @@
 This package owns:
 
 - `backend.ml`
+- `artifact_store.ml`
 - `native.ml`
 - `nir/`
 - `mir/`
@@ -33,6 +34,8 @@ This package owns:
 5. Use `compiler/asm` for typed assembly DSL work instead of open-coded target
    text machinery where that package can own the concern.
 6. Snapshot every named native pass that materially changes the program.
+7. Document native passes in their `.ml` and `.mli` modules. Do not maintain a
+   separate markdown pass catalogue.
 
 ## Current Shape
 

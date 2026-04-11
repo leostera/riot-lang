@@ -6,9 +6,16 @@
 
 This package owns wasm-only lowering and codegen work.
 
-Right now the first owned seam is `WIR`: a wasm-specific lowered IR plus
-runtime-import and artifact scaffolding. Grow the wasm backend here instead of
-adding speculative wasm code back into `compiler/raml` or `raml-core`.
+Right now the first owned seams are:
+
+- `WIR`: wasm-specific lowering, runtime import discovery, and backend passes
+- `Codegen`: the first runnable wasm slice, currently a narrow direct binary
+  emitter plus a Node-compatible runner string
+- `Artifact_store`: wasm-owned semantics for objects, linked programs, and
+  runnable module artifacts on top of a caller-provided `Contentstore`
+
+Grow the wasm backend here instead of adding speculative wasm code back into
+`compiler/raml` or `raml-core`.
 
 ## Rules
 
