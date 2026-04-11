@@ -29,6 +29,7 @@ let ordered_slots = fun slots -> List.rev slots.ordered_rev
 let rec collect_operand_registers = fun slots operand ->
   match operand with
   | Lir.Operand.Register name -> add_slot slots name
+  | Lir.Operand.Home _
   | Lir.Operand.Global _
   | Lir.Operand.Symbol_address _
   | Lir.Operand.Literal _ -> slots
@@ -45,7 +46,13 @@ let collect_instruction = fun (contains_calls, slot_names) instruction ->
   | Lir.Instruction.Jump _ ->
       (contains_calls, slot_names)
   | Lir.Instruction.Move { dst; src } ->
-      (contains_calls, add_slot (collect_operand_registers slot_names src) dst)
+      let slot_names = collect_operand_registers slot_names src in
+      let slot_names =
+        match dst with
+        | Lir.Destination.Register name -> add_slot slot_names name
+        | Lir.Destination.Home _ -> slot_names
+      in
+      (contains_calls, slot_names)
   | Lir.Instruction.Store_global { src; _ } ->
       (contains_calls, collect_operand_registers slot_names src)
   | Lir.Instruction.Call { dst; callee; arguments } ->
@@ -53,7 +60,8 @@ let collect_instruction = fun (contains_calls, slot_names) instruction ->
       let slot_names = List.fold_left collect_operand_registers slot_names arguments in
       let slot_names =
         match dst with
-        | Some name -> add_slot slot_names name
+        | Some (Lir.Destination.Register name) -> add_slot slot_names name
+        | Some (Lir.Destination.Home _) -> slot_names
         | None -> slot_names
       in
       (true, slot_names)

@@ -18,9 +18,41 @@ module Literal = struct
     | String value -> Json.obj [ ("kind", Json.string "string"); ("value", Json.string value); ]
 end
 
+module Slot = struct
+  type t = {
+    name: string;
+    offset: int;
+  }
+
+  let to_json = fun slot ->
+    Json.obj [ ("name", Json.string slot.name); ("offset", Json.int slot.offset); ]
+end
+
+module Home = struct
+  type t =
+    | Stack_slot of Slot.t
+
+  let to_json = fun home ->
+    match home with
+    | Stack_slot slot -> Json.obj
+      [ ("kind", Json.string "stack_slot"); ("slot", Slot.to_json slot); ]
+end
+
+module Destination = struct
+  type t =
+    | Register of string
+    | Home of Home.t
+
+  let to_json = fun destination ->
+    match destination with
+    | Register name -> Json.obj [ ("kind", Json.string "register"); ("name", Json.string name); ]
+    | Home home -> Json.obj [ ("kind", Json.string "home"); ("home", Home.to_json home); ]
+end
+
 module Operand = struct
   type t =
     | Register of string
+    | Home of Home.t
     | Global of string
     | Symbol_address of string
     | Literal of Literal.t
@@ -28,6 +60,7 @@ module Operand = struct
   let to_json = fun operand ->
     match operand with
     | Register name -> Json.obj [ ("kind", Json.string "register"); ("name", Json.string name); ]
+    | Home home -> Json.obj [ ("kind", Json.string "home"); ("home", Home.to_json home); ]
     | Global name -> Json.obj [ ("kind", Json.string "global"); ("name", Json.string name); ]
     | Symbol_address name -> Json.obj
       [ ("kind", Json.string "symbol_address"); ("name", Json.string name); ]
@@ -50,9 +83,9 @@ end
 module Instruction = struct
   type t =
     | Label of string
-    | Move of { dst: string; src: Operand.t }
+    | Move of { dst: Destination.t; src: Operand.t }
     | Store_global of { symbol: string; src: Operand.t }
-    | Call of { dst: string option; callee: Callee.t; arguments: Operand.t list }
+    | Call of { dst: Destination.t option; callee: Callee.t; arguments: Operand.t list }
     | Branch_if_zero of { operand: Operand.t; target: string }
     | Jump of string
     | Return of Operand.t option
@@ -62,7 +95,11 @@ module Instruction = struct
     match instruction with
     | Label name -> Json.obj [ ("kind", Json.string "label"); ("name", Json.string name); ]
     | Move { dst; src } -> Json.obj
-      [ ("kind", Json.string "move"); ("dst", Json.string dst); ("src", Operand.to_json src); ]
+      [
+        ("kind", Json.string "move");
+        ("dst", Destination.to_json dst);
+        ("src", Operand.to_json src);
+      ]
     | Store_global { symbol; src } -> Json.obj
       [
         ("kind", Json.string "store_global");
@@ -72,7 +109,7 @@ module Instruction = struct
     | Call { dst; callee; arguments } -> Json.obj
       [
         ("kind", Json.string "call");
-        ("dst", Option.map Json.string dst |> Option.unwrap_or ~default:Json.null);
+        ("dst", Option.map Destination.to_json dst |> Option.unwrap_or ~default:Json.null);
         ("callee", Callee.to_json callee);
         ("arguments", Json.array (List.map Operand.to_json arguments));
       ]
@@ -91,14 +128,14 @@ module Instruction = struct
     | Comment text -> Json.obj [ ("kind", Json.string "comment"); ("text", Json.string text); ]
 end
 
-module Slot = struct
+module Home_binding = struct
   type t = {
     name: string;
-    offset: int;
+    home: Home.t;
   }
 
-  let to_json = fun slot ->
-    Json.obj [ ("name", Json.string slot.name); ("offset", Json.int slot.offset); ]
+  let to_json = fun binding ->
+    Json.obj [ ("name", Json.string binding.name); ("home", Home.to_json binding.home); ]
 end
 
 module Frame = struct
@@ -106,10 +143,17 @@ module Frame = struct
     contains_calls: bool;
     frame_required: bool;
     slots: Slot.t list;
+    homes: Home_binding.t list;
     frame_size: int;
   }
 
-  let empty = { contains_calls = false; frame_required = false; slots = []; frame_size = 0 }
+  let empty = {
+    contains_calls = false;
+    frame_required = false;
+    slots = [];
+    homes = [];
+    frame_size = 0;
+  }
 
   let to_json = fun frame ->
     Json.obj
@@ -117,6 +161,7 @@ module Frame = struct
         ("contains_calls", Json.bool frame.contains_calls);
         ("frame_required", Json.bool frame.frame_required);
         ("slots", Json.array (List.map Slot.to_json frame.slots));
+        ("homes", Json.array (List.map Home_binding.to_json frame.homes));
         ("frame_size", Json.int frame.frame_size);
       ]
 end

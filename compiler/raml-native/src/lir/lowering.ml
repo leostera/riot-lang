@@ -53,14 +53,19 @@ let rec lower_instruction_list = fun state instructions ->
 and lower_instruction = fun state instruction ->
   match instruction with
   | Source.Instruction.Move { dst; src } ->
-      ([ Target.Instruction.Move { dst; src = lower_operand src } ], state)
+      (
+        [
+          Target.Instruction.Move { dst = Target.Destination.Register dst; src = lower_operand src }
+        ],
+        state
+      )
   | Source.Instruction.Store_global { symbol; src } ->
       ([ Target.Instruction.Store_global { symbol; src = lower_operand src } ], state)
   | Source.Instruction.Call { dst; callee; arguments } ->
       (
         [
           Target.Instruction.Call {
-            dst;
+            dst = Option.map (fun dst -> Target.Destination.Register dst) dst;
             callee = lower_callee callee;
             arguments = List.map lower_operand arguments
           }
@@ -125,14 +130,16 @@ let trace_program = fun initial ->
   let layout_frames = Passes.Layout_frames.program initial in
   let simplify = Passes.Simplify.program layout_frames in
   let schedule = Passes.Schedule.program simplify in
+  let assign_homes = Passes.Assign_homes.program schedule in
   {
     initial;
     passes = [
       { name = "layout_frames"; program = layout_frames };
       { name = "simplify"; program = simplify };
-      { name = "schedule"; program = schedule }
+      { name = "schedule"; program = schedule };
+      { name = "assign_homes"; program = assign_homes }
     ];
-    final = schedule
+    final = assign_homes
   }
 
 let lower_program_with_trace = fun (program: Source.Program.t) ->

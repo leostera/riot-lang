@@ -513,10 +513,11 @@ let rec lower_expr = fun env expr ->
             expr = runtime_call (tuple_make_helper ~arity:(List.length record)) arguments;
             lifted_functions
           })
-        (map_results
-          record
-          (fun (field: Core.Expr.record_field) ->
-            Result.map (fun value -> (field.label, value)) (lower_expr env field.value)))
+        (
+          map_results record
+            (fun (field: Core.Expr.record_field) ->
+              Result.map (fun value -> (field.label, value)) (lower_expr env field.value))
+        )
   | Core.Expr.Record_get record_get ->
       Result.map
         (fun record ->

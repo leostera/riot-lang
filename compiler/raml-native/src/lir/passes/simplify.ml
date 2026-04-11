@@ -8,12 +8,22 @@ open Std
 module Program = Types.Program
 module Procedure = Types.Procedure
 module Instruction = Types.Instruction
+module Destination = Types.Destination
 module Operand = Types.Operand
+module Home = Types.Home
 module Literal = Types.Literal
+
+let destination_matches_operand = fun dst src ->
+  match (dst, src) with
+  | (Destination.Register dst, Operand.Register src) -> String.equal dst src
+  | (Destination.Home (Home.Stack_slot dst), Operand.Home (Home.Stack_slot src)) -> String.equal
+    dst.name
+    src.name
+  | _ -> false
 
 let is_noop_move = fun instruction ->
   match instruction with
-  | Instruction.Move { dst; src=Operand.Register src } -> String.equal dst src
+  | Instruction.Move { dst; src } -> destination_matches_operand dst src
   | _ -> false
 
 let zero_test_of_literal = fun literal ->
@@ -41,9 +51,9 @@ let rec rewrite_instructions = fun instructions ->
     target
     next ->
       Instruction.Label next :: rewrite_instructions rest
-  | Instruction.Move { dst; src } :: Instruction.Return (Some (Operand.Register name)) :: rest when String.equal
+  | Instruction.Move { dst; src } :: Instruction.Return (Some return_operand) :: rest when destination_matches_operand
     dst
-    name ->
+    return_operand ->
       Instruction.Return (Some src) :: rewrite_instructions rest
   | instruction :: rest ->
       instruction :: rewrite_instructions rest

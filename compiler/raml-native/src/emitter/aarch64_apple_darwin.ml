@@ -1,6 +1,7 @@
 open Std
 module Asm = Asm.AArch64
 module Doc = Asm.Doc
+module HashSet = Collections.HashSet
 
 let ( let* ) = Result.and_then
 
@@ -47,12 +48,6 @@ let encode_symbol_name = fun name ->
   in
   loop 0 []
 
-let add_unique = fun names name ->
-  if List.exists (String.equal name) names then
-    names
-  else
-    names @ [ name ]
-
 let mangle_symbol = fun name ->
   if String.for_all is_macho_symbol_char name then
     format Format.[ str "_"; str name ]
@@ -64,17 +59,17 @@ let procedure_symbol = fun (procedure: Lir.Procedure.t) ->
   | Lir.Procedure.Entry -> "_main"
   | Lir.Procedure.Function -> mangle_symbol procedure.name
 
-let slot_offset = fun (layout: Lir.Frame.t) name ->
-  layout.slots |> List.find_map
-    (fun (slot: Lir.Slot.t) ->
-      if String.equal slot.name name then
-        Some slot.offset
+let home_of_name = fun (layout: Lir.Frame.t) name ->
+  layout.homes |> List.find_map
+    (fun (binding: Lir.Home_binding.t) ->
+      if String.equal binding.name name then
+        Some binding.home
       else
-        None) |> Option.expect
-    ~msg:(format Format.[ str "missing stack slot for register "; str name ])
+        None) |> Option.expect ~msg:(format Format.[ str "missing home for register "; str name ])
 
-let slot_address = fun layout name ->
-  Asm.Address.offset ~base:Asm.Register.sp ~offset:(slot_offset layout name)
+let home_address = fun home ->
+  match home with
+  | Lir.Home.Stack_slot slot -> Asm.Address.offset ~base:Asm.Register.sp ~offset:slot.offset
 
 let instruction = Doc.Item.instruction
 
@@ -186,8 +181,10 @@ let store_global_value = fun symbol register ->
 
 let rec materialize_operand = fun layout strings register operand ->
   match operand with
-  | Lir.Operand.Register name -> Ok [
-    instruction (Asm.Instruction.Ldr { dst = register; address = slot_address layout name })
+  | Lir.Operand.Register name -> Error (format
+    Format.[ str "unassigned virtual register reached emitter: "; str name ])
+  | Lir.Operand.Home home -> Ok [
+    instruction (Asm.Instruction.Ldr { dst = register; address = home_address home })
   ]
   | Lir.Operand.Global name -> Ok (load_global_value register (mangle_symbol name))
   | Lir.Operand.Symbol_address name -> Ok (load_symbol_address register (mangle_symbol name))
@@ -210,8 +207,13 @@ and materialize_literal = fun _layout strings register literal ->
     )
   | _ -> Ok (move_int64_into register (int64_literal_of_literal literal))
 
-let store_register = fun layout name register ->
-  [ instruction (Asm.Instruction.Str { src = register; address = slot_address layout name }) ]
+let store_destination = fun layout destination register ->
+  match destination with
+  | Lir.Destination.Home home -> Ok [
+    instruction (Asm.Instruction.Str { src = register; address = home_address home })
+  ]
+  | Lir.Destination.Register name -> Error (format
+    Format.[ str "unassigned virtual destination reached emitter: "; str name ])
 
 let emit_prologue = fun (layout: Lir.Frame.t) ->
   if not layout.frame_required then
@@ -271,11 +273,13 @@ let emit_parameter_saves = fun layout params ->
   if List.length params > 8 then
     Error "aarch64-apple-darwin emitter supports at most 8 parameters per procedure"
   else
-    Ok (params
-    |> List.mapi
-      (fun index name ->
-        instruction
-          (Asm.Instruction.Str { src = Asm.Register.x index; address = slot_address layout name })))
+    Ok (
+      params |> List.mapi
+        (fun index name ->
+          let home = home_of_name layout name in
+          instruction
+            (Asm.Instruction.Str { src = Asm.Register.x index; address = home_address home }))
+    )
 
 let emit_call_arguments = fun layout strings arguments ->
   if List.length arguments > 8 then
@@ -317,7 +321,8 @@ let emit_instruction = fun layout strings (procedure: Lir.Procedure.t) instructi
       Ok []
   | Lir.Instruction.Move { dst; src } ->
       let* body = materialize_operand layout strings value_register src in
-      Ok (body @ store_register layout dst value_register)
+      let* store = store_destination layout dst value_register in
+      Ok (body @ store)
   | Lir.Instruction.Store_global { symbol; src } ->
       let* body = materialize_operand layout strings value_register src in
       Ok (body @ store_global_value (mangle_symbol symbol) value_register)
@@ -326,9 +331,10 @@ let emit_instruction = fun layout strings (procedure: Lir.Procedure.t) instructi
       let* (callee_setup, call_instruction) = emit_callee layout strings callee in
       let store_result =
         match dst with
-        | None -> []
-        | Some dst -> store_register layout dst (Asm.Register.x 0)
+        | None -> Ok []
+        | Some dst -> store_destination layout dst (Asm.Register.x 0)
       in
+      let* store_result = store_result in
       Ok (argument_setup @ callee_setup @ [ call_instruction ] @ store_result)
   | Lir.Instruction.Branch_if_zero { operand; target } ->
       let* body = materialize_operand layout strings value_register operand in
@@ -419,6 +425,7 @@ let collect_operand_strings = fun constants operand ->
   match operand with
   | Lir.Operand.Literal literal -> collect_literal_strings constants literal
   | Lir.Operand.Symbol_address _ -> constants
+  | Lir.Operand.Home _ -> constants
   | _ -> constants
 
 let collect_instruction_strings = fun constants instruction_ ->
@@ -452,18 +459,36 @@ let string_constants_of_program = fun (program: Lir.Program.t) ->
     []
     program.procedures
 
+type ordered_names = {
+  seen: string HashSet.t;
+  ordered_rev: string list;
+}
+
+let empty_names = fun () -> { seen = HashSet.create (); ordered_rev = [] }
+
+let add_name = fun names name ->
+  if HashSet.contains names.seen name then
+    names
+  else
+    (
+      let _ = HashSet.insert names.seen name in
+      { names with ordered_rev = name :: names.ordered_rev }
+    )
+
+let ordered_names = fun names -> List.rev names.ordered_rev
+
 let global_symbols_of_program = fun (program: Lir.Program.t) ->
   List.fold_left
     (fun symbols (procedure: Lir.Procedure.t) ->
       List.fold_left
         (fun symbols instruction_ ->
           match instruction_ with
-          | Lir.Instruction.Store_global { symbol; _ } -> add_unique symbols symbol
+          | Lir.Instruction.Store_global { symbol; _ } -> add_name symbols symbol
           | _ -> symbols)
         symbols
         procedure.body)
-    []
-    program.procedures
+    (empty_names ())
+    program.procedures |> ordered_names
 
 let emit_string_constants = fun strings ->
   match strings with

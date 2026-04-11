@@ -11,12 +11,42 @@ module Literal: sig
   val to_json: t -> Json.t
 end
 
+module Slot: sig
+  type t = {
+    name: string;
+    offset: int;
+  }
+  val to_json: t -> Json.t
+end
+
+module Home: sig
+  type t =
+    | Stack_slot of Slot.t
+  val to_json: t -> Json.t
+end
+
+module Destination: sig
+  type t =
+    | Register of string
+    | Home of Home.t
+  val to_json: t -> Json.t
+end
+
 module Operand: sig
   type t =
     | Register of string
+    | Home of Home.t
     | Global of string
     | Symbol_address of string
     | Literal of Literal.t
+  val to_json: t -> Json.t
+end
+
+module Home_binding: sig
+  type t = {
+    name: string;
+    home: Home.t;
+  }
   val to_json: t -> Json.t
 end
 
@@ -30,21 +60,13 @@ end
 module Instruction: sig
   type t =
     | Label of string
-    | Move of { dst: string; src: Operand.t }
+    | Move of { dst: Destination.t; src: Operand.t }
     | Store_global of { symbol: string; src: Operand.t }
-    | Call of { dst: string option; callee: Callee.t; arguments: Operand.t list }
+    | Call of { dst: Destination.t option; callee: Callee.t; arguments: Operand.t list }
     | Branch_if_zero of { operand: Operand.t; target: string }
     | Jump of string
     | Return of Operand.t option
     | Comment of string
-  val to_json: t -> Json.t
-end
-
-module Slot: sig
-  type t = {
-    name: string;
-    offset: int;
-  }
   val to_json: t -> Json.t
 end
 
@@ -53,6 +75,7 @@ module Frame: sig
     contains_calls: bool;
     frame_required: bool;
     slots: Slot.t list;
+    homes: Home_binding.t list;
     frame_size: int;
   }
   val empty: t

@@ -20,12 +20,19 @@ let layout_of_procedure = fun (procedure: Lir.Procedure.t) ->
   let slots =
     List.mapi (fun index name -> Lir.Slot.{ name; offset = index * pointer_width }) analysis.slot_names
   in
+  let homes =
+    List.map
+      (fun (slot: Lir.Slot.t) ->
+        Lir.Home_binding.{ name = slot.name; home = Lir.Home.Stack_slot slot })
+      slots
+  in
   let frame_size = align_to (List.length slots * pointer_width) ~alignment:16 in
   Lir.Frame.{
     contains_calls = analysis.contains_calls;
     frame_required = analysis.frame_required;
     slots;
-    frame_size
+    homes;
+    frame_size;
   }
 
 let program = fun (program: Lir.Program.t) ->
