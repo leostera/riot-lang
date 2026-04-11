@@ -328,26 +328,48 @@ let build_batch = fun batch_index ->
       status = build_mode (batch_index * 11);
     }: batch)
 
-let build_dataset = fun () ->
-  let batches = Vector.with_capacity 128 in
-  for batch_index = 0 to 127 do
+type fixture_spec = {
+  label: string;
+  source: string;
+  batch_count: int;
+  mirror_count: int;
+}
+
+let small_fixture_spec = {
+  label = "small";
+  source = "serde-bin primitive benchmark";
+  batch_count = 128;
+  mirror_count = 24;
+}
+
+let large_fixture_spec = {
+  label = "large";
+  source = "serde-bin large primitive benchmark";
+  batch_count = 7_424;
+  mirror_count = 1_392;
+}
+
+let build_dataset = fun spec ->
+  let batches = Vector.with_capacity spec.batch_count in
+  for batch_index = 0 to spec.batch_count - 1 do
     Vector.push batches (build_batch batch_index)
   done;
-  let mirrors = Array.init 24 (fun index -> build_batch (index + 512)) in
+  let mirrors = Array.init spec.mirror_count (fun index -> build_batch (index + 512)) in
   let flags = Vector.with_capacity 64 in
   for index = 0 to 63 do
     Vector.push flags (build_mode (index + 2_000))
   done;
-  ({ version = 2; source = "serde-bin primitive benchmark"; batches; mirrors; flags; primary = Sampled 3.1415926535 }: dataset)
+  ({ version = 2; source = spec.source; batches; mirrors; flags; primary = Sampled 3.1415926535 }: dataset)
 
 type fixture = {
+  label: string;
   dataset: dataset;
   serde_bytes: string;
   marshal_bytes: string;
 }
 
-let build_fixture = fun () ->
-  let dataset = build_dataset () in
+let build_fixture = fun spec ->
+  let dataset = build_dataset spec in
   let serde_bytes =
     Serde_bin.to_string dataset_encode dataset
     |> Result.expect ~msg:"expected serde-bin fixture encoding to succeed"
@@ -359,7 +381,7 @@ let build_fixture = fun () ->
   in
   let _marshal_roundtrip: dataset = Marshal.from_string marshal_bytes 0 in
   ignore decoded;
-  { dataset; serde_bytes; marshal_bytes }
+  { label = spec.label; dataset; serde_bytes; marshal_bytes }
 
 let bench_encode_serde = fun fixture () ->
   ignore (Serde_bin.to_string dataset_encode fixture.dataset)
@@ -380,26 +402,28 @@ let benchmark_suite = fun fixture ->
   Bench.[
     with_config
       ~config:bench_config
-      ("serde-bin encode dataset (" ^ serde_size ^ ")")
+      ("serde-bin encode " ^ fixture.label ^ " dataset (" ^ serde_size ^ ")")
       (bench_encode_serde fixture);
     with_config
       ~config:bench_config
-      ("Stdlib.Marshal encode dataset (" ^ marshal_size ^ ")")
+      ("Stdlib.Marshal encode " ^ fixture.label ^ " dataset (" ^ marshal_size ^ ")")
       (bench_encode_marshal fixture);
     with_config
       ~config:bench_config
-      ("serde-bin decode dataset (" ^ serde_size ^ ")")
+      ("serde-bin decode " ^ fixture.label ^ " dataset (" ^ serde_size ^ ")")
       (bench_decode_serde fixture);
     with_config
       ~config:bench_config
-      ("Stdlib.Marshal decode dataset (" ^ marshal_size ^ ")")
+      ("Stdlib.Marshal decode " ^ fixture.label ^ " dataset (" ^ marshal_size ^ ")")
       (bench_decode_marshal fixture);
   ]
 
 let () =
   Actors.run
     ~main:(fun ~args ->
-      let fixture = build_fixture () in
-      Bench.Cli.main ~name:"serde-bin benchmarks" ~benchmarks:(benchmark_suite fixture) ~args)
+      let small_fixture = build_fixture small_fixture_spec in
+      let large_fixture = build_fixture large_fixture_spec in
+      let benchmarks = benchmark_suite small_fixture @ benchmark_suite large_fixture in
+      Bench.Cli.main ~name:"serde-bin benchmarks" ~benchmarks ~args)
     ~args:Env.args
     ()
