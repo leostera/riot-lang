@@ -39,67 +39,89 @@ module Import_set = struct
 
   let add = fun import set -> Storage.add import () set
 
-  let to_list = fun set -> Storage.bindings set |> List.map fst
+  let mem = Storage.mem
 end
 
-let rec collect_expr_imports = fun expr imports ->
+type import_state = {
+  seen: Import_set.t;
+  reversed: Jir.Imports.requirement list;
+}
+
+let empty_import_state = {
+  seen = Import_set.empty;
+  reversed = [];
+}
+
+let remember_import = fun requirement state ->
+  if Import_set.mem requirement state.seen then
+    state
+  else
+    {
+      seen = Import_set.add requirement state.seen;
+      reversed = requirement :: state.reversed;
+    }
+
+let rec collect_expr_imports = fun expr state ->
   match expr with
   | Jir.Expr.Literal _ ->
-      imports
+      state
   | Jir.Expr.Identifier _ ->
-      imports
+      state
   | Jir.Expr.Imported requirement ->
-      Import_set.add requirement imports
+      remember_import requirement state
   | Jir.Expr.Runtime_helper helper ->
-      Import_set.add (Jir.Runtime.to_import helper) imports
+      remember_import (Jir.Runtime.to_import helper) state
   | Jir.Expr.Function function_ ->
-      collect_statement_import_list function_.body imports
+      collect_statement_import_list function_.body state
   | Jir.Expr.Member member ->
-      collect_expr_imports member.object_ imports
+      collect_expr_imports member.object_ state
   | Jir.Expr.Call { callee; arguments } ->
-      let imports = collect_expr_imports callee imports in
-      collect_expr_import_list arguments imports
+      let state = collect_expr_imports callee state in
+      collect_expr_import_list arguments state
   | Jir.Expr.Conditional conditional ->
-      let imports = collect_expr_imports conditional.condition imports in
-      let imports = collect_expr_imports conditional.then_ imports in
-      collect_expr_imports conditional.else_ imports
+      let state = collect_expr_imports conditional.condition state in
+      let state = collect_expr_imports conditional.then_ state in
+      collect_expr_imports conditional.else_ state
   | Jir.Expr.Assignment assignment ->
-      collect_expr_imports assignment.value imports
+      collect_expr_imports assignment.value state
 
-and collect_expr_import_list = fun exprs imports ->
+and collect_expr_import_list = fun exprs state ->
   match exprs with
-  | [] -> imports
+  | [] -> state
   | expr :: rest ->
-      let imports = collect_expr_imports expr imports in
-      collect_expr_import_list rest imports
+      let state = collect_expr_imports expr state in
+      collect_expr_import_list rest state
 
-and collect_statement_import_list = fun statements imports ->
+and collect_statement_import_list = fun statements state ->
   match statements with
-  | [] -> imports
+  | [] -> state
   | statement :: rest ->
-      let imports = collect_statement_imports statement imports in
-      collect_statement_import_list rest imports
+      let state = collect_statement_imports statement state in
+      collect_statement_import_list rest state
 
-and collect_statement_imports = fun statement imports ->
+and collect_statement_imports = fun statement state ->
   match statement with
   | Jir.Statement.Declaration declaration -> (
       match declaration.init with
-      | None -> imports
-      | Some init -> collect_expr_imports init imports
+      | None -> state
+      | Some init -> collect_expr_imports init state
     )
   | Jir.Statement.Block statements ->
-      collect_statement_import_list statements imports
+      collect_statement_import_list statements state
   | Jir.Statement.Expression expr ->
-      collect_expr_imports expr imports
+      collect_expr_imports expr state
   | Jir.Statement.Return expr ->
-      collect_expr_imports expr imports
+      collect_expr_imports expr state
   | Jir.Statement.If if_ ->
-      let imports = collect_expr_imports if_.condition imports in
-      let imports = collect_statement_import_list if_.then_ imports in
-      collect_statement_import_list if_.else_ imports
+      let state = collect_expr_imports if_.condition state in
+      let state = collect_statement_import_list if_.then_ state in
+      collect_statement_import_list if_.else_ state
 
 let collect_program_imports = fun program ->
-  List.fold_right collect_statement_imports Jir.Program.(program.body) Import_set.empty
+  List.fold_left
+    (fun state statement -> collect_statement_imports statement state)
+    empty_import_state
+    Jir.Program.(program.body)
 
 let rec normalize_expr = fun expr ->
   match expr with
@@ -158,5 +180,8 @@ and normalize_statement_list = fun statements ->
 
 let program = fun (program: Jir.Program.t) ->
   let body = normalize_statement_list program.body in
-  let imports = collect_program_imports Jir.Program.{ program with body } |> Import_set.to_list in
+  let imports =
+    collect_program_imports Jir.Program.{ program with body }
+    |> fun state -> List.rev state.reversed
+  in
   { program with body; imports }
