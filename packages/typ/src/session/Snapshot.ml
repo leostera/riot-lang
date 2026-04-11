@@ -634,6 +634,11 @@ and module_result_for = fun (snapshot: t) module_name ->
                 let _ = Collections.HashMap.insert snapshot.module_results_cache cache_key result in
                 result
             | None ->
+                let provisional_result = partial_module_result snapshot module_name in
+                let _ = Collections.HashMap.insert
+                  snapshot.module_results_cache
+                  cache_key
+                  provisional_result in
                 let slots = module_slots snapshot module_name in
                 let source_ids = slots |> List.map (fun (slot: analysis_slot) -> slot.source_id) in
                 (

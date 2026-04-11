@@ -2,469 +2,391 @@
 
 This file tracks the architecture rewrite for `packages/typ`.
 
-It is based on:
+The target shape is no longer "phase N of the old checker rewrite". The target
+shape is a cleaner internal library split with explicit ownership:
 
-- the current `typ` docs, especially `packages/typ/docs/checker/fast_package_check.md`
-- the current implementation in `packages/typ/src`
-- the audit against `vendor/ocaml/typing`
+- `Typ.Check`
+  source-local type engine
+- `Typ.Infer`
+  logical-module analysis over one module group
+- `Typ.Analyze`
+  authoritative package-level orchestration
+- `Typ.Query`
+  read-only queries over immutable rooted worlds
+- `Typ.Session`
+  host/session machinery for editor and incremental workflows
 
-The goal is not to make `typ` source-identical to OCaml. The goal is to make
-the high-level shape match the same architectural story:
+The goal is not to make `typ` source-identical to `vendor/ocaml/typing`. The
+goal is to get the same high-level authority story:
 
-- one authoritative module-producing path
-- one canonical reusable module artifact
-- one imported-module environment growth model
-- rooted snapshots for query worlds, not as an alternate build checker
+- one semantic core for typing
+- one canonical module artifact
+- one imported-world lookup story
+- one authoritative build-time module producer
+- query/snapshot APIs that consume the same semantics instead of inventing a
+  second compiler
 
-## End State
+## Target Architecture
 
-- [ ] `typ` has one authoritative build-style module-producing engine.
-- [ ] `ModuleTypings` is the only canonical reusable module artifact.
-- [ ] `PackageEnv + ScopeView` is the one imported-module lookup story.
-- [ ] rooted snapshots consume authoritative module artifacts instead of
-      rebuilding ambient exports and ambient type-decl lists.
-- [ ] alias and public package names are views over canonical modules, not
-      cloned `ModuleTypings`.
-- [ ] persistence records enough imported-module consistency data to reject
-      stale hydrated results.
-- [ ] `riot-check` cold package checks use the authoritative package engine
-      directly.
+### `Typ.Check`
+
+Given an `ImportedWorld` plus one lowered semantic tree, type one source and
+emit source-local outputs:
+
+- typing diagnostics
+- item and expression traces
+- exported values
+- exported type declarations
+- enough information for type-at, definition-at, and module-summary building
+
+`Typ.Check` must not own:
+
+- lowering from raw source text
+- `.ml`/`.mli` pairing
+- package ordering
+- persistence
+- rooted snapshot/session concerns
+
+### `Typ.Infer`
+
+Given one logical module group and one imported world, perform module-local
+analysis:
+
+- lower each source in the group
+- call `Typ.Check` for each lowered source
+- reconcile the group through `ModulePairing`
+- produce one canonical internal `ModuleTypings`
+- return per-source analyses adjusted with inclusion diagnostics
+
+`Typ.Infer` must stay pure library code:
+
+- no store writes
+- no package-bundle writes
+- no host-side package reconstruction
+
+### `Typ.Analyze`
+
+Given prepared package/module inputs, loaded modules, and store access,
+authoritatively analyze a package:
+
+- build or consume module ordering
+- grow `PackageEnv` monotonically
+- call `Typ.Infer` for each local module group
+- persist authoritative canonical module artifacts
+- emit package summary and loaded-module outputs
+
+`Typ.Analyze` is the only build-time writer of authoritative module artifacts.
+
+### `Typ.Query`
+
+Given one immutable rooted world, answer read-only questions:
+
+- diagnostics
+- file summaries
+- module typings
+- type-at
+- definition-at
+
+`Typ.Query` may lazily force canonical computations, but it must not:
+
+- persist artifacts
+- define different imported-world semantics
+- define different pairing semantics
+- rebuild a second ambient world model
+
+### `Typ.Session`
+
+Own long-lived host/session concerns:
+
+- source registry
+- revisions
+- rooted closure planning
+- snapshot lifetime
+- cache scopes
+
+`Typ.Session` should prepare immutable rooted worlds for `Typ.Query`, not own a
+second semantic engine.
 
 ## Non-Negotiables
 
-- [ ] no snapshot-time store writes on read/query paths
-- [ ] no second package-check orchestrator with its own module semantics
-- [ ] no host-side reimplementation of public-module shaping rules
-- [ ] no hot-path rebuilding of flat ambient lists when a persistent imported
-      env can answer the same question
-- [ ] no second authoritative artifact alongside `ModuleTypings`
+- [x] no snapshot-time store writes on read/query paths
+- [x] no second package-check writer defining authoritative persistence
+- [x] no hot-path imported-module resolution through flat ambient replay lists
+- [x] no snapshot dependency discovery by nested snapshot forcing
+- [ ] no second semantic stack split across build-path and query-path module
+      analysis
+- [ ] no host-side reimplementation of canonical module visibility rules
+- [ ] no second authoritative artifact alongside canonical `ModuleTypings`
+- [ ] no package/query layer owning semantic rules that belong in `Typ.Check`
 
-## Good Pieces To Preserve
+## Current Reality To Preserve
 
-- [ ] keep `Summary2` + `Env.env_of_summary` as the local lexical env
+- [x] `Summary2` plus `Env.env_of_summary` remains the local lexical env
       reconstruction story
-- [ ] keep `PackageEnv` as the canonical imported-module artifact index
-- [ ] keep `ScopeView` as the visible-name resolution layer
-- [ ] keep `CompiledScope` as a cached derived view on `ModuleTypings`, not as
-      a second authority
-- [ ] keep `SourceAnalysis` focused on source results rather than package-engine
-      scratch state
+- [x] `PackageEnv` is the canonical imported-module artifact index
+- [x] `ScopeView` is the visible-name resolution layer over `PackageEnv`
+- [x] `ImportedWorld` is the right imported-module boundary for source analysis
+- [x] the authoritative build-style module producer today is
+      `Typ.Check.fold_package_sources`
+- [x] rooted snapshots are read-only and no longer persist module typings
+- [x] snapshot preparation discovers dependencies before query forcing begins
+- [x] build and snapshot flows already share the imported-world lookup model
+- [ ] the current public names reflect the target ownership boundaries
 
-## Phase 0. Baseline, Guardrails, and Invariants
+## Big Checklist
 
-Current touchpoints:
+### Name The Layers Correctly
 
-- `packages/typ/src/check.ml`
-- `packages/typ/src/session/Session.ml`
-- `packages/typ/src/session/Snapshot.ml`
-- `packages/riot-check/src/check/session.ml`
+- [ ] decide the final public/internal names for the new split:
+      `Typ.Check`, `Typ.Infer`, `Typ.Analyze`, `Typ.Query`, `Typ.Session`
+- [ ] stop using `Typ.Check` to mean package orchestration once the new split is
+      in place
+- [ ] stop using `Typ.Infer` to mean the whole source-analysis stack once
+      `Typ.Check` and module-level `Typ.Infer` are separated
+- [ ] update `packages/typ/src/typ.mli` to describe the new ownership model
+- [ ] make the module names in `packages/typ/src` line up with the architecture
+      instead of the transition state
 
-Checklist:
+### Make `Typ.Check` An Explicit Source-Local Engine
 
-- [x] record a before baseline for `riot build typ riot-check --json`
-- [ ] record a before baseline for `riot test -p typ --json`
-- [ ] record a before baseline for `riot run riot -- check -p kernel-new --json`
-- [x] write down the current cold-check path versus rooted-snapshot path in one
-      short architecture note inside this file or the checker docs
-- [x] add a regression test that fails if the snapshot query path persists
-      module typings during read-only work
-- [x] add a regression test that fails if `riot-check` cold package checks route
-      through rooted-session package reconstruction
-- [ ] add a regression test that catches drift between build-path and
-      snapshot-path visible-module semantics for the same package
-- [x] make the structured event stream expose enough information to prove which
-      engine path was used for a given check
+- [x] keep imported-module input flowing through `ImportedWorld`
+- [x] keep `Typ.Check` independent from package-level persistence
+- [ ] define one explicit API for source-local typing over lowered trees
+- [ ] make `SourceAnalysis` call that API through a narrow boundary instead of
+      reaching into checker internals ad hoc
+- [ ] make the `Typ.Check` result shape explicit:
+      diagnostics, exports, type decls, traces, summary ingredients
+- [ ] keep traces and query indexes optional host-controlled outputs, not
+      mandatory checker work
+- [ ] audit config fields and remove package/session concerns from the
+      source-local checker API
+- [ ] keep local env reconstruction (`Summary2`, `Env.env_of_summary`) under the
+      `Typ.Check`/checker-core boundary
+- [ ] ensure `Typ.Check` can be called from both `Typ.Infer` and tests without
+      depending on package ordering code
 
-Exit criteria:
+### Turn `Typ.Infer` Into Module-Group Analysis
 
-- [x] we can state exactly which codepath is authoritative today
-- [ ] we have tests that lock down the most dangerous drift regressions before
-      refactoring
+- [ ] define the canonical input type for one logical module group
+      (`.ml`, `.mli`, or both)
+- [ ] decide whether `Typ.Infer` returns `ModulePairing.t` directly or a new
+      wrapper record containing the canonical `ModuleTypings` and per-source
+      analyses
+- [ ] move the repeated pattern
+      "analyze each source in the group, then pair with `ModulePairing`"
+      behind one reusable `Typ.Infer` API
+- [ ] stop duplicating that module-group analysis logic in both
+      `packages/typ/src/check.ml` and `packages/typ/src/session/Snapshot.ml`
+- [ ] keep `Lower` plus source-summary packaging inside `Typ.Infer`, not in
+      package orchestration
+- [ ] keep `Typ.Infer` free of store access and package-bundle persistence
+- [ ] make signature-inclusion diagnostics part of the module-group result, not
+      a side effect of whichever caller happened to pair the sources
+- [ ] make sure both build and query flows call the same `Typ.Infer` entrypoint
+      for local module groups
 
-Current architecture note:
+### Make `Typ.Analyze` The Only Authoritative Build-Time Orchestrator
 
-- The authoritative build-style module producer today is
-  `Typ.Check.fold_package_sources` in `packages/typ/src/check.ml`. It builds
-  the package graph, analyzes module groups in dependency order, pairs each
-  finished module once, persists canonical `ModuleTypings`, and extends
-  `PackageEnv` plus `LoadedModules` for downstream groups.
-- The rooted snapshot path is `Session.prepare_snapshot` plus lazy forcing in
-  `packages/typ/src/session/Snapshot.ml`. That path prepares a rooted,
-  revision-bound query world and lazily computes analyses plus module pairings
-  for queries. It should stay read-only and consume authoritative artifacts,
-  not define persistence semantics.
-- The currently reachable `riot-check` cold-check path goes through
-  `packages/riot-check/src/check/session.ml` ->
-  `checked_group_for_package_scan` -> `Typ.Check.fold_package_sources`.
-  `workspace_module_typings_for_package` uses the same authoritative engine for
-  dependency package warmup. The older rooted-session package helper still
-  exists in `riot-check`, but `check_target_files` does not select it today.
-- Phase 0 explicitly defers imported-resolution unification and
-  build-vs-snapshot alias-visibility parity work. Those semantics belong to
-  Phase 2 unless they are covered by targeted regressions.
+- [x] current cold package checks already route through the authoritative build
+      engine
+- [x] build-path module persistence happens on the authoritative path, not the
+      query path
+- [ ] rename or resurface the current package engine as `Typ.Analyze`
+- [ ] narrow `Typ.Analyze` to orchestration concerns:
+      graphing, ordering, imported-world growth, persistence, package summary
+- [ ] make `Typ.Analyze` call only `Typ.Infer` for local module-group work
+- [ ] keep monotonic `PackageEnv` growth in `Typ.Analyze`
+- [ ] make it explicit which outputs are authoritative:
+      canonical local module typings, loaded modules, package bundle
+- [ ] keep public/module visibility shaping out of hosts and inside the
+      canonical analysis layer
+- [ ] ensure package summary emission happens only from authoritative completed
+      package analysis
+- [ ] keep event emission aligned to source-local check, module-group infer, and
+      package analyze boundaries
 
-## Phase 1. Freeze the Authority Boundary
+### Make `Typ.Query` A True Read-Only Facade
 
-Current touchpoints:
+- [x] `Typ.Query` is already a read API over snapshots
+- [x] snapshot-time persistence is gone
+- [ ] move all meaningful local module computation behind shared `Typ.Infer`
+      boundaries so `Typ.Query` stays thin
+- [ ] make `Typ.Query` responsible only for read APIs, not for assembling a
+      second semantic model
+- [ ] ensure query answers are derived from the same canonical module-group
+      computations used by build analysis
+- [ ] keep query caching keyed by revision, visible world, and loaded modules,
+      not by alternate semantic assumptions
+- [ ] ensure `type_at`, `definition_at`, diagnostics, and `module_typings_of`
+      all observe the same `Typ.Infer` results
+- [ ] remove any remaining snapshot-only module shaping or aliasing rules
 
-- `packages/typ/src/check.ml`
-- `packages/typ/src/session/Snapshot.ml`
-- `packages/riot-check/src/check/session.ml`
+### Keep `Typ.Session` Host-Oriented
 
-Checklist:
+- [x] rooted snapshots are revision-bound immutable worlds
+- [x] dependency closure and local ordering logic are moving toward shared
+      planning rather than opportunistic typing
+- [ ] make `Typ.Session` own source registration, revisions, rooted closure,
+      and cache scopes only
+- [ ] move any remaining canonical module production logic out of
+      `Session`/`Snapshot` and into `Typ.Infer` or `Typ.Analyze`
+- [ ] keep snapshot caches as memoization of canonical computations, not as a
+      second artifact layer
+- [ ] decide whether `Snapshot` remains a first-class type or becomes an
+      internal rooted-world representation behind `Typ.Query`
 
-- [ ] define one explicit contract for authoritative module production on the
-      build path
-- [x] stop persisting module typings from `Snapshot.ensure_module_typings_persisted`
-- [x] make snapshot forcing return query results only, not persistence side
-      effects
-- [x] make it impossible for query-time code to mutate the store accidentally
-- [x] make `check.ml` the only place that persists authoritative finished-module
-      typings for build-style checking
-- [x] remove any end-of-run “persist again” or “reload what we just built”
-      behavior from `riot-check`
-- [x] remove any fallback package-bundle reconstruction that depends on asking a
-      snapshot for authoritative results after the fact
-- [x] add tests that prove one finished module is persisted once on the build
-      path and zero times on the snapshot path
+### Keep One Imported-World Story
 
-Exit criteria:
+- [x] `PackageEnv + ScopeView` is the canonical imported-world input for source
+      analysis
+- [x] build and rooted snapshot flows already use the same imported-world path
+- [x] hot-path dependencies on `TypConfig.with_ambient*` were removed
+- [ ] finish deleting compatibility-only ambient plumbing from APIs and data
+      types once no caller needs it
+- [ ] keep `hidden_export_names` scoped to export filtering only
+- [ ] ensure local opens, includes, module aliases, record lookup, constructor
+      lookup, and type lookup remain driven only through `ImportedWorld`
+- [ ] keep imported-world creation outside `Typ.Check`; the checker should
+      consume it, not build it
 
-- [x] there is one authoritative producer of persisted module artifacts
-- [x] snapshots can no longer define persistence semantics
+### Keep One Canonical Module Artifact
 
-## Phase 2. Make Imported Resolution Use One World Model
+- [ ] keep `ModuleTypings` as the only canonical reusable module artifact
+- [ ] keep `CompiledScope` as a derived cache over canonical module artifacts
+- [ ] keep `FileSummary` as a source-facing summary, not a second module
+      authority
+- [ ] decide whether `Typ.Infer` exposes both per-source analyses and one
+      canonical module artifact, or a richer result type containing both
+- [ ] audit codepaths that still treat qualified/public variants of the same
+      module as separate authoritative artifacts
 
-Current touchpoints:
+### Stop Cloning Artifacts To Express Visibility
 
-- `packages/typ/src/TypConfig.mli`
-- `packages/typ/src/SourceAnalysis.ml`
-- `packages/typ/src/PackageEnv.ml`
-- `packages/typ/src/ScopeView.ml`
-- `packages/typ/src/infer/checker.ml`
-- `packages/typ/src/session/Snapshot.ml`
+- [ ] replace hot-path use of `ModuleSurface.rebind_module_typings` with
+      visible-name/view metadata
+- [ ] stop synthesizing fresh source hashes just to represent alias/public names
+- [ ] stop persisting cloned alias/public `ModuleTypings`
+- [ ] decide whether package bundles store canonical modules only or canonical
+      modules plus a separate visibility/public-name index
+- [ ] make internal names, local aliases, and public package names resolve
+      through one visibility/view layer
+- [ ] keep qualified surface rendering as a derived helper for diagnostics and
+      UI only
+- [ ] add tests proving alias/public visibility does not require artifact
+      cloning
 
-Checklist:
-
-- [x] define the imported-world API that `SourceAnalysis.analyze` should consume
-      on every path
-- [x] make `PackageEnv + ScopeView` the canonical imported-module input for
-      source analysis
-- [x] keep `TypConfig.ambient`, `ambient_type_decls`, and
-      `ambient_visible_types` as compatibility shims only while migrating
-- [x] migrate the build engine to use only the imported-world API
-- [x] migrate rooted snapshot forcing to use the same imported-world API
-- [x] remove hot-path dependencies on `TypConfig.with_ambient`
-- [x] remove hot-path dependencies on `TypConfig.with_ambient_type_decls`
-- [x] remove hot-path dependencies on `TypConfig.with_ambient_visible_types`
-- [x] make `hidden_export_names` a narrowly scoped export-filter concern, not a
-      second imported-module channel
-- [x] add tests that prove imported value lookup, type lookup, constructor
-      lookup, record lookup, local opens, and include/module-alias behavior all
-      work through the same imported-world path on both build and snapshot flows
-
-Exit criteria:
-
-- [x] imported-module resolution no longer depends on replaying flat ambient
-      exports or type-decl lists
-- [x] build and snapshot flows share the same imported lookup semantics
-
-## Phase 3. Delete Snapshot Ambient Replay
-
-Current touchpoints:
-
-- `packages/typ/src/session/Snapshot.ml`
-- `packages/typ/src/TypConfig.ml`
-- `packages/typ/src/ModuleSurface.ml`
-
-Checklist:
-
-- [x] remove `loaded_ambient_env_for` from the snapshot hot path
-- [x] remove `loaded_ambient_type_decls_for` from the snapshot hot path
-- [x] remove `local_ambient_env_for` from the snapshot hot path
-- [x] remove `local_ambient_type_decls_for` from the snapshot hot path
-- [x] replace ambient replay caches with caches keyed by visible module ids and
-      canonical module results
-- [x] make snapshot local-module visibility produce `ScopeView` entries directly
-      instead of concatenating export lists
-- [x] keep any needed caching around qualified/public surfaces as derived view
-      caches only, not as checker inputs
-- [x] make snapshot forcing pass imported context through `PackageEnv` lookups
-      rather than `TypConfig` ambient mutation
-- [x] add tests that snapshot diagnostics and query answers remain stable after
-      removing ambient replay
-- [x] add tests that snapshots no longer allocate ambient payload proportional to
-      all visible imported exports
-
-Exit criteria:
-
-- [x] snapshots no longer rebuild imported state as flat ambient lists
-- [x] snapshot caching is about canonical module results and visibility, not
-      replayed semantic env payload
-
-## Phase 4. Separate Dependency Discovery From Typing
-
-Current touchpoints:
-
-- `packages/typ/src/session/Session.ml`
-- `packages/typ/src/session/Snapshot.ml`
-- `packages/typ/src/check.ml`
-- `packages/typ/src/model/FileSummary.ml`
-- `packages/typ/src/model/ModuleTypings.ml`
-
-Checklist:
-
-- [ ] document the dependency-discovery inputs that are allowed before typing
-- [ ] stop using nested rooted snapshots inside `collect_missing_module_summaries`
-- [ ] make missing-requirement discovery use parse deps plus cheap persisted
-      module header information
-- [ ] decide whether `typ` needs a smaller persisted module header separate from
-      full `ModuleTypings`
-- [ ] if a header is needed, define exactly what it contains:
-      declared modules, exported nested module prefixes, import requirements,
-      and any cycle/discovery metadata
-- [ ] make snapshot preparation discover missing modules without forcing full
-      sibling typing just to learn nested module exports
-- [ ] share dependency-closure and module-ordering logic between the package
-      engine and rooted snapshot preparation where semantics must match
-- [ ] preserve explicit local-module cycle diagnostics while moving cycle
-      discovery earlier and cheaper
-- [ ] add tests for nested modules, `include`, implicit opens, and local cycles
-      so discovery behavior is locked down before the refactor lands
-
-Exit criteria:
-
-- [ ] dependency discovery no longer depends on opportunistic typed forcing
-- [ ] snapshot preparation knows what is missing before query forcing begins
-
-## Phase 5. Strengthen Canonical Module Identity
-
-Current touchpoints:
-
-- `packages/typ/src/model/LocalModules.ml`
-- `packages/typ/src/model/BindingId.ml`
-- `packages/typ/src/model/EntityId.ml`
-- `packages/typ/src/model/ModuleTypings.ml`
-- `packages/typ/src/PackageEnv.ml`
-- `packages/typ/src/Store.ml`
-
-Checklist:
+### Strengthen Canonical Identity
 
 - [ ] decide the canonical persistent module identity that crosses analysis,
       env, and persistence boundaries
+- [ ] push canonical module ids through `PackageEnv`, bindings, entities, and
+      store records
 - [ ] stop treating `module_name : string` as the only imported authority
 - [ ] stop treating `BindingId.Persistent of SurfacePath.t` as a sufficient
-      representation of imported binding identity
-- [ ] preserve user-visible surface paths for diagnostics and UX, but separate
-      them from canonical imported identity
-- [ ] push `PackageEnv.ModuleId` or a close equivalent through more of the
-      imported-module APIs
-- [ ] make store records point at canonical module identity plus display names,
-      not only raw strings
-- [ ] audit places that still compare or cache by raw module name and decide
-      whether those should become canonical-id keyed
-- [ ] keep `LocalModules` alias matching logic only as a visibility-resolution
-      concern, not as the artifact identity layer
-- [ ] add tests that imported identity survives aliasing, public rebinding,
-      nested module views, and persistence round trips
+      imported identity
+- [ ] preserve user-facing surface paths for diagnostics and UX, but keep them
+      separate from canonical identity
+- [ ] audit caches and comparisons that still key semantic identity by raw
+      module name
+- [ ] add tests for aliasing, public names, nested paths, and persistence round
+      trips under the new identity model
 
-Exit criteria:
+### Make Module Inference And Interface Inclusion Explicit
 
-- [ ] canonical module identity is distinct from presentation paths
-- [ ] aliasing no longer requires cloning artifacts to preserve identity
+- [ ] decide the long-term contract of `ModulePairing` under the new split
+- [ ] decide whether interface inclusion should move closer to OCaml-style
+      env-aware reasoning or stay intentionally narrower
+- [ ] if it stays narrower, document the limitation explicitly
+- [ ] if it broadens, replace simplistic surface comparison with imported-world
+      aware signature reasoning
+- [ ] keep mismatch diagnostics attached to both source analyses in a stable way
+- [ ] add tests for imported aliases, included modules, hidden type identity,
+      constructor ownership, record labels, and signature visibility
+- [ ] ensure public/visibility views cannot change inclusion results
 
-## Phase 6. Replace Cloned Alias/Public Artifacts With Views
+### Add Import Consistency To Persistence
 
-Current touchpoints:
-
-- `packages/typ/src/ModuleSurface.ml`
-- `packages/typ/src/check.ml`
-- `packages/typ/src/session/Snapshot.ml`
-- `packages/riot-check/src/check/session.ml`
-
-Checklist:
-
-- [ ] decide the runtime representation for visible-module views over canonical
-      module results
-- [ ] replace `ModuleSurface.rebind_module_typings` in hot paths with view data
-      or alias tables
-- [ ] make internal module names, local aliases, and public package names all
-      resolve through the same visibility/view layer
-- [ ] stop synthesizing new source hashes just to represent alias/public names
-- [ ] stop persisting cloned alias/public `ModuleTypings`
-- [ ] decide whether package bundles should store:
-      canonical modules only, or canonical modules plus a separate public-name
-      index
-- [ ] remove any remaining host-side rebind logic from `riot-check`
-- [ ] keep qualified surface rendering as a derived helper for diagnostics or
-      UI, not as a second persisted artifact
-- [ ] add tests that local alias exports, public package names, and nested alias
-      lookups all behave identically before and after the representation change
-
-Exit criteria:
-
-- [ ] one canonical module artifact can be exposed under many visible names
-- [ ] no codepath needs to clone `ModuleTypings` just to express alias/public
-      visibility
-
-## Phase 7. Add Import Consistency To Persistence
-
-Current touchpoints:
-
-- `packages/typ/src/Store.ml`
-- `packages/typ/src/check.ml`
-- `packages/typ/src/session/Session.ml`
-- `packages/typ/src/model/ModuleTypings.ml`
-
-Checklist:
-
-- [ ] design the import-consistency payload persisted with each authoritative
-      module result
+- [ ] design the import-consistency payload stored with each authoritative
+      module artifact
 - [ ] record canonical imported module ids and hashes for every persisted module
-- [ ] decide how package fingerprinting relates to per-module import
-      consistency checks
-- [ ] validate hydrated module typings against imported consistency data before
-      treating them as authoritative
-- [ ] make stale imported dependencies invalidate hydration cleanly instead of
-      silently reusing bad data
-- [ ] add tests for renamed modules, changed dependencies, and stale package
-      bundles
-- [ ] make diagnostics/events explicit when hydration is rejected because of
-      consistency mismatch
+- [ ] validate hydrated module artifacts against imported consistency metadata
+- [ ] reject stale hydrated results explicitly instead of silently reusing them
+- [ ] decide how package fingerprinting interacts with per-module import
+      consistency
+- [ ] add tests for renamed modules, changed dependencies, stale package
+      bundles, and rejected hydration
+- [ ] make events/diagnostics explicit when hydration is rejected
 
-Exit criteria:
+### Keep Dependency Discovery Separate From Typing
 
-- [ ] hydrated artifacts can be trusted against the imported world they claim to
-      summarize
-- [ ] store semantics are closer in spirit to OCaml `import_crcs` / `imports`
+- [x] snapshot preparation no longer relies on nested snapshot forcing to learn
+      missing modules
+- [x] dependency discovery uses parse deps and cheap pre-typing data
+- [ ] decide whether a separate persisted module header is still needed
+- [ ] if needed, define exactly what the header contains:
+      declared modules, exported nested module prefixes, requirements, cycle
+      metadata
+- [ ] make both `Typ.Analyze` and `Typ.Session` consume the same discovery
+      boundary
+- [ ] keep cycle discovery and diagnostics explicit while staying pre-typing
+- [ ] add tests for nested modules, includes, implicit opens, and local cycles
+      that only depend on the discovery boundary
 
-## Phase 8. Decide and Implement the Interface-Inclusion Story
+### Simplify `riot-check` Host Integration
 
-Current touchpoints:
+- [x] `riot-check` cold package checks already use the authoritative build path
+- [ ] update `riot-check` to the new public surfaces once naming lands
+- [ ] remove any remaining host-side reconstruction of package module results
+- [ ] remove any remaining host-side visibility rebinding logic
+- [ ] keep cold package checks on `Typ.Analyze`
+- [ ] keep rooted editor/query flows on `Typ.Session` plus `Typ.Query`
+- [ ] keep the minimal build payload separate from richer query payloads
+- [ ] add integration tests that lock down the split between build and query
+      workflows
 
-- `packages/typ/src/ModulePairing.ml`
-- `packages/typ/src/model/VisibleTypes.ml`
-- `packages/typ/src/PackageEnv.ml`
+### Rewrite The Docs Around The New Split
 
-Checklist:
+- [ ] update `packages/typ/docs/checker/index.md` for the new architecture
+- [ ] update `packages/typ/docs/checker/engine.md` so it describes
+      `Check -> Infer -> Analyze -> Query/Session`
+- [ ] delete or rewrite docs that still describe the old package-check vs
+      rooted-snapshot split as if both were architectural authorities
+- [ ] update `packages/typ/AGENTS.md` to route work by the new ownership model
+- [ ] keep the docs explicit about which data is authoritative, derived, or
+      query-only
+- [ ] add a short migration note mapping the old names to the new ones while the
+      tree is still in transition
 
-- [ ] decide the target: OCaml-like env-aware signature inclusion, or an
-      intentionally narrower Riot-specific subset
-- [ ] if the target is narrower, write that limitation down explicitly in the
-      checker docs
-- [ ] if the target is broader, design the replacement for current
-      export/type-decl list comparison in `ModulePairing`
-- [ ] move implementation-vs-interface checking closer to imported env-aware
-      module-signature reasoning
-- [ ] support richer mismatch diagnostics without baking current simplistic
-      surface assumptions into the final architecture
-- [ ] add dedicated tests for aliasing through signatures, included module
-      surfaces, hidden type identity, constructor ownership, and record labels
-- [ ] audit whether public/package views can affect signature inclusion results;
-      if yes, fix the representation before deepening the inclusion engine
+### Validation
 
-Exit criteria:
-
-- [ ] the project has an explicit, documented answer for what interface
-      inclusion means
-- [ ] `ModulePairing` is no longer an accidental long-term architecture choice
-
-## Phase 9. Simplify `riot-check` Integration
-
-Current touchpoints:
-
-- `packages/riot-check/src/check/session.ml`
-- `packages/typ/src/check.ml`
-- `packages/typ/src/session/Session.ml`
-
-Checklist:
-
-- [ ] make cold package checks use the authoritative package engine directly
-- [ ] keep rooted snapshots only for explicit rooted query/editor workflows
-- [ ] remove `riot-check` code that reconstructs package module results after
-      the authoritative engine already had them
-- [ ] remove `riot-check` code that rebinds module typings independently of the
-      canonical visibility layer
-- [ ] delete comments warning about semantic drift once the second path is gone
-- [ ] keep `riot-check`’s minimal checked-file payload separate from richer
-      query payload
-- [ ] add integration tests covering package checks, explicit-file checks, and
-      rooted query flows so the split stays intentional
-
-Exit criteria:
-
-- [ ] `riot-check` no longer acts as an architecture patch layer over `typ`
-- [ ] there is one build-style engine and one query-style snapshot story
-
-## Phase 10. Cleanup, Docs, and Validation
-
-Current touchpoints:
-
-- `packages/typ/docs/checker/fast_package_check.md`
-- `packages/typ/docs/checker/engine.md`
-- `packages/typ/AGENTS.md`
-
-Checklist:
-
-- [ ] delete dead ambient-replay helpers
-- [ ] delete dead rooted package-check orchestration helpers
-- [ ] delete dead public-module cloning helpers
-- [ ] update checker docs to reflect the final architecture instead of the
-      transition state
-- [ ] update any AGENTS guidance that still describes the old split semantics
-- [ ] make sure the docs say clearly which data is authoritative, which data is
-      derived, and which data is query-only
-- [ ] run the `packages/typ/AGENTS.md` validation stack after each coherent
-      slice:
-      `riot fix ./packages/typ`,
-      `riot fix ./packages/riot-check`,
-      `riot fmt ./packages/typ`,
-      `riot fmt ./packages/riot-check`,
-      `riot build typ riot-check`,
-      `riot test -p typ`,
-      `riot bench -p typ`,
-      `riot run riot -- check -p kernel-new`
-- [ ] compare before/after timings and memory behavior on the cold package-check
-      path
-
-Exit criteria:
-
-- [ ] the docs match the implementation
-- [ ] the validation stack passes or has explicitly explained known failures
-- [ ] cold package checks are simpler, faster, and semantically single-sourced
+- [ ] run `riot fix ./packages/typ`
+- [ ] run `riot fix ./packages/riot-check`
+- [ ] run `riot fmt ./packages/typ`
+- [ ] run `riot fmt ./packages/riot-check`
+- [ ] run `riot build typ riot-check`
+- [ ] run `riot test -p typ`
+- [ ] run `riot bench -p typ`
+- [ ] run `riot run riot -- check -p kernel-new`
+- [ ] keep before/after notes for cold package-check timing and memory behavior
+- [ ] keep regression coverage for:
+      source-local typing,
+      module pairing,
+      imported-world semantics,
+      rooted query behavior,
+      package analysis,
+      persistence/hydration
 
 ## Open Design Decisions
 
-- [ ] do we need a separate persisted module header for discovery, or can a
-      cheaper view be derived from canonical `ModuleTypings` without retyping?
-- [ ] what exact persistent module-id shape should cross store boundaries?
-- [ ] how much OCaml `Includemod` parity do we actually want in the first
-      rewrite target?
-- [ ] should package bundles store public-name indexes explicitly, or should
-      hosts derive those from canonical modules plus a visibility map?
-- [ ] what is the minimum query payload that snapshots must retain once build
-      checks stop carrying editor baggage?
-
-## Suggested Execution Order
-
-- [ ] Phase 0
-- [ ] Phase 1
-- [ ] Phase 2
-- [ ] Phase 3
-- [ ] Phase 4
-- [ ] Phase 5
-- [ ] Phase 6
-- [ ] Phase 7
-- [ ] Phase 8
-- [ ] Phase 9
-- [ ] Phase 10
-
-The dependency order above is deliberate:
-
-- freezing authority before refactoring internals avoids reintroducing a second
-  writer
-- converging imported resolution before changing identities/views avoids moving
-  drift around
-- fixing discovery before deep persistence work keeps the store boundary honest
-- deciding the inclusion story after identity and views are sane avoids baking
-  unstable representation choices into `ModulePairing`
+- [ ] is `Typ.Infer` the right name, or should the module-group layer be called
+      `Typ.SourceAnalysis`, `Typ.Module`, or something similar?
+- [ ] should `Typ.Infer` expose `ModulePairing.t` directly, or hide it behind a
+      more explicit result type?
+- [ ] does `Snapshot` remain public, or should `Typ.Query` hide the rooted-world
+      representation?
+- [ ] do package bundles store canonical modules only, or canonical modules plus
+      a public-name index?
+- [ ] do we need a separate persisted discovery header, or can it be derived
+      cheaply enough from canonical module artifacts?
+- [ ] how much `Includemod` parity do we want in the first stable rewrite
+      target?

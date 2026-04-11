@@ -32,6 +32,12 @@ Then use the feature slices that match the work you are doing.
    hot paths.
 9. Key rooted snapshot reuse off `ScopeView` visibility plus canonical local
    module results, not flattened ambient export/type payloads.
+10. Keep snapshot dependency discovery pre-typing: use parse deps, declared
+    modules, top-level include paths, and loaded/local module headers, not
+    nested snapshot forcing.
+11. Keep rooted snapshot closure/order work on the same local-module graph
+    contract as the build path, but do not report generated wrapper-only cycles
+    as explicit local-module cycle diagnostics.
 
 ## Validate
 

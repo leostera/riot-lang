@@ -4018,6 +4018,72 @@ let test_fold_package_sources_resolves_root_local_module_wrappers = fun _ctx ->
           ~required_name:(LocalModules.RequiredName.of_string "Kernel_new__Consumer"));
       Ok ()
 
+let test_fold_package_sources_reports_local_module_cycles = fun _ctx ->
+  let source_a = prepared_check_source
+    ~source_id:(SourceId.of_int 0)
+    ~filename:"a.ml"
+    ~internal_module_name:"A"
+    ~local_module_name:"A"
+    ~public_module_name:None
+    ~text:{ocaml|
+open B
+
+let answer = value
+|ocaml} in
+  let source_b = prepared_check_source
+    ~source_id:(SourceId.of_int 1)
+    ~filename:"b.ml"
+    ~internal_module_name:"B"
+    ~local_module_name:"B"
+    ~public_module_name:None
+    ~text:{ocaml|
+open A
+
+let value = answer
+|ocaml} in
+  match Check.fold_package_sources
+    ~config:Config.default
+    ~ordered_sources:[ source_a; source_b ]
+    ~init:[]
+    ~f:(fun groups (group: Check.finished_group) -> group :: groups)
+    () with
+  | Ok _ -> Error "expected package checking to report a local module cycle"
+  | Error Check.MissingRequirements { requirements; _ } ->
+      let actual = Session.MissingRequirements.to_json requirements |> Data.Json.to_string in
+      let expected = Data.Json.Array [
+        Data.Json.Object [
+          ("tag", Data.Json.String "local_module_cycle");
+          ("module_names", Data.Json.Array [ Data.Json.String "A"; Data.Json.String "B" ]);
+          ("source_ids", Data.Json.Array [ Data.Json.Int 0; Data.Json.Int 1 ]);
+        ];
+      ]
+      |> Data.Json.to_string in
+      if String.equal expected actual then
+        Ok ()
+      else
+        Error (String.concat "\n" [ "expected"; expected; "actual"; actual ])
+  | Error Check.MissingModuleTypings { module_name } ->
+      Error ("unexpected missing module typings for " ^ LocalModules.InternalName.to_string module_name)
+  | Error Check.MissingAnalysis { module_name; path } ->
+      Error (format
+        Format.[
+          str "unexpected missing analysis for ";
+          str (LocalModules.InternalName.to_string module_name);
+          str " at ";
+          str (Path.to_string path);
+        ])
+  | Error Check.StoreFailure { module_name; reason } ->
+      Error (format
+        Format.[
+          str "unexpected store failure for ";
+          str (LocalModules.InternalName.to_string module_name);
+          str ": ";
+          str reason;
+        ])
+  | Error Check.PackageStoreFailure { package_name; reason } ->
+      Error (format
+        Format.[ str "unexpected package store failure for "; str package_name; str ": "; str reason; ])
+
 let test_fold_package_sources_shares_imported_world_semantics_for_open_alias_include = fun _ctx ->
   let helpers = prepared_check_source
     ~source_id:(SourceId.of_int 0)
@@ -5100,6 +5166,198 @@ let test_prepare_snapshot_missing_requirements_emit_structured_events = fun _ctx
           Ok ()
       | _ -> Error ("unexpected missing-requirements events: "
       ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
+
+let test_prepare_snapshot_missing_requirements_through_include_do_not_trigger_nested_typing = fun _ctx ->
+  let events = ref [] in
+  let config = Config.default
+  |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ]) in
+  let session = Session.empty ~config in
+  let (session, _wrapper_source_id) = create_source session ~kind:Source.File
+    ~origin:(Source.Label "wrapper.ml")
+    ~text:{ocaml|
+      include Missing_module
+    |ocaml}
+  in
+  let (session, consumer_source_id) = create_source session ~kind:Source.File
+    ~origin:(Source.Label "consumer.ml")
+    ~text:{ocaml|
+      open Wrapper
+
+      let answer = Missing_nested.value
+    |ocaml}
+  in
+  match Session.prepare_snapshot session ~roots:[ consumer_source_id ] with
+  | Ok _ ->
+      Error "expected rooted snapshot preparation to report missing requirements through include wrapper"
+  | Error _missing ->
+      let actual = !events |> List.map typ_event_name in
+      let expected = [ "typ_prepare_snapshot_start"; "typ_prepare_snapshot_failed"; ] in
+      if List.equal String.equal expected actual then
+        Ok ()
+      else
+        Error ("expected include-driven missing discovery to avoid nested typing work: "
+        ^ (Data.Json.Array (!events |> List.map Event.to_json) |> Data.Json.to_string))
+
+let test_prepare_snapshot_discovers_local_nested_module_dependencies = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let (session, _provider_source_id) = create_source session ~kind:Source.File
+    ~origin:(Source.Label "provider.ml")
+    ~text:{ocaml|
+      module Nested = struct
+        let value = 1
+      end
+    |ocaml}
+  in
+  let (session, consumer_source_id) = create_source session ~kind:Source.File
+    ~origin:(Source.Label "consumer.ml")
+    ~text:{ocaml|
+      let answer = Provider.Nested.value
+    |ocaml}
+  in
+  match prepare_snapshot_or_error session ~roots:[ consumer_source_id ] with
+  | Error _ as err -> err
+  | Ok snapshot ->
+      let diagnostics = diagnostic_strings snapshot consumer_source_id in
+      if not (List.is_empty diagnostics) then
+        Error (String.concat "\n" diagnostics)
+      else
+        let answer_type = export_scheme snapshot consumer_source_id "answer" in
+        if answer_type = Some "int" then
+          Ok ()
+        else
+          Error ("unexpected answer type for nested dependency: " ^ show_option answer_type)
+
+let test_prepare_snapshot_discovers_local_include_dependencies = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let (session, _helpers_source_id) = create_source session ~kind:Source.File
+    ~origin:(Source.Label "helpers.ml")
+    ~text:{ocaml|
+      let value = 1
+    |ocaml}
+  in
+  let (session, _wrapper_source_id) = create_source session ~kind:Source.File
+    ~origin:(Source.Label "wrapper.ml")
+    ~text:{ocaml|
+      include Helpers
+    |ocaml}
+  in
+  let (session, consumer_source_id) = create_source session ~kind:Source.File
+    ~origin:(Source.Label "consumer.ml")
+    ~text:{ocaml|
+      open Wrapper
+
+      let answer = value
+    |ocaml}
+  in
+  match prepare_snapshot_or_error session ~roots:[ consumer_source_id ] with
+  | Error _ as err -> err
+  | Ok snapshot ->
+      let diagnostics = diagnostic_strings snapshot consumer_source_id in
+      if not (List.is_empty diagnostics) then
+        Error (String.concat "\n" diagnostics)
+      else
+        let answer_type = export_scheme snapshot consumer_source_id "answer" in
+        if answer_type = Some "int" then
+          Ok ()
+        else
+          Error ("unexpected answer type for include dependency: " ^ show_option answer_type)
+
+let test_prepare_snapshot_discovers_local_implicit_open_dependencies = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let (session, _aliases_source_id) =
+    let aliases_text = {ocaml|
+      let helper value = value
+    |ocaml} in
+    let parse_result = Syn.parse ~filename:(Path.v "aliases.ml") aliases_text in
+    let cst = expect_cst ~filename:"aliases.ml" parse_result in
+    Session.create_source
+      session
+      ~kind:Source.File
+      ~module_name:"Aliases"
+      ~implicit_opens:[]
+      ~origin:(Source.Label "aliases.ml")
+      ~source_hash:(Source.hash ~implicit_opens:[] ~cst)
+      ~parse_result
+      ~cst
+  in
+  let (session, consumer_source_id) =
+    let implicit_opens = [ SurfacePath.of_string "Aliases" ] in
+    let consumer_text = {ocaml|
+      let answer = helper 1
+    |ocaml} in
+    let parse_result = Syn.parse ~filename:(Path.v "consumer.ml") consumer_text in
+    let cst = expect_cst ~filename:"consumer.ml" parse_result in
+    Session.create_source
+      session
+      ~kind:Source.File
+      ~module_name:"Consumer"
+      ~implicit_opens
+      ~origin:(Source.Label "consumer.ml")
+      ~source_hash:(Source.hash ~implicit_opens ~cst)
+      ~parse_result
+      ~cst
+  in
+  match prepare_snapshot_or_error session ~roots:[ consumer_source_id ] with
+  | Error _ as err -> err
+  | Ok snapshot ->
+      let diagnostics = diagnostic_strings snapshot consumer_source_id in
+      if not (List.is_empty diagnostics) then
+        Error (String.concat "\n" diagnostics)
+      else
+        let answer_type = export_scheme snapshot consumer_source_id "answer" in
+        if answer_type = Some "int" then
+          Ok ()
+        else
+          Error ("unexpected answer type for implicit-open dependency: " ^ show_option answer_type)
+
+let test_prepare_snapshot_reports_local_module_cycles_before_typing = fun _ctx ->
+  let events = ref [] in
+  let config = Config.default
+  |> Config.with_on_event ~on_event:(fun event -> events := !events @ [ event ]) in
+  let session = Session.empty ~config in
+  let (session, a_source_id) = create_source session ~kind:Source.File
+    ~origin:(Source.Label "a.ml")
+    ~text:{ocaml|
+      open B
+
+      let answer = value
+    |ocaml}
+  in
+  let (session, b_source_id) = create_source session ~kind:Source.File
+    ~origin:(Source.Label "b.ml")
+    ~text:{ocaml|
+      open A
+
+      let value = answer
+    |ocaml}
+  in
+  match Session.prepare_snapshot session ~roots:[ a_source_id ] with
+  | Ok _ -> Error "expected rooted snapshot preparation to report local module cycles"
+  | Error missing ->
+      let actual = Session.MissingRequirements.to_json missing |> Data.Json.to_string in
+      let expected = Data.Json.Array [
+        Data.Json.Object [
+          ("tag", Data.Json.String "local_module_cycle");
+          ("module_names", Data.Json.Array [ Data.Json.String "A"; Data.Json.String "B" ]);
+          (
+            "source_ids",
+            Data.Json.Array [
+              Data.Json.Int (SourceId.to_int a_source_id);
+              Data.Json.Int (SourceId.to_int b_source_id);
+            ]
+          );
+        ];
+      ]
+      |> Data.Json.to_string in
+      if not (String.equal expected actual) then
+        Error (String.concat "\n" [ "expected"; expected; "actual"; actual ])
+      else
+        let event_names = !events |> List.map typ_event_name in
+        let expected_event_names = [ "typ_prepare_snapshot_start"; "typ_prepare_snapshot_failed" ] in
+        if List.equal String.equal expected_event_names event_names then
+          Ok ()
+        else
+          Error ("expected cycle discovery to fail before typing work: " ^ typ_events_json !events)
 
 let test_prepare_snapshot_reports_match_coverage_diagnostics = fun _ctx ->
   let session = Session.empty ~config:Config.default in
@@ -9599,6 +9857,7 @@ let () =
         Test.case "prepare_snapshot internal local alias dependencies ignore source order" test_prepare_snapshot_internal_local_alias_dependencies_ignore_source_order;
         Test.case "prepare_snapshot nested internal local alias dependencies typecheck" test_prepare_snapshot_nested_internal_local_alias_dependencies_typecheck;
         Test.case "fold_package_sources resolves contextual local modules" test_fold_package_sources_resolves_contextual_local_modules;
+        Test.case "fold_package_sources reports local module cycles" test_fold_package_sources_reports_local_module_cycles;
         Test.case "fold_package_sources resolves root local module wrappers" test_fold_package_sources_resolves_root_local_module_wrappers;
         Test.case "fold_package_sources shares imported world semantics for open alias include" test_fold_package_sources_shares_imported_world_semantics_for_open_alias_include;
         Test.case "fold_package_sources persists package bundle" test_fold_package_sources_persists_package_bundle;
@@ -9656,6 +9915,21 @@ let () =
         Test.case "prepare_snapshot reuses shared implicit-open alias modules" test_prepare_snapshot_reuses_shared_implicit_open_alias_modules;
         Test.case "prepare_snapshot store hydration emits structured events" test_prepare_snapshot_store_hydration_emits_structured_events;
         Test.case "prepare_snapshot missing requirements emit structured events" test_prepare_snapshot_missing_requirements_emit_structured_events;
+        Test.case
+          "prepare_snapshot missing requirements through include do not trigger nested typing"
+          test_prepare_snapshot_missing_requirements_through_include_do_not_trigger_nested_typing;
+        Test.case
+          "prepare_snapshot discovers local nested module dependencies"
+          test_prepare_snapshot_discovers_local_nested_module_dependencies;
+        Test.case
+          "prepare_snapshot discovers local include dependencies"
+          test_prepare_snapshot_discovers_local_include_dependencies;
+        Test.case
+          "prepare_snapshot discovers local implicit-open dependencies"
+          test_prepare_snapshot_discovers_local_implicit_open_dependencies;
+        Test.case
+          "prepare_snapshot reports local module cycles before typing"
+          test_prepare_snapshot_reports_local_module_cycles_before_typing;
         Test.case "prepare_snapshot reports match coverage diagnostics" test_prepare_snapshot_reports_match_coverage_diagnostics;
         Test.case "prepare_snapshot includes interface sibling dependencies" test_prepare_snapshot_includes_interface_sibling_dependencies;
         Test.case "loaded module typings override store" test_loaded_module_typings_override_store;
