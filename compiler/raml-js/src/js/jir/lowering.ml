@@ -3,6 +3,7 @@ open Std.Data
 module Core = Raml_core.Core_ir
 module Jir = Types
 module Builtins = Builtins
+module Primitives = Primitives
 module Syntax = Syntax
 
 type error =
@@ -143,43 +144,6 @@ let lower_stderr_write = fun value ->
     (lower_member (lower_member (lower_global "process") "stderr") "write")
     [ lower_string_constructor value ]
 
-let lower_runtime_primitive_call = fun primitive arguments ->
-  let callee = Jir.Expr.Runtime_helper (Jir.Runtime.call_primitive ()) in
-  let arguments =
-    Jir.Expr.Literal (Jir.Literal.String (Core.Primitive.to_string primitive)) :: arguments
-  in
-  lower_call callee arguments
-
-let lower_primitive_call = fun primitive arguments ->
-  match (primitive, arguments) with
-  | (Core.Primitive.Tuple_make, arguments) -> lower_array arguments
-  | (Core.Primitive.Tuple_get, [tuple;index]) -> lower_index tuple index
-  | (Core.Primitive.Add_float, [left;right])
-  | (Core.Primitive.Add_int, [left;right]) -> lower_binary Jir.Operator.Add left right
-  | (Core.Primitive.Subtract_float, [left;right])
-  | (Core.Primitive.Subtract_int, [left;right]) -> lower_binary Jir.Operator.Subtract left right
-  | (Core.Primitive.Multiply_float, [left;right])
-  | (Core.Primitive.Multiply_int, [left;right]) -> lower_binary Jir.Operator.Multiply left right
-  | (Core.Primitive.Divide_float, [left;right])
-  | (Core.Primitive.Divide_int, [left;right]) -> lower_binary Jir.Operator.Divide left right
-  | (Core.Primitive.Modulo_int, [left;right]) -> lower_binary Jir.Operator.Modulo left right
-  | (Core.Primitive.Equal, [left;right]) -> lower_binary Jir.Operator.Equal left right
-  | (Core.Primitive.Not_equal, [left;right]) -> lower_binary Jir.Operator.Not_equal left right
-  | (Core.Primitive.Less_than, [left;right]) -> lower_binary Jir.Operator.Less_than left right
-  | (Core.Primitive.Less_or_equal, [left;right]) -> lower_binary Jir.Operator.Less_or_equal left right
-  | (Core.Primitive.Greater_than, [left;right]) -> lower_binary Jir.Operator.Greater_than left right
-  | (Core.Primitive.Greater_or_equal, [left;right]) -> lower_binary Jir.Operator.Greater_or_equal left right
-  | (Core.Primitive.Concatenate_string, [left;right]) -> lower_binary
-    Jir.Operator.Add
-    (lower_string_constructor left)
-    (lower_string_constructor right)
-  | (Core.Primitive.Int_to_string, [ value ])
-  | (Core.Primitive.Float_to_string, [ value ]) -> lower_string_constructor value
-  | (Core.Primitive.Float_sqrt, [ value ]) ->
-      lower_call (lower_member (lower_global "Math") "sqrt") [ value ]
-  | (Core.Primitive.Trace, [ value ]) -> lower_console_log [ value ]
-  | _ -> lower_runtime_primitive_call primitive arguments
-
 let lower_bool = fun value -> Jir.Expr.Literal (Jir.Literal.Bool value)
 
 let lower_curried_function = fun (function_: Jir.Expr.function_) ->
@@ -228,7 +192,7 @@ let lower_builtin_call = fun entity_id builtin arguments ->
       | _ -> fallback ()
     )
   | Primitive primitive_name ->
-      lower_primitive_call primitive_name arguments
+      Primitives.lower primitive_name arguments
   | Unary_operator operator -> (
       match arguments with
       | [ argument ] -> lower_unary operator argument
@@ -309,7 +273,7 @@ let rec lower_expr = fun expr ->
         else_ = lower_expr if_then_else.else_
       }
   | Core.Expr.Primitive primitive ->
-      lower_primitive_call primitive.primitive (List.map lower_expr primitive.arguments)
+      Primitives.lower primitive.primitive (List.map lower_expr primitive.arguments)
 
 and lower_record_field = fun (field: Core.Expr.record_field) ->
   Jir.Expr.{ name = field.label; value = lower_expr field.value }
