@@ -777,6 +777,27 @@ exception Nested = Std.Result.Error
         ~ctx
         ~msg:"floating structure extensions should render structurally from the extension shell and payload"
         structure_source);
+  Test.case "format preserves scientific float exponents without introducing spaces"
+    (fun _ctx ->
+      let source = {|let trillion = 1.0e12
+let tiny = 1.0e-6
+let tagged = 1.2e3g
+|}
+      in
+      let actual =
+        parse_ml source
+        |> Krasny.format
+        |> Result.expect ~msg:"scientific float literals should format structurally"
+      in
+      Test.assert_equal
+        ~expected:{|let trillion = 1.0e12
+
+let tiny = 1.0e-6
+
+let tagged = 1.2e3g
+|}
+        ~actual;
+      Ok ());
   Test.case "format module-expression and module-type extensions structurally"
     (fun ctx ->
       let source = {|module type S = [%foo]

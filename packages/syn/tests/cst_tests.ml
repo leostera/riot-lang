@@ -2614,6 +2614,27 @@ class type generated = ([%ct])
           Test.assert_equal ~expected:1 ~actual:(List.length constraints);
           Ok ()
       | _ -> Error "expected package core type");
+  Test.case "cst value declarations preserve named package core types"
+    (fun _ctx ->
+      let result = parse_mli "val driver : (module X : Driver with type config = int)\n" in
+      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
+      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
+      match signature_items cst with
+      | Syn.Cst.SignatureItem.ValueDeclaration {
+        type_=Syn.Cst.CoreType.FirstClassModule {
+          module_name=Some module_name;
+          package_type={ module_type_path=base_path; constraints; _ };
+          _;
+
+        };
+        _;
+
+      } :: _ ->
+          Test.assert_equal ~expected:"X" ~actual:(Syn.Cst.Token.text module_name);
+          Test.assert_equal ~expected:(Some "Driver") ~actual:(Syn.Cst.Ident.name base_path);
+          Test.assert_equal ~expected:1 ~actual:(List.length constraints);
+          Ok ()
+      | _ -> Error "expected named package core type");
   Test.case "cst rejects locally opened core types"
     (fun _ctx ->
       let result = parse_mli
@@ -3704,6 +3725,28 @@ val decode : Outer.Inner (* c *).(request -> response)
           | _ -> Error "expected infix expression value"
         )
       | _ -> Error "expected first item to be a let binding");
+  Test.case "cst let bindings expose repeated-symbol custom infix operators structurally"
+    (fun _ctx ->
+      let source = {ocaml|
+let merged = xs ++ ys
+let paired = "a" ^^^ "b"
+|ocaml}
+      in
+      let result = parse_ml source in
+      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
+      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
+      match structure_items cst with
+      | Syn.Cst.StructureItem.LetBinding merged :: Syn.Cst.StructureItem.LetBinding paired :: _ -> (
+          match (Syn.Cst.LetBinding.value merged, Syn.Cst.LetBinding.value paired) with
+          | (Syn.Cst.Expression.Infix merged_expr, Syn.Cst.Expression.Infix paired_expr) ->
+              Test.assert_equal ~expected:"++" ~actual:(Syn.Cst.InfixExpression.operator merged_expr);
+              Test.assert_equal
+                ~expected:"^^^"
+                ~actual:(Syn.Cst.InfixExpression.operator paired_expr);
+              Ok ()
+          | _ -> Error "expected repeated-symbol infix expressions"
+        )
+      | _ -> Error "expected two let bindings");
   Test.case "cst let bindings expose keyword infix operators structurally"
     (fun _ctx ->
       let source = {ocaml|
@@ -5750,6 +5793,51 @@ let x =
           Test.assert_true terminated;
           Ok ()
       | _ -> Error "expected structured literal constants");
+  Test.case "cst float literals preserve exponent pieces"
+    (fun _ctx ->
+      let source = "let small = 1.0e-6\nlet big = 1.0e12\nlet tagged = 1.2e3g\n" in
+      let result = parse_ml source in
+      let cst =
+        expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
+        |> Result.expect ~msg:"expected CST for diagnostics-free parse"
+      in
+      match structure_items cst with
+      | Syn.Cst.StructureItem.LetBinding {
+          value=Syn.Cst.Expression.Literal (Syn.Cst.Literal.Float {
+            integral_digits=small_integral;
+            fractional_digits=small_fractional;
+            exponent=Some { marker=small_marker; sign=Some small_sign; digits=small_digits };
+            suffix=None;
+            _;
+          });
+          _;
+        } :: Syn.Cst.StructureItem.LetBinding {
+          value=Syn.Cst.Expression.Literal (Syn.Cst.Literal.Float {
+            exponent=Some { marker=big_marker; sign=None; digits=big_digits };
+            suffix=None;
+            _;
+          });
+          _;
+        } :: Syn.Cst.StructureItem.LetBinding {
+          value=Syn.Cst.Expression.Literal (Syn.Cst.Literal.Float {
+            exponent=Some { marker=tagged_marker; sign=None; digits=tagged_digits };
+            suffix=Some tagged_suffix;
+            _;
+          });
+          _;
+        } :: _ ->
+          Test.assert_equal ~expected:"1" ~actual:small_integral;
+          Test.assert_equal ~expected:"0" ~actual:small_fractional;
+          Test.assert_equal ~expected:"e" ~actual:small_marker;
+          Test.assert_equal ~expected:Syn.Cst.Negative ~actual:small_sign;
+          Test.assert_equal ~expected:"6" ~actual:small_digits;
+          Test.assert_equal ~expected:"e" ~actual:big_marker;
+          Test.assert_equal ~expected:"12" ~actual:big_digits;
+          Test.assert_equal ~expected:"e" ~actual:tagged_marker;
+          Test.assert_equal ~expected:"3" ~actual:tagged_digits;
+          Test.assert_equal ~expected:"g" ~actual:tagged_suffix;
+          Ok ()
+      | _ -> Error "expected structured float literals with exponents");
   Test.case "cst pattern literals preserve explicit sign tokens"
     (fun _ctx ->
       let source = "let classify = function | -1 -> true | +2 -> false | _ -> false\n" in
