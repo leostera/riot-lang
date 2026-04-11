@@ -73,18 +73,18 @@ let collect_program_assigned_entities = fun (program: Jir.Program.t) ->
 
 let resolve_alias = fun env entity ->
   let rec loop seen entity =
-    if List.exists (Core.Entity_id.equal entity) seen then
+    if Entity_set.mem entity seen then
       entity
     else
       match Core.Entity_id.binding_id entity with
       | None -> entity
       | Some binding_id -> (
           match Binding_map.find_opt binding_id env.aliases with
-          | Some target -> loop (entity :: seen) target
+          | Some target -> loop (Entity_set.add entity seen) target
           | None -> entity
         )
   in
-  loop [] entity
+  loop Entity_set.empty entity
 
 let bind_alias = fun env alias target -> { env with aliases = Binding_map.add alias target env.aliases }
 
