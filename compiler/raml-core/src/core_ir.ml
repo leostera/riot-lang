@@ -161,53 +161,53 @@ module Primitive = struct
   let of_string = fun value ->
     match value with
     | "add_float"
-    | "%addfloat" -> Some Add_float
+      -> Some Add_float
     | "subtract_float"
-    | "%subfloat" -> Some Subtract_float
+      -> Some Subtract_float
     | "multiply_float"
-    | "%mulfloat" -> Some Multiply_float
+      -> Some Multiply_float
     | "divide_float"
-    | "%divfloat" -> Some Divide_float
+      -> Some Divide_float
     | "add_int"
-    | "%addint" -> Some Add_int
+      -> Some Add_int
     | "subtract_int"
-    | "%subint" -> Some Subtract_int
+      -> Some Subtract_int
     | "multiply_int"
-    | "%mulint" -> Some Multiply_int
+      -> Some Multiply_int
     | "divide_int"
-    | "%divint" -> Some Divide_int
+      -> Some Divide_int
     | "modulo_int"
-    | "%modint" -> Some Modulo_int
+      -> Some Modulo_int
     | "concatenate_string"
-    | "%concatstring" -> Some Concatenate_string
+      -> Some Concatenate_string
     | "int_to_string"
-    | "%string_of_int" -> Some Int_to_string
+      -> Some Int_to_string
     | "float_to_string"
-    | "%string_of_float" -> Some Float_to_string
+      -> Some Float_to_string
     | "int_of_string"
-    | "%int_of_string" -> Some Int_of_string
+      -> Some Int_of_string
     | "float_of_string"
-    | "%float_of_string" -> Some Float_of_string
+      -> Some Float_of_string
     | "equal"
-    | "%eq" -> Some Equal
+      -> Some Equal
     | "not_equal"
-    | "%neq" -> Some Not_equal
+      -> Some Not_equal
     | "less_than"
-    | "%lt" -> Some Less_than
+      -> Some Less_than
     | "less_or_equal"
-    | "%le" -> Some Less_or_equal
+      -> Some Less_or_equal
     | "greater_than"
-    | "%gt" -> Some Greater_than
+      -> Some Greater_than
     | "greater_or_equal"
-    | "%ge" -> Some Greater_or_equal
+      -> Some Greater_or_equal
     | "float_sqrt"
-    | "%sqrtfloat" -> Some Float_sqrt
+      -> Some Float_sqrt
     | "tuple_make"
-    | "%tuple_make" -> Some Tuple_make
+      -> Some Tuple_make
     | "tuple_get"
-    | "%tuple_get" -> Some Tuple_get
+      -> Some Tuple_get
     | "trace"
-    | "%trace" -> Some Trace
+      -> Some Trace
     | _ -> None
 
   let to_json = fun primitive -> Json.string (to_string primitive)

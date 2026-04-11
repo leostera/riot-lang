@@ -292,7 +292,35 @@ and parse_primitive = fun json ->
   let* name = string_field scope "name" json in
   let* arguments = array_field scope "arguments" json in
   let* arguments = map_results arguments parse_expr in
-  match Core_ir.Primitive.of_string name with
+  let normalized_name =
+    match name with
+    | "%addfloat" -> "add_float"
+    | "%subfloat" -> "subtract_float"
+    | "%mulfloat" -> "multiply_float"
+    | "%divfloat" -> "divide_float"
+    | "%addint" -> "add_int"
+    | "%subint" -> "subtract_int"
+    | "%mulint" -> "multiply_int"
+    | "%divint" -> "divide_int"
+    | "%modint" -> "modulo_int"
+    | "%concatstring" -> "concatenate_string"
+    | "%string_of_int" -> "int_to_string"
+    | "%string_of_float" -> "float_to_string"
+    | "%int_of_string" -> "int_of_string"
+    | "%float_of_string" -> "float_of_string"
+    | "%eq" -> "equal"
+    | "%neq" -> "not_equal"
+    | "%lt" -> "less_than"
+    | "%le" -> "less_or_equal"
+    | "%gt" -> "greater_than"
+    | "%ge" -> "greater_or_equal"
+    | "%sqrtfloat" -> "float_sqrt"
+    | "%tuple_make" -> "tuple_make"
+    | "%tuple_get" -> "tuple_get"
+    | "%trace" -> "trace"
+    | other -> other
+  in
+  match Core_ir.Primitive.of_string normalized_name with
   | Some primitive -> Ok Core_ir.Expr.{ primitive; arguments }
   | None ->
       invalid_field scope "name" "a known Core IR primitive name"
