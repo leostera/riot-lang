@@ -6,6 +6,12 @@ module Lir = Types
 
 type live_set = string HashSet.t
 
+type point = {
+  instruction: Lir.Instruction.t;
+  live_before: live_set;
+  live_after: live_set;
+}
+
 type interval = {
   name: string;
   start: int;
@@ -170,7 +176,13 @@ let update_bounds = fun bounds_map name position ->
       let _ = HashMap.insert bounds_map name { start = position; finish = position } in
       ()
 
-let intervals_of_procedure = fun (procedure: Lir.Procedure.t) ->
+type analysis = {
+  instructions: Lir.Instruction.t array;
+  live_before: live_set array;
+  live_after: live_set array;
+}
+
+let analyze_procedure = fun (procedure: Lir.Procedure.t) ->
   let instructions = Array.of_list procedure.body in
   let instruction_count = Array.length instructions in
   let label_indices = label_index_map instructions in
@@ -202,19 +214,35 @@ let intervals_of_procedure = fun (procedure: Lir.Procedure.t) ->
         )
     done
   done;
+  { instructions; live_before; live_after }
+
+let points_of_procedure = fun procedure ->
+  let analysis = analyze_procedure procedure in
+  Array.mapi
+    (fun index instruction ->
+      {
+        instruction;
+        live_before = analysis.live_before.(index);
+        live_after = analysis.live_after.(index)
+      })
+    analysis.instructions
+  |> Array.to_list
+
+let intervals_of_procedure = fun procedure ->
+  let analysis = analyze_procedure procedure in
   let bounds = HashMap.create () in
   let live_across_calls = HashSet.create () in
   Array.iteri
     (fun index instruction ->
       let mentioned = union
-        (union live_before.(index) live_after.(index))
+        (union analysis.live_before.(index) analysis.live_after.(index))
         (union (uses_of_instruction instruction) (defs_of_instruction instruction)) in
       HashSet.iter mentioned ~fn:(fun name -> update_bounds bounds name index);
-      HashSet.iter (live_across_call_names instruction live_after.(index))
+      HashSet.iter (live_across_call_names instruction analysis.live_after.(index))
         ~fn:(fun name ->
           let _ = HashSet.insert live_across_calls name in
           ()))
-    instructions;
+    analysis.instructions;
   HashMap.keys bounds
   |> List.sort String.compare
   |> List.filter_map

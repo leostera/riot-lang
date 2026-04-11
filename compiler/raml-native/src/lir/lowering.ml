@@ -127,18 +127,20 @@ let trace_to_json = fun trace ->
     ]
 
 let trace_program = fun initial ->
-  let layout_frames, analysis = Passes.Layout_frames.program_with_analysis initial in
+  let simplify = Passes.Simplify.program initial in
+  let dead_code = Passes.Dead_code.program simplify in
+  let schedule = Passes.Schedule.program dead_code in
+  let layout_frames, analysis = Passes.Layout_frames.program_with_analysis schedule in
   let allocate_homes = Passes.Allocate_homes.program ~analysis layout_frames in
-  let simplify = Passes.Simplify.program allocate_homes in
-  let schedule = Passes.Schedule.program simplify in
-  let assign_homes = Passes.Assign_homes.program schedule in
+  let assign_homes = Passes.Assign_homes.program allocate_homes in
   {
     initial;
     passes = [
+      { name = "simplify"; program = simplify };
+      { name = "dead_code"; program = dead_code };
+      { name = "schedule"; program = schedule };
       { name = "layout_frames"; program = layout_frames };
       { name = "allocate_homes"; program = allocate_homes };
-      { name = "simplify"; program = simplify };
-      { name = "schedule"; program = schedule };
       { name = "assign_homes"; program = assign_homes }
     ];
     final = assign_homes

@@ -188,13 +188,12 @@ type text_snapshot = {
   render: Json.t -> string;
 }
 
-let make_stage_snapshot = fun ~stage ~suffix ->
-  { suffix; select = lowered_stage ~name:stage }
+let make_stage_snapshot = fun ~stage ~suffix -> { suffix; select = lowered_stage ~name:stage }
 
 let make_pass_snapshot = fun ~stage ~pass ->
   {
     suffix = format Format.[ str "."; str stage; str "."; str pass; str ".expected" ];
-    select = lowered_stage_pass ~stage ~pass;
+    select = lowered_stage_pass ~stage ~pass
   }
 
 let json_snapshots = [
@@ -205,21 +204,22 @@ let json_snapshots = [
   make_pass_snapshot ~stage:"mir" ~pass:"canonicalize";
   make_pass_snapshot ~stage:"mir" ~pass:"insert_polls";
   make_stage_snapshot ~stage:"lir" ~suffix:".lir.expected";
+  make_pass_snapshot ~stage:"lir" ~pass:"simplify";
+  make_pass_snapshot ~stage:"lir" ~pass:"dead_code";
+  make_pass_snapshot ~stage:"lir" ~pass:"schedule";
   make_pass_snapshot ~stage:"lir" ~pass:"layout_frames";
   make_pass_snapshot ~stage:"lir" ~pass:"allocate_homes";
-  make_pass_snapshot ~stage:"lir" ~pass:"simplify";
-  make_pass_snapshot ~stage:"lir" ~pass:"schedule";
   make_pass_snapshot ~stage:"lir" ~pass:"assign_homes";
 ]
 
 let text_snapshots = [
   {
     suffix = ".native.expected";
-    render = (fun pipeline -> pipeline |> codegen_stage ~name:"native" |> render_stage_text);
+    render = (fun pipeline -> pipeline |> codegen_stage ~name:"native" |> render_stage_text)
   };
   {
     suffix = ".link.expected";
-    render = (fun pipeline -> pipeline |> codegen_stage ~name:"native" |> render_link_text);
+    render = (fun pipeline -> pipeline |> codegen_stage ~name:"native" |> render_link_text)
   };
 ]
 
@@ -234,11 +234,7 @@ let test_text_snapshot_fixture = fun snapshot ~(ctx:Test.FixtureRunner.ctx) ->
   Test.Snapshot.assert_text ~ctx:(with_snapshot_path path ctx.test) ~actual
 
 let fixture_cases = fun run ->
-  Test.FixtureRunner.cases
-    ()
-    ~dir:fixtures_dir
-    ~filter:keep_native_fixture
-    ~run
+  Test.FixtureRunner.cases () ~dir:fixtures_dir ~filter:keep_native_fixture ~run
 
 let json_snapshot_cases = fun snapshot ->
   fixture_cases (fun ctx -> test_json_snapshot_fixture snapshot ~ctx)
@@ -251,9 +247,6 @@ let () =
     ~main:(fun ~args ->
       let json_tests = List.map json_snapshot_cases json_snapshots |> List.flatten in
       let text_tests = List.map text_snapshot_cases text_snapshots |> List.flatten in
-      Test.Cli.main
-        ~name:"raml:native_fixture_tests"
-        ~tests:(json_tests @ text_tests)
-        ~args)
+      Test.Cli.main ~name:"raml:native_fixture_tests" ~tests:(json_tests @ text_tests) ~args)
     ~args:Env.args
     ()

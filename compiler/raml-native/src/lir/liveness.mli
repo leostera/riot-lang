@@ -11,10 +11,17 @@
     enough for a first linear-scan style allocator to keep cheap temporaries in
     caller-saved registers and spill the rest. *)
 type live_set = string Std.Collections.HashSet.t
+type point = {
+  instruction: Types.Instruction.t;
+  live_before: live_set;
+  live_after: live_set;
+}
 type interval = {
   name: string;
   start: int;
   finish: int;
   live_across_call: bool;
 }
+val points_of_procedure: Types.Procedure.t -> point list
+
 val intervals_of_procedure: Types.Procedure.t -> interval list

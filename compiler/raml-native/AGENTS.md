@@ -47,9 +47,12 @@ Today the intended native stack is:
 
 Within `LIR`, the current pass shape is:
 
-`layout_frames -> allocate_homes -> simplify -> schedule -> assign_homes`
+`simplify -> dead_code -> schedule -> layout_frames -> allocate_homes -> assign_homes`
 
-`layout_frames` computes the frame skeleton and call facts. `allocate_homes`
+The cheap virtual cleanups happen first. `simplify` and `dead_code` trim the
+linear stream while values are still virtual, and `schedule` then removes the
+label/jump clutter that cleanup leaves behind. `layout_frames` runs after that
+so frame analysis only sees the body that will actually survive. `allocate_homes`
 does the first real location assignment pass: it uses `LIR` liveness to keep
 short-lived values in a small caller-saved register pool, puts call-live
 values in a small callee-saved pool, and spills the rest to stack homes while

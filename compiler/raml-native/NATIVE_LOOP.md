@@ -319,9 +319,11 @@ Examples:
 - `*.nir.simplify.expected`
 - `*.mir.canonicalize.expected`
 - `*.mir.insert_polls.expected`
+- `*.lir.schedule.expected`
+- `*.lir.dead_code.expected`
 - `*.lir.layout_frames.expected`
 - `*.lir.allocate_homes.expected`
-- `*.lir.schedule.expected`
+- `*.lir.assign_homes.expected`
 
 If a pass does not have a snapshot, it is too easy to break it without noticing.
 
@@ -474,8 +476,8 @@ Work these in order.
 4. [x] Keep pass-local snapshots aligned with every existing native pass as
    new corpus programs and new passes land.
    The active native corpus fixtures now snapshot `normalize`, `simplify`,
-   `canonicalize`, `insert_polls`, `layout_frames`, `allocate_homes`, and
-   `schedule` alongside the final stage snapshots.
+   `canonicalize`, `insert_polls`, `dead_code`, `schedule`, `layout_frames`,
+   `allocate_homes`, and `assign_homes` alongside the final stage snapshots.
 5. [x] Tighten `NIR` around runtime imports, top-level init ordering, direct
    call materialization, and newly introduced shared `Core_ir` forms.
    `Native.Nir.Lowering` now lowers `Core.Expr.Tuple` and

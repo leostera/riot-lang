@@ -4,6 +4,8 @@ module Allocate_homes = Allocate_homes
 
 module Simplify = Simplify
 
+module Dead_code = Dead_code
+
 module Schedule = Schedule
 
 module Assign_homes = Assign_homes
