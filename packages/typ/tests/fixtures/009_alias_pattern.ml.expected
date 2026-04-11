@@ -69,7 +69,7 @@
           "body_id": 4,
           "parameters": [
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
@@ -148,7 +148,7 @@
   "exports": [
     {
       "name": "describe_xyz",
-      "scheme": "'a 'b 'c 'd. ([ `xyz of 'a * 'b * 'c ]) -> 'd * ([ `xyz of 'a * 'b * 'c ])"
+      "scheme": "'a 'b 'c 'd. ([ > `xyz of 'a * 'b * 'c ]) -> 'd * ([ > `xyz of 'a * 'b * 'c ])"
     }
   ],
   "expr_traces": [
@@ -207,6 +207,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -227,12 +231,20 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "xyz",
-          "scheme": "'a 'b 'c. [ `xyz of 'a * 'b * 'c ]"
+          "scheme": "[ > `xyz of 'a * 'b * 'c ]"
         },
         {
           "name": "y",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "|>",
@@ -310,6 +322,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -330,12 +346,20 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "xyz",
-          "scheme": "'a 'b 'c. [ `xyz of 'a * 'b * 'c ]"
+          "scheme": "[ > `xyz of 'a * 'b * 'c ]"
         },
         {
           "name": "y",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "|>",
@@ -413,6 +437,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -433,12 +461,20 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "xyz",
-          "scheme": "'a 'b 'c. [ `xyz of 'a * 'b * 'c ]"
+          "scheme": "[ > `xyz of 'a * 'b * 'c ]"
         },
         {
           "name": "y",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "|>",
@@ -516,6 +552,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -536,12 +576,20 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "xyz",
-          "scheme": "'a 'b 'c. [ `xyz of 'a * 'b * 'c ]"
+          "scheme": "[ > `xyz of 'a * 'b * 'c ]"
         },
         {
           "name": "y",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "|>",
@@ -553,7 +601,7 @@
         }
       ],
       "expr_id": 3,
-      "inferred_type": "[ `xyz of 'a * 'b * 'c ]",
+      "inferred_type": "[ > `xyz of 'a * 'b * 'c ]",
       "origin": {
         "label": "path_expression",
         "span": {
@@ -619,6 +667,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -639,12 +691,20 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "xyz",
-          "scheme": "'a 'b 'c. [ `xyz of 'a * 'b * 'c ]"
+          "scheme": "[ > `xyz of 'a * 'b * 'c ]"
         },
         {
           "name": "y",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "|>",
@@ -656,7 +716,7 @@
         }
       ],
       "expr_id": 4,
-      "inferred_type": "'a * ([ `xyz of 'b * 'c * 'd ])",
+      "inferred_type": "'a * ([ > `xyz of 'b * 'c * 'd ])",
       "origin": {
         "label": "tuple_expression",
         "span": {
@@ -722,6 +782,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -742,6 +806,14 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "|>",
           "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
         },
@@ -751,7 +823,7 @@
         }
       ],
       "expr_id": 5,
-      "inferred_type": "([ `xyz of 'b * 'c * 'd ]) -> 'a * ([ `xyz of 'b * 'c * 'd ])",
+      "inferred_type": "([ > `xyz of 'b * 'c * 'd ]) -> 'a * ([ > `xyz of 'b * 'c * 'd ])",
       "origin": {
         "label": "fun_expression",
         "span": {
@@ -769,7 +841,7 @@
       "exports": [
         {
           "name": "describe_xyz",
-          "scheme": "'a 'b 'c 'd. ([ `xyz of 'a * 'b * 'c ]) -> 'd * ([ `xyz of 'a * 'b * 'c ])"
+          "scheme": "'a 'b 'c 'd. ([ > `xyz of 'a * 'b * 'c ]) -> 'd * ([ > `xyz of 'a * 'b * 'c ])"
         }
       ],
       "tag": "errored_export"
@@ -785,7 +857,7 @@
       "exports_after": [
         {
           "name": "describe_xyz",
-          "scheme": "'a 'b 'c 'd. ([ `xyz of 'a * 'b * 'c ]) -> 'd * ([ `xyz of 'a * 'b * 'c ])"
+          "scheme": "'a 'b 'c 'd. ([ > `xyz of 'a * 'b * 'c ]) -> 'd * ([ > `xyz of 'a * 'b * 'c ])"
         }
       ],
       "item_id": 0
@@ -1060,7 +1132,7 @@
     },
     {
       "expr_id": 3,
-      "inferred_type": "[ `xyz of 'a * 'b * 'c ]",
+      "inferred_type": "[ > `xyz of 'a * 'b * 'c ]",
       "origin_id": 10,
       "span": {
         "end": 75,
@@ -1087,7 +1159,7 @@
     },
     {
       "expr_id": 4,
-      "inferred_type": "'a * ([ `xyz of 'b * 'c * 'd ])",
+      "inferred_type": "'a * ([ > `xyz of 'b * 'c * 'd ])",
       "origin_id": 11,
       "span": {
         "end": 75,
@@ -1096,7 +1168,7 @@
     },
     {
       "expr_id": 5,
-      "inferred_type": "([ `xyz of 'b * 'c * 'd ]) -> 'a * ([ `xyz of 'b * 'c * 'd ])",
+      "inferred_type": "([ > `xyz of 'b * 'c * 'd ]) -> 'a * ([ > `xyz of 'b * 'c * 'd ])",
       "origin_id": 12,
       "span": {
         "end": 76,

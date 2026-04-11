@@ -761,7 +761,7 @@
           "body_id": 45,
           "parameters": [
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
@@ -923,7 +923,7 @@
           "body_id": 58,
           "parameters": [
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
@@ -1076,21 +1076,21 @@
           "body_id": 71,
           "parameters": [
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
               "pattern_id": 17
             },
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
               "pattern_id": 18
             },
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
@@ -1596,7 +1596,7 @@
           "body_id": 110,
           "parameters": [
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
@@ -1646,7 +1646,7 @@
           "body_id": 114,
           "parameters": [
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
@@ -1696,7 +1696,7 @@
           "body_id": 118,
           "parameters": [
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
@@ -1818,7 +1818,7 @@
           "body_id": 128,
           "parameters": [
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
@@ -1971,7 +1971,7 @@
           "body_id": 141,
           "parameters": [
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
@@ -2320,7 +2320,7 @@
           "body_id": 171,
           "parameters": [
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
@@ -2743,7 +2743,7 @@
           "body_id": 205,
           "parameters": [
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
@@ -3166,7 +3166,7 @@
           "body_id": 239,
           "parameters": [
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "label": "mode",
                 "tag": "labeled"
@@ -3174,7 +3174,7 @@
               "pattern_id": 54
             },
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
@@ -3239,7 +3239,7 @@
           "body_id": 244,
           "parameters": [
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
@@ -3298,7 +3298,7 @@
           "body_id": 249,
           "parameters": [
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
@@ -3357,7 +3357,7 @@
           "body_id": 254,
           "parameters": [
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
@@ -3416,7 +3416,7 @@
           "body_id": 259,
           "parameters": [
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
@@ -4234,7 +4234,7 @@
     },
     {
       "name": "to_escape_seq",
-      "scheme": "~mode:([ `bg ]) -> t -> string"
+      "scheme": "~mode:([ > `bg ]) -> t -> string"
     },
     {
       "name": "to_string",
@@ -4297,6 +4297,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -4315,6 +4319,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -4396,6 +4408,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -4422,6 +4438,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -4507,6 +4531,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -4533,6 +4561,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -4618,6 +4654,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -4644,6 +4684,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -4729,6 +4777,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -4755,6 +4807,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -4840,6 +4900,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -4866,6 +4930,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -4951,6 +5023,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -4977,6 +5053,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -5062,6 +5146,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -5088,6 +5176,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -5173,6 +5269,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -5199,6 +5299,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -5284,6 +5392,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -5310,6 +5422,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -5395,6 +5515,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -5421,6 +5545,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -5506,6 +5638,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -5532,6 +5668,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -5617,6 +5761,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -5643,6 +5791,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -5728,6 +5884,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -5754,6 +5914,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -5839,6 +6007,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -5865,6 +6037,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -5950,6 +6130,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -5976,6 +6160,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -6061,6 +6253,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -6087,6 +6283,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -6172,6 +6376,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -6198,6 +6406,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -6283,6 +6499,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -6309,6 +6529,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -6394,6 +6622,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -6420,6 +6652,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -6505,6 +6745,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -6531,6 +6775,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -6616,6 +6868,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -6642,6 +6898,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -6727,6 +6991,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -6753,6 +7021,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -6838,6 +7114,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -6864,6 +7144,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -6949,6 +7237,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -6975,6 +7267,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -7060,6 +7360,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -7086,6 +7390,14 @@
         {
           "name": "g",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -7171,6 +7483,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -7193,6 +7509,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -7274,6 +7598,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -7296,6 +7624,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -7377,6 +7713,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -7399,6 +7739,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -7480,6 +7828,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -7502,6 +7854,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -7583,6 +7943,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -7605,6 +7969,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -7686,6 +8058,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -7708,6 +8084,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -7789,6 +8173,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -7811,6 +8199,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -7892,6 +8288,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -7914,6 +8314,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -7995,6 +8403,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -8017,6 +8429,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -8098,6 +8518,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -8120,6 +8544,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -8201,6 +8633,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -8223,6 +8659,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -8304,6 +8748,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -8326,6 +8774,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -8407,6 +8863,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -8429,6 +8889,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -8510,6 +8978,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -8532,6 +9004,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -8613,6 +9093,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -8635,6 +9119,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -8716,6 +9208,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -8738,6 +9234,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -8819,6 +9323,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -8841,6 +9349,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -8922,6 +9438,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -8944,6 +9464,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -9025,6 +9553,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -9043,6 +9575,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -9124,6 +9664,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -9142,6 +9686,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "t",
@@ -9223,6 +9775,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -9241,6 +9797,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "|>",
@@ -9318,6 +9882,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -9348,6 +9916,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "str",
@@ -9433,6 +10009,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -9463,6 +10043,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "str",
@@ -9548,6 +10136,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -9578,6 +10170,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "str",
@@ -9663,6 +10263,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -9693,6 +10297,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "str",
@@ -9778,6 +10390,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -9808,6 +10424,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "str",
@@ -9893,6 +10517,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -9923,6 +10551,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "str",
@@ -10008,6 +10644,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -10038,6 +10678,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "str",
@@ -10123,6 +10771,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -10153,6 +10805,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "str",
@@ -10238,6 +10898,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -10268,6 +10932,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "str",
@@ -10353,6 +11025,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -10383,6 +11059,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "str",
@@ -10468,6 +11152,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -10498,6 +11186,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "str",
@@ -10583,6 +11279,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -10613,6 +11313,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "str",
@@ -10698,6 +11406,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -10728,6 +11440,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "to_string",
@@ -10809,6 +11529,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -10847,6 +11571,14 @@
         {
           "name": "g",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -10936,6 +11668,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -10974,6 +11710,14 @@
         {
           "name": "g",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -11063,6 +11807,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -11101,6 +11849,14 @@
         {
           "name": "g",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -11190,6 +11946,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -11228,6 +11988,14 @@
         {
           "name": "g",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -11317,6 +12085,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -11355,6 +12127,14 @@
         {
           "name": "g",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -11444,6 +12224,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -11482,6 +12266,14 @@
         {
           "name": "g",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -11571,6 +12363,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -11609,6 +12405,14 @@
         {
           "name": "g",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -11698,6 +12502,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -11736,6 +12544,14 @@
         {
           "name": "g",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -11825,6 +12641,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -11863,6 +12683,14 @@
         {
           "name": "g",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -11952,6 +12780,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -11990,6 +12822,14 @@
         {
           "name": "g",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -12079,6 +12919,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -12117,6 +12961,14 @@
         {
           "name": "g",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -12206,6 +13058,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -12244,6 +13100,14 @@
         {
           "name": "g",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r",
@@ -12333,6 +13197,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -12363,6 +13231,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "to_255",
@@ -12448,6 +13324,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -12478,6 +13358,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -12571,6 +13459,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -12601,6 +13493,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -12694,6 +13594,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -12724,6 +13628,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -12817,6 +13729,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -12847,6 +13763,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -12940,6 +13864,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -12970,6 +13898,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -13063,6 +13999,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -13093,6 +14033,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -13186,6 +14134,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -13216,6 +14168,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -13309,6 +14269,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -13339,6 +14303,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -13432,6 +14404,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -13462,6 +14438,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -13555,6 +14539,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -13585,6 +14573,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -13678,6 +14674,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -13708,6 +14708,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -13801,6 +14809,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -13831,6 +14843,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -13924,6 +14944,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -13954,6 +14978,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -14047,6 +15079,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -14093,6 +15129,14 @@
         {
           "name": "g2",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -14194,6 +15238,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -14240,6 +15288,14 @@
         {
           "name": "g2",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -14341,6 +15397,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -14387,6 +15447,14 @@
         {
           "name": "g2",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -14488,6 +15556,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -14534,6 +15606,14 @@
         {
           "name": "g2",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -14635,6 +15715,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -14681,6 +15765,14 @@
         {
           "name": "g2",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -14782,6 +15874,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -14828,6 +15924,14 @@
         {
           "name": "g2",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -14929,6 +16033,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -14975,6 +16083,14 @@
         {
           "name": "g2",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -15076,6 +16192,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -15122,6 +16242,14 @@
         {
           "name": "g2",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -15223,6 +16351,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -15269,6 +16401,14 @@
         {
           "name": "g2",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -15370,6 +16510,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -15416,6 +16560,14 @@
         {
           "name": "g2",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -15517,6 +16669,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -15563,6 +16719,14 @@
         {
           "name": "g2",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -15664,6 +16828,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -15710,6 +16878,14 @@
         {
           "name": "g2",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -15811,6 +16987,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -15857,6 +17037,14 @@
         {
           "name": "g2",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -15958,6 +17146,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -16004,6 +17196,14 @@
         {
           "name": "g2",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -16105,6 +17305,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -16143,6 +17347,14 @@
         {
           "name": "g1",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -16240,6 +17452,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -16278,6 +17494,14 @@
         {
           "name": "g1",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -16375,6 +17599,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -16413,6 +17641,14 @@
         {
           "name": "g1",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -16510,6 +17746,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -16548,6 +17788,14 @@
         {
           "name": "g1",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -16645,6 +17893,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -16683,6 +17935,14 @@
         {
           "name": "g1",
           "scheme": "string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "r1",
@@ -16780,6 +18040,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -16810,6 +18074,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -16903,6 +18175,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -16933,6 +18209,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -17026,6 +18310,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -17056,6 +18344,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -17149,6 +18445,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -17179,6 +18479,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -17272,6 +18580,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -17302,6 +18614,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -17395,6 +18715,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -17425,6 +18749,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -17518,6 +18850,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -17548,6 +18884,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -17637,6 +18981,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -17671,6 +19019,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -17760,6 +19116,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -17794,6 +19154,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -17883,6 +19251,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -17917,6 +19289,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -18006,6 +19386,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -18036,6 +19420,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -18125,6 +19517,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -18163,6 +19559,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -18252,6 +19656,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -18290,6 +19698,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -18379,6 +19795,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -18417,6 +19837,14 @@
         {
           "name": "i",
           "scheme": "int"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -18506,6 +19934,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -18540,6 +19972,14 @@
         {
           "name": "ansi",
           "scheme": "int -> t"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -18629,6 +20069,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -18667,6 +20111,14 @@
         {
           "name": "ansi256",
           "scheme": "int -> t"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -18756,6 +20208,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -18796,8 +20252,16 @@
           "scheme": "int -> t"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -18813,7 +20277,7 @@
         },
         {
           "name": "x",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "|>",
@@ -18891,6 +20355,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -18931,8 +20399,16 @@
           "scheme": "int -> t"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -18948,7 +20424,7 @@
         },
         {
           "name": "x",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "|>",
@@ -19026,6 +20502,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -19066,8 +20546,16 @@
           "scheme": "int -> t"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -19083,7 +20571,7 @@
         },
         {
           "name": "x",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "|>",
@@ -19161,6 +20649,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -19201,8 +20693,16 @@
           "scheme": "int -> t"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -19218,7 +20718,7 @@
         },
         {
           "name": "x",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "|>",
@@ -19296,6 +20796,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -19336,8 +20840,16 @@
           "scheme": "int -> t"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -19353,7 +20865,7 @@
         },
         {
           "name": "x",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "|>",
@@ -19431,6 +20943,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -19471,8 +20987,16 @@
           "scheme": "int -> t"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -19488,7 +21012,7 @@
         },
         {
           "name": "x",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "|>",
@@ -19566,6 +21090,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -19606,8 +21134,16 @@
           "scheme": "int -> t"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -19623,7 +21159,7 @@
         },
         {
           "name": "x",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "|>",
@@ -19701,6 +21237,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -19741,8 +21281,16 @@
           "scheme": "int -> t"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -19758,7 +21306,7 @@
         },
         {
           "name": "x",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "|>",
@@ -19836,6 +21384,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -19876,8 +21428,16 @@
           "scheme": "int -> t"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -19967,6 +21527,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -20008,7 +21572,7 @@
         },
         {
           "name": "b",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "cap_rgb",
@@ -20016,15 +21580,23 @@
         },
         {
           "name": "g",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
         },
         {
           "name": "no_color",
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "r",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "rgb",
@@ -20114,6 +21686,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -20155,7 +21731,7 @@
         },
         {
           "name": "b",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "cap_rgb",
@@ -20163,15 +21739,23 @@
         },
         {
           "name": "g",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
         },
         {
           "name": "no_color",
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "r",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "rgb",
@@ -20261,6 +21845,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -20302,7 +21890,7 @@
         },
         {
           "name": "b",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "cap_rgb",
@@ -20310,15 +21898,23 @@
         },
         {
           "name": "g",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
         },
         {
           "name": "no_color",
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "r",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "rgb",
@@ -20408,6 +22004,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -20449,7 +22049,7 @@
         },
         {
           "name": "b",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "cap_rgb",
@@ -20457,15 +22057,23 @@
         },
         {
           "name": "g",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
         },
         {
           "name": "no_color",
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "r",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "rgb",
@@ -20555,6 +22163,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -20596,7 +22208,7 @@
         },
         {
           "name": "b",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "cap_rgb",
@@ -20604,15 +22216,23 @@
         },
         {
           "name": "g",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
         },
         {
           "name": "no_color",
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "r",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "rgb",
@@ -20702,6 +22322,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -20743,7 +22367,7 @@
         },
         {
           "name": "b",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "cap_rgb",
@@ -20751,15 +22375,23 @@
         },
         {
           "name": "g",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
         },
         {
           "name": "no_color",
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "r",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "rgb",
@@ -20849,6 +22481,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -20890,7 +22526,7 @@
         },
         {
           "name": "b",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "cap_rgb",
@@ -20898,15 +22534,23 @@
         },
         {
           "name": "g",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
         },
         {
           "name": "no_color",
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "r",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "rgb",
@@ -20996,6 +22640,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -21037,7 +22685,7 @@
         },
         {
           "name": "b",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "cap_rgb",
@@ -21045,15 +22693,23 @@
         },
         {
           "name": "g",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
         },
         {
           "name": "no_color",
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "r",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "rgb",
@@ -21143,6 +22799,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -21184,7 +22844,7 @@
         },
         {
           "name": "b",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "cap_rgb",
@@ -21192,15 +22852,23 @@
         },
         {
           "name": "g",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
         },
         {
           "name": "no_color",
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "r",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "rgb",
@@ -21290,6 +22958,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -21331,7 +23003,7 @@
         },
         {
           "name": "b",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "cap_rgb",
@@ -21339,15 +23011,23 @@
         },
         {
           "name": "g",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
         },
         {
           "name": "no_color",
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "r",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "rgb",
@@ -21437,6 +23117,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -21478,7 +23162,7 @@
         },
         {
           "name": "b",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "cap_rgb",
@@ -21486,15 +23170,23 @@
         },
         {
           "name": "g",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
         },
         {
           "name": "no_color",
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "r",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "rgb",
@@ -21584,6 +23276,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -21625,7 +23321,7 @@
         },
         {
           "name": "b",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "cap_rgb",
@@ -21633,15 +23329,23 @@
         },
         {
           "name": "g",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
         },
         {
           "name": "no_color",
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "r",
-          "scheme": "'a. 'a"
+          "scheme": "'a"
         },
         {
           "name": "rgb",
@@ -21731,6 +23435,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -21775,8 +23483,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "rgb",
@@ -21866,6 +23582,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -21910,8 +23630,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -22009,6 +23737,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -22053,8 +23785,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -22152,6 +23892,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -22196,8 +23940,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -22295,6 +24047,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -22339,8 +24095,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -22438,6 +24202,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -22482,8 +24250,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -22581,6 +24357,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -22625,8 +24405,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -22724,6 +24512,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -22768,8 +24560,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -22867,6 +24667,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -22911,8 +24715,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -23010,6 +24822,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -23054,8 +24870,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -23153,6 +24977,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -23197,8 +25025,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -23296,6 +25132,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -23344,8 +25184,16 @@
           "scheme": "'a. 'a"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -23443,6 +25291,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -23491,8 +25343,16 @@
           "scheme": "'a. 'a"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -23590,6 +25450,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -23638,8 +25502,16 @@
           "scheme": "'a. 'a"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -23737,6 +25609,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -23785,8 +25661,16 @@
           "scheme": "'a. 'a"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -23884,6 +25768,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -23932,8 +25820,16 @@
           "scheme": "'a. 'a"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -24031,6 +25927,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -24079,8 +25979,16 @@
           "scheme": "'a. 'a"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -24178,6 +26086,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -24226,8 +26138,16 @@
           "scheme": "'a. 'a"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -24325,6 +26245,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -24373,8 +26297,16 @@
           "scheme": "'a. 'a"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -24472,6 +26404,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -24520,8 +26456,16 @@
           "scheme": "'a. 'a"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -24619,6 +26563,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -24667,8 +26615,16 @@
           "scheme": "'a. 'a"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -24766,6 +26722,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -24814,8 +26774,16 @@
           "scheme": "'a. 'a"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -24913,6 +26881,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -24957,8 +26929,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -25056,6 +27036,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -25100,8 +27084,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -25199,6 +27191,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -25243,8 +27239,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -25342,6 +27346,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -25386,8 +27394,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -25485,6 +27501,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -25529,8 +27549,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -25628,6 +27656,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -25672,8 +27704,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -25771,6 +27811,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -25815,8 +27859,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -25914,6 +27966,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -25958,8 +28014,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -26057,6 +28121,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -26101,8 +28169,16 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -26196,6 +28272,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -26240,16 +28320,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -26347,6 +28435,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -26399,16 +28491,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -26510,6 +28610,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -26562,16 +28666,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -26673,6 +28785,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -26725,16 +28841,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -26836,6 +28960,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -26888,16 +29016,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -26999,6 +29135,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -27051,16 +29191,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -27162,6 +29310,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -27214,16 +29366,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -27325,6 +29485,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -27377,16 +29541,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -27488,6 +29660,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -27540,16 +29716,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -27651,6 +29835,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -27703,16 +29891,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -27814,6 +30010,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -27866,16 +30066,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -27977,6 +30185,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -28029,16 +30241,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -28140,6 +30360,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -28192,16 +30416,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -28303,6 +30535,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -28355,16 +30591,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -28466,6 +30710,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -28518,16 +30766,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -28629,6 +30885,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -28681,16 +30941,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -28792,6 +31060,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -28844,16 +31116,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -28955,6 +31235,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -29007,16 +31291,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -29118,6 +31410,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -29170,16 +31466,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -29281,6 +31585,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -29333,16 +31641,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -29444,6 +31760,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -29496,16 +31816,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -29607,6 +31935,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -29659,16 +31991,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -29770,6 +32110,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -29822,16 +32166,24 @@
           "scheme": "int"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -29933,6 +32285,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -29981,16 +32337,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -30026,7 +32390,7 @@
         }
       ],
       "expr_id": 196,
-      "inferred_type": "([ `bg ]) -> ([ `bg ]) -> bool",
+      "inferred_type": "([ > `bg ]) -> ([ > `bg ]) -> bool",
       "origin": {
         "label": "infix_operator",
         "span": {
@@ -30092,6 +32456,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -30140,16 +32508,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -30185,7 +32561,7 @@
         }
       ],
       "expr_id": 197,
-      "inferred_type": "[ `bg ]",
+      "inferred_type": "[ > `bg ]",
       "origin": {
         "label": "path_expression",
         "span": {
@@ -30251,6 +32627,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -30299,16 +32679,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -30344,7 +32732,7 @@
         }
       ],
       "expr_id": 198,
-      "inferred_type": "[ `bg ]",
+      "inferred_type": "[ > `bg ]",
       "origin": {
         "label": "poly_variant_expression",
         "span": {
@@ -30410,6 +32798,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -30458,16 +32850,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -30569,6 +32969,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -30617,16 +33021,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -30728,6 +33140,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -30776,16 +33192,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -30887,6 +33311,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -30935,16 +33363,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -31046,6 +33482,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -31094,16 +33534,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -31205,6 +33653,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -31253,16 +33705,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -31364,6 +33824,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -31412,16 +33876,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -31523,6 +33995,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -31571,16 +34047,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -31678,6 +34162,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -31730,16 +34218,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -31837,6 +34333,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -31889,16 +34389,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -31996,6 +34504,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -32048,16 +34560,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -32155,6 +34675,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -32207,16 +34731,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -32314,6 +34846,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -32366,16 +34902,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -32473,6 +35017,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -32525,16 +35073,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -32632,6 +35188,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -32684,16 +35244,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -32791,6 +35359,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -32843,16 +35415,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -32950,6 +35530,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -33002,16 +35586,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -33109,6 +35701,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -33161,16 +35757,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -33268,6 +35872,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -33320,16 +35928,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -33427,6 +36043,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -33479,16 +36099,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -33586,6 +36214,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -33638,16 +36270,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -33745,6 +36385,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -33797,16 +36441,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -33904,6 +36556,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -33956,16 +36612,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -34063,6 +36727,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -34115,16 +36783,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -34222,6 +36898,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -34274,16 +36954,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -34381,6 +37069,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -34433,16 +37125,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -34540,6 +37240,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -34592,16 +37296,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -34699,6 +37411,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -34751,16 +37467,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -34858,6 +37582,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -34910,16 +37638,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -35017,6 +37753,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -35069,16 +37809,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -35176,6 +37924,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -35228,16 +37980,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -35335,6 +38095,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -35387,16 +38151,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -35494,6 +38266,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -35542,16 +38318,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -35649,6 +38433,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -35697,16 +38485,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -35804,6 +38600,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -35852,16 +38652,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -35959,6 +38767,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -36007,16 +38819,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -36114,6 +38934,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -36162,16 +38986,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -36269,6 +39101,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -36317,16 +39153,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -36424,6 +39268,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -36472,16 +39320,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -36579,6 +39435,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -36623,16 +39483,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -36730,6 +39598,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -36774,16 +39646,24 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "mode",
-          "scheme": "[ `bg ]"
+          "scheme": "[ > `bg ]"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -36881,6 +39761,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -36925,12 +39809,20 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -36958,7 +39850,7 @@
         }
       ],
       "expr_id": 240,
-      "inferred_type": "~mode:([ `bg ]) -> t -> string",
+      "inferred_type": "~mode:([ > `bg ]) -> t -> string",
       "origin": {
         "label": "fun_expression",
         "span": {
@@ -37024,6 +39916,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -37068,12 +39964,20 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -37093,7 +39997,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -37175,6 +40079,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -37219,12 +40127,20 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -37244,7 +40160,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -37326,6 +40242,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -37370,12 +40290,20 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -37395,7 +40323,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -37477,6 +40405,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -37521,12 +40453,20 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "make",
           "scheme": "string -> t"
         },
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -37542,7 +40482,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -37624,6 +40564,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -37668,6 +40612,10 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "is_no_color",
           "scheme": "t -> bool"
         },
@@ -37678,6 +40626,10 @@
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -37697,7 +40649,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -37779,6 +40731,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -37823,6 +40779,10 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "is_no_color",
           "scheme": "t -> bool"
         },
@@ -37833,6 +40793,10 @@
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -37852,7 +40816,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -37934,6 +40898,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -37978,6 +40946,10 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "is_no_color",
           "scheme": "t -> bool"
         },
@@ -37988,6 +40960,10 @@
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -38007,7 +40983,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -38089,6 +41065,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -38133,6 +41113,10 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "is_no_color",
           "scheme": "t -> bool"
         },
@@ -38143,6 +41127,10 @@
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -38162,7 +41150,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -38244,6 +41232,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -38288,6 +41280,10 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "is_no_color",
           "scheme": "t -> bool"
         },
@@ -38298,6 +41294,10 @@
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -38313,7 +41313,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -38395,6 +41395,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -38439,6 +41443,10 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "is_no_color",
           "scheme": "t -> bool"
         },
@@ -38453,6 +41461,10 @@
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -38472,7 +41484,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -38554,6 +41566,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -38598,6 +41614,10 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "is_no_color",
           "scheme": "t -> bool"
         },
@@ -38612,6 +41632,10 @@
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -38631,7 +41655,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -38713,6 +41737,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -38757,6 +41785,10 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "is_no_color",
           "scheme": "t -> bool"
         },
@@ -38771,6 +41803,10 @@
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -38790,7 +41826,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -38872,6 +41908,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -38916,6 +41956,10 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "is_no_color",
           "scheme": "t -> bool"
         },
@@ -38930,6 +41974,10 @@
         {
           "name": "no_color",
           "scheme": "t"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "of_rgb",
@@ -38949,7 +41997,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -39031,6 +42079,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -39075,6 +42127,10 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "is_no_color",
           "scheme": "t -> bool"
         },
@@ -39091,6 +42147,10 @@
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "of_rgb",
           "scheme": "'a 'b 'c. ('a * 'b * 'c) -> t"
         },
@@ -39104,7 +42164,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -39186,6 +42246,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -39230,6 +42294,10 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "is_ansi",
           "scheme": "t -> bool"
         },
@@ -39250,6 +42318,10 @@
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "of_rgb",
           "scheme": "'a 'b 'c. ('a * 'b * 'c) -> t"
         },
@@ -39267,7 +42339,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -39349,6 +42421,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -39393,6 +42469,10 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "is_ansi",
           "scheme": "t -> bool"
         },
@@ -39413,6 +42493,10 @@
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "of_rgb",
           "scheme": "'a 'b 'c. ('a * 'b * 'c) -> t"
         },
@@ -39430,7 +42514,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -39512,6 +42596,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -39556,6 +42644,10 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "is_ansi",
           "scheme": "t -> bool"
         },
@@ -39576,6 +42668,10 @@
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "of_rgb",
           "scheme": "'a 'b 'c. ('a * 'b * 'c) -> t"
         },
@@ -39593,7 +42689,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -39675,6 +42771,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -39719,6 +42819,10 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "is_ansi",
           "scheme": "t -> bool"
         },
@@ -39739,6 +42843,10 @@
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "of_rgb",
           "scheme": "'a 'b 'c. ('a * 'b * 'c) -> t"
         },
@@ -39756,7 +42864,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -39838,6 +42946,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -39882,6 +42994,10 @@
           "scheme": "'a 'b. 'a -> 'b"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "is_ansi",
           "scheme": "t -> bool"
         },
@@ -39902,6 +43018,10 @@
           "scheme": "t"
         },
         {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
           "name": "of_rgb",
           "scheme": "'a 'b 'c. ('a * 'b * 'c) -> t"
         },
@@ -39915,7 +43035,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -40009,7 +43129,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -40523,7 +43643,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -40587,7 +43707,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -40655,7 +43775,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -40727,7 +43847,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -40803,7 +43923,7 @@
         },
         {
           "name": "to_escape_seq",
-          "scheme": "~mode:([ `bg ]) -> t -> string"
+          "scheme": "~mode:([ > `bg ]) -> t -> string"
         },
         {
           "name": "to_string",
@@ -40826,21 +43946,25 @@
         "constructors": [
           {
             "constructor_id": 0,
+            "generalized": false,
             "name": "RGB",
             "scheme": "(int * int * int) -> t"
           },
           {
             "constructor_id": 1,
+            "generalized": false,
             "name": "ANSI",
             "scheme": "int -> t"
           },
           {
             "constructor_id": 2,
+            "generalized": false,
             "name": "ANSI256",
             "scheme": "int -> t"
           },
           {
             "constructor_id": 3,
+            "generalized": false,
             "name": "No_color",
             "scheme": "t"
           }
@@ -47849,7 +50973,7 @@
     },
     {
       "expr_id": 198,
-      "inferred_type": "[ `bg ]",
+      "inferred_type": "[ > `bg ]",
       "origin_id": 289,
       "span": {
         "end": 1541,
@@ -47867,7 +50991,7 @@
     },
     {
       "expr_id": 197,
-      "inferred_type": "[ `bg ]",
+      "inferred_type": "[ > `bg ]",
       "origin_id": 288,
       "span": {
         "end": 1535,
@@ -48317,7 +51441,7 @@
     },
     {
       "expr_id": 196,
-      "inferred_type": "([ `bg ]) -> ([ `bg ]) -> bool",
+      "inferred_type": "([ > `bg ]) -> ([ > `bg ]) -> bool",
       "origin_id": 287,
       "span": {
         "end": 1541,
@@ -49532,7 +52656,7 @@
     },
     {
       "expr_id": 240,
-      "inferred_type": "~mode:([ `bg ]) -> t -> string",
+      "inferred_type": "~mode:([ > `bg ]) -> t -> string",
       "origin_id": 337,
       "span": {
         "end": 1802,

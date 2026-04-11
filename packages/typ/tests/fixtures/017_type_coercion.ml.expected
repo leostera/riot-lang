@@ -169,6 +169,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -187,6 +191,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "|>",
@@ -264,6 +276,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -282,6 +298,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "|>",
@@ -359,6 +383,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -377,6 +405,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "|>",
@@ -454,6 +490,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -472,6 +512,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "|>",
@@ -549,6 +597,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -567,6 +619,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "|>",
@@ -644,6 +704,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -664,8 +728,16 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "midpoint",
           "scheme": "rgb"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "|>",
@@ -743,6 +815,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -763,8 +839,16 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "midpoint",
           "scheme": "rgb"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "|>",

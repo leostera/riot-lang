@@ -104,7 +104,7 @@
           "body_id": 7,
           "parameters": [
             {
-              "has_default": false,
+              "default_value_id": null,
               "label": {
                 "tag": "positional"
               },
@@ -245,6 +245,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -263,6 +267,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "|>",
@@ -340,6 +352,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -358,6 +374,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "|>",
@@ -435,6 +459,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -453,6 +481,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "|>",
@@ -530,6 +566,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -548,6 +588,14 @@
         {
           "name": "^",
           "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "pair",
@@ -629,6 +677,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -653,8 +705,16 @@
           "scheme": "bool"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "left",
           "scheme": "int"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "pair",
@@ -740,6 +800,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -764,8 +828,16 @@
           "scheme": "bool"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "left",
           "scheme": "int"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "pair",
@@ -851,6 +923,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -875,8 +951,16 @@
           "scheme": "bool"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "left",
           "scheme": "int"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "pair",
@@ -962,6 +1046,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -986,8 +1074,16 @@
           "scheme": "bool"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "left",
           "scheme": "int"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "pair",
@@ -1073,6 +1169,10 @@
           "scheme": "'a. 'a -> 'a -> bool"
         },
         {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
           "name": "=",
           "scheme": "'a. 'a -> 'a -> bool"
         },
@@ -1093,8 +1193,16 @@
           "scheme": "string -> string -> string"
         },
         {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
           "name": "left",
           "scheme": "int"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
         },
         {
           "name": "pair",

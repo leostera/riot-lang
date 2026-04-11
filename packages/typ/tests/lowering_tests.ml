@@ -40,17 +40,24 @@ let check_source_text = fun ~filename text ->
         ~parse_result
         ~cst in
       Typ.check ~config:Config.default ~source
-  | Error (Syn.Parse_diagnostics diagnostics) -> panic
-    (format
-      Format.[
-        str "expected CST for ";
-        str (Path.to_string filename);
-        str ": ";
-        str (String.concat "; " (List.map Syn.Diagnostic.to_string diagnostics));
-      ])
-  | Error (Syn.Cst_builder_error error) -> panic
-    (format
-      Format.[ str "expected CST for "; str (Path.to_string filename); str ": "; str error.message; ])
+  | Error (Syn.Parse_diagnostics diagnostics) ->
+      panic
+        (format
+          Format.[
+            str "expected CST for ";
+            str (Path.to_string filename);
+            str ": ";
+            str (String.concat "; " (List.map Syn.Diagnostic.to_string diagnostics));
+          ])
+  | Error (Syn.Cst_builder_error error) ->
+      panic
+        (format
+          Format.[
+            str "expected CST for ";
+            str (Path.to_string filename);
+            str ": ";
+            str error.message;
+          ])
 
 let manifest_to_json = fun value ->
   match value with

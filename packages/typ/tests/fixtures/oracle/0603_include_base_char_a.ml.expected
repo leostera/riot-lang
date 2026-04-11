@@ -1,1742 +1,1703 @@
 {
-  "comparison": {
-    "exports": {
-      "ocamlc": [
-        {
-          "name": "Base.value",
-          "scheme": "t"
-        },
-        {
-          "name": "Derived.pair",
-          "scheme": "'a -> 'a * 'a"
-        },
-        {
-          "name": "Derived.value",
-          "scheme": "t"
-        },
-        {
-          "name": "answer",
-          "scheme": "Derived.t * Derived.t"
-        }
-      ],
-      "typ": [
-        {
-          "name": "Base.value",
-          "scheme": "char"
-        },
-        {
-          "name": "Derived.pair",
-          "scheme": "'a -> 'a * 'a"
-        },
-        {
-          "name": "Derived.value",
-          "scheme": "char"
-        },
-        {
-          "name": "answer",
-          "scheme": "char * char"
-        }
-      ]
-    },
-    "normalized_exports": {
-      "ocamlc": [
-        {
-          "name": "Base.value",
-          "scheme": "char"
-        },
-        {
-          "name": "Derived.pair",
-          "scheme": "'a -> 'a * 'a"
-        },
-        {
-          "name": "Derived.value",
-          "scheme": "char"
-        },
-        {
-          "name": "answer",
-          "scheme": "char * char"
-        }
-      ],
-      "typ": [
-        {
-          "name": "Base.value",
-          "scheme": "char"
-        },
-        {
-          "name": "Derived.pair",
-          "scheme": "'a -> 'a * 'a"
-        },
-        {
-          "name": "Derived.value",
-          "scheme": "char"
-        },
-        {
-          "name": "answer",
-          "scheme": "char * char"
-        }
-      ]
-    },
-    "type_names": {
-      "ocamlc": [
-        "Base.t",
-        "Derived.t"
-      ],
-      "typ": [
-        "Base.t",
-        "Derived.t"
-      ]
-    }
-  },
-  "ocamlc": {
-    "exports": [
+  "body_arena": {
+    "bindings": [
       {
-        "name": "Base.value",
-        "scheme": "t"
-      },
-      {
-        "name": "Derived.pair",
-        "scheme": "'a -> 'a * 'a"
-      },
-      {
-        "name": "Derived.value",
-        "scheme": "t"
-      },
-      {
-        "name": "answer",
-        "scheme": "Derived.t * Derived.t"
-      }
-    ],
-    "interface_text": "module Base : sig type t = char val value : t end\nmodule Derived : sig type t = char val value : t val pair : 'a -> 'a * 'a end\nval answer : Derived.t * Derived.t\n",
-    "type_aliases": [
-      {
-        "manifest": "char",
-        "name": "Base.t"
-      },
-      {
-        "manifest": "char",
-        "name": "Derived.t"
-      }
-    ],
-    "type_names": [
-      "Base.t",
-      "Derived.t"
-    ],
-    "typedtree_text": "[\n  structure_item (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[9,161+0]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[12,222+3])\n    Tstr_module (Present)\n    Base/6\n      module_expr (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[9,161+14]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[12,222+3])\n        Tmod_structure\n        [\n          structure_item (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[10,182+2]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[10,182+15])\n            Tstr_type Rec\n            [\n              type_declaration t/4 (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[10,182+2]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[10,182+15])\n                ptype_params =\n                  []\n                ptype_constraints =\n                  []\n                ptype_kind =\n                  Ttype_abstract\n                ptype_private = Public\n                ptype_manifest =\n                  Some\n                    core_type (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[10,182+11]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[10,182+15])\n                      Ttyp_constr \"char/2!\"\n                      []\n            ]\n          structure_item (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[11,198+2]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[11,198+23])\n            Tstr_value Nonrec\n            [\n              <def>\n                pattern (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[11,198+6]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[11,198+11])\n                  extra (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[11,198+6]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[11,198+11]) ghost\n                    Tpat_extra_constraint\n                    core_type (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[11,198+14]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[11,198+15])\n                      Ttyp_constr \"t/4\"\n                      []\n                  Tpat_var \"value/5\"\n                expression (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[11,198+18]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[11,198+23])\n                  extra (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[11,198+18]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[11,198+23]) ghost\n                    Texp_constraint\n                    core_type (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[11,198+14]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[11,198+15])\n                      Ttyp_constr \"t/4\"\n                      []\n                  Texp_constant Const_char 61\n            ]\n        ]\n  structure_item (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[14,227+0]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[17,288+3])\n    Tstr_module (Present)\n    Derived/12\n      module_expr (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[14,227+17]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[17,288+3])\n        Tmod_structure\n        [\n          structure_item (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[15,251+2]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[15,251+14])\n            Tstr_include            module_expr (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[15,251+10]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[15,251+14])\n              Tmod_ident \"Base/6\"\n          structure_item (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[16,266+2]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[16,266+21])\n            Tstr_value Nonrec\n            [\n              <def>\n                pattern (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[16,266+6]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[16,266+10])\n                  Tpat_var \"pair/9\"\n                expression (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[16,266+11]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[16,266+21]) ghost\n                  Texp_function\n                  [\n                    Nolabel\n                    Param_pat\n                      pattern (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[16,266+11]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[16,266+12])\n                        Tpat_var \"x/11\"\n                  ]\n                  Tfunction_body\n                    expression (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[16,266+15]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[16,266+21])\n                      Texp_tuple\n                      [\n                        Label: None\n                          expression (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[16,266+16]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[16,266+17])\n                            Texp_ident \"x/11\"\n                        Label: None\n                          expression (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[16,266+19]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[16,266+20])\n                            Texp_ident \"x/11\"\n                      ]\n            ]\n        ]\n  structure_item (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[19,293+0]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[19,293+39])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[19,293+4]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[19,293+10])\n          Tpat_var \"answer/13\"\n        expression (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[19,293+13]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[19,293+39])\n          Texp_apply\n          expression (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[19,293+13]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[19,293+25])\n            Texp_ident \"Derived/12.pair\"\n          [\n            <arg>\n              Nolabel\n              expression (packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[19,293+26]..packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml[19,293+39])\n                Texp_ident \"Derived/12.value\"\n          ]\n    ]\n]"
-  },
-  "typ": {
-    "body_arena": {
-      "bindings": [
-        {
-          "annotation": "Base.t",
-          "binding_id": 0,
-          "name": "value",
-          "origin_id": 3,
-          "pattern_id": 0,
-          "recursive": false,
-          "scope_path": [
-            "Base"
-          ],
-          "value_id": 0
-        },
-        {
-          "binding_id": 1,
-          "name": "pair",
-          "origin_id": 12,
-          "pattern_id": 1,
-          "recursive": false,
-          "scope_path": [
-            "Derived"
-          ],
-          "value_id": 4
-        },
-        {
-          "binding_id": 2,
-          "name": "answer",
-          "origin_id": 18,
-          "pattern_id": 3,
-          "recursive": false,
-          "scope_path": [],
-          "value_id": 7
-        }
-      ],
-      "expressions": [
-        {
-          "desc": {
-            "tag": "char",
-            "value": "a"
-          },
-          "expr_id": 0,
-          "origin_id": 2
-        },
-        {
-          "desc": {
-            "name": "x",
-            "tag": "var"
-          },
-          "expr_id": 1,
-          "origin_id": 8
-        },
-        {
-          "desc": {
-            "name": "x",
-            "tag": "var"
-          },
-          "expr_id": 2,
-          "origin_id": 9
-        },
-        {
-          "desc": {
-            "elements": [
-              1,
-              2
-            ],
-            "tag": "tuple"
-          },
-          "expr_id": 3,
-          "origin_id": 10
-        },
-        {
-          "desc": {
-            "body_id": 3,
-            "parameters": [
-              {
-                "default_value_id": null,
-                "label": {
-                  "tag": "positional"
-                },
-                "pattern_id": 2
-              }
-            ],
-            "tag": "fun"
-          },
-          "expr_id": 4,
-          "origin_id": 11
-        },
-        {
-          "desc": {
-            "name": "Derived.pair",
-            "tag": "var"
-          },
-          "expr_id": 5,
-          "origin_id": 15
-        },
-        {
-          "desc": {
-            "name": "Derived.value",
-            "tag": "var"
-          },
-          "expr_id": 6,
-          "origin_id": 16
-        },
-        {
-          "desc": {
-            "arguments": [
-              {
-                "implicit": false,
-                "label": {
-                  "tag": "positional"
-                },
-                "value_id": 6
-              }
-            ],
-            "callee_id": 5,
-            "tag": "apply"
-          },
-          "expr_id": 7,
-          "origin_id": 17
-        }
-      ],
-      "patterns": [
-        {
-          "desc": {
-            "name": "value",
-            "tag": "var"
-          },
-          "origin_id": 1,
-          "pat_id": 0
-        },
-        {
-          "desc": {
-            "name": "pair",
-            "tag": "var"
-          },
-          "origin_id": 6,
-          "pat_id": 1
-        },
-        {
-          "desc": {
-            "name": "x",
-            "tag": "var"
-          },
-          "origin_id": 7,
-          "pat_id": 2
-        },
-        {
-          "desc": {
-            "name": "answer",
-            "tag": "var"
-          },
-          "origin_id": 14,
-          "pat_id": 3
-        }
-      ]
-    },
-    "exports": [
-      {
-        "name": "answer",
-        "scheme": "char * char"
-      },
-      {
-        "name": "Base.value",
-        "scheme": "char"
-      },
-      {
-        "name": "Derived.pair",
-        "scheme": "'a. 'a -> 'a * 'a"
-      },
-      {
-        "name": "Derived.value",
-        "scheme": "char"
-      }
-    ],
-    "expr_traces": [
-      {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          }
+        "annotation": "Base.t",
+        "binding_id": 0,
+        "name": "value",
+        "origin_id": 3,
+        "pattern_id": 0,
+        "recursive": false,
+        "scope_path": [
+          "Base"
         ],
-        "expr_id": 0,
-        "inferred_type": "char",
-        "origin": {
-          "label": "char_literal",
-          "span": {
-            "end": 220,
-            "start": 217
-          },
-          "syntax_kind": "CHAR_LITERAL"
+        "value_id": 0
+      },
+      {
+        "binding_id": 1,
+        "name": "pair",
+        "origin_id": 12,
+        "pattern_id": 1,
+        "recursive": false,
+        "scope_path": [
+          "Derived"
+        ],
+        "value_id": 4
+      },
+      {
+        "binding_id": 2,
+        "name": "answer",
+        "origin_id": 18,
+        "pattern_id": 3,
+        "recursive": false,
+        "scope_path": [],
+        "value_id": 7
+      }
+    ],
+    "expressions": [
+      {
+        "desc": {
+          "tag": "char",
+          "value": "a"
         },
+        "expr_id": 0,
         "origin_id": 2
       },
       {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "x",
-            "scheme": "'a"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "Base.value",
-            "scheme": "char"
-          },
-          {
-            "name": "Derived.value",
-            "scheme": "char"
-          }
-        ],
-        "expr_id": 1,
-        "inferred_type": "'a",
-        "origin": {
-          "label": "path_expression",
-          "span": {
-            "end": 283,
-            "start": 282
-          },
-          "syntax_kind": "IDENT_EXPR"
+        "desc": {
+          "name": "x",
+          "tag": "var"
         },
+        "expr_id": 1,
         "origin_id": 8
       },
       {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "x",
-            "scheme": "'a"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "Base.value",
-            "scheme": "char"
-          },
-          {
-            "name": "Derived.value",
-            "scheme": "char"
-          }
-        ],
-        "expr_id": 2,
-        "inferred_type": "'a",
-        "origin": {
-          "label": "path_expression",
-          "span": {
-            "end": 286,
-            "start": 284
-          },
-          "syntax_kind": "IDENT_EXPR"
+        "desc": {
+          "name": "x",
+          "tag": "var"
         },
+        "expr_id": 2,
         "origin_id": 9
       },
       {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "x",
-            "scheme": "'a"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "Base.value",
-            "scheme": "char"
-          },
-          {
-            "name": "Derived.value",
-            "scheme": "char"
-          }
-        ],
-        "expr_id": 3,
-        "inferred_type": "'a * 'a",
-        "origin": {
-          "label": "tuple_expression",
-          "span": {
-            "end": 286,
-            "start": 282
-          },
-          "syntax_kind": "TUPLE_EXPR"
+        "desc": {
+          "elements": [
+            1,
+            2
+          ],
+          "tag": "tuple"
         },
+        "expr_id": 3,
         "origin_id": 10
       },
       {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "Base.value",
-            "scheme": "char"
-          },
-          {
-            "name": "Derived.value",
-            "scheme": "char"
-          }
-        ],
-        "expr_id": 4,
-        "inferred_type": "'a -> 'a * 'a",
-        "origin": {
-          "label": "fun_expression",
-          "span": {
-            "end": 287,
-            "start": 265
-          },
-          "syntax_kind": "LET_BINDING"
+        "desc": {
+          "body_id": 3,
+          "parameters": [
+            {
+              "default_value_id": null,
+              "label": {
+                "tag": "positional"
+              },
+              "pattern_id": 2
+            }
+          ],
+          "tag": "fun"
         },
+        "expr_id": 4,
         "origin_id": 11
       },
       {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "Base.value",
-            "scheme": "char"
-          },
-          {
-            "name": "Derived.pair",
-            "scheme": "'a. 'a -> 'a * 'a"
-          },
-          {
-            "name": "Derived.value",
-            "scheme": "char"
-          }
-        ],
-        "expr_id": 5,
-        "inferred_type": "char -> char * char",
-        "origin": {
-          "label": "qualified_path_expression",
-          "span": {
-            "end": 318,
-            "start": 305
-          },
-          "syntax_kind": "FIELD_ACCESS_EXPR"
+        "desc": {
+          "name": "Derived.pair",
+          "tag": "var"
         },
+        "expr_id": 5,
         "origin_id": 15
       },
       {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "Base.value",
-            "scheme": "char"
-          },
-          {
-            "name": "Derived.pair",
-            "scheme": "'a. 'a -> 'a * 'a"
-          },
-          {
-            "name": "Derived.value",
-            "scheme": "char"
-          }
-        ],
-        "expr_id": 6,
-        "inferred_type": "char",
-        "origin": {
-          "label": "qualified_path_expression",
-          "span": {
-            "end": 332,
-            "start": 318
-          },
-          "syntax_kind": "FIELD_ACCESS_EXPR"
+        "desc": {
+          "name": "Derived.value",
+          "tag": "var"
         },
+        "expr_id": 6,
         "origin_id": 16
       },
       {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "Base.value",
-            "scheme": "char"
-          },
-          {
-            "name": "Derived.pair",
-            "scheme": "'a. 'a -> 'a * 'a"
-          },
-          {
-            "name": "Derived.value",
-            "scheme": "char"
-          }
-        ],
-        "expr_id": 7,
-        "inferred_type": "char * char",
-        "origin": {
-          "label": "apply_expression",
-          "span": {
-            "end": 332,
-            "start": 305
-          },
-          "syntax_kind": "APPLY_EXPR"
+        "desc": {
+          "arguments": [
+            {
+              "implicit": false,
+              "label": {
+                "tag": "positional"
+              },
+              "value_id": 6
+            }
+          ],
+          "callee_id": 5,
+          "tag": "apply"
         },
+        "expr_id": 7,
         "origin_id": 17
       }
     ],
-    "file_summary": {
-      "completeness": "complete",
-      "export_result": {
-        "exports": [
-          {
-            "name": "answer",
-            "scheme": "char * char"
-          },
-          {
-            "name": "Base.value",
-            "scheme": "char"
-          },
-          {
-            "name": "Derived.pair",
-            "scheme": "'a. 'a -> 'a * 'a"
-          },
-          {
-            "name": "Derived.value",
-            "scheme": "char"
-          }
-        ],
-        "tag": "trusted_export"
-      },
-      "source_id": 0
-    },
-    "filename": "packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml",
-    "item_traces": [
+    "patterns": [
       {
-        "binding_names": [],
-        "exports_after": [],
-        "item_id": 0
-      },
-      {
-        "binding_names": [
-          "Base.value"
-        ],
-        "exports_after": [
-          {
-            "name": "Base.value",
-            "scheme": "char"
-          }
-        ],
-        "item_id": 1
-      },
-      {
-        "binding_names": [
-          "Derived.value"
-        ],
-        "exports_after": [
-          {
-            "name": "Base.value",
-            "scheme": "char"
-          },
-          {
-            "name": "Derived.value",
-            "scheme": "char"
-          }
-        ],
-        "item_id": 2
-      },
-      {
-        "binding_names": [
-          "Derived.pair"
-        ],
-        "exports_after": [
-          {
-            "name": "Base.value",
-            "scheme": "char"
-          },
-          {
-            "name": "Derived.pair",
-            "scheme": "'a. 'a -> 'a * 'a"
-          },
-          {
-            "name": "Derived.value",
-            "scheme": "char"
-          }
-        ],
-        "item_id": 3
-      },
-      {
-        "binding_names": [
-          "answer"
-        ],
-        "exports_after": [
-          {
-            "name": "answer",
-            "scheme": "char * char"
-          },
-          {
-            "name": "Base.value",
-            "scheme": "char"
-          },
-          {
-            "name": "Derived.pair",
-            "scheme": "'a. 'a -> 'a * 'a"
-          },
-          {
-            "name": "Derived.value",
-            "scheme": "char"
-          }
-        ],
-        "item_id": 4
-      }
-    ],
-    "item_tree": [
-      {
-        "declaration": {
-          "constructors": [],
-          "manifest": {
-            "tag": "alias",
-            "type": "char"
-          },
-          "nonrec": false,
-          "param_variances": [],
-          "type_constructor_id": {
-            "local_id": 0,
-            "owner": "packages/typ/tests/fixtures/oracle/0603_include_base_char_a"
-          },
-          "type_name": "t"
+        "desc": {
+          "name": "value",
+          "tag": "var"
         },
-        "item_id": 0,
-        "origin_id": 0,
-        "scope_path": [
-          "Base"
-        ],
-        "tag": "type"
-      },
-      {
-        "binding_ids": [
-          0
-        ],
-        "item_id": 1,
-        "origin_id": 4,
-        "recursive": false,
-        "scope_path": [
-          "Base"
-        ],
-        "tag": "value"
-      },
-      {
-        "item_id": 2,
-        "module_path": "Base",
-        "origin_id": 5,
-        "scope_path": [
-          "Derived"
-        ],
-        "tag": "include"
-      },
-      {
-        "binding_ids": [
-          1
-        ],
-        "item_id": 3,
-        "origin_id": 13,
-        "recursive": false,
-        "scope_path": [
-          "Derived"
-        ],
-        "tag": "value"
-      },
-      {
-        "binding_ids": [
-          2
-        ],
-        "item_id": 4,
-        "origin_id": 19,
-        "recursive": false,
-        "scope_path": [],
-        "tag": "value"
-      }
-    ],
-    "lowering_diagnostics": [],
-    "origin_map": [
-      {
-        "kind": "item",
-        "label": "item",
-        "origin_id": 0,
-        "semantic_id": {
-          "id": 0,
-          "tag": "item"
-        },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 197,
-          "start": 181
-        },
-        "syntax_kind": "TYPE_DECL"
-      },
-      {
-        "kind": "pattern",
-        "label": "identifier_pattern",
         "origin_id": 1,
-        "semantic_id": {
-          "id": 0,
-          "tag": "pattern"
-        },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 209,
-          "start": 203
-        },
-        "syntax_kind": "IDENT_PATTERN"
+        "pat_id": 0
       },
       {
-        "kind": "expr",
-        "label": "char_literal",
-        "origin_id": 2,
-        "semantic_id": {
-          "id": 0,
-          "tag": "expr"
+        "desc": {
+          "name": "pair",
+          "tag": "var"
         },
-        "source_id": 0,
-        "source_revision": 0,
+        "origin_id": 6,
+        "pat_id": 1
+      },
+      {
+        "desc": {
+          "name": "x",
+          "tag": "var"
+        },
+        "origin_id": 7,
+        "pat_id": 2
+      },
+      {
+        "desc": {
+          "name": "answer",
+          "tag": "var"
+        },
+        "origin_id": 14,
+        "pat_id": 3
+      }
+    ]
+  },
+  "exports": [
+    {
+      "name": "answer",
+      "scheme": "char * char"
+    },
+    {
+      "name": "Base.value",
+      "scheme": "Base.t"
+    },
+    {
+      "name": "Derived.pair",
+      "scheme": "'a. 'a -> 'a * 'a"
+    },
+    {
+      "name": "Derived.value",
+      "scheme": "Derived.t"
+    }
+  ],
+  "expr_traces": [
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        }
+      ],
+      "expr_id": 0,
+      "inferred_type": "char",
+      "origin": {
+        "label": "char_literal",
         "span": {
           "end": 220,
           "start": 217
         },
         "syntax_kind": "CHAR_LITERAL"
       },
-      {
-        "kind": "binding",
-        "label": "binding",
-        "origin_id": 3,
-        "semantic_id": {
-          "id": 0,
-          "tag": "binding"
+      "origin_id": 2
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 221,
-          "start": 197
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
         },
-        "syntax_kind": "LET_BINDING"
-      },
-      {
-        "kind": "item",
-        "label": "item",
-        "origin_id": 4,
-        "semantic_id": {
-          "id": 1,
-          "tag": "item"
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 221,
-          "start": 197
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
-        "syntax_kind": "LET_BINDING"
-      },
-      {
-        "kind": "item",
-        "label": "item",
-        "origin_id": 5,
-        "semantic_id": {
-          "id": 2,
-          "tag": "item"
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 265,
-          "start": 250
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
         },
-        "syntax_kind": "INCLUDE_STMT"
-      },
-      {
-        "kind": "pattern",
-        "label": "identifier_pattern",
-        "origin_id": 6,
-        "semantic_id": {
-          "id": 1,
-          "tag": "pattern"
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 276,
-          "start": 271
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
-        "syntax_kind": "IDENT_PATTERN"
-      },
-      {
-        "kind": "pattern",
-        "label": "identifier_pattern",
-        "origin_id": 7,
-        "semantic_id": {
-          "id": 2,
-          "tag": "pattern"
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 278,
-          "start": 276
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
         },
-        "syntax_kind": "IDENT_PATTERN"
-      },
-      {
-        "kind": "expr",
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "value",
+          "scheme": "Base.t"
+        },
+        {
+          "name": "x",
+          "scheme": "'a"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Base.value",
+          "scheme": "Base.t"
+        },
+        {
+          "name": "Derived.value",
+          "scheme": "Derived.t"
+        }
+      ],
+      "expr_id": 1,
+      "inferred_type": "'a",
+      "origin": {
         "label": "path_expression",
-        "origin_id": 8,
-        "semantic_id": {
-          "id": 1,
-          "tag": "expr"
-        },
-        "source_id": 0,
-        "source_revision": 0,
         "span": {
           "end": 283,
           "start": 282
         },
         "syntax_kind": "IDENT_EXPR"
       },
-      {
-        "kind": "expr",
-        "label": "path_expression",
-        "origin_id": 9,
-        "semantic_id": {
-          "id": 2,
-          "tag": "expr"
+      "origin_id": 8
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
         },
-        "source_id": 0,
-        "source_revision": 0,
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "value",
+          "scheme": "Base.t"
+        },
+        {
+          "name": "x",
+          "scheme": "'a"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Base.value",
+          "scheme": "Base.t"
+        },
+        {
+          "name": "Derived.value",
+          "scheme": "Derived.t"
+        }
+      ],
+      "expr_id": 2,
+      "inferred_type": "'a",
+      "origin": {
+        "label": "path_expression",
         "span": {
           "end": 286,
           "start": 284
         },
         "syntax_kind": "IDENT_EXPR"
       },
-      {
-        "kind": "expr",
-        "label": "tuple_expression",
-        "origin_id": 10,
-        "semantic_id": {
-          "id": 3,
-          "tag": "expr"
+      "origin_id": 9
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
         },
-        "source_id": 0,
-        "source_revision": 0,
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "value",
+          "scheme": "Base.t"
+        },
+        {
+          "name": "x",
+          "scheme": "'a"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Base.value",
+          "scheme": "Base.t"
+        },
+        {
+          "name": "Derived.value",
+          "scheme": "Derived.t"
+        }
+      ],
+      "expr_id": 3,
+      "inferred_type": "'a * 'a",
+      "origin": {
+        "label": "tuple_expression",
         "span": {
           "end": 286,
           "start": 282
         },
         "syntax_kind": "TUPLE_EXPR"
       },
-      {
-        "kind": "expr",
+      "origin_id": 10
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "value",
+          "scheme": "Base.t"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Base.value",
+          "scheme": "Base.t"
+        },
+        {
+          "name": "Derived.value",
+          "scheme": "Derived.t"
+        }
+      ],
+      "expr_id": 4,
+      "inferred_type": "'a -> 'a * 'a",
+      "origin": {
         "label": "fun_expression",
-        "origin_id": 11,
-        "semantic_id": {
-          "id": 4,
-          "tag": "expr"
-        },
-        "source_id": 0,
-        "source_revision": 0,
         "span": {
           "end": 287,
           "start": 265
         },
         "syntax_kind": "LET_BINDING"
       },
-      {
-        "kind": "binding",
-        "label": "binding",
-        "origin_id": 12,
-        "semantic_id": {
-          "id": 1,
-          "tag": "binding"
+      "origin_id": 11
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 287,
-          "start": 265
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
         },
-        "syntax_kind": "LET_BINDING"
-      },
-      {
-        "kind": "item",
-        "label": "item",
-        "origin_id": 13,
-        "semantic_id": {
-          "id": 3,
-          "tag": "item"
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 287,
-          "start": 265
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
-        "syntax_kind": "LET_BINDING"
-      },
-      {
-        "kind": "pattern",
-        "label": "identifier_pattern",
-        "origin_id": 14,
-        "semantic_id": {
-          "id": 3,
-          "tag": "pattern"
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 303,
-          "start": 296
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
         },
-        "syntax_kind": "IDENT_PATTERN"
-      },
-      {
-        "kind": "expr",
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Base.value",
+          "scheme": "Base.t"
+        },
+        {
+          "name": "Derived.pair",
+          "scheme": "'a. 'a -> 'a * 'a"
+        },
+        {
+          "name": "Derived.value",
+          "scheme": "Derived.t"
+        }
+      ],
+      "expr_id": 5,
+      "inferred_type": "char -> char * char",
+      "origin": {
         "label": "qualified_path_expression",
-        "origin_id": 15,
-        "semantic_id": {
-          "id": 5,
-          "tag": "expr"
-        },
-        "source_id": 0,
-        "source_revision": 0,
         "span": {
           "end": 318,
           "start": 305
         },
         "syntax_kind": "FIELD_ACCESS_EXPR"
       },
-      {
-        "kind": "expr",
-        "label": "qualified_path_expression",
-        "origin_id": 16,
-        "semantic_id": {
-          "id": 6,
-          "tag": "expr"
+      "origin_id": 15
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
         },
-        "source_id": 0,
-        "source_revision": 0,
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Base.value",
+          "scheme": "Base.t"
+        },
+        {
+          "name": "Derived.pair",
+          "scheme": "'a. 'a -> 'a * 'a"
+        },
+        {
+          "name": "Derived.value",
+          "scheme": "Derived.t"
+        }
+      ],
+      "expr_id": 6,
+      "inferred_type": "char",
+      "origin": {
+        "label": "qualified_path_expression",
         "span": {
           "end": 332,
           "start": 318
         },
         "syntax_kind": "FIELD_ACCESS_EXPR"
       },
-      {
-        "kind": "expr",
-        "label": "apply_expression",
-        "origin_id": 17,
-        "semantic_id": {
-          "id": 7,
-          "tag": "expr"
+      "origin_id": 16
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
         },
-        "source_id": 0,
-        "source_revision": 0,
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Base.value",
+          "scheme": "Base.t"
+        },
+        {
+          "name": "Derived.pair",
+          "scheme": "'a. 'a -> 'a * 'a"
+        },
+        {
+          "name": "Derived.value",
+          "scheme": "Derived.t"
+        }
+      ],
+      "expr_id": 7,
+      "inferred_type": "char * char",
+      "origin": {
+        "label": "apply_expression",
         "span": {
           "end": 332,
           "start": 305
         },
         "syntax_kind": "APPLY_EXPR"
       },
-      {
-        "kind": "binding",
-        "label": "binding",
-        "origin_id": 18,
-        "semantic_id": {
-          "id": 2,
-          "tag": "binding"
-        },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 332,
-          "start": 291
-        },
-        "syntax_kind": "LET_BINDING"
-      },
-      {
-        "kind": "item",
-        "label": "item",
-        "origin_id": 19,
-        "semantic_id": {
-          "id": 4,
-          "tag": "item"
-        },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 332,
-          "start": 291
-        },
-        "syntax_kind": "LET_BINDING"
-      }
-    ],
-    "parse_diagnostics": [],
-    "source_id": 0,
-    "type_index": [
-      {
-        "expr_id": 1,
-        "inferred_type": "'a",
-        "origin_id": 8,
-        "span": {
-          "end": 283,
-          "start": 282
-        }
-      },
-      {
-        "expr_id": 2,
-        "inferred_type": "'a",
-        "origin_id": 9,
-        "span": {
-          "end": 286,
-          "start": 284
-        }
-      },
-      {
-        "expr_id": 0,
-        "inferred_type": "char",
-        "origin_id": 2,
-        "span": {
-          "end": 220,
-          "start": 217
-        }
-      },
-      {
-        "expr_id": 3,
-        "inferred_type": "'a * 'a",
-        "origin_id": 10,
-        "span": {
-          "end": 286,
-          "start": 282
-        }
-      },
-      {
-        "expr_id": 5,
-        "inferred_type": "char -> char * char",
-        "origin_id": 15,
-        "span": {
-          "end": 318,
-          "start": 305
-        }
-      },
-      {
-        "expr_id": 6,
-        "inferred_type": "char",
-        "origin_id": 16,
-        "span": {
-          "end": 332,
-          "start": 318
-        }
-      },
-      {
-        "expr_id": 4,
-        "inferred_type": "'a -> 'a * 'a",
-        "origin_id": 11,
-        "span": {
-          "end": 287,
-          "start": 265
-        }
-      },
-      {
-        "expr_id": 7,
-        "inferred_type": "char * char",
-        "origin_id": 17,
-        "span": {
-          "end": 332,
-          "start": 305
-        }
-      }
-    ],
-    "typing_diagnostics": []
-  },
-  "typ_summary": {
+      "origin_id": 17
+    }
+  ],
+  "file_summary": {
     "completeness": "complete",
-    "exports": [
-      {
-        "name": "Base.value",
-        "scheme": "char"
+    "export_result": {
+      "exports": [
+        {
+          "name": "answer",
+          "scheme": "char * char"
+        },
+        {
+          "name": "Base.value",
+          "scheme": "Base.t"
+        },
+        {
+          "name": "Derived.pair",
+          "scheme": "'a. 'a -> 'a * 'a"
+        },
+        {
+          "name": "Derived.value",
+          "scheme": "Derived.t"
+        }
+      ],
+      "tag": "trusted_export"
+    },
+    "source_id": 0
+  },
+  "filename": "packages/typ/tests/fixtures/oracle/0603_include_base_char_a.ml",
+  "item_traces": [
+    {
+      "binding_names": [],
+      "exports_after": [],
+      "item_id": 0
+    },
+    {
+      "binding_names": [
+        "Base.value"
+      ],
+      "exports_after": [
+        {
+          "name": "Base.value",
+          "scheme": "Base.t"
+        }
+      ],
+      "item_id": 1
+    },
+    {
+      "binding_names": [
+        "Derived.value"
+      ],
+      "exports_after": [
+        {
+          "name": "Base.value",
+          "scheme": "Base.t"
+        },
+        {
+          "name": "Derived.value",
+          "scheme": "Derived.t"
+        }
+      ],
+      "item_id": 2
+    },
+    {
+      "binding_names": [
+        "Derived.pair"
+      ],
+      "exports_after": [
+        {
+          "name": "Base.value",
+          "scheme": "Base.t"
+        },
+        {
+          "name": "Derived.pair",
+          "scheme": "'a. 'a -> 'a * 'a"
+        },
+        {
+          "name": "Derived.value",
+          "scheme": "Derived.t"
+        }
+      ],
+      "item_id": 3
+    },
+    {
+      "binding_names": [
+        "answer"
+      ],
+      "exports_after": [
+        {
+          "name": "answer",
+          "scheme": "char * char"
+        },
+        {
+          "name": "Base.value",
+          "scheme": "Base.t"
+        },
+        {
+          "name": "Derived.pair",
+          "scheme": "'a. 'a -> 'a * 'a"
+        },
+        {
+          "name": "Derived.value",
+          "scheme": "Derived.t"
+        }
+      ],
+      "item_id": 4
+    }
+  ],
+  "item_tree": [
+    {
+      "declaration": {
+        "constructors": [],
+        "manifest": {
+          "tag": "alias",
+          "type": "char"
+        },
+        "nonrec": false,
+        "param_variances": [],
+        "type_constructor_id": {
+          "local_id": 0,
+          "owner": "packages/typ/tests/fixtures/oracle/0603_include_base_char_a"
+        },
+        "type_name": "t"
       },
-      {
-        "name": "Derived.pair",
-        "scheme": "'a -> 'a * 'a"
+      "item_id": 0,
+      "origin_id": 0,
+      "scope_path": [
+        "Base"
+      ],
+      "tag": "type"
+    },
+    {
+      "binding_ids": [
+        0
+      ],
+      "item_id": 1,
+      "origin_id": 4,
+      "recursive": false,
+      "scope_path": [
+        "Base"
+      ],
+      "tag": "value"
+    },
+    {
+      "item_id": 2,
+      "module_path": "Base",
+      "origin_id": 5,
+      "scope_path": [
+        "Derived"
+      ],
+      "tag": "include"
+    },
+    {
+      "binding_ids": [
+        1
+      ],
+      "item_id": 3,
+      "origin_id": 13,
+      "recursive": false,
+      "scope_path": [
+        "Derived"
+      ],
+      "tag": "value"
+    },
+    {
+      "binding_ids": [
+        2
+      ],
+      "item_id": 4,
+      "origin_id": 19,
+      "recursive": false,
+      "scope_path": [],
+      "tag": "value"
+    }
+  ],
+  "lowering_diagnostics": [],
+  "origin_map": [
+    {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 0,
+      "semantic_id": {
+        "id": 0,
+        "tag": "item"
       },
-      {
-        "name": "Derived.value",
-        "scheme": "char"
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 197,
+        "start": 181
       },
-      {
-        "name": "answer",
-        "scheme": "char * char"
+      "syntax_kind": "TYPE_DECL"
+    },
+    {
+      "kind": "pattern",
+      "label": "identifier_pattern",
+      "origin_id": 1,
+      "semantic_id": {
+        "id": 0,
+        "tag": "pattern"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 209,
+        "start": 203
+      },
+      "syntax_kind": "IDENT_PATTERN"
+    },
+    {
+      "kind": "expr",
+      "label": "char_literal",
+      "origin_id": 2,
+      "semantic_id": {
+        "id": 0,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 220,
+        "start": 217
+      },
+      "syntax_kind": "CHAR_LITERAL"
+    },
+    {
+      "kind": "binding",
+      "label": "binding",
+      "origin_id": 3,
+      "semantic_id": {
+        "id": 0,
+        "tag": "binding"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 221,
+        "start": 197
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 4,
+      "semantic_id": {
+        "id": 1,
+        "tag": "item"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 221,
+        "start": 197
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 5,
+      "semantic_id": {
+        "id": 2,
+        "tag": "item"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 265,
+        "start": 250
+      },
+      "syntax_kind": "INCLUDE_STMT"
+    },
+    {
+      "kind": "pattern",
+      "label": "identifier_pattern",
+      "origin_id": 6,
+      "semantic_id": {
+        "id": 1,
+        "tag": "pattern"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 276,
+        "start": 271
+      },
+      "syntax_kind": "IDENT_PATTERN"
+    },
+    {
+      "kind": "pattern",
+      "label": "identifier_pattern",
+      "origin_id": 7,
+      "semantic_id": {
+        "id": 2,
+        "tag": "pattern"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 278,
+        "start": 276
+      },
+      "syntax_kind": "IDENT_PATTERN"
+    },
+    {
+      "kind": "expr",
+      "label": "path_expression",
+      "origin_id": 8,
+      "semantic_id": {
+        "id": 1,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 283,
+        "start": 282
+      },
+      "syntax_kind": "IDENT_EXPR"
+    },
+    {
+      "kind": "expr",
+      "label": "path_expression",
+      "origin_id": 9,
+      "semantic_id": {
+        "id": 2,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 286,
+        "start": 284
+      },
+      "syntax_kind": "IDENT_EXPR"
+    },
+    {
+      "kind": "expr",
+      "label": "tuple_expression",
+      "origin_id": 10,
+      "semantic_id": {
+        "id": 3,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 286,
+        "start": 282
+      },
+      "syntax_kind": "TUPLE_EXPR"
+    },
+    {
+      "kind": "expr",
+      "label": "fun_expression",
+      "origin_id": 11,
+      "semantic_id": {
+        "id": 4,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 287,
+        "start": 265
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "binding",
+      "label": "binding",
+      "origin_id": 12,
+      "semantic_id": {
+        "id": 1,
+        "tag": "binding"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 287,
+        "start": 265
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 13,
+      "semantic_id": {
+        "id": 3,
+        "tag": "item"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 287,
+        "start": 265
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "pattern",
+      "label": "identifier_pattern",
+      "origin_id": 14,
+      "semantic_id": {
+        "id": 3,
+        "tag": "pattern"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 303,
+        "start": 296
+      },
+      "syntax_kind": "IDENT_PATTERN"
+    },
+    {
+      "kind": "expr",
+      "label": "qualified_path_expression",
+      "origin_id": 15,
+      "semantic_id": {
+        "id": 5,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 318,
+        "start": 305
+      },
+      "syntax_kind": "FIELD_ACCESS_EXPR"
+    },
+    {
+      "kind": "expr",
+      "label": "qualified_path_expression",
+      "origin_id": 16,
+      "semantic_id": {
+        "id": 6,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 332,
+        "start": 318
+      },
+      "syntax_kind": "FIELD_ACCESS_EXPR"
+    },
+    {
+      "kind": "expr",
+      "label": "apply_expression",
+      "origin_id": 17,
+      "semantic_id": {
+        "id": 7,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 332,
+        "start": 305
+      },
+      "syntax_kind": "APPLY_EXPR"
+    },
+    {
+      "kind": "binding",
+      "label": "binding",
+      "origin_id": 18,
+      "semantic_id": {
+        "id": 2,
+        "tag": "binding"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 332,
+        "start": 291
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 19,
+      "semantic_id": {
+        "id": 4,
+        "tag": "item"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 332,
+        "start": 291
+      },
+      "syntax_kind": "LET_BINDING"
+    }
+  ],
+  "parse_diagnostics": [],
+  "source_id": 0,
+  "type_index": [
+    {
+      "expr_id": 1,
+      "inferred_type": "'a",
+      "origin_id": 8,
+      "span": {
+        "end": 283,
+        "start": 282
       }
-    ],
-    "type_names": [
-      "Base.t",
-      "Derived.t"
-    ]
-  }
+    },
+    {
+      "expr_id": 2,
+      "inferred_type": "'a",
+      "origin_id": 9,
+      "span": {
+        "end": 286,
+        "start": 284
+      }
+    },
+    {
+      "expr_id": 0,
+      "inferred_type": "char",
+      "origin_id": 2,
+      "span": {
+        "end": 220,
+        "start": 217
+      }
+    },
+    {
+      "expr_id": 3,
+      "inferred_type": "'a * 'a",
+      "origin_id": 10,
+      "span": {
+        "end": 286,
+        "start": 282
+      }
+    },
+    {
+      "expr_id": 5,
+      "inferred_type": "char -> char * char",
+      "origin_id": 15,
+      "span": {
+        "end": 318,
+        "start": 305
+      }
+    },
+    {
+      "expr_id": 6,
+      "inferred_type": "char",
+      "origin_id": 16,
+      "span": {
+        "end": 332,
+        "start": 318
+      }
+    },
+    {
+      "expr_id": 4,
+      "inferred_type": "'a -> 'a * 'a",
+      "origin_id": 11,
+      "span": {
+        "end": 287,
+        "start": 265
+      }
+    },
+    {
+      "expr_id": 7,
+      "inferred_type": "char * char",
+      "origin_id": 17,
+      "span": {
+        "end": 332,
+        "start": 305
+      }
+    }
+  ],
+  "typing_diagnostics": []
 }

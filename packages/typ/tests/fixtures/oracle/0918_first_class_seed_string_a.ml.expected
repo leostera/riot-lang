@@ -1,1772 +1,1725 @@
 {
-  "comparison": {
-    "exports": {
-      "ocamlc": [
-        {
-          "name": "Seed.value",
-          "scheme": "t"
-        },
-        {
-          "name": "answer",
-          "scheme": "string"
-        },
-        {
-          "name": "packed",
-          "scheme": "(module BOX with type t = string)"
-        },
-        {
-          "name": "seed_of",
-          "scheme": "(module BOX with type t = 'a) -> 'a"
-        }
-      ],
-      "typ": [
-        {
-          "name": "Seed.value",
-          "scheme": "string"
-        },
-        {
-          "name": "answer",
-          "scheme": "string"
-        },
-        {
-          "name": "packed",
-          "scheme": "module sig val value : string end"
-        },
-        {
-          "name": "seed_of",
-          "scheme": "module sig val value : 'a end -> 'a"
-        }
-      ]
-    },
-    "normalized_exports": {
-      "ocamlc": [
-        {
-          "name": "Seed.value",
-          "scheme": "string"
-        },
-        {
-          "name": "answer",
-          "scheme": "string"
-        },
-        {
-          "name": "packed",
-          "scheme": "module sig val value : string end"
-        },
-        {
-          "name": "seed_of",
-          "scheme": "module sig val value : 'a end -> 'a"
-        }
-      ],
-      "typ": [
-        {
-          "name": "Seed.value",
-          "scheme": "string"
-        },
-        {
-          "name": "answer",
-          "scheme": "string"
-        },
-        {
-          "name": "packed",
-          "scheme": "module sig val value : string end"
-        },
-        {
-          "name": "seed_of",
-          "scheme": "module sig val value : 'a end -> 'a"
-        }
-      ]
-    },
-    "type_names": {
-      "ocamlc": [
-        "Seed.t"
-      ],
-      "typ": [
-        "Seed.t"
-      ]
-    }
-  },
-  "ocamlc": {
-    "exports": [
+  "body_arena": {
+    "bindings": [
       {
-        "name": "Seed.value",
-        "scheme": "t"
-      },
-      {
-        "name": "answer",
-        "scheme": "string"
-      },
-      {
-        "name": "packed",
-        "scheme": "(module BOX with type t = string)"
-      },
-      {
-        "name": "seed_of",
-        "scheme": "(module BOX with type t = 'a) -> 'a"
-      }
-    ],
-    "interface_text": "module type BOX = sig type t val value : t end\nmodule Seed : sig type t = string val value : t end\nval packed : (module BOX with type t = string)\nval seed_of : (module BOX with type t = 'a) -> 'a\nval answer : string\n",
-    "type_aliases": [
-      {
-        "manifest": "string",
-        "name": "Seed.t"
-      }
-    ],
-    "type_names": [
-      "Seed.t"
-    ],
-    "typedtree_text": "[\n  structure_item (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[9,178+0]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[12,225+3])\n    Tstr_modtype \"BOX/6\"\n      module_type (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[9,178+18]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[12,225+3])\n        Tmty_signature\n        [\n          signature_item (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[10,200+2]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[10,200+8])\n            Tsig_type Rec\n            [\n              type_declaration t/4 (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[10,200+2]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[10,200+8])\n                ptype_params =\n                  []\n                ptype_constraints =\n                  []\n                ptype_kind =\n                  Ttype_abstract\n                ptype_private = Public\n                ptype_manifest =\n                  None\n            ]\n          signature_item (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[11,209+2]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[11,209+15])\n            Tsig_value\n            value_description value/5 (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[11,209+2]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[11,209+15])\n              core_type (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[11,209+14]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[11,209+15])\n                Ttyp_constr \"t/4\"\n                []\n              []\n        ]\n  structure_item (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[14,230+0]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[17,293+3])\n    Tstr_module (Present)\n    Seed/9\n      module_expr (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[14,230+14]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[17,293+3])\n        Tmod_structure\n        [\n          structure_item (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[15,251+2]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[15,251+17])\n            Tstr_type Rec\n            [\n              type_declaration t/7 (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[15,251+2]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[15,251+17])\n                ptype_params =\n                  []\n                ptype_constraints =\n                  []\n                ptype_kind =\n                  Ttype_abstract\n                ptype_private = Public\n                ptype_manifest =\n                  Some\n                    core_type (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[15,251+11]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[15,251+17])\n                      Ttyp_constr \"string/17!\"\n                      []\n            ]\n          structure_item (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[16,269+2]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[16,269+23])\n            Tstr_value Nonrec\n            [\n              <def>\n                pattern (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[16,269+6]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[16,269+11])\n                  extra (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[16,269+6]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[16,269+11]) ghost\n                    Tpat_extra_constraint\n                    core_type (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[16,269+14]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[16,269+15])\n                      Ttyp_constr \"t/7\"\n                      []\n                  Tpat_var \"value/8\"\n                expression (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[16,269+18]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[16,269+23])\n                  extra (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[16,269+18]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[16,269+23]) ghost\n                    Texp_constraint\n                    core_type (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[16,269+14]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[16,269+15])\n                      Ttyp_constr \"t/7\"\n                      []\n                  Texp_constant Const_string(\"a\",(packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[16,269+20]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[16,269+21]),None)\n            ]\n        ]\n  structure_item (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[19,298+0]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[19,298+53])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[19,298+4]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[19,298+10])\n          Tpat_var \"packed/10\"\n        expression (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[19,298+13]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[19,298+53])\n          extra (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[19,298+13]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[19,298+53])\n            Texp_constraint\n            core_type (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[19,298+28]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[19,298+52])\n              Ttyp_package\n              package_type \"BOX/6\"\n                [\n                  with type \"t\"\n                  core_type (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[19,298+46]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[19,298+52])\n                    Ttyp_constr \"string/17!\"\n                    []\n                ]\n          Texp_pack          module_expr (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[19,298+21]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[19,298+25])\n            module_expr (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[19,298+21]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[19,298+25])\n              Tmod_ident \"Seed/9\"\n    ]\n  structure_item (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[21,353+0]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[22,413+9])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[21,353+4]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[21,353+11])\n          Tpat_var \"seed_of/20\"\n        expression (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[21,353+12]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[22,413+9]) ghost\n          extra (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[21,353+18]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[21,353+19])\n            Texp_newtype \"a\"\n          Texp_function\n          [\n            Nolabel\n            Param_pat\n              pattern (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[21,353+21]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[21,353+53])\n                extra (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[21,353+21]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[21,353+53])\n                  Tpat_extra_unpack\n                  Some\n                    package_type \"BOX/6\"\n                      [\n                        with type \"t\"\n                        core_type (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[21,353+51]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[21,353+52])\n                          Ttyp_constr \"a/22\"\n                          []\n                      ]\n                Tpat_var \"X/26\"\n          ]\n          Tfunction_body\n            expression (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[22,413+2]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[22,413+9])\n              extra (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[22,413+2]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[22,413+9])\n                Texp_constraint\n                core_type (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[21,353+56]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[21,353+57])\n                  Ttyp_constr \"a/22\"\n                  []\n              Texp_ident \"X/26.value\"\n    ]\n  structure_item (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[24,424+0]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[24,424+27])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[24,424+4]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[24,424+10])\n          Tpat_var \"answer/28\"\n        expression (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[24,424+13]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[24,424+27])\n          Texp_apply\n          expression (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[24,424+13]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[24,424+20])\n            Texp_ident \"seed_of/20\"\n          [\n            <arg>\n              Nolabel\n              expression (packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[24,424+21]..packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml[24,424+27])\n                Texp_ident \"packed/10\"\n          ]\n    ]\n]"
-  },
-  "typ": {
-    "body_arena": {
-      "bindings": [
-        {
-          "annotation": "Seed.t",
-          "binding_id": 0,
-          "name": "value",
-          "origin_id": 3,
-          "pattern_id": 0,
-          "recursive": false,
-          "scope_path": [
-            "Seed"
-          ],
-          "value_id": 0
-        },
-        {
-          "binding_id": 1,
-          "name": "packed",
-          "origin_id": 7,
-          "pattern_id": 1,
-          "recursive": false,
-          "scope_path": [],
-          "value_id": 1
-        },
-        {
-          "binding_id": 2,
-          "name": "seed_of",
-          "origin_id": 14,
-          "pattern_id": 2,
-          "recursive": false,
-          "scope_path": [],
-          "value_id": 4
-        },
-        {
-          "binding_id": 3,
-          "name": "answer",
-          "origin_id": 20,
-          "pattern_id": 4,
-          "recursive": false,
-          "scope_path": [],
-          "value_id": 7
-        }
-      ],
-      "expressions": [
-        {
-          "desc": {
-            "tag": "string",
-            "value": "a"
-          },
-          "expr_id": 0,
-          "origin_id": 2
-        },
-        {
-          "desc": {
-            "module_path": "Seed",
-            "package_type": "(module sig val value : string end)",
-            "tag": "module_pack"
-          },
-          "expr_id": 1,
-          "origin_id": 6
-        },
-        {
-          "desc": {
-            "name": "X.value",
-            "tag": "var"
-          },
-          "expr_id": 2,
-          "origin_id": 11
-        },
-        {
-          "desc": {
-            "tag": "coerce",
-            "target_type": "'a",
-            "value_id": 2
-          },
-          "expr_id": 3,
-          "origin_id": 12
-        },
-        {
-          "desc": {
-            "body_id": 3,
-            "parameters": [
-              {
-                "default_value_id": null,
-                "label": {
-                  "tag": "positional"
-                },
-                "pattern_id": 3
-              }
-            ],
-            "tag": "fun"
-          },
-          "expr_id": 4,
-          "origin_id": 13
-        },
-        {
-          "desc": {
-            "name": "seed_of",
-            "tag": "var"
-          },
-          "expr_id": 5,
-          "origin_id": 17
-        },
-        {
-          "desc": {
-            "name": "packed",
-            "tag": "var"
-          },
-          "expr_id": 6,
-          "origin_id": 18
-        },
-        {
-          "desc": {
-            "arguments": [
-              {
-                "implicit": false,
-                "label": {
-                  "tag": "positional"
-                },
-                "value_id": 6
-              }
-            ],
-            "callee_id": 5,
-            "tag": "apply"
-          },
-          "expr_id": 7,
-          "origin_id": 19
-        }
-      ],
-      "patterns": [
-        {
-          "desc": {
-            "name": "value",
-            "tag": "var"
-          },
-          "origin_id": 1,
-          "pat_id": 0
-        },
-        {
-          "desc": {
-            "name": "packed",
-            "tag": "var"
-          },
-          "origin_id": 5,
-          "pat_id": 1
-        },
-        {
-          "desc": {
-            "name": "seed_of",
-            "tag": "var"
-          },
-          "origin_id": 9,
-          "pat_id": 2
-        },
-        {
-          "desc": {
-            "module_name": "X",
-            "package_type": "(module sig val value : 'a end)",
-            "tag": "first_class_module"
-          },
-          "origin_id": 10,
-          "pat_id": 3
-        },
-        {
-          "desc": {
-            "name": "answer",
-            "tag": "var"
-          },
-          "origin_id": 16,
-          "pat_id": 4
-        }
-      ]
-    },
-    "exports": [
-      {
-        "name": "answer",
-        "scheme": "string"
-      },
-      {
-        "name": "packed",
-        "scheme": "(module sig val value : string end)"
-      },
-      {
-        "name": "seed_of",
-        "scheme": "'a. (module sig val value : 'a end) -> 'a"
-      },
-      {
-        "name": "Seed.value",
-        "scheme": "string"
-      }
-    ],
-    "expr_traces": [
-      {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          }
+        "annotation": "Seed.t",
+        "binding_id": 0,
+        "name": "value",
+        "origin_id": 3,
+        "pattern_id": 0,
+        "recursive": false,
+        "scope_path": [
+          "Seed"
         ],
-        "expr_id": 0,
-        "inferred_type": "string",
-        "origin": {
-          "label": "string_literal",
-          "span": {
-            "end": 291,
-            "start": 288
-          },
-          "syntax_kind": "STRING_LITERAL"
+        "value_id": 0
+      },
+      {
+        "binding_id": 1,
+        "name": "packed",
+        "origin_id": 7,
+        "pattern_id": 1,
+        "recursive": false,
+        "scope_path": [],
+        "value_id": 1
+      },
+      {
+        "binding_id": 2,
+        "name": "seed_of",
+        "origin_id": 14,
+        "pattern_id": 2,
+        "recursive": false,
+        "scope_path": [],
+        "value_id": 4
+      },
+      {
+        "binding_id": 3,
+        "name": "answer",
+        "origin_id": 20,
+        "pattern_id": 4,
+        "recursive": false,
+        "scope_path": [],
+        "value_id": 7
+      }
+    ],
+    "expressions": [
+      {
+        "desc": {
+          "tag": "string",
+          "value": "a"
         },
+        "expr_id": 0,
         "origin_id": 2
       },
       {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "Seed.value",
-            "scheme": "string"
-          }
-        ],
-        "expr_id": 1,
-        "inferred_type": "(module sig val value : string end)",
-        "origin": {
-          "label": "module_pack_expression",
-          "span": {
-            "end": 351,
-            "start": 310
-          },
-          "syntax_kind": "FIRST_CLASS_MODULE_EXPR"
+        "desc": {
+          "module_path": "Seed",
+          "package_type": "(module sig val value : string end)",
+          "tag": "module_pack"
         },
+        "expr_id": 1,
         "origin_id": 6
       },
       {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "packed",
-            "scheme": "(module sig val value : string end)"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "Seed.value",
-            "scheme": "string"
-          },
-          {
-            "name": "X.value",
-            "scheme": "'a"
-          }
-        ],
-        "expr_id": 2,
-        "inferred_type": "'a",
-        "origin": {
-          "label": "qualified_path_expression",
-          "span": {
-            "end": 422,
-            "start": 412
-          },
-          "syntax_kind": "FIELD_ACCESS_EXPR"
+        "desc": {
+          "name": "X.value",
+          "tag": "var"
         },
+        "expr_id": 2,
         "origin_id": 11
       },
       {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "packed",
-            "scheme": "(module sig val value : string end)"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "Seed.value",
-            "scheme": "string"
-          },
-          {
-            "name": "X.value",
-            "scheme": "'a"
-          }
-        ],
-        "expr_id": 3,
-        "inferred_type": "'a",
-        "origin": {
-          "label": "annotated_function_body",
-          "span": {
-            "end": 422,
-            "start": 351
-          },
-          "syntax_kind": "LET_BINDING"
+        "desc": {
+          "tag": "coerce",
+          "target_type": "'a",
+          "value_id": 2
         },
+        "expr_id": 3,
         "origin_id": 12
       },
       {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "packed",
-            "scheme": "(module sig val value : string end)"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "Seed.value",
-            "scheme": "string"
-          }
-        ],
-        "expr_id": 4,
-        "inferred_type": "(module sig val value : 'a end) -> 'a",
-        "origin": {
-          "label": "fun_expression",
-          "span": {
-            "end": 422,
-            "start": 351
-          },
-          "syntax_kind": "LET_BINDING"
+        "desc": {
+          "body_id": 3,
+          "parameters": [
+            {
+              "default_value_id": null,
+              "label": {
+                "tag": "positional"
+              },
+              "pattern_id": 3
+            }
+          ],
+          "tag": "fun"
         },
+        "expr_id": 4,
         "origin_id": 13
       },
       {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "packed",
-            "scheme": "(module sig val value : string end)"
-          },
-          {
-            "name": "seed_of",
-            "scheme": "'a. (module sig val value : 'a end) -> 'a"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "Seed.value",
-            "scheme": "string"
-          }
-        ],
-        "expr_id": 5,
-        "inferred_type": "(module sig val value : string end) -> string",
-        "origin": {
-          "label": "path_expression",
-          "span": {
-            "end": 444,
-            "start": 436
-          },
-          "syntax_kind": "IDENT_EXPR"
+        "desc": {
+          "name": "seed_of",
+          "tag": "var"
         },
+        "expr_id": 5,
         "origin_id": 17
       },
       {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "packed",
-            "scheme": "(module sig val value : string end)"
-          },
-          {
-            "name": "seed_of",
-            "scheme": "'a. (module sig val value : 'a end) -> 'a"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "Seed.value",
-            "scheme": "string"
-          }
-        ],
-        "expr_id": 6,
-        "inferred_type": "(module sig val value : string end)",
-        "origin": {
-          "label": "path_expression",
-          "span": {
-            "end": 451,
-            "start": 444
-          },
-          "syntax_kind": "IDENT_EXPR"
+        "desc": {
+          "name": "packed",
+          "tag": "var"
         },
+        "expr_id": 6,
         "origin_id": 18
       },
       {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "packed",
-            "scheme": "(module sig val value : string end)"
-          },
-          {
-            "name": "seed_of",
-            "scheme": "'a. (module sig val value : 'a end) -> 'a"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "Seed.value",
-            "scheme": "string"
-          }
-        ],
-        "expr_id": 7,
-        "inferred_type": "string",
-        "origin": {
-          "label": "apply_expression",
-          "span": {
-            "end": 451,
-            "start": 436
-          },
-          "syntax_kind": "APPLY_EXPR"
+        "desc": {
+          "arguments": [
+            {
+              "implicit": false,
+              "label": {
+                "tag": "positional"
+              },
+              "value_id": 6
+            }
+          ],
+          "callee_id": 5,
+          "tag": "apply"
         },
+        "expr_id": 7,
         "origin_id": 19
       }
     ],
-    "file_summary": {
-      "completeness": "complete",
-      "export_result": {
-        "exports": [
-          {
-            "name": "answer",
-            "scheme": "string"
-          },
-          {
-            "name": "packed",
-            "scheme": "(module sig val value : string end)"
-          },
-          {
-            "name": "seed_of",
-            "scheme": "'a. (module sig val value : 'a end) -> 'a"
-          },
-          {
-            "name": "Seed.value",
-            "scheme": "string"
-          }
-        ],
-        "tag": "trusted_export"
-      },
-      "source_id": 0
-    },
-    "filename": "packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml",
-    "item_traces": [
+    "patterns": [
       {
-        "binding_names": [],
-        "exports_after": [],
-        "item_id": 0
-      },
-      {
-        "binding_names": [
-          "Seed.value"
-        ],
-        "exports_after": [
-          {
-            "name": "Seed.value",
-            "scheme": "string"
-          }
-        ],
-        "item_id": 1
-      },
-      {
-        "binding_names": [
-          "packed"
-        ],
-        "exports_after": [
-          {
-            "name": "packed",
-            "scheme": "(module sig val value : string end)"
-          },
-          {
-            "name": "Seed.value",
-            "scheme": "string"
-          }
-        ],
-        "item_id": 2
-      },
-      {
-        "binding_names": [
-          "seed_of"
-        ],
-        "exports_after": [
-          {
-            "name": "packed",
-            "scheme": "(module sig val value : string end)"
-          },
-          {
-            "name": "seed_of",
-            "scheme": "'a. (module sig val value : 'a end) -> 'a"
-          },
-          {
-            "name": "Seed.value",
-            "scheme": "string"
-          }
-        ],
-        "item_id": 3
-      },
-      {
-        "binding_names": [
-          "answer"
-        ],
-        "exports_after": [
-          {
-            "name": "answer",
-            "scheme": "string"
-          },
-          {
-            "name": "packed",
-            "scheme": "(module sig val value : string end)"
-          },
-          {
-            "name": "seed_of",
-            "scheme": "'a. (module sig val value : 'a end) -> 'a"
-          },
-          {
-            "name": "Seed.value",
-            "scheme": "string"
-          }
-        ],
-        "item_id": 4
-      }
-    ],
-    "item_tree": [
-      {
-        "declaration": {
-          "constructors": [],
-          "manifest": {
-            "tag": "alias",
-            "type": "string"
-          },
-          "nonrec": false,
-          "param_variances": [],
-          "type_constructor_id": {
-            "local_id": 1,
-            "owner": "packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a"
-          },
-          "type_name": "t"
+        "desc": {
+          "name": "value",
+          "tag": "var"
         },
-        "item_id": 0,
-        "origin_id": 0,
-        "scope_path": [
-          "Seed"
-        ],
-        "tag": "type"
-      },
-      {
-        "binding_ids": [
-          0
-        ],
-        "item_id": 1,
-        "origin_id": 4,
-        "recursive": false,
-        "scope_path": [
-          "Seed"
-        ],
-        "tag": "value"
-      },
-      {
-        "binding_ids": [
-          1
-        ],
-        "item_id": 2,
-        "origin_id": 8,
-        "recursive": false,
-        "scope_path": [],
-        "tag": "value"
-      },
-      {
-        "binding_ids": [
-          2
-        ],
-        "item_id": 3,
-        "origin_id": 15,
-        "recursive": false,
-        "scope_path": [],
-        "tag": "value"
-      },
-      {
-        "binding_ids": [
-          3
-        ],
-        "item_id": 4,
-        "origin_id": 21,
-        "recursive": false,
-        "scope_path": [],
-        "tag": "value"
-      }
-    ],
-    "lowering_diagnostics": [],
-    "origin_map": [
-      {
-        "kind": "item",
-        "label": "item",
-        "origin_id": 0,
-        "semantic_id": {
-          "id": 0,
-          "tag": "item"
-        },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 268,
-          "start": 250
-        },
-        "syntax_kind": "TYPE_DECL"
-      },
-      {
-        "kind": "pattern",
-        "label": "identifier_pattern",
         "origin_id": 1,
-        "semantic_id": {
-          "id": 0,
-          "tag": "pattern"
-        },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 280,
-          "start": 274
-        },
-        "syntax_kind": "IDENT_PATTERN"
+        "pat_id": 0
       },
       {
-        "kind": "expr",
-        "label": "string_literal",
-        "origin_id": 2,
-        "semantic_id": {
-          "id": 0,
-          "tag": "expr"
+        "desc": {
+          "name": "packed",
+          "tag": "var"
         },
-        "source_id": 0,
-        "source_revision": 0,
+        "origin_id": 5,
+        "pat_id": 1
+      },
+      {
+        "desc": {
+          "name": "seed_of",
+          "tag": "var"
+        },
+        "origin_id": 9,
+        "pat_id": 2
+      },
+      {
+        "desc": {
+          "module_name": "X",
+          "package_type": "(module sig val value : 'a end)",
+          "tag": "first_class_module"
+        },
+        "origin_id": 10,
+        "pat_id": 3
+      },
+      {
+        "desc": {
+          "name": "answer",
+          "tag": "var"
+        },
+        "origin_id": 16,
+        "pat_id": 4
+      }
+    ]
+  },
+  "exports": [
+    {
+      "name": "answer",
+      "scheme": "string"
+    },
+    {
+      "name": "packed",
+      "scheme": "(module sig val value : string end)"
+    },
+    {
+      "name": "seed_of",
+      "scheme": "'a. (module sig val value : 'a end) -> 'a"
+    },
+    {
+      "name": "Seed.value",
+      "scheme": "Seed.t"
+    }
+  ],
+  "expr_traces": [
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        }
+      ],
+      "expr_id": 0,
+      "inferred_type": "string",
+      "origin": {
+        "label": "string_literal",
         "span": {
           "end": 291,
           "start": 288
         },
         "syntax_kind": "STRING_LITERAL"
       },
-      {
-        "kind": "binding",
-        "label": "binding",
-        "origin_id": 3,
-        "semantic_id": {
-          "id": 0,
-          "tag": "binding"
+      "origin_id": 2
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 292,
-          "start": 268
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
         },
-        "syntax_kind": "LET_BINDING"
-      },
-      {
-        "kind": "item",
-        "label": "item",
-        "origin_id": 4,
-        "semantic_id": {
-          "id": 1,
-          "tag": "item"
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 292,
-          "start": 268
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
-        "syntax_kind": "LET_BINDING"
-      },
-      {
-        "kind": "pattern",
-        "label": "identifier_pattern",
-        "origin_id": 5,
-        "semantic_id": {
-          "id": 1,
-          "tag": "pattern"
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 308,
-          "start": 301
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
         },
-        "syntax_kind": "IDENT_PATTERN"
-      },
-      {
-        "kind": "expr",
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Seed.value",
+          "scheme": "Seed.t"
+        }
+      ],
+      "expr_id": 1,
+      "inferred_type": "(module sig val value : string end)",
+      "origin": {
         "label": "module_pack_expression",
-        "origin_id": 6,
-        "semantic_id": {
-          "id": 1,
-          "tag": "expr"
-        },
-        "source_id": 0,
-        "source_revision": 0,
         "span": {
           "end": 351,
           "start": 310
         },
         "syntax_kind": "FIRST_CLASS_MODULE_EXPR"
       },
-      {
-        "kind": "binding",
-        "label": "binding",
-        "origin_id": 7,
-        "semantic_id": {
-          "id": 1,
-          "tag": "binding"
+      "origin_id": 6
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 351,
-          "start": 296
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
         },
-        "syntax_kind": "LET_BINDING"
-      },
-      {
-        "kind": "item",
-        "label": "item",
-        "origin_id": 8,
-        "semantic_id": {
-          "id": 2,
-          "tag": "item"
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 351,
-          "start": 296
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
-        "syntax_kind": "LET_BINDING"
-      },
-      {
-        "kind": "pattern",
-        "label": "identifier_pattern",
-        "origin_id": 9,
-        "semantic_id": {
-          "id": 2,
-          "tag": "pattern"
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 364,
-          "start": 356
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
         },
-        "syntax_kind": "IDENT_PATTERN"
-      },
-      {
-        "kind": "pattern",
-        "label": "first_class_module_pattern",
-        "origin_id": 10,
-        "semantic_id": {
-          "id": 3,
-          "tag": "pattern"
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 406,
-          "start": 373
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
-        "syntax_kind": "FIRST_CLASS_MODULE_PATTERN"
-      },
-      {
-        "kind": "expr",
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "packed",
+          "scheme": "(module sig val value : string end)"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Seed.value",
+          "scheme": "Seed.t"
+        },
+        {
+          "name": "X.value",
+          "scheme": "'a"
+        }
+      ],
+      "expr_id": 2,
+      "inferred_type": "'a",
+      "origin": {
         "label": "qualified_path_expression",
-        "origin_id": 11,
-        "semantic_id": {
-          "id": 2,
-          "tag": "expr"
-        },
-        "source_id": 0,
-        "source_revision": 0,
         "span": {
           "end": 422,
           "start": 412
         },
         "syntax_kind": "FIELD_ACCESS_EXPR"
       },
-      {
-        "kind": "expr",
+      "origin_id": 11
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "packed",
+          "scheme": "(module sig val value : string end)"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Seed.value",
+          "scheme": "Seed.t"
+        },
+        {
+          "name": "X.value",
+          "scheme": "'a"
+        }
+      ],
+      "expr_id": 3,
+      "inferred_type": "'a",
+      "origin": {
         "label": "annotated_function_body",
-        "origin_id": 12,
-        "semantic_id": {
-          "id": 3,
-          "tag": "expr"
-        },
-        "source_id": 0,
-        "source_revision": 0,
         "span": {
           "end": 422,
           "start": 351
         },
         "syntax_kind": "LET_BINDING"
       },
-      {
-        "kind": "expr",
+      "origin_id": 12
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "packed",
+          "scheme": "(module sig val value : string end)"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Seed.value",
+          "scheme": "Seed.t"
+        }
+      ],
+      "expr_id": 4,
+      "inferred_type": "(module sig val value : 'a end) -> 'a",
+      "origin": {
         "label": "fun_expression",
-        "origin_id": 13,
-        "semantic_id": {
-          "id": 4,
-          "tag": "expr"
-        },
-        "source_id": 0,
-        "source_revision": 0,
         "span": {
           "end": 422,
           "start": 351
         },
         "syntax_kind": "LET_BINDING"
       },
-      {
-        "kind": "binding",
-        "label": "binding",
-        "origin_id": 14,
-        "semantic_id": {
-          "id": 2,
-          "tag": "binding"
+      "origin_id": 13
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 422,
-          "start": 351
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
         },
-        "syntax_kind": "LET_BINDING"
-      },
-      {
-        "kind": "item",
-        "label": "item",
-        "origin_id": 15,
-        "semantic_id": {
-          "id": 3,
-          "tag": "item"
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 422,
-          "start": 351
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
-        "syntax_kind": "LET_BINDING"
-      },
-      {
-        "kind": "pattern",
-        "label": "identifier_pattern",
-        "origin_id": 16,
-        "semantic_id": {
-          "id": 4,
-          "tag": "pattern"
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 434,
-          "start": 427
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
         },
-        "syntax_kind": "IDENT_PATTERN"
-      },
-      {
-        "kind": "expr",
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "packed",
+          "scheme": "(module sig val value : string end)"
+        },
+        {
+          "name": "seed_of",
+          "scheme": "'a. (module sig val value : 'a end) -> 'a"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Seed.value",
+          "scheme": "Seed.t"
+        }
+      ],
+      "expr_id": 5,
+      "inferred_type": "(module sig val value : string end) -> string",
+      "origin": {
         "label": "path_expression",
-        "origin_id": 17,
-        "semantic_id": {
-          "id": 5,
-          "tag": "expr"
-        },
-        "source_id": 0,
-        "source_revision": 0,
         "span": {
           "end": 444,
           "start": 436
         },
         "syntax_kind": "IDENT_EXPR"
       },
-      {
-        "kind": "expr",
-        "label": "path_expression",
-        "origin_id": 18,
-        "semantic_id": {
-          "id": 6,
-          "tag": "expr"
+      "origin_id": 17
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
         },
-        "source_id": 0,
-        "source_revision": 0,
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "packed",
+          "scheme": "(module sig val value : string end)"
+        },
+        {
+          "name": "seed_of",
+          "scheme": "'a. (module sig val value : 'a end) -> 'a"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Seed.value",
+          "scheme": "Seed.t"
+        }
+      ],
+      "expr_id": 6,
+      "inferred_type": "(module sig val value : string end)",
+      "origin": {
+        "label": "path_expression",
         "span": {
           "end": 451,
           "start": 444
         },
         "syntax_kind": "IDENT_EXPR"
       },
-      {
-        "kind": "expr",
-        "label": "apply_expression",
-        "origin_id": 19,
-        "semantic_id": {
-          "id": 7,
-          "tag": "expr"
+      "origin_id": 18
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
         },
-        "source_id": 0,
-        "source_revision": 0,
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "packed",
+          "scheme": "(module sig val value : string end)"
+        },
+        {
+          "name": "seed_of",
+          "scheme": "'a. (module sig val value : 'a end) -> 'a"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "Seed.value",
+          "scheme": "Seed.t"
+        }
+      ],
+      "expr_id": 7,
+      "inferred_type": "string",
+      "origin": {
+        "label": "apply_expression",
         "span": {
           "end": 451,
           "start": 436
         },
         "syntax_kind": "APPLY_EXPR"
       },
-      {
-        "kind": "binding",
-        "label": "binding",
-        "origin_id": 20,
-        "semantic_id": {
-          "id": 3,
-          "tag": "binding"
-        },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 451,
-          "start": 422
-        },
-        "syntax_kind": "LET_BINDING"
-      },
-      {
-        "kind": "item",
-        "label": "item",
-        "origin_id": 21,
-        "semantic_id": {
-          "id": 4,
-          "tag": "item"
-        },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 451,
-          "start": 422
-        },
-        "syntax_kind": "LET_BINDING"
-      }
-    ],
-    "parse_diagnostics": [],
-    "source_id": 0,
-    "type_index": [
-      {
-        "expr_id": 0,
-        "inferred_type": "string",
-        "origin_id": 2,
-        "span": {
-          "end": 291,
-          "start": 288
-        }
-      },
-      {
-        "expr_id": 6,
-        "inferred_type": "(module sig val value : string end)",
-        "origin_id": 18,
-        "span": {
-          "end": 451,
-          "start": 444
-        }
-      },
-      {
-        "expr_id": 5,
-        "inferred_type": "(module sig val value : string end) -> string",
-        "origin_id": 17,
-        "span": {
-          "end": 444,
-          "start": 436
-        }
-      },
-      {
-        "expr_id": 2,
-        "inferred_type": "'a",
-        "origin_id": 11,
-        "span": {
-          "end": 422,
-          "start": 412
-        }
-      },
-      {
-        "expr_id": 7,
-        "inferred_type": "string",
-        "origin_id": 19,
-        "span": {
-          "end": 451,
-          "start": 436
-        }
-      },
-      {
-        "expr_id": 1,
-        "inferred_type": "(module sig val value : string end)",
-        "origin_id": 6,
-        "span": {
-          "end": 351,
-          "start": 310
-        }
-      },
-      {
-        "expr_id": 3,
-        "inferred_type": "'a",
-        "origin_id": 12,
-        "span": {
-          "end": 422,
-          "start": 351
-        }
-      },
-      {
-        "expr_id": 4,
-        "inferred_type": "(module sig val value : 'a end) -> 'a",
-        "origin_id": 13,
-        "span": {
-          "end": 422,
-          "start": 351
-        }
-      }
-    ],
-    "typing_diagnostics": []
-  },
-  "typ_summary": {
+      "origin_id": 19
+    }
+  ],
+  "file_summary": {
     "completeness": "complete",
-    "exports": [
-      {
-        "name": "Seed.value",
-        "scheme": "string"
+    "export_result": {
+      "exports": [
+        {
+          "name": "answer",
+          "scheme": "string"
+        },
+        {
+          "name": "packed",
+          "scheme": "(module sig val value : string end)"
+        },
+        {
+          "name": "seed_of",
+          "scheme": "'a. (module sig val value : 'a end) -> 'a"
+        },
+        {
+          "name": "Seed.value",
+          "scheme": "Seed.t"
+        }
+      ],
+      "tag": "trusted_export"
+    },
+    "source_id": 0
+  },
+  "filename": "packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a.ml",
+  "item_traces": [
+    {
+      "binding_names": [],
+      "exports_after": [],
+      "item_id": 0
+    },
+    {
+      "binding_names": [
+        "Seed.value"
+      ],
+      "exports_after": [
+        {
+          "name": "Seed.value",
+          "scheme": "Seed.t"
+        }
+      ],
+      "item_id": 1
+    },
+    {
+      "binding_names": [
+        "packed"
+      ],
+      "exports_after": [
+        {
+          "name": "packed",
+          "scheme": "(module sig val value : string end)"
+        },
+        {
+          "name": "Seed.value",
+          "scheme": "Seed.t"
+        }
+      ],
+      "item_id": 2
+    },
+    {
+      "binding_names": [
+        "seed_of"
+      ],
+      "exports_after": [
+        {
+          "name": "packed",
+          "scheme": "(module sig val value : string end)"
+        },
+        {
+          "name": "seed_of",
+          "scheme": "'a. (module sig val value : 'a end) -> 'a"
+        },
+        {
+          "name": "Seed.value",
+          "scheme": "Seed.t"
+        }
+      ],
+      "item_id": 3
+    },
+    {
+      "binding_names": [
+        "answer"
+      ],
+      "exports_after": [
+        {
+          "name": "answer",
+          "scheme": "string"
+        },
+        {
+          "name": "packed",
+          "scheme": "(module sig val value : string end)"
+        },
+        {
+          "name": "seed_of",
+          "scheme": "'a. (module sig val value : 'a end) -> 'a"
+        },
+        {
+          "name": "Seed.value",
+          "scheme": "Seed.t"
+        }
+      ],
+      "item_id": 4
+    }
+  ],
+  "item_tree": [
+    {
+      "declaration": {
+        "constructors": [],
+        "manifest": {
+          "tag": "alias",
+          "type": "string"
+        },
+        "nonrec": false,
+        "param_variances": [],
+        "type_constructor_id": {
+          "local_id": 1,
+          "owner": "packages/typ/tests/fixtures/oracle/0918_first_class_seed_string_a"
+        },
+        "type_name": "t"
       },
-      {
-        "name": "answer",
-        "scheme": "string"
+      "item_id": 0,
+      "origin_id": 0,
+      "scope_path": [
+        "Seed"
+      ],
+      "tag": "type"
+    },
+    {
+      "binding_ids": [
+        0
+      ],
+      "item_id": 1,
+      "origin_id": 4,
+      "recursive": false,
+      "scope_path": [
+        "Seed"
+      ],
+      "tag": "value"
+    },
+    {
+      "binding_ids": [
+        1
+      ],
+      "item_id": 2,
+      "origin_id": 8,
+      "recursive": false,
+      "scope_path": [],
+      "tag": "value"
+    },
+    {
+      "binding_ids": [
+        2
+      ],
+      "item_id": 3,
+      "origin_id": 15,
+      "recursive": false,
+      "scope_path": [],
+      "tag": "value"
+    },
+    {
+      "binding_ids": [
+        3
+      ],
+      "item_id": 4,
+      "origin_id": 21,
+      "recursive": false,
+      "scope_path": [],
+      "tag": "value"
+    }
+  ],
+  "lowering_diagnostics": [],
+  "origin_map": [
+    {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 0,
+      "semantic_id": {
+        "id": 0,
+        "tag": "item"
       },
-      {
-        "name": "packed",
-        "scheme": "module sig val value : string end"
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 268,
+        "start": 250
       },
-      {
-        "name": "seed_of",
-        "scheme": "module sig val value : 'a end -> 'a"
+      "syntax_kind": "TYPE_DECL"
+    },
+    {
+      "kind": "pattern",
+      "label": "identifier_pattern",
+      "origin_id": 1,
+      "semantic_id": {
+        "id": 0,
+        "tag": "pattern"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 280,
+        "start": 274
+      },
+      "syntax_kind": "IDENT_PATTERN"
+    },
+    {
+      "kind": "expr",
+      "label": "string_literal",
+      "origin_id": 2,
+      "semantic_id": {
+        "id": 0,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 291,
+        "start": 288
+      },
+      "syntax_kind": "STRING_LITERAL"
+    },
+    {
+      "kind": "binding",
+      "label": "binding",
+      "origin_id": 3,
+      "semantic_id": {
+        "id": 0,
+        "tag": "binding"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 292,
+        "start": 268
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 4,
+      "semantic_id": {
+        "id": 1,
+        "tag": "item"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 292,
+        "start": 268
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "pattern",
+      "label": "identifier_pattern",
+      "origin_id": 5,
+      "semantic_id": {
+        "id": 1,
+        "tag": "pattern"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 308,
+        "start": 301
+      },
+      "syntax_kind": "IDENT_PATTERN"
+    },
+    {
+      "kind": "expr",
+      "label": "module_pack_expression",
+      "origin_id": 6,
+      "semantic_id": {
+        "id": 1,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 351,
+        "start": 310
+      },
+      "syntax_kind": "FIRST_CLASS_MODULE_EXPR"
+    },
+    {
+      "kind": "binding",
+      "label": "binding",
+      "origin_id": 7,
+      "semantic_id": {
+        "id": 1,
+        "tag": "binding"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 351,
+        "start": 296
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 8,
+      "semantic_id": {
+        "id": 2,
+        "tag": "item"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 351,
+        "start": 296
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "pattern",
+      "label": "identifier_pattern",
+      "origin_id": 9,
+      "semantic_id": {
+        "id": 2,
+        "tag": "pattern"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 364,
+        "start": 356
+      },
+      "syntax_kind": "IDENT_PATTERN"
+    },
+    {
+      "kind": "pattern",
+      "label": "first_class_module_pattern",
+      "origin_id": 10,
+      "semantic_id": {
+        "id": 3,
+        "tag": "pattern"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 406,
+        "start": 373
+      },
+      "syntax_kind": "FIRST_CLASS_MODULE_PATTERN"
+    },
+    {
+      "kind": "expr",
+      "label": "qualified_path_expression",
+      "origin_id": 11,
+      "semantic_id": {
+        "id": 2,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 422,
+        "start": 412
+      },
+      "syntax_kind": "FIELD_ACCESS_EXPR"
+    },
+    {
+      "kind": "expr",
+      "label": "annotated_function_body",
+      "origin_id": 12,
+      "semantic_id": {
+        "id": 3,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 422,
+        "start": 351
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "expr",
+      "label": "fun_expression",
+      "origin_id": 13,
+      "semantic_id": {
+        "id": 4,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 422,
+        "start": 351
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "binding",
+      "label": "binding",
+      "origin_id": 14,
+      "semantic_id": {
+        "id": 2,
+        "tag": "binding"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 422,
+        "start": 351
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 15,
+      "semantic_id": {
+        "id": 3,
+        "tag": "item"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 422,
+        "start": 351
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "pattern",
+      "label": "identifier_pattern",
+      "origin_id": 16,
+      "semantic_id": {
+        "id": 4,
+        "tag": "pattern"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 434,
+        "start": 427
+      },
+      "syntax_kind": "IDENT_PATTERN"
+    },
+    {
+      "kind": "expr",
+      "label": "path_expression",
+      "origin_id": 17,
+      "semantic_id": {
+        "id": 5,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 444,
+        "start": 436
+      },
+      "syntax_kind": "IDENT_EXPR"
+    },
+    {
+      "kind": "expr",
+      "label": "path_expression",
+      "origin_id": 18,
+      "semantic_id": {
+        "id": 6,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 451,
+        "start": 444
+      },
+      "syntax_kind": "IDENT_EXPR"
+    },
+    {
+      "kind": "expr",
+      "label": "apply_expression",
+      "origin_id": 19,
+      "semantic_id": {
+        "id": 7,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 451,
+        "start": 436
+      },
+      "syntax_kind": "APPLY_EXPR"
+    },
+    {
+      "kind": "binding",
+      "label": "binding",
+      "origin_id": 20,
+      "semantic_id": {
+        "id": 3,
+        "tag": "binding"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 451,
+        "start": 422
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 21,
+      "semantic_id": {
+        "id": 4,
+        "tag": "item"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 451,
+        "start": 422
+      },
+      "syntax_kind": "LET_BINDING"
+    }
+  ],
+  "parse_diagnostics": [],
+  "source_id": 0,
+  "type_index": [
+    {
+      "expr_id": 0,
+      "inferred_type": "string",
+      "origin_id": 2,
+      "span": {
+        "end": 291,
+        "start": 288
       }
-    ],
-    "type_names": [
-      "Seed.t"
-    ]
-  }
+    },
+    {
+      "expr_id": 6,
+      "inferred_type": "(module sig val value : string end)",
+      "origin_id": 18,
+      "span": {
+        "end": 451,
+        "start": 444
+      }
+    },
+    {
+      "expr_id": 5,
+      "inferred_type": "(module sig val value : string end) -> string",
+      "origin_id": 17,
+      "span": {
+        "end": 444,
+        "start": 436
+      }
+    },
+    {
+      "expr_id": 2,
+      "inferred_type": "'a",
+      "origin_id": 11,
+      "span": {
+        "end": 422,
+        "start": 412
+      }
+    },
+    {
+      "expr_id": 7,
+      "inferred_type": "string",
+      "origin_id": 19,
+      "span": {
+        "end": 451,
+        "start": 436
+      }
+    },
+    {
+      "expr_id": 1,
+      "inferred_type": "(module sig val value : string end)",
+      "origin_id": 6,
+      "span": {
+        "end": 351,
+        "start": 310
+      }
+    },
+    {
+      "expr_id": 3,
+      "inferred_type": "'a",
+      "origin_id": 12,
+      "span": {
+        "end": 422,
+        "start": 351
+      }
+    },
+    {
+      "expr_id": 4,
+      "inferred_type": "(module sig val value : 'a end) -> 'a",
+      "origin_id": 13,
+      "span": {
+        "end": 422,
+        "start": 351
+      }
+    }
+  ],
+  "typing_diagnostics": []
 }

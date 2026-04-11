@@ -1,0 +1,1357 @@
+{
+  "comparison": {
+    "exports": {
+      "ocamlc": [
+        {
+          "name": "answer",
+          "scheme": "large"
+        },
+        {
+          "name": "widen",
+          "scheme": "small -> large"
+        }
+      ],
+      "typ": [
+        {
+          "name": "answer",
+          "scheme": "large"
+        },
+        {
+          "name": "widen",
+          "scheme": "small -> large"
+        }
+      ]
+    },
+    "normalized_exports": {
+      "ocamlc": [
+        {
+          "name": "answer",
+          "scheme": "large"
+        },
+        {
+          "name": "widen",
+          "scheme": "small -> large"
+        }
+      ],
+      "typ": [
+        {
+          "name": "answer",
+          "scheme": "large"
+        },
+        {
+          "name": "widen",
+          "scheme": "small -> large"
+        }
+      ]
+    },
+    "type_names": {
+      "ocamlc": [
+        "large",
+        "small"
+      ],
+      "typ": [
+        "large",
+        "small"
+      ]
+    }
+  },
+  "ocamlc": {
+    "exports": [
+      {
+        "name": "answer",
+        "scheme": "large"
+      },
+      {
+        "name": "widen",
+        "scheme": "small -> large"
+      }
+    ],
+    "interface_text": "type small = [ `No | `Yes ]\ntype large = [ `Maybe | `No | `Yes ]\nval widen : small -> large\nval answer : large\n",
+    "type_aliases": [],
+    "type_names": [
+      "large",
+      "small"
+    ],
+    "typedtree_text": "[\n  structure_item (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[9,191+0]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[9,191+27])\n    Tstr_type Rec\n    [\n      type_declaration small/4 (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[9,191+0]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[9,191+27])\n        ptype_params =\n          []\n        ptype_constraints =\n          []\n        ptype_kind =\n          Ttype_abstract\n        ptype_private = Public\n        ptype_manifest =\n          Some\n            core_type (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[9,191+13]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[9,191+27])\n              Ttyp_variant closed=Closed\n              [\n                Ttag \"Yes\" true\n                  []\n                Ttag \"No\" true\n                  []\n              ]\n              None\n    ]\n  structure_item (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[10,219+0]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[10,219+36])\n    Tstr_type Rec\n    [\n      type_declaration large/5 (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[10,219+0]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[10,219+36])\n        ptype_params =\n          []\n        ptype_constraints =\n          []\n        ptype_kind =\n          Ttype_abstract\n        ptype_private = Public\n        ptype_manifest =\n          Some\n            core_type (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[10,219+13]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[10,219+36])\n              Ttyp_variant closed=Closed\n              [\n                Ttag \"Yes\" true\n                  []\n                Ttag \"No\" true\n                  []\n                Ttag \"Maybe\" true\n                  []\n              ]\n              None\n    ]\n  structure_item (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+0]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+52])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+4]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+9])\n          Tpat_var \"widen/6\"\n        expression (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+10]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+52]) ghost\n          Texp_function\n          [\n            Nolabel\n            Param_pat\n              pattern (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+11]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+16])\n                extra (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+10]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+25])\n                  Tpat_extra_constraint\n                  core_type (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+19]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+24])\n                    Ttyp_constr \"small/4\"\n                    []\n                Tpat_var \"value/8\"\n          ]\n          Tfunction_body\n            expression (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+37]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+42])\n              extra (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+36]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+52])\n                Texp_constraint\n                core_type (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+28]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+33])\n                  Ttyp_constr \"large/5\"\n                  []\n              extra (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+36]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+52])\n                Texp_coerce\n                None\n                core_type (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+46]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[12,257+51])\n                  Ttyp_constr \"large/5\"\n                  []\n              Texp_ident \"value/8\"\n    ]\n  structure_item (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[14,311+0]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[14,311+23])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[14,311+4]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[14,311+10])\n          Tpat_var \"answer/9\"\n        expression (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[14,311+13]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[14,311+23])\n          Texp_apply\n          expression (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[14,311+13]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[14,311+18])\n            Texp_ident \"widen/6\"\n          [\n            <arg>\n              Nolabel\n              expression (packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[14,311+19]..packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml[14,311+23])\n                Texp_variant \"Yes\"\n                None\n          ]\n    ]\n]"
+  },
+  "typ": {
+    "body_arena": {
+      "bindings": [
+        {
+          "binding_id": 0,
+          "name": "widen",
+          "origin_id": 8,
+          "pattern_id": 0,
+          "recursive": false,
+          "scope_path": [],
+          "value_id": 3
+        },
+        {
+          "binding_id": 1,
+          "name": "answer",
+          "origin_id": 14,
+          "pattern_id": 2,
+          "recursive": false,
+          "scope_path": [],
+          "value_id": 6
+        }
+      ],
+      "expressions": [
+        {
+          "desc": {
+            "name": "value",
+            "tag": "var"
+          },
+          "expr_id": 0,
+          "origin_id": 4
+        },
+        {
+          "desc": {
+            "tag": "coerce",
+            "target_type": "large",
+            "value_id": 0
+          },
+          "expr_id": 1,
+          "origin_id": 5
+        },
+        {
+          "desc": {
+            "tag": "coerce",
+            "target_type": "large",
+            "value_id": 1
+          },
+          "expr_id": 2,
+          "origin_id": 6
+        },
+        {
+          "desc": {
+            "body_id": 2,
+            "parameters": [
+              {
+                "default_value_id": null,
+                "label": {
+                  "tag": "positional"
+                },
+                "pattern_id": 1
+              }
+            ],
+            "tag": "fun"
+          },
+          "expr_id": 3,
+          "origin_id": 7
+        },
+        {
+          "desc": {
+            "name": "widen",
+            "tag": "var"
+          },
+          "expr_id": 4,
+          "origin_id": 11
+        },
+        {
+          "desc": {
+            "payload": null,
+            "tag": "poly_variant",
+            "variant_tag": "Yes"
+          },
+          "expr_id": 5,
+          "origin_id": 12
+        },
+        {
+          "desc": {
+            "arguments": [
+              {
+                "implicit": false,
+                "label": {
+                  "tag": "positional"
+                },
+                "value_id": 5
+              }
+            ],
+            "callee_id": 4,
+            "tag": "apply"
+          },
+          "expr_id": 6,
+          "origin_id": 13
+        }
+      ],
+      "patterns": [
+        {
+          "desc": {
+            "name": "widen",
+            "tag": "var"
+          },
+          "origin_id": 2,
+          "pat_id": 0
+        },
+        {
+          "annotation": "small",
+          "desc": {
+            "name": "value",
+            "tag": "var"
+          },
+          "origin_id": 3,
+          "pat_id": 1
+        },
+        {
+          "desc": {
+            "name": "answer",
+            "tag": "var"
+          },
+          "origin_id": 10,
+          "pat_id": 2
+        }
+      ]
+    },
+    "exports": [
+      {
+        "name": "answer",
+        "scheme": "large"
+      },
+      {
+        "name": "widen",
+        "scheme": "small -> large"
+      }
+    ],
+    "expr_traces": [
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<>",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "ignore",
+            "scheme": "'a. 'a -> unit"
+          },
+          {
+            "name": "not",
+            "scheme": "bool -> bool"
+          },
+          {
+            "name": "value",
+            "scheme": "small"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          }
+        ],
+        "expr_id": 0,
+        "inferred_type": "small",
+        "origin": {
+          "label": "path_expression",
+          "span": {
+            "end": 299,
+            "start": 294
+          },
+          "syntax_kind": "IDENT_EXPR"
+        },
+        "origin_id": 4
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<>",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "ignore",
+            "scheme": "'a. 'a -> unit"
+          },
+          {
+            "name": "not",
+            "scheme": "bool -> bool"
+          },
+          {
+            "name": "value",
+            "scheme": "small"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          }
+        ],
+        "expr_id": 1,
+        "inferred_type": "large",
+        "origin": {
+          "label": "coercion_expression",
+          "span": {
+            "end": 309,
+            "start": 292
+          },
+          "syntax_kind": "COERCE_EXPR"
+        },
+        "origin_id": 5
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<>",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "ignore",
+            "scheme": "'a. 'a -> unit"
+          },
+          {
+            "name": "not",
+            "scheme": "bool -> bool"
+          },
+          {
+            "name": "value",
+            "scheme": "small"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          }
+        ],
+        "expr_id": 2,
+        "inferred_type": "large",
+        "origin": {
+          "label": "annotated_function_body",
+          "span": {
+            "end": 309,
+            "start": 255
+          },
+          "syntax_kind": "LET_BINDING"
+        },
+        "origin_id": 6
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<>",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "ignore",
+            "scheme": "'a. 'a -> unit"
+          },
+          {
+            "name": "not",
+            "scheme": "bool -> bool"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          }
+        ],
+        "expr_id": 3,
+        "inferred_type": "small -> large",
+        "origin": {
+          "label": "fun_expression",
+          "span": {
+            "end": 309,
+            "start": 255
+          },
+          "syntax_kind": "LET_BINDING"
+        },
+        "origin_id": 7
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<>",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "ignore",
+            "scheme": "'a. 'a -> unit"
+          },
+          {
+            "name": "not",
+            "scheme": "bool -> bool"
+          },
+          {
+            "name": "widen",
+            "scheme": "small -> large"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          }
+        ],
+        "expr_id": 4,
+        "inferred_type": "small -> large",
+        "origin": {
+          "label": "path_expression",
+          "span": {
+            "end": 329,
+            "start": 323
+          },
+          "syntax_kind": "IDENT_EXPR"
+        },
+        "origin_id": 11
+      },
+      {
+        "env_before": [
+          {
+            "name": "!=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "&&",
+            "scheme": "bool -> bool -> bool"
+          },
+          {
+            "name": "*",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "*.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "+",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "+.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "-",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "-.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "/",
+            "scheme": "int -> int -> int"
+          },
+          {
+            "name": "/.",
+            "scheme": "float -> float -> float"
+          },
+          {
+            "name": "::",
+            "scheme": "'a. 'a -> 'a list -> 'a list"
+          },
+          {
+            "name": "<",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "<>",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": ">=",
+            "scheme": "'a. 'a -> 'a -> bool"
+          },
+          {
+            "name": "[]",
+            "scheme": "'a. 'a list"
+          },
+          {
+            "name": "^",
+            "scheme": "string -> string -> string"
+          },
+          {
+            "name": "ignore",
+            "scheme": "'a. 'a -> unit"
+          },
+          {
+            "name": "not",
+            "scheme": "bool -> bool"
+          },
+          {
+            "name": "widen",
+            "scheme": "small -> large"
+          },
+          {
+            "name": "|>",
+            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+          },
+          {
+            "name": "||",
+            "scheme": "bool -> bool -> bool"
+          }
+        ],
+        "expr_id": 6,
+        "inferred_type": "large",
+        "origin": {
+          "label": "apply_expression",
+          "span": {
+            "end": 334,
+            "start": 323
+          },
+          "syntax_kind": "APPLY_EXPR"
+        },
+        "origin_id": 13
+      }
+    ],
+    "file_summary": {
+      "completeness": "complete",
+      "export_result": {
+        "exports": [
+          {
+            "name": "answer",
+            "scheme": "large"
+          },
+          {
+            "name": "widen",
+            "scheme": "small -> large"
+          }
+        ],
+        "tag": "trusted_export"
+      },
+      "source_id": 0
+    },
+    "filename": "packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer.ml",
+    "item_traces": [
+      {
+        "binding_names": [],
+        "exports_after": [],
+        "item_id": 0
+      },
+      {
+        "binding_names": [],
+        "exports_after": [],
+        "item_id": 1
+      },
+      {
+        "binding_names": [
+          "widen"
+        ],
+        "exports_after": [
+          {
+            "name": "widen",
+            "scheme": "small -> large"
+          }
+        ],
+        "item_id": 2
+      },
+      {
+        "binding_names": [
+          "answer"
+        ],
+        "exports_after": [
+          {
+            "name": "answer",
+            "scheme": "large"
+          },
+          {
+            "name": "widen",
+            "scheme": "small -> large"
+          }
+        ],
+        "item_id": 3
+      }
+    ],
+    "item_tree": [
+      {
+        "declaration": {
+          "constructors": [],
+          "manifest": {
+            "bound": "exact",
+            "inherited": [],
+            "tag": "poly_variant",
+            "tags": [
+              {
+                "name": "Yes"
+              },
+              {
+                "name": "No"
+              }
+            ]
+          },
+          "nonrec": false,
+          "param_variances": [],
+          "type_constructor_id": {
+            "local_id": 0,
+            "owner": "packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer"
+          },
+          "type_name": "small"
+        },
+        "item_id": 0,
+        "origin_id": 0,
+        "scope_path": [],
+        "tag": "type"
+      },
+      {
+        "declaration": {
+          "constructors": [],
+          "manifest": {
+            "bound": "exact",
+            "inherited": [],
+            "tag": "poly_variant",
+            "tags": [
+              {
+                "name": "Yes"
+              },
+              {
+                "name": "No"
+              },
+              {
+                "name": "Maybe"
+              }
+            ]
+          },
+          "nonrec": false,
+          "param_variances": [],
+          "type_constructor_id": {
+            "local_id": 1,
+            "owner": "packages/typ/tests/fixtures/oracle/0399_polyvariant_widen_basic_extended_answer"
+          },
+          "type_name": "large"
+        },
+        "item_id": 1,
+        "origin_id": 1,
+        "scope_path": [],
+        "tag": "type"
+      },
+      {
+        "binding_ids": [
+          0
+        ],
+        "item_id": 2,
+        "origin_id": 9,
+        "recursive": false,
+        "scope_path": [],
+        "tag": "value"
+      },
+      {
+        "binding_ids": [
+          1
+        ],
+        "item_id": 3,
+        "origin_id": 15,
+        "recursive": false,
+        "scope_path": [],
+        "tag": "value"
+      }
+    ],
+    "lowering_diagnostics": [],
+    "origin_map": [
+      {
+        "kind": "item",
+        "label": "item",
+        "origin_id": 0,
+        "semantic_id": {
+          "id": 0,
+          "tag": "item"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 218,
+          "start": 0
+        },
+        "syntax_kind": "TYPE_DECL"
+      },
+      {
+        "kind": "item",
+        "label": "item",
+        "origin_id": 1,
+        "semantic_id": {
+          "id": 1,
+          "tag": "item"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 255,
+          "start": 218
+        },
+        "syntax_kind": "TYPE_DECL"
+      },
+      {
+        "kind": "pattern",
+        "label": "identifier_pattern",
+        "origin_id": 2,
+        "semantic_id": {
+          "id": 0,
+          "tag": "pattern"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 266,
+          "start": 260
+        },
+        "syntax_kind": "IDENT_PATTERN"
+      },
+      {
+        "kind": "pattern",
+        "label": "identifier_pattern",
+        "origin_id": 3,
+        "semantic_id": {
+          "id": 1,
+          "tag": "pattern"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 273,
+          "start": 268
+        },
+        "syntax_kind": "IDENT_PATTERN"
+      },
+      {
+        "kind": "expr",
+        "label": "path_expression",
+        "origin_id": 4,
+        "semantic_id": {
+          "id": 0,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 299,
+          "start": 294
+        },
+        "syntax_kind": "IDENT_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "coercion_expression",
+        "origin_id": 5,
+        "semantic_id": {
+          "id": 1,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 309,
+          "start": 292
+        },
+        "syntax_kind": "COERCE_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "annotated_function_body",
+        "origin_id": 6,
+        "semantic_id": {
+          "id": 2,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 309,
+          "start": 255
+        },
+        "syntax_kind": "LET_BINDING"
+      },
+      {
+        "kind": "expr",
+        "label": "fun_expression",
+        "origin_id": 7,
+        "semantic_id": {
+          "id": 3,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 309,
+          "start": 255
+        },
+        "syntax_kind": "LET_BINDING"
+      },
+      {
+        "kind": "binding",
+        "label": "binding",
+        "origin_id": 8,
+        "semantic_id": {
+          "id": 0,
+          "tag": "binding"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 309,
+          "start": 255
+        },
+        "syntax_kind": "LET_BINDING"
+      },
+      {
+        "kind": "item",
+        "label": "item",
+        "origin_id": 9,
+        "semantic_id": {
+          "id": 2,
+          "tag": "item"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 309,
+          "start": 255
+        },
+        "syntax_kind": "LET_BINDING"
+      },
+      {
+        "kind": "pattern",
+        "label": "identifier_pattern",
+        "origin_id": 10,
+        "semantic_id": {
+          "id": 2,
+          "tag": "pattern"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 321,
+          "start": 314
+        },
+        "syntax_kind": "IDENT_PATTERN"
+      },
+      {
+        "kind": "expr",
+        "label": "path_expression",
+        "origin_id": 11,
+        "semantic_id": {
+          "id": 4,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 329,
+          "start": 323
+        },
+        "syntax_kind": "IDENT_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "poly_variant_expression",
+        "origin_id": 12,
+        "semantic_id": {
+          "id": 5,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 334,
+          "start": 329
+        },
+        "syntax_kind": "POLY_VARIANT_EXPR"
+      },
+      {
+        "kind": "expr",
+        "label": "apply_expression",
+        "origin_id": 13,
+        "semantic_id": {
+          "id": 6,
+          "tag": "expr"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 334,
+          "start": 323
+        },
+        "syntax_kind": "APPLY_EXPR"
+      },
+      {
+        "kind": "binding",
+        "label": "binding",
+        "origin_id": 14,
+        "semantic_id": {
+          "id": 1,
+          "tag": "binding"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 334,
+          "start": 309
+        },
+        "syntax_kind": "LET_BINDING"
+      },
+      {
+        "kind": "item",
+        "label": "item",
+        "origin_id": 15,
+        "semantic_id": {
+          "id": 3,
+          "tag": "item"
+        },
+        "source_id": 0,
+        "source_revision": 0,
+        "span": {
+          "end": 334,
+          "start": 309
+        },
+        "syntax_kind": "LET_BINDING"
+      }
+    ],
+    "parse_diagnostics": [],
+    "source_id": 0,
+    "type_index": [
+      {
+        "expr_id": 0,
+        "inferred_type": "small",
+        "origin_id": 4,
+        "span": {
+          "end": 299,
+          "start": 294
+        }
+      },
+      {
+        "expr_id": 4,
+        "inferred_type": "small -> large",
+        "origin_id": 11,
+        "span": {
+          "end": 329,
+          "start": 323
+        }
+      },
+      {
+        "expr_id": 6,
+        "inferred_type": "large",
+        "origin_id": 13,
+        "span": {
+          "end": 334,
+          "start": 323
+        }
+      },
+      {
+        "expr_id": 1,
+        "inferred_type": "large",
+        "origin_id": 5,
+        "span": {
+          "end": 309,
+          "start": 292
+        }
+      },
+      {
+        "expr_id": 2,
+        "inferred_type": "large",
+        "origin_id": 6,
+        "span": {
+          "end": 309,
+          "start": 255
+        }
+      },
+      {
+        "expr_id": 3,
+        "inferred_type": "small -> large",
+        "origin_id": 7,
+        "span": {
+          "end": 309,
+          "start": 255
+        }
+      }
+    ],
+    "typing_diagnostics": []
+  },
+  "typ_summary": {
+    "completeness": "complete",
+    "exports": [
+      {
+        "name": "answer",
+        "scheme": "large"
+      },
+      {
+        "name": "widen",
+        "scheme": "small -> large"
+      }
+    ],
+    "type_names": [
+      "large",
+      "small"
+    ]
+  }
+}

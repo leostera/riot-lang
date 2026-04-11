@@ -1,930 +1,883 @@
 {
-  "comparison": {
-    "exports": {
-      "ocamlc": [
-        {
-          "name": "M.value",
-          "scheme": "t"
-        },
-        {
-          "name": "answer",
-          "scheme": "M.t"
-        }
-      ],
-      "typ": [
-        {
-          "name": "M.value",
-          "scheme": "string * char"
-        },
-        {
-          "name": "answer",
-          "scheme": "string * char"
-        }
-      ]
-    },
-    "normalized_exports": {
-      "ocamlc": [
-        {
-          "name": "M.value",
-          "scheme": "string * char"
-        },
-        {
-          "name": "answer",
-          "scheme": "string * char"
-        }
-      ],
-      "typ": [
-        {
-          "name": "M.value",
-          "scheme": "string * char"
-        },
-        {
-          "name": "answer",
-          "scheme": "string * char"
-        }
-      ]
-    },
-    "type_names": {
-      "ocamlc": [
-        "M.t"
-      ],
-      "typ": [
-        "M.t"
-      ]
-    }
-  },
-  "ocamlc": {
-    "exports": [
+  "body_arena": {
+    "bindings": [
       {
-        "name": "M.value",
-        "scheme": "t"
-      },
-      {
-        "name": "answer",
-        "scheme": "M.t"
-      }
-    ],
-    "interface_text": "module type BOX = sig type t val value : t end\nmodule M : sig type t = string * char val value : t end\nval answer : M.t\n",
-    "type_aliases": [
-      {
-        "manifest": "string * char",
-        "name": "M.t"
-      }
-    ],
-    "type_names": [
-      "M.t"
-    ],
-    "typedtree_text": "[\n  structure_item (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[9,165+0]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[12,212+3])\n    Tstr_modtype \"BOX/6\"\n      module_type (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[9,165+18]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[12,212+3])\n        Tmty_signature\n        [\n          signature_item (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[10,187+2]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[10,187+8])\n            Tsig_type Rec\n            [\n              type_declaration t/4 (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[10,187+2]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[10,187+8])\n                ptype_params =\n                  []\n                ptype_constraints =\n                  []\n                ptype_kind =\n                  Ttype_abstract\n                ptype_private = Public\n                ptype_manifest =\n                  None\n            ]\n          signature_item (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[11,196+2]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[11,196+15])\n            Tsig_value\n            value_description value/5 (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[11,196+2]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[11,196+15])\n              core_type (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[11,196+14]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[11,196+15])\n                Ttyp_constr \"t/4\"\n                []\n              []\n        ]\n  structure_item (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[14,217+0]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[17,325+3])\n    Tstr_module (Present)\n    M/12\n      module_expr (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[14,217+9]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[17,325+3])\n        Tmod_constraint\n        module_expr (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[14,217+45]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[17,325+3])\n          Tmod_structure\n          [\n            structure_item (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[15,269+2]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[15,269+24])\n              Tstr_type Rec\n              [\n                type_declaration t/7 (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[15,269+2]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[15,269+24])\n                  ptype_params =\n                    []\n                  ptype_constraints =\n                    []\n                  ptype_kind =\n                    Ttype_abstract\n                  ptype_private = Public\n                  ptype_manifest =\n                    Some\n                      core_type (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[15,269+11]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[15,269+24])\n                        Ttyp_tuple\n                        [\n                          Label: None\n                          core_type (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[15,269+11]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[15,269+17])\n                            Ttyp_constr \"string/17!\"\n                            []\n                          Label: None\n                          core_type (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[15,269+20]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[15,269+24])\n                            Ttyp_constr \"char/2!\"\n                            []\n                        ]\n              ]\n            structure_item (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+2]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+30])\n              Tstr_value Nonrec\n              [\n                <def>\n                  pattern (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+6]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+11])\n                    extra (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+6]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+11]) ghost\n                      Tpat_extra_constraint\n                      core_type (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+14]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+15])\n                        Ttyp_constr \"t/7\"\n                        []\n                    Tpat_var \"value/8\"\n                  expression (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+18]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+30])\n                    extra (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+18]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+30]) ghost\n                      Texp_constraint\n                      core_type (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+14]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+15])\n                        Ttyp_constr \"t/7\"\n                        []\n                    Texp_tuple\n                    [\n                      Label: None\n                        expression (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+20]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+23])\n                          Texp_constant Const_string(\"x\",(packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+21]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+22]),None)\n                      Label: None\n                        expression (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+25]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[16,294+28])\n                          Texp_constant Const_char 79\n                    ]\n              ]\n          ]\n        module_type (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[14,217+11]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[14,217+42])\n          Tmty_with\n          module_type (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[14,217+11]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[14,217+14])\n            Tmty_ident \"BOX/6\"\n          [\n            \"t/4\"\n              Twith_type\n                type_declaration t/4 (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[14,217+20]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[14,217+42])\n                  ptype_params =\n                    []\n                  ptype_constraints =\n                    []\n                  ptype_kind =\n                    Ttype_abstract\n                  ptype_private = Public\n                  ptype_manifest =\n                    Some\n                      core_type (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[14,217+29]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[14,217+42])\n                        Ttyp_tuple\n                        [\n                          Label: None\n                          core_type (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[14,217+29]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[14,217+35])\n                            Ttyp_constr \"string/17!\"\n                            []\n                          Label: None\n                          core_type (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[14,217+38]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[14,217+42])\n                            Ttyp_constr \"char/2!\"\n                            []\n                        ]\n          ]\n  structure_item (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[19,330+0]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[19,330+20])\n    Tstr_value Nonrec\n    [\n      <def>\n        pattern (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[19,330+4]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[19,330+10])\n          Tpat_var \"answer/13\"\n        expression (packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[19,330+13]..packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml[19,330+20])\n          Texp_ident \"M/12.value\"\n    ]\n]"
-  },
-  "typ": {
-    "body_arena": {
-      "bindings": [
-        {
-          "annotation": "M.t",
-          "binding_id": 0,
-          "name": "value",
-          "origin_id": 5,
-          "pattern_id": 0,
-          "recursive": false,
-          "scope_path": [
-            "M"
-          ],
-          "value_id": 2
-        },
-        {
-          "binding_id": 1,
-          "name": "answer",
-          "origin_id": 10,
-          "pattern_id": 1,
-          "recursive": false,
-          "scope_path": [],
-          "value_id": 3
-        }
-      ],
-      "expressions": [
-        {
-          "desc": {
-            "tag": "string",
-            "value": "x"
-          },
-          "expr_id": 0,
-          "origin_id": 2
-        },
-        {
-          "desc": {
-            "tag": "char",
-            "value": "y"
-          },
-          "expr_id": 1,
-          "origin_id": 3
-        },
-        {
-          "desc": {
-            "elements": [
-              0,
-              1
-            ],
-            "tag": "tuple"
-          },
-          "expr_id": 2,
-          "origin_id": 4
-        },
-        {
-          "desc": {
-            "name": "M.value",
-            "tag": "var"
-          },
-          "expr_id": 3,
-          "origin_id": 9
-        }
-      ],
-      "patterns": [
-        {
-          "desc": {
-            "name": "value",
-            "tag": "var"
-          },
-          "origin_id": 1,
-          "pat_id": 0
-        },
-        {
-          "desc": {
-            "name": "answer",
-            "tag": "var"
-          },
-          "origin_id": 8,
-          "pat_id": 1
-        }
-      ]
-    },
-    "exports": [
-      {
-        "name": "answer",
-        "scheme": "string * char"
-      },
-      {
-        "name": "M.value",
-        "scheme": "string * char"
-      }
-    ],
-    "expr_traces": [
-      {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          }
+        "annotation": "M.t",
+        "binding_id": 0,
+        "name": "value",
+        "origin_id": 5,
+        "pattern_id": 0,
+        "recursive": false,
+        "scope_path": [
+          "M"
         ],
-        "expr_id": 0,
-        "inferred_type": "string",
-        "origin": {
-          "label": "string_literal",
-          "span": {
-            "end": 317,
-            "start": 314
-          },
-          "syntax_kind": "STRING_LITERAL"
+        "value_id": 2
+      },
+      {
+        "binding_id": 1,
+        "name": "answer",
+        "origin_id": 10,
+        "pattern_id": 1,
+        "recursive": false,
+        "scope_path": [],
+        "value_id": 3
+      }
+    ],
+    "expressions": [
+      {
+        "desc": {
+          "tag": "string",
+          "value": "x"
         },
+        "expr_id": 0,
         "origin_id": 2
       },
       {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          }
-        ],
-        "expr_id": 1,
-        "inferred_type": "char",
-        "origin": {
-          "label": "char_literal",
-          "span": {
-            "end": 322,
-            "start": 318
-          },
-          "syntax_kind": "CHAR_LITERAL"
+        "desc": {
+          "tag": "char",
+          "value": "y"
         },
+        "expr_id": 1,
         "origin_id": 3
       },
       {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          }
-        ],
-        "expr_id": 2,
-        "inferred_type": "string * char",
-        "origin": {
-          "label": "tuple_expression",
-          "span": {
-            "end": 322,
-            "start": 314
-          },
-          "syntax_kind": "TUPLE_EXPR"
+        "desc": {
+          "elements": [
+            0,
+            1
+          ],
+          "tag": "tuple"
         },
+        "expr_id": 2,
         "origin_id": 4
       },
       {
-        "env_before": [
-          {
-            "name": "!=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "&&",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "*",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "*.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "+",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "+.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "-",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "-.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "/",
-            "scheme": "int -> int -> int"
-          },
-          {
-            "name": "/.",
-            "scheme": "float -> float -> float"
-          },
-          {
-            "name": "::",
-            "scheme": "'a. 'a -> 'a list -> 'a list"
-          },
-          {
-            "name": "<",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "<=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": ">=",
-            "scheme": "'a. 'a -> 'a -> bool"
-          },
-          {
-            "name": "[]",
-            "scheme": "'a. 'a list"
-          },
-          {
-            "name": "^",
-            "scheme": "string -> string -> string"
-          },
-          {
-            "name": "|>",
-            "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
-          },
-          {
-            "name": "||",
-            "scheme": "bool -> bool -> bool"
-          },
-          {
-            "name": "M.value",
-            "scheme": "string * char"
-          }
-        ],
-        "expr_id": 3,
-        "inferred_type": "string * char",
-        "origin": {
-          "label": "qualified_path_expression",
-          "span": {
-            "end": 350,
-            "start": 342
-          },
-          "syntax_kind": "FIELD_ACCESS_EXPR"
+        "desc": {
+          "name": "M.value",
+          "tag": "var"
         },
+        "expr_id": 3,
         "origin_id": 9
       }
     ],
-    "file_summary": {
-      "completeness": "complete",
-      "export_result": {
-        "exports": [
-          {
-            "name": "answer",
-            "scheme": "string * char"
-          },
-          {
-            "name": "M.value",
-            "scheme": "string * char"
-          }
-        ],
-        "tag": "trusted_export"
-      },
-      "source_id": 0
-    },
-    "filename": "packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml",
-    "item_traces": [
+    "patterns": [
       {
-        "binding_names": [],
-        "exports_after": [],
-        "item_id": 0
-      },
-      {
-        "binding_names": [
-          "M.value"
-        ],
-        "exports_after": [
-          {
-            "name": "M.value",
-            "scheme": "string * char"
-          }
-        ],
-        "item_id": 1
-      },
-      {
-        "binding_names": [
-          "M.value"
-        ],
-        "exports_after": [
-          {
-            "name": "M.value",
-            "scheme": "string * char"
-          }
-        ],
-        "item_id": 2
-      },
-      {
-        "binding_names": [
-          "answer"
-        ],
-        "exports_after": [
-          {
-            "name": "answer",
-            "scheme": "string * char"
-          },
-          {
-            "name": "M.value",
-            "scheme": "string * char"
-          }
-        ],
-        "item_id": 3
-      }
-    ],
-    "item_tree": [
-      {
-        "declaration": {
-          "constructors": [],
-          "manifest": {
-            "tag": "alias",
-            "type": "string * char"
-          },
-          "nonrec": false,
-          "param_variances": [],
-          "type_constructor_id": {
-            "local_id": 1,
-            "owner": "packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc"
-          },
-          "type_name": "t"
+        "desc": {
+          "name": "value",
+          "tag": "var"
         },
-        "item_id": 0,
-        "origin_id": 0,
-        "scope_path": [
-          "M"
-        ],
-        "tag": "type"
-      },
-      {
-        "binding_ids": [
-          0
-        ],
-        "item_id": 1,
-        "origin_id": 6,
-        "recursive": false,
-        "scope_path": [
-          "M"
-        ],
-        "tag": "value"
-      },
-      {
-        "item_id": 2,
-        "origin_id": 7,
-        "scheme": "string * char",
-        "scope_path": [
-          "M"
-        ],
-        "tag": "declared_value",
-        "value_name": "value"
-      },
-      {
-        "binding_ids": [
-          1
-        ],
-        "item_id": 3,
-        "origin_id": 11,
-        "recursive": false,
-        "scope_path": [],
-        "tag": "value"
-      }
-    ],
-    "lowering_diagnostics": [],
-    "origin_map": [
-      {
-        "kind": "item",
-        "label": "item",
-        "origin_id": 0,
-        "semantic_id": {
-          "id": 0,
-          "tag": "item"
-        },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 293,
-          "start": 268
-        },
-        "syntax_kind": "TYPE_DECL"
-      },
-      {
-        "kind": "pattern",
-        "label": "identifier_pattern",
         "origin_id": 1,
-        "semantic_id": {
-          "id": 0,
-          "tag": "pattern"
-        },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 305,
-          "start": 299
-        },
-        "syntax_kind": "IDENT_PATTERN"
+        "pat_id": 0
       },
       {
-        "kind": "expr",
-        "label": "string_literal",
-        "origin_id": 2,
-        "semantic_id": {
-          "id": 0,
-          "tag": "expr"
+        "desc": {
+          "name": "answer",
+          "tag": "var"
         },
-        "source_id": 0,
-        "source_revision": 0,
+        "origin_id": 8,
+        "pat_id": 1
+      }
+    ]
+  },
+  "exports": [
+    {
+      "name": "answer",
+      "scheme": "string * char"
+    },
+    {
+      "name": "M.value",
+      "scheme": "string * char"
+    }
+  ],
+  "expr_traces": [
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        }
+      ],
+      "expr_id": 0,
+      "inferred_type": "string",
+      "origin": {
+        "label": "string_literal",
         "span": {
           "end": 317,
           "start": 314
         },
         "syntax_kind": "STRING_LITERAL"
       },
-      {
-        "kind": "expr",
-        "label": "char_literal",
-        "origin_id": 3,
-        "semantic_id": {
-          "id": 1,
-          "tag": "expr"
+      "origin_id": 2
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
         },
-        "source_id": 0,
-        "source_revision": 0,
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        }
+      ],
+      "expr_id": 1,
+      "inferred_type": "char",
+      "origin": {
+        "label": "char_literal",
         "span": {
           "end": 322,
           "start": 318
         },
         "syntax_kind": "CHAR_LITERAL"
       },
-      {
-        "kind": "expr",
-        "label": "tuple_expression",
-        "origin_id": 4,
-        "semantic_id": {
-          "id": 2,
-          "tag": "expr"
+      "origin_id": 3
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
         },
-        "source_id": 0,
-        "source_revision": 0,
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        }
+      ],
+      "expr_id": 2,
+      "inferred_type": "string * char",
+      "origin": {
+        "label": "tuple_expression",
         "span": {
           "end": 322,
           "start": 314
         },
         "syntax_kind": "TUPLE_EXPR"
       },
-      {
-        "kind": "binding",
-        "label": "binding",
-        "origin_id": 5,
-        "semantic_id": {
-          "id": 0,
-          "tag": "binding"
+      "origin_id": 4
+    },
+    {
+      "env_before": [
+        {
+          "name": "!=",
+          "scheme": "'a. 'a -> 'a -> bool"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 324,
-          "start": 293
+        {
+          "name": "&&",
+          "scheme": "bool -> bool -> bool"
         },
-        "syntax_kind": "LET_BINDING"
-      },
-      {
-        "kind": "item",
-        "label": "item",
-        "origin_id": 6,
-        "semantic_id": {
-          "id": 1,
-          "tag": "item"
+        {
+          "name": "*",
+          "scheme": "int -> int -> int"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 324,
-          "start": 293
+        {
+          "name": "*.",
+          "scheme": "float -> float -> float"
         },
-        "syntax_kind": "LET_BINDING"
-      },
-      {
-        "kind": "item",
-        "label": "item",
-        "origin_id": 7,
-        "semantic_id": {
-          "id": 2,
-          "tag": "item"
+        {
+          "name": "+",
+          "scheme": "int -> int -> int"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 328,
-          "start": 215
+        {
+          "name": "+.",
+          "scheme": "float -> float -> float"
         },
-        "syntax_kind": "MODULE_DECL"
-      },
-      {
-        "kind": "pattern",
-        "label": "identifier_pattern",
-        "origin_id": 8,
-        "semantic_id": {
-          "id": 1,
-          "tag": "pattern"
+        {
+          "name": "-",
+          "scheme": "int -> int -> int"
         },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 340,
-          "start": 333
+        {
+          "name": "-.",
+          "scheme": "float -> float -> float"
         },
-        "syntax_kind": "IDENT_PATTERN"
-      },
-      {
-        "kind": "expr",
+        {
+          "name": "/",
+          "scheme": "int -> int -> int"
+        },
+        {
+          "name": "/.",
+          "scheme": "float -> float -> float"
+        },
+        {
+          "name": "::",
+          "scheme": "'a. 'a -> 'a list -> 'a list"
+        },
+        {
+          "name": "<",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "<>",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": ">=",
+          "scheme": "'a. 'a -> 'a -> bool"
+        },
+        {
+          "name": "[]",
+          "scheme": "'a. 'a list"
+        },
+        {
+          "name": "^",
+          "scheme": "string -> string -> string"
+        },
+        {
+          "name": "ignore",
+          "scheme": "'a. 'a -> unit"
+        },
+        {
+          "name": "not",
+          "scheme": "bool -> bool"
+        },
+        {
+          "name": "|>",
+          "scheme": "'a 'b. 'a -> ('a -> 'b) -> 'b"
+        },
+        {
+          "name": "||",
+          "scheme": "bool -> bool -> bool"
+        },
+        {
+          "name": "M.value",
+          "scheme": "string * char"
+        }
+      ],
+      "expr_id": 3,
+      "inferred_type": "string * char",
+      "origin": {
         "label": "qualified_path_expression",
-        "origin_id": 9,
-        "semantic_id": {
-          "id": 3,
-          "tag": "expr"
-        },
-        "source_id": 0,
-        "source_revision": 0,
         "span": {
           "end": 350,
           "start": 342
         },
         "syntax_kind": "FIELD_ACCESS_EXPR"
       },
-      {
-        "kind": "binding",
-        "label": "binding",
-        "origin_id": 10,
-        "semantic_id": {
-          "id": 1,
-          "tag": "binding"
-        },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 350,
-          "start": 328
-        },
-        "syntax_kind": "LET_BINDING"
-      },
-      {
-        "kind": "item",
-        "label": "item",
-        "origin_id": 11,
-        "semantic_id": {
-          "id": 3,
-          "tag": "item"
-        },
-        "source_id": 0,
-        "source_revision": 0,
-        "span": {
-          "end": 350,
-          "start": 328
-        },
-        "syntax_kind": "LET_BINDING"
-      }
-    ],
-    "parse_diagnostics": [],
-    "source_id": 0,
-    "type_index": [
-      {
-        "expr_id": 0,
-        "inferred_type": "string",
-        "origin_id": 2,
-        "span": {
-          "end": 317,
-          "start": 314
-        }
-      },
-      {
-        "expr_id": 1,
-        "inferred_type": "char",
-        "origin_id": 3,
-        "span": {
-          "end": 322,
-          "start": 318
-        }
-      },
-      {
-        "expr_id": 2,
-        "inferred_type": "string * char",
-        "origin_id": 4,
-        "span": {
-          "end": 322,
-          "start": 314
-        }
-      },
-      {
-        "expr_id": 3,
-        "inferred_type": "string * char",
-        "origin_id": 9,
-        "span": {
-          "end": 350,
-          "start": 342
-        }
-      }
-    ],
-    "typing_diagnostics": []
-  },
-  "typ_summary": {
+      "origin_id": 9
+    }
+  ],
+  "file_summary": {
     "completeness": "complete",
-    "exports": [
-      {
-        "name": "M.value",
-        "scheme": "string * char"
+    "export_result": {
+      "exports": [
+        {
+          "name": "answer",
+          "scheme": "string * char"
+        },
+        {
+          "name": "M.value",
+          "scheme": "string * char"
+        }
+      ],
+      "tag": "trusted_export"
+    },
+    "source_id": 0
+  },
+  "filename": "packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc.ml",
+  "item_traces": [
+    {
+      "binding_names": [],
+      "exports_after": [],
+      "item_id": 0
+    },
+    {
+      "binding_names": [
+        "M.value"
+      ],
+      "exports_after": [
+        {
+          "name": "M.value",
+          "scheme": "M.t"
+        }
+      ],
+      "item_id": 1
+    },
+    {
+      "binding_names": [
+        "M.value"
+      ],
+      "exports_after": [
+        {
+          "name": "M.value",
+          "scheme": "string * char"
+        }
+      ],
+      "item_id": 2
+    },
+    {
+      "binding_names": [
+        "answer"
+      ],
+      "exports_after": [
+        {
+          "name": "answer",
+          "scheme": "string * char"
+        },
+        {
+          "name": "M.value",
+          "scheme": "string * char"
+        }
+      ],
+      "item_id": 3
+    }
+  ],
+  "item_tree": [
+    {
+      "declaration": {
+        "constructors": [],
+        "manifest": {
+          "tag": "alias",
+          "type": "string * char"
+        },
+        "nonrec": false,
+        "param_variances": [],
+        "type_constructor_id": {
+          "local_id": 1,
+          "owner": "packages/typ/tests/fixtures/oracle/0725_signature_box_pair_sc"
+        },
+        "type_name": "t"
       },
-      {
-        "name": "answer",
-        "scheme": "string * char"
+      "item_id": 0,
+      "origin_id": 0,
+      "scope_path": [
+        "M"
+      ],
+      "tag": "type"
+    },
+    {
+      "binding_ids": [
+        0
+      ],
+      "item_id": 1,
+      "origin_id": 6,
+      "recursive": false,
+      "scope_path": [
+        "M"
+      ],
+      "tag": "value"
+    },
+    {
+      "item_id": 2,
+      "origin_id": 7,
+      "scheme": "string * char",
+      "scope_path": [
+        "M"
+      ],
+      "tag": "declared_value",
+      "value_name": "value"
+    },
+    {
+      "binding_ids": [
+        1
+      ],
+      "item_id": 3,
+      "origin_id": 11,
+      "recursive": false,
+      "scope_path": [],
+      "tag": "value"
+    }
+  ],
+  "lowering_diagnostics": [],
+  "origin_map": [
+    {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 0,
+      "semantic_id": {
+        "id": 0,
+        "tag": "item"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 293,
+        "start": 268
+      },
+      "syntax_kind": "TYPE_DECL"
+    },
+    {
+      "kind": "pattern",
+      "label": "identifier_pattern",
+      "origin_id": 1,
+      "semantic_id": {
+        "id": 0,
+        "tag": "pattern"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 305,
+        "start": 299
+      },
+      "syntax_kind": "IDENT_PATTERN"
+    },
+    {
+      "kind": "expr",
+      "label": "string_literal",
+      "origin_id": 2,
+      "semantic_id": {
+        "id": 0,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 317,
+        "start": 314
+      },
+      "syntax_kind": "STRING_LITERAL"
+    },
+    {
+      "kind": "expr",
+      "label": "char_literal",
+      "origin_id": 3,
+      "semantic_id": {
+        "id": 1,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 322,
+        "start": 318
+      },
+      "syntax_kind": "CHAR_LITERAL"
+    },
+    {
+      "kind": "expr",
+      "label": "tuple_expression",
+      "origin_id": 4,
+      "semantic_id": {
+        "id": 2,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 322,
+        "start": 314
+      },
+      "syntax_kind": "TUPLE_EXPR"
+    },
+    {
+      "kind": "binding",
+      "label": "binding",
+      "origin_id": 5,
+      "semantic_id": {
+        "id": 0,
+        "tag": "binding"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 324,
+        "start": 293
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 6,
+      "semantic_id": {
+        "id": 1,
+        "tag": "item"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 324,
+        "start": 293
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 7,
+      "semantic_id": {
+        "id": 2,
+        "tag": "item"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 328,
+        "start": 215
+      },
+      "syntax_kind": "MODULE_DECL"
+    },
+    {
+      "kind": "pattern",
+      "label": "identifier_pattern",
+      "origin_id": 8,
+      "semantic_id": {
+        "id": 1,
+        "tag": "pattern"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 340,
+        "start": 333
+      },
+      "syntax_kind": "IDENT_PATTERN"
+    },
+    {
+      "kind": "expr",
+      "label": "qualified_path_expression",
+      "origin_id": 9,
+      "semantic_id": {
+        "id": 3,
+        "tag": "expr"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 350,
+        "start": 342
+      },
+      "syntax_kind": "FIELD_ACCESS_EXPR"
+    },
+    {
+      "kind": "binding",
+      "label": "binding",
+      "origin_id": 10,
+      "semantic_id": {
+        "id": 1,
+        "tag": "binding"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 350,
+        "start": 328
+      },
+      "syntax_kind": "LET_BINDING"
+    },
+    {
+      "kind": "item",
+      "label": "item",
+      "origin_id": 11,
+      "semantic_id": {
+        "id": 3,
+        "tag": "item"
+      },
+      "source_id": 0,
+      "source_revision": 0,
+      "span": {
+        "end": 350,
+        "start": 328
+      },
+      "syntax_kind": "LET_BINDING"
+    }
+  ],
+  "parse_diagnostics": [],
+  "source_id": 0,
+  "type_index": [
+    {
+      "expr_id": 0,
+      "inferred_type": "string",
+      "origin_id": 2,
+      "span": {
+        "end": 317,
+        "start": 314
       }
-    ],
-    "type_names": [
-      "M.t"
-    ]
-  }
+    },
+    {
+      "expr_id": 1,
+      "inferred_type": "char",
+      "origin_id": 3,
+      "span": {
+        "end": 322,
+        "start": 318
+      }
+    },
+    {
+      "expr_id": 2,
+      "inferred_type": "string * char",
+      "origin_id": 4,
+      "span": {
+        "end": 322,
+        "start": 314
+      }
+    },
+    {
+      "expr_id": 3,
+      "inferred_type": "string * char",
+      "origin_id": 9,
+      "span": {
+        "end": 350,
+        "start": 342
+      }
+    }
+  ],
+  "typing_diagnostics": []
 }
