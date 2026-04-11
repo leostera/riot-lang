@@ -46,7 +46,8 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `compiler/raml-core/AGENTS.md`: shared compiler frontend, `Core_ir`, and backend-neutral pipeline contracts
 - `compiler/raml-native/AGENTS.md`: native backend, `NIR`/`MIR`/`LIR`, emitter, linker, and native pass work
 - `compiler/raml-wasm/AGENTS.md`: wasm backend package
-- `compiler/raml/AGENTS.md`: thin public facade, backend dispatch, integration helpers, and the still-unsplit JS lane
+- `compiler/raml-js/AGENTS.md`: JS backend ownership, `JIR`/`JST`, JS runtime/import lowering, and JS pass work
+- `compiler/raml/AGENTS.md`: thin public facade, backend dispatch, and integration helpers
 - `packages/gooey/AGENTS.md`: TUI primitives
 - `packages/minttea/AGENTS.md`: Elm-style TUI framework
 - `packages/sqlx/AGENTS.md`: high-level SQL API

@@ -14,7 +14,6 @@ It should stay small.
 - backend dispatch in `src/backend_compile.ml`
 - integration helpers such as `src/example_pipeline.ml`
 - fixture-only helpers that have not been moved out yet
-- the in-tree JS backend until the JS split is finished
 - cross-backend integration tests that still live under `compiler/raml/tests/`
 
 `compiler/raml` does **not** own the shared frontend/core compiler logic or the
@@ -31,9 +30,11 @@ Before changing code, pick the right package:
   `NIR` / `MIR` / `LIR`, native emitter/linker, and native pass work.
 - `compiler/raml-wasm/AGENTS.md`
   Wasm backend work.
+- `compiler/raml-js/AGENTS.md`
+  `JIR` / `JST`, JS runtime/import lowering, and JS pass work.
 - `compiler/raml/AGENTS.md`
   Only for facade wiring, backend dispatch, public API, integration helpers,
-  and the still-unsplit JS lane.
+  and cross-backend integration tests.
 
 ## Rules
 
@@ -41,7 +42,7 @@ Before changing code, pick the right package:
 2. Shared compiler types and frontend stages belong in `raml-core`.
 3. Native lowering/codegen belongs in `raml-native`.
 4. Wasm lowering/codegen belongs in `raml-wasm`.
-5. JS stays here only until that package split lands.
+5. JS lowering/codegen belongs in `raml-js`.
 6. If the public `Raml` contract changes, update the facade plus the owning
    package docs/AGENTS together.
 7. If an integration helper only exists for tests, keep it out of the public
