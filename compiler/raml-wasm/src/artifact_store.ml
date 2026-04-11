@@ -15,6 +15,26 @@ type error =
   | Save_failed of { namespace: string; key: string; message: string }
   | Decode_failed of { namespace: string; key: string; message: string }
 
+let json_string_field = fun name json ->
+  match Json.get_field name json with
+  | Some value -> Json.get_string value
+  | None -> None
+
+let json_int_field = fun name json ->
+  match Json.get_field name json with
+  | Some value -> Json.get_int value
+  | None -> None
+
+let json_bool_field = fun name json ->
+  match Json.get_field name json with
+  | Some value -> Json.get_bool value
+  | None -> None
+
+let json_array_field = fun name json ->
+  match Json.get_field name json with
+  | Some value -> Json.get_array value
+  | None -> None
+
 module Module_summary = struct
   type t = Artifacts.Module_summary.t = {
     unit_name: string;
@@ -32,30 +52,33 @@ module Module_summary = struct
 
   let of_json = fun json ->
     let json_string_list name =
-      match Json.get_field name json |> Option.and_then Json.get_array with
+      match json_array_field name json with
       | None -> Error ("missing or invalid '" ^ name ^ "'")
       | Some values ->
-          values |> List.fold_right
-            (fun value acc ->
-              match (Json.get_string value, acc) with
-              | Some value, Ok values -> Ok (value :: values)
-              | None, _ -> Error ("invalid string entry in '" ^ name ^ "'")
-              | _, Error _ as error -> error)
-            (Ok [])
+          let rec loop values acc =
+            match values with
+            | [] -> Ok (List.rev acc)
+            | value :: rest -> (
+                match Json.get_string value with
+                | Some value -> loop rest (value :: acc)
+                | None -> Error ("invalid string entry in '" ^ name ^ "'")
+              )
+          in
+          loop values []
     in
     let json_int name =
-      match Json.get_field name json |> Option.and_then Json.get_int with
+      match json_int_field name json with
       | Some value -> Ok value
       | None -> Error ("missing or invalid '" ^ name ^ "'")
     in
     let json_bool name =
-      match Json.get_field name json |> Option.and_then Json.get_bool with
+      match json_bool_field name json with
       | Some value -> Ok value
       | None -> Error ("missing or invalid '" ^ name ^ "'")
     in
     let ( let* ) = Result.and_then in
     let* unit_name =
-      match Json.get_field "unit_name" json |> Option.and_then Json.get_string with
+      match json_string_field "unit_name" json with
       | Some value -> Ok value
       | None -> Error "missing or invalid 'unit_name'"
     in
@@ -106,12 +129,12 @@ module Object_artifact = struct
   let of_json = fun json ->
     let ( let* ) = Result.and_then in
     let* id =
-      match Json.get_field "id" json |> Option.and_then Json.get_string with
+      match json_string_field "id" json with
       | Some value -> Ok value
       | None -> Error "missing or invalid 'id'"
     in
     let* unit_name =
-      match Json.get_field "unit_name" json |> Option.and_then Json.get_string with
+      match json_string_field "unit_name" json with
       | Some value -> Ok value
       | None -> Error "missing or invalid 'unit_name'"
     in
@@ -164,20 +187,23 @@ module Linked_program_artifact = struct
 
   let of_json = fun json ->
     let json_string_list name =
-      match Json.get_field name json |> Option.and_then Json.get_array with
+      match json_array_field name json with
       | None -> Error ("missing or invalid '" ^ name ^ "'")
       | Some values ->
-          values |> List.fold_right
-            (fun value acc ->
-              match (Json.get_string value, acc) with
-              | Some value, Ok values -> Ok (value :: values)
-              | None, _ -> Error ("invalid string entry in '" ^ name ^ "'")
-              | _, Error _ as error -> error)
-            (Ok [])
+          let rec loop values acc =
+            match values with
+            | [] -> Ok (List.rev acc)
+            | value :: rest -> (
+                match Json.get_string value with
+                | Some value -> loop rest (value :: acc)
+                | None -> Error ("invalid string entry in '" ^ name ^ "'")
+              )
+          in
+          loop values []
     in
     let ( let* ) = Result.and_then in
     let* id =
-      match Json.get_field "id" json |> Option.and_then Json.get_string with
+      match json_string_field "id" json with
       | Some value -> Ok value
       | None -> Error "missing or invalid 'id'"
     in
@@ -185,7 +211,7 @@ module Linked_program_artifact = struct
     let* imports = json_string_list "imports" in
     let* exports = json_string_list "exports" in
     let* needs_closure_runtime =
-      match Json.get_field "needs_closure_runtime" json |> Option.and_then Json.get_bool with
+      match json_bool_field "needs_closure_runtime" json with
       | Some value -> Ok value
       | None -> Error "missing or invalid 'needs_closure_runtime'"
     in
@@ -247,28 +273,28 @@ module Module_artifact = struct
   let of_json = fun json ->
     let ( let* ) = Result.and_then in
     let* id =
-      match Json.get_field "id" json |> Option.and_then Json.get_string with
+      match json_string_field "id" json with
       | Some value -> Ok value
       | None -> Error "missing or invalid 'id'"
     in
-    let unit_name = Json.get_field "unit_name" json |> Option.and_then Json.get_string in
+    let unit_name = json_string_field "unit_name" json in
     let* size_bytes =
-      match Json.get_field "size_bytes" json |> Option.and_then Json.get_int with
+      match json_int_field "size_bytes" json with
       | Some value -> Ok value
       | None -> Error "missing or invalid 'size_bytes'"
     in
     let* memory_pages =
-      match Json.get_field "memory_pages" json |> Option.and_then Json.get_int with
+      match json_int_field "memory_pages" json with
       | Some value -> Ok value
       | None -> Error "missing or invalid 'memory_pages'"
     in
     let* wasm_base64 =
-      match Json.get_field "wasm_base64" json |> Option.and_then Json.get_string with
+      match json_string_field "wasm_base64" json with
       | Some value -> Ok value
       | None -> Error "missing or invalid 'wasm_base64'"
     in
     let* node_runner =
-      match Json.get_field "node_runner" json |> Option.and_then Json.get_string with
+      match json_string_field "node_runner" json with
       | Some value -> Ok value
       | None -> Error "missing or invalid 'node_runner'"
     in
@@ -356,13 +382,14 @@ let decode = fun decode json ->
   | Error _ -> None
 
 let load_object = fun store ~id ->
-  load_named_json store ~namespace:(objects_namespace store) ~key:id
-  |> Option.and_then (decode Object_artifact.of_json)
+  match load_named_json store ~namespace:(objects_namespace store) ~key:id with
+  | Some json -> decode Object_artifact.of_json json
+  | None -> None
 
 let find_object_by_unit_name = fun store ~unit_name ->
   match load_named_json store ~namespace:(object_index_namespace store) ~key:unit_name with
   | Some index_json -> (
-      match Json.get_field "id" index_json |> Option.and_then Json.get_string with
+      match json_string_field "id" index_json with
       | Some id -> load_object store ~id
       | None -> None
     )
@@ -389,13 +416,14 @@ let save_linked_program = fun store ~(linked_program:Artifacts.Linked_program.t)
   Ok artifact
 
 let load_linked_program = fun store ~id ->
-  load_named_json store ~namespace:(linked_programs_namespace store) ~key:id
-  |> Option.and_then (decode Linked_program_artifact.of_json)
+  match load_named_json store ~namespace:(linked_programs_namespace store) ~key:id with
+  | Some json -> decode Linked_program_artifact.of_json json
+  | None -> None
 
 let find_linked_program_by_unit_name = fun store ~unit_name ->
   match load_named_json store ~namespace:(linked_program_index_namespace store) ~key:unit_name with
   | Some index_json -> (
-      match Json.get_field "id" index_json |> Option.and_then Json.get_string with
+      match json_string_field "id" index_json with
       | Some id -> load_linked_program store ~id
       | None -> None
     )
@@ -420,13 +448,14 @@ let save_module = fun store ?unit_name (artifact: Codegen.artifact) ->
   Ok artifact
 
 let load_module = fun store ~id ->
-  load_named_json store ~namespace:(modules_namespace store) ~key:id
-  |> Option.and_then (decode Module_artifact.of_json)
+  match load_named_json store ~namespace:(modules_namespace store) ~key:id with
+  | Some json -> decode Module_artifact.of_json json
+  | None -> None
 
 let find_module_by_unit_name = fun store ~unit_name ->
   match load_named_json store ~namespace:(module_index_namespace store) ~key:unit_name with
   | Some index_json -> (
-      match Json.get_field "id" index_json |> Option.and_then Json.get_string with
+      match json_string_field "id" index_json with
       | Some id -> load_module store ~id
       | None -> None
     )
