@@ -7,7 +7,7 @@ module Ser = Serde.Ser
 
 let primitive_examples = 100_000
 
-let composite_examples = 5_000
+let composite_examples = 50_000
 
 let io_chunk_size = 3
 

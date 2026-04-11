@@ -297,7 +297,7 @@ let print_sample = fun (value: sample) ->
       " }";
     ]
 
-let finite_float_limit = 1.0e 12
+let finite_float_limit = 1.0e12
 
 let finite_float_gen = Generator.float_range (-.finite_float_limit) finite_float_limit
 
