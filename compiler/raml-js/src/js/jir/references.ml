@@ -2,16 +2,10 @@ open Std
 
 module Core = Raml_core.Core_ir
 module Jir = Types
-module Intrinsics = Intrinsics
 module Modules = Modules
+module Objects = Objects
 
-let string_literal = fun value -> Jir.Expr.Literal (Jir.Literal.String value)
-
-let named_property_access = fun object_ property ->
-  if Syntax.can_use_dot_property property then
-    Intrinsics.member object_ property
-  else
-    Intrinsics.index object_ (string_literal property)
+let named_property_access = Objects.named_access
 
 let entity = fun entity_id ->
   let reference = Modules.entity_reference entity_id in

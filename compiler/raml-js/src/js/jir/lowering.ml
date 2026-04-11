@@ -4,6 +4,7 @@ module Core = Raml_core.Core_ir
 module Jir = Types
 module Builtins = Builtins
 module Intrinsics = Intrinsics
+module Objects = Objects
 module Primitives = Primitives
 module References = References
 
@@ -81,8 +82,6 @@ let iife = fun body ->
   }
 
 let lower_direct_callee = fun entity_id -> References.entity entity_id
-
-let lower_object = fun fields -> Jir.Expr.Object fields
 
 let lower_stdout_write = fun value -> Intrinsics.stdout_write value
 
@@ -207,7 +206,7 @@ let rec lower_expr = fun expr ->
         (lower_expr tuple_get.tuple)
         (Jir.Expr.Literal (Jir.Literal.Number (Jir.Literal.Int tuple_get.index)))
   | Core.Expr.Record record ->
-      lower_object (List.map lower_record_field record)
+      Objects.literal (List.map lower_record_field record)
   | Core.Expr.Record_get record_get ->
       References.named_property_access (lower_expr record_get.record) record_get.label
   | Core.Expr.If_then_else if_then_else ->
@@ -220,7 +219,7 @@ let rec lower_expr = fun expr ->
       Primitives.lower primitive.primitive (List.map lower_expr primitive.arguments)
 
 and lower_record_field = fun (field: Core.Expr.record_field) ->
-  Jir.Expr.{ name = field.label; value = lower_expr field.value }
+  Objects.field field.label (lower_expr field.value)
 
 and lower_tail_expr = fun expr ->
   match expr with

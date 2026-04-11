@@ -62,6 +62,9 @@ ReScript is a better reference for emitted JS shape:
 - JS-native globals, member access, calls, arrays, and ambient namespaces now
   live in shared `Jir.Intrinsics` helpers instead of being rebuilt ad hoc in
   each lowering subsystem
+- JS object literals and named property access now live in explicit
+  `Jir.Objects` helpers instead of being split between record lowering and
+  reference lowering
 - dotted entity references and namespace-import construction now live in
   explicit `Jir.References` lowering instead of being embedded directly in the
   main lowering walk
@@ -103,6 +106,8 @@ The main remaining architectural gaps are:
    metadata.
 5. Records now lower naturally to JS objects, but inner modules and more
    namespace-like constructs do not yet lower to JS objects.
+   The object substrate is now explicit in `Jir.Objects`, which makes that next
+   step much less invasive.
 6. JS binder validity is now owned centrally, but module/path resolution is
    still much shallower than Melange or ReScript.
 

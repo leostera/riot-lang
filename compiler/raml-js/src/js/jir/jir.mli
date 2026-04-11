@@ -4,6 +4,8 @@ module Builtins = Builtins
 
 module Intrinsics = Intrinsics
 
+module Objects = Objects
+
 module References = References
 
 module Primitives = Primitives
