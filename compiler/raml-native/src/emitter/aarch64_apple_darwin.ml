@@ -375,6 +375,26 @@ let emit_procedure = fun strings (procedure: Lir.Procedure.t) ->
   @ default_return
   @ [ blank ])
 
+let procedure_uses_poll_stub = fun (procedure: Lir.Procedure.t) ->
+  List.exists
+    (fun instruction_ ->
+      match instruction_ with
+      | Lir.Instruction.Call { callee = Lir.Callee.Direct "raml_poll"; _ } -> true
+      | _ -> false)
+    procedure.body
+
+let program_uses_poll_stub = fun (program: Lir.Program.t) ->
+  List.exists procedure_uses_poll_stub program.procedures
+
+let emit_poll_stub = fun () ->
+  let symbol = mangle_symbol "raml_poll" in
+  [
+    directive ".p2align" ~args:[ "2" ] ();
+    label symbol;
+    instruction Asm.Instruction.Ret;
+    blank;
+  ]
+
 let add_string_constant = fun constants value ->
   match
     List.find_map
@@ -486,7 +506,13 @@ let emit_text = fun strings (program: Lir.Program.t) ->
       (Ok [])
       program.procedures
   in
-  Ok ([ directive ".text" (); ] @ procedures)
+  let poll_stub =
+    if program_uses_poll_stub program then
+      emit_poll_stub ()
+    else
+      []
+  in
+  Ok ([ directive ".text" (); ] @ poll_stub @ procedures)
 
 let emit_program = fun (program: Lir.Program.t) ->
   let strings = string_constants_of_program program in

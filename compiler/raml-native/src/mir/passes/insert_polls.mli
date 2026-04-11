@@ -1,1 +1,1 @@
-val program: 'a -> 'a
+val program: Types.Program.t -> Types.Program.t
