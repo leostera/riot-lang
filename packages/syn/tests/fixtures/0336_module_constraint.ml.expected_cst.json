@@ -113,6 +113,7 @@
                     "end": 18
                   }
                 },
+                "module_name": null,
                 "package_type": {
                   "syntax_node": {
                     "kind": "FIRST_CLASS_MODULE_TYPE",

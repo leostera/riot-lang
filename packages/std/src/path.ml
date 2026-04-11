@@ -169,7 +169,9 @@ let add_extension = fun path ~ext ->
     else
       ext
   in
-  remove_extension path ^ ext
+  path ^ ext
+
+let replace_extension = fun path ~ext -> add_extension (remove_extension path) ~ext
 
 let is_relative = fun path -> not (is_absolute path)
 

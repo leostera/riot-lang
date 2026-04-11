@@ -2340,6 +2340,16 @@ let rec can_lift_module_type_node = fun node ->
   | Syntax_kind.SIG_EXPR -> true
   | _ -> false
 
+let first_class_module_alias_tokens = fun node base_node ->
+  let base_start = (Ceibo.Red.SyntaxNode.span base_node).start in
+  let prefix_tokens = direct_non_trivia_tokens node
+  |> List.filter (fun syntax_token -> (Ceibo.Red.SyntaxToken.span syntax_token).end_ <= base_start) in
+  match List.rev prefix_tokens with
+  | colon_token :: module_name :: _module_kw :: _opening_token :: _ when String.equal
+    (Ceibo.Red.SyntaxToken.text colon_token)
+    ":" -> (Some (token module_name), Some (token colon_token))
+  | _ -> (None, None)
+
 let rec can_lift_class_type_field_node = fun node ->
   match Ceibo.Red.SyntaxNode.kind node with
   | Syntax_kind.OBJECT_INHERIT
@@ -3998,12 +4008,21 @@ and core_type_from_node = fun node ->
           ~syntax_node:node
           ~context:[ "core_type.first_class_module" ]
       in
-      (Cst.CoreType.FirstClassModule {
-        syntax_node = node;
-        opening_token;
-        package_type = module_type_from_first_class_module_type_node node;
-        closing_token
-      })
+      let module_name, colon_token =
+        match direct_non_trivia_nodes node with
+        | base_node :: _ -> first_class_module_alias_tokens node base_node
+        | [] -> (None, None)
+      in
+      (
+        Cst.CoreType.FirstClassModule {
+          syntax_node = node;
+          opening_token;
+          module_name;
+          colon_token;
+          package_type = module_type_from_first_class_module_type_node node;
+          closing_token;
+        }
+      )
   | Syntax_kind.OBJECT_TYPE ->
       let direct_tokens = direct_non_trivia_tokens node in
       let opening_token, closing_token =

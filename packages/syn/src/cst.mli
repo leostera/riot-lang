@@ -608,6 +608,8 @@ and core_type =
   | FirstClassModule of {
       syntax_node: syntax_node;
       opening_token: Token.t;
+      module_name: Token.t option;
+      colon_token: Token.t option;
       package_type: package_type;
       closing_token: Token.t
     }
@@ -618,6 +620,7 @@ and core_type =
           ```ocaml,norun
           (module S)
           (module Handler with type t = int)
+          (module X : Handler with type t = int)
           ```
       *)
   | Object of {
@@ -895,6 +898,8 @@ module CoreType: sig
     | FirstClassModule of {
         syntax_node: syntax_node;
         opening_token: Token.t;
+        module_name: Token.t option;
+        colon_token: Token.t option;
         package_type: package_type;
         closing_token: Token.t
       }

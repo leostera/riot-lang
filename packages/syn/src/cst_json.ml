@@ -348,9 +348,10 @@ and core_type_to_json = function
     ("syntax_node", syntax_node_to_json syntax_node);
     ("fields", Json.Array (List.map record_type_field_to_json fields))
   ]
-  | Cst.CoreType.FirstClassModule { syntax_node; package_type } -> Json.Object [
+  | Cst.CoreType.FirstClassModule { syntax_node; module_name; package_type; _ } -> Json.Object [
     ("tag", Json.String "first_class_module");
     ("syntax_node", syntax_node_to_json syntax_node);
+    ("module_name", option_to_json token_to_json module_name);
     ("package_type", package_type_to_json package_type)
   ]
   | Cst.CoreType.Object { syntax_node; fields } -> Json.Object [

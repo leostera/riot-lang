@@ -311,6 +311,8 @@ and core_type =
   | FirstClassModule of {
       syntax_node: syntax_node;
       opening_token: Token.t;
+      module_name: Token.t option;
+      colon_token: Token.t option;
       package_type: package_type;
       closing_token: Token.t
     }
@@ -424,6 +426,8 @@ module CoreType = struct
     | FirstClassModule of {
         syntax_node: syntax_node;
         opening_token: Token.t;
+        module_name: Token.t option;
+        colon_token: Token.t option;
         package_type: package_type;
         closing_token: Token.t
       }

@@ -5797,35 +5797,35 @@ let x =
     (fun _ctx ->
       let source = "let small = 1.0e-6\nlet big = 1.0e12\nlet tagged = 1.2e3g\n" in
       let result = parse_ml source in
-      let cst =
-        expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
-        |> Result.expect ~msg:"expected CST for diagnostics-free parse"
-      in
+      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
+      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
       match structure_items cst with
-      | Syn.Cst.StructureItem.LetBinding {
-          value=Syn.Cst.Expression.Literal (Syn.Cst.Literal.Float {
-            integral_digits=small_integral;
-            fractional_digits=small_fractional;
-            exponent=Some { marker=small_marker; sign=Some small_sign; digits=small_digits };
-            suffix=None;
-            _;
-          });
+      | Syn.Cst.StructureItem.LetBinding { value=Syn.Cst.Expression.Literal (Syn.Cst.Literal.Float {
+          integral_digits=small_integral;
+          fractional_digits=small_fractional;
+          exponent=Some { marker=small_marker; sign=Some small_sign; digits=small_digits };
+          suffix=None;
           _;
-        } :: Syn.Cst.StructureItem.LetBinding {
-          value=Syn.Cst.Expression.Literal (Syn.Cst.Literal.Float {
-            exponent=Some { marker=big_marker; sign=None; digits=big_digits };
-            suffix=None;
-            _;
-          });
+
+        }); _;  } :: Syn.Cst.StructureItem.LetBinding {
+        value=Syn.Cst.Expression.Literal (Syn.Cst.Literal.Float {
+          exponent=Some { marker=big_marker; sign=None; digits=big_digits };
+          suffix=None;
           _;
-        } :: Syn.Cst.StructureItem.LetBinding {
-          value=Syn.Cst.Expression.Literal (Syn.Cst.Literal.Float {
-            exponent=Some { marker=tagged_marker; sign=None; digits=tagged_digits };
-            suffix=Some tagged_suffix;
-            _;
-          });
+
+        });
+        _;
+
+      } :: Syn.Cst.StructureItem.LetBinding {
+        value=Syn.Cst.Expression.Literal (Syn.Cst.Literal.Float {
+          exponent=Some { marker=tagged_marker; sign=None; digits=tagged_digits };
+          suffix=Some tagged_suffix;
           _;
-        } :: _ ->
+
+        });
+        _;
+
+      } :: _ ->
           Test.assert_equal ~expected:"1" ~actual:small_integral;
           Test.assert_equal ~expected:"0" ~actual:small_fractional;
           Test.assert_equal ~expected:"e" ~actual:small_marker;

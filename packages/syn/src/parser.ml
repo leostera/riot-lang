@@ -315,6 +315,11 @@ let starts_with_class_type_keyword = fun parser ->
   peek_kind parser = Token.Keyword Keyword.Class
   && (peek_n parser 1).Token.kind = Token.Keyword Keyword.Type
 
+let starts_with_named_package_type_binding = fun parser ->
+  match peek_kind parser, (peek_n parser 1).Token.kind with
+  | Token.Ident name, Token.Colon when ident_starts_uppercase name -> true
+  | _ -> false
+
 let can_start_class_type_arrow_parameter = fun parser ->
   match peek_kind parser with
   | Token.Tilde
@@ -1438,6 +1443,19 @@ and parse_primary_type = fun parser ->
         | Token.Keyword Keyword.Module ->
             let module_kw = consume parser in
             let trivia_after_module = consume_trivia parser in
+            let binding_children =
+              if starts_with_named_package_type_binding parser then
+                let module_name = consume parser in
+                let trivia_after_module_name = consume_trivia parser in
+                let colon = consume parser in
+                let trivia_after_colon = consume_trivia parser in
+                [ make_token parser module_name ]
+                @ tokens_to_green parser trivia_after_module_name
+                @ [ make_token parser colon ]
+                @ tokens_to_green parser trivia_after_colon
+              else
+                []
+            in
             (* Parse module type path *)
             let module_type_path = parse_module_type_path parser in
             let trivia_after_path = consume_trivia parser in
@@ -1477,6 +1495,7 @@ and parse_primary_type = fun parser ->
               @ tokens_to_green parser trivia_after_open
               @ [ make_token parser module_kw ]
               @ tokens_to_green parser trivia_after_module
+              @ binding_children
               @ [ Ceibo.Green.Node module_type_path ]
               @ tokens_to_green parser trivia_after_path
               @ constraint_children
@@ -2769,6 +2788,12 @@ and is_operator_token = function
   | Token.Keyword Keyword.Let
   | Token.Keyword Keyword.And -> true
   | _ -> false
+
+(** Check if current token can continue a symbolic operator name without
+    intervening trivia, e.g. [++] or [^^^]. *)
+and is_symbolic_operator_token = function
+  | Token.Keyword _ -> false
+  | tok -> is_operator_token tok
 
 (** Check if identifier text matches a keyword operator name *)
 and is_keyword_operator_name = fun text ->
@@ -5159,16 +5184,15 @@ and parse_binary_expr = fun parser min_prec ->
         let operator_children = ref [ make_token parser op ] in
         let operator_text_parts = ref [ token_text parser op ] in
         let rec collect_operator_suffix () =
-          match op.Token.kind, peek_kind parser with
-          | Token.Hash, tok when is_operator_token tok ->
-              let trivia = consume_trivia parser in
+          let saved_pos = position parser in
+          let trivia = consume_trivia parser in
+          match (trivia, peek_kind parser) with
+          | ([], tok) when is_symbolic_operator_token tok ->
               let next_op = consume parser in
-              operator_children := !operator_children
-              @ tokens_to_green parser trivia
-              @ [ make_token parser next_op ];
+              operator_children := !operator_children @ [ make_token parser next_op ];
               operator_text_parts := !operator_text_parts @ [ token_text parser next_op ];
               collect_operator_suffix ()
-          | _ -> ()
+          | _ -> Token_cursor.set_position parser.cursor saved_pos
         in
         collect_operator_suffix ();
         let op_text = String.concat "" !operator_text_parts in

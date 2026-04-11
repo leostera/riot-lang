@@ -53,16 +53,35 @@
                 "end": 0
               },
               "rule_id": "require-module-interfaces",
-              "suggestion": "Add a matching interface file at `__REPO_ROOT__/packages/riot-lsp/tests/workspace_fixtures/sleet/app/src/app.mli`.",
+              "suggestion": "Add a matching interface file at `__REPO_ROOT__/packages/riot-lsp/tests/workspace_fixtures/frost/app/src/app.mli`.",
               "fix": null
             }
           }
         ],
-        "uri": "__REPO_ROOT_URI__/packages/riot-lsp/tests/workspace_fixtures/sleet/app/src/app.ml",
+        "uri": "__REPO_ROOT_URI__/packages/riot-lsp/tests/workspace_fixtures/frost/app/src/app.ml",
         "version": 1
       },
       "jsonrpc": "2.0",
       "method": "textDocument/publishDiagnostics"
+    },
+    {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": [
+        {
+          "uri": "__REPO_ROOT_URI__/packages/riot-lsp/tests/workspace_fixtures/frost/support/src/support.ml",
+          "range": {
+            "start": {
+              "line": 2,
+              "character": 3
+            },
+            "end": {
+              "line": 2,
+              "character": 10
+            }
+          }
+        }
+      ]
     }
   ],
   "exitCode": null,
@@ -71,7 +90,7 @@
     "shutdownRequested": false,
     "documents": [
       {
-        "uri": "__REPO_ROOT_URI__/packages/riot-lsp/tests/workspace_fixtures/sleet/app/src/app.ml",
+        "uri": "__REPO_ROOT_URI__/packages/riot-lsp/tests/workspace_fixtures/frost/app/src/app.ml",
         "version": 1
       }
     ]

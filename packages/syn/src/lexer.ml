@@ -413,8 +413,10 @@ let lex_number = fun cursor token_start ->
             | Some c when is_digit c -> true
             | _ -> false
           )
-        | Some c when is_digit c -> true
-        | _ -> false
+        | Some c when is_digit c ->
+            true
+        | _ ->
+            false
       )
     | _ -> false
   in
@@ -428,11 +430,7 @@ let lex_number = fun cursor token_start ->
         | _ -> ()
       in
       let _ = Cursor.take_while cursor is_digit_or_underscore in
-      Some
-        (
-          Cursor.slice cursor start (Cursor.position cursor - start)
-          |> remove_underscores
-        )
+      Some (Cursor.slice cursor start (Cursor.position cursor - start) |> remove_underscores)
     else
       None
   in

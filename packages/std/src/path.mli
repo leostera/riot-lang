@@ -193,22 +193,32 @@ val extension: t -> string option
     assert (Path.remove_extension archive = Path.v "file.tar") ``` *)
 val remove_extension: t -> t
 
-(** Adds or replaces the file extension.
-
-    If the path already has an extension, it's replaced. The extension should
-    not include the leading dot.
+(** Adds an extension to the file.
 
     ## Examples
 
-    ```ocaml let path = Path.v "file" in assert (Path.add_extension path
-    ~ext:"txt" = Path.v "file.txt");
+    ```ocaml 
+    let path = Path.v "file" in 
+    assert (Path.add_extension path ~ext:"txt" = Path.v "file.txt");
 
-    (* Replaces existing extension *) let doc = Path.v "document.doc" in assert
-    (Path.add_extension doc ~ext:"pdf" = Path.v "document.pdf");
-
-    (* Create backup files *) let backup path = Path.add_extension path
-    ~ext:"bak" ``` *)
+    (* Adds existing extension *) 
+    let doc = Path.v "document.doc" 
+    in assert (Path.add_extension doc ~ext:"pdf" = Path.v "document.doc.pdf");
+    ```
+*)
 val add_extension: t -> ext:string -> t
+
+(** Replaces a file's extension.
+
+    ## Example
+
+    ```ocaml 
+    (* Replace existing extension *) 
+    let doc = Path.v "document.doc" 
+    in assert (Path.add_extension doc ~ext:"pdf" = Path.v "document.pdf");
+    ```
+*)
+val replace_extension: t -> ext:string -> t
 
 (** Returns `true` if the path is absolute.
 
