@@ -57,6 +57,8 @@ ReScript is a better reference for emitted JS shape:
 - Riot-owned JS builtins are classified explicitly from `Std`/Riot surface paths
 - shared primitives now arrive from `Raml_core` as a typed, backend-neutral
   contract instead of `%foo` strings
+- direct-call lowering now lives in explicit `Jir.Calls` policy instead of
+  mixing builtin dispatch into the main lowering walk
 - primitive lowering now lives in an explicit `Jir.Primitives` subsystem instead
   of as a large inline match inside the main lowering walk
 - JS-native globals, member access, calls, arrays, and ambient namespaces now

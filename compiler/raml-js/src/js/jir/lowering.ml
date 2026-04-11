@@ -2,7 +2,7 @@ open Std
 open Std.Data
 module Core = Raml_core.Core_ir
 module Jir = Types
-module Builtins = Builtins
+module Calls = Calls
 module Intrinsics = Intrinsics
 module Objects = Objects
 module Primitives = Primitives
@@ -81,14 +81,6 @@ let iife = fun body ->
     arguments = []
   }
 
-let lower_direct_callee = fun entity_id -> References.entity entity_id
-
-let lower_stdout_write = fun value -> Intrinsics.stdout_write value
-
-let lower_stderr_write = fun value -> Intrinsics.stderr_write value
-
-let lower_bool = fun value -> Jir.Expr.Literal (Jir.Literal.Bool value)
-
 let lower_curried_function = fun (function_: Jir.Expr.function_) ->
   let arity = List.length function_.params in
   if arity <= 1 then
@@ -98,80 +90,6 @@ let lower_curried_function = fun (function_: Jir.Expr.function_) ->
       (Jir.Expr.Runtime_helper (Jir.Runtime.make_curried ()))
       [ Jir.Expr.Function function_; Jir.Expr.Literal (Jir.Literal.Number (Jir.Literal.Int arity)); ]
 
-let lower_builtin_call = fun entity_id builtin arguments ->
-  let fallback () =
-    let callee = lower_direct_callee entity_id in
-    Intrinsics.call callee arguments
-  in
-  match (builtin: Builtins.direct_callee) with
-  | Console_log -> (
-      match arguments with
-      | [ argument ] -> Intrinsics.console_log [ argument ]
-      | _ -> fallback ()
-    )
-  | Console_error -> (
-      match arguments with
-      | [ argument ] -> Intrinsics.console_error [ argument ]
-      | _ -> fallback ()
-    )
-  | Stdout_write -> (
-      match arguments with
-      | [ argument ] -> lower_stdout_write argument
-      | _ -> fallback ()
-    )
-  | Stderr_write -> (
-      match arguments with
-      | [ argument ] -> lower_stderr_write argument
-      | _ -> fallback ()
-    )
-  | String_constructor -> (
-      match arguments with
-      | [ argument ] -> Intrinsics.string_constructor argument
-      | _ -> fallback ()
-    )
-  | Math_sqrt -> (
-      match arguments with
-      | [ argument ] -> Intrinsics.math_sqrt argument
-      | _ -> fallback ()
-    )
-  | Primitive primitive_name ->
-      Primitives.lower primitive_name arguments
-  | Unary_operator operator -> (
-      match arguments with
-      | [ argument ] -> Intrinsics.unary operator argument
-      | _ -> fallback ()
-    )
-  | Boolean_and -> (
-      match arguments with
-      | [left;right] -> Jir.Expr.Conditional Jir.Expr.{
-        condition = left;
-        then_ = right;
-        else_ = lower_bool false
-      }
-      | _ -> fallback ()
-    )
-  | Boolean_or -> (
-      match arguments with
-      | [left;right] -> Jir.Expr.Conditional Jir.Expr.{
-        condition = left;
-        then_ = lower_bool true;
-        else_ = right
-      }
-      | _ -> fallback ()
-    )
-  | Binary_operator operator -> (
-      match arguments with
-      | [left;right] -> Intrinsics.binary operator left right
-      | _ -> fallback ()
-    )
-
-let lower_direct_call = fun entity_id arguments ->
-  match Builtins.classify_direct_callee entity_id with
-  | Some builtin -> lower_builtin_call entity_id builtin arguments
-  | None ->
-      let callee = lower_direct_callee entity_id in
-      Intrinsics.call callee arguments
-
 let rec lower_expr = fun expr ->
   match expr with
   | Core.Expr.Constant constant ->
@@ -180,7 +98,7 @@ let rec lower_expr = fun expr ->
       References.entity entity_id
   | Core.Expr.Apply { callee=Core.Expr.Direct function_name; arguments } ->
       let arguments = List.map lower_expr arguments in
-      lower_direct_call function_name arguments
+      Calls.direct function_name arguments
   | Core.Expr.Apply { callee=Core.Expr.Indirect callee; arguments } ->
       let callee = lower_expr callee in
       let arguments = List.map lower_expr arguments in
