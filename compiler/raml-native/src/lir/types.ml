@@ -103,15 +103,19 @@ end
 
 module Frame = struct
   type t = {
+    contains_calls: bool;
+    frame_required: bool;
     slots: Slot.t list;
     frame_size: int;
   }
 
-  let empty = { slots = []; frame_size = 0 }
+  let empty = { contains_calls = false; frame_required = false; slots = []; frame_size = 0 }
 
   let to_json = fun frame ->
     Json.obj
       [
+        ("contains_calls", Json.bool frame.contains_calls);
+        ("frame_required", Json.bool frame.frame_required);
         ("slots", Json.array (List.map Slot.to_json frame.slots));
         ("frame_size", Json.int frame.frame_size);
       ]

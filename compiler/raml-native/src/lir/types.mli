@@ -50,6 +50,8 @@ end
 
 module Frame: sig
   type t = {
+    contains_calls: bool;
+    frame_required: bool;
     slots: Slot.t list;
     frame_size: int;
   }

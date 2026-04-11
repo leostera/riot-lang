@@ -395,133 +395,6 @@ let lower_direct_call = fun env name lowered_arguments ->
         { expr = Nir.Expr.Call Nir.Expr.{ callee = Direct name; arguments }; lifted_functions }
     )
 
-let rec free_vars = fun ~bound expr ->
-  match expr with
-  | Core.Expr.Constant _ ->
-      []
-  | Core.Expr.Var entity_id -> (
-      match local_entity_name entity_id with
-      | Some name ->
-          if has_name bound name then
-            []
-          else
-            [ name ]
-      | None -> []
-    )
-  | Core.Expr.Apply { callee=Core.Expr.Direct _; arguments } ->
-      List.fold_left
-        (fun names argument ->
-          List.fold_left add_unique_name names (free_vars ~bound argument))
-        []
-        arguments
-  | Core.Expr.Apply { callee=Core.Expr.Indirect callee; arguments } ->
-      List.fold_left
-        (fun names expr ->
-          List.fold_left add_unique_name names (free_vars ~bound expr))
-        (free_vars ~bound callee)
-        arguments
-  | Core.Expr.Lambda lambda ->
-      free_vars ~bound:(List.fold_left add_unique_name bound (param_names lambda.params)) lambda.body
-  | Core.Expr.Let let_ ->
-      let binding_names =
-        List.map (fun (binding: Core.Expr.binding) -> binding.name) let_.bindings
-      in
-      let binding_scope =
-        match let_.rec_flag with
-        | Core.Rec_flag.Nonrecursive -> bound
-        | Core.Rec_flag.Recursive -> List.fold_left add_unique_name bound binding_names
-      in
-      let binding_free_vars =
-        List.fold_left
-          (fun names (binding: Core.Expr.binding) ->
-            List.fold_left add_unique_name names (free_vars ~bound:binding_scope binding.expr))
-          []
-          let_.bindings
-      in
-      List.fold_left
-        add_unique_name
-        binding_free_vars
-        (free_vars ~bound:(List.fold_left add_unique_name bound binding_names) let_.body)
-  | Core.Expr.Sequence sequence ->
-      List.fold_left
-        add_unique_name
-        (free_vars ~bound sequence.first)
-        (free_vars ~bound sequence.second)
-  | Core.Expr.Tuple tuple ->
-      List.fold_left
-        (fun names expr ->
-          List.fold_left add_unique_name names (free_vars ~bound expr))
-        []
-        tuple
-  | Core.Expr.Tuple_get tuple_get ->
-      free_vars ~bound tuple_get.tuple
-  | Core.Expr.If_then_else if_then_else ->
-      List.fold_left
-        add_unique_name
-        (free_vars ~bound if_then_else.condition)
-        (List.fold_left
-          add_unique_name
-          (free_vars ~bound if_then_else.then_)
-          (free_vars ~bound if_then_else.else_))
-  | Core.Expr.Primitive primitive ->
-      List.fold_left
-        (fun names expr ->
-          List.fold_left add_unique_name names (free_vars ~bound expr))
-        []
-        primitive.arguments
-
-let captures_of_lambda = fun env (lambda: Core.Expr.lambda) ->
-  free_vars ~bound:(param_names lambda.params) lambda.body
-  |> List.filter (fun name -> has_name env.bound_values name)
-
-let rec expr_uses_name_as_value = fun ~shadowed name expr ->
-  match expr with
-  | Core.Expr.Constant _ ->
-      false
-  | Core.Expr.Var var -> (
-      match local_entity_name var with
-      | Some var_name -> (not (has_name shadowed name)) && String.equal var_name name
-      | None -> false
-    )
-  | Core.Expr.Apply { callee=Core.Expr.Direct callee; arguments } -> (
-      match local_entity_name callee with
-      | Some callee_name -> (not (String.equal callee_name name))
-      && List.exists (expr_uses_name_as_value ~shadowed name) arguments
-      | None -> List.exists (expr_uses_name_as_value ~shadowed name) arguments
-    )
-  | Core.Expr.Apply { callee=Core.Expr.Indirect callee; arguments } ->
-      expr_uses_name_as_value ~shadowed name callee
-      || List.exists (expr_uses_name_as_value ~shadowed name) arguments
-  | Core.Expr.Lambda lambda ->
-      expr_uses_name_as_value ~shadowed:(param_names lambda.params @ shadowed) name lambda.body
-  | Core.Expr.Let let_ ->
-      let binding_names =
-        List.map (fun (binding: Core.Expr.binding) -> binding.name) let_.bindings
-      in
-      let binding_shadowed =
-        match let_.rec_flag with
-        | Core.Rec_flag.Nonrecursive -> shadowed
-        | Core.Rec_flag.Recursive -> binding_names @ shadowed
-      in
-      List.exists
-        (fun (binding: Core.Expr.binding) ->
-          expr_uses_name_as_value ~shadowed:binding_shadowed name binding.expr)
-        let_.bindings
-      || expr_uses_name_as_value ~shadowed:(binding_names @ shadowed) name let_.body
-  | Core.Expr.Sequence sequence ->
-      expr_uses_name_as_value ~shadowed name sequence.first
-      || expr_uses_name_as_value ~shadowed name sequence.second
-  | Core.Expr.Tuple tuple ->
-      List.exists (expr_uses_name_as_value ~shadowed name) tuple
-  | Core.Expr.Tuple_get tuple_get ->
-      expr_uses_name_as_value ~shadowed name tuple_get.tuple
-  | Core.Expr.If_then_else if_then_else ->
-      expr_uses_name_as_value ~shadowed name if_then_else.condition
-      || expr_uses_name_as_value ~shadowed name if_then_else.then_
-      || expr_uses_name_as_value ~shadowed name if_then_else.else_
-  | Core.Expr.Primitive primitive ->
-      List.exists (expr_uses_name_as_value ~shadowed name) primitive.arguments
-
 let local_function_of_binding = fun env ~escaping_names (binding: Core.Expr.binding) ->
   match binding.expr with
   | Core.Expr.Lambda lambda ->
@@ -531,7 +404,10 @@ let local_function_of_binding = fun env ~escaping_names (binding: Core.Expr.bind
             source_name = binding.name;
             lifted_name;
             closure_name = format Format.[ str lifted_name; str "__closure" ];
-            captures = captures_of_lambda env lambda;
+            captures = Analysis.captures_of_lambda
+              ~name_of_entity:local_entity_name
+              ~bound_values:env.bound_values
+              lambda;
             params = param_names lambda.params;
             escapes = has_name escaping_names binding.name;
           })
@@ -657,7 +533,13 @@ let rec lower_expr = fun env expr ->
             (fun (binding: Core.Expr.binding) ->
               match binding.expr with
               | Core.Expr.Lambda _ ->
-                  if expr_uses_name_as_value ~shadowed:[] binding.name let_.body then
+                  if
+                    Analysis.expr_uses_name_as_value
+                      ~name_of_entity:local_entity_name
+                      ~shadowed:[]
+                      binding.name
+                      let_.body
+                  then
                     Some binding.name
                   else
                     None
@@ -732,7 +614,10 @@ and lower_nested_lambda = fun env (lambda: Core.Expr.lambda) ->
   Result.and_then (fresh_lifted_name env "lambda")
     (fun lifted_name ->
       let closure_name = format Format.[ str lifted_name; str "__closure" ] in
-      let capture_names = captures_of_lambda env lambda in
+      let capture_names = Analysis.captures_of_lambda
+        ~name_of_entity:local_entity_name
+        ~bound_values:env.bound_values
+        lambda in
       let params = param_names lambda.params in
       let lambda_env = {
         bound_values = capture_names @ params;
@@ -1041,7 +926,8 @@ let trace_program = fun initial ->
 
 let lower_compilation_unit_with_trace = fun (compilation_unit: Core.Compilation_unit.t) ->
   match compilation_unit.unit_id.kind with
-  | Compiler_source_unit.Interface -> error (UnsupportedModuleKind { kind = compilation_unit.unit_id.kind })
+  | Compiler_source_unit.Interface -> error
+    (UnsupportedModuleKind { kind = compilation_unit.unit_id.kind })
   | Compiler_source_unit.Implementation ->
       let lowering_state = {
         next_local_function = 0;

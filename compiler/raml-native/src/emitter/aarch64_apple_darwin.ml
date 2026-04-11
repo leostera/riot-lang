@@ -214,52 +214,58 @@ let store_register = fun layout name register ->
   [ instruction (Asm.Instruction.Str { src = register; address = slot_address layout name }) ]
 
 let emit_prologue = fun (layout: Lir.Frame.t) ->
-  let prologue = [
-    instruction
-      (Asm.Instruction.Stp {
-        src1 = Asm.Register.fp;
-        src2 = Asm.Register.lr;
-        address = Asm.Address.pre_index ~base:Asm.Register.sp ~offset:(-16)
-      });
-    instruction (Asm.Instruction.Mov { dst = Asm.Register.fp; src = Asm.Register.sp });
-  ] in
-  if layout.frame_size = 0 then
-    prologue
+  if not layout.frame_required then
+    []
   else
-    prologue
-    @ [
+    let prologue = [
       instruction
-        (Asm.Instruction.Sub_imm {
-          dst = Asm.Register.sp;
-          lhs = Asm.Register.sp;
-          imm = layout.frame_size
-        })
-    ]
-
-let emit_epilogue = fun (layout: Lir.Frame.t) ->
-  let body =
+        (Asm.Instruction.Stp {
+          src1 = Asm.Register.fp;
+          src2 = Asm.Register.lr;
+          address = Asm.Address.pre_index ~base:Asm.Register.sp ~offset:(-16)
+        });
+      instruction (Asm.Instruction.Mov { dst = Asm.Register.fp; src = Asm.Register.sp });
+    ] in
     if layout.frame_size = 0 then
-      []
+      prologue
     else
-      [
+      prologue
+      @ [
         instruction
-          (Asm.Instruction.Add_imm {
+          (Asm.Instruction.Sub_imm {
             dst = Asm.Register.sp;
             lhs = Asm.Register.sp;
             imm = layout.frame_size
-          });
+          })
       ]
-  in
-  body
-  @ [
-    instruction
-      (Asm.Instruction.Ldp {
-        dst1 = Asm.Register.fp;
-        dst2 = Asm.Register.lr;
-        address = Asm.Address.post_index ~base:Asm.Register.sp ~offset:16
-      });
-    instruction Asm.Instruction.Ret;
-  ]
+
+let emit_epilogue = fun (layout: Lir.Frame.t) ->
+  if not layout.frame_required then
+    [ instruction Asm.Instruction.Ret ]
+  else
+    let body =
+      if layout.frame_size = 0 then
+        []
+      else
+        [
+          instruction
+            (Asm.Instruction.Add_imm {
+              dst = Asm.Register.sp;
+              lhs = Asm.Register.sp;
+              imm = layout.frame_size
+            });
+        ]
+    in
+    body
+    @ [
+      instruction
+        (Asm.Instruction.Ldp {
+          dst1 = Asm.Register.fp;
+          dst2 = Asm.Register.lr;
+          address = Asm.Address.post_index ~base:Asm.Register.sp ~offset:16
+        });
+      instruction Asm.Instruction.Ret;
+    ]
 
 let emit_parameter_saves = fun layout params ->
   if List.length params > 8 then
@@ -379,7 +385,7 @@ let procedure_uses_poll_stub = fun (procedure: Lir.Procedure.t) ->
   List.exists
     (fun instruction_ ->
       match instruction_ with
-      | Lir.Instruction.Call { callee = Lir.Callee.Direct "raml_poll"; _ } -> true
+      | Lir.Instruction.Call { callee=Lir.Callee.Direct "raml_poll"; _ } -> true
       | _ -> false)
     procedure.body
 
@@ -388,12 +394,7 @@ let program_uses_poll_stub = fun (program: Lir.Program.t) ->
 
 let emit_poll_stub = fun () ->
   let symbol = mangle_symbol "raml_poll" in
-  [
-    directive ".p2align" ~args:[ "2" ] ();
-    label symbol;
-    instruction Asm.Instruction.Ret;
-    blank;
-  ]
+  [ directive ".p2align" ~args:[ "2" ] (); label symbol; instruction Asm.Instruction.Ret; blank; ]
 
 let add_string_constant = fun constants value ->
   match
