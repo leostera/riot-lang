@@ -16,9 +16,10 @@ let unresolved_expr = fun kind ->
        ]))
 
 let lower_import = fun (import: Source.Imports.requirement) ->
+  let from = Source.Modules.import_path import.from in
   if import.namespace then
     Target.Import.{
-      from = import.from;
+      from;
       default = None;
       namespace = Some (lower_binder import.local);
       names = [];
@@ -26,14 +27,14 @@ let lower_import = fun (import: Source.Imports.requirement) ->
   else
     match import.imported with
     | None -> Target.Import.{
-      from = import.from;
+      from;
       default = Some (lower_binder import.local);
       namespace = None;
       names = [];
     }
     | Some imported ->
         Target.Import.{
-          from = import.from;
+          from;
           default = None;
           namespace = None;
           names = [ { imported; local = lower_binder import.local } ];

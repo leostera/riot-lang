@@ -19,6 +19,10 @@ Where `raml-js` is cleaner:
 - `Core_ir` stays backend-neutral instead of absorbing JS runtime semantics
 - `JIR -> JST -> emitter` is explicit instead of collapsing syntax and backend
   concerns into one late IR
+- `JIR` now owns a backend-local module reference layer instead of passing raw
+  import-path strings through lowering and runtime helpers
+- source-visible direct callees now go through one JS-owned builtin registry
+  instead of being split between lowering and runtime helper modules
 - pass composition is local and readable in `src/js/jir/lowering.ml`
 
 Where Melange is still ahead:
@@ -32,9 +36,10 @@ Where Melange is still ahead:
 
 These are the main remaining architectural gaps relative to Melange:
 
-1. Module/import ownership is still string-based.
-2. Runtime/builtin knowledge is still spread across lowering and runtime
-   helpers instead of one declarative registry.
+1. Module/import ownership is now centralized in `Jir.Modules`, but path
+   resolution is still heuristic: sibling unit or runtime module only.
+2. The builtin/runtime boundary is now centralized, but it is still a small
+   hand-written registry rather than a richer typed FFI surface.
 3. `JST` has no post-lowering optimization layer yet.
 4. There is no package-level dependency artifact analogous to Melange `.cmj`
    metadata.

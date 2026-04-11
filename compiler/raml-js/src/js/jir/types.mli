@@ -18,14 +18,41 @@ module Binder: sig
   val to_json: t -> Json.t
 end
 
+module Modules: sig
+  type kind =
+    | Relative_unit
+    | Runtime
+
+  type t = {
+    kind: kind;
+    unit_name: string;
+  }
+
+  val sibling_unit: string -> t
+
+  val runtime: string -> t
+
+  val import_path: t -> string
+
+  val namespace_segments: t -> string list
+
+  val compare: t -> t -> int
+
+  val equal: t -> t -> bool
+
+  val kind_to_json: kind -> Json.t
+
+  val to_json: t -> Json.t
+end
+
 type import_requirement = {
-  from: string;
+  from: Modules.t;
   imported: string option;
   local: Binder.t;
   namespace: bool;
 }
 type runtime_helper = {
-  module_name: string;
+  module_ref: Modules.t;
   symbol: string;
   local: Binder.t;
 }
@@ -100,15 +127,15 @@ and statement =
   | If of statement_if
 module Imports: sig
   type t = import_requirement = {
-    from: string;
+    from: Modules.t;
     imported: string option;
     local: Binder.t;
     namespace: bool;
   }
   type requirement = t
-  val make: from:string -> ?imported:string -> local:Binder.t -> unit -> t
+  val make: from:Modules.t -> ?imported:string -> local:Binder.t -> unit -> t
 
-  val namespace: from:string -> local:Binder.t -> unit -> t
+  val namespace: from:Modules.t -> local:Binder.t -> unit -> t
 
   val local: t -> Binder.t
 
@@ -119,14 +146,14 @@ end
 
 module Runtime: sig
   type helper = runtime_helper = {
-    module_name: string;
+    module_ref: Modules.t;
     symbol: string;
     local: Binder.t;
   }
   type t = helper
-  val module_name: string
+  val module_ref: Modules.t
 
-  val make: module_name:string -> symbol:string -> ?local:Binder.t -> unit -> helper
+  val make: module_ref:Modules.t -> symbol:string -> ?local:Binder.t -> unit -> helper
 
   val call_primitive: unit -> helper
 
@@ -141,8 +168,6 @@ module Runtime: sig
   val print_string: unit -> helper
 
   val print_char: unit -> helper
-
-  val helper_for_direct_callee: string -> helper option
 
   val to_import: helper -> Imports.requirement
 

@@ -1,7 +1,7 @@
 type requirement = Types.Imports.requirement
-val make: from:string -> ?imported:string -> local:Types.Binder.t -> unit -> requirement
+val make: from:Types.Modules.t -> ?imported:string -> local:Types.Binder.t -> unit -> requirement
 
-val namespace: from:string -> local:Types.Binder.t -> unit -> requirement
+val namespace: from:Types.Modules.t -> local:Types.Binder.t -> unit -> requirement
 
 val local: requirement -> Types.Binder.t
 

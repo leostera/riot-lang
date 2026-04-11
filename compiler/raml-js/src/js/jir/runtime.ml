@@ -2,7 +2,7 @@ type helper = Types.Runtime.helper
 
 type t = helper
 
-let module_name = Types.Runtime.module_name
+let module_ref = Types.Runtime.module_ref
 
 let make = Types.Runtime.make
 
@@ -19,8 +19,6 @@ let print_int = Types.Runtime.print_int
 let print_string = Types.Runtime.print_string
 
 let print_char = Types.Runtime.print_char
-
-let helper_for_direct_callee = Types.Runtime.helper_for_direct_callee
 
 let to_import = Types.Runtime.to_import
 

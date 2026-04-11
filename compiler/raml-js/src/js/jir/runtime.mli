@@ -1,8 +1,8 @@
 type helper = Types.Runtime.helper
 type t = helper
-val module_name: string
+val module_ref: Types.Modules.t
 
-val make: module_name:string -> symbol:string -> ?local:Types.Binder.t -> unit -> helper
+val make: module_ref:Types.Modules.t -> symbol:string -> ?local:Types.Binder.t -> unit -> helper
 
 val call_primitive: unit -> helper
 
@@ -17,8 +17,6 @@ val print_int: unit -> helper
 val print_string: unit -> helper
 
 val print_char: unit -> helper
-
-val helper_for_direct_callee: string -> helper option
 
 val to_import: helper -> Types.Imports.requirement
 

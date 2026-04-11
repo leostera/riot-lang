@@ -2,6 +2,7 @@ open Std
 open Std.Data
 module Core = Raml_core.Core_ir
 module Jir = Types
+module Builtins = Builtins
 
 type error =
   | UnsupportedModuleKind of { kind: Raml_core.Source_unit.kind }
@@ -55,8 +56,6 @@ let is_ascii_uppercase = fun char -> char >= 'A' && char <= 'Z'
 
 let is_module_segment = fun segment -> String.length segment > 0 && is_ascii_uppercase segment.[0]
 
-let module_import_path = fun module_name -> format Format.[ str "./"; str module_name; str ".js" ]
-
 let binding_id_of_entity = fun ~fallback_name entity_id ->
   match Core.Entity_id.binding_id entity_id with
   | Some binding_id -> binding_id
@@ -85,8 +84,10 @@ let unresolved_bare_name = fun entity_id ->
       else
         None
 
-let namespace_import_binder = fun ~module_name ->
-  Jir.Binder.generated ~namespace:[ "import"; module_name ] ~name:module_name
+let namespace_import_binder = fun module_ref ->
+  Jir.Binder.generated
+    ~namespace:([ "import" ] @ Jir.Modules.namespace_segments module_ref)
+    ~name:module_ref.unit_name
 
 let lower_reference = fun entity_id ->
   let parts = Core.Entity_id.to_segments entity_id in
@@ -95,10 +96,11 @@ let lower_reference = fun entity_id ->
   | head :: tail ->
       let base =
         if not (List.is_empty tail) && is_module_segment head then
+          let module_ref = Jir.Modules.sibling_unit head in
           Jir.Expr.Imported
             (Jir.Imports.namespace
-               ~from:(module_import_path head)
-               ~local:(namespace_import_binder ~module_name:head)
+               ~from:module_ref
+               ~local:(namespace_import_binder module_ref)
                ())
         else if Option.is_some (Core.Entity_id.binding_id entity_id) && List.is_empty tail then
           Jir.Expr.Identifier entity_id
@@ -114,13 +116,7 @@ let iife = fun body ->
   }
 
 let lower_direct_callee = fun entity_id ->
-  match unresolved_bare_name entity_id with
-  | Some function_name -> (
-      match Jir.Runtime.helper_for_direct_callee function_name with
-      | Some helper -> Jir.Expr.Runtime_helper helper
-      | None -> lower_reference entity_id
-    )
-  | None -> lower_reference entity_id
+  lower_reference entity_id
 
 let lower_runtime_primitive_call = fun name arguments ->
   let callee = Jir.Expr.Runtime_helper (Jir.Runtime.call_primitive ()) in
@@ -142,63 +138,55 @@ let lower_curried_function = fun (function_: Jir.Expr.function_) ->
       ];
     }
 
-let primitive_for_direct_callee = fun entity_id ->
-  match unresolved_bare_name entity_id with
-  | Some function_name -> (
-      match function_name with
-      | "+." -> Some "%addfloat"
-      | "-." -> Some "%subfloat"
-      | "*." -> Some "%mulfloat"
-      | "/." -> Some "%divfloat"
-      | "=" -> Some "%eq"
-      | "<>" -> Some "%neq"
-      | "<" -> Some "%lt"
-      | "<=" -> Some "%le"
-      | ">" -> Some "%gt"
-      | ">=" -> Some "%ge"
-      | "+" -> Some "%addint"
-      | "-" -> Some "%subint"
-      | "*" -> Some "%mulint"
-      | "/" -> Some "%divint"
-      | "mod" -> Some "%modint"
-      | "^" -> Some "%concatstring"
-      | "sqrt" -> Some "%sqrtfloat"
-      | "string_of_int" -> Some "%string_of_int"
-      | "string_of_float" -> Some "%string_of_float"
-      | "int_of_string" -> Some "%int_of_string"
-      | "float_of_string" -> Some "%float_of_string"
-      | _ -> None
+let lower_builtin_call = fun builtin arguments ->
+  match (builtin: Builtins.direct_callee) with
+  | Runtime_helper helper ->
+      Jir.Expr.Call Jir.Expr.{ callee = Jir.Expr.Runtime_helper helper; arguments }
+  | Primitive primitive_name ->
+      lower_runtime_primitive_call primitive_name arguments
+  | Boolean_not -> (
+      match arguments with
+      | [ argument ] -> Jir.Expr.Conditional Jir.Expr.{
+        condition = argument;
+        then_ = lower_bool false;
+        else_ = lower_bool true;
+      }
+      | _ ->
+          Jir.Expr.Call Jir.Expr.{ callee = lower_reference (Core.Entity_id.of_name "not"); arguments }
     )
-  | None -> None
-
-let lower_boolean_direct_call = fun entity_id arguments ->
-  match (unresolved_bare_name entity_id, arguments) with
-  | (Some "not", [ argument ]) -> Some (Jir.Expr.Conditional Jir.Expr.{
-    condition = argument;
-    then_ = lower_bool false;
-    else_ = lower_bool true;
-  })
-  | (Some "&&", [ left; right ]) -> Some (Jir.Expr.Conditional Jir.Expr.{
-    condition = left;
-    then_ = right;
-    else_ = lower_bool false;
-  })
-  | (Some "||", [ left; right ]) -> Some (Jir.Expr.Conditional Jir.Expr.{
-    condition = left;
-    then_ = lower_bool true;
-    else_ = right;
-  })
-  | _ -> None
+  | Boolean_and -> (
+      match arguments with
+      | [ left; right ] -> Jir.Expr.Conditional Jir.Expr.{
+        condition = left;
+        then_ = right;
+        else_ = lower_bool false;
+      }
+      | _ ->
+          Jir.Expr.Call Jir.Expr.{ callee = lower_reference (Core.Entity_id.of_name "&&"); arguments }
+    )
+  | Boolean_or -> (
+      match arguments with
+      | [ left; right ] -> Jir.Expr.Conditional Jir.Expr.{
+        condition = left;
+        then_ = lower_bool true;
+        else_ = right;
+      }
+      | _ ->
+          Jir.Expr.Call Jir.Expr.{ callee = lower_reference (Core.Entity_id.of_name "||"); arguments }
+    )
 
 let lower_direct_call = fun entity_id arguments ->
-  match lower_boolean_direct_call entity_id arguments with
-  | Some expr -> expr
-  | None ->
-      match primitive_for_direct_callee entity_id with
-      | Some primitive_name -> lower_runtime_primitive_call primitive_name arguments
+  match unresolved_bare_name entity_id with
+  | Some function_name -> (
+      match Builtins.classify_direct_callee function_name with
+      | Some builtin -> lower_builtin_call builtin arguments
       | None ->
           let callee = lower_direct_callee entity_id in
           Jir.Expr.Call Jir.Expr.{ callee; arguments }
+    )
+  | None ->
+      let callee = lower_direct_callee entity_id in
+      Jir.Expr.Call Jir.Expr.{ callee; arguments }
 
 let rec lower_expr = fun expr ->
   match expr with

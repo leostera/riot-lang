@@ -27,15 +27,70 @@ module Binder = struct
       ]
 end
 
+module Modules = struct
+  type kind =
+    | Relative_unit
+    | Runtime
+
+  type t = {
+    kind: kind;
+    unit_name: string;
+  }
+
+  let sibling_unit = fun unit_name -> { kind = Relative_unit; unit_name }
+
+  let runtime = fun unit_name -> { kind = Runtime; unit_name }
+
+  let import_path = fun module_ref ->
+    format Format.[ str "./"; str module_ref.unit_name; str ".js" ]
+
+  let namespace_segments = fun module_ref ->
+    match module_ref.kind with
+    | Relative_unit -> [ "module"; module_ref.unit_name ]
+    | Runtime -> [ "runtime_module"; module_ref.unit_name ]
+
+  let compare_kind = fun left right ->
+    match (left, right) with
+    | (Relative_unit, Relative_unit)
+    | (Runtime, Runtime) ->
+        0
+    | (Relative_unit, Runtime) ->
+        (-1)
+    | (Runtime, Relative_unit) ->
+        1
+
+  let compare = fun left right ->
+    let by_kind = compare_kind left.kind right.kind in
+    if by_kind != 0 then
+      by_kind
+    else
+      String.compare left.unit_name right.unit_name
+
+  let equal = fun left right -> compare left right = 0
+
+  let kind_to_json = fun kind ->
+    match kind with
+    | Relative_unit -> Json.string "relative_unit"
+    | Runtime -> Json.string "runtime"
+
+  let to_json = fun module_ref ->
+    Json.obj
+      [
+        ("kind", kind_to_json module_ref.kind);
+        ("unit_name", Json.string module_ref.unit_name);
+        ("import_path", Json.string (import_path module_ref));
+      ]
+end
+
 type import_requirement = {
-  from: string;
+  from: Modules.t;
   imported: string option;
   local: Binder.t;
   namespace: bool;
 }
 
 type runtime_helper = {
-  module_name: string;
+  module_ref: Modules.t;
   symbol: string;
   local: Binder.t;
 }
@@ -114,7 +169,7 @@ and statement =
 
 let import_requirement_to_json = fun requirement ->
   let fields = [
-    ("from", Json.string requirement.from);
+    ("from", Json.string (Modules.import_path requirement.from));
     ("imported", Option.map Json.string requirement.imported |> Option.unwrap_or ~default:Json.null);
     ("local", Binder.to_json requirement.local);
   ] in
@@ -126,7 +181,7 @@ let import_requirement_to_json = fun requirement ->
 let runtime_helper_to_json = fun helper ->
   Json.obj
     [
-      ("module_name", Json.string helper.module_name);
+      ("module_name", Json.string (Modules.import_path helper.module_ref));
       ("symbol", Json.string helper.symbol);
       ("local", Binder.to_json helper.local);
     ]
@@ -231,7 +286,7 @@ and statement_to_json = fun statement ->
 
 module Imports = struct
   type t = import_requirement = {
-    from: string;
+    from: Modules.t;
     imported: string option;
     local: Binder.t;
     namespace: bool;
@@ -246,7 +301,7 @@ module Imports = struct
   let local = fun requirement -> requirement.local
 
   let equal = fun left right ->
-    if String.equal left.from right.from then
+    if Modules.equal left.from right.from then
       if left.namespace = right.namespace then
         if Option.equal String.equal left.imported right.imported then
           Core.Binding_id.equal left.local.binding_id right.local.binding_id
@@ -262,69 +317,60 @@ end
 
 module Runtime = struct
   type helper = runtime_helper = {
-    module_name: string;
+    module_ref: Modules.t;
     symbol: string;
     local: Binder.t;
   }
 
   type t = helper
 
-  let module_name = "./riot-runtime.js"
+  let module_ref = Modules.runtime "riot-runtime"
 
-  let default_local = fun ~module_name ~symbol ->
+  let default_local = fun ~module_ref ~symbol ->
     Binder.generated
-      ~namespace:[ "runtime"; module_name; symbol ]
+      ~namespace:(Modules.namespace_segments module_ref @ [ symbol ])
       ~name:(format Format.[ str "__"; str symbol ])
 
-  let make = fun ~module_name ~symbol ?local () ->
-    { module_name; symbol; local = Option.unwrap_or ~default:(default_local ~module_name ~symbol) local }
+  let make = fun ~module_ref ~symbol ?local () ->
+    { module_ref; symbol; local = Option.unwrap_or ~default:(default_local ~module_ref ~symbol) local }
 
   let call_primitive = fun () ->
-    make ~module_name ~symbol:"callPrimitive"
+    make ~module_ref ~symbol:"callPrimitive"
       ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__callPrimitive")
       ()
 
   let make_curried = fun () ->
-    make ~module_name ~symbol:"makeCurried"
+    make ~module_ref ~symbol:"makeCurried"
       ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__makeCurried")
       ()
 
   let print_endline = fun () ->
-    make ~module_name ~symbol:"print_endline"
+    make ~module_ref ~symbol:"print_endline"
       ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__print_endline")
       ()
 
   let print_newline = fun () ->
-    make ~module_name ~symbol:"print_newline"
+    make ~module_ref ~symbol:"print_newline"
       ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__print_newline")
       ()
 
   let print_int = fun () ->
-    make ~module_name ~symbol:"print_int"
+    make ~module_ref ~symbol:"print_int"
       ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__print_int")
       ()
 
   let print_string = fun () ->
-    make ~module_name ~symbol:"print_string"
+    make ~module_ref ~symbol:"print_string"
       ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__print_string")
       ()
 
   let print_char = fun () ->
-    make ~module_name ~symbol:"print_char"
+    make ~module_ref ~symbol:"print_char"
       ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__print_char")
       ()
 
-  let helper_for_direct_callee = fun name ->
-    match name with
-    | "print_endline" -> Some (print_endline ())
-    | "print_newline" -> Some (print_newline ())
-    | "print_int" -> Some (print_int ())
-    | "print_string" -> Some (print_string ())
-    | "print_char" -> Some (print_char ())
-    | _ -> None
-
   let to_import = fun helper ->
-    Imports.make ~from:helper.module_name ~imported:helper.symbol ~local:helper.local ()
+    Imports.make ~from:helper.module_ref ~imported:helper.symbol ~local:helper.local ()
 
   let to_json = runtime_helper_to_json
 end

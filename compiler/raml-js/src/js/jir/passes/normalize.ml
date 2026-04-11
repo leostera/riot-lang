@@ -16,7 +16,7 @@ module Import_set = struct
       | (Some left, Some right) -> String.compare left right
 
     let compare = fun (left: Jir.Imports.requirement) (right: Jir.Imports.requirement) ->
-      let by_from = String.compare left.from right.from in
+      let by_from = Jir.Modules.compare left.from right.from in
       if by_from != 0 then
         by_from
       else
