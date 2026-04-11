@@ -9,46 +9,83 @@ The current backend stack is:
 - `RamlJs.Js.Jst`
 - emitted `.js`
 
-## Compared With Melange `jscomp`
+## Compared With Melange `jscomp` And ReScript
 
-The current `raml-js` design is intentionally cleaner than Melange at the
-shared/backend boundary, but still much smaller as a backend.
+`raml-js` now sits between Melange and ReScript in design goals.
 
-Where `raml-js` is cleaner:
+- From Melange we want:
+  - explicit compiler subsystems
+  - real pass structure
+  - strong module/import ownership
+  - identity preserved across lowering
+- From ReScript we want:
+  - natural JavaScript surface syntax
+  - JS-native representations where semantics actually align
+  - smaller reliance on a helper-heavy runtime layer
 
-- `Core_ir` stays backend-neutral instead of absorbing JS runtime semantics
-- `JIR -> JST -> emitter` is explicit instead of collapsing syntax and backend
-  concerns into one late IR
-- `JIR` now owns a backend-local module reference layer instead of passing raw
-  import-path strings through lowering and runtime helpers
-- source-visible direct callees now go through one JS-owned builtin registry
-  instead of being split between lowering and runtime helper modules
-- pass composition is local and readable in `src/js/jir/lowering.ml`
+### `raml-js` vs Melange
 
-Where Melange is still ahead:
+`raml-js` is cleaner at the shared/backend boundary:
 
-- stronger module/path ownership
+- `Raml_core.Core_ir` stays backend-neutral instead of absorbing JS runtime
+  semantics
+- `JIR -> JST -> emitter` is explicit instead of mixing late syntax and backend
+  mechanics into one large IR
+- pass composition stays local and readable in
+  `src/js/jir/lowering.ml`
+
+Melange is still ahead in backend machinery:
+
+- deeper module/package path ownership
 - richer typed FFI metadata
-- deeper scope/shake/tailcall machinery
+- stronger scope/shake/tailcall analysis
 - artifact/dependency tracking across compilation units
+
+### `raml-js` vs ReScript
+
+ReScript is a better reference for emitted JS shape:
+
+- prefer direct operators, globals, arrays, and objects
+- shrink the runtime by lowering more constructs to ordinary JS syntax
+- keep property access and object literal printing natural
+
+`raml-js` is now moving in that direction:
+
+- tuples lower to JS arrays
+- records lower to JS objects
+- arithmetic/comparisons/string conversion prefer native JS forms
+- object keys and property access now share one syntax policy instead of
+  backend-local heuristics
+
+Where `raml-js` still differs from ReScript:
+
+- it does not yet have a broader representation-policy layer
+- it still relies on a small builtin/runtime registry instead of a richer
+  JS-facing interop surface
+- it has not yet moved enough language constructs onto plain JS objects,
+  arrays, and namespaces
 
 ## Current Backend Gaps
 
-These are the main remaining architectural gaps relative to Melange:
+The main remaining architectural gaps are:
 
-1. Module/import ownership is now centralized in `Jir.Modules`, but path
+1. Module/import ownership is centralized in `Jir.Modules`, but path
    resolution is still heuristic: sibling unit or runtime module only.
-2. The builtin/runtime boundary is now centralized, but it is still a small
-   hand-written registry rather than a richer typed FFI surface.
+2. The builtin/runtime boundary is centralized, but still hand-written and
+   small rather than typed and declarative.
 3. `JST` has no post-lowering optimization layer yet.
 4. There is no package-level dependency artifact analogous to Melange `.cmj`
    metadata.
+5. Records now lower naturally to JS objects, but inner modules and more
+   namespace-like constructs do not yet lower to JS objects.
 
 ## Current Cleanup Direction
 
 The current cleanup direction in `raml-js` is:
 
 1. keep semantic identity on `Binding_id` / `Entity_id`
-2. strengthen shared JIR analysis utilities
-3. improve local simplification and DCE before adding bigger subsystems
-4. add deeper ownership layers only when a concrete invariant requires them
+2. centralize backend-local JS syntax rules instead of duplicating them across
+   lowering and emission
+3. strengthen shared JIR analysis/utilities before adding more passes
+4. keep pushing semantically-aligned constructs toward native JS forms
+5. add deeper ownership layers only when a concrete invariant requires them

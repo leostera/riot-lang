@@ -3,6 +3,7 @@ open Std.Data
 module Core = Raml_core.Core_ir
 module Jir = Types
 module Builtins = Builtins
+module Syntax = Syntax
 
 type error =
   | UnsupportedModuleKind of { kind: Raml_core.Source_unit.kind }
@@ -52,9 +53,8 @@ let lower_constant = fun constant ->
   | Core.Constant.Char value -> Jir.Literal.String value
   | Core.Constant.String value -> Jir.Literal.String value
 
-let is_ascii_uppercase = fun char -> char >= 'A' && char <= 'Z'
-
-let is_module_segment = fun segment -> String.length segment > 0 && is_ascii_uppercase segment.[0]
+let is_module_segment = fun segment ->
+  String.length segment > 0 && Syntax.is_ascii_uppercase segment.[0]
 
 let binding_id_of_entity = fun ~fallback_name entity_id ->
   match Core.Entity_id.binding_id entity_id with
@@ -133,38 +133,11 @@ let lower_binary = fun operator left right ->
 let lower_array = fun elements ->
   Jir.Expr.Array (List.map (fun expr -> Jir.Expr.Item expr) elements)
 
-let is_ascii_lowercase = fun char -> char >= 'a' && char <= 'z'
-
-let is_ascii_letter = fun char -> is_ascii_lowercase char || is_ascii_uppercase char
-
-let is_identifier_start = fun char ->
-  is_ascii_letter char || char = '_' || char = '$'
-
-let is_identifier_continue = fun char ->
-  is_identifier_start char || (char >= '0' && char <= '9')
-
-let is_valid_js_identifier = fun name ->
-  let length = String.length name in
-  if length = 0 then
-    false
-  else if not (is_identifier_start name.[0]) then
-    false
-  else
-    let rec loop index =
-      if index >= length then
-        true
-      else if is_identifier_continue name.[index] then
-        loop (index + 1)
-      else
-        false
-    in
-    loop 1
-
 let lower_string_literal = fun value ->
   Jir.Expr.Literal (Jir.Literal.String value)
 
 let lower_named_property_access = fun object_ property ->
-  if is_valid_js_identifier property then
+  if Syntax.can_use_dot_property property then
     lower_member object_ property
   else
     lower_index object_ (lower_string_literal property)

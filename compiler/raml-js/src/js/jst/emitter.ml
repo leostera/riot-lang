@@ -1,6 +1,7 @@
 open Std
 open Std.Data
 module Core = Raml_core.Core_ir
+module Syntax = Syntax
 
 module Binding_map = Collections.Map.Make (struct
   type t = Core.Binding_id.t
@@ -74,12 +75,19 @@ let rec emit_array_element = fun ~level env element ->
   | Types.Expr.Spread expr -> format Format.[ str "..."; str (emit_expr ~level env expr) ]
 
 and emit_object_field = fun ~level env (field: Types.Expr.object_field) ->
-  format
-    Format.[
-      str (Json.to_string (Json.string field.name));
-      str ": ";
-      str (emit_expr ~level env field.value);
-    ]
+  let emitted_value = emit_expr ~level env field.value in
+  let key =
+    if Syntax.can_use_unquoted_object_key field.name then
+      field.name
+    else
+      Json.to_string (Json.string field.name)
+  in
+  match field.value with
+  | Types.Expr.Identifier entity_id when Syntax.can_use_unquoted_object_key field.name
+    && String.equal field.name (emit_entity env entity_id) ->
+      field.name
+  | _ ->
+      format Format.[ str key; str ": "; str emitted_value ]
 
 and emit_expr = fun ~level env expr ->
   match expr with
