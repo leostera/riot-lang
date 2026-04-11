@@ -1,12 +1,12 @@
 open Std
-module Target = RamlCore.Target
+module Compiler_target = Raml_core.Target
 
 type artifact =
   | Executable
   | Object
 type error =
-  | UnsupportedHost of { host: Target.t }
-  | UnsupportedTarget of { target: Target.t }
+  | UnsupportedHost of { host: Compiler_target.t }
+  | UnsupportedTarget of { target: Compiler_target.t }
   | LinkFailed of { command: string; status: int; stderr: string }
   | SpawnFailed of { command: string; message: string }
 type plan
@@ -15,8 +15,8 @@ val artifact_to_string: artifact -> string
 val error_to_json: error -> Std.Data.Json.t
 
 val plan:
-  host:Target.t ->
-  target:Target.t ->
+  host:Compiler_target.t ->
+  target:Compiler_target.t ->
   artifact:artifact ->
   input:Path.t ->
   output:Path.t ->
@@ -25,8 +25,8 @@ val plan:
 val plan_to_string: plan -> string
 
 val link:
-  host:Target.t ->
-  target:Target.t ->
+  host:Compiler_target.t ->
+  target:Compiler_target.t ->
   artifact:artifact ->
   input:Path.t ->
   output:Path.t ->

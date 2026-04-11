@@ -1,10 +1,10 @@
 open Std
 open Std.Data
-module Source_unit = RamlCore.Source_unit
-module Core = RamlCore.CoreIR
+module Compiler_source_unit = Raml_core.Source_unit
+module Core = Raml_core.Core_ir
 
 type error =
-  | UnsupportedModuleKind of { kind: Source_unit.kind }
+  | UnsupportedModuleKind of { kind: Compiler_source_unit.kind }
   | UnsupportedGroup of { group_index: int; reason: string }
   | UnsupportedBinding of { name: string; reason: string }
   | UnsupportedExpr of { reason: string }

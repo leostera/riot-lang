@@ -1,11 +1,11 @@
 open Std
 open Std.Data
-module Source_unit = RamlCore.Source_unit
-module Core = RamlCore.CoreIR
+module Compiler_source_unit = Raml_core.Source_unit
+module Core = Raml_core.Core_ir
 module Nir = Types
 
 type error =
-  | UnsupportedModuleKind of { kind: Source_unit.kind }
+  | UnsupportedModuleKind of { kind: Compiler_source_unit.kind }
   | UnsupportedGroup of { group_index: int; reason: string }
   | UnsupportedBinding of { name: string; reason: string }
   | UnsupportedExpr of { reason: string }
@@ -90,8 +90,8 @@ let map_results = fun items f ->
 
 let source_kind_to_string = fun kind ->
   match kind with
-  | Source_unit.Implementation -> "implementation"
-  | Source_unit.Interface -> "interface"
+  | Compiler_source_unit.Implementation -> "implementation"
+  | Compiler_source_unit.Interface -> "interface"
 
 let trace_to_json = fun trace ->
   Json.obj
@@ -1041,8 +1041,8 @@ let trace_program = fun initial ->
 
 let lower_compilation_unit_with_trace = fun (compilation_unit: Core.Compilation_unit.t) ->
   match compilation_unit.unit_id.kind with
-  | Source_unit.Interface -> error (UnsupportedModuleKind { kind = compilation_unit.unit_id.kind })
-  | Source_unit.Implementation ->
+  | Compiler_source_unit.Interface -> error (UnsupportedModuleKind { kind = compilation_unit.unit_id.kind })
+  | Compiler_source_unit.Implementation ->
       let lowering_state = {
         next_local_function = 0;
         next_partial_application = 0;

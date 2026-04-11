@@ -1,5 +1,3 @@
-open Std
-
 module Compilation = Compilation
 module Config = Config
 module Event = Event

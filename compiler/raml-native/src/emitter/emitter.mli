@@ -1,9 +1,13 @@
 open Std
-module Target = RamlCore.Target
+module Compiler_target = Raml_core.Target
 
 type error =
-  | UnsupportedTarget of { target: Target.t }
+  | UnsupportedTarget of { target: Compiler_target.t }
   | UnsupportedProgram of { reason: string }
 val error_to_json: error -> Std.Data.Json.t
 
-val emit_program: host:Target.t -> target:Target.t -> Lir.Program.t -> (string, error) result
+val emit_program:
+  host:Compiler_target.t ->
+  target:Compiler_target.t ->
+  Lir.Program.t ->
+  (string, error) result

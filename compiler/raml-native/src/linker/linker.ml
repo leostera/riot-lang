@@ -1,6 +1,6 @@
 open Std
 open Std.Data
-module Target = RamlCore.Target
+module Compiler_target = Raml_core.Target
 
 let ( let* ) = Result.and_then
 
@@ -9,8 +9,8 @@ type artifact =
   | Object
 
 type error =
-  | UnsupportedHost of { host: Target.t }
-  | UnsupportedTarget of { target: Target.t }
+  | UnsupportedHost of { host: Compiler_target.t }
+  | UnsupportedTarget of { target: Compiler_target.t }
   | LinkFailed of { command: string; status: int; stderr: string }
   | SpawnFailed of { command: string; message: string }
 
@@ -20,7 +20,7 @@ type plan = {
 }
 
 let supports_aarch64_apple_darwin = fun target ->
-  String.equal (Target.to_string target) "aarch64-apple-darwin"
+  String.equal (Compiler_target.to_string target) "aarch64-apple-darwin"
 
 let artifact_to_string = fun artifact ->
   match artifact with
@@ -30,9 +30,9 @@ let artifact_to_string = fun artifact ->
 let error_to_json = fun error ->
   match error with
   | UnsupportedHost { host } -> Json.obj
-    [ ("kind", Json.string "unsupported_host"); ("host", Target.to_json host); ]
+    [ ("kind", Json.string "unsupported_host"); ("host", Compiler_target.to_json host); ]
   | UnsupportedTarget { target } -> Json.obj
-    [ ("kind", Json.string "unsupported_target"); ("target", Target.to_json target); ]
+    [ ("kind", Json.string "unsupported_target"); ("target", Compiler_target.to_json target); ]
   | LinkFailed { command; status; stderr } -> Json.obj
     [
       ("kind", Json.string "link_failed");
