@@ -16,6 +16,7 @@ module Literal = Types.Literal
 let destination_matches_operand = fun dst src ->
   match (dst, src) with
   | (Destination.Register dst, Operand.Register src) -> String.equal dst src
+  | (Destination.Home (Home.Register dst), Operand.Home (Home.Register src)) -> String.equal dst src
   | (Destination.Home (Home.Stack_slot dst), Operand.Home (Home.Stack_slot src)) -> Int.equal
     dst.index
     src.index

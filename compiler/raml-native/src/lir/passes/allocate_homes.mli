@@ -1,15 +1,16 @@
-(** This pass assigns homes to virtual values after frame layout is already
-    known.
+(** This pass assigns concrete homes to [LIR] virtual values after frame
+    analysis has already run.
 
-    The algorithm reuses the per-procedure analysis gathered during
-    [layout_frames], zips the ordered virtual names with the ordered stack
-    slots, and records that mapping as explicit frame homes.
+    The algorithm computes live intervals, uses a small caller-saved register
+    pool for values that are not live across calls, and spills the rest to
+    stack slots with stable offsets.
 
-    The effect is that the compiler has a real seam between “what does the
-    frame look like?” and “where does each virtual value live?”.
+    The effect is that [LIR] leaves this pass with explicit register or stack
+    homes, plus a frame whose slot count matches the values that actually
+    spilled.
 
-    The rationale is to keep location assignment separate from frame layout so
-    later work can replace this simple stack-only mapping with a richer
-    allocator without rewriting frame construction again. *)
+    The rationale is to make home allocation a real compiler pass instead of an
+    emitter convention, while keeping the first allocator simple and honest:
+    registers for cheap temporaries, stack for call-live or overflowed values. *)
 type analysis = Layout_frames.analysis
 val program: analysis:analysis -> Types.Program.t -> Types.Program.t

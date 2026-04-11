@@ -69,7 +69,25 @@ let home_of_name = fun (layout: Lir.Frame.t) name ->
 
 let home_address = fun home ->
   match home with
+  | Lir.Home.Register _ -> panic "aarch64 emitter: register home has no stack address"
   | Lir.Home.Stack_slot slot -> Asm.Address.offset ~base:Asm.Register.sp ~offset:slot.offset
+
+let register_of_home = fun home ->
+  let parse_index name =
+    if String.length name < 2 then
+      None
+    else if name.[0] = 'x' then
+      String.sub name 1 (String.length name - 1) |> int_of_string_opt
+    else
+      None
+  in
+  match home with
+  | Lir.Home.Register name -> (
+      match parse_index name with
+      | Some index when index >= 0 && index <= 28 -> Ok (Asm.Register.x index)
+      | _ -> Error (format Format.[ str "unsupported physical register home: "; str name ])
+    )
+  | Lir.Home.Stack_slot _ -> Error "stack slot does not name a physical register"
 
 let instruction = Doc.Item.instruction
 
@@ -181,14 +199,26 @@ let store_global_value = fun symbol register ->
 
 let rec materialize_operand = fun layout strings register operand ->
   match operand with
-  | Lir.Operand.Register name -> Error (format
-    Format.[ str "unassigned virtual register reached emitter: "; str name ])
-  | Lir.Operand.Home home -> Ok [
-    instruction (Asm.Instruction.Ldr { dst = register; address = home_address home })
-  ]
-  | Lir.Operand.Global name -> Ok (load_global_value register (mangle_symbol name))
-  | Lir.Operand.Symbol_address name -> Ok (load_symbol_address register (mangle_symbol name))
-  | Lir.Operand.Literal literal -> materialize_literal layout strings register literal
+  | Lir.Operand.Register name ->
+      Error (format Format.[ str "unassigned virtual register reached emitter: "; str name ])
+  | Lir.Operand.Home home -> (
+      match home with
+      | Lir.Home.Stack_slot _ -> Ok [
+        instruction (Asm.Instruction.Ldr { dst = register; address = home_address home })
+      ]
+      | Lir.Home.Register _ ->
+          let* src = register_of_home home in
+          if src = register then
+            Ok []
+          else
+            Ok [ instruction (Asm.Instruction.Mov { dst = register; src }) ]
+    )
+  | Lir.Operand.Global name ->
+      Ok (load_global_value register (mangle_symbol name))
+  | Lir.Operand.Symbol_address name ->
+      Ok (load_symbol_address register (mangle_symbol name))
+  | Lir.Operand.Literal literal ->
+      materialize_literal layout strings register literal
 
 and materialize_literal = fun _layout strings register literal ->
   match literal with
@@ -209,9 +239,18 @@ and materialize_literal = fun _layout strings register literal ->
 
 let store_destination = fun layout destination register ->
   match destination with
-  | Lir.Destination.Home home -> Ok [
-    instruction (Asm.Instruction.Str { src = register; address = home_address home })
-  ]
+  | Lir.Destination.Home home -> (
+      match home with
+      | Lir.Home.Stack_slot _ -> Ok [
+        instruction (Asm.Instruction.Str { src = register; address = home_address home })
+      ]
+      | Lir.Home.Register _ ->
+          let* dst = register_of_home home in
+          if dst = register then
+            Ok []
+          else
+            Ok [ instruction (Asm.Instruction.Mov { dst; src = register }) ]
+    )
   | Lir.Destination.Register name -> Error (format
     Format.[ str "unassigned virtual destination reached emitter: "; str name ])
 
@@ -273,13 +312,28 @@ let emit_parameter_saves = fun layout params ->
   if List.length params > 8 then
     Error "aarch64-apple-darwin emitter supports at most 8 parameters per procedure"
   else
-    Ok (
-      params |> List.mapi
-        (fun index name ->
+    let rec loop index params =
+      match params with
+      | [] -> Ok []
+      | name :: rest ->
           let home = home_of_name layout name in
-          instruction
-            (Asm.Instruction.Str { src = Asm.Register.x index; address = home_address home }))
-    )
+          let* current =
+            match home with
+            | Lir.Home.Stack_slot _ -> Ok [
+              instruction
+                (Asm.Instruction.Str { src = Asm.Register.x index; address = home_address home })
+            ]
+            | Lir.Home.Register _ ->
+                let* dst = register_of_home home in
+                if dst = Asm.Register.x index then
+                  Ok []
+                else
+                  Ok [ instruction (Asm.Instruction.Mov { dst; src = Asm.Register.x index }) ]
+          in
+          let* next = loop (index + 1) rest in
+          Ok (current @ next)
+    in
+    loop 0 params
 
 let emit_call_arguments = fun layout strings arguments ->
   if List.length arguments > 8 then

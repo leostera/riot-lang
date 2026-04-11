@@ -45,6 +45,15 @@ Today the intended native stack is:
 
 `NIR` is the first native-only layer.
 
+Within `LIR`, the current pass shape is:
+
+`layout_frames -> allocate_homes -> simplify -> schedule -> assign_homes`
+
+`layout_frames` computes the frame skeleton and call facts. `allocate_homes`
+does the first real location assignment pass: it uses `LIR` liveness to keep
+non-call-live values in a small caller-saved register pool and spills the rest
+to stack homes.
+
 ## Verification
 
 Prefer:

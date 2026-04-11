@@ -30,10 +30,12 @@ end
 
 module Home = struct
   type t =
+    | Register of string
     | Stack_slot of Slot.t
 
   let to_json = fun home ->
     match home with
+    | Register name -> Json.obj [ ("kind", Json.string "register"); ("name", Json.string name); ]
     | Stack_slot slot -> Json.obj
       [ ("kind", Json.string "stack_slot"); ("slot", Slot.to_json slot); ]
 end

@@ -21,6 +21,7 @@ end
 
 module Home: sig
   type t =
+    | Register of string
     | Stack_slot of Slot.t
   val to_json: t -> Json.t
 end

@@ -4,7 +4,6 @@ module Lir = Types
 
 type result = {
   contains_calls: bool;
-  frame_required: bool;
   virtual_names: string list;
 }
 
@@ -79,5 +78,4 @@ let analyze_procedure = fun (procedure: Lir.Procedure.t) ->
     (false, List.fold_left add_slot (empty_slots ()) procedure.params)
     procedure.body in
   let virtual_names = ordered_slots virtual_names in
-  let frame_required = contains_calls || virtual_names <> [] in
-  { contains_calls; frame_required; virtual_names }
+  { contains_calls; virtual_names }
