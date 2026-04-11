@@ -42,7 +42,10 @@ let rec collect_array_element_names = fun state element ->
   | Jir.Expr.Spread expr ->
       collect_expr_names state expr
 
-let rec collect_expr_names = fun state expr ->
+and collect_object_field_names = fun state (field: Jir.Expr.object_field) ->
+  collect_expr_names state field.value
+
+and collect_expr_names = fun state expr ->
   match expr with
   | Jir.Expr.Literal _ ->
       state
@@ -61,6 +64,8 @@ let rec collect_expr_names = fun state expr ->
       collect_expr_names state binary.right
   | Jir.Expr.Array elements ->
       List.fold_left collect_array_element_names state elements
+  | Jir.Expr.Object fields ->
+      List.fold_left collect_object_field_names state fields
   | Jir.Expr.Function function_ ->
       let state = List.fold_left remember_binder state function_.params in
       collect_statement_names state function_.body
@@ -166,6 +171,18 @@ and lower_array_elements = fun state elements ->
     ([], state)
     elements |> fun (reversed, state) -> (List.rev reversed, state)
 
+and lower_object_field = fun state (field: Jir.Expr.object_field) ->
+  let (value, state) = lower_expr state field.value in
+  (Jir.Expr.{ field with value }, state)
+
+and lower_object_fields = fun state fields ->
+  List.fold_left
+    (fun (reversed, state) field ->
+      let (field, state) = lower_object_field state field in
+      (field :: reversed, state))
+    ([], state)
+    fields |> fun (reversed, state) -> (List.rev reversed, state)
+
 and lower_expr = fun state expr ->
   match expr with
   | Jir.Expr.Literal _
@@ -184,6 +201,9 @@ and lower_expr = fun state expr ->
   | Jir.Expr.Array elements ->
       let (elements, state) = lower_array_elements state elements in
       (Jir.Expr.Array elements, state)
+  | Jir.Expr.Object fields ->
+      let (fields, state) = lower_object_fields state fields in
+      (Jir.Expr.Object fields, state)
   | Jir.Expr.Function function_ ->
       let (body, state) = lower_block state function_.body in
       (Jir.Expr.Function Jir.Expr.{ params = function_.params; body }, state)

@@ -504,6 +504,29 @@ let rec lower_expr = fun env expr ->
             lifted_functions = tuple.lifted_functions
           })
         (lower_expr env tuple_get.tuple)
+  | Core.Expr.Record record ->
+      Result.map
+        (fun lowered_fields ->
+          let values = List.map snd lowered_fields in
+          let arguments, lifted_functions = collect_lowered_exprs values in
+          {
+            expr = runtime_call (tuple_make_helper ~arity:(List.length record)) arguments;
+            lifted_functions
+          })
+        (map_results
+          record
+          (fun (field: Core.Expr.record_field) ->
+            Result.map (fun value -> (field.label, value)) (lower_expr env field.value)))
+  | Core.Expr.Record_get record_get ->
+      Result.map
+        (fun record ->
+          {
+            expr = runtime_call
+              tuple_get_helper
+              [ record.expr; Nir.Expr.Literal (Nir.Literal.Int record_get.index) ];
+            lifted_functions = record.lifted_functions
+          })
+        (lower_expr env record_get.record)
   | Core.Expr.If_then_else if_then_else ->
       validation_map3
         (lower_expr env if_then_else.condition)

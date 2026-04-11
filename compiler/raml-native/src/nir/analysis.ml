@@ -96,6 +96,14 @@ let rec collect_free_vars = fun ~name_of_entity ~bound expr ->
         tuple
   | Core.Expr.Tuple_get tuple_get ->
       collect_free_vars ~name_of_entity ~bound tuple_get.tuple
+  | Core.Expr.Record record ->
+      List.fold_left
+        (fun names (field: Core.Expr.record_field) ->
+          merge_names names (collect_free_vars ~name_of_entity ~bound field.value))
+        (empty_names ())
+        record
+  | Core.Expr.Record_get record_get ->
+      collect_free_vars ~name_of_entity ~bound record_get.record
   | Core.Expr.If_then_else if_then_else ->
       merge_names
         (collect_free_vars ~name_of_entity ~bound if_then_else.condition)
@@ -148,7 +156,7 @@ let rec expr_uses_name_as_value_with_shadowed = fun ~name_of_entity ~shadowed na
       let binding_shadowed =
         match let_.rec_flag with
         | Core.Rec_flag.Nonrecursive -> shadowed
-        | Core.Rec_flag.Recursive -> binding_names @ shadowed
+        | Core.Rec_flag.Recursive -> extend_bound shadowed binding_names
       in
       List.exists
         (fun (binding: Core.Expr.binding) ->
@@ -170,6 +178,13 @@ let rec expr_uses_name_as_value_with_shadowed = fun ~name_of_entity ~shadowed na
       List.exists (expr_uses_name_as_value_with_shadowed ~name_of_entity ~shadowed name) tuple
   | Core.Expr.Tuple_get tuple_get ->
       expr_uses_name_as_value_with_shadowed ~name_of_entity ~shadowed name tuple_get.tuple
+  | Core.Expr.Record record ->
+      List.exists
+        (fun (field: Core.Expr.record_field) ->
+          expr_uses_name_as_value_with_shadowed ~name_of_entity ~shadowed name field.value)
+        record
+  | Core.Expr.Record_get record_get ->
+      expr_uses_name_as_value_with_shadowed ~name_of_entity ~shadowed name record_get.record
   | Core.Expr.If_then_else if_then_else ->
       expr_uses_name_as_value_with_shadowed ~name_of_entity ~shadowed name if_then_else.condition
       || expr_uses_name_as_value_with_shadowed ~name_of_entity ~shadowed name if_then_else.then_

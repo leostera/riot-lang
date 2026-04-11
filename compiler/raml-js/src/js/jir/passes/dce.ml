@@ -45,6 +45,9 @@ let rec lower_expr = fun ~assigned expr ->
   | Jir.Expr.Array elements ->
       let (elements, used) = lower_array_elements ~assigned elements in
       (Jir.Expr.Array elements, used)
+  | Jir.Expr.Object fields ->
+      let (fields, used) = lower_object_fields ~assigned fields in
+      (Jir.Expr.Object fields, used)
   | Jir.Expr.Function function_ ->
       let lowered_body = lower_block ~protected:Entity_set.empty ~assigned function_.body in
       let used =
@@ -86,6 +89,10 @@ and lower_array_element = fun ~assigned element ->
       let (expr, used) = lower_expr ~assigned expr in
       (Jir.Expr.Spread expr, used)
 
+and lower_object_field = fun ~assigned (field: Jir.Expr.object_field) ->
+  let (value, used) = lower_expr ~assigned field.value in
+  (Jir.Expr.{ field with value }, used)
+
 and lower_array_elements = fun ~assigned elements ->
   match elements with
   | [] -> ([], Entity_set.empty)
@@ -93,6 +100,14 @@ and lower_array_elements = fun ~assigned elements ->
       let (element, used) = lower_array_element ~assigned element in
       let (rest, rest_used) = lower_array_elements ~assigned rest in
       (element :: rest, Entity_set.union used rest_used)
+
+and lower_object_fields = fun ~assigned fields ->
+  match fields with
+  | [] -> ([], Entity_set.empty)
+  | field :: rest ->
+      let (field, used) = lower_object_field ~assigned field in
+      let (rest, rest_used) = lower_object_fields ~assigned rest in
+      (field :: rest, Entity_set.union used rest_used)
 
 and lower_expr_list = fun ~assigned exprs ->
   match exprs with

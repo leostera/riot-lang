@@ -323,6 +323,14 @@ let rec reclassify_expr = fun env expr ->
       Core.Expr.Tuple (List.map (reclassify_expr env) tuple)
   | Core.Expr.Tuple_get tuple_get ->
       Core.Expr.Tuple_get Core.Expr.{ tuple_get with tuple = reclassify_expr env tuple_get.tuple }
+  | Core.Expr.Record record ->
+      Core.Expr.Record
+        (List.map
+          (fun (field: Core.Expr.record_field) ->
+            Core.Expr.{ field with value = reclassify_expr env field.value })
+          record)
+  | Core.Expr.Record_get record_get ->
+      Core.Expr.Record_get Core.Expr.{ record_get with record = reclassify_expr env record_get.record }
   | Core.Expr.If_then_else if_then_else ->
       Core.Expr.If_then_else Core.Expr.{
         condition = reclassify_expr env if_then_else.condition;
@@ -1216,13 +1224,13 @@ and lower_expr = fun semantic_tree expr_id ->
           Result.and_then (resolve_record_construction_layout semantic_tree ~expr_id fields)
             (fun layout ->
               Result.and_then (lower_record_fields semantic_tree fields)
-                (fun lowered_fields ->
-                  Result.map (fun elements -> Core.Expr.Tuple elements)
+                (fun lowered_fields -> Result.map (fun fields ->
+                  Core.Expr.Record fields)
                     (
                       map_results layout.labels
                         (fun label ->
                           match lowered_record_field lowered_fields label with
-                          | Some value -> ok value
+                          | Some value -> ok Core.Expr.{ label; value }
                           | None -> error
                             (UnsupportedExpr {
                               expr_id;
@@ -1246,16 +1254,19 @@ and lower_expr = fun semantic_tree expr_id ->
                   let base_name = fresh_record_base_name expr_id in
                   let base_entity_id = generated_expr_entity_id ~name:base_name expr_id 17 in
                   let base_var = Core.Expr.Var base_entity_id in
-                  Result.map (fun elements ->
+                  Result.map (fun fields ->
                     wrap_nonrecursive_let
                       Core.Expr.{ entity_id = base_entity_id; name = base_name; expr = base }
-                      (Core.Expr.Tuple elements))
+                      (Core.Expr.Record fields))
                     (
                       map_results (List.mapi (fun index label -> (index, label)) layout.labels)
                         (fun (index, label) ->
                           match lowered_record_field lowered_fields label with
-                          | Some value -> ok value
-                          | None -> ok (Core.Expr.Tuple_get Core.Expr.{ tuple = base_var; index }))
+                          | Some value -> ok Core.Expr.{ label; value }
+                          | None -> ok Core.Expr.{
+                            label;
+                            value = Core.Expr.Record_get Core.Expr.{ record = base_var; label; index };
+                          })
                     )))
       | BodyArena.EFieldAccess { receiver_id; label } ->
           Result.and_then (resolve_record_field_layout semantic_tree ~expr_id label)
@@ -1273,7 +1284,7 @@ and lower_expr = fun semantic_tree expr_id ->
                     ]
                 })
               | Some index -> Result.map
-                (fun receiver -> Core.Expr.Tuple_get Core.Expr.{ tuple = receiver; index })
+                (fun record -> Core.Expr.Record_get Core.Expr.{ record; label; index })
                 (lower_expr semantic_tree receiver_id))
       | BodyArena.EChar value ->
           ok (Core.Expr.Constant (Core.Constant.Char value))

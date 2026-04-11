@@ -69,7 +69,10 @@ let rec collect_array_element_imports = fun state element ->
   | Jir.Expr.Spread expr ->
       collect_expr_imports expr state
 
-let rec collect_expr_imports = fun expr state ->
+and collect_object_field_imports = fun state (field: Jir.Expr.object_field) ->
+  collect_expr_imports field.value state
+
+and collect_expr_imports = fun expr state ->
   match expr with
   | Jir.Expr.Literal _ ->
       state
@@ -88,6 +91,8 @@ let rec collect_expr_imports = fun expr state ->
       collect_expr_imports binary.right state
   | Jir.Expr.Array elements ->
       List.fold_left collect_array_element_imports state elements
+  | Jir.Expr.Object fields ->
+      List.fold_left collect_object_field_imports state fields
   | Jir.Expr.Function function_ ->
       collect_statement_import_list function_.body state
   | Jir.Expr.Member member ->
@@ -148,7 +153,10 @@ let rec normalize_array_element = fun element ->
   | Jir.Expr.Item expr -> Jir.Expr.Item (normalize_expr expr)
   | Jir.Expr.Spread expr -> Jir.Expr.Spread (normalize_expr expr)
 
-let rec normalize_expr = fun expr ->
+and normalize_object_field = fun (field: Jir.Expr.object_field) ->
+  Jir.Expr.{ field with value = normalize_expr field.value }
+
+and normalize_expr = fun expr ->
   match expr with
   | Jir.Expr.Literal _
   | Jir.Expr.Global _
@@ -166,6 +174,8 @@ let rec normalize_expr = fun expr ->
       }
   | Jir.Expr.Array elements ->
       Jir.Expr.Array (List.map normalize_array_element elements)
+  | Jir.Expr.Object fields ->
+      Jir.Expr.Object (List.map normalize_object_field fields)
   | Jir.Expr.Function function_ ->
       let body = normalize_statement_list function_.body |> Simplify.function_body in
       Jir.Expr.Function Jir.Expr.{ function_ with body }

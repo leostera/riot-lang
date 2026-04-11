@@ -43,6 +43,8 @@ let rec is_pure_expr = fun expr ->
         false
   | Jir.Expr.Array elements ->
       List.for_all is_pure_array_element elements
+  | Jir.Expr.Object fields ->
+      List.for_all is_pure_object_field fields
   | Jir.Expr.Member member ->
       is_pure_expr member.object_
   | Jir.Expr.Index index ->
@@ -68,6 +70,9 @@ and is_pure_array_element = fun element ->
   | Jir.Expr.Spread expr ->
       is_pure_expr expr
 
+and is_pure_object_field = fun (field: Jir.Expr.object_field) ->
+  is_pure_expr field.value
+
 let rec expr_read_entities = fun expr used ->
   match expr with
   | Jir.Expr.Literal _ ->
@@ -87,6 +92,8 @@ let rec expr_read_entities = fun expr used ->
       expr_read_entities binary.right used
   | Jir.Expr.Array elements ->
       array_elements_read_entities elements used
+  | Jir.Expr.Object fields ->
+      object_fields_read_entities fields used
   | Jir.Expr.Function function_ ->
       statements_read_entities function_.body used
   | Jir.Expr.Member member ->
@@ -122,6 +129,13 @@ and array_elements_read_entities = fun elements used ->
             expr_read_entities expr used
       in
       array_elements_read_entities rest used
+
+and object_fields_read_entities = fun fields used ->
+  match fields with
+  | [] -> used
+  | field :: rest ->
+      let used = expr_read_entities field.value used in
+      object_fields_read_entities rest used
 
 and statement_read_entities = fun statement used ->
   match statement with
@@ -169,6 +183,8 @@ let rec expr_assigned_entities = fun expr entities ->
       expr_assigned_entities binary.right entities
   | Jir.Expr.Array elements ->
       array_elements_assigned_entities elements entities
+  | Jir.Expr.Object fields ->
+      object_fields_assigned_entities fields entities
   | Jir.Expr.Function function_ ->
       statements_assigned_entities function_.body entities
   | Jir.Expr.Member member ->
@@ -204,6 +220,13 @@ and array_elements_assigned_entities = fun elements entities ->
             expr_assigned_entities expr entities
       in
       array_elements_assigned_entities rest entities
+
+and object_fields_assigned_entities = fun fields entities ->
+  match fields with
+  | [] -> entities
+  | field :: rest ->
+      let entities = expr_assigned_entities field.value entities in
+      object_fields_assigned_entities rest entities
 
 and statement_assigned_entities = fun statement entities ->
   match statement with

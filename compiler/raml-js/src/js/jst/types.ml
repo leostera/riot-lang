@@ -58,6 +58,7 @@ type expr =
   | Unary of expr_unary
   | Binary of expr_binary
   | Array of expr_array
+  | Object of expr_object
   | Function of expr_function
   | Member of expr_member
   | Index of expr_index
@@ -85,6 +86,13 @@ and expr_array_element =
   | Spread of expr
 
 and expr_array = expr_array_element list
+
+and expr_object_field = {
+  name: string;
+  value: expr;
+}
+
+and expr_object = expr_object_field list
 
 and expr_call = {
   callee: expr;
@@ -192,24 +200,24 @@ let declaration_kind_to_json = fun kind ->
   | Let -> Json.string "let"
   | Var -> Json.string "var"
 
-let rec expr_call_to_json = fun call ->
+let rec expr_call_to_json = fun (call: expr_call) ->
   Json.obj
     [
       ("callee", expr_to_json call.callee);
       ("arguments", Json.array (List.map expr_to_json call.arguments));
     ]
 
-and expr_global_to_json = fun global ->
+and expr_global_to_json = fun (global: expr_global) ->
   Json.obj [ ("name", Json.string global.name) ]
 
-and expr_unary_to_json = fun unary ->
+and expr_unary_to_json = fun (unary: expr_unary) ->
   Json.obj
     [
       ("operator", unary_operator_to_json unary.operator);
       ("operand", expr_to_json unary.operand);
     ]
 
-and expr_binary_to_json = fun binary ->
+and expr_binary_to_json = fun (binary: expr_binary) ->
   Json.obj
     [
       ("operator", binary_operator_to_json binary.operator);
@@ -225,24 +233,34 @@ and expr_array_element_to_json = fun element ->
 and expr_array_to_json = fun array ->
   Json.array (List.map expr_array_element_to_json array)
 
-and expr_function_to_json = fun function_ ->
+and expr_object_field_to_json = fun (field: expr_object_field) ->
+  Json.obj
+    [
+      ("name", Json.string field.name);
+      ("value", expr_to_json field.value);
+    ]
+
+and expr_object_to_json = fun object_ ->
+  Json.array (List.map expr_object_field_to_json object_)
+
+and expr_function_to_json = fun (function_: expr_function) ->
   Json.obj
     [
       ("params", Json.array (List.map Binder.to_json function_.params));
       ("body", Json.array (List.map statement_to_json function_.body));
     ]
 
-and expr_member_to_json = fun member ->
+and expr_member_to_json = fun (member: expr_member) ->
   Json.obj [ ("object", expr_to_json member.object_); ("property", Json.string member.property) ]
 
-and expr_index_to_json = fun index ->
+and expr_index_to_json = fun (index: expr_index) ->
   Json.obj
     [
       ("object", expr_to_json index.object_);
       ("index", expr_to_json index.index);
     ]
 
-and expr_conditional_to_json = fun conditional ->
+and expr_conditional_to_json = fun (conditional: expr_conditional) ->
   Json.obj
     [
       ("condition", expr_to_json conditional.condition);
@@ -250,7 +268,7 @@ and expr_conditional_to_json = fun conditional ->
       ("else", expr_to_json conditional.else_);
     ]
 
-and expr_assignment_to_json = fun assignment ->
+and expr_assignment_to_json = fun (assignment: expr_assignment) ->
   Json.obj
     [
       ("target", Core.Entity_id.to_json assignment.target);
@@ -266,6 +284,7 @@ and expr_to_json = fun expr ->
   | Unary unary -> Json.obj [ ("kind", Json.string "unary"); ("unary", expr_unary_to_json unary) ]
   | Binary binary -> Json.obj [ ("kind", Json.string "binary"); ("binary", expr_binary_to_json binary) ]
   | Array array -> Json.obj [ ("kind", Json.string "array"); ("array", expr_array_to_json array) ]
+  | Object object_ -> Json.obj [ ("kind", Json.string "object"); ("object", expr_object_to_json object_) ]
   | Function function_ -> Json.obj
     [ ("kind", Json.string "function"); ("function", expr_function_to_json function_) ]
   | Member member -> Json.obj
@@ -383,6 +402,13 @@ module Expr = struct
 
   type array = expr_array
 
+  type object_field = expr_object_field = {
+    name: string;
+    value: expr;
+  }
+
+  type object_ = expr_object
+
   type call = expr_call = {
     callee: expr;
     arguments: expr list;
@@ -421,6 +447,7 @@ module Expr = struct
     | Unary of unary
     | Binary of binary
     | Array of array
+    | Object of object_
     | Function of function_
     | Member of member
     | Index of index
@@ -437,6 +464,10 @@ module Expr = struct
   let array_element_to_json = expr_array_element_to_json
 
   let array_to_json = expr_array_to_json
+
+  let object_field_to_json = expr_object_field_to_json
+
+  let object_to_json = expr_object_to_json
 
   let call_to_json = expr_call_to_json
 

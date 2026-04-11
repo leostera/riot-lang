@@ -50,6 +50,7 @@ type expr =
   | Unary of expr_unary
   | Binary of expr_binary
   | Array of expr_array
+  | Object of expr_object
   | Function of expr_function
   | Member of expr_member
   | Index of expr_index
@@ -77,6 +78,13 @@ and expr_array_element =
   | Spread of expr
 
 and expr_array = expr_array_element list
+
+and expr_object_field = {
+  name: string;
+  value: expr;
+}
+
+and expr_object = expr_object_field list
 
 and expr_call = {
   callee: expr;
@@ -196,6 +204,11 @@ module Expr: sig
     | Item of expr
     | Spread of expr
   type array = expr_array
+  type object_field = expr_object_field = {
+    name: string;
+    value: expr;
+  }
+  type object_ = expr_object
   type call = expr_call = {
     callee: expr;
     arguments: expr list;
@@ -228,6 +241,7 @@ module Expr: sig
     | Unary of unary
     | Binary of binary
     | Array of array
+    | Object of object_
     | Function of function_
     | Member of member
     | Index of index
@@ -243,6 +257,10 @@ module Expr: sig
   val array_element_to_json: array_element -> Json.t
 
   val array_to_json: array -> Json.t
+
+  val object_field_to_json: object_field -> Json.t
+
+  val object_to_json: object_ -> Json.t
 
   val call_to_json: call -> Json.t
 

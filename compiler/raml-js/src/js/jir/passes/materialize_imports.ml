@@ -19,6 +19,8 @@ let rec lower_expr = fun expr ->
   }
   | Jir.Expr.Array elements ->
       Jir.Expr.Array (List.map lower_array_element elements)
+  | Jir.Expr.Object fields ->
+      Jir.Expr.Object (List.map lower_object_field fields)
   | Jir.Expr.Function function_ -> Jir.Expr.Function Jir.Expr.{
     params = function_.params;
     body = List.map lower_statement function_.body;
@@ -49,6 +51,9 @@ and lower_array_element = fun element ->
   match element with
   | Jir.Expr.Item expr -> Jir.Expr.Item (lower_expr expr)
   | Jir.Expr.Spread expr -> Jir.Expr.Spread (lower_expr expr)
+
+and lower_object_field = fun (field: Jir.Expr.object_field) ->
+  Jir.Expr.{ field with value = lower_expr field.value }
 
 and lower_statement = fun statement ->
   match statement with

@@ -118,6 +118,9 @@ let lower_member = fun object_ property ->
 let lower_index = fun object_ index ->
   Jir.Expr.Index Jir.Expr.{ object_; index }
 
+let lower_object = fun fields ->
+  Jir.Expr.Object fields
+
 let lower_call = fun callee arguments ->
   Jir.Expr.Call Jir.Expr.{ callee; arguments }
 
@@ -129,6 +132,42 @@ let lower_binary = fun operator left right ->
 
 let lower_array = fun elements ->
   Jir.Expr.Array (List.map (fun expr -> Jir.Expr.Item expr) elements)
+
+let is_ascii_lowercase = fun char -> char >= 'a' && char <= 'z'
+
+let is_ascii_letter = fun char -> is_ascii_lowercase char || is_ascii_uppercase char
+
+let is_identifier_start = fun char ->
+  is_ascii_letter char || char = '_' || char = '$'
+
+let is_identifier_continue = fun char ->
+  is_identifier_start char || (char >= '0' && char <= '9')
+
+let is_valid_js_identifier = fun name ->
+  let length = String.length name in
+  if length = 0 then
+    false
+  else if not (is_identifier_start name.[0]) then
+    false
+  else
+    let rec loop index =
+      if index >= length then
+        true
+      else if is_identifier_continue name.[index] then
+        loop (index + 1)
+      else
+        false
+    in
+    loop 1
+
+let lower_string_literal = fun value ->
+  Jir.Expr.Literal (Jir.Literal.String value)
+
+let lower_named_property_access = fun object_ property ->
+  if is_valid_js_identifier property then
+    lower_member object_ property
+  else
+    lower_index object_ (lower_string_literal property)
 
 let lower_string_constructor = fun value ->
   lower_call (lower_global "String") [ value ]
@@ -324,6 +363,10 @@ let rec lower_expr = fun expr ->
       lower_index
         (lower_expr tuple_get.tuple)
         (Jir.Expr.Literal (Jir.Literal.Number (Jir.Literal.Int tuple_get.index)))
+  | Core.Expr.Record record ->
+      lower_object (List.map lower_record_field record)
+  | Core.Expr.Record_get record_get ->
+      lower_named_property_access (lower_expr record_get.record) record_get.label
   | Core.Expr.If_then_else if_then_else ->
       Jir.Expr.Conditional Jir.Expr.{
         condition = lower_expr if_then_else.condition;
@@ -332,6 +375,9 @@ let rec lower_expr = fun expr ->
       }
   | Core.Expr.Primitive primitive ->
       lower_primitive_call primitive.name (List.map lower_expr primitive.arguments)
+
+and lower_record_field = fun (field: Core.Expr.record_field) ->
+  Jir.Expr.{ name = field.label; value = lower_expr field.value }
 
 and lower_tail_expr = fun expr ->
   match expr with

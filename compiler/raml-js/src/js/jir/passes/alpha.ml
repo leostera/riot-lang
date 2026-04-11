@@ -79,7 +79,10 @@ let rec lower_array_element = fun env element ->
   | Jir.Expr.Item expr -> Jir.Expr.Item (lower_expr env expr)
   | Jir.Expr.Spread expr -> Jir.Expr.Spread (lower_expr env expr)
 
-let rec lower_expr = fun env expr ->
+and lower_object_field = fun env (field: Jir.Expr.object_field) ->
+  Jir.Expr.{ field with value = lower_expr env field.value }
+
+and lower_expr = fun env expr ->
   match expr with
   | Jir.Expr.Literal _
   | Jir.Expr.Global _
@@ -99,6 +102,8 @@ let rec lower_expr = fun env expr ->
       }
   | Jir.Expr.Array elements ->
       Jir.Expr.Array (List.map (lower_array_element env) elements)
+  | Jir.Expr.Object fields ->
+      Jir.Expr.Object (List.map (lower_object_field env) fields)
   | Jir.Expr.Function function_ ->
       let (env, params) = bind_binders env function_.params in
       let body = lower_scoped_block env function_.body in

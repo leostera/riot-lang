@@ -148,6 +148,23 @@ module Expr = struct
     index: int;
   }
 
+  (* NOTE: required for js target. Records need to survive shared IR lowering so
+     JS can choose object literals and named field access without guessing from
+     tuple layout after the fact. The [index] stays backend-neutral slot data so
+     tuple-oriented backends can keep lowering records positionally. *)
+  and record_field = {
+    label: string;
+    value: t;
+  }
+
+  and record = record_field list
+
+  and record_get = {
+    record: t;
+    label: string;
+    index: int;
+  }
+
   and if_then_else = {
     condition: t;
     then_: t;
@@ -168,6 +185,8 @@ module Expr = struct
     | Sequence of sequence
     | Tuple of tuple
     | Tuple_get of tuple_get
+    | Record of record
+    | Record_get of record_get
     | If_then_else of if_then_else
     | Primitive of primitive
 
@@ -219,6 +238,20 @@ module Expr = struct
   and tuple_get_to_json = fun (tuple_get: tuple_get) ->
     Json.obj [ ("tuple", to_json tuple_get.tuple); ("index", Json.int tuple_get.index); ]
 
+  and record_field_to_json = fun (field: record_field) ->
+    Json.obj [ ("label", Json.string field.label); ("value", to_json field.value) ]
+
+  and record_to_json = fun (record: record) ->
+    Json.obj [ ("fields", Json.array (List.map record_field_to_json record)); ]
+
+  and record_get_to_json = fun (record_get: record_get) ->
+    Json.obj
+      [
+        ("record", to_json record_get.record);
+        ("label", Json.string record_get.label);
+        ("index", Json.int record_get.index);
+      ]
+
   and if_then_else_to_json = fun (if_then_else: if_then_else) ->
     Json.obj
       [
@@ -248,6 +281,10 @@ module Expr = struct
     | Tuple tuple -> Json.obj [ ("kind", Json.string "tuple"); ("tuple", tuple_to_json tuple); ]
     | Tuple_get tuple_get -> Json.obj
       [ ("kind", Json.string "tuple_get"); ("tuple_get", tuple_get_to_json tuple_get); ]
+    | Record record -> Json.obj
+      [ ("kind", Json.string "record"); ("record", record_to_json record); ]
+    | Record_get record_get -> Json.obj
+      [ ("kind", Json.string "record_get"); ("record_get", record_get_to_json record_get); ]
     | If_then_else if_then_else -> Json.obj
       [ ("kind", Json.string "if_then_else"); ("if_then_else", if_then_else_to_json if_then_else); ]
     | Primitive primitive -> Json.obj

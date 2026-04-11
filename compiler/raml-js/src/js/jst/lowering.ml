@@ -73,7 +73,10 @@ let rec lower_array_element = fun element ->
   | Source.Expr.Item expr -> Target.Expr.Item (lower_expr expr)
   | Source.Expr.Spread expr -> Target.Expr.Spread (lower_expr expr)
 
-let rec lower_expr = fun expr ->
+and lower_object_field = fun (field: Source.Expr.object_field) ->
+  Target.Expr.{ name = field.name; value = lower_expr field.value }
+
+and lower_expr = fun expr ->
   match expr with
   | Source.Expr.Literal literal -> Target.Expr.Literal (lower_literal literal)
   | Source.Expr.Global global -> Target.Expr.Global Target.Expr.{ name = global.name }
@@ -93,6 +96,8 @@ let rec lower_expr = fun expr ->
   }
   | Source.Expr.Array array ->
       Target.Expr.Array (List.map lower_array_element array)
+  | Source.Expr.Object object_ ->
+      Target.Expr.Object (List.map lower_object_field object_)
   | Source.Expr.Function function_ -> Target.Expr.Function Target.Expr.{
     params = List.map lower_binder function_.params;
     body = List.map lower_statement function_.body;

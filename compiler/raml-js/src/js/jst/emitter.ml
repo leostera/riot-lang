@@ -73,7 +73,15 @@ let rec emit_array_element = fun ~level env element ->
   | Types.Expr.Item expr -> emit_expr ~level env expr
   | Types.Expr.Spread expr -> format Format.[ str "..."; str (emit_expr ~level env expr) ]
 
-let rec emit_expr = fun ~level env expr ->
+and emit_object_field = fun ~level env (field: Types.Expr.object_field) ->
+  format
+    Format.[
+      str (Json.to_string (Json.string field.name));
+      str ": ";
+      str (emit_expr ~level env field.value);
+    ]
+
+and emit_expr = fun ~level env expr ->
   match expr with
   | Types.Expr.Literal literal ->
       emit_literal literal
@@ -106,6 +114,13 @@ let rec emit_expr = fun ~level env expr ->
           str "[";
           str (String.concat ", " (List.map (emit_array_element ~level env) elements));
           str "]";
+        ]
+  | Types.Expr.Object fields ->
+      format
+        Format.[
+          str "{";
+          str (String.concat ", " (List.map (emit_object_field ~level env) fields));
+          str "}";
         ]
   | Types.Expr.Function function_ ->
       emit_function ~level env function_

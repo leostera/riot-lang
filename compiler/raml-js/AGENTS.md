@@ -38,6 +38,8 @@ late syntax lowering, and JS emission.
    import/runtime expression forms into `JST`.
 6. When comparing with Melange `jscomp`, copy invariants and subsystem ideas,
    not compiler-lib coupling or early JS leakage into the shared IR.
+7. In `raml-js`, `Object` means a plain JavaScript object literal/property
+   shape. It does not mean the OCaml object system.
 
 ## Verification
 
