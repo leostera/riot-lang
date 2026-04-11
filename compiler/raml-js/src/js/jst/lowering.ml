@@ -6,7 +6,14 @@ let lower_binder = fun (binder: Source.Binder.t) ->
   Target.Binder.make ~name:binder.name binder.binding_id
 
 let unresolved_expr = fun kind ->
-  invalid_arg (format Format.[ str "RamlJs.Js.Jst.Lowering: unresolved JIR expression reached JST lowering ("; str kind; str ")" ])
+  raise
+    (Invalid_argument
+    (format
+       Format.[
+         str "RamlJs.Js.Jst.Lowering: unresolved JIR expression reached JST lowering (";
+         str kind;
+         str ")";
+       ]))
 
 let lower_import = fun (import: Source.Imports.requirement) ->
   if import.namespace then
