@@ -88,7 +88,7 @@ The main remaining architectural gaps are:
    collapsing imports down to bare path strings immediately.
    The current namespace/reference story is now also factored into
    `Jir.References`, and `Jir.Modules` now owns the actual namespace-vs-value
-   path split. The policy is still heuristic rather than package- or
+   path split plus namespace-import construction. The policy is still heuristic rather than package- or
    artifact-aware the way Melange is.
 2. The builtin/runtime boundary is centralized, but still hand-written and
    small rather than typed and declarative.

@@ -42,6 +42,9 @@ let entity_reference = fun entity_id ->
 
 let namespace_binder = Types.Modules.namespace_binder
 
+let namespace_import = fun module_ref ->
+  Types.Imports.namespace ~from:module_ref ~local:(namespace_binder module_ref) ()
+
 let import_path = Types.Modules.import_path
 
 let namespace_segments = Types.Modules.namespace_segments

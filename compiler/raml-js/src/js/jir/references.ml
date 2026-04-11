@@ -19,9 +19,6 @@ let entity = fun entity_id ->
     match reference.root with
     | Modules.Identifier entity_id -> Jir.Expr.Identifier entity_id
     | Modules.Namespace module_ref ->
-        Jir.Expr.Imported (Jir.Imports.namespace
-          ~from:module_ref
-          ~local:(Modules.namespace_binder module_ref)
-          ())
+        Jir.Expr.Imported (Modules.namespace_import module_ref)
   in
   List.fold_left named_property_access base reference.properties

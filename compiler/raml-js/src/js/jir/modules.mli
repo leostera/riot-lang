@@ -43,6 +43,8 @@ val entity_reference: Core.Entity_id.t -> entity_reference
 
 val namespace_binder: t -> Types.Binder.t
 
+val namespace_import: t -> Types.Imports.requirement
+
 val import_path: t -> string
 
 val namespace_segments: t -> string list
