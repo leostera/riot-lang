@@ -117,7 +117,7 @@ let logical_relpath = fun path ->
     Path.join dirname basename
 
 let runtime_asset_source = fun ~repo_root name ->
-  Path.(repo_root / Path.v "compiler/raml/src/js" / Path.v name)
+  Path.(repo_root / Path.v "compiler/raml-js/src/js" / Path.v name)
 
 let runtime_assets_available = fun repo_root ->
   List.for_all
