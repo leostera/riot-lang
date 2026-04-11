@@ -75,22 +75,13 @@ let binder_of_binding = fun (binding: Core.Expr.binding) ->
 let binder_of_top_binding = fun (binding: Core.Binding.t) ->
   binder_of_entity ~fallback_name:binding.name binding.entity_id
 
-let namespace_import_binder = fun module_ref ->
-  Jir.Binder.generated
-    ~namespace:([ "import" ] @ Jir.Modules.namespace_segments module_ref)
-    ~name:module_ref.unit_name
+let lower_global = fun name -> Jir.Expr.Global Jir.Expr.{ name }
 
-let lower_global = fun name ->
-  Jir.Expr.Global Jir.Expr.{ name }
+let lower_member = fun object_ property -> Jir.Expr.Member Jir.Expr.{ object_; property }
 
-let lower_member = fun object_ property ->
-  Jir.Expr.Member Jir.Expr.{ object_; property }
+let lower_index = fun object_ index -> Jir.Expr.Index Jir.Expr.{ object_; index }
 
-let lower_index = fun object_ index ->
-  Jir.Expr.Index Jir.Expr.{ object_; index }
-
-let lower_string_literal = fun value ->
-  Jir.Expr.Literal (Jir.Literal.String value)
+let lower_string_literal = fun value -> Jir.Expr.Literal (Jir.Literal.String value)
 
 let lower_named_property_access = fun object_ property ->
   if Syntax.can_use_dot_property property then
@@ -106,11 +97,10 @@ let lower_reference = fun entity_id ->
       let base =
         if not (List.is_empty tail) && is_module_segment head then
           let module_ref = Jir.Modules.sibling_unit head in
-          Jir.Expr.Imported
-            (Jir.Imports.namespace
-               ~from:module_ref
-               ~local:(namespace_import_binder module_ref)
-               ())
+          Jir.Expr.Imported (Jir.Imports.namespace
+            ~from:module_ref
+            ~local:(Jir.Modules.namespace_binder module_ref)
+            ())
         else if Option.is_some (Core.Entity_id.binding_id entity_id) && List.is_empty tail then
           Jir.Expr.Identifier entity_id
         else
@@ -121,32 +111,24 @@ let lower_reference = fun entity_id ->
 let iife = fun body ->
   Jir.Expr.Call Jir.Expr.{
     callee = Jir.Expr.Function Jir.Expr.{ params = []; body };
-    arguments = [];
+    arguments = []
   }
 
-let lower_direct_callee = fun entity_id ->
-  lower_reference entity_id
+let lower_direct_callee = fun entity_id -> lower_reference entity_id
 
-let lower_object = fun fields ->
-  Jir.Expr.Object fields
+let lower_object = fun fields -> Jir.Expr.Object fields
 
-let lower_call = fun callee arguments ->
-  Jir.Expr.Call Jir.Expr.{ callee; arguments }
+let lower_call = fun callee arguments -> Jir.Expr.Call Jir.Expr.{ callee; arguments }
 
-let lower_unary = fun operator operand ->
-  Jir.Expr.Unary Jir.Expr.{ operator; operand }
+let lower_unary = fun operator operand -> Jir.Expr.Unary Jir.Expr.{ operator; operand }
 
-let lower_binary = fun operator left right ->
-  Jir.Expr.Binary Jir.Expr.{ operator; left; right }
+let lower_binary = fun operator left right -> Jir.Expr.Binary Jir.Expr.{ operator; left; right }
 
-let lower_array = fun elements ->
-  Jir.Expr.Array (List.map (fun expr -> Jir.Expr.Item expr) elements)
+let lower_array = fun elements -> Jir.Expr.Array (List.map (fun expr -> Jir.Expr.Item expr) elements)
 
-let lower_string_constructor = fun value ->
-  lower_call (lower_global "String") [ value ]
+let lower_string_constructor = fun value -> lower_call (lower_global "String") [ value ]
 
-let lower_console_log = fun arguments ->
-  lower_call (lower_member (lower_global "console") "log") arguments
+let lower_console_log = fun arguments -> lower_call (lower_member (lower_global "console") "log") arguments
 
 let lower_console_error = fun arguments ->
   lower_call (lower_member (lower_global "console") "error") arguments
@@ -168,47 +150,32 @@ let lower_runtime_primitive_call = fun name arguments ->
 
 let lower_primitive_call = fun name arguments ->
   match (name, arguments) with
-  | ("%tuple_make", arguments) ->
-      lower_array arguments
-  | ("%tuple_get", [ tuple; index ]) ->
-      lower_index tuple index
-  | ("%addfloat", [ left; right ])
-  | ("%addint", [ left; right ]) ->
-      lower_binary Jir.Operator.Add left right
-  | ("%subfloat", [ left; right ])
-  | ("%subint", [ left; right ]) ->
-      lower_binary Jir.Operator.Subtract left right
-  | ("%mulfloat", [ left; right ])
-  | ("%mulint", [ left; right ]) ->
-      lower_binary Jir.Operator.Multiply left right
-  | ("%divfloat", [ left; right ])
-  | ("%divint", [ left; right ]) ->
-      lower_binary Jir.Operator.Divide left right
-  | ("%modint", [ left; right ]) ->
-      lower_binary Jir.Operator.Modulo left right
-  | ("%eq", [ left; right ]) ->
-      lower_binary Jir.Operator.Equal left right
-  | ("%neq", [ left; right ]) ->
-      lower_binary Jir.Operator.Not_equal left right
-  | ("%lt", [ left; right ]) ->
-      lower_binary Jir.Operator.Less_than left right
-  | ("%le", [ left; right ]) ->
-      lower_binary Jir.Operator.Less_or_equal left right
-  | ("%gt", [ left; right ]) ->
-      lower_binary Jir.Operator.Greater_than left right
-  | ("%ge", [ left; right ]) ->
-      lower_binary Jir.Operator.Greater_or_equal left right
-  | ("%concatstring", [ left; right ]) ->
-      lower_binary Jir.Operator.Add (lower_string_constructor left) (lower_string_constructor right)
+  | ("%tuple_make", arguments) -> lower_array arguments
+  | ("%tuple_get", [tuple;index]) -> lower_index tuple index
+  | ("%addfloat", [left;right])
+  | ("%addint", [left;right]) -> lower_binary Jir.Operator.Add left right
+  | ("%subfloat", [left;right])
+  | ("%subint", [left;right]) -> lower_binary Jir.Operator.Subtract left right
+  | ("%mulfloat", [left;right])
+  | ("%mulint", [left;right]) -> lower_binary Jir.Operator.Multiply left right
+  | ("%divfloat", [left;right])
+  | ("%divint", [left;right]) -> lower_binary Jir.Operator.Divide left right
+  | ("%modint", [left;right]) -> lower_binary Jir.Operator.Modulo left right
+  | ("%eq", [left;right]) -> lower_binary Jir.Operator.Equal left right
+  | ("%neq", [left;right]) -> lower_binary Jir.Operator.Not_equal left right
+  | ("%lt", [left;right]) -> lower_binary Jir.Operator.Less_than left right
+  | ("%le", [left;right]) -> lower_binary Jir.Operator.Less_or_equal left right
+  | ("%gt", [left;right]) -> lower_binary Jir.Operator.Greater_than left right
+  | ("%ge", [left;right]) -> lower_binary Jir.Operator.Greater_or_equal left right
+  | ("%concatstring", [left;right]) -> lower_binary
+    Jir.Operator.Add
+    (lower_string_constructor left)
+    (lower_string_constructor right)
   | ("%string_of_int", [ value ])
-  | ("%string_of_float", [ value ]) ->
-      lower_string_constructor value
-  | ("%sqrtfloat", [ value ]) ->
-      lower_call (lower_member (lower_global "Math") "sqrt") [ value ]
-  | ("%trace", [ value ]) ->
-      lower_console_log [ value ]
-  | _ ->
-      lower_runtime_primitive_call name arguments
+  | ("%string_of_float", [ value ]) -> lower_string_constructor value
+  | ("%sqrtfloat", [ value ]) -> lower_call (lower_member (lower_global "Math") "sqrt") [ value ]
+  | ("%trace", [ value ]) -> lower_console_log [ value ]
+  | _ -> lower_runtime_primitive_call name arguments
 
 let lower_bool = fun value -> Jir.Expr.Literal (Jir.Literal.Bool value)
 
@@ -219,13 +186,10 @@ let lower_curried_function = fun (function_: Jir.Expr.function_) ->
   else
     lower_call
       (Jir.Expr.Runtime_helper (Jir.Runtime.make_curried ()))
-      [
-        Jir.Expr.Function function_;
-        Jir.Expr.Literal (Jir.Literal.Number (Jir.Literal.Int arity));
-      ]
+      [ Jir.Expr.Function function_; Jir.Expr.Literal (Jir.Literal.Number (Jir.Literal.Int arity)); ]
 
 let lower_builtin_call = fun entity_id builtin arguments ->
-  let fallback = fun () ->
+  let fallback () =
     let callee = lower_direct_callee entity_id in
     lower_call callee arguments
   in
@@ -243,8 +207,7 @@ let lower_builtin_call = fun entity_id builtin arguments ->
   | Print_newline -> (
       match arguments with
       | []
-      | [ _ ] ->
-          lower_console_log [ Jir.Expr.Literal (Jir.Literal.String "") ]
+      | [ _ ] -> lower_console_log [ Jir.Expr.Literal (Jir.Literal.String "") ]
       | _ -> fallback ()
     )
   | Stdout_write -> (
@@ -276,32 +239,31 @@ let lower_builtin_call = fun entity_id builtin arguments ->
     )
   | Boolean_and -> (
       match arguments with
-      | [ left; right ] -> Jir.Expr.Conditional Jir.Expr.{
+      | [left;right] -> Jir.Expr.Conditional Jir.Expr.{
         condition = left;
         then_ = right;
-        else_ = lower_bool false;
+        else_ = lower_bool false
       }
       | _ -> fallback ()
     )
   | Boolean_or -> (
       match arguments with
-      | [ left; right ] -> Jir.Expr.Conditional Jir.Expr.{
+      | [left;right] -> Jir.Expr.Conditional Jir.Expr.{
         condition = left;
         then_ = lower_bool true;
-        else_ = right;
+        else_ = right
       }
       | _ -> fallback ()
     )
   | Binary_operator operator -> (
       match arguments with
-      | [ left; right ] -> lower_binary operator left right
+      | [left;right] -> lower_binary operator left right
       | _ -> fallback ()
     )
 
 let lower_direct_call = fun entity_id arguments ->
   match Builtins.classify_direct_callee entity_id with
-  | Some builtin ->
-      lower_builtin_call entity_id builtin arguments
+  | Some builtin -> lower_builtin_call entity_id builtin arguments
   | None ->
       let callee = lower_direct_callee entity_id in
       lower_call callee arguments
@@ -312,16 +274,19 @@ let rec lower_expr = fun expr ->
       Jir.Expr.Literal (lower_constant constant)
   | Core.Expr.Var entity_id ->
       lower_reference entity_id
-  | Core.Expr.Apply { callee = Core.Expr.Direct function_name; arguments } ->
+  | Core.Expr.Apply { callee=Core.Expr.Direct function_name; arguments } ->
       let arguments = List.map lower_expr arguments in
       lower_direct_call function_name arguments
-  | Core.Expr.Apply { callee = Core.Expr.Indirect callee; arguments } ->
+  | Core.Expr.Apply { callee=Core.Expr.Indirect callee; arguments } ->
       let callee = lower_expr callee in
       let arguments = List.map lower_expr arguments in
       Jir.Expr.Call Jir.Expr.{ callee; arguments }
   | Core.Expr.Lambda lambda ->
       lower_curried_function
-        Jir.Expr.{ params = List.map binder_of_param lambda.params; body = lower_tail_expr lambda.body }
+        Jir.Expr.{
+          params = List.map binder_of_param lambda.params;
+          body = lower_tail_expr lambda.body
+        }
   | Core.Expr.Let let_ ->
       lower_let let_
   | Core.Expr.Sequence sequence ->
@@ -344,7 +309,7 @@ let rec lower_expr = fun expr ->
       Jir.Expr.Conditional Jir.Expr.{
         condition = lower_expr if_then_else.condition;
         then_ = lower_expr if_then_else.then_;
-        else_ = lower_expr if_then_else.else_;
+        else_ = lower_expr if_then_else.else_
       }
   | Core.Expr.Primitive primitive ->
       lower_primitive_call primitive.name (List.map lower_expr primitive.arguments)
@@ -360,7 +325,7 @@ and lower_tail_expr = fun expr ->
     Jir.Statement.If Jir.Statement.{
       condition = lower_expr if_then_else.condition;
       then_ = lower_tail_expr if_then_else.then_;
-      else_ = lower_tail_expr if_then_else.else_;
+      else_ = lower_tail_expr if_then_else.else_
     }
   ]
   | _ -> [ Jir.Statement.Return (lower_expr expr) ]
@@ -372,7 +337,7 @@ and lower_effect_expr = fun expr ->
     Jir.Statement.If Jir.Statement.{
       condition = lower_expr if_then_else.condition;
       then_ = lower_effect_expr if_then_else.then_;
-      else_ = lower_effect_expr if_then_else.else_;
+      else_ = lower_effect_expr if_then_else.else_
     }
   ]
   | _ -> [ Jir.Statement.Expression (lower_expr expr) ]
@@ -384,7 +349,7 @@ and lower_let_binding_statements = fun (let_: Core.Expr.let_) ->
       Jir.Statement.Declaration Jir.Declaration.{
         kind = Jir.Declaration.Const;
         binder = binder_of_binding binding;
-        init = Some (lower_expr binding.expr);
+        init = Some (lower_expr binding.expr)
       })
     let_.bindings
   | Core.Rec_flag.Recursive ->
@@ -394,7 +359,7 @@ and lower_let_binding_statements = fun (let_: Core.Expr.let_) ->
             Jir.Statement.Declaration Jir.Declaration.{
               kind = Jir.Declaration.Let;
               binder = binder_of_binding binding;
-              init = None;
+              init = None
             })
           let_.bindings
       in
@@ -403,7 +368,7 @@ and lower_let_binding_statements = fun (let_: Core.Expr.let_) ->
           (fun (binding: Core.Expr.binding) ->
             Jir.Statement.Expression (Jir.Expr.Assignment Jir.Expr.{
               target = binding.entity_id;
-              value = lower_expr binding.expr;
+              value = lower_expr binding.expr
             }))
           let_.bindings
       in
@@ -422,7 +387,7 @@ let lower_item = fun item ->
   | Core.Init_item.Binding binding -> Jir.Statement.Declaration Jir.Declaration.{
     kind = Jir.Declaration.Const;
     binder = binder_of_top_binding binding;
-    init = Some (lower_expr binding.expr);
+    init = Some (lower_expr binding.expr)
   }
   | Core.Init_item.Eval expr -> Jir.Statement.Expression (lower_expr expr)
 
@@ -435,7 +400,7 @@ let lower_recursive_group = fun (group: Core.Binding_group.t) ->
         | Core.Init_item.Binding binding -> Some (Jir.Statement.Declaration Jir.Declaration.{
           kind = Jir.Declaration.Let;
           binder = binder_of_top_binding binding;
-          init = None;
+          init = None
         })
         | Core.Init_item.Eval _ -> None)
   in
@@ -445,7 +410,7 @@ let lower_recursive_group = fun (group: Core.Binding_group.t) ->
         match item with
         | Core.Init_item.Binding binding -> Jir.Statement.Expression (Jir.Expr.Assignment Jir.Expr.{
           target = binding.entity_id;
-          value = lower_expr binding.expr;
+          value = lower_expr binding.expr
         })
         | Core.Init_item.Eval expr -> Jir.Statement.Expression (lower_expr expr))
       group.items
@@ -459,7 +424,8 @@ let lower_group = fun (_group_index: int) (group: Core.Binding_group.t) ->
 
 let lower_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
   match compilation_unit.unit_id.kind with
-  | Raml_core.Source_unit.Interface -> error (UnsupportedModuleKind { kind = compilation_unit.unit_id.kind })
+  | Raml_core.Source_unit.Interface -> error
+    (UnsupportedModuleKind { kind = compilation_unit.unit_id.kind })
   | Raml_core.Source_unit.Implementation ->
       let groups =
         List.mapi (fun index group -> (index + 1, group)) compilation_unit.init
@@ -467,12 +433,13 @@ let lower_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
       let body = groups
       |> List.map (fun (group_index, group) -> lower_group group_index group)
       |> List.flatten in
-      let program = Jir.Program.{
-        module_name = compilation_unit.unit_id.unit_name;
-        imports = [];
-        body;
-        exports = List.map lower_export compilation_unit.exports;
-      } in
+      let program =
+        Jir.Program.{
+          module_name = compilation_unit.unit_id.unit_name;
+          imports = [];
+          body;
+          exports = List.map lower_export compilation_unit.exports
+        } in
       (* Pass order is intentionally explicit:
          - Normalize establishes a canonical structural baseline and recollects
            imports from the freshly lowered body.

@@ -1,5 +1,6 @@
 open Std
 open Std.Data
+
 module Core = Raml_core.Core_ir
 
 module Binder: sig
@@ -22,15 +23,17 @@ module Modules: sig
   type kind =
     | Relative_unit
     | Runtime
-
   type t = {
     kind: kind;
     unit_name: string;
+    import_path: string;
+    namespace: string list;
   }
-
   val sibling_unit: string -> t
 
   val runtime: string -> t
+
+  val namespace_binder: t -> Binder.t
 
   val import_path: t -> string
 
@@ -65,11 +68,9 @@ type literal =
   | Bool of bool
   | Number of literal_number
   | String of string
-
 type unary_operator =
   | Not
   | Negate
-
 type binary_operator =
   | Add
   | Subtract
@@ -82,7 +83,6 @@ type binary_operator =
   | Less_or_equal
   | Greater_than
   | Greater_or_equal
-
 type expr =
   | Literal of literal
   | Global of expr_global

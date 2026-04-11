@@ -5,11 +5,15 @@ type kind = Types.Modules.kind =
 type t = Types.Modules.t = {
   kind: kind;
   unit_name: string;
+  import_path: string;
+  namespace: string list;
 }
 
 let sibling_unit = Types.Modules.sibling_unit
 
 let runtime = Types.Modules.runtime
+
+let namespace_binder = Types.Modules.namespace_binder
 
 let import_path = Types.Modules.import_path
 

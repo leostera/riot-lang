@@ -35,29 +35,36 @@ module Modules = struct
   type t = {
     kind: kind;
     unit_name: string;
+    import_path: string;
+    namespace: string list;
   }
 
-  let sibling_unit = fun unit_name -> { kind = Relative_unit; unit_name }
+  let make = fun kind unit_name ->
+    let import_path = format Format.[ str "./"; str unit_name; str ".js" ] in
+    let namespace =
+      match kind with
+      | Relative_unit -> [ "module"; unit_name ]
+      | Runtime -> [ "runtime_module"; unit_name ]
+    in
+    { kind; unit_name; import_path; namespace }
 
-  let runtime = fun unit_name -> { kind = Runtime; unit_name }
+  let sibling_unit = fun unit_name -> make Relative_unit unit_name
 
-  let import_path = fun module_ref ->
-    format Format.[ str "./"; str module_ref.unit_name; str ".js" ]
+  let runtime = fun unit_name -> make Runtime unit_name
 
-  let namespace_segments = fun module_ref ->
-    match module_ref.kind with
-    | Relative_unit -> [ "module"; module_ref.unit_name ]
-    | Runtime -> [ "runtime_module"; module_ref.unit_name ]
+  let namespace_binder = fun module_ref ->
+    Binder.generated ~namespace:([ "import" ] @ module_ref.namespace) ~name:module_ref.unit_name
+
+  let import_path = fun module_ref -> module_ref.import_path
+
+  let namespace_segments = fun module_ref -> module_ref.namespace
 
   let compare_kind = fun left right ->
     match (left, right) with
     | (Relative_unit, Relative_unit)
-    | (Runtime, Runtime) ->
-        0
-    | (Relative_unit, Runtime) ->
-        (-1)
-    | (Runtime, Relative_unit) ->
-        1
+    | (Runtime, Runtime) -> 0
+    | (Relative_unit, Runtime) -> (-1)
+    | (Runtime, Relative_unit) -> 1
 
   let compare = fun left right ->
     let by_kind = compare_kind left.kind right.kind in
@@ -78,7 +85,8 @@ module Modules = struct
       [
         ("kind", kind_to_json module_ref.kind);
         ("unit_name", Json.string module_ref.unit_name);
-        ("import_path", Json.string (import_path module_ref));
+        ("import_path", Json.string module_ref.import_path);
+        ("namespace", Json.array (List.map Json.string module_ref.namespace));
       ]
 end
 
@@ -288,15 +296,11 @@ let rec expr_call_to_json = fun (call: expr_call) ->
       ("arguments", Json.array (List.map expr_to_json call.arguments));
     ]
 
-and expr_global_to_json = fun (global: expr_global) ->
-  Json.obj [ ("name", Json.string global.name) ]
+and expr_global_to_json = fun (global: expr_global) -> Json.obj [ ("name", Json.string global.name) ]
 
 and expr_unary_to_json = fun (unary: expr_unary) ->
   Json.obj
-    [
-      ("operator", unary_operator_to_json unary.operator);
-      ("operand", expr_to_json unary.operand);
-    ]
+    [ ("operator", unary_operator_to_json unary.operator); ("operand", expr_to_json unary.operand); ]
 
 and expr_binary_to_json = fun (binary: expr_binary) ->
   Json.obj
@@ -311,18 +315,12 @@ and expr_array_element_to_json = fun element ->
   | Item expr -> Json.obj [ ("kind", Json.string "item"); ("expr", expr_to_json expr) ]
   | Spread expr -> Json.obj [ ("kind", Json.string "spread"); ("expr", expr_to_json expr) ]
 
-and expr_array_to_json = fun array ->
-  Json.array (List.map expr_array_element_to_json array)
+and expr_array_to_json = fun array -> Json.array (List.map expr_array_element_to_json array)
 
 and expr_object_field_to_json = fun (field: expr_object_field) ->
-  Json.obj
-    [
-      ("name", Json.string field.name);
-      ("value", expr_to_json field.value);
-    ]
+  Json.obj [ ("name", Json.string field.name); ("value", expr_to_json field.value); ]
 
-and expr_object_to_json = fun object_ ->
-  Json.array (List.map expr_object_field_to_json object_)
+and expr_object_to_json = fun object_ -> Json.array (List.map expr_object_field_to_json object_)
 
 and expr_function_to_json = fun (function_: expr_function) ->
   Json.obj
@@ -335,11 +333,7 @@ and expr_member_to_json = fun (member: expr_member) ->
   Json.obj [ ("object", expr_to_json member.object_); ("property", Json.string member.property) ]
 
 and expr_index_to_json = fun (index: expr_index) ->
-  Json.obj
-    [
-      ("object", expr_to_json index.object_);
-      ("index", expr_to_json index.index);
-    ]
+  Json.obj [ ("object", expr_to_json index.object_); ("index", expr_to_json index.index); ]
 
 and expr_conditional_to_json = fun (conditional: expr_conditional) ->
   Json.obj
@@ -358,8 +352,10 @@ and expr_assignment_to_json = fun (assignment: expr_assignment) ->
 
 and expr_to_json = fun expr ->
   match expr with
-  | Literal literal -> Json.obj [ ("kind", Json.string "literal"); ("literal", literal_to_json literal) ]
-  | Global global -> Json.obj [ ("kind", Json.string "global"); ("global", expr_global_to_json global) ]
+  | Literal literal -> Json.obj
+    [ ("kind", Json.string "literal"); ("literal", literal_to_json literal) ]
+  | Global global -> Json.obj
+    [ ("kind", Json.string "global"); ("global", expr_global_to_json global) ]
   | Identifier entity_id -> Json.obj
     [ ("kind", Json.string "identifier"); ("entity_id", Core.Entity_id.to_json entity_id) ]
   | Imported requirement -> Json.obj
@@ -367,9 +363,11 @@ and expr_to_json = fun expr ->
   | Runtime_helper helper -> Json.obj
     [ ("kind", Json.string "runtime"); ("helper", runtime_helper_to_json helper) ]
   | Unary unary -> Json.obj [ ("kind", Json.string "unary"); ("unary", expr_unary_to_json unary) ]
-  | Binary binary -> Json.obj [ ("kind", Json.string "binary"); ("binary", expr_binary_to_json binary) ]
+  | Binary binary -> Json.obj
+    [ ("kind", Json.string "binary"); ("binary", expr_binary_to_json binary) ]
   | Array array -> Json.obj [ ("kind", Json.string "array"); ("array", expr_array_to_json array) ]
-  | Object object_ -> Json.obj [ ("kind", Json.string "object"); ("object", expr_object_to_json object_) ]
+  | Object object_ -> Json.obj
+    [ ("kind", Json.string "object"); ("object", expr_object_to_json object_) ]
   | Function function_ -> Json.obj
     [ ("kind", Json.string "function"); ("function", expr_function_to_json function_) ]
   | Member member -> Json.obj
@@ -456,40 +454,58 @@ module Runtime = struct
       ~name:(format Format.[ str "__"; str symbol ])
 
   let make = fun ~module_ref ~symbol ?local () ->
-    { module_ref; symbol; local = Option.unwrap_or ~default:(default_local ~module_ref ~symbol) local }
+    {
+      module_ref;
+      symbol;
+      local = Option.unwrap_or ~default:(default_local ~module_ref ~symbol) local
+    }
 
   let call_primitive = fun () ->
-    make ~module_ref ~symbol:"callPrimitive"
+    make
+      ~module_ref
+      ~symbol:"callPrimitive"
       ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__callPrimitive")
       ()
 
   let make_curried = fun () ->
-    make ~module_ref ~symbol:"makeCurried"
+    make
+      ~module_ref
+      ~symbol:"makeCurried"
       ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__makeCurried")
       ()
 
   let print_endline = fun () ->
-    make ~module_ref ~symbol:"print_endline"
+    make
+      ~module_ref
+      ~symbol:"print_endline"
       ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__print_endline")
       ()
 
   let print_newline = fun () ->
-    make ~module_ref ~symbol:"print_newline"
+    make
+      ~module_ref
+      ~symbol:"print_newline"
       ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__print_newline")
       ()
 
   let print_int = fun () ->
-    make ~module_ref ~symbol:"print_int"
+    make
+      ~module_ref
+      ~symbol:"print_int"
       ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__print_int")
       ()
 
   let print_string = fun () ->
-    make ~module_ref ~symbol:"print_string"
+    make
+      ~module_ref
+      ~symbol:"print_string"
       ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__print_string")
       ()
 
   let print_char = fun () ->
-    make ~module_ref ~symbol:"print_char"
+    make
+      ~module_ref
+      ~symbol:"print_char"
       ~local:(Binder.generated ~namespace:[ "runtime" ] ~name:"__print_char")
       ()
 
@@ -688,11 +704,7 @@ module Export = struct
   }
 
   let to_json = fun export ->
-    Json.obj
-      [
-        ("name", Json.string export.name);
-        ("local", Core.Entity_id.to_json export.local);
-      ]
+    Json.obj [ ("name", Json.string export.name); ("local", Core.Entity_id.to_json export.local); ]
 end
 
 module Program = struct

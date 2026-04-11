@@ -1,5 +1,6 @@
 open Std
 open Std.Data
+
 module Core = Raml_core.Core_ir
 
 module Binder: sig
@@ -25,11 +26,9 @@ type literal =
   | Bool of bool
   | Number of literal_number
   | String of string
-
 type unary_operator =
   | Not
   | Negate
-
 type binary_operator =
   | Add
   | Subtract
@@ -42,7 +41,6 @@ type binary_operator =
   | Less_or_equal
   | Greater_than
   | Greater_or_equal
-
 type expr =
   | Literal of literal
   | Global of expr_global
@@ -140,8 +138,16 @@ and statement =
   | Expression of expr
   | Return of expr
   | If of statement_if
+
+type module_ref = {
+  kind: Jir.Types.Modules.kind;
+  unit_name: string;
+  import_path: string;
+  namespace: string list;
+}
+
 type import = {
-  from: string;
+  from: module_ref;
   default: Binder.t option;
   namespace: Binder.t option;
   names: import_named list;
@@ -151,6 +157,8 @@ and import_named = {
   imported: string;
   local: Binder.t;
 }
+
+val module_ref_to_json: module_ref -> Json.t
 module Literal: sig
   type number = literal_number =
     | Int of int
@@ -315,11 +323,13 @@ module Import: sig
     local: Binder.t;
   }
   type t = import = {
-    from: string;
+    from: module_ref;
     default: Binder.t option;
     namespace: Binder.t option;
     names: named list;
   }
+  val module_ref_to_json: module_ref -> Json.t
+
   val named_to_json: named -> Json.t
 
   val to_json: t -> Json.t

@@ -149,8 +149,15 @@ and statement =
   | Return of expr
   | If of statement_if
 
+type module_ref = {
+  kind: Jir.Types.Modules.kind;
+  unit_name: string;
+  import_path: string;
+  namespace: string list;
+}
+
 type import = {
-  from: string;
+  from: module_ref;
   default: Binder.t option;
   namespace: Binder.t option;
   names: import_named list;
@@ -207,15 +214,11 @@ let rec expr_call_to_json = fun (call: expr_call) ->
       ("arguments", Json.array (List.map expr_to_json call.arguments));
     ]
 
-and expr_global_to_json = fun (global: expr_global) ->
-  Json.obj [ ("name", Json.string global.name) ]
+and expr_global_to_json = fun (global: expr_global) -> Json.obj [ ("name", Json.string global.name) ]
 
 and expr_unary_to_json = fun (unary: expr_unary) ->
   Json.obj
-    [
-      ("operator", unary_operator_to_json unary.operator);
-      ("operand", expr_to_json unary.operand);
-    ]
+    [ ("operator", unary_operator_to_json unary.operator); ("operand", expr_to_json unary.operand); ]
 
 and expr_binary_to_json = fun (binary: expr_binary) ->
   Json.obj
@@ -230,18 +233,12 @@ and expr_array_element_to_json = fun element ->
   | Item expr -> Json.obj [ ("kind", Json.string "item"); ("expr", expr_to_json expr) ]
   | Spread expr -> Json.obj [ ("kind", Json.string "spread"); ("expr", expr_to_json expr) ]
 
-and expr_array_to_json = fun array ->
-  Json.array (List.map expr_array_element_to_json array)
+and expr_array_to_json = fun array -> Json.array (List.map expr_array_element_to_json array)
 
 and expr_object_field_to_json = fun (field: expr_object_field) ->
-  Json.obj
-    [
-      ("name", Json.string field.name);
-      ("value", expr_to_json field.value);
-    ]
+  Json.obj [ ("name", Json.string field.name); ("value", expr_to_json field.value); ]
 
-and expr_object_to_json = fun object_ ->
-  Json.array (List.map expr_object_field_to_json object_)
+and expr_object_to_json = fun object_ -> Json.array (List.map expr_object_field_to_json object_)
 
 and expr_function_to_json = fun (function_: expr_function) ->
   Json.obj
@@ -254,11 +251,7 @@ and expr_member_to_json = fun (member: expr_member) ->
   Json.obj [ ("object", expr_to_json member.object_); ("property", Json.string member.property) ]
 
 and expr_index_to_json = fun (index: expr_index) ->
-  Json.obj
-    [
-      ("object", expr_to_json index.object_);
-      ("index", expr_to_json index.index);
-    ]
+  Json.obj [ ("object", expr_to_json index.object_); ("index", expr_to_json index.index); ]
 
 and expr_conditional_to_json = fun (conditional: expr_conditional) ->
   Json.obj
@@ -277,14 +270,18 @@ and expr_assignment_to_json = fun (assignment: expr_assignment) ->
 
 and expr_to_json = fun expr ->
   match expr with
-  | Literal literal -> Json.obj [ ("kind", Json.string "literal"); ("literal", literal_to_json literal) ]
-  | Global global -> Json.obj [ ("kind", Json.string "global"); ("global", expr_global_to_json global) ]
+  | Literal literal -> Json.obj
+    [ ("kind", Json.string "literal"); ("literal", literal_to_json literal) ]
+  | Global global -> Json.obj
+    [ ("kind", Json.string "global"); ("global", expr_global_to_json global) ]
   | Identifier entity_id -> Json.obj
     [ ("kind", Json.string "identifier"); ("entity_id", Core.Entity_id.to_json entity_id) ]
   | Unary unary -> Json.obj [ ("kind", Json.string "unary"); ("unary", expr_unary_to_json unary) ]
-  | Binary binary -> Json.obj [ ("kind", Json.string "binary"); ("binary", expr_binary_to_json binary) ]
+  | Binary binary -> Json.obj
+    [ ("kind", Json.string "binary"); ("binary", expr_binary_to_json binary) ]
   | Array array -> Json.obj [ ("kind", Json.string "array"); ("array", expr_array_to_json array) ]
-  | Object object_ -> Json.obj [ ("kind", Json.string "object"); ("object", expr_object_to_json object_) ]
+  | Object object_ -> Json.obj
+    [ ("kind", Json.string "object"); ("object", expr_object_to_json object_) ]
   | Function function_ -> Json.obj
     [ ("kind", Json.string "function"); ("function", expr_function_to_json function_) ]
   | Member member -> Json.obj
@@ -296,7 +293,7 @@ and expr_to_json = fun expr ->
   | Assignment assignment -> Json.obj
     [ ("kind", Json.string "assignment"); ("assignment", expr_assignment_to_json assignment) ]
 
-and declaration_to_json = fun declaration ->
+and declaration_to_json = fun (declaration: declaration) ->
   Json.obj
     [
       ("kind", declaration_kind_to_json declaration.kind);
@@ -324,15 +321,20 @@ and statement_to_json = fun statement ->
   | If if_ -> Json.obj [ ("kind", Json.string "if"); ("if", statement_if_to_json if_) ]
 
 let import_named_to_json = fun named ->
+  Json.obj [ ("imported", Json.string named.imported); ("local", Binder.to_json named.local); ]
+
+let module_ref_to_json = fun (module_ref: module_ref) ->
   Json.obj
     [
-      ("imported", Json.string named.imported);
-      ("local", Binder.to_json named.local);
+      ("kind", Jir.Types.Modules.kind_to_json module_ref.kind);
+      ("unit_name", Json.string module_ref.unit_name);
+      ("import_path", Json.string module_ref.import_path);
+      ("namespace", Json.array (List.map Json.string module_ref.namespace));
     ]
 
-let import_to_json = fun import ->
+let import_to_json = fun (import: import) ->
   let fields = [
-    ("from", Json.string import.from);
+    ("from", module_ref_to_json import.from);
     ("default", Option.map Binder.to_json import.default |> Option.unwrap_or ~default:Json.null);
     ("names", Json.array (List.map import_named_to_json import.names));
   ] in
@@ -527,11 +529,13 @@ module Import = struct
   }
 
   type t = import = {
-    from: string;
+    from: module_ref;
     default: Binder.t option;
     namespace: Binder.t option;
     names: named list;
   }
+
+  let module_ref_to_json = module_ref_to_json
 
   let named_to_json = import_named_to_json
 
@@ -545,11 +549,7 @@ module Export = struct
   }
 
   let to_json = fun export ->
-    Json.obj
-      [
-        ("name", Json.string export.name);
-        ("local", Core.Entity_id.to_json export.local);
-      ]
+    Json.obj [ ("name", Json.string export.name); ("local", Core.Entity_id.to_json export.local); ]
 end
 
 module Module_item = struct

@@ -73,6 +73,10 @@ The main remaining architectural gaps are:
 
 1. Module/import ownership is centralized in `Jir.Modules`, but path
    resolution is still heuristic: sibling unit or runtime module only.
+   The module layer now owns import paths and namespace binders directly, so
+   lowering no longer invents those ad hoc.
+   `JST` now also retains a structured module ref until emission instead of
+   collapsing imports down to bare path strings immediately.
 2. The builtin/runtime boundary is centralized, but still hand-written and
    small rather than typed and declarative.
    The current shape is better than before though: Riot-owned paths are now the

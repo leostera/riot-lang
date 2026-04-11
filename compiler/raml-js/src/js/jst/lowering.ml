@@ -2,43 +2,43 @@ open Std
 module Source = Jir
 module Target = Types
 
-let lower_binder = fun (binder: Source.Binder.t) ->
-  Target.Binder.make ~name:binder.name binder.binding_id
+let lower_binder = fun (binder: Source.Binder.t) -> Target.Binder.make ~name:binder.name binder.binding_id
 
 let unresolved_expr = fun kind ->
   raise
-    (Invalid_argument
-    (format
-       Format.[
-         str "RamlJs.Js.Jst.Lowering: unresolved JIR expression reached JST lowering (";
-         str kind;
-         str ")";
-       ]))
+    (Invalid_argument (format
+      Format.[
+        str "RamlJs.Js.Jst.Lowering: unresolved JIR expression reached JST lowering (";
+        str kind;
+        str ")";
+      ]))
+
+let lower_module_ref = fun (module_ref: Source.Modules.t) : Target.module_ref ->
+  {
+    kind = module_ref.kind;
+    unit_name = module_ref.unit_name;
+    import_path = module_ref.import_path;
+    namespace = module_ref.namespace;
+  }
 
 let lower_import = fun (import: Source.Imports.requirement) ->
-  let from = Source.Modules.import_path import.from in
+  let from = lower_module_ref import.from in
   if import.namespace then
-    Target.Import.{
-      from;
-      default = None;
-      namespace = Some (lower_binder import.local);
-      names = [];
-    }
+    Target.Import.{ from; default = None; namespace = Some (lower_binder import.local); names = [] }
   else
     match import.imported with
     | None -> Target.Import.{
       from;
       default = Some (lower_binder import.local);
       namespace = None;
-      names = [];
+      names = []
     }
-    | Some imported ->
-        Target.Import.{
-          from;
-          default = None;
-          namespace = None;
-          names = [ { imported; local = lower_binder import.local } ];
-        }
+    | Some imported -> Target.Import.{
+      from;
+      default = None;
+      namespace = None;
+      names = [ { imported; local = lower_binder import.local } ]
+    }
 
 let lower_literal = fun literal ->
   match literal with
@@ -81,47 +81,43 @@ and lower_expr = fun expr ->
   | Source.Expr.Literal literal -> Target.Expr.Literal (lower_literal literal)
   | Source.Expr.Global global -> Target.Expr.Global Target.Expr.{ name = global.name }
   | Source.Expr.Identifier entity_id -> Target.Expr.Identifier entity_id
-  | Source.Expr.Imported _ ->
-      unresolved_expr "imported"
-  | Source.Expr.Runtime_helper _ ->
-      unresolved_expr "runtime_helper"
+  | Source.Expr.Imported _ -> unresolved_expr "imported"
+  | Source.Expr.Runtime_helper _ -> unresolved_expr "runtime_helper"
   | Source.Expr.Unary unary -> Target.Expr.Unary Target.Expr.{
     operator = lower_unary_operator unary.operator;
-    operand = lower_expr unary.operand;
+    operand = lower_expr unary.operand
   }
   | Source.Expr.Binary binary -> Target.Expr.Binary Target.Expr.{
     operator = lower_binary_operator binary.operator;
     left = lower_expr binary.left;
-    right = lower_expr binary.right;
+    right = lower_expr binary.right
   }
-  | Source.Expr.Array array ->
-      Target.Expr.Array (List.map lower_array_element array)
-  | Source.Expr.Object object_ ->
-      Target.Expr.Object (List.map lower_object_field object_)
+  | Source.Expr.Array array -> Target.Expr.Array (List.map lower_array_element array)
+  | Source.Expr.Object object_ -> Target.Expr.Object (List.map lower_object_field object_)
   | Source.Expr.Function function_ -> Target.Expr.Function Target.Expr.{
     params = List.map lower_binder function_.params;
-    body = List.map lower_statement function_.body;
+    body = List.map lower_statement function_.body
   }
   | Source.Expr.Member member -> Target.Expr.Member Target.Expr.{
     object_ = lower_expr member.object_;
-    property = member.property;
+    property = member.property
   }
   | Source.Expr.Index index -> Target.Expr.Index Target.Expr.{
     object_ = lower_expr index.object_;
-    index = lower_expr index.index;
+    index = lower_expr index.index
   }
   | Source.Expr.Call { callee; arguments } -> Target.Expr.Call Target.Expr.{
     callee = lower_expr callee;
-    arguments = List.map lower_expr arguments;
+    arguments = List.map lower_expr arguments
   }
   | Source.Expr.Conditional conditional -> Target.Expr.Conditional Target.Expr.{
     condition = lower_expr conditional.condition;
     then_ = lower_expr conditional.then_;
-    else_ = lower_expr conditional.else_;
+    else_ = lower_expr conditional.else_
   }
   | Source.Expr.Assignment assignment -> Target.Expr.Assignment Target.Expr.{
     target = assignment.target;
-    value = lower_expr assignment.value;
+    value = lower_expr assignment.value
   }
 
 and lower_declaration = fun (declaration: Source.Declaration.t) ->
@@ -143,7 +139,7 @@ and lower_statement = fun statement ->
   | Source.Statement.If if_ -> Target.Statement.If Target.Statement.{
     condition = lower_expr if_.condition;
     then_ = List.map lower_statement if_.then_;
-    else_ = List.map lower_statement if_.else_;
+    else_ = List.map lower_statement if_.else_
   }
 
 let lower_export = fun (export: Source.Export.t) ->
@@ -163,5 +159,5 @@ let lower_program = fun (program: Source.Program.t) ->
   in
   Target.Program.{
     module_name = program.module_name;
-    items = import_items @ statement_items @ export_items;
+    items = import_items @ statement_items @ export_items
   }

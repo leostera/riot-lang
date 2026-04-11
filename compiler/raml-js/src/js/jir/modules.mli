@@ -3,18 +3,21 @@
    The current layer is intentionally small: sibling compilation units and
    backend-owned runtime modules. The point is to keep module ownership
    structured inside JIR even while final path resolution stays heuristic. *)
+
 type kind = Types.Modules.kind =
   | Relative_unit
   | Runtime
-
 type t = Types.Modules.t = {
   kind: kind;
   unit_name: string;
+  import_path: string;
+  namespace: string list;
 }
-
 val sibling_unit: string -> t
 
 val runtime: string -> t
+
+val namespace_binder: t -> Types.Binder.t
 
 val import_path: t -> string
 
