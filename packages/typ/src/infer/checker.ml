@@ -43,101 +43,84 @@ let missing_record_decl_param_hole_id = (-200)
 
 let qualify_name = State.qualify_name
 
-let module_env_of_artifact = fun artifact ->
+let env_of_compiled_scope = fun scope ->
   Env.bind
     (Env.of_entries
       ~make_id:BindingId.persistent
-      ~provenance:Binding.Ambient
-      (ModuleTypings.exports artifact))
-    (Env.of_type_decls (ModuleTypings.type_decls artifact))
+      ~provenance:Binding.Ambient (CompiledScope.exports scope))
+    (Env.of_type_decls (CompiledScope.type_decls scope))
   |> Env.without_summary
 
-let imported_module_env = fun (state: state) module_id ->
-  PackageEnv.find_artifact state.package_env module_id |> Option.map module_env_of_artifact
+let imported_visible_type_decls_for_module = fun (state: state) ~visible_path ~module_id ->
+  ImportedWorld.visible_type_decls_for_module
+    state.imported_world
+    ~visible_path
+    ~module_id
 
-let imported_module_scope = fun (state: state) module_id ->
-  imported_module_env state module_id |> Option.map Env.module_scope_of_env
+let imported_type_env_for_module = fun (state: state) ~visible_path ~module_id ->
+  imported_visible_type_decls_for_module state ~visible_path ~module_id |> Env.of_type_decls
 
-let imported_resolution = fun (state: state) path ->
+let imported_lookup_record_module_path = fun label_name ->
   Option.and_then
-    (ScopeView.resolve_visible_module_prefix state.scope_view path)
-    (fun (module_path, module_id, suffix) ->
-      Option.map
-        (fun module_scope ->
-          let qualified_env = Env.of_module_scope module_scope |> Env.qualify ~scope_path:module_path in
-          (module_path, module_id, qualified_env, suffix))
-        (imported_module_scope state module_id))
+    (SurfacePath.split_last (SurfacePath.of_string label_name))
+    (fun (module_path, _label_name) ->
+      if SurfacePath.is_empty module_path then
+        None
+      else
+        Some module_path)
 
 let lookup_imported_module_scope = fun (state: state) module_path ->
-  Option.and_then
-    (imported_resolution state module_path)
-    (fun (_visible_module_path, _module_id, qualified_env, _suffix) ->
-      Env.lookup_module_scope qualified_env module_path)
+  ImportedWorld.lookup_module_scope state.imported_world module_path
+  |> Option.map env_of_compiled_scope
+  |> Option.map Env.module_scope_of_env
 
 let lookup_module_scope = fun (state: state) env module_path ->
-  Option.or_else (Env.lookup_module_scope env module_path) (fun () -> lookup_imported_module_scope state module_path)
+  Option.or_else
+    (Env.lookup_module_scope env module_path)
+    (fun () -> lookup_imported_module_scope state module_path)
 
 let with_local_open = fun (state: state) env module_path ->
   match lookup_module_scope state env module_path with
   | Some scope ->
-      Env.bind env (Env.entries_of_module_scope_for_include ~module_path scope |> Env.without_summary)
-  | None ->
-      env
+      Env.bind env
+        (Env.entries_of_module_scope_for_include ~module_path scope |> Env.without_summary)
+  | None -> env
 
 let lookup_imported_binding = fun (state: state) path ->
-  if EntityId.is_bare path then
-    ScopeView.implicit_open_modules state.scope_view
-    |> List.find_map
-      (fun module_id ->
-        imported_module_env state module_id
-        |> fun module_env -> Option.and_then module_env (fun module_env -> Env.lookup module_env path))
-  else
-    Option.and_then
-      (imported_resolution state (EntityId.surface_path path))
-      (fun (_visible_module_path, _module_id, qualified_env, suffix) ->
-        if SurfacePath.is_empty suffix then
-          None
-        else
-          Env.lookup qualified_env path)
+  ImportedWorld.lookup_value state.imported_world path
+  |> Option.map
+    (fun scheme ->
+      Binding.make
+        ~id:(BindingId.persistent (EntityId.surface_path path))
+        ~surface_path:(EntityId.surface_path path)
+        ~scheme
+        ~provenance:Binding.Ambient)
 
 let lookup_binding = fun (state: state) env path ->
   Option.or_else (Env.lookup env path) (fun () -> lookup_imported_binding state path)
 
 let lookup_imported_type = fun (state: state) name ->
-  if SurfacePath.is_bare name then
-    ScopeView.implicit_open_modules state.scope_view
-    |> List.find_map
-      (fun module_id ->
-        imported_module_env state module_id
-        |> fun module_env -> Option.and_then module_env (fun module_env -> Env.lookup_type module_env name))
-  else
-    Option.and_then
-      (imported_resolution state name)
-      (fun (_visible_module_path, _module_id, qualified_env, suffix) ->
-        if SurfacePath.is_empty suffix then
-          None
-        else
-          Env.lookup_type qualified_env name)
+  ImportedWorld.lookup_type_decl state.imported_world name
 
 let lookup_type = fun (state: state) env name ->
   Option.or_else (Env.lookup_type env name) (fun () -> lookup_imported_type state name)
 
 let lookup_imported_constructors = fun (state: state) path ->
   if SurfacePath.is_bare path then
-    ScopeView.implicit_open_modules state.scope_view
-    |> List.concat_map
-      (fun module_id ->
-        imported_module_env state module_id
-        |> Option.map (fun module_env -> Env.lookup_constructors module_env path)
-        |> Option.unwrap_or ~default:[])
+    ImportedWorld.implicit_open_modules state.imported_world |> List.concat_map
+      (fun ({ ImportedWorld.visible_path; module_id }: ImportedWorld.opened_module) ->
+        Env.lookup_constructors
+          (imported_type_env_for_module state ~visible_path ~module_id)
+          path)
   else
-    imported_resolution state path
-    |> Option.map
-      (fun (_visible_module_path, _module_id, qualified_env, suffix) ->
+    ImportedWorld.resolve_visible_module_prefix state.imported_world path |> Option.map
+      (fun ({ ImportedWorld.visible_path; module_id; suffix }: ImportedWorld.resolved_module) ->
         if SurfacePath.is_empty suffix then
           []
         else
-          Env.lookup_constructors qualified_env path)
+          Env.lookup_constructors
+            (imported_type_env_for_module state ~visible_path ~module_id)
+            path)
     |> Option.unwrap_or ~default:[]
 
 let lookup_constructors = fun (state: state) env path ->
@@ -148,11 +131,9 @@ let lookup_constructors = fun (state: state) env path ->
     local
 
 let lookup_owned_constructor = fun (state: state) env path owner_type_constructor_id ->
-  Option.or_else
-    (Env.lookup_owned_constructor env path owner_type_constructor_id)
+  Option.or_else (Env.lookup_owned_constructor env path owner_type_constructor_id)
     (fun () ->
-      lookup_constructors state env path
-      |> List.find_map
+      lookup_constructors state env path |> List.find_map
         (fun candidate ->
           if
             TypeConstructorId.equal
@@ -164,12 +145,24 @@ let lookup_owned_constructor = fun (state: state) env path owner_type_constructo
             None))
 
 let lookup_imported_record_decls = fun (state: state) label_name ->
-  ScopeView.implicit_open_modules state.scope_view
-  |> List.concat_map
-    (fun module_id ->
-      imported_module_env state module_id
-      |> Option.map (fun module_env -> Env.lookup_record_decls module_env label_name)
-      |> Option.unwrap_or ~default:[])
+  match imported_lookup_record_module_path label_name with
+  | Some module_path ->
+      ImportedWorld.resolve_visible_module_prefix state.imported_world module_path
+      |> Option.map
+        (fun ({ ImportedWorld.visible_path; module_id; suffix }: ImportedWorld.resolved_module) ->
+          if SurfacePath.is_empty suffix then
+            []
+          else
+            Env.lookup_record_decls
+              (imported_type_env_for_module state ~visible_path ~module_id)
+              label_name)
+      |> Option.unwrap_or ~default:[]
+  | None ->
+      ImportedWorld.implicit_open_modules state.imported_world |> List.concat_map
+        (fun ({ ImportedWorld.visible_path; module_id }: ImportedWorld.opened_module) ->
+          Env.lookup_record_decls
+            (imported_type_env_for_module state ~visible_path ~module_id)
+            label_name)
 
 let lookup_record_decls = fun (state: state) env label_name ->
   let local = Env.lookup_record_decls env label_name in
@@ -179,17 +172,13 @@ let lookup_record_decls = fun (state: state) env label_name ->
     local
 
 let lookup_record_decl_by_owner = fun (state: state) env owner_type_constructor_id ->
-  Option.or_else
-    (Env.lookup_record_decl_by_owner env owner_type_constructor_id)
+  Option.or_else (Env.lookup_record_decl_by_owner env owner_type_constructor_id)
     (fun () ->
-      ScopeView.implicit_open_modules state.scope_view
-      |> List.find_map
-        (fun module_id ->
-          imported_module_env state module_id
-          |> fun module_env ->
-            Option.and_then
-              module_env
-              (fun module_env -> Env.lookup_record_decl_by_owner module_env owner_type_constructor_id)))
+      ImportedWorld.visible_modules state.imported_world |> List.find_map
+        (fun (visible_path, module_id) ->
+          Env.lookup_record_decl_by_owner
+            (imported_type_env_for_module state ~visible_path ~module_id)
+            owner_type_constructor_id))
 
 let entries_for_include = fun (state: state) env module_path ->
   match lookup_module_scope state env module_path with
@@ -2334,8 +2323,10 @@ let record_expr_trace = fun (state: state) expr_id origin_id env_before inferred
   in
   let resolved_binding =
     match SemanticTree.find_expr state.file expr_id with
-    | Some { desc=BodyArena.EVar name; _ } ->
-        lookup_binding state env_before (EntityId.of_surface_path name)
+    | Some { desc=BodyArena.EVar name; _ } -> lookup_binding
+      state
+      env_before
+      (EntityId.of_surface_path name)
     |> Option.map
       (fun binding ->
         Check_result.{
@@ -3471,7 +3462,9 @@ and infer_recursive_group = fun (state: state) env bindings ->
             let schemes = exported_schemes_for_binding annotation_scheme binding [ entry ] schemes in
             let entry =
               match schemes with
-              | [ scheme ] -> Binding.with_scheme (canonicalize_scheme_heads_in_env state env scheme) entry
+              | [ scheme ] -> Binding.with_scheme
+                (canonicalize_scheme_heads_in_env state env scheme)
+                entry
               | _ -> entry
             in
             loop (entry :: acc) rest_bindings rest_groups
@@ -3499,8 +3492,8 @@ and infer_recursive_group = fun (state: state) env bindings ->
       env
       bindings
 
-let infer_file = fun ~package_env ~scope_view ~config ~(source:Source.t) file ->
-  let state = make_state ~package_env ~scope_view ~config file in
+let infer_file = fun ~imported_world ~config ~(source:Source.t) file ->
+  let state = make_state ~imported_world ~config file in
   let initial_env = prelude_env state config in
   let initial_scope = source.implicit_opens
   |> List.fold_left
@@ -3794,11 +3787,13 @@ let infer_file = fun ~package_env ~scope_view ~config ~(source:Source.t) file ->
               else
                 None
             in
-            let alias_export_names = export_names_for_module_alias state
+            let alias_export_names = export_names_for_module_alias
+              state
               item_env
               ~alias_name:module_alias_item.alias_name
               ~module_path in
-            let introduced = entries_for_module_alias state
+            let introduced = entries_for_module_alias
+              state
               item_env
               ~alias_name:module_alias_item.alias_name
               ~module_path in

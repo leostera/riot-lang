@@ -24,12 +24,11 @@ type t = {
 
 (** Infer types for a semantic tree using the shared checker core.
 
-    Imported package/module state is resolved through [PackageEnv] and
-    constrained by [ScopeView]. The local checker env then carries only
-    lexical/local typing state for the current source. *)
+    Imported package/module state is resolved through [ImportedWorld]. The
+    local checker env then carries only lexical/local typing state for the
+    current source. *)
 val infer_file:
-  package_env:PackageEnv.t ->
-  scope_view:ScopeView.t ->
+  imported_world:ImportedWorld.t ->
   config:TypConfig.t ->
   source:Source.t ->
   SemanticTree.file ->

@@ -376,6 +376,46 @@ let prepared_source = fun ~filename ~text ->
     ~parse_result
     ~cst
 
+let imported_world_of_loaded_modules = fun loaded_modules (source: Source.t) ->
+  let loaded_modules_index = LoadedModules.of_list loaded_modules in
+  let required_names =
+    match Syn.Deps.of_parse_result source.parse_result with
+    | Ok deps -> Syn.Deps.modules deps
+    | Error _ -> []
+  in
+  let visible_modules =
+    required_names
+    |> List.map LocalModules.RequiredName.of_string
+    |> List.filter_map
+      (fun required_name ->
+        if LoadedModules.contains loaded_modules_index ~required_name then
+          Some (
+            SurfacePath.of_string (LocalModules.RequiredName.to_string required_name),
+            PackageEnv.ModuleId.Loaded required_name
+          )
+        else
+          None)
+    |> List.sort_uniq compare
+  in
+  let implicit_open_modules =
+    source.implicit_opens
+    |> List.map SurfacePath.to_string
+    |> List.map LocalModules.RequiredName.of_string
+    |> List.filter_map
+      (fun required_name ->
+        if LoadedModules.contains loaded_modules_index ~required_name then
+          Some (
+            SurfacePath.of_string (LocalModules.RequiredName.to_string required_name),
+            PackageEnv.ModuleId.Loaded required_name
+          )
+        else
+          None)
+    |> List.sort_uniq compare
+  in
+  ImportedWorld.create
+    ~package_env:(PackageEnv.of_loaded_modules loaded_modules_index)
+    ~scope_view:(ScopeView.create ~visible_modules ~implicit_open_modules)
+
 let prepared_check_source = fun ~source_id ~filename ~internal_module_name ~local_module_name ~public_module_name ~text ->
   let path = Path.v filename in
   let origin = Source.Label filename in
@@ -3729,39 +3769,44 @@ let test_fold_package_sources_persists_module_typings_from_authoritative_engine 
         ~init:[]
         ~f:(fun groups (group: Check.finished_group) -> group :: groups)
         () with
-      | Error Check.MissingRequirements { module_name; requirements } -> Error (format
-        Format.[
-          str "unexpected missing requirements while checking ";
-          str (LocalModules.InternalName.to_string module_name);
-          str ": ";
-          str (Data.Json.to_string (Session.MissingRequirements.to_json requirements));
-        ])
-      | Error Check.MissingModuleTypings { module_name } -> Error (format
-        Format.[
-          str "missing authoritative module typings for ";
-          str (LocalModules.InternalName.to_string module_name);
-        ])
-      | Error Check.MissingAnalysis { module_name; path } -> Error (format
-        Format.[
-          str "missing checked analysis for ";
-          str (LocalModules.InternalName.to_string module_name);
-          str " at ";
-          str (Path.to_string path);
-        ])
-      | Error Check.StoreFailure { module_name; reason } -> Error (format
-        Format.[
-          str "while persisting module typings for ";
-          str (LocalModules.InternalName.to_string module_name);
-          str ": ";
-          str reason;
-        ])
-      | Error Check.PackageStoreFailure { package_name; reason } -> Error (format
-        Format.[
-          str "while persisting package bundle for ";
-          str package_name;
-          str ": ";
-          str reason;
-        ])
+      | Error Check.MissingRequirements { module_name; requirements } ->
+          Error (format
+            Format.[
+              str "unexpected missing requirements while checking ";
+              str (LocalModules.InternalName.to_string module_name);
+              str ": ";
+              str (Data.Json.to_string (Session.MissingRequirements.to_json requirements));
+            ])
+      | Error Check.MissingModuleTypings { module_name } ->
+          Error (format
+            Format.[
+              str "missing authoritative module typings for ";
+              str (LocalModules.InternalName.to_string module_name);
+            ])
+      | Error Check.MissingAnalysis { module_name; path } ->
+          Error (format
+            Format.[
+              str "missing checked analysis for ";
+              str (LocalModules.InternalName.to_string module_name);
+              str " at ";
+              str (Path.to_string path);
+            ])
+      | Error Check.StoreFailure { module_name; reason } ->
+          Error (format
+            Format.[
+              str "while persisting module typings for ";
+              str (LocalModules.InternalName.to_string module_name);
+              str ": ";
+              str reason;
+            ])
+      | Error Check.PackageStoreFailure { package_name; reason } ->
+          Error (format
+            Format.[
+              str "while persisting package bundle for ";
+              str package_name;
+              str ": ";
+              str reason;
+            ])
       | Ok result ->
           let groups = List.rev result.acc in
           let after_a = Store.load_module_typings store ~module_name:"A" in
@@ -3774,13 +3819,12 @@ let test_fold_package_sources_persists_module_typings_from_authoritative_engine 
                 Test.assert_equal
                   ~expected:[ "A"; "B" ]
                   ~actual:(groups
-                  |> List.map (fun (group: Check.finished_group) -> LocalModules.InternalName.to_string group.module_name));
+                  |> List.map
+                    (fun (group: Check.finished_group) -> LocalModules.InternalName.to_string group.module_name));
                 Test.assert_equal
                   ~expected:[ "answer" ]
                   ~actual:(module_typings_export_names a_typings);
-                Test.assert_equal
-                  ~expected:[ "use" ]
-                  ~actual:(module_typings_export_names b_typings);
+                Test.assert_equal ~expected:[ "use" ] ~actual:(module_typings_export_names b_typings);
                 Ok ()
             | (None, Some _) ->
                 Error "expected authoritative build checking to persist sibling dependency module typings"
@@ -3973,6 +4017,157 @@ let test_fold_package_sources_resolves_root_local_module_wrappers = fun _ctx ->
           loaded_modules
           ~required_name:(LocalModules.RequiredName.of_string "Kernel_new__Consumer"));
       Ok ()
+
+let test_fold_package_sources_shares_imported_world_semantics_for_open_alias_include = fun _ctx ->
+  let helpers = prepared_check_source
+    ~source_id:(SourceId.of_int 0)
+    ~filename:"helpers.ml"
+    ~internal_module_name:"Helpers"
+    ~local_module_name:"Helpers"
+    ~public_module_name:None
+    ~text:{ocaml|
+type t = Wrap of int
+type record = { field : int }
+
+let make value = Wrap value
+let project ({ field } : record) = field
+
+module Nested = struct
+  let nested_value = 7
+end
+|ocaml} in
+  let consumer = prepared_check_source
+    ~source_id:(SourceId.of_int 1)
+    ~filename:"consumer.ml"
+    ~internal_module_name:"Consumer"
+    ~local_module_name:"Consumer"
+    ~public_module_name:None
+    ~text:{ocaml|
+open Helpers
+module Alias = Helpers
+include Helpers.Nested
+
+let from_alias = match Alias.make 1 with Wrap value -> value
+let from_ctor = match Wrap 2 with Wrap value -> value
+let from_record = project { field = 3 }
+let from_include = nested_value + 1
+let via_local_open = Helpers.(match make 4 with Wrap value -> value)
+let from_alias_type (value : Alias.record) = project value
+|ocaml} in
+  let config = Config.default |> Config.with_capture_traces ~capture_traces:false in
+  match Check.fold_package_sources
+    ~config
+    ~ordered_sources:[ consumer; helpers ]
+    ~init:[]
+    ~f:(fun groups (group: Check.finished_group) -> group :: groups)
+    () with
+  | Error Check.MissingRequirements { module_name; requirements } ->
+      Error (format
+        Format.[
+          str "unexpected missing requirements while checking ";
+          str (LocalModules.InternalName.to_string module_name);
+          str ": ";
+          str (Data.Json.to_string (Session.MissingRequirements.to_json requirements));
+        ])
+  | Error Check.MissingModuleTypings { module_name } ->
+      Error (format Format.[ str "missing module typings for "; str (LocalModules.InternalName.to_string module_name) ])
+  | Error Check.MissingAnalysis { module_name; path } ->
+      Error (format
+        Format.[
+          str "missing analysis for ";
+          str (LocalModules.InternalName.to_string module_name);
+          str " at ";
+          str (Path.to_string path);
+        ])
+  | Error Check.StoreFailure { module_name; reason } ->
+      Error (format
+        Format.[
+          str "store failure for ";
+          str (LocalModules.InternalName.to_string module_name);
+          str ": ";
+          str reason;
+        ])
+  | Error Check.PackageStoreFailure { package_name; reason } ->
+      Error (format Format.[ str "package store failure for "; str package_name; str ": "; str reason; ])
+  | Ok result ->
+      let groups = List.rev result.acc in
+      let consumer_analysis =
+        groups
+        |> List.find_opt
+          (fun (group: Check.finished_group) ->
+            String.equal (LocalModules.InternalName.to_string group.module_name) "Consumer")
+        |> Option.expect ~msg:"expected Consumer group"
+        |> fun (group: Check.finished_group) ->
+          group.checked_sources
+          |> List.find_opt
+            (fun (checked_source: Check.checked_source) -> Path.to_string checked_source.path = "consumer.ml")
+          |> Option.map (fun (checked_source: Check.checked_source) -> checked_source.analysis)
+          |> Option.expect ~msg:"expected Consumer analysis"
+      in
+      let exports = FileSummary.exports consumer_analysis.file_summary in
+      let export_scheme name = lookup_export name exports |> Option.map TypePrinter.scheme_to_string in
+      let diagnostics = List.map Diagnostic.to_string consumer_analysis.typing_diagnostics in
+      if not (List.is_empty diagnostics) then
+        Error (String.concat "\n" diagnostics)
+      else if Option.is_none (lookup_export "from_alias_type" exports) then
+        Error "expected alias-qualified type export on build path"
+      else
+        let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme "nested_value") in
+        let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme "from_alias") in
+        let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme "from_ctor") in
+        let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme "from_record") in
+        let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme "from_include") in
+        let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme "via_local_open") in
+        Ok ()
+
+let test_prepare_snapshot_shares_imported_world_semantics_for_open_alias_include = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let (session, _helpers_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "helpers.ml")
+    ~text:{ocaml|
+type t = Wrap of int
+type record = { field : int }
+
+let make value = Wrap value
+let project ({ field } : record) = field
+
+module Nested = struct
+  let nested_value = 7
+end
+|ocaml} in
+  let (session, consumer_source_id) = create_source
+    session
+    ~kind:Source.File
+    ~origin:(Source.Label "consumer.ml")
+    ~text:{ocaml|
+open Helpers
+module Alias = Helpers
+include Helpers.Nested
+
+let from_alias = match Alias.make 1 with Wrap value -> value
+let from_ctor = match Wrap 2 with Wrap value -> value
+let from_record = project { field = 3 }
+let from_include = nested_value + 1
+let via_local_open = Helpers.(match make 4 with Wrap value -> value)
+let from_alias_type (value : Alias.record) = project value
+|ocaml} in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot consumer_source_id in
+  let exported_names = export_names (Query.export_of snapshot consumer_source_id) in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else if not (List.mem "from_alias_type" exported_names) then
+    Error "expected alias-qualified type export on snapshot path"
+  else
+    let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot consumer_source_id "nested_value") in
+    let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot consumer_source_id "from_alias") in
+    let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot consumer_source_id "from_ctor") in
+    let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot consumer_source_id "from_record") in
+    let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot consumer_source_id "from_include") in
+    let () = Test.assert_equal ~expected:(Some "int") ~actual:(export_scheme snapshot consumer_source_id "via_local_open") in
+    Ok ()
 
 let test_fold_package_sources_persists_package_bundle = fun _ctx ->
   with_typ_store
@@ -5231,22 +5426,14 @@ let test_include_module_type_of_canonicalizes_loaded_nominal_types = fun _ctx ->
     | Some typings -> typings
     | None -> panic "expected actors module typings"
   in
-  let config = Config.default
-  |> Config.with_ambient
-    ~ambient:(qualify_exports
-      (ModuleTypings.module_name loaded_actors)
-      (ModuleTypings.exports loaded_actors))
-  |> Config.with_ambient_type_decls
-    ~ambient_type_decls:(qualify_type_decls
-      (ModuleTypings.module_name loaded_actors)
-      (ModuleTypings.type_decls loaded_actors)) in
   let source = prepared_source ~filename:"process.mli"
     ~text:{ocaml|
       include module type of Actors.Process
       val spawn: (unit -> (unit, exit_reason) result) -> int
     |ocaml}
   in
-  let analysis = SourceAnalysis.analyze ~config source in
+  let imported_world = imported_world_of_loaded_modules [ loaded_actors ] source in
+  let analysis = SourceAnalysis.analyze ~imported_world ~config:Config.default source in
   let diagnostics = analysis.lowering_diagnostics @ analysis.typing_diagnostics
   |> List.map Diagnostic.to_string in
   if not (List.is_empty diagnostics) then
@@ -5774,25 +5961,15 @@ let test_source_analysis_with_loaded_modules_canonicalizes_nominal_types = fun _
     | None -> panic "expected actors module typings"
   in
   let loaded_modules = [ loaded_actors ] in
-  let config = Config.default
-  |> Config.with_loaded_modules ~loaded_modules
-  |> Config.with_ambient
-    ~ambient:(loaded_modules
-    |> List.concat_map
-      (fun typings ->
-        qualify_exports (ModuleTypings.module_name typings) (ModuleTypings.exports typings)))
-  |> Config.with_ambient_type_decls
-    ~ambient_type_decls:(loaded_modules
-    |> List.concat_map
-      (fun typings ->
-        qualify_type_decls (ModuleTypings.module_name typings) (ModuleTypings.type_decls typings))) in
+  let config = Config.default |> Config.with_loaded_modules ~loaded_modules in
   let source = prepared_source ~filename:"process.mli"
     ~text:{ocaml|
       include module type of Actors.Process
       val spawn: (unit -> (unit, exit_reason) result) -> int
     |ocaml}
   in
-  let analysis = SourceAnalysis.analyze ~config source in
+  let imported_world = imported_world_of_loaded_modules loaded_modules source in
+  let analysis = SourceAnalysis.analyze ~imported_world ~config source in
   let diagnostics = analysis.lowering_diagnostics @ analysis.typing_diagnostics
   |> List.map Diagnostic.to_string in
   if not (List.is_empty diagnostics) then
@@ -5831,25 +6008,15 @@ let test_source_analysis_with_opened_loaded_module_canonicalizes_nominal_types =
     | None -> panic "expected common module typings"
   in
   let loaded_modules = [ loaded_common ] in
-  let config = Config.default
-  |> Config.with_loaded_modules ~loaded_modules
-  |> Config.with_ambient
-    ~ambient:(loaded_modules
-    |> List.concat_map
-      (fun typings ->
-        qualify_exports (ModuleTypings.module_name typings) (ModuleTypings.exports typings)))
-  |> Config.with_ambient_type_decls
-    ~ambient_type_decls:(loaded_modules
-    |> List.concat_map
-      (fun typings ->
-        qualify_type_decls (ModuleTypings.module_name typings) (ModuleTypings.type_decls typings))) in
+  let config = Config.default |> Config.with_loaded_modules ~loaded_modules in
   let source = prepared_source ~filename:"reader.mli"
     ~text:{ocaml|
       open Common
       val close: unit -> (unit, error) result
     |ocaml}
   in
-  let analysis = SourceAnalysis.analyze ~config source in
+  let imported_world = imported_world_of_loaded_modules loaded_modules source in
+  let analysis = SourceAnalysis.analyze ~imported_world ~config source in
   let diagnostics = analysis.lowering_diagnostics @ analysis.typing_diagnostics
   |> List.map Diagnostic.to_string in
   if not (List.is_empty diagnostics) then
@@ -9319,8 +9486,10 @@ let () =
         Test.case "prepare_snapshot nested internal local alias dependencies typecheck" test_prepare_snapshot_nested_internal_local_alias_dependencies_typecheck;
         Test.case "fold_package_sources resolves contextual local modules" test_fold_package_sources_resolves_contextual_local_modules;
         Test.case "fold_package_sources resolves root local module wrappers" test_fold_package_sources_resolves_root_local_module_wrappers;
+        Test.case "fold_package_sources shares imported world semantics for open alias include" test_fold_package_sources_shares_imported_world_semantics_for_open_alias_include;
         Test.case "fold_package_sources persists package bundle" test_fold_package_sources_persists_package_bundle;
         Test.case "fold_package_sources keeps base loaded modules immutable" test_fold_package_sources_keeps_base_loaded_modules_immutable;
+        Test.case "prepare_snapshot shares imported world semantics for open alias include" test_prepare_snapshot_shares_imported_world_semantics_for_open_alias_include;
         Test.case "prepare_snapshot nested unix submodule sees sibling ip_addr exports" test_prepare_snapshot_nested_unix_submodule_sees_sibling_ip_addr_exports;
         Test.case "prepare_snapshot wrapper module reexports unix exports to sibling modules" test_prepare_snapshot_wrapper_module_reexports_unix_exports_to_sibling_modules;
         Test.case "prepare_snapshot wrapper module preserves same-path nominal value types" test_prepare_snapshot_wrapper_module_preserves_same_path_nominal_value_types;
@@ -9357,12 +9526,8 @@ let () =
         Test.case "source input hash changes with implicit opens" test_source_input_hash_changes_with_implicit_opens;
         Test.case "snapshot uses loaded module typings" test_snapshot_uses_loaded_module_typings;
         Test.case "prepare_snapshot hydrates module typings from store" test_prepare_snapshot_hydrates_module_typings_from_store;
-        Test.case
-          "prepare_snapshot keeps the store read-only during query forcing"
-          test_prepare_snapshot_keeps_store_read_only_during_query_forcing;
-        Test.case
-          "fold_package_sources persists module typings from the authoritative engine"
-          test_fold_package_sources_persists_module_typings_from_authoritative_engine;
+        Test.case "prepare_snapshot keeps the store read-only during query forcing" test_prepare_snapshot_keeps_store_read_only_during_query_forcing;
+        Test.case "fold_package_sources persists module typings from the authoritative engine" test_fold_package_sources_persists_module_typings_from_authoritative_engine;
         Test.case "prepare_snapshot emits structured events" test_prepare_snapshot_emits_structured_events;
         Test.case "prepare_snapshot emits structured diagnostics in events" test_prepare_snapshot_emits_structured_diagnostics_in_events;
         Test.case "prepare_snapshot only pairs required local modules" test_prepare_snapshot_only_pairs_required_local_modules;

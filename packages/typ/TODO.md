@@ -146,28 +146,28 @@ Current touchpoints:
 
 Checklist:
 
-- [ ] define the imported-world API that `SourceAnalysis.analyze` should consume
+- [x] define the imported-world API that `SourceAnalysis.analyze` should consume
       on every path
-- [ ] make `PackageEnv + ScopeView` the canonical imported-module input for
+- [x] make `PackageEnv + ScopeView` the canonical imported-module input for
       source analysis
-- [ ] keep `TypConfig.ambient`, `ambient_type_decls`, and
+- [x] keep `TypConfig.ambient`, `ambient_type_decls`, and
       `ambient_visible_types` as compatibility shims only while migrating
-- [ ] migrate the build engine to use only the imported-world API
-- [ ] migrate rooted snapshot forcing to use the same imported-world API
-- [ ] remove hot-path dependencies on `TypConfig.with_ambient`
-- [ ] remove hot-path dependencies on `TypConfig.with_ambient_type_decls`
-- [ ] remove hot-path dependencies on `TypConfig.with_ambient_visible_types`
-- [ ] make `hidden_export_names` a narrowly scoped export-filter concern, not a
+- [x] migrate the build engine to use only the imported-world API
+- [x] migrate rooted snapshot forcing to use the same imported-world API
+- [x] remove hot-path dependencies on `TypConfig.with_ambient`
+- [x] remove hot-path dependencies on `TypConfig.with_ambient_type_decls`
+- [x] remove hot-path dependencies on `TypConfig.with_ambient_visible_types`
+- [x] make `hidden_export_names` a narrowly scoped export-filter concern, not a
       second imported-module channel
-- [ ] add tests that prove imported value lookup, type lookup, constructor
+- [x] add tests that prove imported value lookup, type lookup, constructor
       lookup, record lookup, local opens, and include/module-alias behavior all
       work through the same imported-world path on both build and snapshot flows
 
 Exit criteria:
 
-- [ ] imported-module resolution no longer depends on replaying flat ambient
+- [x] imported-module resolution no longer depends on replaying flat ambient
       exports or type-decl lists
-- [ ] build and snapshot flows share the same imported lookup semantics
+- [x] build and snapshot flows share the same imported lookup semantics
 
 ## Phase 3. Delete Snapshot Ambient Replay
 
@@ -179,10 +179,10 @@ Current touchpoints:
 
 Checklist:
 
-- [ ] remove `loaded_ambient_env_for` from the snapshot hot path
-- [ ] remove `loaded_ambient_type_decls_for` from the snapshot hot path
-- [ ] remove `local_ambient_env_for` from the snapshot hot path
-- [ ] remove `local_ambient_type_decls_for` from the snapshot hot path
+- [x] remove `loaded_ambient_env_for` from the snapshot hot path
+- [x] remove `loaded_ambient_type_decls_for` from the snapshot hot path
+- [x] remove `local_ambient_env_for` from the snapshot hot path
+- [x] remove `local_ambient_type_decls_for` from the snapshot hot path
 - [ ] replace ambient replay caches with caches keyed by visible module ids and
       canonical module results
 - [ ] make snapshot local-module visibility produce `ScopeView` entries directly

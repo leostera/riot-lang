@@ -131,7 +131,11 @@ let infer_exports = fun source_text ->
     ~parse_result
     ~cst in
   let semantic_tree = Lower.lower_source_file ~source cst in
-  let inferred = Infer.infer_file ~config:Config.default ~source semantic_tree in
+  let inferred = Infer.infer_file
+    ~imported_world:(ImportedWorld.empty ())
+    ~config:Config.default
+    ~source
+    semantic_tree in
   inferred.exports |> List.map (fun (name, _scheme) -> SurfacePath.to_string name)
 
 let infer_export_scheme = fun source_text name ->
@@ -167,7 +171,11 @@ let infer_export_scheme = fun source_text name ->
     ~parse_result
     ~cst in
   let semantic_tree = Lower.lower_source_file ~source cst in
-  let inferred = Infer.infer_file ~config:Config.default ~source semantic_tree in
+  let inferred = Infer.infer_file
+    ~imported_world:(ImportedWorld.empty ())
+    ~config:Config.default
+    ~source
+    semantic_tree in
   inferred.exports |> List.find_map
     (fun (export_name, scheme) ->
       if SurfacePath.equal export_name (SurfacePath.of_string name) then

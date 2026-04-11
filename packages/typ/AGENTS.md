@@ -27,6 +27,9 @@ Then use the feature slices that match the work you are doing.
 5. Keep prototype scope narrow and explicit; unsupported syntax should surface as recovery plus diagnostics, not silent drops.
 6. Keep cross-query state explicit. Query-local mutation is fine, but it must not escape the query boundary.
 7. Keep structured diagnostic-shape regressions covered under `packages/typ/tests/diagnostics`, not only in human-readable report snapshots.
+8. Feed imported-module state into `SourceAnalysis` through `ImportedWorld`
+   (`PackageEnv + ScopeView`), not by mutating `TypConfig` ambient payloads on
+   hot paths.
 
 ## Validate
 

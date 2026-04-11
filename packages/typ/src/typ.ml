@@ -3,6 +3,7 @@ module Analysis = Analysis
 module SourceAnalysis = SourceAnalysis
 module PackageEnv = PackageEnv
 module ScopeView = ScopeView
+module ImportedWorld = ImportedWorld
 module ModulePairing = ModulePairing
 module ModuleSurface = ModuleSurface
 module Lower = Lower
@@ -17,7 +18,9 @@ module Check = Check
 module Config = TypConfig
 
 type config = TypConfig.t
+
 type source = Model.Source.t
+
 type checked_source = Analysis.Check_result.t
 
 let check = Check.check

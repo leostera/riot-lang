@@ -15,6 +15,8 @@ open Std
       monotonic package-wide module-artifact environment
     - `Typ.ScopeView`
       cheap per-source/group visibility view over `PackageEnv`
+    - `Typ.ImportedWorld`
+      imported-module lookup boundary consumed by source analysis
     - `Typ.ModulePairing`
       canonical pairing of interface and implementation analyses
     - `Typ.ModuleSurface`
@@ -57,6 +59,8 @@ module SourceAnalysis: module type of SourceAnalysis
 module PackageEnv: module type of PackageEnv
 
 module ScopeView: module type of ScopeView
+
+module ImportedWorld: module type of ImportedWorld
 
 module ModulePairing: module type of ModulePairing
 

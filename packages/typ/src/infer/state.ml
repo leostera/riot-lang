@@ -6,8 +6,7 @@ open Model
 type t = {
   file: SemanticTree.file;
   config: TypConfig.t;
-  package_env: PackageEnv.t;
-  scope_view: ScopeView.t;
+  imported_world: ImportedWorld.t;
   solver: Solver.t;
   mutable next_binding_local_id: int;
   mutable next_hole_id: int;
@@ -670,28 +669,26 @@ let type_decls_for_include = VisibleTypes.type_decls_for_include
 let type_decls_for_module_alias = fun visible_types ~alias_name ~module_path ->
   VisibleTypes.type_decls_for_module_alias visible_types ~alias_name ~module_path
 
-let make ~package_env ~scope_view ~config file =
+let make ~imported_world ~config file =
   let base_visible_types =
-    VisibleTypes.bind
-      (VisibleTypes.of_type_decls (TypConfig.ambient_type_decls config))
-      (ScopeView.visible_type_decls scope_view)
+    VisibleTypes.of_type_decls
+      (LanguagePrelude.type_decls @ ImportedWorld.visible_type_decls imported_world)
   in
   {
-  file;
-  config;
-  package_env;
-  scope_view;
-  solver = Solver.create ();
-  next_binding_local_id = 0;
-  next_hole_id = 0;
-  diagnostics = [];
-  expr_traces = [];
-  item_traces = [];
-  base_visible_types;
-  visible_types = base_visible_types;
-  forced_export_names = [];
-  rigid_equations = [];
-}
+    file;
+    config;
+    imported_world;
+    solver = Solver.create ();
+    next_binding_local_id = 0;
+    next_hole_id = 0;
+    diagnostics = [];
+    expr_traces = [];
+    item_traces = [];
+    base_visible_types;
+    visible_types = base_visible_types;
+    forced_export_names = [];
+    rigid_equations = [];
+  }
 
 let fresh_var = fun (state: t) -> Solver.fresh_var state.solver
 

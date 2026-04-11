@@ -35,11 +35,7 @@ type t = {
 
 (** Parse, lower, and infer one [Source.t] inside the given host configuration. *)
 val analyze:
-  ?package_env:PackageEnv.t ->
-  ?scope_view:ScopeView.t ->
-  config:TypConfig.t ->
-  Source.t ->
-  t
+  ?imported_world:ImportedWorld.t -> config:TypConfig.t -> Source.t -> t
 
 (** Extract the export environment, or [[]] when no export was produced. *)
 val exports: t -> FileSummary.exports

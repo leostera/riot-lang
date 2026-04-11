@@ -1,0 +1,13 @@
+[package]
+name = "serde-toml"
+version = "0.0.17"
+
+[lib]
+path = "src/serde_toml.ml"
+
+[dependencies]
+serde = { path = "../serde", version = "*" }
+std = { path = "../std", version = "*" }
+
+[dev-dependencies]
+propane = { path = "../propane", version = "*" }

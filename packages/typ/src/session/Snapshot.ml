@@ -1,7 +1,6 @@
 open Std
 open Infer
 open Model
-module ModuleSurface = ModuleSurface
 
 type analysis_state =
   | NotStarted
@@ -22,34 +21,16 @@ type shared_module_result_cache_key = string
 
 and source_analysis_cache_key = string
 
-and loaded_ambient_cache_key = string
-
-and local_ambient_cache_key = string
-
-and ambient_surface_cache_key = string
-
 module SharedCaches = struct
   type t = {
     module_result_cache: (shared_module_result_cache_key, ModulePairing.t) Collections.HashMap.t;
     source_analysis_cache: (source_analysis_cache_key, SourceAnalysis.t) Collections.HashMap.t;
-    loaded_ambient_env_cache:
-      (loaded_ambient_cache_key, (SurfacePath.t * TypeScheme.t) list) Collections.HashMap.t;
-    loaded_ambient_type_decls_cache:
-      (loaded_ambient_cache_key, FileSummary.type_decl list) Collections.HashMap.t;
-    local_ambient_env_cache:
-      (local_ambient_cache_key, (SurfacePath.t * TypeScheme.t) list) Collections.HashMap.t;
-    local_ambient_type_decls_cache:
-      (local_ambient_cache_key, FileSummary.type_decl list) Collections.HashMap.t;
   }
 
   let create = fun () ->
     {
       module_result_cache = Collections.HashMap.with_capacity 128;
       source_analysis_cache = Collections.HashMap.with_capacity 256;
-      loaded_ambient_env_cache = Collections.HashMap.with_capacity 64;
-      loaded_ambient_type_decls_cache = Collections.HashMap.with_capacity 64;
-      local_ambient_env_cache = Collections.HashMap.with_capacity 256;
-      local_ambient_type_decls_cache = Collections.HashMap.with_capacity 256;
     }
 end
 
@@ -63,20 +44,9 @@ type t = {
   module_results_cache: (string, ModulePairing.t) Collections.HashMap.t;
   shared_module_result_cache: (shared_module_result_cache_key, ModulePairing.t) Collections.HashMap.t;
   shared_source_analysis_cache: (source_analysis_cache_key, SourceAnalysis.t) Collections.HashMap.t;
-  shared_loaded_ambient_env_cache:
-    (loaded_ambient_cache_key, (SurfacePath.t * TypeScheme.t) list) Collections.HashMap.t;
-  shared_loaded_ambient_type_decls_cache:
-    (loaded_ambient_cache_key, FileSummary.type_decl list) Collections.HashMap.t;
-  shared_local_ambient_env_cache:
-    (local_ambient_cache_key, (SurfacePath.t * TypeScheme.t) list) Collections.HashMap.t;
-  shared_local_ambient_type_decls_cache:
-    (local_ambient_cache_key, FileSummary.type_decl list) Collections.HashMap.t;
   source_analysis_keys_cache: (int, source_analysis_cache_key option) Collections.HashMap.t;
   module_result_keys_cache: (string, shared_module_result_cache_key option) Collections.HashMap.t;
   local_module_names_cache: (int, string list) Collections.HashMap.t;
-  local_ambient_keys_cache: (int, local_ambient_cache_key) Collections.HashMap.t;
-  ambient_surface_keys_cache: (int, ambient_surface_cache_key) Collections.HashMap.t;
-  qualified_module_surface_cache: (string, ModuleSurface.qualified_surface) Collections.HashMap.t;
   mutable all_module_results_cache: (string * ModulePairing.t) list option;
   mutable rooted_module_typings_cache: ModuleTypings.t list option;
 }
@@ -164,46 +134,15 @@ let make_with_shared_caches = fun ~revision ~roots ~config ~sources ~shared_cach
       SharedCaches.(shared_caches.module_result_cache);
     shared_source_analysis_cache =
       SharedCaches.(shared_caches.source_analysis_cache);
-    shared_loaded_ambient_env_cache =
-      SharedCaches.(shared_caches.loaded_ambient_env_cache);
-    shared_loaded_ambient_type_decls_cache =
-      SharedCaches.(shared_caches.loaded_ambient_type_decls_cache);
-    shared_local_ambient_env_cache =
-      SharedCaches.(shared_caches.local_ambient_env_cache);
-    shared_local_ambient_type_decls_cache =
-      SharedCaches.(shared_caches.local_ambient_type_decls_cache);
     source_analysis_keys_cache = Collections.HashMap.with_capacity 64;
     module_result_keys_cache = Collections.HashMap.with_capacity 32;
     local_module_names_cache = Collections.HashMap.with_capacity 64;
-    local_ambient_keys_cache = Collections.HashMap.with_capacity 64;
-    ambient_surface_keys_cache = Collections.HashMap.with_capacity 64;
-    qualified_module_surface_cache = Collections.HashMap.with_capacity 128;
     all_module_results_cache = None;
     rooted_module_typings_cache = None;
   }
 
 let make = fun ~revision ~roots ~config ~sources ->
   make_with_shared_caches ~revision ~roots ~config ~sources ~shared_caches:(SharedCaches.create ())
-
-let qualify_exports = fun module_name type_decls exports ->
-  ModuleSurface.qualify_exports ~module_name ~type_decls exports
-
-let qualify_type_decls = fun module_name type_decls ->
-  ModuleSurface.qualify_type_decls ~module_name type_decls
-
-let qualified_module_surface_cache_key = fun ~module_name ~alias -> module_name ^ "\x1f" ^ alias
-
-let qualified_module_surface = fun (snapshot: t) ~module_name ~alias typings ->
-  let cache_key = qualified_module_surface_cache_key ~module_name ~alias in
-  match Collections.HashMap.get snapshot.qualified_module_surface_cache cache_key with
-  | Some surface -> surface
-  | None ->
-      let surface = ModuleSurface.qualify_surface
-        ~module_name:alias
-        ~type_decls:(ModuleTypings.type_decls typings)
-        (ModuleTypings.exports typings) in
-      let _ = Collections.HashMap.insert snapshot.qualified_module_surface_cache cache_key surface in
-      surface
 
 let module_names_of_slots = fun slots ->
   let rec loop order seen = function
@@ -232,57 +171,6 @@ let rooted_slots = fun snapshot ->
 
 let rooted_module_names = fun snapshot -> rooted_slots snapshot |> module_names_of_slots
 
-let loaded_ambient_cache_key = fun (snapshot: t) ~current_module_name kind ->
-  digest_key [ snapshot.cache_namespace_key; kind; current_module_name ]
-
-let loaded_ambient_env_for = fun (snapshot: t) (slot: analysis_slot) ->
-  let current_module_name = Source.module_name slot.source in
-  let cache_key = loaded_ambient_cache_key snapshot ~current_module_name "loaded-ambient-env" in
-  match Collections.HashMap.get snapshot.shared_loaded_ambient_env_cache cache_key with
-  | Some ambient -> ambient
-  | None ->
-      let ambient =
-        LoadedModules.fold
-          (fun _required_name typings ambient_rev ->
-            let module_name = ModuleTypings.module_name typings in
-            if String.equal module_name current_module_name then
-              ambient_rev
-            else
-              let exports = (qualified_module_surface snapshot ~module_name ~alias:module_name typings).exports in
-              List.rev_append exports ambient_rev)
-          slot.config.loaded_modules
-          []
-        |> List.rev
-      in
-      let _ = Collections.HashMap.insert snapshot.shared_loaded_ambient_env_cache cache_key ambient in
-      ambient
-
-let loaded_ambient_type_decls_for = fun (snapshot: t) (slot: analysis_slot) ->
-  let current_module_name = Source.module_name slot.source in
-  let cache_key = loaded_ambient_cache_key snapshot ~current_module_name "loaded-ambient-type-decls" in
-  match Collections.HashMap.get snapshot.shared_loaded_ambient_type_decls_cache cache_key with
-  | Some ambient_type_decls -> ambient_type_decls
-  | None ->
-      let ambient_type_decls =
-        LoadedModules.fold
-          (fun _required_name typings type_decls_rev ->
-            let module_name = ModuleTypings.module_name typings in
-            if String.equal module_name current_module_name then
-              type_decls_rev
-            else
-              let qualified_type_decls = (qualified_module_surface
-                snapshot
-                ~module_name
-                ~alias:module_name
-                typings).type_decls in
-              List.rev_append qualified_type_decls type_decls_rev)
-          slot.config.loaded_modules
-          []
-        |> List.rev
-      in
-      let _ = Collections.HashMap.insert snapshot.shared_loaded_ambient_type_decls_cache cache_key ambient_type_decls in
-      ambient_type_decls
-
 let module_dependencies_of_source = fun (source: Source.t) ->
   match Syn.Deps.of_parse_result source.parse_result with
   | Ok deps -> Syn.Deps.modules deps
@@ -309,53 +197,74 @@ let dedupe_preserving_order = fun names ->
         let _ = Collections.HashSet.insert seen name in
         true)
 
-let ambient_module_names_of_local_module_name = fun module_name ->
-  module_name
-  |> LocalModules.InternalName.of_string
-  |> LocalModules.ambient_names_of_internal_name
-  |> List.map LocalModules.AmbientName.to_string
+let dedupe_by_key_preserving_order = fun ~key items ->
+  let seen = Collections.HashSet.with_capacity (List.length items + 1) in
+  items |> List.filter
+    (fun item ->
+      let item_key = key item in
+      if Collections.HashSet.contains seen item_key then
+        false
+      else
+        let _ = Collections.HashSet.insert seen item_key in
+        true)
 
 let shared_cache_namespace = fun (snapshot: t) -> snapshot.cache_namespace_key
 
 let module_result_cache_key = fun module_name -> module_name
 
+let implicit_open_required_names = fun (slot: analysis_slot) ->
+  let current_module_name = LocalModules.InternalName.of_string (Source.module_name slot.source) in
+  slot.source.implicit_opens
+  |> List.map SurfacePath.to_string
+  |> List.filter
+    (fun module_name -> LocalModules.should_include_implicit_open ~current_module_name ~module_name)
+  |> List.map LocalModules.RequiredName.of_string
+  |> List.sort_uniq compare
+
+let candidate_local_module_names = fun (snapshot: t) (slot: analysis_slot) ->
+  let current_module_name = LocalModules.InternalName.of_string (Source.module_name slot.source) in
+  snapshot.module_names
+  |> List.filter
+    (fun candidate_module_name ->
+      not (String.equal (LocalModules.InternalName.to_string current_module_name) candidate_module_name))
+
+let best_matching_local_module_names = fun (snapshot: t) (slot: analysis_slot) ~required_name ->
+  let current_module_name = LocalModules.InternalName.of_string (Source.module_name slot.source) in
+  let matching_candidates = candidate_local_module_names snapshot slot
+  |> List.filter_map
+    (fun candidate_module_name ->
+      LocalModules.contextual_match_depth
+        ~current_module_name
+        ~required_module_name:required_name
+        ~candidate_module_name:(LocalModules.InternalName.of_string candidate_module_name)
+      |> Option.map (fun depth -> (candidate_module_name, depth))) in
+  let best_depth = matching_candidates
+  |> List.fold_left
+    (fun best (_, depth) -> Some (Option.unwrap_or ~default:depth best |> Int.max depth))
+    None in
+  match best_depth with
+  | None -> []
+  | Some best_depth ->
+      matching_candidates |> List.filter_map
+        (fun (candidate_module_name, depth) ->
+          if Int.equal depth best_depth then
+            Some candidate_module_name
+          else
+            None)
+
 let local_module_names_for = fun (snapshot: t) (slot: analysis_slot) ->
   match Collections.HashMap.get snapshot.local_module_names_cache (SourceId.to_int slot.source_id) with
   | Some local_module_names -> local_module_names
   | None ->
-      let current_module_name = LocalModules.InternalName.of_string (Source.module_name slot.source) in
       let required_local_modules = required_local_module_names slot in
-      let candidate_module_names = snapshot.module_names
-      |> List.filter
-        (fun candidate_module_name ->
-          not
-            (String.equal (LocalModules.InternalName.to_string current_module_name) candidate_module_name)) in
       let local_module_names =
         required_local_modules
         |> List.concat_map
           (fun required_module_name ->
-            let required_module_name = LocalModules.RequiredName.of_string required_module_name in
-            let matching_candidates = candidate_module_names
-            |> List.filter_map
-              (fun candidate_module_name ->
-                LocalModules.contextual_match_depth
-                  ~current_module_name
-                  ~required_module_name
-                  ~candidate_module_name:(LocalModules.InternalName.of_string candidate_module_name)
-                |> Option.map (fun depth -> (candidate_module_name, depth))) in
-            let best_depth = matching_candidates
-            |> List.fold_left
-              (fun best (_, depth) -> Some (Option.unwrap_or ~default:depth best |> Int.max depth))
-              None in
-            match best_depth with
-            | None -> []
-            | Some best_depth ->
-                matching_candidates |> List.filter_map
-                  (fun (candidate_module_name, depth) ->
-                    if Int.equal depth best_depth then
-                      Some candidate_module_name
-                    else
-                      None))
+            best_matching_local_module_names
+              snapshot
+              slot
+              ~required_name:(LocalModules.RequiredName.of_string required_module_name))
         |> dedupe_preserving_order
         |> List.stable_sort
           (fun left right ->
@@ -369,6 +278,51 @@ let local_module_names_for = fun (snapshot: t) (slot: analysis_slot) ->
         (SourceId.to_int slot.source_id)
         local_module_names in
       local_module_names
+
+let scope_view_for_slot = fun (snapshot: t) (slot: analysis_slot) ->
+  let visible_modules_rev = ref [] in
+  let implicit_open_modules_rev = ref [] in
+  let implicit_open_required_names = implicit_open_required_names slot in
+  let required_name_is_implicit_open required_name =
+    List.exists (fun candidate -> candidate = required_name) implicit_open_required_names
+  in
+  let add_visible_module module_id required_name =
+    visible_modules_rev :=
+      (SurfacePath.of_string (LocalModules.RequiredName.to_string required_name), module_id)
+      :: !visible_modules_rev
+  in
+  let add_implicit_open_module module_id required_name =
+    implicit_open_modules_rev :=
+      (SurfacePath.of_string (LocalModules.RequiredName.to_string required_name), module_id)
+      :: !implicit_open_modules_rev
+  in
+  required_local_module_names slot
+  |> List.iter
+    (fun required_name_string ->
+      let required_name = LocalModules.RequiredName.of_string required_name_string in
+      let local_module_names = best_matching_local_module_names snapshot slot ~required_name in
+      match local_module_names with
+      | [] ->
+          if LoadedModules.contains slot.config.loaded_modules ~required_name then (
+            let module_id = PackageEnv.ModuleId.Loaded required_name in
+            add_visible_module module_id required_name;
+            if required_name_is_implicit_open required_name then
+              add_implicit_open_module module_id required_name
+          )
+      | _ ->
+          local_module_names
+          |> List.iter
+            (fun module_name ->
+              let module_id =
+                PackageEnv.ModuleId.Local (LocalModules.InternalName.of_string module_name)
+              in
+              add_visible_module module_id required_name;
+              if required_name_is_implicit_open required_name then
+                add_implicit_open_module module_id required_name));
+  ScopeView.create
+    ~visible_modules:(List.rev !visible_modules_rev |> dedupe_by_key_preserving_order ~key:fst)
+    ~implicit_open_modules:(List.rev !implicit_open_modules_rev
+      |> dedupe_by_key_preserving_order ~key:fst)
 
 let placeholder_analysis = fun (slot: analysis_slot) ->
   {
@@ -473,45 +427,6 @@ and module_result_shared_cache_key = fun (snapshot: t) module_name ->
         (Some cache_key) in
       cache_key
 
-and local_ambient_cache_key = fun (snapshot: t) (slot: analysis_slot) ->
-  match Collections.HashMap.get snapshot.local_ambient_keys_cache (SourceId.to_int slot.source_id) with
-  | Some cache_key -> cache_key
-  | None ->
-      let cache_key = digest_key
-        ([ shared_cache_namespace snapshot; "local-ambient"; ]
-        @ (local_module_names_for snapshot slot
-        |> List.map
-          (fun module_name ->
-            format
-              Format.[
-                str module_name;
-                str ":";
-                str (module_result_shared_cache_key snapshot module_name)
-              ]))) in
-      let _ = Collections.HashMap.insert
-        snapshot.local_ambient_keys_cache
-        (SourceId.to_int slot.source_id)
-        cache_key in
-      cache_key
-
-and ambient_surface_cache_key = fun (snapshot: t) (slot: analysis_slot) ->
-  match Collections.HashMap.get snapshot.ambient_surface_keys_cache (SourceId.to_int slot.source_id) with
-  | Some cache_key -> cache_key
-  | None ->
-      let current_module_name = Source.module_name slot.source in
-      let cache_key = digest_key
-        [
-          shared_cache_namespace snapshot;
-          "ambient-surface";
-          loaded_ambient_cache_key snapshot ~current_module_name "loaded-ambient-surface";
-          local_ambient_cache_key snapshot slot;
-        ] in
-      let _ = Collections.HashMap.insert
-        snapshot.ambient_surface_keys_cache
-        (SourceId.to_int slot.source_id)
-        cache_key in
-      cache_key
-
 let rec force_analysis = fun (snapshot: t) (slot: analysis_slot) ->
   match slot.state with
   | Finished analysis ->
@@ -529,15 +444,8 @@ let rec force_analysis = fun (snapshot: t) (slot: analysis_slot) ->
         | None ->
             slot.state <- InProgress;
             let local_module_names = local_module_names_for snapshot slot in
-            let local_ambient = local_ambient_env_for snapshot slot in
-            let local_ambient_type_decls = local_ambient_type_decls_for snapshot slot in
-            let ambient = slot.config.ambient @ loaded_ambient_env_for snapshot slot @ local_ambient in
-            let ambient_type_decls = slot.config.ambient_type_decls
-            @ loaded_ambient_type_decls_for snapshot slot
-            @ local_ambient_type_decls in
-            let config = slot.config
-            |> TypConfig.with_ambient ~ambient
-            |> TypConfig.with_ambient_type_decls ~ambient_type_decls in
+            let imported_world = imported_world_for_slot snapshot slot in
+            let ambient_type_decls = ImportedWorld.visible_type_decls imported_world in
             TypConfig.emit_event slot.config
               (fun () ->
                 Event.SourceAnalysisStarted {
@@ -546,10 +454,10 @@ let rec force_analysis = fun (snapshot: t) (slot: analysis_slot) ->
                   mode = Event.SnapshotAnalysis;
                   local_module_names;
                   loaded_module_count = LoadedModules.len slot.config.loaded_modules;
-                  ambient_binding_count = List.length ambient;
+                  ambient_binding_count = 0;
                   ambient_type_decl_count = List.length ambient_type_decls;
                 });
-            let analysis = SourceAnalysis.analyze ~config slot.source in
+            let analysis = SourceAnalysis.analyze ~imported_world ~config:slot.config slot.source in
             TypConfig.emit_event slot.config
               (fun () ->
                 Event.SourceAnalysisFinished {
@@ -575,6 +483,17 @@ let rec force_analysis = fun (snapshot: t) (slot: analysis_slot) ->
             analysis
       )
 
+and imported_world_for_slot = fun (snapshot: t) (slot: analysis_slot) ->
+  let scope_view = scope_view_for_slot snapshot slot in
+  let package_env = PackageEnv.of_loaded_modules slot.config.loaded_modules in
+  local_module_names_for snapshot slot
+  |> List.iter
+    (fun module_name ->
+      let internal_name = LocalModules.InternalName.of_string module_name in
+      let module_result = module_typings_of_result (module_result_for snapshot module_name) in
+      PackageEnv.add_local package_env ~internal_name module_result);
+  ImportedWorld.create ~package_env ~scope_view
+
 and module_results_for = fun (snapshot: t) ->
   match snapshot.all_module_results_cache with
   | Some module_results -> module_results
@@ -583,48 +502,6 @@ and module_results_for = fun (snapshot: t) ->
       |> List.map (fun module_name -> (module_name, module_result_for snapshot module_name)) in
       snapshot.all_module_results_cache <- Some module_results;
       module_results
-
-and local_ambient_env_for = fun (snapshot: t) (slot: analysis_slot) ->
-  let cache_key = local_ambient_cache_key snapshot slot in
-  match Collections.HashMap.get snapshot.shared_local_ambient_env_cache cache_key with
-  | Some ambient -> ambient
-  | None ->
-      let ambient =
-        local_module_names_for snapshot slot
-        |> List.fold_left
-          (fun ambient_rev module_name ->
-            let typings = module_typings_of_result (module_result_for snapshot module_name) in
-            ambient_module_names_of_local_module_name module_name |> List.fold_left
-              (fun ambient_rev alias ->
-                let exports = (qualified_module_surface snapshot ~module_name ~alias typings).exports in
-                List.rev_append exports ambient_rev)
-              ambient_rev)
-          []
-        |> List.rev
-      in
-      let _ = Collections.HashMap.insert snapshot.shared_local_ambient_env_cache cache_key ambient in
-      ambient
-
-and local_ambient_type_decls_for = fun (snapshot: t) (slot: analysis_slot) ->
-  let cache_key = local_ambient_cache_key snapshot slot in
-  match Collections.HashMap.get snapshot.shared_local_ambient_type_decls_cache cache_key with
-  | Some ambient_type_decls -> ambient_type_decls
-  | None ->
-      let ambient_type_decls =
-        local_module_names_for snapshot slot
-        |> List.fold_left
-          (fun type_decls_rev module_name ->
-            let typings = module_typings_of_result (module_result_for snapshot module_name) in
-            ambient_module_names_of_local_module_name module_name |> List.fold_left
-              (fun type_decls_rev alias ->
-                let qualified_type_decls = (qualified_module_surface snapshot ~module_name ~alias typings).type_decls in
-                List.rev_append qualified_type_decls type_decls_rev)
-              type_decls_rev)
-          []
-        |> List.rev
-      in
-      let _ = Collections.HashMap.insert snapshot.shared_local_ambient_type_decls_cache cache_key ambient_type_decls in
-      ambient_type_decls
 
 and partial_module_result = fun (snapshot: t) module_name ->
   let slots = module_slots snapshot module_name in
@@ -732,11 +609,12 @@ and module_result_for = fun (snapshot: t) module_name ->
                 );
                 let sources = slots
                 |> List.map
-                  (fun (slot: analysis_slot) -> {
-                    ModulePairing.source = slot.source;
-                    analysis = force_analysis snapshot slot;
-                    ambient_type_decls = slot.config.ambient_type_decls;
-                  }) in
+                  (fun (slot: analysis_slot) ->
+                    {
+                      ModulePairing.source = slot.source;
+                      analysis = force_analysis snapshot slot;
+                      ambient_type_decls = slot.config.ambient_type_decls
+                    }) in
                 let result = ModulePairing.of_sources
                   ~internal_name:(LocalModules.InternalName.of_string module_name)
                   sources in
@@ -756,10 +634,8 @@ and module_result_for = fun (snapshot: t) module_name ->
                             module_name;
                             source_ids;
                             export_status = export_status_of_module_typings module_typings;
-                            export_count = List.length
-                              (ModuleTypings.exports module_typings);
-                            type_decl_count = List.length
-                              (ModuleTypings.type_decls module_typings);
+                            export_count = List.length (ModuleTypings.exports module_typings);
+                            type_decl_count = List.length (ModuleTypings.type_decls module_typings);
                             mismatch_count = List.length result.ModulePairing.signature_mismatches;
                             mismatch_subjects = result.ModulePairing.signature_mismatches
                             |> List.map signature_mismatch_subject
