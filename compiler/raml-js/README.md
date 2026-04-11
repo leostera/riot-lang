@@ -59,6 +59,9 @@ ReScript is a better reference for emitted JS shape:
   contract instead of `%foo` strings
 - primitive lowering now lives in an explicit `Jir.Primitives` subsystem instead
   of as a large inline match inside the main lowering walk
+- JS-native globals, member access, calls, arrays, and ambient namespaces now
+  live in shared `Jir.Intrinsics` helpers instead of being rebuilt ad hoc in
+  each lowering subsystem
 - object keys, property access, and emitted binder legality now share one
   syntax policy instead of backend-local heuristics
 

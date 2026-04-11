@@ -2,6 +2,8 @@ module Types = Types
 
 module Builtins = Builtins
 
+module Intrinsics = Intrinsics
+
 module Primitives = Primitives
 
 module Analysis = Analysis
