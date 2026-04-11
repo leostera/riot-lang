@@ -49,6 +49,9 @@ late syntax lowering, and JS emission.
 10. Thread `Raml_core.Compilation_context.t` through backend lowering, passes,
     `JST`, and emission. Future target-sensitive decisions like ESM vs CJS
     should read from that context instead of inventing new ambient inputs.
+11. Keep JS module-surface policy in `src/js/jst/module_format.*`, not inline
+    in the emitter. New target-specific import/export shapes should hang off
+    that module.
 
 ## Verification
 

@@ -75,6 +75,8 @@ ReScript is a better reference for emitted JS shape:
 - backend lowering, late JIR passes, JST lowering, and emission now all accept
   one shared `Compilation_context`, so future target-sensitive JS decisions can
   key off host/target/source without re-plumbing the whole backend again
+- module-surface selection now has an explicit `Jst.Module_format` seam, even
+  though the only emitted format today is still ESM
 
 Where `raml-js` still differs from ReScript:
 

@@ -1,6 +1,7 @@
 open Std
 open Std.Data
 module Core = Raml_core.Core_ir
+module Module_format = Module_format
 module Syntax = Syntax
 
 module Binding_map = Collections.Map.Make (struct
@@ -284,7 +285,7 @@ let emit_named_import = fun (named: Types.Import.named) ->
 let emit_import_path = fun (module_ref: Types.module_ref) ->
   Json.to_string (Json.string module_ref.import_path)
 
-let emit_import = fun env (import: Types.Import.t) ->
+let emit_import = fun ~module_format env (import: Types.Import.t) ->
   let env =
     env
     |> (fun env ->
@@ -302,44 +303,46 @@ let emit_import = fun env (import: Types.Import.t) ->
         import.names)
   in
   let line =
-    match import.namespace with
-    | Some namespace -> format
-      Format.[
-        str "import * as ";
-        str namespace.name;
-        str " from ";
-        str (emit_import_path import.from);
-        str ";";
-      ]
-    | None ->
-        let named =
-          match import.names with
-          | [] -> None
-          | names -> Some (format
-            Format.[
-              str "{ ";
-              str (String.concat ", " (List.map emit_named_import names));
-              str " }"
-            ])
-        in
-        let bindings =
-          match (import.default, named) with
-          | (None, None) -> None
-          | (Some default, None) -> Some default.name
-          | (None, Some named) -> Some named
-          | (Some default, Some named) -> Some (format
-            Format.[ str default.name; str ", "; str named ])
-        in
-        match bindings with
-        | None -> format Format.[ str "import "; str (emit_import_path import.from); str ";" ]
-        | Some bindings -> format
+    match module_format with
+    | Module_format.Esm ->
+        match import.namespace with
+        | Some namespace -> format
           Format.[
-            str "import ";
-            str bindings;
+            str "import * as ";
+            str namespace.name;
             str " from ";
             str (emit_import_path import.from);
             str ";";
           ]
+        | None ->
+            let named =
+              match import.names with
+              | [] -> None
+              | names -> Some (format
+                Format.[
+                  str "{ ";
+                  str (String.concat ", " (List.map emit_named_import names));
+                  str " }"
+                ])
+            in
+            let bindings =
+              match (import.default, named) with
+              | (None, None) -> None
+              | (Some default, None) -> Some default.name
+              | (None, Some named) -> Some named
+              | (Some default, Some named) -> Some (format
+                Format.[ str default.name; str ", "; str named ])
+            in
+            match bindings with
+            | None -> format Format.[ str "import "; str (emit_import_path import.from); str ";" ]
+            | Some bindings -> format
+              Format.[
+                str "import ";
+                str bindings;
+                str " from ";
+                str (emit_import_path import.from);
+                str ";";
+              ]
   in
   (line, env)
 
@@ -350,21 +353,24 @@ let emit_export = fun env (export: Types.Export.t) ->
   else
     format Format.[ str "  "; str local; str " as "; str export.name ]
 
-let emit_exports = fun env exports ->
-  let lines = exports |> List.map (emit_export env) |> String.concat ",\n" in
-  format Format.[ str "export {\n"; str lines; str "\n};" ]
+let emit_exports = fun ~module_format env exports ->
+  match module_format with
+  | Module_format.Esm ->
+      let lines = exports |> List.map (emit_export env) |> String.concat ",\n" in
+      format Format.[ str "export {\n"; str lines; str "\n};" ]
 
-let emit_module_item = fun env item ->
+let emit_module_item = fun ~module_format env item ->
   match item with
-  | Types.Module_item.Import import -> emit_import env import
+  | Types.Module_item.Import import -> emit_import ~module_format env import
   | Types.Module_item.Statement statement -> emit_statement ~level:0 env statement
-  | Types.Module_item.Export exports -> (emit_exports env exports, env)
+  | Types.Module_item.Export exports -> (emit_exports ~module_format env exports, env)
 
-let emit_program = fun ~context:_ (program: Types.Program.t) ->
+let emit_program = fun ~context (program: Types.Program.t) ->
+  let module_format = Module_format.of_context context in
   let (sections_rev, _) =
     List.fold_left
       (fun (sections_rev, env) item ->
-        let (section, env) = emit_module_item env item in
+        let (section, env) = emit_module_item ~module_format env item in
         if String.equal section "" then
           (sections_rev, env)
         else
