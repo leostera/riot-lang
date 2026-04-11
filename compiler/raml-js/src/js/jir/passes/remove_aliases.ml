@@ -135,7 +135,12 @@ and lower_statement = fun env statement ->
     | [] -> ([], env)
     | statements -> ([ Jir.Statement.Block statements ], env)
   )
-  | Jir.Statement.Expression expr -> ([ Jir.Statement.Expression (lower_expr env expr) ], env)
+  | Jir.Statement.Expression expr ->
+      let expr = lower_expr env expr in
+      if Analysis.is_pure_expr expr then
+        ([], env)
+      else
+        ([ Jir.Statement.Expression expr ], env)
   | Jir.Statement.Return expr -> ([ Jir.Statement.Return (lower_expr env expr) ], env)
   | Jir.Statement.If if_ ->
       let condition = lower_expr env if_.condition in
