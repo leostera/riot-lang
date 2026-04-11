@@ -1,6 +1,6 @@
 open Std
 open Std.Data
-module Core = RamlCore.CoreIR
+module Core = Raml_core.Core_ir
 
 module Binder: sig
   type t = {

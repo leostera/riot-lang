@@ -1,10 +1,10 @@
 open Std
 open Std.Data
-module Core = RamlCore.CoreIR
+module Core = Raml_core.Core_ir
 module Jir = Types
 
 type error =
-  | UnsupportedModuleKind of { kind: RamlCore.Source_unit.kind }
+  | UnsupportedModuleKind of { kind: Raml_core.Source_unit.kind }
   | UnsupportedGroup of { group_index: int; reason: string }
   | UnsupportedBinding of { name: string; reason: string }
   | UnsupportedExpr of { reason: string }
@@ -17,8 +17,8 @@ let error = fun value -> Error [ value ]
 
 let source_kind_to_string = fun kind ->
   match kind with
-  | RamlCore.Source_unit.Implementation -> "implementation"
-  | RamlCore.Source_unit.Interface -> "interface"
+  | Raml_core.Source_unit.Implementation -> "implementation"
+  | Raml_core.Source_unit.Interface -> "interface"
 
 let error_to_json = fun error ->
   match error with
@@ -349,8 +349,8 @@ let lower_group = fun (_group_index: int) (group: Core.Binding_group.t) ->
 
 let lower_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
   match compilation_unit.unit_id.kind with
-  | RamlCore.Source_unit.Interface -> error (UnsupportedModuleKind { kind = compilation_unit.unit_id.kind })
-  | RamlCore.Source_unit.Implementation ->
+  | Raml_core.Source_unit.Interface -> error (UnsupportedModuleKind { kind = compilation_unit.unit_id.kind })
+  | Raml_core.Source_unit.Implementation ->
       let groups =
         List.mapi (fun index group -> (index + 1, group)) compilation_unit.init
       in

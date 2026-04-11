@@ -1,5 +1,5 @@
 open Std
-module Core = RamlCore.CoreIR
+module Core = Raml_core.Core_ir
 module Jir = Types
 
 let ( let* ) = Option.and_then

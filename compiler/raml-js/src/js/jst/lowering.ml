@@ -6,7 +6,7 @@ let lower_binder = fun (binder: Source.Binder.t) ->
   Target.Binder.make ~name:binder.name binder.binding_id
 
 let same_binder = fun (left: Target.Binder.t) (right: Target.Binder.t) ->
-  RamlCore.CoreIR.Binding_id.equal left.binding_id right.binding_id
+  Raml_core.Core_ir.Binding_id.equal left.binding_id right.binding_id
 
 let lower_import = fun (import: Source.Imports.requirement) ->
   if import.namespace then

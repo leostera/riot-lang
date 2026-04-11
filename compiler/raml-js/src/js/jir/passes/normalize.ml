@@ -1,5 +1,5 @@
 open Std
-module Core = RamlCore.CoreIR
+module Core = Raml_core.Core_ir
 module Jir = Types
 
 module Import_set = Set.Make (struct

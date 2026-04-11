@@ -1,4 +1,4 @@
 val compile:
-  config:RamlCore.Config.t ->
-  frontend:RamlCore.Frontend_pipeline.t ->
-  RamlCore.Backend_result.t
+  config:Raml_core.Config.t ->
+  frontend:Raml_core.Frontend_pipeline.t ->
+  Raml_core.Backend_result.t

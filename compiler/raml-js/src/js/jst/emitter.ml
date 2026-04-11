@@ -1,21 +1,19 @@
 open Std
 open Std.Data
-module Core = RamlCore.CoreIR
+module Core = Raml_core.Core_ir
 
-type env = (Core.Binding_id.t * string) list
+module Binding_map = Map.Make (struct
+  type t = Core.Binding_id.t
+  let compare = Core.Binding_id.compare
+end)
+
+type env = string Binding_map.t
 
 let indent = fun level ->
   String.make (level * 2) ' '
 
 let lookup_binding_name = fun env binding_id ->
-  match
-    List.find_opt
-      (fun (current, _) ->
-        Core.Binding_id.equal current binding_id)
-      env
-  with
-  | Some (_, name) -> name
-  | None -> Core.Binding_id.name binding_id
+  Binding_map.find_opt binding_id env |> Option.unwrap_or ~default:(Core.Binding_id.name binding_id)
 
 let emit_entity = fun env entity_id ->
   match Core.Entity_id.binding_id entity_id with
@@ -23,7 +21,7 @@ let emit_entity = fun env entity_id ->
   | None -> Core.Entity_id.to_string entity_id
 
 let remember_binding = fun env (binder: Types.Binder.t) ->
-  (binder.binding_id, binder.name) :: env
+  Binding_map.add binder.binding_id binder.name env
 
 let emit_number = fun number ->
   match number with
@@ -295,7 +293,7 @@ let emit_program = fun (program: Types.Program.t) ->
           (sections_rev, env)
         else
           (section :: sections_rev, env))
-      ([], [])
+      ([], Binding_map.empty)
       program.items
   in
   match List.rev sections_rev with
