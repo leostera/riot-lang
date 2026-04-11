@@ -52,9 +52,10 @@ Within `LIR`, the current pass shape is:
 `layout_frames` computes the frame skeleton and call facts. `allocate_homes`
 does the first real location assignment pass: it uses `LIR` liveness to keep
 short-lived values in a small caller-saved register pool, puts call-live
-values in a small callee-saved pool, and spills the rest to stack homes. The
-Darwin emitter is responsible for saving and restoring the callee-saved homes
-that allocation marks as used.
+values in a small callee-saved pool, and spills the rest to stack homes while
+reusing stack slots for non-overlapping spill intervals. The Darwin emitter is
+responsible for saving and restoring the callee-saved homes that allocation
+marks as used.
 
 ## Verification
 

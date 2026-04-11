@@ -3,17 +3,19 @@
 
     The algorithm computes live intervals, uses a small caller-saved register
     pool for short-lived values, uses a small callee-saved pool for values
-    that remain live across calls, and spills the rest to stack slots with
-    stable offsets.
+    that remain live across calls, and then reuses stack slots for spilled
+    intervals whose live ranges do not overlap.
 
     The effect is that [LIR] leaves this pass with explicit register or stack
     homes, plus a frame whose spill slots and callee-saved save set match the
-    values that actually needed them.
+    values that actually needed them instead of giving every spill its own
+    permanent slot.
 
-    The rationale is to make home allocation a real compiler pass instead of an
-    emitter convention, while keeping the first allocator simple and honest:
-    caller-saved registers for cheap temporaries, callee-saved registers for
-    call-live values, and stack for overflow. *)
+    The rationale is to keep home allocation a real compiler pass instead of an
+    emitter convention, while taking the next honest step toward a better
+    allocator: caller-saved registers for cheap temporaries, callee-saved
+    registers for call-live values, and stack slots that behave like a reused
+    resource instead of a one-name-per-slot ledger. *)
 open Std
 module HashMap = Collections.HashMap
 module HashSet = Collections.HashSet
@@ -64,6 +66,8 @@ let align_to = fun value ~alignment ->
 
 let names_for_procedure = fun analysis procedure_name ->
   Layout_frames.virtual_names_for_procedure analysis ~procedure_name
+
+let slot = fun index -> Lir.Slot.{ index; offset = index * pointer_width }
 
 let expire_finished = fun active ~before ->
   active |> List.filter (fun interval -> interval.finish >= before)
@@ -119,14 +123,88 @@ let allocation_for_procedure = fun analysis (procedure: Lir.Procedure.t) ->
       ([], assignments)
       sorted_intervals
   in
-  assignments
+  (virtual_names, intervals_by_name, assignments)
+
+type active_stack_interval = {
+  finish: int;
+  slot: Lir.Slot.t;
+}
+
+let compare_slot = fun (left: Lir.Slot.t) (right: Lir.Slot.t) ->
+  Int.compare left.index right.index
+
+let stack_slots_for_spills = fun virtual_names intervals_by_name assignments ->
+  let spill_intervals =
+    virtual_names
+    |> List.filter_map
+      (fun name ->
+        match HashMap.get assignments name with
+        | Some Stack -> HashMap.get intervals_by_name name
+        | Some (Register _)
+        | None -> None)
+    |> List.sort
+      (fun (left: Liveness.interval) (right: Liveness.interval) ->
+        match Int.compare left.start right.start with
+        | 0 -> String.compare left.name right.name
+        | order -> order)
+  in
+  let stack_slots = HashMap.create () in
+  let active = ref [] in
+  let free_slots = ref [] in
+  let next_slot_index = ref 0 in
+  let allocate_slot () =
+    match !free_slots with
+    | slot :: rest ->
+        free_slots := rest;
+        slot
+    | [] ->
+        let slot = slot !next_slot_index in
+        next_slot_index := !next_slot_index + 1;
+        slot
+  in
+  List.iter
+    (fun (interval: Liveness.interval) ->
+      let still_active, expired =
+        List.partition (fun active -> active.finish >= interval.start) !active
+      in
+      active := still_active;
+      free_slots := List.sort
+        compare_slot
+        (!free_slots @ List.map (fun active -> active.slot) expired);
+      let slot = allocate_slot () in
+      let _ = HashMap.insert stack_slots interval.name slot in
+      active := { finish = interval.finish; slot } :: !active)
+    spill_intervals;
+  let rec allocate_fallback_slots = function
+    | [] -> ()
+    | name :: rest ->
+        let needs_slot =
+          match HashMap.get assignments name with
+          | Some Stack -> true
+          | None -> true
+          | Some (Register _) -> false
+        in
+        let has_slot =
+          match HashMap.get stack_slots name with
+          | Some _ -> true
+          | None -> false
+        in
+        let () =
+          if needs_slot && not has_slot then
+            (
+              let _ = HashMap.insert stack_slots name (slot !next_slot_index) in
+              next_slot_index := !next_slot_index + 1
+            )
+        in
+        allocate_fallback_slots rest
+  in
+  let () = allocate_fallback_slots virtual_names in
+  (stack_slots, !next_slot_index)
 
 let homes_for_procedure = fun analysis (procedure: Lir.Procedure.t) ->
-  let virtual_names = names_for_procedure analysis procedure.name in
-  let assignments = allocation_for_procedure analysis procedure in
+  let virtual_names, intervals_by_name, assignments = allocation_for_procedure analysis procedure in
+  let stack_slots, slot_count = stack_slots_for_spills virtual_names intervals_by_name assignments in
   let used_callee_saved = HashSet.create () in
-  let next_slot_index = ref 0 in
-  let stack_slots_rev = ref [] in
   let homes =
     virtual_names
     |> List.map
@@ -141,17 +219,15 @@ let homes_for_procedure = fun analysis (procedure: Lir.Procedure.t) ->
               in
               Lir.Home.Register register
           | Some Stack
-          | None ->
-              let index = !next_slot_index in
-              let slot = Lir.Slot.{ index; offset = index * pointer_width } in
-              next_slot_index := index + 1;
-              stack_slots_rev := slot :: !stack_slots_rev;
-              Lir.Home.Stack_slot slot
+          | None -> HashMap.get stack_slots name
+          |> Option.map (fun slot -> Lir.Home.Stack_slot slot)
+          |> Option.expect ~msg:(format Format.[ str "missing spill slot for "; str name ])
         in
         Lir.Home_binding.{ name; home })
   in
   let saved_registers = List.filter (HashSet.contains used_callee_saved) callee_saved_registers in
-  (homes, List.rev !stack_slots_rev, saved_registers)
+  let slots = List.init slot_count slot in
+  (homes, slots, saved_registers)
 
 let rewrite_procedure = fun analysis (procedure: Lir.Procedure.t) ->
   let homes, slots, saved_registers = homes_for_procedure analysis procedure in
