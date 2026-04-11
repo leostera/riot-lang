@@ -1,0 +1,331 @@
+{
+  "body": [
+    {
+      "declaration": {
+        "init": null,
+        "kind": "let",
+        "name": "even"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": null,
+        "kind": "let",
+        "name": "odd"
+      },
+      "kind": "declaration"
+    },
+    {
+      "expression": {
+        "assignment": {
+          "target": "even",
+          "value": {
+            "function": {
+              "body": [
+                {
+                  "expression": {
+                    "conditional": {
+                      "condition": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "string",
+                                "value": "%eq"
+                              }
+                            },
+                            {
+                              "kind": "identifier",
+                              "name": "n"
+                            },
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "number",
+                                "number": {
+                                  "kind": "int",
+                                  "value": 0
+                                }
+                              }
+                            }
+                          ],
+                          "callee": {
+                            "kind": "identifier",
+                            "name": "__callPrimitive"
+                          }
+                        },
+                        "kind": "call"
+                      },
+                      "else": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "call": {
+                                "arguments": [
+                                  {
+                                    "kind": "literal",
+                                    "literal": {
+                                      "kind": "string",
+                                      "value": "%subint"
+                                    }
+                                  },
+                                  {
+                                    "kind": "identifier",
+                                    "name": "n"
+                                  },
+                                  {
+                                    "kind": "literal",
+                                    "literal": {
+                                      "kind": "number",
+                                      "number": {
+                                        "kind": "int",
+                                        "value": 1
+                                      }
+                                    }
+                                  }
+                                ],
+                                "callee": {
+                                  "kind": "identifier",
+                                  "name": "__callPrimitive"
+                                }
+                              },
+                              "kind": "call"
+                            }
+                          ],
+                          "callee": {
+                            "kind": "identifier",
+                            "name": "odd"
+                          }
+                        },
+                        "kind": "call"
+                      },
+                      "then": {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "bool",
+                          "value": true
+                        }
+                      }
+                    },
+                    "kind": "conditional"
+                  },
+                  "kind": "return"
+                }
+              ],
+              "params": [
+                "n"
+              ]
+            },
+            "kind": "function"
+          }
+        },
+        "kind": "assignment"
+      },
+      "kind": "expression"
+    },
+    {
+      "expression": {
+        "assignment": {
+          "target": "odd",
+          "value": {
+            "function": {
+              "body": [
+                {
+                  "expression": {
+                    "conditional": {
+                      "condition": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "string",
+                                "value": "%neq"
+                              }
+                            },
+                            {
+                              "kind": "identifier",
+                              "name": "n"
+                            },
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "number",
+                                "number": {
+                                  "kind": "int",
+                                  "value": 0
+                                }
+                              }
+                            }
+                          ],
+                          "callee": {
+                            "kind": "identifier",
+                            "name": "__callPrimitive"
+                          }
+                        },
+                        "kind": "call"
+                      },
+                      "else": {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "bool",
+                          "value": false
+                        }
+                      },
+                      "then": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "call": {
+                                "arguments": [
+                                  {
+                                    "kind": "literal",
+                                    "literal": {
+                                      "kind": "string",
+                                      "value": "%subint"
+                                    }
+                                  },
+                                  {
+                                    "kind": "identifier",
+                                    "name": "n"
+                                  },
+                                  {
+                                    "kind": "literal",
+                                    "literal": {
+                                      "kind": "number",
+                                      "number": {
+                                        "kind": "int",
+                                        "value": 1
+                                      }
+                                    }
+                                  }
+                                ],
+                                "callee": {
+                                  "kind": "identifier",
+                                  "name": "__callPrimitive"
+                                }
+                              },
+                              "kind": "call"
+                            }
+                          ],
+                          "callee": {
+                            "kind": "identifier",
+                            "name": "even"
+                          }
+                        },
+                        "kind": "call"
+                      }
+                    },
+                    "kind": "conditional"
+                  },
+                  "kind": "return"
+                }
+              ],
+              "params": [
+                "n"
+              ]
+            },
+            "kind": "function"
+          }
+        },
+        "kind": "assignment"
+      },
+      "kind": "expression"
+    },
+    {
+      "expression": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "%b %b\\n"
+              }
+            },
+            {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 10
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "even"
+                }
+              },
+              "kind": "call"
+            },
+            {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 11
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "odd"
+                }
+              },
+              "kind": "call"
+            }
+          ],
+          "callee": {
+            "kind": "member",
+            "member": {
+              "object": {
+                "kind": "identifier",
+                "name": "Printf"
+              },
+              "property": "printf"
+            }
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "expression"
+    }
+  ],
+  "exports": [
+    {
+      "local": "even",
+      "name": "even"
+    },
+    {
+      "local": "odd",
+      "name": "odd"
+    }
+  ],
+  "imports": [
+    {
+      "from": "./Printf.js",
+      "imported": null,
+      "local": "Printf",
+      "namespace": true
+    },
+    {
+      "from": "./riot-runtime.js",
+      "imported": "callPrimitive",
+      "local": "__callPrimitive"
+    }
+  ],
+  "module_name": "Mutual_recursion_even_odd"
+}

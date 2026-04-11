@@ -4,10 +4,10 @@ type artifact =
   | Executable
   | Object
 type error =
-  | Unsupported_host of { host: Target.t }
-  | Unsupported_target of { target: Target.t }
-  | Link_failed of { command: string; status: int; stderr: string }
-  | Spawn_failed of { command: string; message: string }
+  | UnsupportedHost of { host: Target.t }
+  | UnsupportedTarget of { target: Target.t }
+  | LinkFailed of { command: string; status: int; stderr: string }
+  | SpawnFailed of { command: string; message: string }
 type plan
 val artifact_to_string: artifact -> string
 

@@ -1,0 +1,80 @@
+{
+  "body": [
+    {
+      "declaration": {
+        "init": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "%concatstring"
+                }
+              },
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "hello, "
+                }
+              },
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "world"
+                }
+              }
+            ],
+            "callee": {
+              "kind": "identifier",
+              "name": "__callPrimitive"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "const",
+        "name": "message"
+      },
+      "kind": "declaration"
+    },
+    {
+      "expression": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "identifier",
+              "name": "message"
+            }
+          ],
+          "callee": {
+            "kind": "identifier",
+            "name": "__print_endline"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "expression"
+    }
+  ],
+  "exports": [
+    {
+      "local": "message",
+      "name": "message"
+    }
+  ],
+  "imports": [
+    {
+      "from": "./riot-runtime.js",
+      "imported": "callPrimitive",
+      "local": "__callPrimitive"
+    },
+    {
+      "from": "./riot-runtime.js",
+      "imported": "print_endline",
+      "local": "__print_endline"
+    }
+  ],
+  "module_name": "String_concat"
+}

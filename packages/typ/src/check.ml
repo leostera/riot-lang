@@ -74,11 +74,16 @@ type external_ambient = {
   ambient_type_decls: FileSummary.type_decl list;
 }
 
+type source_analysis_surface = {
+  ambient: TypConfig.env;
+  ambient_visible_types: VisibleTypes.t;
+}
+
 type package_graph = {
   groups: graph_group array;
   candidate_ids_by_required_name:
     (Session.LocalModules.RequiredName.t, module_id array) Collections.HashMap.t;
-  external_ambient: external_ambient;
+  base_source_surface: source_analysis_surface;
   dependency_local_ids_by_set_id: module_id array array;
 }
 
@@ -88,11 +93,6 @@ type engine_state = {
   local_typings_by_id: ModuleTypings.t option array;
   local_surfaces_by_id: local_module_surface option array;
   source_analysis_surfaces_by_dependency_set_id: source_analysis_surface option array;
-}
-
-and source_analysis_surface = {
-  ambient: TypConfig.env;
-  ambient_type_decls: FileSummary.type_decl list;
 }
 
 let dedupe_module_ids_preserving_order = fun module_ids ->
@@ -129,7 +129,7 @@ let required_name_of_visible_module_name = fun visible_name ->
   | AmbientName ambient_name -> Session.LocalModules.RequiredName.of_ambient_name ambient_name
 
 let ambient_names_of_source = fun (source: prepared_source) ->
-  dedupe_by_key_preserving_order ~key:Session.LocalModules.AmbientName.to_string
+  dedupe_by_key_preserving_order ~key:(fun ambient_name -> ambient_name)
     (
       Session.LocalModules.local_module_aliases_of_internal_name source.internal_module_name
       @ [ source.local_module_name ]
@@ -142,7 +142,7 @@ let ambient_names_of_source = fun (source: prepared_source) ->
 
 let visible_names_of_source = fun (source: prepared_source) ->
   dedupe_by_key_preserving_order
-    ~key:visible_module_name_to_string
+    ~key:(fun visible_name -> visible_name)
     (InternalName source.internal_module_name
     :: (ambient_names_of_source source |> List.map (fun ambient_name -> AmbientName ambient_name)))
 
@@ -151,10 +151,10 @@ let grouped_sources_by_internal_module = fun ordered_sources ->
   let sources_by_module_name = Collections.HashMap.with_capacity 64 in
   ordered_sources |> List.iter
     (fun (source: prepared_source) ->
-      let module_name = module_name_of_internal_name source.internal_module_name in
+      let module_name = source.internal_module_name in
       let existing_sources_rev =
         match Collections.HashMap.get sources_by_module_name module_name with
-        | Some (_internal_name, existing_sources_rev) -> existing_sources_rev
+        | Some existing_sources_rev -> existing_sources_rev
         | None ->
             module_order_rev := module_name :: !module_order_rev;
             []
@@ -162,14 +162,14 @@ let grouped_sources_by_internal_module = fun ordered_sources ->
       let _ = Collections.HashMap.insert
         sources_by_module_name
         module_name
-        (source.internal_module_name, source :: existing_sources_rev) in
+        (source :: existing_sources_rev) in
       ());
   !module_order_rev
   |> List.rev
   |> List.filter_map
     (fun module_name ->
       Collections.HashMap.get sources_by_module_name module_name
-      |> Option.map (fun (internal_name, sources_rev) -> (internal_name, List.rev sources_rev)))
+      |> Option.map (fun sources_rev -> (module_name, List.rev sources_rev)))
 
 let required_names_of_source = fun (source: prepared_source) ->
   let explicit_dependencies =
@@ -184,19 +184,18 @@ let required_names_of_source = fun (source: prepared_source) ->
       Session.LocalModules.should_include_implicit_open
         ~current_module_name:source.internal_module_name
         ~module_name) in
-  dedupe_by_key_preserving_order ~key:Session.LocalModules.RequiredName.to_string
+  dedupe_by_key_preserving_order ~key:(fun required_name -> required_name)
     ((explicit_dependencies @ implicit_opens) |> List.map Session.LocalModules.RequiredName.of_string)
 
 let visible_name_arrays_for_group = fun internal_name sources ->
   let visible_names = sources
   |> List.concat_map visible_names_of_source
-  |> dedupe_by_key_preserving_order ~key:visible_module_name_to_string in
+  |> dedupe_by_key_preserving_order ~key:(fun visible_name -> visible_name) in
   let public_module_names = sources
   |> List.filter_map (fun (source: prepared_source) -> source.public_module_name)
-  |> dedupe_by_key_preserving_order ~key:Session.LocalModules.AmbientName.to_string in
-  let public_name_set = public_module_names
-  |> List.map Session.LocalModules.AmbientName.to_string
-  |> Collections.HashSet.of_list in
+  |> dedupe_by_key_preserving_order ~key:(fun ambient_name -> ambient_name) in
+  let public_name_set = Collections.HashSet.of_list public_module_names in
+  let internal_ambient_name = Session.LocalModules.ambient_name_of_internal_name internal_name in
   let alias_names =
     visible_names
     |> List.filter_map
@@ -204,16 +203,14 @@ let visible_name_arrays_for_group = fun internal_name sources ->
         function
         | InternalName _ -> None
         | AmbientName ambient_name ->
-            let ambient_name_string = Session.LocalModules.AmbientName.to_string ambient_name in
             if
-              String.equal ambient_name_string (module_name_of_internal_name internal_name)
-              || Collections.HashSet.contains public_name_set ambient_name_string
+              ambient_name = internal_ambient_name || Collections.HashSet.contains public_name_set ambient_name
             then
               None
             else
               Some ambient_name
       )
-    |> dedupe_by_key_preserving_order ~key:Session.LocalModules.AmbientName.to_string
+    |> dedupe_by_key_preserving_order ~key:(fun ambient_name -> ambient_name)
   in
   (Array.of_list visible_names, Array.of_list alias_names, Array.of_list public_module_names)
 
@@ -276,7 +273,7 @@ let best_matching_local_module_ids = fun graph (group: graph_group) ~required_mo
 let resolution_ids_by_required_name = fun graph (group: graph_group) required_names ->
   let by_name = Collections.HashMap.with_capacity (List.length required_names + 1) in
   required_names
-  |> dedupe_by_key_preserving_order ~key:Session.LocalModules.RequiredName.to_string
+  |> dedupe_by_key_preserving_order ~key:(fun required_name -> required_name)
   |> List.iter
     (fun required_name ->
       let local_ids = best_matching_local_module_ids graph group ~required_module_name:required_name in
@@ -328,10 +325,18 @@ let external_ambient_of_loaded_modules = fun (loaded_modules: LoadedModules.t) :
     loaded_modules;
   { ambient_exports = List.rev !exports_rev; ambient_type_decls = List.rev !type_decls_rev }
 
+let base_source_surface_of_loaded_modules = fun ~config ->
+  let external_ambient = external_ambient_of_loaded_modules TypConfig.(config.loaded_modules) in
+  {
+    ambient = TypConfig.(config.ambient) @ external_ambient.ambient_exports;
+    ambient_visible_types = VisibleTypes.bind
+      TypConfig.(config.ambient_visible_types)
+      external_ambient.ambient_type_decls
+  }
+
 let build_package_graph = fun ~config ~ordered_sources ->
   let grouped_sources = grouped_sources_by_internal_module ordered_sources in
   let grouped_sources_array = grouped_sources |> Array.of_list in
-  let external_ambient = external_ambient_of_loaded_modules TypConfig.(config.loaded_modules) in
   let groups =
     grouped_sources_array
     |> Array.mapi
@@ -352,7 +357,7 @@ let build_package_graph = fun ~config ~ordered_sources ->
   let graph = {
     groups;
     candidate_ids_by_required_name = candidate_ids_by_required_name groups;
-    external_ambient;
+    base_source_surface = base_source_surface_of_loaded_modules ~config;
     dependency_local_ids_by_set_id = [||]
   } in
   let dependency_set_id_by_local_ids = Collections.HashMap.with_capacity
@@ -551,7 +556,7 @@ let local_surface_of_typings = fun (group: graph_group) module_typings : local_m
     (fun visible_name -> Session.ModuleSurface.qualify_type_decls ~module_name:visible_name type_decls) in
   { ambient_exports; ambient_type_decls }
 
-let build_source_analysis_surface = fun ~graph ~state ~base_config dependency_set_id ->
+let build_source_analysis_surface = fun ~graph ~state dependency_set_id ->
   let local_exports_rev = ref [] in
   let local_type_decls_rev = ref [] in
   dependency_local_ids graph dependency_set_id |> Array.iter
@@ -561,13 +566,11 @@ let build_source_analysis_surface = fun ~graph ~state ~base_config dependency_se
           local_exports_rev := List.rev_append surface.ambient_exports !local_exports_rev;
           local_type_decls_rev := List.rev_append surface.ambient_type_decls !local_type_decls_rev
       | None -> ());
-  let ambient = TypConfig.(base_config.ambient)
-  @ graph.external_ambient.ambient_exports
-  @ List.rev !local_exports_rev in
-  let ambient_type_decls = TypConfig.(base_config.ambient_type_decls)
-  @ graph.external_ambient.ambient_type_decls
-  @ List.rev !local_type_decls_rev in
-  { ambient; ambient_type_decls }
+  let ambient = graph.base_source_surface.ambient @ List.rev !local_exports_rev in
+  let ambient_visible_types = VisibleTypes.bind
+    graph.base_source_surface.ambient_visible_types
+    (List.rev !local_type_decls_rev) in
+  { ambient; ambient_visible_types }
 
 let source_analysis_setup = fun ~graph ~state ~base_config (source: graph_source) ->
   let module_name = module_name_of_internal_name source.prepared.internal_module_name in
@@ -599,14 +602,14 @@ let source_analysis_setup = fun ~graph ~state ~base_config (source: graph_source
         match state.source_analysis_surfaces_by_dependency_set_id.(source.dependency_set_id) with
         | Some source_surface -> source_surface
         | None ->
-            let source_surface = build_source_analysis_surface ~graph ~state ~base_config source.dependency_set_id in
+            let source_surface = build_source_analysis_surface ~graph ~state source.dependency_set_id in
             state.source_analysis_surfaces_by_dependency_set_id.(source.dependency_set_id) <- Some source_surface;
             source_surface
       in
       Ok (base_config
       |> TypConfig.with_loaded_module_index ~loaded_modules:state.loaded_modules
       |> TypConfig.with_ambient ~ambient:source_surface.ambient
-      |> TypConfig.with_ambient_type_decls ~ambient_type_decls:source_surface.ambient_type_decls)
+      |> TypConfig.with_ambient_visible_types ~ambient_visible_types:source_surface.ambient_visible_types)
 
 let analyze_group = fun ~graph ~state ~config (group: graph_group) ->
   let analyzed_sources =

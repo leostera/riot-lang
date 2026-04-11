@@ -1,0 +1,179 @@
+{
+  "exports": [
+    {
+      "name": "x",
+      "symbol": "x"
+    },
+    {
+      "name": "y",
+      "symbol": "y"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "x",
+          "symbol": "x"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "constant": {
+                      "kind": "float",
+                      "value": 3.0
+                    },
+                    "kind": "constant"
+                  },
+                  {
+                    "apply": {
+                      "arguments": [
+                        {
+                          "constant": {
+                            "kind": "float",
+                            "value": 4.0
+                          },
+                          "kind": "constant"
+                        },
+                        {
+                          "constant": {
+                            "kind": "float",
+                            "value": 0.5
+                          },
+                          "kind": "constant"
+                        }
+                      ],
+                      "callee": {
+                        "function": "*.",
+                        "kind": "direct"
+                      }
+                    },
+                    "kind": "apply"
+                  }
+                ],
+                "callee": {
+                  "function": "+.",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "x"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "y",
+          "symbol": "y"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "apply": {
+                      "arguments": [
+                        {
+                          "apply": {
+                            "arguments": [
+                              {
+                                "kind": "var",
+                                "name": "x"
+                              },
+                              {
+                                "kind": "var",
+                                "name": "x"
+                              }
+                            ],
+                            "callee": {
+                              "function": "*.",
+                              "kind": "direct"
+                            }
+                          },
+                          "kind": "apply"
+                        },
+                        {
+                          "constant": {
+                            "kind": "float",
+                            "value": 5.0
+                          },
+                          "kind": "constant"
+                        }
+                      ],
+                      "callee": {
+                        "function": "+.",
+                        "kind": "direct"
+                      }
+                    },
+                    "kind": "apply"
+                  }
+                ],
+                "callee": {
+                  "function": "sqrt",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "y"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "apply": {
+              "arguments": [
+                {
+                  "constant": {
+                    "kind": "string",
+                    "value": "%.4f %.4f\\n"
+                  },
+                  "kind": "constant"
+                },
+                {
+                  "kind": "var",
+                  "name": "x"
+                },
+                {
+                  "kind": "var",
+                  "name": "y"
+                }
+              ],
+              "callee": {
+                "function": "Printf.printf",
+                "kind": "direct"
+              }
+            },
+            "kind": "apply"
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/float_arithmetic.ml",
+    "unit_name": "Float_arithmetic"
+  }
+}

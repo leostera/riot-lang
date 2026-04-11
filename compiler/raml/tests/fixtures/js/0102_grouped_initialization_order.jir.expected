@@ -1,0 +1,79 @@
+{
+  "body": [
+    {
+      "declaration": {
+        "init": {
+          "kind": "literal",
+          "literal": {
+            "kind": "string",
+            "value": "before"
+          }
+        },
+        "kind": "const",
+        "name": "before"
+      },
+      "kind": "declaration"
+    },
+    {
+      "expression": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "identifier",
+              "name": "before"
+            }
+          ],
+          "callee": {
+            "kind": "identifier",
+            "name": "__print_endline"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "expression"
+    },
+    {
+      "declaration": {
+        "init": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "after"
+                }
+              }
+            ],
+            "callee": {
+              "kind": "identifier",
+              "name": "__print_endline"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "const",
+        "name": "after"
+      },
+      "kind": "declaration"
+    }
+  ],
+  "exports": [
+    {
+      "local": "before",
+      "name": "before"
+    },
+    {
+      "local": "after",
+      "name": "after"
+    }
+  ],
+  "imports": [
+    {
+      "from": "./riot-runtime.js",
+      "imported": "print_endline",
+      "local": "__print_endline"
+    }
+  ],
+  "module_name": "Grouped_initialization_order"
+}

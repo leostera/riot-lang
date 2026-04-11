@@ -53,7 +53,57 @@ let keep_named_source_fixture = fun ~names path ->
         `skip
   | _ -> `skip
 
-let keep_example_fixture = keep_named_source_fixture ~names:[ "hello_world" ]
+let keep_example_fixture = keep_named_source_fixture
+  ~names:[
+    "hello_world";
+    "exported_constants";
+    "integer_arithmetic";
+    "top_level_function_direct_call";
+    "float_arithmetic";
+    "boolean_logic";
+    "if_then_else";
+    "option_pipeline";
+    "tail_conditional_direct_call";
+    "grouped_initialization_order";
+    "tail_recursive_factorial";
+    "mutual_recursion_even_odd";
+    "let_shadowing";
+    "local_function_capture";
+    "tuples_and_patterns";
+    "records_and_updates";
+    "variants_and_match";
+    "list_recursion_sum";
+    "sequence_before_conditional";
+    "local_functions_and_closures";
+    "indirect_call_via_returned_closure";
+    "partial_application";
+    "sequence_and_ignore";
+    "function_composition_pipeline";
+    "phantom_length_vector";
+    "prelude_option_match";
+    "open_std_hello_world";
+    "less_than_comparison";
+    "greater_than_comparison";
+    "less_or_equal_comparison";
+    "greater_or_equal_comparison";
+    "effect_position_local_let";
+    "initializer_shadowing";
+    "top_level_mutual_recursion";
+    "external_print_endline";
+    "prelude_result_match";
+    "dead_local_bindings";
+    "printf_and_print_endline";
+    "string_concat";
+    "string_of_int";
+    "string_of_float";
+    "float_of_string";
+    "print_string";
+    "print_newline";
+    "int_of_string";
+    "module_identity";
+    "print_int";
+    "print_char";
+  ]
 
 let stable_fixture_filename = fun (ctx: Test.FixtureRunner.ctx) ->
   Path.join logical_corpus_dir (logical_fixture_relpath ctx.fixture_relpath)

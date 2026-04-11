@@ -1,0 +1,9 @@
+{
+  "exports": [],
+  "init": [],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/module_identity.ml",
+    "unit_name": "Module_identity"
+  }
+}

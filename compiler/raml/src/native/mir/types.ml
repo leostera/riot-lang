@@ -22,12 +22,15 @@ module Operand = struct
   type t =
     | Register of string
     | Global of string
+    | Symbol_address of string
     | Literal of Literal.t
 
   let to_json = fun operand ->
     match operand with
     | Register name -> Json.obj [ ("kind", Json.string "register"); ("name", Json.string name); ]
     | Global name -> Json.obj [ ("kind", Json.string "global"); ("name", Json.string name); ]
+    | Symbol_address name -> Json.obj
+      [ ("kind", Json.string "symbol_address"); ("name", Json.string name); ]
     | Literal literal -> Json.obj
       [ ("kind", Json.string "literal"); ("literal", Literal.to_json literal); ]
 end
@@ -49,10 +52,25 @@ module Instruction = struct
     | Move of { dst: string; src: Operand.t }
     | Store_global of { symbol: string; src: Operand.t }
     | Call of { dst: string option; callee: Callee.t; arguments: Operand.t list }
+    | If_then_else of if_then_else
     | Return of Operand.t option
     | Comment of string
 
-  let to_json = fun instruction ->
+  and if_then_else = {
+    condition: Operand.t;
+    then_: t list;
+    else_: t list;
+  }
+
+  let rec if_then_else_to_json = fun if_then_else ->
+    Json.obj
+      [
+        ("condition", Operand.to_json if_then_else.condition);
+        ("then", Json.array (List.map to_json if_then_else.then_));
+        ("else", Json.array (List.map to_json if_then_else.else_));
+      ]
+
+  and to_json = fun instruction ->
     match instruction with
     | Move { dst; src } -> Json.obj
       [ ("kind", Json.string "move"); ("dst", Json.string dst); ("src", Operand.to_json src); ]
@@ -69,6 +87,8 @@ module Instruction = struct
         ("callee", Callee.to_json callee);
         ("arguments", Json.array (List.map Operand.to_json arguments));
       ]
+    | If_then_else if_then_else -> Json.obj
+      [ ("kind", Json.string "if_then_else"); ("if_then_else", if_then_else_to_json if_then_else); ]
     | Return operand -> Json.obj
       [
         ("kind", Json.string "return");

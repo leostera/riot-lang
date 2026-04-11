@@ -41,7 +41,7 @@ Today that means:
 - `Core_ir.Init_item` distinguishes named `Binding` items from effectful `Eval`
   items
 - `Core_ir.Expr` is Lambda-shaped: `Constant`, `Var`, `Apply`, `Lambda`,
-  `Let`, `Sequence`, `If_then_else`, and `Primitive`
+  `Let`, `Sequence`, `Tuple`, `Tuple_get`, `If_then_else`, and `Primitive`
 
 Backend ownership is:
 
@@ -50,6 +50,78 @@ Backend ownership is:
   `compiler/raml/src/js/jir/`
 - `JST` is the final JS syntax/emission tree and should live under
   `compiler/raml/src/js/jst/`
+- the current JS runtime/module surface materializes as explicit imports from
+  sibling files under `compiler/raml/src/js/`; low-level helpers such as
+  `print_endline`, `print_newline`, `print_int`, `print_string`,
+  `print_char`,
+  `callPrimitive`, and `makeCurried` live in `./riot-runtime.js`, while the
+  current source-visible `Printf.printf` slice lives in `./Printf.js`; do not
+  reintroduce ambient globals in emitted JS
+- current JS lowering also owns lexical name stabilization for shadowing local
+  binders before `JST` emission, and direct `print_endline` / `print_newline`
+  / `print_int` / `print_string` / `print_char` calls now lower through
+  explicit named imports from `./riot-runtime.js` instead of ambient globals;
+  the first
+  source-driven integer arithmetic, float arithmetic, string concatenation
+  through `^`, source-visible `string_of_int`, finite-input
+  `string_of_float`, valid-input `int_of_string`, finite-input
+  `float_of_string`, `sqrt`, and `<`, `<=`, `>`, `>=`, `=`, and `<>` direct
+  calls now lower through `callPrimitive` in `./riot-runtime.js` instead of
+  bare operator identifiers, a bare `string_of_int`, a bare
+  `string_of_float`, a bare `int_of_string`, a bare `float_of_string`, or an
+  ambient `sqrt`; OCaml-exact float-string formatting and invalid
+  `int_of_string` / `float_of_string` failure semantics still stay separate
+  until narrower runtime/exception slices land;
+  direct `not`, `&&`, and `||` calls now lower through
+  nested `JIR` conditional expressions so short-circuit behavior stays
+  explicit before emission; multi-parameter compiled lambdas now lower through
+  `makeCurried` so under-applied calls stay source-correct under JS; the
+  first dedicated flatten slices also rewrite
+  effect-position zero-arg IIFEs in `JIR` before alpha stabilization when
+  their body can be converted from tail returns into plain statements, and now
+  rewrite statement-shaped declaration-initializer zero-arg IIFEs through a
+  temp binding plus lexical `Block` plus final declaration so initializer-local
+  shadowing does not leak into module scope or steal the exported binding name;
+  the first alias-cleanup slice now runs after alpha stabilization and removes
+  immutable identifier-only temps such as tuple-destructure or match-scrutinee
+  aliases when their target name is never assigned and the alias is not
+  exported; the first dead-binding slice now also removes unexported immutable
+  `const` bindings whose initializer is already effect-free when the name is
+  unused in scope, and a final `JIR` normalize step recomputes imports from
+  the live body so helpers referenced only from eliminated dead bindings do
+  not survive into emitted JS; the later import-materialization slice now also
+  rewrites `Imported` and `Runtime_helper` expressions into plain local
+  identifiers after that final import-collection step, so `program.imports`
+  stays the only import-declaration surface handed to `JST`;
+  compatible named/default imports from the same module now materialize as one
+  `JST` import declaration before emission, while namespace imports stay
+  separate
+- tail- and effect-position JS control flow should become structured
+  `JIR`/`JST` statements before emission; do not push that branching logic into
+  the emitter
+- the current source-driven `Typ -> Core_ir` slice now accepts backend-neutral
+  `if ... then ... else ...`, source sequence expressions, direct source-level
+  `ignore expr` calls lowered through that same shared sequence-plus-unit path,
+  tuple construction,
+  backend-neutral char literals as shared `Core_ir.Constant.Char` values,
+  source anonymous function expressions inside supported bindings and lambda
+  bodies,
+  immutable record construction/field access/functional update via shared
+  tuple lowering, the first closed ordinary-variant constructor slice via
+  shared tagged tuples, including the current phantom-index-only GADT-style
+  vector slice where the type indices erase to the same runtime constructor
+  layout, the prelude `list`, `option`, and `result`
+  constructor/match slices through that same tagged-tuple contract, with
+  multi-argument constructor payloads such as prelude `::` packed into one
+  shared tuple payload before backend lowering,
+  exhaustive constructor-only `match` lowering via shared tag checks, local
+  `let` expressions with variable or tuple binders inside supported top-level
+  bindings and lambda bodies, and function-only recursive local `let` groups
+  with variable binders; top-level type declarations, top-level declared
+  values such as `external print_endline : string -> unit = "print_endline"`,
+  and top-level `open` statements with no runtime effect should stay out of
+  `Core_ir`; keep that boundary shared and leave JS statementification in
+  `compiler/raml/src/js/`
 - native backend code should grow under `compiler/raml/src/native/`
 - the native scaffold now lives under:
   `compiler/raml/src/native/nir/`,
@@ -129,11 +201,39 @@ Ordered corpus filenames like `0001_hello_world.ml` are fixture names, not
 compiler-facing module identities. When feeding corpus files into the compiler,
 strip the numeric ordering prefix from the logical relpath first.
 
-The native scaffold currently reuses `core_ir/` fixtures and snapshots
-`*.nir.expected`, `*.mir.expected`, `*.lir.expected`, and `*.native.expected`
-next to the input `*.json`.
-Native work should grow toward corpus-driven fixture coverage and explicit
-snapshot surfaces for every named native pass.
+The native fixture family is corpus-driven under
+`compiler/raml/tests/fixtures/corpus/` and keeps approved snapshots under
+`compiler/raml/tests/fixtures/native/`.
+The active native corpus coverage currently includes
+`0001_hello_world.ml`,
+`0002_exported_constants.ml`,
+`0002_integer_arithmetic.ml`,
+`0003_top_level_function_direct_call.ml`,
+`0003_float_arithmetic.ml`,
+`0004_boolean_logic.ml`,
+`0005_if_then_else.ml`,
+`0006_let_shadowing.ml`,
+`0007_tuples_and_patterns.ml`,
+`0008_records_and_updates.ml`,
+`0009_variants_and_match.ml`,
+`0010_option_pipeline.ml`,
+`0012_list_recursion_sum.ml`,
+`0013_tail_recursive_factorial.ml`,
+`0014_mutual_recursion_even_odd.ml`,
+`0022_local_functions_and_closures.ml`,
+`0023_partial_application.ml`,
+`0025_custom_infix_operators.ml`,
+`0026_sequence_and_ignore.ml`,
+`0049_function_composition_pipeline.ml`,
+`0057_phantom_length_vector.ml`, and
+`0101_tail_conditional_direct_call.ml` through
+`0128_print_char.ml`, with
+pass-local snapshots for `normalize`, `simplify`, `canonicalize`,
+`insert_polls`, `layout_frames`, and `schedule`, plus final
+`*.nir.expected`, `*.mir.expected`, `*.lir.expected`, `*.native.expected`,
+and `*.link.expected`.
+Keep native work corpus-driven and preserve explicit snapshot surfaces for
+every named native pass.
 
 For new compiler behavior:
 

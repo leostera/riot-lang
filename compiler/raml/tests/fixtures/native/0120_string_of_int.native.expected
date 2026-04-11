@@ -1,0 +1,19 @@
+.text
+.globl _main
+.p2align 2
+_main:
+stp x29, x30, [sp, #-16]!
+mov x29, sp
+sub sp, sp, #32
+movz x9, #42, lsl #0
+str x9, [sp, #0]
+ldr x0, [sp, #0]
+bl _string_of_int
+str x0, [sp, #8]
+ldr x0, [sp, #8]
+bl _print_endline
+str x0, [sp, #16]
+movz x0, #0, lsl #0
+add sp, sp, #32
+ldp x29, x30, [sp], #16
+ret

@@ -109,7 +109,7 @@ Today the implemented core is Lambda-shaped enough to grow real passes:
 - `Binding_group`
 - `Init_item`
 - `Expr` with `Constant`, `Var`, `Apply`, `Lambda`, `Let`, `Sequence`,
-  `If_then_else`, and `Primitive`
+  `Tuple`, `Tuple_get`, `If_then_else`, and `Primitive`
 
 This layer should remain backend-neutral in representation, not in richness.
 
@@ -138,10 +138,40 @@ Today `raml` lowers a narrow implementation-only slice from `typ` into
 
 - top-level non-nested value groups
 - variable and unit top-level binders
-- constants
+- constants, including backend-neutral char literals
 - symbolic variables
 - positional direct and indirect applies
 - top-level lambdas
+- source anonymous function expressions inside supported bindings and lambda
+  bodies
+- tuple construction
+- top-level type declarations whose only effect is compile-time record or
+  ordinary-variant layout information
+- top-level open statements whose only effect is compile-time name resolution
+  after the semantic tree has already resolved later references
+- immutable record construction, field access, and functional update when the
+  record labels resolve to one visible declaration, lowered through tuple
+  construction and projection
+- closed ordinary-variant constructor expressions when the constructor resolves
+  to one visible declaration, including the current phantom-index-only
+  GADT-style vector slice where the type indices erase to the same runtime
+  constructor layout, or when `[]` / `::`, `None` / `Some`, and `Ok` /
+  `Error` resolve to the builtin prelude `list` / `option` / `result`
+  declarations, lowered through tagged tuple construction
+- exhaustive constructor-only matches over one visible ordinary variant
+  declaration, or over the builtin prelude `list` / `option` / `result`
+  declarations, lowered through shared tag checks and tuple payload
+  projection; constructors with more than one source argument currently keep
+  the shared slot-`1` payload boundary by packing those arguments into one
+  tuple payload before backend lowering
+- source `if ... then ... else ...` expressions inside supported bindings and
+  lambda bodies
+- source sequence expressions inside supported bindings and lambda bodies
+- direct source-level `ignore expr` calls lowered through that same shared
+  sequence-plus-unit path instead of a backend helper
+- source local `let` expressions with variable or tuple binders inside
+  supported bindings and lambda bodies, including function-only recursive
+  local groups with variable binders
 - explicit init-time eval items for `let () = expr`
 
 ### JS path that exists today

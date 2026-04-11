@@ -1,0 +1,108 @@
+{
+  "exports": [
+    {
+      "name": "choose",
+      "symbol": "choose"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "choose",
+          "symbol": "choose"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "if_then_else": {
+                    "condition": {
+                      "kind": "var",
+                      "name": "cond"
+                    },
+                    "else": {
+                      "constant": {
+                        "kind": "int",
+                        "value": 0
+                      },
+                      "kind": "constant"
+                    },
+                    "then": {
+                      "constant": {
+                        "kind": "int",
+                        "value": 1
+                      },
+                      "kind": "constant"
+                    }
+                  },
+                  "kind": "if_then_else"
+                },
+                "params": [
+                  "cond"
+                ]
+              }
+            },
+            "name": "choose"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "apply": {
+              "arguments": [
+                {
+                  "constant": {
+                    "kind": "string",
+                    "value": "%d\\n"
+                  },
+                  "kind": "constant"
+                },
+                {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "constant": {
+                          "kind": "bool",
+                          "value": true
+                        },
+                        "kind": "constant"
+                      }
+                    ],
+                    "callee": {
+                      "function": "choose",
+                      "kind": "direct"
+                    }
+                  },
+                  "kind": "apply"
+                }
+              ],
+              "callee": {
+                "function": "Printf.printf",
+                "kind": "direct"
+              }
+            },
+            "kind": "apply"
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/if_then_else.ml",
+    "unit_name": "If_then_else"
+  }
+}

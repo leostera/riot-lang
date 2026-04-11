@@ -1,0 +1,299 @@
+{
+  "js": "import * as Printf from \"./Printf.js\";\n\nimport { callPrimitive as __callPrimitive } from \"./riot-runtime.js\";\n\nconst a = __callPrimitive(\"%addint\", 40, 2);\n\nconst b = __callPrimitive(\"%subint\", __callPrimitive(\"%mulint\", a, 3), 5);\n\nconst c = __callPrimitive(\"%divint\", b, 7);\n\nconst d = __callPrimitive(\"%modint\", b, 7);\n\nPrintf.printf(\"%d %d %d %d\\\\n\", a, b, c, d);\n\nexport {\n  a,\n  b,\n  c,\n  d\n};\n",
+  "jst": {
+    "items": [
+      {
+        "import": {
+          "default": null,
+          "from": "./Printf.js",
+          "names": [],
+          "namespace": "Printf"
+        },
+        "kind": "import"
+      },
+      {
+        "import": {
+          "default": null,
+          "from": "./riot-runtime.js",
+          "names": [
+            {
+              "imported": "callPrimitive",
+              "local": "__callPrimitive"
+            }
+          ]
+        },
+        "kind": "import"
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "%addint"
+                    }
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 40
+                      }
+                    }
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 2
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__callPrimitive"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "a"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "%subint"
+                    }
+                  },
+                  {
+                    "call": {
+                      "arguments": [
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "string",
+                            "value": "%mulint"
+                          }
+                        },
+                        {
+                          "kind": "identifier",
+                          "name": "a"
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "number",
+                            "number": {
+                              "kind": "int",
+                              "value": 3
+                            }
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "kind": "identifier",
+                        "name": "__callPrimitive"
+                      }
+                    },
+                    "kind": "call"
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 5
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__callPrimitive"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "b"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "%divint"
+                    }
+                  },
+                  {
+                    "kind": "identifier",
+                    "name": "b"
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 7
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__callPrimitive"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "c"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "%modint"
+                    }
+                  },
+                  {
+                    "kind": "identifier",
+                    "name": "b"
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 7
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__callPrimitive"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "d"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "expression": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "%d %d %d %d\\n"
+                  }
+                },
+                {
+                  "kind": "identifier",
+                  "name": "a"
+                },
+                {
+                  "kind": "identifier",
+                  "name": "b"
+                },
+                {
+                  "kind": "identifier",
+                  "name": "c"
+                },
+                {
+                  "kind": "identifier",
+                  "name": "d"
+                }
+              ],
+              "callee": {
+                "kind": "member",
+                "member": {
+                  "object": {
+                    "kind": "identifier",
+                    "name": "Printf"
+                  },
+                  "property": "printf"
+                }
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "expression"
+        }
+      },
+      {
+        "exports": [
+          {
+            "local": "a",
+            "name": "a"
+          },
+          {
+            "local": "b",
+            "name": "b"
+          },
+          {
+            "local": "c",
+            "name": "c"
+          },
+          {
+            "local": "d",
+            "name": "d"
+          }
+        ],
+        "kind": "export"
+      }
+    ],
+    "module_name": "Integer_arithmetic"
+  }
+}

@@ -1,0 +1,156 @@
+{
+  "program": {
+    "body": [
+      {
+        "declaration": {
+          "init": {
+            "call": {
+              "arguments": [
+                {
+                  "function": {
+                    "body": [
+                      {
+                        "if": {
+                          "condition": {
+                            "kind": "identifier",
+                            "name": "flag"
+                          },
+                          "else": [
+                            {
+                              "declaration": {
+                                "init": {
+                                  "call": {
+                                    "arguments": [
+                                      {
+                                        "kind": "literal",
+                                        "literal": {
+                                          "kind": "string",
+                                          "value": "%addint"
+                                        }
+                                      },
+                                      {
+                                        "kind": "identifier",
+                                        "name": "value"
+                                      },
+                                      {
+                                        "kind": "literal",
+                                        "literal": {
+                                          "kind": "number",
+                                          "number": {
+                                            "kind": "int",
+                                            "value": 1
+                                          }
+                                        }
+                                      }
+                                    ],
+                                    "callee": {
+                                      "kind": "identifier",
+                                      "name": "__callPrimitive"
+                                    }
+                                  },
+                                  "kind": "call"
+                                },
+                                "kind": "const",
+                                "name": "next"
+                              },
+                              "kind": "declaration"
+                            },
+                            {
+                              "expression": {
+                                "call": {
+                                  "arguments": [
+                                    {
+                                      "kind": "literal",
+                                      "literal": {
+                                        "kind": "string",
+                                        "value": "%trace"
+                                      }
+                                    },
+                                    {
+                                      "kind": "identifier",
+                                      "name": "next"
+                                    }
+                                  ],
+                                  "callee": {
+                                    "kind": "identifier",
+                                    "name": "__callPrimitive"
+                                  }
+                                },
+                                "kind": "call"
+                              },
+                              "kind": "expression"
+                            },
+                            {
+                              "expression": {
+                                "kind": "identifier",
+                                "name": "next"
+                              },
+                              "kind": "return"
+                            }
+                          ],
+                          "then": [
+                            {
+                              "expression": {
+                                "kind": "identifier",
+                                "name": "value"
+                              },
+                              "kind": "return"
+                            }
+                          ]
+                        },
+                        "kind": "if"
+                      }
+                    ],
+                    "params": [
+                      "flag",
+                      "value"
+                    ]
+                  },
+                  "kind": "function"
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "number",
+                    "number": {
+                      "kind": "int",
+                      "value": 2
+                    }
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "identifier",
+                "name": "__makeCurried"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "const",
+          "name": "compute"
+        },
+        "kind": "declaration"
+      }
+    ],
+    "exports": [
+      {
+        "local": "compute",
+        "name": "compute"
+      }
+    ],
+    "imports": [
+      {
+        "from": "./riot-runtime.js",
+        "imported": "callPrimitive",
+        "local": "__callPrimitive"
+      },
+      {
+        "from": "./riot-runtime.js",
+        "imported": "makeCurried",
+        "local": "__makeCurried"
+      }
+    ],
+    "module_name": "Tail_conditionals_in_function_bodies"
+  },
+  "status": "ok"
+}

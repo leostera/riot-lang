@@ -1,0 +1,34 @@
+{
+  "body": [
+    {
+      "expression": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "hello, external"
+              }
+            }
+          ],
+          "callee": {
+            "kind": "identifier",
+            "name": "__print_endline"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "expression"
+    }
+  ],
+  "exports": [],
+  "imports": [
+    {
+      "from": "./riot-runtime.js",
+      "imported": "print_endline",
+      "local": "__print_endline"
+    }
+  ],
+  "module_name": "External_print_endline"
+}

@@ -1,0 +1,33 @@
+{
+  "body": [
+    {
+      "expression": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "literal",
+              "literal": {
+                "kind": "undefined"
+              }
+            }
+          ],
+          "callee": {
+            "kind": "identifier",
+            "name": "__print_newline"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "expression"
+    }
+  ],
+  "exports": [],
+  "imports": [
+    {
+      "from": "./riot-runtime.js",
+      "imported": "print_newline",
+      "local": "__print_newline"
+    }
+  ],
+  "module_name": "Print_newline"
+}

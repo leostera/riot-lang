@@ -14,7 +14,7 @@
           ],
           "callee": {
             "kind": "identifier",
-            "name": "print_endline"
+            "name": "__print_endline"
           }
         },
         "kind": "call"
@@ -23,6 +23,12 @@
     }
   ],
   "exports": [],
-  "imports": [],
+  "imports": [
+    {
+      "from": "./riot-runtime.js",
+      "imported": "print_endline",
+      "local": "__print_endline"
+    }
+  ],
   "module_name": "Hello_world"
 }

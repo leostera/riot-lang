@@ -1,0 +1,70 @@
+{
+  "program": {
+    "body": [
+      {
+        "declaration": {
+          "init": {
+            "function": {
+              "body": [
+                {
+                  "expression": {
+                    "call": {
+                      "arguments": [
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "string",
+                            "value": "%trace"
+                          }
+                        },
+                        {
+                          "kind": "identifier",
+                          "name": "value"
+                        }
+                      ],
+                      "callee": {
+                        "kind": "identifier",
+                        "name": "__callPrimitive"
+                      }
+                    },
+                    "kind": "call"
+                  },
+                  "kind": "expression"
+                },
+                {
+                  "expression": {
+                    "kind": "identifier",
+                    "name": "value"
+                  },
+                  "kind": "return"
+                }
+              ],
+              "params": [
+                "value"
+              ]
+            },
+            "kind": "function"
+          },
+          "kind": "const",
+          "name": "compute"
+        },
+        "kind": "declaration"
+      }
+    ],
+    "exports": [
+      {
+        "local": "compute",
+        "name": "compute"
+      }
+    ],
+    "imports": [
+      {
+        "from": "./riot-runtime.js",
+        "imported": "callPrimitive",
+        "local": "__callPrimitive"
+      }
+    ],
+    "module_name": "Tail_sequences_in_let_bodies"
+  },
+  "status": "ok"
+}

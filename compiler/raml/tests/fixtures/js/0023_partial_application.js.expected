@@ -1,0 +1,258 @@
+{
+  "js": "import * as Printf from \"./Printf.js\";\n\nimport { callPrimitive as __callPrimitive, makeCurried as __makeCurried } from \"./riot-runtime.js\";\n\nconst mul = __makeCurried((function(x, y, z) {\n  return __callPrimitive(\"%mulint\", __callPrimitive(\"%mulint\", x, y), z);\n}), 3);\n\nconst double_then = mul(2);\n\nconst six_times = double_then(3);\n\nPrintf.printf(\"%d\\\\n\", six_times(7));\n\nexport {\n  mul,\n  double_then,\n  six_times\n};\n",
+  "jst": {
+    "items": [
+      {
+        "import": {
+          "default": null,
+          "from": "./Printf.js",
+          "names": [],
+          "namespace": "Printf"
+        },
+        "kind": "import"
+      },
+      {
+        "import": {
+          "default": null,
+          "from": "./riot-runtime.js",
+          "names": [
+            {
+              "imported": "callPrimitive",
+              "local": "__callPrimitive"
+            },
+            {
+              "imported": "makeCurried",
+              "local": "__makeCurried"
+            }
+          ]
+        },
+        "kind": "import"
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "function": {
+                      "body": [
+                        {
+                          "expression": {
+                            "call": {
+                              "arguments": [
+                                {
+                                  "kind": "literal",
+                                  "literal": {
+                                    "kind": "string",
+                                    "value": "%mulint"
+                                  }
+                                },
+                                {
+                                  "call": {
+                                    "arguments": [
+                                      {
+                                        "kind": "literal",
+                                        "literal": {
+                                          "kind": "string",
+                                          "value": "%mulint"
+                                        }
+                                      },
+                                      {
+                                        "kind": "identifier",
+                                        "name": "x"
+                                      },
+                                      {
+                                        "kind": "identifier",
+                                        "name": "y"
+                                      }
+                                    ],
+                                    "callee": {
+                                      "kind": "identifier",
+                                      "name": "__callPrimitive"
+                                    }
+                                  },
+                                  "kind": "call"
+                                },
+                                {
+                                  "kind": "identifier",
+                                  "name": "z"
+                                }
+                              ],
+                              "callee": {
+                                "kind": "identifier",
+                                "name": "__callPrimitive"
+                              }
+                            },
+                            "kind": "call"
+                          },
+                          "kind": "return"
+                        }
+                      ],
+                      "params": [
+                        "x",
+                        "y",
+                        "z"
+                      ]
+                    },
+                    "kind": "function"
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 3
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__makeCurried"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "mul"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 2
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "mul"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "double_then"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 3
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "double_then"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "six_times"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "expression": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "%d\\n"
+                  }
+                },
+                {
+                  "call": {
+                    "arguments": [
+                      {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "number",
+                          "number": {
+                            "kind": "int",
+                            "value": 7
+                          }
+                        }
+                      }
+                    ],
+                    "callee": {
+                      "kind": "identifier",
+                      "name": "six_times"
+                    }
+                  },
+                  "kind": "call"
+                }
+              ],
+              "callee": {
+                "kind": "member",
+                "member": {
+                  "object": {
+                    "kind": "identifier",
+                    "name": "Printf"
+                  },
+                  "property": "printf"
+                }
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "expression"
+        }
+      },
+      {
+        "exports": [
+          {
+            "local": "mul",
+            "name": "mul"
+          },
+          {
+            "local": "double_then",
+            "name": "double_then"
+          },
+          {
+            "local": "six_times",
+            "name": "six_times"
+          }
+        ],
+        "kind": "export"
+      }
+    ],
+    "module_name": "Partial_application"
+  }
+}

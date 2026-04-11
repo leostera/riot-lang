@@ -1,0 +1,60 @@
+{
+  "body": [
+    {
+      "expression": {
+        "call": {
+          "arguments": [
+            {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "%string_of_float"
+                    }
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "float",
+                        "value": 3.1415
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__callPrimitive"
+                }
+              },
+              "kind": "call"
+            }
+          ],
+          "callee": {
+            "kind": "identifier",
+            "name": "__print_endline"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "expression"
+    }
+  ],
+  "exports": [],
+  "imports": [
+    {
+      "from": "./riot-runtime.js",
+      "imported": "callPrimitive",
+      "local": "__callPrimitive"
+    },
+    {
+      "from": "./riot-runtime.js",
+      "imported": "print_endline",
+      "local": "__print_endline"
+    }
+  ],
+  "module_name": "String_of_float"
+}

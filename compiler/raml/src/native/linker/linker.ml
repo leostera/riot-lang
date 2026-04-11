@@ -8,10 +8,10 @@ type artifact =
   | Object
 
 type error =
-  | Unsupported_host of { host: Target.t }
-  | Unsupported_target of { target: Target.t }
-  | Link_failed of { command: string; status: int; stderr: string }
-  | Spawn_failed of { command: string; message: string }
+  | UnsupportedHost of { host: Target.t }
+  | UnsupportedTarget of { target: Target.t }
+  | LinkFailed of { command: string; status: int; stderr: string }
+  | SpawnFailed of { command: string; message: string }
 
 type plan = {
   program: string;
@@ -28,18 +28,18 @@ let artifact_to_string = fun artifact ->
 
 let error_to_json = fun error ->
   match error with
-  | Unsupported_host { host } -> Json.obj
+  | UnsupportedHost { host } -> Json.obj
     [ ("kind", Json.string "unsupported_host"); ("host", Target.to_json host); ]
-  | Unsupported_target { target } -> Json.obj
+  | UnsupportedTarget { target } -> Json.obj
     [ ("kind", Json.string "unsupported_target"); ("target", Target.to_json target); ]
-  | Link_failed { command; status; stderr } -> Json.obj
+  | LinkFailed { command; status; stderr } -> Json.obj
     [
       ("kind", Json.string "link_failed");
       ("command", Json.string command);
       ("status", Json.int status);
       ("stderr", Json.string stderr);
     ]
-  | Spawn_failed { command; message } -> Json.obj
+  | SpawnFailed { command; message } -> Json.obj
     [
       ("kind", Json.string "spawn_failed");
       ("command", Json.string command);
@@ -58,9 +58,9 @@ let plan = fun ~host ~target ~artifact ~input ~output ->
     if supports_aarch64_apple_darwin target then
       Ok (make_plan ~artifact ~input ~output)
     else
-      Error (Unsupported_target { target })
+      Error (UnsupportedTarget { target })
   else
-    Error (Unsupported_host { host })
+    Error (UnsupportedHost { host })
 
 let to_command = fun plan -> Command.make plan.program ~args:plan.args
 
@@ -71,9 +71,9 @@ let link = fun ~host ~target ~artifact ~input ~output ->
   let command = to_command plan in
   let rendered = Command.to_string command in
   match Command.output command with
-  | Error (Command.SystemError message) -> Error (Spawn_failed { command = rendered; message })
+  | Error (Command.SystemError message) -> Error (SpawnFailed { command = rendered; message })
   | Ok output when output.status = 0 -> Ok ()
-  | Ok output -> Error (Link_failed {
+  | Ok output -> Error (LinkFailed {
     command = rendered;
     status = output.status;
     stderr = output.stderr

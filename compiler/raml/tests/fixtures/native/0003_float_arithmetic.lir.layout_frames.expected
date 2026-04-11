@@ -1,0 +1,205 @@
+{
+  "exports": [
+    {
+      "name": "x",
+      "symbol": "x"
+    },
+    {
+      "name": "y",
+      "symbol": "y"
+    }
+  ],
+  "module_name": "Float_arithmetic",
+  "procedures": [
+    {
+      "body": [
+        {
+          "kind": "label",
+          "name": "__entry__"
+        },
+        {
+          "dst": "t0",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "float",
+              "value": 3.0
+            }
+          }
+        },
+        {
+          "dst": "t1",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "float",
+              "value": 4.0
+            }
+          }
+        },
+        {
+          "dst": "t2",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "float",
+              "value": 0.5
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t1"
+            },
+            {
+              "kind": "register",
+              "name": "t2"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "*."
+          },
+          "dst": "t3",
+          "kind": "call"
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t0"
+            },
+            {
+              "kind": "register",
+              "name": "t3"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "+."
+          },
+          "dst": "t4",
+          "kind": "call"
+        },
+        {
+          "kind": "store_global",
+          "src": {
+            "kind": "register",
+            "name": "t4"
+          },
+          "symbol": "x"
+        },
+        {
+          "arguments": [
+            {
+              "kind": "global",
+              "name": "x"
+            },
+            {
+              "kind": "global",
+              "name": "x"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "*."
+          },
+          "dst": "t5",
+          "kind": "call"
+        },
+        {
+          "dst": "t6",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "float",
+              "value": 5.0
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t5"
+            },
+            {
+              "kind": "register",
+              "name": "t6"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "+."
+          },
+          "dst": "t7",
+          "kind": "call"
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t7"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "sqrt"
+          },
+          "dst": "t8",
+          "kind": "call"
+        },
+        {
+          "kind": "store_global",
+          "src": {
+            "kind": "register",
+            "name": "t8"
+          },
+          "symbol": "y"
+        },
+        {
+          "dst": "t9",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "string",
+              "value": "%.4f %.4f\\n"
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t9"
+            },
+            {
+              "kind": "global",
+              "name": "x"
+            },
+            {
+              "kind": "global",
+              "name": "y"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "Printf.printf"
+          },
+          "dst": "t10",
+          "kind": "call"
+        }
+      ],
+      "kind": "entry",
+      "name": "__entry__",
+      "params": []
+    }
+  ]
+}

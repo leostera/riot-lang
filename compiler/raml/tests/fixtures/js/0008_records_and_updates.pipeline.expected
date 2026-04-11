@@ -1,0 +1,773 @@
+{
+  "codegen": {
+    "js": {
+      "output": "import * as Printf from \"./Printf.js\";\n\nimport { callPrimitive as __callPrimitive, makeCurried as __makeCurried } from \"./riot-runtime.js\";\n\nconst move = __makeCurried((function(dx, dy, p) {\n  return __callPrimitive(\"%tuple_make\", __callPrimitive(\"%addint\", __callPrimitive(\"%tuple_get\", p, 0), dx), __callPrimitive(\"%addint\", __callPrimitive(\"%tuple_get\", p, 1), dy));\n}), 3);\n\nconst p = __callPrimitive(\"%tuple_make\", 1, 2);\n\nconst q = move(3, 4, p);\n\nPrintf.printf(\"(%d,%d) -> (%d,%d)\\\\n\", __callPrimitive(\"%tuple_get\", p, 0), __callPrimitive(\"%tuple_get\", p, 1), __callPrimitive(\"%tuple_get\", q, 0), __callPrimitive(\"%tuple_get\", q, 1));\n\nexport {\n  move\n};\n",
+      "status": "ok"
+    },
+    "native": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "wasm": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    }
+  },
+  "lowered": {
+    "core_ir": {
+      "compilation_unit": {
+        "exports": [
+          {
+            "name": "move",
+            "symbol": "move"
+          }
+        ],
+        "init": [
+          {
+            "exports": [
+              {
+                "name": "move",
+                "symbol": "move"
+              }
+            ],
+            "items": [
+              {
+                "binding": {
+                  "expr": {
+                    "kind": "lambda",
+                    "lambda": {
+                      "body": {
+                        "kind": "let",
+                        "let": {
+                          "bindings": [
+                            {
+                              "expr": {
+                                "kind": "var",
+                                "name": "p"
+                              },
+                              "name": "__raml_record_11"
+                            }
+                          ],
+                          "body": {
+                            "kind": "tuple",
+                            "tuple": {
+                              "elements": [
+                                {
+                                  "apply": {
+                                    "arguments": [
+                                      {
+                                        "kind": "tuple_get",
+                                        "tuple_get": {
+                                          "index": 0,
+                                          "tuple": {
+                                            "kind": "var",
+                                            "name": "p"
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "kind": "var",
+                                        "name": "dx"
+                                      }
+                                    ],
+                                    "callee": {
+                                      "function": "+",
+                                      "kind": "direct"
+                                    }
+                                  },
+                                  "kind": "apply"
+                                },
+                                {
+                                  "apply": {
+                                    "arguments": [
+                                      {
+                                        "kind": "tuple_get",
+                                        "tuple_get": {
+                                          "index": 1,
+                                          "tuple": {
+                                            "kind": "var",
+                                            "name": "p"
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "kind": "var",
+                                        "name": "dy"
+                                      }
+                                    ],
+                                    "callee": {
+                                      "function": "+",
+                                      "kind": "direct"
+                                    }
+                                  },
+                                  "kind": "apply"
+                                }
+                              ]
+                            }
+                          },
+                          "rec_flag": "nonrecursive"
+                        }
+                      },
+                      "params": [
+                        "dx",
+                        "dy",
+                        "p"
+                      ]
+                    }
+                  },
+                  "name": "move"
+                },
+                "kind": "binding"
+              }
+            ],
+            "rec_flag": "nonrecursive"
+          },
+          {
+            "exports": [],
+            "items": [
+              {
+                "expr": {
+                  "kind": "let",
+                  "let": {
+                    "bindings": [
+                      {
+                        "expr": {
+                          "kind": "tuple",
+                          "tuple": {
+                            "elements": [
+                              {
+                                "constant": {
+                                  "kind": "int",
+                                  "value": 1
+                                },
+                                "kind": "constant"
+                              },
+                              {
+                                "constant": {
+                                  "kind": "int",
+                                  "value": 2
+                                },
+                                "kind": "constant"
+                              }
+                            ]
+                          }
+                        },
+                        "name": "p"
+                      }
+                    ],
+                    "body": {
+                      "kind": "let",
+                      "let": {
+                        "bindings": [
+                          {
+                            "expr": {
+                              "apply": {
+                                "arguments": [
+                                  {
+                                    "constant": {
+                                      "kind": "int",
+                                      "value": 3
+                                    },
+                                    "kind": "constant"
+                                  },
+                                  {
+                                    "constant": {
+                                      "kind": "int",
+                                      "value": 4
+                                    },
+                                    "kind": "constant"
+                                  },
+                                  {
+                                    "kind": "var",
+                                    "name": "p"
+                                  }
+                                ],
+                                "callee": {
+                                  "function": "move",
+                                  "kind": "direct"
+                                }
+                              },
+                              "kind": "apply"
+                            },
+                            "name": "q"
+                          }
+                        ],
+                        "body": {
+                          "apply": {
+                            "arguments": [
+                              {
+                                "constant": {
+                                  "kind": "string",
+                                  "value": "(%d,%d) -> (%d,%d)\\n"
+                                },
+                                "kind": "constant"
+                              },
+                              {
+                                "kind": "tuple_get",
+                                "tuple_get": {
+                                  "index": 0,
+                                  "tuple": {
+                                    "kind": "var",
+                                    "name": "p"
+                                  }
+                                }
+                              },
+                              {
+                                "kind": "tuple_get",
+                                "tuple_get": {
+                                  "index": 1,
+                                  "tuple": {
+                                    "kind": "var",
+                                    "name": "p"
+                                  }
+                                }
+                              },
+                              {
+                                "kind": "tuple_get",
+                                "tuple_get": {
+                                  "index": 0,
+                                  "tuple": {
+                                    "kind": "var",
+                                    "name": "q"
+                                  }
+                                }
+                              },
+                              {
+                                "kind": "tuple_get",
+                                "tuple_get": {
+                                  "index": 1,
+                                  "tuple": {
+                                    "kind": "var",
+                                    "name": "q"
+                                  }
+                                }
+                              }
+                            ],
+                            "callee": {
+                              "function": "Printf.printf",
+                              "kind": "direct"
+                            }
+                          },
+                          "kind": "apply"
+                        },
+                        "rec_flag": "nonrecursive"
+                      }
+                    },
+                    "rec_flag": "nonrecursive"
+                  }
+                },
+                "kind": "eval"
+              }
+            ],
+            "rec_flag": "nonrecursive"
+          }
+        ],
+        "unit_id": {
+          "kind": "implementation",
+          "relpath": "corpus/records_and_updates.ml",
+          "unit_name": "Records_and_updates"
+        }
+      },
+      "status": "ok"
+    },
+    "jir": {
+      "program": {
+        "body": [
+          {
+            "declaration": {
+              "init": {
+                "call": {
+                  "arguments": [
+                    {
+                      "function": {
+                        "body": [
+                          {
+                            "expression": {
+                              "call": {
+                                "arguments": [
+                                  {
+                                    "kind": "literal",
+                                    "literal": {
+                                      "kind": "string",
+                                      "value": "%tuple_make"
+                                    }
+                                  },
+                                  {
+                                    "call": {
+                                      "arguments": [
+                                        {
+                                          "kind": "literal",
+                                          "literal": {
+                                            "kind": "string",
+                                            "value": "%addint"
+                                          }
+                                        },
+                                        {
+                                          "call": {
+                                            "arguments": [
+                                              {
+                                                "kind": "literal",
+                                                "literal": {
+                                                  "kind": "string",
+                                                  "value": "%tuple_get"
+                                                }
+                                              },
+                                              {
+                                                "kind": "identifier",
+                                                "name": "p"
+                                              },
+                                              {
+                                                "kind": "literal",
+                                                "literal": {
+                                                  "kind": "number",
+                                                  "number": {
+                                                    "kind": "int",
+                                                    "value": 0
+                                                  }
+                                                }
+                                              }
+                                            ],
+                                            "callee": {
+                                              "kind": "identifier",
+                                              "name": "__callPrimitive"
+                                            }
+                                          },
+                                          "kind": "call"
+                                        },
+                                        {
+                                          "kind": "identifier",
+                                          "name": "dx"
+                                        }
+                                      ],
+                                      "callee": {
+                                        "kind": "identifier",
+                                        "name": "__callPrimitive"
+                                      }
+                                    },
+                                    "kind": "call"
+                                  },
+                                  {
+                                    "call": {
+                                      "arguments": [
+                                        {
+                                          "kind": "literal",
+                                          "literal": {
+                                            "kind": "string",
+                                            "value": "%addint"
+                                          }
+                                        },
+                                        {
+                                          "call": {
+                                            "arguments": [
+                                              {
+                                                "kind": "literal",
+                                                "literal": {
+                                                  "kind": "string",
+                                                  "value": "%tuple_get"
+                                                }
+                                              },
+                                              {
+                                                "kind": "identifier",
+                                                "name": "p"
+                                              },
+                                              {
+                                                "kind": "literal",
+                                                "literal": {
+                                                  "kind": "number",
+                                                  "number": {
+                                                    "kind": "int",
+                                                    "value": 1
+                                                  }
+                                                }
+                                              }
+                                            ],
+                                            "callee": {
+                                              "kind": "identifier",
+                                              "name": "__callPrimitive"
+                                            }
+                                          },
+                                          "kind": "call"
+                                        },
+                                        {
+                                          "kind": "identifier",
+                                          "name": "dy"
+                                        }
+                                      ],
+                                      "callee": {
+                                        "kind": "identifier",
+                                        "name": "__callPrimitive"
+                                      }
+                                    },
+                                    "kind": "call"
+                                  }
+                                ],
+                                "callee": {
+                                  "kind": "identifier",
+                                  "name": "__callPrimitive"
+                                }
+                              },
+                              "kind": "call"
+                            },
+                            "kind": "return"
+                          }
+                        ],
+                        "params": [
+                          "dx",
+                          "dy",
+                          "p"
+                        ]
+                      },
+                      "kind": "function"
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "number",
+                        "number": {
+                          "kind": "int",
+                          "value": 3
+                        }
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "identifier",
+                    "name": "__makeCurried"
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "const",
+              "name": "move"
+            },
+            "kind": "declaration"
+          },
+          {
+            "declaration": {
+              "init": {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "%tuple_make"
+                      }
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "number",
+                        "number": {
+                          "kind": "int",
+                          "value": 1
+                        }
+                      }
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "number",
+                        "number": {
+                          "kind": "int",
+                          "value": 2
+                        }
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "identifier",
+                    "name": "__callPrimitive"
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "const",
+              "name": "p"
+            },
+            "kind": "declaration"
+          },
+          {
+            "declaration": {
+              "init": {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "number",
+                        "number": {
+                          "kind": "int",
+                          "value": 3
+                        }
+                      }
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "number",
+                        "number": {
+                          "kind": "int",
+                          "value": 4
+                        }
+                      }
+                    },
+                    {
+                      "kind": "identifier",
+                      "name": "p"
+                    }
+                  ],
+                  "callee": {
+                    "kind": "identifier",
+                    "name": "move"
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "const",
+              "name": "q"
+            },
+            "kind": "declaration"
+          },
+          {
+            "expression": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "(%d,%d) -> (%d,%d)\\n"
+                    }
+                  },
+                  {
+                    "call": {
+                      "arguments": [
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "string",
+                            "value": "%tuple_get"
+                          }
+                        },
+                        {
+                          "kind": "identifier",
+                          "name": "p"
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "number",
+                            "number": {
+                              "kind": "int",
+                              "value": 0
+                            }
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "kind": "identifier",
+                        "name": "__callPrimitive"
+                      }
+                    },
+                    "kind": "call"
+                  },
+                  {
+                    "call": {
+                      "arguments": [
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "string",
+                            "value": "%tuple_get"
+                          }
+                        },
+                        {
+                          "kind": "identifier",
+                          "name": "p"
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "number",
+                            "number": {
+                              "kind": "int",
+                              "value": 1
+                            }
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "kind": "identifier",
+                        "name": "__callPrimitive"
+                      }
+                    },
+                    "kind": "call"
+                  },
+                  {
+                    "call": {
+                      "arguments": [
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "string",
+                            "value": "%tuple_get"
+                          }
+                        },
+                        {
+                          "kind": "identifier",
+                          "name": "q"
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "number",
+                            "number": {
+                              "kind": "int",
+                              "value": 0
+                            }
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "kind": "identifier",
+                        "name": "__callPrimitive"
+                      }
+                    },
+                    "kind": "call"
+                  },
+                  {
+                    "call": {
+                      "arguments": [
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "string",
+                            "value": "%tuple_get"
+                          }
+                        },
+                        {
+                          "kind": "identifier",
+                          "name": "q"
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "number",
+                            "number": {
+                              "kind": "int",
+                              "value": 1
+                            }
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "kind": "identifier",
+                        "name": "__callPrimitive"
+                      }
+                    },
+                    "kind": "call"
+                  }
+                ],
+                "callee": {
+                  "kind": "member",
+                  "member": {
+                    "object": {
+                      "kind": "identifier",
+                      "name": "Printf"
+                    },
+                    "property": "printf"
+                  }
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "expression"
+          }
+        ],
+        "exports": [
+          {
+            "local": "move",
+            "name": "move"
+          }
+        ],
+        "imports": [
+          {
+            "from": "./Printf.js",
+            "imported": null,
+            "local": "Printf",
+            "namespace": true
+          },
+          {
+            "from": "./riot-runtime.js",
+            "imported": "callPrimitive",
+            "local": "__callPrimitive"
+          },
+          {
+            "from": "./riot-runtime.js",
+            "imported": "makeCurried",
+            "local": "__makeCurried"
+          }
+        ],
+        "module_name": "Records_and_updates"
+      },
+      "status": "ok"
+    },
+    "lir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "mir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "nir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "wasm": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    }
+  },
+  "source": {
+    "has_trailing_newline": true,
+    "kind": "implementation",
+    "nonempty_lines": 7,
+    "relpath": "corpus/records_and_updates.ml",
+    "source_bytes": 258,
+    "source_lines": 9,
+    "unit_name": "Records_and_updates"
+  },
+  "targeting": {
+    "backend": "js",
+    "host": "aarch64-apple-darwin",
+    "target": "js-unknown-ecma"
+  },
+  "typing": {
+    "completeness": "complete",
+    "exports": [
+      {
+        "name": "move",
+        "scheme": "int -> int -> point -> point"
+      }
+    ],
+    "file_summary": {
+      "completeness": "complete",
+      "export_result": {
+        "exports": [
+          {
+            "name": "move",
+            "scheme": "int -> int -> point -> point"
+          }
+        ],
+        "tag": "trusted_export"
+      },
+      "source_id": 0
+    },
+    "lowering_diagnostics": [],
+    "parse_diagnostics": [],
+    "status": "ok",
+    "typing_diagnostics": []
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "entry": [
+    {
+      "expr": {
+        "call": {
+          "arguments": [
+            {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "int",
+                      "value": 42
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "direct",
+                  "name": "string_of_int"
+                }
+              },
+              "kind": "call"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "print_endline"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "eval"
+    }
+  ],
+  "exports": [],
+  "functions": [],
+  "imports": [],
+  "module_name": "String_of_int",
+  "runtime_helpers": []
+}

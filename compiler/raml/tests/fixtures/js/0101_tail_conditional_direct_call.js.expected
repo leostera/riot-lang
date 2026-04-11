@@ -1,0 +1,146 @@
+{
+  "js": "import { makeCurried as __makeCurried } from \"./riot-runtime.js\";\n\nconst choose = __makeCurried((function(flag, when_true, when_false) {\n  if (flag) {\n    return when_true;\n  } else {\n    return when_false;\n  }\n}), 3);\n\nconst selected = choose(true, \"left\", \"right\");\n\nexport {\n  choose,\n  selected\n};\n",
+  "jst": {
+    "items": [
+      {
+        "import": {
+          "default": null,
+          "from": "./riot-runtime.js",
+          "names": [
+            {
+              "imported": "makeCurried",
+              "local": "__makeCurried"
+            }
+          ]
+        },
+        "kind": "import"
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "function": {
+                      "body": [
+                        {
+                          "if": {
+                            "condition": {
+                              "kind": "identifier",
+                              "name": "flag"
+                            },
+                            "else": [
+                              {
+                                "expression": {
+                                  "kind": "identifier",
+                                  "name": "when_false"
+                                },
+                                "kind": "return"
+                              }
+                            ],
+                            "then": [
+                              {
+                                "expression": {
+                                  "kind": "identifier",
+                                  "name": "when_true"
+                                },
+                                "kind": "return"
+                              }
+                            ]
+                          },
+                          "kind": "if"
+                        }
+                      ],
+                      "params": [
+                        "flag",
+                        "when_true",
+                        "when_false"
+                      ]
+                    },
+                    "kind": "function"
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 3
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__makeCurried"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "choose"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "bool",
+                      "value": true
+                    }
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "left"
+                    }
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "right"
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "choose"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "selected"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "exports": [
+          {
+            "local": "choose",
+            "name": "choose"
+          },
+          {
+            "local": "selected",
+            "name": "selected"
+          }
+        ],
+        "kind": "export"
+      }
+    ],
+    "module_name": "Tail_conditional_direct_call"
+  }
+}

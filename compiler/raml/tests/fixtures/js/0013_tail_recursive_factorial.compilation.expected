@@ -1,0 +1,562 @@
+{
+  "codegen": {
+    "backend": "js",
+    "stage": {
+      "output": "import * as Printf from \"./Printf.js\";\n\nimport { callPrimitive as __callPrimitive, makeCurried as __makeCurried } from \"./riot-runtime.js\";\n\nconst fact = (function(n) {\n  let loop;\n  (loop = __makeCurried((function(acc, n$1) {\n    if (__callPrimitive(\"%le\", n$1, 1)) {\n      return acc;\n    } else {\n      return loop(__callPrimitive(\"%mulint\", acc, n$1), __callPrimitive(\"%subint\", n$1, 1));\n    }\n  }), 2));\n  return loop(1, n);\n});\n\nPrintf.printf(\"%d\\\\n\", fact(10));\n\nexport {\n  fact\n};\n",
+      "status": "ok"
+    },
+    "target": "js-unknown-ecma"
+  },
+  "core_ir": {
+    "compilation_unit": {
+      "exports": [
+        {
+          "name": "fact",
+          "symbol": "fact"
+        }
+      ],
+      "init": [
+        {
+          "exports": [
+            {
+              "name": "fact",
+              "symbol": "fact"
+            }
+          ],
+          "items": [
+            {
+              "binding": {
+                "expr": {
+                  "kind": "lambda",
+                  "lambda": {
+                    "body": {
+                      "kind": "let",
+                      "let": {
+                        "bindings": [
+                          {
+                            "expr": {
+                              "kind": "lambda",
+                              "lambda": {
+                                "body": {
+                                  "if_then_else": {
+                                    "condition": {
+                                      "apply": {
+                                        "arguments": [
+                                          {
+                                            "kind": "var",
+                                            "name": "n"
+                                          },
+                                          {
+                                            "constant": {
+                                              "kind": "int",
+                                              "value": 1
+                                            },
+                                            "kind": "constant"
+                                          }
+                                        ],
+                                        "callee": {
+                                          "function": "<=",
+                                          "kind": "direct"
+                                        }
+                                      },
+                                      "kind": "apply"
+                                    },
+                                    "else": {
+                                      "apply": {
+                                        "arguments": [
+                                          {
+                                            "apply": {
+                                              "arguments": [
+                                                {
+                                                  "kind": "var",
+                                                  "name": "acc"
+                                                },
+                                                {
+                                                  "kind": "var",
+                                                  "name": "n"
+                                                }
+                                              ],
+                                              "callee": {
+                                                "function": "*",
+                                                "kind": "direct"
+                                              }
+                                            },
+                                            "kind": "apply"
+                                          },
+                                          {
+                                            "apply": {
+                                              "arguments": [
+                                                {
+                                                  "kind": "var",
+                                                  "name": "n"
+                                                },
+                                                {
+                                                  "constant": {
+                                                    "kind": "int",
+                                                    "value": 1
+                                                  },
+                                                  "kind": "constant"
+                                                }
+                                              ],
+                                              "callee": {
+                                                "function": "-",
+                                                "kind": "direct"
+                                              }
+                                            },
+                                            "kind": "apply"
+                                          }
+                                        ],
+                                        "callee": {
+                                          "function": "loop",
+                                          "kind": "direct"
+                                        }
+                                      },
+                                      "kind": "apply"
+                                    },
+                                    "then": {
+                                      "kind": "var",
+                                      "name": "acc"
+                                    }
+                                  },
+                                  "kind": "if_then_else"
+                                },
+                                "params": [
+                                  "acc",
+                                  "n"
+                                ]
+                              }
+                            },
+                            "name": "loop"
+                          }
+                        ],
+                        "body": {
+                          "apply": {
+                            "arguments": [
+                              {
+                                "constant": {
+                                  "kind": "int",
+                                  "value": 1
+                                },
+                                "kind": "constant"
+                              },
+                              {
+                                "kind": "var",
+                                "name": "n"
+                              }
+                            ],
+                            "callee": {
+                              "function": "loop",
+                              "kind": "direct"
+                            }
+                          },
+                          "kind": "apply"
+                        },
+                        "rec_flag": "recursive"
+                      }
+                    },
+                    "params": [
+                      "n"
+                    ]
+                  }
+                },
+                "name": "fact"
+              },
+              "kind": "binding"
+            }
+          ],
+          "rec_flag": "nonrecursive"
+        },
+        {
+          "exports": [],
+          "items": [
+            {
+              "expr": {
+                "apply": {
+                  "arguments": [
+                    {
+                      "constant": {
+                        "kind": "string",
+                        "value": "%d\\n"
+                      },
+                      "kind": "constant"
+                    },
+                    {
+                      "apply": {
+                        "arguments": [
+                          {
+                            "constant": {
+                              "kind": "int",
+                              "value": 10
+                            },
+                            "kind": "constant"
+                          }
+                        ],
+                        "callee": {
+                          "function": "fact",
+                          "kind": "direct"
+                        }
+                      },
+                      "kind": "apply"
+                    }
+                  ],
+                  "callee": {
+                    "function": "Printf.printf",
+                    "kind": "direct"
+                  }
+                },
+                "kind": "apply"
+              },
+              "kind": "eval"
+            }
+          ],
+          "rec_flag": "nonrecursive"
+        }
+      ],
+      "unit_id": {
+        "kind": "implementation",
+        "relpath": "corpus/tail_recursive_factorial.ml",
+        "unit_name": "Tail_recursive_factorial"
+      }
+    },
+    "status": "ok"
+  },
+  "lowering": {
+    "backend": "js",
+    "stages": {
+      "jir": {
+        "program": {
+          "body": [
+            {
+              "declaration": {
+                "init": {
+                  "function": {
+                    "body": [
+                      {
+                        "declaration": {
+                          "init": null,
+                          "kind": "let",
+                          "name": "loop"
+                        },
+                        "kind": "declaration"
+                      },
+                      {
+                        "expression": {
+                          "assignment": {
+                            "target": "loop",
+                            "value": {
+                              "call": {
+                                "arguments": [
+                                  {
+                                    "function": {
+                                      "body": [
+                                        {
+                                          "if": {
+                                            "condition": {
+                                              "call": {
+                                                "arguments": [
+                                                  {
+                                                    "kind": "literal",
+                                                    "literal": {
+                                                      "kind": "string",
+                                                      "value": "%le"
+                                                    }
+                                                  },
+                                                  {
+                                                    "kind": "identifier",
+                                                    "name": "n$1"
+                                                  },
+                                                  {
+                                                    "kind": "literal",
+                                                    "literal": {
+                                                      "kind": "number",
+                                                      "number": {
+                                                        "kind": "int",
+                                                        "value": 1
+                                                      }
+                                                    }
+                                                  }
+                                                ],
+                                                "callee": {
+                                                  "kind": "identifier",
+                                                  "name": "__callPrimitive"
+                                                }
+                                              },
+                                              "kind": "call"
+                                            },
+                                            "else": [
+                                              {
+                                                "expression": {
+                                                  "call": {
+                                                    "arguments": [
+                                                      {
+                                                        "call": {
+                                                          "arguments": [
+                                                            {
+                                                              "kind": "literal",
+                                                              "literal": {
+                                                                "kind": "string",
+                                                                "value": "%mulint"
+                                                              }
+                                                            },
+                                                            {
+                                                              "kind": "identifier",
+                                                              "name": "acc"
+                                                            },
+                                                            {
+                                                              "kind": "identifier",
+                                                              "name": "n$1"
+                                                            }
+                                                          ],
+                                                          "callee": {
+                                                            "kind": "identifier",
+                                                            "name": "__callPrimitive"
+                                                          }
+                                                        },
+                                                        "kind": "call"
+                                                      },
+                                                      {
+                                                        "call": {
+                                                          "arguments": [
+                                                            {
+                                                              "kind": "literal",
+                                                              "literal": {
+                                                                "kind": "string",
+                                                                "value": "%subint"
+                                                              }
+                                                            },
+                                                            {
+                                                              "kind": "identifier",
+                                                              "name": "n$1"
+                                                            },
+                                                            {
+                                                              "kind": "literal",
+                                                              "literal": {
+                                                                "kind": "number",
+                                                                "number": {
+                                                                  "kind": "int",
+                                                                  "value": 1
+                                                                }
+                                                              }
+                                                            }
+                                                          ],
+                                                          "callee": {
+                                                            "kind": "identifier",
+                                                            "name": "__callPrimitive"
+                                                          }
+                                                        },
+                                                        "kind": "call"
+                                                      }
+                                                    ],
+                                                    "callee": {
+                                                      "kind": "identifier",
+                                                      "name": "loop"
+                                                    }
+                                                  },
+                                                  "kind": "call"
+                                                },
+                                                "kind": "return"
+                                              }
+                                            ],
+                                            "then": [
+                                              {
+                                                "expression": {
+                                                  "kind": "identifier",
+                                                  "name": "acc"
+                                                },
+                                                "kind": "return"
+                                              }
+                                            ]
+                                          },
+                                          "kind": "if"
+                                        }
+                                      ],
+                                      "params": [
+                                        "acc",
+                                        "n$1"
+                                      ]
+                                    },
+                                    "kind": "function"
+                                  },
+                                  {
+                                    "kind": "literal",
+                                    "literal": {
+                                      "kind": "number",
+                                      "number": {
+                                        "kind": "int",
+                                        "value": 2
+                                      }
+                                    }
+                                  }
+                                ],
+                                "callee": {
+                                  "kind": "identifier",
+                                  "name": "__makeCurried"
+                                }
+                              },
+                              "kind": "call"
+                            }
+                          },
+                          "kind": "assignment"
+                        },
+                        "kind": "expression"
+                      },
+                      {
+                        "expression": {
+                          "call": {
+                            "arguments": [
+                              {
+                                "kind": "literal",
+                                "literal": {
+                                  "kind": "number",
+                                  "number": {
+                                    "kind": "int",
+                                    "value": 1
+                                  }
+                                }
+                              },
+                              {
+                                "kind": "identifier",
+                                "name": "n"
+                              }
+                            ],
+                            "callee": {
+                              "kind": "identifier",
+                              "name": "loop"
+                            }
+                          },
+                          "kind": "call"
+                        },
+                        "kind": "return"
+                      }
+                    ],
+                    "params": [
+                      "n"
+                    ]
+                  },
+                  "kind": "function"
+                },
+                "kind": "const",
+                "name": "fact"
+              },
+              "kind": "declaration"
+            },
+            {
+              "expression": {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "%d\\n"
+                      }
+                    },
+                    {
+                      "call": {
+                        "arguments": [
+                          {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "number",
+                              "number": {
+                                "kind": "int",
+                                "value": 10
+                              }
+                            }
+                          }
+                        ],
+                        "callee": {
+                          "kind": "identifier",
+                          "name": "fact"
+                        }
+                      },
+                      "kind": "call"
+                    }
+                  ],
+                  "callee": {
+                    "kind": "member",
+                    "member": {
+                      "object": {
+                        "kind": "identifier",
+                        "name": "Printf"
+                      },
+                      "property": "printf"
+                    }
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "expression"
+            }
+          ],
+          "exports": [
+            {
+              "local": "fact",
+              "name": "fact"
+            }
+          ],
+          "imports": [
+            {
+              "from": "./Printf.js",
+              "imported": null,
+              "local": "Printf",
+              "namespace": true
+            },
+            {
+              "from": "./riot-runtime.js",
+              "imported": "callPrimitive",
+              "local": "__callPrimitive"
+            },
+            {
+              "from": "./riot-runtime.js",
+              "imported": "makeCurried",
+              "local": "__makeCurried"
+            }
+          ],
+          "module_name": "Tail_recursive_factorial"
+        },
+        "status": "ok"
+      }
+    }
+  },
+  "source": {
+    "has_trailing_newline": true,
+    "kind": "implementation",
+    "nonempty_lines": 7,
+    "relpath": "corpus/tail_recursive_factorial.ml",
+    "source_bytes": 179,
+    "source_lines": 8,
+    "unit_name": "Tail_recursive_factorial"
+  },
+  "targeting": {
+    "backend": "js",
+    "host": "aarch64-apple-darwin",
+    "target": "js-unknown-ecma"
+  },
+  "typing": {
+    "completeness": "complete",
+    "exports": [
+      {
+        "name": "fact",
+        "scheme": "int -> int"
+      }
+    ],
+    "file_summary": {
+      "completeness": "complete",
+      "export_result": {
+        "exports": [
+          {
+            "name": "fact",
+            "scheme": "int -> int"
+          }
+        ],
+        "tag": "trusted_export"
+      },
+      "source_id": 0
+    },
+    "lowering_diagnostics": [],
+    "parse_diagnostics": [],
+    "status": "ok",
+    "typing_diagnostics": []
+  }
+}

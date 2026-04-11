@@ -1,0 +1,885 @@
+{
+  "initial": {
+    "entry": [
+      {
+        "expr": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "%d\\n"
+                }
+              },
+              {
+                "kind": "let",
+                "let": {
+                  "bindings": [
+                    {
+                      "expr": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "int",
+                                "value": 7
+                              }
+                            }
+                          ],
+                          "callee": {
+                            "kind": "direct",
+                            "name": "make_adder"
+                          }
+                        },
+                        "kind": "call"
+                      },
+                      "name": "__seq_0"
+                    }
+                  ],
+                  "body": {
+                    "call": {
+                      "arguments": [
+                        {
+                          "kind": "symbol",
+                          "name": "__seq_0"
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "int",
+                            "value": 35
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "expr": {
+                          "call": {
+                            "arguments": [
+                              {
+                                "kind": "symbol",
+                                "name": "__seq_0"
+                              },
+                              {
+                                "kind": "literal",
+                                "literal": {
+                                  "kind": "int",
+                                  "value": 0
+                                }
+                              }
+                            ],
+                            "callee": {
+                              "kind": "direct",
+                              "name": "raml_tuple_get"
+                            }
+                          },
+                          "kind": "call"
+                        },
+                        "kind": "indirect"
+                      }
+                    },
+                    "kind": "call"
+                  }
+                }
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "Printf.printf"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "eval"
+      }
+    ],
+    "exports": [
+      {
+        "name": "make_adder",
+        "symbol": "make_adder"
+      }
+    ],
+    "functions": [
+      {
+        "body": {
+          "call": {
+            "arguments": [
+              {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "symbol",
+                      "name": "__closure__"
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "int",
+                        "value": 1
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "direct",
+                    "name": "raml_tuple_get"
+                  }
+                },
+                "kind": "call"
+              },
+              {
+                "kind": "symbol",
+                "name": "x"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "make_adder__local_add_0"
+            }
+          },
+          "kind": "call"
+        },
+        "name": "make_adder__local_add_0__closure",
+        "params": [
+          "__closure__",
+          "x"
+        ]
+      },
+      {
+        "body": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "symbol",
+                "name": "base"
+              },
+              {
+                "kind": "symbol",
+                "name": "x"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "+"
+            }
+          },
+          "kind": "call"
+        },
+        "name": "make_adder__local_add_0",
+        "params": [
+          "base",
+          "x"
+        ]
+      },
+      {
+        "body": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "symbol_address",
+                "name": "make_adder__local_add_0__closure"
+              },
+              {
+                "kind": "symbol",
+                "name": "base"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "raml_tuple_make_2"
+            }
+          },
+          "kind": "call"
+        },
+        "name": "make_adder",
+        "params": [
+          "base"
+        ]
+      }
+    ],
+    "imports": [
+      {
+        "linkage": "runtime",
+        "symbol": "raml_tuple_get"
+      },
+      {
+        "linkage": "runtime",
+        "symbol": "raml_tuple_make_2"
+      }
+    ],
+    "module_name": "Indirect_call_via_returned_closure",
+    "runtime_helpers": [
+      {
+        "name": "raml_tuple_get",
+        "symbol": "raml_tuple_get"
+      },
+      {
+        "name": "raml_tuple_make_2",
+        "symbol": "raml_tuple_make_2"
+      }
+    ]
+  },
+  "passes": {
+    "normalize": {
+      "entry": [
+        {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "%d\\n"
+                  }
+                },
+                {
+                  "kind": "let",
+                  "let": {
+                    "bindings": [
+                      {
+                        "expr": {
+                          "call": {
+                            "arguments": [
+                              {
+                                "kind": "literal",
+                                "literal": {
+                                  "kind": "int",
+                                  "value": 7
+                                }
+                              }
+                            ],
+                            "callee": {
+                              "kind": "direct",
+                              "name": "make_adder"
+                            }
+                          },
+                          "kind": "call"
+                        },
+                        "name": "__seq_0"
+                      }
+                    ],
+                    "body": {
+                      "call": {
+                        "arguments": [
+                          {
+                            "kind": "symbol",
+                            "name": "__seq_0"
+                          },
+                          {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "int",
+                              "value": 35
+                            }
+                          }
+                        ],
+                        "callee": {
+                          "expr": {
+                            "call": {
+                              "arguments": [
+                                {
+                                  "kind": "symbol",
+                                  "name": "__seq_0"
+                                },
+                                {
+                                  "kind": "literal",
+                                  "literal": {
+                                    "kind": "int",
+                                    "value": 0
+                                  }
+                                }
+                              ],
+                              "callee": {
+                                "kind": "direct",
+                                "name": "raml_tuple_get"
+                              }
+                            },
+                            "kind": "call"
+                          },
+                          "kind": "indirect"
+                        }
+                      },
+                      "kind": "call"
+                    }
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "Printf.printf"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "eval"
+        }
+      ],
+      "exports": [
+        {
+          "name": "make_adder",
+          "symbol": "make_adder"
+        }
+      ],
+      "functions": [
+        {
+          "body": {
+            "call": {
+              "arguments": [
+                {
+                  "call": {
+                    "arguments": [
+                      {
+                        "kind": "symbol",
+                        "name": "__closure__"
+                      },
+                      {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "int",
+                          "value": 1
+                        }
+                      }
+                    ],
+                    "callee": {
+                      "kind": "direct",
+                      "name": "raml_tuple_get"
+                    }
+                  },
+                  "kind": "call"
+                },
+                {
+                  "kind": "symbol",
+                  "name": "x"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "make_adder__local_add_0"
+              }
+            },
+            "kind": "call"
+          },
+          "name": "make_adder__local_add_0__closure",
+          "params": [
+            "__closure__",
+            "x"
+          ]
+        },
+        {
+          "body": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "symbol",
+                  "name": "base"
+                },
+                {
+                  "kind": "symbol",
+                  "name": "x"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "+"
+              }
+            },
+            "kind": "call"
+          },
+          "name": "make_adder__local_add_0",
+          "params": [
+            "base",
+            "x"
+          ]
+        },
+        {
+          "body": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "symbol_address",
+                  "name": "make_adder__local_add_0__closure"
+                },
+                {
+                  "kind": "symbol",
+                  "name": "base"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_tuple_make_2"
+              }
+            },
+            "kind": "call"
+          },
+          "name": "make_adder",
+          "params": [
+            "base"
+          ]
+        }
+      ],
+      "imports": [
+        {
+          "linkage": "runtime",
+          "symbol": "raml_tuple_get"
+        },
+        {
+          "linkage": "runtime",
+          "symbol": "raml_tuple_make_2"
+        }
+      ],
+      "module_name": "Indirect_call_via_returned_closure",
+      "runtime_helpers": [
+        {
+          "name": "raml_tuple_get",
+          "symbol": "raml_tuple_get"
+        },
+        {
+          "name": "raml_tuple_make_2",
+          "symbol": "raml_tuple_make_2"
+        }
+      ]
+    },
+    "simplify": {
+      "entry": [
+        {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "%d\\n"
+                  }
+                },
+                {
+                  "kind": "let",
+                  "let": {
+                    "bindings": [
+                      {
+                        "expr": {
+                          "call": {
+                            "arguments": [
+                              {
+                                "kind": "literal",
+                                "literal": {
+                                  "kind": "int",
+                                  "value": 7
+                                }
+                              }
+                            ],
+                            "callee": {
+                              "kind": "direct",
+                              "name": "make_adder"
+                            }
+                          },
+                          "kind": "call"
+                        },
+                        "name": "__seq_0"
+                      }
+                    ],
+                    "body": {
+                      "call": {
+                        "arguments": [
+                          {
+                            "kind": "symbol",
+                            "name": "__seq_0"
+                          },
+                          {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "int",
+                              "value": 35
+                            }
+                          }
+                        ],
+                        "callee": {
+                          "expr": {
+                            "call": {
+                              "arguments": [
+                                {
+                                  "kind": "symbol",
+                                  "name": "__seq_0"
+                                },
+                                {
+                                  "kind": "literal",
+                                  "literal": {
+                                    "kind": "int",
+                                    "value": 0
+                                  }
+                                }
+                              ],
+                              "callee": {
+                                "kind": "direct",
+                                "name": "raml_tuple_get"
+                              }
+                            },
+                            "kind": "call"
+                          },
+                          "kind": "indirect"
+                        }
+                      },
+                      "kind": "call"
+                    }
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "Printf.printf"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "eval"
+        }
+      ],
+      "exports": [
+        {
+          "name": "make_adder",
+          "symbol": "make_adder"
+        }
+      ],
+      "functions": [
+        {
+          "body": {
+            "call": {
+              "arguments": [
+                {
+                  "call": {
+                    "arguments": [
+                      {
+                        "kind": "symbol",
+                        "name": "__closure__"
+                      },
+                      {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "int",
+                          "value": 1
+                        }
+                      }
+                    ],
+                    "callee": {
+                      "kind": "direct",
+                      "name": "raml_tuple_get"
+                    }
+                  },
+                  "kind": "call"
+                },
+                {
+                  "kind": "symbol",
+                  "name": "x"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "make_adder__local_add_0"
+              }
+            },
+            "kind": "call"
+          },
+          "name": "make_adder__local_add_0__closure",
+          "params": [
+            "__closure__",
+            "x"
+          ]
+        },
+        {
+          "body": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "symbol",
+                  "name": "base"
+                },
+                {
+                  "kind": "symbol",
+                  "name": "x"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "+"
+              }
+            },
+            "kind": "call"
+          },
+          "name": "make_adder__local_add_0",
+          "params": [
+            "base",
+            "x"
+          ]
+        },
+        {
+          "body": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "symbol_address",
+                  "name": "make_adder__local_add_0__closure"
+                },
+                {
+                  "kind": "symbol",
+                  "name": "base"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_tuple_make_2"
+              }
+            },
+            "kind": "call"
+          },
+          "name": "make_adder",
+          "params": [
+            "base"
+          ]
+        }
+      ],
+      "imports": [
+        {
+          "linkage": "runtime",
+          "symbol": "raml_tuple_get"
+        },
+        {
+          "linkage": "runtime",
+          "symbol": "raml_tuple_make_2"
+        }
+      ],
+      "module_name": "Indirect_call_via_returned_closure",
+      "runtime_helpers": [
+        {
+          "name": "raml_tuple_get",
+          "symbol": "raml_tuple_get"
+        },
+        {
+          "name": "raml_tuple_make_2",
+          "symbol": "raml_tuple_make_2"
+        }
+      ]
+    }
+  },
+  "program": {
+    "entry": [
+      {
+        "expr": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "%d\\n"
+                }
+              },
+              {
+                "kind": "let",
+                "let": {
+                  "bindings": [
+                    {
+                      "expr": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "int",
+                                "value": 7
+                              }
+                            }
+                          ],
+                          "callee": {
+                            "kind": "direct",
+                            "name": "make_adder"
+                          }
+                        },
+                        "kind": "call"
+                      },
+                      "name": "__seq_0"
+                    }
+                  ],
+                  "body": {
+                    "call": {
+                      "arguments": [
+                        {
+                          "kind": "symbol",
+                          "name": "__seq_0"
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "int",
+                            "value": 35
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "expr": {
+                          "call": {
+                            "arguments": [
+                              {
+                                "kind": "symbol",
+                                "name": "__seq_0"
+                              },
+                              {
+                                "kind": "literal",
+                                "literal": {
+                                  "kind": "int",
+                                  "value": 0
+                                }
+                              }
+                            ],
+                            "callee": {
+                              "kind": "direct",
+                              "name": "raml_tuple_get"
+                            }
+                          },
+                          "kind": "call"
+                        },
+                        "kind": "indirect"
+                      }
+                    },
+                    "kind": "call"
+                  }
+                }
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "Printf.printf"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "eval"
+      }
+    ],
+    "exports": [
+      {
+        "name": "make_adder",
+        "symbol": "make_adder"
+      }
+    ],
+    "functions": [
+      {
+        "body": {
+          "call": {
+            "arguments": [
+              {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "symbol",
+                      "name": "__closure__"
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "int",
+                        "value": 1
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "direct",
+                    "name": "raml_tuple_get"
+                  }
+                },
+                "kind": "call"
+              },
+              {
+                "kind": "symbol",
+                "name": "x"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "make_adder__local_add_0"
+            }
+          },
+          "kind": "call"
+        },
+        "name": "make_adder__local_add_0__closure",
+        "params": [
+          "__closure__",
+          "x"
+        ]
+      },
+      {
+        "body": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "symbol",
+                "name": "base"
+              },
+              {
+                "kind": "symbol",
+                "name": "x"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "+"
+            }
+          },
+          "kind": "call"
+        },
+        "name": "make_adder__local_add_0",
+        "params": [
+          "base",
+          "x"
+        ]
+      },
+      {
+        "body": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "symbol_address",
+                "name": "make_adder__local_add_0__closure"
+              },
+              {
+                "kind": "symbol",
+                "name": "base"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "raml_tuple_make_2"
+            }
+          },
+          "kind": "call"
+        },
+        "name": "make_adder",
+        "params": [
+          "base"
+        ]
+      }
+    ],
+    "imports": [
+      {
+        "linkage": "runtime",
+        "symbol": "raml_tuple_get"
+      },
+      {
+        "linkage": "runtime",
+        "symbol": "raml_tuple_make_2"
+      }
+    ],
+    "module_name": "Indirect_call_via_returned_closure",
+    "runtime_helpers": [
+      {
+        "name": "raml_tuple_get",
+        "symbol": "raml_tuple_get"
+      },
+      {
+        "name": "raml_tuple_make_2",
+        "symbol": "raml_tuple_make_2"
+      }
+    ]
+  },
+  "status": "ok"
+}

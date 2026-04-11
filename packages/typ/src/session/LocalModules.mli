@@ -31,6 +31,8 @@ val should_include_implicit_open: current_module_name:InternalName.t -> module_n
 
 val local_module_aliases_of_internal_name: InternalName.t -> AmbientName.t list
 
+val ambient_name_of_internal_name: InternalName.t -> AmbientName.t
+
 val matches_required_name: required_name:RequiredName.t -> InternalName.t -> bool
 
 val contextual_match_depth:

@@ -27,6 +27,51 @@ let lower_import = fun (import: Source.Imports.requirement) ->
           names = [ { imported; local } ]
         }
 
+let import_has_bindings = fun (import: Target.Import.t) ->
+  match (import.default, import.namespace, import.names) with
+  | (None, None, []) -> false
+  | _ -> true
+
+let choose_default_import = fun left right ->
+  match left with
+  | Some _ -> left
+  | None -> right
+
+let merge_imports = fun (left: Target.Import.t) (right: Target.Import.t) ->
+  if not (String.equal left.from right.from) then
+    None
+  else
+    match (left.namespace, right.namespace) with
+    | (Some _, _)
+    | (_, Some _) -> None
+    | (None, None) ->
+        if not (import_has_bindings left && import_has_bindings right) then
+          None
+        else
+          match (left.default, right.default) with
+          | (Some left_default, Some right_default) when not
+            (String.equal left_default right_default) -> None
+          | _ -> Some Target.Import.{
+            from = left.from;
+            default = choose_default_import left.default right.default;
+            namespace = None;
+            names = left.names @ right.names
+          }
+
+let materialize_imports = fun imports ->
+  let rec loop current rest =
+    match rest with
+    | [] -> [ current ]
+    | next :: rest -> (
+        match merge_imports current next with
+        | Some merged -> loop merged rest
+        | None -> current :: loop next rest
+      )
+  in
+  match imports with
+  | [] -> []
+  | import :: rest -> loop import rest
+
 let lower_literal = fun literal ->
   match literal with
   | Source.Literal.Undefined -> Target.Literal.Undefined
@@ -77,16 +122,22 @@ and lower_declaration = fun (declaration: Source.Declaration.t) ->
 and lower_statement = fun statement ->
   match statement with
   | Source.Statement.Declaration declaration -> Target.Statement.Declaration (lower_declaration declaration)
+  | Source.Statement.Block statements -> Target.Statement.Block (List.map lower_statement statements)
   | Source.Statement.Expression expr -> Target.Statement.Expression (lower_expr expr)
   | Source.Statement.Return expr -> Target.Statement.Return (lower_expr expr)
+  | Source.Statement.If if_ -> Target.Statement.If Target.Statement.{
+    condition = lower_expr if_.condition;
+    then_ = List.map lower_statement if_.then_;
+    else_ = List.map lower_statement if_.else_
+  }
 
 let lower_export = fun (export: Source.Export.t) ->
   Target.Export.{ name = export.name; local = export.local }
 
 let lower_program = fun (program: Source.Program.t) ->
-  let program = Source.Passes.Normalize.program program in
   let import_items = program.imports
   |> List.map lower_import
+  |> materialize_imports
   |> List.map (fun import -> Target.Module_item.Import import) in
   let statement_items = program.body
   |> List.map lower_statement

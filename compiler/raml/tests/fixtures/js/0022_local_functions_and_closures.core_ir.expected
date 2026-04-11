@@ -1,0 +1,159 @@
+{
+  "exports": [
+    {
+      "name": "make_adder",
+      "symbol": "make_adder"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "make_adder",
+          "symbol": "make_adder"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "kind": "let",
+                  "let": {
+                    "bindings": [
+                      {
+                        "expr": {
+                          "kind": "lambda",
+                          "lambda": {
+                            "body": {
+                              "apply": {
+                                "arguments": [
+                                  {
+                                    "kind": "var",
+                                    "name": "base"
+                                  },
+                                  {
+                                    "kind": "var",
+                                    "name": "x"
+                                  }
+                                ],
+                                "callee": {
+                                  "function": "+",
+                                  "kind": "direct"
+                                }
+                              },
+                              "kind": "apply"
+                            },
+                            "params": [
+                              "x"
+                            ]
+                          }
+                        },
+                        "name": "add"
+                      }
+                    ],
+                    "body": {
+                      "kind": "var",
+                      "name": "add"
+                    },
+                    "rec_flag": "nonrecursive"
+                  }
+                },
+                "params": [
+                  "base"
+                ]
+              }
+            },
+            "name": "make_adder"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "kind": "let",
+            "let": {
+              "bindings": [
+                {
+                  "expr": {
+                    "apply": {
+                      "arguments": [
+                        {
+                          "constant": {
+                            "kind": "int",
+                            "value": 7
+                          },
+                          "kind": "constant"
+                        }
+                      ],
+                      "callee": {
+                        "function": "make_adder",
+                        "kind": "direct"
+                      }
+                    },
+                    "kind": "apply"
+                  },
+                  "name": "add7"
+                }
+              ],
+              "body": {
+                "apply": {
+                  "arguments": [
+                    {
+                      "constant": {
+                        "kind": "string",
+                        "value": "%d\\n"
+                      },
+                      "kind": "constant"
+                    },
+                    {
+                      "apply": {
+                        "arguments": [
+                          {
+                            "constant": {
+                              "kind": "int",
+                              "value": 35
+                            },
+                            "kind": "constant"
+                          }
+                        ],
+                        "callee": {
+                          "expr": {
+                            "kind": "var",
+                            "name": "add7"
+                          },
+                          "kind": "indirect"
+                        }
+                      },
+                      "kind": "apply"
+                    }
+                  ],
+                  "callee": {
+                    "function": "Printf.printf",
+                    "kind": "direct"
+                  }
+                },
+                "kind": "apply"
+              },
+              "rec_flag": "nonrecursive"
+            }
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/local_functions_and_closures.ml",
+    "unit_name": "Local_functions_and_closures"
+  }
+}

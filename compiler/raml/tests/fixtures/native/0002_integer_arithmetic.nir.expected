@@ -1,0 +1,789 @@
+{
+  "initial": {
+    "entry": [
+      {
+        "binding": {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "int",
+                    "value": 40
+                  }
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "int",
+                    "value": 2
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "+"
+              }
+            },
+            "kind": "call"
+          },
+          "name": "a"
+        },
+        "kind": "binding"
+      },
+      {
+        "binding": {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "call": {
+                    "arguments": [
+                      {
+                        "kind": "symbol",
+                        "name": "a"
+                      },
+                      {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "int",
+                          "value": 3
+                        }
+                      }
+                    ],
+                    "callee": {
+                      "kind": "direct",
+                      "name": "*"
+                    }
+                  },
+                  "kind": "call"
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "int",
+                    "value": 5
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "-"
+              }
+            },
+            "kind": "call"
+          },
+          "name": "b"
+        },
+        "kind": "binding"
+      },
+      {
+        "binding": {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "symbol",
+                  "name": "b"
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "int",
+                    "value": 7
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "/"
+              }
+            },
+            "kind": "call"
+          },
+          "name": "c"
+        },
+        "kind": "binding"
+      },
+      {
+        "binding": {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "symbol",
+                  "name": "b"
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "int",
+                    "value": 7
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "mod"
+              }
+            },
+            "kind": "call"
+          },
+          "name": "d"
+        },
+        "kind": "binding"
+      },
+      {
+        "expr": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "%d %d %d %d\\n"
+                }
+              },
+              {
+                "kind": "symbol",
+                "name": "a"
+              },
+              {
+                "kind": "symbol",
+                "name": "b"
+              },
+              {
+                "kind": "symbol",
+                "name": "c"
+              },
+              {
+                "kind": "symbol",
+                "name": "d"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "Printf.printf"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "eval"
+      }
+    ],
+    "exports": [
+      {
+        "name": "a",
+        "symbol": "a"
+      },
+      {
+        "name": "b",
+        "symbol": "b"
+      },
+      {
+        "name": "c",
+        "symbol": "c"
+      },
+      {
+        "name": "d",
+        "symbol": "d"
+      }
+    ],
+    "functions": [],
+    "imports": [],
+    "module_name": "Integer_arithmetic",
+    "runtime_helpers": []
+  },
+  "passes": {
+    "normalize": {
+      "entry": [
+        {
+          "binding": {
+            "expr": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "int",
+                      "value": 40
+                    }
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "int",
+                      "value": 2
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "direct",
+                  "name": "+"
+                }
+              },
+              "kind": "call"
+            },
+            "name": "a"
+          },
+          "kind": "binding"
+        },
+        {
+          "binding": {
+            "expr": {
+              "call": {
+                "arguments": [
+                  {
+                    "call": {
+                      "arguments": [
+                        {
+                          "kind": "symbol",
+                          "name": "a"
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "int",
+                            "value": 3
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "kind": "direct",
+                        "name": "*"
+                      }
+                    },
+                    "kind": "call"
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "int",
+                      "value": 5
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "direct",
+                  "name": "-"
+                }
+              },
+              "kind": "call"
+            },
+            "name": "b"
+          },
+          "kind": "binding"
+        },
+        {
+          "binding": {
+            "expr": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "symbol",
+                    "name": "b"
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "int",
+                      "value": 7
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "direct",
+                  "name": "/"
+                }
+              },
+              "kind": "call"
+            },
+            "name": "c"
+          },
+          "kind": "binding"
+        },
+        {
+          "binding": {
+            "expr": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "symbol",
+                    "name": "b"
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "int",
+                      "value": 7
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "direct",
+                  "name": "mod"
+                }
+              },
+              "kind": "call"
+            },
+            "name": "d"
+          },
+          "kind": "binding"
+        },
+        {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "%d %d %d %d\\n"
+                  }
+                },
+                {
+                  "kind": "symbol",
+                  "name": "a"
+                },
+                {
+                  "kind": "symbol",
+                  "name": "b"
+                },
+                {
+                  "kind": "symbol",
+                  "name": "c"
+                },
+                {
+                  "kind": "symbol",
+                  "name": "d"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "Printf.printf"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "eval"
+        }
+      ],
+      "exports": [
+        {
+          "name": "a",
+          "symbol": "a"
+        },
+        {
+          "name": "b",
+          "symbol": "b"
+        },
+        {
+          "name": "c",
+          "symbol": "c"
+        },
+        {
+          "name": "d",
+          "symbol": "d"
+        }
+      ],
+      "functions": [],
+      "imports": [],
+      "module_name": "Integer_arithmetic",
+      "runtime_helpers": []
+    },
+    "simplify": {
+      "entry": [
+        {
+          "binding": {
+            "expr": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "int",
+                      "value": 40
+                    }
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "int",
+                      "value": 2
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "direct",
+                  "name": "+"
+                }
+              },
+              "kind": "call"
+            },
+            "name": "a"
+          },
+          "kind": "binding"
+        },
+        {
+          "binding": {
+            "expr": {
+              "call": {
+                "arguments": [
+                  {
+                    "call": {
+                      "arguments": [
+                        {
+                          "kind": "symbol",
+                          "name": "a"
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "int",
+                            "value": 3
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "kind": "direct",
+                        "name": "*"
+                      }
+                    },
+                    "kind": "call"
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "int",
+                      "value": 5
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "direct",
+                  "name": "-"
+                }
+              },
+              "kind": "call"
+            },
+            "name": "b"
+          },
+          "kind": "binding"
+        },
+        {
+          "binding": {
+            "expr": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "symbol",
+                    "name": "b"
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "int",
+                      "value": 7
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "direct",
+                  "name": "/"
+                }
+              },
+              "kind": "call"
+            },
+            "name": "c"
+          },
+          "kind": "binding"
+        },
+        {
+          "binding": {
+            "expr": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "symbol",
+                    "name": "b"
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "int",
+                      "value": 7
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "direct",
+                  "name": "mod"
+                }
+              },
+              "kind": "call"
+            },
+            "name": "d"
+          },
+          "kind": "binding"
+        },
+        {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "%d %d %d %d\\n"
+                  }
+                },
+                {
+                  "kind": "symbol",
+                  "name": "a"
+                },
+                {
+                  "kind": "symbol",
+                  "name": "b"
+                },
+                {
+                  "kind": "symbol",
+                  "name": "c"
+                },
+                {
+                  "kind": "symbol",
+                  "name": "d"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "Printf.printf"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "eval"
+        }
+      ],
+      "exports": [
+        {
+          "name": "a",
+          "symbol": "a"
+        },
+        {
+          "name": "b",
+          "symbol": "b"
+        },
+        {
+          "name": "c",
+          "symbol": "c"
+        },
+        {
+          "name": "d",
+          "symbol": "d"
+        }
+      ],
+      "functions": [],
+      "imports": [],
+      "module_name": "Integer_arithmetic",
+      "runtime_helpers": []
+    }
+  },
+  "program": {
+    "entry": [
+      {
+        "binding": {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "int",
+                    "value": 40
+                  }
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "int",
+                    "value": 2
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "+"
+              }
+            },
+            "kind": "call"
+          },
+          "name": "a"
+        },
+        "kind": "binding"
+      },
+      {
+        "binding": {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "call": {
+                    "arguments": [
+                      {
+                        "kind": "symbol",
+                        "name": "a"
+                      },
+                      {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "int",
+                          "value": 3
+                        }
+                      }
+                    ],
+                    "callee": {
+                      "kind": "direct",
+                      "name": "*"
+                    }
+                  },
+                  "kind": "call"
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "int",
+                    "value": 5
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "-"
+              }
+            },
+            "kind": "call"
+          },
+          "name": "b"
+        },
+        "kind": "binding"
+      },
+      {
+        "binding": {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "symbol",
+                  "name": "b"
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "int",
+                    "value": 7
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "/"
+              }
+            },
+            "kind": "call"
+          },
+          "name": "c"
+        },
+        "kind": "binding"
+      },
+      {
+        "binding": {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "symbol",
+                  "name": "b"
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "int",
+                    "value": 7
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "mod"
+              }
+            },
+            "kind": "call"
+          },
+          "name": "d"
+        },
+        "kind": "binding"
+      },
+      {
+        "expr": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "%d %d %d %d\\n"
+                }
+              },
+              {
+                "kind": "symbol",
+                "name": "a"
+              },
+              {
+                "kind": "symbol",
+                "name": "b"
+              },
+              {
+                "kind": "symbol",
+                "name": "c"
+              },
+              {
+                "kind": "symbol",
+                "name": "d"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "Printf.printf"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "eval"
+      }
+    ],
+    "exports": [
+      {
+        "name": "a",
+        "symbol": "a"
+      },
+      {
+        "name": "b",
+        "symbol": "b"
+      },
+      {
+        "name": "c",
+        "symbol": "c"
+      },
+      {
+        "name": "d",
+        "symbol": "d"
+      }
+    ],
+    "functions": [],
+    "imports": [],
+    "module_name": "Integer_arithmetic",
+    "runtime_helpers": []
+  },
+  "status": "ok"
+}

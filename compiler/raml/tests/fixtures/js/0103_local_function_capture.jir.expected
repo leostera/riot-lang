@@ -1,0 +1,158 @@
+{
+  "body": [
+    {
+      "declaration": {
+        "init": {
+          "function": {
+            "body": [
+              {
+                "declaration": {
+                  "init": {
+                    "call": {
+                      "arguments": [
+                        {
+                          "function": {
+                            "body": [
+                              {
+                                "if": {
+                                  "condition": {
+                                    "kind": "identifier",
+                                    "name": "flag"
+                                  },
+                                  "else": [
+                                    {
+                                      "expression": {
+                                        "kind": "identifier",
+                                        "name": "when_false"
+                                      },
+                                      "kind": "return"
+                                    }
+                                  ],
+                                  "then": [
+                                    {
+                                      "expression": {
+                                        "kind": "identifier",
+                                        "name": "when_true"
+                                      },
+                                      "kind": "return"
+                                    }
+                                  ]
+                                },
+                                "kind": "if"
+                              }
+                            ],
+                            "params": [
+                              "when_true",
+                              "when_false"
+                            ]
+                          },
+                          "kind": "function"
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "number",
+                            "number": {
+                              "kind": "int",
+                              "value": 2
+                            }
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "kind": "identifier",
+                        "name": "__makeCurried"
+                      }
+                    },
+                    "kind": "call"
+                  },
+                  "kind": "const",
+                  "name": "decide"
+                },
+                "kind": "declaration"
+              },
+              {
+                "expression": {
+                  "call": {
+                    "arguments": [
+                      {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "string",
+                          "value": "left"
+                        }
+                      },
+                      {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "string",
+                          "value": "right"
+                        }
+                      }
+                    ],
+                    "callee": {
+                      "kind": "identifier",
+                      "name": "decide"
+                    }
+                  },
+                  "kind": "call"
+                },
+                "kind": "return"
+              }
+            ],
+            "params": [
+              "flag"
+            ]
+          },
+          "kind": "function"
+        },
+        "kind": "const",
+        "name": "choose"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "bool",
+                  "value": true
+                }
+              }
+            ],
+            "callee": {
+              "kind": "identifier",
+              "name": "choose"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "const",
+        "name": "selected"
+      },
+      "kind": "declaration"
+    }
+  ],
+  "exports": [
+    {
+      "local": "choose",
+      "name": "choose"
+    },
+    {
+      "local": "selected",
+      "name": "selected"
+    }
+  ],
+  "imports": [
+    {
+      "from": "./riot-runtime.js",
+      "imported": "makeCurried",
+      "local": "__makeCurried"
+    }
+  ],
+  "module_name": "Local_function_capture"
+}

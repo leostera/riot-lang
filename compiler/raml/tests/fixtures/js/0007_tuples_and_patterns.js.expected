@@ -1,0 +1,454 @@
+{
+  "js": "import * as Printf from \"./Printf.js\";\n\nimport { callPrimitive as __callPrimitive } from \"./riot-runtime.js\";\n\nconst pair = __callPrimitive(\"%tuple_make\", \"raml\", 5);\n\nconst swap = (function(__raml_param_6_0) {\n  const a = __callPrimitive(\"%tuple_get\", __raml_param_6_0, 0);\n  const b = __callPrimitive(\"%tuple_get\", __raml_param_6_0, 1);\n  return __callPrimitive(\"%tuple_make\", b, a);\n});\n\nconst name = __callPrimitive(\"%tuple_get\", pair, 0);\n\nconst n = __callPrimitive(\"%tuple_get\", pair, 1);\n\nconst __raml_tuple_11 = swap(pair);\n\nconst n2 = __callPrimitive(\"%tuple_get\", __raml_tuple_11, 0);\n\nconst name2 = __callPrimitive(\"%tuple_get\", __raml_tuple_11, 1);\n\nPrintf.printf(\"%s %d %d %s\\\\n\", name, n, n2, name2);\n\nexport {\n  pair,\n  swap\n};\n",
+  "jst": {
+    "items": [
+      {
+        "import": {
+          "default": null,
+          "from": "./Printf.js",
+          "names": [],
+          "namespace": "Printf"
+        },
+        "kind": "import"
+      },
+      {
+        "import": {
+          "default": null,
+          "from": "./riot-runtime.js",
+          "names": [
+            {
+              "imported": "callPrimitive",
+              "local": "__callPrimitive"
+            }
+          ]
+        },
+        "kind": "import"
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "%tuple_make"
+                    }
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "raml"
+                    }
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 5
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__callPrimitive"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "pair"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "function": {
+                "body": [
+                  {
+                    "declaration": {
+                      "init": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "string",
+                                "value": "%tuple_get"
+                              }
+                            },
+                            {
+                              "kind": "identifier",
+                              "name": "__raml_param_6_0"
+                            },
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "number",
+                                "number": {
+                                  "kind": "int",
+                                  "value": 0
+                                }
+                              }
+                            }
+                          ],
+                          "callee": {
+                            "kind": "identifier",
+                            "name": "__callPrimitive"
+                          }
+                        },
+                        "kind": "call"
+                      },
+                      "kind": "const",
+                      "name": "a"
+                    },
+                    "kind": "declaration"
+                  },
+                  {
+                    "declaration": {
+                      "init": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "string",
+                                "value": "%tuple_get"
+                              }
+                            },
+                            {
+                              "kind": "identifier",
+                              "name": "__raml_param_6_0"
+                            },
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "number",
+                                "number": {
+                                  "kind": "int",
+                                  "value": 1
+                                }
+                              }
+                            }
+                          ],
+                          "callee": {
+                            "kind": "identifier",
+                            "name": "__callPrimitive"
+                          }
+                        },
+                        "kind": "call"
+                      },
+                      "kind": "const",
+                      "name": "b"
+                    },
+                    "kind": "declaration"
+                  },
+                  {
+                    "expression": {
+                      "call": {
+                        "arguments": [
+                          {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "string",
+                              "value": "%tuple_make"
+                            }
+                          },
+                          {
+                            "kind": "identifier",
+                            "name": "b"
+                          },
+                          {
+                            "kind": "identifier",
+                            "name": "a"
+                          }
+                        ],
+                        "callee": {
+                          "kind": "identifier",
+                          "name": "__callPrimitive"
+                        }
+                      },
+                      "kind": "call"
+                    },
+                    "kind": "return"
+                  }
+                ],
+                "params": [
+                  "__raml_param_6_0"
+                ]
+              },
+              "kind": "function"
+            },
+            "kind": "const",
+            "name": "swap"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "%tuple_get"
+                    }
+                  },
+                  {
+                    "kind": "identifier",
+                    "name": "pair"
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 0
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__callPrimitive"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "name"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "%tuple_get"
+                    }
+                  },
+                  {
+                    "kind": "identifier",
+                    "name": "pair"
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 1
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__callPrimitive"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "n"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "identifier",
+                    "name": "pair"
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "swap"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "__raml_tuple_11"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "%tuple_get"
+                    }
+                  },
+                  {
+                    "kind": "identifier",
+                    "name": "__raml_tuple_11"
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 0
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__callPrimitive"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "n2"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "%tuple_get"
+                    }
+                  },
+                  {
+                    "kind": "identifier",
+                    "name": "__raml_tuple_11"
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 1
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__callPrimitive"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "name2"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "expression": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "%s %d %d %s\\n"
+                  }
+                },
+                {
+                  "kind": "identifier",
+                  "name": "name"
+                },
+                {
+                  "kind": "identifier",
+                  "name": "n"
+                },
+                {
+                  "kind": "identifier",
+                  "name": "n2"
+                },
+                {
+                  "kind": "identifier",
+                  "name": "name2"
+                }
+              ],
+              "callee": {
+                "kind": "member",
+                "member": {
+                  "object": {
+                    "kind": "identifier",
+                    "name": "Printf"
+                  },
+                  "property": "printf"
+                }
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "expression"
+        }
+      },
+      {
+        "exports": [
+          {
+            "local": "pair",
+            "name": "pair"
+          },
+          {
+            "local": "swap",
+            "name": "swap"
+          }
+        ],
+        "kind": "export"
+      }
+    ],
+    "module_name": "Tuples_and_patterns"
+  }
+}

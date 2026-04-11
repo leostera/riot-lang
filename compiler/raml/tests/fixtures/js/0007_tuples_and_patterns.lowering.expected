@@ -1,0 +1,811 @@
+{
+  "lowered": {
+    "core_ir": {
+      "compilation_unit": {
+        "exports": [
+          {
+            "name": "pair",
+            "symbol": "pair"
+          },
+          {
+            "name": "swap",
+            "symbol": "swap"
+          }
+        ],
+        "init": [
+          {
+            "exports": [
+              {
+                "name": "pair",
+                "symbol": "pair"
+              }
+            ],
+            "items": [
+              {
+                "binding": {
+                  "expr": {
+                    "kind": "tuple",
+                    "tuple": {
+                      "elements": [
+                        {
+                          "constant": {
+                            "kind": "string",
+                            "value": "raml"
+                          },
+                          "kind": "constant"
+                        },
+                        {
+                          "constant": {
+                            "kind": "int",
+                            "value": 5
+                          },
+                          "kind": "constant"
+                        }
+                      ]
+                    }
+                  },
+                  "name": "pair"
+                },
+                "kind": "binding"
+              }
+            ],
+            "rec_flag": "nonrecursive"
+          },
+          {
+            "exports": [
+              {
+                "name": "swap",
+                "symbol": "swap"
+              }
+            ],
+            "items": [
+              {
+                "binding": {
+                  "expr": {
+                    "kind": "lambda",
+                    "lambda": {
+                      "body": {
+                        "kind": "let",
+                        "let": {
+                          "bindings": [
+                            {
+                              "expr": {
+                                "kind": "var",
+                                "name": "__raml_param_6_0"
+                              },
+                              "name": "__raml_tuple_4"
+                            }
+                          ],
+                          "body": {
+                            "kind": "let",
+                            "let": {
+                              "bindings": [
+                                {
+                                  "expr": {
+                                    "kind": "tuple_get",
+                                    "tuple_get": {
+                                      "index": 0,
+                                      "tuple": {
+                                        "kind": "var",
+                                        "name": "__raml_tuple_4"
+                                      }
+                                    }
+                                  },
+                                  "name": "a"
+                                }
+                              ],
+                              "body": {
+                                "kind": "let",
+                                "let": {
+                                  "bindings": [
+                                    {
+                                      "expr": {
+                                        "kind": "tuple_get",
+                                        "tuple_get": {
+                                          "index": 1,
+                                          "tuple": {
+                                            "kind": "var",
+                                            "name": "__raml_tuple_4"
+                                          }
+                                        }
+                                      },
+                                      "name": "b"
+                                    }
+                                  ],
+                                  "body": {
+                                    "kind": "tuple",
+                                    "tuple": {
+                                      "elements": [
+                                        {
+                                          "kind": "var",
+                                          "name": "b"
+                                        },
+                                        {
+                                          "kind": "var",
+                                          "name": "a"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "rec_flag": "nonrecursive"
+                                }
+                              },
+                              "rec_flag": "nonrecursive"
+                            }
+                          },
+                          "rec_flag": "nonrecursive"
+                        }
+                      },
+                      "params": [
+                        "__raml_param_6_0"
+                      ]
+                    }
+                  },
+                  "name": "swap"
+                },
+                "kind": "binding"
+              }
+            ],
+            "rec_flag": "nonrecursive"
+          },
+          {
+            "exports": [],
+            "items": [
+              {
+                "expr": {
+                  "kind": "let",
+                  "let": {
+                    "bindings": [
+                      {
+                        "expr": {
+                          "kind": "var",
+                          "name": "pair"
+                        },
+                        "name": "__raml_tuple_8"
+                      }
+                    ],
+                    "body": {
+                      "kind": "let",
+                      "let": {
+                        "bindings": [
+                          {
+                            "expr": {
+                              "kind": "tuple_get",
+                              "tuple_get": {
+                                "index": 0,
+                                "tuple": {
+                                  "kind": "var",
+                                  "name": "__raml_tuple_8"
+                                }
+                              }
+                            },
+                            "name": "name"
+                          }
+                        ],
+                        "body": {
+                          "kind": "let",
+                          "let": {
+                            "bindings": [
+                              {
+                                "expr": {
+                                  "kind": "tuple_get",
+                                  "tuple_get": {
+                                    "index": 1,
+                                    "tuple": {
+                                      "kind": "var",
+                                      "name": "__raml_tuple_8"
+                                    }
+                                  }
+                                },
+                                "name": "n"
+                              }
+                            ],
+                            "body": {
+                              "kind": "let",
+                              "let": {
+                                "bindings": [
+                                  {
+                                    "expr": {
+                                      "apply": {
+                                        "arguments": [
+                                          {
+                                            "kind": "var",
+                                            "name": "pair"
+                                          }
+                                        ],
+                                        "callee": {
+                                          "function": "swap",
+                                          "kind": "direct"
+                                        }
+                                      },
+                                      "kind": "apply"
+                                    },
+                                    "name": "__raml_tuple_11"
+                                  }
+                                ],
+                                "body": {
+                                  "kind": "let",
+                                  "let": {
+                                    "bindings": [
+                                      {
+                                        "expr": {
+                                          "kind": "tuple_get",
+                                          "tuple_get": {
+                                            "index": 0,
+                                            "tuple": {
+                                              "kind": "var",
+                                              "name": "__raml_tuple_11"
+                                            }
+                                          }
+                                        },
+                                        "name": "n2"
+                                      }
+                                    ],
+                                    "body": {
+                                      "kind": "let",
+                                      "let": {
+                                        "bindings": [
+                                          {
+                                            "expr": {
+                                              "kind": "tuple_get",
+                                              "tuple_get": {
+                                                "index": 1,
+                                                "tuple": {
+                                                  "kind": "var",
+                                                  "name": "__raml_tuple_11"
+                                                }
+                                              }
+                                            },
+                                            "name": "name2"
+                                          }
+                                        ],
+                                        "body": {
+                                          "apply": {
+                                            "arguments": [
+                                              {
+                                                "constant": {
+                                                  "kind": "string",
+                                                  "value": "%s %d %d %s\\n"
+                                                },
+                                                "kind": "constant"
+                                              },
+                                              {
+                                                "kind": "var",
+                                                "name": "name"
+                                              },
+                                              {
+                                                "kind": "var",
+                                                "name": "n"
+                                              },
+                                              {
+                                                "kind": "var",
+                                                "name": "n2"
+                                              },
+                                              {
+                                                "kind": "var",
+                                                "name": "name2"
+                                              }
+                                            ],
+                                            "callee": {
+                                              "function": "Printf.printf",
+                                              "kind": "direct"
+                                            }
+                                          },
+                                          "kind": "apply"
+                                        },
+                                        "rec_flag": "nonrecursive"
+                                      }
+                                    },
+                                    "rec_flag": "nonrecursive"
+                                  }
+                                },
+                                "rec_flag": "nonrecursive"
+                              }
+                            },
+                            "rec_flag": "nonrecursive"
+                          }
+                        },
+                        "rec_flag": "nonrecursive"
+                      }
+                    },
+                    "rec_flag": "nonrecursive"
+                  }
+                },
+                "kind": "eval"
+              }
+            ],
+            "rec_flag": "nonrecursive"
+          }
+        ],
+        "unit_id": {
+          "kind": "implementation",
+          "relpath": "corpus/tuples_and_patterns.ml",
+          "unit_name": "Tuples_and_patterns"
+        }
+      },
+      "status": "ok"
+    },
+    "jir": {
+      "program": {
+        "body": [
+          {
+            "declaration": {
+              "init": {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "%tuple_make"
+                      }
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "raml"
+                      }
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "number",
+                        "number": {
+                          "kind": "int",
+                          "value": 5
+                        }
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "identifier",
+                    "name": "__callPrimitive"
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "const",
+              "name": "pair"
+            },
+            "kind": "declaration"
+          },
+          {
+            "declaration": {
+              "init": {
+                "function": {
+                  "body": [
+                    {
+                      "declaration": {
+                        "init": {
+                          "call": {
+                            "arguments": [
+                              {
+                                "kind": "literal",
+                                "literal": {
+                                  "kind": "string",
+                                  "value": "%tuple_get"
+                                }
+                              },
+                              {
+                                "kind": "identifier",
+                                "name": "__raml_param_6_0"
+                              },
+                              {
+                                "kind": "literal",
+                                "literal": {
+                                  "kind": "number",
+                                  "number": {
+                                    "kind": "int",
+                                    "value": 0
+                                  }
+                                }
+                              }
+                            ],
+                            "callee": {
+                              "kind": "identifier",
+                              "name": "__callPrimitive"
+                            }
+                          },
+                          "kind": "call"
+                        },
+                        "kind": "const",
+                        "name": "a"
+                      },
+                      "kind": "declaration"
+                    },
+                    {
+                      "declaration": {
+                        "init": {
+                          "call": {
+                            "arguments": [
+                              {
+                                "kind": "literal",
+                                "literal": {
+                                  "kind": "string",
+                                  "value": "%tuple_get"
+                                }
+                              },
+                              {
+                                "kind": "identifier",
+                                "name": "__raml_param_6_0"
+                              },
+                              {
+                                "kind": "literal",
+                                "literal": {
+                                  "kind": "number",
+                                  "number": {
+                                    "kind": "int",
+                                    "value": 1
+                                  }
+                                }
+                              }
+                            ],
+                            "callee": {
+                              "kind": "identifier",
+                              "name": "__callPrimitive"
+                            }
+                          },
+                          "kind": "call"
+                        },
+                        "kind": "const",
+                        "name": "b"
+                      },
+                      "kind": "declaration"
+                    },
+                    {
+                      "expression": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "string",
+                                "value": "%tuple_make"
+                              }
+                            },
+                            {
+                              "kind": "identifier",
+                              "name": "b"
+                            },
+                            {
+                              "kind": "identifier",
+                              "name": "a"
+                            }
+                          ],
+                          "callee": {
+                            "kind": "identifier",
+                            "name": "__callPrimitive"
+                          }
+                        },
+                        "kind": "call"
+                      },
+                      "kind": "return"
+                    }
+                  ],
+                  "params": [
+                    "__raml_param_6_0"
+                  ]
+                },
+                "kind": "function"
+              },
+              "kind": "const",
+              "name": "swap"
+            },
+            "kind": "declaration"
+          },
+          {
+            "declaration": {
+              "init": {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "%tuple_get"
+                      }
+                    },
+                    {
+                      "kind": "identifier",
+                      "name": "pair"
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "number",
+                        "number": {
+                          "kind": "int",
+                          "value": 0
+                        }
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "identifier",
+                    "name": "__callPrimitive"
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "const",
+              "name": "name"
+            },
+            "kind": "declaration"
+          },
+          {
+            "declaration": {
+              "init": {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "%tuple_get"
+                      }
+                    },
+                    {
+                      "kind": "identifier",
+                      "name": "pair"
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "number",
+                        "number": {
+                          "kind": "int",
+                          "value": 1
+                        }
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "identifier",
+                    "name": "__callPrimitive"
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "const",
+              "name": "n"
+            },
+            "kind": "declaration"
+          },
+          {
+            "declaration": {
+              "init": {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "identifier",
+                      "name": "pair"
+                    }
+                  ],
+                  "callee": {
+                    "kind": "identifier",
+                    "name": "swap"
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "const",
+              "name": "__raml_tuple_11"
+            },
+            "kind": "declaration"
+          },
+          {
+            "declaration": {
+              "init": {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "%tuple_get"
+                      }
+                    },
+                    {
+                      "kind": "identifier",
+                      "name": "__raml_tuple_11"
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "number",
+                        "number": {
+                          "kind": "int",
+                          "value": 0
+                        }
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "identifier",
+                    "name": "__callPrimitive"
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "const",
+              "name": "n2"
+            },
+            "kind": "declaration"
+          },
+          {
+            "declaration": {
+              "init": {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "%tuple_get"
+                      }
+                    },
+                    {
+                      "kind": "identifier",
+                      "name": "__raml_tuple_11"
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "number",
+                        "number": {
+                          "kind": "int",
+                          "value": 1
+                        }
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "identifier",
+                    "name": "__callPrimitive"
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "const",
+              "name": "name2"
+            },
+            "kind": "declaration"
+          },
+          {
+            "expression": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "%s %d %d %s\\n"
+                    }
+                  },
+                  {
+                    "kind": "identifier",
+                    "name": "name"
+                  },
+                  {
+                    "kind": "identifier",
+                    "name": "n"
+                  },
+                  {
+                    "kind": "identifier",
+                    "name": "n2"
+                  },
+                  {
+                    "kind": "identifier",
+                    "name": "name2"
+                  }
+                ],
+                "callee": {
+                  "kind": "member",
+                  "member": {
+                    "object": {
+                      "kind": "identifier",
+                      "name": "Printf"
+                    },
+                    "property": "printf"
+                  }
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "expression"
+          }
+        ],
+        "exports": [
+          {
+            "local": "pair",
+            "name": "pair"
+          },
+          {
+            "local": "swap",
+            "name": "swap"
+          }
+        ],
+        "imports": [
+          {
+            "from": "./Printf.js",
+            "imported": null,
+            "local": "Printf",
+            "namespace": true
+          },
+          {
+            "from": "./riot-runtime.js",
+            "imported": "callPrimitive",
+            "local": "__callPrimitive"
+          }
+        ],
+        "module_name": "Tuples_and_patterns"
+      },
+      "status": "ok"
+    },
+    "lir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "mir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "nir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "wasm": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    }
+  },
+  "source": {
+    "has_trailing_newline": true,
+    "kind": "implementation",
+    "nonempty_lines": 7,
+    "relpath": "corpus/tuples_and_patterns.ml",
+    "source_bytes": 217,
+    "source_lines": 9,
+    "unit_name": "Tuples_and_patterns"
+  },
+  "targeting": {
+    "backend": "js",
+    "host": "aarch64-apple-darwin",
+    "target": "js-unknown-ecma"
+  },
+  "typing": {
+    "completeness": "complete",
+    "exports": [
+      {
+        "name": "pair",
+        "scheme": "string * int"
+      },
+      {
+        "name": "swap",
+        "scheme": "'a 'b. ('a * 'b) -> 'b * 'a"
+      }
+    ],
+    "file_summary": {
+      "completeness": "complete",
+      "export_result": {
+        "exports": [
+          {
+            "name": "pair",
+            "scheme": "string * int"
+          },
+          {
+            "name": "swap",
+            "scheme": "'a 'b. ('a * 'b) -> 'b * 'a"
+          }
+        ],
+        "tag": "trusted_export"
+      },
+      "source_id": 0
+    },
+    "lowering_diagnostics": [],
+    "parse_diagnostics": [],
+    "status": "ok",
+    "typing_diagnostics": []
+  }
+}

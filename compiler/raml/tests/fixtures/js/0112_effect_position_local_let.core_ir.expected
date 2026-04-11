@@ -1,0 +1,52 @@
+{
+  "exports": [],
+  "init": [
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "kind": "let",
+            "let": {
+              "bindings": [
+                {
+                  "expr": {
+                    "constant": {
+                      "kind": "string",
+                      "value": "flattened"
+                    },
+                    "kind": "constant"
+                  },
+                  "name": "message"
+                }
+              ],
+              "body": {
+                "apply": {
+                  "arguments": [
+                    {
+                      "kind": "var",
+                      "name": "message"
+                    }
+                  ],
+                  "callee": {
+                    "function": "print_endline",
+                    "kind": "direct"
+                  }
+                },
+                "kind": "apply"
+              },
+              "rec_flag": "nonrecursive"
+            }
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/effect_position_local_let.ml",
+    "unit_name": "Effect_position_local_let"
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "lowered": {
+    "core_ir": {
+      "compilation_unit": {
+        "exports": [],
+        "init": [
+          {
+            "exports": [],
+            "items": [
+              {
+                "expr": {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "constant": {
+                          "kind": "char",
+                          "value": ":"
+                        },
+                        "kind": "constant"
+                      }
+                    ],
+                    "callee": {
+                      "function": "print_char",
+                      "kind": "direct"
+                    }
+                  },
+                  "kind": "apply"
+                },
+                "kind": "eval"
+              }
+            ],
+            "rec_flag": "nonrecursive"
+          }
+        ],
+        "unit_id": {
+          "kind": "implementation",
+          "relpath": "corpus/print_char.ml",
+          "unit_name": "Print_char"
+        }
+      },
+      "status": "ok"
+    },
+    "jir": {
+      "program": {
+        "body": [
+          {
+            "expression": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": ":"
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__print_char"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "expression"
+          }
+        ],
+        "exports": [],
+        "imports": [
+          {
+            "from": "./riot-runtime.js",
+            "imported": "print_char",
+            "local": "__print_char"
+          }
+        ],
+        "module_name": "Print_char"
+      },
+      "status": "ok"
+    },
+    "lir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "mir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "nir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "wasm": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    }
+  },
+  "source": {
+    "has_trailing_newline": true,
+    "kind": "implementation",
+    "nonempty_lines": 1,
+    "relpath": "corpus/print_char.ml",
+    "source_bytes": 24,
+    "source_lines": 1,
+    "unit_name": "Print_char"
+  },
+  "targeting": {
+    "backend": "js",
+    "host": "aarch64-apple-darwin",
+    "target": "js-unknown-ecma"
+  },
+  "typing": {
+    "completeness": "complete",
+    "exports": [],
+    "file_summary": {
+      "completeness": "complete",
+      "export_result": {
+        "exports": [],
+        "tag": "trusted_export"
+      },
+      "source_id": 0
+    },
+    "lowering_diagnostics": [],
+    "parse_diagnostics": [],
+    "status": "ok",
+    "typing_diagnostics": []
+  }
+}

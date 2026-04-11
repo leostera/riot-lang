@@ -1,0 +1,30 @@
+{
+  "entry": [
+    {
+      "expr": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": ":"
+              }
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "print_char"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "eval"
+    }
+  ],
+  "exports": [],
+  "functions": [],
+  "imports": [],
+  "module_name": "Print_char",
+  "runtime_helpers": []
+}

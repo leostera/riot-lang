@@ -1,0 +1,70 @@
+{
+  "entry": [
+    {
+      "binding": {
+        "expr": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 5
+                }
+              },
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 3
+                }
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": ">"
+            }
+          },
+          "kind": "call"
+        },
+        "name": "larger"
+      },
+      "kind": "binding"
+    },
+    {
+      "expr": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "%b\\n"
+              }
+            },
+            {
+              "kind": "symbol",
+              "name": "larger"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "Printf.printf"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "eval"
+    }
+  ],
+  "exports": [
+    {
+      "name": "larger",
+      "symbol": "larger"
+    }
+  ],
+  "functions": [],
+  "imports": [],
+  "module_name": "Greater_than_comparison",
+  "runtime_helpers": []
+}

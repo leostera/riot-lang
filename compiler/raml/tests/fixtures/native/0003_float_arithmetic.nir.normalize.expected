@@ -1,0 +1,150 @@
+{
+  "entry": [
+    {
+      "binding": {
+        "expr": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "float",
+                  "value": 3.0
+                }
+              },
+              {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "float",
+                        "value": 4.0
+                      }
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "float",
+                        "value": 0.5
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "direct",
+                    "name": "*."
+                  }
+                },
+                "kind": "call"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "+."
+            }
+          },
+          "kind": "call"
+        },
+        "name": "x"
+      },
+      "kind": "binding"
+    },
+    {
+      "binding": {
+        "expr": {
+          "call": {
+            "arguments": [
+              {
+                "call": {
+                  "arguments": [
+                    {
+                      "call": {
+                        "arguments": [
+                          {
+                            "kind": "symbol",
+                            "name": "x"
+                          },
+                          {
+                            "kind": "symbol",
+                            "name": "x"
+                          }
+                        ],
+                        "callee": {
+                          "kind": "direct",
+                          "name": "*."
+                        }
+                      },
+                      "kind": "call"
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "float",
+                        "value": 5.0
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "direct",
+                    "name": "+."
+                  }
+                },
+                "kind": "call"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "sqrt"
+            }
+          },
+          "kind": "call"
+        },
+        "name": "y"
+      },
+      "kind": "binding"
+    },
+    {
+      "expr": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "%.4f %.4f\\n"
+              }
+            },
+            {
+              "kind": "symbol",
+              "name": "x"
+            },
+            {
+              "kind": "symbol",
+              "name": "y"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "Printf.printf"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "eval"
+    }
+  ],
+  "exports": [
+    {
+      "name": "x",
+      "symbol": "x"
+    },
+    {
+      "name": "y",
+      "symbol": "y"
+    }
+  ],
+  "functions": [],
+  "imports": [],
+  "module_name": "Float_arithmetic",
+  "runtime_helpers": []
+}

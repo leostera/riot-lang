@@ -1,0 +1,253 @@
+{
+  "js": "import * as Printf from \"./Printf.js\";\n\nimport { callPrimitive as __callPrimitive } from \"./riot-runtime.js\";\n\nconst x = 10;\n\nlet __raml_init_y;\n\n{\n  const x$1 = __callPrimitive(\"%addint\", x, 5);\n  const x$2 = __callPrimitive(\"%mulint\", x$1, 2);\n  (__raml_init_y = __callPrimitive(\"%subint\", x$2, 3));\n}\n\nconst y = __raml_init_y;\n\nPrintf.printf(\"%d %d\\\\n\", x, y);\n\nexport {\n  x,\n  y\n};\n",
+  "jst": {
+    "items": [
+      {
+        "import": {
+          "default": null,
+          "from": "./Printf.js",
+          "names": [],
+          "namespace": "Printf"
+        },
+        "kind": "import"
+      },
+      {
+        "import": {
+          "default": null,
+          "from": "./riot-runtime.js",
+          "names": [
+            {
+              "imported": "callPrimitive",
+              "local": "__callPrimitive"
+            }
+          ]
+        },
+        "kind": "import"
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "kind": "literal",
+              "literal": {
+                "kind": "number",
+                "number": {
+                  "kind": "int",
+                  "value": 10
+                }
+              }
+            },
+            "kind": "const",
+            "name": "x"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": null,
+            "kind": "let",
+            "name": "__raml_init_y"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "body": [
+            {
+              "declaration": {
+                "init": {
+                  "call": {
+                    "arguments": [
+                      {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "string",
+                          "value": "%addint"
+                        }
+                      },
+                      {
+                        "kind": "identifier",
+                        "name": "x"
+                      },
+                      {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "number",
+                          "number": {
+                            "kind": "int",
+                            "value": 5
+                          }
+                        }
+                      }
+                    ],
+                    "callee": {
+                      "kind": "identifier",
+                      "name": "__callPrimitive"
+                    }
+                  },
+                  "kind": "call"
+                },
+                "kind": "const",
+                "name": "x$1"
+              },
+              "kind": "declaration"
+            },
+            {
+              "declaration": {
+                "init": {
+                  "call": {
+                    "arguments": [
+                      {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "string",
+                          "value": "%mulint"
+                        }
+                      },
+                      {
+                        "kind": "identifier",
+                        "name": "x$1"
+                      },
+                      {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "number",
+                          "number": {
+                            "kind": "int",
+                            "value": 2
+                          }
+                        }
+                      }
+                    ],
+                    "callee": {
+                      "kind": "identifier",
+                      "name": "__callPrimitive"
+                    }
+                  },
+                  "kind": "call"
+                },
+                "kind": "const",
+                "name": "x$2"
+              },
+              "kind": "declaration"
+            },
+            {
+              "expression": {
+                "assignment": {
+                  "target": "__raml_init_y",
+                  "value": {
+                    "call": {
+                      "arguments": [
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "string",
+                            "value": "%subint"
+                          }
+                        },
+                        {
+                          "kind": "identifier",
+                          "name": "x$2"
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "number",
+                            "number": {
+                              "kind": "int",
+                              "value": 3
+                            }
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "kind": "identifier",
+                        "name": "__callPrimitive"
+                      }
+                    },
+                    "kind": "call"
+                  }
+                },
+                "kind": "assignment"
+              },
+              "kind": "expression"
+            }
+          ],
+          "kind": "block"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "kind": "identifier",
+              "name": "__raml_init_y"
+            },
+            "kind": "const",
+            "name": "y"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "expression": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "%d %d\\n"
+                  }
+                },
+                {
+                  "kind": "identifier",
+                  "name": "x"
+                },
+                {
+                  "kind": "identifier",
+                  "name": "y"
+                }
+              ],
+              "callee": {
+                "kind": "member",
+                "member": {
+                  "object": {
+                    "kind": "identifier",
+                    "name": "Printf"
+                  },
+                  "property": "printf"
+                }
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "expression"
+        }
+      },
+      {
+        "exports": [
+          {
+            "local": "x",
+            "name": "x"
+          },
+          {
+            "local": "y",
+            "name": "y"
+          }
+        ],
+        "kind": "export"
+      }
+    ],
+    "module_name": "Let_shadowing"
+  }
+}

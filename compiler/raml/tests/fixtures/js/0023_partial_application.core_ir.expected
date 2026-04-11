@@ -1,0 +1,205 @@
+{
+  "exports": [
+    {
+      "name": "mul",
+      "symbol": "mul"
+    },
+    {
+      "name": "double_then",
+      "symbol": "double_then"
+    },
+    {
+      "name": "six_times",
+      "symbol": "six_times"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "mul",
+          "symbol": "mul"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "apply": {
+                          "arguments": [
+                            {
+                              "kind": "var",
+                              "name": "x"
+                            },
+                            {
+                              "kind": "var",
+                              "name": "y"
+                            }
+                          ],
+                          "callee": {
+                            "function": "*",
+                            "kind": "direct"
+                          }
+                        },
+                        "kind": "apply"
+                      },
+                      {
+                        "kind": "var",
+                        "name": "z"
+                      }
+                    ],
+                    "callee": {
+                      "function": "*",
+                      "kind": "direct"
+                    }
+                  },
+                  "kind": "apply"
+                },
+                "params": [
+                  "x",
+                  "y",
+                  "z"
+                ]
+              }
+            },
+            "name": "mul"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "double_then",
+          "symbol": "double_then"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "constant": {
+                      "kind": "int",
+                      "value": 2
+                    },
+                    "kind": "constant"
+                  }
+                ],
+                "callee": {
+                  "function": "mul",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "double_then"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "six_times",
+          "symbol": "six_times"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "constant": {
+                      "kind": "int",
+                      "value": 3
+                    },
+                    "kind": "constant"
+                  }
+                ],
+                "callee": {
+                  "expr": {
+                    "kind": "var",
+                    "name": "double_then"
+                  },
+                  "kind": "indirect"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "six_times"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "apply": {
+              "arguments": [
+                {
+                  "constant": {
+                    "kind": "string",
+                    "value": "%d\\n"
+                  },
+                  "kind": "constant"
+                },
+                {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "constant": {
+                          "kind": "int",
+                          "value": 7
+                        },
+                        "kind": "constant"
+                      }
+                    ],
+                    "callee": {
+                      "expr": {
+                        "kind": "var",
+                        "name": "six_times"
+                      },
+                      "kind": "indirect"
+                    }
+                  },
+                  "kind": "apply"
+                }
+              ],
+              "callee": {
+                "function": "Printf.printf",
+                "kind": "direct"
+              }
+            },
+            "kind": "apply"
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/partial_application.ml",
+    "unit_name": "Partial_application"
+  }
+}

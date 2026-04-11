@@ -1,0 +1,170 @@
+{
+  "body": [
+    {
+      "declaration": {
+        "init": {
+          "function": {
+            "body": [
+              {
+                "declaration": {
+                  "init": {
+                    "function": {
+                      "body": [
+                        {
+                          "expression": {
+                            "call": {
+                              "arguments": [
+                                {
+                                  "kind": "literal",
+                                  "literal": {
+                                    "kind": "string",
+                                    "value": "%addint"
+                                  }
+                                },
+                                {
+                                  "kind": "identifier",
+                                  "name": "base"
+                                },
+                                {
+                                  "kind": "identifier",
+                                  "name": "x"
+                                }
+                              ],
+                              "callee": {
+                                "kind": "identifier",
+                                "name": "__callPrimitive"
+                              }
+                            },
+                            "kind": "call"
+                          },
+                          "kind": "return"
+                        }
+                      ],
+                      "params": [
+                        "x"
+                      ]
+                    },
+                    "kind": "function"
+                  },
+                  "kind": "const",
+                  "name": "add"
+                },
+                "kind": "declaration"
+              },
+              {
+                "expression": {
+                  "kind": "identifier",
+                  "name": "add"
+                },
+                "kind": "return"
+              }
+            ],
+            "params": [
+              "base"
+            ]
+          },
+          "kind": "function"
+        },
+        "kind": "const",
+        "name": "make_adder"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "number",
+                  "number": {
+                    "kind": "int",
+                    "value": 7
+                  }
+                }
+              }
+            ],
+            "callee": {
+              "kind": "identifier",
+              "name": "make_adder"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "const",
+        "name": "add7"
+      },
+      "kind": "declaration"
+    },
+    {
+      "expression": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "%d\\n"
+              }
+            },
+            {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 35
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "add7"
+                }
+              },
+              "kind": "call"
+            }
+          ],
+          "callee": {
+            "kind": "member",
+            "member": {
+              "object": {
+                "kind": "identifier",
+                "name": "Printf"
+              },
+              "property": "printf"
+            }
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "expression"
+    }
+  ],
+  "exports": [
+    {
+      "local": "make_adder",
+      "name": "make_adder"
+    }
+  ],
+  "imports": [
+    {
+      "from": "./Printf.js",
+      "imported": null,
+      "local": "Printf",
+      "namespace": true
+    },
+    {
+      "from": "./riot-runtime.js",
+      "imported": "callPrimitive",
+      "local": "__callPrimitive"
+    }
+  ],
+  "module_name": "Local_functions_and_closures"
+}

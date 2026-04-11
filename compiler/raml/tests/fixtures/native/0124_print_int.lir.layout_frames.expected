@@ -1,0 +1,42 @@
+{
+  "exports": [],
+  "module_name": "Print_int",
+  "procedures": [
+    {
+      "body": [
+        {
+          "kind": "label",
+          "name": "__entry__"
+        },
+        {
+          "dst": "t0",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 42
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t0"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "print_int"
+          },
+          "dst": "t1",
+          "kind": "call"
+        }
+      ],
+      "kind": "entry",
+      "name": "__entry__",
+      "params": []
+    }
+  ]
+}

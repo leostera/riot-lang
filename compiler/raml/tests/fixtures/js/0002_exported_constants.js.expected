@@ -1,0 +1,123 @@
+{
+  "js": "const answer = 42;\n\nconst ready = true;\n\nconst ratio = 3.5;\n\nconst greeting = \"riot\";\n\nconst nothing = undefined;\n\nexport {\n  answer,\n  ready,\n  ratio,\n  greeting,\n  nothing\n};\n",
+  "jst": {
+    "items": [
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "kind": "literal",
+              "literal": {
+                "kind": "number",
+                "number": {
+                  "kind": "int",
+                  "value": 42
+                }
+              }
+            },
+            "kind": "const",
+            "name": "answer"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "kind": "literal",
+              "literal": {
+                "kind": "bool",
+                "value": true
+              }
+            },
+            "kind": "const",
+            "name": "ready"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "kind": "literal",
+              "literal": {
+                "kind": "number",
+                "number": {
+                  "kind": "float",
+                  "value": 3.5
+                }
+              }
+            },
+            "kind": "const",
+            "name": "ratio"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "riot"
+              }
+            },
+            "kind": "const",
+            "name": "greeting"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "kind": "literal",
+              "literal": {
+                "kind": "undefined"
+              }
+            },
+            "kind": "const",
+            "name": "nothing"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "exports": [
+          {
+            "local": "answer",
+            "name": "answer"
+          },
+          {
+            "local": "ready",
+            "name": "ready"
+          },
+          {
+            "local": "ratio",
+            "name": "ratio"
+          },
+          {
+            "local": "greeting",
+            "name": "greeting"
+          },
+          {
+            "local": "nothing",
+            "name": "nothing"
+          }
+        ],
+        "kind": "export"
+      }
+    ],
+    "module_name": "Exported_constants"
+  }
+}

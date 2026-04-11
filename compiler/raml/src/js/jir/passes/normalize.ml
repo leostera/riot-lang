@@ -46,13 +46,19 @@ and collect_statement_imports = fun statement imports ->
       | None -> imports
       | Some init -> collect_expr_imports init imports
     )
+  | Jir.Statement.Block statements ->
+      collect_statement_import_list statements imports
   | Jir.Statement.Expression expr ->
       collect_expr_imports expr imports
   | Jir.Statement.Return expr ->
       collect_expr_imports expr imports
+  | Jir.Statement.If if_ ->
+      let imports = collect_expr_imports if_.condition imports in
+      let imports = collect_statement_import_list if_.then_ imports in
+      collect_statement_import_list if_.else_ imports
 
 let collect_program_imports = fun program ->
-  List.fold_right collect_statement_imports Jir.Program.(program.body) Jir.Program.(program.imports)
+  List.fold_right collect_statement_imports Jir.Program.(program.body) []
 
 let dedupe_imports = fun imports ->
   let rec loop seen rest =

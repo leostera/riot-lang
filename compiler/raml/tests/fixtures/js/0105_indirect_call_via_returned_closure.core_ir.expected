@@ -1,0 +1,144 @@
+{
+  "exports": [
+    {
+      "name": "make_adder",
+      "symbol": "make_adder"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "make_adder",
+          "symbol": "make_adder"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "kind": "let",
+                  "let": {
+                    "bindings": [
+                      {
+                        "expr": {
+                          "kind": "lambda",
+                          "lambda": {
+                            "body": {
+                              "apply": {
+                                "arguments": [
+                                  {
+                                    "kind": "var",
+                                    "name": "base"
+                                  },
+                                  {
+                                    "kind": "var",
+                                    "name": "x"
+                                  }
+                                ],
+                                "callee": {
+                                  "function": "+",
+                                  "kind": "direct"
+                                }
+                              },
+                              "kind": "apply"
+                            },
+                            "params": [
+                              "x"
+                            ]
+                          }
+                        },
+                        "name": "add"
+                      }
+                    ],
+                    "body": {
+                      "kind": "var",
+                      "name": "add"
+                    },
+                    "rec_flag": "nonrecursive"
+                  }
+                },
+                "params": [
+                  "base"
+                ]
+              }
+            },
+            "name": "make_adder"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "apply": {
+              "arguments": [
+                {
+                  "constant": {
+                    "kind": "string",
+                    "value": "%d\\n"
+                  },
+                  "kind": "constant"
+                },
+                {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "constant": {
+                          "kind": "int",
+                          "value": 35
+                        },
+                        "kind": "constant"
+                      }
+                    ],
+                    "callee": {
+                      "expr": {
+                        "apply": {
+                          "arguments": [
+                            {
+                              "constant": {
+                                "kind": "int",
+                                "value": 7
+                              },
+                              "kind": "constant"
+                            }
+                          ],
+                          "callee": {
+                            "function": "make_adder",
+                            "kind": "direct"
+                          }
+                        },
+                        "kind": "apply"
+                      },
+                      "kind": "indirect"
+                    }
+                  },
+                  "kind": "apply"
+                }
+              ],
+              "callee": {
+                "function": "Printf.printf",
+                "kind": "direct"
+              }
+            },
+            "kind": "apply"
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/indirect_call_via_returned_closure.ml",
+    "unit_name": "Indirect_call_via_returned_closure"
+  }
+}

@@ -1,0 +1,775 @@
+{
+  "exports": [
+    {
+      "name": "luminance",
+      "symbol": "luminance"
+    },
+    {
+      "name": "sample",
+      "symbol": "sample"
+    }
+  ],
+  "module_name": "Variants_and_match",
+  "procedures": [
+    {
+      "body": [
+        {
+          "kind": "label",
+          "name": "luminance"
+        },
+        {
+          "dst": "t0",
+          "kind": "move",
+          "src": {
+            "kind": "register",
+            "name": "color"
+          }
+        },
+        {
+          "dst": "t1",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 0
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t0"
+            },
+            {
+              "kind": "register",
+              "name": "t1"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_tuple_get"
+          },
+          "dst": "t2",
+          "kind": "call"
+        },
+        {
+          "dst": "t3",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 0
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t2"
+            },
+            {
+              "kind": "register",
+              "name": "t3"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_eq"
+          },
+          "dst": "t4",
+          "kind": "call"
+        },
+        {
+          "kind": "branch_if_zero",
+          "operand": {
+            "kind": "register",
+            "name": "t4"
+          },
+          "target": "L__raml_else_0"
+        },
+        {
+          "dst": "t5",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 76
+            }
+          }
+        },
+        {
+          "dst": "t38",
+          "kind": "move",
+          "src": {
+            "kind": "register",
+            "name": "t5"
+          }
+        },
+        {
+          "kind": "jump",
+          "target": "L__raml_endif_1"
+        },
+        {
+          "kind": "label",
+          "name": "L__raml_else_0"
+        },
+        {
+          "dst": "t6",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 0
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t0"
+            },
+            {
+              "kind": "register",
+              "name": "t6"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_tuple_get"
+          },
+          "dst": "t7",
+          "kind": "call"
+        },
+        {
+          "dst": "t8",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 1
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t7"
+            },
+            {
+              "kind": "register",
+              "name": "t8"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_eq"
+          },
+          "dst": "t9",
+          "kind": "call"
+        },
+        {
+          "kind": "branch_if_zero",
+          "operand": {
+            "kind": "register",
+            "name": "t9"
+          },
+          "target": "L__raml_else_2"
+        },
+        {
+          "dst": "t10",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 150
+            }
+          }
+        },
+        {
+          "dst": "t37",
+          "kind": "move",
+          "src": {
+            "kind": "register",
+            "name": "t10"
+          }
+        },
+        {
+          "kind": "jump",
+          "target": "L__raml_endif_3"
+        },
+        {
+          "kind": "label",
+          "name": "L__raml_else_2"
+        },
+        {
+          "dst": "t11",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 0
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t0"
+            },
+            {
+              "kind": "register",
+              "name": "t11"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_tuple_get"
+          },
+          "dst": "t12",
+          "kind": "call"
+        },
+        {
+          "dst": "t13",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 2
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t12"
+            },
+            {
+              "kind": "register",
+              "name": "t13"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_eq"
+          },
+          "dst": "t14",
+          "kind": "call"
+        },
+        {
+          "kind": "branch_if_zero",
+          "operand": {
+            "kind": "register",
+            "name": "t14"
+          },
+          "target": "L__raml_else_4"
+        },
+        {
+          "dst": "t15",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 29
+            }
+          }
+        },
+        {
+          "dst": "t36",
+          "kind": "move",
+          "src": {
+            "kind": "register",
+            "name": "t15"
+          }
+        },
+        {
+          "kind": "jump",
+          "target": "L__raml_endif_5"
+        },
+        {
+          "kind": "label",
+          "name": "L__raml_else_4"
+        },
+        {
+          "dst": "t16",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 1
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t0"
+            },
+            {
+              "kind": "register",
+              "name": "t16"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_tuple_get"
+          },
+          "dst": "t17",
+          "kind": "call"
+        },
+        {
+          "dst": "t18",
+          "kind": "move",
+          "src": {
+            "kind": "register",
+            "name": "t17"
+          }
+        },
+        {
+          "dst": "t19",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 0
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t18"
+            },
+            {
+              "kind": "register",
+              "name": "t19"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_tuple_get"
+          },
+          "dst": "t20",
+          "kind": "call"
+        },
+        {
+          "dst": "t21",
+          "kind": "move",
+          "src": {
+            "kind": "register",
+            "name": "t20"
+          }
+        },
+        {
+          "dst": "t22",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 1
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t18"
+            },
+            {
+              "kind": "register",
+              "name": "t22"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_tuple_get"
+          },
+          "dst": "t23",
+          "kind": "call"
+        },
+        {
+          "dst": "t24",
+          "kind": "move",
+          "src": {
+            "kind": "register",
+            "name": "t23"
+          }
+        },
+        {
+          "dst": "t25",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 2
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t18"
+            },
+            {
+              "kind": "register",
+              "name": "t25"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_tuple_get"
+          },
+          "dst": "t26",
+          "kind": "call"
+        },
+        {
+          "dst": "t27",
+          "kind": "move",
+          "src": {
+            "kind": "register",
+            "name": "t26"
+          }
+        },
+        {
+          "dst": "t28",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 3
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t28"
+            },
+            {
+              "kind": "register",
+              "name": "t21"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "*"
+          },
+          "dst": "t29",
+          "kind": "call"
+        },
+        {
+          "dst": "t30",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 6
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t30"
+            },
+            {
+              "kind": "register",
+              "name": "t24"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "*"
+          },
+          "dst": "t31",
+          "kind": "call"
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t29"
+            },
+            {
+              "kind": "register",
+              "name": "t31"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "+"
+          },
+          "dst": "t32",
+          "kind": "call"
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t32"
+            },
+            {
+              "kind": "register",
+              "name": "t27"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "+"
+          },
+          "dst": "t33",
+          "kind": "call"
+        },
+        {
+          "dst": "t34",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 10
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t33"
+            },
+            {
+              "kind": "register",
+              "name": "t34"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "/"
+          },
+          "dst": "t35",
+          "kind": "call"
+        },
+        {
+          "dst": "t36",
+          "kind": "move",
+          "src": {
+            "kind": "register",
+            "name": "t35"
+          }
+        },
+        {
+          "kind": "label",
+          "name": "L__raml_endif_5"
+        },
+        {
+          "dst": "t37",
+          "kind": "move",
+          "src": {
+            "kind": "register",
+            "name": "t36"
+          }
+        },
+        {
+          "kind": "label",
+          "name": "L__raml_endif_3"
+        },
+        {
+          "dst": "t38",
+          "kind": "move",
+          "src": {
+            "kind": "register",
+            "name": "t37"
+          }
+        },
+        {
+          "kind": "label",
+          "name": "L__raml_endif_1"
+        },
+        {
+          "kind": "return",
+          "operand": {
+            "kind": "register",
+            "name": "t38"
+          }
+        }
+      ],
+      "kind": "function",
+      "name": "luminance",
+      "params": [
+        "color"
+      ]
+    },
+    {
+      "body": [
+        {
+          "kind": "label",
+          "name": "__entry__"
+        },
+        {
+          "dst": "t0",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 3
+            }
+          }
+        },
+        {
+          "dst": "t1",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 10
+            }
+          }
+        },
+        {
+          "dst": "t2",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 20
+            }
+          }
+        },
+        {
+          "dst": "t3",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 30
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t1"
+            },
+            {
+              "kind": "register",
+              "name": "t2"
+            },
+            {
+              "kind": "register",
+              "name": "t3"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_tuple_make_3"
+          },
+          "dst": "t4",
+          "kind": "call"
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t0"
+            },
+            {
+              "kind": "register",
+              "name": "t4"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "raml_tuple_make_2"
+          },
+          "dst": "t5",
+          "kind": "call"
+        },
+        {
+          "kind": "store_global",
+          "src": {
+            "kind": "register",
+            "name": "t5"
+          },
+          "symbol": "sample"
+        },
+        {
+          "dst": "t6",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "string",
+              "value": "%d\\n"
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "global",
+              "name": "sample"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "luminance"
+          },
+          "dst": "t7",
+          "kind": "call"
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t6"
+            },
+            {
+              "kind": "register",
+              "name": "t7"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "Printf.printf"
+          },
+          "dst": "t8",
+          "kind": "call"
+        }
+      ],
+      "kind": "entry",
+      "name": "__entry__",
+      "params": []
+    }
+  ]
+}

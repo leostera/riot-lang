@@ -1,0 +1,126 @@
+{
+  "exports": [
+    {
+      "name": "result",
+      "symbol": "result"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "result",
+          "symbol": "result"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "let",
+              "let": {
+                "bindings": [
+                  {
+                    "expr": {
+                      "constant": {
+                        "kind": "int",
+                        "value": 10
+                      },
+                      "kind": "constant"
+                    },
+                    "name": "unused"
+                  }
+                ],
+                "body": {
+                  "kind": "let",
+                  "let": {
+                    "bindings": [
+                      {
+                        "expr": {
+                          "kind": "lambda",
+                          "lambda": {
+                            "body": {
+                              "apply": {
+                                "arguments": [
+                                  {
+                                    "kind": "var",
+                                    "name": "x"
+                                  },
+                                  {
+                                    "kind": "var",
+                                    "name": "unused"
+                                  }
+                                ],
+                                "callee": {
+                                  "function": "+",
+                                  "kind": "direct"
+                                }
+                              },
+                              "kind": "apply"
+                            },
+                            "params": [
+                              "x"
+                            ]
+                          }
+                        },
+                        "name": "dead"
+                      }
+                    ],
+                    "body": {
+                      "constant": {
+                        "kind": "int",
+                        "value": 42
+                      },
+                      "kind": "constant"
+                    },
+                    "rec_flag": "nonrecursive"
+                  }
+                },
+                "rec_flag": "nonrecursive"
+              }
+            },
+            "name": "result"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "apply": {
+              "arguments": [
+                {
+                  "constant": {
+                    "kind": "string",
+                    "value": "%d\\n"
+                  },
+                  "kind": "constant"
+                },
+                {
+                  "kind": "var",
+                  "name": "result"
+                }
+              ],
+              "callee": {
+                "function": "Printf.printf",
+                "kind": "direct"
+              }
+            },
+            "kind": "apply"
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/dead_local_bindings.ml",
+    "unit_name": "Dead_local_bindings"
+  }
+}

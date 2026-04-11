@@ -1,0 +1,313 @@
+{
+  "body": [
+    {
+      "declaration": {
+        "init": {
+          "call": {
+            "arguments": [
+              {
+                "function": {
+                  "body": [
+                    {
+                      "expression": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "identifier",
+                              "name": "label"
+                            }
+                          ],
+                          "callee": {
+                            "kind": "identifier",
+                            "name": "__print_string"
+                          }
+                        },
+                        "kind": "call"
+                      },
+                      "kind": "expression"
+                    },
+                    {
+                      "expression": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "string",
+                                "value": ":"
+                              }
+                            }
+                          ],
+                          "callee": {
+                            "kind": "identifier",
+                            "name": "__print_char"
+                          }
+                        },
+                        "kind": "call"
+                      },
+                      "kind": "expression"
+                    },
+                    {
+                      "expression": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "identifier",
+                              "name": "x"
+                            }
+                          ],
+                          "callee": {
+                            "kind": "identifier",
+                            "name": "__print_int"
+                          }
+                        },
+                        "kind": "call"
+                      },
+                      "kind": "expression"
+                    },
+                    {
+                      "expression": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "string",
+                                "value": " "
+                              }
+                            }
+                          ],
+                          "callee": {
+                            "kind": "identifier",
+                            "name": "__print_char"
+                          }
+                        },
+                        "kind": "call"
+                      },
+                      "kind": "expression"
+                    },
+                    {
+                      "expression": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "string",
+                                "value": "%addint"
+                              }
+                            },
+                            {
+                              "kind": "identifier",
+                              "name": "x"
+                            },
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "number",
+                                "number": {
+                                  "kind": "int",
+                                  "value": 1
+                                }
+                              }
+                            }
+                          ],
+                          "callee": {
+                            "kind": "identifier",
+                            "name": "__callPrimitive"
+                          }
+                        },
+                        "kind": "call"
+                      },
+                      "kind": "return"
+                    }
+                  ],
+                  "params": [
+                    "label",
+                    "x"
+                  ]
+                },
+                "kind": "function"
+              },
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "number",
+                  "number": {
+                    "kind": "int",
+                    "value": 2
+                  }
+                }
+              }
+            ],
+            "callee": {
+              "kind": "identifier",
+              "name": "__makeCurried"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "const",
+        "name": "step"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "a"
+                }
+              },
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "number",
+                  "number": {
+                    "kind": "int",
+                    "value": 1
+                  }
+                }
+              }
+            ],
+            "callee": {
+              "kind": "identifier",
+              "name": "step"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "const",
+        "name": "n"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "b"
+                }
+              },
+              {
+                "kind": "identifier",
+                "name": "n"
+              }
+            ],
+            "callee": {
+              "kind": "identifier",
+              "name": "step"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "const",
+        "name": "n$1"
+      },
+      "kind": "declaration"
+    },
+    {
+      "expression": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "c"
+              }
+            },
+            {
+              "kind": "identifier",
+              "name": "n$1"
+            }
+          ],
+          "callee": {
+            "kind": "identifier",
+            "name": "step"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "expression"
+    },
+    {
+      "expression": {
+        "kind": "literal",
+        "literal": {
+          "kind": "undefined"
+        }
+      },
+      "kind": "expression"
+    },
+    {
+      "expression": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "literal",
+              "literal": {
+                "kind": "undefined"
+              }
+            }
+          ],
+          "callee": {
+            "kind": "identifier",
+            "name": "__print_newline"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "expression"
+    }
+  ],
+  "exports": [
+    {
+      "local": "step",
+      "name": "step"
+    }
+  ],
+  "imports": [
+    {
+      "from": "./riot-runtime.js",
+      "imported": "callPrimitive",
+      "local": "__callPrimitive"
+    },
+    {
+      "from": "./riot-runtime.js",
+      "imported": "makeCurried",
+      "local": "__makeCurried"
+    },
+    {
+      "from": "./riot-runtime.js",
+      "imported": "print_char",
+      "local": "__print_char"
+    },
+    {
+      "from": "./riot-runtime.js",
+      "imported": "print_int",
+      "local": "__print_int"
+    },
+    {
+      "from": "./riot-runtime.js",
+      "imported": "print_newline",
+      "local": "__print_newline"
+    },
+    {
+      "from": "./riot-runtime.js",
+      "imported": "print_string",
+      "local": "__print_string"
+    }
+  ],
+  "module_name": "Sequence_and_ignore"
+}

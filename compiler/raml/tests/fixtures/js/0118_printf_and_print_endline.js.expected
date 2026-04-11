@@ -1,0 +1,94 @@
+{
+  "js": "import * as Printf from \"./Printf.js\";\n\nimport { print_endline as __print_endline } from \"./riot-runtime.js\";\n\nPrintf.printf(\"%d\\\\n\", 42);\n\n__print_endline(\"done\");\n",
+  "jst": {
+    "items": [
+      {
+        "import": {
+          "default": null,
+          "from": "./Printf.js",
+          "names": [],
+          "namespace": "Printf"
+        },
+        "kind": "import"
+      },
+      {
+        "import": {
+          "default": null,
+          "from": "./riot-runtime.js",
+          "names": [
+            {
+              "imported": "print_endline",
+              "local": "__print_endline"
+            }
+          ]
+        },
+        "kind": "import"
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "expression": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "%d\\n"
+                  }
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "number",
+                    "number": {
+                      "kind": "int",
+                      "value": 42
+                    }
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "member",
+                "member": {
+                  "object": {
+                    "kind": "identifier",
+                    "name": "Printf"
+                  },
+                  "property": "printf"
+                }
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "expression"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "expression": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "done"
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "identifier",
+                "name": "__print_endline"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "expression"
+        }
+      }
+    ],
+    "module_name": "Printf_and_print_endline"
+  }
+}

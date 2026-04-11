@@ -1,7 +1,20 @@
 {
-  "js": "print_endline(\"hello, world\");\n",
+  "js": "import { print_endline as __print_endline } from \"./riot-runtime.js\";\n\n__print_endline(\"hello, world\");\n",
   "jst": {
     "items": [
+      {
+        "import": {
+          "default": null,
+          "from": "./riot-runtime.js",
+          "names": [
+            {
+              "imported": "print_endline",
+              "local": "__print_endline"
+            }
+          ]
+        },
+        "kind": "import"
+      },
       {
         "kind": "statement",
         "statement": {
@@ -18,7 +31,7 @@
               ],
               "callee": {
                 "kind": "identifier",
-                "name": "print_endline"
+                "name": "__print_endline"
               }
             },
             "kind": "call"

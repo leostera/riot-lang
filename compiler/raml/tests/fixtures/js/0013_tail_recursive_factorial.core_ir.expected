@@ -1,0 +1,210 @@
+{
+  "exports": [
+    {
+      "name": "fact",
+      "symbol": "fact"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "fact",
+          "symbol": "fact"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "kind": "let",
+                  "let": {
+                    "bindings": [
+                      {
+                        "expr": {
+                          "kind": "lambda",
+                          "lambda": {
+                            "body": {
+                              "if_then_else": {
+                                "condition": {
+                                  "apply": {
+                                    "arguments": [
+                                      {
+                                        "kind": "var",
+                                        "name": "n"
+                                      },
+                                      {
+                                        "constant": {
+                                          "kind": "int",
+                                          "value": 1
+                                        },
+                                        "kind": "constant"
+                                      }
+                                    ],
+                                    "callee": {
+                                      "function": "<=",
+                                      "kind": "direct"
+                                    }
+                                  },
+                                  "kind": "apply"
+                                },
+                                "else": {
+                                  "apply": {
+                                    "arguments": [
+                                      {
+                                        "apply": {
+                                          "arguments": [
+                                            {
+                                              "kind": "var",
+                                              "name": "acc"
+                                            },
+                                            {
+                                              "kind": "var",
+                                              "name": "n"
+                                            }
+                                          ],
+                                          "callee": {
+                                            "function": "*",
+                                            "kind": "direct"
+                                          }
+                                        },
+                                        "kind": "apply"
+                                      },
+                                      {
+                                        "apply": {
+                                          "arguments": [
+                                            {
+                                              "kind": "var",
+                                              "name": "n"
+                                            },
+                                            {
+                                              "constant": {
+                                                "kind": "int",
+                                                "value": 1
+                                              },
+                                              "kind": "constant"
+                                            }
+                                          ],
+                                          "callee": {
+                                            "function": "-",
+                                            "kind": "direct"
+                                          }
+                                        },
+                                        "kind": "apply"
+                                      }
+                                    ],
+                                    "callee": {
+                                      "function": "loop",
+                                      "kind": "direct"
+                                    }
+                                  },
+                                  "kind": "apply"
+                                },
+                                "then": {
+                                  "kind": "var",
+                                  "name": "acc"
+                                }
+                              },
+                              "kind": "if_then_else"
+                            },
+                            "params": [
+                              "acc",
+                              "n"
+                            ]
+                          }
+                        },
+                        "name": "loop"
+                      }
+                    ],
+                    "body": {
+                      "apply": {
+                        "arguments": [
+                          {
+                            "constant": {
+                              "kind": "int",
+                              "value": 1
+                            },
+                            "kind": "constant"
+                          },
+                          {
+                            "kind": "var",
+                            "name": "n"
+                          }
+                        ],
+                        "callee": {
+                          "function": "loop",
+                          "kind": "direct"
+                        }
+                      },
+                      "kind": "apply"
+                    },
+                    "rec_flag": "recursive"
+                  }
+                },
+                "params": [
+                  "n"
+                ]
+              }
+            },
+            "name": "fact"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "apply": {
+              "arguments": [
+                {
+                  "constant": {
+                    "kind": "string",
+                    "value": "%d\\n"
+                  },
+                  "kind": "constant"
+                },
+                {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "constant": {
+                          "kind": "int",
+                          "value": 10
+                        },
+                        "kind": "constant"
+                      }
+                    ],
+                    "callee": {
+                      "function": "fact",
+                      "kind": "direct"
+                    }
+                  },
+                  "kind": "apply"
+                }
+              ],
+              "callee": {
+                "function": "Printf.printf",
+                "kind": "direct"
+              }
+            },
+            "kind": "apply"
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/tail_recursive_factorial.ml",
+    "unit_name": "Tail_recursive_factorial"
+  }
+}

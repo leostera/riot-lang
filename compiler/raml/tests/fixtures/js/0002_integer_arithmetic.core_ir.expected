@@ -1,0 +1,247 @@
+{
+  "exports": [
+    {
+      "name": "a",
+      "symbol": "a"
+    },
+    {
+      "name": "b",
+      "symbol": "b"
+    },
+    {
+      "name": "c",
+      "symbol": "c"
+    },
+    {
+      "name": "d",
+      "symbol": "d"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "a",
+          "symbol": "a"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "constant": {
+                      "kind": "int",
+                      "value": 40
+                    },
+                    "kind": "constant"
+                  },
+                  {
+                    "constant": {
+                      "kind": "int",
+                      "value": 2
+                    },
+                    "kind": "constant"
+                  }
+                ],
+                "callee": {
+                  "function": "+",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "a"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "b",
+          "symbol": "b"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "apply": {
+                      "arguments": [
+                        {
+                          "kind": "var",
+                          "name": "a"
+                        },
+                        {
+                          "constant": {
+                            "kind": "int",
+                            "value": 3
+                          },
+                          "kind": "constant"
+                        }
+                      ],
+                      "callee": {
+                        "function": "*",
+                        "kind": "direct"
+                      }
+                    },
+                    "kind": "apply"
+                  },
+                  {
+                    "constant": {
+                      "kind": "int",
+                      "value": 5
+                    },
+                    "kind": "constant"
+                  }
+                ],
+                "callee": {
+                  "function": "-",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "b"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "c",
+          "symbol": "c"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "kind": "var",
+                    "name": "b"
+                  },
+                  {
+                    "constant": {
+                      "kind": "int",
+                      "value": 7
+                    },
+                    "kind": "constant"
+                  }
+                ],
+                "callee": {
+                  "function": "/",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "c"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "d",
+          "symbol": "d"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "kind": "var",
+                    "name": "b"
+                  },
+                  {
+                    "constant": {
+                      "kind": "int",
+                      "value": 7
+                    },
+                    "kind": "constant"
+                  }
+                ],
+                "callee": {
+                  "function": "mod",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "d"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "apply": {
+              "arguments": [
+                {
+                  "constant": {
+                    "kind": "string",
+                    "value": "%d %d %d %d\\n"
+                  },
+                  "kind": "constant"
+                },
+                {
+                  "kind": "var",
+                  "name": "a"
+                },
+                {
+                  "kind": "var",
+                  "name": "b"
+                },
+                {
+                  "kind": "var",
+                  "name": "c"
+                },
+                {
+                  "kind": "var",
+                  "name": "d"
+                }
+              ],
+              "callee": {
+                "function": "Printf.printf",
+                "kind": "direct"
+              }
+            },
+            "kind": "apply"
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/integer_arithmetic.ml",
+    "unit_name": "Integer_arithmetic"
+  }
+}

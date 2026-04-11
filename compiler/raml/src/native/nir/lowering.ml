@@ -9,11 +9,55 @@ type error =
   | UnsupportedBinding of { name: string; reason: string }
   | UnsupportedExpr of { reason: string }
 
+type pass_snapshot = {
+  name: string;
+  program: Nir.Program.t;
+}
+
+type trace = {
+  initial: Nir.Program.t;
+  passes: pass_snapshot list;
+  final: Nir.Program.t;
+}
+
 type 'value validation = ('value, error list) result
 
 type lowered_item =
   | LoweredFunction of Nir.Function.t
   | LoweredEntry of Nir.Entry_item.t
+
+type lowered_expr = {
+  expr: Nir.Expr.t;
+  lifted_functions: Nir.Function.t list;
+}
+
+type lowered_let_binding = {
+  binding: Nir.Expr.binding option;
+  lifted_functions: Nir.Function.t list;
+}
+
+type local_function = {
+  source_name: string;
+  lifted_name: string;
+  closure_name: string;
+  captures: string list;
+  params: string list;
+  escapes: bool;
+}
+
+type lowering_state = {
+  mutable next_local_function: int;
+  mutable next_partial_application: int;
+  mutable next_sequence_binding: int;
+}
+
+type env = {
+  bound_values: string list;
+  top_level_functions: (string * int) list;
+  local_functions: local_function list;
+  current_function: string option;
+  lowering_state: lowering_state;
+}
 
 let ok = fun value -> Ok value
 
@@ -26,6 +70,17 @@ let validation_map2 = fun left right f ->
   | (Ok _, Error right) -> Error right
   | (Error left, Error right) -> Error (left @ right)
 
+let validation_map3 = fun first second third f ->
+  match (first, second, third) with
+  | (Ok first, Ok second, Ok third) -> Ok (f first second third)
+  | (Error first, Ok _, Ok _) -> Error first
+  | (Ok _, Error second, Ok _) -> Error second
+  | (Ok _, Ok _, Error third) -> Error third
+  | (Error first, Error second, Ok _) -> Error (first @ second)
+  | (Error first, Ok _, Error third) -> Error (first @ third)
+  | (Ok _, Error second, Error third) -> Error (second @ third)
+  | (Error first, Error second, Error third) -> Error (first @ second @ third)
+
 let map_results = fun items f ->
   List.fold_right
     (fun item acc -> validation_map2 (f item) acc (fun item acc -> item :: acc))
@@ -36,6 +91,18 @@ let source_kind_to_string = fun kind ->
   match kind with
   | Source_unit.Implementation -> "implementation"
   | Source_unit.Interface -> "interface"
+
+let trace_to_json = fun trace ->
+  Json.obj
+    [
+      ("status", Json.string "ok");
+      ("initial", Nir.Program.to_json trace.initial);
+      (
+        "passes",
+        Json.obj (List.map (fun pass -> (pass.name, Nir.Program.to_json pass.program)) trace.passes)
+      );
+      ("program", Nir.Program.to_json trace.final);
+    ]
 
 let error_to_json = fun error ->
   match error with
@@ -65,55 +132,743 @@ let lower_constant = fun constant ->
   | Core.Constant.Bool value -> Nir.Literal.Bool value
   | Core.Constant.Int value -> Nir.Literal.Int value
   | Core.Constant.Float value -> Nir.Literal.Float value
+  | Core.Constant.Char value -> Nir.Literal.String value
   | Core.Constant.String value -> Nir.Literal.String value
 
-let rec lower_expr = fun expr ->
-  match expr with
-  | Core.Expr.Constant constant -> ok (Nir.Expr.Literal (lower_constant constant))
-  | Core.Expr.Var name -> ok (Nir.Expr.Symbol name)
-  | Core.Expr.Apply { callee=Core.Expr.Direct name; arguments } -> Result.map
-    (fun arguments -> Nir.Expr.Call Nir.Expr.{ callee = Direct name; arguments })
-    (map_results arguments lower_expr)
-  | Core.Expr.Apply { callee=Core.Expr.Indirect callee; arguments } -> validation_map2
-    (lower_expr callee)
-    (map_results arguments lower_expr)
-    (fun callee arguments -> Nir.Expr.Call Nir.Expr.{ callee = Indirect callee; arguments })
-  | Core.Expr.Lambda _ -> error
-    (UnsupportedExpr {
-      reason = "nested lambda expressions are outside the first Core IR -> NIR lowering slice"
-    })
-  | Core.Expr.Let _ -> error
-    (UnsupportedExpr {
-      reason = "let expressions are outside the first Core IR -> NIR lowering slice"
-    })
-  | Core.Expr.Sequence _ -> error
-    (UnsupportedExpr {
-      reason = "sequence expressions are outside the first Core IR -> NIR lowering slice"
-    })
-  | Core.Expr.If_then_else _ -> error
-    (UnsupportedExpr {
-      reason = "if expressions are outside the first Core IR -> NIR lowering slice"
-    })
-  | Core.Expr.Primitive _ -> error
-    (UnsupportedExpr {
-      reason = "primitive expressions are outside the first Core IR -> NIR lowering slice"
-    })
+let tuple_make_helper = fun ~arity ->
+  let symbol = format Format.[ str "raml_tuple_make_"; int arity ] in
+  Nir.Runtime_helper.{ name = symbol; symbol }
 
-let lower_binding = fun (binding: Core.Binding.t) ->
+let eq_helper = Nir.Runtime_helper.{ name = "raml_eq"; symbol = "raml_eq" }
+
+let tuple_get_helper = Nir.Runtime_helper.{ name = "raml_tuple_get"; symbol = "raml_tuple_get" }
+
+let runtime_call = fun (helper: Nir.Runtime_helper.t) arguments ->
+  Nir.Expr.Call Nir.Expr.{ callee = Direct helper.symbol; arguments }
+
+let primitive_helper = fun name ->
+  match name with
+  | "%eq" -> Some eq_helper
+  | _ -> None
+
+let has_name = fun names name ->
+  List.exists (String.equal name) names
+
+let add_unique_name = fun names name ->
+  if has_name names name then
+    names
+  else
+    names @ [ name ]
+
+let find_local_function = fun env name ->
+  env.local_functions |> List.find_map
+    (fun (local_function: local_function) ->
+      if String.equal local_function.source_name name then
+        Some local_function
+      else
+        None)
+
+let find_top_level_function_arity = fun env name ->
+  env.top_level_functions |> List.find_map
+    (fun (function_name, arity) ->
+      if String.equal function_name name then
+        Some arity
+      else
+        None)
+
+let lowered_expr = fun expr -> { expr; lifted_functions = [] }
+
+let collect_lowered_exprs = fun lowered_exprs ->
+  (
+    List.map (fun (lowered_expr: lowered_expr) -> lowered_expr.expr) lowered_exprs,
+    List.concat_map (fun (lowered_expr: lowered_expr) -> lowered_expr.lifted_functions) lowered_exprs
+  )
+
+let extend_bound_values = fun env names ->
+  { env with bound_values = List.fold_left add_unique_name env.bound_values names }
+
+let extend_local_functions = fun env local_functions ->
+  { env with local_functions = local_functions @ env.local_functions }
+
+let fresh_lifted_name = fun env local_name ->
+  match env.current_function with
+  | None -> error
+    (UnsupportedBinding {
+      name = local_name;
+      reason = "local function lifting requires an owning function or entry context"
+    })
+  | Some current_function ->
+      let next_index = env.lowering_state.next_local_function in
+      env.lowering_state.next_local_function <- next_index + 1;
+      ok
+        (format
+          Format.[ str current_function; str "__local_"; str local_name; str "_"; int next_index; ])
+
+let fresh_sequence_binding_name = fun env ->
+  let next_index = env.lowering_state.next_sequence_binding in
+  env.lowering_state.next_sequence_binding <- next_index + 1;
+  format Format.[ str "__seq_"; int next_index; ]
+
+let fresh_partial_application_prefix = fun env function_name ->
+  match env.current_function with
+  | None -> error
+    (UnsupportedExpr {
+      reason = "partial application lowering requires an owning function or entry context"
+    })
+  | Some current_function ->
+      let next_index = env.lowering_state.next_partial_application in
+      env.lowering_state.next_partial_application <- next_index + 1;
+      ok
+        (format
+          Format.[
+            str current_function;
+            str "__partial_";
+            str function_name;
+            str "_";
+            int next_index;
+          ])
+
+let partial_application_wrapper_name = fun prefix remaining_arity ->
+  format Format.[ str prefix; str "__step_"; int remaining_arity ]
+
+let closure_slot = fun closure index ->
+  runtime_call tuple_get_helper [ closure; Nir.Expr.Literal (Nir.Literal.Int index) ]
+
+let partial_application_closure = fun ~entrypoint ~original ~bound_arguments ->
+  runtime_call
+    (tuple_make_helper ~arity:(2 + List.length bound_arguments))
+    (Nir.Expr.Symbol_address entrypoint :: original :: bound_arguments)
+
+let rec build_partial_application_functions = fun ~prefix ~bound_argument_count ~remaining_arity ->
+  let closure_name = "__closure__" in
+  let argument_name = "__arg__" in
+  let current_name = partial_application_wrapper_name prefix remaining_arity in
+  let closure = Nir.Expr.Symbol closure_name in
+  let original = closure_slot closure 1 in
+  let bound_arguments =
+    List.init bound_argument_count (fun index -> closure_slot closure (index + 2))
+  in
+  let body =
+    if Int.equal remaining_arity 1 then
+      Nir.Expr.Call Nir.Expr.{
+        callee = Indirect original;
+        arguments = bound_arguments @ [ Nir.Expr.Symbol argument_name ]
+      }
+    else
+      partial_application_closure
+        ~entrypoint:(partial_application_wrapper_name prefix (remaining_arity - 1))
+        ~original
+        ~bound_arguments:(bound_arguments @ [ Nir.Expr.Symbol argument_name ])
+  in
+  let current = Nir.Function.{ name = current_name; params = [ closure_name; argument_name ]; body } in
+  if Int.equal remaining_arity 1 then
+    [ current ]
+  else
+    current
+    :: build_partial_application_functions
+      ~prefix
+      ~bound_argument_count:(bound_argument_count + 1)
+      ~remaining_arity:(remaining_arity - 1)
+
+let lower_partial_application = fun env ~function_name ~original_symbol ~bound_arguments ~remaining_arity ->
+  Result.map
+    (fun prefix ->
+      let entrypoint = partial_application_wrapper_name prefix remaining_arity in
+      {
+        expr = partial_application_closure
+          ~entrypoint
+          ~original:(Nir.Expr.Symbol_address original_symbol)
+          ~bound_arguments;
+        lifted_functions = build_partial_application_functions
+          ~prefix
+          ~bound_argument_count:(List.length bound_arguments)
+          ~remaining_arity
+      })
+    (fresh_partial_application_prefix env function_name)
+
+let overapplied_direct_call_error = fun ~name ~expected_arity ~actual_arity ->
+  UnsupportedExpr {
+    reason =
+      format
+        Format.[
+          str "direct call to `";
+          str name;
+          str "` supplies ";
+          int actual_arity;
+          str " arguments but the current native slice only supports ";
+          int expected_arity;
+          str " parameter";
+          str
+            (
+              if Int.equal expected_arity 1 then
+                ""
+              else
+                "s"
+            );
+          str " for that function";
+        ];
+  }
+
+let lower_capture_argument = fun env (local_function: local_function) capture_name ->
+  if has_name env.bound_values capture_name then
+    ok (lowered_expr (Nir.Expr.Symbol capture_name))
+  else
+    error
+      (UnsupportedExpr {
+        reason = format
+          Format.[
+            str "local function `";
+            str local_function.source_name;
+            str "` requires captured value `";
+            str capture_name;
+            str "` outside the first non-escaping local-function NIR slice";
+          ]
+      })
+
+let lower_direct_call = fun env name lowered_arguments ->
+  let arguments, lifted_functions = collect_lowered_exprs lowered_arguments in
+  match find_local_function env name with
+  | Some local_function ->
+      Result.and_then (map_results
+        local_function.captures
+        (lower_capture_argument env local_function))
+        (fun lowered_captures ->
+          let captures, capture_functions = collect_lowered_exprs lowered_captures in
+          let expected_arity = List.length local_function.params in
+          let actual_arity = List.length arguments in
+          if actual_arity > expected_arity then
+            error
+              (overapplied_direct_call_error ~name:local_function.source_name ~expected_arity ~actual_arity)
+          else if Int.equal actual_arity expected_arity then
+            ok
+              {
+                expr = Nir.Expr.Call Nir.Expr.{
+                  callee = Direct local_function.lifted_name;
+                  arguments = captures @ arguments
+                };
+                lifted_functions = capture_functions @ lifted_functions
+              }
+          else
+            Result.map
+              (fun (partial: lowered_expr) ->
+                {
+                  partial
+                  with lifted_functions = capture_functions @ lifted_functions @ partial.lifted_functions
+                })
+              (lower_partial_application
+                env
+                ~function_name:local_function.source_name
+                ~original_symbol:local_function.lifted_name
+                ~bound_arguments:(captures @ arguments)
+                ~remaining_arity:(expected_arity - actual_arity)))
+  | None -> (
+      match find_top_level_function_arity env name with
+      | Some expected_arity ->
+          let actual_arity = List.length arguments in
+          if actual_arity > expected_arity then
+            error (overapplied_direct_call_error ~name ~expected_arity ~actual_arity)
+          else if Int.equal actual_arity expected_arity then
+            ok
+              { expr = Nir.Expr.Call Nir.Expr.{ callee = Direct name; arguments }; lifted_functions }
+          else
+            Result.map
+              (fun (partial: lowered_expr) ->
+                { partial with lifted_functions = lifted_functions @ partial.lifted_functions })
+              (lower_partial_application
+                env
+                ~function_name:name
+                ~original_symbol:name
+                ~bound_arguments:arguments
+                ~remaining_arity:(expected_arity - actual_arity))
+      | None -> ok
+        { expr = Nir.Expr.Call Nir.Expr.{ callee = Direct name; arguments }; lifted_functions }
+    )
+
+let rec free_vars = fun ~bound expr ->
+  match expr with
+  | Core.Expr.Constant _ ->
+      []
+  | Core.Expr.Var name ->
+      if has_name bound name then
+        []
+      else
+        [ name ]
+  | Core.Expr.Apply { callee=Core.Expr.Direct _; arguments } ->
+      List.fold_left
+        (fun names argument ->
+          List.fold_left add_unique_name names (free_vars ~bound argument))
+        []
+        arguments
+  | Core.Expr.Apply { callee=Core.Expr.Indirect callee; arguments } ->
+      List.fold_left
+        (fun names expr ->
+          List.fold_left add_unique_name names (free_vars ~bound expr))
+        (free_vars ~bound callee)
+        arguments
+  | Core.Expr.Lambda lambda ->
+      free_vars ~bound:(List.fold_left add_unique_name bound lambda.params) lambda.body
+  | Core.Expr.Let let_ ->
+      let binding_names =
+        List.map (fun (binding: Core.Expr.binding) -> binding.name) let_.bindings
+      in
+      let binding_scope =
+        match let_.rec_flag with
+        | Core.Rec_flag.Nonrecursive -> bound
+        | Core.Rec_flag.Recursive -> List.fold_left add_unique_name bound binding_names
+      in
+      let binding_free_vars =
+        List.fold_left
+          (fun names (binding: Core.Expr.binding) ->
+            List.fold_left add_unique_name names (free_vars ~bound:binding_scope binding.expr))
+          []
+          let_.bindings
+      in
+      List.fold_left
+        add_unique_name
+        binding_free_vars
+        (free_vars ~bound:(List.fold_left add_unique_name bound binding_names) let_.body)
+  | Core.Expr.Sequence sequence ->
+      List.fold_left
+        add_unique_name
+        (free_vars ~bound sequence.first)
+        (free_vars ~bound sequence.second)
+  | Core.Expr.Tuple tuple ->
+      List.fold_left
+        (fun names expr ->
+          List.fold_left add_unique_name names (free_vars ~bound expr))
+        []
+        tuple
+  | Core.Expr.Tuple_get tuple_get ->
+      free_vars ~bound tuple_get.tuple
+  | Core.Expr.If_then_else if_then_else ->
+      List.fold_left
+        add_unique_name
+        (free_vars ~bound if_then_else.condition)
+        (List.fold_left
+          add_unique_name
+          (free_vars ~bound if_then_else.then_)
+          (free_vars ~bound if_then_else.else_))
+  | Core.Expr.Primitive primitive ->
+      List.fold_left
+        (fun names expr ->
+          List.fold_left add_unique_name names (free_vars ~bound expr))
+        []
+        primitive.arguments
+
+let captures_of_lambda = fun env (lambda: Core.Expr.lambda) ->
+  free_vars ~bound:lambda.params lambda.body
+  |> List.filter (fun name -> has_name env.bound_values name)
+
+let rec expr_uses_name_as_value = fun ~shadowed name expr ->
+  match expr with
+  | Core.Expr.Constant _ ->
+      false
+  | Core.Expr.Var var ->
+      (not (has_name shadowed name)) && String.equal var name
+  | Core.Expr.Apply { callee=Core.Expr.Direct callee; arguments } ->
+      (not (String.equal callee name)) && List.exists (expr_uses_name_as_value ~shadowed name) arguments
+  | Core.Expr.Apply { callee=Core.Expr.Indirect callee; arguments } ->
+      expr_uses_name_as_value ~shadowed name callee
+      || List.exists (expr_uses_name_as_value ~shadowed name) arguments
+  | Core.Expr.Lambda lambda ->
+      expr_uses_name_as_value ~shadowed:(lambda.params @ shadowed) name lambda.body
+  | Core.Expr.Let let_ ->
+      let binding_names =
+        List.map (fun (binding: Core.Expr.binding) -> binding.name) let_.bindings
+      in
+      let binding_shadowed =
+        match let_.rec_flag with
+        | Core.Rec_flag.Nonrecursive -> shadowed
+        | Core.Rec_flag.Recursive -> binding_names @ shadowed
+      in
+      List.exists
+        (fun (binding: Core.Expr.binding) ->
+          expr_uses_name_as_value ~shadowed:binding_shadowed name binding.expr)
+        let_.bindings
+      || expr_uses_name_as_value ~shadowed:(binding_names @ shadowed) name let_.body
+  | Core.Expr.Sequence sequence ->
+      expr_uses_name_as_value ~shadowed name sequence.first
+      || expr_uses_name_as_value ~shadowed name sequence.second
+  | Core.Expr.Tuple tuple ->
+      List.exists (expr_uses_name_as_value ~shadowed name) tuple
+  | Core.Expr.Tuple_get tuple_get ->
+      expr_uses_name_as_value ~shadowed name tuple_get.tuple
+  | Core.Expr.If_then_else if_then_else ->
+      expr_uses_name_as_value ~shadowed name if_then_else.condition
+      || expr_uses_name_as_value ~shadowed name if_then_else.then_
+      || expr_uses_name_as_value ~shadowed name if_then_else.else_
+  | Core.Expr.Primitive primitive ->
+      List.exists (expr_uses_name_as_value ~shadowed name) primitive.arguments
+
+let local_function_of_binding = fun env ~escaping_names (binding: Core.Expr.binding) ->
+  match binding.expr with
+  | Core.Expr.Lambda lambda ->
+      Result.map
+        (fun lifted_name ->
+          Some {
+            source_name = binding.name;
+            lifted_name;
+            closure_name = format Format.[ str lifted_name; str "__closure" ];
+            captures = captures_of_lambda env lambda;
+            params = lambda.params;
+            escapes = has_name escaping_names binding.name;
+          })
+        (fresh_lifted_name env binding.name)
+  | _ -> ok None
+
+let lower_var = fun env name ->
+  match find_local_function env name with
+  | Some local_function ->
+      if local_function.escapes then
+        Result.and_then (map_results
+          local_function.captures
+          (lower_capture_argument env local_function))
+          (fun lowered_captures ->
+            let captures, lifted_functions = collect_lowered_exprs lowered_captures in
+            ok
+              {
+                expr = runtime_call
+                  (tuple_make_helper ~arity:(1 + List.length local_function.captures))
+                  (Nir.Expr.Symbol_address local_function.closure_name :: captures);
+                lifted_functions
+              })
+      else
+        error
+          (UnsupportedExpr {
+            reason = format
+              Format.[
+                str "local function value `";
+                str name;
+                str "` escapes local-function lowering without closure materialization";
+              ]
+          })
+  | None -> ok (lowered_expr (Nir.Expr.Symbol name))
+
+let recursive_local_let_is_function_only = fun (let_: Core.Expr.let_) ->
+  List.for_all
+    (fun (binding: Core.Expr.binding) ->
+      match binding.expr with
+      | Core.Expr.Lambda _ -> true
+      | _ -> false)
+    let_.bindings
+
+let rec lower_expr = fun env expr ->
+  match expr with
+  | Core.Expr.Constant constant ->
+      ok (lowered_expr (Nir.Expr.Literal (lower_constant constant)))
+  | Core.Expr.Var name ->
+      lower_var env name
+  | Core.Expr.Apply { callee=Core.Expr.Direct name; arguments } ->
+      Result.and_then (map_results arguments (lower_expr env)) (lower_direct_call env name)
+  | Core.Expr.Apply { callee=Core.Expr.Indirect callee; arguments } ->
+      validation_map2 (lower_expr env callee) (map_results arguments (lower_expr env))
+        (fun callee lowered_arguments ->
+          let arguments, argument_functions = collect_lowered_exprs lowered_arguments in
+          let closure_name = fresh_sequence_binding_name env in
+          let closure = Nir.Expr.Symbol closure_name in
+          {
+            expr = Nir.Expr.Let Nir.Expr.{
+              bindings = [ Nir.Expr.{ name = closure_name; expr = callee.expr } ];
+              body = Nir.Expr.Call Nir.Expr.{
+                callee = Indirect (runtime_call
+                  tuple_get_helper
+                  [ closure; Nir.Expr.Literal (Nir.Literal.Int 0) ]);
+                arguments = closure :: arguments
+              }
+            };
+            lifted_functions = callee.lifted_functions @ argument_functions
+          })
+  | Core.Expr.Tuple tuple ->
+      Result.map
+        (fun lowered_arguments ->
+          let arguments, lifted_functions = collect_lowered_exprs lowered_arguments in
+          {
+            expr = runtime_call (tuple_make_helper ~arity:(List.length tuple)) arguments;
+            lifted_functions
+          })
+        (map_results tuple (lower_expr env))
+  | Core.Expr.Tuple_get tuple_get ->
+      Result.map
+        (fun tuple ->
+          {
+            expr = runtime_call
+              tuple_get_helper
+              [ tuple.expr; Nir.Expr.Literal (Nir.Literal.Int tuple_get.index) ];
+            lifted_functions = tuple.lifted_functions
+          })
+        (lower_expr env tuple_get.tuple)
+  | Core.Expr.If_then_else if_then_else ->
+      validation_map3
+        (lower_expr env if_then_else.condition)
+        (lower_expr env if_then_else.then_)
+        (lower_expr env if_then_else.else_)
+        (fun condition then_ else_ ->
+          {
+            expr = Nir.Expr.If_then_else Nir.Expr.{
+              condition = condition.expr;
+              then_ = then_.expr;
+              else_ = else_.expr
+            };
+            lifted_functions = condition.lifted_functions @ then_.lifted_functions @ else_.lifted_functions
+          })
+  | Core.Expr.Lambda lambda ->
+      lower_nested_lambda env lambda
+  | Core.Expr.Let let_ ->
+      if let_.rec_flag = Core.Rec_flag.Recursive && not (recursive_local_let_is_function_only let_) then
+        error
+          (UnsupportedExpr {
+            reason = "recursive let expressions are only supported when every binding is a local lambda"
+          })
+      else
+        let escaping_names =
+          let_.bindings
+          |> List.filter_map
+            (fun (binding: Core.Expr.binding) ->
+              match binding.expr with
+              | Core.Expr.Lambda _ ->
+                  if expr_uses_name_as_value ~shadowed:[] binding.name let_.body then
+                    Some binding.name
+                  else
+                    None
+              | _ -> None)
+        in
+        Result.and_then (map_results let_.bindings (local_function_of_binding env ~escaping_names))
+          (fun local_functions ->
+            let local_functions =
+              List.filter_map (fun local_function -> local_function) local_functions
+            in
+            let value_binding_names =
+              let_.bindings
+              |> List.filter_map
+                (fun (binding: Core.Expr.binding) ->
+                  match binding.expr with
+                  | Core.Expr.Lambda _ -> None
+                  | _ -> Some binding.name)
+            in
+            let env_for_body = extend_local_functions (extend_bound_values env value_binding_names) local_functions in
+            Result.and_then (map_results let_.bindings (lower_let_binding env local_functions))
+              (fun lowered_bindings ->
+                Result.map
+                  (fun (body: lowered_expr) ->
+                    let bindings = lowered_bindings
+                    |> List.filter_map
+                      (fun (lowered_binding: lowered_let_binding) -> lowered_binding.binding) in
+                    let lifted_functions = List.concat_map
+                      (fun (lowered_binding: lowered_let_binding) -> lowered_binding.lifted_functions)
+                      lowered_bindings
+                    @ body.lifted_functions in
+                    {
+                      expr =
+                        if bindings = [] then
+                          body.expr
+                        else
+                          Nir.Expr.Let Nir.Expr.{ bindings; body = body.expr };
+                      lifted_functions;
+                    })
+                  (lower_expr env_for_body let_.body)))
+  | Core.Expr.Sequence sequence ->
+      validation_map2
+        (lower_expr env sequence.first)
+        (lower_expr env sequence.second)
+        (fun first second ->
+          {
+            expr = Nir.Expr.Let Nir.Expr.{
+              bindings = [ Nir.Expr.{ name = fresh_sequence_binding_name env; expr = first.expr } ];
+              body = second.expr
+            };
+            lifted_functions = first.lifted_functions @ second.lifted_functions
+          })
+  | Core.Expr.Primitive primitive -> (
+      match primitive_helper primitive.name with
+      | Some helper ->
+          Result.map
+            (fun lowered_arguments ->
+              let arguments, lifted_functions = collect_lowered_exprs lowered_arguments in
+              { expr = runtime_call helper arguments; lifted_functions })
+            (map_results primitive.arguments (lower_expr env))
+      | None -> error
+        (UnsupportedExpr {
+          reason = format
+            Format.[
+              str "primitive `";
+              str primitive.name;
+              str "` is outside the first Core IR -> NIR lowering slice";
+            ]
+        })
+    )
+
+and lower_nested_lambda = fun env (lambda: Core.Expr.lambda) ->
+  Result.and_then (fresh_lifted_name env "lambda")
+    (fun lifted_name ->
+      let closure_name = format Format.[ str lifted_name; str "__closure" ] in
+      let capture_names = captures_of_lambda env lambda in
+      let lambda_env = {
+        bound_values = capture_names @ lambda.params;
+        top_level_functions = env.top_level_functions;
+        local_functions = env.local_functions;
+        current_function = Some lifted_name;
+        lowering_state = env.lowering_state;
+      }
+      in
+      Result.and_then (lower_expr lambda_env lambda.body)
+        (fun (lowered_body: lowered_expr) ->
+          Result.map
+            (fun lowered_captures ->
+              let capture_values, capture_functions = collect_lowered_exprs lowered_captures in
+              let closure_param = "__closure__" in
+              let closure_function =
+                Nir.Function.{
+                  name = closure_name;
+                  params = closure_param :: lambda.params;
+                  body = Nir.Expr.Call Nir.Expr.{
+                    callee = Direct lifted_name;
+                    arguments = (capture_names
+                    |> List.mapi
+                      (fun index _ ->
+                        runtime_call
+                          tuple_get_helper
+                          [
+                            Nir.Expr.Symbol closure_param;
+                            Nir.Expr.Literal (Nir.Literal.Int (index + 1));
+                          ]))
+                    @ List.map (fun param -> Nir.Expr.Symbol param) lambda.params
+                  }
+                } in
+              {
+                expr = runtime_call
+                  (tuple_make_helper ~arity:(1 + List.length capture_names))
+                  (Nir.Expr.Symbol_address closure_name :: capture_values);
+                lifted_functions = capture_functions
+                @ lowered_body.lifted_functions
+                @ [
+                  closure_function;
+                  Nir.Function.{
+                    name = lifted_name;
+                    params = capture_names @ lambda.params;
+                    body = lowered_body.expr
+                  };
+                ]
+              })
+            (map_results capture_names (fun capture_name -> lower_var env capture_name))))
+
+and lower_let_binding = fun env local_functions (binding: Core.Expr.binding) ->
+  match binding.expr with
+  | Core.Expr.Lambda lambda -> (
+      match find_local_function (extend_local_functions env local_functions) binding.name with
+      | None -> error
+        (UnsupportedBinding {
+          name = binding.name;
+          reason = "missing lifted local-function metadata"
+        })
+      | Some local_function ->
+          let lambda_env = {
+            bound_values = local_function.captures @ lambda.params;
+            top_level_functions = env.top_level_functions;
+            local_functions = local_functions @ env.local_functions;
+            current_function = Some local_function.lifted_name;
+            lowering_state = env.lowering_state;
+          }
+          in
+          Result.map
+            (fun (lowered_body: lowered_expr) ->
+              let closure_param = "__closure__" in
+              let closure_functions =
+                if local_function.escapes then
+                  [
+                    Nir.Function.{
+                      name = local_function.closure_name;
+                      params = closure_param :: local_function.params;
+                      body = Nir.Expr.Call Nir.Expr.{
+                        callee = Direct local_function.lifted_name;
+                        arguments = (local_function.captures
+                        |> List.mapi
+                          (fun index _ ->
+                            runtime_call
+                              tuple_get_helper
+                              [
+                                Nir.Expr.Symbol closure_param;
+                                Nir.Expr.Literal (Nir.Literal.Int (index + 1));
+                              ]))
+                        @ List.map (fun param -> Nir.Expr.Symbol param) local_function.params
+                      }
+                    }
+                  ]
+                else
+                  []
+              in
+              {
+                binding = None;
+                lifted_functions = lowered_body.lifted_functions
+                @ closure_functions
+                @ [
+                  Nir.Function.{
+                    name = local_function.lifted_name;
+                    params = local_function.captures @ lambda.params;
+                    body = lowered_body.expr
+                  }
+                ]
+              })
+            (lower_expr lambda_env lambda.body)
+    )
+  | expr -> Result.map
+    (fun (lowered_expr: lowered_expr) ->
+      {
+        binding = Some Nir.Expr.{ name = binding.name; expr = lowered_expr.expr };
+        lifted_functions = lowered_expr.lifted_functions
+      })
+    (lower_expr env expr)
+
+let env_for_function = fun state ~top_level_functions ~current_function ~bound_values ->
+  {
+    bound_values;
+    top_level_functions;
+    local_functions = [];
+    current_function = Some current_function;
+    lowering_state = state;
+  }
+
+let lower_binding = fun state ~top_level_functions (binding: Core.Binding.t) ->
   match binding.expr with
   | Core.Expr.Lambda lambda -> Result.map
-    (fun body -> LoweredFunction Nir.Function.{ name = binding.name; params = lambda.params; body })
-    (lower_expr lambda.body)
+    (fun (body: lowered_expr) ->
+      List.map (fun function_ -> LoweredFunction function_) body.lifted_functions
+      @ [
+        LoweredFunction Nir.Function.{
+          name = binding.name;
+          params = lambda.params;
+          body = body.expr
+        }
+      ])
+    (lower_expr
+      (env_for_function
+        state
+        ~top_level_functions
+        ~current_function:binding.name
+        ~bound_values:lambda.params)
+      lambda.body)
   | expr -> Result.map
-    (fun expr -> LoweredEntry (Nir.Entry_item.Binding Nir.Binding.{ name = binding.name; expr }))
-    (lower_expr expr)
+    (fun (lowered_expr: lowered_expr) ->
+      List.map (fun function_ -> LoweredFunction function_) lowered_expr.lifted_functions
+      @ [
+        LoweredEntry (Nir.Entry_item.Binding Nir.Binding.{
+          name = binding.name;
+          expr = lowered_expr.expr
+        })
+      ])
+    (lower_expr
+      (env_for_function state ~top_level_functions ~current_function:binding.name ~bound_values:[])
+      expr)
 
-let lower_item = fun item ->
+let lower_item = fun state ~top_level_functions item ->
   match item with
-  | Core.Init_item.Binding binding -> lower_binding binding
+  | Core.Init_item.Binding binding -> lower_binding state ~top_level_functions binding
   | Core.Init_item.Eval expr -> Result.map
-    (fun expr -> LoweredEntry (Nir.Entry_item.Eval expr))
-    (lower_expr expr)
+    (fun (lowered_expr: lowered_expr) ->
+      List.map (fun function_ -> LoweredFunction function_) lowered_expr.lifted_functions
+      @ [ LoweredEntry (Nir.Entry_item.Eval lowered_expr.expr) ])
+    (lower_expr
+      (env_for_function state ~top_level_functions ~current_function:"__entry__" ~bound_values:[])
+      expr)
 
 let recursive_group_is_function_only = fun (group: Core.Binding_group.t) ->
   List.for_all
@@ -123,26 +878,146 @@ let recursive_group_is_function_only = fun (group: Core.Binding_group.t) ->
       | _ -> false)
     group.items
 
-let lower_group = fun group_index (group: Core.Binding_group.t) ->
+let lower_group = fun state ~top_level_functions group_index (group: Core.Binding_group.t) ->
   match group.rec_flag with
   | Core.Rec_flag.Recursive ->
       if recursive_group_is_function_only group then
-        map_results group.items lower_item
+        Result.map List.flatten (map_results group.items (lower_item state ~top_level_functions))
       else
         error
           (UnsupportedGroup {
             group_index;
             reason = "recursive groups are only supported when every item is a top-level lambda binding"
           })
-  | Core.Rec_flag.Nonrecursive -> map_results group.items lower_item
+  | Core.Rec_flag.Nonrecursive -> Result.map
+    List.flatten
+    (map_results group.items (lower_item state ~top_level_functions))
 
 let lower_export = fun (export: Core.Export.t) ->
   Nir.Export.{ name = export.name; symbol = export.symbol }
 
-let lower_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
+let top_level_functions_of_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
+  compilation_unit.init |> List.concat_map
+    (fun (group: Core.Binding_group.t) ->
+      group.items |> List.filter_map
+        (fun item ->
+          match item with
+          | Core.Init_item.Binding { name; expr=Core.Expr.Lambda lambda } -> Some (
+            name,
+            List.length lambda.params
+          )
+          | _ -> None))
+
+let has_prefix = fun ~prefix value ->
+  let prefix_length = String.length prefix in
+  let value_length = String.length value in
+  if value_length < prefix_length then
+    false
+  else
+    let rec loop index =
+      if index = prefix_length then
+        true
+      else if value.[index] = prefix.[index] then
+        loop (index + 1)
+      else
+        false
+    in
+    loop 0
+
+let runtime_helper_of_symbol = fun symbol ->
+  if String.equal symbol eq_helper.symbol then
+    Some eq_helper
+  else if String.equal symbol tuple_get_helper.symbol then
+    Some tuple_get_helper
+  else if has_prefix ~prefix:"raml_tuple_make_" symbol then
+    Some Nir.Runtime_helper.{ name = symbol; symbol }
+  else
+    None
+
+let add_unique_runtime_helper = fun helpers (helper: Nir.Runtime_helper.t) ->
+  if List.exists
+      (fun (existing: Nir.Runtime_helper.t) ->
+        String.equal existing.symbol helper.symbol)
+      helpers then
+    helpers
+  else
+    helpers @ [ helper ]
+
+let rec collect_expr_runtime_helpers = fun helpers expr ->
+  match expr with
+  | Nir.Expr.Literal _ ->
+      helpers
+  | Nir.Expr.Symbol _ ->
+      helpers
+  | Nir.Expr.Symbol_address _ ->
+      helpers
+  | Nir.Expr.Call { callee; arguments } ->
+      let helpers =
+        match callee with
+        | Nir.Expr.Direct symbol -> (
+            match runtime_helper_of_symbol symbol with
+            | Some helper -> add_unique_runtime_helper helpers helper
+            | None -> helpers
+          )
+        | Nir.Expr.Indirect callee -> collect_expr_runtime_helpers helpers callee
+      in
+      List.fold_left collect_expr_runtime_helpers helpers arguments
+  | Nir.Expr.If_then_else if_then_else ->
+      let helpers = collect_expr_runtime_helpers helpers if_then_else.condition in
+      let helpers = collect_expr_runtime_helpers helpers if_then_else.then_ in
+      collect_expr_runtime_helpers helpers if_then_else.else_
+  | Nir.Expr.Let let_ ->
+      let helpers =
+        List.fold_left
+          (fun helpers (binding: Nir.Expr.binding) -> collect_expr_runtime_helpers helpers binding.expr)
+          helpers
+          let_.bindings
+      in
+      collect_expr_runtime_helpers helpers let_.body
+
+let runtime_helpers_of_program = fun (program: Nir.Program.t) ->
+  let helpers =
+    List.fold_left
+      (fun helpers (function_: Nir.Function.t) -> collect_expr_runtime_helpers helpers function_.body)
+      []
+      program.functions
+  in
+  List.fold_left
+    (fun helpers entry_item ->
+      match entry_item with
+      | Nir.Entry_item.Binding binding -> collect_expr_runtime_helpers helpers binding.expr
+      | Nir.Entry_item.Eval expr -> collect_expr_runtime_helpers helpers expr)
+    helpers
+    program.entry
+
+let imports_of_runtime_helpers = fun helpers ->
+  List.map
+    (fun (helper: Nir.Runtime_helper.t) ->
+      Imports.make ~linkage:Imports.Runtime ~symbol:helper.symbol ())
+    helpers
+
+let trace_program = fun initial ->
+  let normalize = Passes.Normalize.program initial in
+  let simplify = Passes.Simplify.program normalize in
+  {
+    initial;
+    passes = [
+      { name = "normalize"; program = normalize };
+      { name = "simplify"; program = simplify }
+    ];
+    final = simplify
+  }
+
+let lower_compilation_unit_with_trace = fun (compilation_unit: Core.Compilation_unit.t) ->
   match compilation_unit.unit_id.kind with
   | Source_unit.Interface -> error (UnsupportedModuleKind { kind = compilation_unit.unit_id.kind })
   | Source_unit.Implementation ->
+      let lowering_state = {
+        next_local_function = 0;
+        next_partial_application = 0;
+        next_sequence_binding = 0
+      } in
+      let top_level_functions = top_level_functions_of_compilation_unit compilation_unit in
       let groups =
         List.mapi (fun index group -> (index + 1, group)) compilation_unit.init
       in
@@ -158,12 +1033,28 @@ let lower_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
               ([], [])
               items
           in
+          let runtime_helpers = runtime_helpers_of_program
+            Nir.Program.{
+              module_name = compilation_unit.unit_id.unit_name;
+              imports = [];
+              runtime_helpers = [];
+              functions;
+              entry;
+              exports = List.map lower_export compilation_unit.exports;
+            }
+          in
+          let imports = imports_of_runtime_helpers runtime_helpers in
           Nir.Program.{
             module_name = compilation_unit.unit_id.unit_name;
-            imports = [];
-            runtime_helpers = [];
+            imports;
+            runtime_helpers;
             functions;
             entry;
             exports = List.map lower_export compilation_unit.exports;
-          } |> Passes.Normalize.program |> Passes.Simplify.program)
-        (map_results groups (fun (group_index, group) -> lower_group group_index group))
+          } |> trace_program)
+        (map_results
+          groups
+          (fun (group_index, group) -> lower_group lowering_state ~top_level_functions group_index group))
+
+let lower_compilation_unit = fun compilation_unit ->
+  Result.map (fun trace -> trace.final) (lower_compilation_unit_with_trace compilation_unit)

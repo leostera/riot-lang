@@ -1,0 +1,613 @@
+{
+  "initial": {
+    "entry": [
+      {
+        "binding": {
+          "expr": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 10
+            }
+          },
+          "name": "x"
+        },
+        "kind": "binding"
+      },
+      {
+        "binding": {
+          "expr": {
+            "kind": "let",
+            "let": {
+              "bindings": [
+                {
+                  "expr": {
+                    "call": {
+                      "arguments": [
+                        {
+                          "kind": "symbol",
+                          "name": "x"
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "int",
+                            "value": 5
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "kind": "direct",
+                        "name": "+"
+                      }
+                    },
+                    "kind": "call"
+                  },
+                  "name": "x"
+                }
+              ],
+              "body": {
+                "kind": "let",
+                "let": {
+                  "bindings": [
+                    {
+                      "expr": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "symbol",
+                              "name": "x"
+                            },
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "int",
+                                "value": 2
+                              }
+                            }
+                          ],
+                          "callee": {
+                            "kind": "direct",
+                            "name": "*"
+                          }
+                        },
+                        "kind": "call"
+                      },
+                      "name": "x"
+                    }
+                  ],
+                  "body": {
+                    "call": {
+                      "arguments": [
+                        {
+                          "kind": "symbol",
+                          "name": "x"
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "int",
+                            "value": 3
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "kind": "direct",
+                        "name": "-"
+                      }
+                    },
+                    "kind": "call"
+                  }
+                }
+              }
+            }
+          },
+          "name": "y"
+        },
+        "kind": "binding"
+      },
+      {
+        "expr": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "%d %d\\n"
+                }
+              },
+              {
+                "kind": "symbol",
+                "name": "x"
+              },
+              {
+                "kind": "symbol",
+                "name": "y"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "Printf.printf"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "eval"
+      }
+    ],
+    "exports": [
+      {
+        "name": "x",
+        "symbol": "x"
+      },
+      {
+        "name": "y",
+        "symbol": "y"
+      }
+    ],
+    "functions": [],
+    "imports": [],
+    "module_name": "Let_shadowing",
+    "runtime_helpers": []
+  },
+  "passes": {
+    "normalize": {
+      "entry": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 10
+              }
+            },
+            "name": "x"
+          },
+          "kind": "binding"
+        },
+        {
+          "binding": {
+            "expr": {
+              "kind": "let",
+              "let": {
+                "bindings": [
+                  {
+                    "expr": {
+                      "call": {
+                        "arguments": [
+                          {
+                            "kind": "symbol",
+                            "name": "x"
+                          },
+                          {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "int",
+                              "value": 5
+                            }
+                          }
+                        ],
+                        "callee": {
+                          "kind": "direct",
+                          "name": "+"
+                        }
+                      },
+                      "kind": "call"
+                    },
+                    "name": "x"
+                  }
+                ],
+                "body": {
+                  "kind": "let",
+                  "let": {
+                    "bindings": [
+                      {
+                        "expr": {
+                          "call": {
+                            "arguments": [
+                              {
+                                "kind": "symbol",
+                                "name": "x"
+                              },
+                              {
+                                "kind": "literal",
+                                "literal": {
+                                  "kind": "int",
+                                  "value": 2
+                                }
+                              }
+                            ],
+                            "callee": {
+                              "kind": "direct",
+                              "name": "*"
+                            }
+                          },
+                          "kind": "call"
+                        },
+                        "name": "x"
+                      }
+                    ],
+                    "body": {
+                      "call": {
+                        "arguments": [
+                          {
+                            "kind": "symbol",
+                            "name": "x"
+                          },
+                          {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "int",
+                              "value": 3
+                            }
+                          }
+                        ],
+                        "callee": {
+                          "kind": "direct",
+                          "name": "-"
+                        }
+                      },
+                      "kind": "call"
+                    }
+                  }
+                }
+              }
+            },
+            "name": "y"
+          },
+          "kind": "binding"
+        },
+        {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "%d %d\\n"
+                  }
+                },
+                {
+                  "kind": "symbol",
+                  "name": "x"
+                },
+                {
+                  "kind": "symbol",
+                  "name": "y"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "Printf.printf"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "eval"
+        }
+      ],
+      "exports": [
+        {
+          "name": "x",
+          "symbol": "x"
+        },
+        {
+          "name": "y",
+          "symbol": "y"
+        }
+      ],
+      "functions": [],
+      "imports": [],
+      "module_name": "Let_shadowing",
+      "runtime_helpers": []
+    },
+    "simplify": {
+      "entry": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 10
+              }
+            },
+            "name": "x"
+          },
+          "kind": "binding"
+        },
+        {
+          "binding": {
+            "expr": {
+              "kind": "let",
+              "let": {
+                "bindings": [
+                  {
+                    "expr": {
+                      "call": {
+                        "arguments": [
+                          {
+                            "kind": "symbol",
+                            "name": "x"
+                          },
+                          {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "int",
+                              "value": 5
+                            }
+                          }
+                        ],
+                        "callee": {
+                          "kind": "direct",
+                          "name": "+"
+                        }
+                      },
+                      "kind": "call"
+                    },
+                    "name": "x"
+                  }
+                ],
+                "body": {
+                  "kind": "let",
+                  "let": {
+                    "bindings": [
+                      {
+                        "expr": {
+                          "call": {
+                            "arguments": [
+                              {
+                                "kind": "symbol",
+                                "name": "x"
+                              },
+                              {
+                                "kind": "literal",
+                                "literal": {
+                                  "kind": "int",
+                                  "value": 2
+                                }
+                              }
+                            ],
+                            "callee": {
+                              "kind": "direct",
+                              "name": "*"
+                            }
+                          },
+                          "kind": "call"
+                        },
+                        "name": "x"
+                      }
+                    ],
+                    "body": {
+                      "call": {
+                        "arguments": [
+                          {
+                            "kind": "symbol",
+                            "name": "x"
+                          },
+                          {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "int",
+                              "value": 3
+                            }
+                          }
+                        ],
+                        "callee": {
+                          "kind": "direct",
+                          "name": "-"
+                        }
+                      },
+                      "kind": "call"
+                    }
+                  }
+                }
+              }
+            },
+            "name": "y"
+          },
+          "kind": "binding"
+        },
+        {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "%d %d\\n"
+                  }
+                },
+                {
+                  "kind": "symbol",
+                  "name": "x"
+                },
+                {
+                  "kind": "symbol",
+                  "name": "y"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "Printf.printf"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "eval"
+        }
+      ],
+      "exports": [
+        {
+          "name": "x",
+          "symbol": "x"
+        },
+        {
+          "name": "y",
+          "symbol": "y"
+        }
+      ],
+      "functions": [],
+      "imports": [],
+      "module_name": "Let_shadowing",
+      "runtime_helpers": []
+    }
+  },
+  "program": {
+    "entry": [
+      {
+        "binding": {
+          "expr": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 10
+            }
+          },
+          "name": "x"
+        },
+        "kind": "binding"
+      },
+      {
+        "binding": {
+          "expr": {
+            "kind": "let",
+            "let": {
+              "bindings": [
+                {
+                  "expr": {
+                    "call": {
+                      "arguments": [
+                        {
+                          "kind": "symbol",
+                          "name": "x"
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "int",
+                            "value": 5
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "kind": "direct",
+                        "name": "+"
+                      }
+                    },
+                    "kind": "call"
+                  },
+                  "name": "x"
+                }
+              ],
+              "body": {
+                "kind": "let",
+                "let": {
+                  "bindings": [
+                    {
+                      "expr": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "symbol",
+                              "name": "x"
+                            },
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "int",
+                                "value": 2
+                              }
+                            }
+                          ],
+                          "callee": {
+                            "kind": "direct",
+                            "name": "*"
+                          }
+                        },
+                        "kind": "call"
+                      },
+                      "name": "x"
+                    }
+                  ],
+                  "body": {
+                    "call": {
+                      "arguments": [
+                        {
+                          "kind": "symbol",
+                          "name": "x"
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "int",
+                            "value": 3
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "kind": "direct",
+                        "name": "-"
+                      }
+                    },
+                    "kind": "call"
+                  }
+                }
+              }
+            }
+          },
+          "name": "y"
+        },
+        "kind": "binding"
+      },
+      {
+        "expr": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "%d %d\\n"
+                }
+              },
+              {
+                "kind": "symbol",
+                "name": "x"
+              },
+              {
+                "kind": "symbol",
+                "name": "y"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "Printf.printf"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "eval"
+      }
+    ],
+    "exports": [
+      {
+        "name": "x",
+        "symbol": "x"
+      },
+      {
+        "name": "y",
+        "symbol": "y"
+      }
+    ],
+    "functions": [],
+    "imports": [],
+    "module_name": "Let_shadowing",
+    "runtime_helpers": []
+  },
+  "status": "ok"
+}

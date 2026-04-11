@@ -1,0 +1,276 @@
+{
+  "exports": [
+    {
+      "name": "fact",
+      "symbol": "fact"
+    }
+  ],
+  "module_name": "Tail_recursive_factorial",
+  "procedures": [
+    {
+      "body": [
+        {
+          "kind": "label",
+          "name": "fact__local_loop_0"
+        },
+        {
+          "dst": "t0",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 1
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "n"
+            },
+            {
+              "kind": "register",
+              "name": "t0"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "<="
+          },
+          "dst": "t1",
+          "kind": "call"
+        },
+        {
+          "kind": "branch_if_zero",
+          "operand": {
+            "kind": "register",
+            "name": "t1"
+          },
+          "target": "L__raml_else_0"
+        },
+        {
+          "dst": "t6",
+          "kind": "move",
+          "src": {
+            "kind": "register",
+            "name": "acc"
+          }
+        },
+        {
+          "kind": "jump",
+          "target": "L__raml_endif_1"
+        },
+        {
+          "kind": "label",
+          "name": "L__raml_else_0"
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "acc"
+            },
+            {
+              "kind": "register",
+              "name": "n"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "*"
+          },
+          "dst": "t2",
+          "kind": "call"
+        },
+        {
+          "dst": "t3",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 1
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "n"
+            },
+            {
+              "kind": "register",
+              "name": "t3"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "-"
+          },
+          "dst": "t4",
+          "kind": "call"
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t2"
+            },
+            {
+              "kind": "register",
+              "name": "t4"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "fact__local_loop_0"
+          },
+          "dst": "t5",
+          "kind": "call"
+        },
+        {
+          "dst": "t6",
+          "kind": "move",
+          "src": {
+            "kind": "register",
+            "name": "t5"
+          }
+        },
+        {
+          "kind": "label",
+          "name": "L__raml_endif_1"
+        },
+        {
+          "kind": "return",
+          "operand": {
+            "kind": "register",
+            "name": "t6"
+          }
+        }
+      ],
+      "kind": "function",
+      "name": "fact__local_loop_0",
+      "params": [
+        "acc",
+        "n"
+      ]
+    },
+    {
+      "body": [
+        {
+          "kind": "label",
+          "name": "fact"
+        },
+        {
+          "dst": "t0",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 1
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t0"
+            },
+            {
+              "kind": "register",
+              "name": "n"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "fact__local_loop_0"
+          },
+          "dst": "t1",
+          "kind": "call"
+        },
+        {
+          "kind": "return",
+          "operand": {
+            "kind": "register",
+            "name": "t1"
+          }
+        }
+      ],
+      "kind": "function",
+      "name": "fact",
+      "params": [
+        "n"
+      ]
+    },
+    {
+      "body": [
+        {
+          "kind": "label",
+          "name": "__entry__"
+        },
+        {
+          "dst": "t0",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "string",
+              "value": "%d\\n"
+            }
+          }
+        },
+        {
+          "dst": "t1",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "int",
+              "value": 10
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t1"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "fact"
+          },
+          "dst": "t2",
+          "kind": "call"
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t0"
+            },
+            {
+              "kind": "register",
+              "name": "t2"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "Printf.printf"
+          },
+          "dst": "t3",
+          "kind": "call"
+        }
+      ],
+      "kind": "entry",
+      "name": "__entry__",
+      "params": []
+    }
+  ]
+}

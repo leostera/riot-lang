@@ -1,0 +1,731 @@
+{
+  "js": "import * as Printf from \"./Printf.js\";\n\nimport { callPrimitive as __callPrimitive } from \"./riot-runtime.js\";\n\nconst luminance = (function(color) {\n  if (__callPrimitive(\"%eq\", __callPrimitive(\"%tuple_get\", color, 0), 0)) {\n    return 76;\n  } else {\n    if (__callPrimitive(\"%eq\", __callPrimitive(\"%tuple_get\", color, 0), 1)) {\n      return 150;\n    } else {\n      if (__callPrimitive(\"%eq\", __callPrimitive(\"%tuple_get\", color, 0), 2)) {\n        return 29;\n      } else {\n        const __raml_tuple_8 = __callPrimitive(\"%tuple_get\", color, 1);\n        const r = __callPrimitive(\"%tuple_get\", __raml_tuple_8, 0);\n        const g = __callPrimitive(\"%tuple_get\", __raml_tuple_8, 1);\n        const b = __callPrimitive(\"%tuple_get\", __raml_tuple_8, 2);\n        return __callPrimitive(\"%divint\", __callPrimitive(\"%addint\", __callPrimitive(\"%addint\", __callPrimitive(\"%mulint\", 3, r), __callPrimitive(\"%mulint\", 6, g)), b), 10);\n      }\n    }\n  }\n});\n\nconst sample = __callPrimitive(\"%tuple_make\", 3, __callPrimitive(\"%tuple_make\", 10, 20, 30));\n\nPrintf.printf(\"%d\\\\n\", luminance(sample));\n\nexport {\n  luminance,\n  sample\n};\n",
+  "jst": {
+    "items": [
+      {
+        "import": {
+          "default": null,
+          "from": "./Printf.js",
+          "names": [],
+          "namespace": "Printf"
+        },
+        "kind": "import"
+      },
+      {
+        "import": {
+          "default": null,
+          "from": "./riot-runtime.js",
+          "names": [
+            {
+              "imported": "callPrimitive",
+              "local": "__callPrimitive"
+            }
+          ]
+        },
+        "kind": "import"
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "function": {
+                "body": [
+                  {
+                    "if": {
+                      "condition": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "string",
+                                "value": "%eq"
+                              }
+                            },
+                            {
+                              "call": {
+                                "arguments": [
+                                  {
+                                    "kind": "literal",
+                                    "literal": {
+                                      "kind": "string",
+                                      "value": "%tuple_get"
+                                    }
+                                  },
+                                  {
+                                    "kind": "identifier",
+                                    "name": "color"
+                                  },
+                                  {
+                                    "kind": "literal",
+                                    "literal": {
+                                      "kind": "number",
+                                      "number": {
+                                        "kind": "int",
+                                        "value": 0
+                                      }
+                                    }
+                                  }
+                                ],
+                                "callee": {
+                                  "kind": "identifier",
+                                  "name": "__callPrimitive"
+                                }
+                              },
+                              "kind": "call"
+                            },
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "number",
+                                "number": {
+                                  "kind": "int",
+                                  "value": 0
+                                }
+                              }
+                            }
+                          ],
+                          "callee": {
+                            "kind": "identifier",
+                            "name": "__callPrimitive"
+                          }
+                        },
+                        "kind": "call"
+                      },
+                      "else": [
+                        {
+                          "if": {
+                            "condition": {
+                              "call": {
+                                "arguments": [
+                                  {
+                                    "kind": "literal",
+                                    "literal": {
+                                      "kind": "string",
+                                      "value": "%eq"
+                                    }
+                                  },
+                                  {
+                                    "call": {
+                                      "arguments": [
+                                        {
+                                          "kind": "literal",
+                                          "literal": {
+                                            "kind": "string",
+                                            "value": "%tuple_get"
+                                          }
+                                        },
+                                        {
+                                          "kind": "identifier",
+                                          "name": "color"
+                                        },
+                                        {
+                                          "kind": "literal",
+                                          "literal": {
+                                            "kind": "number",
+                                            "number": {
+                                              "kind": "int",
+                                              "value": 0
+                                            }
+                                          }
+                                        }
+                                      ],
+                                      "callee": {
+                                        "kind": "identifier",
+                                        "name": "__callPrimitive"
+                                      }
+                                    },
+                                    "kind": "call"
+                                  },
+                                  {
+                                    "kind": "literal",
+                                    "literal": {
+                                      "kind": "number",
+                                      "number": {
+                                        "kind": "int",
+                                        "value": 1
+                                      }
+                                    }
+                                  }
+                                ],
+                                "callee": {
+                                  "kind": "identifier",
+                                  "name": "__callPrimitive"
+                                }
+                              },
+                              "kind": "call"
+                            },
+                            "else": [
+                              {
+                                "if": {
+                                  "condition": {
+                                    "call": {
+                                      "arguments": [
+                                        {
+                                          "kind": "literal",
+                                          "literal": {
+                                            "kind": "string",
+                                            "value": "%eq"
+                                          }
+                                        },
+                                        {
+                                          "call": {
+                                            "arguments": [
+                                              {
+                                                "kind": "literal",
+                                                "literal": {
+                                                  "kind": "string",
+                                                  "value": "%tuple_get"
+                                                }
+                                              },
+                                              {
+                                                "kind": "identifier",
+                                                "name": "color"
+                                              },
+                                              {
+                                                "kind": "literal",
+                                                "literal": {
+                                                  "kind": "number",
+                                                  "number": {
+                                                    "kind": "int",
+                                                    "value": 0
+                                                  }
+                                                }
+                                              }
+                                            ],
+                                            "callee": {
+                                              "kind": "identifier",
+                                              "name": "__callPrimitive"
+                                            }
+                                          },
+                                          "kind": "call"
+                                        },
+                                        {
+                                          "kind": "literal",
+                                          "literal": {
+                                            "kind": "number",
+                                            "number": {
+                                              "kind": "int",
+                                              "value": 2
+                                            }
+                                          }
+                                        }
+                                      ],
+                                      "callee": {
+                                        "kind": "identifier",
+                                        "name": "__callPrimitive"
+                                      }
+                                    },
+                                    "kind": "call"
+                                  },
+                                  "else": [
+                                    {
+                                      "declaration": {
+                                        "init": {
+                                          "call": {
+                                            "arguments": [
+                                              {
+                                                "kind": "literal",
+                                                "literal": {
+                                                  "kind": "string",
+                                                  "value": "%tuple_get"
+                                                }
+                                              },
+                                              {
+                                                "kind": "identifier",
+                                                "name": "color"
+                                              },
+                                              {
+                                                "kind": "literal",
+                                                "literal": {
+                                                  "kind": "number",
+                                                  "number": {
+                                                    "kind": "int",
+                                                    "value": 1
+                                                  }
+                                                }
+                                              }
+                                            ],
+                                            "callee": {
+                                              "kind": "identifier",
+                                              "name": "__callPrimitive"
+                                            }
+                                          },
+                                          "kind": "call"
+                                        },
+                                        "kind": "const",
+                                        "name": "__raml_tuple_8"
+                                      },
+                                      "kind": "declaration"
+                                    },
+                                    {
+                                      "declaration": {
+                                        "init": {
+                                          "call": {
+                                            "arguments": [
+                                              {
+                                                "kind": "literal",
+                                                "literal": {
+                                                  "kind": "string",
+                                                  "value": "%tuple_get"
+                                                }
+                                              },
+                                              {
+                                                "kind": "identifier",
+                                                "name": "__raml_tuple_8"
+                                              },
+                                              {
+                                                "kind": "literal",
+                                                "literal": {
+                                                  "kind": "number",
+                                                  "number": {
+                                                    "kind": "int",
+                                                    "value": 0
+                                                  }
+                                                }
+                                              }
+                                            ],
+                                            "callee": {
+                                              "kind": "identifier",
+                                              "name": "__callPrimitive"
+                                            }
+                                          },
+                                          "kind": "call"
+                                        },
+                                        "kind": "const",
+                                        "name": "r"
+                                      },
+                                      "kind": "declaration"
+                                    },
+                                    {
+                                      "declaration": {
+                                        "init": {
+                                          "call": {
+                                            "arguments": [
+                                              {
+                                                "kind": "literal",
+                                                "literal": {
+                                                  "kind": "string",
+                                                  "value": "%tuple_get"
+                                                }
+                                              },
+                                              {
+                                                "kind": "identifier",
+                                                "name": "__raml_tuple_8"
+                                              },
+                                              {
+                                                "kind": "literal",
+                                                "literal": {
+                                                  "kind": "number",
+                                                  "number": {
+                                                    "kind": "int",
+                                                    "value": 1
+                                                  }
+                                                }
+                                              }
+                                            ],
+                                            "callee": {
+                                              "kind": "identifier",
+                                              "name": "__callPrimitive"
+                                            }
+                                          },
+                                          "kind": "call"
+                                        },
+                                        "kind": "const",
+                                        "name": "g"
+                                      },
+                                      "kind": "declaration"
+                                    },
+                                    {
+                                      "declaration": {
+                                        "init": {
+                                          "call": {
+                                            "arguments": [
+                                              {
+                                                "kind": "literal",
+                                                "literal": {
+                                                  "kind": "string",
+                                                  "value": "%tuple_get"
+                                                }
+                                              },
+                                              {
+                                                "kind": "identifier",
+                                                "name": "__raml_tuple_8"
+                                              },
+                                              {
+                                                "kind": "literal",
+                                                "literal": {
+                                                  "kind": "number",
+                                                  "number": {
+                                                    "kind": "int",
+                                                    "value": 2
+                                                  }
+                                                }
+                                              }
+                                            ],
+                                            "callee": {
+                                              "kind": "identifier",
+                                              "name": "__callPrimitive"
+                                            }
+                                          },
+                                          "kind": "call"
+                                        },
+                                        "kind": "const",
+                                        "name": "b"
+                                      },
+                                      "kind": "declaration"
+                                    },
+                                    {
+                                      "expression": {
+                                        "call": {
+                                          "arguments": [
+                                            {
+                                              "kind": "literal",
+                                              "literal": {
+                                                "kind": "string",
+                                                "value": "%divint"
+                                              }
+                                            },
+                                            {
+                                              "call": {
+                                                "arguments": [
+                                                  {
+                                                    "kind": "literal",
+                                                    "literal": {
+                                                      "kind": "string",
+                                                      "value": "%addint"
+                                                    }
+                                                  },
+                                                  {
+                                                    "call": {
+                                                      "arguments": [
+                                                        {
+                                                          "kind": "literal",
+                                                          "literal": {
+                                                            "kind": "string",
+                                                            "value": "%addint"
+                                                          }
+                                                        },
+                                                        {
+                                                          "call": {
+                                                            "arguments": [
+                                                              {
+                                                                "kind": "literal",
+                                                                "literal": {
+                                                                  "kind": "string",
+                                                                  "value": "%mulint"
+                                                                }
+                                                              },
+                                                              {
+                                                                "kind": "literal",
+                                                                "literal": {
+                                                                  "kind": "number",
+                                                                  "number": {
+                                                                    "kind": "int",
+                                                                    "value": 3
+                                                                  }
+                                                                }
+                                                              },
+                                                              {
+                                                                "kind": "identifier",
+                                                                "name": "r"
+                                                              }
+                                                            ],
+                                                            "callee": {
+                                                              "kind": "identifier",
+                                                              "name": "__callPrimitive"
+                                                            }
+                                                          },
+                                                          "kind": "call"
+                                                        },
+                                                        {
+                                                          "call": {
+                                                            "arguments": [
+                                                              {
+                                                                "kind": "literal",
+                                                                "literal": {
+                                                                  "kind": "string",
+                                                                  "value": "%mulint"
+                                                                }
+                                                              },
+                                                              {
+                                                                "kind": "literal",
+                                                                "literal": {
+                                                                  "kind": "number",
+                                                                  "number": {
+                                                                    "kind": "int",
+                                                                    "value": 6
+                                                                  }
+                                                                }
+                                                              },
+                                                              {
+                                                                "kind": "identifier",
+                                                                "name": "g"
+                                                              }
+                                                            ],
+                                                            "callee": {
+                                                              "kind": "identifier",
+                                                              "name": "__callPrimitive"
+                                                            }
+                                                          },
+                                                          "kind": "call"
+                                                        }
+                                                      ],
+                                                      "callee": {
+                                                        "kind": "identifier",
+                                                        "name": "__callPrimitive"
+                                                      }
+                                                    },
+                                                    "kind": "call"
+                                                  },
+                                                  {
+                                                    "kind": "identifier",
+                                                    "name": "b"
+                                                  }
+                                                ],
+                                                "callee": {
+                                                  "kind": "identifier",
+                                                  "name": "__callPrimitive"
+                                                }
+                                              },
+                                              "kind": "call"
+                                            },
+                                            {
+                                              "kind": "literal",
+                                              "literal": {
+                                                "kind": "number",
+                                                "number": {
+                                                  "kind": "int",
+                                                  "value": 10
+                                                }
+                                              }
+                                            }
+                                          ],
+                                          "callee": {
+                                            "kind": "identifier",
+                                            "name": "__callPrimitive"
+                                          }
+                                        },
+                                        "kind": "call"
+                                      },
+                                      "kind": "return"
+                                    }
+                                  ],
+                                  "then": [
+                                    {
+                                      "expression": {
+                                        "kind": "literal",
+                                        "literal": {
+                                          "kind": "number",
+                                          "number": {
+                                            "kind": "int",
+                                            "value": 29
+                                          }
+                                        }
+                                      },
+                                      "kind": "return"
+                                    }
+                                  ]
+                                },
+                                "kind": "if"
+                              }
+                            ],
+                            "then": [
+                              {
+                                "expression": {
+                                  "kind": "literal",
+                                  "literal": {
+                                    "kind": "number",
+                                    "number": {
+                                      "kind": "int",
+                                      "value": 150
+                                    }
+                                  }
+                                },
+                                "kind": "return"
+                              }
+                            ]
+                          },
+                          "kind": "if"
+                        }
+                      ],
+                      "then": [
+                        {
+                          "expression": {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "number",
+                              "number": {
+                                "kind": "int",
+                                "value": 76
+                              }
+                            }
+                          },
+                          "kind": "return"
+                        }
+                      ]
+                    },
+                    "kind": "if"
+                  }
+                ],
+                "params": [
+                  "color"
+                ]
+              },
+              "kind": "function"
+            },
+            "kind": "const",
+            "name": "luminance"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "%tuple_make"
+                    }
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 3
+                      }
+                    }
+                  },
+                  {
+                    "call": {
+                      "arguments": [
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "string",
+                            "value": "%tuple_make"
+                          }
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "number",
+                            "number": {
+                              "kind": "int",
+                              "value": 10
+                            }
+                          }
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "number",
+                            "number": {
+                              "kind": "int",
+                              "value": 20
+                            }
+                          }
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "number",
+                            "number": {
+                              "kind": "int",
+                              "value": 30
+                            }
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "kind": "identifier",
+                        "name": "__callPrimitive"
+                      }
+                    },
+                    "kind": "call"
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__callPrimitive"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "sample"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "expression": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "%d\\n"
+                  }
+                },
+                {
+                  "call": {
+                    "arguments": [
+                      {
+                        "kind": "identifier",
+                        "name": "sample"
+                      }
+                    ],
+                    "callee": {
+                      "kind": "identifier",
+                      "name": "luminance"
+                    }
+                  },
+                  "kind": "call"
+                }
+              ],
+              "callee": {
+                "kind": "member",
+                "member": {
+                  "object": {
+                    "kind": "identifier",
+                    "name": "Printf"
+                  },
+                  "property": "printf"
+                }
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "expression"
+        }
+      },
+      {
+        "exports": [
+          {
+            "local": "luminance",
+            "name": "luminance"
+          },
+          {
+            "local": "sample",
+            "name": "sample"
+          }
+        ],
+        "kind": "export"
+      }
+    ],
+    "module_name": "Variants_and_match"
+  }
+}

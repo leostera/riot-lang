@@ -25,6 +25,7 @@ module Constant: sig
     | Bool of bool
     | Int of int
     | Float of float
+    | Char of string
     | String of string
   val to_json: t -> Json.t
 end
@@ -60,6 +61,13 @@ module Expr: sig
     second: t;
   }
 
+  and tuple = t list
+
+  and tuple_get = {
+    tuple: t;
+    index: int;
+  }
+
   and if_then_else = {
     condition: t;
     then_: t;
@@ -78,6 +86,8 @@ module Expr: sig
     | Lambda of lambda
     | Let of let_
     | Sequence of sequence
+    | Tuple of tuple
+    | Tuple_get of tuple_get
     | If_then_else of if_then_else
     | Primitive of primitive
   val apply_callee_to_json: apply_callee -> Json.t
@@ -91,6 +101,10 @@ module Expr: sig
   val let_to_json: let_ -> Json.t
 
   val sequence_to_json: sequence -> Json.t
+
+  val tuple_to_json: tuple -> Json.t
+
+  val tuple_get_to_json: tuple_get -> Json.t
 
   val if_then_else_to_json: if_then_else -> Json.t
 

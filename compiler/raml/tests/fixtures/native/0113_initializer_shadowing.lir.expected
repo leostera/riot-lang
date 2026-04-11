@@ -1,0 +1,497 @@
+{
+  "initial": {
+    "exports": [
+      {
+        "name": "outer",
+        "symbol": "outer"
+      },
+      {
+        "name": "result",
+        "symbol": "result"
+      }
+    ],
+    "module_name": "Initializer_shadowing",
+    "procedures": [
+      {
+        "body": [
+          {
+            "kind": "label",
+            "name": "__entry__"
+          },
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 10
+              }
+            }
+          },
+          {
+            "kind": "store_global",
+            "src": {
+              "kind": "register",
+              "name": "t0"
+            },
+            "symbol": "outer"
+          },
+          {
+            "dst": "t1",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "global",
+                "name": "outer"
+              },
+              {
+                "kind": "register",
+                "name": "t1"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "+"
+            },
+            "dst": "t2",
+            "kind": "call"
+          },
+          {
+            "dst": "t3",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t2"
+            }
+          },
+          {
+            "kind": "store_global",
+            "src": {
+              "kind": "register",
+              "name": "t3"
+            },
+            "symbol": "result"
+          },
+          {
+            "dst": "t4",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "%d %d\\n"
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t4"
+              },
+              {
+                "kind": "global",
+                "name": "outer"
+              },
+              {
+                "kind": "global",
+                "name": "result"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "Printf.printf"
+            },
+            "dst": "t5",
+            "kind": "call"
+          }
+        ],
+        "kind": "entry",
+        "name": "__entry__",
+        "params": []
+      }
+    ]
+  },
+  "passes": {
+    "layout_frames": {
+      "exports": [
+        {
+          "name": "outer",
+          "symbol": "outer"
+        },
+        {
+          "name": "result",
+          "symbol": "result"
+        }
+      ],
+      "module_name": "Initializer_shadowing",
+      "procedures": [
+        {
+          "body": [
+            {
+              "kind": "label",
+              "name": "__entry__"
+            },
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 10
+                }
+              }
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t0"
+              },
+              "symbol": "outer"
+            },
+            {
+              "dst": "t1",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "global",
+                  "name": "outer"
+                },
+                {
+                  "kind": "register",
+                  "name": "t1"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "+"
+              },
+              "dst": "t2",
+              "kind": "call"
+            },
+            {
+              "dst": "t3",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t2"
+              }
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t3"
+              },
+              "symbol": "result"
+            },
+            {
+              "dst": "t4",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "%d %d\\n"
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t4"
+                },
+                {
+                  "kind": "global",
+                  "name": "outer"
+                },
+                {
+                  "kind": "global",
+                  "name": "result"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "Printf.printf"
+              },
+              "dst": "t5",
+              "kind": "call"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    },
+    "schedule": {
+      "exports": [
+        {
+          "name": "outer",
+          "symbol": "outer"
+        },
+        {
+          "name": "result",
+          "symbol": "result"
+        }
+      ],
+      "module_name": "Initializer_shadowing",
+      "procedures": [
+        {
+          "body": [
+            {
+              "kind": "label",
+              "name": "__entry__"
+            },
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 10
+                }
+              }
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t0"
+              },
+              "symbol": "outer"
+            },
+            {
+              "dst": "t1",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "global",
+                  "name": "outer"
+                },
+                {
+                  "kind": "register",
+                  "name": "t1"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "+"
+              },
+              "dst": "t2",
+              "kind": "call"
+            },
+            {
+              "dst": "t3",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t2"
+              }
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t3"
+              },
+              "symbol": "result"
+            },
+            {
+              "dst": "t4",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "%d %d\\n"
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t4"
+                },
+                {
+                  "kind": "global",
+                  "name": "outer"
+                },
+                {
+                  "kind": "global",
+                  "name": "result"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "Printf.printf"
+              },
+              "dst": "t5",
+              "kind": "call"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    }
+  },
+  "program": {
+    "exports": [
+      {
+        "name": "outer",
+        "symbol": "outer"
+      },
+      {
+        "name": "result",
+        "symbol": "result"
+      }
+    ],
+    "module_name": "Initializer_shadowing",
+    "procedures": [
+      {
+        "body": [
+          {
+            "kind": "label",
+            "name": "__entry__"
+          },
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 10
+              }
+            }
+          },
+          {
+            "kind": "store_global",
+            "src": {
+              "kind": "register",
+              "name": "t0"
+            },
+            "symbol": "outer"
+          },
+          {
+            "dst": "t1",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "global",
+                "name": "outer"
+              },
+              {
+                "kind": "register",
+                "name": "t1"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "+"
+            },
+            "dst": "t2",
+            "kind": "call"
+          },
+          {
+            "dst": "t3",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t2"
+            }
+          },
+          {
+            "kind": "store_global",
+            "src": {
+              "kind": "register",
+              "name": "t3"
+            },
+            "symbol": "result"
+          },
+          {
+            "dst": "t4",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "%d %d\\n"
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t4"
+              },
+              {
+                "kind": "global",
+                "name": "outer"
+              },
+              {
+                "kind": "global",
+                "name": "result"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "Printf.printf"
+            },
+            "dst": "t5",
+            "kind": "call"
+          }
+        ],
+        "kind": "entry",
+        "name": "__entry__",
+        "params": []
+      }
+    ]
+  },
+  "status": "ok"
+}

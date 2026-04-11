@@ -1,0 +1,88 @@
+{
+  "exports": [
+    {
+      "name": "no_larger",
+      "symbol": "no_larger"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "no_larger",
+          "symbol": "no_larger"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "constant": {
+                      "kind": "int",
+                      "value": 3
+                    },
+                    "kind": "constant"
+                  },
+                  {
+                    "constant": {
+                      "kind": "int",
+                      "value": 5
+                    },
+                    "kind": "constant"
+                  }
+                ],
+                "callee": {
+                  "function": "<=",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "no_larger"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "apply": {
+              "arguments": [
+                {
+                  "constant": {
+                    "kind": "string",
+                    "value": "%b\\n"
+                  },
+                  "kind": "constant"
+                },
+                {
+                  "kind": "var",
+                  "name": "no_larger"
+                }
+              ],
+              "callee": {
+                "function": "Printf.printf",
+                "kind": "direct"
+              }
+            },
+            "kind": "apply"
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/less_or_equal_comparison.ml",
+    "unit_name": "Less_or_equal_comparison"
+  }
+}

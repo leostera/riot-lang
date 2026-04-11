@@ -116,10 +116,36 @@ and emit_statement = fun ~level statement ->
           str declaration.name;
           str init;
         ]
+  | Types.Statement.Block statements ->
+      format Format.[ str prefix; str "{"; str (emit_statement_body ~level statements); str "}"; ]
   | Types.Statement.Expression expr ->
       format Format.[ str prefix; str (emit_expr ~level expr); str ";" ]
   | Types.Statement.Return expr ->
       format Format.[ str prefix; str "return "; str (emit_expr ~level expr); str ";" ]
+  | Types.Statement.If if_ ->
+      format
+        Format.[
+          str prefix;
+          str "if (";
+          str (emit_expr ~level if_.condition);
+          str ") {";
+          str (emit_statement_body ~level if_.then_);
+          str "}";
+          str " else {";
+          str (emit_statement_body ~level if_.else_);
+          str "}";
+        ]
+
+and emit_statement_body = fun ~level statements ->
+  match statements with
+  | [] -> ""
+  | statements -> format
+    Format.[
+      str "\n";
+      str (emit_block ~level:(level + 1) statements);
+      str "\n";
+      str (indent level);
+    ]
 
 and emit_block = fun ~level statements ->
   statements |> List.map (emit_statement ~level) |> String.concat "\n"

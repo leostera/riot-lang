@@ -1,0 +1,106 @@
+.section __TEXT, __cstring, cstring_literals
+.p2align 0
+L__raml_str_0:
+.asciz "%d %d %d %d\\n"
+
+.data
+.globl _a
+.p2align 3
+_a:
+.quad 0
+.globl _b
+.p2align 3
+_b:
+.quad 0
+.globl _c
+.p2align 3
+_c:
+.quad 0
+.globl _d
+.p2align 3
+_d:
+.quad 0
+
+.text
+.globl _main
+.p2align 2
+_main:
+stp x29, x30, [sp, #-16]!
+mov x29, sp
+sub sp, sp, #112
+movz x9, #40, lsl #0
+str x9, [sp, #0]
+movz x9, #2, lsl #0
+str x9, [sp, #8]
+ldr x0, [sp, #0]
+ldr x1, [sp, #8]
+bl _raml$2b
+str x0, [sp, #16]
+ldr x9, [sp, #16]
+adrp x10, _a@PAGE
+add x10, x10, _a@PAGEOFF
+str x9, [x10, #0]
+movz x9, #3, lsl #0
+str x9, [sp, #24]
+adrp x10, _a@PAGE
+add x10, x10, _a@PAGEOFF
+ldr x0, [x10, #0]
+ldr x1, [sp, #24]
+bl _raml$2a
+str x0, [sp, #32]
+movz x9, #5, lsl #0
+str x9, [sp, #40]
+ldr x0, [sp, #32]
+ldr x1, [sp, #40]
+bl _raml$2d
+str x0, [sp, #48]
+ldr x9, [sp, #48]
+adrp x10, _b@PAGE
+add x10, x10, _b@PAGEOFF
+str x9, [x10, #0]
+movz x9, #7, lsl #0
+str x9, [sp, #56]
+adrp x10, _b@PAGE
+add x10, x10, _b@PAGEOFF
+ldr x0, [x10, #0]
+ldr x1, [sp, #56]
+bl _raml$2f
+str x0, [sp, #64]
+ldr x9, [sp, #64]
+adrp x10, _c@PAGE
+add x10, x10, _c@PAGEOFF
+str x9, [x10, #0]
+movz x9, #7, lsl #0
+str x9, [sp, #72]
+adrp x10, _b@PAGE
+add x10, x10, _b@PAGEOFF
+ldr x0, [x10, #0]
+ldr x1, [sp, #72]
+bl _mod
+str x0, [sp, #80]
+ldr x9, [sp, #80]
+adrp x10, _d@PAGE
+add x10, x10, _d@PAGEOFF
+str x9, [x10, #0]
+adrp x9, L__raml_str_0@PAGE
+add x9, x9, L__raml_str_0@PAGEOFF
+str x9, [sp, #88]
+ldr x0, [sp, #88]
+adrp x10, _a@PAGE
+add x10, x10, _a@PAGEOFF
+ldr x1, [x10, #0]
+adrp x10, _b@PAGE
+add x10, x10, _b@PAGEOFF
+ldr x2, [x10, #0]
+adrp x10, _c@PAGE
+add x10, x10, _c@PAGEOFF
+ldr x3, [x10, #0]
+adrp x10, _d@PAGE
+add x10, x10, _d@PAGEOFF
+ldr x4, [x10, #0]
+bl _Printf.printf
+str x0, [sp, #96]
+movz x0, #0, lsl #0
+add sp, sp, #112
+ldp x29, x30, [sp], #16
+ret

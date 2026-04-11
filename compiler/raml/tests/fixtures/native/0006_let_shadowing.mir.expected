@@ -1,0 +1,745 @@
+{
+  "initial": {
+    "exports": [
+      {
+        "name": "x",
+        "symbol": "x"
+      },
+      {
+        "name": "y",
+        "symbol": "y"
+      }
+    ],
+    "module_name": "Let_shadowing",
+    "procedures": [
+      {
+        "body": [
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 10
+              }
+            }
+          },
+          {
+            "kind": "store_global",
+            "src": {
+              "kind": "register",
+              "name": "t0"
+            },
+            "symbol": "x"
+          },
+          {
+            "dst": "t1",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 5
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "global",
+                "name": "x"
+              },
+              {
+                "kind": "register",
+                "name": "t1"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "+"
+            },
+            "dst": "t2",
+            "kind": "call"
+          },
+          {
+            "dst": "t3",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t2"
+            }
+          },
+          {
+            "dst": "t4",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 2
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t3"
+              },
+              {
+                "kind": "register",
+                "name": "t4"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "*"
+            },
+            "dst": "t5",
+            "kind": "call"
+          },
+          {
+            "dst": "t6",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t5"
+            }
+          },
+          {
+            "dst": "t7",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 3
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t6"
+              },
+              {
+                "kind": "register",
+                "name": "t7"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "-"
+            },
+            "dst": "t8",
+            "kind": "call"
+          },
+          {
+            "kind": "store_global",
+            "src": {
+              "kind": "register",
+              "name": "t8"
+            },
+            "symbol": "y"
+          },
+          {
+            "dst": "t9",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "%d %d\\n"
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t9"
+              },
+              {
+                "kind": "global",
+                "name": "x"
+              },
+              {
+                "kind": "global",
+                "name": "y"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "Printf.printf"
+            },
+            "dst": "t10",
+            "kind": "call"
+          }
+        ],
+        "kind": "entry",
+        "name": "__entry__",
+        "params": []
+      }
+    ]
+  },
+  "passes": {
+    "canonicalize": {
+      "exports": [
+        {
+          "name": "x",
+          "symbol": "x"
+        },
+        {
+          "name": "y",
+          "symbol": "y"
+        }
+      ],
+      "module_name": "Let_shadowing",
+      "procedures": [
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 10
+                }
+              }
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t0"
+              },
+              "symbol": "x"
+            },
+            {
+              "dst": "t1",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 5
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "global",
+                  "name": "x"
+                },
+                {
+                  "kind": "register",
+                  "name": "t1"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "+"
+              },
+              "dst": "t2",
+              "kind": "call"
+            },
+            {
+              "dst": "t3",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t2"
+              }
+            },
+            {
+              "dst": "t4",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t3"
+                },
+                {
+                  "kind": "register",
+                  "name": "t4"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "*"
+              },
+              "dst": "t5",
+              "kind": "call"
+            },
+            {
+              "dst": "t6",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t5"
+              }
+            },
+            {
+              "dst": "t7",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 3
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t6"
+                },
+                {
+                  "kind": "register",
+                  "name": "t7"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "-"
+              },
+              "dst": "t8",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t8"
+              },
+              "symbol": "y"
+            },
+            {
+              "dst": "t9",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "%d %d\\n"
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t9"
+                },
+                {
+                  "kind": "global",
+                  "name": "x"
+                },
+                {
+                  "kind": "global",
+                  "name": "y"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "Printf.printf"
+              },
+              "dst": "t10",
+              "kind": "call"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    },
+    "insert_polls": {
+      "exports": [
+        {
+          "name": "x",
+          "symbol": "x"
+        },
+        {
+          "name": "y",
+          "symbol": "y"
+        }
+      ],
+      "module_name": "Let_shadowing",
+      "procedures": [
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 10
+                }
+              }
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t0"
+              },
+              "symbol": "x"
+            },
+            {
+              "dst": "t1",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 5
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "global",
+                  "name": "x"
+                },
+                {
+                  "kind": "register",
+                  "name": "t1"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "+"
+              },
+              "dst": "t2",
+              "kind": "call"
+            },
+            {
+              "dst": "t3",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t2"
+              }
+            },
+            {
+              "dst": "t4",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t3"
+                },
+                {
+                  "kind": "register",
+                  "name": "t4"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "*"
+              },
+              "dst": "t5",
+              "kind": "call"
+            },
+            {
+              "dst": "t6",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t5"
+              }
+            },
+            {
+              "dst": "t7",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 3
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t6"
+                },
+                {
+                  "kind": "register",
+                  "name": "t7"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "-"
+              },
+              "dst": "t8",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t8"
+              },
+              "symbol": "y"
+            },
+            {
+              "dst": "t9",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "%d %d\\n"
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t9"
+                },
+                {
+                  "kind": "global",
+                  "name": "x"
+                },
+                {
+                  "kind": "global",
+                  "name": "y"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "Printf.printf"
+              },
+              "dst": "t10",
+              "kind": "call"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    }
+  },
+  "program": {
+    "exports": [
+      {
+        "name": "x",
+        "symbol": "x"
+      },
+      {
+        "name": "y",
+        "symbol": "y"
+      }
+    ],
+    "module_name": "Let_shadowing",
+    "procedures": [
+      {
+        "body": [
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 10
+              }
+            }
+          },
+          {
+            "kind": "store_global",
+            "src": {
+              "kind": "register",
+              "name": "t0"
+            },
+            "symbol": "x"
+          },
+          {
+            "dst": "t1",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 5
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "global",
+                "name": "x"
+              },
+              {
+                "kind": "register",
+                "name": "t1"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "+"
+            },
+            "dst": "t2",
+            "kind": "call"
+          },
+          {
+            "dst": "t3",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t2"
+            }
+          },
+          {
+            "dst": "t4",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 2
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t3"
+              },
+              {
+                "kind": "register",
+                "name": "t4"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "*"
+            },
+            "dst": "t5",
+            "kind": "call"
+          },
+          {
+            "dst": "t6",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t5"
+            }
+          },
+          {
+            "dst": "t7",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 3
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t6"
+              },
+              {
+                "kind": "register",
+                "name": "t7"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "-"
+            },
+            "dst": "t8",
+            "kind": "call"
+          },
+          {
+            "kind": "store_global",
+            "src": {
+              "kind": "register",
+              "name": "t8"
+            },
+            "symbol": "y"
+          },
+          {
+            "dst": "t9",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "%d %d\\n"
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t9"
+              },
+              {
+                "kind": "global",
+                "name": "x"
+              },
+              {
+                "kind": "global",
+                "name": "y"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "Printf.printf"
+            },
+            "dst": "t10",
+            "kind": "call"
+          }
+        ],
+        "kind": "entry",
+        "name": "__entry__",
+        "params": []
+      }
+    ]
+  },
+  "status": "ok"
+}

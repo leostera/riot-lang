@@ -1,0 +1,112 @@
+{
+  "exports": [
+    {
+      "name": "choose",
+      "symbol": "choose"
+    },
+    {
+      "name": "selected",
+      "symbol": "selected"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "choose",
+          "symbol": "choose"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "if_then_else": {
+                    "condition": {
+                      "kind": "var",
+                      "name": "flag"
+                    },
+                    "else": {
+                      "kind": "var",
+                      "name": "when_false"
+                    },
+                    "then": {
+                      "kind": "var",
+                      "name": "when_true"
+                    }
+                  },
+                  "kind": "if_then_else"
+                },
+                "params": [
+                  "flag",
+                  "when_true",
+                  "when_false"
+                ]
+              }
+            },
+            "name": "choose"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "selected",
+          "symbol": "selected"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "constant": {
+                      "kind": "bool",
+                      "value": true
+                    },
+                    "kind": "constant"
+                  },
+                  {
+                    "constant": {
+                      "kind": "string",
+                      "value": "left"
+                    },
+                    "kind": "constant"
+                  },
+                  {
+                    "constant": {
+                      "kind": "string",
+                      "value": "right"
+                    },
+                    "kind": "constant"
+                  }
+                ],
+                "callee": {
+                  "function": "choose",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "selected"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/tail_conditional_direct_call.ml",
+    "unit_name": "Tail_conditional_direct_call"
+  }
+}

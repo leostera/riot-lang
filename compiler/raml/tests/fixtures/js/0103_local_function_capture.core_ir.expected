@@ -1,0 +1,141 @@
+{
+  "exports": [
+    {
+      "name": "choose",
+      "symbol": "choose"
+    },
+    {
+      "name": "selected",
+      "symbol": "selected"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "choose",
+          "symbol": "choose"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "kind": "let",
+                  "let": {
+                    "bindings": [
+                      {
+                        "expr": {
+                          "kind": "lambda",
+                          "lambda": {
+                            "body": {
+                              "if_then_else": {
+                                "condition": {
+                                  "kind": "var",
+                                  "name": "flag"
+                                },
+                                "else": {
+                                  "kind": "var",
+                                  "name": "when_false"
+                                },
+                                "then": {
+                                  "kind": "var",
+                                  "name": "when_true"
+                                }
+                              },
+                              "kind": "if_then_else"
+                            },
+                            "params": [
+                              "when_true",
+                              "when_false"
+                            ]
+                          }
+                        },
+                        "name": "decide"
+                      }
+                    ],
+                    "body": {
+                      "apply": {
+                        "arguments": [
+                          {
+                            "constant": {
+                              "kind": "string",
+                              "value": "left"
+                            },
+                            "kind": "constant"
+                          },
+                          {
+                            "constant": {
+                              "kind": "string",
+                              "value": "right"
+                            },
+                            "kind": "constant"
+                          }
+                        ],
+                        "callee": {
+                          "function": "decide",
+                          "kind": "direct"
+                        }
+                      },
+                      "kind": "apply"
+                    },
+                    "rec_flag": "nonrecursive"
+                  }
+                },
+                "params": [
+                  "flag"
+                ]
+              }
+            },
+            "name": "choose"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "selected",
+          "symbol": "selected"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "constant": {
+                      "kind": "bool",
+                      "value": true
+                    },
+                    "kind": "constant"
+                  }
+                ],
+                "callee": {
+                  "function": "choose",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "selected"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/local_function_capture.ml",
+    "unit_name": "Local_function_capture"
+  }
+}

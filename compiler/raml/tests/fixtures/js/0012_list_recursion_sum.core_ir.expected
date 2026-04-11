@@ -1,0 +1,368 @@
+{
+  "exports": [
+    {
+      "name": "sum",
+      "symbol": "sum"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "sum",
+          "symbol": "sum"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "kind": "let",
+                  "let": {
+                    "bindings": [
+                      {
+                        "expr": {
+                          "kind": "var",
+                          "name": "$function_arg0"
+                        },
+                        "name": "__raml_match_8"
+                      }
+                    ],
+                    "body": {
+                      "if_then_else": {
+                        "condition": {
+                          "kind": "primitive",
+                          "primitive": {
+                            "arguments": [
+                              {
+                                "kind": "tuple_get",
+                                "tuple_get": {
+                                  "index": 0,
+                                  "tuple": {
+                                    "kind": "var",
+                                    "name": "__raml_match_8"
+                                  }
+                                }
+                              },
+                              {
+                                "constant": {
+                                  "kind": "int",
+                                  "value": 0
+                                },
+                                "kind": "constant"
+                              }
+                            ],
+                            "name": "%eq"
+                          }
+                        },
+                        "else": {
+                          "kind": "let",
+                          "let": {
+                            "bindings": [
+                              {
+                                "expr": {
+                                  "kind": "tuple_get",
+                                  "tuple_get": {
+                                    "index": 0,
+                                    "tuple": {
+                                      "kind": "tuple_get",
+                                      "tuple_get": {
+                                        "index": 1,
+                                        "tuple": {
+                                          "kind": "var",
+                                          "name": "__raml_match_8"
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                "name": "x"
+                              }
+                            ],
+                            "body": {
+                              "kind": "let",
+                              "let": {
+                                "bindings": [
+                                  {
+                                    "expr": {
+                                      "kind": "tuple_get",
+                                      "tuple_get": {
+                                        "index": 1,
+                                        "tuple": {
+                                          "kind": "tuple_get",
+                                          "tuple_get": {
+                                            "index": 1,
+                                            "tuple": {
+                                              "kind": "var",
+                                              "name": "__raml_match_8"
+                                            }
+                                          }
+                                        }
+                                      }
+                                    },
+                                    "name": "xs"
+                                  }
+                                ],
+                                "body": {
+                                  "apply": {
+                                    "arguments": [
+                                      {
+                                        "kind": "var",
+                                        "name": "x"
+                                      },
+                                      {
+                                        "apply": {
+                                          "arguments": [
+                                            {
+                                              "kind": "var",
+                                              "name": "xs"
+                                            }
+                                          ],
+                                          "callee": {
+                                            "function": "sum",
+                                            "kind": "direct"
+                                          }
+                                        },
+                                        "kind": "apply"
+                                      }
+                                    ],
+                                    "callee": {
+                                      "function": "+",
+                                      "kind": "direct"
+                                    }
+                                  },
+                                  "kind": "apply"
+                                },
+                                "rec_flag": "nonrecursive"
+                              }
+                            },
+                            "rec_flag": "nonrecursive"
+                          }
+                        },
+                        "then": {
+                          "constant": {
+                            "kind": "int",
+                            "value": 0
+                          },
+                          "kind": "constant"
+                        }
+                      },
+                      "kind": "if_then_else"
+                    },
+                    "rec_flag": "nonrecursive"
+                  }
+                },
+                "params": [
+                  "$function_arg0"
+                ]
+              }
+            },
+            "name": "sum"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "recursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "apply": {
+              "arguments": [
+                {
+                  "constant": {
+                    "kind": "string",
+                    "value": "%d\\n"
+                  },
+                  "kind": "constant"
+                },
+                {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "kind": "tuple",
+                        "tuple": {
+                          "elements": [
+                            {
+                              "constant": {
+                                "kind": "int",
+                                "value": 1
+                              },
+                              "kind": "constant"
+                            },
+                            {
+                              "kind": "tuple",
+                              "tuple": {
+                                "elements": [
+                                  {
+                                    "constant": {
+                                      "kind": "int",
+                                      "value": 1
+                                    },
+                                    "kind": "constant"
+                                  },
+                                  {
+                                    "kind": "tuple",
+                                    "tuple": {
+                                      "elements": [
+                                        {
+                                          "constant": {
+                                            "kind": "int",
+                                            "value": 1
+                                          },
+                                          "kind": "constant"
+                                        },
+                                        {
+                                          "kind": "tuple",
+                                          "tuple": {
+                                            "elements": [
+                                              {
+                                                "constant": {
+                                                  "kind": "int",
+                                                  "value": 2
+                                                },
+                                                "kind": "constant"
+                                              },
+                                              {
+                                                "kind": "tuple",
+                                                "tuple": {
+                                                  "elements": [
+                                                    {
+                                                      "constant": {
+                                                        "kind": "int",
+                                                        "value": 1
+                                                      },
+                                                      "kind": "constant"
+                                                    },
+                                                    {
+                                                      "kind": "tuple",
+                                                      "tuple": {
+                                                        "elements": [
+                                                          {
+                                                            "constant": {
+                                                              "kind": "int",
+                                                              "value": 3
+                                                            },
+                                                            "kind": "constant"
+                                                          },
+                                                          {
+                                                            "kind": "tuple",
+                                                            "tuple": {
+                                                              "elements": [
+                                                                {
+                                                                  "constant": {
+                                                                    "kind": "int",
+                                                                    "value": 1
+                                                                  },
+                                                                  "kind": "constant"
+                                                                },
+                                                                {
+                                                                  "kind": "tuple",
+                                                                  "tuple": {
+                                                                    "elements": [
+                                                                      {
+                                                                        "constant": {
+                                                                          "kind": "int",
+                                                                          "value": 4
+                                                                        },
+                                                                        "kind": "constant"
+                                                                      },
+                                                                      {
+                                                                        "kind": "tuple",
+                                                                        "tuple": {
+                                                                          "elements": [
+                                                                            {
+                                                                              "constant": {
+                                                                                "kind": "int",
+                                                                                "value": 1
+                                                                              },
+                                                                              "kind": "constant"
+                                                                            },
+                                                                            {
+                                                                              "kind": "tuple",
+                                                                              "tuple": {
+                                                                                "elements": [
+                                                                                  {
+                                                                                    "constant": {
+                                                                                      "kind": "int",
+                                                                                      "value": 5
+                                                                                    },
+                                                                                    "kind": "constant"
+                                                                                  },
+                                                                                  {
+                                                                                    "kind": "tuple",
+                                                                                    "tuple": {
+                                                                                      "elements": [
+                                                                                        {
+                                                                                          "constant": {
+                                                                                            "kind": "int",
+                                                                                            "value": 0
+                                                                                          },
+                                                                                          "kind": "constant"
+                                                                                        }
+                                                                                      ]
+                                                                                    }
+                                                                                  }
+                                                                                ]
+                                                                              }
+                                                                            }
+                                                                          ]
+                                                                        }
+                                                                      }
+                                                                    ]
+                                                                  }
+                                                                }
+                                                              ]
+                                                            }
+                                                          }
+                                                        ]
+                                                      }
+                                                    }
+                                                  ]
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    ],
+                    "callee": {
+                      "function": "sum",
+                      "kind": "direct"
+                    }
+                  },
+                  "kind": "apply"
+                }
+              ],
+              "callee": {
+                "function": "Printf.printf",
+                "kind": "direct"
+              }
+            },
+            "kind": "apply"
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/list_recursion_sum.ml",
+    "unit_name": "List_recursion_sum"
+  }
+}

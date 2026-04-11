@@ -1,0 +1,45 @@
+{
+  "body": [
+    {
+      "declaration": {
+        "init": {
+          "kind": "literal",
+          "literal": {
+            "kind": "string",
+            "value": "flattened"
+          }
+        },
+        "kind": "const",
+        "name": "message"
+      },
+      "kind": "declaration"
+    },
+    {
+      "expression": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "identifier",
+              "name": "message"
+            }
+          ],
+          "callee": {
+            "kind": "identifier",
+            "name": "__print_endline"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "expression"
+    }
+  ],
+  "exports": [],
+  "imports": [
+    {
+      "from": "./riot-runtime.js",
+      "imported": "print_endline",
+      "local": "__print_endline"
+    }
+  ],
+  "module_name": "Effect_position_local_let"
+}

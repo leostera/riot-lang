@@ -1,0 +1,81 @@
+{
+  "exports": [
+    {
+      "name": "message",
+      "symbol": "message"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "message",
+          "symbol": "message"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "constant": {
+                      "kind": "string",
+                      "value": "hello, "
+                    },
+                    "kind": "constant"
+                  },
+                  {
+                    "constant": {
+                      "kind": "string",
+                      "value": "world"
+                    },
+                    "kind": "constant"
+                  }
+                ],
+                "callee": {
+                  "function": "^",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "message"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "apply": {
+              "arguments": [
+                {
+                  "kind": "var",
+                  "name": "message"
+                }
+              ],
+              "callee": {
+                "function": "print_endline",
+                "kind": "direct"
+              }
+            },
+            "kind": "apply"
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/string_concat.ml",
+    "unit_name": "String_concat"
+  }
+}

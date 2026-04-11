@@ -215,6 +215,12 @@ Do not hide:
 
 inside one oversized "backend" module.
 
+For the current `aarch64-apple-darwin` emitter, this also means target text
+conventions must include legal assembler symbol spelling.
+Do not emit raw operator names such as `+`, `&&`, or `<` directly as Mach-O
+symbols; mangle punctuation-bearing names into assembler-safe spellings in the
+emitter.
+
 ### Keep late target fixups explicit
 
 Branch relaxation, frame-descriptor recording, and assembler/binary-backend

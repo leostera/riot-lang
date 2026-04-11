@@ -1,0 +1,186 @@
+{
+  "js": "import * as Printf from \"./Printf.js\";\n\nimport { callPrimitive as __callPrimitive } from \"./riot-runtime.js\";\n\nconst outer = 10;\n\nlet __raml_init_result;\n\n{\n  const result = __callPrimitive(\"%addint\", outer, 1);\n  (__raml_init_result = result);\n}\n\nconst result = __raml_init_result;\n\nPrintf.printf(\"%d %d\\\\n\", outer, result);\n\nexport {\n  outer,\n  result\n};\n",
+  "jst": {
+    "items": [
+      {
+        "import": {
+          "default": null,
+          "from": "./Printf.js",
+          "names": [],
+          "namespace": "Printf"
+        },
+        "kind": "import"
+      },
+      {
+        "import": {
+          "default": null,
+          "from": "./riot-runtime.js",
+          "names": [
+            {
+              "imported": "callPrimitive",
+              "local": "__callPrimitive"
+            }
+          ]
+        },
+        "kind": "import"
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "kind": "literal",
+              "literal": {
+                "kind": "number",
+                "number": {
+                  "kind": "int",
+                  "value": 10
+                }
+              }
+            },
+            "kind": "const",
+            "name": "outer"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": null,
+            "kind": "let",
+            "name": "__raml_init_result"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "body": [
+            {
+              "declaration": {
+                "init": {
+                  "call": {
+                    "arguments": [
+                      {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "string",
+                          "value": "%addint"
+                        }
+                      },
+                      {
+                        "kind": "identifier",
+                        "name": "outer"
+                      },
+                      {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "number",
+                          "number": {
+                            "kind": "int",
+                            "value": 1
+                          }
+                        }
+                      }
+                    ],
+                    "callee": {
+                      "kind": "identifier",
+                      "name": "__callPrimitive"
+                    }
+                  },
+                  "kind": "call"
+                },
+                "kind": "const",
+                "name": "result"
+              },
+              "kind": "declaration"
+            },
+            {
+              "expression": {
+                "assignment": {
+                  "target": "__raml_init_result",
+                  "value": {
+                    "kind": "identifier",
+                    "name": "result"
+                  }
+                },
+                "kind": "assignment"
+              },
+              "kind": "expression"
+            }
+          ],
+          "kind": "block"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "kind": "identifier",
+              "name": "__raml_init_result"
+            },
+            "kind": "const",
+            "name": "result"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "expression": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "%d %d\\n"
+                  }
+                },
+                {
+                  "kind": "identifier",
+                  "name": "outer"
+                },
+                {
+                  "kind": "identifier",
+                  "name": "result"
+                }
+              ],
+              "callee": {
+                "kind": "member",
+                "member": {
+                  "object": {
+                    "kind": "identifier",
+                    "name": "Printf"
+                  },
+                  "property": "printf"
+                }
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "expression"
+        }
+      },
+      {
+        "exports": [
+          {
+            "local": "outer",
+            "name": "outer"
+          },
+          {
+            "local": "result",
+            "name": "result"
+          }
+        ],
+        "kind": "export"
+      }
+    ],
+    "module_name": "Initializer_shadowing"
+  }
+}

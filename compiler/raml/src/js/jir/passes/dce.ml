@@ -1,0 +1,146 @@
+open Std
+module Jir = Types
+
+type lowered_block = {
+  statements: Jir.Statement.t list;
+  used: string list;
+}
+
+let remember_name = fun names name ->
+  if List.exists (String.equal name) names then
+    names
+  else
+    name :: names
+
+let forget_name = fun names name ->
+  List.filter (fun current -> not (String.equal current name)) names
+
+let merge_names = fun left right ->
+  List.fold_left remember_name left right
+
+let is_name = fun names name ->
+  List.exists (String.equal name) names
+
+let rec is_pure_expr = fun expr ->
+  match expr with
+  | Jir.Expr.Literal _
+  | Jir.Expr.Identifier _
+  | Jir.Expr.Imported _
+  | Jir.Expr.Runtime_helper _
+  | Jir.Expr.Function _ -> true
+  | Jir.Expr.Member member -> is_pure_expr member.object_
+  | Jir.Expr.Conditional conditional -> is_pure_expr conditional.condition
+  && is_pure_expr conditional.then_
+  && is_pure_expr conditional.else_
+  | Jir.Expr.Call _
+  | Jir.Expr.Assignment _ -> false
+
+let rec lower_expr = fun expr ->
+  match expr with
+  | Jir.Expr.Literal _
+  | Jir.Expr.Imported _
+  | Jir.Expr.Runtime_helper _ ->
+      (expr, [])
+  | Jir.Expr.Identifier name ->
+      (Jir.Expr.Identifier name, [ name ])
+  | Jir.Expr.Function function_ ->
+      let lowered_body = lower_block ~protected:[] function_.body in
+      let used = List.fold_left forget_name lowered_body.used function_.params in
+      (Jir.Expr.Function Jir.Expr.{ function_ with body = lowered_body.statements }, used)
+  | Jir.Expr.Member member ->
+      let (object_, used) = lower_expr member.object_ in
+      (Jir.Expr.Member Jir.Expr.{ member with object_ }, used)
+  | Jir.Expr.Call call ->
+      let (callee, used) = lower_expr call.callee in
+      let (arguments, argument_used) = lower_expr_list call.arguments in
+      (Jir.Expr.Call Jir.Expr.{ callee; arguments }, merge_names used argument_used)
+  | Jir.Expr.Conditional conditional ->
+      let (condition, condition_used) = lower_expr conditional.condition in
+      let (then_, then_used) = lower_expr conditional.then_ in
+      let (else_, else_used) = lower_expr conditional.else_ in
+      (
+        Jir.Expr.Conditional Jir.Expr.{ condition; then_; else_ },
+        merge_names (merge_names condition_used then_used) else_used
+      )
+  | Jir.Expr.Assignment assignment ->
+      let (value, used) = lower_expr assignment.value in
+      (Jir.Expr.Assignment Jir.Expr.{ assignment with value }, remember_name used assignment.target)
+
+and lower_expr_list = fun exprs ->
+  match exprs with
+  | [] -> ([], [])
+  | expr :: rest ->
+      let (expr, used) = lower_expr expr in
+      let (rest, rest_used) = lower_expr_list rest in
+      (expr :: rest, merge_names used rest_used)
+
+and lower_statement = fun ~protected used_after statement ->
+  match statement with
+  | Jir.Statement.Declaration declaration ->
+      lower_declaration ~protected used_after declaration
+  | Jir.Statement.Block statements ->
+      let lowered_block = lower_block ~protected:[] statements in
+      let used = merge_names used_after lowered_block.used in
+      if List.is_empty lowered_block.statements then
+        { statements = []; used }
+      else
+        { statements = [ Jir.Statement.Block lowered_block.statements ]; used }
+  | Jir.Statement.Expression expr ->
+      let (expr, used) = lower_expr expr in
+      { statements = [ Jir.Statement.Expression expr ]; used = merge_names used_after used }
+  | Jir.Statement.Return expr ->
+      let (expr, used) = lower_expr expr in
+      { statements = [ Jir.Statement.Return expr ]; used = merge_names used_after used }
+  | Jir.Statement.If if_ ->
+      let (condition, condition_used) = lower_expr if_.condition in
+      let then_ = lower_block ~protected:[] if_.then_ in
+      let else_ = lower_block ~protected:[] if_.else_ in
+      {
+        statements = [
+          Jir.Statement.If Jir.Statement.{
+            condition;
+            then_ = then_.statements;
+            else_ = else_.statements
+          }
+        ];
+        used = used_after
+        |> merge_names condition_used
+        |> merge_names then_.used
+        |> merge_names else_.used
+      }
+
+and lower_declaration = fun ~protected used_after (declaration: Jir.Declaration.t) ->
+  let (init, init_used) =
+    match declaration.init with
+    | None -> (None, [])
+    | Some init ->
+        let (init, used) = lower_expr init in
+        (Some init, used)
+  in
+  match init with
+  | Some init when declaration.kind = Jir.Declaration.Const
+  && not (is_name protected declaration.name)
+  && not (is_name used_after declaration.name)
+  && is_pure_expr init -> { statements = []; used = used_after }
+  | _ -> {
+    statements = [ Jir.Statement.Declaration Jir.Declaration.{ declaration with init } ];
+    used = merge_names (forget_name used_after declaration.name) init_used
+  }
+
+and lower_block = fun ~protected statements ->
+  match statements with
+  | [] -> { statements = []; used = [] }
+  | statement :: rest ->
+      let lowered_rest = lower_block ~protected rest in
+      let lowered_statement = lower_statement ~protected lowered_rest.used statement in
+      {
+        statements = lowered_statement.statements @ lowered_rest.statements;
+        used = lowered_statement.used
+      }
+
+let program = fun (program: Jir.Program.t) ->
+  let protected =
+    List.map (fun (export: Jir.Export.t) -> export.local) program.exports
+  in
+  let lowered_body = lower_block ~protected program.body in
+  { program with body = lowered_body.statements }

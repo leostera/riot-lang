@@ -27,6 +27,38 @@ let address_register = Asm.Register.x 10
 
 let callee_register = Asm.Register.x 16
 
+let is_ascii_digit = fun char -> char >= '0' && char <= '9'
+
+let is_ascii_lowercase = fun char -> char >= 'a' && char <= 'z'
+
+let is_ascii_uppercase = fun char -> char >= 'A' && char <= 'Z'
+
+let is_macho_symbol_char = fun char ->
+  is_ascii_digit char || is_ascii_lowercase char || is_ascii_uppercase char || char = '_' || char = '.'
+
+let hex_digit = fun value ->
+  if value < 10 then
+    Char.chr (Char.code '0' + value)
+  else
+    Char.chr (Char.code 'a' + (value - 10))
+
+let hex_escape = fun code ->
+  String.init 2
+    (fun index ->
+      if index = 0 then
+        hex_digit (code lsr 4)
+      else
+        hex_digit (code land 0x0f))
+
+let encode_symbol_name = fun name ->
+  let rec loop index parts =
+    if index = String.length name then
+      String.concat "" (List.rev parts)
+    else
+      loop (index + 1) (hex_escape (Char.code name.[index]) :: parts)
+  in
+  loop 0 []
+
 let add_unique = fun names name ->
   if List.exists (String.equal name) names then
     names
@@ -39,7 +71,11 @@ let align_to = fun value ~alignment ->
   else
     value + (alignment - (value mod alignment))
 
-let mangle_symbol = fun name -> format Format.[ str "_"; str name ]
+let mangle_symbol = fun name ->
+  if String.for_all is_macho_symbol_char name then
+    format Format.[ str "_"; str name ]
+  else
+    format Format.[ str "_raml$"; str (encode_symbol_name name) ]
 
 let procedure_symbol = fun (procedure: Lir.Procedure.t) ->
   match procedure.kind with
@@ -50,6 +86,7 @@ let rec collect_operand_registers = fun names operand ->
   match operand with
   | Lir.Operand.Register name -> add_unique names name
   | Lir.Operand.Global _ -> names
+  | Lir.Operand.Symbol_address _ -> names
   | Lir.Operand.Literal _ -> names
 
 let collect_callee_registers = fun names callee ->
@@ -75,6 +112,10 @@ let collect_instruction_registers = fun names instruction ->
         | Some name -> add_unique names name
         | None -> names
       )
+  | Lir.Instruction.Branch_if_zero { operand; _ } ->
+      collect_operand_registers names operand
+  | Lir.Instruction.Jump _ ->
+      names
   | Lir.Instruction.Return operand ->
       Option.map (collect_operand_registers names) operand |> Option.unwrap_or ~default:names
 
@@ -98,11 +139,11 @@ let slot_offset = fun layout name ->
 let slot_address = fun layout name ->
   Asm.Address.offset ~base:Asm.Register.sp ~offset:(slot_offset layout name)
 
-let instruction = fun instruction -> Doc.Item.instruction instruction
+let instruction = Doc.Item.instruction
 
 let directive = fun name ?(args = []) () -> Doc.Item.directive name ~args ()
 
-let label = fun name -> Doc.Item.label name
+let label = Doc.Item.label
 
 let blank = Doc.Item.blank
 
@@ -212,6 +253,7 @@ let rec materialize_operand = fun layout strings register operand ->
     instruction (Asm.Instruction.Ldr { dst = register; address = slot_address layout name })
   ]
   | Lir.Operand.Global name -> Ok (load_global_value register (mangle_symbol name))
+  | Lir.Operand.Symbol_address name -> Ok (load_symbol_address register (mangle_symbol name))
   | Lir.Operand.Literal literal -> materialize_literal layout strings register literal
 
 and materialize_literal = fun _layout strings register literal ->
@@ -321,10 +363,13 @@ let emit_return = fun layout strings operand ->
   in
   Ok (body @ emit_epilogue layout)
 
-let emit_instruction = fun layout strings procedure instruction_ ->
+let emit_instruction = fun layout strings (procedure: Lir.Procedure.t) instruction_ ->
   match instruction_ with
-  | Lir.Instruction.Label _ ->
-      Ok []
+  | Lir.Instruction.Label name ->
+      if String.equal name procedure.name then
+        Ok []
+      else
+        Ok [ label name ]
   | Lir.Instruction.Comment _ ->
       Ok []
   | Lir.Instruction.Move { dst; src } ->
@@ -342,6 +387,11 @@ let emit_instruction = fun layout strings procedure instruction_ ->
         | Some dst -> store_register layout dst (Asm.Register.x 0)
       in
       Ok (argument_setup @ callee_setup @ [ call_instruction ] @ store_result)
+  | Lir.Instruction.Branch_if_zero { operand; target } ->
+      let* body = materialize_operand layout strings value_register operand in
+      Ok (body @ [ instruction (Asm.Instruction.Cbz { src = value_register; label = target }) ])
+  | Lir.Instruction.Jump target ->
+      Ok [ instruction (Asm.Instruction.B target) ]
   | Lir.Instruction.Return operand ->
       emit_return layout strings operand
 
@@ -410,6 +460,7 @@ let rec collect_literal_strings = fun constants literal ->
 let collect_operand_strings = fun constants operand ->
   match operand with
   | Lir.Operand.Literal literal -> collect_literal_strings constants literal
+  | Lir.Operand.Symbol_address _ -> constants
   | _ -> constants
 
 let collect_instruction_strings = fun constants instruction_ ->
@@ -429,6 +480,10 @@ let collect_instruction_strings = fun constants instruction_ ->
         | Lir.Callee.Indirect operand -> collect_operand_strings constants operand
       in
       List.fold_left collect_operand_strings constants arguments
+  | Lir.Instruction.Branch_if_zero { operand; _ } ->
+      collect_operand_strings constants operand
+  | Lir.Instruction.Jump _ ->
+      constants
   | Lir.Instruction.Return operand ->
       Option.map (collect_operand_strings constants) operand |> Option.unwrap_or ~default:constants
 

@@ -1,0 +1,168 @@
+.section __TEXT, __cstring, cstring_literals
+.p2align 0
+L__raml_str_0:
+.asciz "%d\\n"
+.p2align 0
+L__raml_str_1:
+.asciz "none"
+
+.data
+.globl _result
+.p2align 3
+_result:
+.quad 0
+
+.text
+.globl _safe_div
+.p2align 2
+_safe_div:
+stp x29, x30, [sp, #-16]!
+mov x29, sp
+sub sp, sp, #80
+str x0, [sp, #0]
+str x1, [sp, #8]
+movz x9, #0, lsl #0
+str x9, [sp, #16]
+ldr x0, [sp, #8]
+ldr x1, [sp, #16]
+bl _raml$3d
+str x0, [sp, #24]
+ldr x9, [sp, #24]
+cbz x9, L__raml_else_0
+movz x9, #0, lsl #0
+str x9, [sp, #32]
+ldr x0, [sp, #32]
+bl _raml_tuple_make_1
+str x0, [sp, #40]
+ldr x9, [sp, #40]
+str x9, [sp, #48]
+b L__raml_endif_1
+L__raml_else_0:
+movz x9, #1, lsl #0
+str x9, [sp, #56]
+ldr x0, [sp, #0]
+ldr x1, [sp, #8]
+bl _raml$2f
+str x0, [sp, #64]
+ldr x0, [sp, #56]
+ldr x1, [sp, #64]
+bl _raml_tuple_make_2
+str x0, [sp, #72]
+ldr x9, [sp, #72]
+str x9, [sp, #48]
+L__raml_endif_1:
+ldr x0, [sp, #48]
+add sp, sp, #80
+ldp x29, x30, [sp], #16
+ret
+
+.globl _main
+.p2align 2
+_main:
+stp x29, x30, [sp, #-16]!
+mov x29, sp
+sub sp, sp, #240
+movz x9, #84, lsl #0
+str x9, [sp, #0]
+movz x9, #2, lsl #0
+str x9, [sp, #8]
+ldr x0, [sp, #0]
+ldr x1, [sp, #8]
+bl _safe_div
+str x0, [sp, #16]
+ldr x9, [sp, #16]
+str x9, [sp, #24]
+movz x9, #0, lsl #0
+str x9, [sp, #32]
+ldr x0, [sp, #24]
+ldr x1, [sp, #32]
+bl _raml_tuple_get
+str x0, [sp, #40]
+movz x9, #0, lsl #0
+str x9, [sp, #48]
+ldr x0, [sp, #40]
+ldr x1, [sp, #48]
+bl _raml_eq
+str x0, [sp, #56]
+ldr x9, [sp, #56]
+cbz x9, L__raml_else_0
+movz x9, #0, lsl #0
+str x9, [sp, #64]
+ldr x0, [sp, #64]
+bl _raml_tuple_make_1
+str x0, [sp, #72]
+ldr x9, [sp, #72]
+str x9, [sp, #80]
+b L__raml_endif_1
+L__raml_else_0:
+movz x9, #1, lsl #0
+str x9, [sp, #88]
+ldr x0, [sp, #24]
+ldr x1, [sp, #88]
+bl _raml_tuple_get
+str x0, [sp, #96]
+ldr x9, [sp, #96]
+str x9, [sp, #104]
+movz x9, #3, lsl #0
+str x9, [sp, #112]
+ldr x0, [sp, #104]
+ldr x1, [sp, #112]
+bl _safe_div
+str x0, [sp, #120]
+ldr x9, [sp, #120]
+str x9, [sp, #80]
+L__raml_endif_1:
+ldr x9, [sp, #80]
+adrp x10, _result@PAGE
+add x10, x10, _result@PAGEOFF
+str x9, [x10, #0]
+adrp x10, _result@PAGE
+add x10, x10, _result@PAGEOFF
+ldr x9, [x10, #0]
+str x9, [sp, #128]
+movz x9, #0, lsl #0
+str x9, [sp, #136]
+ldr x0, [sp, #128]
+ldr x1, [sp, #136]
+bl _raml_tuple_get
+str x0, [sp, #144]
+movz x9, #1, lsl #0
+str x9, [sp, #152]
+ldr x0, [sp, #144]
+ldr x1, [sp, #152]
+bl _raml_eq
+str x0, [sp, #160]
+ldr x9, [sp, #160]
+cbz x9, L__raml_else_2
+movz x9, #1, lsl #0
+str x9, [sp, #168]
+ldr x0, [sp, #128]
+ldr x1, [sp, #168]
+bl _raml_tuple_get
+str x0, [sp, #176]
+ldr x9, [sp, #176]
+str x9, [sp, #184]
+adrp x9, L__raml_str_0@PAGE
+add x9, x9, L__raml_str_0@PAGEOFF
+str x9, [sp, #192]
+ldr x0, [sp, #192]
+ldr x1, [sp, #184]
+bl _Printf.printf
+str x0, [sp, #200]
+ldr x9, [sp, #200]
+str x9, [sp, #208]
+b L__raml_endif_3
+L__raml_else_2:
+adrp x9, L__raml_str_1@PAGE
+add x9, x9, L__raml_str_1@PAGEOFF
+str x9, [sp, #216]
+ldr x0, [sp, #216]
+bl _print_endline
+str x0, [sp, #224]
+ldr x9, [sp, #224]
+str x9, [sp, #208]
+L__raml_endif_3:
+movz x0, #0, lsl #0
+add sp, sp, #240
+ldp x29, x30, [sp], #16
+ret

@@ -1,0 +1,374 @@
+{
+  "exports": [
+    {
+      "name": "safe_div",
+      "symbol": "safe_div"
+    },
+    {
+      "name": "result",
+      "symbol": "result"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "safe_div",
+          "symbol": "safe_div"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "if_then_else": {
+                    "condition": {
+                      "apply": {
+                        "arguments": [
+                          {
+                            "kind": "var",
+                            "name": "b"
+                          },
+                          {
+                            "constant": {
+                              "kind": "int",
+                              "value": 0
+                            },
+                            "kind": "constant"
+                          }
+                        ],
+                        "callee": {
+                          "function": "=",
+                          "kind": "direct"
+                        }
+                      },
+                      "kind": "apply"
+                    },
+                    "else": {
+                      "kind": "tuple",
+                      "tuple": {
+                        "elements": [
+                          {
+                            "constant": {
+                              "kind": "int",
+                              "value": 1
+                            },
+                            "kind": "constant"
+                          },
+                          {
+                            "apply": {
+                              "arguments": [
+                                {
+                                  "kind": "var",
+                                  "name": "a"
+                                },
+                                {
+                                  "kind": "var",
+                                  "name": "b"
+                                }
+                              ],
+                              "callee": {
+                                "function": "/",
+                                "kind": "direct"
+                              }
+                            },
+                            "kind": "apply"
+                          }
+                        ]
+                      }
+                    },
+                    "then": {
+                      "kind": "tuple",
+                      "tuple": {
+                        "elements": [
+                          {
+                            "constant": {
+                              "kind": "int",
+                              "value": 0
+                            },
+                            "kind": "constant"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "kind": "if_then_else"
+                },
+                "params": [
+                  "a",
+                  "b"
+                ]
+              }
+            },
+            "name": "safe_div"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "result",
+          "symbol": "result"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "let",
+              "let": {
+                "bindings": [
+                  {
+                    "expr": {
+                      "apply": {
+                        "arguments": [
+                          {
+                            "constant": {
+                              "kind": "int",
+                              "value": 84
+                            },
+                            "kind": "constant"
+                          },
+                          {
+                            "constant": {
+                              "kind": "int",
+                              "value": 2
+                            },
+                            "kind": "constant"
+                          }
+                        ],
+                        "callee": {
+                          "function": "safe_div",
+                          "kind": "direct"
+                        }
+                      },
+                      "kind": "apply"
+                    },
+                    "name": "__raml_match_22"
+                  }
+                ],
+                "body": {
+                  "if_then_else": {
+                    "condition": {
+                      "kind": "primitive",
+                      "primitive": {
+                        "arguments": [
+                          {
+                            "kind": "tuple_get",
+                            "tuple_get": {
+                              "index": 0,
+                              "tuple": {
+                                "kind": "var",
+                                "name": "__raml_match_22"
+                              }
+                            }
+                          },
+                          {
+                            "constant": {
+                              "kind": "int",
+                              "value": 0
+                            },
+                            "kind": "constant"
+                          }
+                        ],
+                        "name": "%eq"
+                      }
+                    },
+                    "else": {
+                      "kind": "let",
+                      "let": {
+                        "bindings": [
+                          {
+                            "expr": {
+                              "kind": "tuple_get",
+                              "tuple_get": {
+                                "index": 1,
+                                "tuple": {
+                                  "kind": "var",
+                                  "name": "__raml_match_22"
+                                }
+                              }
+                            },
+                            "name": "x"
+                          }
+                        ],
+                        "body": {
+                          "apply": {
+                            "arguments": [
+                              {
+                                "kind": "var",
+                                "name": "x"
+                              },
+                              {
+                                "constant": {
+                                  "kind": "int",
+                                  "value": 3
+                                },
+                                "kind": "constant"
+                              }
+                            ],
+                            "callee": {
+                              "function": "safe_div",
+                              "kind": "direct"
+                            }
+                          },
+                          "kind": "apply"
+                        },
+                        "rec_flag": "nonrecursive"
+                      }
+                    },
+                    "then": {
+                      "kind": "tuple",
+                      "tuple": {
+                        "elements": [
+                          {
+                            "constant": {
+                              "kind": "int",
+                              "value": 0
+                            },
+                            "kind": "constant"
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "kind": "if_then_else"
+                },
+                "rec_flag": "nonrecursive"
+              }
+            },
+            "name": "result"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "kind": "let",
+            "let": {
+              "bindings": [
+                {
+                  "expr": {
+                    "kind": "var",
+                    "name": "result"
+                  },
+                  "name": "__raml_match_31"
+                }
+              ],
+              "body": {
+                "if_then_else": {
+                  "condition": {
+                    "kind": "primitive",
+                    "primitive": {
+                      "arguments": [
+                        {
+                          "kind": "tuple_get",
+                          "tuple_get": {
+                            "index": 0,
+                            "tuple": {
+                              "kind": "var",
+                              "name": "__raml_match_31"
+                            }
+                          }
+                        },
+                        {
+                          "constant": {
+                            "kind": "int",
+                            "value": 1
+                          },
+                          "kind": "constant"
+                        }
+                      ],
+                      "name": "%eq"
+                    }
+                  },
+                  "else": {
+                    "apply": {
+                      "arguments": [
+                        {
+                          "constant": {
+                            "kind": "string",
+                            "value": "none"
+                          },
+                          "kind": "constant"
+                        }
+                      ],
+                      "callee": {
+                        "function": "print_endline",
+                        "kind": "direct"
+                      }
+                    },
+                    "kind": "apply"
+                  },
+                  "then": {
+                    "kind": "let",
+                    "let": {
+                      "bindings": [
+                        {
+                          "expr": {
+                            "kind": "tuple_get",
+                            "tuple_get": {
+                              "index": 1,
+                              "tuple": {
+                                "kind": "var",
+                                "name": "__raml_match_31"
+                              }
+                            }
+                          },
+                          "name": "n"
+                        }
+                      ],
+                      "body": {
+                        "apply": {
+                          "arguments": [
+                            {
+                              "constant": {
+                                "kind": "string",
+                                "value": "%d\\n"
+                              },
+                              "kind": "constant"
+                            },
+                            {
+                              "kind": "var",
+                              "name": "n"
+                            }
+                          ],
+                          "callee": {
+                            "function": "Printf.printf",
+                            "kind": "direct"
+                          }
+                        },
+                        "kind": "apply"
+                      },
+                      "rec_flag": "nonrecursive"
+                    }
+                  }
+                },
+                "kind": "if_then_else"
+              },
+              "rec_flag": "nonrecursive"
+            }
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/option_pipeline.ml",
+    "unit_name": "Option_pipeline"
+  }
+}

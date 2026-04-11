@@ -1,0 +1,269 @@
+{
+  "codegen": {
+    "js": {
+      "output": "import { print_endline as __print_endline } from \"./riot-runtime.js\";\n\nconst before = \"before\";\n\n__print_endline(before);\n\nconst after = __print_endline(\"after\");\n\nexport {\n  before,\n  after\n};\n",
+      "status": "ok"
+    },
+    "native": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "wasm": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    }
+  },
+  "lowered": {
+    "core_ir": {
+      "compilation_unit": {
+        "exports": [
+          {
+            "name": "before",
+            "symbol": "before"
+          },
+          {
+            "name": "after",
+            "symbol": "after"
+          }
+        ],
+        "init": [
+          {
+            "exports": [
+              {
+                "name": "before",
+                "symbol": "before"
+              }
+            ],
+            "items": [
+              {
+                "binding": {
+                  "expr": {
+                    "constant": {
+                      "kind": "string",
+                      "value": "before"
+                    },
+                    "kind": "constant"
+                  },
+                  "name": "before"
+                },
+                "kind": "binding"
+              }
+            ],
+            "rec_flag": "nonrecursive"
+          },
+          {
+            "exports": [],
+            "items": [
+              {
+                "expr": {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "kind": "var",
+                        "name": "before"
+                      }
+                    ],
+                    "callee": {
+                      "function": "print_endline",
+                      "kind": "direct"
+                    }
+                  },
+                  "kind": "apply"
+                },
+                "kind": "eval"
+              }
+            ],
+            "rec_flag": "nonrecursive"
+          },
+          {
+            "exports": [
+              {
+                "name": "after",
+                "symbol": "after"
+              }
+            ],
+            "items": [
+              {
+                "binding": {
+                  "expr": {
+                    "apply": {
+                      "arguments": [
+                        {
+                          "constant": {
+                            "kind": "string",
+                            "value": "after"
+                          },
+                          "kind": "constant"
+                        }
+                      ],
+                      "callee": {
+                        "function": "print_endline",
+                        "kind": "direct"
+                      }
+                    },
+                    "kind": "apply"
+                  },
+                  "name": "after"
+                },
+                "kind": "binding"
+              }
+            ],
+            "rec_flag": "nonrecursive"
+          }
+        ],
+        "unit_id": {
+          "kind": "implementation",
+          "relpath": "corpus/grouped_initialization_order.ml",
+          "unit_name": "Grouped_initialization_order"
+        }
+      },
+      "status": "ok"
+    },
+    "jir": {
+      "program": {
+        "body": [
+          {
+            "declaration": {
+              "init": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "before"
+                }
+              },
+              "kind": "const",
+              "name": "before"
+            },
+            "kind": "declaration"
+          },
+          {
+            "expression": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "identifier",
+                    "name": "before"
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__print_endline"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "expression"
+          },
+          {
+            "declaration": {
+              "init": {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "after"
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "identifier",
+                    "name": "__print_endline"
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "const",
+              "name": "after"
+            },
+            "kind": "declaration"
+          }
+        ],
+        "exports": [
+          {
+            "local": "before",
+            "name": "before"
+          },
+          {
+            "local": "after",
+            "name": "after"
+          }
+        ],
+        "imports": [
+          {
+            "from": "./riot-runtime.js",
+            "imported": "print_endline",
+            "local": "__print_endline"
+          }
+        ],
+        "module_name": "Grouped_initialization_order"
+      },
+      "status": "ok"
+    },
+    "lir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "mir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "nir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "wasm": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    }
+  },
+  "source": {
+    "has_trailing_newline": true,
+    "kind": "implementation",
+    "nonempty_lines": 3,
+    "relpath": "corpus/grouped_initialization_order.ml",
+    "source_bytes": 86,
+    "source_lines": 3,
+    "unit_name": "Grouped_initialization_order"
+  },
+  "targeting": {
+    "backend": "js",
+    "host": "aarch64-apple-darwin",
+    "target": "js-unknown-ecma"
+  },
+  "typing": {
+    "completeness": "complete",
+    "exports": [
+      {
+        "name": "after",
+        "scheme": "unit"
+      },
+      {
+        "name": "before",
+        "scheme": "string"
+      }
+    ],
+    "file_summary": {
+      "completeness": "complete",
+      "export_result": {
+        "exports": [
+          {
+            "name": "after",
+            "scheme": "unit"
+          },
+          {
+            "name": "before",
+            "scheme": "string"
+          }
+        ],
+        "tag": "trusted_export"
+      },
+      "source_id": 0
+    },
+    "lowering_diagnostics": [],
+    "parse_diagnostics": [],
+    "status": "ok",
+    "typing_diagnostics": []
+  }
+}

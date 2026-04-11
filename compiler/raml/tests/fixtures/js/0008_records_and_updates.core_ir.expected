@@ -1,0 +1,253 @@
+{
+  "exports": [
+    {
+      "name": "move",
+      "symbol": "move"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "move",
+          "symbol": "move"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "kind": "let",
+                  "let": {
+                    "bindings": [
+                      {
+                        "expr": {
+                          "kind": "var",
+                          "name": "p"
+                        },
+                        "name": "__raml_record_11"
+                      }
+                    ],
+                    "body": {
+                      "kind": "tuple",
+                      "tuple": {
+                        "elements": [
+                          {
+                            "apply": {
+                              "arguments": [
+                                {
+                                  "kind": "tuple_get",
+                                  "tuple_get": {
+                                    "index": 0,
+                                    "tuple": {
+                                      "kind": "var",
+                                      "name": "p"
+                                    }
+                                  }
+                                },
+                                {
+                                  "kind": "var",
+                                  "name": "dx"
+                                }
+                              ],
+                              "callee": {
+                                "function": "+",
+                                "kind": "direct"
+                              }
+                            },
+                            "kind": "apply"
+                          },
+                          {
+                            "apply": {
+                              "arguments": [
+                                {
+                                  "kind": "tuple_get",
+                                  "tuple_get": {
+                                    "index": 1,
+                                    "tuple": {
+                                      "kind": "var",
+                                      "name": "p"
+                                    }
+                                  }
+                                },
+                                {
+                                  "kind": "var",
+                                  "name": "dy"
+                                }
+                              ],
+                              "callee": {
+                                "function": "+",
+                                "kind": "direct"
+                              }
+                            },
+                            "kind": "apply"
+                          }
+                        ]
+                      }
+                    },
+                    "rec_flag": "nonrecursive"
+                  }
+                },
+                "params": [
+                  "dx",
+                  "dy",
+                  "p"
+                ]
+              }
+            },
+            "name": "move"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "kind": "let",
+            "let": {
+              "bindings": [
+                {
+                  "expr": {
+                    "kind": "tuple",
+                    "tuple": {
+                      "elements": [
+                        {
+                          "constant": {
+                            "kind": "int",
+                            "value": 1
+                          },
+                          "kind": "constant"
+                        },
+                        {
+                          "constant": {
+                            "kind": "int",
+                            "value": 2
+                          },
+                          "kind": "constant"
+                        }
+                      ]
+                    }
+                  },
+                  "name": "p"
+                }
+              ],
+              "body": {
+                "kind": "let",
+                "let": {
+                  "bindings": [
+                    {
+                      "expr": {
+                        "apply": {
+                          "arguments": [
+                            {
+                              "constant": {
+                                "kind": "int",
+                                "value": 3
+                              },
+                              "kind": "constant"
+                            },
+                            {
+                              "constant": {
+                                "kind": "int",
+                                "value": 4
+                              },
+                              "kind": "constant"
+                            },
+                            {
+                              "kind": "var",
+                              "name": "p"
+                            }
+                          ],
+                          "callee": {
+                            "function": "move",
+                            "kind": "direct"
+                          }
+                        },
+                        "kind": "apply"
+                      },
+                      "name": "q"
+                    }
+                  ],
+                  "body": {
+                    "apply": {
+                      "arguments": [
+                        {
+                          "constant": {
+                            "kind": "string",
+                            "value": "(%d,%d) -> (%d,%d)\\n"
+                          },
+                          "kind": "constant"
+                        },
+                        {
+                          "kind": "tuple_get",
+                          "tuple_get": {
+                            "index": 0,
+                            "tuple": {
+                              "kind": "var",
+                              "name": "p"
+                            }
+                          }
+                        },
+                        {
+                          "kind": "tuple_get",
+                          "tuple_get": {
+                            "index": 1,
+                            "tuple": {
+                              "kind": "var",
+                              "name": "p"
+                            }
+                          }
+                        },
+                        {
+                          "kind": "tuple_get",
+                          "tuple_get": {
+                            "index": 0,
+                            "tuple": {
+                              "kind": "var",
+                              "name": "q"
+                            }
+                          }
+                        },
+                        {
+                          "kind": "tuple_get",
+                          "tuple_get": {
+                            "index": 1,
+                            "tuple": {
+                              "kind": "var",
+                              "name": "q"
+                            }
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "function": "Printf.printf",
+                        "kind": "direct"
+                      }
+                    },
+                    "kind": "apply"
+                  },
+                  "rec_flag": "nonrecursive"
+                }
+              },
+              "rec_flag": "nonrecursive"
+            }
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/records_and_updates.ml",
+    "unit_name": "Records_and_updates"
+  }
+}

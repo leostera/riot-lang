@@ -1,0 +1,185 @@
+{
+  "exports": [
+    {
+      "name": "p",
+      "symbol": "p"
+    },
+    {
+      "name": "q",
+      "symbol": "q"
+    },
+    {
+      "name": "r",
+      "symbol": "r"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "p",
+          "symbol": "p"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "constant": {
+                "kind": "bool",
+                "value": true
+              },
+              "kind": "constant"
+            },
+            "name": "p"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "q",
+          "symbol": "q"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "constant": {
+                "kind": "bool",
+                "value": false
+              },
+              "kind": "constant"
+            },
+            "name": "q"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "r",
+          "symbol": "r"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "apply": {
+                      "arguments": [
+                        {
+                          "apply": {
+                            "arguments": [
+                              {
+                                "kind": "var",
+                                "name": "q"
+                              }
+                            ],
+                            "callee": {
+                              "function": "not",
+                              "kind": "direct"
+                            }
+                          },
+                          "kind": "apply"
+                        },
+                        {
+                          "kind": "var",
+                          "name": "p"
+                        }
+                      ],
+                      "callee": {
+                        "function": "&&",
+                        "kind": "direct"
+                      }
+                    },
+                    "kind": "apply"
+                  },
+                  {
+                    "apply": {
+                      "arguments": [
+                        {
+                          "constant": {
+                            "kind": "int",
+                            "value": 3
+                          },
+                          "kind": "constant"
+                        },
+                        {
+                          "constant": {
+                            "kind": "int",
+                            "value": 2
+                          },
+                          "kind": "constant"
+                        }
+                      ],
+                      "callee": {
+                        "function": "<",
+                        "kind": "direct"
+                      }
+                    },
+                    "kind": "apply"
+                  }
+                ],
+                "callee": {
+                  "function": "||",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "r"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "apply": {
+              "arguments": [
+                {
+                  "constant": {
+                    "kind": "string",
+                    "value": "%b\\n"
+                  },
+                  "kind": "constant"
+                },
+                {
+                  "kind": "var",
+                  "name": "r"
+                }
+              ],
+              "callee": {
+                "function": "Printf.printf",
+                "kind": "direct"
+              }
+            },
+            "kind": "apply"
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/boolean_logic.ml",
+    "unit_name": "Boolean_logic"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "body": [
+    {
+      "if": {
+        "condition": {
+          "kind": "identifier",
+          "name": "flag"
+        },
+        "else": [
+          {
+            "expression": {
+              "call": {
+                "arguments": [],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "right"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "expression"
+          }
+        ],
+        "then": [
+          {
+            "expression": {
+              "call": {
+                "arguments": [],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "left"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "expression"
+          }
+        ]
+      },
+      "kind": "if"
+    }
+  ],
+  "exports": [],
+  "imports": [],
+  "module_name": "If_statements"
+}

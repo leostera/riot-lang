@@ -1,0 +1,102 @@
+{
+  "entry": [
+    {
+      "binding": {
+        "expr": {
+          "kind": "literal",
+          "literal": {
+            "kind": "int",
+            "value": 10
+          }
+        },
+        "name": "outer"
+      },
+      "kind": "binding"
+    },
+    {
+      "binding": {
+        "expr": {
+          "kind": "let",
+          "let": {
+            "bindings": [
+              {
+                "expr": {
+                  "call": {
+                    "arguments": [
+                      {
+                        "kind": "symbol",
+                        "name": "outer"
+                      },
+                      {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "int",
+                          "value": 1
+                        }
+                      }
+                    ],
+                    "callee": {
+                      "kind": "direct",
+                      "name": "+"
+                    }
+                  },
+                  "kind": "call"
+                },
+                "name": "result"
+              }
+            ],
+            "body": {
+              "kind": "symbol",
+              "name": "result"
+            }
+          }
+        },
+        "name": "result"
+      },
+      "kind": "binding"
+    },
+    {
+      "expr": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "%d %d\\n"
+              }
+            },
+            {
+              "kind": "symbol",
+              "name": "outer"
+            },
+            {
+              "kind": "symbol",
+              "name": "result"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "Printf.printf"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "eval"
+    }
+  ],
+  "exports": [
+    {
+      "name": "outer",
+      "symbol": "outer"
+    },
+    {
+      "name": "result",
+      "symbol": "result"
+    }
+  ],
+  "functions": [],
+  "imports": [],
+  "module_name": "Initializer_shadowing",
+  "runtime_helpers": []
+}

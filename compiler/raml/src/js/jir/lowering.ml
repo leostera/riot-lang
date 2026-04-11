@@ -48,6 +48,7 @@ let lower_constant = fun constant ->
   | Core.Constant.Bool value -> Jir.Literal.Bool value
   | Core.Constant.Int value -> Jir.Literal.Number (Jir.Literal.Int value)
   | Core.Constant.Float value -> Jir.Literal.Number (Jir.Literal.Float value)
+  | Core.Constant.Char value -> Jir.Literal.String value
   | Core.Constant.String value -> Jir.Literal.String value
 
 let is_ascii_uppercase = fun char -> char >= 'A' && char <= 'Z'
@@ -55,13 +56,6 @@ let is_ascii_uppercase = fun char -> char >= 'A' && char <= 'Z'
 let is_module_segment = fun segment -> String.length segment > 0 && is_ascii_uppercase segment.[0]
 
 let module_import_path = fun module_name -> format Format.[ str "./"; str module_name; str ".js" ]
-
-let primitive_dispatch = fun () ->
-  Jir.Runtime.make
-    ~module_name:"@riot/raml/js/runtime"
-    ~symbol:"callPrimitive"
-    ~local:"__callPrimitive"
-    ()
 
 let lower_reference = fun name ->
   let parts = String.split_on_char '.' name |> List.filter (fun part -> not (String.equal part "")) in
@@ -82,6 +76,85 @@ let iife = fun body ->
     arguments = []
   }
 
+let lower_direct_callee = fun function_name ->
+  match Jir.Runtime.helper_for_direct_callee function_name with
+  | Some helper -> Jir.Expr.Runtime_helper helper
+  | None -> lower_reference function_name
+
+let lower_runtime_primitive_call = fun name arguments ->
+  let callee = Jir.Expr.Runtime_helper (Jir.Runtime.call_primitive ()) in
+  let arguments = Jir.Expr.Literal (Jir.Literal.String name) :: arguments in
+  Jir.Expr.Call Jir.Expr.{ callee; arguments }
+
+let lower_bool = fun value -> Jir.Expr.Literal (Jir.Literal.Bool value)
+
+let lower_curried_function = fun (function_: Jir.Expr.function_) ->
+  let arity = List.length function_.params in
+  if arity <= 1 then
+    Jir.Expr.Function function_
+  else
+    Jir.Expr.Call Jir.Expr.{
+      callee = Jir.Expr.Runtime_helper (Jir.Runtime.make_curried ());
+      arguments = [
+        Jir.Expr.Function function_;
+        Jir.Expr.Literal (Jir.Literal.Number (Jir.Literal.Int arity));
+      ]
+    }
+
+let primitive_for_direct_callee = fun function_name ->
+  match function_name with
+  | "+." -> Some "%addfloat"
+  | "-." -> Some "%subfloat"
+  | "*." -> Some "%mulfloat"
+  | "/." -> Some "%divfloat"
+  | "=" -> Some "%eq"
+  | "<>" -> Some "%neq"
+  | "<" -> Some "%lt"
+  | "<=" -> Some "%le"
+  | ">" -> Some "%gt"
+  | ">=" -> Some "%ge"
+  | "+" -> Some "%addint"
+  | "-" -> Some "%subint"
+  | "*" -> Some "%mulint"
+  | "/" -> Some "%divint"
+  | "mod" -> Some "%modint"
+  | "^" -> Some "%concatstring"
+  | "sqrt" -> Some "%sqrtfloat"
+  | "string_of_int" -> Some "%string_of_int"
+  | "string_of_float" -> Some "%string_of_float"
+  | "int_of_string" -> Some "%int_of_string"
+  | "float_of_string" -> Some "%float_of_string"
+  | _ -> None
+
+let lower_boolean_direct_call = fun function_name arguments ->
+  match (function_name, arguments) with
+  | ("not", [ argument ]) -> Some (Jir.Expr.Conditional Jir.Expr.{
+    condition = argument;
+    then_ = lower_bool false;
+    else_ = lower_bool true
+  })
+  | ("&&", [left;right]) -> Some (Jir.Expr.Conditional Jir.Expr.{
+    condition = left;
+    then_ = right;
+    else_ = lower_bool false
+  })
+  | ("||", [left;right]) -> Some (Jir.Expr.Conditional Jir.Expr.{
+    condition = left;
+    then_ = lower_bool true;
+    else_ = right
+  })
+  | _ -> None
+
+let lower_direct_call = fun function_name arguments ->
+  match lower_boolean_direct_call function_name arguments with
+  | Some expr -> expr
+  | None ->
+      match primitive_for_direct_callee function_name with
+      | Some primitive_name -> lower_runtime_primitive_call primitive_name arguments
+      | None ->
+          let callee = lower_direct_callee function_name in
+          Jir.Expr.Call Jir.Expr.{ callee; arguments }
+
 let rec lower_expr = fun expr ->
   match expr with
   | Core.Expr.Constant constant ->
@@ -89,18 +162,14 @@ let rec lower_expr = fun expr ->
   | Core.Expr.Var name ->
       lower_reference name
   | Core.Expr.Apply { callee=Core.Expr.Direct function_name; arguments } ->
-      let callee = lower_reference function_name in
       let arguments = List.map lower_expr arguments in
-      Jir.Expr.Call Jir.Expr.{ callee; arguments }
+      lower_direct_call function_name arguments
   | Core.Expr.Apply { callee=Core.Expr.Indirect callee; arguments } ->
       let callee = lower_expr callee in
       let arguments = List.map lower_expr arguments in
       Jir.Expr.Call Jir.Expr.{ callee; arguments }
   | Core.Expr.Lambda lambda ->
-      Jir.Expr.Function Jir.Expr.{
-        params = lambda.params;
-        body = [ Jir.Statement.Return (lower_expr lambda.body) ]
-      }
+      lower_curried_function Jir.Expr.{ params = lambda.params; body = lower_tail_expr lambda.body }
   | Core.Expr.Let let_ ->
       lower_let let_
   | Core.Expr.Sequence sequence ->
@@ -109,6 +178,15 @@ let rec lower_expr = fun expr ->
           Jir.Statement.Expression (lower_expr sequence.first);
           Jir.Statement.Return (lower_expr sequence.second);
         ]
+  | Core.Expr.Tuple tuple ->
+      lower_runtime_primitive_call "%tuple_make" (List.map lower_expr tuple)
+  | Core.Expr.Tuple_get tuple_get ->
+      lower_runtime_primitive_call
+        "%tuple_get"
+        [
+          lower_expr tuple_get.tuple;
+          Jir.Expr.Literal (Jir.Literal.Number (Jir.Literal.Int tuple_get.index));
+        ]
   | Core.Expr.If_then_else if_then_else ->
       Jir.Expr.Conditional Jir.Expr.{
         condition = lower_expr if_then_else.condition;
@@ -116,45 +194,69 @@ let rec lower_expr = fun expr ->
         else_ = lower_expr if_then_else.else_
       }
   | Core.Expr.Primitive primitive ->
-      let callee = Jir.Expr.Runtime_helper (primitive_dispatch ()) in
-      let arguments = Jir.Expr.Literal (Jir.Literal.String primitive.name)
-      :: List.map lower_expr primitive.arguments in
-      Jir.Expr.Call Jir.Expr.{ callee; arguments }
+      lower_runtime_primitive_call primitive.name (List.map lower_expr primitive.arguments)
 
-and lower_let = fun (let_: Core.Expr.let_) ->
-  let statements =
-    match let_.rec_flag with
-    | Core.Rec_flag.Nonrecursive -> List.map
-      (fun (binding: Core.Expr.binding) ->
-        Jir.Statement.Declaration Jir.Declaration.{
-          kind = Jir.Declaration.Const;
-          name = binding.name;
-          init = Some (lower_expr binding.expr)
-        })
-      let_.bindings
-    | Core.Rec_flag.Recursive ->
-        let prelude =
-          List.map
-            (fun (binding: Core.Expr.binding) ->
-              Jir.Statement.Declaration Jir.Declaration.{
-                kind = Jir.Declaration.Let;
-                name = binding.name;
-                init = None
-              })
-            let_.bindings
-        in
-        let assignments =
-          List.map
-            (fun (binding: Core.Expr.binding) ->
-              Jir.Statement.Expression (Jir.Expr.Assignment Jir.Expr.{
-                target = binding.name;
-                value = lower_expr binding.expr
-              }))
-            let_.bindings
-        in
-        prelude @ assignments
-  in
-  iife (statements @ [ Jir.Statement.Return (lower_expr let_.body) ])
+and lower_tail_expr = fun expr ->
+  match expr with
+  | Core.Expr.Sequence sequence -> lower_effect_expr sequence.first @ lower_tail_expr sequence.second
+  | Core.Expr.Let let_ -> lower_tail_let let_
+  | Core.Expr.If_then_else if_then_else -> [
+    Jir.Statement.If Jir.Statement.{
+      condition = lower_expr if_then_else.condition;
+      then_ = lower_tail_expr if_then_else.then_;
+      else_ = lower_tail_expr if_then_else.else_
+    }
+  ]
+  | _ -> [ Jir.Statement.Return (lower_expr expr) ]
+
+and lower_effect_expr = fun expr ->
+  match expr with
+  | Core.Expr.Sequence sequence -> lower_effect_expr sequence.first @ lower_effect_expr sequence.second
+  | Core.Expr.If_then_else if_then_else -> [
+    Jir.Statement.If Jir.Statement.{
+      condition = lower_expr if_then_else.condition;
+      then_ = lower_effect_expr if_then_else.then_;
+      else_ = lower_effect_expr if_then_else.else_
+    }
+  ]
+  | _ -> [ Jir.Statement.Expression (lower_expr expr) ]
+
+and lower_let_binding_statements = fun (let_: Core.Expr.let_) ->
+  match let_.rec_flag with
+  | Core.Rec_flag.Nonrecursive -> List.map
+    (fun (binding: Core.Expr.binding) ->
+      Jir.Statement.Declaration Jir.Declaration.{
+        kind = Jir.Declaration.Const;
+        name = binding.name;
+        init = Some (lower_expr binding.expr)
+      })
+    let_.bindings
+  | Core.Rec_flag.Recursive ->
+      let prelude =
+        List.map
+          (fun (binding: Core.Expr.binding) ->
+            Jir.Statement.Declaration Jir.Declaration.{
+              kind = Jir.Declaration.Let;
+              name = binding.name;
+              init = None
+            })
+          let_.bindings
+      in
+      let assignments =
+        List.map
+          (fun (binding: Core.Expr.binding) ->
+            Jir.Statement.Expression (Jir.Expr.Assignment Jir.Expr.{
+              target = binding.name;
+              value = lower_expr binding.expr
+            }))
+          let_.bindings
+      in
+      prelude @ assignments
+
+and lower_tail_let = fun (let_: Core.Expr.let_) ->
+  lower_let_binding_statements let_ @ lower_tail_expr let_.body
+
+and lower_let = fun (let_: Core.Expr.let_) -> iife (lower_tail_let let_)
 
 let lower_export = fun (export: Core.Export.t) ->
   Jir.Export.{ name = export.name; local = export.symbol }
@@ -216,4 +318,10 @@ let lower_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
           body;
           exports = List.map lower_export compilation_unit.exports
         }
-        |> Passes.Normalize.program)
+        |> Passes.Normalize.program
+        |> Passes.Flatten.program
+        |> Passes.Alpha.program
+        |> Passes.Remove_aliases.program
+        |> Passes.Dce.program
+        |> Passes.Normalize.program
+        |> Passes.Materialize_imports.program)

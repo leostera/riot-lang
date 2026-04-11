@@ -73,10 +73,18 @@ and declaration = {
   init: expr option;
 }
 
+and statement_if = {
+  condition: expr;
+  then_: statement list;
+  else_: statement list;
+}
+
 and statement =
   | Declaration of declaration
+  | Block of statement list
   | Expression of expr
   | Return of expr
+  | If of statement_if
 
 let import_requirement_to_json = fun requirement ->
   let fields = [
@@ -172,21 +180,34 @@ and declaration_to_json = fun declaration ->
       ("init", Option.map expr_to_json declaration.init |> Option.unwrap_or ~default:Json.null);
     ]
 
+and statement_if_to_json = fun (if_: statement_if) ->
+  Json.obj
+    [
+      ("condition", expr_to_json if_.condition);
+      ("then", Json.array (List.map statement_to_json if_.then_));
+      ("else", Json.array (List.map statement_to_json if_.else_));
+    ]
+
 and statement_to_json = fun statement ->
   match statement with
   | Declaration declaration -> Json.obj
     [ ("kind", Json.string "declaration"); ("declaration", declaration_to_json declaration); ]
+  | Block statements -> Json.obj
+    [ ("kind", Json.string "block"); ("body", Json.array (List.map statement_to_json statements)); ]
   | Expression expr -> Json.obj
     [ ("kind", Json.string "expression"); ("expression", expr_to_json expr); ]
   | Return expr -> Json.obj [ ("kind", Json.string "return"); ("expression", expr_to_json expr); ]
+  | If if_ -> Json.obj [ ("kind", Json.string "if"); ("if", statement_if_to_json if_); ]
 
 module Imports = struct
-  type requirement = import_requirement = {
+  type t = import_requirement = {
     from: string;
     imported: string option;
     local: string;
     namespace: bool;
   }
+
+  type requirement = t
 
   let make = fun ~from ?imported ~local () -> { from; imported; local; namespace = false }
 
@@ -218,8 +239,33 @@ module Runtime = struct
 
   type t = helper
 
+  let module_name = "./riot-runtime.js"
+
   let make = fun ~module_name ~symbol ?local () ->
     { module_name; symbol; local = Option.unwrap_or ~default:symbol local }
+
+  let call_primitive = fun () -> make ~module_name ~symbol:"callPrimitive" ~local:"__callPrimitive" ()
+
+  let make_curried = fun () -> make ~module_name ~symbol:"makeCurried" ~local:"__makeCurried" ()
+
+  let print_endline = fun () -> make ~module_name ~symbol:"print_endline" ~local:"__print_endline" ()
+
+  let print_newline = fun () -> make ~module_name ~symbol:"print_newline" ~local:"__print_newline" ()
+
+  let print_int = fun () -> make ~module_name ~symbol:"print_int" ~local:"__print_int" ()
+
+  let print_string = fun () -> make ~module_name ~symbol:"print_string" ~local:"__print_string" ()
+
+  let print_char = fun () -> make ~module_name ~symbol:"print_char" ~local:"__print_char" ()
+
+  let helper_for_direct_callee = fun name ->
+    match name with
+    | "print_endline" -> Some (print_endline ())
+    | "print_newline" -> Some (print_newline ())
+    | "print_int" -> Some (print_int ())
+    | "print_string" -> Some (print_string ())
+    | "print_char" -> Some (print_char ())
+    | _ -> None
 
   let to_import = fun helper ->
     Imports.make ~from:helper.module_name ~imported:helper.symbol ~local:helper.local ()
@@ -313,10 +359,20 @@ module Declaration = struct
 end
 
 module Statement = struct
+  type if_ = statement_if = {
+    condition: expr;
+    then_: statement list;
+    else_: statement list;
+  }
+
   type t = statement =
     | Declaration of declaration
+    | Block of statement list
     | Expression of expr
     | Return of expr
+    | If of if_
+
+  let if_to_json = statement_if_to_json
 
   let to_json = statement_to_json
 end

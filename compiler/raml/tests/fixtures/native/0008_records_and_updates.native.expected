@@ -1,0 +1,111 @@
+.section __TEXT, __cstring, cstring_literals
+.p2align 0
+L__raml_str_0:
+.asciz "(%d,%d) -> (%d,%d)\\n"
+
+.text
+.globl _move
+.p2align 2
+_move:
+stp x29, x30, [sp, #-16]!
+mov x29, sp
+sub sp, sp, #96
+str x0, [sp, #0]
+str x1, [sp, #8]
+str x2, [sp, #16]
+ldr x9, [sp, #16]
+str x9, [sp, #24]
+movz x9, #0, lsl #0
+str x9, [sp, #32]
+ldr x0, [sp, #16]
+ldr x1, [sp, #32]
+bl _raml_tuple_get
+str x0, [sp, #40]
+ldr x0, [sp, #40]
+ldr x1, [sp, #0]
+bl _raml$2b
+str x0, [sp, #48]
+movz x9, #1, lsl #0
+str x9, [sp, #56]
+ldr x0, [sp, #16]
+ldr x1, [sp, #56]
+bl _raml_tuple_get
+str x0, [sp, #64]
+ldr x0, [sp, #64]
+ldr x1, [sp, #8]
+bl _raml$2b
+str x0, [sp, #72]
+ldr x0, [sp, #48]
+ldr x1, [sp, #72]
+bl _raml_tuple_make_2
+str x0, [sp, #80]
+ldr x0, [sp, #80]
+add sp, sp, #96
+ldp x29, x30, [sp], #16
+ret
+
+.globl _main
+.p2align 2
+_main:
+stp x29, x30, [sp, #-16]!
+mov x29, sp
+sub sp, sp, #144
+movz x9, #1, lsl #0
+str x9, [sp, #0]
+movz x9, #2, lsl #0
+str x9, [sp, #8]
+ldr x0, [sp, #0]
+ldr x1, [sp, #8]
+bl _raml_tuple_make_2
+str x0, [sp, #16]
+ldr x9, [sp, #16]
+str x9, [sp, #24]
+movz x9, #3, lsl #0
+str x9, [sp, #32]
+movz x9, #4, lsl #0
+str x9, [sp, #40]
+ldr x0, [sp, #32]
+ldr x1, [sp, #40]
+ldr x2, [sp, #24]
+bl _move
+str x0, [sp, #48]
+ldr x9, [sp, #48]
+str x9, [sp, #56]
+adrp x9, L__raml_str_0@PAGE
+add x9, x9, L__raml_str_0@PAGEOFF
+str x9, [sp, #64]
+movz x9, #0, lsl #0
+str x9, [sp, #72]
+ldr x0, [sp, #24]
+ldr x1, [sp, #72]
+bl _raml_tuple_get
+str x0, [sp, #80]
+movz x9, #1, lsl #0
+str x9, [sp, #88]
+ldr x0, [sp, #24]
+ldr x1, [sp, #88]
+bl _raml_tuple_get
+str x0, [sp, #96]
+movz x9, #0, lsl #0
+str x9, [sp, #104]
+ldr x0, [sp, #56]
+ldr x1, [sp, #104]
+bl _raml_tuple_get
+str x0, [sp, #112]
+movz x9, #1, lsl #0
+str x9, [sp, #120]
+ldr x0, [sp, #56]
+ldr x1, [sp, #120]
+bl _raml_tuple_get
+str x0, [sp, #128]
+ldr x0, [sp, #64]
+ldr x1, [sp, #80]
+ldr x2, [sp, #96]
+ldr x3, [sp, #112]
+ldr x4, [sp, #128]
+bl _Printf.printf
+str x0, [sp, #136]
+movz x0, #0, lsl #0
+add sp, sp, #144
+ldp x29, x30, [sp], #16
+ret

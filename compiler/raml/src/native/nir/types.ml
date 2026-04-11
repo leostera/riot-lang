@@ -28,10 +28,29 @@ module Expr = struct
     arguments: t list;
   }
 
+  and if_then_else = {
+    condition: t;
+    then_: t;
+    else_: t;
+  }
+
+  and binding = {
+    name: string;
+    expr: t;
+  }
+
+  and let_ = {
+    bindings: binding list;
+    body: t;
+  }
+
   and t =
     | Literal of Literal.t
     | Symbol of string
+    | Symbol_address of string
     | Call of call
+    | If_then_else of if_then_else
+    | Let of let_
 
   let rec callee_to_json = fun callee ->
     match callee with
@@ -45,12 +64,35 @@ module Expr = struct
         ("arguments", Json.array (List.map to_json call.arguments));
       ]
 
+  and if_then_else_to_json = fun if_then_else ->
+    Json.obj
+      [
+        ("condition", to_json if_then_else.condition);
+        ("then", to_json if_then_else.then_);
+        ("else", to_json if_then_else.else_);
+      ]
+
+  and binding_to_json = fun binding ->
+    Json.obj [ ("name", Json.string binding.name); ("expr", to_json binding.expr); ]
+
+  and let_to_json = fun let_ ->
+    Json.obj
+      [
+        ("bindings", Json.array (List.map binding_to_json let_.bindings));
+        ("body", to_json let_.body);
+      ]
+
   and to_json = fun expr ->
     match expr with
     | Literal literal -> Json.obj
       [ ("kind", Json.string "literal"); ("literal", Literal.to_json literal); ]
     | Symbol name -> Json.obj [ ("kind", Json.string "symbol"); ("name", Json.string name); ]
+    | Symbol_address name -> Json.obj
+      [ ("kind", Json.string "symbol_address"); ("name", Json.string name); ]
     | Call call -> Json.obj [ ("kind", Json.string "call"); ("call", call_to_json call); ]
+    | If_then_else if_then_else -> Json.obj
+      [ ("kind", Json.string "if_then_else"); ("if_then_else", if_then_else_to_json if_then_else); ]
+    | Let let_ -> Json.obj [ ("kind", Json.string "let"); ("let", let_to_json let_); ]
 end
 
 module Function = struct

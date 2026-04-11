@@ -1,0 +1,443 @@
+{
+  "exports": [
+    {
+      "name": "luminance",
+      "symbol": "luminance"
+    },
+    {
+      "name": "sample",
+      "symbol": "sample"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "luminance",
+          "symbol": "luminance"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "kind": "let",
+                  "let": {
+                    "bindings": [
+                      {
+                        "expr": {
+                          "kind": "var",
+                          "name": "color"
+                        },
+                        "name": "__raml_match_20"
+                      }
+                    ],
+                    "body": {
+                      "if_then_else": {
+                        "condition": {
+                          "kind": "primitive",
+                          "primitive": {
+                            "arguments": [
+                              {
+                                "kind": "tuple_get",
+                                "tuple_get": {
+                                  "index": 0,
+                                  "tuple": {
+                                    "kind": "var",
+                                    "name": "__raml_match_20"
+                                  }
+                                }
+                              },
+                              {
+                                "constant": {
+                                  "kind": "int",
+                                  "value": 0
+                                },
+                                "kind": "constant"
+                              }
+                            ],
+                            "name": "%eq"
+                          }
+                        },
+                        "else": {
+                          "if_then_else": {
+                            "condition": {
+                              "kind": "primitive",
+                              "primitive": {
+                                "arguments": [
+                                  {
+                                    "kind": "tuple_get",
+                                    "tuple_get": {
+                                      "index": 0,
+                                      "tuple": {
+                                        "kind": "var",
+                                        "name": "__raml_match_20"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "constant": {
+                                      "kind": "int",
+                                      "value": 1
+                                    },
+                                    "kind": "constant"
+                                  }
+                                ],
+                                "name": "%eq"
+                              }
+                            },
+                            "else": {
+                              "if_then_else": {
+                                "condition": {
+                                  "kind": "primitive",
+                                  "primitive": {
+                                    "arguments": [
+                                      {
+                                        "kind": "tuple_get",
+                                        "tuple_get": {
+                                          "index": 0,
+                                          "tuple": {
+                                            "kind": "var",
+                                            "name": "__raml_match_20"
+                                          }
+                                        }
+                                      },
+                                      {
+                                        "constant": {
+                                          "kind": "int",
+                                          "value": 2
+                                        },
+                                        "kind": "constant"
+                                      }
+                                    ],
+                                    "name": "%eq"
+                                  }
+                                },
+                                "else": {
+                                  "kind": "let",
+                                  "let": {
+                                    "bindings": [
+                                      {
+                                        "expr": {
+                                          "kind": "tuple_get",
+                                          "tuple_get": {
+                                            "index": 1,
+                                            "tuple": {
+                                              "kind": "var",
+                                              "name": "__raml_match_20"
+                                            }
+                                          }
+                                        },
+                                        "name": "__raml_tuple_8"
+                                      }
+                                    ],
+                                    "body": {
+                                      "kind": "let",
+                                      "let": {
+                                        "bindings": [
+                                          {
+                                            "expr": {
+                                              "kind": "tuple_get",
+                                              "tuple_get": {
+                                                "index": 0,
+                                                "tuple": {
+                                                  "kind": "var",
+                                                  "name": "__raml_tuple_8"
+                                                }
+                                              }
+                                            },
+                                            "name": "r"
+                                          }
+                                        ],
+                                        "body": {
+                                          "kind": "let",
+                                          "let": {
+                                            "bindings": [
+                                              {
+                                                "expr": {
+                                                  "kind": "tuple_get",
+                                                  "tuple_get": {
+                                                    "index": 1,
+                                                    "tuple": {
+                                                      "kind": "var",
+                                                      "name": "__raml_tuple_8"
+                                                    }
+                                                  }
+                                                },
+                                                "name": "g"
+                                              }
+                                            ],
+                                            "body": {
+                                              "kind": "let",
+                                              "let": {
+                                                "bindings": [
+                                                  {
+                                                    "expr": {
+                                                      "kind": "tuple_get",
+                                                      "tuple_get": {
+                                                        "index": 2,
+                                                        "tuple": {
+                                                          "kind": "var",
+                                                          "name": "__raml_tuple_8"
+                                                        }
+                                                      }
+                                                    },
+                                                    "name": "b"
+                                                  }
+                                                ],
+                                                "body": {
+                                                  "apply": {
+                                                    "arguments": [
+                                                      {
+                                                        "apply": {
+                                                          "arguments": [
+                                                            {
+                                                              "apply": {
+                                                                "arguments": [
+                                                                  {
+                                                                    "apply": {
+                                                                      "arguments": [
+                                                                        {
+                                                                          "constant": {
+                                                                            "kind": "int",
+                                                                            "value": 3
+                                                                          },
+                                                                          "kind": "constant"
+                                                                        },
+                                                                        {
+                                                                          "kind": "var",
+                                                                          "name": "r"
+                                                                        }
+                                                                      ],
+                                                                      "callee": {
+                                                                        "function": "*",
+                                                                        "kind": "direct"
+                                                                      }
+                                                                    },
+                                                                    "kind": "apply"
+                                                                  },
+                                                                  {
+                                                                    "apply": {
+                                                                      "arguments": [
+                                                                        {
+                                                                          "constant": {
+                                                                            "kind": "int",
+                                                                            "value": 6
+                                                                          },
+                                                                          "kind": "constant"
+                                                                        },
+                                                                        {
+                                                                          "kind": "var",
+                                                                          "name": "g"
+                                                                        }
+                                                                      ],
+                                                                      "callee": {
+                                                                        "function": "*",
+                                                                        "kind": "direct"
+                                                                      }
+                                                                    },
+                                                                    "kind": "apply"
+                                                                  }
+                                                                ],
+                                                                "callee": {
+                                                                  "function": "+",
+                                                                  "kind": "direct"
+                                                                }
+                                                              },
+                                                              "kind": "apply"
+                                                            },
+                                                            {
+                                                              "kind": "var",
+                                                              "name": "b"
+                                                            }
+                                                          ],
+                                                          "callee": {
+                                                            "function": "+",
+                                                            "kind": "direct"
+                                                          }
+                                                        },
+                                                        "kind": "apply"
+                                                      },
+                                                      {
+                                                        "constant": {
+                                                          "kind": "int",
+                                                          "value": 10
+                                                        },
+                                                        "kind": "constant"
+                                                      }
+                                                    ],
+                                                    "callee": {
+                                                      "function": "/",
+                                                      "kind": "direct"
+                                                    }
+                                                  },
+                                                  "kind": "apply"
+                                                },
+                                                "rec_flag": "nonrecursive"
+                                              }
+                                            },
+                                            "rec_flag": "nonrecursive"
+                                          }
+                                        },
+                                        "rec_flag": "nonrecursive"
+                                      }
+                                    },
+                                    "rec_flag": "nonrecursive"
+                                  }
+                                },
+                                "then": {
+                                  "constant": {
+                                    "kind": "int",
+                                    "value": 29
+                                  },
+                                  "kind": "constant"
+                                }
+                              },
+                              "kind": "if_then_else"
+                            },
+                            "then": {
+                              "constant": {
+                                "kind": "int",
+                                "value": 150
+                              },
+                              "kind": "constant"
+                            }
+                          },
+                          "kind": "if_then_else"
+                        },
+                        "then": {
+                          "constant": {
+                            "kind": "int",
+                            "value": 76
+                          },
+                          "kind": "constant"
+                        }
+                      },
+                      "kind": "if_then_else"
+                    },
+                    "rec_flag": "nonrecursive"
+                  }
+                },
+                "params": [
+                  "color"
+                ]
+              }
+            },
+            "name": "luminance"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "sample",
+          "symbol": "sample"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "tuple",
+              "tuple": {
+                "elements": [
+                  {
+                    "constant": {
+                      "kind": "int",
+                      "value": 3
+                    },
+                    "kind": "constant"
+                  },
+                  {
+                    "kind": "tuple",
+                    "tuple": {
+                      "elements": [
+                        {
+                          "constant": {
+                            "kind": "int",
+                            "value": 10
+                          },
+                          "kind": "constant"
+                        },
+                        {
+                          "constant": {
+                            "kind": "int",
+                            "value": 20
+                          },
+                          "kind": "constant"
+                        },
+                        {
+                          "constant": {
+                            "kind": "int",
+                            "value": 30
+                          },
+                          "kind": "constant"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            },
+            "name": "sample"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "apply": {
+              "arguments": [
+                {
+                  "constant": {
+                    "kind": "string",
+                    "value": "%d\\n"
+                  },
+                  "kind": "constant"
+                },
+                {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "kind": "var",
+                        "name": "sample"
+                      }
+                    ],
+                    "callee": {
+                      "function": "luminance",
+                      "kind": "direct"
+                    }
+                  },
+                  "kind": "apply"
+                }
+              ],
+              "callee": {
+                "function": "Printf.printf",
+                "kind": "direct"
+              }
+            },
+            "kind": "apply"
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/variants_and_match.ml",
+    "unit_name": "Variants_and_match"
+  }
+}

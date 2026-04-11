@@ -1,0 +1,125 @@
+{
+  "initial": {
+    "entry": [
+      {
+        "expr": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 42
+                }
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "print_int"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "eval"
+      }
+    ],
+    "exports": [],
+    "functions": [],
+    "imports": [],
+    "module_name": "Print_int",
+    "runtime_helpers": []
+  },
+  "passes": {
+    "normalize": {
+      "entry": [
+        {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "int",
+                    "value": 42
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "print_int"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "eval"
+        }
+      ],
+      "exports": [],
+      "functions": [],
+      "imports": [],
+      "module_name": "Print_int",
+      "runtime_helpers": []
+    },
+    "simplify": {
+      "entry": [
+        {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "int",
+                    "value": 42
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "print_int"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "eval"
+        }
+      ],
+      "exports": [],
+      "functions": [],
+      "imports": [],
+      "module_name": "Print_int",
+      "runtime_helpers": []
+    }
+  },
+  "program": {
+    "entry": [
+      {
+        "expr": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 42
+                }
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "print_int"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "eval"
+      }
+    ],
+    "exports": [],
+    "functions": [],
+    "imports": [],
+    "module_name": "Print_int",
+    "runtime_helpers": []
+  },
+  "status": "ok"
+}

@@ -97,11 +97,14 @@ let parse_constant = fun json ->
         | None -> invalid_field scope "value" "a number"
       in
       Result.map (fun value -> Core_ir.Constant.Float value) value
+  | "char" ->
+      let* value = string_field scope "value" json in
+      Ok (Core_ir.Constant.Char value)
   | "string" ->
       let* value = string_field scope "value" json in
       Ok (Core_ir.Constant.String value)
   | _ ->
-      invalid_field scope "kind" "`unit`, `bool`, `int`, `float`, or `string`"
+      invalid_field scope "kind" "`unit`, `bool`, `int`, `float`, `char`, or `string`"
 
 let rec parse_expr = fun json ->
   let scope = "expr" in

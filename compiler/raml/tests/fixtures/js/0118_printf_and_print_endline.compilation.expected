@@ -1,0 +1,199 @@
+{
+  "codegen": {
+    "backend": "js",
+    "stage": {
+      "output": "import * as Printf from \"./Printf.js\";\n\nimport { print_endline as __print_endline } from \"./riot-runtime.js\";\n\nPrintf.printf(\"%d\\\\n\", 42);\n\n__print_endline(\"done\");\n",
+      "status": "ok"
+    },
+    "target": "js-unknown-ecma"
+  },
+  "core_ir": {
+    "compilation_unit": {
+      "exports": [],
+      "init": [
+        {
+          "exports": [],
+          "items": [
+            {
+              "expr": {
+                "apply": {
+                  "arguments": [
+                    {
+                      "constant": {
+                        "kind": "string",
+                        "value": "%d\\n"
+                      },
+                      "kind": "constant"
+                    },
+                    {
+                      "constant": {
+                        "kind": "int",
+                        "value": 42
+                      },
+                      "kind": "constant"
+                    }
+                  ],
+                  "callee": {
+                    "function": "Printf.printf",
+                    "kind": "direct"
+                  }
+                },
+                "kind": "apply"
+              },
+              "kind": "eval"
+            }
+          ],
+          "rec_flag": "nonrecursive"
+        },
+        {
+          "exports": [],
+          "items": [
+            {
+              "expr": {
+                "apply": {
+                  "arguments": [
+                    {
+                      "constant": {
+                        "kind": "string",
+                        "value": "done"
+                      },
+                      "kind": "constant"
+                    }
+                  ],
+                  "callee": {
+                    "function": "print_endline",
+                    "kind": "direct"
+                  }
+                },
+                "kind": "apply"
+              },
+              "kind": "eval"
+            }
+          ],
+          "rec_flag": "nonrecursive"
+        }
+      ],
+      "unit_id": {
+        "kind": "implementation",
+        "relpath": "corpus/printf_and_print_endline.ml",
+        "unit_name": "Printf_and_print_endline"
+      }
+    },
+    "status": "ok"
+  },
+  "lowering": {
+    "backend": "js",
+    "stages": {
+      "jir": {
+        "program": {
+          "body": [
+            {
+              "expression": {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "%d\\n"
+                      }
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "number",
+                        "number": {
+                          "kind": "int",
+                          "value": 42
+                        }
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "member",
+                    "member": {
+                      "object": {
+                        "kind": "identifier",
+                        "name": "Printf"
+                      },
+                      "property": "printf"
+                    }
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "expression"
+            },
+            {
+              "expression": {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "done"
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "identifier",
+                    "name": "__print_endline"
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "expression"
+            }
+          ],
+          "exports": [],
+          "imports": [
+            {
+              "from": "./Printf.js",
+              "imported": null,
+              "local": "Printf",
+              "namespace": true
+            },
+            {
+              "from": "./riot-runtime.js",
+              "imported": "print_endline",
+              "local": "__print_endline"
+            }
+          ],
+          "module_name": "Printf_and_print_endline"
+        },
+        "status": "ok"
+      }
+    }
+  },
+  "source": {
+    "has_trailing_newline": true,
+    "kind": "implementation",
+    "nonempty_lines": 2,
+    "relpath": "corpus/printf_and_print_endline.ml",
+    "source_bytes": 64,
+    "source_lines": 3,
+    "unit_name": "Printf_and_print_endline"
+  },
+  "targeting": {
+    "backend": "js",
+    "host": "aarch64-apple-darwin",
+    "target": "js-unknown-ecma"
+  },
+  "typing": {
+    "completeness": "complete",
+    "exports": [],
+    "file_summary": {
+      "completeness": "complete",
+      "export_result": {
+        "exports": [],
+        "tag": "trusted_export"
+      },
+      "source_id": 0
+    },
+    "lowering_diagnostics": [],
+    "parse_diagnostics": [],
+    "status": "ok",
+    "typing_diagnostics": []
+  }
+}

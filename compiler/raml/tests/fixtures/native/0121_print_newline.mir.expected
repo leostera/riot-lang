@@ -1,0 +1,153 @@
+{
+  "initial": {
+    "exports": [],
+    "module_name": "Print_newline",
+    "procedures": [
+      {
+        "body": [
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "unit"
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t0"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "print_newline"
+            },
+            "dst": "t1",
+            "kind": "call"
+          }
+        ],
+        "kind": "entry",
+        "name": "__entry__",
+        "params": []
+      }
+    ]
+  },
+  "passes": {
+    "canonicalize": {
+      "exports": [],
+      "module_name": "Print_newline",
+      "procedures": [
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "unit"
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "print_newline"
+              },
+              "dst": "t1",
+              "kind": "call"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    },
+    "insert_polls": {
+      "exports": [],
+      "module_name": "Print_newline",
+      "procedures": [
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "unit"
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "print_newline"
+              },
+              "dst": "t1",
+              "kind": "call"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    }
+  },
+  "program": {
+    "exports": [],
+    "module_name": "Print_newline",
+    "procedures": [
+      {
+        "body": [
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "unit"
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t0"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "print_newline"
+            },
+            "dst": "t1",
+            "kind": "call"
+          }
+        ],
+        "kind": "entry",
+        "name": "__entry__",
+        "params": []
+      }
+    ]
+  },
+  "status": "ok"
+}

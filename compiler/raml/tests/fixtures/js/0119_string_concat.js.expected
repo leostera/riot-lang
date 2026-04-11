@@ -1,0 +1,97 @@
+{
+  "js": "import { callPrimitive as __callPrimitive, print_endline as __print_endline } from \"./riot-runtime.js\";\n\nconst message = __callPrimitive(\"%concatstring\", \"hello, \", \"world\");\n\n__print_endline(message);\n\nexport {\n  message\n};\n",
+  "jst": {
+    "items": [
+      {
+        "import": {
+          "default": null,
+          "from": "./riot-runtime.js",
+          "names": [
+            {
+              "imported": "callPrimitive",
+              "local": "__callPrimitive"
+            },
+            {
+              "imported": "print_endline",
+              "local": "__print_endline"
+            }
+          ]
+        },
+        "kind": "import"
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "%concatstring"
+                    }
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "hello, "
+                    }
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "world"
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__callPrimitive"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "message"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "expression": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "identifier",
+                  "name": "message"
+                }
+              ],
+              "callee": {
+                "kind": "identifier",
+                "name": "__print_endline"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "expression"
+        }
+      },
+      {
+        "exports": [
+          {
+            "local": "message",
+            "name": "message"
+          }
+        ],
+        "kind": "export"
+      }
+    ],
+    "module_name": "String_concat"
+  }
+}

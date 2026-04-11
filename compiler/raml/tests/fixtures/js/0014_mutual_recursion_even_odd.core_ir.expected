@@ -1,0 +1,257 @@
+{
+  "exports": [
+    {
+      "name": "even",
+      "symbol": "even"
+    },
+    {
+      "name": "odd",
+      "symbol": "odd"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "even",
+          "symbol": "even"
+        },
+        {
+          "name": "odd",
+          "symbol": "odd"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "apply": {
+                          "arguments": [
+                            {
+                              "kind": "var",
+                              "name": "n"
+                            },
+                            {
+                              "constant": {
+                                "kind": "int",
+                                "value": 0
+                              },
+                              "kind": "constant"
+                            }
+                          ],
+                          "callee": {
+                            "function": "=",
+                            "kind": "direct"
+                          }
+                        },
+                        "kind": "apply"
+                      },
+                      {
+                        "apply": {
+                          "arguments": [
+                            {
+                              "apply": {
+                                "arguments": [
+                                  {
+                                    "kind": "var",
+                                    "name": "n"
+                                  },
+                                  {
+                                    "constant": {
+                                      "kind": "int",
+                                      "value": 1
+                                    },
+                                    "kind": "constant"
+                                  }
+                                ],
+                                "callee": {
+                                  "function": "-",
+                                  "kind": "direct"
+                                }
+                              },
+                              "kind": "apply"
+                            }
+                          ],
+                          "callee": {
+                            "function": "odd",
+                            "kind": "direct"
+                          }
+                        },
+                        "kind": "apply"
+                      }
+                    ],
+                    "callee": {
+                      "function": "||",
+                      "kind": "direct"
+                    }
+                  },
+                  "kind": "apply"
+                },
+                "params": [
+                  "n"
+                ]
+              }
+            },
+            "name": "even"
+          },
+          "kind": "binding"
+        },
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "apply": {
+                          "arguments": [
+                            {
+                              "kind": "var",
+                              "name": "n"
+                            },
+                            {
+                              "constant": {
+                                "kind": "int",
+                                "value": 0
+                              },
+                              "kind": "constant"
+                            }
+                          ],
+                          "callee": {
+                            "function": "<>",
+                            "kind": "direct"
+                          }
+                        },
+                        "kind": "apply"
+                      },
+                      {
+                        "apply": {
+                          "arguments": [
+                            {
+                              "apply": {
+                                "arguments": [
+                                  {
+                                    "kind": "var",
+                                    "name": "n"
+                                  },
+                                  {
+                                    "constant": {
+                                      "kind": "int",
+                                      "value": 1
+                                    },
+                                    "kind": "constant"
+                                  }
+                                ],
+                                "callee": {
+                                  "function": "-",
+                                  "kind": "direct"
+                                }
+                              },
+                              "kind": "apply"
+                            }
+                          ],
+                          "callee": {
+                            "function": "even",
+                            "kind": "direct"
+                          }
+                        },
+                        "kind": "apply"
+                      }
+                    ],
+                    "callee": {
+                      "function": "&&",
+                      "kind": "direct"
+                    }
+                  },
+                  "kind": "apply"
+                },
+                "params": [
+                  "n"
+                ]
+              }
+            },
+            "name": "odd"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "recursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "apply": {
+              "arguments": [
+                {
+                  "constant": {
+                    "kind": "string",
+                    "value": "%b %b\\n"
+                  },
+                  "kind": "constant"
+                },
+                {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "constant": {
+                          "kind": "int",
+                          "value": 10
+                        },
+                        "kind": "constant"
+                      }
+                    ],
+                    "callee": {
+                      "function": "even",
+                      "kind": "direct"
+                    }
+                  },
+                  "kind": "apply"
+                },
+                {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "constant": {
+                          "kind": "int",
+                          "value": 11
+                        },
+                        "kind": "constant"
+                      }
+                    ],
+                    "callee": {
+                      "function": "odd",
+                      "kind": "direct"
+                    }
+                  },
+                  "kind": "apply"
+                }
+              ],
+              "callee": {
+                "function": "Printf.printf",
+                "kind": "direct"
+              }
+            },
+            "kind": "apply"
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/mutual_recursion_even_odd.ml",
+    "unit_name": "Mutual_recursion_even_odd"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "body": [
+    {
+      "expression": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "literal",
+              "literal": {
+                "kind": "number",
+                "number": {
+                  "kind": "int",
+                  "value": 42
+                }
+              }
+            }
+          ],
+          "callee": {
+            "kind": "identifier",
+            "name": "__print_int"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "expression"
+    }
+  ],
+  "exports": [],
+  "imports": [
+    {
+      "from": "./riot-runtime.js",
+      "imported": "print_int",
+      "local": "__print_int"
+    }
+  ],
+  "module_name": "Print_int"
+}

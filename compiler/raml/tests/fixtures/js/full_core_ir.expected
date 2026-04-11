@@ -17,105 +17,104 @@
               "function": {
                 "body": [
                   {
-                    "expression": {
-                      "conditional": {
-                        "condition": {
-                          "call": {
-                            "arguments": [
-                              {
-                                "kind": "literal",
-                                "literal": {
-                                  "kind": "string",
-                                  "value": "%eq"
-                                }
-                              },
-                              {
-                                "kind": "identifier",
-                                "name": "n"
-                              },
-                              {
-                                "kind": "literal",
-                                "literal": {
-                                  "kind": "number",
-                                  "number": {
-                                    "kind": "int",
-                                    "value": 0
-                                  }
+                    "if": {
+                      "condition": {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "string",
+                                "value": "%eq"
+                              }
+                            },
+                            {
+                              "kind": "identifier",
+                              "name": "n"
+                            },
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "number",
+                                "number": {
+                                  "kind": "int",
+                                  "value": 0
                                 }
                               }
-                            ],
-                            "callee": {
-                              "helper": {
-                                "local": "__callPrimitive",
-                                "module_name": "@riot/raml/js/runtime",
-                                "symbol": "callPrimitive"
-                              },
-                              "kind": "runtime"
                             }
-                          },
-                          "kind": "call"
+                          ],
+                          "callee": {
+                            "kind": "identifier",
+                            "name": "__callPrimitive"
+                          }
                         },
-                        "else": {
-                          "call": {
-                            "arguments": [
-                              {
-                                "call": {
-                                  "arguments": [
-                                    {
-                                      "kind": "literal",
-                                      "literal": {
-                                        "kind": "string",
-                                        "value": "%subint"
-                                      }
-                                    },
-                                    {
-                                      "kind": "identifier",
-                                      "name": "n"
-                                    },
-                                    {
-                                      "kind": "literal",
-                                      "literal": {
-                                        "kind": "number",
-                                        "number": {
-                                          "kind": "int",
-                                          "value": 1
+                        "kind": "call"
+                      },
+                      "else": [
+                        {
+                          "expression": {
+                            "call": {
+                              "arguments": [
+                                {
+                                  "call": {
+                                    "arguments": [
+                                      {
+                                        "kind": "literal",
+                                        "literal": {
+                                          "kind": "string",
+                                          "value": "%subint"
+                                        }
+                                      },
+                                      {
+                                        "kind": "identifier",
+                                        "name": "n"
+                                      },
+                                      {
+                                        "kind": "literal",
+                                        "literal": {
+                                          "kind": "number",
+                                          "number": {
+                                            "kind": "int",
+                                            "value": 1
+                                          }
                                         }
                                       }
+                                    ],
+                                    "callee": {
+                                      "kind": "identifier",
+                                      "name": "__callPrimitive"
                                     }
-                                  ],
-                                  "callee": {
-                                    "helper": {
-                                      "local": "__callPrimitive",
-                                      "module_name": "@riot/raml/js/runtime",
-                                      "symbol": "callPrimitive"
-                                    },
-                                    "kind": "runtime"
-                                  }
-                                },
-                                "kind": "call"
+                                  },
+                                  "kind": "call"
+                                }
+                              ],
+                              "callee": {
+                                "kind": "identifier",
+                                "name": "loop"
                               }
-                            ],
-                            "callee": {
-                              "kind": "identifier",
-                              "name": "loop"
+                            },
+                            "kind": "call"
+                          },
+                          "kind": "return"
+                        }
+                      ],
+                      "then": [
+                        {
+                          "expression": {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "number",
+                              "number": {
+                                "kind": "int",
+                                "value": 0
+                              }
                             }
                           },
-                          "kind": "call"
-                        },
-                        "then": {
-                          "kind": "literal",
-                          "literal": {
-                            "kind": "number",
-                            "number": {
-                              "kind": "int",
-                              "value": 0
-                            }
-                          }
+                          "kind": "return"
                         }
-                      },
-                      "kind": "conditional"
+                      ]
                     },
-                    "kind": "return"
+                    "kind": "if"
                   }
                 ],
                 "params": [
@@ -132,146 +131,137 @@
       {
         "declaration": {
           "init": {
-            "function": {
-              "body": [
+            "call": {
+              "arguments": [
                 {
-                  "expression": {
-                    "call": {
-                      "arguments": [],
-                      "callee": {
-                        "function": {
-                          "body": [
-                            {
-                              "declaration": {
-                                "init": {
-                                  "conditional": {
-                                    "condition": {
-                                      "kind": "identifier",
-                                      "name": "flag"
-                                    },
-                                    "else": {
-                                      "call": {
-                                        "arguments": [
-                                          {
-                                            "kind": "literal",
-                                            "literal": {
-                                              "kind": "string",
-                                              "value": "%addint"
-                                            }
-                                          },
-                                          {
-                                            "kind": "identifier",
-                                            "name": "value"
-                                          },
-                                          {
-                                            "kind": "literal",
-                                            "literal": {
-                                              "kind": "number",
-                                              "number": {
-                                                "kind": "int",
-                                                "value": 1
-                                              }
-                                            }
-                                          }
-                                        ],
-                                        "callee": {
-                                          "helper": {
-                                            "local": "__callPrimitive",
-                                            "module_name": "@riot/raml/js/runtime",
-                                            "symbol": "callPrimitive"
-                                          },
-                                          "kind": "runtime"
-                                        }
-                                      },
-                                      "kind": "call"
-                                    },
-                                    "then": {
-                                      "call": {
-                                        "arguments": [
-                                          {
-                                            "kind": "identifier",
-                                            "name": "value"
-                                          }
-                                        ],
-                                        "callee": {
-                                          "member": {
-                                            "object": {
-                                              "import": {
-                                                "from": "./Math.js",
-                                                "imported": null,
-                                                "local": "Math",
-                                                "namespace": true
-                                              },
-                                              "kind": "imported"
-                                            },
-                                            "property": "double"
-                                          },
-                                          "kind": "member"
-                                        }
-                                      },
-                                      "kind": "call"
-                                    }
-                                  },
-                                  "kind": "conditional"
-                                },
-                                "kind": "const",
-                                "name": "next"
+                  "function": {
+                    "body": [
+                      {
+                        "declaration": {
+                          "init": {
+                            "conditional": {
+                              "condition": {
+                                "kind": "identifier",
+                                "name": "flag"
                               },
-                              "kind": "declaration"
-                            },
-                            {
-                              "expression": {
+                              "else": {
                                 "call": {
                                   "arguments": [
                                     {
                                       "kind": "literal",
                                       "literal": {
                                         "kind": "string",
-                                        "value": "%trace"
+                                        "value": "%addint"
                                       }
                                     },
                                     {
                                       "kind": "identifier",
-                                      "name": "next"
+                                      "name": "value"
+                                    },
+                                    {
+                                      "kind": "literal",
+                                      "literal": {
+                                        "kind": "number",
+                                        "number": {
+                                          "kind": "int",
+                                          "value": 1
+                                        }
+                                      }
                                     }
                                   ],
                                   "callee": {
-                                    "helper": {
-                                      "local": "__callPrimitive",
-                                      "module_name": "@riot/raml/js/runtime",
-                                      "symbol": "callPrimitive"
-                                    },
-                                    "kind": "runtime"
+                                    "kind": "identifier",
+                                    "name": "__callPrimitive"
                                   }
                                 },
                                 "kind": "call"
                               },
-                              "kind": "expression"
+                              "then": {
+                                "call": {
+                                  "arguments": [
+                                    {
+                                      "kind": "identifier",
+                                      "name": "value"
+                                    }
+                                  ],
+                                  "callee": {
+                                    "kind": "member",
+                                    "member": {
+                                      "object": {
+                                        "kind": "identifier",
+                                        "name": "Math"
+                                      },
+                                      "property": "double"
+                                    }
+                                  }
+                                },
+                                "kind": "call"
+                              }
                             },
-                            {
-                              "expression": {
+                            "kind": "conditional"
+                          },
+                          "kind": "const",
+                          "name": "next"
+                        },
+                        "kind": "declaration"
+                      },
+                      {
+                        "expression": {
+                          "call": {
+                            "arguments": [
+                              {
+                                "kind": "literal",
+                                "literal": {
+                                  "kind": "string",
+                                  "value": "%trace"
+                                }
+                              },
+                              {
                                 "kind": "identifier",
                                 "name": "next"
-                              },
-                              "kind": "return"
+                              }
+                            ],
+                            "callee": {
+                              "kind": "identifier",
+                              "name": "__callPrimitive"
                             }
-                          ],
-                          "params": []
+                          },
+                          "kind": "call"
                         },
-                        "kind": "function"
+                        "kind": "expression"
+                      },
+                      {
+                        "expression": {
+                          "kind": "identifier",
+                          "name": "next"
+                        },
+                        "kind": "return"
                       }
-                    },
-                    "kind": "call"
+                    ],
+                    "params": [
+                      "flag",
+                      "value"
+                    ]
                   },
-                  "kind": "return"
+                  "kind": "function"
+                },
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "number",
+                    "number": {
+                      "kind": "int",
+                      "value": 2
+                    }
+                  }
                 }
               ],
-              "params": [
-                "flag",
-                "value"
-              ]
+              "callee": {
+                "kind": "identifier",
+                "name": "__makeCurried"
+              }
             },
-            "kind": "function"
+            "kind": "call"
           },
           "kind": "const",
           "name": "compute"
@@ -336,9 +326,14 @@
         "namespace": true
       },
       {
-        "from": "@riot/raml/js/runtime",
+        "from": "./riot-runtime.js",
         "imported": "callPrimitive",
         "local": "__callPrimitive"
+      },
+      {
+        "from": "./riot-runtime.js",
+        "imported": "makeCurried",
+        "local": "__makeCurried"
       }
     ],
     "module_name": "Full_core_ir"

@@ -210,8 +210,105 @@ This layer should own:
 - JS module loading style
 - JS data representation
 - JS runtime helper calls
+- lexical name stabilization when JS scope and TDZ rules would otherwise change
+  the meaning of source `let` bindings
 - JS-specific FFI and raw JS
 - JS tree-shaking and printing concerns
+
+That last point is already visible in the current `raml` slice.
+The source-driven `0006_let_shadowing` example lowers through `Core_ir.Expr.Let`
+without backend names attached, but the JS backend has to freshen the nested
+`x` binders in `JIR` before emission because `const x = x + 5` is not the same
+as OCaml's nonrecursive `let x = x + 5 in ...`.
+The current backend also treats the first direct I/O helpers `print_endline`,
+`print_newline`, `print_int`, `print_string`, and `print_char` as JS-owned
+runtime choices by lowering them to explicit named imports from
+`./riot-runtime.js` instead of ambient globals. The first shared char slice
+keeps that split explicit too: `Core_ir.Constant.Char` stays backend-neutral,
+while `JIR` lowers it to a one-character JS string literal before emission.
+It also treats the first built-in integer operators, float operators, string
+concatenation through `^`, source-visible `string_of_int`, finite-input
+`string_of_float`, valid-input `int_of_string`, finite-input
+`float_of_string`, `sqrt`, and source-level `<`, `<=`, `>`, `>=`, `=`, and
+`<>` direct calls as a JS-owned runtime choice by lowering them to
+`callPrimitive("%addint" | "%subint" | "%mulint" | "%divint" | "%modint" |
+"%addfloat" | "%subfloat" | "%mulfloat" | "%divfloat" | "%concatstring" |
+"%string_of_int" | "%string_of_float" | "%int_of_string" |
+"%float_of_string" | "%sqrtfloat" | "%lt" | "%le" | "%gt" | "%ge" | "%eq" |
+"%neq")` instead of emitting bare operator identifiers such as `+`, `-`, `*`,
+`/`, `mod`, `+.`, `-.`, `*.`, `/.`, `^`, a bare `string_of_int`, a bare
+`string_of_float`, a bare `int_of_string`, a bare `float_of_string`, an
+ambient `sqrt`, `<`, `<=`, `>`, `>=`, `=`, or `<>`. The current conversion
+slices stay deliberately narrow: `string_of_float` only proves straightforward
+finite direct calls, `int_of_string` only proves valid-input direct calls,
+and `float_of_string` only proves finite-input direct calls, leaving
+OCaml-exact float formatting plus parse-failure and exception semantics to
+later runtime/`try/with`-owning slices.
+The later `0004_boolean_logic` slice makes a different JS-only choice for
+source-level `not`, `&&`, and `||`: they lower through nested `JIR`
+conditional expressions instead of `callPrimitive`, so short-circuit behavior
+stays explicit before emission without teaching the printer a new operator
+surface.
+The later `0026_sequence_and_ignore` slice makes a shared choice explicit
+instead: direct source-level `ignore expr` lowers to backend-neutral
+`Core_ir.Expr.Sequence` plus `Core_ir.Constant.Unit` before JS lowering, so
+the JS backend does not need a dedicated `ignore` helper or runtime import for
+that effect-only call shape.
+The later `0023_partial_application` slice makes another JS-only choice
+explicit: multi-parameter compiled lambdas lower through the runtime helper
+`makeCurried` so under-applied calls stay source-correct without teaching the
+printer about currying.
+The later `0112_effect_position_local_let` slice makes one more JS-only
+cleanup choice explicit: effect-position zero-arg IIFEs now flatten in `JIR`
+before alpha stabilization when their body can be rewritten from tail returns
+into plain statements, so top-level local-`let` eval slices stop emitting
+statement-shaped wrapper calls.
+The later `0113_initializer_shadowing` slice widens that rule in one narrower,
+source-driven way: statement-shaped declaration-initializer zero-arg IIFEs now
+lower through a temp binding plus lexical `Block` plus final declaration, so
+initializer-local shadowing stays scoped while the outer binding keeps its
+intended name without teaching the printer new tricks.
+The later alias-cleanup slice adds one more JS-only cleanup rule after alpha
+stabilization: immutable identifier-only temps such as tuple-destructure or
+identifier-scrutinee aliases now disappear from `JIR` when their target name
+is never assigned and the alias is not exported, so the printer no longer has
+to carry `const __raml_tuple = value;` or `const __raml_match = value;`
+wrappers that exist only to preserve a name the backend no longer needs.
+The later `0117_dead_local_bindings` slice adds the first narrower dead-
+binding elimination rule after that cleanup: unexported immutable `const`
+bindings whose initializer is already effect-free now disappear from `JIR`
+when the name is unused in scope, and a final `JIR` normalize step repopulates
+imports from the live body so helpers referenced only from dead literal
+bindings or dead closures do not leak into emitted JS.
+The later `0118_printf_and_print_endline` slice settles one more late-JS
+ownership rule: earlier `JIR` lowering and cleanup passes may still carry
+`Imported` and `Runtime_helper` nodes while discovering dependencies, but once
+the final normalize step has collected `program.imports`, a dedicated late
+materialization pass rewrites those body references to plain local identifiers
+such as `Printf`, `__callPrimitive`, `__print_endline`, `__print_newline`, or
+`__print_int`, `__print_string`, or `__print_char` before `JST` lowering. That keeps
+dependency discovery in `JIR` while keeping `JST` and the emitter out of the
+business of import-reference rewriting.
+The first closed ordinary-variant slice keeps one more representation choice
+shared for now: `0009_variants_and_match` lowers constructors through tagged
+tuples in `Core_ir` and lowers exhaustive constructor-only matches through
+shared `%eq` tag tests plus tuple payload projection, rather than introducing
+JS-only variant nodes before the invariant is proven across backends.
+The later `0106_prelude_option_match` slice keeps that same contract honest for
+stdlib `option`: `None` and `Some payload` reuse the shared tagged-tuple path
+instead of introducing a JS-only `undefined`-style option encoding this early.
+The later `0116_prelude_result_match` slice keeps that same contract honest
+for stdlib `result`: `Ok payload` and `Error payload` reuse the shared tagged-
+tuple path instead of introducing a JS-only result-object or exception-shaped
+encoding this early.
+The later `0012_list_recursion_sum` slice keeps that same contract honest for
+stdlib `list`: `[]` reuses the tag-only tuple shape, while `::` keeps the
+shared slot-`1` payload boundary by packing its head and tail arguments into a
+tuple payload instead of introducing a JS-only cons cell shape this early.
+The `0107_open_std_hello_world` slice keeps another scope-only rule shared:
+once `typ` has resolved names through a top-level `open Std`, that open stays
+compile-time-only and does not turn into a `Core_ir` node, JS import, or JS
+runtime helper selection.
 
 ### Native-lowered IR
 
@@ -271,10 +368,13 @@ It is intentionally smaller than Melange `J`.
 
 Today the implemented `JIR` only models:
 
-- `Program` with `module_name`, ordered `body`, and explicit `exports`
-- `Statement` as either a JS declaration or an expression statement
+- `Program` with `module_name`, ordered `imports`, ordered `body`, and explicit
+  `exports`
+- `Statement` as a JS declaration, expression statement, `return`, or
+  structured `if`/`else`
 - `Declaration` with JS `const`, `let`, and `var`
-- `Expr` as a literal, identifier, or call
+- `Expr` as literals, identifiers, imports, runtime helpers, functions,
+  property access, calls, conditional expressions, and assignments
 - `Literal` as `undefined`, `null`, booleans, JS number literals, and strings
 
 That boundary matters.
@@ -287,12 +387,17 @@ It keeps JS-only choices in the JS layer:
 
 It also keeps the first slice honest by not pretending more exists yet.
 
+The current statement surface is deliberate.
+
+When control flow is already in tail or effect position inside a statement-
+producing body, prefer structured `Statement.If` nodes over encoding the same
+branching as a JS conditional expression statement.
+
 The current `JIR` does not yet carry:
 
-- imports or module-system materialization
-- property access or method-send structure
-- function declarations or JS control flow
-- runtime helper selection
+- loops, switches, exceptions, or try/catch
+- tree-shaking or scope-analysis metadata
+- explicit import-materialization policy beyond collected requirements
 - FFI or raw JS escape hatches
 - cleanup/shaking metadata or final source-printing details
 

@@ -1,0 +1,661 @@
+{
+  "lowered": {
+    "core_ir": {
+      "compilation_unit": {
+        "exports": [
+          {
+            "name": "step",
+            "symbol": "step"
+          }
+        ],
+        "init": [
+          {
+            "exports": [
+              {
+                "name": "step",
+                "symbol": "step"
+              }
+            ],
+            "items": [
+              {
+                "binding": {
+                  "expr": {
+                    "kind": "lambda",
+                    "lambda": {
+                      "body": {
+                        "kind": "sequence",
+                        "sequence": {
+                          "first": {
+                            "apply": {
+                              "arguments": [
+                                {
+                                  "kind": "var",
+                                  "name": "label"
+                                }
+                              ],
+                              "callee": {
+                                "function": "print_string",
+                                "kind": "direct"
+                              }
+                            },
+                            "kind": "apply"
+                          },
+                          "second": {
+                            "kind": "sequence",
+                            "sequence": {
+                              "first": {
+                                "apply": {
+                                  "arguments": [
+                                    {
+                                      "constant": {
+                                        "kind": "char",
+                                        "value": ":"
+                                      },
+                                      "kind": "constant"
+                                    }
+                                  ],
+                                  "callee": {
+                                    "function": "print_char",
+                                    "kind": "direct"
+                                  }
+                                },
+                                "kind": "apply"
+                              },
+                              "second": {
+                                "kind": "sequence",
+                                "sequence": {
+                                  "first": {
+                                    "apply": {
+                                      "arguments": [
+                                        {
+                                          "kind": "var",
+                                          "name": "x"
+                                        }
+                                      ],
+                                      "callee": {
+                                        "function": "print_int",
+                                        "kind": "direct"
+                                      }
+                                    },
+                                    "kind": "apply"
+                                  },
+                                  "second": {
+                                    "kind": "sequence",
+                                    "sequence": {
+                                      "first": {
+                                        "apply": {
+                                          "arguments": [
+                                            {
+                                              "constant": {
+                                                "kind": "char",
+                                                "value": " "
+                                              },
+                                              "kind": "constant"
+                                            }
+                                          ],
+                                          "callee": {
+                                            "function": "print_char",
+                                            "kind": "direct"
+                                          }
+                                        },
+                                        "kind": "apply"
+                                      },
+                                      "second": {
+                                        "apply": {
+                                          "arguments": [
+                                            {
+                                              "kind": "var",
+                                              "name": "x"
+                                            },
+                                            {
+                                              "constant": {
+                                                "kind": "int",
+                                                "value": 1
+                                              },
+                                              "kind": "constant"
+                                            }
+                                          ],
+                                          "callee": {
+                                            "function": "+",
+                                            "kind": "direct"
+                                          }
+                                        },
+                                        "kind": "apply"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "params": [
+                        "label",
+                        "x"
+                      ]
+                    }
+                  },
+                  "name": "step"
+                },
+                "kind": "binding"
+              }
+            ],
+            "rec_flag": "nonrecursive"
+          },
+          {
+            "exports": [],
+            "items": [
+              {
+                "expr": {
+                  "kind": "let",
+                  "let": {
+                    "bindings": [
+                      {
+                        "expr": {
+                          "apply": {
+                            "arguments": [
+                              {
+                                "constant": {
+                                  "kind": "string",
+                                  "value": "a"
+                                },
+                                "kind": "constant"
+                              },
+                              {
+                                "constant": {
+                                  "kind": "int",
+                                  "value": 1
+                                },
+                                "kind": "constant"
+                              }
+                            ],
+                            "callee": {
+                              "function": "step",
+                              "kind": "direct"
+                            }
+                          },
+                          "kind": "apply"
+                        },
+                        "name": "n"
+                      }
+                    ],
+                    "body": {
+                      "kind": "let",
+                      "let": {
+                        "bindings": [
+                          {
+                            "expr": {
+                              "apply": {
+                                "arguments": [
+                                  {
+                                    "constant": {
+                                      "kind": "string",
+                                      "value": "b"
+                                    },
+                                    "kind": "constant"
+                                  },
+                                  {
+                                    "kind": "var",
+                                    "name": "n"
+                                  }
+                                ],
+                                "callee": {
+                                  "function": "step",
+                                  "kind": "direct"
+                                }
+                              },
+                              "kind": "apply"
+                            },
+                            "name": "n"
+                          }
+                        ],
+                        "body": {
+                          "kind": "sequence",
+                          "sequence": {
+                            "first": {
+                              "kind": "sequence",
+                              "sequence": {
+                                "first": {
+                                  "apply": {
+                                    "arguments": [
+                                      {
+                                        "constant": {
+                                          "kind": "string",
+                                          "value": "c"
+                                        },
+                                        "kind": "constant"
+                                      },
+                                      {
+                                        "kind": "var",
+                                        "name": "n"
+                                      }
+                                    ],
+                                    "callee": {
+                                      "function": "step",
+                                      "kind": "direct"
+                                    }
+                                  },
+                                  "kind": "apply"
+                                },
+                                "second": {
+                                  "constant": {
+                                    "kind": "unit"
+                                  },
+                                  "kind": "constant"
+                                }
+                              }
+                            },
+                            "second": {
+                              "apply": {
+                                "arguments": [
+                                  {
+                                    "constant": {
+                                      "kind": "unit"
+                                    },
+                                    "kind": "constant"
+                                  }
+                                ],
+                                "callee": {
+                                  "function": "print_newline",
+                                  "kind": "direct"
+                                }
+                              },
+                              "kind": "apply"
+                            }
+                          }
+                        },
+                        "rec_flag": "nonrecursive"
+                      }
+                    },
+                    "rec_flag": "nonrecursive"
+                  }
+                },
+                "kind": "eval"
+              }
+            ],
+            "rec_flag": "nonrecursive"
+          }
+        ],
+        "unit_id": {
+          "kind": "implementation",
+          "relpath": "corpus/sequence_and_ignore.ml",
+          "unit_name": "Sequence_and_ignore"
+        }
+      },
+      "status": "ok"
+    },
+    "jir": {
+      "program": {
+        "body": [
+          {
+            "declaration": {
+              "init": {
+                "call": {
+                  "arguments": [
+                    {
+                      "function": {
+                        "body": [
+                          {
+                            "expression": {
+                              "call": {
+                                "arguments": [
+                                  {
+                                    "kind": "identifier",
+                                    "name": "label"
+                                  }
+                                ],
+                                "callee": {
+                                  "kind": "identifier",
+                                  "name": "__print_string"
+                                }
+                              },
+                              "kind": "call"
+                            },
+                            "kind": "expression"
+                          },
+                          {
+                            "expression": {
+                              "call": {
+                                "arguments": [
+                                  {
+                                    "kind": "literal",
+                                    "literal": {
+                                      "kind": "string",
+                                      "value": ":"
+                                    }
+                                  }
+                                ],
+                                "callee": {
+                                  "kind": "identifier",
+                                  "name": "__print_char"
+                                }
+                              },
+                              "kind": "call"
+                            },
+                            "kind": "expression"
+                          },
+                          {
+                            "expression": {
+                              "call": {
+                                "arguments": [
+                                  {
+                                    "kind": "identifier",
+                                    "name": "x"
+                                  }
+                                ],
+                                "callee": {
+                                  "kind": "identifier",
+                                  "name": "__print_int"
+                                }
+                              },
+                              "kind": "call"
+                            },
+                            "kind": "expression"
+                          },
+                          {
+                            "expression": {
+                              "call": {
+                                "arguments": [
+                                  {
+                                    "kind": "literal",
+                                    "literal": {
+                                      "kind": "string",
+                                      "value": " "
+                                    }
+                                  }
+                                ],
+                                "callee": {
+                                  "kind": "identifier",
+                                  "name": "__print_char"
+                                }
+                              },
+                              "kind": "call"
+                            },
+                            "kind": "expression"
+                          },
+                          {
+                            "expression": {
+                              "call": {
+                                "arguments": [
+                                  {
+                                    "kind": "literal",
+                                    "literal": {
+                                      "kind": "string",
+                                      "value": "%addint"
+                                    }
+                                  },
+                                  {
+                                    "kind": "identifier",
+                                    "name": "x"
+                                  },
+                                  {
+                                    "kind": "literal",
+                                    "literal": {
+                                      "kind": "number",
+                                      "number": {
+                                        "kind": "int",
+                                        "value": 1
+                                      }
+                                    }
+                                  }
+                                ],
+                                "callee": {
+                                  "kind": "identifier",
+                                  "name": "__callPrimitive"
+                                }
+                              },
+                              "kind": "call"
+                            },
+                            "kind": "return"
+                          }
+                        ],
+                        "params": [
+                          "label",
+                          "x"
+                        ]
+                      },
+                      "kind": "function"
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "number",
+                        "number": {
+                          "kind": "int",
+                          "value": 2
+                        }
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "identifier",
+                    "name": "__makeCurried"
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "const",
+              "name": "step"
+            },
+            "kind": "declaration"
+          },
+          {
+            "declaration": {
+              "init": {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "a"
+                      }
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "number",
+                        "number": {
+                          "kind": "int",
+                          "value": 1
+                        }
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "identifier",
+                    "name": "step"
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "const",
+              "name": "n"
+            },
+            "kind": "declaration"
+          },
+          {
+            "declaration": {
+              "init": {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "b"
+                      }
+                    },
+                    {
+                      "kind": "identifier",
+                      "name": "n"
+                    }
+                  ],
+                  "callee": {
+                    "kind": "identifier",
+                    "name": "step"
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "const",
+              "name": "n$1"
+            },
+            "kind": "declaration"
+          },
+          {
+            "expression": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "c"
+                    }
+                  },
+                  {
+                    "kind": "identifier",
+                    "name": "n$1"
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "step"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "expression"
+          },
+          {
+            "expression": {
+              "kind": "literal",
+              "literal": {
+                "kind": "undefined"
+              }
+            },
+            "kind": "expression"
+          },
+          {
+            "expression": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "undefined"
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__print_newline"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "expression"
+          }
+        ],
+        "exports": [
+          {
+            "local": "step",
+            "name": "step"
+          }
+        ],
+        "imports": [
+          {
+            "from": "./riot-runtime.js",
+            "imported": "callPrimitive",
+            "local": "__callPrimitive"
+          },
+          {
+            "from": "./riot-runtime.js",
+            "imported": "makeCurried",
+            "local": "__makeCurried"
+          },
+          {
+            "from": "./riot-runtime.js",
+            "imported": "print_char",
+            "local": "__print_char"
+          },
+          {
+            "from": "./riot-runtime.js",
+            "imported": "print_int",
+            "local": "__print_int"
+          },
+          {
+            "from": "./riot-runtime.js",
+            "imported": "print_newline",
+            "local": "__print_newline"
+          },
+          {
+            "from": "./riot-runtime.js",
+            "imported": "print_string",
+            "local": "__print_string"
+          }
+        ],
+        "module_name": "Sequence_and_ignore"
+      },
+      "status": "ok"
+    },
+    "lir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "mir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "nir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "wasm": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    }
+  },
+  "source": {
+    "has_trailing_newline": true,
+    "kind": "implementation",
+    "nonempty_lines": 12,
+    "relpath": "corpus/sequence_and_ignore.ml",
+    "source_bytes": 238,
+    "source_lines": 13,
+    "unit_name": "Sequence_and_ignore"
+  },
+  "targeting": {
+    "backend": "js",
+    "host": "aarch64-apple-darwin",
+    "target": "js-unknown-ecma"
+  },
+  "typing": {
+    "completeness": "complete",
+    "exports": [
+      {
+        "name": "step",
+        "scheme": "string -> int -> int"
+      }
+    ],
+    "file_summary": {
+      "completeness": "complete",
+      "export_result": {
+        "exports": [
+          {
+            "name": "step",
+            "scheme": "string -> int -> int"
+          }
+        ],
+        "tag": "trusted_export"
+      },
+      "source_id": 0
+    },
+    "lowering_diagnostics": [],
+    "parse_diagnostics": [],
+    "status": "ok",
+    "typing_diagnostics": []
+  }
+}

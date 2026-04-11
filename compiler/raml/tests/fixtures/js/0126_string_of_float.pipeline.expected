@@ -1,0 +1,178 @@
+{
+  "codegen": {
+    "js": {
+      "output": "import { callPrimitive as __callPrimitive, print_endline as __print_endline } from \"./riot-runtime.js\";\n\n__print_endline(__callPrimitive(\"%string_of_float\", 3.1415));\n",
+      "status": "ok"
+    },
+    "native": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "wasm": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    }
+  },
+  "lowered": {
+    "core_ir": {
+      "compilation_unit": {
+        "exports": [],
+        "init": [
+          {
+            "exports": [],
+            "items": [
+              {
+                "expr": {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "apply": {
+                          "arguments": [
+                            {
+                              "constant": {
+                                "kind": "float",
+                                "value": 3.1415
+                              },
+                              "kind": "constant"
+                            }
+                          ],
+                          "callee": {
+                            "function": "string_of_float",
+                            "kind": "direct"
+                          }
+                        },
+                        "kind": "apply"
+                      }
+                    ],
+                    "callee": {
+                      "function": "print_endline",
+                      "kind": "direct"
+                    }
+                  },
+                  "kind": "apply"
+                },
+                "kind": "eval"
+              }
+            ],
+            "rec_flag": "nonrecursive"
+          }
+        ],
+        "unit_id": {
+          "kind": "implementation",
+          "relpath": "corpus/string_of_float.ml",
+          "unit_name": "String_of_float"
+        }
+      },
+      "status": "ok"
+    },
+    "jir": {
+      "program": {
+        "body": [
+          {
+            "expression": {
+              "call": {
+                "arguments": [
+                  {
+                    "call": {
+                      "arguments": [
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "string",
+                            "value": "%string_of_float"
+                          }
+                        },
+                        {
+                          "kind": "literal",
+                          "literal": {
+                            "kind": "number",
+                            "number": {
+                              "kind": "float",
+                              "value": 3.1415
+                            }
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "kind": "identifier",
+                        "name": "__callPrimitive"
+                      }
+                    },
+                    "kind": "call"
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__print_endline"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "expression"
+          }
+        ],
+        "exports": [],
+        "imports": [
+          {
+            "from": "./riot-runtime.js",
+            "imported": "callPrimitive",
+            "local": "__callPrimitive"
+          },
+          {
+            "from": "./riot-runtime.js",
+            "imported": "print_endline",
+            "local": "__print_endline"
+          }
+        ],
+        "module_name": "String_of_float"
+      },
+      "status": "ok"
+    },
+    "lir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "mir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "nir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "wasm": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    }
+  },
+  "source": {
+    "has_trailing_newline": true,
+    "kind": "implementation",
+    "nonempty_lines": 2,
+    "relpath": "corpus/string_of_float.ml",
+    "source_bytes": 134,
+    "source_lines": 2,
+    "unit_name": "String_of_float"
+  },
+  "targeting": {
+    "backend": "js",
+    "host": "aarch64-apple-darwin",
+    "target": "js-unknown-ecma"
+  },
+  "typing": {
+    "completeness": "complete",
+    "exports": [],
+    "file_summary": {
+      "completeness": "complete",
+      "export_result": {
+        "exports": [],
+        "tag": "trusted_export"
+      },
+      "source_id": 0
+    },
+    "lowering_diagnostics": [],
+    "parse_diagnostics": [],
+    "status": "ok",
+    "typing_diagnostics": []
+  }
+}

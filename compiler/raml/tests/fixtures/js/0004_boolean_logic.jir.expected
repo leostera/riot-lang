@@ -1,0 +1,187 @@
+{
+  "body": [
+    {
+      "declaration": {
+        "init": {
+          "kind": "literal",
+          "literal": {
+            "kind": "bool",
+            "value": true
+          }
+        },
+        "kind": "const",
+        "name": "p"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": {
+          "kind": "literal",
+          "literal": {
+            "kind": "bool",
+            "value": false
+          }
+        },
+        "kind": "const",
+        "name": "q"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": {
+          "conditional": {
+            "condition": {
+              "conditional": {
+                "condition": {
+                  "conditional": {
+                    "condition": {
+                      "kind": "identifier",
+                      "name": "q"
+                    },
+                    "else": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "bool",
+                        "value": true
+                      }
+                    },
+                    "then": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "bool",
+                        "value": false
+                      }
+                    }
+                  },
+                  "kind": "conditional"
+                },
+                "else": {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "bool",
+                    "value": false
+                  }
+                },
+                "then": {
+                  "kind": "identifier",
+                  "name": "p"
+                }
+              },
+              "kind": "conditional"
+            },
+            "else": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "%lt"
+                    }
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 3
+                      }
+                    }
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 2
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__callPrimitive"
+                }
+              },
+              "kind": "call"
+            },
+            "then": {
+              "kind": "literal",
+              "literal": {
+                "kind": "bool",
+                "value": true
+              }
+            }
+          },
+          "kind": "conditional"
+        },
+        "kind": "const",
+        "name": "r"
+      },
+      "kind": "declaration"
+    },
+    {
+      "expression": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "%b\\n"
+              }
+            },
+            {
+              "kind": "identifier",
+              "name": "r"
+            }
+          ],
+          "callee": {
+            "kind": "member",
+            "member": {
+              "object": {
+                "kind": "identifier",
+                "name": "Printf"
+              },
+              "property": "printf"
+            }
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "expression"
+    }
+  ],
+  "exports": [
+    {
+      "local": "p",
+      "name": "p"
+    },
+    {
+      "local": "q",
+      "name": "q"
+    },
+    {
+      "local": "r",
+      "name": "r"
+    }
+  ],
+  "imports": [
+    {
+      "from": "./Printf.js",
+      "imported": null,
+      "local": "Printf",
+      "namespace": true
+    },
+    {
+      "from": "./riot-runtime.js",
+      "imported": "callPrimitive",
+      "local": "__callPrimitive"
+    }
+  ],
+  "module_name": "Boolean_logic"
+}

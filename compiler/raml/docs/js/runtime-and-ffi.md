@@ -33,6 +33,80 @@ The compiler refers to these names during lowering.
 So the runtime is not a post-hoc library choice.
 It is part of the backend ABI.
 
+The current `raml` slice already has a small explicit version of that rule.
+Generated JS imports helpers from a sibling `./riot-runtime.js`, and the
+currently owned surface is:
+
+- `print_endline`
+- `print_newline`
+- `print_int`
+- `print_string`
+- `print_char`
+- `makeCurried` for multi-parameter compiled lambdas whose source-level
+  applications may be under-applied
+- `callPrimitive` for `%addint`, `%subint`, `%mulint`, `%divint`, `%modint`,
+  `%addfloat`, `%subfloat`, `%mulfloat`, `%divfloat`, `%concatstring`,
+  `%string_of_int`, `%string_of_float`, `%int_of_string`,
+  `%float_of_string`, `%sqrtfloat`, `%lt`, `%le`, `%gt`, `%ge`, `%eq`,
+  `%neq`, `%trace`, `%tuple_make`, and `%tuple_get`
+
+That surface is intentionally small, but it is already an ABI boundary the JS
+backend chooses before final printing.
+The current source-driven comparison coverage deliberately reaches direct
+`<`, `<=`, `>`, and `>=` calls lowering through `%lt`, `%le`, `%gt`, and `%ge`;
+keep structural ordered comparison separate until narrower fixtures prove it is
+needed.
+The current JS source-driven float coverage now also reaches direct `+.`,
+`*.`, and `sqrt` calls lowering through `%addfloat`, `%mulfloat`, and
+`%sqrtfloat` instead of emitting bare float operators or ambient globals.
+The current JS source-driven string coverage now also reaches direct `^`
+calls lowering through `%concatstring` instead of emitting a bare `^`
+identifier.
+The current JS source-driven char/stdout coverage now also reaches direct
+`print_char` calls lowering through an explicit named import instead of
+emitting a bare `print_char` identifier or relying on an ambient global; the
+current JS backend keeps the representation choice separate by lowering shared
+`Core_ir.Constant.Char` values to one-character JS strings in `JIR`.
+The current JS source-driven conversion coverage now also reaches direct
+`string_of_int` calls lowering through `%string_of_int` instead of emitting a
+bare `string_of_int` identifier.
+The current JS source-driven conversion coverage now also reaches direct
+finite-input `string_of_float` calls lowering through `%string_of_float`
+instead of emitting a bare `string_of_float` identifier; OCaml-exact
+float-string formatting remains a narrower follow-up.
+The current JS source-driven valid-input parsing coverage now also reaches
+direct `int_of_string` calls lowering through `%int_of_string` instead of
+emitting a bare `int_of_string` identifier; parse-failure and exception
+semantics still stay separate until a later `try/with` slice owns them.
+The current JS source-driven finite-input parsing coverage now also reaches
+direct `float_of_string` calls lowering through `%float_of_string` instead of
+emitting a bare `float_of_string` identifier; invalid-input and OCaml-exact
+float parsing edge cases still stay separate until a later exception/runtime
+slice owns them.
+The current JS source-driven newline-I/O coverage now also reaches direct
+`print_newline ()` calls lowering through an explicit named import instead of
+emitting a bare `print_newline` identifier or relying on an ambient global.
+The current JS source-driven integer-stdout coverage now also reaches direct
+`print_int` calls lowering through an explicit named import instead of
+emitting a bare `print_int` identifier or relying on an ambient global.
+The current JS source-driven string-stdout coverage now also reaches direct
+`print_string` calls lowering through an explicit named import instead of
+emitting a bare `print_string` identifier or relying on an ambient global.
+By contrast, the current source-driven boolean coverage keeps `not`, `&&`, and
+`||` out of the runtime surface: the JS backend lowers them through nested
+conditional expressions in `JIR`, so short-circuit behavior stays explicit
+without inventing fake runtime primitives for boolean control flow.
+The direct `ignore expr` slice stays out of the runtime surface too: shared
+lowering turns it into `Sequence(expr, ())` before JS lowering, so emitted JS
+reuses normal effect-position statements instead of importing or calling an
+`ignore` helper.
+The later import-materialization slice now also makes the owned runtime/import
+boundary explicit in final `JIR`: after the last import-collection normalize
+step, runtime-helper and source-module references become plain locals such as
+`__callPrimitive`, `__print_endline`, `__print_newline`, `__print_int`,
+`__print_string`, and `Printf`, while `program.imports` remains the only
+import-declaration surface handed to `JST`.
+
 ## 2. `Js` Is Mostly Interface, Not Runtime Logic
 
 `runtime/js.pre.ml` says this explicitly:
@@ -236,6 +310,15 @@ The useful design fact for `raml` is:
 
 It should not be buried inside the final string printer.
 
+The current `raml` slice has now taken one narrow step there:
+
+- `JIR` still carries collected import requirements
+- `JST` lowering now groups compatible named/default requirements from the same
+  module into one emitted ESM import declaration
+- namespace imports such as `import * as Printf from "./Printf.js"` still stay
+  separate, because they model a distinct source-visible module boundary in the
+  current backend
+
 ## 10. Dynamic Import Is Supported, But Narrowly
 
 Dynamic import is handled through:
@@ -259,7 +342,87 @@ It is a constrained module-loading feature.
 
 That is a good design instinct for `raml` too.
 
-## 11. The FFI Pipeline Has Several Layers
+## 11. Current `raml` Runtime Slice
+
+The current `raml` JS backend now uses one explicit runtime module surface for
+the implemented slice:
+
+- generated JS imports low-level runtime-owned helpers from
+  `./riot-runtime.js`
+- `print_endline` lowers to an explicit named import instead of an ambient
+  global call
+- `print_newline` lowers to an explicit named import from the same runtime
+  module instead of an ambient global call
+- `print_int` lowers to an explicit named import from the same runtime module
+  instead of an ambient global call
+- `print_string` lowers to an explicit named import from the same runtime
+  module instead of an ambient global call
+- multi-parameter compiled lambdas lower through `makeCurried` in the same
+  runtime module so source curried semantics survive JS under-application
+- `Core_ir.Primitive` lowering uses the same module through `callPrimitive`
+- the first source-level integer arithmetic, float arithmetic, `sqrt`, and
+  equality/comparison direct-call slices also lower through `callPrimitive`,
+  and the current finite-input `string_of_float` plus valid-input
+  `int_of_string` plus finite-input `float_of_string` slices do the same
+  through `%string_of_float`, `%int_of_string`, and `%float_of_string`, so
+  emitted JS does not fall back to bare operator identifiers such as `=`,
+  `+.`, or `*.` or to a bare `string_of_float`, a bare `int_of_string`, a
+  bare `float_of_string`, or an ambient `sqrt` when the shared `Core_ir`
+  still carries a direct callee name
+- the first source-visible standard-library namespace import now materializes
+  as a sibling `./Printf.js` module that owns `printf` / `sprintf` formatting
+  instead of smuggling formatted I/O through `callPrimitive`
+- the first dead-binding slice now recomputes imports from the live `JIR`
+  body after JS-only DCE, so helpers referenced only from eliminated dead
+  bindings do not survive into emitted JS
+
+This keeps the current runtime boundary JS-owned in `src/js/` without pushing
+JS import or helper choices back into `Core_ir`.
+
+The current split is deliberate:
+
+- `./riot-runtime.js` owns low-level helpers the backend selects directly
+- `./Printf.js` owns the first module-shaped JS stdlib surface used by
+  source-visible dotted references such as `Printf.printf`
+
+The current immutable-record slice is also deliberate:
+
+- immutable record construction, field access, and functional update still
+  reuse the shared tuple lowering path
+- the emitted JS therefore keeps using `%tuple_make` and `%tuple_get` through
+  `callPrimitive` instead of adding a record-specific JS runtime helper early
+
+The first closed ordinary-variant slice is equally deliberate:
+
+- ordinary constructor values currently lower through tagged tuples where slot
+  `0` is the constructor tag and slot `1` is the optional payload
+- when a constructor has more than one source argument, that slot-`1` payload
+  stays shared by packing the arguments into a tuple first; the current
+  prelude-list `::` slice is the first proof point for that rule
+- exhaustive constructor-only matches therefore reuse `%eq`, `%tuple_make`,
+  and `%tuple_get` through `callPrimitive` instead of adding a variant-specific
+  JS runtime helper before the representation contract is settled
+
+The current limitation is deliberate:
+
+- direct-call lowering can recognize the current `print_endline`,
+  `print_newline`, `print_int`, and `print_string` slices plus the current
+  finite-input `string_of_float` plus valid-input `int_of_string` plus
+  finite-input `float_of_string` primitive slices
+- dotted module references can materialize the current `Printf.printf` slice as
+  an explicit sibling JS module import
+- the first explicit source `external print_endline : string -> unit = "print_endline"`
+  slice now proves that a top-level declared value can stay compile-time-only
+  at the shared `Typ -> Core_ir` boundary while the later JS direct call still
+  reuses the owned `./riot-runtime.js` helper import
+- invalid `int_of_string` behavior still does not claim OCaml exception
+  semantics; the current runtime helper only owns the valid-input boundary
+- invalid `float_of_string` behavior still does not claim OCaml exception
+  semantics; the current runtime helper only owns the finite-input boundary
+- general ambient/external provenance beyond that narrow declared-value case is
+  still future work for a typed `external` or builtin-lowering path
+
+## 12. The FFI Pipeline Has Several Layers
 
 The current FFI path is:
 
@@ -303,7 +466,7 @@ The bad part is not the richness.
 The bad part is that the shared IR boundary receives it through JS-specific
 attribute decoding.
 
-## 12. Variadics And Splicing Depend On Runtime Helpers
+## 13. Variadics And Splicing Depend On Runtime Helpers
 
 `lam_compile_external_call.ml` uses `Caml_splice_call` runtime helpers for
 dynamic variadic cases such as:
@@ -317,7 +480,7 @@ argument shape is not statically flat.
 
 That is another reason to keep FFI lowering late and target-specific.
 
-## 13. Raw JS Exists As A Dedicated Escape Hatch
+## 14. Raw JS Exists As A Dedicated Escape Hatch
 
 The backend supports:
 
@@ -331,7 +494,7 @@ This is clearly JS-only.
 If `raml` supports a similar escape hatch, it should stay in the JS backend
 layer and not infect the shared compiler middle.
 
-## 14. What `raml` Should Preserve
+## 15. What `raml` Should Preserve
 
 There are several good ideas here.
 
@@ -348,7 +511,7 @@ The structured spec types are useful.
 
 Import pathing needs its own phase and data model.
 
-## 15. What `raml` Should Change
+## 16. What `raml` Should Change
 
 These are the main changes worth making.
 

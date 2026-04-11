@@ -53,19 +53,6 @@
           "name": "next"
         },
         "kind": "declaration"
-      },
-      {
-        "declaration": {
-          "init": {
-            "kind": "literal",
-            "literal": {
-              "kind": "undefined"
-            }
-          },
-          "kind": "const",
-          "name": "nothing"
-        },
-        "kind": "declaration"
       }
     ],
     "exports": [

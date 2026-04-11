@@ -1,0 +1,80 @@
+{
+  "exports": [
+    {
+      "name": "message",
+      "symbol": "message"
+    }
+  ],
+  "module_name": "String_concat",
+  "procedures": [
+    {
+      "body": [
+        {
+          "dst": "t0",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "string",
+              "value": "hello, "
+            }
+          }
+        },
+        {
+          "dst": "t1",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "string",
+              "value": "world"
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t0"
+            },
+            {
+              "kind": "register",
+              "name": "t1"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "^"
+          },
+          "dst": "t2",
+          "kind": "call"
+        },
+        {
+          "kind": "store_global",
+          "src": {
+            "kind": "register",
+            "name": "t2"
+          },
+          "symbol": "message"
+        },
+        {
+          "arguments": [
+            {
+              "kind": "global",
+              "name": "message"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "print_endline"
+          },
+          "dst": "t3",
+          "kind": "call"
+        }
+      ],
+      "kind": "entry",
+      "name": "__entry__",
+      "params": []
+    }
+  ]
+}

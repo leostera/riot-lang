@@ -1,0 +1,213 @@
+{
+  "initial": {
+    "entry": [
+      {
+        "expr": {
+          "call": {
+            "arguments": [
+              {
+                "call": {
+                  "arguments": [
+                    {
+                      "call": {
+                        "arguments": [
+                          {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "string",
+                              "value": "3.1415"
+                            }
+                          }
+                        ],
+                        "callee": {
+                          "kind": "direct",
+                          "name": "float_of_string"
+                        }
+                      },
+                      "kind": "call"
+                    }
+                  ],
+                  "callee": {
+                    "kind": "direct",
+                    "name": "string_of_float"
+                  }
+                },
+                "kind": "call"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "print_endline"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "eval"
+      }
+    ],
+    "exports": [],
+    "functions": [],
+    "imports": [],
+    "module_name": "Float_of_string",
+    "runtime_helpers": []
+  },
+  "passes": {
+    "normalize": {
+      "entry": [
+        {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "call": {
+                    "arguments": [
+                      {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "string",
+                                "value": "3.1415"
+                              }
+                            }
+                          ],
+                          "callee": {
+                            "kind": "direct",
+                            "name": "float_of_string"
+                          }
+                        },
+                        "kind": "call"
+                      }
+                    ],
+                    "callee": {
+                      "kind": "direct",
+                      "name": "string_of_float"
+                    }
+                  },
+                  "kind": "call"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "print_endline"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "eval"
+        }
+      ],
+      "exports": [],
+      "functions": [],
+      "imports": [],
+      "module_name": "Float_of_string",
+      "runtime_helpers": []
+    },
+    "simplify": {
+      "entry": [
+        {
+          "expr": {
+            "call": {
+              "arguments": [
+                {
+                  "call": {
+                    "arguments": [
+                      {
+                        "call": {
+                          "arguments": [
+                            {
+                              "kind": "literal",
+                              "literal": {
+                                "kind": "string",
+                                "value": "3.1415"
+                              }
+                            }
+                          ],
+                          "callee": {
+                            "kind": "direct",
+                            "name": "float_of_string"
+                          }
+                        },
+                        "kind": "call"
+                      }
+                    ],
+                    "callee": {
+                      "kind": "direct",
+                      "name": "string_of_float"
+                    }
+                  },
+                  "kind": "call"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "print_endline"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "eval"
+        }
+      ],
+      "exports": [],
+      "functions": [],
+      "imports": [],
+      "module_name": "Float_of_string",
+      "runtime_helpers": []
+    }
+  },
+  "program": {
+    "entry": [
+      {
+        "expr": {
+          "call": {
+            "arguments": [
+              {
+                "call": {
+                  "arguments": [
+                    {
+                      "call": {
+                        "arguments": [
+                          {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "string",
+                              "value": "3.1415"
+                            }
+                          }
+                        ],
+                        "callee": {
+                          "kind": "direct",
+                          "name": "float_of_string"
+                        }
+                      },
+                      "kind": "call"
+                    }
+                  ],
+                  "callee": {
+                    "kind": "direct",
+                    "name": "string_of_float"
+                  }
+                },
+                "kind": "call"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "print_endline"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "eval"
+      }
+    ],
+    "exports": [],
+    "functions": [],
+    "imports": [],
+    "module_name": "Float_of_string",
+    "runtime_helpers": []
+  },
+  "status": "ok"
+}

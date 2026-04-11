@@ -58,10 +58,18 @@ and declaration = {
   init: expr option;
 }
 
+and statement_if = {
+  condition: expr;
+  then_: statement list;
+  else_: statement list;
+}
+
 and statement =
   | Declaration of declaration
+  | Block of statement list
   | Expression of expr
   | Return of expr
+  | If of statement_if
 
 type import = {
   from: string;
@@ -146,13 +154,24 @@ and declaration_to_json = fun declaration ->
       ("init", Option.map expr_to_json declaration.init |> Option.unwrap_or ~default:Json.null);
     ]
 
+and statement_if_to_json = fun (if_: statement_if) ->
+  Json.obj
+    [
+      ("condition", expr_to_json if_.condition);
+      ("then", Json.array (List.map statement_to_json if_.then_));
+      ("else", Json.array (List.map statement_to_json if_.else_));
+    ]
+
 and statement_to_json = fun statement ->
   match statement with
   | Declaration declaration -> Json.obj
     [ ("kind", Json.string "declaration"); ("declaration", declaration_to_json declaration); ]
+  | Block statements -> Json.obj
+    [ ("kind", Json.string "block"); ("body", Json.array (List.map statement_to_json statements)); ]
   | Expression expr -> Json.obj
     [ ("kind", Json.string "expression"); ("expression", expr_to_json expr); ]
   | Return expr -> Json.obj [ ("kind", Json.string "return"); ("expression", expr_to_json expr); ]
+  | If if_ -> Json.obj [ ("kind", Json.string "if"); ("if", statement_if_to_json if_); ]
 
 let import_named_to_json = fun named ->
   Json.obj
@@ -255,10 +274,20 @@ module Declaration = struct
 end
 
 module Statement = struct
+  type if_ = statement_if = {
+    condition: expr;
+    then_: statement list;
+    else_: statement list;
+  }
+
   type t = statement =
     | Declaration of declaration
+    | Block of statement list
     | Expression of expr
     | Return of expr
+    | If of if_
+
+  let if_to_json = statement_if_to_json
 
   let to_json = statement_to_json
 end

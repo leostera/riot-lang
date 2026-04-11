@@ -1,9 +1,66 @@
 {
-  "errors": [
-    {
-      "kind": "unsupported_expr",
-      "reason": "expression form is outside the first Typ -> Raml lowering slice"
+  "compilation_unit": {
+    "exports": [
+      {
+        "name": "choose",
+        "symbol": "choose"
+      }
+    ],
+    "init": [
+      {
+        "exports": [
+          {
+            "name": "choose",
+            "symbol": "choose"
+          }
+        ],
+        "items": [
+          {
+            "binding": {
+              "expr": {
+                "kind": "lambda",
+                "lambda": {
+                  "body": {
+                    "if_then_else": {
+                      "condition": {
+                        "kind": "var",
+                        "name": "cond"
+                      },
+                      "else": {
+                        "constant": {
+                          "kind": "int",
+                          "value": 0
+                        },
+                        "kind": "constant"
+                      },
+                      "then": {
+                        "constant": {
+                          "kind": "int",
+                          "value": 1
+                        },
+                        "kind": "constant"
+                      }
+                    },
+                    "kind": "if_then_else"
+                  },
+                  "params": [
+                    "cond"
+                  ]
+                }
+              },
+              "name": "choose"
+            },
+            "kind": "binding"
+          }
+        ],
+        "rec_flag": "nonrecursive"
+      }
+    ],
+    "unit_id": {
+      "kind": "implementation",
+      "relpath": "compiler/raml/tests/fixtures/typ_lowering/control_flow.ml",
+      "unit_name": "Control_flow"
     }
-  ],
-  "status": "error"
+  },
+  "status": "ok"
 }

@@ -22,6 +22,148 @@ type 'value stage = {
   errors: Json.t list;
 }
 
+let ambient_print_endline =
+  let open Typ.Model in (
+    SurfacePath.of_name "print_endline",
+    TypeScheme.of_type
+      (TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:TypeRepr.string ~rhs:TypeRepr.unit_)
+  )
+
+let ambient_print_newline =
+  let open Typ.Model in (
+    SurfacePath.of_name "print_newline",
+    TypeScheme.of_type
+      (TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:TypeRepr.unit_ ~rhs:TypeRepr.unit_)
+  )
+
+let ambient_print_int =
+  let open Typ.Model in (
+    SurfacePath.of_name "print_int",
+    TypeScheme.of_type (TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:TypeRepr.int ~rhs:TypeRepr.unit_)
+  )
+
+let ambient_print_string =
+  let open Typ.Model in (
+    SurfacePath.of_name "print_string",
+    TypeScheme.of_type
+      (TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:TypeRepr.string ~rhs:TypeRepr.unit_)
+  )
+
+let ambient_print_char =
+  let open Typ.Model in (
+    SurfacePath.of_name "print_char",
+    TypeScheme.of_type
+      (TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:TypeRepr.char ~rhs:TypeRepr.unit_)
+  )
+
+let ambient_mod =
+  let open Typ.Model in (
+    SurfacePath.of_name "mod",
+    TypeScheme.of_type
+      (TypeRepr.arrow
+        ~label:TypeRepr.Nolabel
+        ~lhs:TypeRepr.int
+        ~rhs:(TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:TypeRepr.int ~rhs:TypeRepr.int))
+  )
+
+let ambient_printf =
+  let open Typ.Model in
+    let result_var_id = 0 in
+    let result_var = TypeRepr.make_var result_var_id in
+    (
+      SurfacePath.of_string "Printf.printf",
+      TypeScheme.of_explicit
+        ~quantified:[ result_var_id ]
+        (TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:TypeRepr.string ~rhs:result_var)
+    )
+
+let ambient_sqrt =
+  let open Typ.Model in (
+    SurfacePath.of_name "sqrt",
+    TypeScheme.of_type
+      (TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:TypeRepr.float ~rhs:TypeRepr.float)
+  )
+
+let ambient_string_of_int =
+  let open Typ.Model in (
+    SurfacePath.of_name "string_of_int",
+    TypeScheme.of_type
+      (TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:TypeRepr.int ~rhs:TypeRepr.string)
+  )
+
+let ambient_string_of_float =
+  let open Typ.Model in (
+    SurfacePath.of_name "string_of_float",
+    TypeScheme.of_type
+      (TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:TypeRepr.float ~rhs:TypeRepr.string)
+  )
+
+let ambient_int_of_string =
+  let open Typ.Model in (
+    SurfacePath.of_name "int_of_string",
+    TypeScheme.of_type
+      (TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:TypeRepr.string ~rhs:TypeRepr.int)
+  )
+
+let ambient_float_of_string =
+  let open Typ.Model in (
+    SurfacePath.of_name "float_of_string",
+    TypeScheme.of_type
+      (TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:TypeRepr.string ~rhs:TypeRepr.float)
+  )
+
+let ambient_list_append =
+  let open Typ.Model in
+    let element_var_id = 1 in
+    let element_var = TypeRepr.make_var element_var_id in
+    let list_type = TypeRepr.list element_var in
+    (
+      SurfacePath.of_name "@",
+      TypeScheme.of_explicit
+        ~quantified:[ element_var_id ]
+        (TypeRepr.arrow
+          ~label:TypeRepr.Nolabel
+          ~lhs:list_type
+          ~rhs:(TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:list_type ~rhs:list_type))
+    )
+
+let ambient_list_iter =
+  let open Typ.Model in
+    let element_var_id = 2 in
+    let element_var = TypeRepr.make_var element_var_id in
+    (
+      SurfacePath.of_string "List.iter",
+      TypeScheme.of_explicit
+        ~quantified:[ element_var_id ]
+        (TypeRepr.arrow
+          ~label:TypeRepr.Nolabel
+          ~lhs:(TypeRepr.arrow ~label:TypeRepr.Nolabel ~lhs:element_var ~rhs:TypeRepr.unit_)
+          ~rhs:(TypeRepr.arrow
+            ~label:TypeRepr.Nolabel
+            ~lhs:(TypeRepr.list element_var)
+            ~rhs:TypeRepr.unit_))
+    )
+
+let typing_config =
+  Typ.Config.default
+  |> Typ.Config.with_ambient
+    ~ambient:[
+      ambient_print_endline;
+      ambient_print_newline;
+      ambient_print_int;
+      ambient_print_string;
+      ambient_print_char;
+      ambient_mod;
+      ambient_printf;
+      ambient_sqrt;
+      ambient_string_of_int;
+      ambient_string_of_float;
+      ambient_int_of_string;
+      ambient_float_of_string;
+      ambient_list_append;
+      ambient_list_iter
+    ]
+
 let wrap_issue = fun stage diagnostic ->
   Json.obj [ ("stage", Json.string stage); ("diagnostic", diagnostic); ]
 
@@ -47,6 +189,8 @@ let ok_stage = fun key render value ->
     value = Some value;
     errors = []
   }
+
+let ok_stage_with_json = fun json value -> { json; value = Some value; errors = [] }
 
 let error_stage = fun ~stage errors ->
   {
@@ -196,7 +340,12 @@ let compile_source = fun ~host ~target ~relpath ~source ->
       let parse_result = Syn.parse ~filename:relpath source in
       let typing =
         match Syn.build_cst parse_result with
-        | Ok cst -> Typ.Check.check_source ~filename:relpath ~parse_result ~cst |> typing_state_of_report
+        | Ok cst -> Typ.Check.check_source_with_config
+          ~config:typing_config
+          ~filename:relpath
+          ~parse_result
+          ~cst
+        |> typing_state_of_report
         | Error error -> typing_state_of_parse_failure parse_result error
       in
       let core_ir =
@@ -231,8 +380,8 @@ let compile_source = fun ~host ~target ~relpath ~source ->
             match core_ir.value with
             | None -> blocked_stage ~blocked_on:"core_ir" core_ir.errors
             | Some compilation_unit -> (
-                match Native.Nir.Lowering.lower_compilation_unit compilation_unit with
-                | Ok program -> ok_stage "program" Native.Nir.Program.to_json program
+                match Native.Nir.Lowering.lower_compilation_unit_with_trace compilation_unit with
+                | Ok trace -> ok_stage_with_json (Native.Nir.Lowering.trace_to_json trace) trace.final
                 | Error errors -> error_stage
                   ~stage:"nir"
                   (List.map Native.Nir.Lowering.error_to_json errors)
@@ -245,10 +394,9 @@ let compile_source = fun ~host ~target ~relpath ~source ->
         | Target.Native -> (
             match nir.value with
             | None -> blocked_stage ~blocked_on:"nir" nir.errors
-            | Some program -> ok_stage
-              "program"
-              Native.Mir.Program.to_json
-              (Native.Mir.Lowering.lower_program program)
+            | Some program ->
+                let trace = Native.Mir.Lowering.lower_program_with_trace program in
+                ok_stage_with_json (Native.Mir.Lowering.trace_to_json trace) trace.final
           )
         | _ -> unavailable_stage ~reason:"backend_not_selected"
       in
@@ -257,10 +405,9 @@ let compile_source = fun ~host ~target ~relpath ~source ->
         | Target.Native -> (
             match mir.value with
             | None -> blocked_stage ~blocked_on:"mir" mir.errors
-            | Some program -> ok_stage
-              "program"
-              Native.Lir.Program.to_json
-              (Native.Lir.Lowering.lower_program program)
+            | Some program ->
+                let trace = Native.Lir.Lowering.lower_program_with_trace program in
+                ok_stage_with_json (Native.Lir.Lowering.trace_to_json trace) trace.final
           )
         | _ -> unavailable_stage ~reason:"backend_not_selected"
       in

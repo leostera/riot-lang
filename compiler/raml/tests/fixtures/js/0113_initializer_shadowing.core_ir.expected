@@ -1,0 +1,132 @@
+{
+  "exports": [
+    {
+      "name": "outer",
+      "symbol": "outer"
+    },
+    {
+      "name": "result",
+      "symbol": "result"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "outer",
+          "symbol": "outer"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "constant": {
+                "kind": "int",
+                "value": 10
+              },
+              "kind": "constant"
+            },
+            "name": "outer"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "result",
+          "symbol": "result"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "let",
+              "let": {
+                "bindings": [
+                  {
+                    "expr": {
+                      "apply": {
+                        "arguments": [
+                          {
+                            "kind": "var",
+                            "name": "outer"
+                          },
+                          {
+                            "constant": {
+                              "kind": "int",
+                              "value": 1
+                            },
+                            "kind": "constant"
+                          }
+                        ],
+                        "callee": {
+                          "function": "+",
+                          "kind": "direct"
+                        }
+                      },
+                      "kind": "apply"
+                    },
+                    "name": "result"
+                  }
+                ],
+                "body": {
+                  "kind": "var",
+                  "name": "result"
+                },
+                "rec_flag": "nonrecursive"
+              }
+            },
+            "name": "result"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "apply": {
+              "arguments": [
+                {
+                  "constant": {
+                    "kind": "string",
+                    "value": "%d %d\\n"
+                  },
+                  "kind": "constant"
+                },
+                {
+                  "kind": "var",
+                  "name": "outer"
+                },
+                {
+                  "kind": "var",
+                  "name": "result"
+                }
+              ],
+              "callee": {
+                "function": "Printf.printf",
+                "kind": "direct"
+              }
+            },
+            "kind": "apply"
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/initializer_shadowing.ml",
+    "unit_name": "Initializer_shadowing"
+  }
+}

@@ -1,13 +1,90 @@
 open Std
 module Array = Collections.Array
 
-module AmbientName = struct
-  type t = string
+type ambient_name = int
 
-  let of_string = fun value -> value
+type required_name = int
 
-  let to_string = fun value -> value
-end
+type internal_name = int
+
+type 'entry interner = {
+  by_raw: (string, int) Collections.HashMap.t;
+  mutable entries: 'entry option array;
+  mutable next_id: int;
+}
+
+let create_interner = fun capacity ->
+  {
+    by_raw = Collections.HashMap.with_capacity capacity;
+    entries = Array.make (Int.max 8 capacity) None;
+    next_id = 0
+  }
+
+let ensure_capacity = fun table id ->
+  if id < Array.length table.entries then
+    ()
+  else
+    let new_length = ref (Int.max 8 (Array.length table.entries)) in
+    while id >= !new_length do
+      new_length := !new_length * 2
+    done;
+    let grown = Array.make !new_length None in
+    Array.blit table.entries 0 grown 0 (Array.length table.entries);
+    table.entries <- grown
+
+let intern_entry = fun table raw make ->
+  match Collections.HashMap.get table.by_raw raw with
+  | Some id -> id
+  | None ->
+      let id = table.next_id in
+      table.next_id <- id + 1;
+      ensure_capacity table id;
+      table.entries.(id) <- Some (make ());
+      let _ = Collections.HashMap.insert table.by_raw raw id in
+      id
+
+let lookup_entry = fun table kind id ->
+  match table.entries.(id) with
+  | Some entry -> entry
+  | None -> panic (kind ^ ": unknown interned id " ^ Int.to_string id)
+
+type ambient_entry = {
+  raw: string;
+}
+
+type required_entry = {
+  raw: string;
+}
+
+type internal_entry = {
+  raw: string;
+  segments: string array;
+  self_ambient_name: ambient_name;
+  required_name: required_name;
+  direct_aliases: ambient_name list;
+  direct_alias_set: required_name Collections.HashSet.t;
+  relative_alias_sets: required_name Collections.HashSet.t option array;
+}
+
+let ambient_names = create_interner 128
+
+let required_names = create_interner 128
+
+let internal_names = create_interner 128
+
+let ambient_entry = fun value -> lookup_entry ambient_names "AmbientName" value
+
+let required_entry = fun value -> lookup_entry required_names "RequiredName" value
+
+let internal_entry = fun value -> lookup_entry internal_names "InternalName" value
+
+let intern_ambient_name = fun value -> intern_entry ambient_names value (fun () -> { raw = value })
+
+let ambient_name_to_string = fun value -> (ambient_entry value).raw
+
+let intern_required_name = fun value -> intern_entry required_names value (fun () -> { raw = value })
+
+let required_name_to_string = fun value -> (required_entry value).raw
 
 let split_internal_module_name = fun module_name ->
   let rec find_separator index =
@@ -89,70 +166,72 @@ let local_module_alias_strings_of_segments = fun segments ->
 let local_module_alias_strings_of_internal_module_name = fun module_name ->
   split_internal_module_name module_name |> Array.of_list |> local_module_alias_strings_of_segments
 
+module AmbientName = struct
+  type t = ambient_name
+
+  let of_string = fun value -> intern_ambient_name value
+
+  let to_string = fun value -> ambient_name_to_string value
+end
+
 module InternalName = struct
-  type t = {
-    raw: string;
-    segments: string array;
-    direct_aliases: AmbientName.t list;
-    direct_alias_set: string Collections.HashSet.t;
-    relative_alias_sets: string Collections.HashSet.t option array;
-  }
+  type t = internal_name
 
   let of_string = fun value ->
-    let segments = split_internal_module_name value |> Array.of_list in
-    let direct_aliases = local_module_alias_strings_of_segments segments in
-    let relative_alias_sets =
-      Array.init (Array.length segments)
-        (fun prefix_length ->
-          if prefix_length = 0 || prefix_length >= Array.length segments then
-            None
-          else
-            let suffix_segments = Array.sub
-              segments
-              prefix_length
-              (Array.length segments - prefix_length) in
-            Some (suffix_segments
-            |> relative_module_alias_strings_of_segments
-            |> Collections.HashSet.of_list))
-    in
-    {
-      raw = value;
-      segments;
-      direct_aliases = List.map (fun alias -> (alias: AmbientName.t)) direct_aliases;
-      direct_alias_set = Collections.HashSet.of_list direct_aliases;
-      relative_alias_sets;
-    }
+    intern_entry internal_names value
+      (fun () ->
+        let segments = split_internal_module_name value |> Array.of_list in
+        let direct_alias_strings = local_module_alias_strings_of_segments segments in
+        let direct_aliases = List.map intern_ambient_name direct_alias_strings in
+        let direct_alias_set = direct_alias_strings
+        |> List.map intern_required_name
+        |> Collections.HashSet.of_list in
+        let relative_alias_sets =
+          Array.init (Array.length segments)
+            (fun prefix_length ->
+              if prefix_length = 0 || prefix_length >= Array.length segments then
+                None
+              else
+                let suffix_segments = Array.sub
+                  segments
+                  prefix_length
+                  (Array.length segments - prefix_length) in
+                Some (suffix_segments
+                |> relative_module_alias_strings_of_segments
+                |> List.map intern_required_name
+                |> Collections.HashSet.of_list))
+        in
+        {
+          raw = value;
+          segments;
+          self_ambient_name = intern_ambient_name value;
+          required_name = intern_required_name value;
+          direct_aliases;
+          direct_alias_set;
+          relative_alias_sets;
+        })
 
-  let to_string = fun value -> value.raw
-
-  let direct_aliases = fun value -> value.direct_aliases
-
-  let direct_alias_set = fun value -> value.direct_alias_set
-
-  let segments = fun value -> value.segments
-
-  let relative_aliases_at_prefix = fun value ~prefix_length ->
-    value.relative_alias_sets.(prefix_length)
+  let to_string = fun value -> (internal_entry value).raw
 end
 
 module RequiredName = struct
-  type t = {
-    raw: string;
-  }
+  type t = required_name
 
-  let of_string = fun value -> { raw = value }
+  let of_string = fun value -> intern_required_name value
 
-  let of_ambient_name = fun value -> of_string (AmbientName.to_string value)
+  let of_ambient_name = fun value -> of_string (ambient_name_to_string value)
 
-  let of_internal_name = fun value -> of_string (InternalName.to_string value)
+  let of_internal_name = fun value -> (internal_entry value).required_name
 
-  let to_string = fun value -> value.raw
+  let to_string = fun value -> required_name_to_string value
 end
 
-let local_module_aliases_of_internal_name = fun module_name -> InternalName.direct_aliases module_name
+let local_module_aliases_of_internal_name = fun module_name -> (internal_entry module_name).direct_aliases
+
+let ambient_name_of_internal_name = fun module_name -> (internal_entry module_name).self_ambient_name
 
 let should_include_implicit_open = fun ~current_module_name ~module_name ->
-  let current_segments = InternalName.segments current_module_name in
+  let current_segments = (internal_entry current_module_name).segments in
   if Array.length current_segments <= 1 || not (String.ends_with ~suffix:"__Aliases" module_name) then
     true
   else
@@ -170,9 +249,9 @@ let should_include_implicit_open = fun ~current_module_name ~module_name ->
     | _ -> true
 
 let matches_required_name = fun ~required_name candidate_module_name ->
-  let required_name = RequiredName.to_string required_name in
-  String.equal (InternalName.to_string candidate_module_name) required_name
-  || Collections.HashSet.contains (InternalName.direct_alias_set candidate_module_name) required_name
+  let candidate = internal_entry candidate_module_name in
+  Int.equal candidate.required_name required_name
+  || Collections.HashSet.contains candidate.direct_alias_set required_name
 
 let common_prefix_length = fun left right ->
   let max_length = Int.min (Array.length left) (Array.length right) in
@@ -187,23 +266,21 @@ let common_prefix_length = fun left right ->
   loop 0
 
 let contextual_match_depth = fun ~current_module_name ~required_module_name ~candidate_module_name ->
-  let required_name = required_module_name in
-  let required_module_name = RequiredName.to_string required_name in
+  let current_segments = (internal_entry current_module_name).segments in
+  let candidate = internal_entry candidate_module_name in
   let best =
-    if matches_required_name ~required_name candidate_module_name then
+    if matches_required_name ~required_name:required_module_name candidate_module_name then
       Some 0
     else
       None
   in
-  let max_prefix_length = common_prefix_length
-    (InternalName.segments current_module_name)
-    (InternalName.segments candidate_module_name)
-  |> Int.min (Array.length (InternalName.segments candidate_module_name) - 1) in
+  let max_prefix_length = common_prefix_length current_segments candidate.segments
+  |> Int.min (Array.length candidate.segments - 1) in
   let rec loop best prefix_length =
     if prefix_length > max_prefix_length then
       best
     else
-      match InternalName.relative_aliases_at_prefix candidate_module_name ~prefix_length with
+      match candidate.relative_alias_sets.(prefix_length) with
       | Some relative_aliases when Collections.HashSet.contains relative_aliases required_module_name ->
           let best = Some (Option.unwrap_or ~default:prefix_length best |> Int.max prefix_length) in
           loop best (prefix_length + 1)
@@ -219,5 +296,5 @@ let preferred_local_module_alias = fun module_name ->
 
 let ambient_names_of_internal_name = fun module_name ->
   match local_module_aliases_of_internal_name module_name with
-  | [] -> [ InternalName.to_string module_name ]
+  | [] -> [ ambient_name_of_internal_name module_name ]
   | aliases -> aliases

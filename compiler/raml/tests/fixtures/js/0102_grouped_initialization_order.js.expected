@@ -1,0 +1,100 @@
+{
+  "js": "import { print_endline as __print_endline } from \"./riot-runtime.js\";\n\nconst before = \"before\";\n\n__print_endline(before);\n\nconst after = __print_endline(\"after\");\n\nexport {\n  before,\n  after\n};\n",
+  "jst": {
+    "items": [
+      {
+        "import": {
+          "default": null,
+          "from": "./riot-runtime.js",
+          "names": [
+            {
+              "imported": "print_endline",
+              "local": "__print_endline"
+            }
+          ]
+        },
+        "kind": "import"
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "before"
+              }
+            },
+            "kind": "const",
+            "name": "before"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "expression": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "identifier",
+                  "name": "before"
+                }
+              ],
+              "callee": {
+                "kind": "identifier",
+                "name": "__print_endline"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "expression"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "after"
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__print_endline"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "after"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "exports": [
+          {
+            "local": "before",
+            "name": "before"
+          },
+          {
+            "local": "after",
+            "name": "after"
+          }
+        ],
+        "kind": "export"
+      }
+    ],
+    "module_name": "Grouped_initialization_order"
+  }
+}

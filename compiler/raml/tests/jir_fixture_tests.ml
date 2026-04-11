@@ -263,6 +263,16 @@ and parse_declaration = fun json ->
   let* init = init in
   Ok Jir.Declaration.{ kind; name; init }
 
+and parse_if_statement = fun json ->
+  let scope = "if" in
+  let* condition_json = field scope "condition" json in
+  let* condition = parse_expr condition_json in
+  let* then_json = array_field scope "then" json in
+  let* then_ = map_results then_json parse_statement in
+  let* else_json = array_field scope "else" json in
+  let* else_ = map_results else_json parse_statement in
+  Ok Jir.Statement.{ condition; then_; else_ }
+
 and parse_statement = fun json ->
   let scope = "statement" in
   let* kind = string_field scope "kind" json in
@@ -279,8 +289,12 @@ and parse_statement = fun json ->
       let* expression_json = field scope "expression" json in
       let* expression = parse_expr expression_json in
       Ok (Jir.Statement.Return expression)
+  | "if" ->
+      let* if_json = field scope "if" json in
+      let* if_ = parse_if_statement if_json in
+      Ok (Jir.Statement.If if_)
   | _ ->
-      invalid_field scope "kind" "`declaration`, `expression`, or `return`"
+      invalid_field scope "kind" "`declaration`, `expression`, `return`, or `if`"
 
 let parse_export = fun json ->
   let scope = "export" in

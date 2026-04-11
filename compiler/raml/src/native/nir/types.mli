@@ -21,13 +21,38 @@ module Expr: sig
     arguments: t list;
   }
 
+  and if_then_else = {
+    condition: t;
+    then_: t;
+    else_: t;
+  }
+
+  and binding = {
+    name: string;
+    expr: t;
+  }
+
+  and let_ = {
+    bindings: binding list;
+    body: t;
+  }
+
   and t =
     | Literal of Literal.t
     | Symbol of string
+    | Symbol_address of string
     | Call of call
+    | If_then_else of if_then_else
+    | Let of let_
   val callee_to_json: callee -> Json.t
 
   val call_to_json: call -> Json.t
+
+  val if_then_else_to_json: if_then_else -> Json.t
+
+  val binding_to_json: binding -> Json.t
+
+  val let_to_json: let_ -> Json.t
 
   val to_json: t -> Json.t
 end

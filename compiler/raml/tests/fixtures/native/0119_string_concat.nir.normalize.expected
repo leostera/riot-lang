@@ -1,0 +1,63 @@
+{
+  "entry": [
+    {
+      "binding": {
+        "expr": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "hello, "
+                }
+              },
+              {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "world"
+                }
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "^"
+            }
+          },
+          "kind": "call"
+        },
+        "name": "message"
+      },
+      "kind": "binding"
+    },
+    {
+      "expr": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "symbol",
+              "name": "message"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "print_endline"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "eval"
+    }
+  ],
+  "exports": [
+    {
+      "name": "message",
+      "symbol": "message"
+    }
+  ],
+  "functions": [],
+  "imports": [],
+  "module_name": "String_concat",
+  "runtime_helpers": []
+}

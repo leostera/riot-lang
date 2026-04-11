@@ -1,0 +1,88 @@
+{
+  "exports": [
+    {
+      "name": "larger",
+      "symbol": "larger"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "larger",
+          "symbol": "larger"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "constant": {
+                      "kind": "int",
+                      "value": 5
+                    },
+                    "kind": "constant"
+                  },
+                  {
+                    "constant": {
+                      "kind": "int",
+                      "value": 3
+                    },
+                    "kind": "constant"
+                  }
+                ],
+                "callee": {
+                  "function": ">",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "larger"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "apply": {
+              "arguments": [
+                {
+                  "constant": {
+                    "kind": "string",
+                    "value": "%b\\n"
+                  },
+                  "kind": "constant"
+                },
+                {
+                  "kind": "var",
+                  "name": "larger"
+                }
+              ],
+              "callee": {
+                "function": "Printf.printf",
+                "kind": "direct"
+              }
+            },
+            "kind": "apply"
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/greater_than_comparison.ml",
+    "unit_name": "Greater_than_comparison"
+  }
+}

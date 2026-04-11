@@ -1,0 +1,1381 @@
+{
+  "initial": {
+    "exports": [
+      {
+        "name": "even",
+        "symbol": "even"
+      },
+      {
+        "name": "odd",
+        "symbol": "odd"
+      },
+      {
+        "name": "result",
+        "symbol": "result"
+      }
+    ],
+    "module_name": "Top_level_mutual_recursion",
+    "procedures": [
+      {
+        "body": [
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 0
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "n"
+              },
+              {
+                "kind": "register",
+                "name": "t0"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "<="
+            },
+            "dst": "t1",
+            "kind": "call"
+          },
+          {
+            "if_then_else": {
+              "condition": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "else": [
+                {
+                  "dst": "t3",
+                  "kind": "move",
+                  "src": {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "int",
+                      "value": 1
+                    }
+                  }
+                },
+                {
+                  "arguments": [
+                    {
+                      "kind": "register",
+                      "name": "n"
+                    },
+                    {
+                      "kind": "register",
+                      "name": "t3"
+                    }
+                  ],
+                  "callee": {
+                    "kind": "direct",
+                    "name": "-"
+                  },
+                  "dst": "t4",
+                  "kind": "call"
+                },
+                {
+                  "arguments": [
+                    {
+                      "kind": "register",
+                      "name": "t4"
+                    }
+                  ],
+                  "callee": {
+                    "kind": "direct",
+                    "name": "odd"
+                  },
+                  "dst": "t5",
+                  "kind": "call"
+                },
+                {
+                  "dst": "t6",
+                  "kind": "move",
+                  "src": {
+                    "kind": "register",
+                    "name": "t5"
+                  }
+                }
+              ],
+              "then": [
+                {
+                  "dst": "t2",
+                  "kind": "move",
+                  "src": {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "bool",
+                      "value": true
+                    }
+                  }
+                },
+                {
+                  "dst": "t6",
+                  "kind": "move",
+                  "src": {
+                    "kind": "register",
+                    "name": "t2"
+                  }
+                }
+              ]
+            },
+            "kind": "if_then_else"
+          },
+          {
+            "kind": "return",
+            "operand": {
+              "kind": "register",
+              "name": "t6"
+            }
+          }
+        ],
+        "kind": "function",
+        "name": "even",
+        "params": [
+          "n"
+        ]
+      },
+      {
+        "body": [
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 0
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "n"
+              },
+              {
+                "kind": "register",
+                "name": "t0"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "<="
+            },
+            "dst": "t1",
+            "kind": "call"
+          },
+          {
+            "if_then_else": {
+              "condition": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "else": [
+                {
+                  "dst": "t3",
+                  "kind": "move",
+                  "src": {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "int",
+                      "value": 1
+                    }
+                  }
+                },
+                {
+                  "arguments": [
+                    {
+                      "kind": "register",
+                      "name": "n"
+                    },
+                    {
+                      "kind": "register",
+                      "name": "t3"
+                    }
+                  ],
+                  "callee": {
+                    "kind": "direct",
+                    "name": "-"
+                  },
+                  "dst": "t4",
+                  "kind": "call"
+                },
+                {
+                  "arguments": [
+                    {
+                      "kind": "register",
+                      "name": "t4"
+                    }
+                  ],
+                  "callee": {
+                    "kind": "direct",
+                    "name": "even"
+                  },
+                  "dst": "t5",
+                  "kind": "call"
+                },
+                {
+                  "dst": "t6",
+                  "kind": "move",
+                  "src": {
+                    "kind": "register",
+                    "name": "t5"
+                  }
+                }
+              ],
+              "then": [
+                {
+                  "dst": "t2",
+                  "kind": "move",
+                  "src": {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "bool",
+                      "value": false
+                    }
+                  }
+                },
+                {
+                  "dst": "t6",
+                  "kind": "move",
+                  "src": {
+                    "kind": "register",
+                    "name": "t2"
+                  }
+                }
+              ]
+            },
+            "kind": "if_then_else"
+          },
+          {
+            "kind": "return",
+            "operand": {
+              "kind": "register",
+              "name": "t6"
+            }
+          }
+        ],
+        "kind": "function",
+        "name": "odd",
+        "params": [
+          "n"
+        ]
+      },
+      {
+        "body": [
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 10
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t0"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "even"
+            },
+            "dst": "t1",
+            "kind": "call"
+          },
+          {
+            "kind": "store_global",
+            "src": {
+              "kind": "register",
+              "name": "t1"
+            },
+            "symbol": "result"
+          },
+          {
+            "dst": "t2",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "%b\\n"
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t2"
+              },
+              {
+                "kind": "global",
+                "name": "result"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "Printf.printf"
+            },
+            "dst": "t3",
+            "kind": "call"
+          }
+        ],
+        "kind": "entry",
+        "name": "__entry__",
+        "params": []
+      }
+    ]
+  },
+  "passes": {
+    "canonicalize": {
+      "exports": [
+        {
+          "name": "even",
+          "symbol": "even"
+        },
+        {
+          "name": "odd",
+          "symbol": "odd"
+        },
+        {
+          "name": "result",
+          "symbol": "result"
+        }
+      ],
+      "module_name": "Top_level_mutual_recursion",
+      "procedures": [
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "n"
+                },
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "<="
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "if_then_else": {
+                "condition": {
+                  "kind": "register",
+                  "name": "t1"
+                },
+                "else": [
+                  {
+                    "dst": "t3",
+                    "kind": "move",
+                    "src": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "int",
+                        "value": 1
+                      }
+                    }
+                  },
+                  {
+                    "arguments": [
+                      {
+                        "kind": "register",
+                        "name": "n"
+                      },
+                      {
+                        "kind": "register",
+                        "name": "t3"
+                      }
+                    ],
+                    "callee": {
+                      "kind": "direct",
+                      "name": "-"
+                    },
+                    "dst": "t4",
+                    "kind": "call"
+                  },
+                  {
+                    "arguments": [
+                      {
+                        "kind": "register",
+                        "name": "t4"
+                      }
+                    ],
+                    "callee": {
+                      "kind": "direct",
+                      "name": "odd"
+                    },
+                    "dst": "t5",
+                    "kind": "call"
+                  },
+                  {
+                    "dst": "t6",
+                    "kind": "move",
+                    "src": {
+                      "kind": "register",
+                      "name": "t5"
+                    }
+                  }
+                ],
+                "then": [
+                  {
+                    "dst": "t2",
+                    "kind": "move",
+                    "src": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "bool",
+                        "value": true
+                      }
+                    }
+                  },
+                  {
+                    "dst": "t6",
+                    "kind": "move",
+                    "src": {
+                      "kind": "register",
+                      "name": "t2"
+                    }
+                  }
+                ]
+              },
+              "kind": "if_then_else"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t6"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "even",
+          "params": [
+            "n"
+          ]
+        },
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "n"
+                },
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "<="
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "if_then_else": {
+                "condition": {
+                  "kind": "register",
+                  "name": "t1"
+                },
+                "else": [
+                  {
+                    "dst": "t3",
+                    "kind": "move",
+                    "src": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "int",
+                        "value": 1
+                      }
+                    }
+                  },
+                  {
+                    "arguments": [
+                      {
+                        "kind": "register",
+                        "name": "n"
+                      },
+                      {
+                        "kind": "register",
+                        "name": "t3"
+                      }
+                    ],
+                    "callee": {
+                      "kind": "direct",
+                      "name": "-"
+                    },
+                    "dst": "t4",
+                    "kind": "call"
+                  },
+                  {
+                    "arguments": [
+                      {
+                        "kind": "register",
+                        "name": "t4"
+                      }
+                    ],
+                    "callee": {
+                      "kind": "direct",
+                      "name": "even"
+                    },
+                    "dst": "t5",
+                    "kind": "call"
+                  },
+                  {
+                    "dst": "t6",
+                    "kind": "move",
+                    "src": {
+                      "kind": "register",
+                      "name": "t5"
+                    }
+                  }
+                ],
+                "then": [
+                  {
+                    "dst": "t2",
+                    "kind": "move",
+                    "src": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "bool",
+                        "value": false
+                      }
+                    }
+                  },
+                  {
+                    "dst": "t6",
+                    "kind": "move",
+                    "src": {
+                      "kind": "register",
+                      "name": "t2"
+                    }
+                  }
+                ]
+              },
+              "kind": "if_then_else"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t6"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "odd",
+          "params": [
+            "n"
+          ]
+        },
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 10
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "even"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "symbol": "result"
+            },
+            {
+              "dst": "t2",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "%b\\n"
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t2"
+                },
+                {
+                  "kind": "global",
+                  "name": "result"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "Printf.printf"
+              },
+              "dst": "t3",
+              "kind": "call"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    },
+    "insert_polls": {
+      "exports": [
+        {
+          "name": "even",
+          "symbol": "even"
+        },
+        {
+          "name": "odd",
+          "symbol": "odd"
+        },
+        {
+          "name": "result",
+          "symbol": "result"
+        }
+      ],
+      "module_name": "Top_level_mutual_recursion",
+      "procedures": [
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "n"
+                },
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "<="
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "if_then_else": {
+                "condition": {
+                  "kind": "register",
+                  "name": "t1"
+                },
+                "else": [
+                  {
+                    "dst": "t3",
+                    "kind": "move",
+                    "src": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "int",
+                        "value": 1
+                      }
+                    }
+                  },
+                  {
+                    "arguments": [
+                      {
+                        "kind": "register",
+                        "name": "n"
+                      },
+                      {
+                        "kind": "register",
+                        "name": "t3"
+                      }
+                    ],
+                    "callee": {
+                      "kind": "direct",
+                      "name": "-"
+                    },
+                    "dst": "t4",
+                    "kind": "call"
+                  },
+                  {
+                    "arguments": [
+                      {
+                        "kind": "register",
+                        "name": "t4"
+                      }
+                    ],
+                    "callee": {
+                      "kind": "direct",
+                      "name": "odd"
+                    },
+                    "dst": "t5",
+                    "kind": "call"
+                  },
+                  {
+                    "dst": "t6",
+                    "kind": "move",
+                    "src": {
+                      "kind": "register",
+                      "name": "t5"
+                    }
+                  }
+                ],
+                "then": [
+                  {
+                    "dst": "t2",
+                    "kind": "move",
+                    "src": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "bool",
+                        "value": true
+                      }
+                    }
+                  },
+                  {
+                    "dst": "t6",
+                    "kind": "move",
+                    "src": {
+                      "kind": "register",
+                      "name": "t2"
+                    }
+                  }
+                ]
+              },
+              "kind": "if_then_else"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t6"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "even",
+          "params": [
+            "n"
+          ]
+        },
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "n"
+                },
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "<="
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "if_then_else": {
+                "condition": {
+                  "kind": "register",
+                  "name": "t1"
+                },
+                "else": [
+                  {
+                    "dst": "t3",
+                    "kind": "move",
+                    "src": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "int",
+                        "value": 1
+                      }
+                    }
+                  },
+                  {
+                    "arguments": [
+                      {
+                        "kind": "register",
+                        "name": "n"
+                      },
+                      {
+                        "kind": "register",
+                        "name": "t3"
+                      }
+                    ],
+                    "callee": {
+                      "kind": "direct",
+                      "name": "-"
+                    },
+                    "dst": "t4",
+                    "kind": "call"
+                  },
+                  {
+                    "arguments": [
+                      {
+                        "kind": "register",
+                        "name": "t4"
+                      }
+                    ],
+                    "callee": {
+                      "kind": "direct",
+                      "name": "even"
+                    },
+                    "dst": "t5",
+                    "kind": "call"
+                  },
+                  {
+                    "dst": "t6",
+                    "kind": "move",
+                    "src": {
+                      "kind": "register",
+                      "name": "t5"
+                    }
+                  }
+                ],
+                "then": [
+                  {
+                    "dst": "t2",
+                    "kind": "move",
+                    "src": {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "bool",
+                        "value": false
+                      }
+                    }
+                  },
+                  {
+                    "dst": "t6",
+                    "kind": "move",
+                    "src": {
+                      "kind": "register",
+                      "name": "t2"
+                    }
+                  }
+                ]
+              },
+              "kind": "if_then_else"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t6"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "odd",
+          "params": [
+            "n"
+          ]
+        },
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 10
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "even"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "symbol": "result"
+            },
+            {
+              "dst": "t2",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "%b\\n"
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t2"
+                },
+                {
+                  "kind": "global",
+                  "name": "result"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "Printf.printf"
+              },
+              "dst": "t3",
+              "kind": "call"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    }
+  },
+  "program": {
+    "exports": [
+      {
+        "name": "even",
+        "symbol": "even"
+      },
+      {
+        "name": "odd",
+        "symbol": "odd"
+      },
+      {
+        "name": "result",
+        "symbol": "result"
+      }
+    ],
+    "module_name": "Top_level_mutual_recursion",
+    "procedures": [
+      {
+        "body": [
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 0
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "n"
+              },
+              {
+                "kind": "register",
+                "name": "t0"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "<="
+            },
+            "dst": "t1",
+            "kind": "call"
+          },
+          {
+            "if_then_else": {
+              "condition": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "else": [
+                {
+                  "dst": "t3",
+                  "kind": "move",
+                  "src": {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "int",
+                      "value": 1
+                    }
+                  }
+                },
+                {
+                  "arguments": [
+                    {
+                      "kind": "register",
+                      "name": "n"
+                    },
+                    {
+                      "kind": "register",
+                      "name": "t3"
+                    }
+                  ],
+                  "callee": {
+                    "kind": "direct",
+                    "name": "-"
+                  },
+                  "dst": "t4",
+                  "kind": "call"
+                },
+                {
+                  "arguments": [
+                    {
+                      "kind": "register",
+                      "name": "t4"
+                    }
+                  ],
+                  "callee": {
+                    "kind": "direct",
+                    "name": "odd"
+                  },
+                  "dst": "t5",
+                  "kind": "call"
+                },
+                {
+                  "dst": "t6",
+                  "kind": "move",
+                  "src": {
+                    "kind": "register",
+                    "name": "t5"
+                  }
+                }
+              ],
+              "then": [
+                {
+                  "dst": "t2",
+                  "kind": "move",
+                  "src": {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "bool",
+                      "value": true
+                    }
+                  }
+                },
+                {
+                  "dst": "t6",
+                  "kind": "move",
+                  "src": {
+                    "kind": "register",
+                    "name": "t2"
+                  }
+                }
+              ]
+            },
+            "kind": "if_then_else"
+          },
+          {
+            "kind": "return",
+            "operand": {
+              "kind": "register",
+              "name": "t6"
+            }
+          }
+        ],
+        "kind": "function",
+        "name": "even",
+        "params": [
+          "n"
+        ]
+      },
+      {
+        "body": [
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 0
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "n"
+              },
+              {
+                "kind": "register",
+                "name": "t0"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "<="
+            },
+            "dst": "t1",
+            "kind": "call"
+          },
+          {
+            "if_then_else": {
+              "condition": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "else": [
+                {
+                  "dst": "t3",
+                  "kind": "move",
+                  "src": {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "int",
+                      "value": 1
+                    }
+                  }
+                },
+                {
+                  "arguments": [
+                    {
+                      "kind": "register",
+                      "name": "n"
+                    },
+                    {
+                      "kind": "register",
+                      "name": "t3"
+                    }
+                  ],
+                  "callee": {
+                    "kind": "direct",
+                    "name": "-"
+                  },
+                  "dst": "t4",
+                  "kind": "call"
+                },
+                {
+                  "arguments": [
+                    {
+                      "kind": "register",
+                      "name": "t4"
+                    }
+                  ],
+                  "callee": {
+                    "kind": "direct",
+                    "name": "even"
+                  },
+                  "dst": "t5",
+                  "kind": "call"
+                },
+                {
+                  "dst": "t6",
+                  "kind": "move",
+                  "src": {
+                    "kind": "register",
+                    "name": "t5"
+                  }
+                }
+              ],
+              "then": [
+                {
+                  "dst": "t2",
+                  "kind": "move",
+                  "src": {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "bool",
+                      "value": false
+                    }
+                  }
+                },
+                {
+                  "dst": "t6",
+                  "kind": "move",
+                  "src": {
+                    "kind": "register",
+                    "name": "t2"
+                  }
+                }
+              ]
+            },
+            "kind": "if_then_else"
+          },
+          {
+            "kind": "return",
+            "operand": {
+              "kind": "register",
+              "name": "t6"
+            }
+          }
+        ],
+        "kind": "function",
+        "name": "odd",
+        "params": [
+          "n"
+        ]
+      },
+      {
+        "body": [
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 10
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t0"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "even"
+            },
+            "dst": "t1",
+            "kind": "call"
+          },
+          {
+            "kind": "store_global",
+            "src": {
+              "kind": "register",
+              "name": "t1"
+            },
+            "symbol": "result"
+          },
+          {
+            "dst": "t2",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "%b\\n"
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t2"
+              },
+              {
+                "kind": "global",
+                "name": "result"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "Printf.printf"
+            },
+            "dst": "t3",
+            "kind": "call"
+          }
+        ],
+        "kind": "entry",
+        "name": "__entry__",
+        "params": []
+      }
+    ]
+  },
+  "status": "ok"
+}

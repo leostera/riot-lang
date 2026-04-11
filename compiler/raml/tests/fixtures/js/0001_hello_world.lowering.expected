@@ -1,44 +1,81 @@
 {
   "lowered": {
     "core_ir": {
-      "blocked_on": "typing",
-      "errors": [
-        {
-          "diagnostic": {
-            "id": "TYP2001",
-            "message": "unbound name: print_endline",
-            "name": "unbound-name",
-            "name_text": "print_endline",
-            "reference_span": {
-              "end": 59,
-              "start": 45
-            },
-            "severity": "error"
-          },
-          "stage": "typing"
+      "compilation_unit": {
+        "exports": [],
+        "init": [
+          {
+            "exports": [],
+            "items": [
+              {
+                "expr": {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "constant": {
+                          "kind": "string",
+                          "value": "hello, world"
+                        },
+                        "kind": "constant"
+                      }
+                    ],
+                    "callee": {
+                      "function": "print_endline",
+                      "kind": "direct"
+                    }
+                  },
+                  "kind": "apply"
+                },
+                "kind": "eval"
+              }
+            ],
+            "rec_flag": "nonrecursive"
+          }
+        ],
+        "unit_id": {
+          "kind": "implementation",
+          "relpath": "corpus/hello_world.ml",
+          "unit_name": "Hello_world"
         }
-      ],
-      "status": "blocked"
+      },
+      "status": "ok"
     },
     "jir": {
-      "blocked_on": "core_ir",
-      "errors": [
-        {
-          "diagnostic": {
-            "id": "TYP2001",
-            "message": "unbound name: print_endline",
-            "name": "unbound-name",
-            "name_text": "print_endline",
-            "reference_span": {
-              "end": 59,
-              "start": 45
+      "program": {
+        "body": [
+          {
+            "expression": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "hello, world"
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__print_endline"
+                }
+              },
+              "kind": "call"
             },
-            "severity": "error"
-          },
-          "stage": "typing"
-        }
-      ],
-      "status": "blocked"
+            "kind": "expression"
+          }
+        ],
+        "exports": [],
+        "imports": [
+          {
+            "from": "./riot-runtime.js",
+            "imported": "print_endline",
+            "local": "__print_endline"
+          }
+        ],
+        "module_name": "Hello_world"
+      },
+      "status": "ok"
     },
     "lir": {
       "reason": "backend_not_selected",
@@ -72,31 +109,19 @@
     "target": "js-unknown-ecma"
   },
   "typing": {
-    "completeness": "partial",
+    "completeness": "complete",
     "exports": [],
     "file_summary": {
-      "completeness": "partial",
+      "completeness": "complete",
       "export_result": {
         "exports": [],
-        "tag": "errored_export"
+        "tag": "trusted_export"
       },
       "source_id": 0
     },
     "lowering_diagnostics": [],
     "parse_diagnostics": [],
-    "status": "error",
-    "typing_diagnostics": [
-      {
-        "id": "TYP2001",
-        "message": "unbound name: print_endline",
-        "name": "unbound-name",
-        "name_text": "print_endline",
-        "reference_span": {
-          "end": 59,
-          "start": 45
-        },
-        "severity": "error"
-      }
-    ]
+    "status": "ok",
+    "typing_diagnostics": []
   }
 }

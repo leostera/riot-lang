@@ -1,0 +1,337 @@
+{
+  "js": "import * as Printf from \"./Printf.js\";\n\nimport { callPrimitive as __callPrimitive, makeCurried as __makeCurried } from \"./riot-runtime.js\";\n\nconst compose = __makeCurried((function(f, g, x) {\n  return f(g(x));\n}), 3);\n\nconst pipeline = compose((function(x) {\n  return __callPrimitive(\"%addint\", x, 1);\n}), compose((function(x) {\n  return __callPrimitive(\"%mulint\", x, 2);\n}), (function(x) {\n  return __callPrimitive(\"%subint\", x, 3);\n})));\n\nPrintf.printf(\"%d\\\\n\", pipeline(25));\n\nexport {\n  compose,\n  pipeline\n};\n",
+  "jst": {
+    "items": [
+      {
+        "import": {
+          "default": null,
+          "from": "./Printf.js",
+          "names": [],
+          "namespace": "Printf"
+        },
+        "kind": "import"
+      },
+      {
+        "import": {
+          "default": null,
+          "from": "./riot-runtime.js",
+          "names": [
+            {
+              "imported": "callPrimitive",
+              "local": "__callPrimitive"
+            },
+            {
+              "imported": "makeCurried",
+              "local": "__makeCurried"
+            }
+          ]
+        },
+        "kind": "import"
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "function": {
+                      "body": [
+                        {
+                          "expression": {
+                            "call": {
+                              "arguments": [
+                                {
+                                  "call": {
+                                    "arguments": [
+                                      {
+                                        "kind": "identifier",
+                                        "name": "x"
+                                      }
+                                    ],
+                                    "callee": {
+                                      "kind": "identifier",
+                                      "name": "g"
+                                    }
+                                  },
+                                  "kind": "call"
+                                }
+                              ],
+                              "callee": {
+                                "kind": "identifier",
+                                "name": "f"
+                              }
+                            },
+                            "kind": "call"
+                          },
+                          "kind": "return"
+                        }
+                      ],
+                      "params": [
+                        "f",
+                        "g",
+                        "x"
+                      ]
+                    },
+                    "kind": "function"
+                  },
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 3
+                      }
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "__makeCurried"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "compose"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "function": {
+                      "body": [
+                        {
+                          "expression": {
+                            "call": {
+                              "arguments": [
+                                {
+                                  "kind": "literal",
+                                  "literal": {
+                                    "kind": "string",
+                                    "value": "%addint"
+                                  }
+                                },
+                                {
+                                  "kind": "identifier",
+                                  "name": "x"
+                                },
+                                {
+                                  "kind": "literal",
+                                  "literal": {
+                                    "kind": "number",
+                                    "number": {
+                                      "kind": "int",
+                                      "value": 1
+                                    }
+                                  }
+                                }
+                              ],
+                              "callee": {
+                                "kind": "identifier",
+                                "name": "__callPrimitive"
+                              }
+                            },
+                            "kind": "call"
+                          },
+                          "kind": "return"
+                        }
+                      ],
+                      "params": [
+                        "x"
+                      ]
+                    },
+                    "kind": "function"
+                  },
+                  {
+                    "call": {
+                      "arguments": [
+                        {
+                          "function": {
+                            "body": [
+                              {
+                                "expression": {
+                                  "call": {
+                                    "arguments": [
+                                      {
+                                        "kind": "literal",
+                                        "literal": {
+                                          "kind": "string",
+                                          "value": "%mulint"
+                                        }
+                                      },
+                                      {
+                                        "kind": "identifier",
+                                        "name": "x"
+                                      },
+                                      {
+                                        "kind": "literal",
+                                        "literal": {
+                                          "kind": "number",
+                                          "number": {
+                                            "kind": "int",
+                                            "value": 2
+                                          }
+                                        }
+                                      }
+                                    ],
+                                    "callee": {
+                                      "kind": "identifier",
+                                      "name": "__callPrimitive"
+                                    }
+                                  },
+                                  "kind": "call"
+                                },
+                                "kind": "return"
+                              }
+                            ],
+                            "params": [
+                              "x"
+                            ]
+                          },
+                          "kind": "function"
+                        },
+                        {
+                          "function": {
+                            "body": [
+                              {
+                                "expression": {
+                                  "call": {
+                                    "arguments": [
+                                      {
+                                        "kind": "literal",
+                                        "literal": {
+                                          "kind": "string",
+                                          "value": "%subint"
+                                        }
+                                      },
+                                      {
+                                        "kind": "identifier",
+                                        "name": "x"
+                                      },
+                                      {
+                                        "kind": "literal",
+                                        "literal": {
+                                          "kind": "number",
+                                          "number": {
+                                            "kind": "int",
+                                            "value": 3
+                                          }
+                                        }
+                                      }
+                                    ],
+                                    "callee": {
+                                      "kind": "identifier",
+                                      "name": "__callPrimitive"
+                                    }
+                                  },
+                                  "kind": "call"
+                                },
+                                "kind": "return"
+                              }
+                            ],
+                            "params": [
+                              "x"
+                            ]
+                          },
+                          "kind": "function"
+                        }
+                      ],
+                      "callee": {
+                        "kind": "identifier",
+                        "name": "compose"
+                      }
+                    },
+                    "kind": "call"
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "compose"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "pipeline"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "expression": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "%d\\n"
+                  }
+                },
+                {
+                  "call": {
+                    "arguments": [
+                      {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "number",
+                          "number": {
+                            "kind": "int",
+                            "value": 25
+                          }
+                        }
+                      }
+                    ],
+                    "callee": {
+                      "kind": "identifier",
+                      "name": "pipeline"
+                    }
+                  },
+                  "kind": "call"
+                }
+              ],
+              "callee": {
+                "kind": "member",
+                "member": {
+                  "object": {
+                    "kind": "identifier",
+                    "name": "Printf"
+                  },
+                  "property": "printf"
+                }
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "expression"
+        }
+      },
+      {
+        "exports": [
+          {
+            "local": "compose",
+            "name": "compose"
+          },
+          {
+            "local": "pipeline",
+            "name": "pipeline"
+          }
+        ],
+        "kind": "export"
+      }
+    ],
+    "module_name": "Function_composition_pipeline"
+  }
+}

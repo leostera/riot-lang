@@ -1,0 +1,34 @@
+{
+  "body": [
+    {
+      "expression": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "hello"
+              }
+            }
+          ],
+          "callee": {
+            "kind": "identifier",
+            "name": "__print_string"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "expression"
+    }
+  ],
+  "exports": [],
+  "imports": [
+    {
+      "from": "./riot-runtime.js",
+      "imported": "print_string",
+      "local": "__print_string"
+    }
+  ],
+  "module_name": "Print_string"
+}

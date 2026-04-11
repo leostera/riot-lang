@@ -1,0 +1,150 @@
+{
+  "exports": [
+    {
+      "name": "answer",
+      "symbol": "answer"
+    },
+    {
+      "name": "ready",
+      "symbol": "ready"
+    },
+    {
+      "name": "ratio",
+      "symbol": "ratio"
+    },
+    {
+      "name": "greeting",
+      "symbol": "greeting"
+    },
+    {
+      "name": "nothing",
+      "symbol": "nothing"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "answer",
+          "symbol": "answer"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "constant": {
+                "kind": "int",
+                "value": 42
+              },
+              "kind": "constant"
+            },
+            "name": "answer"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "ready",
+          "symbol": "ready"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "constant": {
+                "kind": "bool",
+                "value": true
+              },
+              "kind": "constant"
+            },
+            "name": "ready"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "ratio",
+          "symbol": "ratio"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "constant": {
+                "kind": "float",
+                "value": 3.5
+              },
+              "kind": "constant"
+            },
+            "name": "ratio"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "greeting",
+          "symbol": "greeting"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "constant": {
+                "kind": "string",
+                "value": "riot"
+              },
+              "kind": "constant"
+            },
+            "name": "greeting"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "nothing",
+          "symbol": "nothing"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "constant": {
+                "kind": "unit"
+              },
+              "kind": "constant"
+            },
+            "name": "nothing"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/exported_constants.ml",
+    "unit_name": "Exported_constants"
+  }
+}

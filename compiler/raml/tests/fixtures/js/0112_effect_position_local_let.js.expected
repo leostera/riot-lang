@@ -1,0 +1,59 @@
+{
+  "js": "import { print_endline as __print_endline } from \"./riot-runtime.js\";\n\nconst message = \"flattened\";\n\n__print_endline(message);\n",
+  "jst": {
+    "items": [
+      {
+        "import": {
+          "default": null,
+          "from": "./riot-runtime.js",
+          "names": [
+            {
+              "imported": "print_endline",
+              "local": "__print_endline"
+            }
+          ]
+        },
+        "kind": "import"
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "flattened"
+              }
+            },
+            "kind": "const",
+            "name": "message"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "expression": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "identifier",
+                  "name": "message"
+                }
+              ],
+              "callee": {
+                "kind": "identifier",
+                "name": "__print_endline"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "expression"
+        }
+      }
+    ],
+    "module_name": "Effect_position_local_let"
+  }
+}

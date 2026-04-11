@@ -1,0 +1,45 @@
+{
+  "js": "import { print_char as __print_char } from \"./riot-runtime.js\";\n\n__print_char(\":\");\n",
+  "jst": {
+    "items": [
+      {
+        "import": {
+          "default": null,
+          "from": "./riot-runtime.js",
+          "names": [
+            {
+              "imported": "print_char",
+              "local": "__print_char"
+            }
+          ]
+        },
+        "kind": "import"
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "expression": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": ":"
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "identifier",
+                "name": "__print_char"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "expression"
+        }
+      }
+    ],
+    "module_name": "Print_char"
+  }
+}

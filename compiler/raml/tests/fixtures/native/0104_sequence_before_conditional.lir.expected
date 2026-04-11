@@ -1,0 +1,941 @@
+{
+  "initial": {
+    "exports": [
+      {
+        "name": "choose",
+        "symbol": "choose"
+      },
+      {
+        "name": "left",
+        "symbol": "left"
+      },
+      {
+        "name": "right",
+        "symbol": "right"
+      }
+    ],
+    "module_name": "Sequence_before_conditional",
+    "procedures": [
+      {
+        "body": [
+          {
+            "kind": "label",
+            "name": "choose__local_consume_0"
+          },
+          {
+            "kind": "return",
+            "operand": {
+              "kind": "register",
+              "name": "value"
+            }
+          }
+        ],
+        "kind": "function",
+        "name": "choose__local_consume_0",
+        "params": [
+          "value"
+        ]
+      },
+      {
+        "body": [
+          {
+            "kind": "label",
+            "name": "choose"
+          },
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "unit"
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t0"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "choose__local_consume_0"
+            },
+            "dst": "t1",
+            "kind": "call"
+          },
+          {
+            "dst": "t2",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t1"
+            }
+          },
+          {
+            "kind": "branch_if_zero",
+            "operand": {
+              "kind": "register",
+              "name": "flag"
+            },
+            "target": "L__raml_else_0"
+          },
+          {
+            "dst": "t3",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "left"
+              }
+            }
+          },
+          {
+            "dst": "t5",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t3"
+            }
+          },
+          {
+            "kind": "jump",
+            "target": "L__raml_endif_1"
+          },
+          {
+            "kind": "label",
+            "name": "L__raml_else_0"
+          },
+          {
+            "dst": "t4",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "right"
+              }
+            }
+          },
+          {
+            "dst": "t5",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t4"
+            }
+          },
+          {
+            "kind": "label",
+            "name": "L__raml_endif_1"
+          },
+          {
+            "dst": "t6",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t5"
+            }
+          },
+          {
+            "kind": "return",
+            "operand": {
+              "kind": "register",
+              "name": "t6"
+            }
+          }
+        ],
+        "kind": "function",
+        "name": "choose",
+        "params": [
+          "flag"
+        ]
+      },
+      {
+        "body": [
+          {
+            "kind": "label",
+            "name": "__entry__"
+          },
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "bool",
+                "value": true
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t0"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "choose"
+            },
+            "dst": "t1",
+            "kind": "call"
+          },
+          {
+            "kind": "store_global",
+            "src": {
+              "kind": "register",
+              "name": "t1"
+            },
+            "symbol": "left"
+          },
+          {
+            "dst": "t2",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "bool",
+                "value": false
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t2"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "choose"
+            },
+            "dst": "t3",
+            "kind": "call"
+          },
+          {
+            "kind": "store_global",
+            "src": {
+              "kind": "register",
+              "name": "t3"
+            },
+            "symbol": "right"
+          }
+        ],
+        "kind": "entry",
+        "name": "__entry__",
+        "params": []
+      }
+    ]
+  },
+  "passes": {
+    "layout_frames": {
+      "exports": [
+        {
+          "name": "choose",
+          "symbol": "choose"
+        },
+        {
+          "name": "left",
+          "symbol": "left"
+        },
+        {
+          "name": "right",
+          "symbol": "right"
+        }
+      ],
+      "module_name": "Sequence_before_conditional",
+      "procedures": [
+        {
+          "body": [
+            {
+              "kind": "label",
+              "name": "choose__local_consume_0"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "value"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "choose__local_consume_0",
+          "params": [
+            "value"
+          ]
+        },
+        {
+          "body": [
+            {
+              "kind": "label",
+              "name": "choose"
+            },
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "unit"
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose__local_consume_0"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "dst": "t2",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              }
+            },
+            {
+              "kind": "branch_if_zero",
+              "operand": {
+                "kind": "register",
+                "name": "flag"
+              },
+              "target": "L__raml_else_0"
+            },
+            {
+              "dst": "t3",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "left"
+                }
+              }
+            },
+            {
+              "dst": "t5",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t3"
+              }
+            },
+            {
+              "kind": "jump",
+              "target": "L__raml_endif_1"
+            },
+            {
+              "kind": "label",
+              "name": "L__raml_else_0"
+            },
+            {
+              "dst": "t4",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "right"
+                }
+              }
+            },
+            {
+              "dst": "t5",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t4"
+              }
+            },
+            {
+              "kind": "label",
+              "name": "L__raml_endif_1"
+            },
+            {
+              "dst": "t6",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t5"
+              }
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t6"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "choose",
+          "params": [
+            "flag"
+          ]
+        },
+        {
+          "body": [
+            {
+              "kind": "label",
+              "name": "__entry__"
+            },
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "bool",
+                  "value": true
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "symbol": "left"
+            },
+            {
+              "dst": "t2",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "bool",
+                  "value": false
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t2"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose"
+              },
+              "dst": "t3",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t3"
+              },
+              "symbol": "right"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    },
+    "schedule": {
+      "exports": [
+        {
+          "name": "choose",
+          "symbol": "choose"
+        },
+        {
+          "name": "left",
+          "symbol": "left"
+        },
+        {
+          "name": "right",
+          "symbol": "right"
+        }
+      ],
+      "module_name": "Sequence_before_conditional",
+      "procedures": [
+        {
+          "body": [
+            {
+              "kind": "label",
+              "name": "choose__local_consume_0"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "value"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "choose__local_consume_0",
+          "params": [
+            "value"
+          ]
+        },
+        {
+          "body": [
+            {
+              "kind": "label",
+              "name": "choose"
+            },
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "unit"
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose__local_consume_0"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "dst": "t2",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              }
+            },
+            {
+              "kind": "branch_if_zero",
+              "operand": {
+                "kind": "register",
+                "name": "flag"
+              },
+              "target": "L__raml_else_0"
+            },
+            {
+              "dst": "t3",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "left"
+                }
+              }
+            },
+            {
+              "dst": "t5",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t3"
+              }
+            },
+            {
+              "kind": "jump",
+              "target": "L__raml_endif_1"
+            },
+            {
+              "kind": "label",
+              "name": "L__raml_else_0"
+            },
+            {
+              "dst": "t4",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "right"
+                }
+              }
+            },
+            {
+              "dst": "t5",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t4"
+              }
+            },
+            {
+              "kind": "label",
+              "name": "L__raml_endif_1"
+            },
+            {
+              "dst": "t6",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t5"
+              }
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t6"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "choose",
+          "params": [
+            "flag"
+          ]
+        },
+        {
+          "body": [
+            {
+              "kind": "label",
+              "name": "__entry__"
+            },
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "bool",
+                  "value": true
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              },
+              "symbol": "left"
+            },
+            {
+              "dst": "t2",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "bool",
+                  "value": false
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t2"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "choose"
+              },
+              "dst": "t3",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t3"
+              },
+              "symbol": "right"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    }
+  },
+  "program": {
+    "exports": [
+      {
+        "name": "choose",
+        "symbol": "choose"
+      },
+      {
+        "name": "left",
+        "symbol": "left"
+      },
+      {
+        "name": "right",
+        "symbol": "right"
+      }
+    ],
+    "module_name": "Sequence_before_conditional",
+    "procedures": [
+      {
+        "body": [
+          {
+            "kind": "label",
+            "name": "choose__local_consume_0"
+          },
+          {
+            "kind": "return",
+            "operand": {
+              "kind": "register",
+              "name": "value"
+            }
+          }
+        ],
+        "kind": "function",
+        "name": "choose__local_consume_0",
+        "params": [
+          "value"
+        ]
+      },
+      {
+        "body": [
+          {
+            "kind": "label",
+            "name": "choose"
+          },
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "unit"
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t0"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "choose__local_consume_0"
+            },
+            "dst": "t1",
+            "kind": "call"
+          },
+          {
+            "dst": "t2",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t1"
+            }
+          },
+          {
+            "kind": "branch_if_zero",
+            "operand": {
+              "kind": "register",
+              "name": "flag"
+            },
+            "target": "L__raml_else_0"
+          },
+          {
+            "dst": "t3",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "left"
+              }
+            }
+          },
+          {
+            "dst": "t5",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t3"
+            }
+          },
+          {
+            "kind": "jump",
+            "target": "L__raml_endif_1"
+          },
+          {
+            "kind": "label",
+            "name": "L__raml_else_0"
+          },
+          {
+            "dst": "t4",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "right"
+              }
+            }
+          },
+          {
+            "dst": "t5",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t4"
+            }
+          },
+          {
+            "kind": "label",
+            "name": "L__raml_endif_1"
+          },
+          {
+            "dst": "t6",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t5"
+            }
+          },
+          {
+            "kind": "return",
+            "operand": {
+              "kind": "register",
+              "name": "t6"
+            }
+          }
+        ],
+        "kind": "function",
+        "name": "choose",
+        "params": [
+          "flag"
+        ]
+      },
+      {
+        "body": [
+          {
+            "kind": "label",
+            "name": "__entry__"
+          },
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "bool",
+                "value": true
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t0"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "choose"
+            },
+            "dst": "t1",
+            "kind": "call"
+          },
+          {
+            "kind": "store_global",
+            "src": {
+              "kind": "register",
+              "name": "t1"
+            },
+            "symbol": "left"
+          },
+          {
+            "dst": "t2",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "bool",
+                "value": false
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t2"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "choose"
+            },
+            "dst": "t3",
+            "kind": "call"
+          },
+          {
+            "kind": "store_global",
+            "src": {
+              "kind": "register",
+              "name": "t3"
+            },
+            "symbol": "right"
+          }
+        ],
+        "kind": "entry",
+        "name": "__entry__",
+        "params": []
+      }
+    ]
+  },
+  "status": "ok"
+}

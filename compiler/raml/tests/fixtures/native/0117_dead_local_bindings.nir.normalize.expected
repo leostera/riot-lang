@@ -1,0 +1,96 @@
+{
+  "entry": [
+    {
+      "binding": {
+        "expr": {
+          "kind": "let",
+          "let": {
+            "bindings": [
+              {
+                "expr": {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "int",
+                    "value": 10
+                  }
+                },
+                "name": "unused"
+              }
+            ],
+            "body": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 42
+              }
+            }
+          }
+        },
+        "name": "result"
+      },
+      "kind": "binding"
+    },
+    {
+      "expr": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "%d\\n"
+              }
+            },
+            {
+              "kind": "symbol",
+              "name": "result"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "Printf.printf"
+          }
+        },
+        "kind": "call"
+      },
+      "kind": "eval"
+    }
+  ],
+  "exports": [
+    {
+      "name": "result",
+      "symbol": "result"
+    }
+  ],
+  "functions": [
+    {
+      "body": {
+        "call": {
+          "arguments": [
+            {
+              "kind": "symbol",
+              "name": "x"
+            },
+            {
+              "kind": "symbol",
+              "name": "unused"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "+"
+          }
+        },
+        "kind": "call"
+      },
+      "name": "result__local_dead_0",
+      "params": [
+        "unused",
+        "x"
+      ]
+    }
+  ],
+  "imports": [],
+  "module_name": "Dead_local_bindings",
+  "runtime_helpers": []
+}

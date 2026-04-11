@@ -1,0 +1,182 @@
+{
+  "js": "const choose = (function(flag) {\n  const consume = (function(value) {\n    return value;\n  });\n  consume(undefined);\n  const selected = (flag ? \"left\" : \"right\");\n  return selected;\n});\n\nconst left = choose(true);\n\nconst right = choose(false);\n\nexport {\n  choose,\n  left,\n  right\n};\n",
+  "jst": {
+    "items": [
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "function": {
+                "body": [
+                  {
+                    "declaration": {
+                      "init": {
+                        "function": {
+                          "body": [
+                            {
+                              "expression": {
+                                "kind": "identifier",
+                                "name": "value"
+                              },
+                              "kind": "return"
+                            }
+                          ],
+                          "params": [
+                            "value"
+                          ]
+                        },
+                        "kind": "function"
+                      },
+                      "kind": "const",
+                      "name": "consume"
+                    },
+                    "kind": "declaration"
+                  },
+                  {
+                    "expression": {
+                      "call": {
+                        "arguments": [
+                          {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "undefined"
+                            }
+                          }
+                        ],
+                        "callee": {
+                          "kind": "identifier",
+                          "name": "consume"
+                        }
+                      },
+                      "kind": "call"
+                    },
+                    "kind": "expression"
+                  },
+                  {
+                    "declaration": {
+                      "init": {
+                        "conditional": {
+                          "condition": {
+                            "kind": "identifier",
+                            "name": "flag"
+                          },
+                          "else": {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "string",
+                              "value": "right"
+                            }
+                          },
+                          "then": {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "string",
+                              "value": "left"
+                            }
+                          }
+                        },
+                        "kind": "conditional"
+                      },
+                      "kind": "const",
+                      "name": "selected"
+                    },
+                    "kind": "declaration"
+                  },
+                  {
+                    "expression": {
+                      "kind": "identifier",
+                      "name": "selected"
+                    },
+                    "kind": "return"
+                  }
+                ],
+                "params": [
+                  "flag"
+                ]
+              },
+              "kind": "function"
+            },
+            "kind": "const",
+            "name": "choose"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "bool",
+                      "value": true
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "choose"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "left"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "bool",
+                      "value": false
+                    }
+                  }
+                ],
+                "callee": {
+                  "kind": "identifier",
+                  "name": "choose"
+                }
+              },
+              "kind": "call"
+            },
+            "kind": "const",
+            "name": "right"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "exports": [
+          {
+            "local": "choose",
+            "name": "choose"
+          },
+          {
+            "local": "left",
+            "name": "left"
+          },
+          {
+            "local": "right",
+            "name": "right"
+          }
+        ],
+        "kind": "export"
+      }
+    ],
+    "module_name": "Sequence_before_conditional"
+  }
+}

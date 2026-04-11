@@ -1,0 +1,133 @@
+{
+  "js": "import * as Printf from \"./Printf.js\";\n\nconst choose = (function(cond) {\n  if (cond) {\n    return 1;\n  } else {\n    return 0;\n  }\n});\n\nPrintf.printf(\"%d\\\\n\", choose(true));\n\nexport {\n  choose\n};\n",
+  "jst": {
+    "items": [
+      {
+        "import": {
+          "default": null,
+          "from": "./Printf.js",
+          "names": [],
+          "namespace": "Printf"
+        },
+        "kind": "import"
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "function": {
+                "body": [
+                  {
+                    "if": {
+                      "condition": {
+                        "kind": "identifier",
+                        "name": "cond"
+                      },
+                      "else": [
+                        {
+                          "expression": {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "number",
+                              "number": {
+                                "kind": "int",
+                                "value": 0
+                              }
+                            }
+                          },
+                          "kind": "return"
+                        }
+                      ],
+                      "then": [
+                        {
+                          "expression": {
+                            "kind": "literal",
+                            "literal": {
+                              "kind": "number",
+                              "number": {
+                                "kind": "int",
+                                "value": 1
+                              }
+                            }
+                          },
+                          "kind": "return"
+                        }
+                      ]
+                    },
+                    "kind": "if"
+                  }
+                ],
+                "params": [
+                  "cond"
+                ]
+              },
+              "kind": "function"
+            },
+            "kind": "const",
+            "name": "choose"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "expression": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "%d\\n"
+                  }
+                },
+                {
+                  "call": {
+                    "arguments": [
+                      {
+                        "kind": "literal",
+                        "literal": {
+                          "kind": "bool",
+                          "value": true
+                        }
+                      }
+                    ],
+                    "callee": {
+                      "kind": "identifier",
+                      "name": "choose"
+                    }
+                  },
+                  "kind": "call"
+                }
+              ],
+              "callee": {
+                "kind": "member",
+                "member": {
+                  "object": {
+                    "kind": "identifier",
+                    "name": "Printf"
+                  },
+                  "property": "printf"
+                }
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "expression"
+        }
+      },
+      {
+        "exports": [
+          {
+            "local": "choose",
+            "name": "choose"
+          }
+        ],
+        "kind": "export"
+      }
+    ],
+    "module_name": "If_then_else"
+  }
+}

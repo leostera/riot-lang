@@ -1,0 +1,201 @@
+{
+  "exports": [
+    {
+      "name": "choose",
+      "symbol": "choose"
+    },
+    {
+      "name": "left",
+      "symbol": "left"
+    },
+    {
+      "name": "right",
+      "symbol": "right"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "choose",
+          "symbol": "choose"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "kind": "let",
+                  "let": {
+                    "bindings": [
+                      {
+                        "expr": {
+                          "kind": "lambda",
+                          "lambda": {
+                            "body": {
+                              "kind": "var",
+                              "name": "value"
+                            },
+                            "params": [
+                              "value"
+                            ]
+                          }
+                        },
+                        "name": "consume"
+                      }
+                    ],
+                    "body": {
+                      "kind": "sequence",
+                      "sequence": {
+                        "first": {
+                          "apply": {
+                            "arguments": [
+                              {
+                                "constant": {
+                                  "kind": "unit"
+                                },
+                                "kind": "constant"
+                              }
+                            ],
+                            "callee": {
+                              "function": "consume",
+                              "kind": "direct"
+                            }
+                          },
+                          "kind": "apply"
+                        },
+                        "second": {
+                          "kind": "let",
+                          "let": {
+                            "bindings": [
+                              {
+                                "expr": {
+                                  "if_then_else": {
+                                    "condition": {
+                                      "kind": "var",
+                                      "name": "flag"
+                                    },
+                                    "else": {
+                                      "constant": {
+                                        "kind": "string",
+                                        "value": "right"
+                                      },
+                                      "kind": "constant"
+                                    },
+                                    "then": {
+                                      "constant": {
+                                        "kind": "string",
+                                        "value": "left"
+                                      },
+                                      "kind": "constant"
+                                    }
+                                  },
+                                  "kind": "if_then_else"
+                                },
+                                "name": "selected"
+                              }
+                            ],
+                            "body": {
+                              "kind": "var",
+                              "name": "selected"
+                            },
+                            "rec_flag": "nonrecursive"
+                          }
+                        }
+                      }
+                    },
+                    "rec_flag": "nonrecursive"
+                  }
+                },
+                "params": [
+                  "flag"
+                ]
+              }
+            },
+            "name": "choose"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "left",
+          "symbol": "left"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "constant": {
+                      "kind": "bool",
+                      "value": true
+                    },
+                    "kind": "constant"
+                  }
+                ],
+                "callee": {
+                  "function": "choose",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "left"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "right",
+          "symbol": "right"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "constant": {
+                      "kind": "bool",
+                      "value": false
+                    },
+                    "kind": "constant"
+                  }
+                ],
+                "callee": {
+                  "function": "choose",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "right"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/sequence_before_conditional.ml",
+    "unit_name": "Sequence_before_conditional"
+  }
+}

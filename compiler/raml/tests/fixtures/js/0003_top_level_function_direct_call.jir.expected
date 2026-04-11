@@ -1,0 +1,80 @@
+{
+  "body": [
+    {
+      "declaration": {
+        "init": {
+          "kind": "literal",
+          "literal": {
+            "kind": "string",
+            "value": "riot"
+          }
+        },
+        "kind": "const",
+        "name": "subject"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": {
+          "function": {
+            "body": [
+              {
+                "expression": {
+                  "kind": "identifier",
+                  "name": "value"
+                },
+                "kind": "return"
+              }
+            ],
+            "params": [
+              "value"
+            ]
+          },
+          "kind": "function"
+        },
+        "kind": "const",
+        "name": "identity"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": {
+          "call": {
+            "arguments": [
+              {
+                "kind": "identifier",
+                "name": "subject"
+              }
+            ],
+            "callee": {
+              "kind": "identifier",
+              "name": "identity"
+            }
+          },
+          "kind": "call"
+        },
+        "kind": "const",
+        "name": "echoed"
+      },
+      "kind": "declaration"
+    }
+  ],
+  "exports": [
+    {
+      "local": "subject",
+      "name": "subject"
+    },
+    {
+      "local": "identity",
+      "name": "identity"
+    },
+    {
+      "local": "echoed",
+      "name": "echoed"
+    }
+  ],
+  "imports": [],
+  "module_name": "Top_level_function_direct_call"
+}

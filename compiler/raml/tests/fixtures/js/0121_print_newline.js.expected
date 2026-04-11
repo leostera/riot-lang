@@ -1,0 +1,44 @@
+{
+  "js": "import { print_newline as __print_newline } from \"./riot-runtime.js\";\n\n__print_newline(undefined);\n",
+  "jst": {
+    "items": [
+      {
+        "import": {
+          "default": null,
+          "from": "./riot-runtime.js",
+          "names": [
+            {
+              "imported": "print_newline",
+              "local": "__print_newline"
+            }
+          ]
+        },
+        "kind": "import"
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "expression": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "undefined"
+                  }
+                }
+              ],
+              "callee": {
+                "kind": "identifier",
+                "name": "__print_newline"
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "expression"
+        }
+      }
+    ],
+    "module_name": "Print_newline"
+  }
+}

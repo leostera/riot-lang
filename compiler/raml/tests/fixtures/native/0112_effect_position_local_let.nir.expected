@@ -1,0 +1,181 @@
+{
+  "initial": {
+    "entry": [
+      {
+        "expr": {
+          "kind": "let",
+          "let": {
+            "bindings": [
+              {
+                "expr": {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "flattened"
+                  }
+                },
+                "name": "message"
+              }
+            ],
+            "body": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "symbol",
+                    "name": "message"
+                  }
+                ],
+                "callee": {
+                  "kind": "direct",
+                  "name": "print_endline"
+                }
+              },
+              "kind": "call"
+            }
+          }
+        },
+        "kind": "eval"
+      }
+    ],
+    "exports": [],
+    "functions": [],
+    "imports": [],
+    "module_name": "Effect_position_local_let",
+    "runtime_helpers": []
+  },
+  "passes": {
+    "normalize": {
+      "entry": [
+        {
+          "expr": {
+            "kind": "let",
+            "let": {
+              "bindings": [
+                {
+                  "expr": {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "flattened"
+                    }
+                  },
+                  "name": "message"
+                }
+              ],
+              "body": {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "symbol",
+                      "name": "message"
+                    }
+                  ],
+                  "callee": {
+                    "kind": "direct",
+                    "name": "print_endline"
+                  }
+                },
+                "kind": "call"
+              }
+            }
+          },
+          "kind": "eval"
+        }
+      ],
+      "exports": [],
+      "functions": [],
+      "imports": [],
+      "module_name": "Effect_position_local_let",
+      "runtime_helpers": []
+    },
+    "simplify": {
+      "entry": [
+        {
+          "expr": {
+            "kind": "let",
+            "let": {
+              "bindings": [
+                {
+                  "expr": {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "string",
+                      "value": "flattened"
+                    }
+                  },
+                  "name": "message"
+                }
+              ],
+              "body": {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "symbol",
+                      "name": "message"
+                    }
+                  ],
+                  "callee": {
+                    "kind": "direct",
+                    "name": "print_endline"
+                  }
+                },
+                "kind": "call"
+              }
+            }
+          },
+          "kind": "eval"
+        }
+      ],
+      "exports": [],
+      "functions": [],
+      "imports": [],
+      "module_name": "Effect_position_local_let",
+      "runtime_helpers": []
+    }
+  },
+  "program": {
+    "entry": [
+      {
+        "expr": {
+          "kind": "let",
+          "let": {
+            "bindings": [
+              {
+                "expr": {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "flattened"
+                  }
+                },
+                "name": "message"
+              }
+            ],
+            "body": {
+              "call": {
+                "arguments": [
+                  {
+                    "kind": "symbol",
+                    "name": "message"
+                  }
+                ],
+                "callee": {
+                  "kind": "direct",
+                  "name": "print_endline"
+                }
+              },
+              "kind": "call"
+            }
+          }
+        },
+        "kind": "eval"
+      }
+    ],
+    "exports": [],
+    "functions": [],
+    "imports": [],
+    "module_name": "Effect_position_local_let",
+    "runtime_helpers": []
+  },
+  "status": "ok"
+}

@@ -1,0 +1,385 @@
+{
+  "initial": {
+    "exports": [
+      {
+        "name": "larger",
+        "symbol": "larger"
+      }
+    ],
+    "module_name": "Greater_than_comparison",
+    "procedures": [
+      {
+        "body": [
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 5
+              }
+            }
+          },
+          {
+            "dst": "t1",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 3
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t0"
+              },
+              {
+                "kind": "register",
+                "name": "t1"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": ">"
+            },
+            "dst": "t2",
+            "kind": "call"
+          },
+          {
+            "kind": "store_global",
+            "src": {
+              "kind": "register",
+              "name": "t2"
+            },
+            "symbol": "larger"
+          },
+          {
+            "dst": "t3",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "%b\\n"
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t3"
+              },
+              {
+                "kind": "global",
+                "name": "larger"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "Printf.printf"
+            },
+            "dst": "t4",
+            "kind": "call"
+          }
+        ],
+        "kind": "entry",
+        "name": "__entry__",
+        "params": []
+      }
+    ]
+  },
+  "passes": {
+    "canonicalize": {
+      "exports": [
+        {
+          "name": "larger",
+          "symbol": "larger"
+        }
+      ],
+      "module_name": "Greater_than_comparison",
+      "procedures": [
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 5
+                }
+              }
+            },
+            {
+              "dst": "t1",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 3
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t0"
+                },
+                {
+                  "kind": "register",
+                  "name": "t1"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": ">"
+              },
+              "dst": "t2",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t2"
+              },
+              "symbol": "larger"
+            },
+            {
+              "dst": "t3",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "%b\\n"
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t3"
+                },
+                {
+                  "kind": "global",
+                  "name": "larger"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "Printf.printf"
+              },
+              "dst": "t4",
+              "kind": "call"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    },
+    "insert_polls": {
+      "exports": [
+        {
+          "name": "larger",
+          "symbol": "larger"
+        }
+      ],
+      "module_name": "Greater_than_comparison",
+      "procedures": [
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 5
+                }
+              }
+            },
+            {
+              "dst": "t1",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 3
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t0"
+                },
+                {
+                  "kind": "register",
+                  "name": "t1"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": ">"
+              },
+              "dst": "t2",
+              "kind": "call"
+            },
+            {
+              "kind": "store_global",
+              "src": {
+                "kind": "register",
+                "name": "t2"
+              },
+              "symbol": "larger"
+            },
+            {
+              "dst": "t3",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "%b\\n"
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t3"
+                },
+                {
+                  "kind": "global",
+                  "name": "larger"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "Printf.printf"
+              },
+              "dst": "t4",
+              "kind": "call"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    }
+  },
+  "program": {
+    "exports": [
+      {
+        "name": "larger",
+        "symbol": "larger"
+      }
+    ],
+    "module_name": "Greater_than_comparison",
+    "procedures": [
+      {
+        "body": [
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 5
+              }
+            }
+          },
+          {
+            "dst": "t1",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 3
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t0"
+              },
+              {
+                "kind": "register",
+                "name": "t1"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": ">"
+            },
+            "dst": "t2",
+            "kind": "call"
+          },
+          {
+            "kind": "store_global",
+            "src": {
+              "kind": "register",
+              "name": "t2"
+            },
+            "symbol": "larger"
+          },
+          {
+            "dst": "t3",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "%b\\n"
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t3"
+              },
+              {
+                "kind": "global",
+                "name": "larger"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "Printf.printf"
+            },
+            "dst": "t4",
+            "kind": "call"
+          }
+        ],
+        "kind": "entry",
+        "name": "__entry__",
+        "params": []
+      }
+    ]
+  },
+  "status": "ok"
+}

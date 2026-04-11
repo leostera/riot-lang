@@ -1,0 +1,1133 @@
+{
+  "initial": {
+    "exports": [
+      {
+        "name": "make_adder",
+        "symbol": "make_adder"
+      }
+    ],
+    "module_name": "Local_functions_and_closures",
+    "procedures": [
+      {
+        "body": [
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "__closure__"
+              },
+              {
+                "kind": "register",
+                "name": "t0"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "raml_tuple_get"
+            },
+            "dst": "t1",
+            "kind": "call"
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t1"
+              },
+              {
+                "kind": "register",
+                "name": "x"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "make_adder__local_add_0"
+            },
+            "dst": "t2",
+            "kind": "call"
+          },
+          {
+            "kind": "return",
+            "operand": {
+              "kind": "register",
+              "name": "t2"
+            }
+          }
+        ],
+        "kind": "function",
+        "name": "make_adder__local_add_0__closure",
+        "params": [
+          "__closure__",
+          "x"
+        ]
+      },
+      {
+        "body": [
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "base"
+              },
+              {
+                "kind": "register",
+                "name": "x"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "+"
+            },
+            "dst": "t0",
+            "kind": "call"
+          },
+          {
+            "kind": "return",
+            "operand": {
+              "kind": "register",
+              "name": "t0"
+            }
+          }
+        ],
+        "kind": "function",
+        "name": "make_adder__local_add_0",
+        "params": [
+          "base",
+          "x"
+        ]
+      },
+      {
+        "body": [
+          {
+            "arguments": [
+              {
+                "kind": "symbol_address",
+                "name": "make_adder__local_add_0__closure"
+              },
+              {
+                "kind": "register",
+                "name": "base"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "raml_tuple_make_2"
+            },
+            "dst": "t0",
+            "kind": "call"
+          },
+          {
+            "kind": "return",
+            "operand": {
+              "kind": "register",
+              "name": "t0"
+            }
+          }
+        ],
+        "kind": "function",
+        "name": "make_adder",
+        "params": [
+          "base"
+        ]
+      },
+      {
+        "body": [
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 7
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t0"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "make_adder"
+            },
+            "dst": "t1",
+            "kind": "call"
+          },
+          {
+            "dst": "t2",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t1"
+            }
+          },
+          {
+            "dst": "t3",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "%d\\n"
+              }
+            }
+          },
+          {
+            "dst": "t4",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t2"
+            }
+          },
+          {
+            "dst": "t5",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 0
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t4"
+              },
+              {
+                "kind": "register",
+                "name": "t5"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "raml_tuple_get"
+            },
+            "dst": "t6",
+            "kind": "call"
+          },
+          {
+            "dst": "t7",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 35
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t4"
+              },
+              {
+                "kind": "register",
+                "name": "t7"
+              }
+            ],
+            "callee": {
+              "kind": "indirect",
+              "operand": {
+                "kind": "register",
+                "name": "t6"
+              }
+            },
+            "dst": "t8",
+            "kind": "call"
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t3"
+              },
+              {
+                "kind": "register",
+                "name": "t8"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "Printf.printf"
+            },
+            "dst": "t9",
+            "kind": "call"
+          }
+        ],
+        "kind": "entry",
+        "name": "__entry__",
+        "params": []
+      }
+    ]
+  },
+  "passes": {
+    "canonicalize": {
+      "exports": [
+        {
+          "name": "make_adder",
+          "symbol": "make_adder"
+        }
+      ],
+      "module_name": "Local_functions_and_closures",
+      "procedures": [
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "__closure__"
+                },
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_tuple_get"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t1"
+                },
+                {
+                  "kind": "register",
+                  "name": "x"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "make_adder__local_add_0"
+              },
+              "dst": "t2",
+              "kind": "call"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t2"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "make_adder__local_add_0__closure",
+          "params": [
+            "__closure__",
+            "x"
+          ]
+        },
+        {
+          "body": [
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "base"
+                },
+                {
+                  "kind": "register",
+                  "name": "x"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "+"
+              },
+              "dst": "t0",
+              "kind": "call"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t0"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "make_adder__local_add_0",
+          "params": [
+            "base",
+            "x"
+          ]
+        },
+        {
+          "body": [
+            {
+              "arguments": [
+                {
+                  "kind": "symbol_address",
+                  "name": "make_adder__local_add_0__closure"
+                },
+                {
+                  "kind": "register",
+                  "name": "base"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_tuple_make_2"
+              },
+              "dst": "t0",
+              "kind": "call"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t0"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "make_adder",
+          "params": [
+            "base"
+          ]
+        },
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 7
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "make_adder"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "dst": "t2",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              }
+            },
+            {
+              "dst": "t3",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "%d\\n"
+                }
+              }
+            },
+            {
+              "dst": "t4",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t2"
+              }
+            },
+            {
+              "dst": "t5",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t4"
+                },
+                {
+                  "kind": "register",
+                  "name": "t5"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_tuple_get"
+              },
+              "dst": "t6",
+              "kind": "call"
+            },
+            {
+              "dst": "t7",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 35
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t4"
+                },
+                {
+                  "kind": "register",
+                  "name": "t7"
+                }
+              ],
+              "callee": {
+                "kind": "indirect",
+                "operand": {
+                  "kind": "register",
+                  "name": "t6"
+                }
+              },
+              "dst": "t8",
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t3"
+                },
+                {
+                  "kind": "register",
+                  "name": "t8"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "Printf.printf"
+              },
+              "dst": "t9",
+              "kind": "call"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    },
+    "insert_polls": {
+      "exports": [
+        {
+          "name": "make_adder",
+          "symbol": "make_adder"
+        }
+      ],
+      "module_name": "Local_functions_and_closures",
+      "procedures": [
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "__closure__"
+                },
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_tuple_get"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t1"
+                },
+                {
+                  "kind": "register",
+                  "name": "x"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "make_adder__local_add_0"
+              },
+              "dst": "t2",
+              "kind": "call"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t2"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "make_adder__local_add_0__closure",
+          "params": [
+            "__closure__",
+            "x"
+          ]
+        },
+        {
+          "body": [
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "base"
+                },
+                {
+                  "kind": "register",
+                  "name": "x"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "+"
+              },
+              "dst": "t0",
+              "kind": "call"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t0"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "make_adder__local_add_0",
+          "params": [
+            "base",
+            "x"
+          ]
+        },
+        {
+          "body": [
+            {
+              "arguments": [
+                {
+                  "kind": "symbol_address",
+                  "name": "make_adder__local_add_0__closure"
+                },
+                {
+                  "kind": "register",
+                  "name": "base"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_tuple_make_2"
+              },
+              "dst": "t0",
+              "kind": "call"
+            },
+            {
+              "kind": "return",
+              "operand": {
+                "kind": "register",
+                "name": "t0"
+              }
+            }
+          ],
+          "kind": "function",
+          "name": "make_adder",
+          "params": [
+            "base"
+          ]
+        },
+        {
+          "body": [
+            {
+              "dst": "t0",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 7
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t0"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "make_adder"
+              },
+              "dst": "t1",
+              "kind": "call"
+            },
+            {
+              "dst": "t2",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t1"
+              }
+            },
+            {
+              "dst": "t3",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "string",
+                  "value": "%d\\n"
+                }
+              }
+            },
+            {
+              "dst": "t4",
+              "kind": "move",
+              "src": {
+                "kind": "register",
+                "name": "t2"
+              }
+            },
+            {
+              "dst": "t5",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t4"
+                },
+                {
+                  "kind": "register",
+                  "name": "t5"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "raml_tuple_get"
+              },
+              "dst": "t6",
+              "kind": "call"
+            },
+            {
+              "dst": "t7",
+              "kind": "move",
+              "src": {
+                "kind": "literal",
+                "literal": {
+                  "kind": "int",
+                  "value": 35
+                }
+              }
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t4"
+                },
+                {
+                  "kind": "register",
+                  "name": "t7"
+                }
+              ],
+              "callee": {
+                "kind": "indirect",
+                "operand": {
+                  "kind": "register",
+                  "name": "t6"
+                }
+              },
+              "dst": "t8",
+              "kind": "call"
+            },
+            {
+              "arguments": [
+                {
+                  "kind": "register",
+                  "name": "t3"
+                },
+                {
+                  "kind": "register",
+                  "name": "t8"
+                }
+              ],
+              "callee": {
+                "kind": "direct",
+                "name": "Printf.printf"
+              },
+              "dst": "t9",
+              "kind": "call"
+            }
+          ],
+          "kind": "entry",
+          "name": "__entry__",
+          "params": []
+        }
+      ]
+    }
+  },
+  "program": {
+    "exports": [
+      {
+        "name": "make_adder",
+        "symbol": "make_adder"
+      }
+    ],
+    "module_name": "Local_functions_and_closures",
+    "procedures": [
+      {
+        "body": [
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 1
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "__closure__"
+              },
+              {
+                "kind": "register",
+                "name": "t0"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "raml_tuple_get"
+            },
+            "dst": "t1",
+            "kind": "call"
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t1"
+              },
+              {
+                "kind": "register",
+                "name": "x"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "make_adder__local_add_0"
+            },
+            "dst": "t2",
+            "kind": "call"
+          },
+          {
+            "kind": "return",
+            "operand": {
+              "kind": "register",
+              "name": "t2"
+            }
+          }
+        ],
+        "kind": "function",
+        "name": "make_adder__local_add_0__closure",
+        "params": [
+          "__closure__",
+          "x"
+        ]
+      },
+      {
+        "body": [
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "base"
+              },
+              {
+                "kind": "register",
+                "name": "x"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "+"
+            },
+            "dst": "t0",
+            "kind": "call"
+          },
+          {
+            "kind": "return",
+            "operand": {
+              "kind": "register",
+              "name": "t0"
+            }
+          }
+        ],
+        "kind": "function",
+        "name": "make_adder__local_add_0",
+        "params": [
+          "base",
+          "x"
+        ]
+      },
+      {
+        "body": [
+          {
+            "arguments": [
+              {
+                "kind": "symbol_address",
+                "name": "make_adder__local_add_0__closure"
+              },
+              {
+                "kind": "register",
+                "name": "base"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "raml_tuple_make_2"
+            },
+            "dst": "t0",
+            "kind": "call"
+          },
+          {
+            "kind": "return",
+            "operand": {
+              "kind": "register",
+              "name": "t0"
+            }
+          }
+        ],
+        "kind": "function",
+        "name": "make_adder",
+        "params": [
+          "base"
+        ]
+      },
+      {
+        "body": [
+          {
+            "dst": "t0",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 7
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t0"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "make_adder"
+            },
+            "dst": "t1",
+            "kind": "call"
+          },
+          {
+            "dst": "t2",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t1"
+            }
+          },
+          {
+            "dst": "t3",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "string",
+                "value": "%d\\n"
+              }
+            }
+          },
+          {
+            "dst": "t4",
+            "kind": "move",
+            "src": {
+              "kind": "register",
+              "name": "t2"
+            }
+          },
+          {
+            "dst": "t5",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 0
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t4"
+              },
+              {
+                "kind": "register",
+                "name": "t5"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "raml_tuple_get"
+            },
+            "dst": "t6",
+            "kind": "call"
+          },
+          {
+            "dst": "t7",
+            "kind": "move",
+            "src": {
+              "kind": "literal",
+              "literal": {
+                "kind": "int",
+                "value": 35
+              }
+            }
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t4"
+              },
+              {
+                "kind": "register",
+                "name": "t7"
+              }
+            ],
+            "callee": {
+              "kind": "indirect",
+              "operand": {
+                "kind": "register",
+                "name": "t6"
+              }
+            },
+            "dst": "t8",
+            "kind": "call"
+          },
+          {
+            "arguments": [
+              {
+                "kind": "register",
+                "name": "t3"
+              },
+              {
+                "kind": "register",
+                "name": "t8"
+              }
+            ],
+            "callee": {
+              "kind": "direct",
+              "name": "Printf.printf"
+            },
+            "dst": "t9",
+            "kind": "call"
+          }
+        ],
+        "kind": "entry",
+        "name": "__entry__",
+        "params": []
+      }
+    ]
+  },
+  "status": "ok"
+}

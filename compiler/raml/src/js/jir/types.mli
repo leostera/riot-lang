@@ -69,26 +69,35 @@ and declaration = {
   init: expr option;
 }
 
+and statement_if = {
+  condition: expr;
+  then_: statement list;
+  else_: statement list;
+}
+
 and statement =
   | Declaration of declaration
+  | Block of statement list
   | Expression of expr
   | Return of expr
+  | If of statement_if
 module Imports: sig
-  type requirement = import_requirement = {
+  type t = import_requirement = {
     from: string;
     imported: string option;
     local: string;
     namespace: bool;
   }
-  val make: from:string -> ?imported:string -> local:string -> unit -> requirement
+  type requirement = t
+  val make: from:string -> ?imported:string -> local:string -> unit -> t
 
-  val namespace: from:string -> local:string -> unit -> requirement
+  val namespace: from:string -> local:string -> unit -> t
 
-  val local: requirement -> string
+  val local: t -> string
 
-  val equal: requirement -> requirement -> bool
+  val equal: t -> t -> bool
 
-  val to_json: requirement -> Json.t
+  val to_json: t -> Json.t
 end
 
 module Runtime: sig
@@ -98,7 +107,25 @@ module Runtime: sig
     local: string;
   }
   type t = helper
+  val module_name: string
+
   val make: module_name:string -> symbol:string -> ?local:string -> unit -> helper
+
+  val call_primitive: unit -> helper
+
+  val make_curried: unit -> helper
+
+  val print_endline: unit -> helper
+
+  val print_newline: unit -> helper
+
+  val print_int: unit -> helper
+
+  val print_string: unit -> helper
+
+  val print_char: unit -> helper
+
+  val helper_for_direct_callee: string -> helper option
 
   val to_import: helper -> Imports.requirement
 
@@ -181,10 +208,19 @@ module Declaration: sig
 end
 
 module Statement: sig
+  type if_ = statement_if = {
+    condition: expr;
+    then_: statement list;
+    else_: statement list;
+  }
   type t = statement =
     | Declaration of declaration
+    | Block of statement list
     | Expression of expr
     | Return of expr
+    | If of if_
+  val if_to_json: if_ -> Json.t
+
   val to_json: t -> Json.t
 end
 

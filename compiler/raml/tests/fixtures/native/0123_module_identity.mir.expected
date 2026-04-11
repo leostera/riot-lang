@@ -1,0 +1,25 @@
+{
+  "initial": {
+    "exports": [],
+    "module_name": "Module_identity",
+    "procedures": []
+  },
+  "passes": {
+    "canonicalize": {
+      "exports": [],
+      "module_name": "Module_identity",
+      "procedures": []
+    },
+    "insert_polls": {
+      "exports": [],
+      "module_name": "Module_identity",
+      "procedures": []
+    }
+  },
+  "program": {
+    "exports": [],
+    "module_name": "Module_identity",
+    "procedures": []
+  },
+  "status": "ok"
+}

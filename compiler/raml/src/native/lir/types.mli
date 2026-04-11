@@ -15,6 +15,7 @@ module Operand: sig
   type t =
     | Register of string
     | Global of string
+    | Symbol_address of string
     | Literal of Literal.t
   val to_json: t -> Json.t
 end
@@ -32,6 +33,8 @@ module Instruction: sig
     | Move of { dst: string; src: Operand.t }
     | Store_global of { symbol: string; src: Operand.t }
     | Call of { dst: string option; callee: Callee.t; arguments: Operand.t list }
+    | Branch_if_zero of { operand: Operand.t; target: string }
+    | Jump of string
     | Return of Operand.t option
     | Comment of string
   val to_json: t -> Json.t

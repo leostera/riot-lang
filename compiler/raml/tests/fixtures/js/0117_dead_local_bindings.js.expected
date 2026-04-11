@@ -1,0 +1,112 @@
+{
+  "js": "import * as Printf from \"./Printf.js\";\n\nlet __raml_init_result;\n\n{\n  (__raml_init_result = 42);\n}\n\nconst result = __raml_init_result;\n\nPrintf.printf(\"%d\\\\n\", result);\n\nexport {\n  result\n};\n",
+  "jst": {
+    "items": [
+      {
+        "import": {
+          "default": null,
+          "from": "./Printf.js",
+          "names": [],
+          "namespace": "Printf"
+        },
+        "kind": "import"
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": null,
+            "kind": "let",
+            "name": "__raml_init_result"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "body": [
+            {
+              "expression": {
+                "assignment": {
+                  "target": "__raml_init_result",
+                  "value": {
+                    "kind": "literal",
+                    "literal": {
+                      "kind": "number",
+                      "number": {
+                        "kind": "int",
+                        "value": 42
+                      }
+                    }
+                  }
+                },
+                "kind": "assignment"
+              },
+              "kind": "expression"
+            }
+          ],
+          "kind": "block"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "declaration": {
+            "init": {
+              "kind": "identifier",
+              "name": "__raml_init_result"
+            },
+            "kind": "const",
+            "name": "result"
+          },
+          "kind": "declaration"
+        }
+      },
+      {
+        "kind": "statement",
+        "statement": {
+          "expression": {
+            "call": {
+              "arguments": [
+                {
+                  "kind": "literal",
+                  "literal": {
+                    "kind": "string",
+                    "value": "%d\\n"
+                  }
+                },
+                {
+                  "kind": "identifier",
+                  "name": "result"
+                }
+              ],
+              "callee": {
+                "kind": "member",
+                "member": {
+                  "object": {
+                    "kind": "identifier",
+                    "name": "Printf"
+                  },
+                  "property": "printf"
+                }
+              }
+            },
+            "kind": "call"
+          },
+          "kind": "expression"
+        }
+      },
+      {
+        "exports": [
+          {
+            "local": "result",
+            "name": "result"
+          }
+        ],
+        "kind": "export"
+      }
+    ],
+    "module_name": "Dead_local_bindings"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "initial": {
+    "exports": [],
+    "module_name": "Module_identity",
+    "procedures": []
+  },
+  "passes": {
+    "layout_frames": {
+      "exports": [],
+      "module_name": "Module_identity",
+      "procedures": []
+    },
+    "schedule": {
+      "exports": [],
+      "module_name": "Module_identity",
+      "procedures": []
+    }
+  },
+  "program": {
+    "exports": [],
+    "module_name": "Module_identity",
+    "procedures": []
+  },
+  "status": "ok"
+}

@@ -1,0 +1,328 @@
+{
+  "codegen": {
+    "js": {
+      "output": "import { makeCurried as __makeCurried } from \"./riot-runtime.js\";\n\nconst choose = __makeCurried((function(flag, when_true, when_false) {\n  if (flag) {\n    return when_true;\n  } else {\n    return when_false;\n  }\n}), 3);\n\nconst selected = choose(true, \"left\", \"right\");\n\nexport {\n  choose,\n  selected\n};\n",
+      "status": "ok"
+    },
+    "native": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "wasm": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    }
+  },
+  "lowered": {
+    "core_ir": {
+      "compilation_unit": {
+        "exports": [
+          {
+            "name": "choose",
+            "symbol": "choose"
+          },
+          {
+            "name": "selected",
+            "symbol": "selected"
+          }
+        ],
+        "init": [
+          {
+            "exports": [
+              {
+                "name": "choose",
+                "symbol": "choose"
+              }
+            ],
+            "items": [
+              {
+                "binding": {
+                  "expr": {
+                    "kind": "lambda",
+                    "lambda": {
+                      "body": {
+                        "if_then_else": {
+                          "condition": {
+                            "kind": "var",
+                            "name": "flag"
+                          },
+                          "else": {
+                            "kind": "var",
+                            "name": "when_false"
+                          },
+                          "then": {
+                            "kind": "var",
+                            "name": "when_true"
+                          }
+                        },
+                        "kind": "if_then_else"
+                      },
+                      "params": [
+                        "flag",
+                        "when_true",
+                        "when_false"
+                      ]
+                    }
+                  },
+                  "name": "choose"
+                },
+                "kind": "binding"
+              }
+            ],
+            "rec_flag": "nonrecursive"
+          },
+          {
+            "exports": [
+              {
+                "name": "selected",
+                "symbol": "selected"
+              }
+            ],
+            "items": [
+              {
+                "binding": {
+                  "expr": {
+                    "apply": {
+                      "arguments": [
+                        {
+                          "constant": {
+                            "kind": "bool",
+                            "value": true
+                          },
+                          "kind": "constant"
+                        },
+                        {
+                          "constant": {
+                            "kind": "string",
+                            "value": "left"
+                          },
+                          "kind": "constant"
+                        },
+                        {
+                          "constant": {
+                            "kind": "string",
+                            "value": "right"
+                          },
+                          "kind": "constant"
+                        }
+                      ],
+                      "callee": {
+                        "function": "choose",
+                        "kind": "direct"
+                      }
+                    },
+                    "kind": "apply"
+                  },
+                  "name": "selected"
+                },
+                "kind": "binding"
+              }
+            ],
+            "rec_flag": "nonrecursive"
+          }
+        ],
+        "unit_id": {
+          "kind": "implementation",
+          "relpath": "corpus/tail_conditional_direct_call.ml",
+          "unit_name": "Tail_conditional_direct_call"
+        }
+      },
+      "status": "ok"
+    },
+    "jir": {
+      "program": {
+        "body": [
+          {
+            "declaration": {
+              "init": {
+                "call": {
+                  "arguments": [
+                    {
+                      "function": {
+                        "body": [
+                          {
+                            "if": {
+                              "condition": {
+                                "kind": "identifier",
+                                "name": "flag"
+                              },
+                              "else": [
+                                {
+                                  "expression": {
+                                    "kind": "identifier",
+                                    "name": "when_false"
+                                  },
+                                  "kind": "return"
+                                }
+                              ],
+                              "then": [
+                                {
+                                  "expression": {
+                                    "kind": "identifier",
+                                    "name": "when_true"
+                                  },
+                                  "kind": "return"
+                                }
+                              ]
+                            },
+                            "kind": "if"
+                          }
+                        ],
+                        "params": [
+                          "flag",
+                          "when_true",
+                          "when_false"
+                        ]
+                      },
+                      "kind": "function"
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "number",
+                        "number": {
+                          "kind": "int",
+                          "value": 3
+                        }
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "identifier",
+                    "name": "__makeCurried"
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "const",
+              "name": "choose"
+            },
+            "kind": "declaration"
+          },
+          {
+            "declaration": {
+              "init": {
+                "call": {
+                  "arguments": [
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "bool",
+                        "value": true
+                      }
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "left"
+                      }
+                    },
+                    {
+                      "kind": "literal",
+                      "literal": {
+                        "kind": "string",
+                        "value": "right"
+                      }
+                    }
+                  ],
+                  "callee": {
+                    "kind": "identifier",
+                    "name": "choose"
+                  }
+                },
+                "kind": "call"
+              },
+              "kind": "const",
+              "name": "selected"
+            },
+            "kind": "declaration"
+          }
+        ],
+        "exports": [
+          {
+            "local": "choose",
+            "name": "choose"
+          },
+          {
+            "local": "selected",
+            "name": "selected"
+          }
+        ],
+        "imports": [
+          {
+            "from": "./riot-runtime.js",
+            "imported": "makeCurried",
+            "local": "__makeCurried"
+          }
+        ],
+        "module_name": "Tail_conditional_direct_call"
+      },
+      "status": "ok"
+    },
+    "lir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "mir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "nir": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    },
+    "wasm": {
+      "reason": "backend_not_selected",
+      "status": "unavailable"
+    }
+  },
+  "source": {
+    "has_trailing_newline": true,
+    "kind": "implementation",
+    "nonempty_lines": 4,
+    "relpath": "corpus/tail_conditional_direct_call.ml",
+    "source_bytes": 197,
+    "source_lines": 5,
+    "unit_name": "Tail_conditional_direct_call"
+  },
+  "targeting": {
+    "backend": "js",
+    "host": "aarch64-apple-darwin",
+    "target": "js-unknown-ecma"
+  },
+  "typing": {
+    "completeness": "complete",
+    "exports": [
+      {
+        "name": "choose",
+        "scheme": "'a. bool -> 'a -> 'a -> 'a"
+      },
+      {
+        "name": "selected",
+        "scheme": "string"
+      }
+    ],
+    "file_summary": {
+      "completeness": "complete",
+      "export_result": {
+        "exports": [
+          {
+            "name": "choose",
+            "scheme": "'a. bool -> 'a -> 'a -> 'a"
+          },
+          {
+            "name": "selected",
+            "scheme": "string"
+          }
+        ],
+        "tag": "trusted_export"
+      },
+      "source_id": 0
+    },
+    "lowering_diagnostics": [],
+    "parse_diagnostics": [],
+    "status": "ok",
+    "typing_diagnostics": []
+  }
+}

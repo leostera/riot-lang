@@ -42,6 +42,7 @@ module Constant = struct
     | Bool of bool
     | Int of int
     | Float of float
+    | Char of string
     | String of string
 
   let to_json = fun constant ->
@@ -50,6 +51,7 @@ module Constant = struct
     | Bool value -> Json.obj [ ("kind", Json.string "bool"); ("value", Json.bool value); ]
     | Int value -> Json.obj [ ("kind", Json.string "int"); ("value", Json.int value); ]
     | Float value -> Json.obj [ ("kind", Json.string "float"); ("value", Json.float value); ]
+    | Char value -> Json.obj [ ("kind", Json.string "char"); ("value", Json.string value); ]
     | String value -> Json.obj [ ("kind", Json.string "string"); ("value", Json.string value); ]
 end
 
@@ -84,6 +86,13 @@ module Expr = struct
     second: t;
   }
 
+  and tuple = t list
+
+  and tuple_get = {
+    tuple: t;
+    index: int;
+  }
+
   and if_then_else = {
     condition: t;
     then_: t;
@@ -102,6 +111,8 @@ module Expr = struct
     | Lambda of lambda
     | Let of let_
     | Sequence of sequence
+    | Tuple of tuple
+    | Tuple_get of tuple_get
     | If_then_else of if_then_else
     | Primitive of primitive
 
@@ -136,6 +147,12 @@ module Expr = struct
   and sequence_to_json = fun (sequence: sequence) ->
     Json.obj [ ("first", to_json sequence.first); ("second", to_json sequence.second); ]
 
+  and tuple_to_json = fun (tuple: tuple) ->
+    Json.obj [ ("elements", Json.array (List.map to_json tuple)); ]
+
+  and tuple_get_to_json = fun (tuple_get: tuple_get) ->
+    Json.obj [ ("tuple", to_json tuple_get.tuple); ("index", Json.int tuple_get.index); ]
+
   and if_then_else_to_json = fun (if_then_else: if_then_else) ->
     Json.obj
       [
@@ -162,6 +179,9 @@ module Expr = struct
     | Let let_ -> Json.obj [ ("kind", Json.string "let"); ("let", let_to_json let_); ]
     | Sequence sequence -> Json.obj
       [ ("kind", Json.string "sequence"); ("sequence", sequence_to_json sequence); ]
+    | Tuple tuple -> Json.obj [ ("kind", Json.string "tuple"); ("tuple", tuple_to_json tuple); ]
+    | Tuple_get tuple_get -> Json.obj
+      [ ("kind", Json.string "tuple_get"); ("tuple_get", tuple_get_to_json tuple_get); ]
     | If_then_else if_then_else -> Json.obj
       [ ("kind", Json.string "if_then_else"); ("if_then_else", if_then_else_to_json if_then_else); ]
     | Primitive primitive -> Json.obj

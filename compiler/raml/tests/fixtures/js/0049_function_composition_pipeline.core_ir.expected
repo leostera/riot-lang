@@ -1,0 +1,255 @@
+{
+  "exports": [
+    {
+      "name": "compose",
+      "symbol": "compose"
+    },
+    {
+      "name": "pipeline",
+      "symbol": "pipeline"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "compose",
+          "symbol": "compose"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "apply": {
+                          "arguments": [
+                            {
+                              "kind": "var",
+                              "name": "x"
+                            }
+                          ],
+                          "callee": {
+                            "expr": {
+                              "kind": "var",
+                              "name": "g"
+                            },
+                            "kind": "indirect"
+                          }
+                        },
+                        "kind": "apply"
+                      }
+                    ],
+                    "callee": {
+                      "expr": {
+                        "kind": "var",
+                        "name": "f"
+                      },
+                      "kind": "indirect"
+                    }
+                  },
+                  "kind": "apply"
+                },
+                "params": [
+                  "f",
+                  "g",
+                  "x"
+                ]
+              }
+            },
+            "name": "compose"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "pipeline",
+          "symbol": "pipeline"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "kind": "lambda",
+                    "lambda": {
+                      "body": {
+                        "apply": {
+                          "arguments": [
+                            {
+                              "kind": "var",
+                              "name": "x"
+                            },
+                            {
+                              "constant": {
+                                "kind": "int",
+                                "value": 1
+                              },
+                              "kind": "constant"
+                            }
+                          ],
+                          "callee": {
+                            "function": "+",
+                            "kind": "direct"
+                          }
+                        },
+                        "kind": "apply"
+                      },
+                      "params": [
+                        "x"
+                      ]
+                    }
+                  },
+                  {
+                    "apply": {
+                      "arguments": [
+                        {
+                          "kind": "lambda",
+                          "lambda": {
+                            "body": {
+                              "apply": {
+                                "arguments": [
+                                  {
+                                    "kind": "var",
+                                    "name": "x"
+                                  },
+                                  {
+                                    "constant": {
+                                      "kind": "int",
+                                      "value": 2
+                                    },
+                                    "kind": "constant"
+                                  }
+                                ],
+                                "callee": {
+                                  "function": "*",
+                                  "kind": "direct"
+                                }
+                              },
+                              "kind": "apply"
+                            },
+                            "params": [
+                              "x"
+                            ]
+                          }
+                        },
+                        {
+                          "kind": "lambda",
+                          "lambda": {
+                            "body": {
+                              "apply": {
+                                "arguments": [
+                                  {
+                                    "kind": "var",
+                                    "name": "x"
+                                  },
+                                  {
+                                    "constant": {
+                                      "kind": "int",
+                                      "value": 3
+                                    },
+                                    "kind": "constant"
+                                  }
+                                ],
+                                "callee": {
+                                  "function": "-",
+                                  "kind": "direct"
+                                }
+                              },
+                              "kind": "apply"
+                            },
+                            "params": [
+                              "x"
+                            ]
+                          }
+                        }
+                      ],
+                      "callee": {
+                        "function": "compose",
+                        "kind": "direct"
+                      }
+                    },
+                    "kind": "apply"
+                  }
+                ],
+                "callee": {
+                  "function": "compose",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "pipeline"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "apply": {
+              "arguments": [
+                {
+                  "constant": {
+                    "kind": "string",
+                    "value": "%d\\n"
+                  },
+                  "kind": "constant"
+                },
+                {
+                  "apply": {
+                    "arguments": [
+                      {
+                        "constant": {
+                          "kind": "int",
+                          "value": 25
+                        },
+                        "kind": "constant"
+                      }
+                    ],
+                    "callee": {
+                      "expr": {
+                        "kind": "var",
+                        "name": "pipeline"
+                      },
+                      "kind": "indirect"
+                    }
+                  },
+                  "kind": "apply"
+                }
+              ],
+              "callee": {
+                "function": "Printf.printf",
+                "kind": "direct"
+              }
+            },
+            "kind": "apply"
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/function_composition_pipeline.ml",
+    "unit_name": "Function_composition_pipeline"
+  }
+}

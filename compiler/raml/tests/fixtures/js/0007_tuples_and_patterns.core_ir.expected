@@ -1,0 +1,322 @@
+{
+  "exports": [
+    {
+      "name": "pair",
+      "symbol": "pair"
+    },
+    {
+      "name": "swap",
+      "symbol": "swap"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "pair",
+          "symbol": "pair"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "tuple",
+              "tuple": {
+                "elements": [
+                  {
+                    "constant": {
+                      "kind": "string",
+                      "value": "raml"
+                    },
+                    "kind": "constant"
+                  },
+                  {
+                    "constant": {
+                      "kind": "int",
+                      "value": 5
+                    },
+                    "kind": "constant"
+                  }
+                ]
+              }
+            },
+            "name": "pair"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "swap",
+          "symbol": "swap"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "kind": "let",
+                  "let": {
+                    "bindings": [
+                      {
+                        "expr": {
+                          "kind": "var",
+                          "name": "__raml_param_6_0"
+                        },
+                        "name": "__raml_tuple_4"
+                      }
+                    ],
+                    "body": {
+                      "kind": "let",
+                      "let": {
+                        "bindings": [
+                          {
+                            "expr": {
+                              "kind": "tuple_get",
+                              "tuple_get": {
+                                "index": 0,
+                                "tuple": {
+                                  "kind": "var",
+                                  "name": "__raml_tuple_4"
+                                }
+                              }
+                            },
+                            "name": "a"
+                          }
+                        ],
+                        "body": {
+                          "kind": "let",
+                          "let": {
+                            "bindings": [
+                              {
+                                "expr": {
+                                  "kind": "tuple_get",
+                                  "tuple_get": {
+                                    "index": 1,
+                                    "tuple": {
+                                      "kind": "var",
+                                      "name": "__raml_tuple_4"
+                                    }
+                                  }
+                                },
+                                "name": "b"
+                              }
+                            ],
+                            "body": {
+                              "kind": "tuple",
+                              "tuple": {
+                                "elements": [
+                                  {
+                                    "kind": "var",
+                                    "name": "b"
+                                  },
+                                  {
+                                    "kind": "var",
+                                    "name": "a"
+                                  }
+                                ]
+                              }
+                            },
+                            "rec_flag": "nonrecursive"
+                          }
+                        },
+                        "rec_flag": "nonrecursive"
+                      }
+                    },
+                    "rec_flag": "nonrecursive"
+                  }
+                },
+                "params": [
+                  "__raml_param_6_0"
+                ]
+              }
+            },
+            "name": "swap"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [],
+      "items": [
+        {
+          "expr": {
+            "kind": "let",
+            "let": {
+              "bindings": [
+                {
+                  "expr": {
+                    "kind": "var",
+                    "name": "pair"
+                  },
+                  "name": "__raml_tuple_8"
+                }
+              ],
+              "body": {
+                "kind": "let",
+                "let": {
+                  "bindings": [
+                    {
+                      "expr": {
+                        "kind": "tuple_get",
+                        "tuple_get": {
+                          "index": 0,
+                          "tuple": {
+                            "kind": "var",
+                            "name": "__raml_tuple_8"
+                          }
+                        }
+                      },
+                      "name": "name"
+                    }
+                  ],
+                  "body": {
+                    "kind": "let",
+                    "let": {
+                      "bindings": [
+                        {
+                          "expr": {
+                            "kind": "tuple_get",
+                            "tuple_get": {
+                              "index": 1,
+                              "tuple": {
+                                "kind": "var",
+                                "name": "__raml_tuple_8"
+                              }
+                            }
+                          },
+                          "name": "n"
+                        }
+                      ],
+                      "body": {
+                        "kind": "let",
+                        "let": {
+                          "bindings": [
+                            {
+                              "expr": {
+                                "apply": {
+                                  "arguments": [
+                                    {
+                                      "kind": "var",
+                                      "name": "pair"
+                                    }
+                                  ],
+                                  "callee": {
+                                    "function": "swap",
+                                    "kind": "direct"
+                                  }
+                                },
+                                "kind": "apply"
+                              },
+                              "name": "__raml_tuple_11"
+                            }
+                          ],
+                          "body": {
+                            "kind": "let",
+                            "let": {
+                              "bindings": [
+                                {
+                                  "expr": {
+                                    "kind": "tuple_get",
+                                    "tuple_get": {
+                                      "index": 0,
+                                      "tuple": {
+                                        "kind": "var",
+                                        "name": "__raml_tuple_11"
+                                      }
+                                    }
+                                  },
+                                  "name": "n2"
+                                }
+                              ],
+                              "body": {
+                                "kind": "let",
+                                "let": {
+                                  "bindings": [
+                                    {
+                                      "expr": {
+                                        "kind": "tuple_get",
+                                        "tuple_get": {
+                                          "index": 1,
+                                          "tuple": {
+                                            "kind": "var",
+                                            "name": "__raml_tuple_11"
+                                          }
+                                        }
+                                      },
+                                      "name": "name2"
+                                    }
+                                  ],
+                                  "body": {
+                                    "apply": {
+                                      "arguments": [
+                                        {
+                                          "constant": {
+                                            "kind": "string",
+                                            "value": "%s %d %d %s\\n"
+                                          },
+                                          "kind": "constant"
+                                        },
+                                        {
+                                          "kind": "var",
+                                          "name": "name"
+                                        },
+                                        {
+                                          "kind": "var",
+                                          "name": "n"
+                                        },
+                                        {
+                                          "kind": "var",
+                                          "name": "n2"
+                                        },
+                                        {
+                                          "kind": "var",
+                                          "name": "name2"
+                                        }
+                                      ],
+                                      "callee": {
+                                        "function": "Printf.printf",
+                                        "kind": "direct"
+                                      }
+                                    },
+                                    "kind": "apply"
+                                  },
+                                  "rec_flag": "nonrecursive"
+                                }
+                              },
+                              "rec_flag": "nonrecursive"
+                            }
+                          },
+                          "rec_flag": "nonrecursive"
+                        }
+                      },
+                      "rec_flag": "nonrecursive"
+                    }
+                  },
+                  "rec_flag": "nonrecursive"
+                }
+              },
+              "rec_flag": "nonrecursive"
+            }
+          },
+          "kind": "eval"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/tuples_and_patterns.ml",
+    "unit_name": "Tuples_and_patterns"
+  }
+}

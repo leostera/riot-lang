@@ -1,0 +1,108 @@
+{
+  "exports": [
+    {
+      "name": "subject",
+      "symbol": "subject"
+    },
+    {
+      "name": "identity",
+      "symbol": "identity"
+    },
+    {
+      "name": "echoed",
+      "symbol": "echoed"
+    }
+  ],
+  "init": [
+    {
+      "exports": [
+        {
+          "name": "subject",
+          "symbol": "subject"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "constant": {
+                "kind": "string",
+                "value": "riot"
+              },
+              "kind": "constant"
+            },
+            "name": "subject"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "identity",
+          "symbol": "identity"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "kind": "lambda",
+              "lambda": {
+                "body": {
+                  "kind": "var",
+                  "name": "value"
+                },
+                "params": [
+                  "value"
+                ]
+              }
+            },
+            "name": "identity"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    },
+    {
+      "exports": [
+        {
+          "name": "echoed",
+          "symbol": "echoed"
+        }
+      ],
+      "items": [
+        {
+          "binding": {
+            "expr": {
+              "apply": {
+                "arguments": [
+                  {
+                    "kind": "var",
+                    "name": "subject"
+                  }
+                ],
+                "callee": {
+                  "function": "identity",
+                  "kind": "direct"
+                }
+              },
+              "kind": "apply"
+            },
+            "name": "echoed"
+          },
+          "kind": "binding"
+        }
+      ],
+      "rec_flag": "nonrecursive"
+    }
+  ],
+  "unit_id": {
+    "kind": "implementation",
+    "relpath": "corpus/top_level_function_direct_call.ml",
+    "unit_name": "Top_level_function_direct_call"
+  }
+}

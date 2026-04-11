@@ -1,0 +1,88 @@
+{
+  "exports": [
+    {
+      "name": "before",
+      "symbol": "before"
+    },
+    {
+      "name": "after",
+      "symbol": "after"
+    }
+  ],
+  "module_name": "Grouped_initialization_order",
+  "procedures": [
+    {
+      "body": [
+        {
+          "dst": "t0",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "string",
+              "value": "before"
+            }
+          }
+        },
+        {
+          "kind": "store_global",
+          "src": {
+            "kind": "register",
+            "name": "t0"
+          },
+          "symbol": "before"
+        },
+        {
+          "arguments": [
+            {
+              "kind": "global",
+              "name": "before"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "print_endline"
+          },
+          "dst": "t1",
+          "kind": "call"
+        },
+        {
+          "dst": "t2",
+          "kind": "move",
+          "src": {
+            "kind": "literal",
+            "literal": {
+              "kind": "string",
+              "value": "after"
+            }
+          }
+        },
+        {
+          "arguments": [
+            {
+              "kind": "register",
+              "name": "t2"
+            }
+          ],
+          "callee": {
+            "kind": "direct",
+            "name": "print_endline"
+          },
+          "dst": "t3",
+          "kind": "call"
+        },
+        {
+          "kind": "store_global",
+          "src": {
+            "kind": "register",
+            "name": "t3"
+          },
+          "symbol": "after"
+        }
+      ],
+      "kind": "entry",
+      "name": "__entry__",
+      "params": []
+    }
+  ]
+}

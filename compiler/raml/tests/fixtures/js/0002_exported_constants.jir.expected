@@ -1,0 +1,103 @@
+{
+  "body": [
+    {
+      "declaration": {
+        "init": {
+          "kind": "literal",
+          "literal": {
+            "kind": "number",
+            "number": {
+              "kind": "int",
+              "value": 42
+            }
+          }
+        },
+        "kind": "const",
+        "name": "answer"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": {
+          "kind": "literal",
+          "literal": {
+            "kind": "bool",
+            "value": true
+          }
+        },
+        "kind": "const",
+        "name": "ready"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": {
+          "kind": "literal",
+          "literal": {
+            "kind": "number",
+            "number": {
+              "kind": "float",
+              "value": 3.5
+            }
+          }
+        },
+        "kind": "const",
+        "name": "ratio"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": {
+          "kind": "literal",
+          "literal": {
+            "kind": "string",
+            "value": "riot"
+          }
+        },
+        "kind": "const",
+        "name": "greeting"
+      },
+      "kind": "declaration"
+    },
+    {
+      "declaration": {
+        "init": {
+          "kind": "literal",
+          "literal": {
+            "kind": "undefined"
+          }
+        },
+        "kind": "const",
+        "name": "nothing"
+      },
+      "kind": "declaration"
+    }
+  ],
+  "exports": [
+    {
+      "local": "answer",
+      "name": "answer"
+    },
+    {
+      "local": "ready",
+      "name": "ready"
+    },
+    {
+      "local": "ratio",
+      "name": "ratio"
+    },
+    {
+      "local": "greeting",
+      "name": "greeting"
+    },
+    {
+      "local": "nothing",
+      "name": "nothing"
+    }
+  ],
+  "imports": [],
+  "module_name": "Exported_constants"
+}
