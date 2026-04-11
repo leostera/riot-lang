@@ -253,6 +253,10 @@ let rec list_backend: 'value. state -> 'value De.t -> 'value vec = fun state dec
   done;
   values
 
+and array_backend: 'value. state -> 'value De.t -> 'value array = fun state decode ->
+  let len = decode_length state "array" in
+  array__init len (fun _index -> decode.run backend state)
+
 and record_backend:
   'field 'acc 'value.
   state ->
@@ -322,6 +326,7 @@ and backend: state De.backend = {
       | '\001' -> Some (decode.run backend state)
       | _ -> error_at (position state.input - 1) "invalid option tag");
   list = list_backend;
+  array = array_backend;
   record = record_backend;
   record_mut = record_mut_backend;
   variant = variant_backend;

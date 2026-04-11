@@ -79,6 +79,7 @@ module De: sig
     skip_any: 'state -> unit;
     option: 'value. 'state -> 'value t -> 'value option;
     list: 'value. 'state -> 'value t -> 'value vec;
+    array: 'value. 'state -> 'value t -> 'value array;
     record:
       'field 'acc 'value. 'state ->
       fields:'field Fields.t ->
@@ -180,6 +181,9 @@ module De: sig
   (** Decode a sequence of values into a vector. *)
   val list: 'value t -> 'value vec t
 
+  (** Decode a sequence of values into an array. *)
+  val array: 'value t -> 'value array t
+
   (** Decode a record-shaped value. *)
   val record:
     fields:'field Fields.t ->
@@ -242,6 +246,7 @@ module Ser: sig
     null: 'state -> unit;
     option: 'value. 'state -> 'value t -> 'value option -> unit;
     list: 'value. 'state -> 'value t -> 'value vec -> unit;
+    array: 'value. 'state -> 'value t -> 'value array -> unit;
     record: 'value. 'state -> 'value fields -> 'value -> unit;
     variant: 'value. 'state -> 'value variant_cases -> 'value -> unit;
   }
@@ -301,6 +306,9 @@ module Ser: sig
 
   (** Serialize a vector of values. *)
   val list: 'value t -> 'value vec t
+
+  (** Serialize an array of values. *)
+  val array: 'value t -> 'value array t
 
   (** Declare a single record field encoder. *)
   val field: string -> 'field t -> ('value -> 'field) -> 'value field

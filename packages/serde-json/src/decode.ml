@@ -1701,6 +1701,10 @@ and list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode 
           done;
           acc
 
+and array_backend: 'value. state -> 'value De.t -> 'value array = fun state decode ->
+  let values = list_backend state decode in
+  Vector.to_array values
+
 and record_backend:
   'field 'acc 'value. state ->
   fields:'field De.Fields.t ->
@@ -1922,6 +1926,7 @@ and backend: state De.backend = {
   skip_any = skip_value;
   option = option_backend;
   list = list_backend;
+  array = array_backend;
   record = record_backend;
   record_mut = record_mut_backend;
   variant = variant_backend;

@@ -28,12 +28,24 @@ let raise_no_space = fun () -> raise (Serde.Encode_error (`Msg "serde-bin destin
 let raise_length_out_of_range = fun kind value ->
   raise (Serde.Encode_error (`Msg ("serde-bin " ^ kind ^ " length is out of range: " ^ Int.to_string value)))
 
+let[@inline] int_is_nonzero = fun value -> not (Int.equal value 0)
+
+let[@inline] int_lt = fun left right ->
+  let ordering = Int.compare left right in
+  int_is_nonzero ordering && Int.equal (Int.min ordering 0) ordering
+
+let[@inline] int_gt = fun left right ->
+  let ordering = Int.compare left right in
+  int_is_nonzero ordering && Int.equal (Int.max ordering 0) ordering
+
+let[@inline] int_le = fun left right -> not (int_gt left right)
+
 let flush_output = fun state ->
   match state.target with
   | Buffer_target
   | Bytes_target _ -> ()
   | Writer_target writer ->
-      if IO.Buffer.length state.output > 0 then
+      if int_is_nonzero (IO.Buffer.length state.output) then
         match IO.write_all writer ~buf:(IO.Buffer.contents state.output) with
         | Ok () -> IO.Buffer.clear state.output
         | Error err -> raise_io_error err
@@ -44,14 +56,14 @@ let maybe_flush_output = fun state ->
   | _ -> ()
 
 let write_subbytes = fun state source ~off ~len ->
-  if len > 0 then
+  if int_is_nonzero len then
     match state.target with
     | Buffer_target
     | Writer_target _ ->
         IO.Buffer.add_subbytes state.output source off len;
         maybe_flush_output state
     | Bytes_target target ->
-        if target.pos + len > IO.Bytes.length target.dst then
+        if int_gt (target.pos + len) (IO.Bytes.length target.dst) then
           raise_no_space ();
         IO.Bytes.blit source off target.dst target.pos len;
         target.pos <- target.pos + len
@@ -59,7 +71,7 @@ let write_subbytes = fun state source ~off ~len ->
 let write_char = fun state value ->
   match state.target with
   | Bytes_target target ->
-      if target.pos + 1 > IO.Bytes.length target.dst then
+      if int_gt (target.pos + 1) (IO.Bytes.length target.dst) then
         raise_no_space ();
       IO.Bytes.set target.dst target.pos value;
       target.pos <- target.pos + 1
@@ -70,14 +82,14 @@ let write_char = fun state value ->
 
 let write_string = fun state value ->
   let len = String.length value in
-  if len > 0 then
+  if int_is_nonzero len then
     match state.target with
     | Buffer_target
     | Writer_target _ ->
         IO.Buffer.add_string state.output value;
         maybe_flush_output state
     | Bytes_target target ->
-        if target.pos + len > IO.Bytes.length target.dst then
+        if int_gt (target.pos + len) (IO.Bytes.length target.dst) then
           raise_no_space ();
         IO.Bytes.blit_string value 0 target.dst target.pos len;
         target.pos <- target.pos + len
@@ -85,7 +97,7 @@ let write_string = fun state value ->
 let write_uint32_le = fun state value ->
   match state.target with
   | Bytes_target target ->
-      if target.pos + 4 > IO.Bytes.length target.dst then
+      if int_gt (target.pos + 4) (IO.Bytes.length target.dst) then
         raise_no_space ();
       Stubs.write_uint32_le target.dst target.pos value;
       target.pos <- target.pos + 4
@@ -97,7 +109,7 @@ let write_uint32_le = fun state value ->
 let write_int32_le = fun state value ->
   match state.target with
   | Bytes_target target ->
-      if target.pos + 4 > IO.Bytes.length target.dst then
+      if int_gt (target.pos + 4) (IO.Bytes.length target.dst) then
         raise_no_space ();
       Stubs.write_int32_le target.dst target.pos value;
       target.pos <- target.pos + 4
@@ -109,7 +121,7 @@ let write_int32_le = fun state value ->
 let write_int64_le = fun state value ->
   match state.target with
   | Bytes_target target ->
-      if target.pos + 8 > IO.Bytes.length target.dst then
+      if int_gt (target.pos + 8) (IO.Bytes.length target.dst) then
         raise_no_space ();
       Stubs.write_int64_le target.dst target.pos value;
       target.pos <- target.pos + 8
@@ -121,7 +133,7 @@ let write_int64_le = fun state value ->
 let write_int_le = fun state value ->
   match state.target with
   | Bytes_target target ->
-      if target.pos + 8 > IO.Bytes.length target.dst then
+      if int_gt (target.pos + 8) (IO.Bytes.length target.dst) then
         raise_no_space ();
       Stubs.write_int_le target.dst target.pos value;
       target.pos <- target.pos + 8
@@ -131,20 +143,27 @@ let write_int_le = fun state value ->
       write_subbytes state state.scratch ~off:0 ~len:8
 
 let encode_u32 = fun kind value ->
-  if value < 0 then
+  if int_lt value 0 then
     raise_length_out_of_range kind value
   else
     let value64 = Int64.of_int value in
-    if Int64.unsigned_compare value64 0xffff_ffffL > 0 then
+    if int_gt (Int64.unsigned_compare value64 0xffff_ffffL) 0 then
       raise_length_out_of_range kind value
     else
       Int64.to_int value64
 
-let variant_uses_u8 = fun cases -> array__length cases <= 0x100
+let variant_uses_u8 = fun cases -> int_le (array__length cases) 0x100
 
 let rec list_backend: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
   write_uint32_le state (encode_u32 "list" (Vector.len values));
   Vector.iter (fun value -> encode.run backend state value) values
+
+and array_backend: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit = fun state encode values ->
+  let len = array__length values in
+  write_uint32_le state (encode_u32 "array" len);
+  for index = 0 to len - 1 do
+    encode.run backend state (array__get values index)
+  done
 
 and record_backend: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit = fun state fields value ->
   for index = 0 to array__length fields - 1 do
@@ -204,6 +223,7 @@ and backend: state Serde.Ser.backend = {
           write_char state '\001';
           encode.run backend state payload);
   list = list_backend;
+  array = array_backend;
   record = record_backend;
   variant = variant_backend;
 }
@@ -211,6 +231,12 @@ and backend: state Serde.Ser.backend = {
 let rec size_list_backend: 'value. size_state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
   state.bytes_written <- state.bytes_written + 4;
   Vector.iter (fun value -> encode.run size_backend state value) values
+
+and size_array_backend: 'value. size_state -> 'value Serde.Ser.t -> 'value array -> unit = fun state encode values ->
+  state.bytes_written <- state.bytes_written + 4;
+  for index = 0 to array__length values - 1 do
+    encode.run size_backend state (array__get values index)
+  done
 
 and size_record_backend: 'value. size_state -> 'value Serde.Ser.fields -> 'value -> unit = fun state fields value ->
   for index = 0 to array__length fields - 1 do
@@ -262,6 +288,7 @@ and size_backend: size_state Serde.Ser.backend = {
       | None -> ()
       | Some payload -> encode.run size_backend state payload);
   list = size_list_backend;
+  array = size_array_backend;
   record = size_record_backend;
   variant = size_variant_backend;
 }

@@ -136,6 +136,15 @@ let rec list_backend: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit 
     values;
   write_char state ']'
 
+and array_backend: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit = fun state encode values ->
+  write_char state '[';
+  for index = 0 to array__length values - 1 do
+    if not (Int.equal index 0) then
+      write_char state ',';
+    encode.run backend state (array__get values index)
+  done;
+  write_char state ']'
+
 and record_backend: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit = fun state fields value ->
   write_char state '{';
   for index = 0 to array__length fields - 1 do
@@ -192,6 +201,7 @@ and backend: state Serde.Ser.backend = {
       | None -> write_string state "null"
       | Some payload -> encode.run backend state payload);
   list = list_backend;
+  array = array_backend;
   record = record_backend;
   variant = variant_backend;
 }

@@ -108,11 +108,9 @@ let human_size = fun bytes ->
   else
     Int.to_string bytes ^ "B"
 
-let vec_of_array = fun values -> Vector.of_list (Array.to_list values)
+let array_encode = Ser.array
 
-let array_encode = fun encode -> Ser.contramap vec_of_array (Ser.list encode)
-
-let array_decode = fun decode -> De.map (De.list decode) Vector.to_array
+let array_decode = De.array
 
 let unit_encode = Ser.null
 

@@ -282,6 +282,7 @@ and 'state backend = {
   skip_any: 'state -> unit;
   option: 'value. 'state -> 'value t -> 'value option;
   list: 'value. 'state -> 'value t -> 'value vec;
+  array: 'value. 'state -> 'value t -> 'value array;
   record:
     'field 'acc 'value. 'state ->
     fields:'field Fields.t ->
@@ -398,7 +399,12 @@ let reader_of_backend = fun backend state ->
         decode.run backend state;
   }
 
-let array = fun decode -> map (list decode) array_of_vec
+let array = fun decode ->
+  {
+    run =
+      fun backend state ->
+        backend.array state decode;
+  }
 
 let record = fun ~fields ~init ~step ~finish ->
   {
@@ -417,8 +423,8 @@ let record_mut = fun ~fields ~create ~step ~finish ->
           state
           ~fields
           ~create
-          ~step:(fun builder field -> step reader builder field)
-          ~finish;
+            ~step:(fun builder field -> step reader builder field)
+            ~finish;
   }
 
 let variant = fun cases ->
@@ -451,6 +457,7 @@ module De = struct
     skip_any: 'state -> unit;
     option: 'value. 'state -> 'value t -> 'value option;
     list: 'value. 'state -> 'value t -> 'value vec;
+    array: 'value. 'state -> 'value t -> 'value array;
     record:
       'field 'acc 'value. 'state ->
       fields:'field Fields.t ->
@@ -546,7 +553,12 @@ module De = struct
           backend.list state decode;
     }
 
-  let array = fun decode -> map (list decode) array_of_vec
+  let array = fun decode ->
+    {
+      run =
+        fun backend state ->
+          backend.array state decode;
+    }
 
   let record = fun ~fields ~init ~step ~finish ->
     {
@@ -626,6 +638,7 @@ module Ser = struct
     null: 'state -> unit;
     option: 'value. 'state -> 'value t -> 'value option -> unit;
     list: 'value. 'state -> 'value t -> 'value vec -> unit;
+    array: 'value. 'state -> 'value t -> 'value array -> unit;
     record: 'value. 'state -> 'value fields -> 'value -> unit;
     variant: 'value. 'state -> 'value variant_cases -> 'value -> unit;
   }
@@ -709,6 +722,13 @@ module Ser = struct
       run =
         fun backend state value ->
           backend.list state encode value;
+    }
+
+  let array = fun encode ->
+    {
+      run =
+        fun backend state value ->
+          backend.array state encode value;
     }
 
   let field = Field.make

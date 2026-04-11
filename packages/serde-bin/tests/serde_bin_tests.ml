@@ -342,9 +342,22 @@ let test_rejects_trailing_bytes = fun _ctx ->
   | Error err -> Error ("expected trailing-byte error, got " ^ Serde.Error.to_string err)
   | Ok _ -> Error "expected trailing bytes to fail strict decoding"
 
+let test_roundtrips_arrays = fun _ctx ->
+  let values = [| 7; 11; 42; 99 |] in
+  let* encoded =
+    match Serde_bin.to_string (Ser.array Ser.int) values with
+    | Ok encoded -> Ok encoded
+    | Error err -> Error ("array encode failed: " ^ Serde.Error.to_string err)
+  in
+  match Serde_bin.of_string (De.array De.int) encoded with
+  | Ok actual when actual = values -> Ok ()
+  | Ok _ -> Error "expected serde-bin array roundtrip to preserve elements"
+  | Error err -> Error ("array decode failed: " ^ Serde.Error.to_string err)
+
 let tests =
   Test.[
     case "serde-bin roundtrips records" test_roundtrips_record;
+    case "serde-bin roundtrips arrays" test_roundtrips_arrays;
     case "serde-bin decodes from readers" test_decodes_from_reader;
     case "serde-bin int uses raw little-endian bytes" test_int_uses_raw_little_endian_bytes;
     case "serde-bin int32 uses raw little-endian bytes" test_int32_uses_raw_little_endian_bytes;

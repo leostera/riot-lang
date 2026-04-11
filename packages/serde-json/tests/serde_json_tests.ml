@@ -382,6 +382,18 @@ let test_roundtrips_record = fun _ctx ->
         Error "expected serde-json encode/decode to roundtrip person values"
   | Error err -> Error ("roundtrip decode failed: " ^ Serde.Error.to_string err)
 
+let test_roundtrips_arrays = fun _ctx ->
+  let values = [| 1; 2; 3; 5; 8 |] in
+  let* encoded =
+    match Serde_json.to_string (Ser.array Ser.int) values with
+    | Ok encoded -> Ok encoded
+    | Error err -> Error ("array encode failed: " ^ Serde.Error.to_string err)
+  in
+  match Serde_json.of_string (De.array De.int) encoded with
+  | Ok actual when actual = values -> Ok ()
+  | Ok _ -> Error "expected serde-json array roundtrip to preserve elements"
+  | Error err -> Error ("array decode failed: " ^ Serde.Error.to_string err)
+
 let tests =
   Test.[
     case "serde-json parses records and skips unknown fields" test_decodes_record_and_skips_unknown_fields;
@@ -393,6 +405,7 @@ let tests =
     case "serde-json escapes encoded strings" test_encodes_escaped_strings;
     case "serde-json writes to writers" test_writes_to_writer;
     case "serde-json roundtrips records" test_roundtrips_record;
+    case "serde-json roundtrips arrays" test_roundtrips_arrays;
   ]
 
 let () =
