@@ -5,6 +5,8 @@ module Marshal = Stdlib.Marshal
 module De = Serde.De
 module Ser = Serde.Ser
 
+let io_chunk_size = 4_096
+
 type mode =
   | Idle
   | Named of string
@@ -99,6 +101,66 @@ type dataset_builder = {
 }
 
 let bench_config: Bench.bench_config = { iterations = 50; warmup = 3 }
+
+let io_reader_of_string = fun ?(chunk_size = io_chunk_size) value ->
+  let offset = ref 0 in
+  let module Read = struct
+    type t = string
+
+    type err = IO.error
+
+    let read = fun source ?timeout:_ buf ->
+      let remaining = String.length source - !offset in
+      if Int.equal remaining 0 then
+        Ok 0
+      else
+        let to_read = min chunk_size (min remaining (IO.Bytes.length buf)) in
+        IO.Bytes.blit_string source !offset buf 0 to_read;
+        offset := !offset + to_read;
+        Ok to_read
+
+    let read_vectored = fun source bufs ->
+      let total = ref 0 in
+      let continue = ref true in
+      IO.Iovec.iter bufs
+        (fun { ba; off; len } ->
+          if !continue then
+            let remaining = String.length source - !offset in
+            if Int.equal remaining 0 then
+              continue := false
+            else
+              let to_read = min chunk_size (min remaining len) in
+              IO.Bytes.blit_string source !offset ba off to_read;
+              offset := !offset + to_read;
+              total := !total + to_read;
+              if Int.compare to_read len < 0 then
+                continue := false);
+      Ok !total
+  end in
+  IO.Reader.of_read_src (module Read) value
+
+let io_writer_of_buffer =
+  let module Write = struct
+    type t = IO.Buffer.t
+
+    type err = IO.error
+
+    let write = fun buffer ~buf ->
+      IO.Buffer.add_string buffer buf;
+      Ok (String.length buf)
+
+    let write_owned_vectored = fun buffer ~bufs ->
+      let written = ref 0 in
+      IO.Iovec.iter bufs
+        (fun { ba; off; len } ->
+          IO.Buffer.add_string buffer (IO.Bytes.sub_string ba off len);
+          written := !written + len);
+      Ok !written
+
+    let flush = fun _buffer -> Ok ()
+  end in
+  fun buffer ->
+    IO.Writer.of_write_src (module Write) buffer
 
 let human_size = fun bytes ->
   if bytes >= 1_000_000 then
@@ -366,6 +428,8 @@ type fixture = {
   dataset: dataset;
   serde_bytes: string;
   marshal_bytes: string;
+  writer_buffer: IO.Buffer.t;
+  writer: (IO.Buffer.t, IO.error) IO.Writer.t;
 }
 
 let build_fixture = fun spec ->
@@ -381,16 +445,25 @@ let build_fixture = fun spec ->
   in
   let _marshal_roundtrip: dataset = Marshal.from_string marshal_bytes 0 in
   ignore decoded;
-  { label = spec.label; dataset; serde_bytes; marshal_bytes }
+  let writer_buffer = IO.Buffer.create (String.length serde_bytes) in
+  let writer = io_writer_of_buffer writer_buffer in
+  { label = spec.label; dataset; serde_bytes; marshal_bytes; writer_buffer; writer }
 
-let bench_encode_serde = fun fixture () ->
+let bench_encode_serde_in_memory = fun fixture () ->
   ignore (Serde_bin.to_string dataset_encode fixture.dataset)
+
+let bench_encode_serde_writer = fun fixture () ->
+  IO.Buffer.clear fixture.writer_buffer;
+  ignore (Serde_bin.to_writer dataset_encode fixture.writer fixture.dataset)
 
 let bench_encode_marshal = fun fixture () ->
   ignore (Marshal.to_string fixture.dataset [])
 
-let bench_decode_serde = fun fixture () ->
+let bench_decode_serde_in_memory = fun fixture () ->
   ignore (Serde_bin.of_string dataset_decode fixture.serde_bytes)
+
+let bench_decode_serde_reader = fun fixture () ->
+  ignore (Serde_bin.of_reader dataset_decode (io_reader_of_string fixture.serde_bytes))
 
 let bench_decode_marshal = fun fixture () ->
   let _decoded: dataset = Marshal.from_string fixture.marshal_bytes 0 in
@@ -402,16 +475,24 @@ let benchmark_suite = fun fixture ->
   Bench.[
     with_config
       ~config:bench_config
-      ("serde-bin encode " ^ fixture.label ^ " dataset (" ^ serde_size ^ ")")
-      (bench_encode_serde fixture);
+      ("serde-bin encode in-memory " ^ fixture.label ^ " dataset (" ^ serde_size ^ ")")
+      (bench_encode_serde_in_memory fixture);
+    with_config
+      ~config:bench_config
+      ("serde-bin encode writer " ^ fixture.label ^ " dataset (" ^ serde_size ^ ")")
+      (bench_encode_serde_writer fixture);
     with_config
       ~config:bench_config
       ("Stdlib.Marshal encode " ^ fixture.label ^ " dataset (" ^ marshal_size ^ ")")
       (bench_encode_marshal fixture);
     with_config
       ~config:bench_config
-      ("serde-bin decode " ^ fixture.label ^ " dataset (" ^ serde_size ^ ")")
-      (bench_decode_serde fixture);
+      ("serde-bin decode in-memory " ^ fixture.label ^ " dataset (" ^ serde_size ^ ")")
+      (bench_decode_serde_in_memory fixture);
+    with_config
+      ~config:bench_config
+      ("serde-bin decode reader " ^ fixture.label ^ " dataset (" ^ serde_size ^ ")")
+      (bench_decode_serde_reader fixture);
     with_config
       ~config:bench_config
       ("Stdlib.Marshal decode " ^ fixture.label ^ " dataset (" ^ marshal_size ^ ")")
