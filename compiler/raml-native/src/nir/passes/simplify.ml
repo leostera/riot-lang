@@ -1,3 +1,14 @@
+(** Conservative local simplifications over [NIR].
+
+    This pass removes redundant tree structure without changing native-specific
+    semantics:
+
+    - fold boolean [if] expressions with literal conditions
+    - drop pure entry-side [Eval] items
+    - remove dead pure [let] bindings
+    - collapse [let x = expr in x]
+
+    It is intentionally cheaper and less opinionated than later MIR/LIR passes. *)
 open Std
 module Nir = Types
 
@@ -6,15 +17,15 @@ let rec expr_uses_name = fun name expr ->
   | Nir.Expr.Literal _ -> false
   | Nir.Expr.Symbol symbol -> String.equal symbol name
   | Nir.Expr.Symbol_address _ -> false
-  | Nir.Expr.Call { callee; arguments } ->
-      callee_uses_name name callee || List.exists (expr_uses_name name) arguments
-  | Nir.Expr.If_then_else if_then_else ->
-      expr_uses_name name if_then_else.condition
-      || expr_uses_name name if_then_else.then_
-      || expr_uses_name name if_then_else.else_
-  | Nir.Expr.Let let_ ->
-      List.exists (fun (binding: Nir.Expr.binding) -> expr_uses_name name binding.expr) let_.bindings
-      || expr_uses_name name let_.body
+  | Nir.Expr.Call { callee; arguments } -> callee_uses_name name callee
+  || List.exists (expr_uses_name name) arguments
+  | Nir.Expr.If_then_else if_then_else -> expr_uses_name name if_then_else.condition
+  || expr_uses_name name if_then_else.then_
+  || expr_uses_name name if_then_else.else_
+  | Nir.Expr.Let let_ -> List.exists
+    (fun (binding: Nir.Expr.binding) -> expr_uses_name name binding.expr)
+    let_.bindings
+  || expr_uses_name name let_.body
 
 and callee_uses_name = fun name callee ->
   match callee with
@@ -27,25 +38,28 @@ let rec expr_is_pure = fun expr ->
   | Nir.Expr.Symbol _ -> true
   | Nir.Expr.Symbol_address _ -> true
   | Nir.Expr.Call _ -> false
-  | Nir.Expr.If_then_else if_then_else ->
-      expr_is_pure if_then_else.condition
-      && expr_is_pure if_then_else.then_
-      && expr_is_pure if_then_else.else_
-  | Nir.Expr.Let let_ ->
-      List.for_all (fun (binding: Nir.Expr.binding) -> expr_is_pure binding.expr) let_.bindings
-      && expr_is_pure let_.body
+  | Nir.Expr.If_then_else if_then_else -> expr_is_pure if_then_else.condition
+  && expr_is_pure if_then_else.then_
+  && expr_is_pure if_then_else.else_
+  | Nir.Expr.Let let_ -> List.for_all
+    (fun (binding: Nir.Expr.binding) -> expr_is_pure binding.expr)
+    let_.bindings
+  && expr_is_pure let_.body
 
 let simplify_literal = fun literal -> Nir.Expr.Literal literal
 
 let rec simplify_expr = fun expr ->
   match expr with
-  | Nir.Expr.Literal literal -> simplify_literal literal
-  | Nir.Expr.Symbol _ -> expr
-  | Nir.Expr.Symbol_address _ -> expr
+  | Nir.Expr.Literal literal ->
+      simplify_literal literal
+  | Nir.Expr.Symbol _ ->
+      expr
+  | Nir.Expr.Symbol_address _ ->
+      expr
   | Nir.Expr.Call call ->
       Nir.Expr.Call {
         callee = simplify_callee call.callee;
-        arguments = List.map simplify_expr call.arguments;
+        arguments = List.map simplify_expr call.arguments
       }
   | Nir.Expr.If_then_else if_then_else ->
       let condition = simplify_expr if_then_else.condition in
@@ -82,8 +96,7 @@ and simplify_let = fun (let_: Nir.Expr.let_) ->
   in
   match (bindings, body) with
   | ([], body) -> body
-  | ([ binding ], Nir.Expr.Symbol symbol) when String.equal binding.name symbol ->
-      binding.expr
+  | ([ binding ], Nir.Expr.Symbol symbol) when String.equal binding.name symbol -> binding.expr
   | _ -> Nir.Expr.Let Nir.Expr.{ bindings; body }
 
 let simplify_function = fun (function_: Nir.Function.t) ->
@@ -94,8 +107,7 @@ let simplify_binding_item = fun (binding: Nir.Binding.t) ->
 
 let simplify_entry_item = fun entry_item ->
   match entry_item with
-  | Nir.Entry_item.Binding binding ->
-      Some (Nir.Entry_item.Binding (simplify_binding_item binding))
+  | Nir.Entry_item.Binding binding -> Some (Nir.Entry_item.Binding (simplify_binding_item binding))
   | Nir.Entry_item.Eval expr ->
       let expr = simplify_expr expr in
       if expr_is_pure expr then
@@ -106,7 +118,6 @@ let simplify_entry_item = fun entry_item ->
 let program = fun (program: Nir.Program.t) ->
   {
     program
-    with
-      functions = List.map simplify_function program.functions;
-      entry = List.filter_map simplify_entry_item program.entry;
+    with functions = List.map simplify_function program.functions;
+    entry = List.filter_map simplify_entry_item program.entry
   }

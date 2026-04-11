@@ -1,5 +1,16 @@
-open Std
+(** Normalize [NIR] into a simpler expression shape for later native passes.
 
+    This pass is still purely structural. It does not choose runtime layouts or
+    target details. Its job is to make nested expression structure easier for
+    later passes by:
+
+    - lifting nested [let] structure out of call positions and conditions
+    - flattening adjacent [let] chains
+    - keeping function and entry bodies in a more ANF-like shape
+
+    This is the native analogue of "make the tree easier to reason about"
+    before later simplification and selection work. *)
+open Std
 module Program = Types.Program
 module Expr = Types.Expr
 module Function = Types.Function
@@ -33,9 +44,7 @@ and normalize_call = fun (call: Expr.call) ->
       ([], [])
       call.arguments
   in
-  make_let
-    (callee_bindings @ argument_bindings)
-    (Expr.Call Expr.{ callee; arguments })
+  make_let (callee_bindings @ argument_bindings) (Expr.Call Expr.{ callee; arguments })
 
 and normalize_callee = fun callee ->
   match callee with
@@ -81,7 +90,7 @@ let normalize_entry_item = fun entry_item ->
 
 let program = fun (program: Program.t) ->
   {
-    program with
-    functions = List.map normalize_function program.functions;
-    entry = List.map normalize_entry_item program.entry;
+    program
+    with functions = List.map normalize_function program.functions;
+    entry = List.map normalize_entry_item program.entry
   }

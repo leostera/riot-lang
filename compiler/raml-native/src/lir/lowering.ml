@@ -123,11 +123,13 @@ let trace_to_json = fun trace ->
 
 let trace_program = fun initial ->
   let layout_frames = Passes.Layout_frames.program initial in
-  let schedule = Passes.Schedule.program layout_frames in
+  let simplify = Passes.Simplify.program layout_frames in
+  let schedule = Passes.Schedule.program simplify in
   {
     initial;
     passes = [
       { name = "layout_frames"; program = layout_frames };
+      { name = "simplify"; program = simplify };
       { name = "schedule"; program = schedule }
     ];
     final = schedule

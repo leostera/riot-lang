@@ -186,6 +186,9 @@ Existing pass slots:
 - `Native.Nir.Passes.Normalize`
 - `Native.Nir.Passes.Simplify`
 
+These should stay plain function calls in the stage pipeline.
+Do not introduce a generic pass runner or pass objects to execute them.
+
 Every pass should have its own snapshot surface.
 
 The minimum expectation is:
@@ -218,6 +221,11 @@ Existing pass slots:
 
 - `Native.Mir.Passes.Canonicalize`
 - `Native.Mir.Passes.Insert_polls`
+- `Native.Mir.Passes.Copy_propagate`
+- `Native.Mir.Passes.Dead_code`
+
+These should stay plain function calls in the stage pipeline.
+Do not introduce a generic pass runner or pass objects to execute them.
 
 Every pass should have its own snapshot surface.
 
@@ -254,7 +262,11 @@ layouts themselves.
 Existing pass slots:
 
 - `Native.Lir.Passes.Layout_frames`
+- `Native.Lir.Passes.Simplify`
 - `Native.Lir.Passes.Schedule`
+
+These should stay plain function calls in the stage pipeline.
+Do not introduce a generic pass runner or pass objects to execute them.
 
 Every pass should have its own snapshot surface.
 

@@ -5,14 +5,16 @@ module Pipeline_stage = Raml_core.Pipeline_stage
 module Event = Raml_core.Event
 open Std
 
-let compile = fun ~config ~(frontend: Frontend_pipeline.t) ->
+let compile = fun ~config ~(frontend:Frontend_pipeline.t) ->
   let core_ir = Frontend_pipeline.core_ir frontend in
   match core_ir.value with
   | None -> Backend_result.blocked_native ~blocked_on:"core_ir" core_ir.errors
   | Some compilation_unit ->
       let nir =
         match Native.Nir.Lowering.lower_compilation_unit_with_trace compilation_unit with
-        | Ok trace -> Pipeline_stage.ok_with_json ~json:(Native.Nir.Lowering.trace_to_json trace) trace.final
+        | Ok trace -> Pipeline_stage.ok_with_json
+          ~json:(Native.Nir.Lowering.trace_to_json trace)
+          trace.final
         | Error errors -> Pipeline_stage.error
           ~stage:"nir"
           (List.map Native.Nir.Lowering.error_to_json errors)

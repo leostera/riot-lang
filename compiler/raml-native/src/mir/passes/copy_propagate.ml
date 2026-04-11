@@ -1,3 +1,12 @@
+(** Propagate cheap copied values through structured [MIR].
+
+    This is a local forward substitution pass. It tracks simple copied values
+    such as registers, literals, and symbol addresses, then rewrites later uses
+    to reference the cheaper source directly.
+
+    The pass intentionally avoids propagating globals or reasoning across
+    side-effect boundaries beyond conservative destination invalidation. It is
+    meant to expose obvious redundancy before dead-code elimination runs. *)
 open Std
 module Program = Types.Program
 module Procedure = Types.Procedure

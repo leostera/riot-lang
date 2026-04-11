@@ -1,3 +1,14 @@
+(** Compute explicit frame metadata for [LIR] procedures.
+
+    This pass is the native equivalent of late stack-frame analysis. It does
+    two jobs:
+
+    - analyze each procedure to determine whether a frame is required and
+      whether the procedure performs calls
+    - assign stable stack-slot offsets and a final aligned frame size
+
+    Emitters are expected to consume [procedure.frame] instead of rediscovering
+    this information from the instruction stream. *)
 open Std
 module Lir = Types
 

@@ -1,5 +1,15 @@
-open Std
+(** Canonicalize structured [MIR] before later native optimization passes.
 
+    This pass keeps the instruction tree easy to reason about by eliminating
+    obviously redundant structure:
+
+    - no-op moves
+    - empty conditionals
+    - conditionals with identical branches
+    - boolean-literal conditionals that can be folded eagerly
+
+    It does not attempt dataflow reasoning; that belongs in later MIR passes. *)
+open Std
 module Program = Types.Program
 module Procedure = Types.Procedure
 module Instruction = Types.Instruction
@@ -8,13 +18,12 @@ module Literal = Types.Literal
 
 let is_noop_move = fun instruction ->
   match instruction with
-  | Instruction.Move { dst; src = Operand.Register src } -> String.equal dst src
+  | Instruction.Move { dst; src=Operand.Register src } -> String.equal dst src
   | _ -> false
 
 let rec canonicalize_instruction = fun instruction ->
   match instruction with
-  | Instruction.If_then_else if_then_else ->
-      canonicalize_if_then_else if_then_else
+  | Instruction.If_then_else if_then_else -> canonicalize_if_then_else if_then_else
   | instruction ->
       if is_noop_move instruction then
         []
@@ -29,14 +38,9 @@ and canonicalize_if_then_else = fun (if_then_else: Instruction.if_then_else) ->
   | Operand.Literal (Literal.Bool false) -> else_
   | _ when then_ = [] && else_ = [] -> []
   | _ when then_ = else_ -> then_
-  | _ ->
-      [
-        Instruction.If_then_else Instruction.{
-          condition = if_then_else.condition;
-          then_;
-          else_;
-        };
-      ]
+  | _ -> [
+    Instruction.If_then_else Instruction.{ condition = if_then_else.condition; then_; else_ };
+  ]
 
 and canonicalize_instructions = fun instructions ->
   List.concat_map canonicalize_instruction instructions
@@ -45,7 +49,4 @@ let canonicalize_procedure = fun (procedure: Procedure.t) ->
   { procedure with body = canonicalize_instructions procedure.body }
 
 let program = fun (program: Program.t) ->
-  {
-    program with
-    procedures = List.map canonicalize_procedure program.procedures;
-  }
+  { program with procedures = List.map canonicalize_procedure program.procedures }
