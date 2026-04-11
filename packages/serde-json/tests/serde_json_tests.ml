@@ -6,45 +6,6 @@ module Ser = Serde.Ser
 
 let ( let* ) = Result.and_then
 
-let io_reader_of_string = fun ?(chunk_size = 1) value ->
-  let offset = ref 0 in
-  let module Read = struct
-    type t = string
-
-    type err = IO.error
-
-    let read = fun source ?timeout:_ buf ->
-      let remaining = String.length source - !offset in
-      if Int.equal remaining 0 then
-        Ok 0
-      else
-        let to_read = min chunk_size (min remaining (IO.Bytes.length buf)) in
-        IO.Bytes.blit_string source !offset buf 0 to_read;
-        offset := !offset + to_read;
-        Ok to_read
-
-    let read_vectored = fun source bufs ->
-      let total = ref 0 in
-      let continue = ref true in
-      IO.Iovec.iter bufs
-        (fun { ba; off; len } ->
-          if !continue then
-            let remaining = String.length source - !offset in
-            if Int.equal remaining 0 then
-              continue := false
-            else
-              let to_read = min chunk_size (min remaining len) in
-              IO.Bytes.blit_string source !offset ba off to_read;
-              offset := !offset + to_read;
-              total := !total + to_read;
-              if to_read < len then
-                continue := false);
-      Ok !total
-
-    let direct_string = fun _source -> None
-  end in
-  IO.Reader.of_read_src (module Read) value
-
 let io_writer_of_buffer =
   let module Write = struct
     type t = IO.Buffer.t
@@ -227,22 +188,22 @@ let equal_person = fun (left: person) (right: person) ->
 
 let test_decodes_record_and_skips_unknown_fields = fun _ctx ->
   let input = {|{
-      "name":"Le\u006F",
-      "age":33,
+      "name":"Luff\u0079",
+      "age":19,
       "active":true,
       "tags":["riot","serde"],
       "nickname":null,
-      "pet":{"Dog":"Rex"},
+      "pet":{"Dog":"Chouchou"},
       "unknown":{"nested":[1,2,3],"more":{"answer":42}}
     }|}
   in
   let expected: person = {
-    name = "Leo";
-    age = 33;
+    name = "Luffy";
+    age = 19;
     active = true;
     tags = Vector.of_list [ "riot"; "serde" ];
     nickname = None;
-    pet = Dog "Rex";
+    pet = Dog "Chouchou";
   }
   in
   match Serde_json.of_string person_decode input with
@@ -254,13 +215,13 @@ let test_decodes_record_and_skips_unknown_fields = fun _ctx ->
   | Error err -> Error ("decode failed: " ^ Serde.Error.to_string err)
 
 let test_decodes_unit_variant = fun _ctx ->
-  let input = {|{"name":"Leo","age":33,"active":true,"tags":["riot"],"nickname":"captain","pet":"Cat"}|} in
+  let input = {|{"name":"Luffy","age":19,"active":true,"tags":["riot"],"nickname":"strawhat","pet":"Cat"}|} in
   let expected: person = {
-    name = "Leo";
-    age = 33;
+    name = "Luffy";
+    age = 19;
     active = true;
     tags = Vector.of_list [ "riot" ];
-    nickname = Some "captain";
+    nickname = Some "strawhat";
     pet = Cat;
   }
   in
@@ -273,17 +234,17 @@ let test_decodes_unit_variant = fun _ctx ->
   | Error err -> Error ("unit-variant decode failed: " ^ Serde.Error.to_string err)
 
 let test_decodes_from_reader = fun _ctx ->
-  let input = {|{"name":"Leo","age":33,"active":true,"tags":["riot"],"nickname":"captain","pet":"Cat"}|} in
+  let input = {|{"name":"Luffy","age":19,"active":true,"tags":["riot"],"nickname":"strawhat","pet":"Cat"}|} in
   let expected: person = {
-    name = "Leo";
-    age = 33;
+    name = "Luffy";
+    age = 19;
     active = true;
     tags = Vector.of_list [ "riot" ];
-    nickname = Some "captain";
+    nickname = Some "strawhat";
     pet = Cat;
   }
   in
-  match Serde_json.of_reader person_decode (io_reader_of_string ~chunk_size:1 input) with
+  match Serde_json.of_reader person_decode (String.to_reader ~chunk_size:1 input) with
   | Ok actual ->
       if equal_person actual expected then
         Ok ()
@@ -315,45 +276,45 @@ let test_decodes_numeric_scalars = fun _ctx ->
 
 let test_encodes_record = fun _ctx ->
   let person: person = {
-    name = "Leo";
-    age = 33;
+    name = "Luffy";
+    age = 19;
     active = true;
     tags = Vector.of_list [ "riot"; "serde" ];
     nickname = None;
-    pet = Dog "Rex";
+    pet = Dog "Chouchou";
   }
   in
-  let expected = {|{"name":"Leo","age":33,"active":true,"tags":["riot","serde"],"nickname":null,"pet":{"Dog":"Rex"}}|} in
+  let expected = {|{"name":"Luffy","age":19,"active":true,"tags":["riot","serde"],"nickname":null,"pet":{"Dog":"Chouchou"}}|} in
   match Serde_json.to_string person_encode person with
   | Ok actual -> expect_equal ~expected ~actual ~message:"expected serde-json encoder to serialize records using the promoted Serde.Ser API"
   | Error err -> Error ("encode failed: " ^ Serde.Error.to_string err)
 
 let test_encodes_escaped_strings = fun _ctx ->
   let person: person = {
-    name = "Le\"o\n";
-    age = 33;
+    name = "Luf\"fy\n";
+    age = 19;
     active = true;
     tags = Vector.of_list [ "ri\\ot" ];
-    nickname = Some "captain\t";
+    nickname = Some "strawhat\t";
     pet = Cat;
   }
   in
-  let expected = {|{"name":"Le\"o\n","age":33,"active":true,"tags":["ri\\ot"],"nickname":"captain\t","pet":"Cat"}|} in
+  let expected = {|{"name":"Luf\"fy\n","age":19,"active":true,"tags":["ri\\ot"],"nickname":"strawhat\t","pet":"Cat"}|} in
   match Serde_json.to_string person_encode person with
   | Ok actual -> expect_equal ~expected ~actual ~message:"expected serde-json encoder to escape string contents correctly"
   | Error err -> Error ("escaped-string encode failed: " ^ Serde.Error.to_string err)
 
 let test_writes_to_writer = fun _ctx ->
   let person: person = {
-    name = "Leo";
-    age = 33;
+    name = "Luffy";
+    age = 19;
     active = true;
     tags = Vector.of_list [ "riot"; "serde" ];
     nickname = None;
-    pet = Dog "Rex";
+    pet = Dog "Chouchou";
   }
   in
-  let expected = {|{"name":"Leo","age":33,"active":true,"tags":["riot","serde"],"nickname":null,"pet":{"Dog":"Rex"}}|} in
+  let expected = {|{"name":"Luffy","age":19,"active":true,"tags":["riot","serde"],"nickname":null,"pet":{"Dog":"Chouchou"}}|} in
   let buffer = IO.Buffer.create 128 in
   match Serde_json.to_writer person_encode (io_writer_of_buffer buffer) person with
   | Ok () -> expect_equal ~expected ~actual:(IO.Buffer.contents buffer) ~message:"expected serde-json encoder to write JSON to an IO.Writer"
@@ -361,11 +322,11 @@ let test_writes_to_writer = fun _ctx ->
 
 let test_roundtrips_record = fun _ctx ->
   let person: person = {
-    name = "Leo";
-    age = 33;
+    name = "Luffy";
+    age = 19;
     active = true;
     tags = Vector.of_list [ "riot"; "serde" ];
-    nickname = Some "captain";
+    nickname = Some "strawhat";
     pet = Cat;
   }
   in

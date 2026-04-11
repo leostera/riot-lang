@@ -482,62 +482,20 @@ let ensure_large_fixture_text = fun base_fixture ->
 
 let decode_serde = fun text -> Serde_json.of_string dataset_decode text |> Result.expect ~msg:"expected fast serde benchmark decode to succeed"
 
-let io_reader_of_string = fun ?(chunk_size = 1) value ->
-  let offset = ref 0 in
-  let module Read = struct
-    type t = string
-
-    type err = IO.error
-
-    let read = fun source ?timeout:_ buf ->
-      let remaining = String.length source - !offset in
-      if Int.equal remaining 0 then
-        Ok 0
-      else
-        let to_read = min chunk_size (min remaining (IO.Bytes.length buf)) in
-        IO.Bytes.blit_string source !offset buf 0 to_read;
-        offset := !offset + to_read;
-        Ok to_read
-
-    let read_vectored = fun source bufs ->
-      let total = ref 0 in
-      let continue = ref true in
-      IO.Iovec.iter bufs
-        (fun { ba; off; len } ->
-          if !continue then
-            let remaining = String.length source - !offset in
-            if Int.equal remaining 0 then
-              continue := false
-            else
-              let to_read = min chunk_size (min remaining len) in
-              IO.Bytes.blit_string source !offset ba off to_read;
-              offset := !offset + to_read;
-              total := !total + to_read;
-              if to_read < len then
-                continue := false);
-      Ok !total
-
-    let direct_string = fun _source -> None
-  end in
-  IO.Reader.of_read_src (module Read) value
-
 let decode_serde_reader = fun text ->
-  match
-    Serde_json.of_reader dataset_decode
-      (IO.Reader.from_string text |> IO.Reader.map_err ~fn:(fun () -> IO.Noop))
-  with
+  match Serde_json.of_reader dataset_decode (String.to_reader text) with
   | Ok value -> value
   | Error err -> panic
     ("expected serde reader benchmark decode to succeed: " ^ Serde.Error.to_string err)
 
 let decode_serde_reader_buffered = fun ~chunk_size text ->
-  match Serde_json.of_reader dataset_decode (io_reader_of_string ~chunk_size text) with
+  match Serde_json.of_reader dataset_decode (String.to_reader ~chunk_size text) with
   | Ok value -> value
   | Error err -> panic
     ("expected buffered serde reader benchmark decode to succeed: " ^ Serde.Error.to_string err)
 
 let decode_serde_reader_chunked = fun text ->
-  match Serde_json.of_reader dataset_decode (io_reader_of_string ~chunk_size:1 text) with
+  match Serde_json.of_reader dataset_decode (String.to_reader ~chunk_size:1 text) with
   | Ok value -> value
   | Error err -> panic
     ("expected chunked serde reader benchmark decode to succeed: " ^ Serde.Error.to_string err)

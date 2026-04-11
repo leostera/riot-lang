@@ -267,3 +267,48 @@ let contains = fun haystack needle ->
         check (pos + 1)
     in
     check 0
+
+let to_reader = fun ?chunk_size value ->
+  let chunk_size =
+    match chunk_size with
+    | None -> max 1 (length value)
+    | Some chunk_size ->
+        if Int.compare chunk_size 0 <= 0 then
+          raise (Invalid_argument "Std.String.to_reader: chunk_size must be positive");
+        chunk_size
+  in
+  let offset = ref 0 in
+  let module Read = struct
+    type t = string
+
+    type err = IO.error
+
+    let read = fun source ?timeout:_ buf ->
+      let remaining = length source - !offset in
+      if Int.equal remaining 0 then
+        Ok 0
+      else
+        let to_read = min chunk_size (min remaining (IO.Bytes.length buf)) in
+        IO.Bytes.blit_string source !offset buf 0 to_read;
+        offset := !offset + to_read;
+        Ok to_read
+
+    let read_vectored = fun source bufs ->
+      let total = ref 0 in
+      let continue = ref true in
+      IO.Iovec.iter bufs
+        (fun { IO.Iovec.ba; off; len } ->
+          if !continue then
+            let remaining = length source - !offset in
+            if Int.equal remaining 0 then
+              continue := false
+            else
+              let to_read = min chunk_size (min remaining len) in
+              IO.Bytes.blit_string source !offset ba off to_read;
+              offset := !offset + to_read;
+              total := !total + to_read;
+              if Int.compare to_read len < 0 then
+                continue := false);
+      Ok !total
+  end in
+  IO.Reader.of_read_src (module Read) value

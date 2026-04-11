@@ -6,43 +6,6 @@ module Ser = Serde.Ser
 
 let ( let* ) = Result.and_then
 
-let io_reader_of_string = fun ?(chunk_size = 1) value ->
-  let offset = ref 0 in
-  let module Read = struct
-    type t = string
-
-    type err = IO.error
-
-    let read = fun source ?timeout:_ buf ->
-      let remaining = String.length source - !offset in
-      if Int.equal remaining 0 then
-        Ok 0
-      else
-        let to_read = min chunk_size (min remaining (IO.Bytes.length buf)) in
-        IO.Bytes.blit_string source !offset buf 0 to_read;
-        offset := !offset + to_read;
-        Ok to_read
-
-    let read_vectored = fun source bufs ->
-      let total = ref 0 in
-      let continue = ref true in
-      IO.Iovec.iter bufs
-        (fun { ba; off; len } ->
-          if !continue then
-            let remaining = String.length source - !offset in
-            if Int.equal remaining 0 then
-              continue := false
-            else
-              let to_read = min chunk_size (min remaining len) in
-              IO.Bytes.blit_string source !offset ba off to_read;
-              offset := !offset + to_read;
-              total := !total + to_read;
-              if to_read < len then
-                continue := false);
-      Ok !total
-  end in
-  IO.Reader.of_read_src (module Read) value
-
 let io_writer_of_buffer =
   let module Write = struct
     type t = IO.Buffer.t
@@ -193,12 +156,12 @@ let expect_equal = fun ~expected ~actual ~message ->
 
 let test_roundtrips_record = fun _ctx ->
   let person: person = {
-    name = "Leo";
-    age = 33;
+    name = "Luffy";
+    age = 19;
     active = true;
     tags = Vector.of_list [ "riot"; "serde"; "bin" ];
-    nickname = Some "captain";
-    pet = Dog "Rex";
+    nickname = Some "strawhat";
+    pet = Dog "Chouchou";
     score = 42L;
   } in
   let* encoded =
@@ -213,7 +176,7 @@ let test_roundtrips_record = fun _ctx ->
 
 let test_decodes_from_reader = fun _ctx ->
   let encoded = "\004\000\000\000riot" in
-  match Serde_bin.of_reader De.string (io_reader_of_string ~chunk_size:2 encoded) with
+  match Serde_bin.of_reader De.string (String.to_reader ~chunk_size:2 encoded) with
   | Ok "riot" -> Ok ()
   | Ok actual -> Error ("expected reader decode to return the string payload, got " ^ actual)
   | Error err -> Error ("reader decode failed: " ^ Serde.Error.to_string err)
@@ -262,18 +225,18 @@ let test_float_uses_raw_ieee754_bytes = fun _ctx ->
 
 let test_writes_to_writer = fun _ctx ->
   let buffer = IO.Buffer.create 32 in
-  match Serde_bin.to_writer pet_encode (io_writer_of_buffer buffer) (Dog "Rex") with
+  match Serde_bin.to_writer pet_encode (io_writer_of_buffer buffer) (Dog "Chouchou") with
   | Ok () ->
       expect_equal
-        ~expected:[ 1; 3; 0; 0; 0; 82; 101; 120 ]
+        ~expected:[ 1; 8; 0; 0; 0; 67; 104; 111; 117; 99; 104; 111; 117 ]
         ~actual:(byte_values (IO.Buffer.contents buffer))
         ~message:"expected serde-bin to emit compact variant bytes"
   | Error err -> Error ("writer encode failed: " ^ Serde.Error.to_string err)
 
 let test_size_matches_encoded_length = fun _ctx ->
   let person: person = {
-    name = "Leo";
-    age = 33;
+    name = "Luffy";
+    age = 19;
     active = false;
     tags = Vector.of_list [ "a"; "b" ];
     nickname = None;
@@ -297,30 +260,30 @@ let test_size_matches_encoded_length = fun _ctx ->
 
 let test_encode_into_bytes = fun _ctx ->
   let dst = IO.Bytes.create 16 in
-  match Serde_bin.encode_into_bytes pet_encode dst (Dog "Rex") with
+  match Serde_bin.encode_into_bytes pet_encode dst (Dog "Chouchou") with
   | Ok written ->
       let actual = IO.Bytes.sub_string dst 0 written |> byte_values in
       expect_equal
-        ~expected:[ 1; 3; 0; 0; 0; 82; 101; 120 ]
+        ~expected:[ 1; 8; 0; 0; 0; 67; 104; 111; 117; 99; 104; 111; 117 ]
         ~actual
         ~message:"expected encode_into_bytes to write the compact variant payload"
   | Error err -> Error ("encode_into_bytes failed: " ^ Serde.Error.to_string err)
 
 let test_short_destination_errors = fun _ctx ->
   let dst = IO.Bytes.create 2 in
-  match Serde_bin.encode_into_bytes pet_encode dst (Dog "Rex") with
+  match Serde_bin.encode_into_bytes pet_encode dst (Dog "Chouchou") with
   | Error (`Msg msg) when String.starts_with ~prefix:"serde-bin destination buffer is too small" msg -> Ok ()
   | Error err -> Error ("expected short destination error, got " ^ Serde.Error.to_string err)
   | Ok _ -> Error "expected encode_into_bytes to fail for too-small destinations"
 
 let test_decode_prefix_reports_consumed_bytes = fun _ctx ->
   let* encoded =
-    match Serde_bin.to_string pet_encode (Dog "Rex") with
+    match Serde_bin.to_string pet_encode (Dog "Chouchou") with
     | Ok encoded -> Ok encoded
     | Error err -> Error ("to_string failed: " ^ Serde.Error.to_string err)
   in
   match Serde_bin.decode_prefix pet_decode (encoded ^ "\255\254") with
-  | Ok (Dog "Rex", consumed) when Int.equal consumed (String.length encoded) -> Ok ()
+  | Ok (Dog "Chouchou", consumed) when Int.equal consumed (String.length encoded) -> Ok ()
   | Ok (_value, _consumed) -> Error "expected decode_prefix to return the decoded value and consumed byte count"
   | Error err -> Error ("decode_prefix failed: " ^ Serde.Error.to_string err)
 

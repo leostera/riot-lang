@@ -102,43 +102,6 @@ type dataset_builder = {
 
 let bench_config: Bench.bench_config = { iterations = 50; warmup = 3 }
 
-let io_reader_of_string = fun ?(chunk_size = io_chunk_size) value ->
-  let offset = ref 0 in
-  let module Read = struct
-    type t = string
-
-    type err = IO.error
-
-    let read = fun source ?timeout:_ buf ->
-      let remaining = String.length source - !offset in
-      if Int.equal remaining 0 then
-        Ok 0
-      else
-        let to_read = min chunk_size (min remaining (IO.Bytes.length buf)) in
-        IO.Bytes.blit_string source !offset buf 0 to_read;
-        offset := !offset + to_read;
-        Ok to_read
-
-    let read_vectored = fun source bufs ->
-      let total = ref 0 in
-      let continue = ref true in
-      IO.Iovec.iter bufs
-        (fun { ba; off; len } ->
-          if !continue then
-            let remaining = String.length source - !offset in
-            if Int.equal remaining 0 then
-              continue := false
-            else
-              let to_read = min chunk_size (min remaining len) in
-              IO.Bytes.blit_string source !offset ba off to_read;
-              offset := !offset + to_read;
-              total := !total + to_read;
-              if Int.compare to_read len < 0 then
-                continue := false);
-      Ok !total
-  end in
-  IO.Reader.of_read_src (module Read) value
-
 let io_writer_of_buffer =
   let module Write = struct
     type t = IO.Buffer.t
@@ -463,7 +426,7 @@ let bench_decode_serde_in_memory = fun fixture () ->
   ignore (Serde_bin.of_string dataset_decode fixture.serde_bytes)
 
 let bench_decode_serde_reader = fun fixture () ->
-  ignore (Serde_bin.of_reader dataset_decode (io_reader_of_string fixture.serde_bytes))
+  ignore (Serde_bin.of_reader dataset_decode (String.to_reader ~chunk_size:io_chunk_size fixture.serde_bytes))
 
 let bench_decode_marshal = fun fixture () ->
   let _decoded: dataset = Marshal.from_string fixture.marshal_bytes 0 in

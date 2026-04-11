@@ -76,6 +76,7 @@ open Iter
 
     ## Conversion
     - [`to_bytes`], [`of_bytes`] - Bytes conversion
+    - [`to_reader`] - Reader view for streaming APIs
 
     ## Creation
     - [`make`] - Create string of repeated character
@@ -328,3 +329,11 @@ val wrap_words: width:int -> string -> string list
     
     Note: Empty string is considered to be contained in any string. *)
 val contains: string -> string -> bool
+
+(** [to_reader ?chunk_size value] creates an [IO.Reader] over [value].
+
+    The reader can be forced to yield smaller chunks, which is useful for
+    testing incremental decoders and other streaming APIs.
+
+    @raise Invalid_argument if [chunk_size <= 0]. *)
+val to_reader: ?chunk_size:int -> string -> (string, IO.error) IO.Reader.t

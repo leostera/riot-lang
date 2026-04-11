@@ -35,6 +35,7 @@ members = [
   "packages/serde",
   "packages/serde-bin",
   "packages/serde-json",
+  "packages/serde-urlencoded",
   "packages/sqlx-driver",
   "packages/std",
   "packages/suri",
