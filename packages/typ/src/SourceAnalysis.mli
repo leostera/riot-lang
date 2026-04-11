@@ -13,16 +13,12 @@ type t = {
   source: Source.t;
   (** Parser diagnostics collected before CST building. *)
   parse_diagnostics: Syn.Diagnostic.t list;
-  (** Successful CST snapshot retained for source-backed tooling. *)
-  cst: Syn.Cst.source_file;
   (** Lowered semantic layers when lowering succeeded. *)
   semantic_tree: SemanticTree.file option;
   (** Diagnostics emitted during lowering. *)
   lowering_diagnostics: Diagnostic.t list;
   (** Diagnostics emitted during inference. *)
   typing_diagnostics: Diagnostic.t list;
-  (** Visible ambient type declarations available while analyzing this source. *)
-  ambient_type_decls: FileSummary.type_decl list;
   (** Whether this analysis is authoritative or contains holes/errors. *)
   completeness: completeness;
   (** Export-facing summary for this analyzed source. *)

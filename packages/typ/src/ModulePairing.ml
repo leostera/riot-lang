@@ -3,8 +3,14 @@ open Diagnostics
 open Model
 module ModuleSurface = ModuleSurface
 
+type source_input = {
+  source: Source.t;
+  analysis: SourceAnalysis.t;
+  ambient_type_decls: FileSummary.type_decl list;
+}
+
 type t = {
-  module_typings: ModuleTypings.t;
+  module_result: ModuleTypings.t;
   analyses_by_source: (SourceId.t * SourceAnalysis.t) list;
   signature_mismatches: Diagnostic.signature_mismatch list;
 }
@@ -32,14 +38,14 @@ let prefer_source = fun current candidate ->
 let select_source = fun sources desired_kind ->
   let rec loop selected = function
     | [] -> selected
-    | ((source, analysis) as candidate) :: tail ->
+    | ({ source; analysis; _ } as candidate) :: tail ->
         if not (source_kind source = desired_kind) then
           loop selected tail
         else
           (
             match selected with
             | None -> loop (Some candidate) tail
-            | Some (existing, _) when prefer_source existing source -> loop (Some candidate) tail
+            | Some { source = existing; _ } when prefer_source existing source -> loop (Some candidate) tail
             | Some _ -> loop selected tail
           )
   in
@@ -173,42 +179,15 @@ let mark_analysis_partial = fun (analysis: SourceAnalysis.t) diagnostics ->
       file_summary
     }
 
-let module_typings_of_summary = fun ~module_name ~source_hash ~value_definitions summary ->
-  match summary.FileSummary.export_result with
-  | FileSummary.TrustedExport { exports } -> (
-      match summary.FileSummary.completeness with
-      | FileSummary.Complete -> ModuleTypings.complete
-        ~module_name
-        ~source_hash
-        ~type_decls:summary.type_decls
-        ~value_definitions
-        exports
-      | FileSummary.Partial -> ModuleTypings.partial
-        ~module_name
-        ~source_hash
-        ~type_decls:summary.type_decls
-        ~value_definitions
-        ~exports
-        ()
-    )
-  | FileSummary.ErroredExport { exports } ->
-      ModuleTypings.partial
-        ~module_name
-        ~source_hash
-        ~type_decls:summary.type_decls
-        ~value_definitions
-        ~exports
-        ()
-  | FileSummary.NoExport ->
-      ModuleTypings.partial
-        ~module_name
-        ~source_hash
-        ~type_decls:summary.type_decls
-        ~value_definitions
-        ()
+let module_result_of_summary = fun ~internal_name ~source_hash ~value_definitions summary ->
+  ModuleTypings.of_file_summary
+    ~module_name:(LocalModules.InternalName.to_string internal_name)
+    ~source_hash
+    ~value_definitions
+    summary
 
-let with_module_view = fun module_typings (analysis: SourceAnalysis.t) ->
-  let file_summary = ModuleTypings.to_file_summary ~source_id:analysis.source.source_id module_typings in
+let with_module_view = fun module_result (analysis: SourceAnalysis.t) ->
+  let file_summary = ModuleTypings.to_file_summary ~source_id:analysis.source.source_id module_result in
   {
     analysis
     with completeness = SourceAnalysis.completeness_of_file_summary file_summary;
@@ -250,7 +229,7 @@ let find_type_decl_span = fun (analysis: SourceAnalysis.t) type_name ->
           | _ -> None
         )
 
-let interface_span_for_mismatch = fun (source, analysis) mismatch ->
+let interface_span_for_mismatch = fun ({ source; analysis; _ }: source_input) mismatch ->
   match mismatch with
   | Diagnostic.MissingValue { name }
   | Diagnostic.ValueTypeMismatch { name; _ } -> (
@@ -265,7 +244,7 @@ let interface_span_for_mismatch = fun (source, analysis) mismatch ->
       | None -> source_span source
     )
 
-let implementation_span_for_mismatch = fun (source, _analysis) _mismatch -> source_span source
+let implementation_span_for_mismatch = fun ({ source; _ }: source_input) _mismatch -> source_span source
 
 let interface_diagnostic = fun interface_pair implementation_pair mismatch ->
   Diagnostic.SignatureInclusionError {
@@ -632,19 +611,19 @@ let should_check_signature_inclusion = fun interface_summary implementation_summ
 
 let analyses_by_source = fun sources ->
   sources
-  |> List.map (fun (_source, (analysis: SourceAnalysis.t)) -> (analysis.source.source_id, analysis))
+  |> List.map (fun ({ analysis; _ }: source_input) -> (analysis.source.source_id, analysis))
 
 let extra_analyses = fun excluded_ids sources ->
   sources |> List.filter_map
-    (fun (_source, (analysis: SourceAnalysis.t)) ->
+    (fun ({ analysis; _ }: source_input) ->
       if List.exists (SourceId.equal analysis.source.source_id) excluded_ids then
         None
       else
         Some (analysis.source.source_id, analysis))
 
-let paired_module_view = fun ~module_name interface_pair implementation_pair ->
-  let (_interface_source, (interface_analysis: SourceAnalysis.t)) = interface_pair in
-  let (_implementation_source, (implementation_analysis: SourceAnalysis.t)) = implementation_pair in
+let paired_module_view = fun ~internal_name interface_pair implementation_pair ->
+  let ({ analysis = interface_analysis; _ }: source_input) = interface_pair in
+  let ({ analysis = implementation_analysis; _ }: source_input) = implementation_pair in
   let export_result = interface_shaped_export_result
     interface_analysis.file_summary
     implementation_analysis.file_summary in
@@ -658,13 +637,14 @@ let paired_module_view = fun ~module_name interface_pair implementation_pair ->
     | FileSummary.NoExport -> []
     | _ -> SourceAnalysis.export_definitions interface_analysis
   in
+  let module_name = LocalModules.InternalName.to_string internal_name in
   let source_hash = ModuleTypings.synthetic_source_hash
     ~module_name
     ~export_result
     ~type_decls
     ~value_definitions
     () in
-  let module_typings = module_typings_of_summary ~module_name ~source_hash ~value_definitions
+  let module_result = module_result_of_summary ~internal_name ~source_hash ~value_definitions
     {
       FileSummary.source_id = interface_analysis.source.source_id;
       completeness =
@@ -678,10 +658,10 @@ let paired_module_view = fun ~module_name interface_pair implementation_pair ->
       type_decls;
     }
   in
-  let interface_analysis = with_module_view module_typings interface_analysis in
-  let implementation_analysis = with_module_view module_typings implementation_analysis in
+  let interface_analysis = with_module_view module_result interface_analysis in
+  let implementation_analysis = with_module_view module_result implementation_analysis in
   {
-    module_typings;
+    module_result;
     analyses_by_source = [
       (interface_analysis.source.source_id, interface_analysis);
       (implementation_analysis.source.source_id, implementation_analysis);
@@ -692,16 +672,25 @@ let paired_module_view = fun ~module_name interface_pair implementation_pair ->
     signature_mismatches = []
   }
 
-let pair_interface_and_implementation = fun ~module_name interface_pair implementation_pair ->
-  let (_interface_source, (interface_analysis: SourceAnalysis.t)) = interface_pair in
-  let (_implementation_source, (implementation_analysis: SourceAnalysis.t)) = implementation_pair in
+let pair_interface_and_implementation = fun ~internal_name interface_pair implementation_pair ->
+  let module_name = LocalModules.InternalName.to_string internal_name in
+  let ({
+    analysis = interface_analysis;
+    ambient_type_decls = interface_ambient_type_decls;
+    _;
+  }: source_input) = interface_pair in
+  let ({
+    analysis = implementation_analysis;
+    ambient_type_decls = implementation_ambient_type_decls;
+    _;
+  }: source_input) = implementation_pair in
   if
     not
       (should_check_signature_inclusion interface_analysis.file_summary implementation_analysis.file_summary)
   then
-    paired_module_view ~module_name interface_pair implementation_pair
+    paired_module_view ~internal_name interface_pair implementation_pair
   else
-    let ambient_type_decls = interface_analysis.ambient_type_decls @ implementation_analysis.ambient_type_decls in
+    let ambient_type_decls = interface_ambient_type_decls @ implementation_ambient_type_decls in
     let interface_type_decls = qualify_signature_type_decls
       module_name
       (FileSummary.type_decls interface_analysis.file_summary) in
@@ -723,7 +712,7 @@ let pair_interface_and_implementation = fun ~module_name interface_pair implemen
     let mismatches = value_mismatches ~visible_types interface_exports implementation_exports
     @ type_decl_mismatches ~visible_types interface_type_decls implementation_type_decls in
     if List.is_empty mismatches then
-      paired_module_view ~module_name interface_pair implementation_pair
+      paired_module_view ~internal_name interface_pair implementation_pair
     else
       let interface_diagnostics = mismatches
       |> List.map (interface_diagnostic interface_pair implementation_pair) in
@@ -748,8 +737,8 @@ let pair_interface_and_implementation = fun ~module_name interface_pair implemen
         ~type_decls
         ~value_definitions
         () in
-      let module_typings = module_typings_of_summary
-        ~module_name
+      let module_result = module_result_of_summary
+        ~internal_name
         ~source_hash
         ~value_definitions
         {
@@ -759,11 +748,11 @@ let pair_interface_and_implementation = fun ~module_name interface_pair implemen
           type_decls
         } in
       let interface_analysis = mark_analysis_partial interface_analysis interface_diagnostics
-      |> with_module_view module_typings in
+      |> with_module_view module_result in
       let implementation_analysis = mark_analysis_partial implementation_analysis implementation_diagnostics
-      |> with_module_view module_typings in
+      |> with_module_view module_result in
       {
-        module_typings;
+        module_result;
         analyses_by_source = [
           (interface_analysis.source.source_id, interface_analysis);
           (implementation_analysis.source.source_id, implementation_analysis);
@@ -774,39 +763,41 @@ let pair_interface_and_implementation = fun ~module_name interface_pair implemen
         signature_mismatches = mismatches
       }
 
-let singleton_module_typings = fun ~module_name (source, (analysis: SourceAnalysis.t)) ->
-  module_typings_of_summary
-    ~module_name
+let singleton_module_result = fun ~internal_name ({ source; analysis; _ }: source_input) ->
+  module_result_of_summary
+    ~internal_name
     ~source_hash:(Source.input_hash source)
     ~value_definitions:(SourceAnalysis.export_definitions analysis)
     analysis.file_summary
 
-let of_sources = fun ~module_name sources ->
+let of_sources = fun ~internal_name sources ->
   match (select_source sources Interface, select_source sources Implementation) with
   | Some interface_pair, Some implementation_pair ->
-      pair_interface_and_implementation ~module_name interface_pair implementation_pair
+      pair_interface_and_implementation ~internal_name interface_pair implementation_pair
   | Some interface_pair, None ->
-      let (source, analysis) = interface_pair in
       {
-        module_typings = singleton_module_typings ~module_name (source, analysis);
+        module_result = singleton_module_result ~internal_name interface_pair;
         analyses_by_source = analyses_by_source sources;
         signature_mismatches = []
       }
   | None, Some implementation_pair ->
-      let (source, analysis) = implementation_pair in
       {
-        module_typings = singleton_module_typings ~module_name (source, analysis);
+        module_result = singleton_module_result ~internal_name implementation_pair;
         analyses_by_source = analyses_by_source sources;
         signature_mismatches = []
       }
   | None, None ->
+      let module_name = LocalModules.InternalName.to_string internal_name in
       let source_hash = ModuleTypings.synthetic_source_hash
         ~module_name
         ~export_result:FileSummary.NoExport
         ~type_decls:[]
         () in
       {
-        module_typings = ModuleTypings.partial ~module_name ~source_hash ();
+        module_result = ModuleTypings.partial
+          ~module_name
+          ~source_hash
+          ();
         analyses_by_source = analyses_by_source sources;
         signature_mismatches = []
       }

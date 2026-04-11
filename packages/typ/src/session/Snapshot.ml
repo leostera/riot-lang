@@ -1,7 +1,6 @@
 open Std
 open Infer
 open Model
-module LocalModules = LocalModules
 module ModuleSurface = ModuleSurface
 
 type analysis_state =
@@ -98,6 +97,8 @@ let export_status_of_module_typings = fun module_typings ->
   | FileSummary.Errored -> Event.ErroredExport
   | FileSummary.Missing -> Event.MissingExport
 
+let module_typings_of_result = fun (result: ModulePairing.t) -> result.module_result
+
 let signature_mismatch_subject mismatch =
   match mismatch with
   | Diagnostic.MissingValue { name }
@@ -128,6 +129,7 @@ let ensure_module_typings_persisted = fun (snapshot: t) ~module_name module_typi
               | Error message ->
                   let loaded_module_names = slot.config.loaded_modules
                   |> LoadedModules.names
+                  |> List.map LocalModules.RequiredName.to_string
                   |> List.sort String.compare in
                   raise
                     (Failure ("while persisting snapshot module typings for "
@@ -281,7 +283,8 @@ let loaded_ambient_env_for = fun (snapshot: t) (slot: analysis_slot) ->
   | None ->
       let ambient =
         LoadedModules.fold
-          (fun module_name typings ambient_rev ->
+          (fun _required_name typings ambient_rev ->
+            let module_name = ModuleTypings.module_name typings in
             if String.equal module_name current_module_name then
               ambient_rev
             else
@@ -302,7 +305,8 @@ let loaded_ambient_type_decls_for = fun (snapshot: t) (slot: analysis_slot) ->
   | None ->
       let ambient_type_decls =
         LoadedModules.fold
-          (fun module_name typings type_decls_rev ->
+          (fun _required_name typings type_decls_rev ->
+            let module_name = ModuleTypings.module_name typings in
             if String.equal module_name current_module_name then
               type_decls_rev
             else
@@ -332,8 +336,7 @@ let required_local_module_names = fun (slot: analysis_slot) ->
   @ (slot.source.implicit_opens
   |> List.map SurfacePath.to_string
   |> List.filter
-    (fun module_name ->
-      LocalModules.should_include_implicit_open ~current_module_name ~module_name)) in
+    (fun module_name -> LocalModules.should_include_implicit_open ~current_module_name ~module_name)) in
   names |> List.sort_uniq String.compare
 
 let dedupe_preserving_order = fun names ->
@@ -411,11 +414,9 @@ let placeholder_analysis = fun (slot: analysis_slot) ->
   {
     SourceAnalysis.source = slot.source;
     parse_diagnostics = Syn.Parser.(slot.source.parse_result.diagnostics);
-    cst = slot.source.cst;
     semantic_tree = None;
     lowering_diagnostics = [];
     typing_diagnostics = [];
-    ambient_type_decls = [];
     completeness = SourceAnalysis.Partial;
     file_summary = FileSummary.partial ~source_id:slot.source_id ();
     value_definitions = [];
@@ -642,7 +643,7 @@ and local_ambient_env_for = fun (snapshot: t) (slot: analysis_slot) ->
         local_module_names_for snapshot slot
         |> List.fold_left
           (fun ambient_rev module_name ->
-            let typings = (module_result_for snapshot module_name).ModulePairing.module_typings in
+            let typings = module_typings_of_result (module_result_for snapshot module_name) in
             ambient_module_names_of_local_module_name module_name |> List.fold_left
               (fun ambient_rev alias ->
                 let exports = (qualified_module_surface snapshot ~module_name ~alias typings).exports in
@@ -663,7 +664,7 @@ and local_ambient_type_decls_for = fun (snapshot: t) (slot: analysis_slot) ->
         local_module_names_for snapshot slot
         |> List.fold_left
           (fun type_decls_rev module_name ->
-            let typings = (module_result_for snapshot module_name).ModulePairing.module_typings in
+            let typings = module_typings_of_result (module_result_for snapshot module_name) in
             ambient_module_names_of_local_module_name module_name |> List.fold_left
               (fun type_decls_rev alias ->
                 let qualified_type_decls = (qualified_module_surface snapshot ~module_name ~alias typings).type_decls in
@@ -731,7 +732,8 @@ and partial_module_result = fun (snapshot: t) module_name ->
         in
         (slot.source_id, analysis))
   in
-  { ModulePairing.module_typings; analyses_by_source; signature_mismatches = [] }
+  let module_result = module_typings in
+  { ModulePairing.module_result; analyses_by_source; signature_mismatches = [] }
 
 and module_result_for = fun (snapshot: t) module_name ->
   let cache_key = module_result_cache_key module_name in
@@ -746,7 +748,10 @@ and module_result_for = fun (snapshot: t) module_name ->
   in
   match Collections.HashMap.get snapshot.module_results_cache cache_key with
   | Some result ->
-      let () = ensure_module_typings_persisted snapshot ~module_name result.ModulePairing.module_typings in
+      let () = ensure_module_typings_persisted
+        snapshot
+        ~module_name
+        (module_typings_of_result result) in
       result
   | None -> (
       if module_is_in_progress then
@@ -762,14 +767,20 @@ and module_result_for = fun (snapshot: t) module_name ->
         in
         match shared_cache_hit with
         | Some result ->
-            let () = ensure_module_typings_persisted snapshot ~module_name result.ModulePairing.module_typings in
+            let () = ensure_module_typings_persisted
+              snapshot
+              ~module_name
+              (module_typings_of_result result) in
             let _ = Collections.HashMap.insert snapshot.module_results_cache cache_key result in
             result
         | None ->
             let shared_cache_key = module_result_shared_cache_key snapshot module_name in
             match Collections.HashMap.get snapshot.shared_module_result_cache shared_cache_key with
             | Some result ->
-                let () = ensure_module_typings_persisted snapshot ~module_name result.ModulePairing.module_typings in
+                let () = ensure_module_typings_persisted
+                  snapshot
+                  ~module_name
+                  (module_typings_of_result result) in
                 let _ = Collections.HashMap.insert snapshot.module_results_cache cache_key result in
                 result
             | None ->
@@ -784,14 +795,21 @@ and module_result_for = fun (snapshot: t) module_name ->
                 );
                 let sources = slots
                 |> List.map
-                  (fun (slot: analysis_slot) -> (slot.source, force_analysis snapshot slot)) in
-                let result = ModulePairing.of_sources ~module_name sources in
+                  (fun (slot: analysis_slot) -> {
+                    ModulePairing.source = slot.source;
+                    analysis = force_analysis snapshot slot;
+                    ambient_type_decls = slot.config.ambient_type_decls;
+                  }) in
+                let result = ModulePairing.of_sources
+                  ~internal_name:(LocalModules.InternalName.of_string module_name)
+                  sources in
                 let _ = Collections.HashMap.insert snapshot.module_results_cache cache_key result in
                 let _ = Collections.HashMap.insert
                   snapshot.shared_module_result_cache
                   shared_cache_key
                   result in
-                let () = ensure_module_typings_persisted snapshot ~module_name result.ModulePairing.module_typings in
+                let module_typings = module_typings_of_result result in
+                let () = ensure_module_typings_persisted snapshot ~module_name module_typings in
                 (
                   match slots with
                   | [] -> ()
@@ -801,11 +819,11 @@ and module_result_for = fun (snapshot: t) module_name ->
                           Event.ModulePairingFinished {
                             module_name;
                             source_ids;
-                            export_status = export_status_of_module_typings result.ModulePairing.module_typings;
+                            export_status = export_status_of_module_typings module_typings;
                             export_count = List.length
-                              (ModuleTypings.exports result.ModulePairing.module_typings);
+                              (ModuleTypings.exports module_typings);
                             type_decl_count = List.length
-                              (ModuleTypings.type_decls result.ModulePairing.module_typings);
+                              (ModuleTypings.type_decls module_typings);
                             mismatch_count = List.length result.ModulePairing.signature_mismatches;
                             mismatch_subjects = result.ModulePairing.signature_mismatches
                             |> List.map signature_mismatch_subject
@@ -869,7 +887,7 @@ let module_typings = fun snapshot ->
           |> List.filter_map
             (fun module_name ->
               if List.mem module_name snapshot.module_names then
-                Some ModulePairing.((module_result_for snapshot module_name).module_typings)
+                Some (module_typings_of_result (module_result_for snapshot module_name))
               else
                 None)
         in
@@ -895,15 +913,17 @@ let find_module_typings = fun snapshot source_id ->
     None
   else
     match module_result_of_source snapshot source_id with
-    | Some (_module_name, Some result) -> Some ModulePairing.(result.module_typings)
+    | Some (_module_name, Some result) -> Some (module_typings_of_result result)
     | Some (_, None)
     | None -> None
 
 let find_module_typings_by_name = fun snapshot module_name ->
   if List.mem module_name snapshot.module_names then
-    Some ModulePairing.((module_result_for snapshot module_name).module_typings)
+    Some (module_typings_of_result (module_result_for snapshot module_name))
   else
-    LoadedModules.get (loaded_module_typings snapshot) ~module_name
+    LoadedModules.get
+      (loaded_module_typings snapshot)
+      ~required_name:(LocalModules.RequiredName.of_string module_name)
 
 let find_analysis = fun snapshot source_id ->
   if not (is_root snapshot source_id) then

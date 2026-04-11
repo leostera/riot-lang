@@ -114,6 +114,9 @@ val type_decls: t -> FileSummary.type_decl list
 (** Extract exported definition targets carried by these typings. *)
 val value_definitions: t -> value_definition list
 
+(** Recover the authoritative compiled module scope carried by these typings. *)
+val compiled_scope: t -> CompiledScope.t
+
 (** Find one exported definition target by export name. *)
 val find_value_definition: t -> export_name:SurfacePath.t -> value_definition_target option
 

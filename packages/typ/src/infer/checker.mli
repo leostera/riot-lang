@@ -22,10 +22,10 @@ type t = {
   diagnostics: Diagnostic.t list;
 }
 
-(** Infer types for a semantic tree using the current prototype checker.
+(** Infer types for a semantic tree using the shared checker core.
 
     The host configuration supplies only the intrinsic prelude plus ambient
-    module summaries, so one-shot and session-based callers share the same
+    module summaries, so package-check and query callers share the same
     inference rules without hardcoding package/library APIs in the inferencer. *)
 val initial_env_of_config: config:TypConfig.t -> Env.t
 

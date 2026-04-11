@@ -849,8 +849,7 @@ let empty = {
   by_id = Collections.HashMap.with_capacity 32
 }
 
-let of_type_decls = fun ?cached_by_id type_decls ->
-  let type_decls = annotate_type_decl_variances ?cached_by_id type_decls in
+let index_type_decls = fun type_decls ->
   let by_path = Collections.HashMap.with_capacity (List.length type_decls + 16) in
   let by_id = Collections.HashMap.with_capacity (List.length type_decls + 16) in
   let () =
@@ -863,11 +862,19 @@ let of_type_decls = fun ?cached_by_id type_decls ->
   in
   { type_decls; by_path; by_id }
 
-let merge = fun base introduced ->
-  let combined = bind_type_decls base.type_decls introduced.type_decls in
-  of_type_decls ~cached_by_id:base.by_id combined
+let of_type_decls = fun ?cached_by_id type_decls ->
+  type_decls |> annotate_type_decl_variances ?cached_by_id |> index_type_decls
 
-let bind = fun base introduced -> merge base (of_type_decls ~cached_by_id:base.by_id introduced)
+let bind_annotated_type_decls = fun base introduced ->
+  if List.is_empty introduced then
+    base
+  else
+    bind_type_decls base.type_decls introduced |> index_type_decls
+
+let merge = fun base introduced -> bind_annotated_type_decls base introduced.type_decls
+
+let bind = fun base introduced ->
+  introduced |> annotate_type_decl_variances ~cached_by_id:base.by_id |> bind_annotated_type_decls base
 
 let type_decls = fun visible_types -> visible_types.type_decls
 

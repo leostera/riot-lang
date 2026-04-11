@@ -1,6 +1,6 @@
 # typ AGENTS
 
-`typ` is the experimental type-analysis package for Riot.
+`typ` is Riot's type-checker engine package.
 
 ## Specs
 

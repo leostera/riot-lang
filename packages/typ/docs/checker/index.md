@@ -24,6 +24,9 @@ Start here:
   the library/runtime contract: sessions, snapshots, summaries, queries
 - [fast_package_check.md](./fast_package_check.md)
   the target architecture for one incremental authoritative cold-check path
+- [final_boss_architecture.md](./final_boss_architecture.md)
+  the integrated end-state architecture once checker, engine, persistence, and
+  query boundaries all fit together
 
 Then read the feature slices:
 
@@ -68,6 +71,9 @@ These docs are meant to have clear ownership boundaries.
 - `engine.md`
   owns sessions, rooted snapshots, `ModuleTypings`, store hydration, and query
   semantics
+- `final_boss_architecture.md`
+  owns the integrated end-state architecture for how checker, package engine,
+  persistence, identities, and query boundaries fit together
 - `generalization.md`
   owns value restriction, nonexpansiveness, and generalization boundaries
 - `labeled_args.md`
@@ -156,9 +162,11 @@ And when the implementation exists for the relevant slice:
 The spec stack says `typ` is:
 
 - a library-first checker
-- incremental through sessions and rooted snapshots
+- incremental through one authoritative package-check engine plus snapshot-based
+  query sessions
 - semantically centered on lowered forms plus origins, not on raw CST
-- query-first at the public boundary
+- query-capable at the public boundary without forcing query payload onto cold
+  checks
 - driven by canonical reusable `ModuleTypings` artifacts
 - structured-diagnostic-first from parse through typing
 

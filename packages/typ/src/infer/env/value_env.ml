@@ -308,12 +308,8 @@ let entries_for_module_alias = fun env ~alias_name ~module_path ->
       |> Binding.with_path (EntityId.prepend_name alias_name (Binding.path binding))
       |> Binding.with_provenance (Binding.ModuleAlias { alias_name; module_path }))
 
-let prelude_names = fun (config: TypConfig.t) -> config.prelude |> List.map fst
-
-let ambient_names = fun (config: TypConfig.t) -> config.ambient |> List.map fst
-
 let export = fun config env ->
-  let hidden_names = prelude_names config @ ambient_names config |> List.map SurfacePath.to_string in
+  let hidden_names = TypConfig.hidden_export_names config |> List.map SurfacePath.to_string in
   let hidden_name_set = Collections.HashSet.of_list hidden_names in
   canonicalize env |> bindings |> List.filter
     (fun binding ->
@@ -324,7 +320,7 @@ let export = fun config env ->
         )) |> of_bindings
 
 let export_with_forced_names = fun ~config ~forced_export_names env ->
-  let hidden_names = prelude_names config @ ambient_names config |> List.map SurfacePath.to_string in
+  let hidden_names = TypConfig.hidden_export_names config |> List.map SurfacePath.to_string in
   let hidden_name_set = Collections.HashSet.of_list hidden_names in
   let forced_name_set = Collections.HashSet.of_list forced_export_names in
   canonicalize env |> bindings |> List.filter

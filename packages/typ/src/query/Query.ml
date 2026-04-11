@@ -19,7 +19,7 @@ let diagnostics = fun snapshot source_id ->
 
 let file_summary_of = fun snapshot source_id ->
   Option.map
-    (fun (analysis: Session.SourceAnalysis.t) -> analysis.file_summary)
+    (fun (analysis: SourceAnalysis.t) -> analysis.file_summary)
     (analysis_of_source snapshot source_id)
 
 let module_typings_of = Session.Snapshot.find_module_typings
@@ -36,7 +36,7 @@ let semantic_tree_of_source = fun snapshot source_id ->
 
 let source_file_of_source = fun snapshot source_id ->
   Option.map
-    (fun (analysis: Session.SourceAnalysis.t) -> analysis.cst)
+    (fun (analysis: SourceAnalysis.t) -> analysis.source.cst)
     (analysis_of_source snapshot source_id)
 
 let type_at = fun snapshot source_id position ->
@@ -46,7 +46,7 @@ let type_at = fun snapshot source_id position ->
     (fun (entry: Analysis.TypeIndex.entry) -> entry.inferred_type)
     (Analysis.TypeIndex.find_at analysis.type_index position)
 
-let definition_target_of_position = fun (analysis: Session.SourceAnalysis.t) position ->
+let definition_target_of_position = fun (analysis: SourceAnalysis.t) position ->
   Option.and_then (Analysis.TypeIndex.find_at analysis.type_index position)
     (fun (entry: Analysis.TypeIndex.entry) ->
       analysis.expr_traces |> List.find_map
@@ -82,7 +82,7 @@ let definition_at = fun snapshot source_id position ->
   | Some analysis ->
       Option.and_then (definition_target_of_position analysis position)
         (fun binding_ref ->
-          Option.and_then (Session.SourceAnalysis.definition_target_of_binding_ref analysis binding_ref)
+          Option.and_then (SourceAnalysis.definition_target_of_binding_ref analysis binding_ref)
             (
               function
               | ModuleTypings.Site definition -> Some definition

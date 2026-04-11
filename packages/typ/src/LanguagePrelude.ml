@@ -25,11 +25,17 @@ let polymorphic_pipe =
   let output = var 1 in
   TypeScheme.of_explicit ~quantified:[ 0; 1 ] (arrow input (arrow (arrow input output) output))
 
+let polymorphic_ignore =
+  let value = var 0 in
+  TypeScheme.of_explicit ~quantified:[ 0 ] (arrow value TypeRepr.unit_)
+
 let int_binop = monomorphic (arrow TypeRepr.int (arrow TypeRepr.int TypeRepr.int))
 
 let float_binop = monomorphic (arrow TypeRepr.float (arrow TypeRepr.float TypeRepr.float))
 
 let bool_binop = monomorphic (arrow TypeRepr.bool (arrow TypeRepr.bool TypeRepr.bool))
+
+let bool_unop = monomorphic (arrow TypeRepr.bool TypeRepr.bool)
 
 let list_nil =
   let element = var 0 in
@@ -90,12 +96,15 @@ let bindings = [
   (SurfacePath.of_name "/.", float_binop);
   (SurfacePath.of_name "=", polymorphic_eq);
   (SurfacePath.of_name "!=", polymorphic_eq);
+  (SurfacePath.of_name "<>", polymorphic_eq);
   (SurfacePath.of_name "<", polymorphic_compare);
   (SurfacePath.of_name "<=", polymorphic_compare);
   (SurfacePath.of_name ">", polymorphic_compare);
   (SurfacePath.of_name ">=", polymorphic_compare);
+  (SurfacePath.of_name "not", bool_unop);
   (SurfacePath.of_name "&&", bool_binop);
   (SurfacePath.of_name "||", bool_binop);
+  (SurfacePath.of_name "ignore", polymorphic_ignore);
   (SurfacePath.of_name "|>", polymorphic_pipe);
   (
     SurfacePath.of_name "^",

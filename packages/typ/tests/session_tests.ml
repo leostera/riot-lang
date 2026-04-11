@@ -404,7 +404,19 @@ let prepared_check_source = fun ~source_id ~filename ~internal_module_name ~loca
 let check_source_text = fun ~filename text ->
   let parse_result = Syn.parse ~filename text in
   let cst = expect_cst ~filename:(Path.to_string filename) parse_result in
-  Check.check_source ~filename ~parse_result ~cst
+  let origin = Source.Path filename in
+  let implicit_opens = [] in
+  let source = Source.make_prepared
+    ~source_id:(SourceId.of_int 0)
+    ~kind:Source.File
+    ~module_name:(Source.infer_module_name origin)
+    ~implicit_opens
+    ~origin
+    ~revision:0
+    ~source_hash:(Source.hash ~implicit_opens ~cst)
+    ~parse_result
+    ~cst in
+  Typ.check ~config:Config.default ~source
 
 let scheme_has_named_path =
   let rec type_has_named_path ty =
@@ -3724,35 +3736,47 @@ let test_fold_package_sources_resolves_contextual_local_modules = fun _ctx ->
       Error (format
         Format.[
           str "unexpected missing requirements while checking ";
-          str module_name;
+          str (LocalModules.InternalName.to_string module_name);
           str ": ";
           str (Data.Json.to_string (Session.MissingRequirements.to_json requirements));
         ])
   | Error Check.MissingModuleTypings { module_name } ->
-      Error (format Format.[ str "missing module typings for "; str module_name ])
+      Error (format
+        Format.[
+          str "missing module typings for ";
+          str (LocalModules.InternalName.to_string module_name);
+        ])
   | Error Check.MissingAnalysis { module_name; path } ->
       Error (format
         Format.[
           str "missing analysis for ";
-          str module_name;
+          str (LocalModules.InternalName.to_string module_name);
           str " at ";
           str (Path.to_string path);
         ])
   | Error Check.StoreFailure { module_name; reason } ->
-      Error (format Format.[ str "store failure for "; str module_name; str ": "; str reason; ])
+      Error (format
+        Format.[
+          str "store failure for ";
+          str (LocalModules.InternalName.to_string module_name);
+          str ": ";
+          str reason;
+        ])
   | Error Check.PackageStoreFailure { package_name; reason } ->
       Error (format
         Format.[ str "package store failure for "; str package_name; str ": "; str reason; ])
   | Ok result ->
       let groups = List.rev result.acc in
       let loaded_modules = result.loaded_modules in
-      let module_order = groups |> List.map (fun (group: Check.finished_group) -> group.module_name) in
+      let module_order = groups
+      |> List.map
+        (fun (group: Check.finished_group) -> LocalModules.InternalName.to_string group.module_name) in
       let expected_order = [ "Kernel_new__Async__Adapter"; "Kernel_new__Async__Source" ] in
       let source_group =
         groups
         |> List.find_opt
           (fun (group: Check.finished_group) ->
-            String.equal group.module_name "Kernel_new__Async__Source")
+            String.equal (LocalModules.InternalName.to_string group.module_name) "Kernel_new__Async__Source")
         |> Option.expect ~msg:"expected Async.Source group"
       in
       let source_analysis = source_group.checked_sources
@@ -3769,10 +3793,14 @@ let test_fold_package_sources_resolves_contextual_local_modules = fun _ctx ->
       Test.assert_equal ~expected:[ "run" ] ~actual:export_names;
       Test.assert_equal
         ~expected:true
-        ~actual:(LoadedModules.contains loaded_modules ~module_name:"Kernel_new__Async__Adapter");
+        ~actual:(LoadedModules.contains
+          loaded_modules
+          ~required_name:(LocalModules.RequiredName.of_string "Kernel_new__Async__Adapter"));
       Test.assert_equal
         ~expected:true
-        ~actual:(LoadedModules.contains loaded_modules ~module_name:"Kernel_new__Async__Source");
+        ~actual:(LoadedModules.contains
+          loaded_modules
+          ~required_name:(LocalModules.RequiredName.of_string "Kernel_new__Async__Source"));
       Ok ()
 
 let test_fold_package_sources_resolves_root_local_module_wrappers = fun _ctx ->
@@ -3801,34 +3829,46 @@ let test_fold_package_sources_resolves_root_local_module_wrappers = fun _ctx ->
       Error (format
         Format.[
           str "unexpected missing requirements while checking ";
-          str module_name;
+          str (LocalModules.InternalName.to_string module_name);
           str ": ";
           str (Data.Json.to_string (Session.MissingRequirements.to_json requirements));
         ])
   | Error Check.MissingModuleTypings { module_name } ->
-      Error (format Format.[ str "missing module typings for "; str module_name ])
+      Error (format
+        Format.[
+          str "missing module typings for ";
+          str (LocalModules.InternalName.to_string module_name);
+        ])
   | Error Check.MissingAnalysis { module_name; path } ->
       Error (format
         Format.[
           str "missing analysis for ";
-          str module_name;
+          str (LocalModules.InternalName.to_string module_name);
           str " at ";
           str (Path.to_string path);
         ])
   | Error Check.StoreFailure { module_name; reason } ->
-      Error (format Format.[ str "store failure for "; str module_name; str ": "; str reason; ])
+      Error (format
+        Format.[
+          str "store failure for ";
+          str (LocalModules.InternalName.to_string module_name);
+          str ": ";
+          str reason;
+        ])
   | Error Check.PackageStoreFailure { package_name; reason } ->
       Error (format
         Format.[ str "package store failure for "; str package_name; str ": "; str reason; ])
   | Ok result ->
       let groups = List.rev result.acc in
       let loaded_modules = result.loaded_modules in
-      let module_order = groups |> List.map (fun (group: Check.finished_group) -> group.module_name) in
+      let module_order = groups
+      |> List.map
+        (fun (group: Check.finished_group) -> LocalModules.InternalName.to_string group.module_name) in
       let consumer_group =
         groups
         |> List.find_opt
           (fun (group: Check.finished_group) ->
-            String.equal group.module_name "Kernel_new__Consumer")
+            String.equal (LocalModules.InternalName.to_string group.module_name) "Kernel_new__Consumer")
         |> Option.expect ~msg:"expected Kernel_new__Consumer group"
       in
       let consumer_analysis = consumer_group.checked_sources
@@ -3845,10 +3885,14 @@ let test_fold_package_sources_resolves_root_local_module_wrappers = fun _ctx ->
       Test.assert_equal ~expected:[ "run" ] ~actual:export_names;
       Test.assert_equal
         ~expected:true
-        ~actual:(LoadedModules.contains loaded_modules ~module_name:"Kernel_new__Async");
+        ~actual:(LoadedModules.contains
+          loaded_modules
+          ~required_name:(LocalModules.RequiredName.of_string "Kernel_new__Async"));
       Test.assert_equal
         ~expected:true
-        ~actual:(LoadedModules.contains loaded_modules ~module_name:"Kernel_new__Consumer");
+        ~actual:(LoadedModules.contains
+          loaded_modules
+          ~required_name:(LocalModules.RequiredName.of_string "Kernel_new__Consumer"));
       Ok ()
 
 let test_fold_package_sources_persists_package_bundle = fun _ctx ->
@@ -3877,22 +3921,32 @@ let test_fold_package_sources_persists_package_bundle = fun _ctx ->
           Error (format
             Format.[
               str "unexpected missing requirements while checking ";
-              str module_name;
+              str (LocalModules.InternalName.to_string module_name);
               str ": ";
               str (Data.Json.to_string (Session.MissingRequirements.to_json requirements));
             ])
       | Error Check.MissingModuleTypings { module_name } ->
-          Error (format Format.[ str "missing module typings for "; str module_name ])
+          Error (format
+            Format.[
+              str "missing module typings for ";
+              str (LocalModules.InternalName.to_string module_name);
+            ])
       | Error Check.MissingAnalysis { module_name; path } ->
           Error (format
             Format.[
               str "missing analysis for ";
-              str module_name;
+              str (LocalModules.InternalName.to_string module_name);
               str " at ";
               str (Path.to_string path);
             ])
       | Error Check.StoreFailure { module_name; reason } ->
-          Error (format Format.[ str "store failure for "; str module_name; str ": "; str reason; ])
+          Error (format
+            Format.[
+              str "store failure for ";
+              str (LocalModules.InternalName.to_string module_name);
+              str ": ";
+              str reason;
+            ])
       | Error Check.PackageStoreFailure { package_name; reason } ->
           Error (format
             Format.[ str "package store failure for "; str package_name; str ": "; str reason; ])
@@ -3945,22 +3999,32 @@ let test_fold_package_sources_keeps_base_loaded_modules_immutable = fun _ctx ->
       Error (format
         Format.[
           str "unexpected missing requirements while checking ";
-          str module_name;
+          str (LocalModules.InternalName.to_string module_name);
           str ": ";
           str (Data.Json.to_string (Session.MissingRequirements.to_json requirements));
         ])
   | Error Check.MissingModuleTypings { module_name } ->
-      Error (format Format.[ str "missing module typings for "; str module_name ])
+      Error (format
+        Format.[
+          str "missing module typings for ";
+          str (LocalModules.InternalName.to_string module_name);
+        ])
   | Error Check.MissingAnalysis { module_name; path } ->
       Error (format
         Format.[
           str "missing analysis for ";
-          str module_name;
+          str (LocalModules.InternalName.to_string module_name);
           str " at ";
           str (Path.to_string path);
         ])
   | Error Check.StoreFailure { module_name; reason } ->
-      Error (format Format.[ str "store failure for "; str module_name; str ": "; str reason; ])
+      Error (format
+        Format.[
+          str "store failure for ";
+          str (LocalModules.InternalName.to_string module_name);
+          str ": ";
+          str reason;
+        ])
   | Error Check.PackageStoreFailure { package_name; reason } ->
       Error (format
         Format.[ str "package store failure for "; str package_name; str ": "; str reason; ])
@@ -5326,6 +5390,31 @@ let test_recursive_operator_bindings_typecheck = fun _ctx ->
     | Some _ -> Ok ()
     | None -> Error "missing @ export"
 
+let test_language_prelude_supports_angle_not_equal = fun _ctx ->
+  let session = Session.empty ~config:Config.default in
+  let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "prelude_ops.ml")
+    ~text:{ocaml|
+      let different = 1 <> 2
+    |ocaml}
+  in
+  let snapshot = Session.snapshot session in
+  let diagnostics = diagnostic_strings snapshot source_id in
+  if not (List.is_empty diagnostics) then
+    Error (String.concat "\n" diagnostics)
+  else
+    let exported_names = export_names (Query.export_of snapshot source_id) |> List.sort String.compare in
+    let required_exports = [ "<>"; "different" ] in
+    match required_exports |> List.find_opt (fun name -> not (List.mem name exported_names)) with
+    | Some missing_export -> Error ("missing expected export "
+    ^ missing_export
+    ^ " from "
+    ^ String.concat ", " exported_names)
+    | None ->
+        let () = Test.assert_equal
+          ~expected:(Some "bool")
+          ~actual:(export_scheme snapshot source_id "different") in
+        Ok ()
+
 let test_kernel_ops_surface_typechecks = fun _ctx ->
   let session = Session.empty ~config:Config.default in
   let (session, source_id) = create_source session ~kind:Source.File ~origin:(Source.Label "kernel_ops.ml")
@@ -5335,6 +5424,7 @@ let test_kernel_ops_surface_typechecks = fun _ctx ->
 
       external not_equal : 'a -> 'a -> bool = "%notequal"
       let ( != ) = not_equal
+      let ( <> ) = not_equal
 
       external ptr_eq : 'a -> 'a -> bool = "%eq"
       external ptr_not_eq : 'a -> 'a -> bool = "%noteq"
@@ -6788,7 +6878,7 @@ let test_check_source_recovers_when_snapshot_preparation_reports_missing_module_
   if diagnostics > 0 then
     Ok ()
   else
-    Error "expected one-shot check_source to surface diagnostics instead of panicking"
+    Error "expected single-source session checking to surface diagnostics instead of panicking"
 
 let test_match_guards_typecheck_in_pattern_scope = fun _ctx ->
   let session = Session.empty ~config:Config.default in
@@ -9212,6 +9302,7 @@ let () =
         Test.case "operator pattern bindings lower and typecheck" test_operator_pattern_bindings_lower_and_typecheck;
         Test.case "cons patterns lower and typecheck" test_cons_patterns_lower_and_typecheck;
         Test.case "recursive operator bindings typecheck" test_recursive_operator_bindings_typecheck;
+        Test.case "language prelude supports <> operator" test_language_prelude_supports_angle_not_equal;
         Test.case "kernel ops surface typechecks" test_kernel_ops_surface_typechecks;
         Test.case "opened sibling double underscore exports typecheck" test_opened_sibling_double_underscore_exports_typecheck;
         Test.case "paired modules allow private top-level exception helpers" test_paired_modules_allow_private_top_level_exception_helpers;

@@ -21,6 +21,7 @@ type t = {
   export_result: FileSummary.export_result;
   type_decls: FileSummary.type_decl list;
   value_definitions: value_definition list;
+  compiled_scope: CompiledScope.t;
 }
 
 let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
@@ -256,6 +257,15 @@ let canonicalize_payload_for_persistence = fun ~export_result ~type_decls ->
     List.map (canonicalize_type_decl_for_persistence canonicalize_type) type_decls
   )
 
+let compiled_scope_of_payload = fun ~export_result ~type_decls ->
+  let exports =
+    match export_result with
+    | FileSummary.TrustedExport { exports }
+    | FileSummary.ErroredExport { exports } -> exports
+    | FileSummary.NoExport -> []
+  in
+  CompiledScope.of_module_surface ~exports ~type_decls
+
 let complete = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) exports ->
   let (export_result, type_decls) = canonicalize_payload_for_persistence
     ~export_result:(FileSummary.TrustedExport { exports })
@@ -267,6 +277,7 @@ let complete = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definiti
     export_result;
     type_decls;
     value_definitions;
+    compiled_scope = compiled_scope_of_payload ~export_result ~type_decls;
   }
 
 let partial = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) ?exports () ->
@@ -283,6 +294,7 @@ let partial = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitio
     export_result;
     type_decls;
     value_definitions;
+    compiled_scope = compiled_scope_of_payload ~export_result ~type_decls;
   }
 
 let trusted = fun ~module_name ~source_hash ?(type_decls = []) ?(value_definitions = []) exports ->
@@ -307,6 +319,7 @@ let of_file_summary = fun ~module_name ~source_hash ?(value_definitions = []) (
     export_result;
     type_decls;
     value_definitions;
+    compiled_scope = compiled_scope_of_payload ~export_result ~type_decls;
   }
 
 let to_file_summary = fun ~source_id summary ->
@@ -346,6 +359,8 @@ let exports = fun value ->
 let type_decls = fun summary -> summary.type_decls
 
 let value_definitions = fun summary -> summary.value_definitions
+
+let compiled_scope = fun summary -> summary.compiled_scope
 
 let find_value_definition = fun summary ~export_name ->
   summary.value_definitions |> List.find_map
@@ -1278,5 +1293,6 @@ module Json = struct
       export_result;
       type_decls;
       value_definitions;
+      compiled_scope = compiled_scope_of_payload ~export_result ~type_decls;
     }
 end

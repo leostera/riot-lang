@@ -32,7 +32,7 @@ This document covers:
 - module-summary hydration
 - the boundary between `typ` and the host store
 - snapshot queries
-- one-shot and incremental usage models
+- incremental build and query usage models
 
 This document does not cover:
 
@@ -317,22 +317,14 @@ types and names.
 Otherwise cross-module jumps would still depend on reopening source or external
 artifacts, which is exactly what this engine is trying to avoid.
 
-## 16. One-Shot Use
+## 16. No Public One-Shot Lane
 
-Compiler-style one-shot checking is just a thin host workflow on top of the
-same session/snapshot model.
+The public architecture should not keep a separate one-shot compatibility lane.
 
-Conceptually:
+The authoritative cold path is package-oriented and incremental.
 
-1. host creates a session
-2. host adds the source or package sources
-3. host loads dependency summaries
-4. host prepares a rooted snapshot
-5. host asks for diagnostics and module summaries
-
-That means one-shot use does not need a separate checker architecture.
-
-It just has different lifetime and orchestration around the same core engine.
+Tests or tiny harnesses may still build a short-lived session privately, but
+that is not a first-class public checker architecture.
 
 ## 17. Incremental LSP Use
 

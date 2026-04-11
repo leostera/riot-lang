@@ -4,20 +4,19 @@ open Model
 
 type prepared_source = {
   display_path: Path.t;
-  internal_module_name: Session.LocalModules.InternalName.t;
-  local_module_name: Session.LocalModules.AmbientName.t;
-  public_module_name: Session.LocalModules.AmbientName.t option;
+  internal_module_name: LocalModules.InternalName.t;
+  local_module_name: LocalModules.AmbientName.t;
+  public_module_name: LocalModules.AmbientName.t option;
   source: Source.t;
 }
 type checked_source = {
   path: Path.t;
-  analysis: Session.SourceAnalysis.t;
+  analysis: SourceAnalysis.t;
 }
 type finished_group = {
-  module_name: string;
+  module_name: LocalModules.InternalName.t;
   checked_sources: checked_source list;
-  module_typings: ModuleTypings.t;
-  loaded_modules: LoadedModules.t;
+  module_result: ModuleTypings.t;
 }
 type 'acc package_check_result = {
   acc: 'acc;
@@ -25,32 +24,20 @@ type 'acc package_check_result = {
   public_module_typings: LoadedModules.t;
 }
 type error =
-  | MissingRequirements of { module_name: string; requirements: Session.MissingRequirements.t }
-  | MissingModuleTypings of { module_name: string }
-  | MissingAnalysis of { module_name: string; path: Path.t }
-  | StoreFailure of { module_name: string; reason: string }
+  | MissingRequirements of {
+      module_name: LocalModules.InternalName.t;
+      requirements: MissingRequirements.t
+    }
+  | MissingModuleTypings of { module_name: LocalModules.InternalName.t }
+  | MissingAnalysis of { module_name: LocalModules.InternalName.t; path: Path.t }
+  | StoreFailure of { module_name: LocalModules.InternalName.t; reason: string }
   | PackageStoreFailure of { package_name: string; reason: string }
 
-(** Backwards-compatible one-shot entrypoint over [Batch.check_source].
-
-    New library consumers should prefer [Session], [Session.Snapshot], and
-    [Query]. *)
-val check_source_with_config:
-  config:TypConfig.t ->
-  filename:Path.t ->
-  parse_result:Syn.Parser.parse_result ->
-  cst:Syn.Cst.source_file ->
-  Check_result.t
-
-val check_source:
-  filename:Path.t ->
-  parse_result:Syn.Parser.parse_result ->
-  cst:Syn.Cst.source_file ->
-  Check_result.t
+val check: config:TypConfig.t -> source:Source.t -> Check_result.t
 
 (** Incrementally check one ordered package source list, one internal module
-    group at a time, using authoritative per-group module typings as the
-    ambient for later groups.
+    group at a time, using authoritative per-group compiled module results as
+    the ambient for later groups.
 
     When [package_name] and [package_fingerprint] are provided, the same
     authoritative public-module typings produced by the incremental engine are

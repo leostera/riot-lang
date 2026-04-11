@@ -1,188 +1,66 @@
-# Typ Rewrite Loop
+# typ LOOP
 
-Goal:
+Current rewrite target: make `typ` reflect the final boss architecture and
+remove prototype-era compatibility surfaces.
 
-- keep `riot run riot -- check -p kernel-new --json` correct
-- drive cold-start package checking under `100ms`
-- use the OCaml oracle corpus as the correctness rail while we rewrite
+## Primary Goal
 
-Correct currently means:
+Drive `kernel-new` toward a fast, correct, observable package-check path built
+around:
 
-- `{"files":118,"read_failures":0,"diagnostics":0,"warnings":0}`
+- one authoritative incremental package engine
+- one persistent semantic environment grown in dependency order
+- one canonical `ModuleTypings` runtime artifact per finished group
+- one hidden persistence codec for that artifact
+- optional query/editor payload kept off the plain cold-check path
 
-## Target Architecture
+## Hard Rules
 
-Build one strong package-check engine:
+- No public one-shot compatibility lane.
+- No string ids where a typed id or typed local-module name exists.
+- No hot-path `to_string` / `of_string` round-trips for identity.
+- No duplicated typed and string graph state unless profiling proves a
+  boundary-only cache win.
+- No rebuilding flat ambient lists when a persistent env can be extended
+  instead.
+- Imported module types must enter the build checker exactly once. Do not feed
+  the same imported type declarations through both `TypConfig.ambient_*` and
+  folded ambient surfaces.
+- Do not share a concrete `Infer.Env.t` across analyses unless it is proven
+  deeply immutable; cache prepared ambient surfaces or compiled module results,
+  not mutable semantic env snapshots.
+- Imported module metadata surfaces may be cached and reused. Concrete imported
+  envs must still be rebuilt fresh per analysis until binding schemes and type
+  declarations are proven safe to share.
+- `ModuleTypings` is the single canonical module artifact. JSON is a temporary
+  hidden codec detail, not a checker-facing runtime type.
+- `CompiledScope` is a cached derived view carried by `ModuleTypings`, not a
+  second authoritative module artifact.
+- `SourceAnalysis` is a source result, not a package-engine scratchpad. Keep
+  duplicated source payload and module-pairing ambient baggage out of it.
+- No host-side reconstruction of package results that `Typ.Check` can return
+  directly.
+- No snapshot-era rooted orchestration on the cold build-check path.
+- Keep `typ` phase events rich enough to explain where cold-check time goes.
+- Do not introduce a second in-process module authority just to make env import
+  easier. If the monotonic env cannot ingest `ModuleTypings` directly enough,
+  fix the env/import path instead.
 
-- one authoritative package-check path
-- incremental by module group
-- type once, pair once, persist once
-- keep authoritative module typings loaded in memory as later groups type
-- snapshots stay for query/editor workflows, not package checks
+## Current Priorities
 
-Core checker rules:
-
-- semantic identity uses ids, not strings
-- hot indexes use maps/arrays, not linear lists
-- no host-side reconstruction pass to recover authoritative module typings
-- no query/editor payload on the plain check path
-- no compatibility layers kept alive after a refactor lands
-
-When in doubt, match the spirit of `vendor/ocaml/typing`:
-
-- `Ident.t` / `Path.t` style semantic identity
-- `typemod` style incremental environment growth
-- one authoritative reusable module artifact
-
-## Loop
-
-For every slice:
-
-1. Pick one architectural task that can materially move `kernel-new`.
-2. Read:
-   - `packages/typ/docs/checker/index.md`
-   - `packages/typ/docs/checker/fast_package_check.md`
-   - the relevant feature doc under `packages/typ/docs/checker/*`
-   - the matching `vendor/ocaml/typing/*` code
-3. Write down the OCaml comparison:
-   - what OCaml stores once that `typ` still rebuilds
-   - what OCaml keys by ids that `typ` still keys by strings
-   - what invariant lets OCaml skip work that `typ` still pays for
-4. Implement the slice in `packages/typ`.
-   Touch `packages/riot-check` or `packages/riot-lsp` only when the new `typ` API requires it.
-5. Validate.
-6. Measure `kernel-new`.
-7. Check oracle coverage on the affected surface.
-8. Commit that slice with a conventional commit.
-9. Update this file if the loop, benchmark, or architecture target changed.
-10. Repeat.
+1. Feed loaded `ModuleTypings` directly into the monotonic package env without
+   building parallel module authorities.
+2. Replace the remaining analysis-time ambient rebuild path with a genuinely
+   shareable compiled import path, not raw `Infer.Env.module_scope`.
+3. Keep only one authoritative module artifact in memory and derive public
+   views from it once.
+4. Split build-check payload from query/editor payload more aggressively.
+5. Delete transitional prototype surfaces as soon as the engine no longer needs
+   them.
+6. Measure `kernel-new` after every architectural cut.
 
 ## Validation
 
-Run in this order:
-
-```sh
-riot fix ./packages/typ
-riot fix ./packages/riot-check
-riot fmt ./packages/typ
-riot fmt ./packages/riot-check
-riot build typ riot-check riot-lsp riot-cli
-riot test -p typ
-riot test -p riot-lsp
-riot run riot -- check -p kernel-new --json
-```
-
-Notes:
-
-- `riot fix` may still report existing backlog; do not make it worse.
-- if `kernel-new` fails before `typ` runs, fix the consumer path first.
-- if behavior changes, inspect the semantic result before approving snapshot churn.
-
-## Oracle
-
-The oracle corpus under `packages/typ/tests/fixtures/oracle` is the correctness rail for the rewrite.
-
-Always run:
-
-```sh
-env TYP_ORACLE_SKIP_SNAPSHOT=1 riot test typ:oracle_fixture_tests
-```
-
-Use focused runs while developing:
-
-```sh
-env TYP_ORACLE_SKIP_SNAPSHOT=1 TYP_ORACLE_START=1 TYP_ORACLE_END=200 riot test typ:oracle_fixture_tests
-```
-
-```sh
-env TYP_ORACLE_SKIP_SNAPSHOT=1 TYP_ORACLE_FILTER=polyvariant riot test typ:oracle_fixture_tests
-```
-
-Keep reporting two numbers:
-
-- corpus coverage: how much of the raw oracle corpus we actively exercise
-- typeable surface coverage: how much of the supported language surface is green
-
-If `ocamlc -i` emits an interface that `syn` cannot parse, turn that into a `syn` fixture.
-
-## Performance
-
-Primary benchmark:
-
-```sh
-time riot run riot -- check -p kernel-new --json
-```
-
-Always compare:
-
-- wall-clock runtime
-- emitted `check_summary` timing
-- semantic summary
-- oracle pass/fail on the touched surface
-
-For event analysis, keep the JSON stream:
-
-```sh
-riot run riot -- check -p kernel-new --json > /tmp/kernel-new.jsonl
-```
-
-Use the direct built binary when profiling so wrapper overhead does not dominate:
-
-```sh
-_build/debug/aarch64-apple-darwin/out/riot-cli/riot check -p kernel-new --json
-```
-
-## Xctrace
-
-Use `xctrace` after event timing tells you which phase is hot.
-
-Record:
-
-```sh
-xcrun xctrace record \
-  --template 'Time Profiler' \
-  --time-limit 8s \
-  --output /tmp/kernel-new.trace \
-  --target-stdout /tmp/kernel-new.jsonl \
-  --launch -- \
-  _build/debug/aarch64-apple-darwin/out/riot-cli/riot check -p kernel-new --json
-```
-
-Export:
-
-```sh
-xcrun xctrace export --input /tmp/kernel-new.trace --toc > /tmp/kernel-new-toc.xml
-xcrun xctrace export \
-  --input /tmp/kernel-new.trace \
-  --xpath '/trace-toc/run[@number="1"]/data/table[@schema="time-profile"]' \
-  > /tmp/kernel-new-time-profile.xml
-```
-
-Look for:
-
-- repeated module-summary reconstruction
-- string/path hashing and structural compare
-- list-based lookup or merge churn
-- GC/allocation spikes
-- retained query payload on check-only paths
-
-Use profiler output to choose the next architectural cut, not to justify micro-tweaks.
-
-## Current Rewrite Priorities
-
-1. finish replacing the old package-check orchestration with one incremental authoritative engine
-2. remove remaining string-heavy module identity from the package-check core
-3. remove list-heavy graph and merge work from hot paths
-4. split check payload from query/editor payload all the way through the package-check engine
-5. persist authoritative module typings exactly once, at module completion
-6. keep snapshot/query logic separate from the build-check path
-
-## Do Not
-
-- do not optimize before comparing against `vendor/ocaml/typing`
-- do not accept string ids or list scans in semantic hot paths
-- do not reintroduce dual package-check flows
-- do not carry query/editor payload through `riot check`
-- do not land compatibility scaffolding and call the rewrite done
-- do not trade correctness for speed
-- do not commit without recording `kernel-new` timing and oracle status
+- `riot build typ`
+- `riot run riot -- check -p kernel-new --json`
+- targeted oracle runs when semantics move

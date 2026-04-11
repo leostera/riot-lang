@@ -23,6 +23,13 @@ type t = {
   capture_traces: bool;
   (** Snapshot-scoped bindings synthesized from sibling sources or host context. *)
   ambient: env;
+  (** Names that should be hidden from export summaries because they originate
+      outside the current source, such as prelude bindings or ambient module
+      surfaces.
+
+      Package checking may override this directly while keeping the actual
+      checker input env in a separate persistent structure. *)
+  hidden_export_names: SurfacePath.t list;
   (** Snapshot-scoped lowered type declarations synthesized from summaries. *)
   ambient_type_decls: FileSummary.type_decl list;
   (** Snapshot-scoped visible type context built from [ambient_type_decls]. *)
@@ -42,6 +49,19 @@ val default: t
 
 (** Replace the snapshot ambient environment while preserving the base prelude. *)
 val with_ambient: t -> ambient:env -> t
+
+(** Recover the current visible ambient type declarations. *)
+val ambient_type_decls: t -> FileSummary.type_decl list
+
+(** Recover the current hidden-export name set. *)
+val hidden_export_names: t -> SurfacePath.t list
+
+(** Replace the hidden-export name set directly.
+
+    This is the natural entrypoint for package checking, where the checker may
+    type against one persistent env while still needing an explicit export
+    filter for imported module surfaces. *)
+val with_hidden_export_names: t -> hidden_export_names:SurfacePath.t list -> t
 
 (** Replace the snapshot ambient type declarations while preserving the base
     prelude, loaded modules, and ambient value environment. *)

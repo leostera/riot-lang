@@ -3,9 +3,9 @@ open Std
 (** Indexed host-loaded module typings.
 
     The checker hot path should not carry loaded module summaries around as raw
-    lists. [LoadedModules] stores those summaries keyed by module name and
-    exposes keyed/folded access so sessions and snapshots can avoid repeated
-    list merges and lookups. *)
+    lists. [LoadedModules] stores those summaries keyed by interned required
+    module names and exposes keyed/folded access so sessions and snapshots can
+    avoid repeated list merges, string parsing, and lookups. *)
 type t
 
 (** Empty loaded-module index. *)
@@ -38,23 +38,23 @@ val len: t -> int
 (** Whether the index is empty. *)
 val is_empty: t -> bool
 
-(** Find module typings by module name. *)
-val get: t -> module_name:string -> ModuleTypings.t option
+(** Find module typings by required module name. *)
+val get: t -> required_name:LocalModules.RequiredName.t -> ModuleTypings.t option
 
-(** Whether a module name is present. *)
-val contains: t -> module_name:string -> bool
+(** Whether a required module name is present. *)
+val contains: t -> required_name:LocalModules.RequiredName.t -> bool
 
 (** Iterate all loaded modules. Iteration order is unspecified. *)
-val iter: (string -> ModuleTypings.t -> unit) -> t -> unit
+val iter: (LocalModules.RequiredName.t -> ModuleTypings.t -> unit) -> t -> unit
 
 (** Fold all loaded modules. Iteration order is unspecified. *)
-val fold: (string -> ModuleTypings.t -> 'acc -> 'acc) -> t -> 'acc -> 'acc
+val fold: (LocalModules.RequiredName.t -> ModuleTypings.t -> 'acc -> 'acc) -> t -> 'acc -> 'acc
 
 (** Recover the loaded module typings as an unordered list. *)
 val values: t -> ModuleTypings.t list
 
-(** Recover all loaded module names as an unordered list. *)
-val names: t -> string list
+(** Recover all loaded required names as an unordered list. *)
+val names: t -> LocalModules.RequiredName.t list
 
 (** Stable cache key for the whole loaded-module set. *)
 val stable_key: t -> string

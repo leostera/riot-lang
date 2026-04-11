@@ -1,7 +1,7 @@
 open Std
 open Model
 
-(** Shared output types for a single prototype type-check run. *)
+(** Shared output types for one checked source. *)
 type env = (string * TypeScheme.t) list
 type binding_provenance =
   | LoweredPattern of PatternArenaId.t
@@ -41,7 +41,7 @@ type item_trace = {
 }
 (** Full result of checking one source input through parse, lower, and infer. *)
 type t = {
-  (** Stable logical source identity assigned by the batch wrapper. *)
+  (** Stable logical source identity for the checked source. *)
   source_id: SourceId.t;
   (** Host filename used when parsing this source text. *)
   filename: Path.t;

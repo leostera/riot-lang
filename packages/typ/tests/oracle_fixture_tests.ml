@@ -182,13 +182,22 @@ let check_source_text = fun ~filename text ->
         with_check_source_stage
           ~filename
           ~stage:"fallback_source_analysis"
-          (fun () -> Session.SourceAnalysis.analyze ~config source)
+          (fun () -> SourceAnalysis.analyze ~config source)
       in
       let _ =
         with_check_source_stage
           ~filename
           ~stage:"direct_module_pairing_from_fallback_analysis"
-          (fun () -> Session.ModulePairing.of_sources ~module_name [ (source, fallback_analysis) ])
+          (fun () ->
+            ModulePairing.of_sources
+              ~internal_name:(LocalModules.InternalName.of_string module_name)
+              [
+                {
+                  ModulePairing.source;
+                  analysis = fallback_analysis;
+                  ambient_type_decls = Typ.Config.ambient_type_decls config;
+                }
+              ])
       in
       let prepared_snapshot =
         with_check_source_stage
@@ -232,7 +241,7 @@ let check_source_text = fun ~filename text ->
             typing_diagnostics = analysis.typing_diagnostics;
             file_summary = analysis.file_summary;
             type_index = analysis.type_index;
-            exports = Session.SourceAnalysis.exports analysis
+            exports = SourceAnalysis.exports analysis
             |> List.map (fun (name, scheme) -> (SurfacePath.to_string name, scheme));
             item_traces = analysis.item_traces;
             expr_traces = analysis.expr_traces;

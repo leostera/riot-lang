@@ -33,6 +33,10 @@ val summary_open: summary -> SurfacePath.t -> summary
 
 val summary_qualify: summary -> scope_path:SurfacePath.t -> summary
 
+val module_scope_of_env: t -> module_scope
+
+val of_module_scope: module_scope -> t
+
 val env_of_summary: summary -> t
 
 val of_entries:
@@ -62,6 +66,8 @@ val singleton_constructor:
 
 val singleton_module: name:string -> t -> t
 
+val singleton_module_scope: name:string -> module_scope -> t
+
 val bindings: t -> bindings
 
 val type_decls: t -> FileSummary.type_decl list
@@ -75,6 +81,8 @@ val bind: t -> t -> t
 val extend: t -> bindings -> t
 
 val bind_in_scope: t -> scope_path:SurfacePath.t -> t -> t
+
+val without_summary: t -> t
 
 val with_local_open: t -> SurfacePath.t -> t
 

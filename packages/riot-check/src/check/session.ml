@@ -11,11 +11,11 @@ module Typ_module_typings = Typ.Model.ModuleTypings
 module Typ_source = Typ.Model.Source
 module Typ_source_id = Typ.Model.SourceId
 module Typ_visible_types = Typ.Model.VisibleTypes
-module Typ_module_pairing = Typ.Session.ModulePairing
-module Typ_module_surface = Typ.Session.ModuleSurface
+module Typ_module_pairing = Typ.ModulePairing
+module Typ_module_surface = Typ.ModuleSurface
 module Typ_snapshot = Typ.Session.Snapshot
-module Typ_source_analysis = Typ.Session.SourceAnalysis
-module Typ_local_modules = Typ.Session.LocalModules
+module Typ_source_analysis = Typ.SourceAnalysis
+module Typ_local_modules = Typ.Model.LocalModules
 
 type prepared_source =
   | Readable_source of { path: Path.t; source_id: Typ_source_id.t; typ_source: Typ_source.t }
@@ -789,7 +789,7 @@ let package_scan_ambient_with_typings = fun state typings ->
 
 let package_scan_ambient_of_loaded_modules = fun loaded_modules ->
   Typ_loaded_modules.fold
-    (fun _module_name typings state -> package_scan_ambient_with_typings state typings)
+    (fun _required_name typings state -> package_scan_ambient_with_typings state typings)
     loaded_modules
     package_scan_ambient_empty
 
@@ -815,7 +815,8 @@ let relative_module_name = fun ~current_local_module_name module_name ->
 
 let relative_ambient_exports_for_loaded_modules = fun ?exclude_module_name ~current_local_module_name loaded_modules ->
   Typ_loaded_modules.fold
-    (fun module_name typings ambient ->
+    (fun _required_name typings ambient ->
+      let module_name = Typ_module_typings.module_name typings in
       if match exclude_module_name with
         | Some excluded_module_name -> String.equal module_name excluded_module_name
         | None -> false then
@@ -833,7 +834,8 @@ let relative_ambient_exports_for_loaded_modules = fun ?exclude_module_name ~curr
 
 let relative_ambient_type_decls_for_loaded_modules = fun ?exclude_module_name ~current_local_module_name loaded_modules ->
   Typ_loaded_modules.fold
-    (fun module_name typings ambient ->
+    (fun _required_name typings ambient ->
+      let module_name = Typ_module_typings.module_name typings in
       if match exclude_module_name with
         | Some excluded_module_name -> String.equal module_name excluded_module_name
         | None -> false then
@@ -849,7 +851,8 @@ let relative_ambient_type_decls_for_loaded_modules = fun ?exclude_module_name ~c
 let ambient_env_for_loaded_modules = fun ~current_module_name ~current_local_module_name loaded_modules ->
   let base_ambient =
     Typ_loaded_modules.fold
-      (fun module_name typings ambient ->
+      (fun _required_name typings ambient ->
+        let module_name = Typ_module_typings.module_name typings in
         if String.equal current_module_name module_name then
           ambient
         else
@@ -870,7 +873,8 @@ let ambient_env_for_loaded_modules = fun ~current_module_name ~current_local_mod
 let ambient_type_decls_for_loaded_modules = fun ~current_module_name ~current_local_module_name loaded_modules ->
   let base_ambient =
     Typ_loaded_modules.fold
-      (fun module_name typings ambient ->
+      (fun _required_name typings ambient ->
+        let module_name = Typ_module_typings.module_name typings in
         if String.equal current_module_name module_name then
           ambient
         else
@@ -979,16 +983,17 @@ let missing_requirements_reason = fun missing ->
 
 let incremental_check_error_reason = function
   | Typ.Check.MissingRequirements { module_name; requirements } -> "while checking "
-  ^ module_name
+  ^ Typ_local_modules.InternalName.to_string module_name
   ^ ": "
   ^ missing_requirements_reason requirements
-  | Typ.Check.MissingModuleTypings { module_name } -> "missing authoritative module typings for " ^ module_name
+  | Typ.Check.MissingModuleTypings { module_name } -> "missing authoritative module typings for "
+  ^ Typ_local_modules.InternalName.to_string module_name
   | Typ.Check.MissingAnalysis { module_name; path } -> "missing checked analysis for "
-  ^ module_name
+  ^ Typ_local_modules.InternalName.to_string module_name
   ^ " at "
   ^ Path.to_string path
   | Typ.Check.StoreFailure { module_name; reason } -> "while persisting module typings for "
-  ^ module_name
+  ^ Typ_local_modules.InternalName.to_string module_name
   ^ ": "
   ^ reason
   | Typ.Check.PackageStoreFailure { package_name; reason } -> "while persisting package bundle for "
@@ -1110,6 +1115,7 @@ let analyze_package_typ_sources_in_order = fun config ordered_sources ->
         | Failure message ->
             let loaded_module_names = ambient_state.loaded_modules
             |> Typ_loaded_modules.names
+            |> List.map Typ_local_modules.RequiredName.to_string
             |> List.sort String.compare in
             raise
               (Failure ("while saving module typings for "
@@ -1121,15 +1127,15 @@ let analyze_package_typ_sources_in_order = fun config ordered_sources ->
       )
     | None -> ()
   in
-  let rec loop ambient_state analyses remaining =
+  let rec loop ambient_state results remaining =
     match remaining with
-    | [] -> List.rev analyses
+    | [] -> List.rev results
     | (_module_name, sources) :: rest ->
         let analyzed_sources =
           sources
           |> List.map
             (fun (source: package_typ_source) ->
-              let (ambient, _ambient_type_decls, ambient_visible_types) = package_scan_ambient_for_source
+              let (ambient, ambient_type_decls, ambient_visible_types) = package_scan_ambient_for_source
                 ambient_state
                 ~current_module_name:source.internal_module_name
                 ~current_local_module_name:source.local_module_name in
@@ -1138,7 +1144,7 @@ let analyze_package_typ_sources_in_order = fun config ordered_sources ->
               |> Typ.Config.with_ambient ~ambient
               |> Typ.Config.with_ambient_visible_types ~ambient_visible_types in
               let analysis = Typ_source_analysis.analyze ~config source.source in
-              (source, analysis))
+              { Typ_module_pairing.source = source.source; analysis; ambient_type_decls }, source)
         in
         let module_name =
           match sources with
@@ -1146,58 +1152,38 @@ let analyze_package_typ_sources_in_order = fun config ordered_sources ->
           | [] -> panic "expected non-empty source group"
         in
         let pairing = analyzed_sources
-        |> List.map (fun ((source: package_typ_source), analysis) -> (source.source, analysis))
-        |> Typ_module_pairing.of_sources ~module_name in
-        let local_alias_typings = local_alias_typings_for_sources pairing.module_typings sources in
+        |> List.map fst
+        |> Typ_module_pairing.of_sources
+          ~internal_name:(Typ_local_modules.InternalName.of_string module_name) in
+        let module_typings = pairing.module_result in
+        let local_alias_typings = local_alias_typings_for_sources module_typings sources in
         let () =
           match sources with
           | source :: _ -> persist_typings
             ambient_state
             source.display_path
-            (pairing.module_typings :: local_alias_typings)
+            (module_typings :: local_alias_typings)
           | [] -> ()
         in
-        let ambient_state = pairing.module_typings :: local_alias_typings
+        let ambient_state = module_typings :: local_alias_typings
         |> List.fold_left package_scan_ambient_with_typings ambient_state in
-        loop ambient_state (List.rev_append pairing.analyses_by_source analyses) rest
+        loop ambient_state ((module_name, pairing) :: results) rest
   in
   loop
     (package_scan_ambient_of_loaded_modules config.Typ.Config.loaded_modules)
     []
     (grouped_package_typ_sources_by_internal_module ordered_sources)
 
-let source_analyses_of_analyses = fun ordered_sources analyses ->
-  analyses |> List.filter_map
-    (fun (source_id, analysis) ->
-      ordered_sources |> List.find_opt
-        (fun (source: package_typ_source) ->
-          Typ_source_id.equal source.source_id source_id) |> Option.map
-        (fun source -> (source, analysis)))
-
-let group_source_analyses_by = fun key_of source_analyses ->
-  source_analyses |> List.fold_left
-    (fun grouped ((source: package_typ_source), analysis) ->
-      let key = key_of source in
-      let existing =
-        match List.assoc_opt key grouped with
-        | Some existing -> existing
-        | None -> []
-      in
-      (key, ((source.source, analysis) :: existing)) :: List.remove_assoc key grouped)
-    [] |> List.rev |> List.map (fun (key, sources) -> (key, List.rev sources))
-
-let internal_module_results_of_analyses = fun ordered_sources analyses ->
-  source_analyses_of_analyses ordered_sources analyses
-  |> group_source_analyses_by (fun (source: package_typ_source) -> source.internal_module_name)
-  |> List.map
-    (fun (module_name, sources) -> (module_name, Typ_module_pairing.of_sources ~module_name sources))
-
-let package_module_typings_of_analyses = fun ordered_sources analyses ->
+let package_module_typings_of_results = fun ordered_sources results ->
   let internal_typings_by_module_name =
-    internal_module_results_of_analyses ordered_sources analyses
+    results
     |> List.fold_left
       (fun by_name (module_name, (result: Typ_module_pairing.t)) ->
-        Collections.HashMap.insert by_name module_name result.module_typings |> ignore;
+        Collections.HashMap.insert
+          by_name
+          module_name
+          result.module_result
+        |> ignore;
         by_name)
       (Collections.HashMap.with_capacity 64)
   in
@@ -1215,7 +1201,7 @@ let expected_public_module_names = fun ordered_sources ->
   |> List.sort_uniq String.compare
 
 let package_scan_public_module_typings = fun config ordered_sources ->
-  analyze_package_typ_sources_in_order config ordered_sources |> package_module_typings_of_analyses ordered_sources
+  analyze_package_typ_sources_in_order config ordered_sources |> package_module_typings_of_results ordered_sources
 
 let merge_public_module_typings_with_package_scan = fun config ordered_sources module_typings ->
   match expected_public_module_names ordered_sources with

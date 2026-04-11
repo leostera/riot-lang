@@ -1,11 +1,7 @@
 open Std
 open Model
 module Snapshot = Snapshot
-module SourceAnalysis = SourceAnalysis
-module ModulePairing = ModulePairing
-module ModuleSurface = ModuleSurface
 module MissingRequirements = MissingRequirements
-module LocalModules = LocalModules
 
 type t = {
   config: TypConfig.t;
@@ -274,7 +270,7 @@ let deps_env_for_loaded_modules = fun session loaded_modules ->
       in
       let env =
         LoadedModules.fold
-          (fun _module_name summary env -> add_summary_paths env summary)
+          (fun _required_name summary env -> add_summary_paths env summary)
           loaded_modules
           Syn.Deps.Env.empty
       in
@@ -355,7 +351,9 @@ let collect_missing_module_summaries = fun session roots ->
     ~current_module_name:(Source.module_name source)
     module_name in
   let dependency_is_loaded_only module_name =
-    Collections.HashSet.contains loaded_module_names module_name
+    Collections.HashSet.contains
+      loaded_module_names
+      (LocalModules.RequiredName.of_string module_name)
     && not (has_local_source_for_module session module_name) in
   let initial_source_ids =
     roots
@@ -434,7 +432,9 @@ let collect_missing_module_summaries = fun session roots ->
         nested_modules
   in
   let loaded_nested_module_prefixes module_name =
-    match LoadedModules.get session.config.loaded_modules ~module_name with
+    match LoadedModules.get
+      session.config.loaded_modules
+      ~required_name:(LocalModules.RequiredName.of_string module_name) with
     | None -> []
     | Some summary -> nested_module_prefixes_of_typings summary
   in
@@ -443,7 +443,11 @@ let collect_missing_module_summaries = fun session roots ->
     |> List.concat_map
       (fun module_name ->
         let loaded_nested_modules =
-          if Collections.HashSet.contains loaded_module_names module_name then
+          if
+            Collections.HashSet.contains
+              loaded_module_names
+              (LocalModules.RequiredName.of_string module_name)
+          then
             loaded_nested_module_prefixes module_name
           else
             []
@@ -581,7 +585,9 @@ let local_source_closure = fun session roots ->
                 |> List.filter
                   (fun module_name ->
                     not
-                      (Collections.HashSet.contains loaded_module_names module_name
+                      (Collections.HashSet.contains
+                        loaded_module_names
+                        (LocalModules.RequiredName.of_string module_name)
                       && not (has_local_source_for_module session module_name)))
                 |> List.concat_map (local_dependency_source_ids source)) in
                 discover (additional @ rest) seen

@@ -258,6 +258,16 @@ let module_scope_of_env: t -> module_scope = fun env ->
     modules = env.modules;
   }
 
+let of_module_scope = fun (scope: module_scope) ->
+  {
+    summary = Summary2.empty;
+    values = scope.values;
+    types = scope.types;
+    constructors = scope.constructors;
+    labels = scope.labels;
+    modules = scope.modules;
+  }
+
 let binding_name_of_path = fun path ->
   match SurfacePath.last_name path with
   | Some name -> name
@@ -423,7 +433,13 @@ let env_of_local_type_decls: FileSummary.type_decl list -> t = fun type_decls ->
 
 let bind = fun (env: t) (introduced: t) ->
   {
-    summary = Summary2.bind env.summary introduced.summary;
+    summary = (
+      match (env.summary, introduced.summary) with
+      | (Summary2.Empty, summary)
+      | (summary, Summary2.Empty) ->
+          summary
+      | _ -> Summary2.bind env.summary introduced.summary
+    );
     values = Value_env.bind env.values introduced.values;
     types = Type_env.bind env.types introduced.types;
     constructors = Constructor_env.bind env.constructors introduced.constructors;
@@ -440,11 +456,18 @@ let bind_in_scope = fun (env: t) ~scope_path (introduced: t) ->
     let qualified_type_env = env_of_local_type_decls qualified_type_decls in
     {
       (bind_in_scope_modules env ~scope_path introduced)
-      with summary = Summary2.bind_in_scope env.summary ~scope_path introduced.summary;
+      with summary = (
+        match introduced.summary with
+        | Summary2.Empty -> env.summary
+        | _ -> Summary2.bind_in_scope env.summary ~scope_path introduced.summary
+      );
       types = Type_env.bind env.types qualified_type_env.types;
       constructors = env.constructors;
       labels = Label_env.bind env.labels qualified_type_env.labels
     }
+
+let without_summary = fun (env: t) ->
+  { env with summary = Summary2.empty }
 
 let of_bindings = fun bindings ->
   let (bare_bindings, qualified_bindings) = partition_bindings bindings in
@@ -751,7 +774,7 @@ let introduced_names = fun before after ->
 
 let hidden_name_set = fun (config: TypConfig.t) ->
   Collections.HashSet.of_list
-    (List.map (fun (path, _) -> SurfacePath.to_string path) (config.prelude @ config.ambient))
+    (List.map SurfacePath.to_string (TypConfig.hidden_export_names config))
 
 let is_hidden_export_binding = fun hidden_name_set binding ->
   Collections.HashSet.contains hidden_name_set
@@ -792,11 +815,14 @@ let introduced_entries = fun before after ->
 let module_table_singleton = fun binding ->
   Name_map.add binding.name binding Name_map.empty
 
-let singleton_module = fun ~name module_env ->
+let singleton_module_scope = fun ~name scope ->
   {
     empty
-    with modules = module_table_singleton { name; components = module_scope_of_env module_env }
+    with modules = module_table_singleton { name; components = scope }
   }
+
+let singleton_module = fun ~name module_env ->
+  singleton_module_scope ~name (module_scope_of_env module_env)
 
 let entries_for_include = fun env module_path ->
   match lookup_module_scope env module_path with

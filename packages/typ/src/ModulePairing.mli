@@ -1,6 +1,12 @@
 open Std
 open Model
 
+type source_input = {
+  source: Source.t;
+  analysis: SourceAnalysis.t;
+  ambient_type_decls: FileSummary.type_decl list;
+}
+
 (** Paired module result for one logical module name.
 
     A logical module may be backed by an implementation source, an interface
@@ -9,8 +15,8 @@ open Model
     include signature-inclusion diagnostics when an implementation does not
     satisfy its interface. *)
 type t = {
-  (** Canonical reusable module typings for the logical module. *)
-  module_typings: ModuleTypings.t;
+  (** Authoritative internal module result for the logical module. *)
+  module_result: ModuleTypings.t;
   (** Per-source analyses adjusted with signature-inclusion diagnostics. *)
   analyses_by_source: (SourceId.t * SourceAnalysis.t) list;
   (** Signature mismatches observed while reconciling interface and implementation. *)
@@ -18,4 +24,4 @@ type t = {
 }
 
 (** Pair all analyzed sources for one logical module name. *)
-val of_sources: module_name:string -> (Source.t * SourceAnalysis.t) list -> t
+val of_sources: internal_name:LocalModules.InternalName.t -> source_input list -> t

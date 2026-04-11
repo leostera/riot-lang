@@ -3,12 +3,16 @@ open Model
 
 type env = (SurfacePath.t * TypeScheme.t) list
 
+let hidden_export_names_of = fun ~prelude ~ambient ->
+  (prelude @ ambient) |> List.map fst
+
 type t = {
   prelude: env;
   loaded_modules: LoadedModules.t;
   store: Store.t option;
   capture_traces: bool;
   ambient: env;
+  hidden_export_names: SurfacePath.t list;
   ambient_type_decls: FileSummary.type_decl list;
   ambient_visible_types: VisibleTypes.t;
   on_event: (Event.t -> unit) option;
@@ -24,12 +28,25 @@ let default = {
   store = None;
   capture_traces = true;
   ambient = [];
+  hidden_export_names = hidden_export_names_of ~prelude:default_prelude ~ambient:[];
   ambient_type_decls = default_ambient_type_decls;
   ambient_visible_types = VisibleTypes.of_type_decls default_ambient_type_decls;
   on_event = None;
 }
 
-let with_ambient = fun config ~ambient -> { config with ambient }
+let with_ambient = fun config ~ambient ->
+  {
+    config
+    with ambient;
+    hidden_export_names = hidden_export_names_of ~prelude:config.prelude ~ambient
+  }
+
+let ambient_type_decls = fun config -> config.ambient_type_decls
+
+let hidden_export_names = fun config -> config.hidden_export_names
+
+let with_hidden_export_names = fun config ~hidden_export_names ->
+  { config with hidden_export_names }
 
 let with_ambient_type_decls = fun config ~ambient_type_decls ->
   {

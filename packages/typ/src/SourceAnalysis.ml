@@ -14,11 +14,9 @@ type completeness = FileSummary.completeness =
 type t = {
   source: Source.t;
   parse_diagnostics: Syn.Diagnostic.t list;
-  cst: Syn.Cst.source_file;
   semantic_tree: SemanticTree.file option;
   lowering_diagnostics: Typ_diagnostic.t list;
   typing_diagnostics: Typ_diagnostic.t list;
-  ambient_type_decls: FileSummary.type_decl list;
   completeness: completeness;
   file_summary: FileSummary.t;
   value_definitions: ModuleTypings.value_definition list;
@@ -128,8 +126,7 @@ let has_error_diagnostics = fun diagnostics ->
 
 let analyze = fun ?initial_env ~config (source: Source.t) ->
   let parsed = source.parse_result in
-  let cst = source.cst in
-  let semantic_tree = Lower.lower_source_file ~source cst in
+  let semantic_tree = Lower.lower_source_file ~source source.cst in
   let inferred = Infer.infer_file ?initial_env ~config ~source semantic_tree in
   let value_definitions = export_definitions_of_bindings
     ~source
@@ -173,7 +170,6 @@ let analyze = fun ?initial_env ~config (source: Source.t) ->
     source;
     parse_diagnostics =
       Parser.(parsed.diagnostics);
-    cst;
     semantic_tree =
       if config.capture_traces then
         Some semantic_tree
@@ -181,7 +177,6 @@ let analyze = fun ?initial_env ~config (source: Source.t) ->
         None;
     lowering_diagnostics = semantic_tree.diagnostics;
     typing_diagnostics = inferred.diagnostics;
-    ambient_type_decls = config.ambient_type_decls;
     completeness = completeness_of_file_summary file_summary;
     file_summary;
     value_definitions;

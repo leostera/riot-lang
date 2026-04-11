@@ -3,15 +3,7 @@ open Model
 
 module Snapshot: module type of Snapshot
 
-module SourceAnalysis: module type of SourceAnalysis
-
-module ModulePairing: module type of ModulePairing
-
-module ModuleSurface: module type of ModuleSurface
-
 module MissingRequirements: module type of MissingRequirements
-
-module LocalModules: module type of LocalModules
 
 (** Mutable host-owned set of logical sources. *)
 type t
@@ -73,9 +65,8 @@ val prepare_snapshot: t -> roots:SourceId.t list -> (Snapshot.t, MissingRequirem
 (** Freeze the current session state into one immutable [Snapshot].
 
     Per-source analyses are loaded lazily from the resulting snapshot so LSP
-    callers can query only the files they touch, while compiler-style callers
-    can still force everything through [Snapshot.analyses] or the batch lane.
+    callers can query only the files they touch.
 
-    This is the compatibility wrapper for preparing a rooted snapshot over all
-    current session sources. *)
+    This is the whole-session query snapshot over the current session sources.
+    It is not the authoritative cold package-check path. *)
 val snapshot: t -> Snapshot.t

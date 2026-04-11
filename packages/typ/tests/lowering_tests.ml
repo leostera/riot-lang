@@ -26,7 +26,20 @@ let export_to_json = fun (name, scheme) ->
 let check_source_text = fun ~filename text ->
   let parse_result = Syn.parse ~filename text in
   match Syn.build_cst parse_result with
-  | Ok cst -> Check.check_source ~filename ~parse_result ~cst
+  | Ok cst ->
+      let origin = Source.Path filename in
+      let implicit_opens = [] in
+      let source = Source.make_prepared
+        ~source_id:(SourceId.of_int 0)
+        ~kind:Source.File
+        ~module_name:(Source.infer_module_name origin)
+        ~implicit_opens
+        ~origin
+        ~revision:0
+        ~source_hash:(Source.hash ~implicit_opens ~cst)
+        ~parse_result
+        ~cst in
+      Typ.check ~config:Config.default ~source
   | Error (Syn.Parse_diagnostics diagnostics) -> panic
     (format
       Format.[

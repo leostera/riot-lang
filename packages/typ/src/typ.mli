@@ -1,40 +1,58 @@
 open Std
 
-(** Typ - Experimental library-first type analysis for Riot
+(** Typ - Riot's type-checker engine
 
     `typ` is organized into sublibraries:
 
     - `Typ.Model`
-      shared type model, semantic layers, ids, summaries, and reusable
-      persisted typing artifacts
+      shared semantic ids, paths, module artifacts, and reusable persisted
+      typing data
     - `Typ.Analysis`
-      analysis products such as check results and type indexes
+      checked-source outputs such as reports and type indexes
+    - `Typ.SourceAnalysis`
+      core single-source analysis over already prepared sources
+    - `Typ.ModulePairing`
+      canonical pairing of interface and implementation analyses
+    - `Typ.ModuleSurface`
+      module-surface qualification and public-view derivation
     - `Typ.Lower`
-      CST-to-semantic-tree lowering and origin/binding construction
+      CST-to-semantic-tree lowering and origin construction
     - `Typ.Infer`
-      solver state, regions, and the prototype inference engine
+      solver state, environments, and inference
     - `Typ.Event`
-      structured debug/progress events emitted by rooted snapshot preparation
-      and source analysis
+      structured timing and progress events from the checker engine
     - `Typ.Diagnostics`
       user-facing explanations and report rendering
     - `Typ.Query`
-      read-only query surface over session snapshots
+      read-only query surface over immutable snapshots
     - `Typ.Session`
-      long-lived host sessions, rooted snapshots, and persistence plumbing
+      long-lived session and snapshot machinery for query/editor workflows
+    - `Typ.Check`
+      the authoritative incremental package-check engine
 
-    Convenience wrappers remain available at:
+    The hot build-check path is package-oriented and incremental. Query and
+    editor workflows remain snapshot-oriented, but they share the same
+    semantics and module artifacts. *)
+type config = TypConfig.t
+type source = Model.Source.t
+type checked_source = Analysis.Check_result.t
 
-    - `Typ.Batch.check_source`
-    - `Typ.Check.check_source`
+(** Check one already prepared source.
 
-    These one-shot wrappers still require host-prepared `Syn.parse` and
-    successful `Syn.build_cst` artifacts; `typ` no longer reparses source text
-    internally.
-*)
+    The caller is responsible for supplying a [Source.t] that already carries
+    the parse result and CST. `typ` does not accept raw source text at this
+    boundary. *)
+val check: config:config -> source:source -> checked_source
+
 module Model: module type of Model
 
 module Analysis: module type of Analysis
+
+module SourceAnalysis: module type of SourceAnalysis
+
+module ModulePairing: module type of ModulePairing
+
+module ModuleSurface: module type of ModuleSurface
 
 module Lower: module type of Lower
 
@@ -44,13 +62,13 @@ module Event: module type of Event
 
 module Diagnostics: module type of Diagnostics
 
+module MissingRequirements: module type of MissingRequirements
+
 module Query: module type of Query
 
 module Session: module type of Session
 
 module Store: module type of Store
-
-module Batch: module type of Batch
 
 module Check: module type of Check
 
