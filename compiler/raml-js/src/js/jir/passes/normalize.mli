@@ -3,6 +3,8 @@
     Algorithm:
     - recursively normalize expressions and statements
     - normalize nested function bodies and block contents
+    - drop trailing [return undefined] in function tails where JS already
+      returns [undefined] implicitly
     - collapse [Block []] and empty conditionals through [Simplify]
     - scan the normalized body for imported/runtime references
     - deduplicate imports while preserving first-seen encounter order

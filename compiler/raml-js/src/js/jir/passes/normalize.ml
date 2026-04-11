@@ -132,10 +132,9 @@ let rec normalize_expr = fun expr ->
   | Jir.Expr.Imported _
   | Jir.Expr.Runtime_helper _ ->
       expr
-  | Jir.Expr.Function function_ -> Jir.Expr.Function Jir.Expr.{
-    function_
-    with body = normalize_statement_list function_.body;
-  }
+  | Jir.Expr.Function function_ ->
+      let body = normalize_statement_list function_.body |> Simplify.function_body in
+      Jir.Expr.Function Jir.Expr.{ function_ with body }
   | Jir.Expr.Member member -> Jir.Expr.Member Jir.Expr.{
     member
     with object_ = normalize_expr member.object_;
