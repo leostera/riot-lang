@@ -371,9 +371,12 @@ let lower_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
          - Alpha makes printable names collision-free before later rewrites
            reuse those binders.
          - Remove_aliases and Dce simplify data flow and delete dead local
-           scaffolding.
+         scaffolding.
          - Normalize runs again after those rewrites because they can expose
-           empty blocks or stale import requirements.
+           empty blocks, empty conditionals, or stale import requirements.
+         - Dce runs a second time after that normalization because the first DCE
+           pass can expose fresh dead declarations only once those empty control
+           flow wrappers collapse.
          - Materialize_imports marks the boundary where late JIR stops carrying
            unresolved import/runtime expression nodes.
          - Remove_aliases and Prune_imports run one last time to clean up names
@@ -384,7 +387,8 @@ let lower_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
       let aliases_removed = Passes.Remove_aliases.program alpha_renamed in
       let dce_lowered = Passes.Dce.program aliases_removed in
       let normalized_after_dce = Passes.Normalize.program dce_lowered in
-      let materialized_imports = Passes.Materialize_imports.program normalized_after_dce in
+      let dce_after_normalize = Passes.Dce.program normalized_after_dce in
+      let materialized_imports = Passes.Materialize_imports.program dce_after_normalize in
       let aliases_removed_after_imports = Passes.Remove_aliases.program materialized_imports in
       let imports_pruned = Passes.Prune_imports.program aliases_removed_after_imports in
       ok imports_pruned
