@@ -82,7 +82,8 @@ The main remaining architectural gaps are:
    small rather than typed and declarative.
    It is now Riot-owned end to end in the JS backend, and the remaining helper
    fallback goes through the typed shared primitive contract instead of raw
-   OCaml-style primitive labels.
+   OCaml-style primitive labels. The runtime helper surface is now down to the
+   parse/validation cases that are not yet represented directly in `JIR`.
 3. `JST` has no post-lowering optimization layer yet.
 4. There is no package-level dependency artifact analogous to Melange `.cmj`
    metadata.
