@@ -23,13 +23,13 @@ let resize = fun vector new_capacity ->
 
 let ensure_capacity = fun vector required_capacity ->
   let current_capacity = capacity vector in
-  if current_capacity < required_capacity then
+  if Int.compare current_capacity required_capacity < 0 then
     let new_capacity = max required_capacity (current_capacity * 2) in
     let new_capacity = max new_capacity 4 in
     resize vector new_capacity
 
 let reserve = fun vector additional ->
-  if additional < 0 then
+  if Int.compare additional 0 < 0 then
     panic "additional capacity must be non-negative"
   else
     ensure_capacity vector (vector.length + additional)
@@ -48,7 +48,7 @@ let pop = fun vector ->
   )
 
 let get = fun vector index ->
-  if index >= 0 && index < vector.length then
+  if Int.compare index 0 >= 0 && Int.compare index vector.length < 0 then
     Some (Array.unsafe_get vector.data index)
   else
     None
@@ -57,7 +57,7 @@ let get_unchecked = fun vector index ->
   Array.unsafe_get vector.data index
 
 let set = fun vector index value ->
-  if index < 0 || index >= vector.length then
+  if Int.compare index 0 < 0 || Int.compare index vector.length >= 0 then
     panic "Index out of bounds"
   else
     Array.unsafe_set vector.data index value
@@ -66,7 +66,7 @@ let set_unchecked = fun vector index value ->
   Array.unsafe_set vector.data index value
 
 let insert = fun vector index value ->
-  if index < 0 || index > vector.length then
+  if Int.compare index 0 < 0 || Int.compare index vector.length > 0 then
     panic "Index out of bounds"
   else (
     ensure_capacity vector (vector.length + 1);
@@ -76,7 +76,7 @@ let insert = fun vector index value ->
   )
 
 let remove = fun vector index ->
-  if index < 0 || index >= vector.length then
+  if Int.compare index 0 < 0 || Int.compare index vector.length >= 0 then
     None
   else
     (
@@ -98,7 +98,7 @@ let iter = fun f vector ->
   done
 
 let append = fun vector1 vector2 ->
-  if vector2.length > 0 then
+  if Int.compare vector2.length 0 > 0 then
     (
       reserve vector1 vector2.length;
       Array.blit vector2.data 0 vector1.data vector1.length vector2.length;
@@ -107,7 +107,7 @@ let append = fun vector1 vector2 ->
     )
 
 let split_off = fun vector index ->
-  if index < 0 || index > vector.length then
+  if Int.compare index 0 < 0 || Int.compare index vector.length > 0 then
     panic "Index out of bounds"
   else
     (
@@ -120,7 +120,7 @@ let split_off = fun vector index ->
     )
 
 let sort = fun vector ->
-  if vector.length > 0 then
+  if Int.compare vector.length 0 > 0 then
     (
       let temp_array = Array.sub vector.data 0 vector.length in
       Array.sort compare temp_array;
@@ -130,7 +130,7 @@ let sort = fun vector ->
     )
 
 let sort_by = fun vector compare_fn ->
-  if vector.length > 0 then
+  if Int.compare vector.length 0 > 0 then
     (
       let temp_array = Array.sub vector.data 0 vector.length in
       Array.sort compare_fn temp_array;
@@ -173,7 +173,7 @@ let into_iter: type item. item t -> item Iter.Iterator.t = fun vector ->
     type nonrec item = item
 
     let next = fun state ->
-      if state.pos >= state.vec.length then
+      if Int.compare state.pos state.vec.length >= 0 then
         (None, state)
       else
         let item = Array.unsafe_get state.vec.data state.pos in
@@ -193,7 +193,7 @@ let to_mut_iter: type item. item t -> item Iter.MutIterator.t = fun vector ->
     type nonrec item = item
 
     let next = fun state ->
-      if state.pos >= state.vec.length then
+      if Int.compare state.pos state.vec.length >= 0 then
         None
       else
         let item = Array.unsafe_get state.vec.data state.pos in

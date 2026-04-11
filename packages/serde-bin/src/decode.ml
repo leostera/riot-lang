@@ -38,9 +38,9 @@ let unexpected_end = fun state expected ->
   error_at (position state.input) ("unexpected end of input while decoding " ^ expected)
 
 let compact = fun state ->
-  if state.pos > 0 then
+  if Int.compare state.pos 0 > 0 then
     let unread = state.limit - state.pos in
-    if unread > 0 then
+    if Int.compare unread 0 > 0 then
       IO.Bytes.blit state.buf state.pos state.buf 0 unread;
     state.base <- state.base + state.pos;
     state.limit <- unread;
@@ -70,12 +70,12 @@ let refill = fun state ->
 
 let peek_byte = function
   | String_input state ->
-      if state.pos < String.length state.input then
+      if Int.compare state.pos (String.length state.input) < 0 then
         Some (String.unsafe_get state.input state.pos)
       else
         None
   | Reader_input state ->
-      if state.pos < state.limit then
+      if Int.compare state.pos state.limit < 0 then
         Some (String.unsafe_get state.view state.pos)
       else if refill state then
         Some (String.unsafe_get state.view state.pos)
@@ -97,7 +97,7 @@ let read_byte = fun state expected ->
 let read_exact_into = fun state dst ~off ~len expected ->
   match state.input with
   | String_input input ->
-      if input.pos + len > String.length input.input then
+      if Int.compare (input.pos + len) (String.length input.input) > 0 then
         unexpected_end state expected
       else (
         IO.Bytes.blit_string input.input input.pos dst off len;
@@ -109,7 +109,7 @@ let read_exact_into = fun state dst ~off ~len expected ->
           ()
         else
           let available = reader.limit - reader.pos in
-          if available = 0 then
+          if Int.equal available 0 then
             if refill reader then
               loop dst_off remaining
             else
@@ -124,11 +124,11 @@ let read_exact_into = fun state dst ~off ~len expected ->
 
 let read_uint32_le = fun state ->
   match state.input with
-  | String_input input when input.pos + 4 <= String.length input.input ->
+  | String_input input when Int.compare (input.pos + 4) (String.length input.input) <= 0 ->
       let value = Stubs.read_uint32_le_from_string input.input input.pos in
       input.pos <- input.pos + 4;
       value
-  | Reader_input reader when reader.pos + 4 <= reader.limit ->
+  | Reader_input reader when Int.compare (reader.pos + 4) reader.limit <= 0 ->
       let value = Stubs.read_uint32_le_from_bytes reader.buf reader.pos in
       reader.pos <- reader.pos + 4;
       value
@@ -138,11 +138,11 @@ let read_uint32_le = fun state ->
 
 let read_int32_le = fun state ->
   match state.input with
-  | String_input input when input.pos + 4 <= String.length input.input ->
+  | String_input input when Int.compare (input.pos + 4) (String.length input.input) <= 0 ->
       let value = Stubs.read_int32_le_from_string input.input input.pos in
       input.pos <- input.pos + 4;
       value
-  | Reader_input reader when reader.pos + 4 <= reader.limit ->
+  | Reader_input reader when Int.compare (reader.pos + 4) reader.limit <= 0 ->
       let value = Stubs.read_int32_le_from_bytes reader.buf reader.pos in
       reader.pos <- reader.pos + 4;
       value
@@ -152,11 +152,11 @@ let read_int32_le = fun state ->
 
 let read_int64_le = fun state ->
   match state.input with
-  | String_input input when input.pos + 8 <= String.length input.input ->
+  | String_input input when Int.compare (input.pos + 8) (String.length input.input) <= 0 ->
       let value = Stubs.read_int64_le_from_string input.input input.pos in
       input.pos <- input.pos + 8;
       value
-  | Reader_input reader when reader.pos + 8 <= reader.limit ->
+  | Reader_input reader when Int.compare (reader.pos + 8) reader.limit <= 0 ->
       let value = Stubs.read_int64_le_from_bytes reader.buf reader.pos in
       reader.pos <- reader.pos + 8;
       value
@@ -166,7 +166,7 @@ let read_int64_le = fun state ->
 
 let decode_length = fun state kind ->
   let value = read_uint32_le state in
-  if value < 0 then
+  if Int.compare value 0 < 0 then
     error_at (position state.input) ("decoded " ^ kind ^ " length is negative")
   else
     value
@@ -189,7 +189,7 @@ let read_string = fun state ->
   let len = decode_length state "string" in
   match state.input with
   | String_input input ->
-      if input.pos + len > String.length input.input then
+      if Int.compare (input.pos + len) (String.length input.input) > 0 then
         unexpected_end state "string"
       else
         let value = String.sub input.input input.pos len in
@@ -197,7 +197,7 @@ let read_string = fun state ->
         value
   | Reader_input reader ->
       let available = reader.limit - reader.pos in
-      if len <= available then
+      if Int.compare len available <= 0 then
         let value = String.sub reader.view reader.pos len in
         reader.pos <- reader.pos + len;
         value
@@ -208,7 +208,7 @@ let read_string = fun state ->
             IO.Buffer.contents state.scratch
           else
             let available = reader.limit - reader.pos in
-            if available = 0 then
+            if Int.equal available 0 then
               if refill reader then
                 loop remaining
               else
@@ -224,7 +224,7 @@ let read_string = fun state ->
 
 let read_int = fun state ->
   match state.input with
-  | String_input input when input.pos + 8 <= String.length input.input ->
+  | String_input input when Int.compare (input.pos + 8) (String.length input.input) <= 0 ->
       let pos = input.pos in
       let value =
         try Stubs.read_int_le_from_string input.input pos with
@@ -232,7 +232,7 @@ let read_int = fun state ->
       in
       input.pos <- pos + 8;
       value
-  | Reader_input reader when reader.pos + 8 <= reader.limit ->
+  | Reader_input reader when Int.compare (reader.pos + 8) reader.limit <= 0 ->
       let pos = reader.pos in
       let value =
         try Stubs.read_int_le_from_bytes reader.buf pos with
