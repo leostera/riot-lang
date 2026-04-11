@@ -29,6 +29,31 @@ module Import = struct
       ]
 end
 
+module Runtime_plan = struct
+  type t = {
+    function_table_elements: Core.Entity_id.t list;
+    has_indirect_calls: bool;
+    needs_closure_runtime: bool;
+  }
+
+  let empty = {
+    function_table_elements = [];
+    has_indirect_calls = false;
+    needs_closure_runtime = false
+  }
+
+  let to_json = fun plan ->
+    Json.obj
+      [
+        (
+          "function_table_elements",
+          Json.array (List.map Core.Entity_id.to_json plan.function_table_elements)
+        );
+        ("has_indirect_calls", Json.bool plan.has_indirect_calls);
+        ("needs_closure_runtime", Json.bool plan.needs_closure_runtime);
+      ]
+end
+
 module Primitive_kind = struct
   type t =
     | Pure
@@ -233,6 +258,7 @@ module Compilation_unit = struct
   type t = {
     unit_id: Core.Unit_id.t;
     imports: Import.t list;
+    runtime_plan: Runtime_plan.t;
     globals: Global.t list;
     functions: Function.t list;
     init: Init_item.t list;
@@ -244,6 +270,7 @@ module Compilation_unit = struct
       [
         ("unit_id", Core.Unit_id.to_json compilation_unit.unit_id);
         ("imports", Json.array (List.map Import.to_json compilation_unit.imports));
+        ("runtime_plan", Runtime_plan.to_json compilation_unit.runtime_plan);
         ("globals", Json.array (List.map Global.to_json compilation_unit.globals));
         ("functions", Json.array (List.map Function.to_json compilation_unit.functions));
         ("init", Json.array (List.map Init_item.to_json compilation_unit.init));

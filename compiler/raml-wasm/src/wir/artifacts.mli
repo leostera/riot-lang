@@ -20,8 +20,35 @@ module Module_summary: sig
     global_count: int;
     function_count: int;
     init_item_count: int;
+    function_table_element_count: int;
+    has_indirect_calls: bool;
+    needs_closure_runtime: bool;
   }
   val of_compilation_unit: Wasm_types.Compilation_unit.t -> t
+
+  val to_json: t -> Std.Data.Json.t
+end
+
+module Object: sig
+  type t = {
+    unit_name: string;
+    summary: Module_summary.t;
+    program: Wasm_types.Compilation_unit.t;
+  }
+  val of_compilation_unit: Wasm_types.Compilation_unit.t -> t
+
+  val to_json: t -> Std.Data.Json.t
+end
+
+module Linked_program: sig
+  type t = {
+    objects: Object.t list;
+    imports: Wasm_types.Import.t list;
+    exports: Raml_core.Core_ir.Export.t list;
+    function_table_elements: Raml_core.Core_ir.Entity_id.t list;
+    needs_closure_runtime: bool;
+  }
+  val link: Object.t list -> t
 
   val to_json: t -> Std.Data.Json.t
 end

@@ -14,6 +14,17 @@ module Import: sig
   val to_json: t -> Std.Data.Json.t
 end
 
+module Runtime_plan: sig
+  type t = {
+    function_table_elements: Core.Entity_id.t list;
+    has_indirect_calls: bool;
+    needs_closure_runtime: bool;
+  }
+  val empty: t
+
+  val to_json: t -> Std.Data.Json.t
+end
+
 module Primitive_kind: sig
   type t =
     | Pure
@@ -122,6 +133,7 @@ module Compilation_unit: sig
   type t = {
     unit_id: Core.Unit_id.t;
     imports: Import.t list;
+    runtime_plan: Runtime_plan.t;
     globals: Global.t list;
     functions: Function.t list;
     init: Init_item.t list;
