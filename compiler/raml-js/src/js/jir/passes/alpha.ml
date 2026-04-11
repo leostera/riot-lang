@@ -2,15 +2,25 @@ open Std
 module Core = Raml_core.Core_ir
 module Jir = Types
 
-module Binding_map = Map.Make (struct
+module Binding_map = Collections.Map.Make (struct
   type t = Core.Binding_id.t
   let compare = Core.Binding_id.compare
 end)
 
-module String_set = Set.Make (struct
-  type t = string
-  let compare = String.compare
-end)
+module String_set = struct
+  module Storage = Collections.Map.Make (struct
+    type t = string
+    let compare = String.compare
+  end)
+
+  type t = unit Storage.t
+
+  let empty = Storage.empty
+
+  let add = fun name set -> Storage.add name () set
+
+  let mem = Storage.mem
+end
 
 type env = {
   bindings: string Binding_map.t;

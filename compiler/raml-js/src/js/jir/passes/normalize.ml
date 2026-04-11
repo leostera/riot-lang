@@ -2,35 +2,45 @@ open Std
 module Core = Raml_core.Core_ir
 module Jir = Types
 
-module Import_set = Set.Make (struct
-  type t = Jir.Imports.requirement
+module Import_set = struct
+  module Storage = Collections.Map.Make (struct
+    type t = Jir.Imports.requirement
 
-  let compare_optional_string = fun left right ->
-    match (left, right) with
-    | (None, None) -> 0
-    | (None, Some _) -> (-1)
-    | (Some _, None) -> 1
-    | (Some left, Some right) -> String.compare left right
+    let compare_optional_string = fun left right ->
+      match (left, right) with
+      | (None, None) -> 0
+      | (None, Some _) -> (-1)
+      | (Some _, None) -> 1
+      | (Some left, Some right) -> String.compare left right
 
-  let compare = fun left right ->
-    let by_from = String.compare left.from right.from in
-    if by_from != 0 then
-      by_from
-    else
-      let by_namespace = Bool.compare left.namespace right.namespace in
-      if by_namespace != 0 then
-        by_namespace
+    let compare = fun (left: Jir.Imports.requirement) (right: Jir.Imports.requirement) ->
+      let by_from = String.compare left.from right.from in
+      if by_from != 0 then
+        by_from
       else
-        let by_imported = compare_optional_string left.imported right.imported in
-        if by_imported != 0 then
-          by_imported
+        let by_namespace = Bool.compare left.namespace right.namespace in
+        if by_namespace != 0 then
+          by_namespace
         else
-          let by_binding = Core.Binding_id.compare left.local.binding_id right.local.binding_id in
-          if by_binding != 0 then
-            by_binding
+          let by_imported = compare_optional_string left.imported right.imported in
+          if by_imported != 0 then
+            by_imported
           else
-            String.compare left.local.name right.local.name
-end)
+            let by_binding = Core.Binding_id.compare left.local.binding_id right.local.binding_id in
+            if by_binding != 0 then
+              by_binding
+            else
+              String.compare left.local.name right.local.name
+  end)
+
+  type t = unit Storage.t
+
+  let empty = Storage.empty
+
+  let add = fun import set -> Storage.add import () set
+
+  let to_list = fun set -> Storage.bindings set |> List.map fst
+end
 
 let rec collect_expr_imports = fun expr imports ->
   match expr with

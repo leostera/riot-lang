@@ -2,7 +2,7 @@ open Std
 open Std.Data
 module Core = Raml_core.Core_ir
 
-module Binding_map = Map.Make (struct
+module Binding_map = Collections.Map.Make (struct
   type t = Core.Binding_id.t
   let compare = Core.Binding_id.compare
 end)

@@ -4,10 +4,20 @@ module Jir = Types
 
 let ( let* ) = Option.and_then
 
-module String_set = Set.Make (struct
-  type t = string
-  let compare = String.compare
-end)
+module String_set = struct
+  module Storage = Collections.Map.Make (struct
+    type t = string
+    let compare = String.compare
+  end)
+
+  type t = unit Storage.t
+
+  let empty = Storage.empty
+
+  let add = fun name set -> Storage.add name () set
+
+  let mem = Storage.mem
+end
 
 type state = {
   used_names: String_set.t;

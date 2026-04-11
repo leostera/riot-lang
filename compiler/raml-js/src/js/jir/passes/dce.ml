@@ -2,10 +2,28 @@ open Std
 module Core = Raml_core.Core_ir
 module Jir = Types
 
-module Entity_set = Set.Make (struct
-  type t = Core.Entity_id.t
-  let compare = Core.Entity_id.compare
-end)
+module Entity_set = struct
+  module Storage = Collections.Map.Make (struct
+    type t = Core.Entity_id.t
+    let compare = Core.Entity_id.compare
+  end)
+
+  type t = unit Storage.t
+
+  let empty = Storage.empty
+
+  let add = fun entity set -> Storage.add entity () set
+
+  let singleton = fun entity -> Storage.singleton entity ()
+
+  let mem = Storage.mem
+
+  let union = fun left right ->
+    Storage.union (fun _ () () -> Some ()) left right
+
+  let filter = fun predicate set ->
+    Storage.filter (fun entity () -> predicate entity) set
+end
 
 type lowered_block = {
   statements: Jir.Statement.t list;
