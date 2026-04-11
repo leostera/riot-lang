@@ -22,6 +22,7 @@ let layout_of_procedure = fun (analysis: Frame_analysis.result) ->
     frame_required = analysis.contains_calls;
     slots = [];
     homes = [];
+    saved_registers = [];
     frame_size = 0;
   }
 

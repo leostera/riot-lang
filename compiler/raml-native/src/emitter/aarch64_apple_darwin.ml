@@ -89,6 +89,8 @@ let register_of_home = fun home ->
     )
   | Lir.Home.Stack_slot _ -> Error "stack slot does not name a physical register"
 
+let register_of_name = fun name -> register_of_home (Lir.Home.Register name)
+
 let instruction = Doc.Item.instruction
 
 let directive = fun name ?(args = []) () -> Doc.Item.directive name ~args ()
@@ -254,9 +256,40 @@ let store_destination = fun layout destination register ->
   | Lir.Destination.Register name -> Error (format
     Format.[ str "unassigned virtual destination reached emitter: "; str name ])
 
+let callee_save_base_offset = fun (layout: Lir.Frame.t) -> List.length layout.slots * 8
+
+let callee_save_address = fun layout index ->
+  Asm.Address.offset ~base:Asm.Register.sp ~offset:(callee_save_base_offset layout + (index * 8))
+
+let emit_saved_register_stores = fun (layout: Lir.Frame.t) ->
+  let rec loop index names =
+    match names with
+    | [] -> Ok []
+    | name :: rest ->
+        let* src = register_of_name name in
+        let current = instruction
+          (Asm.Instruction.Str { src; address = callee_save_address layout index }) in
+        let* next = loop (index + 1) rest in
+        Ok (current :: next)
+  in
+  loop 0 layout.saved_registers
+
+let emit_saved_register_restores = fun (layout: Lir.Frame.t) ->
+  let rec loop index names =
+    match names with
+    | [] -> Ok []
+    | name :: rest ->
+        let* dst = register_of_name name in
+        let current = instruction
+          (Asm.Instruction.Ldr { dst; address = callee_save_address layout index }) in
+        let* next = loop (index + 1) rest in
+        Ok (current :: next)
+  in
+  loop 0 layout.saved_registers
+
 let emit_prologue = fun (layout: Lir.Frame.t) ->
   if not layout.frame_required then
-    []
+    Ok []
   else
     let prologue = [
       instruction
@@ -267,24 +300,28 @@ let emit_prologue = fun (layout: Lir.Frame.t) ->
         });
       instruction (Asm.Instruction.Mov { dst = Asm.Register.fp; src = Asm.Register.sp });
     ] in
-    if layout.frame_size = 0 then
-      prologue
-    else
-      prologue
-      @ [
-        instruction
-          (Asm.Instruction.Sub_imm {
-            dst = Asm.Register.sp;
-            lhs = Asm.Register.sp;
-            imm = layout.frame_size
-          })
-      ]
+    let allocate_frame =
+      if layout.frame_size = 0 then
+        []
+      else
+        [
+          instruction
+            (Asm.Instruction.Sub_imm {
+              dst = Asm.Register.sp;
+              lhs = Asm.Register.sp;
+              imm = layout.frame_size
+            })
+        ]
+    in
+    let* save_registers = emit_saved_register_stores layout in
+    Ok (prologue @ allocate_frame @ save_registers)
 
 let emit_epilogue = fun (layout: Lir.Frame.t) ->
   if not layout.frame_required then
-    [ instruction Asm.Instruction.Ret ]
+    Ok [ instruction Asm.Instruction.Ret ]
   else
-    let body =
+    let* restore_registers = emit_saved_register_restores layout in
+    let release_frame =
       if layout.frame_size = 0 then
         []
       else
@@ -297,7 +334,8 @@ let emit_epilogue = fun (layout: Lir.Frame.t) ->
             });
         ]
     in
-    body
+    Ok (restore_registers
+    @ release_frame
     @ [
       instruction
         (Asm.Instruction.Ldp {
@@ -306,7 +344,7 @@ let emit_epilogue = fun (layout: Lir.Frame.t) ->
           address = Asm.Address.post_index ~base:Asm.Register.sp ~offset:16
         });
       instruction Asm.Instruction.Ret;
-    ]
+    ])
 
 let emit_parameter_saves = fun layout params ->
   if List.length params > 8 then
@@ -362,7 +400,8 @@ let emit_return = fun layout strings operand ->
     | None -> Ok []
     | Some operand -> materialize_operand layout strings (Asm.Register.x 0) operand
   in
-  Ok (body @ emit_epilogue layout)
+  let* epilogue = emit_epilogue layout in
+  Ok (body @ epilogue)
 
 let emit_instruction = fun layout strings (procedure: Lir.Procedure.t) instruction_ ->
   match instruction_ with
@@ -409,10 +448,13 @@ let has_explicit_return = fun (procedure: Lir.Procedure.t) ->
 let emit_default_return = fun layout (procedure: Lir.Procedure.t) ->
   match procedure.kind with
   | Lir.Procedure.Function -> emit_epilogue layout
-  | Lir.Procedure.Entry -> move_int64_into (Asm.Register.x 0) 0L @ emit_epilogue layout
+  | Lir.Procedure.Entry ->
+      let* epilogue = emit_epilogue layout in
+      Ok (move_int64_into (Asm.Register.x 0) 0L @ epilogue)
 
 let emit_procedure = fun strings (procedure: Lir.Procedure.t) ->
   let layout = procedure.frame in
+  let* prologue = emit_prologue layout in
   let* parameter_saves = emit_parameter_saves layout procedure.params in
   let* body =
     List.fold_left
@@ -424,9 +466,9 @@ let emit_procedure = fun strings (procedure: Lir.Procedure.t) ->
       procedure.body
   in
   let symbol = procedure_symbol procedure in
-  let default_return =
+  let* default_return =
     if has_explicit_return procedure then
-      []
+      Ok []
     else
       emit_default_return layout procedure
   in
@@ -435,7 +477,7 @@ let emit_procedure = fun strings (procedure: Lir.Procedure.t) ->
     directive ".p2align" ~args:[ "2" ] ();
     label symbol;
   ]
-  @ emit_prologue layout
+  @ prologue
   @ parameter_saves
   @ body
   @ default_return

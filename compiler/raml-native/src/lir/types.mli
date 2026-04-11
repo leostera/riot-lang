@@ -77,6 +77,7 @@ module Frame: sig
     frame_required: bool;
     slots: Slot.t list;
     homes: Home_binding.t list;
+    saved_registers: string list;
     frame_size: int;
   }
   val empty: t

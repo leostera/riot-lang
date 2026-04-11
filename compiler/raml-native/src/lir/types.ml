@@ -146,6 +146,7 @@ module Frame = struct
     frame_required: bool;
     slots: Slot.t list;
     homes: Home_binding.t list;
+    saved_registers: string list;
     frame_size: int;
   }
 
@@ -154,6 +155,7 @@ module Frame = struct
     frame_required = false;
     slots = [];
     homes = [];
+    saved_registers = [];
     frame_size = 0;
   }
 
@@ -164,6 +166,7 @@ module Frame = struct
         ("frame_required", Json.bool frame.frame_required);
         ("slots", Json.array (List.map Slot.to_json frame.slots));
         ("homes", Json.array (List.map Home_binding.to_json frame.homes));
+        ("saved_registers", Json.array (List.map Json.string frame.saved_registers));
         ("frame_size", Json.int frame.frame_size);
       ]
 end
