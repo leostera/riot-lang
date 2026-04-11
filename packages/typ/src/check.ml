@@ -97,16 +97,6 @@ type engine_state = {
   local_surfaces_by_id: local_module_surface option array;
 }
 
-let dedupe_preserving_order = fun names ->
-  let seen = Collections.HashSet.with_capacity (List.length names + 1) in
-  names |> List.filter
-    (fun name ->
-      if Collections.HashSet.contains seen name then
-        false
-      else
-        let _ = Collections.HashSet.insert seen name in
-        true)
-
 let dedupe_module_ids_preserving_order = fun module_ids ->
   let seen = Collections.HashSet.with_capacity (List.length module_ids + 1) in
   module_ids |> List.filter
@@ -144,6 +134,11 @@ let visible_module_name_to_string = fun visible_name ->
   match visible_name with
   | InternalName internal_name -> module_name_of_internal_name internal_name
   | AmbientName ambient_name -> Session.LocalModules.AmbientName.to_string ambient_name
+
+let required_name_of_visible_module_name = fun visible_name ->
+  match visible_name with
+  | InternalName internal_name -> Session.LocalModules.RequiredName.of_internal_name internal_name
+  | AmbientName ambient_name -> Session.LocalModules.RequiredName.of_ambient_name ambient_name
 
 let ambient_names_of_source_identity = fun (identity: source_identity) ->
   dedupe_by_key_preserving_order ~key:Session.LocalModules.AmbientName.to_string
@@ -195,7 +190,7 @@ let grouped_sources_by_internal_module = fun ordered_sources ->
 
 let is_alias_module_name = fun module_name -> String.ends_with ~suffix:"__Aliases" module_name
 
-let module_dependencies_of_source = fun (source: resolved_source) ->
+let required_names_of_source = fun (source: resolved_source) ->
   let explicit_dependencies =
     match Syn.Deps.of_parse_result source.prepared.source.parse_result with
     | Ok deps -> Syn.Deps.modules deps
@@ -219,7 +214,8 @@ let module_dependencies_of_source = fun (source: resolved_source) ->
   let implicit_opens = source.prepared.source.implicit_opens
   |> List.map SurfacePath.to_string
   |> List.filter should_include_implicit_open in
-  dedupe_preserving_order (explicit_dependencies @ implicit_opens)
+  dedupe_by_key_preserving_order ~key:Session.LocalModules.RequiredName.to_string
+    ((explicit_dependencies @ implicit_opens) |> List.map Session.LocalModules.RequiredName.of_string)
 
 let visible_name_arrays_for_group = fun internal_name sources ->
   let visible_names = sources
@@ -258,8 +254,7 @@ let candidate_ids_by_required_name = fun groups ->
     (fun (group: graph_group) ->
       group.visible_names |> Array.iter
         (fun visible_name ->
-          let required_name = Session.LocalModules.RequiredName.of_string
-            (visible_module_name_to_string visible_name) in
+          let required_name = required_name_of_visible_module_name visible_name in
           let existing_rev =
             match Collections.HashMap.get by_name_rev required_name with
             | Some existing_rev -> existing_rev
@@ -278,7 +273,7 @@ let candidate_ids_by_required_name = fun groups ->
     by_name_rev;
   by_name
 
-let best_matching_local_module_ids = fun graph ~current_module_name ~required_module_name ->
+let best_matching_local_module_ids = fun graph (group: graph_group) ~required_module_name ->
   let best_depth = ref None in
   let matches_rev = ref [] in
   let candidate_ids =
@@ -288,37 +283,45 @@ let best_matching_local_module_ids = fun graph ~current_module_name ~required_mo
   in
   candidate_ids |> Array.iter
     (fun candidate_id ->
-      let group = graph.groups.(candidate_id) in
-      if
-        not
-          (String.equal
-            (module_name_of_internal_name group.internal_name)
-            (Session.LocalModules.InternalName.to_string current_module_name))
-      then
+      let candidate_group = graph.groups.(candidate_id) in
+      if not (Int.equal candidate_id group.id) then
         match Session.LocalModules.contextual_match_depth
-          ~current_module_name
+          ~current_module_name:group.internal_name
           ~required_module_name
-          ~candidate_module_name:group.internal_name with
+          ~candidate_module_name:candidate_group.internal_name with
         | None -> ()
         | Some depth ->
             let current_best = Option.unwrap_or ~default:depth !best_depth in
             if Option.is_none !best_depth || depth > current_best then
               (
                 best_depth := Some depth;
-                matches_rev := [ group.id ]
+                matches_rev := [ candidate_group.id ]
               )
             else if Int.equal depth current_best then
-              matches_rev := group.id :: !matches_rev);
+              matches_rev := candidate_group.id :: !matches_rev);
   List.rev !matches_rev |> Array.of_list
 
-let missing_requirements_of_source = fun graph config (source: resolved_source) ->
-  let current_module_name = source.identity.internal_name in
+let resolution_ids_by_required_name = fun graph (group: graph_group) required_names ->
+  let by_name = Collections.HashMap.with_capacity (List.length required_names + 1) in
+  required_names
+  |> dedupe_by_key_preserving_order ~key:Session.LocalModules.RequiredName.to_string
+  |> List.iter
+    (fun required_name ->
+      let local_ids = best_matching_local_module_ids graph group ~required_module_name:required_name in
+      let _ = Collections.HashMap.insert by_name required_name local_ids in
+      ());
+  by_name
+
+let missing_requirements_of_source = fun ~config ~resolution_ids_by_required_name ~(source:resolved_source) ~required_names ->
   let missing_rev = ref [] in
   let required_local_ids_rev = ref [] in
-  module_dependencies_of_source source |> List.iter
+  required_names |> List.iter
     (fun required_module_name ->
-      let required_module_name = Session.LocalModules.RequiredName.of_string required_module_name in
-      let local_ids = best_matching_local_module_ids graph ~current_module_name ~required_module_name in
+      let local_ids =
+        match Collections.HashMap.get resolution_ids_by_required_name required_module_name with
+        | Some local_ids -> local_ids
+        | None -> [||]
+      in
       if not (Array.length local_ids = 0) then
         required_local_ids_rev := List.rev_append (Array.to_list local_ids) !required_local_ids_rev
       else if
@@ -384,14 +387,20 @@ let build_package_graph = fun ~config ~ordered_sources ->
     Array.mapi
       (fun module_id (group: graph_group) ->
         let (_module_name, sources) = grouped_sources_array.(module_id) in
+        let source_requirements = sources
+        |> List.map (fun (source: resolved_source) -> (source, required_names_of_source source)) in
+        let resolution_ids_by_required_name = source_requirements
+        |> List.concat_map snd
+        |> resolution_ids_by_required_name graph group in
         let graph_sources =
-          sources
+          source_requirements
           |> List.map
-            (fun (source: resolved_source) ->
+            (fun ((source: resolved_source), required_names) ->
               let required_local_ids, missing_requirements = missing_requirements_of_source
-                graph
-                config
-                source in
+                ~config
+                ~resolution_ids_by_required_name
+                ~source
+                ~required_names in
               let missing_external_names =
                 Session.MissingRequirements.requirements missing_requirements
                 |> List.filter_map

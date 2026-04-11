@@ -142,6 +142,10 @@ module RequiredName = struct
 
   let of_string = fun value -> { raw = value }
 
+  let of_ambient_name = fun value -> of_string (AmbientName.to_string value)
+
+  let of_internal_name = fun value -> of_string (InternalName.to_string value)
+
   let to_string = fun value -> value.raw
 end
 
@@ -165,11 +169,10 @@ let common_prefix_length = fun left right ->
   loop 0
 
 let contextual_match_depth = fun ~current_module_name ~required_module_name ~candidate_module_name ->
-  let required_module_name = RequiredName.to_string required_module_name in
+  let required_name = required_module_name in
+  let required_module_name = RequiredName.to_string required_name in
   let best =
-    if
-      matches_required_name ~required_name:(RequiredName.of_string required_module_name) candidate_module_name
-    then
+    if matches_required_name ~required_name candidate_module_name then
       Some 0
     else
       None

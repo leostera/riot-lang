@@ -18,6 +18,10 @@ module RequiredName: sig
   type t
   val of_string: string -> t
 
+  val of_ambient_name: AmbientName.t -> t
+
+  val of_internal_name: InternalName.t -> t
+
   val to_string: t -> string
 end
 
