@@ -357,17 +357,17 @@ let lower_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
       let body = groups
       |> List.map (fun (group_index, group) -> lower_group group_index group)
       |> List.flatten in
-      ok
-        (Jir.Program.{
-          module_name = compilation_unit.unit_id.unit_name;
-          imports = [];
-          body;
-          exports = List.map lower_export compilation_unit.exports;
-        }
-        |> Passes.Normalize.program
-        |> Passes.Flatten.program
-        |> Passes.Alpha.program
-        |> Passes.Remove_aliases.program
-        |> Passes.Dce.program
-        |> Passes.Normalize.program
-        |> Passes.Materialize_imports.program)
+      let program = Jir.Program.{
+        module_name = compilation_unit.unit_id.unit_name;
+        imports = [];
+        body;
+        exports = List.map lower_export compilation_unit.exports;
+      } in
+      let normalized = Passes.Normalize.program program in
+      let flattened = Passes.Flatten.program normalized in
+      let alpha_renamed = Passes.Alpha.program flattened in
+      let aliases_removed = Passes.Remove_aliases.program alpha_renamed in
+      let dce_lowered = Passes.Dce.program aliases_removed in
+      let normalized_after_dce = Passes.Normalize.program dce_lowered in
+      let materialized_imports = Passes.Materialize_imports.program normalized_after_dce in
+      ok materialized_imports
