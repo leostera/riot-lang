@@ -130,8 +130,9 @@ and lower_statement = fun env statement ->
   match statement with
   | Jir.Statement.Declaration declaration -> lower_declaration env declaration
   | Jir.Statement.Block statements -> (
-    [ Jir.Statement.Block (lower_scoped_block env statements) ],
-    env
+    match lower_scoped_block env statements with
+    | [] -> ([], env)
+    | statements -> ([ Jir.Statement.Block statements ], env)
   )
   | Jir.Statement.Expression expr -> ([ Jir.Statement.Expression (lower_expr env expr) ], env)
   | Jir.Statement.Return expr -> ([ Jir.Statement.Return (lower_expr env expr) ], env)
