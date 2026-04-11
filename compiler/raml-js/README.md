@@ -87,7 +87,8 @@ The main remaining architectural gaps are:
    `JST` now also retains a structured module ref until emission instead of
    collapsing imports down to bare path strings immediately.
    The current namespace/reference story is now also factored into
-   `Jir.References`, but the policy is still heuristic rather than package- or
+   `Jir.References`, and `Jir.Modules` now owns the actual namespace-vs-value
+   path split. The policy is still heuristic rather than package- or
    artifact-aware the way Melange is.
 2. The builtin/runtime boundary is centralized, but still hand-written and
    small rather than typed and declarative.
