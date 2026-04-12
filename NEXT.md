@@ -7,6 +7,8 @@
 
 # Before Announcing
 
+* bug: riot init arewedown.dev fails silently -- workspaces can contain dots in names, that's fine
+
 * bug: changing riot.toml dep paths didn't break the cache :( 
 
 * regression: cold riot build takes _ages_ on syn.deps? 
