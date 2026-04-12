@@ -8,10 +8,6 @@ type ('value, 'error) result = ('value, 'error) Kernel.result =
 
 let format = Format.format
 
-let max_int = Kernel.max_int
-
-let min_int = Kernel.min_int
-
 let ( = ) = Kernel.( = )
 
 let compare = Kernel.compare
@@ -21,8 +17,6 @@ let min = Kernel.min
 let max = Kernel.max
 
 let ( != ) = Kernel.( != )
-
-let ( <> ) = Kernel.( <> )
 
 let ( < ) = Kernel.( < )
 
@@ -78,25 +72,25 @@ let ( @ ) = Kernel.( @ )
 
 let ( ** ) = Kernel.( ** )
 
-let float_of_int = Kernel.float_of_int
+let float_of_int = Float.from_int
 
-let int_of_float = Kernel.int_of_float
+let int_of_float = Float.to_int
 
-let float = Kernel.float
+let float = Float.from_int
 
-let string_of_int = Kernel.string_of_int
+let string_of_int = Int.to_string
 
-let string_of_float = Kernel.string_of_float
+let string_of_float = Float.to_string
 
-let abs = Kernel.abs
+let abs = Int.abs
 
-let mod_float = Kernel.mod_float
+let mod_float = Float.rem
 
-let sqrt = Kernel.sqrt
+let sqrt = Float.sqrt
 
-let floor = Kernel.floor
+let floor = Float.floor
 
-let ceil = Kernel.ceil
+let ceil = Float.ceil
 
 let not = Kernel.not
 
@@ -106,9 +100,9 @@ let ( || ) = Kernel.( || )
 
 let raise = Kernel.raise
 
-let raise_notrace = Kernel.raise_notrace
+let raise_notrace = Kernel.Exception.raise_notrace
 
-let ignore = Kernel.ignore
+let ignore = fun _ -> ()
 
 (** Process management globals *)
 include Runtime.Exception
@@ -124,11 +118,11 @@ let spawn_link = Runtime.spawn_link
 let send = Runtime.send
 
 let receive = fun ~selector ?timeout () ->
-  let timeout = Option.map Time.Duration.to_secs_float timeout in
+  let timeout = Option.map timeout ~fn:Time.Duration.to_secs_float in
   Runtime.receive ~selector ?timeout ()
 
 let receive_any = fun ?timeout () ->
-  let timeout = Option.map Time.Duration.to_secs_float timeout in
+  let timeout = Option.map timeout ~fn:Time.Duration.to_secs_float in
   Runtime.receive_any ?timeout ()
 
 let sleep = fun timeout ->
@@ -152,21 +146,31 @@ let ref = fun value -> Sync.Cell.create value
 let cell = fun value -> Sync.Cell.create value
 
 let print = fun message ->
-  Stdlib.print_string message;
-  Stdlib.flush Stdlib.stdout
+  let bytes = Kernel.Bytes.from_string message in
+  (
+    match Kernel.IO.Stdout.write bytes with
+    | Result.Ok _written -> ()
+    | Result.Error error -> panic (Kernel.IO.Stdout.error_to_string error)
+  );
+  match Kernel.IO.Stdout.flush () with
+  | Result.Ok () -> ()
+  | Result.Error error -> panic (Kernel.IO.Stdout.error_to_string error)
 
-let println = fun message ->
-  Stdlib.print_endline message;
-  Stdlib.flush Stdlib.stdout
+let println = fun message -> print (message ^ "\n")
 
 let eprint = fun message ->
-  Stdlib.prerr_string message;
-  Stdlib.flush Stdlib.stderr
+  let bytes = Kernel.Bytes.from_string message in
+  (
+    match Kernel.IO.Stderr.write bytes with
+    | Result.Ok _written -> ()
+    | Result.Error error -> panic (Kernel.IO.Stderr.error_to_string error)
+  );
+  match Kernel.IO.Stderr.flush () with
+  | Result.Ok () -> ()
+  | Result.Error error -> panic (Kernel.IO.Stderr.error_to_string error)
 
-let eprintln = fun message ->
-  Stdlib.prerr_endline message;
-  Stdlib.flush Stdlib.stderr
+let eprintln = fun message -> eprint (message ^ "\n")
 
-let todo = fun msg -> panic (format Format.[ str "TODO: "; str msg ])
+let todo = fun msg -> panic ("TODO: " ^ msg)
 
 let unimplemented = fun () -> panic "unimplemented"

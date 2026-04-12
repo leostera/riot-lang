@@ -1,6 +1,5 @@
 (** Rune - Unicode code points *)
-open Global
-open IO
+open Prelude
 module Scalar = Kernel.Unicode.Rune
 
 type t = Scalar.t
@@ -19,17 +18,17 @@ let max_latin1 = Scalar.max_latin1
 
 let of_int = fun n ->
   if Scalar.is_valid n then
-    Some (Scalar.unsafe_of_int n)
+    Some (Scalar.from_int_unchecked n)
   else
     None
 
 let to_int = Scalar.to_int
 
-let of_char = fun c -> Scalar.of_char c
+let of_char = fun c -> Scalar.from_char c
 
 let to_char = Scalar.to_char
 
-let unsafe_of_int = fun n -> Scalar.unsafe_of_int n
+let unsafe_of_int = fun n -> Scalar.from_int_unchecked n
 
 let to_string = Scalar.to_string
 

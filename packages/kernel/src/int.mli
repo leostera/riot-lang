@@ -27,7 +27,11 @@ val succ: t -> t
 
 val pred: t -> t
 
-val of_float: float -> t
+val max_int: t
+
+val min_int: t
+
+val from_float: float -> t
 
 val parse: string -> t option
 

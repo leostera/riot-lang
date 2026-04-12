@@ -18,7 +18,7 @@ let bytes = fun value -> Bytes value
 let to_string = fun value ->
   match value with
   | String value -> value
-  | Char value -> Kernel.String.make 1 value
+  | Char value -> Kernel.String.make ~len:1 ~char:value
   | Bool value -> Kernel.Bool.to_string value
   | Int value -> Kernel.Int.to_string value
   | Bytes value -> Kernel.Bytes.to_string value

@@ -54,7 +54,7 @@ let read = fun stream buffer ?(pos = 0) ?len ?timeout () ->
   in
   let source = Kernel.Net.TcpStream.to_source stream in
   (* Transform Time.Duration.t to float seconds for Runtime.syscall *)
-  let timeout = Option.map Time.Duration.to_secs_float timeout in
+  let timeout = Option.map timeout ~fn:Time.Duration.to_secs_float in
   let rec read_loop () =
     match Kernel.Net.TcpStream.read stream buffer ~pos ~len with
     | Ok 0 -> Error Closed
@@ -88,7 +88,10 @@ let write = fun stream buffer ?(pos = 0) ?len () ->
   in
   write_loop ()
 
-let close = fun stream -> ignore (Kernel.Net.TcpStream.close stream)
+let close = fun stream ->
+  match Kernel.Net.TcpStream.close stream with
+  | Ok () -> ()
+  | Error _ -> ()
 
 let to_reader = fun stream ->
   let module Read = struct
@@ -125,7 +128,7 @@ let to_writer = fun stream ->
     type nonrec err = error
 
     let write = fun t ~buf ->
-      let bytes = Bytes.of_string buf in
+      let bytes = Bytes.from_string buf in
       match write t bytes () with
       | Ok n -> Ok n
       | Error e -> Error e

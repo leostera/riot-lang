@@ -61,24 +61,30 @@ let bench_item_to_json = fun index item ->
     ("warmup", Data.Json.Int comp.config.warmup);
     (
       "cases",
-      Data.Json.Array (List.map (fun (case: Bench_case.t) -> Data.Json.String case.name) comp.cases)
+      Data.Json.Array (List.map
+        comp.cases
+        ~fn:(fun (case: Bench_case.t) -> Data.Json.String case.name))
     );
   ]
 
 let list_benchmarks = fun ~json benchmarks ->
   if json then
+    let rec to_json_items index items =
+      match items with
+      | [] -> []
+      | item :: rest -> bench_item_to_json index item :: to_json_items (index + 1) rest
+    in
     let payload = benchmarks
-    |> List.mapi (fun idx item -> bench_item_to_json (idx + 1) item)
+    |> to_json_items 1
     |> fun benchmarks -> Data.Json.Object [ ("benchmarks", Data.Json.Array benchmarks) ] in
     print (Data.Json.to_string payload);
     print "\n"
   else
-    List.iter
-      (fun item ->
+    List.for_each benchmarks
+      ~fn:(fun item ->
         match item with
         | Bench_runner.Single case -> println case.Bench_case.name
-        | Bench_runner.Compare comp -> println (comp.Bench_comparison.description ^ " (comparison)"))
-      benchmarks;
+        | Bench_runner.Compare comp -> println (comp.Bench_comparison.description ^ " (comparison)"));
   Ok ()
 
 (** Apply CLI overrides to benchmark items *)
@@ -86,31 +92,29 @@ let apply_overrides = fun ~iterations_override ~warmup_override benchmarks ->
   match (iterations_override, warmup_override) with
   | (None, None) -> benchmarks
   | _ ->
-      List.map
-        (fun item ->
+      List.map benchmarks
+        ~fn:(fun item ->
           match item with
           | Bench_runner.Single case ->
               let config = case.Bench_case.config in
               let new_config = {
-                Bench_case.iterations = Option.unwrap_or ~default:config.iterations iterations_override;
-                warmup = Option.unwrap_or ~default:config.warmup warmup_override
+                Bench_case.iterations = Option.unwrap_or iterations_override ~default:config.iterations;
+                warmup = Option.unwrap_or warmup_override ~default:config.warmup
               } in
               Bench_runner.Single { case with config = new_config }
           | Bench_runner.Compare comp ->
               (* Apply to all cases in comparison *)
               let new_cases =
-                List.map
-                  (fun (case: Bench_case.t) ->
+                List.map comp.Bench_comparison.cases
+                  ~fn:(fun (case: Bench_case.t) ->
                     let config = case.config in
                     let new_config = {
-                      Bench_case.iterations = Option.unwrap_or ~default:config.iterations iterations_override;
-                      warmup = Option.unwrap_or ~default:config.warmup warmup_override
+                      Bench_case.iterations = Option.unwrap_or iterations_override ~default:config.iterations;
+                      warmup = Option.unwrap_or warmup_override ~default:config.warmup
                     } in
                     { case with config = new_config })
-                  comp.Bench_comparison.cases
               in
               Bench_runner.Compare { comp with cases = new_cases })
-        benchmarks
 
 let main = fun ~name ~benchmarks ~args ->
   let suite_info = get_suite_info name in
@@ -130,7 +134,7 @@ let main = fun ~name ~benchmarks ~args ->
           let benchmarks_to_list = apply_overrides ~iterations_override ~warmup_override benchmarks in
           let benchmarks_to_list =
             match pattern with
-            | Some pattern -> List.filter (matches_pattern ~pattern) benchmarks_to_list
+            | Some pattern -> List.filter benchmarks_to_list ~fn:(matches_pattern ~pattern)
             | None -> benchmarks_to_list
           in
           list_benchmarks ~json:(get_flag sub_matches "json") benchmarks_to_list
@@ -148,7 +152,7 @@ let main = fun ~name ~benchmarks ~args ->
           let benchmarks_to_run = apply_overrides ~iterations_override ~warmup_override benchmarks in
           let benchmarks_to_run =
             match pattern with
-            | Some pattern -> List.filter (matches_pattern ~pattern) benchmarks_to_run
+            | Some pattern -> List.filter benchmarks_to_run ~fn:(matches_pattern ~pattern)
             | None -> benchmarks_to_run
           in
           (

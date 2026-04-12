@@ -9,4 +9,4 @@ let error_to_string = function
   | System error -> System_error.to_string error
 
 let fill_bytes = fun bytes ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.fill_bytes bytes)
+  Result.map_err (FFI.fill_bytes bytes) ~fn:(fun code -> System (System_error.from_code code))

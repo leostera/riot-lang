@@ -5,7 +5,7 @@ val error_to_string: error -> string
 
 val make: ip:Ip_addr.t -> port:int -> (t, error) Result.t
 
-val of_parts: ip:Ip_addr.t -> port:int -> (t, error) Result.t
+val from_parts: ip:Ip_addr.t -> port:int -> (t, error) Result.t
 
 val loopback_v4: port:int -> t
 

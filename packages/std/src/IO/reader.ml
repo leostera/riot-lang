@@ -1,7 +1,5 @@
-open Kernel
-module Bytes = Stdlib.Bytes
-module Buffer = Stdlib.Buffer
-module Iovec = Kernel.IO.Iovec
+open Prelude
+module String = Kernel.String
 
 module type Read = sig
   type t
@@ -25,13 +23,13 @@ let read_vectored: type src err. (src, err) t -> Iovec.t -> (int, err) result = 
   R.read_vectored src bufs
 
 let read_to_end: type src err. (src, err) t -> buf:Buffer.t -> (int, err) result = fun (Reader ((module R), src)) ~buf:out ->
-  let chunk = Bytes.create 1_024 in
+  let chunk = Bytes.create ~size:1_024 in
   let rec loop total =
     match R.read src chunk with
     | Ok 0 ->
         Ok total
     | Ok len ->
-        Buffer.add_bytes out (Bytes.sub chunk 0 len);
+        Buffer.add_subbytes out chunk 0 len;
         loop (total + len)
     | Error err ->
         Error err
@@ -90,24 +88,28 @@ let from_bytes = fun data ->
         Ok 0
       else
         let to_read = min (Bytes.length buf) remaining in
-        Bytes.blit source state.offset buf 0 to_read;
+        Bytes.blit_unchecked source ~src_offset:state.offset ~dst:buf ~dst_offset:0 ~len:to_read;
         state.offset <- state.offset + to_read;
         Ok to_read
 
     let read_vectored = fun source iov ->
       let progress = { total = 0; continue = true } in
-      Iovec.iter
-        (fun { Kernel.IO.Iovec.buffer; offset; length } ->
+      Iovec.for_each iov
+        ~fn:(fun { Iovec.buffer; offset; length } ->
           if progress.continue then
             let remaining = Bytes.length source - state.offset in
             if remaining = 0 then
               progress.continue <- false
             else
               let to_read = min length remaining in
-              Bytes.blit source state.offset buffer offset to_read;
+              Bytes.blit_unchecked
+                source
+                ~src_offset:state.offset
+                ~dst:buffer
+                ~dst_offset:offset
+                ~len:to_read;
               state.offset <- state.offset + to_read;
-              progress.total <- progress.total + to_read)
-        iov;
+              progress.total <- progress.total + to_read);
       Ok progress.total
   end in
   of_read_src (module Bytes_read) data
@@ -120,29 +122,28 @@ let from_string = fun source ->
     type err = unit
 
     let read = fun value ?timeout:_ buf ->
-      let remaining = Kernel.String.length value - state.offset in
+      let remaining = String.length value - state.offset in
       if remaining = 0 then
         Ok 0
       else
         let to_read = min (Bytes.length buf) remaining in
-        Bytes.blit_string value state.offset buf 0 to_read;
+        Bytes.blit_string value ~src_offset:state.offset ~dst:buf ~dst_offset:0 ~len:to_read;
         state.offset <- state.offset + to_read;
         Ok to_read
 
     let read_vectored = fun value iov ->
       let progress = { total = 0; continue = true } in
-      Iovec.iter
-        (fun { Kernel.IO.Iovec.buffer; offset; length } ->
+      Iovec.for_each iov
+        ~fn:(fun { Iovec.buffer; offset; length } ->
           if progress.continue then
-            let remaining = Kernel.String.length value - state.offset in
+            let remaining = String.length value - state.offset in
             if remaining = 0 then
               progress.continue <- false
             else
               let to_read = min length remaining in
-              Bytes.blit_string value state.offset buffer offset to_read;
+              Bytes.blit_string value ~src_offset:state.offset ~dst:buffer ~dst_offset:offset ~len:to_read;
               state.offset <- state.offset + to_read;
-              progress.total <- progress.total + to_read)
-        iov;
+              progress.total <- progress.total + to_read);
       Ok progress.total
   end in
   of_read_src (module String_read) source

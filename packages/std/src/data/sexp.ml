@@ -29,7 +29,7 @@ let rec to_string = function
         "\"" ^ String.escaped s ^ "\""
       else
         s
-  | List elems -> "(" ^ String.concat " " (List.map to_string elems) ^ ")"
+  | List elems -> "(" ^ String.concat " " (List.map elems ~fn:to_string) ^ ")"
 
 (** Pretty print S-expression *)
 let rec pp_sexp = fun indent ->
@@ -42,7 +42,12 @@ let rec pp_sexp = fun indent ->
       indent ^ "(" ^ to_string single ^ ")"
   | List elems ->
       let indent_next = indent ^ "  " in
-      indent ^ "(\n" ^ String.concat "\n" (List.map (pp_sexp indent_next) elems) ^ "\n" ^ indent ^ ")"
+      indent
+      ^ "(\n"
+      ^ String.concat "\n" (List.map elems ~fn:(pp_sexp indent_next))
+      ^ "\n"
+      ^ indent
+      ^ ")"
 
 let pretty_print = fun sexp -> pp_sexp "" sexp
 
@@ -58,7 +63,7 @@ module Parser = struct
 
   let peek = fun state ->
     if state.pos < state.len then
-      Some state.input.[state.pos]
+      Some (String.get_unchecked state.input ~at:state.pos)
     else
       None
 
@@ -78,7 +83,7 @@ module Parser = struct
     (* Assumes we're at the opening quote *)
     advance state;
     (* Skip opening quote *)
-    let buffer = Buffer.create 16 in
+    let buffer = Buffer.create ~size:16 in
     let rec loop () =
       match peek state with
       | None ->
@@ -124,7 +129,7 @@ module Parser = struct
     loop ()
 
   let parse_atom = fun state ->
-    let buffer = Buffer.create 16 in
+    let buffer = Buffer.create ~size:16 in
     let rec loop () =
       match peek state with
       | Some (' ' | '\t' | '\n' | '\r' | '(' | ')')
@@ -164,7 +169,7 @@ module Parser = struct
           raise (Parse_error "Unclosed list")
       | Some ')' ->
           advance state;
-          List (List.rev acc)
+          List (List.reverse acc)
       | _ ->
           let elem = parse_sexp state in
           loop (elem :: acc)
@@ -198,7 +203,7 @@ let parse_many = fun str ->
   let rec loop acc =
     Parser.skip_whitespace state;
     if state.pos >= state.len then
-      Ok (List.rev acc)
+      Ok (List.reverse acc)
     else
       try
         let sexp = Parser.parse_sexp state in
@@ -256,10 +261,10 @@ module Csexp = struct
   let rec to_string = function
     | Atom s ->
         (* Format: <length>:<string> *)
-        string_of_int (String.length s) ^ ":" ^ s
+        Int.to_string (String.length s) ^ ":" ^ s
     | List elems ->
         (* Format: (<elem1><elem2>...) *)
-        let contents = String.concat "" (List.map to_string elems) in
+        let contents = String.concat "" (List.map elems ~fn:to_string) in
         "(" ^ contents ^ ")"
 
   (** Parse canonical S-expression from string *)
@@ -268,13 +273,13 @@ module Csexp = struct
     let pos = Cell.create 0 in
     let peek () =
       if !pos < len then
-        Some str.[!pos]
+        Some (String.get_unchecked str ~at:!pos)
       else
         None
     in
     let advance () = Cell.incr pos in
     let parse_number () =
-      let buffer = Buffer.create 4 in
+      let buffer = Buffer.create ~size:4 in
       let rec loop () =
         match peek () with
         | Some ('0' .. '9' as c) ->
@@ -298,7 +303,7 @@ module Csexp = struct
       if !pos + n > len then
         raise (Parse_error "Atom extends beyond input")
       else
-        let content = String.sub str !pos n in
+        let content = String.sub str ~offset:!pos ~len:n in
         pos := !pos + n;
         content
     in
@@ -318,7 +323,7 @@ module Csexp = struct
           | _ -> raise (Parse_error "Expected ':' after atom length")
         )
       | Some c ->
-          raise (Parse_error ("Unexpected character '" ^ String.make 1 c ^ "'"))
+          raise (Parse_error ("Unexpected character '" ^ String.make ~len:1 ~char:c ^ "'"))
     and parse_list () =
       let rec loop acc =
         match peek () with
@@ -326,7 +331,7 @@ module Csexp = struct
             raise (Parse_error "Unclosed list")
         | Some ')' ->
             advance ();
-            List (List.rev acc)
+            List (List.reverse acc)
         | Some ('0' .. '9' | '(') ->
             (* Parse an atom or nested list *)
             let elem = parse_sexp () in
@@ -334,9 +339,9 @@ module Csexp = struct
         | Some c ->
             raise
               (Parse_error ("Unexpected character '"
-              ^ String.make 1 c
+              ^ String.make ~len:1 ~char:c
               ^ "' in list at pos "
-              ^ string_of_int !pos))
+              ^ Int.to_string !pos))
       in
       loop []
     in

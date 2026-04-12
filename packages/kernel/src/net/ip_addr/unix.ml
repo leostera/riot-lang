@@ -17,7 +17,7 @@ let error_to_string = fun value ->
   match value with
   | InvalidText { value } -> String.concat "" [ "invalid ip address: "; value ]
 
-let of_string = fun value ->
+let from_string = fun value ->
   if FFI.is_valid value then
     Result.Ok value
   else

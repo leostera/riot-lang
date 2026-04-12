@@ -14,7 +14,7 @@ module File = File
 module Walker = Walker
 module FileWatcher = File_watcher
 
-let kernel_path = fun path -> Kernel.Path.of_string (Path.to_string path)
+let kernel_path = fun path -> Kernel.Path.from_string (Path.to_string path)
 
 let path_of_kernel = fun path -> Path.v (Kernel.Path.to_string path)
 
@@ -106,7 +106,7 @@ let remove_dir_all = fun path ->
         | Ok dir ->
             let rec collect_entries acc =
               match ReadDir.next dir with
-              | None -> Ok (List.rev acc)
+              | None -> Ok (List.reverse acc)
               | Some entry_path -> collect_entries (entry_path :: acc)
             in
             match collect_entries [] with
@@ -231,7 +231,9 @@ let is_absolute = fun path -> Path.is_absolute path
 let is_relative = fun path -> Path.is_relative path
 
 let join = fun paths ->
-  List.fold_left Path.join (List.hd paths) (List.tl paths)
+  match paths with
+  | [] -> Path.v ""
+  | path :: rest -> List.fold_left rest ~acc:path ~fn:Path.join
 
 let read = fun path ->
   match File.open_read path with
@@ -253,13 +255,13 @@ let write_file = fun path content -> write content path
 (** Get system temp directory *)
 let get_temp_dir = fun () ->
   (* Try TMPDIR, TEMP, TMP environment variables, fallback to /tmp *)
-  match Env.var String ~name:"TMPDIR" with
+  match Env.get Env.String ~var:"TMPDIR" with
   | Some dir when dir != "" -> dir
   | _ -> (
-      match Env.var String ~name:"TEMP" with
+      match Env.get Env.String ~var:"TEMP" with
       | Some dir when dir != "" -> dir
       | _ -> (
-          match Env.var String ~name:"TMP" with
+          match Env.get Env.String ~var:"TMP" with
           | Some dir when dir != "" -> dir
           | _ -> "/tmp"
         )
@@ -278,15 +280,15 @@ let make_temp_dir_name = fun temp_base prefix ->
   (* Convert to 6-digit hex string with leading zeros *)
   let hex_suffix =
     let hex_chars = "0123456789abcdef" in
-    let s = Bytes.create 6 in
+    let s = Bytes.create ~size:6 in
     let n = ref random_suffix in
     for i = 5 downto 0 do
-      Bytes.set s i hex_chars.[!n land 0xf];
+      Bytes.set_unchecked s ~at:i ~char:(String.get_unchecked hex_chars ~at:(!n land 0xf));
       n := !n lsr 4
     done;
     Bytes.to_string s
   in
-  let dir_name = prefix ^ string_of_int pid ^ "_" ^ hex_suffix in
+  let dir_name = prefix ^ Int.to_string pid ^ "_" ^ hex_suffix in
   temp_base ^ "/" ^ dir_name
 
 (** Create a temporary directory, run a function with it, then clean it up *)
@@ -294,7 +296,7 @@ let with_tempdir = fun ?(prefix = "tmp") fn ->
   try
     let temp_base = get_temp_dir () in
     let temp_name = make_temp_dir_name temp_base prefix in
-    match Path.of_string temp_name with
+    match Path.from_string temp_name with
     | Error _ -> Error (IO.Unknown_error "Failed to create temp directory")
     | Ok temp_path -> (
         match create_dir temp_path with

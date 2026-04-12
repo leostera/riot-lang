@@ -50,10 +50,10 @@ module Server = struct
     in
     match receive ~selector () with
     | AttachHandler handler ->
-        let _ = HashMap.insert state.handlers handler.id handler in
+        let _ = HashMap.insert state.handlers ~key:handler.id ~value:handler in
         loop state
     | DetachHandler handler_id ->
-        let _ = HashMap.remove state.handlers handler_id in
+        let _ = HashMap.remove state.handlers ~key:handler_id in
         loop state
     | DetachAll ->
         HashMap.clear state.handlers;
@@ -63,11 +63,10 @@ module Server = struct
         send reply_to (HandlerList { request_id; ids = handler_ids });
         loop state
     | Emit event ->
-        HashMap.iter
-          (fun _id handler ->
+        HashMap.for_each state.handlers
+          ~fn:(fun _id handler ->
             try handler.fn event with
-            | _ -> ())
-          state.handlers;
+            | _ -> ());
         loop state
     | Stop { reply_to; request_id } ->
         send reply_to (Stopped { request_id });

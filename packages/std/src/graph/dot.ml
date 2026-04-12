@@ -47,14 +47,14 @@ let add_edge = fun t ~from_node ~to_node ?label ?(attrs = []) () ->
 let escape_string = fun s ->
   (* Escape quotes and backslashes for DOT format *)
   String.fold_left
-    (fun acc c ->
+    ~fn:(fun acc c ->
       match c with
       | '"' -> acc ^ "\\\""
       | '\\' -> acc ^ "\\\\"
       | '\n' -> acc ^ "\\n"
       | '\t' -> acc ^ "\\t"
-      | c -> acc ^ String.make 1 c)
-    ""
+      | c -> acc ^ String.make ~len:1 ~char:c)
+    ~acc:""
     s
 
 let format_attrs = fun attrs ->
@@ -62,7 +62,7 @@ let format_attrs = fun attrs ->
     ""
   else
     let attr_strs =
-      List.map (fun ((k, v)) -> k ^ "=\"" ^ escape_string v ^ "\"") attrs
+      List.map attrs ~fn:(fun (k, v) -> k ^ "=\"" ^ escape_string v ^ "\"")
     in
     " [" ^ String.concat ", " attr_strs ^ "]"
 
@@ -107,11 +107,11 @@ let to_string = fun t ->
     if t.graph_attrs = [] then
       ""
     else
-      List.map (fun ((k, v)) -> "  " ^ k ^ "=\"" ^ escape_string v ^ "\";\n") t.graph_attrs
+      List.map t.graph_attrs ~fn:(fun (k, v) -> "  " ^ k ^ "=\"" ^ escape_string v ^ "\";\n")
       |> String.concat ""
   in
-  let node_strs = List.rev_map format_node t.nodes |> String.concat "\n" in
-  let edge_strs = List.rev_map (format_edge t.style) t.edges |> String.concat "\n" in
+  let node_strs = List.map t.nodes ~fn:format_node |> List.reverse |> String.concat "\n" in
+  let edge_strs = List.map t.edges ~fn:(format_edge t.style) |> List.reverse |> String.concat "\n" in
   graph_type ^ " " ^ t.name ^ " {\n" ^ graph_attr_str ^ (
     if node_strs = "" then
       ""

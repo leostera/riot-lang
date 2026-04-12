@@ -58,7 +58,7 @@ let one_or_more = fun expr -> repeat ~min:1 expr
 let rec optimize = function
   | Seq items ->
       let rec collect acc = function
-        | [] -> List.rev acc
+        | [] -> List.reverse acc
         | item :: rest -> (
             match optimize item with
             | Empty -> collect acc rest
@@ -72,7 +72,7 @@ let rec optimize = function
           acc
           (Literal (left ^ right) :: rest)
         | item :: rest -> merge_literals (item :: acc) rest
-        | [] -> List.rev acc
+        | [] -> List.reverse acc
       in
       let items = merge_literals [] items in
       begin
@@ -83,7 +83,7 @@ let rec optimize = function
       end
   | Alt items ->
       let rec collect acc = function
-        | [] -> List.rev acc
+        | [] -> List.reverse acc
         | item :: rest -> (
             match optimize item with
             | Alt nested -> collect acc (nested @ rest)
@@ -110,8 +110,8 @@ let rec optimize = function
 
 let escape_literal = fun value ->
   let fragments = ref [] in
-  String.iter
-    (fun ch ->
+  String.for_each
+    ~fn:(fun ch ->
       let fragment =
         match ch with
         | '\\'
@@ -127,12 +127,12 @@ let escape_literal = fun value ->
         | '}'
         | '*'
         | '+'
-        | '?' -> "\\" ^ String.make 1 ch
-        | ch -> String.make 1 ch
+        | '?' -> "\\" ^ String.make ~len:1 ~char:ch
+        | ch -> String.make ~len:1 ~char:ch
       in
       fragments := fragment :: !fragments)
     value;
-  !fragments |> List.rev |> String.concat ""
+  !fragments |> List.reverse |> String.concat ""
 
 let escape_class_char = fun ch ->
   match ch with
@@ -140,8 +140,8 @@ let escape_class_char = fun ch ->
   | ']'
   | '['
   | '^'
-  | '-' -> "\\" ^ String.make 1 ch
-  | ch -> String.make 1 ch
+  | '-' -> "\\" ^ String.make ~len:1 ~char:ch
+  | ch -> String.make ~len:1 ~char:ch
 
 let char_class_item_to_string = function
   | Single ch -> escape_class_char ch
@@ -176,12 +176,12 @@ let rec regex_to_string = function
         else
           "["
       in
-      let body = items |> List.map char_class_item_to_string |> String.concat "" in
+      let body = String.concat "" (List.map items ~fn:char_class_item_to_string) in
       prefix ^ body ^ "]"
   | Seq items ->
-      items |> List.map regex_to_string |> String.concat ""
+      String.concat "" (List.map items ~fn:regex_to_string)
   | Alt items ->
-      "(?:" ^ (items |> List.map regex_to_string |> String.concat "|") ^ ")"
+      "(?:" ^ String.concat "|" (List.map items ~fn:regex_to_string) ^ ")"
   | Repeat { expr; min; max } ->
       let inner =
         if is_atomic expr then
@@ -194,9 +194,9 @@ let rec regex_to_string = function
         | 0, None -> "*"
         | 1, None -> "+"
         | 0, Some 1 -> "?"
-        | min, Some max when min = max -> "{" ^ string_of_int min ^ "}"
-        | min, Some max -> "{" ^ string_of_int min ^ "," ^ string_of_int max ^ "}"
-        | min, None -> "{" ^ string_of_int min ^ ",}"
+        | min, Some max when min = max -> "{" ^ Int.to_string min ^ "}"
+        | min, Some max -> "{" ^ Int.to_string min ^ "," ^ Int.to_string max ^ "}"
+        | min, None -> "{" ^ Int.to_string min ^ ",}"
       in
       inner ^ suffix
 

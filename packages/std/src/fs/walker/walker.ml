@@ -24,7 +24,7 @@ type entry = {
 let join_path_string = fun dir_path name ->
   if String.equal dir_path "" then
     name
-  else if dir_path.[String.length dir_path - 1] = '/' then
+  else if String.get_unchecked dir_path ~at:(String.length dir_path - 1) = '/' then
     dir_path ^ name
   else
     dir_path ^ "/" ^ name
@@ -35,8 +35,8 @@ let basename_string = fun path ->
   else if String.equal path "/" then
     "/"
   else
-    let parts = String.split_on_char '/' path in
-    match List.rev parts with
+    let parts = String.split ~by:"/" path in
+    match List.reverse parts with
     | [] -> ""
     | last :: _ ->
         if String.equal last "" then
@@ -74,7 +74,7 @@ module FileItem = struct
     | Some path -> path
     | None ->
         let path_string = path_string_of_entry item in
-        let path = Path.of_string path_string
+        let path = Path.from_string path_string
         |> Result.expect ~msg:("Invalid walker path " ^ path_string) in
         item.path_cache <- Some path;
         path
@@ -130,12 +130,12 @@ type iterator_state = {
 
 let create_error_message = function
   | MinDepthCannotBeMoreThanMaxDepth { min_depth; max_depth } -> "Walker min_depth cannot be greater than max_depth (min_depth="
-  ^ string_of_int min_depth
+  ^ Int.to_string min_depth
   ^ ", max_depth="
-  ^ string_of_int max_depth
+  ^ Int.to_string max_depth
   ^ ")"
 
-let create ~roots ?(sort = false) ?(follow_symlinks = false) ?(follow_root_links = true) ?(max_open = 10) ?(min_depth = 0) ?(max_depth = max_int) ?(contents_first = false) () =
+let create ~roots ?(sort = false) ?(follow_symlinks = false) ?(follow_root_links = true) ?(max_open = 10) ?(min_depth = 0) ?(max_depth = Int.max_int) ?(contents_first = false) () =
   let max_open =
     if max_open <= 0 then
       1
@@ -147,7 +147,7 @@ let create ~roots ?(sort = false) ?(follow_symlinks = false) ?(follow_root_links
   else
     let roots =
       if sort then
-        List.sort Path.compare roots
+        List.sort roots ~compare:Path.compare
       else
         roots
     in
@@ -183,13 +183,13 @@ let metadata_for_path_string = fun ~follow_symlinks path_string ->
 let make_error = fun ?path ~depth cause -> { path; depth; cause }
 
 let path_option_of_string = fun path_string ->
-  match Path.of_string path_string with
+  match Path.from_string path_string with
   | Ok path -> Some path
   | Error _ -> None
 
 let full_path_entry = fun ~depth ~kind path_string ->
   let path_cache =
-    match Path.of_string path_string with
+    match Path.from_string path_string with
     | Ok path -> Some path
     | Error _ -> None
   in
@@ -254,8 +254,8 @@ let compare_item_path = fun left right ->
   | Ok (left: entry), Ok (right: entry) ->
       String.compare (FileItem.path_string left) (FileItem.path_string right)
   | Error (left: error), Error (right: error) ->
-      let left = Option.map Path.to_string left.path |> Option.unwrap_or ~default:"" in
-      let right = Option.map Path.to_string right.path |> Option.unwrap_or ~default:"" in
+      let left = Option.map left.path ~fn:Path.to_string |> Option.unwrap_or ~default:"" in
+      let right = Option.map right.path ~fn:Path.to_string |> Option.unwrap_or ~default:"" in
       String.compare left right
   | Error _, Ok _ ->
       (-1)
@@ -276,10 +276,10 @@ let next_dir_list = fun opts dir_list ->
   match dir_list with
   | Opened { depth; dir_path; handle } -> next_dir_entry opts ~depth ~dir_path handle
   | Closed state ->
-      if state.index >= Vector.len state.entries then
+      if state.index >= Vector.length state.entries then
         None
       else
-        match Vector.get state.entries state.index with
+        match Vector.get state.entries ~at:state.index with
         | Some item ->
             state.index <- state.index + 1;
             Some item
@@ -293,7 +293,7 @@ let close_dir_list = fun opts dir_list ->
       let rec drain () =
         match next_dir_entry opts ~depth ~dir_path handle with
         | Some item ->
-            Vector.push entries item;
+            Vector.push entries ~value:item;
             drain ()
         | None -> ()
       in
@@ -304,7 +304,7 @@ let sort_dir_list = fun dir_list ->
   match dir_list with
   | Opened _ -> dir_list
   | Closed state ->
-      Vector.sort_by state.entries compare_item_path;
+      Vector.sort_by state.entries ~compare:compare_item_path;
       dir_list
 
 let skippable = fun opts depth -> depth < opts.min_depth || depth > opts.max_depth
@@ -315,14 +315,14 @@ let maybe_directory_target = fun path_string ->
   | Error _ -> false
 
 let push = fun state (dent: entry) ->
-  let open_handle_budget = Vector.len state.stack_list - state.oldest_opened in
+  let open_handle_budget = Vector.length state.stack_list - state.oldest_opened in
   (
     if open_handle_budget = state.opts.max_open then
-      match Vector.get state.stack_list state.oldest_opened with
-      | Some dir_list -> Vector.set
+      match Vector.get state.stack_list ~at:state.oldest_opened with
+      | Some dir_list -> Vector.set_unchecked
         state.stack_list
-        state.oldest_opened
-        (close_dir_list state.opts dir_list)
+        ~at:state.oldest_opened
+        ~value:(close_dir_list state.opts dir_list)
       | None -> ()
   );
   let dir_path = FileItem.path_string dent in
@@ -336,21 +336,23 @@ let push = fun state (dent: entry) ->
         else
           dir_list
       in
-      Vector.push state.stack_list dir_list;
+      Vector.push state.stack_list ~value:dir_list;
       if open_handle_budget = state.opts.max_open then
         state.oldest_opened <- state.oldest_opened + 1;
       Ok ()
 
 let pop = fun state ->
-  ignore (Vector.pop state.stack_list);
-  state.oldest_opened <- min state.oldest_opened (Vector.len state.stack_list)
+  let _ = Vector.pop state.stack_list in
+  state.oldest_opened <- min state.oldest_opened (Vector.length state.stack_list)
 
 let skip_current_dir = fun state ->
   if not (Vector.is_empty state.stack_list) then
     pop state
 
 let rec maybe_emit_deferred = fun state ->
-  if state.opts.contents_first && Vector.len state.stack_list < Vector.len state.deferred_dirs then
+  if
+    state.opts.contents_first && Vector.length state.stack_list < Vector.length state.deferred_dirs
+  then
     match Vector.pop state.deferred_dirs with
     | Some dent when skippable state.opts dent.depth -> maybe_emit_deferred state
     | Some dent -> Some (Ok dent)
@@ -382,7 +384,7 @@ let handle_entry = fun state (dent: entry) ->
       | Ok () ->
           if is_normal_dir && state.opts.contents_first then
             (
-              Vector.push state.deferred_dirs dent;
+              Vector.push state.deferred_dirs ~value:dent;
               None
             )
           else if skippable state.opts dent.depth then
@@ -422,14 +424,14 @@ let rec next_item = fun state ->
               | Some item -> Some item
               | None -> next_item state
             end
-      else if Vector.len state.stack_list > state.opts.max_depth then
+      else if Vector.length state.stack_list > state.opts.max_depth then
         (
           pop state;
           next_item state
         )
       else
-        let current_idx = Vector.len state.stack_list - 1 in
-        match Vector.get state.stack_list current_idx with
+        let current_idx = Vector.length state.stack_list - 1 in
+        match Vector.get state.stack_list ~at:current_idx with
         | None -> None
         | Some dir_list -> (
             match next_dir_list state.opts dir_list with
@@ -457,7 +459,7 @@ let into_iter = fun opts ->
     let next = fun state -> (next_item state, state)
 
     let size = fun state ->
-      List.length state.roots + Vector.len state.stack_list + Vector.len state.deferred_dirs
+      List.length state.roots + Vector.length state.stack_list + Vector.length state.deferred_dirs
   end in
   Iterator.make (module Base) (make_state opts)
 
@@ -499,7 +501,7 @@ let to_list ~roots ?(sort = true) ?follow_symlinks ?(include_directories = true)
       let rec loop iter =
         match Iterator.next iter with
         | None, _ ->
-            Ok (List.rev !items)
+            Ok (List.reverse !items)
         | Some (Error err), _ ->
             Error err.cause
         | Some (Ok dent), iter' ->

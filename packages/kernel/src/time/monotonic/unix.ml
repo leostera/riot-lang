@@ -1,6 +1,6 @@
 open Prelude
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 type error =
   | InvalidNanoseconds of { nanos: int }
@@ -23,9 +23,9 @@ let error_to_string error =
   | System system_error -> System_error.to_string system_error
 
 let validate_parts = fun ~secs:_ ~nanos ->
-  Result.map_error (fun () -> InvalidNanoseconds { nanos }) (Common.validate_nanos nanos)
+  Result.map_err (Common.validate_nanos nanos) ~fn:(fun () -> InvalidNanoseconds { nanos })
 
-let of_parts = fun ~secs ~nanos ->
+let from_parts = fun ~secs ~nanos ->
   let* () = validate_parts ~secs ~nanos in
   Result.Ok { secs; nanos }
 
@@ -37,9 +37,9 @@ let subsec_nanos = fun value -> value.nanos
 
 let now = fun () ->
   let* (secs, nanos) =
-    Result.map_error (fun code -> System (System_error.of_code code)) (FFI.now ())
+    Result.map_err (FFI.now ()) ~fn:(fun code -> System (System_error.from_code code))
   in
-  of_parts ~secs ~nanos
+  from_parts ~secs ~nanos
 
 let compare = fun left right ->
   Common.compare_parts

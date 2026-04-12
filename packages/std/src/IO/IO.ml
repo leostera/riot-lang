@@ -1,6 +1,6 @@
 open Kernel
 module Buffer = Buffer
-module Bytes = Stdlib.Bytes
+module Bytes = Bytes
 module Iovec = Kernel.IO.Iovec
 module Reader = Reader
 module Writer = Writer

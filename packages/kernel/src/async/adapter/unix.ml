@@ -43,50 +43,50 @@ module FFI = struct
   external selector_deregister_timer: selector -> int -> (unit, int) Result.t = "kernel_new_async_unix_selector_deregister_timer"
 
   let create = fun () ->
-    Result.map_error (fun code -> System (System_error.of_code code)) (selector_create ())
+    Result.map_err (selector_create ()) ~fn:(fun code -> System (System_error.from_code code))
 
   let wait = fun ~max_events ~timeout_ns selector ->
-    Result.map_error
-      (fun code -> System (System_error.of_code code))
+    Result.map_err
       (selector_wait ~max_events ~timeout_ns selector)
+      ~fn:(fun code -> System (System_error.from_code code))
 
   let close = fun selector ->
-    Result.map_error (fun code -> System (System_error.of_code code)) (selector_close selector)
+    Result.map_err (selector_close selector) ~fn:(fun code -> System (System_error.from_code code))
 
   let apply = fun selector changes ignored_errors ->
-    Result.map_error
-      (fun code -> System (System_error.of_code code))
+    Result.map_err
       (selector_apply selector changes ignored_errors)
+      ~fn:(fun code -> System (System_error.from_code code))
 
   let register_process = fun selector ~pid ~token ->
-    Result.map_error
-      (fun code -> System (System_error.of_code code))
+    Result.map_err
       (selector_register_process selector pid token)
+      ~fn:(fun code -> System (System_error.from_code code))
 
   let reregister_process = fun selector ~pid ~token ->
-    Result.map_error
-      (fun code -> System (System_error.of_code code))
+    Result.map_err
       (selector_reregister_process selector pid token)
+      ~fn:(fun code -> System (System_error.from_code code))
 
   let deregister_process = fun selector ~pid ->
-    Result.map_error
-      (fun code -> System (System_error.of_code code))
+    Result.map_err
       (selector_deregister_process selector pid)
+      ~fn:(fun code -> System (System_error.from_code code))
 
   let register_timer = fun selector ~timer_id ~timeout_parts ~repeat ~token ->
-    Result.map_error
-      (fun code -> System (System_error.of_code code))
+    Result.map_err
       (selector_register_timer selector timer_id timeout_parts repeat token)
+      ~fn:(fun code -> System (System_error.from_code code))
 
   let reregister_timer = fun selector ~timer_id ~timeout_parts ~repeat ~token ->
-    Result.map_error
-      (fun code -> System (System_error.of_code code))
+    Result.map_err
       (selector_reregister_timer selector timer_id timeout_parts repeat token)
+      ~fn:(fun code -> System (System_error.from_code code))
 
   let deregister_timer = fun selector ~timer_id ->
-    Result.map_error
-      (fun code -> System (System_error.of_code code))
+    Result.map_err
       (selector_deregister_timer selector timer_id)
+      ~fn:(fun code -> System (System_error.from_code code))
 end
 
 module Kevent = struct
@@ -129,7 +129,9 @@ module Selector = struct
         if index < 0 then
           acc
         else
-          to_list (index - 1) (Event.make (module Kevent) (Array.get events index) :: acc)
+          to_list
+            (index - 1)
+            (Event.make (module Kevent) (Array.get_unchecked events ~at:index) :: acc)
       in
       Result.Ok (to_list (Array.length events - 1) [])
 
@@ -145,7 +147,7 @@ module Selector = struct
       | false, true -> [ Kevent.make fd ~filter:Libc.evfilt_write ~flags ~token ]
       | false, false -> []
     in
-    FFI.apply selector (Array.of_list changes) [|System_error_code.broken_pipe|]
+    FFI.apply selector (Array.from_list changes) [|System_error_code.broken_pipe|]
 
   let reregister = fun selector ~fd ~token ~interest ->
     let flags = Libc.(ev_clear lor ev_receipt) in

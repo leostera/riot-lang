@@ -1,5 +1,9 @@
+open Prelude
+
 type t = int [@@immediate]
 type utf_decode = int [@@immediate]
+type error =
+  | BadRune of { int: int }
 val min: t
 
 val max: t
@@ -12,13 +16,13 @@ val max_latin1: t
 
 val is_valid: int -> bool
 
-val of_int: int -> t
+val from_int: int -> (t, error) result
 
-val unsafe_of_int: int -> t
+val from_int_unchecked: int -> t
 
 val to_int: t -> int
 
-val of_char: char -> t
+val from_char: char -> t
 
 val to_char: t -> char
 
@@ -28,7 +32,7 @@ val compare: t -> t -> int
 
 val utf_decode_is_valid: utf_decode -> bool
 
-val utf_decode_uchar: utf_decode -> t
+val utf_decode_rune: utf_decode -> t
 
 val utf_decode_length: utf_decode -> int
 

@@ -1,5 +1,5 @@
 (** Thin wrapper around OCaml condition variables. *)
-type t = Stdlib.Condition.t
+type t
 val create: unit -> t
 
 val wait: t -> Mutex.t -> unit

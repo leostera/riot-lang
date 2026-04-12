@@ -36,53 +36,79 @@
 
 open Iter
 
-(** @inline
+type t = string
+type utf_decode = Kernel.Unicode.Rune.utf_decode
+val empty: t
 
-    Includes all standard library String functions:
+val is_empty: t -> bool
 
-    ## Length and Indexing
-    - [`length`] - Get string length in bytes
-    - [`get`], [`unsafe_get`] - Get byte at index
-    - [`set`], [`unsafe_set`] - Set byte at index (for mutable strings)
+val length: t -> int
 
-    ## Searching
-    - [`contains`] - Check if string contains substring
-    - [`contains_from`] - Search from position
-    - [`index`], [`index_opt`] - Find character position
-    - [`index_from`], [`index_from_opt`] - Find from position
-    - [`rindex`], [`rindex_opt`] - Find last occurrence
-    - [`starts_with`] - Check prefix
-    - [`ends_with`] - Check suffix
+val get: t -> at:int -> char option
 
-    ## Transformation
-    - [`uppercase_ascii`], [`lowercase_ascii`] - Case conversion
-    - [`capitalize_ascii`], [`uncapitalize_ascii`] - First letter case
-    - [`trim`] - Remove leading/trailing whitespace
-    - [`escaped`] - Escape special characters
-    - [`map`], [`mapi`] - Transform characters
+val get_unchecked: t -> at:int -> char
 
-    ## Substring Operations
-    - [`sub`] - Extract substring
-    - [`split_on_char`] - Split on delimiter
-    - [`concat`] - Join with separator
+val sub: t -> offset:int -> len:int -> t
 
-    ## Comparison
-    - [`compare`] - Lexicographic comparison
-    - [`equal`] - Equality check
+(** Use `init length builder` to construct a fresh string by calling `builder` for each index from
+    left to right. *)
+val init: len:int -> fn:(int -> char) -> t
 
-    ## Iteration
-    - [`into_mut_iter`, `into_iter`] - Iterator for bytes
-    - [`into_grapheme_iter`, `into_grapheme_mut_iter`] - Iterator for UTF8 Runes
+(** Use `make length char` to fill a fresh string with repeated copies of `char`. *)
+val make: len:int -> char:char -> t
 
-    ## Conversion
-    - [`to_bytes`], [`of_bytes`] - Bytes conversion
-    - [`to_reader`] - Reader view for streaming APIs
+(** Use `append left right` to concatenate two strings into a fresh result. *)
+val append: t -> t -> t
 
-    ## Creation
-    - [`make`] - Create string of repeated character
-    - [`init`] - Create with initialization function
-    - [`empty`] - Empty string constant *)
-include module type of Kernel.String
+(** Use `concat separator values` to join `values` with `separator` into a fresh result. *)
+val concat: t -> t list -> t
+
+val contains: t -> t -> bool
+
+val starts_with: prefix:t -> t -> bool
+
+val ends_with: suffix:t -> t -> bool
+
+val equal: t -> t -> bool
+
+val compare: t -> t -> int
+
+val index_of: t -> char:char -> int option
+
+val last_index: t -> char -> int option
+
+val trim: t -> t
+
+val split: by:t -> t -> t list
+
+val lowercase_ascii: t -> t
+
+val capitalize_ascii: t -> t
+
+val uppercase_ascii: t -> t
+
+val map: fn:(char -> char) -> t -> t
+
+val for_each: fn:(char -> unit) -> t -> unit
+
+val exists: fn:(char -> bool) -> t -> bool
+
+val for_all: fn:(char -> bool) -> t -> bool
+
+val fold_left: fn:('acc -> char -> 'acc) -> acc:'acc -> t -> 'acc
+
+val escaped: t -> t
+
+val get_utf_8_rune: t -> at:int -> utf_decode option
+
+(** Use `from_bytes value` to copy `value` into a fresh immutable string. *)
+val from_bytes: bytes -> t
+
+(** Use `unsafe_from_bytes value` is basically a cast *)
+val unsafe_from_bytes: bytes -> t
+
+(** Use `to_bytes value` to copy `value` into fresh mutable bytes. *)
+val to_bytes: t -> bytes
 
 (** # UTF-8 Iteration *)
 (** Creates a mutable iterator over UTF-8 characters.

@@ -16,7 +16,7 @@ val read: ('src, 'err) t -> ?timeout:int64 -> bytes -> (int, 'err) result
 
 val read_vectored: ('src, 'err) t -> Kernel.IO.Iovec.t -> (int, 'err) result
 
-val read_to_end: ('src, 'err) t -> buf:Stdlib.Buffer.t -> (int, 'err) result
+val read_to_end: ('src, 'err) t -> buf:Buffer.t -> (int, 'err) result
 
 val map_err: ('src, 'a) t -> fn:('a -> 'b) -> ('src, 'b) t
 

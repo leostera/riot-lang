@@ -49,13 +49,17 @@ module Server = struct
     let config = Config.get (module Log_config) |> Result.expect ~msg:"Could not find log config" in
     (* Find the stdout handler in the list *)
     let stdout_format =
-      List.find_map
-        (
-          function
-          | Log_config.Stdout { format } -> Some format
-          | _ -> None
-        )
-        config.handlers
+      match
+        List.find config.handlers
+          ~fn:(
+            function
+            | Log_config.Stdout _ -> true
+            | _ -> false
+          )
+      with
+      | Some (Log_config.Stdout { format }) -> Some format
+      | Some _ -> None
+      | None -> None
     in
     match stdout_format with
     | Some format -> loop { style = format }

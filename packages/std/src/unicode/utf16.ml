@@ -1,4 +1,4 @@
-open Global
+open Prelude
 module String = Kernel.String
 
 type position = {
@@ -20,19 +20,23 @@ let next_step = fun text byte_offset ->
   if byte_offset >= String.length text then
     None
   else
-    match String.get text byte_offset with
-    | '\r' ->
-        if byte_offset + 1 < String.length text && String.get text (byte_offset + 1) = '\n' then
-          Some (Newline 2)
+    match String.get text ~at:byte_offset with
+    | Some '\r' ->
+        if byte_offset + 1 < String.length text then
+          match String.get text ~at:(byte_offset + 1) with
+          | Some '\n' -> Some (Newline 2)
+          | _ -> Some (Newline 1)
         else
           Some (Newline 1)
-    | '\n' ->
+    | Some '\n' ->
         Some (Newline 1)
-    | _ -> (
+    | Some _ -> (
         match Utf8.decode_rune text byte_offset with
         | Some (rune, next_byte_offset) -> Some (Rune (rune, next_byte_offset - byte_offset))
         | None -> Some (Rune (Rune.replacement, 1))
       )
+    | None ->
+        None
 
 let position_of_offset = fun text ~offset ->
   let target = Int.min (String.length text) (Int.max 0 offset) in

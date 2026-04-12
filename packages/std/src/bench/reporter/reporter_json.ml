@@ -45,20 +45,20 @@ let comparison_result_to_json = fun (result: Bench_result.comparison_result) ->
         "case_results",
         array
           (List.map
-            (fun (case_result: Bench_result.case_result) ->
+            result.case_results
+            ~fn:(fun (case_result: Bench_result.case_result) ->
               obj
                 [
                   ("name", string case_result.name);
                   ("statistics", statistics_to_json case_result.statistics);
-                ])
-            result.case_results)
+                ]))
       );
       (
         "speedup_ratios",
         array
           (List.map
-            (fun (name, ratio) -> obj [ ("name", string name); ("ratio", float ratio); ])
-            result.speedup_ratios)
+            result.speedup_ratios
+            ~fn:(fun (name, ratio) -> obj [ ("name", string name); ("ratio", float ratio); ]))
       );
     ]
 
@@ -73,8 +73,8 @@ let finalize = fun (summary: Bench_result.summary) ->
       | Some start -> Time.Instant.elapsed start |> duration_us
       | None -> 0
     in
-    let benchmarks = !benchmark_results |> List.rev |> List.map benchmark_result_to_json in
-    let comparisons = !comparison_results |> List.rev |> List.map comparison_result_to_json in
+    let benchmarks = List.map (List.reverse !benchmark_results) ~fn:benchmark_result_to_json in
+    let comparisons = List.map (List.reverse !comparison_results) ~fn:comparison_result_to_json in
     let summary_json = obj
       [
         ("total", int summary.total);

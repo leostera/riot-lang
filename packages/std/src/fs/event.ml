@@ -63,29 +63,29 @@ let from_kernel_event: Ev.event -> t = fun ev ->
     kind = Ev.decode_event_kind ev.flags;
     event_id = ev.event_id;
     file_type =
-      if has_flag Ev.flag_is_file then
+      if has_flag Ev.Flag.is_file then
         File
-      else if has_flag Ev.flag_is_dir then
+      else if has_flag Ev.Flag.is_dir then
         Directory
-      else if has_flag Ev.flag_is_symlink then
+      else if has_flag Ev.Flag.is_symlink then
         Symlink
       else
         Unknown;
     metadata = {
-      inode_meta = has_flag Ev.flag_inode_meta_mod;
-      finder_info = has_flag Ev.flag_finder_info_mod;
-      owner = has_flag Ev.flag_metadata;
-      xattr = has_flag Ev.flag_xattr_mod
+      inode_meta = has_flag Ev.Flag.inode_meta_mod;
+      finder_info = has_flag Ev.Flag.finder_info_mod;
+      owner = has_flag Ev.Flag.metadata;
+      xattr = has_flag Ev.Flag.xattr_mod
     };
     system =
       {
-        own_event = has_flag Ev.flag_own_event;
-        mount = has_flag Ev.flag_mount;
-        unmount = has_flag Ev.flag_unmount;
-        root_changed = has_flag Ev.flag_root_changed;
-        must_scan_subdirs = has_flag Ev.flag_must_scan_subdirs;
-        user_dropped = has_flag Ev.flag_user_dropped;
-        kernel_dropped = has_flag Ev.flag_kernel_dropped;
+        own_event = has_flag Ev.Flag.own_event;
+        mount = has_flag Ev.Flag.mount;
+        unmount = has_flag Ev.Flag.unmount;
+        root_changed = has_flag Ev.Flag.root_changed;
+        must_scan_subdirs = has_flag Ev.Flag.must_scan_subdirs;
+        user_dropped = has_flag Ev.Flag.user_dropped;
+        kernel_dropped = has_flag Ev.Flag.kernel_dropped;
       };
   }
 

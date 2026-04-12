@@ -20,51 +20,53 @@ type error =
   | AlreadyWatching
   | System of System_error.t
 
-let flag_created = 0x0000_0100l
+module Flag = struct
+  let created = 0x0000_0100l
 
-let flag_removed = 0x0000_0200l
+  let removed = 0x0000_0200l
 
-let flag_modified = 0x0000_1000l
+  let modified = 0x0000_1000l
 
-let flag_renamed = 0x0000_0800l
+  let renamed = 0x0000_0800l
 
-let flag_metadata = 0x0000_4000l
+  let metadata = 0x0000_4000l
 
-let flag_is_file = 0x0001_0000l
+  let is_file = 0x0001_0000l
 
-let flag_is_dir = 0x0002_0000l
+  let is_dir = 0x0002_0000l
 
-let flag_is_symlink = 0x0004_0000l
+  let is_symlink = 0x0004_0000l
 
-let flag_inode_meta_mod = 0x0000_0400l
+  let inode_meta_mod = 0x0000_0400l
 
-let flag_finder_info_mod = 0x0000_2000l
+  let finder_info_mod = 0x0000_2000l
 
-let flag_xattr_mod = 0x0000_8000l
+  let xattr_mod = 0x0000_8000l
 
-let flag_own_event = 0x0008_0000l
+  let own_event = 0x0008_0000l
 
-let flag_mount = 0x0000_0040l
+  let mount = 0x0000_0040l
 
-let flag_unmount = 0x0000_0080l
+  let unmount = 0x0000_0080l
 
-let flag_root_changed = 0x0000_0020l
+  let root_changed = 0x0000_0020l
 
-let flag_must_scan_subdirs = 0x0000_0001l
+  let must_scan_subdirs = 0x0000_0001l
 
-let flag_user_dropped = 0x0000_0002l
+  let user_dropped = 0x0000_0002l
 
-let flag_kernel_dropped = 0x0000_0004l
+  let kernel_dropped = 0x0000_0004l
+end
 
 let decode_event_kind = fun flags ->
-  let has_flag flag = Int32.logand flags flag <> Int32.zero in
-  if has_flag flag_created then
+  let has_flag flag = Int32.logand flags flag != Int32.zero in
+  if has_flag Flag.created then
     Created
-  else if has_flag flag_removed then
+  else if has_flag Flag.removed then
     Deleted
-  else if has_flag flag_modified then
+  else if has_flag Flag.modified then
     Modified
-  else if has_flag flag_renamed then
+  else if has_flag Flag.renamed then
     Renamed
   else
     Metadata
@@ -97,38 +99,35 @@ type t = {
   watcher: FFI.watcher;
 }
 
-let of_system_error = fun error ->
+let from_system_error = fun error ->
   match error with
   | System_error.BadFileDescriptor -> Closed
   | system_error -> System system_error
 
-let of_code_error = fun code -> of_system_error (System_error.of_code code)
+let from_code_error = fun code -> from_system_error (System_error.from_code code)
 
 let create = fun () ->
-  Result.map (fun watcher -> { watcher }) (Result.map_error of_code_error (FFI.create ()))
+  FFI.create () |> Result.map ~fn:(fun watcher -> { watcher }) |> Result.map_err ~fn:from_code_error
 
 let watch = fun t ~path ~latency ->
-  Result.map_error of_code_error (FFI.watch t.watcher (Path.to_string path) latency)
+  FFI.watch t.watcher (Path.to_string path) latency |> Result.map_err ~fn:from_code_error
 
-let unwatch = fun t watch_id ->
-  Result.map_error of_code_error (FFI.unwatch t.watcher watch_id)
+let unwatch = fun t watch_id -> FFI.unwatch t.watcher watch_id |> Result.map_err ~fn:from_code_error
 
-let event_of_raw = fun (path, flags, event_id) -> { path = Path.of_string path; flags; event_id }
+let event_from_raw = fun (path, flags, event_id) -> { path = Path.from_string path; flags; event_id }
 
 let poll = fun t ->
-  Result.map
-    (fun raw_events ->
+  FFI.poll t.watcher |> Result.map
+    ~fn:(fun raw_events ->
       let rec loop index acc =
         if index < 0 then
           acc
         else
-          loop (index - 1) (event_of_raw (Array.get raw_events index) :: acc)
+          loop (index - 1) (event_from_raw (Array.get_unchecked raw_events ~at:index) :: acc)
       in
-      loop (Array.length raw_events - 1) [])
-    (Result.map_error of_code_error (FFI.poll t.watcher))
+      loop (Array.length raw_events - 1) []) |> Result.map_err ~fn:from_code_error
 
-let stop = fun t ->
-  Result.map_error of_code_error (FFI.stop t.watcher)
+let stop = fun t -> FFI.stop t.watcher |> Result.map_err ~fn:from_code_error
 
 let to_source = fun t ->
   let module Source = struct

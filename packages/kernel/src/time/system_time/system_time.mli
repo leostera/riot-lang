@@ -6,7 +6,7 @@ val error_to_string: error -> string
 
 val epoch: t
 
-val of_parts: secs:int -> nanos:int -> (t, error) Result.t
+val from_parts: secs:int -> nanos:int -> (t, error) Result.t
 
 val to_parts: t -> int * int
 

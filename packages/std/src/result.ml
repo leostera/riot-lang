@@ -37,33 +37,33 @@ let is_err_and = fun f ->
 
 (* Transforming *)
 
-let map = fun f ->
-  function
-  | Ok x -> Ok (f x)
+let map = fun value ~fn ->
+  match value with
+  | Ok x -> Ok (fn x)
   | Error e -> Error e
 
-let map_error = fun f ->
-  function
+let map_error = fun value ~fn ->
+  match value with
   | Ok x -> Ok x
-  | Error e -> Error (f e)
+  | Error e -> Error (fn e)
 
 let map_err = map_error
 
-let map_or = fun ~default f ->
-  function
-  | Ok x -> f x
+let map_or = fun value ~default ~fn ->
+  match value with
+  | Ok x -> fn x
   | Error _ -> default
 
-let map_or_else = fun ~default f ->
-  function
-  | Ok x -> f x
+let map_or_else = fun value ~default ~fn ->
+  match value with
+  | Ok x -> fn x
   | Error e -> default e
 
 (* Chaining *)
 
-let and_then = fun r f ->
-  match r with
-  | Ok x -> f x
+let and_then = fun value ~fn ->
+  match value with
+  | Ok x -> fn x
   | Error e -> Error e
 
 let or_ = fun r1 r2 ->
@@ -71,10 +71,10 @@ let or_ = fun r1 r2 ->
   | Ok _ -> r1
   | Error _ -> r2
 
-let or_else = fun r f ->
-  match r with
+let or_else = fun value ~fn ->
+  match value with
   | Ok x -> Ok x
-  | Error e -> f e
+  | Error e -> fn e
 
 (* Extracting values *)
 
@@ -82,8 +82,8 @@ let unwrap = function
   | Ok x -> x
   | Error _ -> panic "called Result.unwrap on an Error value"
 
-let unwrap_or = fun ~default ->
-  function
+let unwrap_or = fun value ~default ->
+  match value with
   | Ok x -> x
   | Error _ -> default
 
@@ -92,8 +92,8 @@ let unwrap_or_default = fun ~default ->
   | Ok x -> x
   | Error _ -> default ()
 
-let unwrap_or_else = fun ~fn ->
-  function
+let unwrap_or_else = fun value ~fn ->
+  match value with
   | Ok x -> x
   | Error _ -> fn ()
 
@@ -139,15 +139,19 @@ let inspect_err = fun f r ->
 
 (* Iterating *)
 
-let iter = fun f ->
-  function
-  | Ok x -> f x
+let iter = fun value ~fn ->
+  match value with
+  | Ok x -> fn x
   | Error _ -> ()
 
-let iter_error = fun f ->
-  function
+let iiter_err = fun value ~fn ->
+  match value with
   | Ok _ -> ()
-  | Error e -> f e
+  | Error e -> fn e
+
+let iter_err = iiter_err
+
+let iter_error = iiter_err
 
 (* Converting *)
 
@@ -159,6 +163,8 @@ let of_option = fun ~error ->
   function
   | Some x -> Ok x
   | None -> Error error
+
+let from_option = of_option
 
 let transpose = function
   | Ok None -> None
@@ -176,7 +182,7 @@ let flatten = function
 let all = fun results ->
   let rec go = fun acc ->
     function
-    | [] -> Ok (List.rev acc)
+    | [] -> Ok (List.reverse acc)
     | Ok x :: rest -> go (x :: acc) rest
     | Error e :: _ -> Error e
   in
@@ -190,7 +196,7 @@ let both = fun r1 r2 ->
 
 (* Misc *)
 
-let fold = fun ~ok ~error ->
-  function
+let fold = fun value ~ok ~error ->
+  match value with
   | Ok x -> ok x
   | Error e -> error e

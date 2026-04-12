@@ -13,13 +13,13 @@ type 'a t = {
 
 let create = fun () -> { front = None; back = None; length = 0 }
 
-let with_capacity = fun _ -> create ()
+let with_capacity = fun ~size:_ -> create ()
 
-let len = fun queue -> queue.length
+let length = fun queue -> queue.length
 
 let is_empty = fun queue -> queue.length = 0
 
-let push = fun queue value ->
+let push = fun queue ~value ->
   let new_node = { value; next = None } in
   match queue.back with
   | None ->
@@ -51,42 +51,42 @@ let clear = fun queue ->
   queue.back <- None;
   queue.length <- 0
 
-let iter = fun f queue ->
+let for_each = fun queue ~fn ->
   let rec loop node =
     match node with
     | None -> ()
     | Some n ->
-        f n.value;
+        fn n.value;
         loop n.next
   in
   loop queue.front
 
-let fold = fun f queue acc ->
+let fold_left = fun queue ~acc ~fn ->
   let rec loop node acc =
     match node with
     | None -> acc
-    | Some n -> loop n.next (f n.value acc)
+    | Some n -> loop n.next (fn acc n.value)
   in
   loop queue.front acc
 
 let to_list = fun queue ->
   let rec loop node acc =
     match node with
-    | None -> acc
+    | None -> List.reverse acc
     | Some n -> loop n.next (n.value :: acc)
   in
   loop queue.front []
 
-let contains = fun queue value ->
-  let rec loop node acc =
+let contains = fun queue ~value ->
+  let rec loop node =
     match node with
-    | None -> acc
-    | Some n -> loop n.next (n.value = value)
+    | None -> false
+    | Some n -> n.value = value || loop n.next
   in
-  loop queue.front false
+  loop queue.front
 
 let append = fun queue1 queue2 ->
-  iter (push queue1) queue2;
+  for_each queue2 ~fn:(fun value -> push queue1 ~value);
   clear queue2
 
 let transfer = fun ~src ~dst ->
@@ -111,12 +111,12 @@ let transfer = fun ~src ~dst ->
       src.back <- None;
       src.length <- 0
 
-let of_list = fun elements ->
+let from_list = fun elements ->
   let queue = create () in
-  List.iter (push queue) elements;
+  List.for_each elements ~fn:(fun value -> push queue ~value);
   queue
 
-let into_iter: type item. item t -> item Iter.Iterator.t = fun queue ->
+let iter: type item. item t -> item Iter.Iterator.t = fun queue ->
   let module QueueIter = struct
     type state = item node option
 
@@ -136,7 +136,7 @@ let into_iter: type item. item t -> item Iter.Iterator.t = fun queue ->
   end in
   Iter.Iterator.make (module QueueIter) queue.front
 
-let to_mut_iter: type item. item t -> item Iter.MutIterator.t = fun queue ->
+let mut_iter: type item. item t -> item Iter.MutIterator.t = fun queue ->
   let module QueueIter = struct
     type state = item t
 
@@ -144,11 +144,11 @@ let to_mut_iter: type item. item t -> item Iter.MutIterator.t = fun queue ->
 
     let next = fun queue -> pop queue
 
-    let size = fun queue -> len queue
+    let size = fun queue -> length queue
 
     let clone = fun queue ->
-      let queue2 = with_capacity (len queue) in
-      iter (push queue2) queue;
+      let queue2 = with_capacity ~size:(length queue) in
+      for_each queue ~fn:(fun value -> push queue2 ~value);
       queue2
   end in
   Iter.MutIterator.make (module QueueIter) queue

@@ -2,11 +2,12 @@
 open Global
 open Collections
 
-let args = Array.to_list Kernel.Env.args
+let args = Kernel.Array.fold_left Kernel.Env.args ~acc:[] ~fn:(fun acc value -> value :: acc)
+|> List.reverse
 
 let current_dir = fun () ->
   match Kernel.Env.current_dir () with
-  | Ok cwd -> Path.of_string cwd
+  | Ok cwd -> Path.from_string cwd
   | Error error -> Error (Path.SystemError (Kernel.Env.error_to_string error))
 
 let set_current_dir = fun path ->
@@ -26,10 +27,10 @@ type 't var_type =
   | Bool: bool var_type
   | Char: char var_type
 
-let get = fun name -> Kernel.Env.get name
+let get_raw = fun name -> Kernel.Env.get ~var:name
 
-let var: type t. t var_type -> name:string -> t option = fun var_type ~name ->
-  match get name with
+let get: type t. t var_type -> var:string -> t option = fun var_type ~var ->
+  match get_raw var with
   | None -> None
   | Some value ->
       match var_type with
@@ -53,13 +54,14 @@ let var: type t. t var_type -> name:string -> t option = fun var_type ~name ->
         )
       | Char ->
           if String.length value = 1 then
-            Some value.[0]
+            Some (String.get_unchecked value ~at:0)
           else
             None
 
-let set_var = fun ~name ~value ->
-  let previous = get name in
-  let _ = Kernel.Env.set_var ~name ~value in
+let set = fun ~var ~value ->
+  let previous = get_raw var in
+  let _ = Kernel.Env.set ~var ~value in
   previous
 
-let vars = fun () -> Kernel.Env.vars () |> Array.to_list
+let vars = fun () ->
+  Kernel.Env.vars () |> Kernel.Array.fold_left ~acc:[] ~fn:(fun acc value -> value :: acc) |> List.reverse

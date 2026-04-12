@@ -17,35 +17,35 @@ type t =
   | TimeMonotonic of Time.Monotonic.error
   | TimeTimer of Time.Timer.error
 
-let of_async = fun error -> Async error
+let from_async = fun error -> Async error
 
-let of_env = fun error -> Env error
+let from_env = fun error -> Env error
 
-let of_fs_file = fun error -> FsFile error
+let from_fs_file = fun error -> FsFile error
 
-let of_fs_read_dir = fun error -> FsReadDir error
+let from_fs_read_dir = fun error -> FsReadDir error
 
-let of_fs_events = fun error -> FsEvents error
+let from_fs_events = fun error -> FsEvents error
 
-let of_net_addr = fun error -> NetAddr error
+let from_net_addr = fun error -> NetAddr error
 
-let of_net_ip_addr = fun error -> NetIpAddr error
+let from_net_ip_addr = fun error -> NetIpAddr error
 
-let of_net_socket_addr = fun error -> NetSocketAddr error
+let from_net_socket_addr = fun error -> NetSocketAddr error
 
-let of_net_tcp_listener = fun error -> NetTcpListener error
+let from_net_tcp_listener = fun error -> NetTcpListener error
 
-let of_net_tcp_stream = fun error -> NetTcpStream error
+let from_net_tcp_stream = fun error -> NetTcpStream error
 
-let of_net_udp_socket = fun error -> NetUdpSocket error
+let from_net_udp_socket = fun error -> NetUdpSocket error
 
-let of_process = fun error -> Process error
+let from_process = fun error -> Process error
 
-let of_time_system_time = fun error -> TimeSystemTime error
+let from_time_system_time = fun error -> TimeSystemTime error
 
-let of_time_monotonic = fun error -> TimeMonotonic error
+let from_time_monotonic = fun error -> TimeMonotonic error
 
-let of_time_timer = fun error -> TimeTimer error
+let from_time_timer = fun error -> TimeTimer error
 
 let module_name = fun value ->
   match value with

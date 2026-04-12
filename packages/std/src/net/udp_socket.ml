@@ -45,7 +45,7 @@ let recv = fun socket buffer ?(pos = 0) ?len ?timeout () ->
     | Some requested -> requested
   in
   let source = Kernel.Net.UdpSocket.to_source socket in
-  let timeout = Option.map Time.Duration.to_secs_float timeout in
+  let timeout = Option.map timeout ~fn:Time.Duration.to_secs_float in
   let rec recv_loop () =
     match Kernel.Net.UdpSocket.recv socket buffer ~pos ~len with
     | Ok bytes_read -> Ok bytes_read
@@ -66,7 +66,7 @@ let recv_from = fun socket buffer ?(pos = 0) ?len ?timeout () ->
     | Some requested -> requested
   in
   let source = Kernel.Net.UdpSocket.to_source socket in
-  let timeout = Option.map Time.Duration.to_secs_float timeout in
+  let timeout = Option.map timeout ~fn:Time.Duration.to_secs_float in
   let rec recv_loop () =
     match Kernel.Net.UdpSocket.recv_from socket buffer ~pos ~len with
     | Ok (bytes_read, from) -> Ok { bytes_read; from }
@@ -128,4 +128,7 @@ let local_addr = fun socket ->
         str (IO.error_message (io_error_of_udp_error err))
       ])
 
-let close = fun socket -> ignore (Kernel.Net.UdpSocket.close socket)
+let close = fun socket ->
+  match Kernel.Net.UdpSocket.close socket with
+  | Ok () -> ()
+  | Error _ -> ()

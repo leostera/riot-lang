@@ -14,7 +14,7 @@ type placement =
 type blocking_lane = {
   lock: Sync.Mutex.t;
   cond: Sync.Condition.t;
-  mutable domain: unit Kernel.Domain.t option;
+  mutable domain: unit Kernel.Thread.t option;
 }
 
 type process_slot = {
@@ -103,5 +103,5 @@ type domain_context = {
   mutable current_process: Runtime_process.t option;
 }
 
-let current_context: domain_context option Kernel.Domain.DLS.key =
-  Kernel.Domain.DLS.new_key (fun () -> None)
+let current_context: domain_context option Kernel.Thread.DLS.key =
+  Kernel.Thread.DLS.new_key (fun () -> None)

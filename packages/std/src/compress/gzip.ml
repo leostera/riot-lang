@@ -1,7 +1,7 @@
 open Global
 open IO
 
-let ( let* ) = Result.and_then
+let ( let* ) = fun result fn -> Result.and_then result ~fn
 
 module Engine = Gzip_engine
 
@@ -80,7 +80,7 @@ let compact_input = fun (t: (_, _) reader) ->
   else
     let remaining = buffered_input t in
     (
-      Bytes.blit t.input t.input_pos t.input 0 remaining;
+      Bytes.blit_unchecked t.input ~src_offset:t.input_pos ~dst:t.input ~dst_offset:0 ~len:remaining;
       t.input_pos <- 0;
       t.input_len <- remaining
     )
@@ -92,8 +92,8 @@ let ensure_input_capacity = fun (t: (_, _) reader) ->
   else
     let buffered = buffered_input t in
     let next_capacity = max (Bytes.length t.input * 2) (buffered + input_buffer_size) in
-    let next = Bytes.create next_capacity in
-    Bytes.blit t.input t.input_pos next 0 buffered;
+    let next = Bytes.create ~size:next_capacity in
+    Bytes.blit_unchecked t.input ~src_offset:t.input_pos ~dst:next ~dst_offset:0 ~len:buffered;
     t.input <- next;
     t.input_pos <- 0;
     t.input_len <- buffered
@@ -102,13 +102,13 @@ let refill_input = fun (t: (_, _) reader) ->
   compact_input t;
   ensure_input_capacity t;
   let available = Bytes.length t.input - t.input_len in
-  let chunk = Bytes.create available in
+  let chunk = Bytes.create ~size:available in
   match IO.read t.src chunk with
   | Ok 0 ->
       t.source_eof <- true;
       Ok false
   | Ok bytes_read ->
-      Bytes.blit chunk 0 t.input t.input_len bytes_read;
+      Bytes.blit_unchecked chunk ~src_offset:0 ~dst:t.input ~dst_offset:t.input_len ~len:bytes_read;
       t.input_len <- t.input_len + bytes_read;
       Ok true
   | Error err ->
@@ -118,7 +118,7 @@ let read_into = fun (t: (_, _) reader) dst ->
   let copy_from_output () =
     let available = buffered_output t in
     let to_copy = min available (Bytes.length dst) in
-    Bytes.blit t.output t.output_pos dst 0 to_copy;
+    Bytes.blit_unchecked t.output ~src_offset:t.output_pos ~dst ~dst_offset:0 ~len:to_copy;
     t.output_pos <- t.output_pos + to_copy;
     if t.output_pos >= t.output_len then
       (
@@ -199,10 +199,10 @@ let to_reader:
   let state = {
     src;
     decoder;
-    input = Bytes.create input_buffer_size;
+    input = Bytes.create ~size:input_buffer_size;
     input_pos = 0;
     input_len = 0;
-    output = Bytes.create output_buffer_size;
+    output = Bytes.create ~size:output_buffer_size;
     output_pos = 0;
     output_len = 0;
     source_eof = false;
@@ -218,17 +218,22 @@ let to_reader:
 
     let read_vectored = fun t bufs ->
       let total_len = Iovec.length bufs in
-      let scratch = Bytes.create total_len in
+      let scratch = Bytes.create ~size:total_len in
       match read_into t scratch with
       | Error err -> Error err
       | Ok read_len ->
           let copied = ref 0 in
-          Iovec.iter
-            (fun { Kernel.IO.Iovec.buffer; offset; length } ->
+          Iovec.for_each
+            ~fn:(fun { Kernel.IO.Iovec.buffer; offset; length } ->
               let remaining = read_len - !copied in
               if remaining > 0 then
                 let chunk_len = min length remaining in
-                Bytes.blit scratch !copied buffer offset chunk_len;
+                Bytes.blit_unchecked
+                  scratch
+                  ~src_offset:!copied
+                  ~dst:buffer
+                  ~dst_offset:offset
+                  ~len:chunk_len;
                 copied := !copied + chunk_len)
             bufs;
           Ok read_len
@@ -249,9 +254,9 @@ let buffer_writer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      Iovec.iter
-        (fun { Kernel.IO.Iovec.buffer=segment; offset; length } ->
-          Buffer.add_string buffer (Bytes.sub_string segment offset length);
+      Iovec.for_each
+        ~fn:(fun { Kernel.IO.Iovec.buffer=segment; offset; length } ->
+          Buffer.add_subbytes buffer segment offset length;
           written := !written + length)
         bufs;
       Ok !written
@@ -269,8 +274,8 @@ let compress = fun src dst ->
   in
   protect ~finally:(fun () -> Engine.close_encoder encoder)
     (fun () ->
-      let src_buf = Bytes.create input_buffer_size in
-      let dst_buf = Bytes.create input_buffer_size in
+      let src_buf = Bytes.create ~size:input_buffer_size in
+      let dst_buf = Bytes.create ~size:input_buffer_size in
       let rec encode_loop ~source_eof ~src_pos ~src_len ~chunk_count =
         let available_src = src_len - src_pos in
         if not source_eof && available_src = 0 then
@@ -302,8 +307,9 @@ let compress = fun src dst ->
                 if step.produced = 0 then
                   Ok ()
                 else
-                  let buf = Bytes.sub_string dst_buf 0 step.produced in
-                  IO.write_all dst ~buf |> Result.map_err (fun err -> Stream_destination_error err)
+                  let buf = Bytes.sub_unchecked dst_buf ~offset:0 ~len:step.produced |> Bytes.to_string in
+                  IO.write_all dst ~buf
+                  |> Result.map_err ~fn:(fun err -> Stream_destination_error err)
               in
               let next_chunk_count =
                 if step.produced > 0 then
@@ -317,7 +323,7 @@ let compress = fun src dst ->
               in
               match step.status with
               | Engine.Finished -> IO.flush dst
-              |> Result.map_err (fun err -> Stream_destination_error err)
+              |> Result.map_err ~fn:(fun err -> Stream_destination_error err)
               | Engine.Need_output -> encode_loop
                 ~source_eof
                 ~src_pos:next_src_pos
@@ -339,18 +345,19 @@ let compress = fun src dst ->
 
 let decompress = fun src dst ->
   let gzip_reader = to_reader src in
-  let chunk = Bytes.create input_buffer_size in
+  let chunk = Bytes.create ~size:input_buffer_size in
   let rec loop chunk_count =
     match IO.read gzip_reader chunk with
     | Ok 0 ->
-        IO.flush dst |> Result.map_err (fun err -> Stream_destination_error err)
+        IO.flush dst |> Result.map_err ~fn:(fun err -> Stream_destination_error err)
     | Ok bytes_read ->
         let () =
           if chunk_count > 0 && Int.rem chunk_count 32 = 0 then
             yield ()
         in
-        let buf = Bytes.sub_string chunk 0 bytes_read in
-        let* () = IO.write_all dst ~buf |> Result.map_err (fun err -> Stream_destination_error err) in
+        let buf = Bytes.sub_unchecked chunk ~offset:0 ~len:bytes_read |> Bytes.to_string in
+        let* () = IO.write_all dst ~buf
+        |> Result.map_err ~fn:(fun err -> Stream_destination_error err) in
         loop (chunk_count + 1)
     | Error (Source_error err) ->
         Error (Stream_source_error err)
@@ -362,12 +369,22 @@ let decompress = fun src dst ->
 let with_open_input = fun path fn ->
   match Fs.File.open_read path with
   | Error err -> Error (File_io_error (fs_error_of_file_error err))
-  | Ok file -> protect ~finally:(fun () -> ignore (Fs.File.close file)) (fun () -> fn file)
+  | Ok file ->
+      protect
+        ~finally:(fun () ->
+          let _ = Fs.File.close file in
+          ())
+        (fun () -> fn file)
 
 let with_open_output = fun path fn ->
   match Fs.File.create path with
   | Error err -> Error (File_io_error (fs_error_of_file_error err))
-  | Ok file -> protect ~finally:(fun () -> ignore (Fs.File.close file)) (fun () -> fn file)
+  | Ok file ->
+      protect
+        ~finally:(fun () ->
+          let _ = Fs.File.close file in
+          ())
+        (fun () -> fn file)
 
 let decompress_file = fun ~src ~dst ->
   with_open_input src
@@ -375,7 +392,7 @@ let decompress_file = fun ~src ~dst ->
       with_open_output dst
         (fun dst_file ->
           decompress (Fs.File.to_reader src_file) (Fs.File.to_writer dst_file) |> Result.map_err
-            (
+            ~fn:(
               function
               | Stream_source_error err -> File_io_error (fs_error_of_file_error err)
               | Stream_destination_error err -> File_io_error (fs_error_of_file_error err)
@@ -388,7 +405,7 @@ let compress_file = fun ~src ~dst ->
       with_open_output dst
         (fun dst_file ->
           compress (Fs.File.to_reader src_file) (Fs.File.to_writer dst_file) |> Result.map_err
-            (
+            ~fn:(
               function
               | Stream_source_error err -> File_io_error (fs_error_of_file_error err)
               | Stream_destination_error err -> File_io_error (fs_error_of_file_error err)
@@ -396,7 +413,7 @@ let compress_file = fun ~src ~dst ->
             )))
 
 let compress_string = fun data ->
-  let buffer = Buffer.create 128 in
+  let buffer = Buffer.create ~size:128 in
   let writer = buffer_writer buffer in
   match compress (Reader.from_string data) writer with
   | Ok () -> Ok (Buffer.contents buffer)
@@ -406,7 +423,7 @@ let compress_string = fun data ->
 
 let decompress_string = fun data ->
   let gzip_reader = to_reader (Reader.from_string data) in
-  let buffer = Buffer.create 128 in
+  let buffer = Buffer.create ~size:128 in
   match Reader.read_to_end gzip_reader ~buf:buffer with
   | Ok _ -> Ok (Buffer.contents buffer)
   | Error (Source_error ()) -> Error (Engine_error (Engine.Unknown_error "unexpected in-memory source error"))

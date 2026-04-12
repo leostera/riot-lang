@@ -25,9 +25,9 @@ let rec loop: type task. task state -> (unit, Actor.exit_reason) result = fun st
     )
 
 and handle_worker_ready: type task. task state -> task worker -> (unit, Actor.exit_reason) result = fun state worker ->
-  let _ = HashMap.remove state.busy_workers worker.pid in
+  let _ = HashMap.remove state.busy_workers ~key:worker.pid in
   send state.owner PublicMessages.(WorkerReady worker);
-  Queue.push state.idle_workers worker.pid;
+  Queue.push state.idle_workers ~value:worker.pid;
   loop state
 
 let init = fun ~owner ~concurrency ~worker_fn ~task_ref ->
@@ -36,7 +36,7 @@ let init = fun ~owner ~concurrency ~worker_fn ~task_ref ->
   let worker_pids =
     let rec spawn_n acc n =
       if n = 0 then
-        List.rev acc
+        List.reverse acc
       else
         let pid = Worker.start ~coordinator ~owner ~worker_fn ~task_ref in
         spawn_n (pid :: acc) (n - 1)
@@ -44,7 +44,7 @@ let init = fun ~owner ~concurrency ~worker_fn ~task_ref ->
     spawn_n [] concurrency
   in
   let worker_handles =
-    List.map (fun pid -> { pid; task_ref }) worker_pids
+    List.map worker_pids ~fn:(fun pid -> { pid; task_ref })
   in
   (* Create coordinator state *)
   let state = {
@@ -57,10 +57,9 @@ let init = fun ~owner ~concurrency ~worker_fn ~task_ref ->
   }
   in
   (* Mark all as idle *)
-  List.iter
-    (fun pid ->
-      Queue.push state.idle_workers pid)
-    worker_pids;
+  List.for_each worker_pids ~fn:(fun pid -> Queue.push state.idle_workers ~value:pid);
   (* All workers start idle - send WorkerReady for each *)
-  List.iter (fun handle -> send coordinator (ToCoordinator (WorkerReady handle))) worker_handles;
+  List.for_each
+    worker_handles
+    ~fn:(fun handle -> send coordinator (ToCoordinator (WorkerReady handle)));
   loop state

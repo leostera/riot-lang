@@ -1,9 +1,9 @@
 open Global
 
 type t = Calendar.date = {
-  year: Calendar.year;
-  month: Calendar.month;
-  day: Calendar.day;
+  year: int;
+  month: int;
+  day: int;
 }
 
 type error =
@@ -19,13 +19,13 @@ let pad2 = fun n ->
     Int.to_string n
 
 let pad_year = fun year ->
-  let abs_year = abs year in
+  let abs_year = Int.abs year in
   let year_str = Int.to_string abs_year in
   let padded =
     if String.length year_str >= 4 then
       year_str
     else
-      String.make (4 - String.length year_str) '0' ^ year_str
+      String.make ~len:(4 - String.length year_str) ~char:'0' ^ year_str
   in
   if year < 0 then
     "-" ^ padded
@@ -48,11 +48,11 @@ let compare = fun left right ->
 let equal = fun left right ->
   Int.equal (compare left right) 0
 
-let of_date_time: DateTime.t -> t = fun dt -> { year = dt.year; month = dt.month; day = dt.day }
+let from_date_time: DateTime.t -> t = fun dt -> { year = dt.year; month = dt.month; day = dt.day }
 
-let today = fun () -> DateTime.now () |> of_date_time
+let today = fun () -> DateTime.now () |> from_date_time
 
-let today_utc = fun () -> DateTime.now_utc () |> of_date_time
+let today_utc = fun () -> DateTime.now_utc () |> from_date_time
 
 let add_days = fun date days ->
   Calendar.gregorian_days_to_date (Calendar.date_to_gregorian_days date + days)
@@ -68,7 +68,7 @@ let day_of_year = fun ({ year; _ } as date) ->
 
 let iso_week_number = Calendar.iso_week_number
 
-let is_leap_year = fun { year; _ } -> Calendar.is_leap_year year
+let is_leap_year = fun { year; _ } -> Calendar.is_leap_year ~year
 
 let days_in_month = fun { year; month; _ } -> Calendar.last_day_of_month ~year ~month
 
@@ -79,7 +79,7 @@ let end_of_month = fun ({ year; month; _ } as date) ->
 
 let to_gregorian_days = Calendar.date_to_gregorian_days
 
-let of_gregorian_days = Calendar.gregorian_days_to_date
+let from_gregorian_days = Calendar.gregorian_days_to_date
 
 let to_iso8601 = to_iso8601_unchecked
 
@@ -104,8 +104,8 @@ let parse_2digit = fun label value ->
       | None -> Error (Invalid_format ("invalid " ^ label ^ " component: " ^ value))
     )
 
-let of_iso8601 = fun value ->
-  match String.split_on_char '-' value with
+let from_iso8601 = fun value ->
+  match String.split ~by:"-" value with
   | [year_str;month_str;day_str] -> (
       match parse_signed_year year_str, parse_2digit "month" month_str, parse_2digit "day" day_str with
       | Ok year, Ok month, Ok day -> make ~year ~month ~day
@@ -125,4 +125,14 @@ let of_iso8601 = fun value ->
 
 let to_calendar_date = fun date -> date
 
-let of_calendar_date = fun date -> make ~year:date.year ~month:date.month ~day:date.day
+let from_calendar_date = fun date -> make ~year:date.year ~month:date.month ~day:date.day
+
+(* Backward-compatible aliases used internally in legacy call sites *)
+
+let of_date_time = from_date_time
+
+let of_gregorian_days = from_gregorian_days
+
+let of_iso8601 = from_iso8601
+
+let of_calendar_date = from_calendar_date

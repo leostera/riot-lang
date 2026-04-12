@@ -7,9 +7,9 @@ let rec value_to_string = fun (v: Spec.value) ->
   | Spec.String s ->
       "\"" ^ s ^ "\""
   | Spec.Char c ->
-      "'" ^ String.make 1 c ^ "'"
+      "'" ^ String.make ~len:1 ~char:c ^ "'"
   | Spec.Int i ->
-      string_of_int i
+      Int.to_string i
   | Spec.Int32 i ->
       Int32.to_string i
   | Spec.Int64 i ->
@@ -20,7 +20,7 @@ let rec value_to_string = fun (v: Spec.value) ->
       else
         "false"
   | Spec.Float f ->
-      string_of_float f
+      Float.to_string f
   | Spec.Uri uri ->
       Net.Uri.to_string uri
   | Spec.DateTime dt ->
@@ -30,7 +30,7 @@ let rec value_to_string = fun (v: Spec.value) ->
   | Spec.Uuid uuid ->
       Uuid.to_string uuid
   | Spec.List items ->
-      let items_str = String.concat ", " (Collections.List.map value_to_string items) in
+      let items_str = String.concat ", " (Collections.List.map items ~fn:value_to_string) in
       "[" ^ items_str ^ "]"
   | Spec.DiscriminatedUnion { discriminant; variant; fields=_ } ->
       "<" ^ discriminant ^ "=" ^ variant ^ ">"
@@ -100,8 +100,7 @@ let rec value_equal = fun (v1: Spec.value) (v2: Spec.value) ->
 
 (* Check if a value is in a list using custom equality *)
 
-let mem_value = fun value choices ->
-  Collections.List.exists (value_equal value) choices
+let mem_value = fun value choices -> Collections.List.any choices ~fn:(value_equal value)
 
 (* Check if a value is in the allowed values list *)
 
@@ -113,8 +112,13 @@ let check_allowed_values = fun field_name (value: Spec.value) allowed_values ->
         Ok value
       else
         let value_str = value_to_string value in
-        let choices_str = String.concat ", " (Collections.List.map value_to_string choices) in
+        let choices_str = String.concat ", " (Collections.List.map choices ~fn:value_to_string) in
         Error (field_name ^ ": invalid value " ^ value_str ^ ", must be one of: " ^ choices_str)
+
+let find_assoc = fun key fields ->
+  Collections.List.find fields
+    ~fn:(fun (field_name, _value) ->
+      String.equal field_name key) |> Option.map ~fn:(fun (_field_name, value) -> value)
 
 (* Validate a TOML value against a field spec and apply defaults, converting to Spec.value *)
 
@@ -160,9 +164,9 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
     | Int32 { default } -> (
         match toml_opt with
         | Some (Data.Toml.Int i) ->
-            Ok (Spec.Int32 (Int32.of_int i))
+            Ok (Spec.Int32 (Int32.from_int i))
         | Some (Data.Toml.String s) -> (
-            match Int32.of_string_opt s with
+            match Int32.parse s with
             | Some i -> Ok (Spec.Int32 i)
             | None -> Error (field_name ^ ": invalid int32")
           )
@@ -179,9 +183,9 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
     | Int64 { default } -> (
         match toml_opt with
         | Some (Data.Toml.Int i) ->
-            Ok (Spec.Int64 (Int64.of_int i))
+            Ok (Spec.Int64 (Int64.from_int i))
         | Some (Data.Toml.String s) -> (
-            match Int64.of_string_opt s with
+            match Int64.parse s with
             | Some i -> Ok (Spec.Int64 i)
             | None -> Error (field_name ^ ": invalid int64")
           )
@@ -230,7 +234,7 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
         match toml_opt with
         | Some (Data.Toml.String s) -> (
             if String.length s = 1 then
-              Ok (Spec.Char (String.get s 0))
+              Ok (Spec.Char (String.get_unchecked s ~at:0))
             else
               Error (field_name ^ ": expected single character, got: " ^ s)
           )
@@ -280,7 +284,7 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
     | Path { default } -> (
         match toml_opt with
         | Some (Data.Toml.String s) -> (
-            match Path.of_string s with
+            match Path.from_string s with
             | Ok path -> Ok (Spec.Path path)
             | Error _ -> Error (field_name ^ ": invalid path: " ^ s)
           )
@@ -317,11 +321,11 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
             (* Validate each item in the array *)
             let rec validate_items = fun acc index ->
               function
-              | [] -> Ok (Collections.List.rev acc)
+              | [] -> Ok (Collections.List.reverse acc)
               | item :: rest ->
                   let item_field = {
                     item_spec
-                    with Spec.name = field_name ^ "[" ^ string_of_int index ^ "]"
+                    with Spec.name = field_name ^ "[" ^ Int.to_string index ^ "]"
                   } in
                   (
                     match validate_field item_field (Some item) with
@@ -348,10 +352,10 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
         match toml_opt with
         | Some (Data.Toml.Table table) -> (* Extract discriminant value *)
           (
-            match Collections.List.assoc_opt discriminant table with
+            match find_assoc discriminant table with
             | Some (Data.Toml.String variant_str) -> (* Find matching case *)
               (
-                match Collections.List.assoc_opt variant_str cases with
+                match find_assoc variant_str cases with
                 | Some case_fields -> (* Validate fields for this case *)
                   (
                     match validate_fields case_fields (Some (Data.Toml.Table table)) with
@@ -365,7 +369,7 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
                   )
                 | None ->
                     let valid_variants =
-                      String.concat ", " (Collections.List.map (fun (name, _) -> name) cases)
+                      String.concat ", " (Collections.List.map cases ~fn:(fun (name, _) -> name))
                     in
                     Error (field_name
                     ^ ": unknown "
@@ -408,10 +412,10 @@ and validate_fields (fields: Spec.field list) toml_opt: (Spec.value, string) res
   in
   let rec process_fields = fun acc ->
     function
-    | [] -> Ok (Collections.List.rev acc)
+    | [] -> Ok (Collections.List.reverse acc)
     | field :: rest ->
         let name = field.Spec.name in
-        let field_value = Collections.List.assoc_opt name table in
+        let field_value = find_assoc name table in
         match validate_field field field_value with
         | Ok validated -> process_fields ((name, validated) :: acc) rest
         | Error err -> Error err

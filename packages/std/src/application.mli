@@ -1,6 +1,5 @@
 (** Application - Supervision tree management with dependency resolution *)
 open Global
-open Kernel
 
 (** Start a list of applications in dependency order.
     Uses topological sort with cycle detection. *)

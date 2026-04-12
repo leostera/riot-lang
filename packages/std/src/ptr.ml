@@ -1,1 +1,1 @@
-let equal = Kernel.Ptr.eq
+let equal = Kernel.Ptr.equal

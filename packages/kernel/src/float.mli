@@ -9,7 +9,7 @@ val equal: t -> t -> bool
 (** Use `compare left right` for the runtime float ordering semantics. *)
 val compare: t -> t -> int
 
-val of_int: int -> t
+val from_int: int -> t
 
 val to_int: t -> int
 
@@ -17,13 +17,13 @@ val parse: string -> t option
 
 val parse_unchecked: string -> t
 
+val to_string: ?precision:int -> t -> string
+
 val is_finite: t -> bool
 
 val is_infinite: t -> bool
 
 val is_nan: t -> bool
-
-val to_string: ?precision:int -> t -> string
 
 val rem: t -> t -> t
 
@@ -39,4 +39,4 @@ val ceil: t -> t
 
 val pow: t -> t -> t
 
-val round: float -> float
+val round: t -> t

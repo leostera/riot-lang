@@ -6,7 +6,7 @@ let min_int = (-0x8000_0000l)
 
 let max_int = 0x7fff_ffffl
 
-external of_int: int -> int32 = "%int32_of_int"
+external from_int: int -> int32 = "%int32_of_int"
 
 external to_int: int32 -> int = "%int32_to_int"
 
@@ -40,17 +40,17 @@ let shift_right = Caml_runtime.shift_right_int32
 
 let shift_right_logical = Caml_runtime.shift_right_logical_int32
 
-let of_float = Caml_runtime.int32_of_float
+let from_float = Caml_runtime.int32_of_float
 
 let to_float = Caml_runtime.int32_to_float
 
 external format: string -> int32 -> string = "caml_int32_format"
 
-external of_string: string -> int32 = "caml_int32_of_string"
+external parse_unchecked: string -> int32 = "caml_int32_of_string"
 
-let of_string_opt = fun value ->
-  try Some (of_string value) with
-  | Failure _ -> None
+let parse = fun value ->
+  try Some (parse_unchecked value) with
+  | _ -> None
 
 let to_string = fun value -> format "%d" value
 

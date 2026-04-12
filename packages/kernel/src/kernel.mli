@@ -1,24 +1,25 @@
-(** `Kernel_new` is Riot's narrow platform layer.
+(** `Kernel` is Riot's platform abstraction layer.
 
     The top-level module intentionally exposes just the canonical type homes and the portable
     runtime, filesystem, network, time, environment, and process boundaries that higher layers
     build on. *)
+module Prelude = Prelude
+
 include module type of Prelude
 
-(** Use `dangerous_unsafe_cast value` only when a separate proof already establishes the target
-    type. This is the explicit replacement for leaking `Obj.magic` into higher layers. *)
-val dangerous_unsafe_cast: 'value -> 'cast
+(** Use `dangerously_cast_value value` only when a separate proof already establishes the target type. *)
+val dangerously_cast_value: 'original -> 'casted
 
 (** Foundational type homes. *)
 module Bool = Bool
 
-module Atomic = Atomic
+module Sync = Sync
+
+module Atomic = Sync.Atomic
 
 module Char = Char
 
-module Condition = Condition
-
-module Domain = Domain
+module Condition = Sync.Condition
 
 module Int = Int
 
@@ -30,7 +31,7 @@ module Float = Float
 
 module List = List
 
-module Mutex = Mutex
+module Mutex = Sync.Mutex
 
 module String = String
 

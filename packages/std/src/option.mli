@@ -83,7 +83,7 @@ val none: 'a t
     assert (not (eq (Some 5) None));
     assert (eq None None)
     ``` *)
-val equal: ('a -> 'a -> bool) -> 'a t -> 'a t -> bool
+val equal: 'a t -> 'a t -> fn:('a -> 'a -> bool) -> bool
 
 (** Returns `true` if the option is a [`Some`] value.
 
@@ -112,7 +112,7 @@ val is_none: 'a t -> bool
     assert (not (Option.is_some_and (fun x -> x > 5) x));
 
     let y = None in assert (not (Option.is_some_and (fun x -> x > 1) y)) ``` *)
-val is_some_and: ('a -> bool) -> 'a t -> bool
+val is_some_and: 'a t -> fn:('a -> bool) -> bool
 
 (** Returns `true` if the option is [`None`] or the value matches the predicate.
 
@@ -122,7 +122,7 @@ val is_some_and: ('a -> bool) -> 'a t -> bool
 
     assert (is_small None); assert (is_small (Some 5)); assert (not (is_small
     (Some 20))) ``` *)
-val is_none_or: ('a -> bool) -> 'a t -> bool
+val is_none_or: 'a t -> fn:('a -> bool) -> bool
 
 (** # Transforming *)
 (** Maps an `Option<'a>` to `Option<'b>` by applying a function to the contained
@@ -135,7 +135,7 @@ val is_none_or: ('a -> bool) -> 'a t -> bool
 
     let none_string : string option = None in let none_len = Option.map
     String.length none_string in assert (none_len = None) ``` *)
-val map: ('a -> 'b) -> 'a t -> 'b t
+val map: 'a t -> fn:('a -> 'b) -> 'b t
 
 (** Returns the result of applying function to [`Some`] value, or default if
     [`None`].
@@ -164,7 +164,7 @@ val map: ('a -> 'b) -> 'a t -> 'b t
 
     let y = None in assert (Option.map_or_default ~default:(fun () -> 2 * k)
     (fun v -> v * v) y = 20) ``` *)
-val map_or: default:'b -> ('a -> 'b) -> 'a t -> 'b
+val map_or: 'a t -> default:'b -> fn:('a -> 'b) -> 'b
 
 (** Maps an `Option<'a>` to `'b` by applying function to [`Some`], or computing
     default.
@@ -178,9 +178,9 @@ val map_or: default:'b -> ('a -> 'b) -> 'a t -> 'b
 
     let y = None in assert (Option.map_or_else ~default:(fun () -> 2 * k)
     String.length y = 42) ``` *)
-val map_or_default: default:(unit -> 'b) -> ('a -> 'b) -> 'a t -> 'b
+val map_or_default: 'a t -> default:(unit -> 'b) -> fn:('a -> 'b) -> 'b
 
-val map_or_else: default:(unit -> 'b) -> ('a -> 'b) -> 'a t -> 'b
+val map_or_else: 'a t -> default:(unit -> 'b) -> fn:('a -> 'b) -> 'b
 
 (** # Chaining *)
 (** Returns [`None`] if the first option is [`None`], otherwise returns the
@@ -215,7 +215,7 @@ val and_: 'a t -> 'b t -> 'b t
     (* Chaining fallible operations *) let result = Sys.getenv_opt "CONFIG_PATH"
     |> Option.and_then (fun path -> try Some (Fs.read (Path.v path) |>
     Result.unwrap) with _ -> None) |> Option.and_then parse_config ``` *)
-val and_then: 'a t -> ('a -> 'b t) -> 'b t
+val and_then: 'a t -> fn:('a -> 'b t) -> 'b t
 
 (** Returns the first option if [`Some`], otherwise returns the second option.
 
@@ -240,7 +240,7 @@ val or_: 'a t -> 'a t -> 'a t
     assert (Option.or_else (Some "barbarians") vikings = Some "barbarians");
     assert (Option.or_else None vikings = Some "vikings"); assert
     (Option.or_else None nobody = None) ``` *)
-val or_else: 'a t -> (unit -> 'a t) -> 'a t
+val or_else: 'a t -> fn:(unit -> 'a t) -> 'a t
 
 (** Returns [`Some`] if exactly one of the options is [`Some`], otherwise
     [`None`].
@@ -292,7 +292,7 @@ val unwrap: 'a t -> 'a
     ```ocaml let k = 10 in assert (Option.unwrap_or_else ~fn:(fun () -> 2 * k)
     (Some 4) = 4); assert (Option.unwrap_or_else ~fn:(fun () -> 2 * k) None =
     20) ``` *)
-val unwrap_or: default:'a -> 'a t -> 'a
+val unwrap_or: 'a t -> default:'a -> 'a
 
 (** Returns the contained [`Some`] value, consuming the option.
 
@@ -316,7 +316,7 @@ val unwrap_or: default:'a -> 'a t -> 'a
 
     ```ocaml let config = Sys.getenv_opt "CONFIG_FILE" |> Option.expect
     ~msg:"env variable CONFIG_FILE should be set by wrapper script" ``` *)
-val unwrap_or_else: fn:(unit -> 'a) -> 'a t -> 'a
+val unwrap_or_else: 'a t -> fn:(unit -> 'a) -> 'a
 
 (** Consumes the option, panicking if it is [`Some`].
 
@@ -336,11 +336,11 @@ val unwrap_none: 'a t -> unit
 
 (** # Inspecting *)
 (** Calls function on Some value if present, returns unchanged option *)
-val inspect: ('a -> unit) -> 'a t -> 'a t
+val inspect: 'a t -> fn:('a -> unit) -> 'a t
 
 (** {1 Iterating} *)
 (** Calls function on Some value if present *)
-val iter: ('a -> unit) -> 'a t -> unit
+val for_each: 'a t -> fn:('a -> unit) -> unit
 
 (** {1 Converting} *)
 (** Convert Some to Ok, None to Error *)
@@ -360,7 +360,7 @@ val transpose: ('a, 'e) Result.t t -> ('a t, 'e) Result.t
 
 (** {1 Filtering} *)
 (** Returns Some if the value matches predicate, otherwise None *)
-val filter: ('a -> bool) -> 'a t -> 'a t
+val filter: 'a t -> fn:('a -> bool) -> 'a t
 
 (** {1 Flattening} *)
 (** Flatten nested Options *)
@@ -371,7 +371,7 @@ val flatten: 'a t t -> 'a t
 val zip: 'a t -> 'b t -> ('a * 'b) t
 
 (** Combine two options with a function *)
-val zip_with: ('a -> 'b -> 'c) -> 'a t -> 'b t -> 'c t
+val zip_with: 'a t -> 'b t -> fn:('a -> 'b -> 'c) -> 'c t
 
 (** Unzip an option of a tuple into a tuple of options *)
 val unzip: ('a * 'b) t -> 'a t * 'b t

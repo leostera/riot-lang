@@ -5,7 +5,28 @@ open Global
 
 type year = int
 
-type month = int
+type weekday =
+  | Monday
+  | Tuesday
+  | Wednesday
+  | Thursday
+  | Friday
+  | Saturday
+  | Sunday
+
+type month =
+  | January
+  | February
+  | March
+  | April
+  | May
+  | June
+  | July
+  | August
+  | September
+  | October
+  | November
+  | December
 
 type day = int
 
@@ -23,7 +44,7 @@ type week_number = int
 
 type date = {
   year: year;
-  month: month;
+  month: int;
   day: day;
 }
 
@@ -37,6 +58,43 @@ type year_and_week = {
   year: year;
   week: week_number;
 }
+
+let month_of_int = fun month ->
+  match month with
+  | 1 -> January
+  | 2 -> February
+  | 3 -> March
+  | 4 -> April
+  | 5 -> May
+  | 6 -> June
+  | 7 -> July
+  | 8 -> August
+  | 9 -> September
+  | 10 -> October
+  | 11 -> November
+  | 12 -> December
+  | _ -> panic (format Format.[ str "month_of_int: invalid month "; int month ])
+
+let int_to_weekday = fun day ->
+  match day with
+  | 1 -> Monday
+  | 2 -> Tuesday
+  | 3 -> Wednesday
+  | 4 -> Thursday
+  | 5 -> Friday
+  | 6 -> Saturday
+  | 7 -> Sunday
+  | _ -> panic (format Format.[ str "int_to_weekday: invalid weekday "; int day ])
+
+let weekday_to_int = fun weekday ->
+  match weekday with
+  | Monday -> 1
+  | Tuesday -> 2
+  | Wednesday -> 3
+  | Thursday -> 4
+  | Friday -> 5
+  | Saturday -> 6
+  | Sunday -> 7
 
 (** {1 Constants} *)
 
@@ -82,18 +140,18 @@ let dm = function
   | 12 -> 334
   | m -> panic (format Format.[ str "dm: invalid month "; int m ])
 
+(** {1 Leap Years and Month Information} *)
+
+let is_leap_year = fun ~year -> (year mod 4 = 0 && year mod 100 != 0) || year mod 400 = 0
+
 (** Leap year adjustment for months after February *)
 let df = fun year month ->
   if month < 3 then
     0
-  else if (year mod 4 = 0 && year mod 100 != 0) || year mod 400 = 0 then
+  else if is_leap_year ~year then
     1
   else
     0
-
-(** {1 Leap Years and Month Information} *)
-
-let is_leap_year = fun year -> (year mod 4 = 0 && year mod 100 != 0) || year mod 400 = 0
 
 let last_day_of_month = fun ~year ~month ->
   match month with
@@ -109,7 +167,7 @@ let last_day_of_month = fun ~year ~month ->
   | 9
   | 11 -> 30
   | 2 ->
-      if is_leap_year year then
+      if is_leap_year ~year then
         29
       else
         28
@@ -149,7 +207,7 @@ let date_to_gregorian_days = fun { year; month; day } ->
 (** Convert day-of-year to date within a year *)
 let year_day_to_date = fun year day_of_year ->
   let extra_day =
-    if is_leap_year year then
+    if is_leap_year ~year then
       1
     else
       0
@@ -185,7 +243,7 @@ let year_day_to_date = fun year day_of_year ->
       | 9
       | 11 -> 30
       | 2 ->
-          if is_leap_year year then
+          if is_leap_year ~year then
             29
           else
             28
@@ -212,7 +270,7 @@ let day_to_year = fun days ->
       let y_mid = (y_min + y_max) / 2 in
       let d_mid = dy y_mid in
       let mid_length =
-        if is_leap_year y_mid then
+        if is_leap_year ~year:y_mid then
           days_per_leap_year
         else
           days_per_year
@@ -264,7 +322,7 @@ let day_of_week = fun ({ year; month; day } as date) ->
         ])
   else
     let days = date_to_gregorian_days date in
-    ((days + 5) mod 7) + 1
+    int_to_weekday (((days + 5) mod 7) + 1)
 
 (** {1 ISO Week Number} *)
 
@@ -276,10 +334,10 @@ let gregorian_days_of_iso_w01_1 = fun year ->
   (* ISO week 1 is the week with the first Thursday
      If Jan 1 is Mon-Thu (1-4), week 1 starts on that week's Monday
      If Jan 1 is Fri-Sun (5-7), week 1 starts next Monday *)
-  if dow <= 4 then
-    jan1 - dow + 1
+  if (weekday_to_int dow) <= 4 then
+    jan1 - (weekday_to_int dow) + 1
   else
-    jan1 + 7 - dow + 1
+    jan1 + 7 - (weekday_to_int dow) + 1
 
 let iso_week_number = fun ({ year; month; day } as date) ->
   if not (is_valid_date date) then
@@ -300,10 +358,10 @@ let iso_week_number = fun ({ year; month; day } as date) ->
     { year; week = ((d - w01_1_year) / 7) + 1 }
   else if d < w01_1_year then
     let prev_week_num =
-      match day_of_week { year = year - 1; month = 1; day = 1 } with
+      match weekday_to_int (day_of_week { year = year - 1; month = 1; day = 1 }) with
       | 4 -> 53
       | _ -> (
-          match day_of_week { year = year - 1; month = 12; day = 31 } with
+          match weekday_to_int (day_of_week { year = year - 1; month = 12; day = 31 }) with
           | 4 -> 53
           | _ -> 52
         )
@@ -338,7 +396,7 @@ let seconds_to_daystime = fun secs ->
 
 (** {1 Date/Time Arithmetic} *)
 
-let time_difference = fun date1 time1 date2 time2 ->
-  let secs1 = naive_to_gregorian_seconds date1 time1 in
-  let secs2 = naive_to_gregorian_seconds date2 time2 in
+let time_difference = fun ~src_date ~src_time ~dst_date ~dst_time ->
+  let secs1 = naive_to_gregorian_seconds src_date src_time in
+  let secs2 = naive_to_gregorian_seconds dst_date dst_time in
   seconds_to_daystime (secs2 - secs1)

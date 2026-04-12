@@ -1,271 +1,34 @@
-(** # Collections.Queue - FIFO queue
+type 'value t
+val create: unit -> 'value t
 
-    A first-in, first-out (FIFO) queue for sequential processing. Elements are
-    added to the back and removed from the front.
+val with_capacity: size:int -> 'value t
 
-    ## Examples
+val from_list: 'value list -> 'value t
 
-    Basic queue operations:
+val push: 'value t -> value:'value -> unit
 
-    ```ocaml open Std.Collections
+val pop: 'value t -> 'value option
 
-    let queue = Queue.create () in
+val front: 'value t -> 'value option
 
-    (* Add items *) Queue.push queue "first"; Queue.push queue "second";
-    Queue.push queue "third";
+val length: 'value t -> int
 
-    (* Remove in FIFO order *) Queue.pop queue (* Some "first" *)
-    Queue.pop queue (* Some "second" *) Queue.pop queue (* Some "third"
-    *) Queue.pop queue (* None - empty *) ```
+val is_empty: 'value t -> bool
 
-    Processing tasks in order:
+val clear: 'value t -> unit
 
-    ```ocaml let task_queue = Queue.create () in
+val for_each: 'value t -> fn:('value -> unit) -> unit
 
-    (* Add tasks *) List.iter (Queue.push task_queue)
-    [ "process_file_1.txt"; "process_file_2.txt"; "process_file_3.txt" ];
+val fold_left: 'value t -> acc:'acc -> fn:('acc -> 'value -> 'acc) -> 'acc
 
-    (* Process tasks in order *) let rec process_tasks () = match Queue.pop
-    task_queue with | Some task -> handle_task task; process_tasks () | None ->
-    Log.info "All tasks complete" in process_tasks () ```
+val to_list: 'value t -> 'value list
 
-    ## When to Use Queue
+val contains: 'value t -> value:'value -> bool
 
-    - Task processing in arrival order
-    - Message buffering
-    - BFS algorithms
-    - Producer-consumer patterns
+val append: 'value t -> 'value t -> unit
 
-    ## When to Use Alternatives
+val transfer: src:'value t -> dst:'value t -> unit
 
-    - Need LIFO (stack) behavior → Use [Vector] with push/pop
-    - Need access to both ends → Use [Deque]
-    - Priority ordering → Implement a priority queue
+val iter: 'value t -> 'value Iter.Iterator.t
 
-    ## Performance Characteristics
-
-    - Enqueue: O(1) amortized
-    - Dequeue: O(1)
-    - Front (peek): O(1)
-    - Contains: O(n) *)
-
-(** A FIFO queue containing elements of type ['a]. Elements are added to the
-    back and removed from the front. *)
-type 'a t
-(** {1 Creation} *)
-(** Creates a new empty queue.
-
-    ## Examples
-
-    ```ocaml let queue = Queue.create () in assert (Queue.is_empty queue) ``` *)
-val create: unit -> 'a t
-
-(** Creates an empty queue with specified initial capacity.
-
-    Pre-allocating capacity can improve performance when the approximate size is
-    known in advance.
-
-    ## Examples
-
-    ```ocaml let queue = Queue.with_capacity 1000 in (* Can push ~1000 items
-    without reallocation *) ``` *)
-val with_capacity: int -> 'a t
-
-(** Creates a queue from a list. The first list element becomes the front of the
-    queue.
-
-    ## Examples
-
-    ```ocaml let queue = Queue.of_list [1; 2; 3] in Queue.pop queue (* Some
-    1 *) Queue.pop queue (* Some 2 *) ```
-
-    ## Complexity
-
-    - Time: O(n)
-    - Space: O(n) *)
-val of_list: 'a list -> 'a t
-
-(** {1 Basic Operations} *)
-(** Adds an element to the back of the queue.
-
-    ## Examples
-
-    ```ocaml let queue = Queue.create () in Queue.push queue "first";
-    Queue.push queue "second"; (* queue: ["first", "second"] - front to back
-    *) ```
-
-    ## Complexity
-
-    - Time: O(1) amortized *)
-val push: 'a t -> 'a -> unit
-
-(** Removes and returns the front element. Returns [Some element] if the queue
-    is not empty, [None] otherwise.
-
-    ## Examples
-
-    ```ocaml let queue = Queue.of_list [1; 2; 3] in Queue.pop queue (* Some
-    1 *) Queue.pop queue (* Some 2 *)
-
-    let empty = Queue.create () in Queue.pop empty (* None *) ```
-
-    ## Complexity
-
-    - Time: O(1) *)
-val pop: 'a t -> 'a option
-
-(** Returns the front element without removing it.
-
-    ## Examples
-
-    ```ocaml let queue = Queue.of_list ["a"; "b"; "c"] in Queue.front queue (*
-    Some "a" *) Queue.front queue (* Some "a" - still there *) ```
-
-    ## Complexity
-
-    - Time: O(1) *)
-val front: 'a t -> 'a option
-
-(** Returns the number of elements in the queue.
-
-    ## Examples
-
-    ```ocaml let queue = Queue.of_list [1; 2; 3] in Queue.len queue (* 3 *) ```
-
-    ## Complexity
-
-    - Time: O(1) *)
-val len: 'a t -> int
-
-(** Returns [true] if the queue contains no elements.
-
-    ## Examples
-
-    ```ocaml let queue = Queue.create () in Queue.is_empty queue (* true *)
-    Queue.push queue 1; Queue.is_empty queue (* false *) ```
-
-    ## Complexity
-
-    - Time: O(1) *)
-val is_empty: 'a t -> bool
-
-(** Removes all elements from the queue.
-
-    ## Examples
-
-    ```ocaml let queue = Queue.of_list [1; 2; 3] in Queue.clear queue; assert
-    (Queue.is_empty queue) ```
-
-    ## Complexity
-
-    - Time: O(1)
-    - Space: Capacity is preserved for reuse *)
-val clear: 'a t -> unit
-
-(** {1 Iteration} *)
-(** Applies function [f] to each element from front to back.
-
-    ## Examples
-
-    ```ocaml let queue = Queue.of_list [1; 2; 3] in Queue.iter (fun x ->
-    Printf.printf "%d " x) queue (* Prints: 1 2 3 *) ```
-
-    ## Complexity
-
-    - Time: O(n) *)
-val iter: ('a -> unit) -> 'a t -> unit
-
-(** Folds over all elements from front to back.
-
-    ## Examples
-
-    ```ocaml let queue = Queue.of_list [1; 2; 3; 4] in let sum = Queue.fold (fun
-    x acc -> x + acc) queue 0 in (* sum = 10 *) ```
-
-    ## Complexity
-
-    - Time: O(n) *)
-
-(** Converts the queue to a list in front-to-back order.
-
-    ## Examples
-
-    ```ocaml let queue = Queue.of_list [1; 2; 3] in Queue.push queue 4;
-    Queue.to_list queue (* [1; 2; 3; 4] *) ```
-
-    ## Complexity
-
-    - Time: O(n)
-    - Space: O(n) *)
-val fold: ('a -> 'acc -> 'acc) -> 'a t -> 'acc -> 'acc
-
-val to_list: 'a t -> 'a list
-
-(** {1 Additional Operations} *)
-(** Returns [true] if the value exists anywhere in the queue.
-
-    ## Examples
-
-    ```ocaml let queue = Queue.of_list ["a"; "b"; "c"] in Queue.contains queue
-    "b" (* true *) Queue.contains queue "z" (* false *) ```
-
-    ## Complexity
-
-    - Time: O(n) *)
-val contains: 'a t -> 'a -> bool
-
-(** Moves all elements from [queue2] to the back of [queue1]. After this
-    operation, [queue2] is empty.
-
-    ## Examples
-
-    ```ocaml let q1 = Queue.of_list [1; 2] in let q2 = Queue.of_list [3; 4] in
-    Queue.append q1 q2; (* q1: [1, 2, 3, 4] *) (* q2: [] *) ```
-
-    ## Complexity
-
-    - Time: O(m) where m = len(queue2) *)
-val append: 'a t -> 'a t -> unit
-
-(** Converts this queue into an immutable iterator over its elements in FIFO order.
-
-    ## Examples
-
-    ```ocaml
-    let queue = Queue.of_list [1; 2; 3; 4; 5] in
-    queue
-    |> Queue.into_iter
-    |> Iterator.map ~fn:(fun x -> x * 2)
-    |> Iterator.filter ~fn:(fun x -> x > 5)
-    |> Iterator.collect
-    (* [6; 8; 10] *)
-    ```
-
-    ## Complexity
-
-    - Time: O(1) to create iterator
-    - Space: O(1) *)
-val into_iter: 'a t -> 'a Iter.Iterator.t
-
-(** Returns a mutable iterator over the queue's elements in FIFO order.
-
-    ## Examples
-
-    ```ocaml let queue = Queue.of_list [1; 2; 3] in let iter = Queue.to_mut_iter
-    queue in ``` *)
-val to_mut_iter: 'a t -> 'a Iter.MutIterator.t
-
-(** Efficiently transfers all elements from [src] to the back of [dst]. After
-    this operation, [src] is empty. This is more efficient than [append] as it
-    directly manipulates internal pointers rather than re-pushing elements.
-
-    ## Examples
-
-    ```ocaml let src = Queue.of_list [3; 4; 5] in let dst = Queue.of_list [1; 2]
-    in Queue.transfer ~src ~dst; (* src: [] *) (* dst: [1, 2, 3, 4, 5] *) ```
-
-    ## Complexity
-
-    - Time: O(1)
-    - Space: O(1) *)
-val transfer: src:'a t -> dst:'a t -> unit
+val mut_iter: 'value t -> 'value Iter.MutIterator.t

@@ -64,7 +64,7 @@ type error =
       |> Result.map_err (fun _ -> "Invalid path provided")
     ```
 *)
-val of_string: string -> (t, error) Result.t
+val from_string: string -> (t, error) Result.t
 
 (** Creates a path from a string literal.
 

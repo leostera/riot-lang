@@ -31,7 +31,7 @@ module Host = struct
     | _ -> base
 
   let substring = fun value ~offset ~len ->
-    Bytes.sub_string (Bytes.of_string value) offset len
+    value |> Bytes.from_string |> Bytes.sub_unchecked ~offset ~len |> Bytes.to_string
 
   let rec reverse_parts = function
     | [] -> []
@@ -48,7 +48,7 @@ module Host = struct
     let rec loop start index acc =
       if index >= length then
         Result.Ok (reverse_parts (substring value ~offset:start ~len:(length - start) :: acc))
-      else if String.get value index = '-' then
+      else if String.get_unchecked value ~at:index = '-' then
         let part = substring value ~offset:start ~len:(index - start) in
         loop (index + 1) (index + 1) (part :: acc)
       else

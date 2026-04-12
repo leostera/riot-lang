@@ -15,7 +15,7 @@ let create = fun () ->
 let queue = fun t msg ->
   Mutex.lock t.producer_lock;
   t.inbox_rev <- msg :: t.inbox_rev;
-  ignore (Atomic.fetch_and_add t.size 1);
+  let _ = Atomic.fetch_and_add t.size 1 in
   Mutex.unlock t.producer_lock
 
 let pop_outbox = fun t ->
@@ -23,7 +23,7 @@ let pop_outbox = fun t ->
   | [] -> None
   | msg :: rest ->
       t.outbox <- rest;
-      ignore (Atomic.fetch_and_add t.size (-1));
+      let _ = Atomic.fetch_and_add t.size (-1) in
       Some msg
 
 let next = fun t ->
@@ -37,7 +37,7 @@ let next = fun t ->
       if List.is_empty drained then
         None
       else (
-        t.outbox <- List.rev drained;
+        t.outbox <- List.reverse drained;
         pop_outbox t
       )
 

@@ -79,40 +79,44 @@
 
 open Global
 
-(** Year in the Gregorian calendar. Cannot be abbreviated (93 means year 93, not 1993). *)
-type year = int
-(** Month: 1..12 *)
-type month = int
-(** Day of month: 1..31 *)
-type day = int
-(** Hour: 0..23 *)
-type hour = int
-(** Minute: 0..59 *)
-type minute = int
-(** Second: 0..59 *)
-type second = int
 (** Day of week: 1 (Monday) .. 7 (Sunday), following ISO 8601 *)
-type day_number = int
-(** Last day of month: 28 | 29 | 30 | 31 *)
-type last_day_of_month = int
-(** Week number: 1..53 *)
-type week_number = int
+type weekday =
+  | Monday
+  | Tuesday
+  | Wednesday
+  | Thursday
+  | Friday
+  | Saturday
+  | Sunday
+type month =
+  | January
+  | February
+  | March
+  | April
+  | May
+  | June
+  | July
+  | August
+  | September
+  | October
+  | November
+  | December
 (** A date without timezone information *)
 type date = {
-  year: year;
-  month: month;
-  day: day;
+  year: int;
+  month: int;
+  day: int;
 }
 (** A time without date or timezone *)
 type time = {
-  hour: hour;
-  minute: minute;
-  second: second;
+  hour: int;
+  minute: int;
+  second: int;
 }
 (** Year and ISO week number *)
 type year_and_week = {
-  year: year;
-  week: week_number;
+  year: int;
+  week: int;
 }
 (** {1 Constants} *)
 (** 60 seconds per minute *)
@@ -149,7 +153,7 @@ val days_from_0_to_1970: int
     Calendar.is_leap_year 2023;;  (* false *)
     ```
 *)
-val is_leap_year: year -> bool
+val is_leap_year: year:int -> bool
 
 (** Returns the last day of the month (28, 29, 30, or 31).
 
@@ -166,7 +170,7 @@ val is_leap_year: year -> bool
 
     @raise Invalid_argument if month is not in range 1-12
 *)
-val last_day_of_month: year:int -> month:int -> last_day_of_month
+val last_day_of_month: year:int -> month:int -> int
 
 (** {1 Date Validation} *)
 (** Validates if a date is valid in the Gregorian calendar.
@@ -274,7 +278,7 @@ val gregorian_seconds_to_naive: int -> date * time
 
     @raise Invalid_argument if the date is invalid
 *)
-val day_of_week: date -> day_number
+val day_of_week: date -> weekday
 
 (** {1 ISO Week Number} *)
 (** Calculates the ISO 8601 week number.
@@ -370,4 +374,4 @@ val seconds_to_daystime: int -> int * time
     (* (1, {hour=2; minute=30; second=0}) - 1 day, 2.5 hours *)
     ```
 *)
-val time_difference: date -> time -> date -> time -> int * time
+val time_difference: src_date:date -> src_time:time -> dst_date:date -> dst_time:time -> int * time

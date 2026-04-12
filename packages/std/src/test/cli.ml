@@ -39,25 +39,26 @@ let matches_flaky = fun ~flaky_only (test: Test_case.t) ->
 
 let filtered_tests = fun ~query ~small_only ~large_only ~flaky_only tests ->
   List.filter
-    (fun (test: Test_case.t) ->
+    tests
+    ~fn:(fun (test: Test_case.t) ->
       matches_query query test
       && matches_size ~small_only ~large_only test
       && matches_flaky ~flaky_only test)
-    tests
 
 let write_tests_json = fun tests ->
-  let tests_json =
-    tests
-    |> List.mapi
-      (fun idx (test: Test_case.t) ->
+  let rec to_json_items index = function
+    | [] -> []
+    | (test: Test_case.t) :: rest ->
         let base_fields = [
-          ("index", Data.Json.Int (idx + 1));
+          ("index", Data.Json.Int index);
           ("name", Data.Json.String test.name);
           ("size", size_to_json test.size);
           ("skip", Data.Json.Bool test.skip);
         ] in
-        Data.Json.Object (base_fields @ test_type_fields test.test_type @ reliability_fields test.reliability))
+        Data.Json.Object (base_fields @ test_type_fields test.test_type @ reliability_fields test.reliability)
+        :: to_json_items (index + 1) rest
   in
+  let tests_json = to_json_items 1 tests in
   print (Data.Json.to_string (Data.Json.Object [ ("tests", Data.Json.Array tests_json) ]));
   print "\n"
 
@@ -65,7 +66,7 @@ let list_tests = fun ~json tests ->
   if json then
     write_tests_json tests
   else
-    List.iter (fun (test: Test_case.t) -> println test.name) tests;
+    List.for_each tests ~fn:(fun (test: Test_case.t) -> println test.name);
   Ok ()
 
 let parse_format_to_reporter = function
@@ -114,7 +115,7 @@ let list_tests_cmd =
     ]
 
 let get_suite_info name: Reporter.suite_info =
-  let binary_path = List.hd Env.args |> Path.v in
+  let binary_path = Env.args |> List.head |> Option.unwrap_or ~default:name |> Path.v in
   { name; source_file = None; binary_path = Some binary_path }
 
 let main = fun ~name ~tests ~args ->
@@ -176,7 +177,7 @@ let main = fun ~name ~tests ~args ->
                     Runner.All_sizes
                 in
                 let small_test_timeout = get_int sub_matches "small-timeout-ms"
-                |> Option.map Time.Duration.from_millis in
+                |> Option.map ~fn:Time.Duration.from_millis in
                 let flaky_max_retries = get_int sub_matches "flaky-max-retries"
                 |> Option.unwrap_or ~default:0 in
                 let target = Runner.{ query; size_filter; flaky_only } in

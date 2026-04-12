@@ -1,15 +1,16 @@
+module Prelude = Prelude
+
 include Prelude
 
-external dangerous_unsafe_cast: 'value -> 'cast = "%identity"
+external dangerously_cast_value: 'value -> 'cast = "%identity"
 
 module Array = Array
-module Atomic = Atomic
+module Atomic = Sync.Atomic
 module Async = Async
 module Bool = Bool
 module Bytes = Bytes
 module Char = Char
-module Condition = Condition
-module Domain = Domain
+module Condition = Sync.Condition
 module Effect = Effect
 module Env = Env
 module Error = Error
@@ -21,7 +22,7 @@ module Int = Int
 module Int32 = Int32
 module Int64 = Int64
 module List = List
-module Mutex = Mutex
+module Mutex = Sync.Mutex
 module Net = Net
 module Option = Option
 module Path = Path
@@ -30,6 +31,7 @@ module Ptr = Ptr
 module Random = Random
 module Regex = Regex
 module Result = Result
+module Sync = Sync
 module String = String
 module System = System
 module SystemError = System_error

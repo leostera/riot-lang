@@ -26,9 +26,9 @@
 open Global
 
 type t = Calendar.date = {
-  year: Calendar.year;
-  month: Calendar.month;
-  day: Calendar.day;
+  year: int;
+  month: int;
+  day: int;
 }
 type error =
   | Invalid_format of string
@@ -49,7 +49,7 @@ val add_days: t -> int -> t
 
 val diff_days: t -> t -> int
 
-val day_of_week: t -> Calendar.day_number
+val day_of_week: t -> Calendar.weekday
 
 val day_of_year: t -> int
 
@@ -57,7 +57,7 @@ val iso_week_number: t -> Calendar.year_and_week
 
 val is_leap_year: t -> bool
 
-val days_in_month: t -> Calendar.last_day_of_month
+val days_in_month: t -> int
 
 val beginning_of_month: t -> t
 
@@ -65,16 +65,16 @@ val end_of_month: t -> t
 
 val to_gregorian_days: t -> int
 
-val of_gregorian_days: int -> t
+val from_gregorian_days: int -> t
 
 val to_iso8601: t -> string
 
 val to_string: t -> string
 
-val of_iso8601: string -> (t, error) result
+val from_iso8601: string -> (t, error) result
 
-val of_date_time: DateTime.t -> t
+val from_date_time: DateTime.t -> t
 
 val to_calendar_date: t -> Calendar.date
 
-val of_calendar_date: Calendar.date -> (t, error) result
+val from_calendar_date: Calendar.date -> (t, error) result

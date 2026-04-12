@@ -38,7 +38,7 @@ let init = fun (suite: Intf.suite_info) total ->
         ()
   );
   println "";
-  println ("running " ^ string_of_int total ^ " tests")
+  println ("running " ^ Int.to_string total ^ " tests")
 
 let on_result = fun _idx (result: Test_result.t) ->
   let prefix =
@@ -85,9 +85,9 @@ let finalize = fun (summary: Test_result.summary) ->
     ("test result: "
     ^ status
     ^ ". "
-    ^ string_of_int summary.passed
+    ^ Int.to_string summary.passed
     ^ " passed; "
-    ^ string_of_int summary.failed
+    ^ Int.to_string summary.failed
     ^ " failed; "
-    ^ string_of_int summary.skipped
+    ^ Int.to_string summary.skipped
     ^ " skipped")

@@ -111,23 +111,6 @@ type 't var_type =
   (** Boolean values (true/false, 1/0, yes/no) *)
   | Char: char var_type
 
-(** Single character values *)
-val get: string -> string option
-
-(** Reads a raw environment variable as a string.
-
-    Returns [`None`] if the variable is not set.
-
-    ## Examples
-
-    ```ocaml
-    let database_url =
-      Env.get "DATABASE_URL"
-      |> Option.unwrap_or ~default:"sqlite://local.db"
-    ```
-*)
-val var: 't var_type -> name:string -> 't option
-
 (** Reads and parses a typed environment variable.
     
     Returns [`None`] if the variable is not set or parsing fails.
@@ -173,7 +156,7 @@ val var: 't var_type -> name:string -> 't option
     - `Char`: Takes first character of the string
     - `String`: Returns value as-is
 *)
-val set_var: name:string -> value:string -> string option
+val get: 't var_type -> var:string -> 't option
 
 (** Sets an environment variable.
 
@@ -187,7 +170,7 @@ val set_var: name:string -> value:string -> string option
     (* Save and restore *) let old_path = Env.set_var ~name:"PATH"
     ~value:new_path in (* ... do work ... *) Option.iter (fun p -> Env.set_var
     ~name:"PATH" ~value:p |> ignore ) old_path ``` *)
-val vars: unit -> (string * string) list
+val set: var:string -> value:string -> string option
 
 (** Returns all environment variables as key-value pairs.
 
@@ -202,3 +185,4 @@ val vars: unit -> (string * string) list
     (* Check for required variables *) let check_required names = let env_names
     = Env.vars () |> List.map fst in List.filter (fun name -> not (List.mem name
     env_names) ) names ``` *)
+val vars: unit -> (string * string) list

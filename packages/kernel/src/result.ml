@@ -4,17 +4,17 @@ type ('value, 'error) t = ('value, 'error) result =
   | Ok of 'value
   | Error of 'error
 
-let map = fun fn ->
-  function
+let map = fun value ~fn ->
+  match value with
   | Ok value -> Ok (fn value)
   | Error error -> Error error
 
-let map_error = fun fn ->
-  function
+let map_err = fun value ~fn ->
+  match value with
   | Ok value -> Ok value
   | Error error -> Error (fn error)
 
-let and_then = fun value next ->
+let and_then = fun value ~fn ->
   match value with
-  | Ok value -> next value
+  | Ok value -> fn value
   | Error error -> Error error

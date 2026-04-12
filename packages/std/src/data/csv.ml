@@ -23,13 +23,13 @@ type error =
 
 let error_to_string = function
   | Unterminated_quote { line; column } -> "Unterminated quote at line "
-  ^ string_of_int line
+  ^ Int.to_string line
   ^ ", column "
-  ^ string_of_int column
+  ^ Int.to_string column
   | Invalid_escape_sequence { line; column } -> "Invalid escape sequence at line "
-  ^ string_of_int line
+  ^ Int.to_string line
   ^ ", column "
-  ^ string_of_int column
+  ^ Int.to_string column
   | Empty_input -> "Empty CSV input"
   | Unknown_error msg -> "Unknown error: " ^ msg
 
@@ -67,7 +67,7 @@ let of_string = fun ?(config = default_config) str ->
     match peek () with
     | Some c when c = config.quote ->
         advance ();
-        let buffer = Buffer.create 16 in
+        let buffer = Buffer.create ~size:16 in
         let rec loop () =
           match peek () with
           | None ->
@@ -144,12 +144,12 @@ let of_string = fun ?(config = default_config) str ->
               | Some '\n' -> advance ()
               | _ -> ()
             );
-            Some (List.rev (field :: acc))
+            Some (List.reverse (field :: acc))
         | Some '\n' ->
             advance ();
-            Some (List.rev (field :: acc))
+            Some (List.reverse (field :: acc))
         | None ->
-            Some (List.rev (field :: acc))
+            Some (List.reverse (field :: acc))
         | Some c ->
             advance ();
             loop (field :: acc)
@@ -162,7 +162,7 @@ let of_string = fun ?(config = default_config) str ->
     type item = (row, error) result
 
     let next = fun () ->
-      try parse_row () |> Option.map (fun row -> Ok row) with
+      try parse_row () |> Option.map ~fn:(fun row -> Ok row) with
       | Csv_parse_error err -> Some (Error err)
       | exn -> Some (Error (Unknown_error (Kernel.Exception.to_string exn)))
 
@@ -173,24 +173,24 @@ let of_string = fun ?(config = default_config) str ->
   Iter.MutIterator.make (module CsvIter) ()
 
 let parse = fun ?(config = default_config) reader ->
-  let buf = Buffer.create 4_096 in
+  let buf = Buffer.create ~size:4_096 in
   let _ = IO.Reader.read_to_end reader ~buf |> Result.expect ~msg:"Failed to read from Reader" in
   let content = Buffer.contents buf in
   of_string ~config content
 
 let to_string = fun ?(config = default_config) ?headers data ->
   let needs_quoting field =
-    String.contains field (String.make 1 config.delimiter)
-    || String.contains field (String.make 1 config.quote)
+    String.contains field (String.make ~len:1 ~char:config.delimiter)
+    || String.contains field (String.make ~len:1 ~char:config.quote)
     || String.contains field "\n"
     || String.contains field "\r" in
   let escape_field field =
     if needs_quoting field then
       (
-        let buffer = Buffer.create (String.length field + 2) in
+        let buffer = Buffer.create ~size:(String.length field + 2) in
         Buffer.add_char buffer config.quote;
-        String.iter
-          (fun c ->
+        String.for_each
+          ~fn:(fun c ->
             if c = config.quote then
               (
                 Buffer.add_char buffer config.escape;
@@ -210,13 +210,12 @@ let to_string = fun ?(config = default_config) ?headers data ->
     | Some h -> h :: data
     | None -> data
   in
-  let buffer = Buffer.create 256 in
-  List.iter
-    (fun row ->
-      let escaped = List.map escape_field row in
-      Buffer.add_string buffer (String.concat (String.make 1 config.delimiter) escaped);
-      Buffer.add_char buffer '\n')
-    all_rows;
+  let buffer = Buffer.create ~size:256 in
+  List.for_each all_rows
+    ~fn:(fun row ->
+      let escaped = List.map row ~fn:escape_field in
+      Buffer.add_string buffer (String.concat (String.make ~len:1 ~char:config.delimiter) escaped);
+      Buffer.add_char buffer '\n');
   Buffer.contents buffer
 
 let write = fun ?(config = default_config) ?headers ~data writer ->

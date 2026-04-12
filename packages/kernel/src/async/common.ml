@@ -1,1 +1,1 @@
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn

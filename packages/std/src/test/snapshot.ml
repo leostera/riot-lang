@@ -18,7 +18,7 @@ type diff_hunk = {
 }
 
 let append_path_suffix = fun path suffix ->
-  Path.to_string path ^ suffix |> Path.of_string |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
+  Path.to_string path ^ suffix |> Path.from_string |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
 
 let is_safe_snapshot_char = function
   | 'a' .. 'z'
@@ -29,28 +29,28 @@ let is_safe_snapshot_char = function
 
 let sanitize_path_component = fun value ->
   let lower = String.lowercase_ascii value in
-  let buf = Bytes.create (String.length lower) in
+  let buf = Bytes.create ~size:(String.length lower) in
   let length = ref 0 in
   let push_char ch =
-    Bytes.set buf !length ch;
+    Bytes.set_unchecked buf ~at:!length ~char:ch;
     length := !length + 1
   in
   let push_dash () =
-    if !length > 0 && Bytes.get buf (!length - 1) != '-' then
+    if !length > 0 && Bytes.get_unchecked buf ~at:(!length - 1) != '-' then
       push_char '-'
   in
-  String.iter
-    (fun ch ->
+  String.for_each
+    ~fn:(fun ch ->
       if is_safe_snapshot_char ch then
         push_char ch
       else
         push_dash ())
     lower;
-  let rendered = Bytes.sub_string buf 0 !length in
+  let rendered = Bytes.sub_unchecked buf ~offset:0 ~len:!length |> Bytes.to_string in
   let rec trim_left idx =
     if idx >= String.length rendered then
       idx
-    else if rendered.[idx] = '-' then
+    else if String.get_unchecked rendered ~at:idx = '-' then
       trim_left (idx + 1)
     else
       idx
@@ -58,7 +58,7 @@ let sanitize_path_component = fun value ->
   let rec trim_right idx =
     if idx < 0 then
       idx
-    else if rendered.[idx] = '-' then
+    else if String.get_unchecked rendered ~at:idx = '-' then
       trim_right (idx - 1)
     else
       idx
@@ -69,7 +69,7 @@ let sanitize_path_component = fun value ->
     if start_idx > end_idx then
       ""
     else
-      String.sub rendered start_idx (end_idx - start_idx + 1)
+      String.sub rendered ~offset:start_idx ~len:(end_idx - start_idx + 1)
   in
   if String.equal trimmed "" then
     "snapshot"
@@ -90,11 +90,11 @@ let canonicalize_json =
   let rec loop = function
     | Data.Json.Object fields ->
         Data.Json.Object (
-          fields |> List.map (fun (key, value) -> (key, loop value)) |> List.sort
-            (fun (left, _) (right, _) ->
+          fields |> List.map ~fn:(fun (key, value) -> (key, loop value)) |> List.sort
+            ~compare:(fun (left, _) (right, _) ->
               String.compare left right)
         )
-    | Data.Json.Array items -> Data.Json.Array (List.map loop items)
+    | Data.Json.Array items -> Data.Json.Array (List.map items ~fn:loop)
     | other -> other
   in
   loop
@@ -103,10 +103,10 @@ let split_lines = fun text ->
   if String.equal text "" then
     []
   else
-    let parts = String.split_on_char '\n' text in
+    let parts = String.split ~by:"\n" text in
     if String.ends_with ~suffix:"\n" text then
-      match List.rev parts with
-      | "" :: rest -> List.rev rest
+      match List.reverse parts with
+      | "" :: rest -> List.reverse rest
       | _ -> parts
     else
       parts @ [ "\\ No newline at end of file" ]
@@ -133,7 +133,7 @@ let rec common_prefix_len = fun left right ->
   + common_prefix_len left_tail right_tail
   | _ -> 0
 
-let reverse = fun items -> List.rev items
+let reverse = fun items -> List.reverse items
 
 let common_suffix_len = fun left right -> common_prefix_len (reverse left) (reverse right)
 
@@ -179,10 +179,10 @@ let format_diff = fun ~expected_label ~actual_label ~expected ~actual ->
     ^ Int.to_string hunk.actual_count
     ^ " @@";
   ]
-  @ List.map (format_line " ") hunk.context_before
-  @ List.map (format_line "-") hunk.expected_lines
-  @ List.map (format_line "+") hunk.actual_lines
-  @ List.map (format_line " ") hunk.context_after in
+  @ List.map hunk.context_before ~fn:(format_line " ")
+  @ List.map hunk.expected_lines ~fn:(format_line "-")
+  @ List.map hunk.actual_lines ~fn:(format_line "+")
+  @ List.map hunk.context_after ~fn:(format_line " ") in
   String.concat "\n" lines
 
 let resolve_paths = fun ~(ctx:Test_context.t) ->

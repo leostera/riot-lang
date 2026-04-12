@@ -3,10 +3,10 @@ open Collections
 
 let init = fun (_suite: Intf.suite_info) total ->
   println "TAP version 14";
-  println ("1.." ^ string_of_int total)
+  println ("1.." ^ Int.to_string total)
 
 let on_result = fun idx (result: Test_result.t) ->
-  let idx_str = string_of_int idx in
+  let idx_str = Int.to_string idx in
   let name_with_type =
     match result.test_type with
     | Test_case.UnitTest -> result.name

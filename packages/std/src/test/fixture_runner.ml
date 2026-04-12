@@ -24,12 +24,12 @@ let discover_fixture_paths = fun root ->
   | Ok found ->
       Ok (
         found |> List.filter_map
-          (fun (entry: Fs.Walker.FileItem.t) ->
+          ~fn:(fun (entry: Fs.Walker.FileItem.t) ->
             let path = Fs.Walker.FileItem.path entry in
             if not (is_snapshot_artifact path) then
-              (Some path)
+              Some path
             else
-              None) |> List.sort Path.compare
+              None) |> List.sort ~compare:Path.compare
       )
 
 let relpath = fun ~root path ->
@@ -59,8 +59,8 @@ let cases = fun ?(filter = fun _ -> `keep) ?(snapshot_path = fun _ -> None) () ~
     | Error err -> panic
       ("failed to discover fixtures under " ^ Path.to_string root ^ ": " ^ IO.error_message err)
   in
-  fixtures |> List.filter (keep_path filter) |> List.map
-    (fun fixture_path ->
+  fixtures |> List.filter ~fn:(keep_path filter) |> List.map
+    ~fn:(fun fixture_path ->
       let fixture_relpath = relpath ~root fixture_path in
       let fixture_name = fixture_name fixture_relpath in
       Test_case.case (Path.to_string fixture_relpath)

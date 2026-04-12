@@ -33,6 +33,7 @@ module Log = Log
 module Message = Message
 module Net = Net
 module Option = Option
+module Order = Order
 module Path = Path
 module Pid = Pid
 module Process = Process
@@ -68,13 +69,13 @@ type 'a set = 'a Collections.HashSet.t
 
 type ('k, 'v) map = ('k, 'v) Collections.HashMap.t
 
-let vec = Collections.Vector.of_list
+let vec = Collections.Vector.from_list
 
-let queue = Collections.Queue.of_list
+let queue = Collections.Queue.from_list
 
-let set = Collections.HashSet.of_list
+let set = Collections.HashSet.from_list
 
-let map = Collections.HashMap.of_list
+let map = Collections.HashMap.from_list
 
 (* Include std's Global module which re-exports from Kernel *)
 

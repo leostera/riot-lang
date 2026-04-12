@@ -1,7 +1,7 @@
-open Global
 open Collections
 open Iter
-module Uchar = Kernel.Unicode.Rune
+open Prelude
+module Rune = Kernel.Unicode.Rune
 
 include Kernel.String
 
@@ -16,9 +16,13 @@ module MutIter = struct
   let next = fun state ->
     if state.current_pos < length state.source then
       (
-        let utf_decoded = get_utf_8_uchar state.source state.current_pos in
-        let char_size = Uchar.utf_decode_length utf_decoded in
-        let item = Uchar.utf_decode_uchar utf_decoded in
+        let utf_decoded =
+          match get_utf_8_rune state.source ~at:state.current_pos with
+          | Some utf_decoded -> utf_decoded
+          | None -> Kernel.SystemError.panic "Std.String: invalid utf-8 input"
+        in
+        let char_size = Rune.utf_decode_length utf_decoded in
+        let item = Rune.utf_decode_rune utf_decoded in
         state.current_pos <- state.current_pos + char_size;
         Some item
       )
@@ -43,9 +47,13 @@ module Iter = struct
 
   let next = fun ({ source; current_pos } as state) ->
     if current_pos < length source then
-      let utf_decoded = get_utf_8_uchar source current_pos in
-      let char_size = Uchar.utf_decode_length utf_decoded in
-      let item = Uchar.utf_decode_uchar utf_decoded in
+      let utf_decoded =
+        match get_utf_8_rune source ~at:current_pos with
+        | Some utf_decoded -> utf_decoded
+        | None -> Kernel.SystemError.panic "Std.String: invalid utf-8 input"
+      in
+      let char_size = Rune.utf_decode_length utf_decoded in
+      let item = Rune.utf_decode_rune utf_decoded in
       (Some item, { state with current_pos = current_pos + char_size })
     else
       (None, state)
@@ -60,7 +68,9 @@ let into_iter = fun source ->
 
 let width = fun s ->
   (* Calculate display width by summing rune widths *)
-  into_iter s |> Iterator.to_list |> List.fold_left (fun acc rune -> acc + Unicode.Rune.width rune) 0
+  into_iter s
+  |> Iterator.to_list
+  |> List.fold_left ~acc:0 ~fn:(fun acc rune -> acc + Unicode.Rune.width rune)
 
 let rune_count = fun s -> into_iter s |> Iterator.to_list |> List.length
 
@@ -70,7 +80,7 @@ let grapheme_count = fun s ->
     if pos >= length s then
       acc
     else
-      match Unicode.Grapheme.first (sub s pos (length s - pos)) with
+      match Unicode.Grapheme.first (sub s ~offset:pos ~len:(length s - pos)) with
       | None -> acc
       | Some (_, rest) ->
           let consumed = length s - pos - length rest in
@@ -94,17 +104,21 @@ let truncate_width = fun ~width:target_width ?(tail = "…") s ->
         if pos >= length s then
           s
         else
-          let decode = get_utf_8_uchar s pos in
-          if Uchar.utf_decode_is_valid decode then
-            let rune = Uchar.utf_decode_uchar decode in
+          let decode =
+            match get_utf_8_rune s ~at:pos with
+            | Some decode -> decode
+            | None -> Kernel.SystemError.panic "Std.String: invalid utf-8 input"
+          in
+          if Rune.utf_decode_is_valid decode then
+            let rune = Rune.utf_decode_rune decode in
             let rune_w = Unicode.Rune.width rune in
             if acc_width + rune_w > max_width then
-              sub s 0 pos ^ tail
+              sub s ~offset:0 ~len:pos ^ tail
             else
-              let len = Uchar.utf_decode_length decode in
+              let len = Rune.utf_decode_length decode in
               find_cut (pos + len) (acc_width + rune_w)
           else
-            sub s 0 pos ^ tail
+            sub s ~offset:0 ~len:pos ^ tail
       in
       find_cut 0 0
 
@@ -113,7 +127,7 @@ let pad_left = fun ~width:target_width pad_char s ->
   if s_width >= target_width then
     s
   else
-    let padding = make (target_width - s_width) pad_char in
+    let padding = make ~len:(target_width - s_width) ~char:pad_char in
     padding ^ s
 
 let pad_right = fun ~width:target_width pad_char s ->
@@ -121,7 +135,7 @@ let pad_right = fun ~width:target_width pad_char s ->
   if s_width >= target_width then
     s
   else
-    let padding = make (target_width - s_width) pad_char in
+    let padding = make ~len:(target_width - s_width) ~char:pad_char in
     s ^ padding
 
 let pad_center = fun ~width:target_width pad_char s ->
@@ -132,7 +146,7 @@ let pad_center = fun ~width:target_width pad_char s ->
     let total_padding = target_width - s_width in
     let left_padding = total_padding / 2 in
     let right_padding = total_padding - left_padding in
-    make left_padding pad_char ^ s ^ make right_padding pad_char
+    make ~len:left_padding ~char:pad_char ^ s ^ make ~len:right_padding ~char:pad_char
 
 (* Grapheme iterators *)
 
@@ -146,7 +160,10 @@ module GraphemeMutIter = struct
 
   let next = fun state ->
     if state.current_pos < length state.source then
-      let remaining = sub state.source state.current_pos (length state.source - state.current_pos) in
+      let remaining = sub
+        state.source
+        ~offset:state.current_pos
+        ~len:(length state.source - state.current_pos) in
       match Unicode.Grapheme.first remaining with
       | None -> None
       | Some (grapheme, rest) ->
@@ -174,7 +191,7 @@ module GraphemeIter = struct
 
   let next = fun ({ source; current_pos } as state) ->
     if current_pos < length source then
-      let remaining = sub source current_pos (length source - current_pos) in
+      let remaining = sub source ~offset:current_pos ~len:(length source - current_pos) in
       match Unicode.Grapheme.first remaining with
       | None -> (None, state)
       | Some (grapheme, rest) ->
@@ -199,11 +216,11 @@ let split_words = fun s ->
     function
     | [] ->
         if start < length s then
-          [ sub s start (length s - start) ]
+          [ sub s ~offset:start ~len:(length s - start) ]
         else
           []
     | pos :: rest ->
-        let word = trim (sub s start (pos - start)) in
+        let word = trim (sub s ~offset:start ~len:(pos - start)) in
         if word = "" then
           split pos rest
         else
@@ -215,7 +232,7 @@ let line_breaks = fun s -> Unicode.Segmentation.find_line_breaks s
 
 let wrap = fun ~width:_ s ->
   (* Simplified: split on whitespace *)
-  split_on_char ' ' s |> List.filter (fun w -> w != "")
+  split ~by:" " s |> List.filter ~fn:(fun w -> w != "")
 
 let wrap_words = fun ~width:target_width s ->
   let words = split_words s in
@@ -262,7 +279,7 @@ let contains = fun haystack needle ->
     let rec check pos =
       if pos > haystack_len - needle_len then
         false
-      else if sub haystack pos needle_len = needle then
+      else if sub haystack ~offset:pos ~len:needle_len = needle then
         true
       else
         check (pos + 1)
@@ -278,39 +295,55 @@ let to_reader = fun ?chunk_size value ->
           raise (Invalid_argument "Std.String.to_reader: chunk_size must be positive");
         chunk_size
   in
-  let offset = ref 0 in
+  let offset = Sync.Cell.create 0 in
   let module Read = struct
     type t = string
 
     type err = IO.error
 
     let read = fun source ?timeout:_ buf ->
-      let remaining = length source - !offset in
+      let source_bytes = to_bytes source in
+      let remaining = length source - Sync.Cell.get offset in
       if Int.equal remaining 0 then
         Ok 0
       else
         let to_read = min chunk_size (min remaining (IO.Bytes.length buf)) in
-        IO.Bytes.blit_string source !offset buf 0 to_read;
-        offset := !offset + to_read;
+        Kernel.Bytes.blit_unchecked
+          source_bytes
+          ~src_offset:(Sync.Cell.get offset)
+          ~dst:buf
+          ~dst_offset:0
+          ~len:to_read;
+        Sync.Cell.set offset (Sync.Cell.get offset + to_read);
         Ok to_read
 
     let read_vectored = fun source bufs ->
-      let total = ref 0 in
-      let continue = ref true in
-      IO.Iovec.iter
-        (fun { IO.Iovec.buffer; offset=segment_offset; length=segment_length } ->
-          if !continue then
-            let remaining = length source - !offset in
-            if Int.equal remaining 0 then
-              continue := false
-            else
-              let to_read = min chunk_size (min remaining segment_length) in
-              IO.Bytes.blit_string source !offset buffer segment_offset to_read;
-              offset := !offset + to_read;
-              total := !total + to_read;
-              if Int.compare to_read segment_length < 0 then
-                continue := false)
+      let total = Sync.Cell.create 0 in
+      let continue = Sync.Cell.create true in
+      let source_bytes = to_bytes source in
+      IO.Iovec.for_each
+        ~fn:(fun { IO.Iovec.buffer; offset=segment_offset; length=segment_length } ->
+          if Sync.Cell.get continue then
+            (
+              let remaining = length source - Sync.Cell.get offset in
+              if Int.equal remaining 0 then
+                Sync.Cell.set continue false
+              else
+                let to_read = min chunk_size (min remaining segment_length) in
+                Kernel.Bytes.blit_unchecked
+                  source_bytes
+                  ~src_offset:(Sync.Cell.get offset)
+                  ~dst:buffer
+                  ~dst_offset:segment_offset
+                  ~len:to_read;
+                Sync.Cell.set offset (Sync.Cell.get offset + to_read);
+                Sync.Cell.set total (Sync.Cell.get total + to_read);
+                if Int.compare to_read segment_length < 0 then
+                  Sync.Cell.set continue false
+                else
+                  ()
+            ))
         bufs;
-      Ok !total
+      Ok (Sync.Cell.get total)
   end in
   IO.Reader.of_read_src (module Read) value

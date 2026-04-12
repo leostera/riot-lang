@@ -43,8 +43,8 @@ let from_nanos = fun nanos ->
   { secs; nanos = remaining_nanos }
 
 let from_secs_float = fun f ->
-  let secs = int_of_float f in
-  let nanos = int_of_float ((f -. float_of_int secs) *. 1_000_000_000.0) in
+  let secs = Int.from_float f in
+  let nanos = Int.from_float ((f -. Float.from_int secs) *. 1_000_000_000.0) in
   { secs; nanos }
 
 let from_weeks = fun weeks -> { secs = weeks * 604_800; nanos = 0 }
@@ -53,22 +53,22 @@ let from_weeks = fun weeks -> { secs = weeks * 604_800; nanos = 0 }
 
 let to_secs = fun t -> t.secs
 
-let to_secs_float = fun t -> float_of_int t.secs +. (float_of_int t.nanos /. 1_000_000_000.0)
+let to_secs_float = fun t -> Float.from_int t.secs +. (Float.from_int t.nanos /. 1_000_000_000.0)
 
 let to_secs_string = fun ?(precision = 2) t ->
   let secs_f = to_secs_float t in
-  let multiplier = 10.0 ** float_of_int precision in
+  let multiplier = 10.0 ** Float.from_int precision in
   let rounded = Float.round (secs_f *. multiplier) /. multiplier in
   (* Format manually without Printf or String module *)
-  let int_part = int_of_float rounded in
-  let frac_part = rounded -. float_of_int int_part in
+  let int_part = Int.from_float rounded in
+  let frac_part = rounded -. Float.from_int int_part in
   if precision = 0 then
     Int.to_string int_part
   else
-    let frac_scaled = int_of_float (frac_part *. multiplier) in
+    let frac_scaled = Int.from_float (frac_part *. multiplier) in
     let frac_str = Int.to_string frac_scaled in
     (* Pad with leading zeros if needed *)
-    let padding = Kernel.String.make (precision - Kernel.String.length frac_str) '0' in
+    let padding = Kernel.String.make ~len:(precision - Kernel.String.length frac_str) ~char:'0' in
     (* Use Kernel.String.concat to avoid String module dependency *)
     Kernel.String.concat "" [ Int.to_string int_part; "."; padding; frac_str ]
 
@@ -77,7 +77,7 @@ let to_millis = fun t -> (t.secs * 1_000) + (t.nanos / 1_000_000)
 let to_micros = fun t -> (t.secs * 1_000_000) + (t.nanos / 1_000)
 
 let to_nanos = fun t ->
-  Int64.add (Int64.mul (Int64.of_int t.secs) 1_000_000_000L) (Int64.of_int t.nanos)
+  Int64.add (Int64.mul (Int64.from_int t.secs) 1_000_000_000L) (Int64.from_int t.nanos)
 
 (* Subsecond components *)
 
@@ -99,7 +99,7 @@ let normalize = fun t ->
     let remaining_nanos = t.nanos mod 1_000_000_000 in
     { secs = t.secs + extra_secs; nanos = remaining_nanos }
   else if t.nanos < 0 then
-    let borrow_secs = (abs t.nanos + 999_999_999) / 1_000_000_000 in
+    let borrow_secs = (Int.abs t.nanos + 999_999_999) / 1_000_000_000 in
     { secs = t.secs - borrow_secs; nanos = t.nanos + (borrow_secs * 1_000_000_000) }
   else
     t
@@ -119,9 +119,9 @@ let mul = fun t factor ->
   if factor <= 0 then
     zero
   else
-    let total_nanos = Int64.of_int t.nanos in
-    let total_secs = Int64.of_int t.secs in
-    let factor_64 = Int64.of_int factor in
+    let total_nanos = Int64.from_int t.nanos in
+    let total_secs = Int64.from_int t.secs in
+    let factor_64 = Int64.from_int factor in
     let new_nanos = Int64.mul total_nanos factor_64 in
     let new_secs = Int64.mul total_secs factor_64 in
     let final_secs = Int64.add new_secs (Int64.div new_nanos 1_000_000_000L) in
@@ -133,9 +133,9 @@ let div = fun t divisor ->
     panic "Division by zero or negative number"
   else
     let total_nanos = Int64.add
-      (Int64.mul (Int64.of_int t.secs) 1_000_000_000L)
-      (Int64.of_int t.nanos) in
-    let result_nanos = Int64.div total_nanos (Int64.of_int divisor) in
+      (Int64.mul (Int64.from_int t.secs) 1_000_000_000L)
+      (Int64.from_int t.nanos) in
+    let result_nanos = Int64.div total_nanos (Int64.from_int divisor) in
     let secs = Int64.div result_nanos 1_000_000_000L in
     let nanos = Int64.rem result_nanos 1_000_000_000L in
     { secs = Int64.to_int secs; nanos = Int64.to_int nanos }
@@ -211,20 +211,20 @@ let mul_f64 = fun t factor ->
   if factor <= 0.0 then
     zero
   else
-    let total_nanos_f = (float_of_int t.secs *. 1_000_000_000.0) +. float_of_int t.nanos in
+    let total_nanos_f = (Float.from_int t.secs *. 1_000_000_000.0) +. Float.from_int t.nanos in
     let result_nanos_f = total_nanos_f *. factor in
-    let secs = int_of_float (result_nanos_f /. 1_000_000_000.0) in
-    let nanos = int_of_float (mod_float result_nanos_f 1_000_000_000.0) in
+    let secs = Int.from_float (result_nanos_f /. 1_000_000_000.0) in
+    let nanos = Int.from_float (Float.rem result_nanos_f 1_000_000_000.0) in
     { secs; nanos }
 
 let div_f64 = fun t divisor ->
   if divisor <= 0.0 then
     panic "Division by zero or negative number"
   else
-    let total_nanos_f = (float_of_int t.secs *. 1_000_000_000.0) +. float_of_int t.nanos in
+    let total_nanos_f = (Float.from_int t.secs *. 1_000_000_000.0) +. Float.from_int t.nanos in
     let result_nanos_f = total_nanos_f /. divisor in
-    let secs = int_of_float (result_nanos_f /. 1_000_000_000.0) in
-    let nanos = int_of_float (mod_float result_nanos_f 1_000_000_000.0) in
+    let secs = Int.from_float (result_nanos_f /. 1_000_000_000.0) in
+    let nanos = Int.from_float (Float.rem result_nanos_f 1_000_000_000.0) in
     { secs; nanos }
 
 (* Utility *)

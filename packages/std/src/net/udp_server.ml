@@ -26,17 +26,16 @@ let close = fun t -> Udp_socket.close t.socket
 
 let serve = fun t ->
   let rec loop () =
-    let buffer = Bytes.create t.buffer_size in
+    let buffer = Bytes.create ~size:t.buffer_size in
     match Udp_socket.recv_from t.socket buffer () with
     | Ok { bytes_read; from } ->
-        let payload = Bytes.sub buffer 0 bytes_read in
-        ignore
-          (
-            Runtime.spawn
-              (fun () ->
-                t.handler ~socket:t.socket ~from payload ~len:bytes_read;
-                Ok ())
-          );
+        let payload = Bytes.sub_unchecked buffer ~offset:0 ~len:bytes_read in
+        let _ =
+          Runtime.spawn
+            (fun () ->
+              t.handler ~socket:t.socket ~from payload ~len:bytes_read;
+              Ok ())
+        in
         loop ()
     | Error (Udp_socket.System_error err) -> Error (System_error err)
   in

@@ -29,7 +29,7 @@ let connect = fun ~host ~port ->
     )
 
 let send = fun t data ->
-  let buffer = Bytes.of_string data in
+  let buffer = Bytes.from_string data in
   let len = Bytes.length buffer in
   let rec send_all pos =
     if pos >= len then
@@ -51,39 +51,39 @@ let send = fun t data ->
 
 let receive = fun t ->
   (* Check if we already have a complete line in leftover buffer *)
-  match String.index t.leftover '\n' with
+  match String.index_of t.leftover ~char:'\n' with
   | Some idx ->
       (* Found newline in leftover, return line and save remainder *)
-      let line = String.sub t.leftover 0 idx in
+      let line = String.sub t.leftover ~offset:0 ~len:idx in
       let remainder_start = idx + 1 in
       let remainder_len = String.length t.leftover - remainder_start in
       t.leftover <- (
         if remainder_len > 0 then
-          String.sub t.leftover remainder_start remainder_len
+          String.sub t.leftover ~offset:remainder_start ~len:remainder_len
         else
           ""
       );
       Ok line
   | None ->
       (* No complete line in leftover, need to read more *)
-      let buffer = Bytes.create 4_096 in
+      let buffer = Bytes.create ~size:4_096 in
       let buffer_size = Bytes.length buffer in
       (* Read until we get a newline *)
       let rec read_line acc =
         match Tcp_stream.read t.stream buffer ~pos:0 ~len:buffer_size () with
         | Ok bytes_read -> (
-            let data = Bytes.sub_string buffer 0 bytes_read in
+            let data = Bytes.to_string (Bytes.sub_unchecked buffer ~offset:0 ~len:bytes_read) in
             let full_data = acc ^ data in
             (* Check if we have a complete line *)
-            match String.index full_data '\n' with
+            match String.index_of full_data ~char:'\n' with
             | Some idx ->
                 (* Found newline, save remainder and return line *)
-                let line = String.sub full_data 0 idx in
+                let line = String.sub full_data ~offset:0 ~len:idx in
                 let remainder_start = idx + 1 in
                 let remainder_len = String.length full_data - remainder_start in
                 t.leftover <- (
                   if remainder_len > 0 then
-                    String.sub full_data remainder_start remainder_len
+                    String.sub full_data ~offset:remainder_start ~len:remainder_len
                   else
                     ""
                 );

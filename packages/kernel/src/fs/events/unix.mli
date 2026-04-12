@@ -32,41 +32,43 @@ val watch: t -> path:Path.t -> latency:float -> (watch_id, error) Result.t
     Unknown watch identifiers are ignored so callers can treat cleanup as best-effort. *)
 val unwatch: t -> watch_id -> (unit, error) Result.t
 
-val flag_created: int32
+module Flag: sig
+  val created: int32
 
-val flag_removed: int32
+  val removed: int32
 
-val flag_modified: int32
+  val modified: int32
 
-val flag_renamed: int32
+  val renamed: int32
 
-val flag_metadata: int32
+  val metadata: int32
 
-val flag_is_file: int32
+  val is_file: int32
 
-val flag_is_dir: int32
+  val is_dir: int32
 
-val flag_is_symlink: int32
+  val is_symlink: int32
 
-val flag_inode_meta_mod: int32
+  val inode_meta_mod: int32
 
-val flag_finder_info_mod: int32
+  val finder_info_mod: int32
 
-val flag_xattr_mod: int32
+  val xattr_mod: int32
 
-val flag_own_event: int32
+  val own_event: int32
 
-val flag_mount: int32
+  val mount: int32
 
-val flag_unmount: int32
+  val unmount: int32
 
-val flag_root_changed: int32
+  val root_changed: int32
 
-val flag_must_scan_subdirs: int32
+  val must_scan_subdirs: int32
 
-val flag_user_dropped: int32
+  val user_dropped: int32
 
-val flag_kernel_dropped: int32
+  val kernel_dropped: int32
+end
 
 val decode_event_kind: int32 -> event_kind
 

@@ -1,14 +1,13 @@
-(** Domain primitives for multicore runtimes. *)
-type 'a t
-val spawn: (unit -> 'a) -> 'a t
+type 'value t = 'value Thread.t
+val spawn: (unit -> 'value) -> 'value t
 
-val join: 'a t -> 'a
+val join: 'value t -> 'value
 
 module DLS: sig
-  type 'a key
-  val new_key: ?split_from_parent:('a -> 'a) -> (unit -> 'a) -> 'a key
+  type 'value key = 'value Thread.DLS.key
+  val new_key: ?split_from_parent:('value -> 'value) -> (unit -> 'value) -> 'value key
 
-  val get: 'a key -> 'a
+  val get: 'value key -> 'value
 
-  val set: 'a key -> 'a -> unit
+  val set: 'value key -> 'value -> unit
 end

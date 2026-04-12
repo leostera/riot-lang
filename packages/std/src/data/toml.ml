@@ -23,17 +23,17 @@ let error_to_string = function
   | Invalid_path { path } -> "Invalid path: " ^ path
   | File_read_error { path; reason } -> "Failed to read file " ^ path ^ ": " ^ reason
   | Parse_error { position; context; reason } -> "Parse error at position "
-  ^ string_of_int position
+  ^ Int.to_string position
   ^ " (context: "
   ^ context
   ^ "): "
   ^ reason
-  | Unterminated_string { position } -> "Unterminated string at position " ^ string_of_int position
-  | Unterminated_array { position } -> "Unterminated array at position " ^ string_of_int position
+  | Unterminated_string { position } -> "Unterminated string at position " ^ Int.to_string position
+  | Unterminated_array { position } -> "Unterminated array at position " ^ Int.to_string position
   | Unexpected_char { position; found; expected } -> "Unexpected character '"
-  ^ String.make 1 found
+  ^ String.make ~len:1 ~char:found
   ^ "' at position "
-  ^ string_of_int position
+  ^ Int.to_string position
   ^ " (expected "
   ^ expected
   ^ ")"
@@ -53,7 +53,7 @@ let parse = fun content ->
     if at_end () then
       None
     else
-      Some content.[!pos]
+      Some (String.get_unchecked content ~at:!pos)
   in
   let advance () =
     if not (at_end ()) then
@@ -63,7 +63,7 @@ let parse = fun content ->
     if at_end () then
       '\000'
     else
-      content.[!pos]
+      String.get_unchecked content ~at:!pos
   in
   (* Skip whitespace (spaces, tabs) but NOT newlines *)
   let rec skip_ws () =
@@ -105,7 +105,7 @@ let parse = fun content ->
           expected = "double-quote"
         }));
     advance ();
-    let buf = Buffer.create 16 in
+    let buf = Buffer.create ~size:16 in
     let rec loop () =
       if at_end () then
         raise (Parse_exception (Unterminated_string { position = start_pos }));
@@ -154,7 +154,7 @@ let parse = fun content ->
       match current_char () with
       | ']' ->
           advance ();
-          Array (List.rev !items)
+          Array (List.reverse !items)
       | _ -> (
           let value = parse_value () in
           items := value :: !items;
@@ -165,7 +165,7 @@ let parse = fun content ->
               parse_items ()
           | Some ']' ->
               advance ();
-              Array (List.rev !items)
+              Array (List.reverse !items)
           | None ->
               raise (Parse_exception (Unterminated_array { position = start_pos }))
           | Some c ->
@@ -198,14 +198,14 @@ let parse = fun content ->
       match current_char () with
       | '}' ->
           advance ();
-          Table (List.rev !items)
+          Table (List.reverse !items)
       | _ -> (
           (* Parse key = value *)
           let key_start = !pos in
           while (not (at_end ())) && current_char () != '=' && current_char () != '}' do
             advance ()
           done;
-          let key = String.trim (String.sub content key_start (!pos - key_start)) in
+          let key = String.trim (String.sub content ~offset:key_start ~len:(!pos - key_start)) in
           skip_ws ();
           if at_end () || current_char () != '=' then
             raise
@@ -225,7 +225,7 @@ let parse = fun content ->
               parse_items ()
           | '}' ->
               advance ();
-              Table (List.rev !items)
+              Table (List.reverse !items)
           | _ ->
               raise
                 (Parse_exception (Parse_error {
@@ -253,10 +253,10 @@ let parse = fun content ->
         parse_array ()
     | '{' ->
         parse_inline_table ()
-    | 't' when !pos + 4 <= len && String.sub content !pos 4 = "true" ->
+    | 't' when !pos + 4 <= len && String.sub content ~offset:!pos ~len:4 = "true" ->
         pos := !pos + 4;
         Bool true
-    | 'f' when !pos + 5 <= len && String.sub content !pos 5 = "false" ->
+    | 'f' when !pos + 5 <= len && String.sub content ~offset:!pos ~len:5 = "false" ->
         pos := !pos + 5;
         Bool false
     | '0' .. '9'
@@ -269,7 +269,7 @@ let parse = fun content ->
         while not (at_end ()) && current_char () >= '0' && current_char () <= '9' do
           advance ()
         done;
-        let str = String.trim (String.sub content start (!pos - start)) in
+        let str = String.trim (String.sub content ~offset:start ~len:(!pos - start)) in
         (
           match Int.parse str with
           | Some value -> Int value
@@ -291,7 +291,7 @@ let parse = fun content ->
                 advance_bare_string ()
         in
         advance_bare_string ();
-        let str = String.trim (String.sub content start (!pos - start)) in
+        let str = String.trim (String.sub content ~offset:start ~len:(!pos - start)) in
         String str
   in
   (* Parse a key (identifier before =) *)
@@ -301,7 +301,7 @@ let parse = fun content ->
     while (not (at_end ())) && current_char () != '=' do
       advance ()
     done;
-    String.trim (String.sub content start (!pos - start))
+    String.trim (String.sub content ~offset:start ~len:(!pos - start))
   in
   (* Parse section header [name] or [[name]] *)
   let parse_section_header () =
@@ -331,7 +331,7 @@ let parse = fun content ->
           context = "section";
           reason = "unterminated"
         }));
-    let name = String.trim (String.sub content start (!pos - start)) in
+    let name = String.trim (String.sub content ~offset:start ~len:(!pos - start)) in
     advance ();
     (* skip first ] *)
     (* If array of tables, expect another ] *)
@@ -355,21 +355,44 @@ let parse = fun content ->
   let current_section = ref None in
   let current_items = ref [] in
   let array_sections = ref [] in
+  let assoc_opt key items =
+    let rec loop = function
+      | [] -> None
+      | (name, value) :: rest ->
+          if String.equal name key then
+            Some value
+          else
+            loop rest
+    in
+    loop items
+  in
+  let assoc_remove key items =
+    let rec loop acc = function
+      | [] -> List.reverse acc
+      | (name, value) :: rest ->
+          if String.equal name key then
+            loop acc rest
+          else
+            loop ((name, value) :: acc) rest
+    in
+    loop [] items
+  in
   (* Track [[name]] sections *)
   let save_current_section () =
     match !current_section with
     | Some (name, false) ->
-        sections := { name; items = List.rev !current_items } :: !sections
+        sections := { name; items = List.reverse !current_items } :: !sections
     | Some (name, true) ->
         let existing =
-          try List.assoc name !array_sections with
-          | Not_found -> []
+          match assoc_opt name !array_sections with
+          | Some existing -> existing
+          | None -> []
         in
-        array_sections := (name, Table (List.rev !current_items) :: existing)
-        :: List.remove_assoc name !array_sections
+        array_sections := (name, Table (List.reverse !current_items) :: existing)
+        :: assoc_remove name !array_sections
     | None ->
         if List.length !current_items > 0 then
-          sections := { name = ""; items = List.rev !current_items } :: !sections
+          sections := { name = ""; items = List.reverse !current_items } :: !sections
   in
   try
     let rec parse_loop () =
@@ -392,14 +415,14 @@ let parse = fun content ->
             else (
               advance ();
               let value = parse_value () in
-              current_items := (key, value) :: List.remove_assoc key !current_items;
+              current_items := (key, value) :: (assoc_remove key !current_items);
               skip_to_eol ();
               parse_loop ()
             )
     in
     parse_loop ();
     save_current_section ();
-    let all_sections = List.rev !sections in
+    let all_sections = List.reverse !sections in
     (* Helper to insert a dotted key path into nested tables *)
     let rec insert_nested_table path value acc =
       match path with
@@ -410,41 +433,37 @@ let parse = fun content ->
       | key :: rest ->
           (* Check if this key already exists in acc *)
           let existing_table =
-            match List.assoc_opt key acc with
+            match assoc_opt key acc with
             | Some (Table items) -> items
             | _ -> []
           in
           let updated_table = insert_nested_table rest value existing_table in
           (* Replace or add the key with updated nested table *)
           let acc_without_key =
-            List.filter (fun ((k, _)) -> not (String.equal k key)) acc
+            List.filter acc ~fn:(fun ((k, _)) -> not (String.equal k key))
           in
           (key, Table updated_table) :: acc_without_key
     in
     (* Convert sections to nested tables *)
     let items =
-      List.fold_left
-        (fun acc section ->
+      List.fold_left all_sections ~acc:[]
+        ~fn:(fun acc section ->
           if section.name = "" then
             section.items @ acc
           else
             (* Split dotted section names (e.g., "profile.debug" -> ["profile"; "debug"]) *)
-            let path = String.split_on_char '.' section.name in
+            let path = String.split ~by:"." section.name in
             insert_nested_table path (Table section.items) acc)
-        []
-        all_sections
     in
     (* Add array sections as arrays *)
     let items_with_arrays =
-      List.fold_left
-        (fun acc ((name, tables)) ->
+      List.fold_left !array_sections ~acc:items
+        ~fn:(fun acc ((name, tables)) ->
           (* Split dotted array section names (e.g., "log.handler" -> ["log"; "handler"]) *)
-          let path = String.split_on_char '.' name in
-          insert_nested_table path (Array (List.rev tables)) acc)
-        items
-        !array_sections
+          let path = String.split ~by:"." name in
+          insert_nested_table path (Array (List.reverse tables)) acc)
     in
-    Ok (Table (List.rev items_with_arrays))
+    Ok (Table (List.reverse items_with_arrays))
   with
   | Parse_exception err -> Error err
   | exn -> Error (Parse_error {
@@ -472,25 +491,27 @@ let get_table = function
   | _ -> None
 
 let rec to_string = fun ?(indent = 0) value ->
-  let ind = String.make (indent * 2) ' ' in
+  let ind = String.make ~len:(indent * 2) ~char:' ' in
   match value with
   | String s ->
       "\"" ^ s ^ "\""
   | Int i ->
-      string_of_int i
+      Int.to_string i
   | Bool b ->
       if b then
         "true"
       else
         "false"
   | Array items ->
-      let items_str = String.concat ", " (List.map (to_string ~indent:(indent + 1)) items) in
+      let items_str = String.concat ", " (List.map items ~fn:(to_string ~indent:(indent + 1))) in
       "[" ^ items_str ^ "]"
   | Table items ->
       let items_str =
         String.concat
           ",\n"
-          (List.map (fun ((k, v)) -> ind ^ "  " ^ k ^ " = " ^ to_string ~indent:(indent + 1) v) items)
+          (List.map
+            items
+            ~fn:(fun ((k, v)) -> ind ^ "  " ^ k ^ " = " ^ to_string ~indent:(indent + 1) v))
       in
       if indent = 0 then
         "{\n" ^ items_str ^ "\n}"

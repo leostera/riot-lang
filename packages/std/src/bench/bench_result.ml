@@ -29,41 +29,37 @@ type t = {
 
 let make_statistics = fun timings ->
   let durations =
-    List.map (fun t -> t.duration) timings
+    List.map timings ~fn:(fun t -> t.duration)
   in
-  let sorted = List.sort Time.Duration.compare durations in
+  let sorted = List.sort durations ~compare:Time.Duration.compare in
   (* Calculate total time *)
   let total_nanos =
-    List.fold_left
-      (fun acc d ->
+    List.fold_left durations ~acc:0L
+      ~fn:(fun acc d ->
         Int64.add acc (Time.Duration.to_nanos d))
-      0L
-      durations
   in
   let iterations = List.length timings in
-  let mean_nanos = Int64.div total_nanos (Int64.of_int iterations) in
+  let mean_nanos = Int64.div total_nanos (Int64.from_int iterations) in
   (* Min and max *)
-  let min = List.hd sorted in
-  let max = List.hd (List.rev sorted) in
+  let min = List.get sorted ~at:0 |> Option.unwrap in
+  let max = List.get sorted ~at:(List.length sorted - 1) |> Option.unwrap in
   (* Median *)
-  let median = List.nth sorted (iterations / 2) in
+  let median = List.get sorted ~at:(iterations / 2) |> Option.unwrap in
   (* Standard deviation *)
   let variance =
-    List.fold_left
-      (fun acc d ->
+    List.fold_left durations ~acc:0.0
+      ~fn:(fun acc d ->
         let diff = Int64.sub (Time.Duration.to_nanos d) mean_nanos in
         let diff_f = Int64.to_float diff in
         acc +. (diff_f *. diff_f))
-      0.0
-      durations
   in
-  let std_dev_nanos = sqrt (variance /. float_of_int iterations) in
+  let std_dev_nanos = Float.sqrt (variance /. Float.from_int iterations) in
   {
     min;
     max;
     mean = Time.Duration.from_nanos (Int64.to_int mean_nanos);
     median;
-    std_dev = Time.Duration.from_nanos (int_of_float std_dev_nanos);
+    std_dev = Time.Duration.from_nanos (Int.from_float std_dev_nanos);
     iterations;
     total_time = Time.Duration.from_nanos (Int64.to_int total_nanos);
   }
@@ -76,14 +72,12 @@ type summary = {
 }
 
 let make_summary = fun results ->
-  List.fold_left
-    (fun acc (result: t) ->
+  List.fold_left results ~acc:{ total = List.length results; completed = 0; skipped = 0; failed = 0 }
+    ~fn:(fun acc (result: t) ->
       match result.result with
       | Completed _ -> { acc with completed = acc.completed + 1 }
       | Skipped -> { acc with skipped = acc.skipped + 1 }
       | Failed _ -> { acc with failed = acc.failed + 1 })
-    { total = List.length results; completed = 0; skipped = 0; failed = 0 }
-    results
 
 (* Comparison results *)
 
@@ -101,8 +95,8 @@ type comparison_result = {
 
 let find_fastest = fun results ->
   let compare_by_mean a b = Time.Duration.compare a.statistics.mean b.statistics.mean in
-  let sorted = List.sort compare_by_mean results in
-  List.hd sorted
+  let sorted = List.sort results ~compare:compare_by_mean in
+  List.get sorted ~at:0 |> Option.unwrap
 
 let calculate_speedup = fun fastest_mean other_mean ->
   let fastest_ns = Time.Duration.to_nanos fastest_mean in
@@ -112,13 +106,12 @@ let calculate_speedup = fun fastest_mean other_mean ->
 let make_comparison_result = fun description case_results ->
   let fastest = find_fastest case_results in
   let speedup_ratios =
-    List.map
-      (fun res ->
+    List.map case_results
+      ~fn:(fun res ->
         if res.name = fastest.name then
           (res.name, 1.0)
         else
           let ratio = calculate_speedup fastest.statistics.mean res.statistics.mean in
           (res.name, ratio))
-      case_results
   in
   { description; case_results; fastest = fastest.name; speedup_ratios }

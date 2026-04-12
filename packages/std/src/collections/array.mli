@@ -1,4 +1,33 @@
-include module type of Stdlib.Array
+type 'value t = 'value array
+val make: count:int -> value:'value -> 'value t
+
+val init: count:int -> fn:(int -> 'value) -> 'value t
+
+val length: 'value t -> int
+
+val get: 'value t -> at:int -> 'value option
+
+val get_unchecked: 'value t -> at:int -> 'value
+
+val set: 'value t -> at:int -> value:'value -> unit
+
+val set_unchecked: 'value t -> at:int -> value:'value -> unit
+
+val clone: 'value t -> 'value t
+
+val blit: 'value t -> src_offset:int -> dst:'value t -> dst_offset:int -> len:int -> unit
+
+val sub: 'value t -> offset:int -> len:int -> 'value t
+
+val for_each: 'value t -> fn:('value -> unit) -> unit
+
+val map: 'value t -> fn:('value -> 'mapped) -> 'mapped t
+
+val fold_left: 'value t -> acc:'acc -> fn:('acc -> 'value -> 'acc) -> 'acc
+
+val fold_right: 'value t -> acc:'acc -> fn:('value -> 'acc -> 'acc) -> 'acc
+
+val from_list: 'value list -> 'value t
 
 (** Converts this array into an immutable iterator.
 
@@ -7,7 +36,7 @@ include module type of Stdlib.Array
     ```ocaml
     let arr = [|1; 2; 3; 4; 5|] in
     arr
-    |> Array.into_iter
+    |> Array.iter
     |> Iterator.map ~fn:(fun x -> x * 2)
     |> Iterator.filter ~fn:(fun x -> x > 5)
     |> Iterator.collect
@@ -18,7 +47,7 @@ include module type of Stdlib.Array
 
     - Time: O(1) to create iterator
     - Space: O(1) *)
-val into_iter: 'a array -> 'a Iter.Iterator.t
+val iter: 'value t -> 'value Iter.Iterator.t
 
 (** Converts this array into a mutable iterator.
 
@@ -27,7 +56,7 @@ val into_iter: 'a array -> 'a Iter.Iterator.t
     ```ocaml
     let arr = [|1; 2; 3; 4; 5|] in
     arr
-    |> Array.to_mut_iter
+    |> Array.mut_iter
     |> MutIterator.map ~fn:(fun x -> x * 2)
     |> MutIterator.filter ~fn:(fun x -> x > 5)
     |> MutIterator.collect
@@ -38,4 +67,4 @@ val into_iter: 'a array -> 'a Iter.Iterator.t
 
     - Time: O(1) to create iterator
     - Space: O(1) *)
-val to_mut_iter: 'a array -> 'a Iter.MutIterator.t
+val mut_iter: 'value t -> 'value Iter.MutIterator.t

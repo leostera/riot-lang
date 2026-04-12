@@ -1,121 +1,192 @@
 open Kernel
-module Hashtbl = Stdlib.Hashtbl
 
-type ('k, 'v) t = ('k, 'v) Hashtbl.t
+external caml_hash: int -> int -> int -> 'value -> int = "caml_hash" [@@noalloc]
 
-type ('k, 'v) entry =
-  Occupied of 'v
+type ('key, 'value) t = {
+  mutable buckets: ('key * 'value) list array;
+  mutable size: int;
+}
+
+type ('key, 'value) entry =
+  | Occupied of 'value
   | Vacant
 
-let create = fun () -> Hashtbl.create 16
+let minimum_capacity = 16
 
-let with_capacity = fun capacity -> Hashtbl.create capacity
+let normalize_capacity = fun capacity ->
+  Int.max minimum_capacity capacity
 
-let of_list = fun pairs ->
-  let map = Hashtbl.create (List.length pairs) in
-  List.iter
-    (fun ((k, v)) ->
-      Hashtbl.replace map k v)
-    pairs;
-  map
+let create = fun () -> { buckets = Array.make ~count:minimum_capacity ~value:[]; size = 0 }
 
-let insert = fun map key value ->
-  let previous = Hashtbl.find_opt map key in
-  Hashtbl.replace map key value;
+let with_capacity = fun ~size ->
+  let capacity = normalize_capacity size in
+  { buckets = Array.make ~count:capacity ~value:[]; size = 0 }
+
+let length = fun map -> map.size
+
+let is_empty = fun map -> map.size = 0
+
+let hash_index = fun map key ->
+  let hash = caml_hash 10 100 0 key in
+  (hash lsr 1) mod Array.length map.buckets
+
+let rec replace_in_bucket = fun key value bucket ->
+  match bucket with
+  | [] -> (None, [ (key, value) ], true)
+  | (existing_key, existing_value) :: rest ->
+      if existing_key = key then
+        (Some existing_value, (key, value) :: rest, false)
+      else
+        let previous, rest, inserted_new = replace_in_bucket key value rest in
+        (previous, (existing_key, existing_value) :: rest, inserted_new)
+
+let rec remove_from_bucket = fun key bucket ->
+  match bucket with
+  | [] -> (None, [], false)
+  | (existing_key, existing_value) :: rest ->
+      if existing_key = key then
+        (Some existing_value, rest, true)
+      else
+        let removed, rest, did_remove = remove_from_bucket key rest in
+        (removed, (existing_key, existing_value) :: rest, did_remove)
+
+let needs_resize = fun map -> (map.size + 1) * 4 > Array.length map.buckets * 3
+
+let insert_without_resize = fun map ~key ~value ->
+  let index = hash_index map key in
+  let previous, bucket, inserted_new = replace_in_bucket
+    key
+    value
+    (Array.get_unchecked map.buckets ~at:index) in
+  Array.set_unchecked map.buckets ~at:index ~value:bucket;
+  if inserted_new then
+    map.size <- map.size + 1;
   previous
 
-let get = fun map key ->
-  Hashtbl.find_opt map key
+let resize = fun map new_capacity ->
+  let old_buckets = map.buckets in
+  map.buckets <- Array.make ~count:new_capacity ~value:[];
+  map.size <- 0;
+  Array.for_each old_buckets
+    ~fn:(fun bucket ->
+      List.for_each bucket
+        ~fn:(fun (key, value) ->
+          let _ = insert_without_resize map ~key ~value in
+          ()))
 
-let remove = fun map key ->
-  let previous = get map key in
-  Hashtbl.remove map key;
-  previous
+let insert = fun map ~key ~value ->
+  if needs_resize map then
+    resize map (Array.length map.buckets * 2);
+  insert_without_resize map ~key ~value
 
-let contains_key = fun map key ->
-  Hashtbl.mem map key
+let get = fun map ~key ->
+  let bucket = Array.get_unchecked map.buckets ~at:(hash_index map key) in
+  let rec loop = function
+    | [] -> None
+    | (existing_key, value) :: rest ->
+        if existing_key = key then
+          Some value
+        else
+          loop rest
+  in
+  loop bucket
 
-let len = fun map -> Hashtbl.length map
+let remove = fun map ~key ->
+  let index = hash_index map key in
+  let removed, bucket, did_remove = remove_from_bucket
+    key
+    (Array.get_unchecked map.buckets ~at:index) in
+  Array.set_unchecked map.buckets ~at:index ~value:bucket;
+  if did_remove then
+    map.size <- map.size - 1;
+  removed
 
-let is_empty = fun map -> Hashtbl.length map = 0
+let has_key = fun map ~key ->
+  match get map ~key with
+  | Some _ -> true
+  | None -> false
 
-let clear = fun map -> Hashtbl.clear map
+let clear = fun map ->
+  map.buckets <- Array.make ~count:(Array.length map.buckets) ~value:[];
+  map.size <- 0
 
-let keys = fun map ->
-  Hashtbl.fold (fun k _ acc -> k :: acc) map []
+let fold_left = fun map ~acc ~fn ->
+  Array.fold_left
+    map.buckets
+    ~acc
+    ~fn:(fun acc bucket -> List.fold_left bucket ~acc ~fn:(fun acc (key, value) -> fn acc key value))
 
-let values = fun map ->
-  Hashtbl.fold (fun _ v acc -> v :: acc) map []
+let keys = fun map -> fold_left map ~acc:[] ~fn:(fun acc key _value -> key :: acc)
 
-let iter = fun f map ->
-  Hashtbl.iter f map
+let values = fun map -> fold_left map ~acc:[] ~fn:(fun acc _key value -> value :: acc)
 
-let fold = fun f map acc ->
-  Hashtbl.fold f map acc
+let for_each = fun map ~fn ->
+  fold_left map ~acc:()
+    ~fn:(fun () key value ->
+      fn key value;
+      ())
 
-let to_list = fun map ->
-  Hashtbl.fold (fun k v acc -> (k, v) :: acc) map []
+let to_list = fun map -> fold_left map ~acc:[] ~fn:(fun acc key value -> (key, value) :: acc)
 
-let entry = fun map key ->
-  match Hashtbl.find_opt map key with
+let entry = fun map ~key ->
+  match get map ~key with
   | Some value -> Occupied value
   | None -> Vacant
 
-let or_insert = fun map key default ->
-  match get map key with
+let or_insert = fun map ~key ~default ->
+  match get map ~key with
   | Some value -> value
   | None ->
-      Hashtbl.replace map key default;
+      let _ = insert map ~key ~value:default in
       default
 
-let and_modify = fun map key f ->
-  match get map key with
+let and_modify = fun map ~key ~fn ->
+  match get map ~key with
   | Some value ->
-      let new_value = f value in
-      Hashtbl.replace map key new_value
+      let _ = insert map ~key ~value:(fn value) in
+      ()
   | None -> ()
 
-let into_iter: type k v. (k, v) t -> (k * v) Iter.Iterator.t = fun map ->
-  let module MapIter = struct
-    type state = {
-      items: (k * v) list;
-      pos: int;
-    }
+let from_list = fun pairs ->
+  let map = with_capacity ~size:(List.length pairs) in
+  List.for_each pairs
+    ~fn:(fun (key, value) ->
+      let _ = insert map ~key ~value in
+      ());
+  map
 
-    type item = k * v
+let iter: type key value. (key, value) t -> (key * value) Iter.Iterator.t = fun map ->
+  let module MapIter = struct
+    type state = (key * value) list
+
+    type item = key * value
 
     let next = fun state ->
-      if state.pos >= List.length state.items then
-        (None, state)
-      else
-        let item = List.nth state.items state.pos in
-        (Some item, { state with pos = state.pos + 1 })
+      match state with
+      | [] -> (None, [])
+      | item :: rest -> (Some item, rest)
 
-    let size = fun state -> max 0 (List.length state.items - state.pos)
+    let size = fun state -> List.length state
   end in
-  let items = to_list map in
-  Iter.Iterator.make (module MapIter) { MapIter.items; pos = 0 }
+  Iter.Iterator.make (module MapIter) (to_list map)
 
-let to_mut_iter: type k v. (k, v) t -> (k * v) Iter.MutIterator.t = fun map ->
+let mut_iter: type key value. (key, value) t -> (key * value) Iter.MutIterator.t = fun map ->
   let module MapIter = struct
     type state = {
-      items: (k * v) list;
-      mutable pos: int;
+      mutable items: (key * value) list;
     }
 
-    type item = k * v
+    type item = key * value
 
     let next = fun state ->
-      if state.pos >= List.length state.items then
-        None
-      else
-        let item = List.nth state.items state.pos in
-        state.pos <- state.pos + 1;
-        Some item
+      match state.items with
+      | [] -> None
+      | item :: rest ->
+          state.items <- rest;
+          Some item
 
-    let size = fun state -> max 0 (List.length state.items - state.pos)
+    let size = fun state -> List.length state.items
 
-    let clone = fun state -> { items = state.items; pos = state.pos }
+    let clone = fun state -> { items = state.items }
   end in
-  let items = to_list map in
-  Iter.MutIterator.make (module MapIter) { MapIter.items; pos = 0 }
+  Iter.MutIterator.make (module MapIter) { items = to_list map }

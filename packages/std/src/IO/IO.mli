@@ -85,7 +85,7 @@ val error_message: error -> string
 
 module Buffer: module type of Buffer
 
-module Bytes: module type of Stdlib.Bytes
+module Bytes: module type of Bytes
 
 module Iovec = Kernel.IO.Iovec
 

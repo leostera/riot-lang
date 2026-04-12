@@ -124,7 +124,7 @@ type t
       yielded. Defaults to `0`.
     - `max_depth`
       Deepest emitted/traversed depth. Entries deeper than this are skipped.
-      Defaults to `max_int`.
+      Defaults to `Int.max_int`.
     - `contents_first`
       Yield directories after their children instead of before them. Defaults
       to `false`.

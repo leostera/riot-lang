@@ -1,6 +1,6 @@
 open Kernel
 module Iovec = Kernel.IO.Iovec
-module String = Stdlib.String
+module String = Kernel.String
 
 module type Write = sig
   type t
@@ -34,7 +34,8 @@ let write_all: type dst err. (dst, err) t -> buf:string -> (unit, err) result = 
       Ok ()
     else
       match W.write dst ~buf:remaining with
-      | Ok written -> loop (String.sub remaining written (String.length remaining - written))
+      | Ok written -> loop
+        (String.sub remaining ~offset:written ~len:(String.length remaining - written))
       | Error err -> Error err
   in
   loop buf

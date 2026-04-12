@@ -23,31 +23,31 @@ let create = fun ?(count = 1) ~size () ->
     System_error.panic "iovec size must be non-negative";
   let base = size / count in
   let remainder = size mod count in
-  Array.init count
-    (fun index ->
+  Array.init ~count
+    ~fn:(fun index ->
       let chunk =
         if index < remainder then
           base + 1
         else
           base
       in
-      { buffer = Bytes.create chunk; offset = 0; length = chunk })
+      { buffer = Bytes.create ~size:chunk; offset = 0; length = chunk })
 
 let with_capacity = fun size -> create ~size ()
 
-let of_bytes = fun buffer -> [|make_segment ~buffer ~offset:0 ~length:(Bytes.length buffer)|]
+let from_bytes = fun buffer -> [|make_segment ~buffer ~offset:0 ~length:(Bytes.length buffer)|]
 
-let of_string = fun value -> of_bytes (Bytes.of_string value)
+let from_string = fun value -> from_bytes (Bytes.from_string value)
 
-let of_bytes_array = fun buffers ->
-  Array.map (fun buffer -> make_segment ~buffer ~offset:0 ~length:(Bytes.length buffer)) buffers
+let from_bytes_array = fun buffers ->
+  Array.map buffers ~fn:(fun buffer -> make_segment ~buffer ~offset:0 ~length:(Bytes.length buffer))
 
-let of_string_array = fun values -> of_bytes_array (Array.map Bytes.of_string values)
+let from_string_array = fun values -> from_bytes_array (Array.map values ~fn:Bytes.from_string)
 
 let length = fun segments ->
-  Array.fold_left (fun total segment -> total + segment.length) 0 segments
+  Array.fold_left segments ~fn:(fun total segment -> total + segment.length) ~acc:0
 
-let iter = Array.iter
+let for_each = fun ~fn segments -> Array.for_each segments ~fn
 
 let sub = fun ?(pos = 0) ~len segments ->
   if pos < 0 || len < 0 then
@@ -59,9 +59,9 @@ let sub = fun ?(pos = 0) ~len segments ->
   in
   let rec loop index cursor acc =
     if index >= Array.length segments || cursor >= pos + len then
-      Array.of_list (reverse_append acc [])
+      Array.from_list (reverse_append acc [])
     else
-      let segment = Array.get segments index in
+      let segment = Array.get_unchecked segments ~at:index in
       let segment_start = cursor in
       let segment_end = cursor + segment.length in
       if segment_end <= pos then
@@ -89,18 +89,18 @@ let sub = fun ?(pos = 0) ~len segments ->
   in
   loop 0 0 []
 
-let into_bytes = fun segments ->
+let to_bytes = fun segments ->
   let total = length segments in
-  let out = Bytes.create total in
+  let out = Bytes.create ~size:total in
   let rec loop index cursor =
     if index >= Array.length segments then
       out
     else
-      let segment = Array.get segments index in
-      Bytes.blit segment.buffer segment.offset out cursor segment.length;
+      let segment = Array.get_unchecked segments ~at:index in
+      Caml_runtime.bytes_blit segment.buffer segment.offset out cursor segment.length;
       loop (index + 1) (cursor + segment.length)
   in
   let _ = loop 0 0 in
   out
 
-let into_string = fun segments -> Caml_runtime.bytes_unsafe_to_string (into_bytes segments)
+let to_string = fun segments -> Bytes.to_string (to_bytes segments)

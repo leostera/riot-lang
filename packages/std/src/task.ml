@@ -48,33 +48,36 @@ let await: type res. res t -> (res, exn) result = fun t ->
 (** Await multiple tasks efficiently, collecting results as they arrive *)
 let rec await_all: type res. res t list -> (res, exn) result list = fun tasks ->
   let find_task_by_ref tasks ref =
-    List.find
-      (fun t ->
+    List.find tasks
+      ~fn:(fun t ->
         Ref.equal t.ref ref)
-      tasks
   in
   let is_one_of_our_refs tasks ref =
-    List.exists
-      (fun t ->
+    List.any tasks
+      ~fn:(fun t ->
         Ref.equal t.ref ref)
-      tasks
   in
   let remove_task tasks task =
-    List.filter (fun t -> not (Ref.equal t.ref task.ref)) tasks
+    List.filter tasks ~fn:(fun t -> not (Ref.equal t.ref task.ref))
   in
   let selector: Message.t -> [
       `select of (res, exn) result * res t
       | `skip
     ] = fun msg ->
     match msg with
-    | Crash (ref', exn) when is_one_of_our_refs tasks ref' ->
-        let task: res t = find_task_by_ref tasks ref' in
-        `select (Error exn, task)
+    | Crash (ref', exn) when is_one_of_our_refs tasks ref' -> (
+        match find_task_by_ref tasks ref' with
+        | Some task -> `select (Error exn, task)
+        | None -> panic "task awaited but no matching task found"
+      )
     | Reply (ref', res) when is_one_of_our_refs tasks ref' -> (
-        let task: res t = find_task_by_ref tasks ref' in
-        match Ref.type_equal task.ref ref' with
-        | Some Type.Equal -> `select (Ok res, task)
-        | None -> panic "bad message"
+        match find_task_by_ref tasks ref' with
+        | None -> panic "task awaited but no matching task found"
+        | Some task -> (
+            match Ref.type_equal task.ref ref' with
+            | Some Type.Equal -> `select (Ok res, task)
+            | None -> panic "bad message"
+          )
       )
     | _ ->
         `skip

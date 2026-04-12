@@ -1,7 +1,7 @@
 type t = string
 
-(** Use `of_string value` to treat `value` as a path without validation or normalization. *)
-val of_string: string -> t
+(** Use `from_string value` to treat `value` as a path without validation or normalization. *)
+val from_string: string -> t
 
 (** Use `to_string value` to recover the path text exactly as stored. *)
 val to_string: t -> string

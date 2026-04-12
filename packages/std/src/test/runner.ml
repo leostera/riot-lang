@@ -19,8 +19,8 @@ let find_segment_index = fun segments needle ->
 
 let take = fun count xs ->
   let rec loop remaining acc = function
-    | _ when remaining <= 0 -> List.rev acc
-    | [] -> List.rev acc
+    | _ when remaining <= 0 -> List.reverse acc
+    | [] -> List.reverse acc
     | x :: rest -> loop (remaining - 1) (x :: acc) rest
   in
   loop count [] xs
@@ -32,22 +32,22 @@ let join_path_segments = fun segments ->
   | _ -> String.concat "/" segments
 
 let derive_package_name = fun binary_path ->
-  match Env.var Env.String ~name:"RIOT_PACKAGE_NAME" with
+  match Env.get Env.String ~var:"RIOT_PACKAGE_NAME" with
   | Some package_name -> Some package_name
   | None -> (
       match binary_path with
       | None -> None
       | Some path ->
-          let segments = Path.components path |> List.map Path.to_string in
+          let segments = Path.components path |> List.map ~fn:Path.to_string in
           match find_segment_index segments "out" with
-          | Some idx when List.length segments > idx + 1 -> Some (List.nth segments (idx + 1))
+          | Some idx when List.length segments > idx + 1 -> List.get segments ~at:(idx + 1)
           | _ -> None
     )
 
 let derive_workspace_root = fun ~current_dir ~binary_path ->
-  match Env.var Env.String ~name:"RIOT_WORKSPACE_ROOT" with
+  match Env.get Env.String ~var:"RIOT_WORKSPACE_ROOT" with
   | Some root -> (
-      match Path.of_string root with
+      match Path.from_string root with
       | Ok root -> Some root
       | Error _ -> current_dir
     )
@@ -55,7 +55,7 @@ let derive_workspace_root = fun ~current_dir ~binary_path ->
       match binary_path with
       | None -> current_dir
       | Some path -> (
-          let segments = Path.components path |> List.map Path.to_string in
+          let segments = Path.components path |> List.map ~fn:Path.to_string in
           match find_segment_index segments "_build" with
           | Some 0 ->
               current_dir
@@ -64,7 +64,7 @@ let derive_workspace_root = fun ~current_dir ~binary_path ->
               | []
               | [ "." ] -> current_dir
               | prefix -> (
-                  match Path.of_string (join_path_segments prefix) with
+                  match Path.from_string (join_path_segments prefix) with
                   | Ok root -> Some root
                   | Error _ -> current_dir
                 )
@@ -139,10 +139,10 @@ let filter_tests = fun target tests ->
     | Test_case.Stable -> false
     | Test_case.Flaky _ -> true
   in
-  List.filter (fun test -> matches_query test && matches_size test && matches_flaky test) tests
+  List.filter tests ~fn:(fun test -> matches_query test && matches_size test && matches_flaky test)
 
 let shuffle_list = fun lst ->
-  let arr = Array.of_list lst in
+  let arr = Array.from_list lst in
   let len = Array.length arr in
   let shuffle_index i =
     let modulus = i + 1 in
@@ -154,11 +154,11 @@ let shuffle_list = fun lst ->
   in
   for i = len - 1 downto 1 do
     let j = shuffle_index i in
-    let temp = arr.(i) in
-    arr.(i) <- arr.(j);
-    arr.(j) <- temp
+    let temp = Array.get_unchecked arr ~at:i in
+    Array.set_unchecked arr ~at:i ~value:(Array.get_unchecked arr ~at:j);
+    Array.set_unchecked arr ~at:j ~value:temp
   done;
-  Array.to_list arr
+  Array.fold_right arr ~acc:[] ~fn:(fun item acc -> item :: acc)
 
 let render_exception_failure = fun exn ->
   let exn = Kernel.Exception.to_string exn in
@@ -301,12 +301,17 @@ let run_tests = fun ~config tests ->
   in
   let module R = (val config.reporter : Reporter.Intf) in
   R.init config.suite_info (List.length tests_to_run);
-  let results =
-    List.mapi
-      (fun i test ->
-        run_single_test config.reporter ~suite_info:config.suite_info ~policy:config.policy (i + 1) test)
-      tests_to_run
+  let rec run_all index = function
+    | [] -> []
+    | test :: rest -> run_single_test
+      config.reporter
+      ~suite_info:config.suite_info
+      ~policy:config.policy
+      index
+      test
+    :: run_all (index + 1) rest
   in
+  let results = run_all 1 tests_to_run in
   let summary = Test_result.make_summary results in
   R.finalize summary;
   summary

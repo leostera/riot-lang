@@ -1,6 +1,6 @@
 open Prelude
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 type error =
   | InvalidPort of { port: int }
@@ -49,11 +49,11 @@ let validate_port = fun port ->
 
 let socket_addr_of_pair = fun (ip_text, port) ->
   let* ip =
-    match Ip_addr.of_string ip_text with
+    match Ip_addr.from_string ip_text with
     | Result.Ok value -> Result.Ok value
     | Result.Error _ -> Result.Error (InvalidSocketAddr { ip = ip_text; port })
   in
-  match Socket_addr.of_parts ~ip ~port with
+  match Socket_addr.from_parts ~ip ~port with
   | Result.Ok addr -> Result.Ok addr
   | Result.Error _ -> Result.Error (InvalidSocketAddr { ip = ip_text; port })
 
@@ -66,16 +66,16 @@ let resolver_error_of_code = fun ~host code ->
   | value when value = resolver_error_resolution_failed ->
       ResolutionFailed { host }
   | other -> (
-      match System_error.of_code other with
+      match System_error.from_code other with
       | System_error.Unknown _ -> ResolutionFailed { host }
       | system_error -> System system_error
     )
 
 let resolve_literal = fun ~host ~port ->
-  match Ip_addr.of_string host with
+  match Ip_addr.from_string host with
   | Result.Error _ -> Result.Ok None
   | Result.Ok ip -> (
-      match Socket_addr.of_parts ~ip ~port with
+      match Socket_addr.from_parts ~ip ~port with
       | Result.Ok addr -> Result.Ok (Some [|addr|])
       | Result.Error _ -> Result.Error (InvalidPort { port })
     )
@@ -86,18 +86,18 @@ let resolve_all = fun ~kind ~host ~port ->
   match literal with
   | Some addrs -> Result.Ok addrs
   | None ->
-      let* raw_addrs = Result.map_error (resolver_error_of_code ~host) (FFI.resolve host port kind) in
+      let* raw_addrs = Result.map_err (FFI.resolve host port kind) ~fn:(resolver_error_of_code ~host) in
       if Array.length raw_addrs = 0 then
         Result.Error (NoAddressesFound { host; port })
       else
-        let* first_addr = socket_addr_of_pair (Array.get raw_addrs 0) in
-        let out = Array.make (Array.length raw_addrs) first_addr in
+        let* first_addr = socket_addr_of_pair (Array.get_unchecked raw_addrs ~at:0) in
+        let out = Array.make ~count:(Array.length raw_addrs) ~value:first_addr in
         let rec build index =
           if index >= Array.length raw_addrs then
             Result.Ok out
           else
-            let* addr = socket_addr_of_pair (Array.get raw_addrs index) in
-            Array.set out index addr;
+            let* addr = socket_addr_of_pair (Array.get_unchecked raw_addrs ~at:index) in
+            Array.set out ~at:index ~value:addr;
             build (index + 1)
         in
         build 0
@@ -106,10 +106,10 @@ let resolve_stream = fun ~host ~port -> resolve_all ~kind:resolver_kind_stream ~
 
 let resolve_first_stream = fun ~host ~port ->
   let* addrs = resolve_stream ~host ~port in
-  Result.Ok (Array.get addrs 0)
+  Result.Ok (Array.get_unchecked addrs ~at:0)
 
 let resolve_datagram = fun ~host ~port -> resolve_all ~kind:resolver_kind_datagram ~host ~port
 
 let resolve_first_datagram = fun ~host ~port ->
   let* addrs = resolve_datagram ~host ~port in
-  Result.Ok (Array.get addrs 0)
+  Result.Ok (Array.get_unchecked addrs ~at:0)

@@ -95,7 +95,7 @@ val kill: t -> signal:int -> (unit, error) Result.t
 (** Use `execv program argv` to replace the current process image immediately.
 
     On success it does not return. On failure it returns the underlying system error. *)
-val execv: string -> string array -> (unit, Kernel.SystemError.t) Result.t
+val execv: program:string -> args:string array -> (unit, Kernel.SystemError.t) Result.t
 
 (** Use `close process` to close owned pipe handles without discarding exit observation through
     `try_wait` or `to_source`. *)

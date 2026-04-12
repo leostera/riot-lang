@@ -14,18 +14,17 @@
     ```
 *)
 
-open Kernel
-
-(** Re-export of the core actor API from [Runtime.Actor]. *)
-include module type of Runtime.Actor
-
 open Global
 
 (** Returns the current actor identifier. *)
 val self: unit -> Pid.t
 
+include module type of Runtime.Actor
+
+val self: unit -> Pid.t
+
 (** Spawns a new unlinked actor that runs the given function. *)
-val spawn: (unit -> (unit, exit_reason) result) -> Pid.t
+val spawn: (unit -> (unit, Runtime.Actor.exit_reason) result) -> Pid.t
 
 (** Spawns a new actor linked to the current actor. *)
-val spawn_link: (unit -> (unit, exit_reason) result) -> Pid.t
+val spawn_link: (unit -> (unit, Runtime.Actor.exit_reason) result) -> Pid.t

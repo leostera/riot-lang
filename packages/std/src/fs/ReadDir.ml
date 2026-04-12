@@ -46,7 +46,7 @@ let create = fun path ->
   | Error error -> Error (of_read_dir_error error)
 
 let create_string = fun path_string ->
-  match Path.of_string path_string with
+  match Path.from_string path_string with
   | Ok path -> create path
   | Error (Path.InvalidUtf8 { path }) -> Error (IO.Unknown_error ("invalid UTF-8 path: " ^ path))
   | Error (Path.SystemInvalidUtf8 { syscall; path }) -> Error (IO.Unknown_error ("invalid UTF-8 path from "
@@ -82,7 +82,7 @@ let next_raw_entry = fun dir ->
 let rec next_entry = fun dir ->
   match next_raw_entry dir with
   | Some entry -> (
-      match Path.of_string entry.name with
+      match Path.from_string entry.name with
       | Ok path -> Some { path; kind = entry.kind }
       | Error _ -> next_entry dir
     )

@@ -75,14 +75,12 @@ let init = fun ~owner ~concurrency ~tasks ~result_ref ~fn () ->
     send owner (TaskResult { idx; result; result_ref })
   in
   (* Start dynamic pool with indexed tasks *)
-  let indexed_tasks =
-    List.mapi (fun idx task -> (idx, task)) tasks
+  let indexed_tasks, _ =
+    List.fold_left tasks ~acc:([], 0) ~fn:(fun (acc, idx) task -> ((idx, task) :: acc, idx + 1))
   in
+  let indexed_tasks = List.reverse indexed_tasks in
   let task_queue = Queue.create () in
-  List.iter
-    (fun t ->
-      Queue.push task_queue t)
-    indexed_tasks;
+  List.for_each indexed_tasks ~fn:(fun t -> Queue.push task_queue ~value:t);
   let results = [] in
   let pool = Dynamic.start ~concurrency ~owner:dispatcher_self ~worker_fn () in
   loop

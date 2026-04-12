@@ -2,8 +2,7 @@
 
 (* Unicode Version: 15.0.0 *)
 
-open Global
-open Kernel
+open Prelude
 open Collections
 
 (** Range of 16-bit Unicode code points *)
@@ -47,7 +46,7 @@ let in_table: range_table -> int -> bool = fun tbl code ->
           false
         else
           let mid = (lo + hi) / 2 in
-          let range = tbl.r16.(mid) in
+          let range = Array.get_unchecked tbl.r16 ~at:mid in
           if code < range.lo then
             search lo (mid - 1)
           else if code > range.hi then
@@ -69,7 +68,7 @@ let in_table: range_table -> int -> bool = fun tbl code ->
           false
         else
           let mid = (lo + hi) / 2 in
-          let range = tbl.r32.(mid) in
+          let range = Array.get_unchecked tbl.r32 ~at:mid in
           if code < range.lo then
             search lo (mid - 1)
           else if code > range.hi then
@@ -547,7 +546,6 @@ let _cn = {
     { lo = 0x0ee0; hi = 0x0eff; stride = 1 };
     { lo = 0x0f48; hi = 0x0f6d; stride = 37 };
     { lo = 0x0f6e; hi = 0x0f70; stride = 1 };
-    { lo = 0x0f98; hi = 0x0fbd; stride = 37 };
     { lo = 0x0fcd; hi = 0x0fdb; stride = 14 };
     { lo = 0x0fdc; hi = 0x0fff; stride = 1 };
     { lo = 0x10c6; hi = 0x10c8; stride = 2 };

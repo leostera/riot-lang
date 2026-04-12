@@ -34,28 +34,33 @@ let parse_format = function
   | "compact" -> Compact
   | _ -> Full
 
+let find_field = fun key fields ->
+  List.find fields
+    ~fn:(fun (field_name, _value) ->
+      String.equal field_name key) |> Option.map ~fn:(fun (_field_name, value) -> value)
+
 let get = fun conf ->
   let handlers_list = get_list conf "handler" in
   let handlers =
-    List.map
-      (fun handler_value ->
+    List.map handlers_list
+      ~fn:(fun handler_value ->
         let (_disc, variant, fields) = as_discriminated_union handler_value in
         match variant with
         | "stdout" ->
             let format =
-              match List.assoc_opt "format" fields with
+              match find_field "format" fields with
               | Some (Spec.String s) -> parse_format s
               | _ -> Full
             in
             Stdout { format }
         | "file" ->
             let path =
-              match List.assoc_opt "path" fields with
+              match find_field "path" fields with
               | Some (Spec.String p) -> p
               | _ -> panic "file handler requires path (this should not happen - spec should enforce it)"
             in
             let format =
-              match List.assoc_opt "format" fields with
+              match find_field "format" fields with
               | Some (Spec.String s) -> parse_format s
               | _ -> Full
             in
@@ -63,6 +68,5 @@ let get = fun conf ->
         | _ ->
             panic
               ("Unknown handler type: " ^ variant ^ " (this should not happen - spec should enforce it)"))
-      handlers_list
   in
   Ok { handlers }

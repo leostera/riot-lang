@@ -59,7 +59,7 @@ let to_string = fun t ->
   let parts =
     match t.line with
     | None -> parts
-    | Some l -> ("line=" ^ string_of_int l) :: parts
+    | Some l -> ("line=" ^ Int.to_string l) :: parts
   in
   let parts =
     match t.pid with

@@ -1,3 +1,5 @@
+(* FIXME: move this module into Std.Process.Command *)
+
 (** # Command - Process spawning and management
 
     This module provides a safe, composable API for spawning and managing

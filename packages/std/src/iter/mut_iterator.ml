@@ -67,7 +67,7 @@ let clone: type item. item t -> item t = fun (Iter ((module Iter), state)) ->
 let rec collect = fun iter acc ->
   match next iter with
   | Some item -> collect iter (item :: acc)
-  | None -> List.rev acc
+  | None -> List.reverse acc
 
 let to_list = fun iter -> collect iter []
 
@@ -79,8 +79,7 @@ let map: type a b. a t -> fn:(a -> b) -> b t = fun iter ~fn ->
 
     type item = b
 
-    let next = fun state ->
-      Option.map fn (iter_next state)
+    let next = fun state -> Option.map (iter_next state) ~fn
 
     let size = fun state -> size state
 
@@ -155,7 +154,8 @@ let flat_map: type a b. a t -> fn:(a -> b t) -> b t = fun iter ~fn ->
 
     let size = fun state -> size state.outer
 
-    let clone = fun state -> { outer = clone state.outer; current = Option.map clone state.current }
+    let clone = fun state ->
+      { outer = clone state.outer; current = Option.map state.current ~fn:clone }
   end in
   make (module FlatMapIter) { outer = iter; current = None }
 

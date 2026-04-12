@@ -29,24 +29,21 @@ type summary = {
 
 let make_summary = fun results ->
   let total = List.length results in
-  let passed = List.filter (fun r -> r.result = Passed) results |> List.length in
+  let passed = List.filter results ~fn:(fun r -> r.result = Passed) |> List.length in
   let failed =
-    List.filter
-      (fun r ->
+    List.filter results
+      ~fn:(fun r ->
         match r.result with
         | Failed _
         | Timed_out _ -> true
         | _ -> false)
-      results
     |> List.length
   in
-  let skipped = List.filter (fun r -> r.result = Skipped) results |> List.length in
+  let skipped = List.filter results ~fn:(fun r -> r.result = Skipped) |> List.length in
   let duration =
-    List.fold_left
-      (fun acc (result: t) ->
+    List.fold_left results ~acc:Time.Duration.zero
+      ~fn:(fun acc (result: t) ->
         Time.Duration.add acc result.duration)
-      Time.Duration.zero
-      results
   in
   {
     total;

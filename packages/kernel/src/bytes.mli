@@ -1,25 +1,33 @@
+open Prelude
+
 type t = bytes
-val create: int -> t
+type error =
+  | OutOfBoundSet of { bytes: bytes; lenght: int; at: int; char: char }
+val create: size:int -> t
 
 val length: t -> int
 
-val get: t -> int -> char
+val get: t -> at:int -> char option
 
-val set: t -> int -> char -> unit
+val get_unchecked: t -> at:int -> char
 
-val blit: t -> int -> t -> int -> int -> unit
+val set: t -> at:int -> char:char -> (unit, error) result
 
-val fill: t -> int -> int -> char -> unit
+val set_unchecked: t -> at:int -> char:char -> unit
 
-(** Use `of_string value` to copy `value` into fresh mutable bytes. *)
-val of_string: string -> t
+val blit: t -> src_offset:int -> dst:t -> dst_offset:int -> len:int -> (unit, error) result
+
+val blit_unchecked: t -> src_offset:int -> dst:t -> dst_offset:int -> len:int -> unit
+
+val fill: t -> offset:int -> len:int -> char:char -> unit
+
+(** Use `from_string value` to copy `value` into fresh mutable bytes. *)
+val from_string: string -> t
 
 (** Use `to_string value` to copy `value` into a fresh immutable string. *)
 val to_string: t -> string
 
 (** Use `sub value offset len` to copy the selected byte slice into fresh mutable bytes. *)
-val sub: t -> int -> int -> t
+val sub: t -> offset:int -> len:int -> (t, error) result
 
-(** Use `sub_string value offset len` to copy the selected byte slice into a fresh immutable
-    string. *)
-val sub_string: t -> int -> int -> string
+val sub_unchecked: t -> offset:int -> len:int -> t

@@ -1,6 +1,6 @@
+module Cell = Sync.Cell
 open Kernel
-open Sync
-module Array = Stdlib.Array
+module Array = Kernel.Array
 
 type 'a t = {
   mutable data: 'a array;
@@ -14,7 +14,7 @@ let create = fun () -> create_with ~compare ()
 
 let create_max = fun () -> create_with ~compare:(fun a b -> compare b a) ()
 
-let size = fun heap -> heap.size
+let length = fun heap -> heap.size
 
 let is_empty = fun heap -> heap.size = 0
 
@@ -30,8 +30,8 @@ let ensure_capacity = fun heap ->
         else
           len * 2
       in
-      let new_data = Array.make new_len heap.data.(0) in
-      Array.blit heap.data 0 new_data 0 heap.size;
+      let new_data = Array.make ~count:new_len ~value:(Array.get_unchecked heap.data ~at:0) in
+      Array.blit heap.data ~src_offset:0 ~dst:new_data ~dst_offset:0 ~len:heap.size;
       heap.data <- new_data
     )
 
@@ -42,14 +42,14 @@ let left = fun i -> (2 * i) + 1
 let right = fun i -> (2 * i) + 2
 
 let swap = fun heap i j ->
-  let temp = heap.data.(i) in
-  heap.data.(i) <- heap.data.(j);
-  heap.data.(j) <- temp
+  let temp = Array.get_unchecked heap.data ~at:i in
+  Array.set_unchecked heap.data ~at:i ~value:(Array.get_unchecked heap.data ~at:j);
+  Array.set_unchecked heap.data ~at:j ~value:temp
 
 let rec sift_up = fun heap i ->
   if i > 0 then
     let p = parent i in
-    if heap.compare heap.data.(i) heap.data.(p) < 0 then
+    if heap.compare (Array.get_unchecked heap.data ~at:i) (Array.get_unchecked heap.data ~at:p) < 0 then
       (
         swap heap i p;
         sift_up heap p
@@ -59,9 +59,21 @@ let rec sift_down = fun heap i ->
   let l = left i in
   let r = right i in
   let smallest = Cell.create i in
-  if l < heap.size && heap.compare heap.data.(l) heap.data.(Cell.get smallest) < 0 then
+  if
+    l < heap.size
+    && heap.compare
+      (Array.get_unchecked heap.data ~at:l)
+      (Array.get_unchecked heap.data ~at:(Cell.get smallest))
+    < 0
+  then
     Cell.set smallest l;
-  if r < heap.size && heap.compare heap.data.(r) heap.data.(Cell.get smallest) < 0 then
+  if
+    r < heap.size
+    && heap.compare
+      (Array.get_unchecked heap.data ~at:r)
+      (Array.get_unchecked heap.data ~at:(Cell.get smallest))
+    < 0
+  then
     Cell.set smallest r;
   let smallest_val = Cell.get smallest in
   if smallest_val != i then
@@ -70,12 +82,12 @@ let rec sift_down = fun heap i ->
       sift_down heap smallest_val
     )
 
-let push = fun heap value ->
+let push = fun heap ~value ->
   if heap.size = 0 then
-    heap.data <- Array.make 8 value
+    heap.data <- Array.make ~count:8 ~value
   else
     ensure_capacity heap;
-  heap.data.(heap.size) <- value;
+  Array.set_unchecked heap.data ~at:heap.size ~value;
   sift_up heap heap.size;
   heap.size <- heap.size + 1
 
@@ -83,49 +95,55 @@ let peek = fun heap ->
   if heap.size = 0 then
     None
   else
-    Some heap.data.(0)
+    Some (Array.get_unchecked heap.data ~at:0)
 
-let peek_exn = fun heap ->
+let peek_unchecked = fun heap ->
   if heap.size = 0 then
-    raise Not_found
+    Kernel.SystemError.panic "Heap.peek_unchecked called on an empty heap"
   else
-    heap.data.(0)
+    Array.get_unchecked heap.data ~at:0
 
 let pop = fun heap ->
   if heap.size = 0 then
     None
   else
-    let result = heap.data.(0) in
+    let result = Array.get_unchecked heap.data ~at:0 in
     heap.size <- heap.size - 1;
     if heap.size > 0 then
       (
-        heap.data.(0) <- heap.data.(heap.size);
+        Array.set_unchecked heap.data ~at:0 ~value:(Array.get_unchecked heap.data ~at:heap.size);
         sift_down heap 0
       );
     Some result
 
-let pop_exn = fun heap ->
+let pop_unchecked = fun heap ->
   match pop heap with
   | Some v -> v
-  | None -> raise Not_found
+  | None -> Kernel.SystemError.panic "Heap.pop_unchecked called on an empty heap"
 
 let heapify = fun heap ->
   for i = (heap.size / 2) - 1 downto 0 do
     sift_down heap i
   done
 
-let of_list_with = fun ~compare list ->
+let from_list_with = fun ~compare list ->
   match list with
   | [] -> create_with ~compare ()
   | first :: rest ->
       let len = List.length list in
-      let data = Array.make len first in
-      List.iteri (fun i x -> data.(i) <- x) list;
+      let data = Array.make ~count:len ~value:first in
+      let rec fill index = function
+        | [] -> ()
+        | value :: rest ->
+            Array.set_unchecked data ~at:index ~value;
+            fill (index + 1) rest
+      in
+      fill 0 list;
       let heap = { data; size = len; compare } in
       heapify heap;
       heap
 
-let of_list = fun list -> of_list_with ~compare list
+let from_list = fun list -> from_list_with ~compare list
 
 let to_list = fun heap ->
   let result = Cell.create [] in
@@ -134,32 +152,32 @@ let to_list = fun heap ->
     | Some x -> Cell.set result (x :: Cell.get result)
     | None -> ()
   done;
-  List.rev (Cell.get result)
+  List.reverse (Cell.get result)
 
 let to_list_unordered = fun heap ->
   let result = Cell.create [] in
   for i = heap.size - 1 downto 0 do
-    Cell.set result (heap.data.(i) :: Cell.get result)
+    Cell.set result (Array.get_unchecked heap.data ~at:i :: Cell.get result)
   done;
   Cell.get result
 
-let iter = fun f heap ->
+let for_each = fun heap ~fn ->
   while heap.size > 0 do
     match pop heap with
-    | Some x -> f x
+    | Some x -> fn x
     | None -> ()
   done
 
-let fold = fun f acc heap ->
+let fold_left = fun heap ~acc ~fn ->
   let result = Cell.create acc in
   while heap.size > 0 do
     match pop heap with
-    | Some x -> Cell.set result (f (Cell.get result) x)
+    | Some x -> Cell.set result (fn (Cell.get result) x)
     | None -> ()
   done;
   Cell.get result
 
-let into_iter: type item. item t -> item Iter.Iterator.t = fun heap ->
+let iter: type item. item t -> item Iter.Iterator.t = fun heap ->
   let module HeapIter = struct
     type state = item t
 
@@ -172,10 +190,10 @@ let into_iter: type item. item t -> item Iter.Iterator.t = fun heap ->
 
     let size = fun state -> state.size
   end in
-  let heap_copy = { data = Array.copy heap.data; size = heap.size; compare = heap.compare } in
+  let heap_copy = { data = Array.clone heap.data; size = heap.size; compare = heap.compare } in
   Iter.Iterator.make (module HeapIter) heap_copy
 
-let to_mut_iter: type item. item t -> item Iter.MutIterator.t = fun heap ->
+let mut_iter: type item. item t -> item Iter.MutIterator.t = fun heap ->
   let module HeapIter = struct
     type state = item t
 
@@ -186,6 +204,6 @@ let to_mut_iter: type item. item t -> item Iter.MutIterator.t = fun heap ->
     let size = fun state -> state.size
 
     let clone = fun state ->
-      { data = Array.copy state.data; size = state.size; compare = state.compare }
+      { data = Array.clone state.data; size = state.size; compare = state.compare }
   end in
   Iter.MutIterator.make (module HeapIter) heap

@@ -47,23 +47,26 @@ let of_host_and_port_datagram = fun ~host ~port ->
 let split_host_port = fun value ->
   if String.length value = 0 then
     None
-  else if String.get value 0 = '[' then
-    match String.index value ']' with
+  else if String.get_unchecked value ~at:0 = '[' then
+    match String.index_of value ~char:']' with
     | None -> None
     | Some close_index ->
-        if close_index + 1 >= String.length value || String.get value (close_index + 1) != ':' then
+        if
+          close_index + 1 >= String.length value
+          || String.get_unchecked value ~at:(close_index + 1) != ':'
+        then
           None
         else
           Some (
-            String.sub value 1 (close_index - 1),
-            String.sub value (close_index + 2) (String.length value - close_index - 2)
+            String.sub value ~offset:1 ~len:(close_index - 1),
+            String.sub value ~offset:(close_index + 2) ~len:(String.length value - close_index - 2)
           )
   else
     match String.last_index value ':' with
     | None -> None
     | Some index -> Some (
-      String.sub value 0 index,
-      String.sub value (index + 1) (String.length value - index - 1)
+      String.sub value ~offset:0 ~len:index,
+      String.sub value ~offset:(index + 1) ~len:(String.length value - index - 1)
     )
 
 let parse_port = fun value ->

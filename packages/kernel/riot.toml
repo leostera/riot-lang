@@ -26,7 +26,6 @@ cc_flags = []
 ld_flags = [ "-lpcre2-8" ]
 
 [dependencies]
-stdlib = "*"
 
 [dev-dependencies]
 std = { path = "../std", version = "*" }

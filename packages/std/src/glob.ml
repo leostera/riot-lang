@@ -29,14 +29,14 @@ let make_parse_error = fun input ?offset message -> Error ({ input; message; off
 let flush_literal = fun literal acc ->
   match literal with
   | [] -> acc
-  | parts -> Literal (parts |> List.rev |> String.concat "") :: acc
+  | parts -> Literal (parts |> List.reverse |> String.concat "") :: acc
 
 let parse_char_class = fun input ~offset ->
   let len = String.length input in
   let index = ref (offset + 1) in
   let negated =
     if !index < len then
-      match input.[!index] with
+      match String.get_unchecked input ~at:!index with
       | '!'
       | '^' ->
           index := !index + 1;
@@ -53,10 +53,10 @@ let parse_char_class = fun input ~offset ->
     if !index >= len then
       None
     else
-      let ch = input.[!index] in
+      let ch = String.get_unchecked input ~at:!index in
       index := !index + 1;
       if Char.equal ch '\\' && !index < len then
-        let escaped = input.[!index] in
+        let escaped = String.get_unchecked input ~at:!index in
         index := !index + 1;
         Some escaped
       else
@@ -65,7 +65,7 @@ let parse_char_class = fun input ~offset ->
   let rec loop pending =
     if !index >= len then
       make_parse_error input ~offset "Unterminated character class"
-    else if Char.equal input.[!index] ']' then
+    else if Char.equal (String.get_unchecked input ~at:!index) ']' then
       (
         index := !index + 1;
         let items =
@@ -73,14 +73,14 @@ let parse_char_class = fun input ~offset ->
           | Some ch -> Regex.Single ch :: !items
           | None -> !items
         in
-        Ok (Char_class { negated; items = List.rev items }, !index)
+        Ok (Char_class { negated; items = List.reverse items }, !index)
       )
     else
       match read_char () with
       | None -> make_parse_error input ~offset "Unterminated character class"
       | Some ch -> (
           match pending with
-          | Some left when !index < len && Char.equal input.[!index] '-' -> (
+          | Some left when !index < len && Char.equal (String.get_unchecked input ~at:!index) '-' -> (
               if !index + 1 >= len then
                 (
                   push (Regex.Single left);
@@ -109,9 +109,9 @@ let from_string = fun input ->
   let len = String.length input in
   let rec loop index literal acc =
     if index >= len then
-      Ok (List.rev (flush_literal literal acc))
+      Ok (List.reverse (flush_literal literal acc))
     else
-      match input.[index] with
+      match String.get_unchecked input ~at:index with
       | '/' ->
           let acc = flush_literal literal acc in
           loop (index + 1) [] (Separator :: acc)
@@ -124,7 +124,7 @@ let from_string = fun input ->
           if next_index >= len then
             loop next_index [] (Wildcard :: acc)
           else
-            let next_char = input.[next_index] in
+            let next_char = String.get_unchecked input ~at:next_index in
             if Char.equal next_char '*' then
               loop (index + 2) [] (Recursive_wildcard :: acc)
             else
@@ -141,15 +141,18 @@ let from_string = fun input ->
           if next_index >= len then
             make_parse_error input ~offset:index "Trailing escape in glob"
           else
-            loop (index + 2) (String.make 1 input.[next_index] :: literal) acc
+            loop
+              (index + 2)
+              (String.make ~len:1 ~char:(String.get_unchecked input ~at:next_index) :: literal)
+              acc
       | ch ->
-          loop (index + 1) (String.make 1 ch :: literal) acc
+          loop (index + 1) (String.make ~len:1 ~char:ch :: literal) acc
   in
   loop 0 [] []
 
 let from_strings = fun patterns ->
   let rec loop acc = function
-    | [] -> Ok (List.rev acc)
+    | [] -> Ok (List.reverse acc)
     | input :: rest -> (
         match from_string input with
         | Error _ as err -> err
@@ -160,7 +163,7 @@ let from_strings = fun patterns ->
 
 let optimize = fun glob ->
   let rec loop acc = function
-    | [] -> List.rev acc
+    | [] -> List.reverse acc
     | Literal left :: Literal right :: rest -> loop acc (Literal (left ^ right) :: rest)
     | item :: rest -> loop (item :: acc) rest
   in
@@ -174,7 +177,7 @@ let recursive_prefix = Regex.zero_or_more (Regex.seq [ non_empty_segment; Regex.
 
 let body_to_regex = fun glob ->
   let rec lower acc = function
-    | [] -> Regex.seq (List.rev acc)
+    | [] -> Regex.seq (List.reverse acc)
     | Recursive_wildcard :: Separator :: rest -> lower (recursive_prefix :: acc) rest
     | Literal value :: rest -> lower (Regex.literal value :: acc) rest
     | Separator :: rest -> lower (Regex.literal "/" :: acc) rest
@@ -186,7 +189,7 @@ let body_to_regex = fun glob ->
   glob |> optimize |> lower []
 
 let to_regex_set = fun globs ->
-  match List.map body_to_regex globs with
+  match List.map globs ~fn:body_to_regex with
   | [] -> Regex.seq
     [ Regex.start_of_text; Regex.literal "\000riot-empty-globset"; Regex.end_of_text ]
   | [ body ] -> Regex.seq [ Regex.start_of_text; body; Regex.end_of_text ]

@@ -3,15 +3,16 @@ module Runtime_pid = Pid
 module Runtime_scheduler_id = Scheduler_id
 module Runtime_timer = Timer
 module Std_io = IO
+module Cell = Sync.Cell
 open Kernel
 open Collections
 open Sync
-open Sync.Cell
+open Cell
 open Scheduler_types
 
 let panic = Kernel.SystemError.panic
 
-let eprintln = Stdlib.prerr_endline
+let eprintln = fun _message -> ()
 
 type process_slot = Scheduler_types.process_slot
 
@@ -51,13 +52,15 @@ let create_counters (): runtime_counters = {
   duplicate_enqueue_races = Atomic.make 0
 }
 
-let increment = fun counter -> ignore (Atomic.fetch_and_add counter 1)
+let increment = fun counter ->
+  let _ = Atomic.fetch_and_add counter 1 in
+  ()
 
 let monotonic_time_nanos = fun () ->
   match Kernel.Time.Monotonic.now () with
   | Ok time ->
       let secs, nanos = Kernel.Time.Monotonic.to_parts time in
-      Int64.add (Int64.mul (Int64.of_int secs) 1_000_000_000L) (Int64.of_int nanos)
+      Int64.add (Int64.mul (Int64.from_int secs) 1_000_000_000L) (Int64.from_int nanos)
   | Error err -> panic (Kernel.Time.Monotonic.error_to_string err)
 
 let trace = fun msg ->
@@ -159,8 +162,8 @@ let create_process_registry = fun worker_count ->
   let shard_count = process_shard_count worker_count in
   let shards =
     Array.init
-      shard_count
-      (fun _ -> { lock = Mutex.create (); processes = HashMap.with_capacity 64 })
+      ~count:shard_count
+      ~fn:(fun _ -> { lock = Mutex.create (); processes = HashMap.with_capacity ~size:64 })
   in
   { shards; size = Atomic.make 0 }
 
@@ -208,7 +211,7 @@ let take_slot_pending = fun slot ->
 
 let shard_for_pid = fun registry pid ->
   let idx = Runtime_pid.to_int pid mod Array.length registry.shards in
-  registry.shards.(idx)
+  Array.get_unchecked registry.shards ~at:idx
 
 let with_process_shard = fun registry pid f ->
   let shard = shard_for_pid registry pid in
@@ -228,7 +231,9 @@ let create = fun ~config ->
       let timer_wheel = Timer_wheel.create ~config in
       let worker_count = default_worker_count config in
       let workers =
-        Array.init worker_count (fun index -> create_worker (Runtime_scheduler_id.of_int index))
+        Array.init
+          ~count:worker_count
+          ~fn:(fun index -> create_worker (Runtime_scheduler_id.of_int index))
       in
       {
         stop = Atomic.make false;
@@ -252,7 +257,7 @@ let create = fun ~config ->
       panic "Failed to create I/O polling system"
 
 let get_context = fun () ->
-  match Domain.DLS.get current_context with
+  match Thread.DLS.get current_context with
   | None -> panic "No scheduler running"
   | Some ctx -> ctx
 
@@ -266,7 +271,8 @@ let self = fun () ->
 
 let worker_count = fun t -> Array.length t.workers
 
-let worker_by_id = fun t worker_id -> t.workers.(Runtime_scheduler_id.to_int worker_id)
+let worker_by_id = fun t worker_id ->
+  Array.get_unchecked t.workers ~at:(Runtime_scheduler_id.to_int worker_id)
 
 let is_valid_worker_id = fun t worker_id ->
   let idx = Runtime_scheduler_id.to_int worker_id in
@@ -313,19 +319,17 @@ let request_shutdown = fun t ~status ->
             Int.to_string counters.duplicate_enqueue_races
           ]
       );
-  Array.iter
-    (fun (worker: worker) ->
+  Array.for_each t.workers
+    ~fn:(fun (worker: worker) ->
       Mutex.lock worker.lock;
       Condition.broadcast worker.cond;
-      Mutex.unlock worker.lock)
-    t.workers;
+      Mutex.unlock worker.lock);
   Mutex.lock t.blocking_lanes_lock;
-  List.iter
-    (fun (lane: blocking_lane) ->
+  List.for_each t.blocking_lanes
+    ~fn:(fun (lane: blocking_lane) ->
       Mutex.lock lane.lock;
       Condition.broadcast lane.cond;
-      Mutex.unlock lane.lock)
-    t.blocking_lanes;
+      Mutex.unlock lane.lock);
   Mutex.unlock t.blocking_lanes_lock
 
 let shutdown = fun t ~status -> request_shutdown t ~status
@@ -338,7 +342,7 @@ let enqueue_on_worker = fun t worker_id slot ->
       (
         let worker = worker_by_id t worker_id in
         Mutex.lock worker.lock;
-        Queue.push worker.queue slot;
+        Queue.push worker.queue ~value:slot;
         Condition.signal worker.cond;
         Mutex.unlock worker.lock
       )
@@ -383,7 +387,7 @@ let enqueue_owned_process = fun t slot ->
       enqueue_on_worker t worker_id slot
 
 let current_worker_id_opt = fun () ->
-  match Domain.DLS.get current_context with
+  match Thread.DLS.get current_context with
   | Some { worker_id; _ } -> worker_id
   | None -> None
 
@@ -416,9 +420,7 @@ let wake_process_from_message = fun t slot ->
     )
 
 let get_process_slot = fun t pid ->
-  with_process_shard t.processes pid
-    (fun shard ->
-      HashMap.get shard.processes pid)
+  with_process_shard t.processes pid (fun shard -> HashMap.get shard.processes ~key:pid)
 
 let get_process = fun t pid ->
   match get_process_slot t pid with
@@ -429,16 +431,22 @@ let add_process_slot = fun t slot ->
   let pid = slot_pid slot in
   with_process_shard t.processes pid
     (fun shard ->
-      let replaced = HashMap.insert shard.processes pid slot in
+      let replaced = HashMap.insert shard.processes ~key:pid ~value:slot in
       if Option.is_none replaced then
-        ignore (Atomic.fetch_and_add t.processes.size 1))
+        (
+          let _ = Atomic.fetch_and_add t.processes.size 1 in
+          ()
+        ))
 
 let remove_process_slot = fun t pid ->
   with_process_shard t.processes pid
     (fun shard ->
-      let removed = HashMap.remove shard.processes pid in
+      let removed = HashMap.remove shard.processes ~key:pid in
       if Option.is_some removed then
-        ignore (Atomic.fetch_and_add t.processes.size (-1)))
+        (
+          let _ = Atomic.fetch_and_add t.processes.size (-1) in
+          ()
+        ))
 
 let process_count = fun t -> Atomic.get t.processes.size
 
@@ -447,16 +455,14 @@ let maybe_shutdown_if_empty = fun t ->
     request_shutdown t ~status:(Atomic.get t.status)
 
 let push_reactor_command = fun t cmd ->
-  with_reactor_commands t
-    (fun () ->
-      Queue.push t.reactor_commands cmd)
+  with_reactor_commands t (fun () -> Queue.push t.reactor_commands ~value:cmd)
 
 let drain_reactor_commands = fun t ->
   with_reactor_commands t
     (fun () ->
       let rec drain acc =
         match Queue.pop t.reactor_commands with
-        | None -> List.rev acc
+        | None -> List.reverse acc
         | Some cmd -> drain (cmd :: acc)
       in
       drain [])
@@ -606,7 +612,7 @@ let install_receive_timeout = fun t proc secs ->
   | Some _ -> ()
   | None ->
       let now = monotonic_time_nanos () in
-      let duration_nanos = Int64.of_float (secs *. 1_000_000_000.0) in
+      let duration_nanos = Int64.from_float (secs *. 1_000_000_000.0) in
       let timer_id = add_timer
         t
         ~now
@@ -620,7 +626,7 @@ let install_syscall_timeout = fun t proc secs ->
   | Some _ -> ()
   | None ->
       let now = monotonic_time_nanos () in
-      let duration_nanos = Int64.of_float (secs *. 1_000_000_000.0) in
+      let duration_nanos = Int64.from_float (secs *. 1_000_000_000.0) in
       let timer_id = add_timer
         t
         ~now
@@ -645,10 +651,11 @@ let handle_receive = fun k t proc ~selector ~timeout ->
       if Runtime_process.try_mark_awaiting_message proc then
         if Runtime_process.has_empty_mailbox proc then
           k Suspend
-        else (
-          ignore (Runtime_process.try_mark_runnable_from_waiting_message proc);
-          k Delay
-        )
+        else
+          (
+            let _ = Runtime_process.try_mark_runnable_from_waiting_message proc in
+            k Delay
+          )
       else
         k Delay
     in
@@ -777,8 +784,8 @@ let handle_exit_proc = fun t proc reason ->
   let pid = Runtime_process.pid proc in
   with_relations_lock t
     (fun () ->
-      List.iter
-        (fun ((monitor_pid, monitor_ref)) ->
+      List.for_each (Runtime_process.get_monitored_by proc)
+        ~fn:(fun (monitor_pid, monitor_ref) ->
           match get_process_slot t monitor_pid with
           | None -> ()
           | Some monitor_slot ->
@@ -787,18 +794,16 @@ let handle_exit_proc = fun t proc reason ->
               Runtime_process.send_message
                 monitor_proc
                 (Runtime_process.Messages.DOWN { ref = monitor_ref; pid; reason });
-              wake_process t monitor_slot)
-        (Runtime_process.get_monitored_by proc);
-      List.iter
-        (fun ((monitor_ref, monitored_pid)) ->
+              wake_process t monitor_slot);
+      List.for_each (Runtime_process.get_monitors proc)
+        ~fn:(fun (monitor_ref, monitored_pid) ->
           match get_process_slot t monitored_pid with
           | None -> ()
           | Some monitored_slot ->
               let monitored_proc = slot_process monitored_slot in
-              Runtime_process.remove_monitored_by monitored_proc pid monitor_ref)
-        (Runtime_process.get_monitors proc);
-      List.iter
-        (fun linked_pid ->
+              Runtime_process.remove_monitored_by monitored_proc pid monitor_ref);
+      List.for_each (Runtime_process.get_links proc)
+        ~fn:(fun linked_pid ->
           match get_process_slot t linked_pid with
           | None -> ()
           | Some linked_slot ->
@@ -816,8 +821,7 @@ let handle_exit_proc = fun t proc reason ->
                 | Ok () -> ()
                 | Error exn ->
                     Runtime_process.mark_as_exited linked_proc (Error exn);
-                    enqueue_owned_process t linked_slot)
-        (Runtime_process.get_links proc));
+                    enqueue_owned_process t linked_slot));
   (
     match Runtime_process.state proc with
     | Waiting_io { source; _ } ->
@@ -960,7 +964,7 @@ let spawn_blocked = fun t fn ->
   let lane = { lock = Mutex.create (); cond = Condition.create (); domain = None } in
   let ctx = { scheduler = t; worker_id = None; current_process = None } in
   let rec blocking_loop () =
-    Domain.DLS.set current_context (Some ctx);
+    Thread.DLS.set current_context (Some ctx);
     step_process t ctx slot;
     let rec loop () =
       if Atomic.get t.stop || not (Runtime_process.is_alive proc) then
@@ -977,7 +981,7 @@ let spawn_blocked = fun t fn ->
   in
   set_slot_blocking_lane slot lane;
   add_process_slot t slot;
-  let domain = Domain.spawn blocking_loop in
+  let domain = Thread.spawn blocking_loop in
   lane.domain <- Some domain;
   add_blocking_lane t lane;
   slot_pid slot
@@ -1012,14 +1016,14 @@ let wait_for_local_work = fun t (worker: worker) ->
 
 let steal_batch = fun (victim: worker) ->
   Mutex.lock victim.lock;
-  let available = Queue.len victim.queue in
+  let available = Queue.length victim.queue in
   let steal_goal = min 32 (available / 2) in
   let rec scan remaining wanted stolen kept =
     if remaining = 0 then
-      (List.rev stolen, List.rev kept)
+      (List.reverse stolen, List.reverse kept)
     else
       match Queue.pop victim.queue with
-      | None -> (List.rev stolen, List.rev kept)
+      | None -> (List.reverse stolen, List.reverse kept)
       | Some slot -> (
           match slot_placement slot with
           | Normal when wanted > 0 -> scan (remaining - 1) (wanted - 1) (slot :: stolen) kept
@@ -1027,7 +1031,7 @@ let steal_batch = fun (victim: worker) ->
         )
   in
   let batch, kept = scan available steal_goal [] [] in
-  List.iter (Queue.push victim.queue) kept;
+  List.for_each kept ~fn:(fun slot -> Queue.push victim.queue ~value:slot);
   Mutex.unlock victim.lock;
   batch
 
@@ -1035,7 +1039,7 @@ let push_batch = fun (worker: worker) batch ->
   if not (List.is_empty batch) then
     (
       Mutex.lock worker.lock;
-      List.iter (Queue.push worker.queue) batch;
+      List.for_each batch ~fn:(fun slot -> Queue.push worker.queue ~value:slot);
       Condition.signal worker.cond;
       Mutex.unlock worker.lock
     )
@@ -1051,14 +1055,14 @@ let attempt_steal = fun t (worker: worker) ->
       if Int.equal victim_idx self_idx then
         scan start_offset (seen + 1)
       else
-        let victim = t.workers.(victim_idx) in
+        let victim = Array.get_unchecked t.workers ~at:victim_idx in
         let batch = steal_batch victim in
         if List.is_empty batch then
           scan start_offset (seen + 1)
         else (
           (* Ownership transfer happens before enqueuing locally so future
              remote wakeups route to the stealing worker. *)
-          List.iter (fun slot -> set_slot_owner_worker slot worker.id) batch;
+          List.for_each batch ~fn:(fun slot -> set_slot_owner_worker slot worker.id);
           push_batch worker batch;
           true
         )
@@ -1099,8 +1103,8 @@ let process_timers = fun t ->
   else
     let now = monotonic_time_nanos () in
     let expired = Timer_wheel.tick t.timer_wheel ~now in
-    List.iter
-      (fun timer ->
+    List.for_each expired
+      ~fn:(fun timer ->
         let timer_id = timer.Runtime_timer.id in
         (
           match timer.Runtime_timer.action with
@@ -1133,7 +1137,6 @@ let process_timers = fun t ->
         match timer.mode with
         | Runtime_timer.One_shot -> ()
         | Runtime_timer.Interval _ -> Timer_wheel.reschedule_timer t.timer_wheel ~now timer)
-      expired
 
 let handle_reactor_command = fun t cmd ->
   match cmd with
@@ -1174,8 +1177,8 @@ let poll_io = fun t ->
           ^ Std_io.error_message (Std_io.of_async_error err));
         []
   in
-  List.iter
-    (fun event ->
+  List.for_each events
+    ~fn:(fun event ->
       let token = Async.Event.token event in
       let proc: Runtime_process.t = Async.Token.unsafe_value token in
       match get_process_slot t (Runtime_process.pid proc) with
@@ -1194,7 +1197,6 @@ let poll_io = fun t ->
                 )
           | _ -> ()
         ))
-    events
 
 module Reactor = struct
   let loop = fun scheduler ->
@@ -1216,12 +1218,11 @@ let join_blocking_lanes = fun t ->
   let lanes =
     with_blocking_lanes_lock t (fun () -> t.blocking_lanes)
   in
-  List.iter
-    (fun (lane: blocking_lane) ->
+  List.for_each lanes
+    ~fn:(fun (lane: blocking_lane) ->
       match lane.domain with
       | None -> ()
-      | Some domain -> Domain.join domain)
-    lanes
+      | Some domain -> Thread.join domain)
 
 let runtime_deps: Scheduler_runtime.deps = {
   ensure_can_run_once;

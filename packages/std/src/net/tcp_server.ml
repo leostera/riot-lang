@@ -16,7 +16,7 @@ type error =
   | System_error of IO.error
 
 let read_line = fun (stream: Kernel.Net.TcpStream.t) ->
-  let buffer = Bytes.create 4_096 in
+  let buffer = Bytes.create ~size:4_096 in
   let rec loop acc =
     match Tcp_stream.read stream buffer () with
     | Error _ ->
@@ -24,12 +24,12 @@ let read_line = fun (stream: Kernel.Net.TcpStream.t) ->
     | Ok 0 ->
         Error "Connection closed"
     | Ok n -> (
-        let data = Bytes.sub_string buffer 0 n in
+        let data = Bytes.sub_unchecked buffer ~offset:0 ~len:n |> Bytes.to_string in
         let combined = acc ^ data in
         (* Look for newline *)
-        match String.index combined '\n' with
+        match String.index_of combined ~char:'\n' with
         | Some idx ->
-            let line = String.sub combined 0 idx in
+            let line = String.sub combined ~offset:0 ~len:idx in
             Ok line
         | None -> loop combined
       )

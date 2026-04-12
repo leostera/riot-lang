@@ -2,281 +2,164 @@ open Prelude
 
 type 'value t = 'value list
 
-let rec length_aux count = function
-  | [] -> count
-  | _ :: rest -> length_aux (count + 1) rest
-
-let length = fun values -> length_aux 0 values
-
-let rec compare_lengths left right =
-  match (left, right) with
-  | [], [] -> 0
-  | [], _ -> (-1)
-  | _, [] -> 1
-  | _ :: left, _ :: right -> compare_lengths left right
+let length =
+  let rec loop count = function
+    | [] -> count
+    | _ :: rest -> loop (count + 1) rest
+  in
+  fun values -> loop 0 values
 
 let is_empty = function
   | [] -> true
   | _ -> false
-
-let hd = function
-  | [] -> raise (Failure "hd")
-  | value :: _ -> value
-
-let tl = function
-  | [] -> raise (Failure "tl")
-  | _ :: rest -> rest
-
-let nth = fun values index ->
-  if index < 0 then
-    raise (Invalid_argument "List.nth")
-  else
-    let rec nth_aux values index =
-      match values with
-      | [] -> raise (Failure "nth")
-      | value :: rest ->
-          if index = 0 then
-            value
-          else
-            nth_aux rest (index - 1)
-    in
-    nth_aux values index
 
 let rec append left right =
   match left with
   | [] -> right
   | value :: rest -> value :: append rest right
 
-let rec rev_append left right =
+let rec reverse_append left right =
   match left with
   | [] -> right
-  | value :: rest -> rev_append rest (value :: right)
+  | value :: rest -> reverse_append rest (value :: right)
 
-let rev = fun values -> rev_append values []
+let reverse = fun values -> reverse_append values []
 
-let init = fun len f ->
-  if len < 0 then
-    raise (Invalid_argument "List.init")
+let concat =
+  let rec loop acc = function
+    | [] -> reverse acc
+    | values :: rest -> loop (reverse_append values acc) rest
+  in
+  fun values -> loop [] (reverse values)
+
+let init = fun ~count ~fn ->
+  if count < 0 then
+    System_error.panic ("List.init received a negative count: " ^ Int.to_string count)
   else
-    let rec build index acc =
+    let rec loop index acc =
       if index < 0 then
         acc
       else
-        build (index - 1) (f index :: acc)
+        loop (index - 1) (fn index :: acc)
     in
-    build (len - 1) []
+    loop (count - 1) []
 
-let concat =
-  let rec go acc = function
-    | [] -> rev acc
-    | values :: rest -> go (rev_append values acc) rest
+let map = fun values ~fn ->
+  let rec loop acc = function
+    | [] -> reverse acc
+    | value :: rest -> loop (fn value :: acc) rest
   in
-  fun values -> go [] (rev values)
+  loop [] values
 
-let map = fun f values ->
-  let rec go acc = function
-    | [] -> rev acc
-    | value :: rest -> go (f value :: acc) rest
-  in
-  go [] values
-
-let mapi = fun f values ->
-  let rec map_aux index acc = function
-    | [] -> rev acc
-    | value :: rest -> map_aux (index + 1) (f index value :: acc) rest
-  in
-  map_aux 0 [] values
-
-let rev_map = fun f values ->
-  let rec go acc = function
-    | [] -> acc
-    | value :: rest -> go (f value :: acc) rest
-  in
-  go [] values
-
-let rec iter f = function
-  | [] -> ()
-  | value :: rest ->
-      f value;
-      iter f rest
-
-let iteri = fun f values ->
-  let rec go index = function
+let for_each = fun values ~fn ->
+  let rec loop = function
     | [] -> ()
     | value :: rest ->
-        f index value;
-        go (index + 1) rest
+        fn value;
+        loop rest
   in
-  go 0 values
+  loop values
 
-let rec fold_left f acc = function
-  | [] -> acc
-  | value :: rest -> fold_left f (f acc value) rest
-
-let rec fold_right f values acc =
-  match values with
-  | [] -> acc
-  | value :: rest -> f value (fold_right f rest acc)
-
-let rec iter2 f left right =
-  match (left, right) with
-  | [], [] ->
-      ()
-  | left :: left_rest, right :: right_rest ->
-      f left right;
-      iter2 f left_rest right_rest
-  | _ ->
-      raise (Invalid_argument "List.iter2")
-
-let map2 = fun f left right ->
-  let rec go acc left right =
-    match (left, right) with
-    | [], [] -> rev acc
-    | left :: left_rest, right :: right_rest -> go (f left right :: acc) left_rest right_rest
-    | _ -> raise (Invalid_argument "List.map2")
+let fold_left = fun values ~acc ~fn ->
+  let rec loop acc = function
+    | [] -> acc
+    | value :: rest -> loop (fn acc value) rest
   in
-  go [] left right
+  loop acc values
 
-let rev_map2 = fun f left right ->
-  let rec go acc left right =
-    match (left, right) with
-    | [], [] -> acc
-    | left :: left_rest, right :: right_rest -> go (f left right :: acc) left_rest right_rest
-    | _ -> raise (Invalid_argument "List.rev_map2")
+let fold_right = fun values ~acc ~fn ->
+  let rec loop values acc =
+    match values with
+    | [] -> acc
+    | value :: rest -> fn value (loop rest acc)
   in
-  go [] left right
+  loop values acc
 
-let rec fold_left2 f acc left right =
-  match (left, right) with
-  | [], [] -> acc
-  | left :: left_rest, right :: right_rest -> fold_left2 f (f acc left right) left_rest right_rest
-  | _ -> raise (Invalid_argument "List.fold_left2")
+let exists = fun values ~fn ->
+  let rec loop = function
+    | [] -> false
+    | value :: rest -> fn value || loop rest
+  in
+  loop values
 
-let rec fold_right2 f left right acc =
-  match (left, right) with
-  | [], [] -> acc
-  | left :: left_rest, right :: right_rest -> f left right (fold_right2 f left_rest right_rest acc)
-  | _ -> raise (Invalid_argument "List.fold_right2")
+let contains = fun values ~value ->
+  let rec loop = function
+    | [] -> false
+    | current :: rest -> compare current value = 0 || loop rest
+  in
+  loop values
 
-let rec for_all2 f left right =
-  match (left, right) with
-  | [], [] -> true
-  | left :: left_rest, right :: right_rest -> f left right && for_all2 f left_rest right_rest
-  | _ -> raise (Invalid_argument "List.for_all2")
-
-let rec exists2 f left right =
-  match (left, right) with
-  | [], [] -> false
-  | left :: left_rest, right :: right_rest -> f left right || exists2 f left_rest right_rest
-  | _ -> raise (Invalid_argument "List.exists2")
-
-let rec exists f = function
-  | [] -> false
-  | value :: rest -> f value || exists f rest
-
-let rec mem target = function
-  | [] -> false
-  | value :: rest -> compare value target = 0 || mem target rest
-
-let rec assoc target = function
-  | [] -> raise Not_found
-  | (key, value) :: rest ->
-      if compare key target = 0 then
-        value
-      else
-        assoc target rest
-
-let rec assoc_opt target = function
+let head = function
   | [] -> None
-  | (key, value) :: rest ->
-      if compare key target = 0 then
-        Some value
-      else
-        assoc_opt target rest
+  | value :: _ -> Some value
 
-let rec remove_assoc target = function
+let tail = function
   | [] -> []
-  | (key, _ as pair) :: rest ->
-      if compare key target = 0 then
-        rest
-      else
-        pair :: remove_assoc target rest
+  | _ :: rest -> rest
 
-let rec find f = function
-  | [] -> raise Not_found
-  | value :: rest ->
-      if f value then
-        value
-      else
-        find f rest
+let get = fun values ~at ->
+  if at < 0 then
+    None
+  else
+    let rec loop values index =
+      match values with
+      | [] -> None
+      | value :: rest ->
+          if index = 0 then
+            Some value
+          else
+            loop rest (index - 1)
+    in
+    loop values at
 
-let rec find_opt f = function
-  | [] -> None
-  | value :: rest ->
-      if f value then
-        Some value
-      else
-        find_opt f rest
+let get_unchecked = fun values ~at ->
+  match get values ~at with
+  | Some value -> value
+  | None -> System_error.panic
+    ("List.get_unchecked received an out-of-bounds index: " ^ Int.to_string at)
 
-let rec find_map f = function
-  | [] -> None
-  | value :: rest -> (
-      match f value with
-      | Some _ as result -> result
-      | None -> find_map f rest
-    )
-
-let filter = fun f values ->
-  let rec go acc = function
-    | [] -> rev acc
+let find = fun values ~fn ->
+  let rec loop = function
+    | [] -> None
     | value :: rest ->
-        if f value then
-          go (value :: acc) rest
+        if fn value then
+          Some value
         else
-          go acc rest
+          loop rest
   in
-  go [] values
+  loop values
 
-let filter_map = fun f values ->
-  let rec go acc = function
-    | [] -> rev acc
-    | value :: rest -> (
-        match f value with
-        | None -> go acc rest
-        | Some mapped -> go (mapped :: acc) rest
-      )
+let filter = fun values ~fn ->
+  let rec loop acc = function
+    | [] -> reverse acc
+    | value :: rest ->
+        if fn value then
+          loop (value :: acc) rest
+        else
+          loop acc rest
   in
-  go [] values
+  loop [] values
 
-let combine = fun left right ->
-  let rec go acc left right =
-    match (left, right) with
-    | [], [] -> rev acc
-    | left :: left_rest, right :: right_rest -> go ((left, right) :: acc) left_rest right_rest
-    | _ -> raise (Invalid_argument "List.combine")
-  in
-  go [] left right
-
-let sort = fun cmp values ->
+let sort = fun values ~compare ->
   let rec insert value = function
     | [] -> [ value ]
     | current :: rest as values ->
-        if cmp value current <= 0 then
+        if compare value current <= 0 then
           value :: values
         else
           current :: insert value rest
   in
-  fold_left (fun acc value -> insert value acc) [] values
+  fold_left values ~acc:[] ~fn:(fun acc value -> insert value acc)
 
-let sort_uniq = fun cmp values ->
-  let sorted = sort cmp values in
-  let rec go acc = function
-    | [] -> rev acc
-    | [ value ] -> rev (value :: acc)
+let unique = fun values ~compare ->
+  let sorted = sort values ~compare in
+  let rec loop acc = function
+    | [] -> reverse acc
+    | [ value ] -> reverse (value :: acc)
     | left :: ((right :: _) as rest) ->
-        if cmp left right = 0 then
-          go acc rest
+        if compare left right = 0 then
+          loop acc rest
         else
-          go (left :: acc) rest
+          loop (left :: acc) rest
   in
-  go [] sorted
+  loop [] sorted

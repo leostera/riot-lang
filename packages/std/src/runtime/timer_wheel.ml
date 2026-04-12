@@ -1,7 +1,7 @@
+module Cell = Sync.Cell
+open Cell
 open Kernel
 open Collections
-open Sync
-open Sync.Cell
 
 (* Simple timing wheel implementation
    
@@ -23,11 +23,15 @@ type t = {
   timers_by_id: (Timer_id.t, Timer.t) HashMap.t;
 }
 
+let get_slot = fun wheel ~at -> Array.get_unchecked wheel.slots ~at
+
+let set_slot = fun wheel ~at ~value -> Array.set_unchecked wheel.slots ~at ~value
+
 let monotonic_time_nanos = fun () ->
   match Kernel.Time.Monotonic.now () with
   | Ok time ->
       let secs, nanos = Kernel.Time.Monotonic.to_parts time in
-      Int64.add (Int64.mul (Int64.of_int secs) 1_000_000_000L) (Int64.of_int nanos)
+      Int64.add (Int64.mul (Int64.from_int secs) 1_000_000_000L) (Int64.from_int nanos)
   | Error err -> Kernel.SystemError.panic (Kernel.Time.Monotonic.error_to_string err)
 
 let create = fun ~config ->
@@ -36,7 +40,7 @@ let create = fun ~config ->
   let num_slots = 256 in
   {
     config;
-    slots = Array.make num_slots [];
+    slots = Array.make ~count:num_slots ~value:[];
     overflow = Cell.create [];
     num_slots;
     slot_duration;
@@ -48,18 +52,18 @@ let create = fun ~config ->
 let calculate_slot = fun t expires_at ->
   let delta = Int64.sub expires_at t.current_time in
   let ticks = Int64.div delta t.slot_duration in
-  if Int64.compare ticks (Int64.of_int t.num_slots) < 0 then
+  if Int64.compare ticks (Int64.from_int t.num_slots) < 0 then
     let slot = Int64.to_int
-      (Int64.rem (Int64.add (Int64.of_int t.current_slot) ticks) (Int64.of_int t.num_slots)) in
+      (Int64.rem (Int64.add (Int64.from_int t.current_slot) ticks) (Int64.from_int t.num_slots)) in
     Some slot
   else
     (* Timer is too far in the future - put in overflow *)
     None
 
 let schedule_timer = fun t timer ->
-  let _ = HashMap.insert t.timers_by_id timer.Timer.id timer in
+  let _ = HashMap.insert t.timers_by_id ~key:timer.Timer.id ~value:timer in
   match calculate_slot t timer.Timer.expires_at with
-  | Some slot -> t.slots.(slot) <- timer :: t.slots.(slot)
+  | Some slot -> set_slot t ~at:slot ~value:(timer :: get_slot t ~at:slot)
   | None -> t.overflow := timer :: !(t.overflow)
 
 let add_timer = fun t ~now ~duration_nanos ~mode ~action ->
@@ -72,10 +76,11 @@ let reschedule_timer = fun t ~now timer ->
   schedule_timer t timer
 
 let cancel_timer = fun t timer_id ->
-  match HashMap.get t.timers_by_id timer_id with
+  match HashMap.get t.timers_by_id ~key:timer_id with
   | Some timer ->
       Timer.cancel timer;
-      HashMap.remove t.timers_by_id timer_id |> ignore
+      let _ = HashMap.remove t.timers_by_id ~key:timer_id in
+      ()
   | None -> ()
 
 let tick = fun t ~now ->
@@ -85,45 +90,47 @@ let tick = fun t ~now ->
     let expired = Cell.create [] in
     (* Calculate which slot corresponds to 'now' *)
     let ticks_elapsed = Int64.div (Int64.sub now t.current_time) t.slot_duration in
-    let ticks_to_process = min (Int64.to_int ticks_elapsed) t.num_slots in
+    let ticks_to_process = Int.min (Int64.to_int ticks_elapsed) t.num_slots in
     (* Process slots from current_slot to new slot *)
     for _i = 1 to ticks_to_process do
       t.current_slot <- (t.current_slot + 1) mod t.num_slots;
-      let timers = t.slots.(t.current_slot) in
-      t.slots.(t.current_slot) <- [];
+      let timers = get_slot t ~at:t.current_slot in
+      set_slot t ~at:t.current_slot ~value:[];
       (* Check each timer in this slot *)
-      List.iter
-        (fun timer ->
+      List.for_each timers
+        ~fn:(fun timer ->
           if Timer.is_cancelled timer then
-            HashMap.remove t.timers_by_id timer.id |> ignore
+            let _ = HashMap.remove t.timers_by_id ~key:timer.Timer.id in
+            ()
           else if Timer.should_fire timer ~now then
             (
               expired := timer :: !expired;
-              HashMap.remove t.timers_by_id timer.id |> ignore
+              let _ = HashMap.remove t.timers_by_id ~key:timer.Timer.id in
+              ()
             )
           else
             (* Timer not yet expired - re-insert *)
             match calculate_slot t timer.Timer.expires_at with
-            | Some slot -> t.slots.(slot) <- timer :: t.slots.(slot)
+            | Some slot -> set_slot t ~at:slot ~value:(timer :: get_slot t ~at:slot)
             | None -> t.overflow := timer :: !(t.overflow))
-        timers
     done;
     (* Check overflow list for timers that now fit in the wheel *)
     let still_overflow = Cell.create [] in
-    List.iter
-      (fun timer ->
+    List.for_each !(t.overflow)
+      ~fn:(fun timer ->
         if Timer.is_cancelled timer then
-          HashMap.remove t.timers_by_id timer.id |> ignore
+          let _ = HashMap.remove t.timers_by_id ~key:timer.Timer.id in
+          ()
         else if Timer.should_fire timer ~now then
           (
             expired := timer :: !expired;
-            HashMap.remove t.timers_by_id timer.id |> ignore
+            let _ = HashMap.remove t.timers_by_id ~key:timer.Timer.id in
+            ()
           )
         else
           match calculate_slot t timer.Timer.expires_at with
-          | Some slot -> t.slots.(slot) <- timer :: t.slots.(slot)
-          | None -> still_overflow := timer :: !still_overflow)
-      !(t.overflow);
+          | Some slot -> set_slot t ~at:slot ~value:(timer :: get_slot t ~at:slot)
+          | None -> still_overflow := timer :: !still_overflow);
     t.overflow := !still_overflow;
     (* Update current time *)
     t.current_time <- now;
@@ -132,15 +139,14 @@ let tick = fun t ~now ->
 let next_expiration = fun t ~now ->
   let _unused = now in
   let min_expiration = Cell.create None in
-  HashMap.iter
-    (fun _id timer ->
+  HashMap.for_each t.timers_by_id
+    ~fn:(fun _id timer ->
       if not (Timer.is_cancelled timer) then
         match !min_expiration with
         | None -> min_expiration := Some timer.Timer.expires_at
         | Some current_min ->
             if Int64.compare timer.Timer.expires_at current_min < 0 then
-              min_expiration := Some timer.Timer.expires_at)
-    t.timers_by_id;
+              min_expiration := Some timer.Timer.expires_at);
   !min_expiration
 
-let size = fun t -> HashMap.len t.timers_by_id
+let size = fun t -> HashMap.length t.timers_by_id

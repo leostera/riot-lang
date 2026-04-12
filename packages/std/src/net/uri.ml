@@ -110,7 +110,7 @@ let parse_scheme = fun s start_pos ->
     if pos >= len then
       None
     else
-      match s.[pos] with
+      match String.get_unchecked s ~at:pos with
       | ':' -> Some pos
       | c when is_scheme_char c -> find_end (pos + 1)
       | _ -> None
@@ -118,19 +118,21 @@ let parse_scheme = fun s start_pos ->
   match find_end start_pos with
   | None -> (None, start_pos)
   | Some end_pos ->
-      let scheme = String.sub s start_pos (end_pos - start_pos) in
+      let scheme = String.sub s ~offset:start_pos ~len:(end_pos - start_pos) in
       (Some scheme, end_pos + 1)
 
 let parse_authority = fun s start_pos ->
   let len = String.length s in
   if start_pos + 1 < len then
-    if s.[start_pos] = '/' && s.[start_pos + 1] = '/' then
+    if
+      String.get_unchecked s ~at:start_pos = '/' && String.get_unchecked s ~at:(start_pos + 1) = '/'
+    then
       let authority_start = start_pos + 2 in
       let rec find_end pos =
         if pos >= len then
           pos
         else
-          match s.[pos] with
+          match String.get_unchecked s ~at:pos with
           | '/'
           | '?'
           | '#' -> pos
@@ -138,7 +140,7 @@ let parse_authority = fun s start_pos ->
           | _ -> pos
       in
       let authority_end = find_end authority_start in
-      let authority = String.sub s authority_start (authority_end - authority_start) in
+      let authority = String.sub s ~offset:authority_start ~len:(authority_end - authority_start) in
       (Some authority, authority_end)
     else
       (None, start_pos)
@@ -151,7 +153,7 @@ let parse_path = fun s start_pos ->
     if pos >= len then
       pos
     else
-      match s.[pos] with
+      match String.get_unchecked s ~at:pos with
       | '?'
       | '#' -> pos
       | c when is_path_char c -> find_end (pos + 1)
@@ -162,26 +164,26 @@ let parse_path = fun s start_pos ->
     if path_end = start_pos then
       "/"
     else
-      String.sub s start_pos (path_end - start_pos)
+      String.sub s ~offset:start_pos ~len:(path_end - start_pos)
   in
   (path, path_end)
 
 let parse_query = fun s start_pos ->
   let len = String.length s in
   if start_pos < len then
-    if s.[start_pos] = '?' then
+    if String.get_unchecked s ~at:start_pos = '?' then
       let query_start = start_pos + 1 in
       let rec find_end pos =
         if pos >= len then
           pos
         else
-          match s.[pos] with
+          match String.get_unchecked s ~at:pos with
           | '#' -> pos
           | c when is_query_char c -> find_end (pos + 1)
           | _ -> pos
       in
       let query_end = find_end query_start in
-      let query = String.sub s query_start (query_end - query_start) in
+      let query = String.sub s ~offset:query_start ~len:(query_end - query_start) in
       (Some query, query_end)
     else
       (None, start_pos)
@@ -191,9 +193,9 @@ let parse_query = fun s start_pos ->
 let parse_fragment = fun s start_pos ->
   let len = String.length s in
   if start_pos < len then
-    if s.[start_pos] = '#' then
+    if String.get_unchecked s ~at:start_pos = '#' then
       let fragment_start = start_pos + 1 in
-      let fragment = String.sub s fragment_start (len - fragment_start) in
+      let fragment = String.sub s ~offset:fragment_start ~len:(len - fragment_start) in
       (Some fragment, len)
     else
       (None, start_pos)
@@ -221,7 +223,7 @@ let of_string = fun s ->
     }
 
 let to_string = fun url ->
-  let buf = Buffer.create 256 in
+  let buf = Buffer.create ~size:256 in
   (
     match url.scheme with
     | None -> ()
@@ -271,14 +273,14 @@ let host = fun url ->
   | Some auth ->
       (* Extract host from authority (removing userinfo and port) *)
       let auth =
-        match String.index auth '@' with
+        match String.index_of auth ~char:'@' with
         | None -> auth
-        | Some idx -> String.sub auth (idx + 1) (String.length auth - idx - 1)
+        | Some idx -> String.sub auth ~offset:(idx + 1) ~len:(String.length auth - idx - 1)
       in
       let host =
         match String.last_index auth ':' with
         | None -> auth
-        | Some idx -> String.sub auth 0 idx
+        | Some idx -> String.sub auth ~offset:0 ~len:idx
       in
       Some host
 
@@ -289,7 +291,7 @@ let port = fun url ->
       match String.last_index auth ':' with
       | None -> None
       | Some idx -> (
-          let port_str = String.sub auth (idx + 1) (String.length auth - idx - 1) in
+          let port_str = String.sub auth ~offset:(idx + 1) ~len:(String.length auth - idx - 1) in
           Int.parse port_str
         )
     )
@@ -313,7 +315,7 @@ module Scheme = struct
   let file = "file"
 
   let of_string = fun s ->
-    if String.for_all is_scheme_char s && String.length s > 0 then
+    if String.for_all s ~fn:is_scheme_char && String.length s > 0 then
       Ok s
     else
       Error InvalidScheme
@@ -325,7 +327,7 @@ module Authority = struct
   type t = string
 
   let of_string = fun s ->
-    if String.for_all is_authority_char s then
+    if String.for_all s ~fn:is_authority_char then
       Ok s
     else
       Error InvalidAuthority
@@ -334,26 +336,26 @@ module Authority = struct
 
   let host = fun auth ->
     let auth =
-      match String.index auth '@' with
+      match String.index_of auth ~char:'@' with
       | None -> auth
-      | Some idx -> String.sub auth (idx + 1) (String.length auth - idx - 1)
+      | Some idx -> String.sub auth ~offset:(idx + 1) ~len:(String.length auth - idx - 1)
     in
     match String.last_index auth ':' with
     | None -> auth
-    | Some idx -> String.sub auth 0 idx
+    | Some idx -> String.sub auth ~offset:0 ~len:idx
 
   let port = fun auth ->
     match String.last_index auth ':' with
     | None -> None
     | Some idx -> (
-        let port_str = String.sub auth (idx + 1) (String.length auth - idx - 1) in
+        let port_str = String.sub auth ~offset:(idx + 1) ~len:(String.length auth - idx - 1) in
         Int.parse port_str
       )
 
   let userinfo = fun auth ->
-    match String.index auth '@' with
+    match String.index_of auth ~char:'@' with
     | None -> None
-    | Some idx -> Some (String.sub auth 0 idx)
+    | Some idx -> Some (String.sub auth ~offset:0 ~len:idx)
 end
 
 module PathAndQuery = struct
@@ -363,11 +365,11 @@ module PathAndQuery = struct
   }
 
   let of_string = fun s ->
-    match String.index s '?' with
+    match String.index_of s ~char:'?' with
     | None -> Ok { path = s; query = None }
     | Some idx ->
-        let path = String.sub s 0 idx in
-        let query = String.sub s (idx + 1) (String.length s - idx - 1) in
+        let path = String.sub s ~offset:0 ~len:idx in
+        let query = String.sub s ~offset:(idx + 1) ~len:(String.length s - idx - 1) in
         Ok { path; query = Some query }
 
   let to_string = fun pq ->
@@ -424,7 +426,7 @@ module Builder = struct
       | Some auth -> Some auth
       | None -> (
           match (builder.host, builder.port) with
-          | Some h, Some p -> Some (h ^ ":" ^ string_of_int p)
+          | Some h, Some p -> Some (h ^ ":" ^ Int.to_string p)
           | Some h, None -> Some h
           | None, _ -> None
         )
@@ -457,14 +459,14 @@ let join = fun base relative_path ->
         Ok rel_url
       else
         let new_path =
-          if String.get relative_path 0 = '/' then
+          if String.starts_with ~prefix:"/" relative_path then
             relative_path
           else
             let base_path = base.path in
             let base_dir =
               match String.last_index base_path '/' with
               | None -> ""
-              | Some idx -> String.sub base_path 0 (idx + 1)
+              | Some idx -> String.sub base_path ~offset:0 ~len:(idx + 1)
             in
             base_dir ^ relative_path
         in
@@ -492,20 +494,20 @@ let is_unreserved = function
 (** Convert integer to hex char (0-15 -> '0'-'F') *)
 let int_to_hex = fun n ->
   if n < 10 then
-    Char.chr (Char.code '0' + n)
+    Char.from_int_unchecked (Char.to_int '0' + n)
   else
-    Char.chr (Char.code 'A' + n - 10)
+    Char.from_int_unchecked (Char.to_int 'A' + n - 10)
 
 (** Encode string per RFC 3986 - encode all except unreserved *)
 let percent_encode = fun str ->
   let len = String.length str in
-  let buf = Buffer.create (len * 3) in
+  let buf = Buffer.create ~size:(len * 3) in
   (* Worst case: all chars encoded *)
   let rec encode i =
     if i >= len then
       Buffer.contents buf
     else
-      let c = String.get str i in
+      let c = String.get_unchecked str ~at:i in
       if is_unreserved c then
         (
           Buffer.add_char buf c;
@@ -513,7 +515,7 @@ let percent_encode = fun str ->
         )
       else
         (* Encode as %XX *)
-        let code = Char.code c in
+        let code = Char.to_int c in
         Buffer.add_char buf '%';
         Buffer.add_char buf (int_to_hex (code / 16));
         Buffer.add_char buf (int_to_hex (code mod 16));
@@ -524,12 +526,12 @@ let percent_encode = fun str ->
 (** Encode for application/x-www-form-urlencoded (space -> +) *)
 let form_encode = fun str ->
   let len = String.length str in
-  let buf = Buffer.create (len * 3) in
+  let buf = Buffer.create ~size:(len * 3) in
   let rec encode i =
     if i >= len then
       Buffer.contents buf
     else
-      let c = String.get str i in
+      let c = String.get_unchecked str ~at:i in
       if is_unreserved c then
         (
           Buffer.add_char buf c;
@@ -554,27 +556,27 @@ let form_encode = fun str ->
 (** Decode percent-encoded string per RFC 3986 *)
 let percent_decode = fun str ->
   let len = String.length str in
-  let buf = Buffer.create len in
+  let buf = Buffer.create ~size:len in
   let hex_to_int c =
     match c with
-    | '0' .. '9' -> Some (Char.code c - Char.code '0')
-    | 'A' .. 'F' -> Some (Char.code c - Char.code 'A' + 10)
-    | 'a' .. 'f' -> Some (Char.code c - Char.code 'a' + 10)
+    | '0' .. '9' -> Some (Char.to_int c - Char.to_int '0')
+    | 'A' .. 'F' -> Some (Char.to_int c - Char.to_int 'A' + 10)
+    | 'a' .. 'f' -> Some (Char.to_int c - Char.to_int 'a' + 10)
     | _ -> None
   in
   let rec decode i =
     if i >= len then
       Buffer.contents buf
     else
-      match String.get str i with
+      match String.get_unchecked str ~at:i with
       | '%' when i + 2 < len ->
-          let c1 = String.get str (i + 1) in
-          let c2 = String.get str (i + 2) in
+          let c1 = String.get_unchecked str ~at:(i + 1) in
+          let c2 = String.get_unchecked str ~at:(i + 2) in
           (
             match (hex_to_int c1, hex_to_int c2) with
             | Some h1, Some h2 ->
                 let code = (h1 * 16) + h2 in
-                Buffer.add_char buf (Char.chr code);
+                Buffer.add_char buf (Char.from_int_unchecked code);
                 decode (i + 3)
             | _ ->
                 (* Invalid - keep as-is *)
@@ -590,27 +592,27 @@ let percent_decode = fun str ->
 (** Decode application/x-www-form-urlencoded (+ -> space) *)
 let form_decode = fun str ->
   let len = String.length str in
-  let buf = Buffer.create len in
+  let buf = Buffer.create ~size:len in
   let hex_to_int c =
     match c with
-    | '0' .. '9' -> Some (Char.code c - Char.code '0')
-    | 'A' .. 'F' -> Some (Char.code c - Char.code 'A' + 10)
-    | 'a' .. 'f' -> Some (Char.code c - Char.code 'a' + 10)
+    | '0' .. '9' -> Some (Char.to_int c - Char.to_int '0')
+    | 'A' .. 'F' -> Some (Char.to_int c - Char.to_int 'A' + 10)
+    | 'a' .. 'f' -> Some (Char.to_int c - Char.to_int 'a' + 10)
     | _ -> None
   in
   let rec decode i =
     if i >= len then
       Buffer.contents buf
     else
-      match String.get str i with
+      match String.get_unchecked str ~at:i with
       | '%' when i + 2 < len ->
-          let c1 = String.get str (i + 1) in
-          let c2 = String.get str (i + 2) in
+          let c1 = String.get_unchecked str ~at:(i + 1) in
+          let c2 = String.get_unchecked str ~at:(i + 2) in
           (
             match (hex_to_int c1, hex_to_int c2) with
             | Some h1, Some h2 ->
                 let code = (h1 * 16) + h2 in
-                Buffer.add_char buf (Char.chr code);
+                Buffer.add_char buf (Char.from_int_unchecked code);
                 decode (i + 3)
             | _ ->
                 Buffer.add_char buf '%';
@@ -636,49 +638,49 @@ module Query = struct
     if String.length query_string = 0 then
       []
     else
-      let pairs = String.split_on_char '&' query_string in
-      List.filter_map
-        (fun pair ->
-          match String.index pair '=' with
+      let pairs = String.split ~by:"&" query_string in
+      List.filter_map pairs
+        ~fn:(fun pair ->
+          match String.index_of pair ~char:'=' with
           | None ->
               let key = form_decode pair in
               Some (key, "")
           | Some idx ->
-              let key = String.sub pair 0 idx in
-              let value = String.sub pair (idx + 1) (String.length pair - idx - 1) in
+              let key = String.sub pair ~offset:0 ~len:idx in
+              let value = String.sub pair ~offset:(idx + 1) ~len:(String.length pair - idx - 1) in
               Some (form_decode key, form_decode value))
-        pairs
 
   let to_string = fun params ->
     let param_strings =
-      List.map
-        (fun ((k, v)) ->
+      List.map params
+        ~fn:(fun ((k, v)) ->
           let k_enc = form_encode k in
           let v_enc = form_encode v in
           if String.length v = 0 then
             k_enc
           else
             k_enc ^ "=" ^ v_enc)
-        params
     in
     String.concat "&" param_strings
 
   let get = fun params key ->
-    try Some (List.assoc key params) with
-    | Not_found -> None
+    match
+      List.find params
+        ~fn:(fun (param_key, _) ->
+          String.equal param_key key)
+    with
+    | None -> None
+    | Some (_, value) -> Some value
 
   let get_all = fun params key ->
-    List.fold_left
-      (fun acc ((k, v)) ->
+    List.fold_left params ~acc:[]
+      ~fn:(fun acc ((k, v)) ->
         if String.equal k key then
           v :: acc
         else
-          acc)
-      []
-      params |> List.rev
+          acc) |> List.reverse
 
   let add = fun params key value -> (key, value) :: params
 
-  let remove = fun params key ->
-    List.filter (fun ((k, _)) -> not (String.equal k key)) params
+  let remove = fun params key -> List.filter params ~fn:(fun ((k, _)) -> not (String.equal k key))
 end

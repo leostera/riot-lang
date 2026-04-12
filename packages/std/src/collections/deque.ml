@@ -1,9 +1,9 @@
+module Cell = Sync.Cell
 open Kernel
-open Sync
 
 let panic = Kernel.SystemError.panic
 
-module Array = Stdlib.Array
+module Array = Kernel.Array
 
 type 'a t = {
   mutable data: 'a option array;
@@ -12,12 +12,16 @@ type 'a t = {
   mutable size: int;
 }
 
-let create = fun () -> { data = Array.make 16 None; front = 0; back = 0; size = 0 }
+let get_slot = fun deque index -> Array.get_unchecked deque.data ~at:index
 
-let with_capacity = fun capacity ->
-  { data = Array.make (max 1 capacity) None; front = 0; back = 0; size = 0 }
+let set_slot = fun deque index value -> Array.set_unchecked deque.data ~at:index ~value
 
-let len = fun deque -> deque.size
+let create = fun () -> { data = Array.make ~count:16 ~value:None; front = 0; back = 0; size = 0 }
+
+let with_capacity = fun ~size ->
+  { data = Array.make ~count:(Int.max 1 size) ~value:None; front = 0; back = 0; size = 0 }
+
+let length = fun deque -> deque.size
 
 let is_empty = fun deque -> deque.size = 0
 
@@ -26,27 +30,27 @@ let capacity = fun deque -> Array.length deque.data
 let resize = fun deque ->
   let old_capacity = Array.length deque.data in
   let new_capacity = old_capacity * 2 in
-  let new_data = Array.make new_capacity None in
+  let new_data = Array.make ~count:new_capacity ~value:None in
   for i = 0 to deque.size - 1 do
     let old_index = (deque.front + i) mod old_capacity in
-    new_data.(i) <- deque.data.(old_index)
+    Array.set_unchecked new_data ~at:i ~value:(get_slot deque old_index)
   done;
   deque.data <- new_data;
   deque.front <- 0;
   deque.back <- deque.size
 
-let push_back = fun deque value ->
+let push_back = fun deque ~value ->
   if deque.size = Array.length deque.data then
     resize deque;
-  deque.data.(deque.back) <- Some value;
+  set_slot deque deque.back (Some value);
   deque.back <- (deque.back + 1) mod Array.length deque.data;
   deque.size <- deque.size + 1
 
-let push_front = fun deque value ->
+let push_front = fun deque ~value ->
   if deque.size = Array.length deque.data then
     resize deque;
   deque.front <- (deque.front - 1 + Array.length deque.data) mod Array.length deque.data;
-  deque.data.(deque.front) <- Some value;
+  set_slot deque deque.front (Some value);
   deque.size <- deque.size + 1
 
 let pop_back = fun deque ->
@@ -54,8 +58,8 @@ let pop_back = fun deque ->
     None
   else (
     deque.back <- (deque.back - 1 + Array.length deque.data) mod Array.length deque.data;
-    let value = deque.data.(deque.back) in
-    deque.data.(deque.back) <- None;
+    let value = get_slot deque deque.back in
+    set_slot deque deque.back None;
     deque.size <- deque.size - 1;
     value
   )
@@ -64,8 +68,8 @@ let pop_front = fun deque ->
   if deque.size = 0 then
     None
   else
-    let value = deque.data.(deque.front) in
-    deque.data.(deque.front) <- None;
+    let value = get_slot deque deque.front in
+    set_slot deque deque.front None;
     deque.front <- (deque.front + 1) mod Array.length deque.data;
     deque.size <- deque.size - 1;
     value
@@ -74,101 +78,101 @@ let front = fun deque ->
   if deque.size = 0 then
     None
   else
-    deque.data.(deque.front)
+    get_slot deque deque.front
 
 let back = fun deque ->
   if deque.size = 0 then
     None
   else
     let back_index = (deque.back - 1 + Array.length deque.data) mod Array.length deque.data in
-    deque.data.(back_index)
+    get_slot deque back_index
 
-let get = fun deque index ->
-  if index < 0 || index >= deque.size then
+let get = fun deque ~at ->
+  if at < 0 || at >= deque.size then
     None
   else
-    let actual_index = (deque.front + index) mod Array.length deque.data in
-    deque.data.(actual_index)
+    let actual_index = (deque.front + at) mod Array.length deque.data in
+    get_slot deque actual_index
 
-let insert = fun deque index value ->
-  if index < 0 || index > deque.size then
+let insert = fun deque ~at ~value ->
+  if at < 0 || at > deque.size then
     panic "Index out of bounds"
-  else if index = 0 then
-    push_front deque value
-  else if index = deque.size then
-    push_back deque value
-  else if index <= deque.size / 2 then
+  else if at = 0 then
+    push_front deque ~value
+  else if at = deque.size then
+    push_back deque ~value
+  else if at <= deque.size / 2 then
     (
-      push_front deque value;
-      for i = 0 to index - 1 do
+      push_front deque ~value;
+      for i = 0 to at - 1 do
         let curr_idx = (deque.front + i) mod Array.length deque.data in
         let next_idx = (deque.front + i + 1) mod Array.length deque.data in
-        deque.data.(curr_idx) <- deque.data.(next_idx)
+        set_slot deque curr_idx (get_slot deque next_idx)
       done;
-      let target_idx = (deque.front + index) mod Array.length deque.data in
-      deque.data.(target_idx) <- Some value
+      let target_idx = (deque.front + at) mod Array.length deque.data in
+      set_slot deque target_idx (Some value)
     )
   else (
-    push_back deque value;
-    for i = deque.size - 2 downto index do
+    push_back deque ~value;
+    for i = deque.size - 2 downto at do
       let curr_idx = (deque.front + i) mod Array.length deque.data in
       let next_idx = (deque.front + i + 1) mod Array.length deque.data in
-      deque.data.(next_idx) <- deque.data.(curr_idx)
+      set_slot deque next_idx (get_slot deque curr_idx)
     done;
-    let target_idx = (deque.front + index) mod Array.length deque.data in
-    deque.data.(target_idx) <- Some value
+    let target_idx = (deque.front + at) mod Array.length deque.data in
+    set_slot deque target_idx (Some value)
   )
 
-let remove = fun deque index ->
-  if index < 0 || index >= deque.size then
+let remove = fun deque ~at ->
+  if at < 0 || at >= deque.size then
     None
   else
-    let actual_index = (deque.front + index) mod Array.length deque.data in
-    let value = deque.data.(actual_index) in
-    if index <= deque.size / 2 then
+    let actual_index = (deque.front + at) mod Array.length deque.data in
+    let value = get_slot deque actual_index in
+    if at <= deque.size / 2 then
       (
-        for i = index downto 1 do
+        for i = at downto 1 do
           let curr_idx = (deque.front + i) mod Array.length deque.data in
           let prev_idx = (deque.front + i - 1) mod Array.length deque.data in
-          deque.data.(curr_idx) <- deque.data.(prev_idx)
+          set_slot deque curr_idx (get_slot deque prev_idx)
         done;
-        deque.data.(deque.front) <- None;
+        set_slot deque deque.front None;
         deque.front <- (deque.front + 1) mod Array.length deque.data
       )
     else (
-      for i = index to deque.size - 2 do
+      for i = at to deque.size - 2 do
         let curr_idx = (deque.front + i) mod Array.length deque.data in
         let next_idx = (deque.front + i + 1) mod Array.length deque.data in
-        deque.data.(curr_idx) <- deque.data.(next_idx)
+        set_slot deque curr_idx (get_slot deque next_idx)
       done;
       deque.back <- (deque.back - 1 + Array.length deque.data) mod Array.length deque.data;
-      deque.data.(deque.back) <- None
+      set_slot deque deque.back None
     );
     deque.size <- deque.size - 1;
     value
 
 let clear = fun deque ->
   for i = 0 to Array.length deque.data - 1 do
-    deque.data.(i) <- None
+    set_slot deque i None
   done;
   deque.front <- 0;
   deque.back <- 0;
   deque.size <- 0
 
-let iter = fun f deque ->
+let for_each = fun deque ~fn ->
   for i = 0 to deque.size - 1 do
     let index = (deque.front + i) mod Array.length deque.data in
-    match deque.data.(index) with
-    | Some value -> f value
+    match get_slot deque index with
+    | Some value -> fn value
     | None -> ()
   done
 
-let fold = fun f deque acc ->
+let fold_left = fun deque ~acc ~fn ->
   let result = Cell.create acc in
   for i = 0 to deque.size - 1 do
     let index = (deque.front + i) mod Array.length deque.data in
-    match deque.data.(index) with
-    | Some value -> Cell.set result (f value (Cell.get result))
+    match get_slot deque index with
+    | Some value -> Cell.set result (fn (Cell.get result) value)
     | None -> ()
   done;
   Cell.get result
@@ -177,45 +181,45 @@ let to_list = fun deque ->
   let result = Cell.create [] in
   for i = deque.size - 1 downto 0 do
     let index = (deque.front + i) mod Array.length deque.data in
-    match deque.data.(index) with
+    match get_slot deque index with
     | Some value -> Cell.set result (value :: Cell.get result)
     | None -> ()
   done;
   Cell.get result
 
-let contains = fun deque value ->
+let contains = fun deque ~value ->
   let found = Cell.create false in
   for i = 0 to deque.size - 1 do
     let index = (deque.front + i) mod Array.length deque.data in
-    match deque.data.(index) with
+    match get_slot deque index with
     | Some v when v = value -> Cell.set found true
     | _ -> ()
   done;
   Cell.get found
 
-let append = fun deque1 deque2 ->
-  iter (push_back deque1) deque2;
-  clear deque2
+let append = fun deque other ->
+  for_each other ~fn:(fun value -> push_back deque ~value);
+  clear other
 
-let split_off = fun deque index ->
-  if index < 0 || index > deque.size then
+let split_off = fun deque ~at ->
+  if at < 0 || at > deque.size then
     panic "Index out of bounds"
   else
     let new_deque = create () in
-    let elements_to_move = deque.size - index in
+    let elements_to_move = deque.size - at in
     for _ = 1 to elements_to_move do
       match pop_back deque with
-      | Some value -> push_front new_deque value
+      | Some value -> push_front new_deque ~value
       | None -> ()
     done;
     new_deque
 
-let of_list = fun elements ->
+let from_list = fun elements ->
   let deque = create () in
-  List.iter (push_back deque) elements;
+  List.for_each elements ~fn:(fun value -> push_back deque ~value);
   deque
 
-let into_iter: type v. v t -> v Iter.Iterator.t = fun deque ->
+let iter: type v. v t -> v Iter.Iterator.t = fun deque ->
   let module DequeIter = struct
     type state = {
       deque: v t;
@@ -225,15 +229,15 @@ let into_iter: type v. v t -> v Iter.Iterator.t = fun deque ->
     type nonrec item = v
 
     let next = fun state ->
-      match get state.deque state.idx with
+      match get state.deque ~at:state.idx with
       | None -> (None, state)
       | Some value -> (Some value, { state with idx = state.idx + 1 })
 
-    let size = fun state -> max 0 (len state.deque - state.idx)
+    let size = fun state -> max 0 (length state.deque - state.idx)
   end in
   Iter.Iterator.make (module DequeIter) { deque; idx = 0 }
 
-let to_mut_iter: type v. v t -> v Iter.MutIterator.t = fun deque ->
+let mut_iter: type v. v t -> v Iter.MutIterator.t = fun deque ->
   let module DequeIter = struct
     type state = v t
 
@@ -241,11 +245,11 @@ let to_mut_iter: type v. v t -> v Iter.MutIterator.t = fun deque ->
 
     let next = fun deque -> pop_front deque
 
-    let size = fun deque -> len deque
+    let size = fun deque -> length deque
 
     let clone = fun deque ->
-      let deque2 = with_capacity (len deque) in
-      iter (push_back deque2) deque;
+      let deque2 = with_capacity ~size:(length deque) in
+      for_each deque ~fn:(fun value -> push_back deque2 ~value);
       deque2
   end in
   Iter.MutIterator.make (module DequeIter) deque

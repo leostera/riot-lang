@@ -1,6 +1,6 @@
 open Prelude
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 type t = int
 
@@ -196,12 +196,11 @@ module FFI = struct
   external is_tty: t -> bool = "kernel_new_fs_file_isatty"
 end
 
-let open_file = fun path flags ~perm ->
-  Result.map_error
-    (fun code -> System (System_error.of_code code))
-    (FFI.open_file (Path.to_string path) (flags_to_mask flags) perm)
+let open_file = fun path ~flags ~permissions ->
+  FFI.open_file (Path.to_string path) (flags_to_mask flags) permissions
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
-let open_read = fun path -> open_file path [ ReadOnly ] ~perm:0
+let open_read = fun path -> open_file path ~flags:[ ReadOnly ] ~permissions:0
 
 let open_write = fun ?(create = true) ?(truncate = true) ?(append = false) ?(perm = 0o644) path ->
   let flags =
@@ -222,16 +221,16 @@ let open_write = fun ?(create = true) ?(truncate = true) ?(append = false) ?(per
     else
       flags
   in
-  open_file path flags ~perm
+  open_file path ~flags ~permissions:perm
 
 let close = fun fd ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.close fd)
+  FFI.close fd |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let try_lock_exclusive = fun fd ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.try_lock_exclusive fd)
+  FFI.try_lock_exclusive fd |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let unlock = fun fd ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.unlock fd)
+  FFI.unlock fd |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let error_to_string = fun value ->
   match value with
@@ -260,7 +259,7 @@ let read = fun fd ?(pos = 0) ?len buf ->
     | None -> Bytes.length buf - pos
   in
   let* () = validate_slice buf ~pos ~len in
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.read fd buf pos len)
+  FFI.read fd buf pos len |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let write = fun fd ?(pos = 0) ?len buf ->
   let len =
@@ -269,100 +268,86 @@ let write = fun fd ?(pos = 0) ?len buf ->
     | None -> Bytes.length buf - pos
   in
   let* () = validate_slice buf ~pos ~len in
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.write fd buf pos len)
+  FFI.write fd buf pos len |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let read_vectored = fun fd iovecs ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.readv fd iovecs)
+  FFI.readv fd iovecs |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let write_vectored = fun fd iovecs ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.writev fd iovecs)
+  FFI.writev fd iovecs |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let pipe = fun () ->
-  let* (read_end, write_end) =
-    Result.map_error (fun code -> System (System_error.of_code code)) (FFI.pipe ())
-  in
+  let* (read_end, write_end) = FFI.pipe ()
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code)) in
   Result.Ok { read_end; write_end }
 
 let create_dir = fun path ~perm ->
-  Result.map_error
-    (fun code -> System (System_error.of_code code))
-    (FFI.mkdir (Path.to_string path) perm)
+  FFI.mkdir (Path.to_string path) perm
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let set_permissions = fun path ~perm ->
-  Result.map_error
-    (fun code -> System (System_error.of_code code))
-    (FFI.chmod (Path.to_string path) perm)
+  FFI.chmod (Path.to_string path) perm
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let remove_dir = fun path ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.rmdir (Path.to_string path))
+  FFI.rmdir (Path.to_string path)
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let remove_file = fun path ->
-  Result.map_error
-    (fun code -> System (System_error.of_code code))
-    (FFI.remove (Path.to_string path))
+  FFI.remove (Path.to_string path)
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let rename = fun ~src ~dst ->
-  Result.map_error
-    (fun code -> System (System_error.of_code code))
-    (FFI.rename (Path.to_string src) (Path.to_string dst))
+  FFI.rename (Path.to_string src) (Path.to_string dst)
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let hard_link = fun ~src ~dst ->
-  Result.map_error
-    (fun code -> System (System_error.of_code code))
-    (FFI.link (Path.to_string src) (Path.to_string dst))
+  FFI.link (Path.to_string src) (Path.to_string dst)
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let symlink = fun ~src ~dst ->
-  Result.map_error
-    (fun code -> System (System_error.of_code code))
-    (FFI.symlink (Path.to_string src) (Path.to_string dst))
+  FFI.symlink (Path.to_string src) (Path.to_string dst)
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let read_link = fun path ->
-  Result.map
-    Path.of_string
-    (Result.map_error
-      (fun code -> System (System_error.of_code code))
-      (FFI.readlink (Path.to_string path)))
+  FFI.readlink (Path.to_string path)
+  |> Result.map ~fn:Path.from_string
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let canonicalize = fun path ->
-  Result.map
-    Path.of_string
-    (Result.map_error
-      (fun code -> System (System_error.of_code code))
-      (FFI.realpath (Path.to_string path)))
+  FFI.realpath (Path.to_string path)
+  |> Result.map ~fn:Path.from_string
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let metadata = fun path ->
-  Result.map
-    metadata_of_tuple
-    (Result.map_error
-      (fun code -> System (System_error.of_code code))
-      (FFI.stat (Path.to_string path)))
+  FFI.stat (Path.to_string path)
+  |> Result.map ~fn:metadata_of_tuple
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let lstat = fun path ->
-  Result.map
-    metadata_of_tuple
-    (Result.map_error
-      (fun code -> System (System_error.of_code code))
-      (FFI.lstat (Path.to_string path)))
+  FFI.lstat (Path.to_string path)
+  |> Result.map ~fn:metadata_of_tuple
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let symlink_metadata = lstat
 
 let fstat = fun fd ->
-  Result.map
-    metadata_of_tuple
-    (Result.map_error (fun code -> System (System_error.of_code code)) (FFI.fstat fd))
+  FFI.fstat fd
+  |> Result.map ~fn:metadata_of_tuple
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let read_dir_names = fun path ->
-  Result.map_error
-    (fun code -> System (System_error.of_code code))
-    (FFI.readdir (Path.to_string path))
+  FFI.readdir (Path.to_string path)
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let current_dir = fun () ->
-  Result.map
-    Path.of_string
-    (Result.map_error (fun code -> System (System_error.of_code code)) (FFI.getcwd ()))
+  FFI.getcwd ()
+  |> Result.map ~fn:Path.from_string
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let set_current_dir = fun path ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.chdir (Path.to_string path))
+  FFI.chdir (Path.to_string path)
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let exists = fun path ->
   match metadata path with
@@ -379,7 +364,7 @@ let is_directory = fun path ->
 let copy = fun ~src ~dst ->
   let* src_file = open_read src in
   let* dst_file = open_write dst in
-  let buffer = Bytes.create 65_536 in
+  let buffer = Bytes.create ~size:65_536 in
   let rec drain () =
     let* read_count = read src_file buffer in
     if read_count = 0 then

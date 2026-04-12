@@ -63,13 +63,13 @@ let split_on_char = fun delimiter str ->
   let len = String.length str in
   let rec loop acc current i =
     if i >= len then
-      List.rev (current :: acc)
+      List.reverse (current :: acc)
     else
-      let c = String.get str i in
+      let c = String.get_unchecked str ~at:i in
       if c = delimiter then
         loop (current :: acc) "" (i + 1)
       else
-        loop acc (current ^ String.make 1 c) (i + 1)
+        loop acc (current ^ String.make ~len:1 ~char:c) (i + 1)
   in
   loop [] "" 0
 
@@ -77,7 +77,7 @@ let parse_pre_release_segment = fun s ->
   match parse_int s with
   | Some n -> Ok (Numeric n)
   | None ->
-      if String.length s > 0 && String.for_all is_alphanumeric s then
+      if String.length s > 0 && String.for_all s ~fn:is_alphanumeric then
         Ok (Alphanumeric s)
       else
         Error (Invalid_pre_release_segment s)
@@ -86,7 +86,7 @@ let parse_pre_release_identifiers = fun s ->
   let segments = split_on_char '.' s in
   let rec parse_all = fun acc ->
     function
-    | [] -> Ok (List.rev acc)
+    | [] -> Ok (List.reverse acc)
     | seg :: rest -> (
         match parse_pre_release_segment seg with
         | Ok segment -> parse_all (segment :: acc) rest
@@ -100,23 +100,23 @@ let parse_pre_release_identifiers = fun s ->
 let parse = fun version_string ->
   let len = String.length version_string in
   (* Find build metadata separator (+) *)
-  let build_pos = String.index version_string '+' in
+  let build_pos = String.index_of version_string ~char:'+' in
   let core_and_pre, build =
     match build_pos with
     | None -> (version_string, None)
     | Some pos ->
-        let core = String.sub version_string 0 pos in
-        let build_meta = String.sub version_string (pos + 1) (len - pos - 1) in
+        let core = String.sub version_string ~offset:0 ~len:pos in
+        let build_meta = String.sub version_string ~offset:(pos + 1) ~len:(len - pos - 1) in
         (core, Some build_meta)
   in
   (* Find pre-release separator (-) *)
-  let pre_pos = String.index core_and_pre '-' in
+  let pre_pos = String.index_of core_and_pre ~char:'-' in
   let core, pre_string =
     match pre_pos with
     | None -> (core_and_pre, None)
     | Some pos ->
-        let c = String.sub core_and_pre 0 pos in
-        let p = String.sub core_and_pre (pos + 1) (String.length core_and_pre - pos - 1) in
+        let c = String.sub core_and_pre ~offset:0 ~len:pos in
+        let p = String.sub core_and_pre ~offset:(pos + 1) ~len:(String.length core_and_pre - pos - 1) in
         (c, Some p)
   in
   (* Parse core version (major.minor.patch) *)
@@ -155,16 +155,16 @@ let parse = fun version_string ->
 (* Conversion *)
 
 let pre_release_segment_to_string = function
-  | Numeric n -> string_of_int n
+  | Numeric n -> Int.to_string n
   | Alphanumeric s -> s
 
 let to_string = fun v ->
-  let base = string_of_int v.major ^ "." ^ string_of_int v.minor ^ "." ^ string_of_int v.patch in
+  let base = Int.to_string v.major ^ "." ^ Int.to_string v.minor ^ "." ^ Int.to_string v.patch in
   let with_pre =
     match v.pre with
     | [] -> base
     | pre ->
-        let pre_str = String.concat "." (List.map pre_release_segment_to_string pre) in
+        let pre_str = String.concat "." (List.map ~fn:pre_release_segment_to_string pre) in
         base ^ "-" ^ pre_str
   in
   match v.build with
@@ -269,9 +269,9 @@ let parse_requirement = fun req_string ->
         (Some ReqGte, 2)
       else if starts_with "<=" then
         (Some ReqLte, 2)
-      else if len > 0 && String.get s 0 = '>' then
+      else if len > 0 && String.get_unchecked s ~at:0 = '>' then
         (Some ReqGt, 1)
-      else if len > 0 && String.get s 0 = '<' then
+      else if len > 0 && String.get_unchecked s ~at:0 = '<' then
         (Some ReqLt, 1)
       else
         (None, 0)
@@ -279,7 +279,7 @@ let parse_requirement = fun req_string ->
     if version_start > len then
       Error (Invalid_format s)
     else
-      let version_str = String.trim (String.sub s version_start (len - version_start)) in
+      let version_str = String.trim (String.sub s ~offset:version_start ~len:(len - version_start)) in
       match op with
       | Some op -> (
           match parse version_str with

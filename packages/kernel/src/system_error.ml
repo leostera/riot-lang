@@ -28,7 +28,7 @@ type t =
   | DirectoryNotEmpty
   | Unknown of int
 
-let of_code = fun value ->
+let from_code = fun value ->
   match value with
   | 1 -> EndOfFile
   | 2 -> PermissionDenied
@@ -90,7 +90,7 @@ let to_string = fun value ->
   | DirectoryNotEmpty -> "directory not empty"
   | Unknown _ -> "unknown kernel error"
 
-let is_would_block = fun value ->
+let would_block = fun value ->
   match value with
   | WouldBlock -> true
   | _ -> false

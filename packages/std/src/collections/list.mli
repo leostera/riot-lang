@@ -1,37 +1,52 @@
-include module type of Stdlib.List
+type 'value t = 'value list
+val length: 'value list -> int
 
-(** Creates a new list by calling [fn] with indices 0 to [len-1].
+val compare_lengths: left:'left list -> right:'right list -> int
 
-    ## Examples
+val is_empty: 'value list -> bool
 
-    ```ocaml 
-    let squares = List.make ~len:5 ~fn:(fun i -> i * i) in
-    (* [0; 1; 4; 9; 16] *)
+val append: 'value list -> 'value list -> 'value list
 
-    let indexed = List.make ~len:3 ~fn:(fun i -> (i, "item_" ^ string_of_int i)) in
-    (* [(0, "item_0"); (1, "item_1"); (2, "item_2")] *)
-    ```
+val reverse: 'value list -> 'value list
 
-    ## Complexity
+val reverse_append: 'value list -> 'value list -> 'value list
 
-    - Time: O(n) where n is [len]
-    - Space: O(n) *)
-val make: len:int -> fn:(int -> 'a) -> 'a list
+val concat: 'value list list -> 'value list
 
-(** Returns a list with duplicate elements removed, preserving order.
-    Keeps the first occurrence of each element.
-    Uses structural equality (=) to compare elements.
+val init: count:int -> fn:(int -> 'value) -> 'value list
 
-    ## Examples
+val head: 'value list -> 'value option
 
-    ```ocaml
-    List.unique [1; 2; 2; 3; 1; 4]  (* [1; 2; 3; 4] *)
-    List.unique ["a"; "b"; "a"]     (* ["a"; "b"] *)
-    List.unique []                  (* [] *)
-    ```
+val tail: 'value list -> 'value list
 
-    ## Complexity
+val get: 'value list -> at:int -> 'value option
 
-    - Time: O(n²) where n is the list length
-    - Space: O(n) *)
-val unique: 'a list -> 'a list
+val get_unchecked: 'value list -> at:int -> 'value
+
+val map: 'value list -> fn:('value -> 'mapped) -> 'mapped list
+
+val for_each: 'value list -> fn:('value -> unit) -> unit
+
+val fold_left: 'value list -> acc:'acc -> fn:('acc -> 'value -> 'acc) -> 'acc
+
+val fold_right: 'value list -> acc:'acc -> fn:('value -> 'acc -> 'acc) -> 'acc
+
+val all: 'value list -> fn:('value -> bool) -> bool
+
+val any: 'value list -> fn:('value -> bool) -> bool
+
+val contains: 'value list -> value:'value -> bool
+
+val find: 'value list -> fn:('value -> bool) -> 'value option
+
+val filter: 'value list -> fn:('value -> bool) -> 'value list
+
+val filter_map: 'value list -> fn:('value -> 'mapped option) -> 'mapped list
+
+val sort: 'value list -> compare:('value -> 'value -> int) -> 'value list
+
+val unique: 'value list -> compare:('value -> 'value -> int) -> 'value list
+
+val zip: 'left list -> 'right list -> ('left * 'right) list
+
+val unzip: ('left * 'right) list -> ('left list) * ('right list)

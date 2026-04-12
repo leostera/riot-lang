@@ -4,8 +4,7 @@ open IO
 
 (* Result monad for cleaner error handling *)
 
-let ( let* ) = fun x f ->
-  Result.and_then x f
+let ( let* ) = fun x f -> Result.and_then x ~fn:f
 
 type error =
   | Closed
@@ -55,7 +54,7 @@ let flush_to_network = fun t ->
       Ok ()
     else
       (
-        let data = Bytes.sub_string t.network_out_buf 0 n in
+        let data = Bytes.to_string (Bytes.sub_unchecked t.network_out_buf ~offset:0 ~len:n) in
         match IO.write_all t.writer ~buf:data with
         | Ok () -> flush_loop ()
         | Error err -> Error err
@@ -105,8 +104,8 @@ let of_client_io = fun ~reader ~writer ~hostname () ->
       writer;
       engine;
       state = `Active;
-      network_in_buf = Bytes.create 16_384;
-      network_out_buf = Bytes.create 16_384;
+      network_in_buf = Bytes.create ~size:16_384;
+      network_out_buf = Bytes.create ~size:16_384;
     }
     in
     match do_handshake t with
@@ -128,8 +127,8 @@ let of_server_io = fun ~reader ~writer ~cert_file ~key_file () ->
       writer;
       engine;
       state = `Active;
-      network_in_buf = Bytes.create 16_384;
-      network_out_buf = Bytes.create 16_384;
+      network_in_buf = Bytes.create ~size:16_384;
+      network_out_buf = Bytes.create ~size:16_384;
     }
     in
     match do_handshake t with
@@ -190,7 +189,7 @@ let read_plaintext t dst: (int, error) result =
 (* Write plaintext to TLS stream *)
 
 let write_plaintext t src: (int, error) result =
-  let src_bytes = Bytes.of_string src in
+  let src_bytes = Bytes.from_string src in
   let src_len = Bytes.length src_bytes in
   let rec write_loop pos remaining =
     if remaining = 0 then

@@ -24,6 +24,8 @@ type backtrace_slot =
 
 external to_string: exn -> string = "kernel_new_exception_to_string"
 
+external raise_notrace: exn -> 'value = "%raise_notrace"
+
 external get_raw_backtrace: unit -> raw_backtrace = "caml_get_exception_raw_backtrace"
 
 external convert_raw_backtrace_slot: raw_backtrace_slot -> backtrace_slot = "caml_convert_raw_backtrace_slot"
@@ -34,7 +36,9 @@ external record_backtrace: bool -> unit = "caml_record_backtrace"
 
 external backtrace_status: unit -> bool = "caml_backtrace_status"
 
-external get_callstack: int -> raw_backtrace = "caml_get_current_callstack"
+external get_current_callstack: int -> raw_backtrace = "caml_get_current_callstack"
+
+let get_callstack = fun ~depth -> get_current_callstack depth
 
 let convert_raw_backtrace = fun backtrace ->
   try Some (convert_raw_backtrace backtrace) with
@@ -100,7 +104,7 @@ let raw_backtrace_to_string = fun backtrace ->
           acc
         else
           let acc =
-            match format_backtrace_slot index (Array.get slots index) with
+            match format_backtrace_slot index (Array.get_unchecked slots ~at:index) with
             | None -> acc
             | Some line -> String.concat "" [ acc; line; "\n" ]
           in

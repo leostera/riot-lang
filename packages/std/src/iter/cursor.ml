@@ -8,11 +8,13 @@ type t = {
 
 let string_length = Kernel.String.length
 
-let string_get = Kernel.String.get
+let string_get = Kernel.String.get_unchecked
 
 let string_sub = fun source start len ->
-  let bytes = Kernel.Bytes.of_string source in
-  Kernel.Bytes.sub_string bytes start len
+  source
+  |> Kernel.Bytes.from_string
+  |> Kernel.Bytes.sub_unchecked ~offset:start ~len
+  |> Kernel.Bytes.to_string
 
 let create = fun source -> { source; pos = 0; length = string_length source }
 
@@ -28,14 +30,14 @@ let peek = fun cursor ->
   if is_eof cursor then
     None
   else
-    Some (string_get cursor.source cursor.pos)
+    Some (string_get cursor.source ~at:cursor.pos)
 
 let peek_n = fun cursor count ->
   let target = cursor.pos + count in
   if target >= cursor.length then
     None
   else
-    Some (string_get cursor.source target)
+    Some (string_get cursor.source ~at:target)
 
 let advance = fun cursor ->
   if is_eof cursor then
@@ -55,7 +57,7 @@ let take_while = fun cursor predicate ->
   let rec loop pos =
     if pos >= cursor.length then
       pos
-    else if predicate (string_get cursor.source pos) then
+    else if predicate (string_get cursor.source ~at:pos) then
       loop (pos + 1)
     else
       pos
@@ -72,7 +74,7 @@ let take_until = fun cursor predicate ->
   let rec loop pos =
     if pos >= cursor.length then
       None
-    else if predicate (string_get cursor.source pos) then
+    else if predicate (string_get cursor.source ~at:pos) then
       Some pos
     else
       loop (pos + 1)

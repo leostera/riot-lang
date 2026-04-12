@@ -1,3 +1,5 @@
+(** FIXME: turn sync.ml into ./std/src/sync/* so each submodule can be a separate file *)
+
 (** Synchronization primitives owned by `std`.
 
     These wrappers sit above the compiler/runtime-provided low-level mutable and
@@ -5,7 +7,7 @@
 open Kernel
 
 module Atomic: sig
-  type 'value t
+  type 'value t = 'value Kernel.Sync.Atomic.t
   val make: 'value -> 'value t
 
   val get: 'value t -> 'value
@@ -49,7 +51,7 @@ module Cell: sig
 end
 
 module Mutex: sig
-  type t
+  type t = Kernel.Sync.Mutex.t
   val create: unit -> t
 
   val lock: t -> unit
@@ -60,7 +62,7 @@ module Mutex: sig
 end
 
 module Condition: sig
-  type t
+  type t = Kernel.Sync.Condition.t
   val create: unit -> t
 
   val wait: t -> Mutex.t -> unit

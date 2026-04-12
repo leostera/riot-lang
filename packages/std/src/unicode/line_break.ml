@@ -25,10 +25,11 @@
     - Surrogates and complex pairs
     - All Unicode line break classes
 *)
-open Global
+open Prelude
 open Collections
 module String = Kernel.String
-module Uchar = Kernel.Unicode.Rune
+module Scalar = Kernel.Unicode.Rune
+module Rune = Rune
 
 (** Line break opportunity type *)
 type break_opportunity =
@@ -205,37 +206,41 @@ let find_line_breaks = fun s ->
   else
     let rec scan pos prev_class acc =
       if pos >= len then
-        List.rev acc
+        List.reverse acc
       else
         (* Decode current rune *)
-        let decode = String.get_utf_8_uchar s pos in
-        if not (Uchar.utf_decode_is_valid decode) then
-          List.rev ((pos, Can_break) :: acc)
-        else
-          let rune = Uchar.utf_decode_uchar decode in
-          let rune_len = Uchar.utf_decode_length decode in
-          let curr_code = Rune.to_int rune in
-          let curr_class = get_line_class curr_code in
-          (* Determine break opportunity *)
-          let opp = get_break_opportunity ~prev_class ~curr_class in
-          (* Add to list if it's a break opportunity *)
-          let new_acc =
-            match opp with
-            | Dont_break -> acc
-            | Can_break
-            | Must_break -> (pos, opp) :: acc
-          in
-          scan (pos + rune_len) curr_class new_acc
+        match String.get_utf_8_rune s ~at:pos with
+        | None -> List.reverse ((pos, Can_break) :: acc)
+        | Some decode ->
+            if not (Scalar.utf_decode_is_valid decode) then
+              List.reverse ((pos, Can_break) :: acc)
+            else
+              let rune = Scalar.utf_decode_rune decode in
+              let rune_len = Scalar.utf_decode_length decode in
+              let curr_code = Rune.to_int rune in
+              let curr_class = get_line_class curr_code in
+              (* Determine break opportunity *)
+              let opp = get_break_opportunity ~prev_class ~curr_class in
+              (* Add to list if it's a break opportunity *)
+              let new_acc =
+                match opp with
+                | Dont_break -> acc
+                | Can_break
+                | Must_break -> (pos, opp) :: acc
+              in
+              scan (pos + rune_len) curr_class new_acc
     in
     (* Start scanning from first character *)
-    let first_decode = String.get_utf_8_uchar s 0 in
-    if not (Uchar.utf_decode_is_valid first_decode) then
-      []
-    else
-      let first_rune = Uchar.utf_decode_uchar first_decode in
-      let first_len = Uchar.utf_decode_length first_decode in
-      let first_class = get_line_class (Rune.to_int first_rune) in
-      scan first_len first_class []
+    match String.get_utf_8_rune s ~at:0 with
+    | None -> []
+    | Some first_decode ->
+        if not (Scalar.utf_decode_is_valid first_decode) then
+          []
+        else
+          let first_rune = Scalar.utf_decode_rune first_decode in
+          let first_len = Scalar.utf_decode_length first_decode in
+          let first_class = get_line_class (Rune.to_int first_rune) in
+          scan first_len first_class []
 
 (** Wrap text to fit within a given width
     Returns a list of lines *)
@@ -248,46 +253,46 @@ let wrap_lines = fun ~width s ->
     let rec wrap_text pos current_width line_start lines breaks =
       if pos >= len then
         if line_start < len then
-          List.rev (String.sub s line_start (len - line_start) :: lines)
+          List.reverse (String.sub s ~offset:line_start ~len:(len - line_start) :: lines)
         else
-          List.rev lines
+          List.reverse lines
       else
         (* Decode current rune *)
-        let decode = String.get_utf_8_uchar s pos in
-        if not (Uchar.utf_decode_is_valid decode) then
-          List.rev lines
-        else
-          let rune = Uchar.utf_decode_uchar decode in
-          let rune_len = Uchar.utf_decode_length decode in
-          let rune_width = Rune.width rune in
-          let new_width = current_width + rune_width in
-          (* Check for mandatory break *)
-          let is_newline = Rune.to_int rune = 0x000a || Rune.to_int rune = 0x000d in
-          if is_newline then
-            let line = String.sub s line_start (pos - line_start) in
-            wrap_text (pos + rune_len) 0 (pos + rune_len) (line :: lines) breaks
-          else if new_width > width then
-            let last_break =
-              List.fold_left
-                (fun acc ((break_pos, _)) ->
-                  if break_pos > line_start && break_pos < pos then
-                    Some break_pos
-                  else
-                    acc)
-                None
-                breaks
-            in
-            match last_break with
-            | Some break_pos ->
-                (* Break at last opportunity *)
-                let line = String.sub s line_start (break_pos - line_start) in
-                wrap_text break_pos 0 break_pos (line :: lines) breaks
-            | None ->
-                (* No break opportunity - force break here *)
-                let line = String.sub s line_start (pos - line_start) in
-                wrap_text pos 0 pos (line :: lines) breaks
-          else
-            (* Continue on same line *)
-            wrap_text (pos + rune_len) new_width line_start lines breaks
+        match String.get_utf_8_rune s ~at:pos with
+        | None -> List.reverse lines
+        | Some decode ->
+            if not (Scalar.utf_decode_is_valid decode) then
+              List.reverse lines
+            else
+              let rune = Scalar.utf_decode_rune decode in
+              let rune_len = Scalar.utf_decode_length decode in
+              let rune_width = Rune.width rune in
+              let new_width = current_width + rune_width in
+              (* Check for mandatory break *)
+              let is_newline = Rune.to_int rune = 0x000a || Rune.to_int rune = 0x000d in
+              if is_newline then
+                let line = String.sub s ~offset:line_start ~len:(pos - line_start) in
+                wrap_text (pos + rune_len) 0 (pos + rune_len) (line :: lines) breaks
+              else if new_width > width then
+                let last_break =
+                  List.fold_left breaks ~acc:None
+                    ~fn:(fun acc (break_pos, _) ->
+                      if break_pos > line_start && break_pos < pos then
+                        Some break_pos
+                      else
+                        acc)
+                in
+                match last_break with
+                | Some break_pos ->
+                    (* Break at last opportunity *)
+                    let line = String.sub s ~offset:line_start ~len:(break_pos - line_start) in
+                    wrap_text break_pos 0 break_pos (line :: lines) breaks
+                | None ->
+                    (* No break opportunity - force break here *)
+                    let line = String.sub s ~offset:line_start ~len:(pos - line_start) in
+                    wrap_text pos 0 pos (line :: lines) breaks
+              else
+                (* Continue on same line *)
+                wrap_text (pos + rune_len) new_width line_start lines breaks
     in
     wrap_text 0 0 0 [] breaks

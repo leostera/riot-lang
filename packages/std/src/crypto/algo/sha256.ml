@@ -32,7 +32,7 @@ let write_list = fun writer state lst ->
 
 let write_array = fun writer state arr ->
   write_int state (Array.length arr);
-  Array.iter (writer state) arr
+  Array.for_each arr ~fn:(writer state)
 
 let finish = fun state ->
   Common.finish_iovec Ffi.sha256_iovec state

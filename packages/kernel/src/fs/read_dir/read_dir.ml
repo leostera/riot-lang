@@ -1,6 +1,6 @@
 open Prelude
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 type kind = File.kind =
   | RegularFile
@@ -39,14 +39,12 @@ let next_name = fun dir ->
   if dir.index >= Array.length dir.names then
     None
   else
-    let name = Array.get dir.names dir.index in
+    let name = Array.get_unchecked dir.names ~at:dir.index in
     dir.index <- dir.index + 1;
     Some name
 
 let open_dir = fun path ->
-  let* names =
-    Result.map_error (fun error -> File error) (File.read_dir_names path)
-  in
+  let* names = File.read_dir_names path |> Result.map_err ~fn:(fun error -> File error) in
   Result.Ok { root = path; names; index = 0; closed = false }
 
 let read_name = fun dir ->
@@ -62,10 +60,8 @@ let read_entry = fun dir ->
     match next_name dir with
     | None -> Result.Ok None
     | Some name ->
-        let path = Path.join dir.root (Path.of_string name) in
-        let* metadata =
-          Result.map_error (fun error -> File error) (File.symlink_metadata path)
-        in
+        let path = Path.join dir.root (Path.from_string name) in
+        let* metadata = File.symlink_metadata path |> Result.map_err ~fn:(fun error -> File error) in
         Result.Ok (Some { name; kind = File.Metadata.file_type metadata })
 
 let close = fun dir ->

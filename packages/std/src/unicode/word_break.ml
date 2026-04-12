@@ -17,10 +17,10 @@
     - Hebrew double quotes - would need lookahead rules
     - Some edge cases in UAX #29
 *)
-open Global
+open Prelude
 open Collections
 module String = Kernel.String
-module Uchar = Kernel.Unicode.Rune
+module Scalar = Kernel.Unicode.Rune
 
 (** Word break property - simplified *)
 type word_property =
@@ -159,55 +159,58 @@ let find_word_boundaries = fun s ->
   else
     let rec scan pos prev_prop acc =
       if pos >= len then
-        List.rev acc
+        List.reverse acc
       else
         (* Decode current rune *)
-        let decode = String.get_utf_8_uchar s pos in
-        if not (Uchar.utf_decode_is_valid decode) then
-          List.rev (pos :: acc)
-        else
-          let rune = Uchar.utf_decode_uchar decode in
-          let rune_len = Uchar.utf_decode_length decode in
-          let curr_code = Rune.to_int rune in
-          let curr_prop = get_word_property curr_code in
-          (* Peek at next rune for lookahead *)
-          let next_prop =
-            let next_pos = pos + rune_len in
-            if next_pos >= len then
-              None
+        match String.get_utf_8_rune s ~at:pos with
+        | None -> List.reverse (pos :: acc)
+        | Some decode ->
+            if not (Scalar.utf_decode_is_valid decode) then
+              List.reverse (pos :: acc)
             else
-              let next_decode = String.get_utf_8_uchar s next_pos in
-              if Uchar.utf_decode_is_valid next_decode then
-                let next_rune = Uchar.utf_decode_uchar next_decode in
-                let next_code = Rune.to_int next_rune in
-                Some (get_word_property next_code)
-              else
-                None
-          in
-          (* Check if we should break *)
-          let break_here = should_break_word ~prev_prop ~curr_prop ~next_prop in
-          let new_acc =
-            if break_here && pos > 0 then
-              pos :: acc
-            else
-              acc
-          in
-          scan (pos + rune_len) curr_prop new_acc
+              let rune = Scalar.utf_decode_rune decode in
+              let rune_len = Scalar.utf_decode_length decode in
+              let curr_code = Rune.to_int rune in
+              let curr_prop = get_word_property curr_code in
+              (* Peek at next rune for lookahead *)
+              let next_prop =
+                let next_pos = pos + rune_len in
+                if next_pos >= len then
+                  None
+                else
+                  match String.get_utf_8_rune s ~at:next_pos with
+                  | Some next_decode when Scalar.utf_decode_is_valid next_decode ->
+                      let next_rune = Scalar.utf_decode_rune next_decode in
+                      let next_code = Rune.to_int next_rune in
+                      Some (get_word_property next_code)
+                  | _ -> None
+              in
+              (* Check if we should break *)
+              let break_here = should_break_word ~prev_prop ~curr_prop ~next_prop in
+              let new_acc =
+                if break_here && pos > 0 then
+                  pos :: acc
+                else
+                  acc
+              in
+              scan (pos + rune_len) curr_prop new_acc
     in
     (* Start scanning from position 0 *)
-    let first_decode = String.get_utf_8_uchar s 0 in
-    if not (Uchar.utf_decode_is_valid first_decode) then
-      []
-    else
-      let first_rune = Uchar.utf_decode_uchar first_decode in
-      let first_len = Uchar.utf_decode_length first_decode in
-      let first_prop = get_word_property (Rune.to_int first_rune) in
-      scan first_len first_prop []
+    match String.get_utf_8_rune s ~at:0 with
+    | None -> []
+    | Some first_decode ->
+        if not (Scalar.utf_decode_is_valid first_decode) then
+          []
+        else
+          let first_rune = Scalar.utf_decode_rune first_decode in
+          let first_len = Scalar.utf_decode_length first_decode in
+          let first_prop = get_word_property (Rune.to_int first_rune) in
+          scan first_len first_prop []
 
 (** Find the start of the next word from position pos *)
 let find_next_word_start = fun s pos ->
   let boundaries = find_word_boundaries s in
-  match List.find_opt (fun b -> b > pos) boundaries with
+  match List.find boundaries ~fn:(fun b -> b > pos) with
   | Some boundary -> boundary
   | None -> String.length s
 
@@ -215,8 +218,8 @@ let find_next_word_start = fun s pos ->
 let find_prev_word_start = fun s pos ->
   let boundaries = find_word_boundaries s in
   let before =
-    List.filter (fun b -> b < pos) boundaries
+    List.filter boundaries ~fn:(fun b -> b < pos)
   in
-  match List.rev before with
+  match List.reverse before with
   | last :: _ -> last
   | [] -> 0

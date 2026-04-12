@@ -1,4 +1,4 @@
-let of_system_error = fun value ->
+let from_system_error = fun value ->
   match value with
   | System_error.EndOfFile -> 1
   | System_error.PermissionDenied -> 2
@@ -29,6 +29,6 @@ let of_system_error = fun value ->
   | System_error.DirectoryNotEmpty -> 27
   | System_error.Unknown code -> code
 
-let broken_pipe = of_system_error System_error.BrokenPipe
+let broken_pipe = from_system_error System_error.BrokenPipe
 
-let no_such_file_or_directory = of_system_error System_error.NoSuchFileOrDirectory
+let no_such_file_or_directory = from_system_error System_error.NoSuchFileOrDirectory

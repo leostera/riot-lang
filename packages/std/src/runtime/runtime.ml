@@ -9,7 +9,7 @@ let monotonic_time_nanos = fun () ->
   match Kernel.Time.Monotonic.now () with
   | Ok time ->
       let secs, nanos = Kernel.Time.Monotonic.to_parts time in
-      Int64.add (Int64.mul (Int64.of_int secs) 1_000_000_000L) (Int64.of_int nanos)
+      Int64.add (Int64.mul (Int64.from_int secs) 1_000_000_000L) (Int64.from_int nanos)
   | Error err -> panic (Kernel.Time.Monotonic.error_to_string err)
 
 module Runtime = Reduction
@@ -106,7 +106,7 @@ let spawn = fun fn ->
   Scheduler.spawn (Scheduler.get_scheduler ()) fn
 
 let spawn_pinned = fun ?scheduler fn ->
-  let scheduler = Option.map Scheduler_id.of_int scheduler in
+  let scheduler = Option.map scheduler ~fn:Scheduler_id.of_int in
   Scheduler.spawn_pinned ?worker_id:scheduler (Scheduler.get_scheduler ()) fn
 
 let spawn_blocked = fun fn ->
@@ -136,7 +136,7 @@ module Timer = struct
   let send_after = fun target_pid (msg: Message.t) ~after ->
     let sch = Scheduler.get_scheduler () in
     let now = monotonic_time_nanos () in
-    let duration_nanos = Int64.of_float (after *. 1_000_000_000.0) in
+    let duration_nanos = Int64.from_float (after *. 1_000_000_000.0) in
     Scheduler.add_timer
       sch
       ~now
@@ -147,7 +147,7 @@ module Timer = struct
   let send_interval = fun target_pid (msg: Message.t) ~interval ->
     let sch = Scheduler.get_scheduler () in
     let now = monotonic_time_nanos () in
-    let duration_nanos = Int64.of_float (interval *. 1_000_000_000.0) in
+    let duration_nanos = Int64.from_float (interval *. 1_000_000_000.0) in
     Scheduler.add_timer
       sch
       ~now

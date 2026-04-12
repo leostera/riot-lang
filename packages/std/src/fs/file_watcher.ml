@@ -15,20 +15,19 @@ type state = {
 }
 
 let should_ignore = fun ~ignore_prefixes path ->
-  List.exists
-    (fun prefix ->
+  List.any ignore_prefixes
+    ~fn:(fun prefix ->
       match Path.strip_prefix path ~prefix with
       | Ok _ -> true
       | Error _ -> false)
-    ignore_prefixes
 
 let rec loop = fun state ->
   let events = Events.poll state.watcher |> Result.expect ~msg:"Could not read events" in
   let filtered_events =
     List.filter
-      (fun (event: Event.t) ->
-        not (should_ignore ~ignore_prefixes:state.ignore_prefixes event.Event.path))
       events
+      ~fn:(fun (event: Event.t) ->
+        not (should_ignore ~ignore_prefixes:state.ignore_prefixes event.Event.path))
   in
   if List.length filtered_events > 0 then
     send state.subscriber (FileEvents filtered_events);

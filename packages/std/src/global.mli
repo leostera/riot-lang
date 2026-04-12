@@ -44,10 +44,6 @@ type ('value, 'error) result = ('value, 'error) Kernel.result =
   | Error of 'error
 val format: format list -> string
 
-val max_int: int
-
-val min_int: int
-
 val ( = ): 'value -> 'value -> bool
 
 val compare: 'value -> 'value -> int
@@ -57,8 +53,6 @@ val min: 'value -> 'value -> 'value
 val max: 'value -> 'value -> 'value
 
 val ( != ): 'value -> 'value -> bool
-
-val ( <> ): 'value -> 'value -> bool
 
 val ( < ): 'value -> 'value -> bool
 
@@ -114,26 +108,6 @@ val ( @ ): 'value list -> 'value list -> 'value list
 
 val ( ** ): float -> float -> float
 
-val float_of_int: int -> float
-
-val int_of_float: float -> int
-
-val float: int -> float
-
-val string_of_int: int -> string
-
-val string_of_float: float -> string
-
-val abs: int -> int
-
-val mod_float: float -> float -> float
-
-val sqrt: float -> float
-
-val floor: float -> float
-
-val ceil: float -> float
-
 val not: bool -> bool
 
 val ( && ): bool -> bool -> bool
@@ -143,8 +117,6 @@ val ( || ): bool -> bool -> bool
 val raise: exn -> 'value
 
 val raise_notrace: exn -> 'value
-
-val ignore: 'value -> unit
 
 (** {1 Process Management} *)
 

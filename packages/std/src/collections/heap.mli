@@ -1,248 +1,38 @@
-(** # Collections.Heap - Priority queue implementation
-    
-    Binary heap implementation providing efficient priority queue operations.
-    Supports both min-heap (smallest element first) and max-heap (largest 
-    element first) variants.
-    
-    ## Examples
-    
-    Min-heap (default):
-    
-    ```ocaml
-    open Std.Collections
-    
-    let heap = Heap.create () in
-    Heap.push heap 5;
-    Heap.push heap 3;
-    Heap.push heap 7;
-    Heap.push heap 1;
-    
-    Heap.pop heap  (* Some 1 - smallest element *)
-    Heap.pop heap  (* Some 3 *)
-    Heap.peek heap  (* Some 5 - next element without removing *)
-    ```
-    
-    Max-heap:
-    
-    ```ocaml
-    let heap = Heap.create_max () in
-    Heap.push heap 5;
-    Heap.push heap 3;
-    Heap.push heap 7;
-    
-    Heap.pop heap  (* Some 7 - largest element *)
-    Heap.pop heap  (* Some 5 *)
-    ```
-    
-    Custom comparison:
-    
-    ```ocaml
-    type task = { priority : int; name : string }
-    
-    let by_priority a b = compare a.priority b.priority in
-    let heap = Heap.create_with ~compare:by_priority () in
-    
-    Heap.push heap { priority = 5; name = "medium" };
-    Heap.push heap { priority = 1; name = "urgent" };
-    Heap.push heap { priority = 10; name = "low" };
-    
-    Heap.pop heap  (* Some { priority = 1; name = "urgent" } *)
-    ```
-    
-    Building from list:
-    
-    ```ocaml
-    let heap = Heap.of_list [5; 2; 8; 1; 9] in
-    Heap.to_list heap  (* [1; 2; 5; 8; 9] - sorted *)
-    ```
-    
-    ## Use Cases
-    
-    - Task scheduling by priority
-    - Dijkstra's shortest path algorithm
-    - Huffman coding
-    - Event-driven simulation
-    - K-th largest/smallest element problems
-    - Merge k sorted lists
-    
-    ## Performance
-    
-    - Push: O(log n)
-    - Pop: O(log n)
-    - Peek: O(1)
-    - Size: O(1)
-*)
+type 'value t
+val create: unit -> 'value t
 
-(** A binary heap containing elements of type ['a]. *)
-type 'a t
-(** {1 Creation} *)
-(** Creates an empty min-heap using [compare].
+val create_max: unit -> 'value t
 
-    ## Examples
+val create_with: compare:('value -> 'value -> int) -> unit -> 'value t
 
-    ```ocaml let heap = Heap.create () in Heap.push heap 5; Heap.push heap 3;
-    Heap.pop heap (* Some 3 - min-heap returns smallest *) ``` *)
-val create: unit -> 'a t
+val from_list: 'value list -> 'value t
 
-(** Creates an empty max-heap using reversed [compare].
+val from_list_with: compare:('value -> 'value -> int) -> 'value list -> 'value t
 
-    ## Examples
+val push: 'value t -> value:'value -> unit
 
-    ```ocaml let heap = Heap.create_max () in Heap.push heap 5; Heap.push heap
-    3; Heap.pop heap (* Some 5 - max-heap returns largest *) ``` *)
-val create_max: unit -> 'a t
+val pop: 'value t -> 'value option
 
-(** Creates an empty heap with custom comparison function.
+val pop_unchecked: 'value t -> 'value
 
-    The comparison function should return:
-    - negative if first argument is less than second
-    - zero if arguments are equal
-    - positive if first argument is greater than second
+val peek: 'value t -> 'value option
 
-    ## Examples
+val peek_unchecked: 'value t -> 'value
 
-    ```ocaml (* Min-heap by absolute value *) let heap = Heap.create_with
-    ~compare:(fun a b -> compare (abs a) (abs b) ) () in
+val length: 'value t -> int
 
-    Heap.push heap (-5); Heap.push heap 3; Heap.pop heap (* Some 3 - smallest
-    absolute value *) ``` *)
-val create_with: compare:('a -> 'a -> int) -> unit -> 'a t
+val is_empty: 'value t -> bool
 
-(** Creates a min-heap from a list. O(n) time complexity.
+val clear: 'value t -> unit
 
-    ## Examples
+val to_list: 'value t -> 'value list
 
-    ```ocaml let heap = Heap.of_list [5; 2; 8; 1] in Heap.peek heap (* Some 1 *)
-    ``` *)
-val of_list: 'a list -> 'a t
+val to_list_unordered: 'value t -> 'value list
 
-(** Creates a heap from a list with custom comparison. *)
-val of_list_with: compare:('a -> 'a -> int) -> 'a list -> 'a t
+val for_each: 'value t -> fn:('value -> unit) -> unit
 
-(** {1 Operations} *)
-(** Adds an element to the heap. O(log n).
+val fold_left: 'value t -> acc:'acc -> fn:('acc -> 'value -> 'acc) -> 'acc
 
-    ## Examples
+val iter: 'value t -> 'value Iter.Iterator.t
 
-    ```ocaml let heap = Heap.create () in Heap.push heap 5; Heap.push heap 3;
-    Heap.size heap (* 2 *) ``` *)
-val push: 'a t -> 'a -> unit
-
-(** Removes and returns the top element (min or max depending on heap type).
-    Returns [None] if heap is empty. O(log n).
-
-    ## Examples
-
-    ```ocaml let heap = Heap.of_list [3; 1; 4] in Heap.pop heap (* Some 1 *)
-    Heap.pop heap (* Some 3 *) Heap.pop heap (* Some 4 *) Heap.pop heap (* None
-    \- empty *) ``` *)
-val pop: 'a t -> 'a option
-
-(** Returns the top element without removing it. O(1).
-
-    ## Examples
-
-    ```ocaml let heap = Heap.of_list [3; 1; 4] in Heap.peek heap (* Some 1 *)
-    Heap.peek heap (* Some 1 - still there *) ``` *)
-val peek: 'a t -> 'a option
-
-(** Removes and returns the top element. Raises [Not_found] if empty.
-
-    ## Examples
-
-    ```ocaml let heap = Heap.of_list [3; 1] in Heap.pop_exn heap (* 1 *) ``` *)
-
-(** Returns the top element. Raises [Not_found] if empty. *)
-val pop_exn: 'a t -> 'a
-
-val peek_exn: 'a t -> 'a
-
-(** {1 Query} *)
-(** Returns [true] if the heap is empty.
-
-    ## Examples
-
-    ```ocaml let heap = Heap.create () in Heap.is_empty heap (* true *)
-    Heap.push heap 1; Heap.is_empty heap (* false *) ``` *)
-val is_empty: 'a t -> bool
-
-(** Returns the number of elements in the heap. O(1).
-
-    ## Examples
-
-    ```ocaml let heap = Heap.of_list [1; 2; 3] in Heap.size heap (* 3 *) ``` *)
-val size: 'a t -> int
-
-(** Removes all elements from the heap.
-
-    ## Examples
-
-    ```ocaml let heap = Heap.of_list [1; 2; 3] in Heap.clear heap; Heap.is_empty
-    heap (* true *) ``` *)
-val clear: 'a t -> unit
-
-(** {1 Conversion} *)
-(** Returns all elements as a sorted list. Empties the heap. O(n log n).
-
-    ## Examples
-
-    ```ocaml let heap = Heap.of_list [5; 2; 8; 1] in Heap.to_list heap (*
-    [1; 2; 5; 8] *) Heap.is_empty heap (* true - heap is now empty *) ``` *)
-val to_list: 'a t -> 'a list
-
-(** Returns all elements in arbitrary order without emptying the heap. O(n).
-
-    ## Examples
-
-    ```ocaml let heap = Heap.of_list [5; 2; 8; 1] in let items =
-    Heap.to_list_unordered heap in Heap.size heap (* 4 - heap unchanged *) ```
-*)
-val to_list_unordered: 'a t -> 'a list
-
-(** Iterates over elements in heap order, emptying the heap. O(n log n).
-
-    ## Examples
-
-    ```ocaml let heap = Heap.of_list [3; 1; 4] in Heap.iter (fun x -> println
-    "%d" x) heap (* Prints: 1, 3, 4 *) ``` *)
-val iter: ('a -> unit) -> 'a t -> unit
-
-(** Folds over elements in heap order, emptying the heap. O(n log n).
-
-    ## Examples
-
-    ```ocaml let heap = Heap.of_list [1; 2; 3] in Heap.fold (fun acc x -> acc +
-    x) 0 heap (* 6 *) ``` *)
-
-(** Converts this heap into an immutable iterator over its elements in priority order.
-    Creates a copy of the heap, so the original is unchanged.
-
-    ## Examples
-
-    ```ocaml
-    let heap = Heap.of_list [5; 2; 8; 1; 9] in
-    heap
-    |> Heap.into_iter
-    |> Iterator.filter ~fn:(fun x -> x > 2)
-    |> Iterator.collect
-    (* [5; 8; 9] - in sorted order, filtered *)
-    (* Original heap is unchanged *)
-    ```
-
-    ## Complexity
-
-    - Time: O(n) to copy heap
-    - Space: O(n) for the copy *)
-val fold: ('b -> 'a -> 'b) -> 'b -> 'a t -> 'b
-
-val into_iter: 'a t -> 'a Iter.Iterator.t
-
-(** Returns a mutable iterator over the heap's elements in priority order. Note:
-    This consumes the heap as you iterate.
-
-    ## Examples
-
-    ```ocaml let heap = Heap.of_list [5; 2; 8; 1] in let iter = Heap.to_mut_iter
-    heap in Iter.MutIterator.to_list iter (* [1; 2; 5; 8] - sorted order *) (*
-    heap is now empty *) ``` *)
-val to_mut_iter: 'a t -> 'a Iter.MutIterator.t
+val mut_iter: 'value t -> 'value Iter.MutIterator.t

@@ -15,14 +15,15 @@ let to_parts = fun t -> (t.secs, t.nanos)
 
 let secs = fun t -> t.secs
 
-let secs_float = fun t -> float_of_int t.secs +. (float_of_int t.nanos /. 1_000_000_000.0)
+let secs_float = fun t -> Float.from_int t.secs +. (Float.from_int t.nanos /. 1_000_000_000.0)
 
 let nanos = fun t ->
-  Int64.add (Int64.mul (Int64.of_int t.secs) 1_000_000_000L) (Int64.of_int t.nanos)
+  Int64.add (Int64.mul (Int64.from_int t.secs) 1_000_000_000L) (Int64.from_int t.nanos)
 
 let from_seconds = fun f ->
-  let secs = int_of_float (floor f) in
-  let nanos = int_of_float ((f -. floor f) *. 1_000_000_000.0) in
+  let whole = Float.floor f in
+  let secs = Int.from_float whole in
+  let nanos = Int.from_float ((f -. whole) *. 1_000_000_000.0) in
   { secs; nanos }
 
 let from_nanos = fun nanos_total ->

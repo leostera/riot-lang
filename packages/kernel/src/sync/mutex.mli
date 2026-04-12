@@ -1,5 +1,5 @@
 (** Thin wrapper around OCaml mutex primitives. *)
-type t = Stdlib.Mutex.t
+type t
 val create: unit -> t
 
 val lock: t -> unit

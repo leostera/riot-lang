@@ -11,7 +11,7 @@ type error =
   | SystemInvalidUtf8 of { syscall: string; path: string }
   | SystemError of string
 
-let is_absolute = fun path -> String.length path > 0 && path.[0] = '/'
+let is_absolute = fun path -> String.length path > 0 && String.get_unchecked path ~at:0 = '/'
 
 let is_valid_utf8 = fun s ->
   try
@@ -20,7 +20,7 @@ let is_valid_utf8 = fun s ->
       if i >= len then
         true
       else
-        let c = Char.code s.[i] in
+        let c = Char.code (String.get_unchecked s ~at:i) in
         if c < 0x80 then
           check (i + 1)
           (* ASCII *)
@@ -30,27 +30,27 @@ let is_valid_utf8 = fun s ->
         else if c < 0xe0 then
           if i + 1 >= len then
             false
-          else if Char.code s.[i + 1] land 0xc0 != 0x80 then
+          else if Char.code (String.get_unchecked s ~at:(i + 1)) land 0xc0 != 0x80 then
             false
           else
             check (i + 2)
         else if c < 0xf0 then
           if i + 2 >= len then
             false
-          else if Char.code s.[i + 1] land 0xc0 != 0x80 then
+          else if Char.code (String.get_unchecked s ~at:(i + 1)) land 0xc0 != 0x80 then
             false
-          else if Char.code s.[i + 2] land 0xc0 != 0x80 then
+          else if Char.code (String.get_unchecked s ~at:(i + 2)) land 0xc0 != 0x80 then
             false
           else
             check (i + 3)
         else if c < 0xf8 then
           if i + 3 >= len then
             false
-          else if Char.code s.[i + 1] land 0xc0 != 0x80 then
+          else if Char.code (String.get_unchecked s ~at:(i + 1)) land 0xc0 != 0x80 then
             false
-          else if Char.code s.[i + 2] land 0xc0 != 0x80 then
+          else if Char.code (String.get_unchecked s ~at:(i + 2)) land 0xc0 != 0x80 then
             false
-          else if Char.code s.[i + 3] land 0xc0 != 0x80 then
+          else if Char.code (String.get_unchecked s ~at:(i + 3)) land 0xc0 != 0x80 then
             false
           else
             check (i + 4)
@@ -61,13 +61,15 @@ let is_valid_utf8 = fun s ->
   with
   | _ -> false
 
-let of_string = fun s ->
+let from_string = fun s ->
   if is_valid_utf8 s then
     Result.ok s
   else
     Result.err (InvalidUtf8 { path = s })
 
-let v = fun path -> of_string path |> Result.expect ~msg:("Invalid string path " ^ path)
+let of_string = from_string
+
+let v = fun path -> from_string path |> Result.expect ~msg:("Invalid string path " ^ path)
 
 let to_string = fun t -> t
 
@@ -76,7 +78,7 @@ let join = fun base path ->
     path
   else if base = "" then
     path
-  else if base.[String.length base - 1] = '/' then
+  else if String.get_unchecked base ~at:(String.length base - 1) = '/' then
     base ^ path
   else
     base ^ "/" ^ path
@@ -90,11 +92,11 @@ let dirname = fun path ->
     "/"
   else
     (* Split by separator, drop last element, rejoin by separator *)
-    let parts = String.split_on_char '/' path in
+    let parts = String.split ~by:"/" path in
     let without_last =
-      match List.rev parts with
+      match List.reverse parts with
       | [] -> []
-      | _ :: rest -> List.rev rest
+      | _ :: rest -> List.reverse rest
     in
     let result = String.concat "/" without_last in
     if result = "" then
@@ -116,8 +118,8 @@ let basename = fun path ->
     "/"
   else
     (* Split by separator, return last element *)
-    let parts = String.split_on_char '/' path in
-    match List.rev parts with
+    let parts = String.split ~by:"/" path in
+    match List.reverse parts with
     | [] -> ""
     | last :: _ ->
         if last = "" then
@@ -132,14 +134,14 @@ let extension = fun path ->
     if i < 1 then
       None
       (* Don't consider leading dot *)
-    else if base.[i] = '.' then
+    else if String.get_unchecked base ~at:i = '.' then
       Some i
     else
       find_dot (i - 1)
   in
   match find_dot (len - 1) with
   | None -> None
-  | Some i -> Some (String.sub base i (len - i))
+  | Some i -> Some (String.sub base ~offset:i ~len:(len - i))
 
 let remove_extension = fun path ->
   let base = basename path in
@@ -149,12 +151,12 @@ let remove_extension = fun path ->
     if i < 1 then
       len
       (* Don't consider leading dot *)
-    else if base.[i] = '.' then
+    else if String.get_unchecked base ~at:i = '.' then
       i
     else
       find_dot (i - 1)
   in
-  let base_without_ext = String.sub base 0 (find_dot (len - 1)) in
+  let base_without_ext = String.sub base ~offset:0 ~len:(find_dot (len - 1)) in
   if dir = "." then
     base_without_ext
   else if dir = "/" then
@@ -164,7 +166,7 @@ let remove_extension = fun path ->
 
 let add_extension = fun path ~ext ->
   let ext =
-    if String.length ext > 0 && ext.[0] != '.' then
+    if String.length ext > 0 && String.get_unchecked ext ~at:0 != '.' then
       "." ^ ext
     else
       ext
@@ -181,10 +183,10 @@ let components = fun t ->
   else if t = "/" then
     [ "/" ]
   else
-    let parts = String.split_on_char '/' t in
+    let parts = String.split ~by:"/" t in
     let rec build_components acc parts =
       match parts with
-      | [] -> List.rev acc
+      | [] -> List.reverse acc
       | "" :: rest when acc = [] ->
           (* Leading slash means absolute path *)
           build_components [ "/" ] rest
@@ -196,11 +198,11 @@ let components = fun t ->
     build_components [] parts
 
 let rec normalize = fun path ->
-  let parts = String.split_on_char '/' path in
+  let parts = String.split ~by:"/" path in
   let rec process = fun acc ->
     function
     | [] ->
-        List.rev acc
+        List.reverse acc
     | "." :: rest ->
         process acc rest
     | ".." :: rest -> (
@@ -263,7 +265,11 @@ let strip_prefix = fun path ~prefix ->
       Result.ok (v "")
   | Ok remaining ->
       (* Join remaining components back into a path *)
-      let result = List.fold_left join (List.hd remaining) (List.tl remaining) in
+      let result =
+        match remaining with
+        | first :: rest -> List.fold_left rest ~acc:first ~fn:join
+        | [] -> ""
+      in
       Result.ok result
   | Error e ->
       Result.err e

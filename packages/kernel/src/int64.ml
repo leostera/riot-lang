@@ -6,7 +6,7 @@ let min_int = (-0x8000_0000_0000_0000L)
 
 let max_int = 0x7fff_ffff_ffff_ffffL
 
-let of_int = Caml_runtime.int64_of_int
+let from_int = Caml_runtime.int64_of_int
 
 let to_int = Caml_runtime.int64_to_int
 
@@ -15,6 +15,8 @@ let logand = Caml_runtime.int64_logand
 let logor = Caml_runtime.int64_logor
 
 let logxor = Caml_runtime.int64_logxor
+
+let lognot = fun value -> logxor value (-1L)
 
 let shift_left = Caml_runtime.shift_left_int64
 
@@ -44,21 +46,21 @@ let succ = fun value -> add value 1L
 
 let pred = fun value -> sub value 1L
 
-let of_float = Caml_runtime.int64_of_float
+let from_float = Caml_runtime.int64_of_float
 
 let to_float = Caml_runtime.int64_to_float
 
-let of_int32 = Caml_runtime.int64_of_int32
+let from_int32 = Caml_runtime.int64_of_int32
 
 let to_int32 = Caml_runtime.int64_to_int32
 
 external format: string -> int64 -> string = "caml_int64_format"
 
-external of_string: string -> int64 = "caml_int64_of_string"
+external parse_unchecked: string -> int64 = "caml_int64_of_string"
 
-let of_string_opt = fun value ->
-  try Some (of_string value) with
-  | Failure _ -> None
+let parse = fun value ->
+  try Some (parse_unchecked value) with
+  | _ -> None
 
 let to_string = fun value -> format "%d" value
 

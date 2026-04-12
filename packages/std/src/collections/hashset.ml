@@ -1,137 +1,123 @@
 open Kernel
-module Hashtbl = Stdlib.Hashtbl
 
-type 'a t = ('a, unit) Hashtbl.t
+type 'value t = ('value, unit) Hashmap.t
 
-let create = fun () -> Hashtbl.create 16
+let create = Hashmap.create
 
-let with_capacity = fun capacity -> Hashtbl.create capacity
+let with_capacity = Hashmap.with_capacity
 
-let of_list = fun elements ->
-  let set = Hashtbl.create (List.length elements) in
-  List.iter
-    (fun elem ->
-      Hashtbl.replace set elem ())
-    elements;
+let from_list = fun values ->
+  let set = with_capacity ~size:(List.length values) in
+  List.for_each values
+    ~fn:(fun value ->
+      let _ = Hashmap.insert set ~key:value ~value:() in
+      ());
   set
 
-let insert = fun set value ->
-  let was_present = Hashtbl.mem set value in
-  Hashtbl.replace set value ();
-  not was_present
+let insert = fun set ~value ->
+  match Hashmap.insert set ~key:value ~value:() with
+  | Some () -> false
+  | None -> true
 
-let remove = fun set value ->
-  let was_present = Hashtbl.mem set value in
-  Hashtbl.remove set value;
-  was_present
+let remove = fun set ~value ->
+  match Hashmap.remove set ~key:value with
+  | Some () -> true
+  | None -> false
 
-let contains = fun set value ->
-  Hashtbl.mem set value
+let contains = fun set ~value -> Hashmap.has_key set ~key:value
 
-let len = fun set -> Hashtbl.length set
+let length = Hashmap.length
 
-let is_empty = fun set -> Hashtbl.length set = 0
+let is_empty = Hashmap.is_empty
 
-let clear = fun set -> Hashtbl.clear set
+let clear = Hashmap.clear
 
-let iter = fun set ~fn ->
-  Hashtbl.iter (fun elem _ -> fn elem) set
+let for_each = fun set ~fn -> Hashmap.for_each set ~fn:(fun value () -> fn value)
 
-let fold = fun set ~init ~fn ->
-  Hashtbl.fold (fun elem _ acc -> fn acc elem) set init
+let fold_left = fun set ~acc ~fn -> Hashmap.fold_left set ~acc ~fn:(fun acc value () -> fn acc value)
 
-let to_list = fun set ->
-  Hashtbl.fold (fun elem _ acc -> elem :: acc) set []
+let to_list = fun set -> Hashmap.keys set
 
-let union = fun set1 set2 ->
-  let result = Hashtbl.copy set1 in
-  Hashtbl.iter
-    (fun elem _ ->
-      Hashtbl.replace result elem ())
-    set2;
+let union = fun left right ->
+  let result = from_list (to_list left) in
+  for_each right
+    ~fn:(fun value ->
+      let _ = Hashmap.insert result ~key:value ~value:() in
+      ());
   result
 
-let intersection = fun set1 set2 ->
-  let result = Hashtbl.create 16 in
-  Hashtbl.iter
-    (fun elem _ ->
-      if Hashtbl.mem set2 elem then
-        Hashtbl.replace result elem ())
-    set1;
+let intersection = fun left right ->
+  let result = create () in
+  for_each left
+    ~fn:(fun value ->
+      if contains right ~value then
+        let _ = Hashmap.insert result ~key:value ~value:() in
+        ());
   result
 
-let difference = fun set1 set2 ->
-  let result = Hashtbl.create 16 in
-  Hashtbl.iter
-    (fun elem _ ->
-      if not (Hashtbl.mem set2 elem) then
-        Hashtbl.replace result elem ())
-    set1;
+let difference = fun left right ->
+  let result = create () in
+  for_each left
+    ~fn:(fun value ->
+      if not (contains right ~value) then
+        let _ = Hashmap.insert result ~key:value ~value:() in
+        ());
   result
 
-let symmetric_difference = fun set1 set2 ->
-  let result = Hashtbl.create 16 in
-  Hashtbl.iter
-    (fun elem _ ->
-      if not (Hashtbl.mem set2 elem) then
-        Hashtbl.replace result elem ())
-    set1;
-  Hashtbl.iter
-    (fun elem _ ->
-      if not (Hashtbl.mem set1 elem) then
-        Hashtbl.replace result elem ())
-    set2;
+let symmetric_difference = fun left right ->
+  let result = create () in
+  for_each left
+    ~fn:(fun value ->
+      if not (contains right ~value) then
+        let _ = Hashmap.insert result ~key:value ~value:() in
+        ());
+  for_each right
+    ~fn:(fun value ->
+      if not (contains left ~value) then
+        let _ = Hashmap.insert result ~key:value ~value:() in
+        ());
   result
 
-let is_subset = fun set1 set2 ->
-  Hashtbl.fold (fun elem _ acc -> acc && Hashtbl.mem set2 elem) set1 true
+let is_subset = fun left right ->
+  fold_left left ~acc:true ~fn:(fun acc value -> acc && contains right ~value)
 
-let is_superset = fun set1 set2 -> is_subset set2 set1
+let is_superset = fun left right -> is_subset right left
 
-let is_disjoint = fun set1 set2 ->
-  Hashtbl.fold (fun elem _ acc -> acc && not (Hashtbl.mem set2 elem)) set1 true
+let is_disjoint = fun left right ->
+  fold_left left ~acc:true ~fn:(fun acc value -> acc && not (contains right ~value))
 
-let into_iter: type item. item t -> item Iter.Iterator.t = fun set ->
+let iter: type value. value t -> value Iter.Iterator.t = fun set ->
   let module SetIter = struct
-    type state = {
-      items: item list;
-      pos: int;
-    }
+    type state = value list
 
-    type nonrec item = item
+    type item = value
 
     let next = fun state ->
-      if state.pos >= List.length state.items then
-        (None, state)
-      else
-        let item = List.nth state.items state.pos in
-        (Some item, { state with pos = state.pos + 1 })
+      match state with
+      | [] -> (None, [])
+      | value :: rest -> (Some value, rest)
 
-    let size = fun state -> max 0 (List.length state.items - state.pos)
+    let size = fun state -> List.length state
   end in
-  let items = to_list set in
-  Iter.Iterator.make (module SetIter) { SetIter.items; pos = 0 }
+  Iter.Iterator.make (module SetIter) (to_list set)
 
-let to_mut_iter: type item. item t -> item Iter.MutIterator.t = fun set ->
+let mut_iter: type value. value t -> value Iter.MutIterator.t = fun set ->
   let module SetIter = struct
     type state = {
-      items: item list;
-      mutable pos: int;
+      mutable items: value list;
     }
 
-    type nonrec item = item
+    type item = value
 
     let next = fun state ->
-      if state.pos >= List.length state.items then
-        None
-      else
-        let item = List.nth state.items state.pos in
-        state.pos <- state.pos + 1;
-        Some item
+      match state.items with
+      | [] -> None
+      | value :: rest ->
+          state.items <- rest;
+          Some value
 
-    let size = fun state -> max 0 (List.length state.items - state.pos)
+    let size = fun state -> List.length state.items
 
-    let clone = fun state -> { items = state.items; pos = state.pos }
+    let clone = fun state -> { items = state.items }
   end in
-  let items = to_list set in
-  Iter.MutIterator.make (module SetIter) { SetIter.items; pos = 0 }
+  Iter.MutIterator.make (module SetIter) { items = to_list set }

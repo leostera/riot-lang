@@ -30,8 +30,7 @@ let write_bool = fun state value ->
 let write_list = fun writer state lst ->
   Common.iter_list (writer state) lst
 
-let write_array = fun writer state arr ->
-  Array.iter (writer state) arr
+let write_array = fun writer state arr -> Array.for_each arr ~fn:(writer state)
 
 let finish = fun state ->
   Common.finish_iovec Ffi.md5_iovec state

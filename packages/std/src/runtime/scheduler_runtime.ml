@@ -17,18 +17,18 @@ let run = fun deps ~config ~main ->
   let t = deps.create ~config in
   let _ = deps.spawn_on_worker t ~worker_id:Scheduler_id.zero main in
   let reactor_domain =
-    Kernel.Domain.spawn (fun () -> deps.reactor_loop t)
+    Kernel.Thread.spawn (fun () -> deps.reactor_loop t)
   in
   let worker_domains =
-    Array.init (Kernel.Int.sub (Array.length t.workers) 1)
-      (fun idx ->
-        let worker = t.workers.(Kernel.Int.add idx 1) in
-        Kernel.Domain.spawn
+    Array.init ~count:(Kernel.Int.sub (Array.length t.workers) 1)
+      ~fn:(fun idx ->
+        let worker = Array.get_unchecked t.workers ~at:(Kernel.Int.add idx 1) in
+        Kernel.Thread.spawn
           (fun () ->
             deps.worker_loop t worker))
   in
-  deps.worker_loop t t.workers.(0);
-  Array.iter Kernel.Domain.join worker_domains;
-  Kernel.Domain.join reactor_domain;
+  deps.worker_loop t (Array.get_unchecked t.workers ~at:0);
+  Array.for_each worker_domains ~fn:Kernel.Thread.join;
+  Kernel.Thread.join reactor_domain;
   deps.join_blocking_lanes t;
   Sync.Atomic.get t.status

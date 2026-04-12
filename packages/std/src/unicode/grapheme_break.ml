@@ -1,4 +1,4 @@
-open Global
+open Prelude
 
 (** Grapheme break properties - simplified implementation for common cases
     

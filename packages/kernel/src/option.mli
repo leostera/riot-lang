@@ -3,7 +3,7 @@ type 'value t = 'value option =
   | Some of 'value
 
 (** Use `map fn value` to transform the `Some` branch while leaving `None` untouched. *)
-val map: ('value -> 'mapped) -> 'value t -> 'mapped t
+val map: 'value t -> fn:('value -> 'mapped) -> 'mapped t
 
 (** Use `is_some value` to check whether `value` carries a payload. *)
 val is_some: 'value t -> bool

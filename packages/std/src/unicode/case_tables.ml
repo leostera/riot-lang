@@ -2,7 +2,7 @@
 
 (* Unicode Version: 15.0.0 *)
 
-open Global
+open Prelude
 open Collections
 
 (** Case range with deltas for case conversion *)
@@ -2020,7 +2020,7 @@ let find_case_range: case_range array -> int -> case_range option = fun ranges r
       None
     else
       let mid = (lo + hi) / 2 in
-      let range = ranges.(mid) in
+      let range = Array.get_unchecked ranges ~at:mid in
       if r < range.lo then
         search lo (mid - 1)
       else if r > range.hi then

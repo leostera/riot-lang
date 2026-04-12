@@ -9,7 +9,7 @@ unit) ~(attempt_steal:t -> worker -> bool) ~(wait_for_local_work:t -> worker -> 
   runtime: t
 ) (worker: worker) ->
   let ctx = { scheduler = runtime; worker_id = Some worker.id; current_process = None } in
-  Domain.DLS.set current_context (Some ctx);
+  Thread.DLS.set current_context (Some ctx);
   while not (Atomic.get runtime.stop) do
     match pop_local worker with
     | Some slot -> step_process runtime ctx slot

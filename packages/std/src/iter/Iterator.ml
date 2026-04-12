@@ -25,7 +25,7 @@ let size: type item. item t -> int = fun (Iter ((module Iter), state)) -> Iter.s
 let rec collect = fun iter acc ->
   match next iter with
   | Some item, iter -> collect iter (item :: acc)
-  | None, _ -> List.rev acc
+  | None, _ -> List.reverse acc
 
 let to_list = fun iter -> collect iter []
 

@@ -10,10 +10,10 @@ let some = fun value -> Some value
 
 let none = None
 
-let equal = fun eq left right ->
+let equal = fun left right ~fn ->
   match (left, right) with
   | None, None -> true
-  | Some left, Some right -> eq left right
+  | Some left, Some right -> fn left right
   | _ -> false
 
 let is_some = function
@@ -24,33 +24,33 @@ let is_none = function
   | Some _ -> false
   | None -> true
 
-let is_some_and = fun predicate ->
-  function
-  | Some value -> predicate value
+let is_some_and = fun value ~fn ->
+  match value with
+  | Some value -> fn value
   | None -> false
 
-let is_none_or = fun predicate ->
-  function
+let is_none_or = fun value ~fn ->
+  match value with
   | None -> true
-  | Some value -> predicate value
+  | Some value -> fn value
 
-let map = fun fn ->
-  function
+let map = fun value ~fn ->
+  match value with
   | Some value -> Some (fn value)
   | None -> None
 
-let map_or = fun ~default fn ->
-  function
+let map_or = fun value ~default ~fn ->
+  match value with
   | Some value -> fn value
   | None -> default
 
-let map_or_default = fun ~default fn ->
-  function
+let map_or_default = fun value ~default ~fn ->
+  match value with
   | Some value -> fn value
   | None -> default ()
 
-let map_or_else = fun ~default fn ->
-  function
+let map_or_else = fun value ~default ~fn ->
+  match value with
   | Some value -> fn value
   | None -> default ()
 
@@ -59,7 +59,7 @@ let and_ = fun left right ->
   | Some _ -> right
   | None -> None
 
-let and_then = fun value fn ->
+let and_then = fun value ~fn ->
   match value with
   | Some value -> fn value
   | None -> None
@@ -69,7 +69,7 @@ let or_ = fun left right ->
   | Some _ -> left
   | None -> right
 
-let or_else = fun value fn ->
+let or_else = fun value ~fn ->
   match value with
   | Some _ -> value
   | None -> fn ()
@@ -84,18 +84,18 @@ let unwrap = function
   | Some value -> value
   | None -> panic "called Option.unwrap on a None value"
 
-let unwrap_or = fun ~default ->
-  function
+let unwrap_or = fun value ~default ->
+  match value with
   | Some value -> value
   | None -> default
 
-let unwrap_or_else = fun ~fn ->
-  function
+let unwrap_or_else = fun value ~fn ->
+  match value with
   | Some value -> value
   | None -> fn ()
 
-let expect = fun ~msg ->
-  function
+let expect = fun ~msg value ->
+  match value with
   | Some value -> value
   | None -> panic msg
 
@@ -103,7 +103,7 @@ let unwrap_none = function
   | None -> ()
   | Some _ -> panic "called Option.unwrap_none on a Some value"
 
-let inspect = fun fn value ->
+let inspect = fun value ~fn ->
   (
     match value with
     | Some value -> fn value
@@ -111,18 +111,18 @@ let inspect = fun fn value ->
   );
   value
 
-let iter = fun fn ->
-  function
+let for_each = fun value ~fn ->
+  match value with
   | Some value -> fn value
   | None -> ()
 
-let ok_or = fun ~error ->
-  function
+let ok_or = fun ~error value ->
+  match value with
   | Some value -> Ok value
   | None -> Error error
 
-let ok_or_else = fun ~error ->
-  function
+let ok_or_else = fun ~error value ->
+  match value with
   | Some value -> Ok value
   | None -> Error (error ())
 
@@ -137,9 +137,9 @@ let transpose = function
   | Some (Error error) -> Error error
   | None -> Ok None
 
-let filter = fun predicate ->
-  function
-  | Some value when predicate value -> Some value
+let filter = fun value ~fn ->
+  match value with
+  | Some item when fn item -> Some item
   | _ -> None
 
 let flatten = function
@@ -151,7 +151,7 @@ let zip = fun left right ->
   | Some left, Some right -> Some (left, right)
   | _ -> None
 
-let zip_with = fun fn left right ->
+let zip_with = fun left right ~fn ->
   match (left, right) with
   | Some left, Some right -> Some (fn left right)
   | _ -> None
@@ -163,7 +163,7 @@ let unzip = function
 let all = fun values ->
   let rec go = fun acc ->
     function
-    | [] -> Some (List.rev acc)
+    | [] -> Some (List.reverse acc)
     | Some value :: rest -> go (value :: acc) rest
     | None :: _ -> None
   in

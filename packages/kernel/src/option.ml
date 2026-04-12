@@ -2,8 +2,8 @@ type 'value t = 'value option =
   | None
   | Some of 'value
 
-let map = fun fn ->
-  function
+let map = fun value ~fn ->
+  match value with
   | Some value -> Some (fn value)
   | None -> None
 

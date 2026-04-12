@@ -25,7 +25,7 @@ let has_changes = fun changes -> List.length changes > 0
 
 let additions = fun changes ->
   List.filter
-    (fun { kind; _ } ->
+    ~fn:(fun { kind; _ } ->
       match kind with
       | Added _ -> true
       | _ -> false)
@@ -33,7 +33,7 @@ let additions = fun changes ->
 
 let removals = fun changes ->
   List.filter
-    (fun { kind; _ } ->
+    ~fn:(fun { kind; _ } ->
       match kind with
       | Removed _ -> true
       | _ -> false)
@@ -41,11 +41,10 @@ let removals = fun changes ->
 
 let changes = fun changes ->
   List.filter
-    (fun { kind; _ } ->
+    ~fn:(fun { kind; _ } ->
       match kind with
       | Changed _ -> true
       | _ -> false)
     changes
 
-let at_path = fun target_path changes ->
-  List.filter (fun { path; _ } -> path = target_path) changes
+let at_path = fun target_path changes -> List.filter ~fn:(fun { path; _ } -> path = target_path) changes

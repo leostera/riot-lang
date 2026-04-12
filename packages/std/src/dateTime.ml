@@ -5,27 +5,27 @@ open Global
 
 let pad2 = fun n ->
   if n < 10 then
-    "0" ^ string_of_int n
+    "0" ^ Int.to_string n
   else
-    string_of_int n
+    Int.to_string n
 
 let pad3 = fun n ->
   if n < 10 then
-    "00" ^ string_of_int n
+    "00" ^ Int.to_string n
   else if n < 100 then
-    "0" ^ string_of_int n
+    "0" ^ Int.to_string n
   else
-    string_of_int n
+    Int.to_string n
 
 let pad4 = fun n ->
   if n < 10 then
-    "000" ^ string_of_int n
+    "000" ^ Int.to_string n
   else if n < 100 then
-    "00" ^ string_of_int n
+    "00" ^ Int.to_string n
   else if n < 1_000 then
-    "0" ^ string_of_int n
+    "0" ^ Int.to_string n
   else
-    string_of_int n
+    Int.to_string n
 
 module Tz = struct
   type t =
@@ -64,8 +64,8 @@ let now = fun () ->
   let unix_time = Kernel.Time.gettimeofday () in
   let tm = Kernel.Time.localtime unix_time in
   let microseconds =
-    let frac = unix_time -. floor unix_time in
-    let micros = int_of_float (frac *. 1000000.0) in
+    let frac = unix_time -. Float.floor unix_time in
+    let micros = Int.from_float (frac *. 1000000.0) in
     (micros, 6)
   in
   {
@@ -85,8 +85,8 @@ let now_utc = fun () ->
   let unix_time = Kernel.Time.gettimeofday () in
   let tm = Kernel.Time.gmtime unix_time in
   let microseconds =
-    let frac = unix_time -. floor unix_time in
-    let micros = int_of_float (frac *. 1000000.0) in
+    let frac = unix_time -. Float.floor unix_time in
+    let micros = Int.from_float (frac *. 1000000.0) in
     (micros, 6)
   in
   {
@@ -105,8 +105,8 @@ let now_utc = fun () ->
 let now_naive = fun () ->
   let unix_time = Kernel.Time.gettimeofday () in
   let tm = Kernel.Time.localtime unix_time in
-  let frac = unix_time -. floor unix_time in
-  let microsecond = int_of_float (frac *. 1000000.0) in
+  let frac = unix_time -. Float.floor unix_time in
+  let microsecond = Int.from_float (frac *. 1000000.0) in
   {
     year = tm.tm_year + 1_900;
     month = tm.tm_mon + 1;
@@ -156,8 +156,8 @@ let to_system_time: t -> Time.SystemTime.t = fun t ->
   let unix_time, _ = Kernel.Time.mktime tm in
   let micros, _ = t.microseconds in
   (* Convert to nanoseconds *)
-  let secs_nanos = Int64.mul (Int64.of_float unix_time) 1_000_000_000L in
-  let micros_nanos = Int64.mul (Int64.of_int micros) 1_000L in
+  let secs_nanos = Int64.mul (Int64.from_float unix_time) 1_000_000_000L in
+  let micros_nanos = Int64.mul (Int64.from_int micros) 1_000L in
   let total_nanos = Int64.add secs_nanos micros_nanos in
   Time.SystemTime.from_nanos total_nanos
 
@@ -236,8 +236,8 @@ let to_iso8601 = fun t ->
         if t.utc_offset = 0 then
           "Z"
         else
-          let hours = abs t.utc_offset / 3_600 in
-          let mins = abs t.utc_offset mod 3_600 / 60 in
+          let hours = Int.abs t.utc_offset / 3_600 in
+          let mins = Int.abs t.utc_offset mod 3_600 / 60 in
           let sign =
             if t.utc_offset >= 0 then
               "+"
@@ -286,7 +286,12 @@ type error =
 module Parser = struct
   (* Option and_then operator for clean parser composition *)
 
-  let ( let* ) = Option.and_then
+  let ( let* ) opt fn = Option.and_then opt ~fn
+
+  let has_char = fun s at expected ->
+    match String.get s ~at with
+    | Some value -> Char.equal value expected
+    | None -> false
 
   (* Parse 2 digits starting at position *)
 
@@ -294,7 +299,7 @@ module Parser = struct
     if pos + 2 > String.length s then
       None
     else
-      Int.parse (String.sub s pos 2)
+      Int.parse (String.sub s ~offset:pos ~len:2)
 
   (* Parse 4 digits starting at position *)
 
@@ -302,22 +307,22 @@ module Parser = struct
     if pos + 4 > String.length s then
       None
     else
-      Int.parse (String.sub s pos 4)
+      Int.parse (String.sub s ~offset:pos ~len:4)
 
   (* Check if format is extended (has separators) *)
 
-  let is_extended_format = fun s pos -> pos + 4 < String.length s && s.[pos + 4] = '-'
+  let is_extended_format = fun s pos -> pos + 4 < String.length s && has_char s (pos + 4) '-'
 
   (* Parse date component: YYYY-MM-DD or YYYYMMDD *)
 
   let parse_date = fun s pos is_extended ->
     if is_extended then
       let* year = parse_4digits s pos in
-      if pos + 4 >= String.length s || s.[pos + 4] != '-' then
+      if pos + 4 >= String.length s || not (has_char s (pos + 4) '-') then
         None
       else
         let* month = parse_2digits s (pos + 5) in
-        if pos + 7 >= String.length s || s.[pos + 7] != '-' then
+        if pos + 7 >= String.length s || not (has_char s (pos + 7) '-') then
           None
         else
           let* day = parse_2digits s (pos + 8) in
@@ -334,11 +339,11 @@ module Parser = struct
   let parse_time = fun s pos is_extended ->
     if is_extended then
       let* hour = parse_2digits s pos in
-      if pos + 2 >= String.length s || s.[pos + 2] != ':' then
+      if pos + 2 >= String.length s || not (has_char s (pos + 2) ':') then
         None
       else
         let* minute = parse_2digits s (pos + 3) in
-        if pos + 5 >= String.length s || s.[pos + 5] != ':' then
+        if pos + 5 >= String.length s || not (has_char s (pos + 5) ':') then
           None
         else
           let* second = parse_2digits s (pos + 6) in
@@ -354,27 +359,35 @@ module Parser = struct
 
   let parse_microseconds = fun s pos ->
     let len = String.length s in
-    if pos >= len || (s.[pos] != '.' && s.[pos] != ',') then
+    if pos >= len then
       ((0, 0), pos)
     else
-      let start = pos + 1 in
-      let rec find_end p =
-        if p >= len || s.[p] < '0' || s.[p] > '9' then
-          p
+      (
+        let micro_prefix = String.get_unchecked s ~at:pos in
+        if micro_prefix = '.' || micro_prefix = ',' then
+          let start = pos + 1 in
+          let rec find_end p =
+            if p >= len then
+              p
+            else
+              match String.get s ~at:p with
+              | Some c when c >= '0' && c <= '9' -> find_end (p + 1)
+              | _ -> p
+          in
+          let end_pos = find_end start in
+          if end_pos = start then
+            raise (Failure "Empty microseconds after decimal separator")
+          else
+            let micro_str = String.sub s ~offset:start ~len:(end_pos - start) in
+            match Int.parse micro_str with
+            | None -> raise (Failure "Invalid microseconds after decimal separator")
+            | Some micros ->
+                let precision = String.length micro_str in
+                let micros = micros * Int.from_float (10.0 ** Float.from_int (6 - precision)) in
+                ((micros, 6), end_pos)
         else
-          find_end (p + 1)
-      in
-      let end_pos = find_end start in
-      if end_pos = start then
-        raise (Failure "Empty microseconds after decimal separator")
-      else
-        let micro_str = String.sub s start (end_pos - start) in
-        match Int.parse micro_str with
-        | None -> raise (Failure "Invalid microseconds after decimal separator")
-        | Some micros ->
-            let precision = String.length micro_str in
-            let micros = micros * (int_of_float (10.0 ** float (6 - precision))) in
-            ((micros, 6), end_pos)
+          ((0, 0), pos)
+      )
 
   (* Parse timezone offset *)
 
@@ -382,16 +395,16 @@ module Parser = struct
     let len = String.length s in
     if pos >= len then
       (Tz.Etc_UTC, 0, pos)
-    else if s.[pos] = 'Z' then
+    else if has_char s pos 'Z' then
       (Tz.Etc_UTC, 0, pos + 1)
-    else if s.[pos] = '+' || s.[pos] = '-' then
+    else if has_char s pos '+' || has_char s pos '-' then
       let sign =
-        if s.[pos] = '+' then
+        if has_char s pos '+' then
           1
         else
           (-1)
       in
-      let has_colon = pos + 3 < len && s.[pos + 3] = ':' in
+      let has_colon = pos + 3 < len && has_char s (pos + 3) ':' in
       let tz_result =
         if has_colon then
           let* h = parse_2digits s (pos + 1) in
@@ -408,9 +421,9 @@ module Parser = struct
           let offset = sign * ((h * 3_600) + (m * 60)) in
           (Tz.Local, offset, end_pos)
       | Some (h, _, _) when h < 0 || h > 23 ->
-          raise (Failure ("Invalid timezone hour: " ^ string_of_int h))
+          raise (Failure ("Invalid timezone hour: " ^ Int.to_string h))
       | Some (_, m, _) when m < 0 || m > 59 ->
-          raise (Failure ("Invalid timezone minute: " ^ string_of_int m))
+          raise (Failure ("Invalid timezone minute: " ^ Int.to_string m))
       | _ ->
           raise (Failure "Invalid timezone format")
     else
@@ -420,14 +433,14 @@ module Parser = struct
 
   let validate_date = fun year month day ->
     if month < 1 || month > 12 then
-      Error (Invalid_date ("Invalid month: " ^ string_of_int month))
+      Error (Invalid_date ("Invalid month: " ^ Int.to_string month))
     else if day < 1 || day > 31 then
-      Error (Invalid_date ("Invalid day: " ^ string_of_int day))
+      Error (Invalid_date ("Invalid day: " ^ Int.to_string day))
     else
       let max_days =
         match month with
         | 2 ->
-            let abs_year = abs year in
+            let abs_year = Int.abs year in
             if (abs_year mod 4 = 0 && abs_year mod 100 != 0) || abs_year mod 400 = 0 then
               29
             else
@@ -441,7 +454,7 @@ module Parser = struct
             31
       in
       if day > max_days then
-        Error (Invalid_date ("Invalid day " ^ string_of_int day ^ " for month " ^ string_of_int month))
+        Error (Invalid_date ("Invalid day " ^ Int.to_string day ^ " for month " ^ Int.to_string month))
       else
         Ok ()
 
@@ -449,11 +462,11 @@ module Parser = struct
 
   let validate_time = fun hour minute second ->
     if hour < 0 || hour > 23 then
-      Error (Invalid_time ("Invalid hour: " ^ string_of_int hour))
+      Error (Invalid_time ("Invalid hour: " ^ Int.to_string hour))
     else if minute < 0 || minute > 59 then
-      Error (Invalid_time ("Invalid minute: " ^ string_of_int minute))
+      Error (Invalid_time ("Invalid minute: " ^ Int.to_string minute))
     else if second < 0 || second > 59 then
-      Error (Invalid_time ("Invalid second: " ^ string_of_int second))
+      Error (Invalid_time ("Invalid second: " ^ Int.to_string second))
     else
       Ok ()
 end
@@ -466,9 +479,9 @@ let parse = fun s ->
     else
       (* Parse year sign (optional + or -) *)
       let year_sign, pos =
-        match s.[0] with
-        | '-' -> ((-1), 1)
-        | '+' -> (1, 1)
+        match String.get s ~at:0 with
+        | Some '-' -> ((-1), 1)
+        | Some '+' -> (1, 1)
         | _ -> (1, 0)
       in
       (* Detect format (extended has separators, basic doesn't) *)
@@ -487,7 +500,7 @@ let parse = fun s ->
             (* Parse datetime separator (T or space) *)
             if pos >= len then
               Error (Invalid_format "Missing time component")
-            else if s.[pos] != 'T' && s.[pos] != ' ' then
+            else if not (Parser.has_char s pos 'T') && not (Parser.has_char s pos ' ') then
               Error (Invalid_format "Expected 'T' or ' ' separator")
             else
               let pos = pos + 1 in

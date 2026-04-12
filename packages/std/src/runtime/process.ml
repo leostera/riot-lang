@@ -246,7 +246,7 @@ let next_mailbox_message = fun t -> with_lock t (fun () -> Mailbox.next t.mailbo
 let add_to_save_queue = fun t msg ->
   with_lock t
     (fun () ->
-      Queue.push t.save_queue msg;
+      Queue.push t.save_queue ~value:msg;
       t.save_queue_size <- Int.succ t.save_queue_size)
 
 let send_message = fun t msg ->
@@ -275,7 +275,7 @@ let get_ready_token = fun t ->
 let consume_ready_tokens = fun t f ->
   with_lock t
     (fun () ->
-      List.iter f t.ready_tokens;
+      List.for_each t.ready_tokens ~fn:f;
       t.ready_tokens <- [])
 
 let has_no_ready_tokens = fun t -> with_lock t (fun () -> List.is_empty t.ready_tokens)
@@ -333,13 +333,13 @@ let take_syscall_timeout_fired = fun t ->
 let link = fun proc target_pid ->
   with_lock proc
     (fun () ->
-      if not (List.mem target_pid proc.links) then
+      if not (List.contains proc.links ~value:target_pid) then
         proc.links <- target_pid :: proc.links)
 
 let unlink = fun proc target_pid ->
   with_lock
     proc
-    (fun () -> proc.links <- List.filter (fun pid -> not (Pid.equal pid target_pid)) proc.links)
+    (fun () -> proc.links <- List.filter proc.links ~fn:(fun pid -> not (Pid.equal pid target_pid)))
 
 let monitor = fun proc target_pid ->
   with_lock proc
@@ -351,11 +351,10 @@ let monitor = fun proc target_pid ->
 let demonitor = fun proc ref ->
   with_lock proc
     (fun () ->
-      proc.monitors <- List.filter
-        (fun ((r, _)) ->
+      proc.monitors <- List.filter proc.monitors
+        ~fn:(fun (r, _) ->
           match (ref, r) with
-          | Monitor_ref id1, Monitor_ref id2 -> not (Int.equal id1 id2))
-        proc.monitors)
+          | Monitor_ref id1, Monitor_ref id2 -> not (Int.equal id1 id2)))
 
 let monitored_pid_for_ref = fun proc ref ->
   with_lock proc
@@ -376,11 +375,10 @@ let monitored_pid_for_ref = fun proc ref ->
 let set_flags = fun proc flags ->
   with_lock proc
     (fun () ->
-      List.iter
-        (fun flag ->
+      List.for_each flags
+        ~fn:(fun flag ->
           match flag with
-          | TrapExit value -> Sync.Atomic.set proc.trap_exit value)
-        flags)
+          | TrapExit value -> Sync.Atomic.set proc.trap_exit value))
 
 let get_trap_exit = fun proc -> Sync.Atomic.get proc.trap_exit
 
@@ -396,24 +394,19 @@ let add_monitored_by = fun proc monitor_pid ref ->
 let remove_monitored_by = fun proc monitor_pid ref ->
   with_lock proc
     (fun () ->
-      proc.monitored_by <- List.filter
-        (fun ((pid, r)) ->
+      proc.monitored_by <- List.filter proc.monitored_by
+        ~fn:(fun (pid, r) ->
           not
             (
               Pid.equal pid monitor_pid && match (ref, r) with
               | Monitor_ref id1, Monitor_ref id2 -> id1 = id2
-            ))
-        proc.monitored_by)
+            )))
 
-let is_linked = fun proc pid ->
-  with_lock proc
-    (fun () ->
-      List.mem pid proc.links)
+let is_linked = fun proc pid -> with_lock proc (fun () -> List.contains proc.links ~value:pid)
 
 let is_monitoring = fun proc pid ->
   with_lock proc
     (fun () ->
-      List.exists
-        (fun ((_, monitored_pid)) ->
-          Pid.equal pid monitored_pid)
-        proc.monitors)
+      List.any proc.monitors
+        ~fn:(fun (_, monitored_pid) ->
+          Pid.equal pid monitored_pid))

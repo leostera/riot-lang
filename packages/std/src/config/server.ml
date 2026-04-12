@@ -50,8 +50,8 @@ let load_and_validate_all_specs = fun provider ->
   in
   let specs = Spec.all_specs () in
   let configs = HashMap.create () in
-  List.iter
-    (fun spec ->
+  List.for_each specs
+    ~fn:(fun spec ->
       let app_name = Spec.app_name spec in
       match Loader.extract_app_section app_name root_toml with
       | Error _msg ->
@@ -64,8 +64,8 @@ let load_and_validate_all_specs = fun provider ->
               (format Format.[ str "Validation error for ["; str app_name; str "]: "; str err ])
             | Ok v -> v
           in
-          HashMap.insert configs app_name validated |> ignore)
-    specs;
+          let _ = HashMap.insert configs ~key:app_name ~value:validated in
+          ());
   configs
 
 (* Apply patches to a Map value *)
@@ -74,12 +74,10 @@ let apply_patches (base_value: Spec.value) updates: Spec.value =
   match base_value with
   | Map kvs ->
       let updated_kvs =
-        List.fold_left
-          (fun acc ((key, new_value)) ->
+        List.fold_left updates ~acc:kvs
+          ~fn:(fun acc ((key, new_value)) ->
             (* Replace or add the key *)
-            List.filter (fun ((k, _)) -> not (String.equal k key)) acc @ [ (key, new_value) ])
-          kvs
-          updates
+            List.filter acc ~fn:(fun ((k, _)) -> not (String.equal k key)) @ [ (key, new_value) ])
       in
       Map updated_kvs
   | _ -> panic "Can only patch Map values"
@@ -89,8 +87,7 @@ let init = fun ~provider ->
   let configs = load_and_validate_all_specs provider in
   { configs; provider }
 
-let get = fun t ~app ->
-  HashMap.get t.configs app
+let get = fun t ~app -> HashMap.get t.configs ~key:app
 
 let reload = fun ?provider t ->
   let new_provider =
@@ -102,10 +99,10 @@ let reload = fun ?provider t ->
   { configs; provider = new_provider }
 
 let patch = fun t ~app ~updates ->
-  match HashMap.get t.configs app with
+  match HashMap.get t.configs ~key:app with
   | None -> Error (App_not_found { app })
   | Some value ->
       (* Merge updates into value *)
       let patched_value = apply_patches value updates in
-      HashMap.insert t.configs app patched_value |> ignore;
+      let _ = HashMap.insert t.configs ~key:app ~value:patched_value in
       Ok t

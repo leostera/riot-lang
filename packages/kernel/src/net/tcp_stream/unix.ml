@@ -1,6 +1,6 @@
 open Prelude
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 type t = int
 
@@ -66,10 +66,10 @@ let validate_slice = fun buf ~pos ~len ->
     Result.Ok ()
 
 let socket_addr_of_pair = fun (ip, port) ->
-  match Ip_addr.of_string ip with
+  match Ip_addr.from_string ip with
   | Result.Error _ -> Result.Error (InvalidSocketAddr { ip; port })
   | Result.Ok ip -> (
-      match Socket_addr.of_parts ~ip ~port with
+      match Socket_addr.from_parts ~ip ~port with
       | Result.Ok addr -> Result.Ok addr
       | Result.Error _ -> Result.Error (InvalidSocketAddr { ip = Ip_addr.to_string ip; port })
     )
@@ -161,9 +161,8 @@ let rec remove_shutdown_state = fun fd states ->
 let connect = fun addr ->
   let ip = Ip_addr.to_string (Socket_addr.ip addr) in
   let port = Socket_addr.port addr in
-  let* (fd, state) =
-    Result.map_error (fun code -> error_of_system (System_error.of_code code)) (FFI.connect ip port)
-  in
+  let* (fd, state) = FFI.connect ip port
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code)) in
   if state = connect_result_connected then
     Result.Ok (Connected fd)
   else if state = connect_result_in_progress then
@@ -177,7 +176,7 @@ let close = fun stream ->
       shutdown_states.value <- remove_shutdown_state stream shutdown_states.value;
       Result.Ok ()
   | Result.Error code -> (
-      let error = error_of_system (System_error.of_code code) in
+      let error = error_of_system (System_error.from_code code) in
       match error with
       | System System_error.BadFileDescriptor ->
           shutdown_states.value <- remove_shutdown_state stream shutdown_states.value;
@@ -186,9 +185,8 @@ let close = fun stream ->
     )
 
 let finish_connect = fun stream ->
-  Result.map_error
-    (fun code -> error_of_system (System_error.of_code code))
-    (FFI.finish_connect stream)
+  FFI.finish_connect stream
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
 
 let rec shutdown = fun stream how ->
   let state = ensure_shutdown_state stream in
@@ -204,11 +202,8 @@ let rec shutdown = fun stream how ->
   | ReadWrite when state.write_shutdown ->
       shutdown stream Read
   | _ ->
-      let* () =
-        Result.map_error
-          (fun code -> error_of_system (System_error.of_code code))
-          (FFI.shutdown stream (shutdown_code how))
-      in
+      let* () = FFI.shutdown stream (shutdown_code how)
+      |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code)) in
       (
         match how with
         | Read ->
@@ -224,35 +219,31 @@ let rec shutdown = fun stream how ->
 let read = fun stream ?(pos = 0) ?len buf ->
   let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
   let* () = validate_slice buf ~pos ~len in
-  Result.map_error
-    (fun code -> error_of_system (System_error.of_code code))
-    (FFI.read stream buf pos len)
+  FFI.read stream buf pos len
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
 
 let write = fun stream ?(pos = 0) ?len buf ->
   let len = Option.unwrap_or len ~default:(Bytes.length buf - pos) in
   let* () = validate_slice buf ~pos ~len in
-  Result.map_error
-    (fun code -> error_of_system (System_error.of_code code))
-    (FFI.write stream buf pos len)
+  FFI.write stream buf pos len
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
 
 let read_vectored = fun stream iov ->
-  Result.map_error (fun code -> error_of_system (System_error.of_code code)) (FFI.readv stream iov)
+  FFI.readv stream iov
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
 
 let write_vectored = fun stream iov ->
-  Result.map_error (fun code -> error_of_system (System_error.of_code code)) (FFI.writev stream iov)
+  FFI.writev stream iov
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
 
 let local_addr = fun stream ->
-  let* addr =
-    Result.map_error
-      (fun code -> error_of_system (System_error.of_code code))
-      (FFI.local_addr stream)
-  in
+  let* addr = FFI.local_addr stream
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code)) in
   socket_addr_of_pair addr
 
 let peer_addr = fun stream ->
-  let* addr =
-    Result.map_error (fun code -> error_of_system (System_error.of_code code)) (FFI.peer_addr stream)
-  in
+  let* addr = FFI.peer_addr stream
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code)) in
   socket_addr_of_pair addr
 
 let to_source = fun stream ->

@@ -1,8 +1,9 @@
 (** Grapheme clusters - user-perceived characters *)
-open Global
+open Prelude
 module String = Kernel.String
 module List = Collections.List
-module Uchar = Kernel.Unicode.Rune
+module Scalar = Kernel.Unicode.Rune
+module Rune = Rune
 
 type t = Rune.t list
 
@@ -21,39 +22,42 @@ let first = fun s ->
   if s = "" then
     None
   else
-    (* Decode first rune *)
-    let decode = String.get_utf_8_uchar s 0 in
-    if not (Uchar.utf_decode_is_valid decode) then
-      None
-    else
-      let first_rune = Uchar.utf_decode_uchar decode in
-      let first_len = Uchar.utf_decode_length decode in
-      (* Build the grapheme cluster by consuming runes that shouldn't break *)
-      let rec consume_cluster pos cluster prev_prop has_zwj =
-        if pos >= String.length s then
-          (List.rev cluster, "")
+    match String.get_utf_8_rune s ~at:0 with
+    | None -> None
+    | Some decode ->
+        if not (Scalar.utf_decode_is_valid decode) then
+          None
         else
-          let decode = String.get_utf_8_uchar s pos in
-          if not (Uchar.utf_decode_is_valid decode) then
-            (List.rev cluster, String.sub s pos (String.length s - pos))
-          else
-            let curr_rune = Uchar.utf_decode_uchar decode in
-            let curr_len = Uchar.utf_decode_length decode in
-            let curr_code = Rune.to_int curr_rune in
-            let curr_prop = Grapheme_break.get_break_property curr_code in
-            (* Check if we should break *)
-            if Grapheme_break.should_break ~prev_prop ~curr_prop ~has_zwj then
-              let rest = String.sub s pos (String.length s - pos) in
-              (List.rev cluster, rest)
+          let first_rune = Scalar.utf_decode_rune decode in
+          let first_len = Scalar.utf_decode_length decode in
+          (* Build the grapheme cluster by consuming runes that shouldn't break *)
+          let rec consume_cluster pos cluster prev_prop has_zwj =
+            if pos >= String.length s then
+              (List.reverse cluster, "")
             else
-              (* Don't break - add to cluster and continue *)
-              let new_has_zwj = has_zwj || (curr_code = 0x200d) in
-              consume_cluster (pos + curr_len) (curr_rune :: cluster) curr_prop new_has_zwj
-      in
-      let first_code = Rune.to_int first_rune in
-      let first_prop = Grapheme_break.get_break_property first_code in
-      let (cluster, rest) = consume_cluster first_len [ first_rune ] first_prop false in
-      Some (cluster, rest)
+              match String.get_utf_8_rune s ~at:pos with
+              | None -> (List.reverse cluster, String.sub s ~offset:pos ~len:(String.length s - pos))
+              | Some decode ->
+                  if not (Scalar.utf_decode_is_valid decode) then
+                    (List.reverse cluster, String.sub s ~offset:pos ~len:(String.length s - pos))
+                  else
+                    let curr_rune = Scalar.utf_decode_rune decode in
+                    let curr_len = Scalar.utf_decode_length decode in
+                    let curr_code = Rune.to_int curr_rune in
+                    let curr_prop = Grapheme_break.get_break_property curr_code in
+                    (* Check if we should break *)
+                    if Grapheme_break.should_break ~prev_prop ~curr_prop ~has_zwj then
+                      let rest = String.sub s ~offset:pos ~len:(String.length s - pos) in
+                      (List.reverse cluster, rest)
+                    else
+                      (* Don't break - add to cluster and continue *)
+                      let new_has_zwj = has_zwj || (curr_code = 0x200d) in
+                      consume_cluster (pos + curr_len) (curr_rune :: cluster) curr_prop new_has_zwj
+          in
+          let first_code = Rune.to_int first_rune in
+          let first_prop = Grapheme_break.get_break_property first_code in
+          let (cluster, rest) = consume_cluster first_len [ first_rune ] first_prop false in
+          Some (cluster, rest)
 
 let width = fun grapheme ->
   (* Width of a grapheme cluster
@@ -68,10 +72,14 @@ let width = fun grapheme ->
   | [] -> 0
   | runes ->
       (* Get the width of the first (base) character *)
-      let base_width = Rune.width (List.hd runes) in
+      let base_width =
+        match List.head runes with
+        | Some rune -> Rune.width rune
+        | None -> 0
+      in
       (* For graphemes with extending characters, use base width *)
       (* This handles combining marks and emoji modifiers correctly *)
       base_width
 
 let to_string = fun grapheme ->
-  String.concat "" (List.map Rune.to_string grapheme)
+  String.concat "" (List.map grapheme ~fn:Rune.to_string)

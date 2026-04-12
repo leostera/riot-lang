@@ -1,4 +1,5 @@
 open Global
+open Collections
 
 type env =
   Dev
@@ -6,7 +7,7 @@ type env =
   | Prod
 
 let detect_env = fun () ->
-  match Env.get "RIOT_ENV" with
+  match Env.get Env.String ~var:"RIOT_ENV" with
   | Some "test" -> Test
   | Some "prod" -> Prod
   | Some "production" -> Prod
@@ -20,7 +21,7 @@ let env_to_string = function
 let config_path = fun env -> "./config/" ^ env_to_string env ^ ".toml"
 
 let load_file = fun path ->
-  match Path.of_string path with
+  match Path.from_string path with
   | Error _ -> Error ("Invalid path: " ^ path)
   | Ok path_t ->
       if not (Path.exists path_t) then
@@ -37,8 +38,13 @@ let load_for_env = fun env ->
   let path = config_path env in
   load_file path
 
+let find_field = fun fields name ->
+  List.find fields
+    ~fn:(fun (field_name, _value) ->
+      String.equal field_name name)
+
 let rec extract_app_section = fun app_name toml ->
-  match String.split_on_char '.' app_name with
+  match String.split ~by:"." app_name with
   | [] ->
       Error "Empty app name"
   | [ single ] -> (* Single key - original behavior *)
@@ -46,16 +52,16 @@ let rec extract_app_section = fun app_name toml ->
       match Data.Toml.get_table toml with
       | None -> Error "Root is not a table"
       | Some fields ->
-          match Collections.List.assoc_opt single fields with
+          match find_field fields single with
           | None -> Error ("No [" ^ single ^ "] section found")
-          | Some section -> Ok section
+          | Some (_, section) -> Ok section
     )
   | first :: rest -> (* Dotted path - navigate recursively *)
     (
       match Data.Toml.get_table toml with
       | None -> Error "Root is not a table"
       | Some fields ->
-          match Collections.List.assoc_opt first fields with
+          match find_field fields first with
           | None -> Error ("No [" ^ first ^ "] section found")
-          | Some next_table -> extract_app_section (String.concat "." rest) next_table
+          | Some (_, next_table) -> extract_app_section (String.concat "." rest) next_table
     )

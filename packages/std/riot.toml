@@ -24,7 +24,6 @@ rules = [
 ]
 
 [dependencies]
-stdlib = "*"
 kernel = { path = "../kernel", version = "*" }
 
 [dev-dependencies]

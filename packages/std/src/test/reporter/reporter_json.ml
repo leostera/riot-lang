@@ -29,8 +29,8 @@ let finalize = fun (summary: Test_result.summary) ->
       | None -> summary.duration
     in
     let test_results =
-      List.map
-        (fun (r: Test_result.t) ->
+      List.map summary.results
+        ~fn:(fun (r: Test_result.t) ->
           let type_fields =
             match r.test_type with
             | Test_case.UnitTest -> [ ("type", string "test") ]
@@ -61,7 +61,6 @@ let finalize = fun (summary: Test_result.summary) ->
             | Test_result.Skipped -> [ ("name", string r.name); ("status", string "skipped") ]
           in
           obj (base_fields @ type_fields @ timing_fields))
-        summary.results
     in
     let summary_json = obj
       [

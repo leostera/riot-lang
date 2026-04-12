@@ -14,10 +14,10 @@ let finalize = fun (summary: Test_result.summary) ->
   println "";
   println
     ("Tests: "
-    ^ string_of_int summary.total
+    ^ Int.to_string summary.total
     ^ ", Passed: "
-    ^ string_of_int summary.passed
+    ^ Int.to_string summary.passed
     ^ ", Failed: "
-    ^ string_of_int summary.failed
+    ^ Int.to_string summary.failed
     ^ ", Skipped: "
-    ^ string_of_int summary.skipped)
+    ^ Int.to_string summary.skipped)

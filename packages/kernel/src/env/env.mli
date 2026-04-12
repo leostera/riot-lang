@@ -9,13 +9,13 @@ val args: string array
 val executable_name: string option
 
 (** Use `get name` to read the current process environment immediately. *)
-val get: string -> string option
+val get: var:string -> string option
 
 (** Use `set_var ~name ~value` to update the current process environment immediately. *)
-val set_var: name:string -> value:string -> (unit, error) Result.t
+val set: var:string -> value:string -> (unit, error) Result.t
 
 (** Use `remove_var ~name` to update the current process environment immediately. *)
-val remove_var: name:string -> (unit, error) Result.t
+val remove: var:string -> (unit, error) Result.t
 
 (** Use `vars ()` to snapshot the current process environment immediately. *)
 val vars: unit -> (string * string) array

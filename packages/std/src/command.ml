@@ -77,17 +77,19 @@ let is_shell_safe_char = function
 let shell_quote = fun value ->
   if String.equal value "" then
     "''"
-  else if String.for_all is_shell_safe_char value then
+  else if String.for_all ~fn:is_shell_safe_char value then
     value
   else
-    "'" ^ String.concat "'\"'\"'" (String.split_on_char '\'' value) ^ "'"
+    "'" ^ String.concat "'\"'\"'" (String.split ~by:"'" value) ^ "'"
 
 let to_string = fun t ->
-  let command = String.concat " " (List.map shell_quote (t.cmd :: t.args)) in
+  let command = String.concat " " (List.map (t.cmd :: t.args) ~fn:shell_quote) in
   let command =
     match t.env with
     | [] -> command
-    | env -> String.concat " " (List.map (fun ((key, value)) -> key ^ "=" ^ shell_quote value) env)
+    | env -> String.concat
+      " "
+      (List.map env ~fn:(fun ((key, value)) -> key ^ "=" ^ shell_quote value))
     ^ " "
     ^ command
   in
@@ -193,7 +195,7 @@ let wait_for_exit = fun proc ->
 let cwd_path = fun cwd ->
   match cwd with
   | None -> Ok None
-  | Some cwd -> Ok (Some (Kernel.Path.of_string cwd))
+  | Some cwd -> Ok (Some (Kernel.Path.from_string cwd))
 
 let output = fun t ->
   match t.state with
@@ -210,8 +212,8 @@ let output = fun t ->
           (* Spawn the process *)
           match Kernel.Process.spawn
             ~program:t.cmd
-            ~args:(Array.of_list t.args)
-            ~env:(Array.of_list t.env)
+            ~args:(Array.from_list t.args)
+            ~env:(Array.from_list t.env)
             ?current_dir
             ~stdio
             () with
@@ -261,8 +263,8 @@ let status = fun t ->
           (* Spawn the process *)
           match Kernel.Process.spawn
             ~program:t.cmd
-            ~args:(Array.of_list t.args)
-            ~env:(Array.of_list t.env)
+            ~args:(Array.from_list t.args)
+            ~env:(Array.from_list t.env)
             ?current_dir
             ~stdio
             () with
@@ -271,7 +273,7 @@ let status = fun t ->
               match wait_for_exit proc with
               | Error _ as err -> err
               | Ok exit_status ->
-                  ignore (Kernel.Process.close proc);
+                  let _ = Kernel.Process.close proc in
                   let status_code = kernel_status_code exit_status in
                   t.state <- Exited { status = status_code; stdout = ""; stderr = "" };
                   Ok status_code

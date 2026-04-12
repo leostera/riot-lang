@@ -19,7 +19,7 @@ let equal = fun (Ref a) (Ref b) ->
 
 let type_equal: type a b. a t -> b t -> (a, b) Type.eq option = fun a b ->
   match (a, b) with
-  | Ref a', Ref b' when Int64.equal a' b' -> Some (Kernel.dangerous_unsafe_cast Type.Equal)
+  | Ref a', Ref b' when Int64.equal a' b' -> Some (Kernel.dangerously_cast_value Type.Equal)
   | _ -> None
 
 let cast: type a b. (a, b) Type.eq -> a -> b = fun (Type.Equal) a -> a

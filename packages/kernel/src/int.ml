@@ -42,7 +42,7 @@ let succ = fun value -> add value 1
 
 let pred = fun value -> sub value 1
 
-let of_float = Caml_runtime.int_of_float
+let from_float = Caml_runtime.int_of_float
 
 let parse_unchecked = Caml_runtime.int_of_string
 
@@ -51,6 +51,10 @@ let parse = fun value ->
   | _ -> None
 
 let hash = fun value -> value
+
+let max_int = Caml_runtime.shift_right_logical_int (-1) 1
+
+let min_int = max_int + 1
 
 let to_string = fun value ->
   if value = 0 then

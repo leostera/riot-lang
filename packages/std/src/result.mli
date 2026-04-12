@@ -132,21 +132,7 @@ val is_err_and: ('e -> bool) -> ('a, 'e) t -> bool
 
     assert (double (parse_int "21") = Ok 42); assert (double (parse_int "abc") =
     Error "Not a number") ``` *)
-val map: ('a -> 'b) -> ('a, 'e) t -> ('b, 'e) t
-
-(** Maps a `Result<'a, 'e>` to `Result<'a, 'f>` by applying a function to the
-    [`Error`] value.
-
-    Alias for [`map_err`].
-
-    ## Examples
-
-    ```ocaml let add_context = Result.map_error (fun e -> Printf.sprintf
-    "Database error: %s" e ) in
-
-    let result = Error "Connection timeout" in assert (add_context result =
-    Error "Database error: Connection timeout") ``` *)
-val map_error: ('e -> 'f) -> ('a, 'e) t -> ('a, 'f) t
+val map: ('a, 'e) t -> fn:('a -> 'b) -> ('b, 'e) t
 
 (** Maps a `Result<'a, 'e>` to `Result<'a, 'f>` by applying a function to the
     [`Error`] value.
@@ -158,7 +144,7 @@ val map_error: ('e -> 'f) -> ('a, 'e) t -> ('a, 'f) t
     let x = Ok 2 in assert (stringify_error x = Ok 2);
 
     let y = Error 13 in assert (stringify_error y = Error "13") ``` *)
-val map_err: ('e -> 'f) -> ('a, 'e) t -> ('a, 'f) t
+val map_err: ('a, 'e) t -> fn:('e -> 'f) -> ('a, 'f) t
 
 (** Returns the result of applying function to [`Ok`] value, or default if
     [`Error`].
@@ -173,6 +159,7 @@ val map_err: ('e -> 'f) -> ('a, 'e) t -> ('a, 'f) t
 
     let y = Error "bar" in assert (Result.map_or ~default:42 String.length y =
     42) ``` *)
+val map_or: ('a, 'e) t -> default:'b -> fn:('a -> 'b) -> 'b
 
 (** Maps a `Result<'a, 'e>` to `'b` by applying fallback function to [`Error`],
     or function to [`Ok`] value.
@@ -189,9 +176,7 @@ val map_err: ('e -> 'f) -> ('a, 'e) t -> ('a, 'f) t
 
     let y = Error "bar" in assert (Result.map_or_else ~default:(fun e ->
     String.length e) String.length y = 3) ``` *)
-val map_or: default:'b -> ('a -> 'b) -> ('a, 'e) t -> 'b
-
-val map_or_else: default:('e -> 'b) -> ('a -> 'b) -> ('a, 'e) t -> 'b
+val map_or_else: ('a, 'e) t -> default:('e -> 'b) -> fn:('a -> 'b) -> 'b
 
 (** # Chaining *)
 (** Calls function on [`Ok`] value if present, short-circuits on [`Error`].
@@ -211,7 +196,7 @@ val map_or_else: default:('e -> 'b) -> ('a -> 'b) -> ('a, 'e) t -> 'b
 
     let failed = parse_int "abc" |> Result.and_then (fun x -> divide x 2) (*
     failed = Error "not an integer" - second operation never runs *) ``` *)
-val and_then: ('a, 'e) t -> ('a -> ('b, 'e) t) -> ('b, 'e) t
+val and_then: ('a, 'e) t -> fn:('a -> ('b, 'e) t) -> ('b, 'e) t
 
 (** Returns the first result if [`Ok`], otherwise returns the second result.
 
@@ -238,7 +223,7 @@ val or_: ('a, 'e) t -> ('a, 'e) t -> ('a, 'e) t
     assert (Result.or_else (Ok 2) sq = Ok 2); assert (Result.or_else (Ok 2) err
     = Ok 2); assert (Result.or_else (Error 3) sq = Ok 9); assert (Result.or_else
     (Error 3) err = Error 3) ``` *)
-val or_else: ('a, 'e) t -> ('e -> ('a, 'f) t) -> ('a, 'f) t
+val or_else: ('a, 'e) t -> fn:('e -> ('a, 'f) t) -> ('a, 'f) t
 
 (** # Extracting values *)
 (** Returns the contained [`Ok`] value, consuming the result.
@@ -279,7 +264,7 @@ val unwrap: ('a, 'e) t -> 'a
     ```ocaml let count s = String.length s in assert (Result.unwrap_or_else
     ~fn:(fun () -> 2) (Ok 9) = 9); assert (Result.unwrap_or_else ~fn:(fun () ->
     count "foo") (Error "bar") = 3) ``` *)
-val unwrap_or: default:'a -> ('a, 'e) t -> 'a
+val unwrap_or: ('a, 'e) t -> default:'a -> 'a
 
 (** Returns the contained [`Error`] value, consuming the result.
 
@@ -295,7 +280,7 @@ val unwrap_or: default:'a -> ('a, 'e) t -> 'a
 
     (* This will panic: *) let y = Ok 2 in Result.unwrap_err y (* panic: "Called
     Result.unwrap_err on Ok: 2" *) ``` *)
-val unwrap_or_else: fn:(unit -> 'a) -> ('a, 'e) t -> 'a
+val unwrap_or_else: ('a, 'e) t -> fn:(unit -> 'a) -> 'a
 
 (** Returns the contained [`Ok`] value, consuming the result.
 
@@ -396,18 +381,18 @@ val inspect_err: ('e -> unit) -> ('a, 'e) t -> ('a, 'e) t
 
     let y = Error "nothing" in Result.iter (fun v -> Printf.printf "Got: %d\n"
     v) y (* Prints nothing *) ``` *)
-val iter: ('a -> unit) -> ('a, 'e) t -> unit
+val iter: ('a, 'e) t -> fn:('a -> unit) -> unit
 
 (** Calls function on [`Error`] value if present, otherwise does nothing.
 
     ## Examples
 
-    ```ocaml let log_error = Result.iter_error (fun e -> Log.error "Operation
+    ```ocaml let log_error = Result.iter_err (fun e -> Log.error "Operation
     failed: %s" e ) in
 
     log_error (Error "disk full"); (* Logs error *) log_error (Ok 123) (* Does
     nothing *) ``` *)
-val iter_error: ('e -> unit) -> ('a, 'e) t -> unit
+val iter_err: ('a, 'e) t -> fn:('e -> unit) -> unit
 
 (** # Converting *)
 (** Converts from `Result<'a, 'e>` to [`Option<'a>`].
@@ -436,7 +421,7 @@ val to_option: ('a, 'e) t -> 'a option
     (* Common pattern with environment variables *) let port = Sys.getenv_opt
     "PORT" |> Result.of_option ~error:"PORT not set" |> Result.and_then (fun s
     -> try Ok (int_of_string s) with _ -> Error "PORT must be a number") ``` *)
-val of_option: error:'e -> 'a option -> ('a, 'e) t
+val from_option: error:'e -> 'a option -> ('a, 'e) t
 
 (** Transposes a `Result` of an `Option` into an `Option` of a `Result`.
 
@@ -531,4 +516,4 @@ val both: ('a, 'e) t -> ('b, 'e) t -> ('a * 'b, 'e) t
 
     (* Convert any result to an exit code *) let to_exit_code = Result.fold
     ~ok:(fun _ -> 0) ~error:(fun _ -> 1) ``` *)
-val fold: ok:('a -> 'c) -> error:('e -> 'c) -> ('a, 'e) t -> 'c
+val fold: ('a, 'e) t -> ok:('a -> 'c) -> error:('e -> 'c) -> 'c

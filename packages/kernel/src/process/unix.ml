@@ -1,6 +1,6 @@
 open Prelude
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 type error =
   | File of Fs.File.error
@@ -164,21 +164,19 @@ let stderr = fun process -> process.stderr_pipe
 
 let spawn = fun ~program ~args ?env ?current_dir ~stdio () ->
   let env = Option.unwrap_or env ~default:[||] in
-  let current_dir = Option.map Path.to_string current_dir in
+  let current_dir = Option.map current_dir ~fn:Path.to_string in
   let raw_stdio = raw_stdio_of_config stdio in
-  Result.map_error (fun code -> System (System_error.of_code code))
-    (
-      Result.map
-        (fun (pid, stdin_pipe, stdout_pipe, stderr_pipe) ->
-          {
-            pid;
-            stdin_pipe;
-            stdout_pipe;
-            stderr_pipe;
-            status = Running;
-          })
-        (FFI.spawn program args env current_dir raw_stdio)
-    )
+  Result.map
+    ~fn:(fun (pid, stdin_pipe, stdout_pipe, stderr_pipe) ->
+      {
+        pid;
+        stdin_pipe;
+        stdout_pipe;
+        stderr_pipe;
+        status = Running;
+      })
+    (FFI.spawn program args env current_dir raw_stdio) |> Result.map_err
+    ~fn:(fun code -> System (System_error.from_code code))
 
 let try_wait = fun process ->
   match process.status with
@@ -187,7 +185,9 @@ let try_wait = fun process ->
   | Running
   | Stopped _ ->
       let* status =
-        Result.map_error (fun code -> System (System_error.of_code code)) (FFI.try_wait process.pid)
+        Result.map_err
+          (FFI.try_wait process.pid)
+          ~fn:(fun code -> System (System_error.from_code code))
       in
       match status with
       | None -> (
@@ -221,10 +221,9 @@ let to_source = fun process ->
   Async.Source.make (module Source) process
 
 let kill = fun process ~signal ->
-  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.kill process.pid signal)
+  Result.map_err (FFI.kill process.pid signal) ~fn:(fun code -> System (System_error.from_code code))
 
-let execv = fun program argv ->
-  Result.map_error System_error.of_code (FFI.execv program argv)
+let execv = fun program argv -> Result.map_err (FFI.execv program argv) ~fn:System_error.from_code
 
 let close = fun process ->
   let rec close_all first_error = function

@@ -1,217 +1,230 @@
 open Kernel
 
-let panic = Kernel.SystemError.panic
-
-module Array = Stdlib.Array
-module Int = Kernel.Int
-module Obj = Stdlib.Obj
-
-let compare = Kernel.compare
-
-let max = Int.max
-
-type 'a t = {
-  mutable data: 'a array;
+type 'value t = {
+  mutable data: 'value array;
   mutable length: int;
 }
 
+type error =
+  | OutOfBoundsSet of { length: int; at: int }
+
 let create = fun () -> { data = [||]; length = 0 }
 
-let with_capacity = fun capacity -> { data = Array.make capacity (Obj.magic 0); length = 0 }
+let with_capacity = fun ~size ->
+  { data = Array.make ~count:(Int.max 0 size) ~value:(dangerously_cast_value 0); length = 0 }
+
+let length = fun vector -> vector.length
+
+let is_empty = fun vector ->
+  Int.equal vector.length 0
 
 let capacity = fun vector -> Array.length vector.data
 
-let len = fun vector -> vector.length
-
-let is_empty = fun vector -> vector.length = 0
-
 let resize = fun vector new_capacity ->
-  let old_data = vector.data in
-  let new_data = Array.make new_capacity (Obj.magic 0) in
-  Array.blit old_data 0 new_data 0 vector.length;
+  let new_data = Array.make ~count:new_capacity ~value:(dangerously_cast_value 0) in
+  Array.blit vector.data ~src_offset:0 ~dst:new_data ~dst_offset:0 ~len:vector.length;
   vector.data <- new_data
 
 let ensure_capacity = fun vector required_capacity ->
   let current_capacity = capacity vector in
   if Int.compare current_capacity required_capacity < 0 then
-    let new_capacity = max required_capacity (current_capacity * 2) in
-    let new_capacity = max new_capacity 4 in
-    resize vector new_capacity
+    let grown_capacity =
+      if Int.equal current_capacity 0 then
+        4
+      else
+        Int.mul current_capacity 2
+    in
+    resize vector (Int.max required_capacity grown_capacity)
 
-let reserve = fun vector additional ->
-  if Int.compare additional 0 < 0 then
-    panic "additional capacity must be non-negative"
+let reserve = fun vector ~size ->
+  if Int.compare size 0 < 0 then
+    Kernel.SystemError.panic "Vector.reserve received a negative size"
   else
-    ensure_capacity vector (vector.length + additional)
+    ensure_capacity vector (Int.add vector.length size)
 
-let push = fun vector value ->
-  ensure_capacity vector (vector.length + 1);
-  Array.unsafe_set vector.data vector.length value;
-  vector.length <- vector.length + 1
+let push = fun vector ~value ->
+  ensure_capacity vector (Int.add vector.length 1);
+  Array.set_unchecked vector.data ~at:vector.length ~value;
+  vector.length <- Int.add vector.length 1
 
 let pop = fun vector ->
-  if vector.length = 0 then
+  if Int.equal vector.length 0 then
     None
   else (
-    vector.length <- vector.length - 1;
-    Some (Array.unsafe_get vector.data vector.length)
+    vector.length <- Int.sub vector.length 1;
+    Some (Array.get_unchecked vector.data ~at:vector.length)
   )
 
-let get = fun vector index ->
-  if Int.compare index 0 >= 0 && Int.compare index vector.length < 0 then
-    Some (Array.unsafe_get vector.data index)
-  else
+let get = fun vector ~at ->
+  if Int.compare at 0 < 0 || Int.compare at vector.length >= 0 then
     None
-
-let get_unchecked = fun vector index ->
-  Array.unsafe_get vector.data index
-
-let set = fun vector index value ->
-  if Int.compare index 0 < 0 || Int.compare index vector.length >= 0 then
-    panic "Index out of bounds"
   else
-    Array.unsafe_set vector.data index value
+    Some (Array.get_unchecked vector.data ~at)
 
-let set_unchecked = fun vector index value ->
-  Array.unsafe_set vector.data index value
+let get_unchecked = fun vector ~at -> Array.get_unchecked vector.data ~at
 
-let insert = fun vector index value ->
-  if Int.compare index 0 < 0 || Int.compare index vector.length > 0 then
-    panic "Index out of bounds"
+let set = fun vector ~at ~value ->
+  if Int.compare at 0 < 0 || Int.compare at vector.length >= 0 then
+    Error (OutOfBoundsSet { length = vector.length; at })
   else (
-    ensure_capacity vector (vector.length + 1);
-    Array.blit vector.data index vector.data (index + 1) (vector.length - index);
-    Array.unsafe_set vector.data index value;
-    vector.length <- vector.length + 1
+    Array.set_unchecked vector.data ~at ~value;
+    Ok ()
   )
 
-let remove = fun vector index ->
-  if Int.compare index 0 < 0 || Int.compare index vector.length >= 0 then
+let set_unchecked = fun vector ~at ~value -> Array.set_unchecked vector.data ~at ~value
+
+let insert = fun vector ~at ~value ->
+  if Int.compare at 0 < 0 || Int.compare at vector.length > 0 then
+    Kernel.SystemError.panic "Vector.insert received an out-of-bounds index"
+  else (
+    ensure_capacity vector (Int.add vector.length 1);
+    Array.blit
+      vector.data
+      ~src_offset:at
+      ~dst:vector.data
+      ~dst_offset:(Int.add at 1)
+      ~len:(Int.sub vector.length at);
+    Array.set_unchecked vector.data ~at ~value;
+    vector.length <- Int.add vector.length 1
+  )
+
+let remove = fun vector ~at ->
+  if Int.compare at 0 < 0 || Int.compare at vector.length >= 0 then
     None
   else
-    (
-      let value = Array.unsafe_get vector.data index in
-      Array.blit vector.data (index + 1) vector.data index (vector.length - index - 1);
-      vector.length <- vector.length - 1;
-      Some value
-    )
+    let value = Array.get_unchecked vector.data ~at in
+    Array.blit
+      vector.data
+      ~src_offset:(Int.add at 1)
+      ~dst:vector.data
+      ~dst_offset:at
+      ~len:(Int.sub (Int.sub vector.length at) 1);
+    vector.length <- Int.sub vector.length 1;
+    Some value
 
 let clear = fun vector -> vector.length <- 0
 
-let to_array = fun vector ->
-  Array.sub vector.data 0 vector.length
+let to_array = fun vector -> Array.sub vector.data ~offset:0 ~len:vector.length
 
-let iter = fun f vector ->
-  let data = vector.data in
-  for i = 0 to vector.length - 1 do
-    f (Array.unsafe_get data i)
+let for_each = fun vector ~fn ->
+  let rec loop index =
+    if Int.compare index vector.length >= 0 then
+      ()
+    else (
+      fn (Array.get_unchecked vector.data ~at:index);
+      loop (Int.add index 1)
+    )
+  in
+  loop 0
+
+let append = fun left right ->
+  if Int.compare right.length 0 > 0 then
+    (
+      reserve left ~size:right.length;
+      Array.blit right.data ~src_offset:0 ~dst:left.data ~dst_offset:left.length ~len:right.length;
+      left.length <- Int.add left.length right.length;
+      right.length <- 0
+    )
+
+let split_off = fun vector ~at ->
+  if Int.compare at 0 < 0 || Int.compare at vector.length > 0 then
+    Kernel.SystemError.panic "Vector.split_off received an out-of-bounds index"
+  else
+    let moved = Int.sub vector.length at in
+    let next = with_capacity ~size:moved in
+    Array.blit vector.data ~src_offset:at ~dst:next.data ~dst_offset:0 ~len:moved;
+    next.length <- moved;
+    vector.length <- at;
+    next
+
+let sort_with = fun vector ~compare ->
+  let rec shift_left item index =
+    if Int.compare index 0 < 0 then
+      0
+    else
+      let current = Array.get_unchecked vector.data ~at:index in
+      if Int.compare (compare current item) 0 <= 0 then
+        Int.add index 1
+      else (
+        Array.set_unchecked vector.data ~at:(Int.add index 1) ~value:current;
+        shift_left item (Int.sub index 1)
+      )
+  in
+  for index = 1 to Int.sub vector.length 1 do
+    let item = Array.get_unchecked vector.data ~at:index in
+    let destination = shift_left item (Int.sub index 1) in
+    Array.set_unchecked vector.data ~at:destination ~value:item
   done
 
-let append = fun vector1 vector2 ->
-  if Int.compare vector2.length 0 > 0 then
-    (
-      reserve vector1 vector2.length;
-      Array.blit vector2.data 0 vector1.data vector1.length vector2.length;
-      vector1.length <- vector1.length + vector2.length;
-      vector2.length <- 0
-    )
+let sort = fun vector -> sort_with vector ~compare
 
-let split_off = fun vector index ->
-  if Int.compare index 0 < 0 || Int.compare index vector.length > 0 then
-    panic "Index out of bounds"
-  else
-    (
-      let elements_to_move = vector.length - index in
-      let new_vector = with_capacity elements_to_move in
-      Array.blit vector.data index new_vector.data 0 elements_to_move;
-      new_vector.length <- elements_to_move;
-      vector.length <- index;
-      new_vector
-    )
-
-let sort = fun vector ->
-  if Int.compare vector.length 0 > 0 then
-    (
-      let temp_array = Array.sub vector.data 0 vector.length in
-      Array.sort compare temp_array;
-      for i = 0 to vector.length - 1 do
-        vector.data.(i) <- temp_array.(i)
-      done
-    )
-
-let sort_by = fun vector compare_fn ->
-  if Int.compare vector.length 0 > 0 then
-    (
-      let temp_array = Array.sub vector.data 0 vector.length in
-      Array.sort compare_fn temp_array;
-      for i = 0 to vector.length - 1 do
-        vector.data.(i) <- temp_array.(i)
-      done
-    )
+let sort_by = fun vector ~compare -> sort_with vector ~compare
 
 let reverse = fun vector ->
-  for i = 0 to (vector.length - 1) / 2 do
-    let j = vector.length - 1 - i in
-    let temp = Array.unsafe_get vector.data i in
-    Array.unsafe_set vector.data i (Array.unsafe_get vector.data j);
-    Array.unsafe_set vector.data j temp
+  for index = 0 to Int.div (Int.sub vector.length 1) 2 do
+    let opposite = Int.sub (Int.sub vector.length 1) index in
+    let value = Array.get_unchecked vector.data ~at:index in
+    Array.set_unchecked vector.data ~at:index ~value:(Array.get_unchecked vector.data ~at:opposite);
+    Array.set_unchecked vector.data ~at:opposite ~value
   done
 
 let first = fun vector ->
-  if vector.length = 0 then
+  if Int.equal vector.length 0 then
     None
   else
-    Some (Array.unsafe_get vector.data 0)
+    Some (Array.get_unchecked vector.data ~at:0)
 
 let last = fun vector ->
-  if vector.length = 0 then
+  if Int.equal vector.length 0 then
     None
   else
-    Some (Array.unsafe_get vector.data (vector.length - 1))
+    Some (Array.get_unchecked vector.data ~at:(Int.sub vector.length 1))
 
-let of_list = fun elements ->
-  let data = Array.of_list elements in
+let from_list = fun values ->
+  let data = Array.from_list values in
   { data; length = Array.length data }
 
-let into_iter: type item. item t -> item Iter.Iterator.t = fun vector ->
+let iter: type item. item t -> item Iter.Iterator.t = fun vector ->
   let module VecIter = struct
     type state = {
-      vec: item t;
-      pos: int;
+      vector: item t;
+      position: int;
     }
 
     type nonrec item = item
 
     let next = fun state ->
-      if Int.compare state.pos state.vec.length >= 0 then
+      if Int.compare state.position state.vector.length >= 0 then
         (None, state)
       else
-        let item = Array.unsafe_get state.vec.data state.pos in
-        (Some item, { state with pos = state.pos + 1 })
+        let item = Array.get_unchecked state.vector.data ~at:state.position in
+        (Some item, { state with position = Int.add state.position 1 })
 
-    let size = fun state -> max 0 (state.vec.length - state.pos)
+    let size = fun state ->
+      Int.max 0 (Int.sub state.vector.length state.position)
   end in
-  Iter.Iterator.make (module VecIter) { VecIter.vec = vector; pos = 0 }
+  Iter.Iterator.make (module VecIter) { vector; position = 0 }
 
-let to_mut_iter: type item. item t -> item Iter.MutIterator.t = fun vector ->
+let mut_iter: type item. item t -> item Iter.MutIterator.t = fun vector ->
   let module VecIter = struct
     type state = {
-      vec: item t;
-      mutable pos: int;
+      vector: item t;
+      mutable position: int;
     }
 
     type nonrec item = item
 
     let next = fun state ->
-      if Int.compare state.pos state.vec.length >= 0 then
+      if Int.compare state.position state.vector.length >= 0 then
         None
       else
-        let item = Array.unsafe_get state.vec.data state.pos in
-        state.pos <- state.pos + 1;
+        let item = Array.get_unchecked state.vector.data ~at:state.position in
+        state.position <- Int.add state.position 1;
         Some item
 
-    let size = fun state -> max 0 (state.vec.length - state.pos)
+    let size = fun state ->
+      Int.max 0 (Int.sub state.vector.length state.position)
 
-    let clone = fun state -> { vec = state.vec; pos = state.pos }
+    let clone = fun state -> { vector = state.vector; position = state.position }
   end in
-  Iter.MutIterator.make (module VecIter) { VecIter.vec = vector; pos = 0 }
+  Iter.MutIterator.make (module VecIter) { vector; position = 0 }

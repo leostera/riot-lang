@@ -8,7 +8,7 @@ type t = {
   port: int;
 }
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 let error_to_string = fun value ->
   match value with
@@ -26,7 +26,7 @@ let make = fun ~ip ~port ->
   let* () = validate_port port in
   Result.Ok { ip; port }
 
-let of_parts = make
+let from_parts = make
 
 let loopback_v4 = fun ~port -> unsafe_make ~ip:Ip_addr.v4_loopback ~port
 
@@ -42,7 +42,7 @@ let has_colon = fun value ->
   let rec loop index =
     if index = String.length value then
       false
-    else if String.get value index = ':' then
+    else if String.get_unchecked value ~at:index = ':' then
       true
     else
       loop (index + 1)

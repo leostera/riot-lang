@@ -60,7 +60,7 @@ type pipe = {
   read_end: t;
   write_end: t;
 }
-val open_file: Path.t -> open_flag list -> perm:int -> (t, error) Result.t
+val open_file: Path.t -> flags:open_flag list -> permissions:int -> (t, error) Result.t
 
 val open_read: Path.t -> (t, error) Result.t
 

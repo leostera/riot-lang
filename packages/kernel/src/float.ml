@@ -8,7 +8,7 @@ let equal = Caml_runtime.equal
 
 let compare = Caml_runtime.compare
 
-let of_int = Caml_runtime.float_of_int
+let from_int = Caml_runtime.float_of_int
 
 let to_int = Caml_runtime.int_of_float
 
@@ -40,10 +40,9 @@ let to_string = fun ?(precision = 6) value ->
 let rem = Caml_runtime.rem_float
 
 let abs = fun value ->
-  if Caml_runtime.less_than (compare value 0.0) 0 then
-    Caml_runtime.neg_float value
-  else
-    value
+  match Int.compare (compare value 0.0) 0 with
+  | -1 -> Caml_runtime.neg_float value
+  | _ -> value
 
 let sqrt = Caml_runtime.sqrt_float
 

@@ -25,7 +25,7 @@ let bind = fun ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr 
 
 let accept = fun ?timeout t ->
   let source = Kernel.Net.TcpListener.to_source t in
-  let timeout_secs = Option.map Time.Duration.to_secs_float timeout in
+  let timeout_secs = Option.map timeout ~fn:Time.Duration.to_secs_float in
   let rec accept_loop () =
     match Kernel.Net.TcpListener.accept t with
     | Ok (stream, addr) -> Ok (stream, addr)
@@ -49,4 +49,7 @@ let local_addr = fun t ->
         str (IO.error_message (io_error_of_listener_error err))
       ])
 
-let close = fun t -> ignore (Kernel.Net.TcpListener.close t)
+let close = fun t ->
+  match Kernel.Net.TcpListener.close t with
+  | Ok () -> ()
+  | Error _ -> ()

@@ -33,7 +33,7 @@ let v3 = fun ~namespace:_ ~name:_ -> raise (Invalid_argument "UUID.v3 not yet im
 
 let v4_from_bytes = fun bytes ->
   if Bytes.length bytes = 16 then
-    Bytes.copy bytes
+    Bytes.sub_unchecked bytes ~offset:0 ~len:16
   else
     raise (Invalid_argument "UUID.v4_from_bytes: invalid bytes")
 
@@ -42,17 +42,17 @@ let v7_from_parts = fun ~time_ms:_ ~rand_a:_ ~rand_b:_ ->
 
 (** {1 Constants} *)
 
-let nil = Bytes.make 16 '\x00'
+let nil = Bytes.from_string "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 
-let max = Bytes.make 16 '\xFF'
+let max = Bytes.from_string "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF"
 
-let ns_dns = Bytes.of_string "\x6b\xa7\xb8\x10\x9d\xad\x11\xd1\x80\xb4\x00\xc0\x4f\xd4\x30\xc8"
+let ns_dns = Bytes.from_string "\x6b\xa7\xb8\x10\x9d\xad\x11\xd1\x80\xb4\x00\xc0\x4f\xd4\x30\xc8"
 
-let ns_url = Bytes.of_string "\x6b\xa7\xb8\x11\x9d\xad\x11\xd1\x80\xb4\x00\xc0\x4f\xd4\x30\xc8"
+let ns_url = Bytes.from_string "\x6b\xa7\xb8\x11\x9d\xad\x11\xd1\x80\xb4\x00\xc0\x4f\xd4\x30\xc8"
 
-let ns_oid = Bytes.of_string "\x6b\xa7\xb8\x12\x9d\xad\x11\xd1\x80\xb4\x00\xc0\x4f\xd4\x30\xc8"
+let ns_oid = Bytes.from_string "\x6b\xa7\xb8\x12\x9d\xad\x11\xd1\x80\xb4\x00\xc0\x4f\xd4\x30\xc8"
 
-let ns_x500 = Bytes.of_string "\x6b\xa7\xb8\x14\x9d\xad\x11\xd1\x80\xb4\x00\xc0\x4f\xd4\x30\xc8"
+let ns_x500 = Bytes.from_string "\x6b\xa7\xb8\x14\x9d\xad\x11\xd1\x80\xb4\x00\xc0\x4f\xd4\x30\xc8"
 
 (** {1 Parsing} *)
 
@@ -62,7 +62,7 @@ let of_string = fun value ->
 
 let of_bytes = fun value ->
   if Bytes.length value = 16 then
-    Ok (Bytes.copy value)
+    Ok (Bytes.sub_unchecked value ~offset:0 ~len:16)
   else
     Error (`Invalid_uuid "UUID must be exactly 16 bytes")
 
@@ -77,18 +77,18 @@ let to_string = fun ?(upper = false) uuid ->
 
 let to_string_nodash = fun ?(upper = false) uuid ->
   let str = to_string ~upper:false uuid in
-  let result = String.concat "" (String.split_on_char '-' str) in
+  let result = String.concat "" (String.split ~by:"-" str) in
   if upper then
     String.uppercase_ascii result
   else
     result
 
-let to_bytes = fun uuid -> Bytes.copy uuid
+let to_bytes = fun uuid -> Bytes.sub_unchecked uuid ~offset:0 ~len:(Bytes.length uuid)
 
 (** {1 Comparison} *)
 
 let equal = fun left right ->
-  Bytes.equal left right
+  String.equal (Bytes.to_string left) (Bytes.to_string right)
 
 let is_nil = is_nil_native
 
@@ -98,7 +98,7 @@ let version = fun uuid ->
   if Bytes.length uuid < 7 then
     None
   else
-    let byte6 = Bytes.get uuid 6 |> Char.code in
+    let byte6 = Bytes.get uuid ~at:6 |> Option.unwrap |> Char.to_int in
     let version = (byte6 lsr 4) land 0x0f in
     if version >= 1 && version <= 8 then
       Some version
@@ -135,8 +135,13 @@ module Monotonic = struct
   *)
   let extract_timestamp_ms = fun uuid ->
     let open Bytes in
-      let base = Int64.of_int 256 in
-      let byte index = Int64.of_int (Char.code (get uuid index)) in
+      let base = Int64.from_int 256 in
+      let byte index = Int64.from_int
+        (
+          Char.to_int
+            (get uuid ~at:index |> Option.unwrap)
+        )
+      in
       let rec loop index acc =
         if index > 5 then
           acc

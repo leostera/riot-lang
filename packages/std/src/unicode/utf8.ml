@@ -1,19 +1,19 @@
-open Global
+open Prelude
 module String = Kernel.String
-module Uchar = Kernel.Unicode.Rune
+module Scalar = Kernel.Unicode.Rune
+module Rune = Rune
 
 (** UTF-8 encoding/decoding *)
 let decode_rune = fun s pos ->
   if pos < 0 || pos >= String.length s then
     None
   else
-    let decode = String.get_utf_8_uchar s pos in
-    if Uchar.utf_decode_is_valid decode then
-      let r = Uchar.utf_decode_uchar decode in
-      let len = Uchar.utf_decode_length decode in
-      Some (r, pos + len)
-    else
-      None
+    match String.get_utf_8_rune s ~at:pos with
+    | Some decode when Scalar.utf_decode_is_valid decode ->
+        let r = Scalar.utf_decode_rune decode in
+        let len = Scalar.utf_decode_length decode in
+        Some (r, pos + len)
+    | _ -> None
 
 let encode_rune = Rune.to_string
 
@@ -22,12 +22,11 @@ let is_valid = fun s ->
     if pos >= String.length s then
       true
     else
-      let decode = String.get_utf_8_uchar s pos in
-      if Uchar.utf_decode_is_valid decode then
-        let len = Uchar.utf_decode_length decode in
-        check (pos + len)
-      else
-        false
+      match String.get_utf_8_rune s ~at:pos with
+      | Some decode when Scalar.utf_decode_is_valid decode ->
+          let len = Scalar.utf_decode_length decode in
+          check (pos + len)
+      | _ -> false
   in
   check 0
 

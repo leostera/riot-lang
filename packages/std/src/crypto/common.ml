@@ -22,30 +22,32 @@ let push_bytes = fun state buffer ->
 
 let write_string = fun state value ->
   if String.length value > 0 then
-    push_bytes state (Bytes.of_string value)
+    push_bytes state (Bytes.from_string value)
 
 let write_hash = fun state hash -> push_bytes state (Hash.to_bytes hash)
 
-let bytes_of_unit = fun () -> Bytes.create 1
+let bytes_of_unit = fun () -> Bytes.create ~size:1
 
 let bytes_of_bool = fun value ->
-  let out = Bytes.create 1 in
-  Bytes.set out 0
-    (
-      if value then
-        Char.unsafe_of_int 1
-      else
-        Char.unsafe_of_int 0
-    );
+  let out = Bytes.create ~size:1 in
+  let _ =
+    Bytes.set out ~at:0
+      ~char:(
+        if value then
+          Char.from_int_unchecked 1
+        else
+          Char.from_int_unchecked 0
+      )
+  in
   out
 
 let bytes_of_int = fun value ->
-  let out = Bytes.create 8 in
+  let out = Bytes.create ~size:8 in
   let rec loop index =
     if index < 8 then
       (
         let byte = (value lsr (index * 8)) land 0xff in
-        Bytes.set out index (Char.unsafe_of_int byte);
+        let _ = Bytes.set out ~at:index ~char:(Char.from_int_unchecked byte) in
         loop (index + 1)
       )
   in
@@ -54,12 +56,12 @@ let bytes_of_int = fun value ->
 
 let bytes_of_int32 = fun value ->
   let value = int32_to_int value in
-  let out = Bytes.create 4 in
+  let out = Bytes.create ~size:4 in
   let rec loop index =
     if index < 4 then
       (
         let byte = (value lsr (index * 8)) land 0xff in
-        Bytes.set out index (Char.unsafe_of_int byte);
+        let _ = Bytes.set out ~at:index ~char:(Char.from_int_unchecked byte) in
         loop (index + 1)
       )
   in
@@ -67,14 +69,14 @@ let bytes_of_int32 = fun value ->
   out
 
 let bytes_of_int64 = fun value ->
-  let out = Bytes.create 8 in
+  let out = Bytes.create ~size:8 in
   let mask = 0xffL in
   let rec loop index =
     if index < 8 then
       (
         let shifted = int64_shift_right_logical value (index * 8) in
         let byte = Int64.to_int (int64_logand shifted mask) in
-        Bytes.set out index (Char.unsafe_of_int byte);
+        let _ = Bytes.set out ~at:index ~char:(Char.from_int_unchecked byte) in
         loop (index + 1)
       )
   in
@@ -99,8 +101,8 @@ let rec reverse_append left right =
   | head :: tail -> reverse_append tail (head :: right)
 
 let finish_iovec = fun digest state ->
-  let buffers = Array.of_list (reverse_append state.buffers_rev []) in
-  digest (Iovec.of_bytes_array buffers)
+  let buffers = Array.from_list (reverse_append state.buffers_rev []) in
+  digest (Iovec.from_bytes_array buffers)
 
 let hash_string_with = fun digest value ->
   let state = create_state () in
@@ -108,4 +110,4 @@ let hash_string_with = fun digest value ->
   finish_iovec digest state
 
 let hash_bytes_with = fun digest value ->
-  digest (Iovec.of_bytes (Bytes.sub value 0 (Bytes.length value)))
+  digest (Iovec.from_bytes (Bytes.sub_unchecked value ~offset:0 ~len:(Bytes.length value)))

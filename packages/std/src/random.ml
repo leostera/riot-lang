@@ -13,7 +13,7 @@ type error =
   | EmptyPopulation
   | InvalidSampleSize of { requested: int; available: int }
 
-let ( let* ) = Result.and_then
+let ( let* ) = fun result fn -> Result.and_then ~fn result
 
 let error_to_string = function
   | Entropy error -> String.concat
@@ -64,36 +64,49 @@ module Rng = struct
     rng.fill_bytes rng.state out
 
   let load_le32 = fun source offset ->
-    let byte0 = Int32.of_int (Char.to_int (Bytes.get source offset)) in
-    let byte1 = Int32.shift_left (Int32.of_int (Char.to_int (Bytes.get source (offset + 1)))) 8 in
-    let byte2 = Int32.shift_left (Int32.of_int (Char.to_int (Bytes.get source (offset + 2)))) 16 in
-    let byte3 = Int32.shift_left (Int32.of_int (Char.to_int (Bytes.get source (offset + 3)))) 24 in
+    let byte0 = Int32.from_int (Char.to_int (Bytes.get_unchecked source ~at:offset)) in
+    let byte1 = Int32.shift_left
+      (Int32.from_int (Char.to_int (Bytes.get_unchecked source ~at:(offset + 1))))
+      8 in
+    let byte2 = Int32.shift_left
+      (Int32.from_int (Char.to_int (Bytes.get_unchecked source ~at:(offset + 2))))
+      16 in
+    let byte3 = Int32.shift_left
+      (Int32.from_int (Char.to_int (Bytes.get_unchecked source ~at:(offset + 3))))
+      24 in
     Int32.logor byte0 (Int32.logor byte1 (Int32.logor byte2 byte3))
 
   let store_le32 = fun target offset value ->
-    Bytes.set target offset (Char.chr (Int32.to_int (Int32.logand value 0xffl)));
-    Bytes.set
+    let _ = Bytes.set
       target
-      (offset + 1)
-      (Char.chr (Int32.to_int (Int32.logand (Int32.shift_right_logical value 8) 0xffl)));
-    Bytes.set
+      ~at:offset
+      ~char:(Char.from_int_unchecked (Int32.to_int (Int32.logand value 0xffl))) in
+    let _ = Bytes.set
       target
-      (offset + 2)
-      (Char.chr (Int32.to_int (Int32.logand (Int32.shift_right_logical value 16) 0xffl)));
-    Bytes.set
+      ~at:(offset + 1)
+      ~char:(Char.from_int_unchecked
+        (Int32.to_int (Int32.logand (Int32.shift_right_logical value 8) 0xffl))) in
+    let _ = Bytes.set
       target
-      (offset + 3)
-      (Char.chr (Int32.to_int (Int32.logand (Int32.shift_right_logical value 24) 0xffl)))
+      ~at:(offset + 2)
+      ~char:(Char.from_int_unchecked
+        (Int32.to_int (Int32.logand (Int32.shift_right_logical value 16) 0xffl))) in
+    let _ = Bytes.set
+      target
+      ~at:(offset + 3)
+      ~char:(Char.from_int_unchecked
+        (Int32.to_int (Int32.logand (Int32.shift_right_logical value 24) 0xffl))) in
+    ()
 
   let bits64 = fun rng ->
-    let buffer = Bytes.create 8 in
+    let buffer = Bytes.create ~size:8 in
     fill_bytes rng buffer;
-    let low = Int64.of_int32 (load_le32 buffer 0) in
-    let high = Int64.shift_left (Int64.of_int32 (load_le32 buffer 4)) 32 in
+    let low = Int64.from_int32 (load_le32 buffer 0) in
+    let high = Int64.shift_left (Int64.from_int32 (load_le32 buffer 4)) 32 in
     Int64.logor low high
 
   let bits32 = fun rng ->
-    let buffer = Bytes.create 4 in
+    let buffer = Bytes.create ~size:4 in
     fill_bytes rng buffer;
     load_le32 buffer 0
 
@@ -111,47 +124,48 @@ module Rng = struct
     }
 
     let sigma = [|
-      Int32.of_string "0x61707865";
-      Int32.of_string "0x3320646e";
-      Int32.of_string "0x79622d32";
-      Int32.of_string "0x6b206574";
+      Int32.parse_unchecked "0x61707865";
+      Int32.parse_unchecked "0x3320646e";
+      Int32.parse_unchecked "0x79622d32";
+      Int32.parse_unchecked "0x6b206574";
     |]
 
     let rotl = fun value amount ->
       Int32.logor (Int32.shift_left value amount) (Int32.shift_right_logical value (32 - amount))
 
     let quarter_round = fun words a b c d ->
-      let a_value = Array.get words a in
-      let b_value = Array.get words b in
-      let d_value = Array.get words d in
+      let a_value = Array.get_unchecked words ~at:a in
+      let b_value = Array.get_unchecked words ~at:b in
+      let d_value = Array.get_unchecked words ~at:d in
       let a_value = Int32.add a_value b_value in
       let d_value = rotl (Int32.logxor d_value a_value) 16 in
-      Array.set words a a_value;
-      Array.set words d d_value;
-      let c_value = Int32.add (Array.get words c) d_value in
+      Array.set_unchecked words ~at:a ~value:a_value;
+      Array.set_unchecked words ~at:d ~value:d_value;
+      let c_value = Int32.add (Array.get_unchecked words ~at:c) d_value in
       let b_value = rotl (Int32.logxor b_value c_value) 12 in
-      Array.set words c c_value;
-      Array.set words b b_value;
+      Array.set_unchecked words ~at:c ~value:c_value;
+      Array.set_unchecked words ~at:b ~value:b_value;
       let a_value = Int32.add a_value b_value in
       let d_value = rotl (Int32.logxor d_value a_value) 8 in
-      Array.set words a a_value;
-      Array.set words d d_value;
+      Array.set_unchecked words ~at:a ~value:a_value;
+      Array.set_unchecked words ~at:d ~value:d_value;
       let c_value = Int32.add c_value d_value in
       let b_value = rotl (Int32.logxor b_value c_value) 7 in
-      Array.set words c c_value;
-      Array.set words b b_value
+      Array.set_unchecked words ~at:c ~value:c_value;
+      Array.set_unchecked words ~at:b ~value:b_value
 
     let increment_counter = fun state ->
-      let low = Int32.add (Array.get state.words 12) 1l in
-      Array.set state.words 12 low;
+      let low = Int32.add (Array.get_unchecked state.words ~at:12) 1l in
+      Array.set_unchecked state.words ~at:12 ~value:low;
       if Int32.equal low 0l then
-        Array.set state.words 13 (Int32.add (Array.get state.words 13) 1l)
+        Array.set_unchecked
+          state.words
+          ~at:13
+          ~value:(Int32.add (Array.get_unchecked state.words ~at:13) 1l)
 
     let refill = fun state ->
       let working =
-        Array.init 16
-          (fun index ->
-            Array.get state.words index)
+        Array.init ~count:16 ~fn:(fun index -> Array.get_unchecked state.words ~at:index)
       in
       for _round = 0 to 9 do
         quarter_round working 0 4 8 12;
@@ -167,7 +181,9 @@ module Rng = struct
         store_le32
           state.buffer
           (index * 4)
-          (Int32.add (Array.get working index) (Array.get state.words index))
+          (Int32.add
+            (Array.get_unchecked working ~at:index)
+            (Array.get_unchecked state.words ~at:index))
       done;
       increment_counter state;
       state.offset <- 0
@@ -186,7 +202,12 @@ module Rng = struct
             else
               available
           in
-          Bytes.blit state.buffer state.offset out out_offset count;
+          Bytes.blit_unchecked
+            state.buffer
+            ~src_offset:state.offset
+            ~dst:out
+            ~dst_offset:out_offset
+            ~len:count;
           state.offset <- state.offset + count;
           loop (out_offset + count) (remaining - count)
         )
@@ -196,34 +217,34 @@ module Rng = struct
     let derive_seed_bytes = fun seed ->
       let hash1 = Crypto.Hash.to_bytes (Crypto.Sha256.hash_string seed) in
       let hash2 = Crypto.Hash.to_bytes (Crypto.Sha256.hash_string (seed ^ "\001")) in
-      let out = Bytes.create 40 in
-      Bytes.blit hash1 0 out 0 32;
-      Bytes.blit hash2 0 out 32 8;
+      let out = Bytes.create ~size:40 in
+      Bytes.blit_unchecked hash1 ~src_offset:0 ~dst:out ~dst_offset:0 ~len:32;
+      Bytes.blit_unchecked hash2 ~src_offset:0 ~dst:out ~dst_offset:32 ~len:8;
       out
 
     let seed_bytes = fun ?seed () ->
       match seed with
       | Some seed -> Ok (derive_seed_bytes seed)
       | None ->
-          let out = Bytes.create 40 in
+          let out = Bytes.create ~size:40 in
           let* () =
-            Result.map_error (fun error -> Entropy error) (Kernel.Random.Source.fill_bytes out)
+            Result.map_err (Kernel.Random.Source.fill_bytes out) ~fn:(fun error -> Entropy error)
           in
           Ok out
 
     let of_seed_bytes = fun seed ->
-      let words = Array.make 16 0l in
+      let words = Array.make ~count:16 ~value:0l in
       for index = 0 to 3 do
-        Array.set words index (Array.get sigma index)
+        Array.set_unchecked words ~at:index ~value:(Array.get_unchecked sigma ~at:index)
       done;
       for index = 0 to 7 do
-        Array.set words (4 + index) (load_le32 seed (index * 4))
+        Array.set_unchecked words ~at:(4 + index) ~value:(load_le32 seed (index * 4))
       done;
-      Array.set words 12 0l;
-      Array.set words 13 0l;
-      Array.set words 14 (load_le32 seed 32);
-      Array.set words 15 (load_le32 seed 36);
-      { words; buffer = Bytes.create 64; offset = 64 }
+      Array.set_unchecked words ~at:12 ~value:0l;
+      Array.set_unchecked words ~at:13 ~value:0l;
+      Array.set_unchecked words ~at:14 ~value:(load_le32 seed 32);
+      Array.set_unchecked words ~at:15 ~value:(load_le32 seed 36);
+      { words; buffer = Bytes.create ~size:64; offset = 64 }
 
     let create = fun ?seed () ->
       let* seed = seed_bytes ?seed () in
@@ -264,7 +285,7 @@ let sample = fun ?rng distribution ->
 
 let int_aux = fun rng bound mask ->
   let rec loop () =
-    let random = Int64.to_int (Int64.logand (Rng.bits64 rng) (Int64.of_int mask)) in
+    let random = Int64.to_int (Int64.logand (Rng.bits64 rng) (Int64.from_int mask)) in
     let value = random mod bound in
     if random - value > mask - bound + 1 then
       loop ()
@@ -277,7 +298,7 @@ let full_int_sample = fun rng bound ->
   if bound <= 0x3fff_ffff then
     int_aux rng bound 0x3fff_ffff
   else
-    int_aux rng bound max_int
+    int_aux rng bound Int.max_int
 
 let rec int_range_sample = fun rng min max ->
   let span = max - min + 1 in
@@ -347,7 +368,7 @@ let array_to_list = fun values ->
     if index < 0 then
       acc
     else
-      loop (index - 1) (Array.get values index :: acc)
+      loop (index - 1) (Array.get_unchecked values ~at:index :: acc)
   in
   loop (Array.length values - 1) []
 
@@ -356,8 +377,7 @@ module Distribution = struct
 
   let sample = sample
 
-  let map = fun fn distribution rng ->
-    Result.map fn (distribution rng)
+  let map = fun fn distribution rng -> Result.map (distribution rng) ~fn
 
   let map2 = fun fn left right rng ->
     let* left = left rng in
@@ -369,7 +389,7 @@ module Distribution = struct
   let option = fun distribution rng ->
     let pick = Int.rem (Rng.bits rng) 2 = 0 in
     if pick then
-      Result.map (fun value -> Some value) (distribution rng)
+      Result.map (distribution rng) ~fn:(fun value -> Some value)
     else
       Ok None
 
@@ -379,7 +399,7 @@ module Distribution = struct
     else
       let rec loop count acc =
         if count <= 0 then
-          Ok (List.rev acc)
+          Ok (List.reverse acc)
         else
           let* value = distribution rng in
           loop (count - 1) (value :: acc)
@@ -390,7 +410,7 @@ module Distribution = struct
 
   let bool = fun rng -> Ok (Int.rem (Rng.bits rng) 2 = 0)
 
-  let char = fun rng -> Ok (Char.chr (Int.rem (Rng.bits rng) 256))
+  let char = fun rng -> Ok (Char.from_int_unchecked (Int.rem (Rng.bits rng) 256))
 
   let standard_int = fun rng -> Ok (Rng.standard_int rng)
 
@@ -461,9 +481,9 @@ module Distribution = struct
     if length = 0 then
       Error EmptyPopulation
     else
-      Ok (Array.get values (full_int_sample rng length))
+      Ok (Array.get_unchecked values ~at:(full_int_sample rng length))
 
-  let one_of = fun values -> one_of_array (Array.of_list values)
+  let one_of = fun values -> one_of_array (Array.from_list values)
 
   let one_of_vec = fun values -> one_of_array (Collections.Vector.to_array values)
 
@@ -473,34 +493,28 @@ module Distribution = struct
       Error (InvalidSampleSize { requested = count; available = length })
     else
       let copy =
-        Array.init length
-          (fun index ->
-            Array.get values index)
+        Array.init ~count:length ~fn:(fun index -> Array.get_unchecked values ~at:index)
       in
       let rec shuffle index =
         if index >= count then
-          Ok (
-            Array.init count
-              (fun take_index ->
-                Array.get copy take_index)
-          )
+          Ok (Array.init ~count ~fn:(fun take_index -> Array.get_unchecked copy ~at:take_index))
         else
           let swap_index = index + full_int_sample rng (length - index) in
-          let current = Array.get copy index in
-          let chosen = Array.get copy swap_index in
-          Array.set copy index chosen;
-          Array.set copy swap_index current;
+          let current = Array.get_unchecked copy ~at:index in
+          let chosen = Array.get_unchecked copy ~at:swap_index in
+          Array.set_unchecked copy ~at:index ~value:chosen;
+          Array.set_unchecked copy ~at:swap_index ~value:current;
           shuffle (index + 1)
       in
       shuffle 0
 
   let choose_n = fun values count rng ->
-    Result.map array_to_list (choose_n_array (Array.of_list values) count rng)
+    Result.map (choose_n_array (Array.from_list values) count rng) ~fn:array_to_list
 
   let choose_n_vec = fun values count rng ->
     Result.map
-      Collections.Vector.of_list
-      (Result.map array_to_list (choose_n_array (Collections.Vector.to_array values) count rng))
+      (Result.map (choose_n_array (Collections.Vector.to_array values) count rng) ~fn:array_to_list)
+      ~fn:Collections.Vector.from_list
 end
 
 let bits = fun ?rng () -> sample ?rng Distribution.bits

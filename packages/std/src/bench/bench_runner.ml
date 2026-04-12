@@ -26,7 +26,7 @@ let run_single_benchmark = fun index (bench: Bench_case.t) ->
         timings := Bench_result.{ iteration = i; duration } :: !timings
       done;
       (* Calculate statistics *)
-      let stats = Bench_result.make_statistics (List.rev !timings) in
+      let stats = Bench_result.make_statistics (List.reverse !timings) in
       Bench_result.{ index; name = bench.name; result = Completed stats }
     with
     | exn ->
@@ -39,26 +39,31 @@ let run_comparison = fun index ((module R : Reporter.Intf.Intf)) (comp: Bench_co
   R.on_comparison_start index comp.description (List.length comp.cases);
   (* Run each case and collect results *)
   let case_results =
-    List.mapi
-      (fun i case ->
-        (* Reuse run_single_benchmark but ignore the index *)
-        let result = run_single_benchmark (i + 1) case in
-        match result.result with
-        | Bench_result.Completed stats ->
-            (* Report immediately *)
-            R.on_comparison_case_result (i + 1) case.name stats;
-            Some { Bench_result.name = case.name; statistics = stats }
-        | Bench_result.Failed msg ->
-            println ("    [" ^ string_of_int (i + 1) ^ "] " ^ case.name ^ ": FAILED");
-            println ("      Error: " ^ msg);
-            None
-        | Bench_result.Skipped ->
-            println ("    [" ^ string_of_int (i + 1) ^ "] " ^ case.name ^ ": SKIPPED");
-            None)
-      comp.cases
+    let rec loop i acc = function
+      | [] -> List.reverse acc
+      | case :: rest ->
+          (* Reuse run_single_benchmark but ignore the index *)
+          let result = run_single_benchmark (i + 1) case in
+          let mapped =
+            match result.result with
+            | Bench_result.Completed stats ->
+                (* Report immediately *)
+                R.on_comparison_case_result (i + 1) case.name stats;
+                Some { Bench_result.name = case.name; statistics = stats }
+            | Bench_result.Failed msg ->
+                println ("    [" ^ Int.to_string (i + 1) ^ "] " ^ case.name ^ ": FAILED");
+                println ("      Error: " ^ msg);
+                None
+            | Bench_result.Skipped ->
+                println ("    [" ^ Int.to_string (i + 1) ^ "] " ^ case.name ^ ": SKIPPED");
+                None
+          in
+          loop (i + 1) (mapped :: acc) rest
+    in
+    loop 0 [] comp.cases
   in
   let valid_results =
-    List.filter_map (fun x -> x) case_results
+    List.filter_map case_results ~fn:(fun x -> x)
   in
   (* Create and report comparison summary *)
   if List.length valid_results >= 2 then
@@ -78,8 +83,8 @@ let run_benchmarks = fun ~config benchmarks ->
   R.init config.suite_info (List.length benchmarks);
   let results = ref [] in
   let global_index = ref 0 in
-  List.iter
-    (fun item ->
+  List.for_each benchmarks
+    ~fn:(fun item ->
       match item with
       | Single bench ->
           global_index := !global_index + 1;
@@ -88,8 +93,7 @@ let run_benchmarks = fun ~config benchmarks ->
           results := result :: !results
       | Compare comp ->
           global_index := !global_index + 1;
-          run_comparison !global_index (module R) comp)
-    benchmarks;
-  let summary = Bench_result.make_summary (List.rev !results) in
+          run_comparison !global_index (module R) comp);
+  let summary = Bench_result.make_summary (List.reverse !results) in
   R.finalize summary;
   summary

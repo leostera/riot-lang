@@ -1,5 +1,5 @@
 (** Text segmentation - word, sentence, and line break detection *)
-open Global
+open Prelude
 open Collections
 module String = Kernel.String
 
@@ -18,11 +18,13 @@ let find_sentence_boundaries = fun s ->
   (* Simplified: break on . ! ? *)
   let rec find pos acc =
     if pos >= String.length s then
-      List.rev acc
-    else if List.mem (String.get s pos) [ '.'; '!'; '?' ] then
-      find (pos + 1) ((pos + 1) :: acc)
+      List.reverse acc
     else
-      find (pos + 1) acc
+      match String.get s ~at:pos with
+      | Some char when List.contains [ '.'; '!'; '?' ] ~value:char -> find
+        (pos + 1)
+        ((pos + 1) :: acc)
+      | _ -> find (pos + 1) acc
   in
   find 0 []
 

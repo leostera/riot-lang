@@ -25,7 +25,7 @@ let create = fun () ->
 let watch = fun t ~path ~latency ->
   match Ev.watch
     t.kernel
-    ~path:(Kernel.Path.of_string (Path.to_string path))
+    ~path:(Kernel.Path.from_string (Path.to_string path))
     ~latency:(Time.Duration.to_secs_float latency) with
   | Ok watch_id -> Ok watch_id
   | Error error -> Error (of_events_error error)
@@ -36,7 +36,7 @@ let unwatch = fun t watch_id ->
   | Error error -> Error (of_events_error error)
 
 let is_would_block = function
-  | Ev.System error -> Kernel.SystemError.is_would_block error
+  | Ev.System error -> Kernel.SystemError.would_block error
   | _ -> false
 
 let poll = fun t ->

@@ -7,11 +7,11 @@ let hex_lower = "0123456789abcdef"
 
 let encode_bytes_with = fun table bytes ->
   let len = Bytes.length bytes in
-  let result = Buffer.create (len * 2) in
+  let result = Buffer.create ~size:(len * 2) in
   for i = 0 to len - 1 do
-    let byte = Char.code (Bytes.get bytes i) in
-    Buffer.add_char result table.[byte lsr 4];
-    Buffer.add_char result table.[byte land 0x0f]
+    let byte = Char.code (Bytes.get_unchecked bytes ~at:i) in
+    Buffer.add_char result (String.get_unchecked table ~at:(byte lsr 4));
+    Buffer.add_char result (String.get_unchecked table ~at:(byte land 0x0f))
   done;
   Buffer.contents result
 
@@ -19,9 +19,9 @@ let encode_bytes = fun bytes -> encode_bytes_with hex_upper bytes
 
 let encode_bytes_lower = fun bytes -> encode_bytes_with hex_lower bytes
 
-let encode = fun str -> encode_bytes (Bytes.unsafe_of_string str)
+let encode = fun str -> encode_bytes (Bytes.from_string str)
 
-let encode_lower = fun str -> encode_bytes_lower (Bytes.unsafe_of_string str)
+let encode_lower = fun str -> encode_bytes_lower (Bytes.from_string str)
 
 let decode_char = fun c ->
   match c with
@@ -35,14 +35,20 @@ let decode_bytes = fun str ->
   if len mod 2 != 0 then
     Error `Invalid_base16
   else
-    let result = Bytes.create (len / 2) in
+    let result = Bytes.create ~size:(len / 2) in
     let rec decode_pair i =
       if i >= len then
         Ok result
       else
-        match (decode_char str.[i], decode_char str.[i + 1]) with
+        match (
+          decode_char (String.get_unchecked str ~at:i),
+          decode_char (String.get_unchecked str ~at:(i + 1))
+        ) with
         | Some hi, Some lo ->
-            Bytes.set result (i / 2) (Char.chr ((hi lsl 4) lor lo));
+            Bytes.set_unchecked
+              result
+              ~at:(i / 2)
+              ~char:(Char.from_int_unchecked ((hi lsl 4) lor lo));
             decode_pair (i + 2)
         | _ -> Error `Invalid_base16
     in
@@ -50,5 +56,5 @@ let decode_bytes = fun str ->
 
 let decode = fun str ->
   match decode_bytes str with
-  | Ok bytes -> Ok (Bytes.unsafe_to_string bytes)
+  | Ok bytes -> Ok (Bytes.to_string bytes)
   | Error e -> Error e

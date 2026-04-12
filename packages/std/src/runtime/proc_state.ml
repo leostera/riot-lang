@@ -1,6 +1,5 @@
+module Cell = Sync.Cell
 open Kernel
-open Sync
-open Sync.Cell
 
 exception Unwind
 
@@ -69,12 +68,12 @@ let run: type a. consume_reduction:(unit -> bool) -> perform:perform -> a t -> a
   try
     while true do
       if consume_reduction () then
-        raise_notrace (Yield !t);
-      match !t with
+        Kernel.Exception.raise_notrace (Yield (Cell.get t));
+      match Cell.get t with
       | Finished _ as finished ->
-          raise_notrace (Yield finished)
+          Kernel.Exception.raise_notrace (Yield finished)
       | Unhandled (fn, v) ->
-          raise_notrace (Yield (continue_with fn v))
+          Kernel.Exception.raise_notrace (Yield (continue_with fn v))
       | Suspended (fn, e) as suspended ->
           let k: type c. (c, a) continuation -> c step -> a t = fun fn step ->
             match step with
@@ -87,16 +86,16 @@ let run: type a. consume_reduction:(unit -> bool) -> perform:perform -> a t -> a
             | Reperform eff ->
                 unhandled_with fn (Effect.perform eff)
             | Yield ->
-                raise_notrace (Yield (continue_with fn ()))
+                Kernel.Exception.raise_notrace (Yield (continue_with fn ()))
             | Suspend ->
-                raise_notrace (Yield suspended)
+                Kernel.Exception.raise_notrace (Yield suspended)
             | Terminate ->
-                ignore (discontinue_with fn Unwind);
+                let _ = discontinue_with fn Unwind in
                 raise Unwind
           in
-          t := perform.perform (k fn) e
+          Cell.set t (perform.perform (k fn) e)
     done;
-    Some !t
+    Some (Cell.get t)
   with
   | Yield t -> Some t
   | Unwind -> None
@@ -110,6 +109,12 @@ let drop = fun k exn _id ->
 
 let unwind = fun ~id (t: 'a t) ->
   match t with
-  | Finished result -> ignore result
-  | Suspended (k, _) -> ignore (drop k Unwind id)
-  | Unhandled (k, _) -> ignore (drop k Unwind id)
+  | Finished result ->
+      let _ = result in
+      ()
+  | Suspended (k, _) ->
+      let _ = drop k Unwind id in
+      ()
+  | Unhandled (k, _) ->
+      let _ = drop k Unwind id in
+      ()

@@ -1,6 +1,6 @@
 open Prelude
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 type t = int
 
@@ -24,10 +24,10 @@ module FFI = struct
 end
 
 let socket_addr_of_pair = fun (ip, port) ->
-  match Ip_addr.of_string ip with
+  match Ip_addr.from_string ip with
   | Result.Error _ -> Result.Error (InvalidSocketAddr { ip; port })
   | Result.Ok ip -> (
-      match Socket_addr.of_parts ~ip ~port with
+      match Socket_addr.from_parts ~ip ~port with
       | Result.Ok addr -> Result.Ok addr
       | Result.Error _ -> Result.Error (InvalidSocketAddr { ip = Ip_addr.to_string ip; port })
     )
@@ -60,26 +60,22 @@ let bind = fun ?(reuse_addr = true) ?(reuse_port = false) ?(backlog = 128) addr 
   else
     let ip = Ip_addr.to_string (Socket_addr.ip addr) in
     let port = Socket_addr.port addr in
-    Result.map_error
-      (fun code -> error_of_system (System_error.of_code code))
-      (FFI.bind ip port reuse_addr reuse_port backlog)
+    FFI.bind ip port reuse_addr reuse_port backlog
+    |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
 
 let accept = fun listener ->
-  let* (stream, addr) =
-    Result.map_error (fun code -> error_of_system (System_error.of_code code)) (FFI.accept listener)
-  in
+  let* (stream, addr) = FFI.accept listener
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code)) in
   let* addr = socket_addr_of_pair addr in
   Result.Ok (stream, addr)
 
 let close = fun listener ->
-  Result.map_error (fun code -> error_of_system (System_error.of_code code)) (FFI.close listener)
+  FFI.close listener
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code))
 
 let local_addr = fun listener ->
-  let* addr =
-    Result.map_error
-      (fun code -> error_of_system (System_error.of_code code))
-      (FFI.local_addr listener)
-  in
+  let* addr = FFI.local_addr listener
+  |> Result.map_err ~fn:(fun code -> error_of_system (System_error.from_code code)) in
   socket_addr_of_pair addr
 
 let to_source = fun fd ->

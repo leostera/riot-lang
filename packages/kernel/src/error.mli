@@ -15,35 +15,35 @@ type t =
   | TimeSystemTime of Time.SystemTime.error
   | TimeMonotonic of Time.Monotonic.error
   | TimeTimer of Time.Timer.error
-val of_async: Async.error -> t
+val from_async: Async.error -> t
 
-val of_env: Env.error -> t
+val from_env: Env.error -> t
 
-val of_fs_file: Fs.File.error -> t
+val from_fs_file: Fs.File.error -> t
 
-val of_fs_read_dir: Fs.ReadDir.error -> t
+val from_fs_read_dir: Fs.ReadDir.error -> t
 
-val of_fs_events: Fs.Events.error -> t
+val from_fs_events: Fs.Events.error -> t
 
-val of_net_addr: Net.Addr.error -> t
+val from_net_addr: Net.Addr.error -> t
 
-val of_net_ip_addr: Net.IpAddr.error -> t
+val from_net_ip_addr: Net.IpAddr.error -> t
 
-val of_net_socket_addr: Net.SocketAddr.error -> t
+val from_net_socket_addr: Net.SocketAddr.error -> t
 
-val of_net_tcp_listener: Net.TcpListener.error -> t
+val from_net_tcp_listener: Net.TcpListener.error -> t
 
-val of_net_tcp_stream: Net.TcpStream.error -> t
+val from_net_tcp_stream: Net.TcpStream.error -> t
 
-val of_net_udp_socket: Net.UdpSocket.error -> t
+val from_net_udp_socket: Net.UdpSocket.error -> t
 
-val of_process: Process.error -> t
+val from_process: Process.error -> t
 
-val of_time_system_time: Time.SystemTime.error -> t
+val from_time_system_time: Time.SystemTime.error -> t
 
-val of_time_monotonic: Time.Monotonic.error -> t
+val from_time_monotonic: Time.Monotonic.error -> t
 
-val of_time_timer: Time.Timer.error -> t
+val from_time_timer: Time.Timer.error -> t
 
 (** Stable module-oriented tag for the wrapped error. *)
 val module_name: t -> string

@@ -2,17 +2,7 @@ type ('value, 'error) result =
   | Ok of 'value
   | Error of 'error
 
-exception Invalid_argument of string
-
-exception Failure of string
-
-exception Not_found
-
 external raise: exn -> 'a = "%raise"
-
-external raise_notrace: exn -> 'a = "%raise_notrace"
-
-external ignore: 'value -> unit = "%ignore"
 
 let max_int = Caml_runtime.shift_right_logical_int (-1) 1
 
@@ -100,49 +90,6 @@ let rec ( @ ) = fun left right ->
   | head :: tail -> head :: (tail @ right)
 
 let ( ** ) = Caml_runtime.pow_float
-
-let float_of_int = Caml_runtime.float_of_int
-
-let int_of_float = Caml_runtime.int_of_float
-
-let float = Caml_runtime.float_of_int
-
-let string_of_int = Caml_runtime.format_int "%d"
-
-let string_of_float =
-  let valid_float_lexem value =
-    let length = Caml_runtime.string_length value in
-    let rec loop index =
-      if index >= length then
-        (
-          let out = Caml_runtime.bytes_create (length + 1) in
-          Caml_runtime.string_blit value 0 out 0 length;
-          Caml_runtime.bytes_set out length '.';
-          Caml_runtime.bytes_unsafe_to_string out
-        )
-      else
-        match Caml_runtime.string_get value index with
-        | '0' .. '9'
-        | '-' -> loop (index + 1)
-        | _ -> value
-    in
-    loop 0
-  in
-  fun value -> valid_float_lexem (Caml_runtime.format_float "%.12g" value)
-
-let abs = fun value ->
-  if value >= 0 then
-    value
-  else
-    -value
-
-let mod_float = Caml_runtime.rem_float
-
-let sqrt = Caml_runtime.sqrt_float
-
-let floor = Caml_runtime.floor_float
-
-let ceil = Caml_runtime.ceil_float
 
 let not = fun value -> Caml_runtime.not_bool ~value
 

@@ -35,7 +35,7 @@ module DefaultHasher = struct
 
   let write_array = fun writer state arr ->
     write_int state (Array.length arr);
-    Array.iter (writer state) arr
+    Array.for_each arr ~fn:(writer state)
 
   let finish = fun state ->
     Common.finish_iovec Ffi.default_hash_iovec state
