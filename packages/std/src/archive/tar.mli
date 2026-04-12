@@ -27,7 +27,7 @@ type entry = {
 }
 (** Tar-level failures surfaced by the high-level API. *)
 type error =
-  | Kernel_error of Kernel.Archive.Tar.error
+  | Engine_error of Tar_engine.error
   (** The underlying incremental tar reader rejected the archive. *)
   | Invalid_path of string
   (** An archive entry path could not be converted into a valid [`Path.t`]. *)
@@ -67,7 +67,7 @@ type 'read_err extract_error =
       match Fs.File.open_read path with
       | Error _ -> Error "failed to open archive"
       | Ok file ->
-          Kernel.Fun.protect
+              Global.protect
             ~finally:(fun () -> ignore (Fs.File.close file))
             (fun () ->
               match Archive.Tar.entries (Fs.File.to_reader file) with
