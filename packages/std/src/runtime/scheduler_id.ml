@@ -3,6 +3,8 @@ open Kernel
 type t =
   Scheduler_id of int
 
+let panic = Kernel.SystemError.panic
+
 let zero = Scheduler_id 0
 
 let of_int = fun value ->

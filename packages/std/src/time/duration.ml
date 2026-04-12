@@ -1,5 +1,7 @@
 open Kernel
 
+let panic = Kernel.SystemError.panic
+
 type timespec = {
   secs: int;
   nanos: int;
@@ -11,7 +13,7 @@ type t = timespec
 
 let zero = { secs = 0; nanos = 0 }
 
-let max = { secs = max_int; nanos = 999_999_999 }
+let max_duration = { secs = ((-1) lsr 1); nanos = 999_999_999 }
 
 (* Creation *)
 
@@ -187,7 +189,7 @@ let checked_div = fun t divisor ->
 let saturating_add = fun a b ->
   match checked_add a b with
   | Some result -> result
-  | None -> max
+  | None -> max_duration
 
 let saturating_sub = fun a b ->
   match checked_sub a b with
@@ -199,7 +201,7 @@ let saturating_mul = fun t factor ->
   | Some result -> result
   | None ->
       if factor > 0 then
-        max
+        max_duration
       else
         zero
 
@@ -227,29 +229,21 @@ let div_f64 = fun t divisor ->
 
 (* Utility *)
 
+let compare = fun a b ->
+  let secs_cmp = Int.compare a.secs b.secs in
+  if secs_cmp = 0 then
+    Int.compare a.nanos b.nanos
+  else
+    secs_cmp
+
 let abs_diff = fun a b ->
   if compare a b >= 0 then
     sub a b
   else
     sub b a
 
-and compare = fun a b ->
-  let secs_cmp = compare a.secs b.secs in
-  if secs_cmp = 0 then
-    compare a.nanos b.nanos
-  else
-    secs_cmp
+let min = fun a b -> if compare a b <= 0 then a else b
 
-let min = fun a b ->
-  if compare a b <= 0 then
-    a
-  else
-    b
-
-let max = fun a b ->
-  if compare a b >= 0 then
-    a
-  else
-    b
+let max = fun a b -> if compare a b >= 0 then a else b
 
 let equal = fun a b -> compare a b = 0

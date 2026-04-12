@@ -46,7 +46,12 @@ type reliability = Test_case.reliability =
 type test_case = Test_case.t
 
 (** [case name fn] creates a regular unit test. *)
-val case: ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) result) -> test_case
+val case:
+  ?size:size ->
+  ?reliability:reliability ->
+  string ->
+  (ctx -> (unit, string) Kernel.result) ->
+  test_case
 
 (** [property name ~examples fn] creates a property test.
     Use this for property-based tests to show the number of examples tested.
@@ -64,11 +69,16 @@ val property:
   ?reliability:reliability ->
   string ->
   examples:int ->
-  (ctx -> (unit, string) result) ->
+  (ctx -> (unit, string) Kernel.result) ->
   test_case
 
 (** [skip name fn] creates a skipped test. *)
-val skip: ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) result) -> test_case
+val skip:
+  ?size:size ->
+  ?reliability:reliability ->
+  string ->
+  (ctx -> (unit, string) Kernel.result) ->
+  test_case
 
 (** [todo name] creates a placeholder test marked as todo. *)
 val todo: ?size:size -> ?reliability:reliability -> string -> test_case
@@ -77,13 +87,13 @@ val todo: ?size:size -> ?reliability:reliability -> string -> test_case
 val assert_equal: expected:'a -> actual:'a -> unit
 
 (** Assert that a result is [Error _]. Raises on success. *)
-val assert_error: ('a, 'b) result -> unit
+val assert_error: ('a, 'b) Kernel.result -> unit
 
 (** Assert that a boolean is [false]. Raises otherwise. *)
 val assert_false: bool -> unit
 
 (** Assert that a result is [Ok _]. Raises on error. *)
-val assert_ok: ('a, 'b) result -> unit
+val assert_ok: ('a, 'b) Kernel.result -> unit
 
 (** Assert that a boolean is [true]. Raises otherwise. *)
 val assert_true: bool -> unit
@@ -92,5 +102,8 @@ val assert_true: bool -> unit
 module Cli: sig
   (** Main entry point for test binaries with CLI support. *)
   val main:
-    name:string -> tests:test_case list -> args:string list -> (unit, Runtime.Actor.exit_reason) result
+    name:string ->
+    tests:test_case list ->
+    args:string list ->
+    (unit, Runtime.Actor.exit_reason) Kernel.result
 end

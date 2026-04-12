@@ -67,7 +67,7 @@ type error =
 (** ## Creation and Parsing *)
 
 (** Parse a string into a URL *)
-val of_string: string -> (t, error) result
+val of_string: string -> (t, error) Kernel.result
 
 (** Convert a URL back to string representation *)
 val to_string: t -> string
@@ -162,7 +162,7 @@ module Scheme: sig
 
   val file: t
 
-  val of_string: string -> (t, error) result
+  val of_string: string -> (t, error) Kernel.result
 
   val to_string: t -> string
 end
@@ -175,7 +175,7 @@ module Authority: sig
 
   val userinfo: t -> string option
 
-  val of_string: string -> (t, error) result
+  val of_string: string -> (t, error) Kernel.result
 
   val to_string: t -> string
 end
@@ -186,7 +186,7 @@ module PathAndQuery: sig
 
   val query: t -> string option
 
-  val of_string: string -> (t, error) result
+  val of_string: string -> (t, error) Kernel.result
 
   val to_string: t -> string
 end
@@ -211,7 +211,7 @@ module Builder: sig
 
   val fragment: t -> string -> t
 
-  val build: t -> (url, error) result
+  val build: t -> (url, error) Kernel.result
 end
 
 (** ## Utilities *)
@@ -222,7 +222,7 @@ val is_absolute: t -> bool
 val is_relative: t -> bool
 
 (** Join a base URL with a relative path *)
-val join: t -> string -> (t, error) result
+val join: t -> string -> (t, error) Kernel.result
 
 (** Compare two URLs for equality *)
 val equal: t -> t -> bool

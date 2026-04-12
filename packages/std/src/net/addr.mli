@@ -10,15 +10,15 @@ open Global
     let port = Addr.port addr
     ```
 *)
-type 't raw_addr = 't Kernel.Net.Addr.raw_addr
+type 't raw_addr = Kernel.Net.SocketAddr.t
 (** TCP address family tag. *)
-type tcp_addr = Kernel.Net.Addr.tcp_addr
+type tcp_addr = Kernel.Net.IpAddr.t
 (** Stream socket address. *)
-type stream_addr = Kernel.Net.Addr.stream_addr
+type stream_addr = Kernel.Net.SocketAddr.t
 (** Datagram socket address. *)
-type datagram_addr = Kernel.Net.Addr.datagram_addr
+type datagram_addr = Kernel.Net.SocketAddr.t
 (** Any network socket address. *)
-type socket_addr = Kernel.Net.Addr.socket_addr
+type socket_addr = Kernel.Net.SocketAddr.t
 (** Errors returned while parsing or constructing addresses. *)
 type error =
   | System_error of IO.error
@@ -35,23 +35,19 @@ val tcp: tcp_addr -> int -> stream_addr
 val udp: tcp_addr -> int -> datagram_addr
 
 (** Build a stream address from a host string and port number. *)
-val of_host_and_port: host:string -> port:int -> (stream_addr, error) result
+val of_host_and_port: host:string -> port:int -> (stream_addr, error) Kernel.result
 
 (** Build a datagram address from a host string and port number. *)
-val of_host_and_port_datagram: host:string -> port:int -> (datagram_addr, error) result
+val of_host_and_port_datagram: host:string -> port:int -> (datagram_addr, error) Kernel.result
 
 (** Parse a string like ["127.0.0.1:8080"] into a stream address. *)
-val parse: string -> (stream_addr, error) result
+val parse: string -> (stream_addr, error) Kernel.result
 
 (** Parse a string like ["127.0.0.1:8080"] into a datagram address. *)
-val parse_datagram: string -> (datagram_addr, error) result
+val parse_datagram: string -> (datagram_addr, error) Kernel.result
 
 (** Extract the IP or host portion of a socket address. *)
-val ip: [<
-    socket_addr
-  ] -> string
+val ip: socket_addr -> string
 
 (** Extract the port portion of a socket address. *)
-val port: [<
-    socket_addr
-  ] -> int
+val port: socket_addr -> int

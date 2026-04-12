@@ -199,7 +199,7 @@ val to_int: t -> int
     (NotFound) *) Status.of_string "abc" (* Error `InvalidStatus *) ``` *)
 val of_string: string -> (t, [
     `InvalidStatus
-  ]) result
+  ]) Kernel.result
 
 (** Converts status code to string representation of the integer.
 

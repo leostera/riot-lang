@@ -5,7 +5,6 @@
     - a process registry shared by all workers
     - one runnable queue per scheduler worker
     - a dedicated reactor domain for timers and async I/O polling *)
-open Kernel
 
 (** Opaque scheduler runtime handle. *)
 type t
@@ -21,15 +20,15 @@ type trace_counters = {
 val get_scheduler: unit -> t
 
 (** Spawn a process on a scheduler chosen by the runtime placement policy. *)
-val spawn: t -> (unit -> (unit, Process.exit_reason) result) -> Pid.t
+val spawn: t -> (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
 
 (** Spawn a process pinned to a single normal scheduler. *)
 val spawn_pinned:
-  ?worker_id:Scheduler_id.t -> t -> (unit -> (unit, Process.exit_reason) result) -> Pid.t
+  ?worker_id:Scheduler_id.t -> t -> (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
 
 (** Spawn a process on a dedicated blocking lane outside the normal
     work-stealing scheduler pool. *)
-val spawn_blocked: t -> (unit -> (unit, Process.exit_reason) result) -> Pid.t
+val spawn_blocked: t -> (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
 
 (** Return the PID of the currently running process in this domain context. *)
 val self: unit -> Pid.t
@@ -48,7 +47,7 @@ val kill: t -> Pid.t -> Process.exit_reason -> unit
 val shutdown: t -> status:int -> unit
 
 (** Start worker domains and the reactor, then run until shutdown. *)
-val run: config:Config.t -> main:(unit -> (unit, Process.exit_reason) result) -> int
+val run: config:Config.t -> main:(unit -> (unit, Process.exit_reason) Kernel.result) -> int
 
 (** Register a timer in the reactor-owned timer wheel. *)
 val add_timer:

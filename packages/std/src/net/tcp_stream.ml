@@ -10,22 +10,44 @@ type error =
   | Closed
   | System_error of IO.error
 
+let io_error_of_tcp_error = function
+  | Kernel.Net.Tcp_stream.InvalidSlice _ -> IO.Invalid_argument
+  | Kernel.Net.Tcp_stream.InvalidSocketAddr _ -> IO.Invalid_argument
+  | Kernel.Net.Tcp_stream.InvalidConnectState _ -> IO.Invalid_argument
+  | Kernel.Net.Tcp_stream.WouldBlock -> IO.Operation_would_block
+  | Kernel.Net.Tcp_stream.ConnectionRefused -> IO.Connection_refused
+  | Kernel.Net.Tcp_stream.ConnectionReset -> IO.Connection_reset_by_peer
+  | Kernel.Net.Tcp_stream.TimedOut -> IO.Connection_timed_out
+  | Kernel.Net.Tcp_stream.BrokenPipe -> IO.Broken_pipe
+  | Kernel.Net.Tcp_stream.NotConnected -> IO.Transport_endpoint_not_connected
+  | Kernel.Net.Tcp_stream.ConnectionAborted -> IO.Software_caused_connection_abort
+  | Kernel.Net.Tcp_stream.NetworkUnreachable -> IO.Network_is_unreachable
+  | Kernel.Net.Tcp_stream.System error -> IO.of_system_error error
+
 let connect = fun addr ->
-  let rec connect_loop () =
-    match Kernel.Net.Tcp_stream.connect addr with
-    | Ok (`Connected stream) ->
-        Ok stream
-    | Ok (`In_progress stream) ->
-        (* Connection in progress, wait for writable - this suspends the process *)
-        let source = Kernel.Net.Tcp_stream.to_source stream in
+  let rec finish_connect stream =
+    let source = Kernel.Net.Tcp_stream.to_source stream in
+    match Kernel.Net.Tcp_stream.finish_connect stream with
+    | Ok () -> Ok stream
+    | Error Kernel.Net.Tcp_stream.WouldBlock ->
         Runtime.syscall
           ~name:"TcpStream.connect"
           ~interest:Interest.writable
           ~source
-          (fun () -> Ok stream)
-    | Error _err ->
-        (* Connection refused or error *)
+          (fun () -> finish_connect stream)
+    | Error Kernel.Net.Tcp_stream.ConnectionRefused ->
         Error Connection_refused
+    | Error err -> Error (System_error (io_error_of_tcp_error err))
+  in
+  let rec connect_loop () =
+    match Kernel.Net.Tcp_stream.connect addr with
+    | Ok (Kernel.Net.Tcp_stream.Connected stream) ->
+        Ok stream
+    | Ok (Kernel.Net.Tcp_stream.InProgress stream) ->
+        finish_connect stream
+    | Error Kernel.Net.Tcp_stream.ConnectionRefused ->
+        Error Connection_refused
+    | Error err -> Error (System_error (io_error_of_tcp_error err))
   in
   connect_loop ()
 
@@ -42,16 +64,14 @@ let read = fun stream buffer ?(pos = 0) ?len ?timeout () ->
     match Kernel.Net.Tcp_stream.read stream buffer ~pos ~len with
     | Ok 0 -> Error Closed
     | Ok bytes_read -> Ok bytes_read
-    | Error IO.Operation_would_block
-    | Error IO.Resource_unavailable_try_again ->
-        (* Would block, register interest and wait - this suspends the process *)
+    | Error Kernel.Net.Tcp_stream.WouldBlock ->
         Runtime.syscall
           ?timeout
           ~name:"TcpStream.read"
           ~interest:Interest.readable
           ~source
           (fun () -> read_loop ())
-    | Error err -> Error (System_error err)
+    | Error err -> Error (System_error (io_error_of_tcp_error err))
   in
   read_loop ()
 
@@ -65,19 +85,18 @@ let write = fun stream buffer ?(pos = 0) ?len () ->
   let rec write_loop () =
     match Kernel.Net.Tcp_stream.write stream buffer ~pos ~len with
     | Ok bytes_written -> Ok bytes_written
-    | Error IO.Operation_would_block
-    | Error IO.Resource_unavailable_try_again ->
-        (* Would block, register interest and wait - this suspends the process *)
+    | Error Kernel.Net.Tcp_stream.WouldBlock ->
         Runtime.syscall
           ~name:"TcpStream.write"
           ~interest:Interest.writable
           ~source
           (fun () -> write_loop ())
-    | Error err -> Error (System_error err)
+    | Error err -> Error (System_error (io_error_of_tcp_error err))
   in
   write_loop ()
 
-let close = Kernel.Net.Tcp_stream.close
+let close = fun stream ->
+  ignore (Kernel.Net.Tcp_stream.close stream)
 
 let to_reader = fun stream ->
   let module Read = struct
@@ -90,9 +109,19 @@ let to_reader = fun stream ->
       read t buf ()
 
     let read_vectored = fun t bufs ->
-      match Kernel.Net.Tcp_stream.read_vectored t bufs with
-      | Ok n -> Ok n
-      | Error err -> Error (System_error err)
+      let source = Kernel.Net.Tcp_stream.to_source t in
+      let rec loop () =
+        match Kernel.Net.Tcp_stream.read_vectored t bufs with
+        | Ok n -> Ok n
+        | Error Kernel.Net.Tcp_stream.WouldBlock ->
+            Runtime.syscall
+              ~name:"TcpStream.read_vectored"
+              ~interest:Interest.readable
+              ~source
+              loop
+        | Error err -> Error (System_error (io_error_of_tcp_error err))
+      in
+      loop ()
 
     let direct_string = fun _t -> None
   end in
@@ -111,9 +140,19 @@ let to_writer = fun stream ->
       | Error e -> Error e
 
     let write_owned_vectored = fun t ~bufs ->
-      match Kernel.Net.Tcp_stream.write_vectored t bufs with
-      | Ok n -> Ok n
-      | Error err -> Error (System_error err)
+      let source = Kernel.Net.Tcp_stream.to_source t in
+      let rec loop () =
+        match Kernel.Net.Tcp_stream.write_vectored t bufs with
+        | Ok n -> Ok n
+        | Error Kernel.Net.Tcp_stream.WouldBlock ->
+            Runtime.syscall
+              ~name:"TcpStream.write_vectored"
+              ~interest:Interest.writable
+              ~source
+              loop
+        | Error err -> Error (System_error (io_error_of_tcp_error err))
+      in
+      loop ()
 
     let flush = fun _t -> Ok ()
   end in

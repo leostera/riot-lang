@@ -1,6 +1,6 @@
 open Kernel
-open Kernel.Sync
-open Kernel.Sync.Cell
+open Sync
+open Sync.Cell
 
 exception Unwind
 

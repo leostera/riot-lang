@@ -1,6 +1,6 @@
 open Kernel
-open Kernel.Collections
-open Kernel.Sync
+open Collections
+open Sync
 open Scheduler_types
 
 let loop = fun ~(has_pending_commands:t -> bool) ~(drain_commands:t -> reactor_command list) ~(handle_command:t ->

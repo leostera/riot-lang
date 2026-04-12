@@ -11,7 +11,7 @@ type t = {
   scheduler_count: int;
 }
 
-let default_scheduler_count = Int.max 1 (System.available_parallelism - 1)
+let default_scheduler_count = Int.max 1 (Thread.available_parallelism - 1)
 
 let default = { timer_resolution = Millisecond; scheduler_count = default_scheduler_count }
 

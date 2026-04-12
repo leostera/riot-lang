@@ -1,5 +1,3 @@
-open Kernel
-
 type id = Timer_id.t
 
 type mode =
@@ -37,11 +35,26 @@ let make = fun ~now ~duration_nanos ~mode ~action ->
     status = `pending;
   }
 
-let is_cancelled = fun t -> t.status = `cancelled
+let is_cancelled = fun t ->
+  match t.status with
+  | `cancelled -> true
+  | `pending -> false
 
 let cancel = fun t -> t.status <- `cancelled
 
-let should_fire = fun t ~now -> Int64.compare now t.expires_at >= 0 && not (is_cancelled t)
+let should_fire = fun t ~now ->
+  let due =
+    match Int64.compare now t.expires_at with
+    | 0
+    | 1 -> true
+    | _ -> false
+  in
+  if due then
+    match is_cancelled t with
+    | true -> false
+    | false -> true
+  else
+    false
 
 let reschedule = fun t ~now ->
   match t.mode with

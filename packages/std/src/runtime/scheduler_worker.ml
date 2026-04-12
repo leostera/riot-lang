@@ -1,5 +1,5 @@
 open Kernel
-open Kernel.Sync
+open Sync
 open Scheduler_types
 
 let loop = fun ~(pop_local:worker -> process_slot option) ~(step_process:t ->

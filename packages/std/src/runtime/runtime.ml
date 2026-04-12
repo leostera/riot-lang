@@ -1,9 +1,21 @@
+module Proc = Process
+
 open Kernel
+
+let panic = Kernel.SystemError.panic
+
+let monotonic_time_nanos = fun () ->
+  match Kernel.Time.Monotonic.now () with
+  | Ok time ->
+      let secs, nanos = Kernel.Time.Monotonic.to_parts time in
+      Int64.add (Int64.mul (Int64.of_int secs) 1_000_000_000L) (Int64.of_int nanos)
+  | Error err ->
+      panic (Kernel.Time.Monotonic.error_to_string err)
+
 module Runtime = Reduction
 module Pid = Pid
 module Scheduler_id = Scheduler_id
 module Message = Message
-module Proc = Process
 module Config = Config
 
 module Actor = struct
@@ -77,9 +89,14 @@ end
 module Process = Actor
 
 let run = fun ~main ~args ?config () ->
-  let config = Option.unwrap_or config ~default:Config.default in
+  let config =
+    match config with
+    | Some config -> config
+    | None -> Config.default
+  in
   Kernel.Exception.record_backtrace true;
-  Scheduler.run ~config ~main:(fun () -> main ~args) |> exit
+  let status = Scheduler.run ~config ~main:(fun () -> main ~args) in
+  Stdlib.exit status
 
 let shutdown = fun ~status -> Scheduler.shutdown (Scheduler.get_scheduler ()) ~status
 
@@ -116,7 +133,7 @@ module Timer = struct
 
   let send_after = fun target_pid (msg: Message.t) ~after ->
     let sch = Scheduler.get_scheduler () in
-    let now = Kernel.Time.monotonic_time_nanos () in
+    let now = monotonic_time_nanos () in
     let duration_nanos = Int64.of_float (after *. 1_000_000_000.0) in
     Scheduler.add_timer
       sch
@@ -127,7 +144,7 @@ module Timer = struct
 
   let send_interval = fun target_pid (msg: Message.t) ~interval ->
     let sch = Scheduler.get_scheduler () in
-    let now = Kernel.Time.monotonic_time_nanos () in
+    let now = monotonic_time_nanos () in
     let duration_nanos = Int64.of_float (interval *. 1_000_000_000.0) in
     Scheduler.add_timer
       sch

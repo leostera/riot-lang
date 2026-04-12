@@ -65,9 +65,9 @@ val zero: t
     ## Examples
 
     ```ocaml let huge = Duration.from_secs 999_999_999_999 in
-    Duration.saturating_add huge huge |> Duration.equal Duration.max (* true *)
+    Duration.saturating_add huge huge |> Duration.equal Duration.max_duration (* true *)
     ``` *)
-val max: t
+val max_duration: t
 
 (** {1 Creation} *)
 (** Creates a duration from seconds and nanoseconds.
@@ -279,7 +279,7 @@ val div: t -> int -> t
 
     ## Examples
 
-    ```ocaml Duration.checked_add Duration.max (Duration.from_secs 1) (* None *)
+    ```ocaml Duration.checked_add Duration.max_duration (Duration.from_secs 1) (* None *)
     Duration.checked_add (Duration.from_secs 5) (Duration.from_secs 3) (* Some
     8s *) ``` *)
 val checked_add: t -> t -> t option
@@ -309,12 +309,12 @@ val checked_mul: t -> int -> t option
 val checked_div: t -> int -> t option
 
 (** {1 Saturating Operations} *)
-(** Adds durations, clamping to [max] on overflow.
+(** Adds durations, clamping to [max_duration] on overflow.
 
     ## Examples
 
-    ```ocaml let result = Duration.saturating_add Duration.max
-    (Duration.from_secs 1) in Duration.equal result Duration.max (* true *) ```
+    ```ocaml let result = Duration.saturating_add Duration.max_duration
+    (Duration.from_secs 1) in Duration.equal result Duration.max_duration (* true *) ```
 *)
 val saturating_add: t -> t -> t
 
@@ -327,12 +327,12 @@ val saturating_add: t -> t -> t
     true *) ``` *)
 val saturating_sub: t -> t -> t
 
-(** Multiplies duration, clamping to [max] on overflow.
+(** Multiplies duration, clamping to [max_duration] on overflow.
 
     ## Examples
 
-    ```ocaml Duration.saturating_mul Duration.max 1000 |> Duration.equal
-    Duration.max (* true *) ``` *)
+    ```ocaml Duration.saturating_mul Duration.max_duration 1000 |> Duration.equal
+    Duration.max_duration (* true *) ``` *)
 val saturating_mul: t -> int -> t
 
 (** {1 Floating Point Operations} *)
@@ -370,7 +370,7 @@ val abs_diff: t -> t -> t
     Duration.to_secs (* 5 *) ``` *)
 val min: t -> t -> t
 
-(** Returns the larger of two durations. Note: conflicts with [max] constant.
+(** Returns the larger of two durations.
 
     ## Examples
 

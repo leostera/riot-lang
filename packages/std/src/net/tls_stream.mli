@@ -102,7 +102,7 @@ val of_client_io: reader:(Tcp_stream.t, error) IO.Reader.t ->
   writer:(Tcp_stream.t, error) IO.Writer.t ->
   hostname:string ->
   unit ->
-  (Tcp_stream.t t, error) result
+  (Tcp_stream.t t, error) Kernel.result
 
 (** Create TLS server from any reader/writer pair.
     
@@ -114,7 +114,7 @@ val of_server_io:
   cert_file:string ->
   key_file:string ->
   unit ->
-  (Tcp_stream.t t, error) result
+  (Tcp_stream.t t, error) Kernel.result
 
 (** {2 Convenience TCP Wrappers} *)
 (** Create TLS stream from TCP socket.
@@ -127,17 +127,18 @@ val of_server_io:
 val of_tcp_socket: mode:[
     | `Client of string
     | `Server of string * string
-  ] -> Tcp_stream.t -> (Tcp_stream.t t, error) result
+  ] -> Tcp_stream.t -> (Tcp_stream.t t, error) Kernel.result
 
 (** Create TLS client from TCP stream.
     
     Convenience wrapper around [of_client_io] for TCP sockets. *)
-val of_tcp_client: hostname:string -> Tcp_stream.t -> (Tcp_stream.t t, error) result
+val of_tcp_client: hostname:string -> Tcp_stream.t -> (Tcp_stream.t t, error) Kernel.result
 
 (** Create TLS server from TCP stream.
     
     Convenience wrapper around [of_server_io] for TCP sockets. *)
-val of_tcp_server: cert_file:string -> key_file:string -> Tcp_stream.t -> (Tcp_stream.t t, error) result
+val of_tcp_server:
+  cert_file:string -> key_file:string -> Tcp_stream.t -> (Tcp_stream.t t, error) Kernel.result
 
 (** {2 Generic IO Interface} *)
 (** Convert TLS stream to a generic Reader.

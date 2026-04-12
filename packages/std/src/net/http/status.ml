@@ -1,4 +1,5 @@
 open Global
+open Kernel
 
 type t =
   (* 1xx Informational *)
@@ -201,11 +202,11 @@ let of_int = function
   | 511 -> NetworkAuthenticationRequired
   | code -> Extension code
 
-let of_string = fun s ->
-  try Result.Ok (of_int (int_of_string s)) with
-  | Failure _ -> Result.Error `InvalidStatus
+let of_string : string -> (t, [ `InvalidStatus ]) Kernel.result = fun s ->
+  try Ok (of_int (Stdlib.int_of_string s)) with
+  | Failure _ -> Error `InvalidStatus
 
-let to_string = fun status -> string_of_int (to_int status)
+let to_string = fun status -> Int.to_string (to_int status)
 
 let reason_phrase = function
   | Continue -> "Continue"
@@ -270,7 +271,7 @@ let reason_phrase = function
   | LoopDetected -> "Loop Detected"
   | NotExtended -> "Not Extended"
   | NetworkAuthenticationRequired -> "Network Authentication Required"
-  | Extension code -> string_of_int code
+  | Extension code -> Int.to_string code
 
 let is_informational = fun status ->
   let code = to_int status in

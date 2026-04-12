@@ -35,11 +35,11 @@ val bind:
   ?buffer_size:int ->
   Addr.datagram_addr ->
   handler:handler ->
-  (t, error) result
+  (t, error) Kernel.result
 
 (** Run the receive loop until an error occurs. Each datagram is dispatched in
     its own actor so the loop can continue receiving while handlers run. *)
-val serve: t -> (unit, error) result
+val serve: t -> (unit, error) Kernel.result
 
 (** Convenience wrapper around {!bind} followed by {!serve}. *)
 val listen:
@@ -48,7 +48,7 @@ val listen:
   ?buffer_size:int ->
   Addr.datagram_addr ->
   handler:handler ->
-  (unit, error) result
+  (unit, error) Kernel.result
 
 (** Return the local address the server socket is bound to. *)
 val local_addr: t -> Addr.datagram_addr

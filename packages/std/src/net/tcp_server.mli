@@ -32,9 +32,9 @@ val listen:
   ?reuse_addr:bool ->
   ?reuse_port:bool ->
   ?backlog:int ->
-  Kernel.Net.Addr.stream_addr ->
+  Addr.stream_addr ->
   handler:handler ->
-  (unit, error) result
+  (unit, error) Kernel.result
 
 (** Close the server. *)
 val close: t -> unit

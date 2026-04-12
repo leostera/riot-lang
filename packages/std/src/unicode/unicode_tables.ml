@@ -3,6 +3,7 @@
 (* Unicode Version: 15.0.0 *)
 
 open Global
+open Kernel
 open Collections
 
 (** Range of 16-bit Unicode code points *)

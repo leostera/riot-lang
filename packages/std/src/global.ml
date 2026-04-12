@@ -1,6 +1,104 @@
-include Kernel.Types
+module Format = Format
 
-include Kernel.Global
+type format = Format.t
+
+type ('value, 'error) result = ('value, 'error) Kernel.result =
+  | Ok of 'value
+  | Error of 'error
+
+let format = Format.format
+
+let max_int = Kernel.max_int
+
+let min_int = Kernel.min_int
+
+let ( = ) = Kernel.( = )
+
+let compare = Kernel.compare
+
+let min = Kernel.min
+
+let max = Kernel.max
+
+let ( != ) = Kernel.( != )
+
+let ( <> ) = Kernel.( <> )
+
+let ( < ) = Kernel.( < )
+
+let ( > ) = Kernel.( > )
+
+let ( <= ) = Kernel.( <= )
+
+let ( >= ) = Kernel.( >= )
+
+let ( ~- ) = Kernel.( ~- )
+
+let ( + ) = Kernel.( + )
+
+let ( - ) = Kernel.( - )
+
+let ( * ) = Kernel.( * )
+
+let ( / ) = Kernel.( / )
+
+let ( mod ) = Kernel.( mod )
+
+let ( land ) = Kernel.( land )
+
+let ( lor ) = Kernel.( lor )
+
+let ( lxor ) = Kernel.( lxor )
+
+let lnot = Kernel.lnot
+
+let ( lsl ) = Kernel.( lsl )
+
+let ( lsr ) = Kernel.( lsr )
+
+let ( asr ) = Kernel.( asr )
+
+let ( ~-. ) = Kernel.( ~-. )
+
+let ( +. ) = Kernel.( +. )
+
+let ( -. ) = Kernel.( -. )
+
+let ( *. ) = Kernel.( *. )
+
+let ( /. ) = Kernel.( /. )
+
+let ( |> ) = Kernel.( |> )
+
+let ( ^ ) = Kernel.( ^ )
+
+let ( ** ) = Kernel.( ** )
+
+let float_of_int = Kernel.float_of_int
+
+let int_of_float = Kernel.int_of_float
+
+let float = Kernel.float
+
+let string_of_int = Kernel.string_of_int
+
+let string_of_float = Kernel.string_of_float
+
+let abs = Kernel.abs
+
+let mod_float = Kernel.mod_float
+
+let sqrt = Kernel.sqrt
+
+let floor = Kernel.floor
+
+let ceil = Kernel.ceil
+
+let not = Kernel.not
+
+let ( && ) = Kernel.( && )
+
+let ( || ) = Kernel.( || )
 
 (** Process management globals *)
 include Runtime.Exception
@@ -32,48 +130,31 @@ let yield = Runtime.yield
 
 let shutdown = Runtime.shutdown
 
-open Kernel
+let panic = Kernel.SystemError.panic
 
-(** Re-export core helpers from Kernel - print/println are now async-safe *)
-let print = Kernel.print
+let ( ! ) = fun cell -> Sync.Cell.get cell
 
-let println = Kernel.println
+let ( := ) = fun cell value -> Sync.Cell.set cell value
 
-let eprint = Kernel.eprint
+let ref = fun value -> Sync.Cell.create value
 
-let eprintln = Kernel.eprintln
+let cell = fun value -> Sync.Cell.create value
 
-(** Collection type aliases and constructors from Kernel *)
-type 'a vec = 'a Kernel.vec
+let print = fun message ->
+  Stdlib.print_string message;
+  Stdlib.flush Stdlib.stdout
 
-type 'a queue = 'a Kernel.queue
+let println = fun message ->
+  Stdlib.print_endline message;
+  Stdlib.flush Stdlib.stdout
 
-type 'a set = 'a Kernel.set
+let eprint = fun message ->
+  Stdlib.prerr_string message;
+  Stdlib.flush Stdlib.stderr
 
-type ('k, 'v) map = ('k, 'v) Kernel.map
-
-let vec = Kernel.vec
-
-let queue = Kernel.queue
-
-let set = Kernel.set
-
-let map = Kernel.map
-
-(** Panic with a message and backtrace *)
-let panic = fun msg ->
-  let exception Panic of string in
-  Kernel.raise (Panic msg)
-
-(** Create a mutable cell *)
-let cell = fun x -> Kernel.Sync.Cell.create x
-
-let ref = cell
-
-(** Cell operators for ref-like syntax *)
-let ( ! ) = Kernel.Sync.Cell.get
-
-let ( := ) = Kernel.Sync.Cell.set
+let eprintln = fun message ->
+  Stdlib.prerr_endline message;
+  Stdlib.flush Stdlib.stderr
 
 let todo = fun msg -> panic (format Format.[ str "TODO: "; str msg ])
 

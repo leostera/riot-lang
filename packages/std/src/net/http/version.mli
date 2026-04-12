@@ -48,7 +48,7 @@ type t =
     - "HTTP/2", "HTTP/3" *)
 val of_string: string -> (t, [
     `InvalidVersion
-  ]) result
+  ]) Kernel.result
 
 (** Converts HTTP version to standard string representation.
 

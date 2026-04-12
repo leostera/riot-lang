@@ -1,5 +1,5 @@
 open Kernel
-open Kernel.Sync
+open Sync
 
 type t = int
 
@@ -24,4 +24,4 @@ let compare = Int.compare
 
 let to_int = fun t -> t
 
-let to_string = fun t -> format Format.[ str "pid<"; int t; char '>' ]
+let to_string = fun t -> Format.format Format.[ str "pid<"; int t; char '>' ]

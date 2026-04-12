@@ -1,6 +1,6 @@
 open Kernel
-open Kernel.Collections
-open Kernel.Sync
+open Collections
+open Sync
 
 type t = {
   producer_lock: Mutex.t;

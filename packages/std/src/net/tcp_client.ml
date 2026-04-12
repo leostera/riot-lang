@@ -12,9 +12,14 @@ type error =
   | Closed
   | System_error of IO.error
 
+let io_error_of_addr_error = function
+  | Addr.System_error error -> error
+  | Addr.Invalid_port_number value -> IO.Unknown_error ("invalid port: " ^ value)
+  | Addr.Invalid_format value -> IO.Unknown_error ("invalid address: " ^ value)
+
 let connect = fun ~host ~port ->
-  match Kernel.Net.Addr.of_host_and_port ~host ~port with
-  | Error err -> Error (System_error err)
+  match Addr.of_host_and_port ~host ~port with
+  | Error err -> Error (System_error (io_error_of_addr_error err))
   | Ok addr -> (
       match Tcp_stream.connect addr with
       | Ok stream -> Ok { stream; leftover = "" }

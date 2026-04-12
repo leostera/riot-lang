@@ -1,5 +1,3 @@
-open Kernel
-
 module Exception: sig
   (** Raised when a receive operation times out. *)
   exception Receive_timeout
@@ -32,7 +30,7 @@ type 'msg selector =
 val receive: selector:'a selector -> ?timeout:float -> unit -> 'a
 
 (** Exit the current process normally. *)
-val exit: unit -> (unit, Process.exit_reason) result
+val exit: unit -> (unit, Process.exit_reason) Kernel.result
 
 (** Wait for the async source to become ready, then run the continuation.
 

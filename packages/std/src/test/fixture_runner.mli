@@ -61,5 +61,5 @@ val cases:
   ?snapshot_path:(Path.t -> Path.t option) ->
   unit ->
   dir:Path.t ->
-  run:(ctx -> (unit, string) result) ->
+  run:(ctx -> (unit, string) Kernel.result) ->
   Test_case.t list

@@ -1,7 +1,7 @@
 open Kernel
-open Kernel.Collections
-open Kernel.Sync
-open Kernel.Sync.Cell
+open Collections
+open Sync
+open Sync.Cell
 
 (* Simple timing wheel implementation
    
@@ -23,8 +23,16 @@ type t = {
   timers_by_id: (Timer_id.t, Timer.t) HashMap.t;
 }
 
+let monotonic_time_nanos = fun () ->
+  match Kernel.Time.Monotonic.now () with
+  | Ok time ->
+      let secs, nanos = Kernel.Time.Monotonic.to_parts time in
+      Int64.add (Int64.mul (Int64.of_int secs) 1_000_000_000L) (Int64.of_int nanos)
+  | Error err ->
+      Kernel.SystemError.panic (Kernel.Time.Monotonic.error_to_string err)
+
 let create = fun ~config ->
-  let now = Time.monotonic_time_nanos () in
+  let now = monotonic_time_nanos () in
   let slot_duration = Config.resolution_to_nanos config.Config.timer_resolution in
   let num_slots = 256 in
   {

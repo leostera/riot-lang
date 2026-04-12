@@ -1,8 +1,18 @@
+module Runtime_process = Process
+module Runtime_pid = Pid
+module Runtime_scheduler_id = Scheduler_id
+module Runtime_timer = Timer
+module Std_io = IO
+
 open Kernel
-open Kernel.Collections
-open Kernel.Sync
-open Kernel.Sync.Cell
+open Collections
+open Sync
+open Sync.Cell
 open Scheduler_types
+
+let panic = Kernel.SystemError.panic
+
+let eprintln = Stdlib.prerr_endline
 
 type process_slot = Scheduler_types.process_slot
 
@@ -43,6 +53,14 @@ let create_counters (): runtime_counters = {
 }
 
 let increment = fun counter -> ignore (Atomic.fetch_and_add counter 1)
+
+let monotonic_time_nanos = fun () ->
+  match Kernel.Time.Monotonic.now () with
+  | Ok time ->
+      let secs, nanos = Kernel.Time.Monotonic.to_parts time in
+      Int64.add (Int64.mul (Int64.of_int secs) 1_000_000_000L) (Int64.of_int nanos)
+  | Error err ->
+      panic (Kernel.Time.Monotonic.error_to_string err)
 
 let trace = fun msg ->
   if Atomic.get trace_enabled then
@@ -161,7 +179,7 @@ let create_process_slot = fun proc ~owner_worker ~placement ->
 
 let slot_process = fun slot -> slot.process
 
-let slot_pid = fun slot -> Process.pid slot.process
+let slot_pid = fun slot -> Runtime_process.pid slot.process
 
 let slot_placement = fun slot -> slot.placement
 
@@ -191,7 +209,7 @@ let take_slot_pending = fun slot ->
   Atomic.exchange slot.pending false
 
 let shard_for_pid = fun registry pid ->
-  let idx = Pid.to_int pid mod Array.length registry.shards in
+  let idx = Runtime_pid.to_int pid mod Array.length registry.shards in
   registry.shards.(idx)
 
 let with_process_shard = fun registry pid f ->
@@ -212,7 +230,7 @@ let create = fun ~config ->
       let timer_wheel = Timer_wheel.create ~config in
       let worker_count = default_worker_count config in
       let workers =
-        Array.init worker_count (fun index -> create_worker (Scheduler_id.of_int index))
+        Array.init worker_count (fun index -> create_worker (Runtime_scheduler_id.of_int index))
       in
       {
         stop = Atomic.make false;
@@ -230,7 +248,9 @@ let create = fun ~config ->
         config;
       }
   | Error err ->
-      eprintln ("[Scheduler] ERROR: Failed to create Async.Poll: " ^ IO.error_message err);
+      eprintln
+        ("[Scheduler] ERROR: Failed to create Async.Poll: "
+        ^ Std_io.error_message (Std_io.of_async_error err));
       panic "Failed to create I/O polling system"
 
 let get_context = fun () ->
@@ -244,22 +264,22 @@ let self = fun () ->
   let ctx = get_context () in
   match ctx.current_process with
   | None -> panic "No process running"
-  | Some proc -> Process.pid proc
+  | Some proc -> Runtime_process.pid proc
 
 let worker_count = fun t -> Array.length t.workers
 
-let worker_by_id = fun t worker_id -> t.workers.(Scheduler_id.to_int worker_id)
+let worker_by_id = fun t worker_id -> t.workers.(Runtime_scheduler_id.to_int worker_id)
 
 let is_valid_worker_id = fun t worker_id ->
-  let idx = Scheduler_id.to_int worker_id in
+  let idx = Runtime_scheduler_id.to_int worker_id in
   idx >= 0 && idx < worker_count t
 
 let pick_spawn_worker = fun t ->
   let total = worker_count t in
   if total = 1 then
-    Scheduler_id.zero
+    Runtime_scheduler_id.zero
   else
-    Scheduler_id.of_int (Kernel.Random.int total)
+    Runtime_scheduler_id.of_int (Atomic.get t.processes.size mod total)
 
 let with_relations_lock = fun t f ->
   Mutex.lock t.relations_lock;
@@ -324,13 +344,13 @@ let enqueue_on_worker = fun t worker_id slot ->
         Condition.signal worker.cond;
         Mutex.unlock worker.lock
       )
-    else if Process.is_runnable (slot_process slot) then
+    else if Runtime_process.is_runnable (slot_process slot) then
       (
         increment t.counters.duplicate_enqueue_races;
         trace
           (Kernel.String.concat
             ""
-            [ "duplicate enqueue prevented pid="; Pid.to_string (slot_pid slot) ])
+            [ "duplicate enqueue prevented pid="; Runtime_pid.to_string (slot_pid slot) ])
       )
 
 let enqueue_on_blocking_lane = fun t slot ->
@@ -341,13 +361,13 @@ let enqueue_on_blocking_lane = fun t slot ->
         Mutex.lock lane.lock;
         Condition.signal lane.cond;
         Mutex.unlock lane.lock
-  else if Process.is_runnable (slot_process slot) then
+  else if Runtime_process.is_runnable (slot_process slot) then
     (
       increment t.counters.duplicate_enqueue_races;
       trace
         (Kernel.String.concat
           ""
-          [ "duplicate enqueue prevented pid="; Pid.to_string (slot_pid slot) ])
+          [ "duplicate enqueue prevented pid="; Runtime_pid.to_string (slot_pid slot) ])
     )
 
 let enqueue_owned_process = fun t slot ->
@@ -360,7 +380,7 @@ let enqueue_owned_process = fun t slot ->
         if is_valid_worker_id t owner then
           owner
         else
-          Scheduler_id.zero
+          Runtime_scheduler_id.zero
       in
       enqueue_on_worker t worker_id slot
 
@@ -371,9 +391,9 @@ let current_worker_id_opt = fun () ->
 
 let wake_process = fun t slot ->
   let proc = slot_process slot in
-  if Process.try_set_runnable_if_waiting proc then
+  if Runtime_process.try_set_runnable_if_waiting proc then
     enqueue_owned_process t slot
-  else if Process.is_runnable proc then
+  else if Runtime_process.is_runnable proc then
     enqueue_owned_process t slot
 
 let wake_process_from_message = fun t slot ->
@@ -381,16 +401,16 @@ let wake_process_from_message = fun t slot ->
   let owner = slot_owner_worker slot in
   let remote_wakeup =
     match current_worker_id_opt () with
-    | Some worker_id -> not (Scheduler_id.equal worker_id owner)
+    | Some worker_id -> not (Runtime_scheduler_id.equal worker_id owner)
     | None -> true
   in
-  if Process.try_mark_runnable_from_waiting_message proc then
+  if Runtime_process.try_mark_runnable_from_waiting_message proc then
     (
       if remote_wakeup then
         increment t.counters.remote_wakeups;
       enqueue_owned_process t slot
     )
-  else if Process.is_runnable proc then
+  else if Runtime_process.is_runnable proc then
     (
       if remote_wakeup then
         increment t.counters.remote_wakeups;
@@ -467,7 +487,7 @@ let cancel_timer = fun t timer_id -> push_reactor_command t (Cancel_timer timer_
 
 let register_io = fun t ~token ~interest ~source ->
   if Atomic.get t.stop then
-    Error IO.Closed
+    Error Std_io.Closed
   else
     let reply = make_response () in
     push_reactor_command t (Register_io { token; interest; source; reply });
@@ -480,7 +500,7 @@ let send_internal = fun t pid msg ->
   | None -> ()
   | Some slot ->
       let proc = slot_process slot in
-      Process.send_message proc msg;
+      Runtime_process.send_message proc msg;
       wake_process_from_message t slot
 
 let send = fun pid msg -> send_internal (get_scheduler ()) pid msg
@@ -490,12 +510,12 @@ let kill = fun t pid reason ->
   | None -> ()
   | Some slot ->
       let proc = slot_process slot in
-      Process.request_exit proc (Error reason);
+      Runtime_process.request_exit proc (Error reason);
       mark_slot_pending slot;
       wake_process t slot
 
 let spawn_on_worker_with_placement = fun t ~worker_id ~placement fn ->
-  let proc = Process.make fn in
+  let proc = Runtime_process.make fn in
   let slot = create_process_slot proc ~owner_worker:worker_id ~placement in
   let pid = slot_pid slot in
   add_process_slot t slot;
@@ -550,11 +570,11 @@ let wait_for_blocking_work = fun t slot ->
   | Some lane ->
       let proc = slot_process slot in
       Mutex.lock lane.lock;
-      while (not (Atomic.get t.stop)) && Process.is_alive proc && not (Atomic.get slot.queued) do
+      while (not (Atomic.get t.stop)) && Runtime_process.is_alive proc && not (Atomic.get slot.queued) do
         Condition.wait lane.cond lane.lock
       done;
       Mutex.unlock lane.lock;
-      if Atomic.get t.stop || not (Process.is_alive proc) then
+      if Atomic.get t.stop || not (Runtime_process.is_alive proc) then
         None
       else if Atomic.compare_and_set slot.queued true false then
         Some slot
@@ -568,53 +588,53 @@ let get_current_process = fun () ->
   | Some proc -> proc
 
 let clear_receive_timeout = fun t proc ->
-  match Process.receive_timeout proc with
+  match Runtime_process.receive_timeout proc with
   | None -> ()
   | Some timer_id ->
-      Process.clear_receive_timeout proc;
+      Runtime_process.clear_receive_timeout proc;
       cancel_timer t timer_id
 
 let clear_syscall_timeout = fun t proc ->
-  match Process.syscall_timeout proc with
+  match Runtime_process.syscall_timeout proc with
   | None -> ()
   | Some timer_id ->
-      Process.clear_syscall_timeout proc;
+      Runtime_process.clear_syscall_timeout proc;
       cancel_timer t timer_id
 
 let install_receive_timeout = fun t proc secs ->
-  match Process.receive_timeout proc with
+  match Runtime_process.receive_timeout proc with
   | Some _ -> ()
   | None ->
-      let now = Time.monotonic_time_nanos () in
+      let now = monotonic_time_nanos () in
       let duration_nanos = Int64.of_float (secs *. 1_000_000_000.0) in
       let timer_id = add_timer
         t
         ~now
         ~duration_nanos
-        ~mode:Timer.One_shot
-        ~action:(Timer.Wake_process proc) in
-      Process.set_receive_timeout proc timer_id
+        ~mode:Runtime_timer.One_shot
+        ~action:(Runtime_timer.Wake_process proc) in
+      Runtime_process.set_receive_timeout proc timer_id
 
 let install_syscall_timeout = fun t proc secs ->
-  match Process.syscall_timeout proc with
+  match Runtime_process.syscall_timeout proc with
   | Some _ -> ()
   | None ->
-      let now = Time.monotonic_time_nanos () in
+      let now = monotonic_time_nanos () in
       let duration_nanos = Int64.of_float (secs *. 1_000_000_000.0) in
       let timer_id = add_timer
         t
         ~now
         ~duration_nanos
-        ~mode:Timer.One_shot
-        ~action:(Timer.Wake_process proc) in
-      Process.set_syscall_timeout proc timer_id
+        ~mode:Runtime_timer.One_shot
+        ~action:(Runtime_timer.Wake_process proc) in
+      Runtime_process.set_syscall_timeout proc timer_id
 
 let handle_receive = fun k t proc ~selector ~timeout ->
   let open Proc_state in
     let timeout_expired =
-      match Process.receive_timeout proc with
+      match Runtime_process.receive_timeout proc with
       | None -> false
-      | Some _ -> Process.take_receive_timeout_fired proc
+      | Some _ -> Runtime_process.take_receive_timeout_fired proc
     in
     let park_for_receive () =
       (
@@ -622,11 +642,11 @@ let handle_receive = fun k t proc ~selector ~timeout ->
         | `infinity -> ()
         | `after secs -> install_receive_timeout t proc secs
       );
-      if Process.try_mark_awaiting_message proc then
-        if Process.has_empty_mailbox proc then
+      if Runtime_process.try_mark_awaiting_message proc then
+        if Runtime_process.has_empty_mailbox proc then
           k Suspend
         else (
-          ignore (Process.try_mark_runnable_from_waiting_message proc);
+          ignore (Runtime_process.try_mark_runnable_from_waiting_message proc);
           k Delay
         )
       else
@@ -642,28 +662,28 @@ let handle_receive = fun k t proc ~selector ~timeout ->
     in
     let rec scan_saved remaining =
       if remaining = 0 then
-        scan_mailbox (Process.mailbox_count proc)
+        scan_mailbox (Runtime_process.mailbox_count proc)
       else
-        match Process.next_saved_message proc with
-        | None -> scan_mailbox (Process.mailbox_count proc)
+        match Runtime_process.next_saved_message proc with
+        | None -> scan_mailbox (Runtime_process.mailbox_count proc)
         | Some msg -> (
             match selector Message.(msg.msg) with
             | `select selected -> Some selected
             | `skip ->
-                Process.add_to_save_queue proc msg;
+                Runtime_process.add_to_save_queue proc msg;
                 scan_saved (remaining - 1)
           )
     and scan_mailbox remaining =
       if remaining = 0 then
         None
       else
-        match Process.next_mailbox_message proc with
+        match Runtime_process.next_mailbox_message proc with
         | None -> None
         | Some msg -> (
             match selector Message.(msg.msg) with
             | `select selected -> Some selected
             | `skip ->
-                Process.add_to_save_queue proc msg;
+                Runtime_process.add_to_save_queue proc msg;
                 scan_mailbox (remaining - 1)
           )
     in
@@ -671,10 +691,10 @@ let handle_receive = fun k t proc ~selector ~timeout ->
       timeout_receive ()
     else
       let selected =
-        if Process.has_empty_mailbox proc then
+        if Runtime_process.has_empty_mailbox proc then
           None
         else
-          scan_saved (Process.save_queue_count proc)
+          scan_saved (Runtime_process.save_queue_count proc)
       in
       match selected with
       | Some selected -> continue_with selected
@@ -683,19 +703,19 @@ let handle_receive = fun k t proc ~selector ~timeout ->
 let handle_syscall = fun k t proc name interest source timeout ->
   let open Proc_state in
     let timeout_state =
-      match Process.syscall_timeout proc with
+      match Runtime_process.syscall_timeout proc with
       | None -> `none
       | Some timer_id ->
-          if Process.take_syscall_timeout_fired proc then
+          if Runtime_process.take_syscall_timeout_fired proc then
             (
-              Process.clear_syscall_timeout proc;
+              Runtime_process.clear_syscall_timeout proc;
               cancel_timer t timer_id;
               `fired
             )
           else
             `armed
     in
-    match Process.get_ready_token proc with
+    match Runtime_process.get_ready_token proc with
     | Some _ ->
         (
           match timeout_state with
@@ -713,7 +733,7 @@ let handle_syscall = fun k t proc name interest source timeout ->
             k Suspend
         | `none ->
             let token = Async.Token.make proc in
-            Process.mark_as_awaiting_io proc ~name token source;
+            Runtime_process.mark_as_awaiting_io proc ~name token source;
             (
               match register_io t ~token ~interest ~source with
               | Ok () ->
@@ -726,10 +746,10 @@ let handle_syscall = fun k t proc name interest source timeout ->
               | Error err ->
                   eprintln
                     ("[Scheduler] ERROR: Failed to register I/O for process "
-                    ^ Pid.to_string (Process.pid proc)
+                    ^ Runtime_pid.to_string (Runtime_process.pid proc)
                     ^ ": "
-                    ^ IO.error_message err);
-                  Process.mark_as_runnable proc;
+                    ^ Std_io.error_message err);
+                  Runtime_process.mark_as_runnable proc;
                   k (Discontinue (Failure "Failed to register I/O"))
             )
       )
@@ -754,7 +774,7 @@ let perform = fun t proc ->
       { perform }
 
 let handle_exit_proc = fun t proc reason ->
-  let pid = Process.pid proc in
+  let pid = Runtime_process.pid proc in
   with_relations_lock t
     (fun () ->
       List.iter
@@ -763,41 +783,41 @@ let handle_exit_proc = fun t proc reason ->
           | None -> ()
           | Some monitor_slot ->
               let monitor_proc = slot_process monitor_slot in
-              Process.demonitor monitor_proc monitor_ref;
-              Process.send_message
+              Runtime_process.demonitor monitor_proc monitor_ref;
+              Runtime_process.send_message
                 monitor_proc
-                (Process.Messages.DOWN { ref = monitor_ref; pid; reason });
+                (Runtime_process.Messages.DOWN { ref = monitor_ref; pid; reason });
               wake_process t monitor_slot)
-        (Process.get_monitored_by proc);
+        (Runtime_process.get_monitored_by proc);
       List.iter
         (fun ((monitor_ref, monitored_pid)) ->
           match get_process_slot t monitored_pid with
           | None -> ()
           | Some monitored_slot ->
               let monitored_proc = slot_process monitored_slot in
-              Process.remove_monitored_by monitored_proc pid monitor_ref)
-        (Process.get_monitors proc);
+              Runtime_process.remove_monitored_by monitored_proc pid monitor_ref)
+        (Runtime_process.get_monitors proc);
       List.iter
         (fun linked_pid ->
           match get_process_slot t linked_pid with
           | None -> ()
           | Some linked_slot ->
               let linked_proc = slot_process linked_slot in
-              Process.unlink linked_proc pid;
-              if Process.get_trap_exit linked_proc then
+              Runtime_process.unlink linked_proc pid;
+              if Runtime_process.get_trap_exit linked_proc then
                 (
-                  Process.send_message linked_proc (Process.Messages.EXIT { from = pid; reason });
+                  Runtime_process.send_message linked_proc (Runtime_process.Messages.EXIT { from = pid; reason });
                   wake_process t linked_slot
                 )
               else
                 match reason with
                 | Ok () -> ()
                 | Error exn ->
-                    Process.mark_as_exited linked_proc (Error exn);
+                    Runtime_process.mark_as_exited linked_proc (Error exn);
                     enqueue_owned_process t linked_slot)
-        (Process.get_links proc));
+        (Runtime_process.get_links proc));
   (
-    match Process.state proc with
+    match Runtime_process.state proc with
     | Waiting_io { source; _ } ->
         deregister_io t source;
         clear_syscall_timeout t proc
@@ -805,8 +825,8 @@ let handle_exit_proc = fun t proc reason ->
   );
   clear_receive_timeout t proc;
   remove_process_slot t pid;
-  Process.mark_as_finalized proc;
-  if Process.is_main proc then
+  Runtime_process.mark_as_finalized proc;
+  if Runtime_process.is_main proc then
     (
       let status =
         match reason with
@@ -820,8 +840,8 @@ let handle_exit_proc = fun t proc reason ->
 
 let handle_run_proc = fun t ctx slot ->
   let proc = slot_process slot in
-  let pid_str = Pid.to_string (Process.pid proc) in
-  Process.mark_as_running proc;
+  let pid_str = Runtime_pid.to_string (Runtime_process.pid proc) in
+  Runtime_process.mark_as_running proc;
   ctx.current_process <- Some proc;
   try
     let next =
@@ -829,11 +849,11 @@ let handle_run_proc = fun t ctx slot ->
         match
           Proc_state.run
             ~consume_reduction:(fun () ->
-              match Process.use_reduction proc with
-              | Process.Continue -> false
-              | Process.Yield -> true)
+              match Runtime_process.use_reduction proc with
+              | Runtime_process.Continue -> false
+              | Runtime_process.Yield -> true)
             ~perform:(perform t proc)
-            (Process.cont proc)
+            (Runtime_process.cont proc)
         with
         | Some cont -> cont
         | None ->
@@ -848,28 +868,28 @@ let handle_run_proc = fun t ctx slot ->
             ^ Exception.to_string exn);
           raise exn
     in
-    Process.set_cont proc next;
+    Runtime_process.set_cont proc next;
     ctx.current_process <- None;
     clear_slot_executing slot;
     let pending = take_slot_pending slot in
     match next with
     | Proc_state.Finished (Ok reason) ->
-        Process.mark_as_exited proc reason;
+        Runtime_process.mark_as_exited proc reason;
         handle_exit_proc t proc reason
     | Proc_state.Finished (Error { exn; backtrace }) ->
         eprintln
           ("[Scheduler] Process " ^ pid_str ^ " finished with exception: " ^ Exception.to_string exn);
         eprintln "[Scheduler] Backtrace:";
         eprintln (Exception.raw_backtrace_to_string backtrace);
-        Process.mark_as_exited proc (Error exn);
+        Runtime_process.mark_as_exited proc (Error exn);
         handle_exit_proc t proc (Error exn)
-    | _ when Process.is_waiting proc || Process.is_waiting_io proc ->
-        if pending && Process.is_alive proc then
+    | _ when Runtime_process.is_waiting proc || Runtime_process.is_waiting_io proc ->
+        if pending && Runtime_process.is_alive proc then
           enqueue_owned_process t slot
     | _ ->
-        if Process.is_alive proc then
+        if Runtime_process.is_alive proc then
           (
-            Process.mark_as_runnable proc;
+            Runtime_process.mark_as_runnable proc;
             enqueue_owned_process t slot
           )
   with
@@ -880,7 +900,7 @@ let handle_run_proc = fun t ctx slot ->
 
 let step_process = fun t ctx slot ->
   let proc = slot_process slot in
-  match Process.state proc with
+  match Runtime_process.state proc with
   | Finalized ->
       ()
   | Exited reason ->
@@ -888,24 +908,24 @@ let step_process = fun t ctx slot ->
   | Running ->
       mark_slot_pending slot
   | _ -> (
-      match Process.take_exit_request proc with
-      | Some reason when Process.is_alive proc ->
-          Process.mark_as_exited proc reason;
+      match Runtime_process.take_exit_request proc with
+      | Some reason when Runtime_process.is_alive proc ->
+          Runtime_process.mark_as_exited proc reason;
           handle_exit_proc t proc reason
       | Some _ ->
           ()
       | None -> (
-          match Process.state proc with
+          match Runtime_process.state proc with
           | Uninitialized ->
               if try_mark_slot_executing slot then
                 (
-                  Process.init proc;
+                  Runtime_process.init proc;
                   handle_run_proc t ctx slot
                 )
               else
                 mark_slot_pending slot
           | Waiting_message ->
-              if Process.has_messages proc && Process.try_mark_runnable_from_waiting_message proc then
+              if Runtime_process.has_messages proc && Runtime_process.try_mark_runnable_from_waiting_message proc then
                 if try_mark_slot_executing slot then
                   handle_run_proc t ctx slot
                 else
@@ -927,15 +947,15 @@ let step_process = fun t ctx slot ->
     )
 
 let spawn_blocked = fun t fn ->
-  let proc = Process.make fn in
-  let slot = create_process_slot proc ~owner_worker:Scheduler_id.zero ~placement:Blocking in
+  let proc = Runtime_process.make fn in
+  let slot = create_process_slot proc ~owner_worker:Runtime_scheduler_id.zero ~placement:Blocking in
   let lane = { lock = Mutex.create (); cond = Condition.create (); domain = None } in
   let ctx = { scheduler = t; worker_id = None; current_process = None } in
   let rec blocking_loop () =
     Domain.DLS.set current_context (Some ctx);
     step_process t ctx slot;
     let rec loop () =
-      if Atomic.get t.stop || not (Process.is_alive proc) then
+      if Atomic.get t.stop || not (Runtime_process.is_alive proc) then
         ()
       else
         match wait_for_blocking_work t slot with
@@ -1014,7 +1034,7 @@ let push_batch = fun (worker: worker) batch ->
 
 let attempt_steal = fun t (worker: worker) ->
   let total = worker_count t in
-  let self_idx = Scheduler_id.to_int worker.id in
+  let self_idx = Runtime_scheduler_id.to_int worker.id in
   let rec scan start_offset seen =
     if seen >= total - 1 then
       false
@@ -1038,7 +1058,7 @@ let attempt_steal = fun t (worker: worker) ->
   if total <= 1 then
     false
   else
-    let start_offset = 1 + Kernel.Random.int (total - 1) in
+    let start_offset = 1 in
     let did_steal = scan start_offset 0 in
     if did_steal then
       increment t.counters.steals
@@ -1060,26 +1080,29 @@ let deregister_io_in_reactor = fun t source ~context ->
   match Async.Poll.deregister t.io_poll source with
   | Ok () -> ()
   | Error err -> eprintln
-    ("[Scheduler] WARN: Failed to deregister I/O " ^ context ^ ": " ^ IO.error_message err)
+    ("[Scheduler] WARN: Failed to deregister I/O "
+    ^ context
+    ^ ": "
+    ^ Std_io.error_message (Std_io.of_async_error err))
 
 let process_timers = fun t ->
   if Timer_wheel.size t.timer_wheel = 0 then
     ()
   else
-    let now = Time.monotonic_time_nanos () in
+    let now = monotonic_time_nanos () in
     let expired = Timer_wheel.tick t.timer_wheel ~now in
     List.iter
       (fun timer ->
-        let timer_id = timer.Timer.id in
+        let timer_id = timer.Runtime_timer.id in
         (
-          match timer.Timer.action with
-          | Timer.Wake_process proc ->
-              if Process.has_receive_timeout_id proc timer_id then
-                Process.mark_receive_timeout_fired proc;
-              if Process.has_syscall_timeout_id proc timer_id then
+          match timer.Runtime_timer.action with
+          | Runtime_timer.Wake_process proc ->
+              if Runtime_process.has_receive_timeout_id proc timer_id then
+                Runtime_process.mark_receive_timeout_fired proc;
+              if Runtime_process.has_syscall_timeout_id proc timer_id then
                 (
-                  Process.mark_syscall_timeout_fired proc;
-                  match Process.state proc with
+                  Runtime_process.mark_syscall_timeout_fired proc;
+                  match Runtime_process.state proc with
                   | Waiting_io { source; _ } ->
                       (* Syscall timeout resumes the waiting process with
                      [Syscall_timeout]. The wait registration must be removed
@@ -1087,20 +1110,20 @@ let process_timers = fun t ->
                       deregister_io_in_reactor
                         t
                         source
-                        ~context:("for timed out process " ^ Pid.to_string (Process.pid proc))
+                        ~context:("for timed out process " ^ Runtime_pid.to_string (Runtime_process.pid proc))
                   | _ -> ()
                 );
-              if Process.is_alive proc then
+              if Runtime_process.is_alive proc then
                 (
-                  match get_process_slot t (Process.pid proc) with
+                  match get_process_slot t (Runtime_process.pid proc) with
                   | None -> ()
                   | Some slot -> wake_process t slot
                 )
-          | Timer.Send_message (target_pid, msg) -> send_internal t target_pid msg
+          | Runtime_timer.Send_message (target_pid, msg) -> send_internal t target_pid msg
         );
         match timer.mode with
-        | Timer.One_shot -> ()
-        | Timer.Interval _ -> Timer_wheel.reschedule_timer t.timer_wheel ~now timer)
+        | Runtime_timer.One_shot -> ()
+        | Runtime_timer.Interval _ -> Timer_wheel.reschedule_timer t.timer_wheel ~now timer)
       expired
 
 let handle_reactor_command = fun t cmd ->
@@ -1117,12 +1140,16 @@ let handle_reactor_command = fun t cmd ->
   | Cancel_timer timer_id ->
       Timer_wheel.cancel_timer t.timer_wheel timer_id
   | Register_io { token; interest; source; reply } ->
-      resolve_response reply (Async.Poll.register t.io_poll token interest source)
+      resolve_response reply
+        (match Async.Poll.register t.io_poll token interest source with
+        | Ok () -> Ok ()
+        | Error err -> Error (Std_io.of_async_error err))
   | Deregister_io source -> (
       match Async.Poll.deregister t.io_poll source with
       | Ok () -> ()
       | Error err -> eprintln
-        ("[Scheduler] WARN: Failed to deregister I/O source: " ^ IO.error_message err)
+        ("[Scheduler] WARN: Failed to deregister I/O source: "
+        ^ Std_io.error_message (Std_io.of_async_error err))
     )
 
 let poll_io = fun t ->
@@ -1131,25 +1158,27 @@ let poll_io = fun t ->
     match Async.Poll.poll t.io_poll ~timeout:timeout_nanos with
     | Ok events -> events
     | Error err ->
-        eprintln ("[Scheduler] ERROR: Failed to poll I/O: " ^ IO.error_message err);
+        eprintln
+          ("[Scheduler] ERROR: Failed to poll I/O: "
+          ^ Std_io.error_message (Std_io.of_async_error err));
         []
   in
   List.iter
     (fun event ->
       let token = Async.Event.token event in
-      let proc: Process.t = Async.Token.unsafe_to_value token in
-      match get_process_slot t (Process.pid proc) with
+      let proc: Runtime_process.t = Async.Token.unsafe_value token in
+      match get_process_slot t (Runtime_process.pid proc) with
       | None -> ()
       | Some slot -> (
-          match Process.state proc with
+          match Runtime_process.state proc with
           | Waiting_io { source; _ } ->
               deregister_io_in_reactor
                 t
                 source
-                ~context:("for process " ^ Pid.to_string (Process.pid proc));
-              if Process.is_alive proc then
+                ~context:("for process " ^ Runtime_pid.to_string (Runtime_process.pid proc));
+              if Runtime_process.is_alive proc then
                 (
-                  Process.add_ready_token proc token source;
+                  Runtime_process.add_ready_token proc token source;
                   wake_process t slot
                 )
           | _ -> ()

@@ -1,4 +1,5 @@
 open Global
+open Kernel
 
 type 'a bound =
   | Included of 'a

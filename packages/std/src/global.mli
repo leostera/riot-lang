@@ -1,7 +1,8 @@
 (** # Global - Commonly used utility functions
 
-    Global utility functions available throughout the Std library. Includes
-    formatting, printing, and development helpers.
+    Global utility functions available throughout `std`. This module owns
+    runtime-facing process helpers plus a small amount of formatting, printing,
+    and panic support.
 
     ## Examples
 
@@ -35,9 +36,107 @@
     ```ocaml let counter = cell 0 in Sync.Cell.set counter 1; Sync.Cell.get counter (* 1
     *) ``` *)
 
-include module type of Kernel.Types
+module Format = Format
 
-include module type of Kernel.Global
+type format = Format.t
+
+type ('value, 'error) result = ('value, 'error) Kernel.result =
+  | Ok of 'value
+  | Error of 'error
+
+val format: format list -> string
+
+val max_int: int
+
+val min_int: int
+
+val ( = ): 'value -> 'value -> bool
+
+val compare: 'value -> 'value -> int
+
+val min: 'value -> 'value -> 'value
+
+val max: 'value -> 'value -> 'value
+
+val ( != ): 'value -> 'value -> bool
+
+val ( <> ): 'value -> 'value -> bool
+
+val ( < ): 'value -> 'value -> bool
+
+val ( > ): 'value -> 'value -> bool
+
+val ( <= ): 'value -> 'value -> bool
+
+val ( >= ): 'value -> 'value -> bool
+
+val ( ~- ): int -> int
+
+val ( + ): int -> int -> int
+
+val ( - ): int -> int -> int
+
+val ( * ): int -> int -> int
+
+val ( / ): int -> int -> int
+
+val ( mod ): int -> int -> int
+
+val ( land ): int -> int -> int
+
+val ( lor ): int -> int -> int
+
+val ( lxor ): int -> int -> int
+
+val lnot: int -> int
+
+val ( lsl ): int -> int -> int
+
+val ( lsr ): int -> int -> int
+
+val ( asr ): int -> int -> int
+
+val ( ~-. ): float -> float
+
+val ( +. ): float -> float -> float
+
+val ( -. ): float -> float -> float
+
+val ( *. ): float -> float -> float
+
+val ( /. ): float -> float -> float
+
+val ( |> ): 'value -> ('value -> 'result) -> 'result
+
+val ( ^ ): string -> string -> string
+
+val ( ** ): float -> float -> float
+
+val float_of_int: int -> float
+
+val int_of_float: float -> int
+
+val float: int -> float
+
+val string_of_int: int -> string
+
+val string_of_float: float -> string
+
+val abs: int -> int
+
+val mod_float: float -> float -> float
+
+val sqrt: float -> float
+
+val floor: float -> float
+
+val ceil: float -> float
+
+val not: bool -> bool
+
+val ( && ): bool -> bool -> bool
+
+val ( || ): bool -> bool -> bool
 
 (** {1 Process Management} *)
 
@@ -75,62 +174,6 @@ val yield: unit -> unit
 
 (** Shutdown the runtime with the given exit status *)
 val shutdown: status:int -> unit
-
-open Kernel
-
-(** {1 Collection Types and Constructors} *)
-
-(** Vector type alias - dynamically-sized array *)
-(** Queue type alias - FIFO queue *)
-type 'a vec = 'a Kernel.vec
-(** Set type alias - hash-based set *)
-type 'a queue = 'a Kernel.queue
-(** Map type alias - hash-based map *)
-type 'a set = 'a Kernel.set
-(** Create a vector from a list.
-    
-    ## Examples
-    
-    ```ocaml
-    let v: int vec = vec [1; 2; 3] in
-    (* v is a Vector.t containing [1; 2; 3] *)
-    ```
-*)
-type ('k, 'v) map = ('k, 'v) Kernel.map
-val vec: 'a list -> 'a vec
-
-(** Create a queue from a list.
-    
-    ## Examples
-    
-    ```ocaml
-    let q: int queue = queue [1; 2; 3] in
-    (* q is a Queue.t containing [1; 2; 3] *)
-    ```
-*)
-val queue: 'a list -> 'a queue
-
-(** Create a set from a list.
-    
-    ## Examples
-    
-    ```ocaml
-    let s: int set = set [1; 2; 3] in
-    (* s is a HashSet.t containing {1, 2, 3} *)
-    ```
-*)
-val set: 'a list -> 'a set
-
-(** Create a map from a list of key-value pairs.
-    
-    ## Examples
-    
-    ```ocaml
-    let m: (string, int) map = map [("a", 1); ("b", 2)] in
-    (* m is a HashMap.t containing {"a" -> 1, "b" -> 2} *)
-    ```
-*)
-val map: ('k * 'v) list -> ('k, 'v) map
 
 (** Raises a panic exception with the given message. Program terminates unless
     caught.

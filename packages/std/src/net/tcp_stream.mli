@@ -10,18 +10,19 @@ type error =
 
 (** Connect to a TCP endpoint. This will suspend the process until the
     connection is established. *)
-val connect: Kernel.Net.Addr.stream_addr -> (t, error) result
+val connect: Addr.stream_addr -> (t, error) Kernel.result
 
 (** Read data from the stream. This will suspend the process until data is
     available. Returns the number of bytes read. 
     
     @param timeout Optional timeout duration. If specified and no data arrives
                    within the timeout, raises [Syscall_timeout]. *)
-val read: t -> bytes -> ?pos:int -> ?len:int -> ?timeout:Time.Duration.t -> unit -> (int, error) result
+val read:
+  t -> bytes -> ?pos:int -> ?len:int -> ?timeout:Time.Duration.t -> unit -> (int, error) Kernel.result
 
 (** Write data to the stream. This will suspend the process until the socket is
     ready for writing. Returns the number of bytes written. *)
-val write: t -> bytes -> ?pos:int -> ?len:int -> unit -> (int, error) result
+val write: t -> bytes -> ?pos:int -> ?len:int -> unit -> (int, error) Kernel.result
 
 (** Close the stream. *)
 val close: t -> unit

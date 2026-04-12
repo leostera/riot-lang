@@ -1,6 +1,6 @@
 open Kernel
-open Kernel.Sync
-open Kernel.Collections
+open Sync
+open Collections
 
 type exit_reason = exn
 
@@ -96,7 +96,11 @@ let make = fun fn ->
   }
 
 let init = fun t ->
-  let fn = Option.unwrap t.fn in
+  let fn =
+    match t.fn with
+    | Some fn -> fn
+    | None -> Kernel.SystemError.panic "process init requires an entry function"
+  in
   t.cont <- Some (Proc_state.make fn Proc_effect.Yield);
   t.fn <- None;
   t.reductions_remaining <- default_reduction_budget;
@@ -214,7 +218,10 @@ let take_exit_request = fun t ->
 let mark_as_finalized = fun t ->
   Sync.Atomic.set t.state Finalized
 
-let cont = fun t -> Option.unwrap t.cont
+let cont = fun t ->
+  match t.cont with
+  | Some cont -> cont
+  | None -> Kernel.SystemError.panic "process continuation is not initialized"
 
 let set_cont = fun t c -> t.cont <- Some c
 
