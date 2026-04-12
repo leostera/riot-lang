@@ -68,7 +68,7 @@ let unmask = fun mask payload ->
 
 (* Generate a random mask *)
 
-let generate_mask = fun () -> Random.int32 Int32.max_int
+let generate_mask = fun () -> Random.bits32 () |> Result.expect ~msg:"failed to generate websocket mask"
 
 (* Apply mask to payload *)
 

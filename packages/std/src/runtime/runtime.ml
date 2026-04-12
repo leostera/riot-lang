@@ -1,16 +1,16 @@
 module Proc = Process
-
 open Kernel
 
 let panic = Kernel.SystemError.panic
+
+external sys_exit: int -> 'a = "caml_sys_exit"
 
 let monotonic_time_nanos = fun () ->
   match Kernel.Time.Monotonic.now () with
   | Ok time ->
       let secs, nanos = Kernel.Time.Monotonic.to_parts time in
       Int64.add (Int64.mul (Int64.of_int secs) 1_000_000_000L) (Int64.of_int nanos)
-  | Error err ->
-      panic (Kernel.Time.Monotonic.error_to_string err)
+  | Error err -> panic (Kernel.Time.Monotonic.error_to_string err)
 
 module Runtime = Reduction
 module Pid = Pid
@@ -95,8 +95,10 @@ let run = fun ~main ~args ?config () ->
     | None -> Config.default
   in
   Kernel.Exception.record_backtrace true;
-  let status = Scheduler.run ~config ~main:(fun () -> main ~args) in
-  Stdlib.exit status
+  let status =
+    Scheduler.run ~config ~main:(fun () -> main ~args)
+  in
+  sys_exit status
 
 let shutdown = fun ~status -> Scheduler.shutdown (Scheduler.get_scheduler ()) ~status
 

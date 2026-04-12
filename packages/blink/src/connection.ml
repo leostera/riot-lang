@@ -119,11 +119,9 @@ let stream = fun (Conn conn as c) ->
               | _ -> (
                   match content_length with
                   | Some len -> (
-                      try
-                        let length = int_of_string len in
-                        ReadingFixedBody { length; received = 0 }
-                      with
-                      | _ -> Complete
+                      match Int.parse_opt len with
+                      | Some length -> ReadingFixedBody { length; received = 0 }
+                      | None -> Complete
                     )
                   | None -> Complete
                 )

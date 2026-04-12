@@ -226,7 +226,7 @@ val count_children: t -> child_count
       count.active count.specs count.supervisors
     ```
 *)
-val delete_child: t -> id:string -> (unit, string) result
+val delete_child: t -> id:string -> (unit, string) Kernel.result
 
 (** Remove a child specification.
 
@@ -244,7 +244,7 @@ val delete_child: t -> id:string -> (unit, string) result
     | Error msg -> println "Failed: %s" msg
     ```
 *)
-val restart_child: t -> id:string -> (Pid.t, string) result
+val restart_child: t -> id:string -> (Pid.t, string) Kernel.result
 
 (** Restart a child that is not currently running.
 
@@ -260,7 +260,7 @@ val restart_child: t -> id:string -> (Pid.t, string) result
     | Error msg -> println "Failed: %s" msg
     ```
 *)
-val terminate_child: t -> id:string -> (unit, string) result
+val terminate_child: t -> id:string -> (unit, string) Kernel.result
 
 (** Terminate a running child according to its shutdown spec.
 
@@ -331,7 +331,12 @@ module Dynamic: sig
 
   (** Start a dynamic supervisor without linking *)
   val start_child:
-    t -> start:(unit -> Pid.t) -> ?restart:restart -> ?shutdown:shutdown -> unit -> (Pid.t, string) result
+    t ->
+    start:(unit -> Pid.t) ->
+    ?restart:restart ->
+    ?shutdown:shutdown ->
+    unit ->
+    (Pid.t, string) Kernel.result
 
   (** Start a new child process.
 
@@ -347,7 +352,7 @@ module Dynamic: sig
       | Error "max_children_reached" -> (* too many children *)
       ```
   *)
-  val terminate_child: t -> Pid.t -> (unit, string) result
+  val terminate_child: t -> Pid.t -> (unit, string) Kernel.result
 
   (** Terminate a child by PID.
 

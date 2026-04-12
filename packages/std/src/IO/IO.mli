@@ -68,9 +68,7 @@ type error =
   | Operation_already_in_progress
   | Operation_now_in_progress
   | Unknown_error of string
-
 type nonrec 'value io_result = ('value, error) result
-
 type file_kind =
   | Regular
   | Directory
@@ -79,7 +77,6 @@ type file_kind =
   | Character
   | Fifo
   | Socket
-
 val of_system_error: Kernel.SystemError.t -> error
 
 val of_async_error: Kernel.Async.error -> error
@@ -87,9 +84,13 @@ val of_async_error: Kernel.Async.error -> error
 val error_message: error -> string
 
 module Buffer: module type of Buffer
+
 module Bytes: module type of Stdlib.Bytes
+
 module Iovec = Kernel.IO.Iovec
+
 module Reader = Reader
+
 module Writer = Writer
 
 val read: ('src, 'err) Reader.t -> ?timeout:int64 -> bytes -> (int, 'err) result

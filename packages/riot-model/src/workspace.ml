@@ -227,7 +227,8 @@ let parse_profile_overrides: Toml.value -> (string * Profile.profile_override) l
   | Toml.Table items -> (
       Log.debug
         ("[WORKSPACE] Looking for [profile] in TOML with " ^ Int.to_string (List.length items) ^ " top-level keys");
-      Log.debug ("[WORKSPACE] Top-level keys: " ^ String.concat ", " (List.map fst items));
+      Log.debug
+        ("[WORKSPACE] Top-level keys: " ^ String.concat ", " (List.map (fun (key, _) -> key) items));
       match List.assoc_opt "profile" items with
       | Some (Toml.Table profile_items) ->
           Log.debug

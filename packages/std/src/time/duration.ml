@@ -242,8 +242,16 @@ let abs_diff = fun a b ->
   else
     sub b a
 
-let min = fun a b -> if compare a b <= 0 then a else b
+let min = fun a b ->
+  if compare a b <= 0 then
+    a
+  else
+    b
 
-let max = fun a b -> if compare a b >= 0 then a else b
+let max = fun a b ->
+  if compare a b >= 0 then
+    a
+  else
+    b
 
 let equal = fun a b -> compare a b = 0

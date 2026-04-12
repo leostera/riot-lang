@@ -191,7 +191,9 @@ let compute_pending state: (package * version Ranges.t) list =
   (* Sort by constraint score (higher = more constrained = choose first) *)
   (* Strategy: Choose packages with constrained ranges first, but deprioritize *)
   (* packages that are involved in 2-term conflicts with other pending packages *)
-  let pending_packages = List.map fst !result in
+  let pending_packages =
+    List.map (fun (pkg, _ranges) -> pkg) !result
+  in
   let score_package ((pkg, ranges)) =
     let num_incompats =
       match HashMap.get state.incompatibilities pkg with
@@ -257,7 +259,9 @@ let compute_pending state: (package * version Ranges.t) list =
         ("   "
         ^ pkg
         ^ " (score: "
-        ^ string_of_int (score_package (pkg, snd (List.find (fun ((p, _)) -> p = pkg) !result)))
+        ^ string_of_int
+          (score_package
+            (pkg, List.find (fun ((p, _)) -> p = pkg) !result |> fun (_pkg, ranges) -> ranges))
         ^ ")"))
     sorted;
   sorted
@@ -923,7 +927,7 @@ let solve = fun ?trace_ctx provider root_package root_version ->
           (* Start loop with first dependency package, or root if no deps *)
           let initial_next =
             match deps with
-            | first_dep :: _ -> fst first_dep
+            | (first_dep, _ranges) :: _ -> first_dep
             | [] -> root_package
           in
           solve_loop state 0 initial_next

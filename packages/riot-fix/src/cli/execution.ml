@@ -11,7 +11,7 @@ let trace_fix = fun message ->
 
 let recommended_concurrency = fun ~limit ->
   let concurrency =
-    let recommended = System.available_parallelism in
+    let recommended = Thread.available_parallelism in
     if recommended <= 0 then
       1
     else
@@ -242,7 +242,7 @@ let run_generated_runner = fun ~cwd ~(build_package:Types.build_package) ~report
       ()
   with
   | Error err ->
-      trace_fix ("building generated runner failed: " ^ Exception.to_string err);
+      trace_fix ("building generated runner failed: " ^ Kernel.Exception.to_string err);
       Error err
   | Ok () ->
       let command = Command.make (Path.to_string plan.binary_path) ~cwd:(Path.to_string cwd) ~args in

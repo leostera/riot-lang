@@ -69,6 +69,10 @@ val open_write:
 
 val close: t -> (unit, error) Result.t
 
+val try_lock_exclusive: t -> (bool, error) Result.t
+
+val unlock: t -> (unit, error) Result.t
+
 val read: t -> ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
 
 val write: t -> ?pos:int -> ?len:int -> bytes -> (int, error) Result.t

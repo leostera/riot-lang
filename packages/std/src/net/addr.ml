@@ -35,15 +35,13 @@ let io_error_of_resolver_error = function
 let of_host_and_port = fun ~host ~port ->
   match Kernel.Net.Addr.resolve_first_stream ~host ~port with
   | Ok addr -> Ok addr
-  | Error (Kernel.Net.Addr.InvalidPort { port }) ->
-      Error (Invalid_port_number (Int.to_string port))
+  | Error (Kernel.Net.Addr.InvalidPort { port }) -> Error (Invalid_port_number (Int.to_string port))
   | Error err -> Error (System_error (io_error_of_resolver_error err))
 
 let of_host_and_port_datagram = fun ~host ~port ->
   match Kernel.Net.Addr.resolve_first_datagram ~host ~port with
   | Ok addr -> Ok addr
-  | Error (Kernel.Net.Addr.InvalidPort { port }) ->
-      Error (Invalid_port_number (Int.to_string port))
+  | Error (Kernel.Net.Addr.InvalidPort { port }) -> Error (Invalid_port_number (Int.to_string port))
   | Error err -> Error (System_error (io_error_of_resolver_error err))
 
 let split_host_port = fun value ->
@@ -56,19 +54,20 @@ let split_host_port = fun value ->
         if close_index + 1 >= String.length value || String.get value (close_index + 1) != ':' then
           None
         else
-          Some
-            ( String.sub value 1 (close_index - 1),
-              String.sub value (close_index + 2) (String.length value - close_index - 2) )
+          Some (
+            String.sub value 1 (close_index - 1),
+            String.sub value (close_index + 2) (String.length value - close_index - 2)
+          )
   else
     match String.rindex_opt value ':' with
     | None -> None
-    | Some index ->
-        Some
-          ( String.sub value 0 index,
-            String.sub value (index + 1) (String.length value - index - 1) )
+    | Some index -> Some (
+      String.sub value 0 index,
+      String.sub value (index + 1) (String.length value - index - 1)
+    )
 
 let parse_port = fun value ->
-  match Stdlib.int_of_string_opt value with
+  match Int.of_string_opt value with
   | Some port -> Ok port
   | None -> Error (Invalid_port_number value)
 
@@ -90,7 +89,6 @@ let parse_datagram = fun s ->
       | Ok port -> of_host_and_port_datagram ~host ~port
     )
 
-let ip = fun addr ->
-  Kernel.Net.IpAddr.to_string (Kernel.Net.SocketAddr.ip addr)
+let ip = fun addr -> Kernel.Net.IpAddr.to_string (Kernel.Net.SocketAddr.ip addr)
 
 let port = fun addr -> Kernel.Net.SocketAddr.port addr

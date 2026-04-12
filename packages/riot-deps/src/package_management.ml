@@ -511,7 +511,7 @@ let dependency_names_for_section = fun ~manifest_path ~section ->
   | Data.Toml.Table fields -> (
       match List.assoc_opt section_name fields with
       | None -> Ok []
-      | Some (Data.Toml.Table dep_items) -> Ok (List.map fst dep_items)
+      | Some (Data.Toml.Table dep_items) -> Ok (List.map (fun (name, _) -> name) dep_items)
       | Some _ -> Error (ManifestUpdateFailed {
         path = manifest_path;
         error = "[" ^ section_name ^ "] must be a table"
@@ -971,7 +971,7 @@ let reload_workspace = fun ~(workspace_root:Path.t) ->
 
 let refresh_lock = fun ~(emit:event_sink) ~mode ~registry ~(workspace:Riot_model.Workspace.t) ->
   Workspace_resolution.ensure_lock ~emit ~mode ~registry ~workspace ()
-  |> Result.map fst
+  |> Result.map (fun (lockfile, _) -> lockfile)
   |> Result.map_error (fun error -> LockRefreshFailed error)
 
 let lock_package_version_map = fun (lockfile: Riot_model.Lockfile.t) ->

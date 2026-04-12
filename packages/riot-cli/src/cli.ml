@@ -3,11 +3,10 @@ open Std
 (** Build the static CLI. Workspace commands are resolved lazily after parse. *)
 let build_cli = fun () ->
   let open ArgParser in
-    let open Arg in
+      let open Arg in
       let builtin_commands = [
         Add.command;
         Build.command;
-        Check_cmd.command;
         Remove.command;
         Clean.command;
         Completions.command;
@@ -30,7 +29,6 @@ let build_cli = fun () ->
         Update_cmd.command;
         Yank.command;
         Doc.command;
-        Lsp_cmd.command;
         command "version" |> about "Show riot version";
       ]
       in
@@ -149,14 +147,14 @@ let try_command = fun ?workspace_scan cmd_name remaining_args ->
               (
                 match Build.build_command ~workspace (Some cmd.package_name) None with
                 | Error err ->
-                    Log.error ("Failed to build package: " ^ Exception.to_string err);
+                    Log.error ("Failed to build package: " ^ Kernel.Exception.to_string err);
                     Some (Error err)
                 | Ok () ->
                     (* Execute the command binary *)
                     match Command_executor.execute ~command_binary:cmd.command_binary ~args:remaining_args with
                     | Ok () -> Some (Ok ())
                     | Error err ->
-                        Log.error ("Command execution failed: " ^ Exception.to_string err);
+                        Log.error ("Command execution failed: " ^ Kernel.Exception.to_string err);
                         Some (Error err)
               )
         )
@@ -289,11 +287,6 @@ let run = fun ~args ->
                   | Ok () -> Build.run ~workspace build_matches
                   | Error _ as e -> e
                 )
-              | Error _ as e -> e
-            )
-          | Some ("check", check_matches) -> (
-              match require_clean_workspace (get_workspace_scan ()) with
-              | Ok workspace -> Check_cmd.run ~workspace check_matches
               | Error _ as e -> e
             )
           | Some ("run", run_matches) -> (
@@ -492,8 +485,6 @@ let run = fun ~args ->
               Toolchain_cmd.run toolchain_matches
           | Some ("upgrade", upgrade_matches) ->
               Upgrade.run upgrade_matches
-          | Some ("lsp", lsp_matches) ->
-              Lsp_cmd.run lsp_matches
           | Some ("version", _) ->
               println (Version_info.version_string ());
               Ok ()

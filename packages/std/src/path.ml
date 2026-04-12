@@ -222,7 +222,7 @@ let rec normalize = fun path ->
     result
 
 let exists = fun path ->
-  match Kernel.Fs.File.file_exists path with
+  match Kernel.Fs.File.exists path with
   | Ok exists -> exists
   | Error _ -> false
 

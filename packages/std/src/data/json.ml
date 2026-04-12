@@ -276,7 +276,7 @@ let of_string = fun str ->
         advance ();
         advance ();
         advance ();
-        Buffer.add_utf_8_uchar buffer (Uchar.of_int code)
+        Buffer.add_string buffer (Kernel.Unicode.Rune.to_string (Kernel.Unicode.Rune.of_int code))
     in
     let rec loop () =
       if !pos >= len then
@@ -348,9 +348,9 @@ let of_string = fun str ->
     consume ();
     let num_str = String.sub str start (!pos - start) in
     if !is_float then
-      Float (float_of_string num_str)
+      Float (Float.of_string num_str)
     else
-      Int (int_of_string num_str)
+      Int (Int.of_string num_str)
   in
   let rec parse_value () =
     skip_whitespace ();
@@ -497,7 +497,7 @@ let of_string = fun str ->
       Ok result
   with
   | Json_parse_error err -> Error err
-  | exn -> Error (Unknown_error (Exception.to_string exn))
+  | exn -> Error (Unknown_error (Kernel.Exception.to_string exn))
 
 (** Helper functions *)
 let null = Null
@@ -584,8 +584,12 @@ let rec diff = fun a b ->
     loop [] 0
   and diff_objects path xs ys =
     let all_keys =
-      let xs_keys = List.map fst xs in
-      let ys_keys = List.map fst ys in
+      let xs_keys =
+        List.map (fun (key, _) -> key) xs
+      in
+      let ys_keys =
+        List.map (fun (key, _) -> key) ys
+      in
       List.sort_uniq String.compare (xs_keys @ ys_keys)
     in
     let rec loop acc keys =

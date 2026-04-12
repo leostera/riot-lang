@@ -26,7 +26,11 @@ let to_255 = fun str ->
 let rgb = fun r g b -> RGB (to_255 r, to_255 g, to_255 b)
 
 let rgb = fun str ->
-  match String.to_seq str |> List.of_seq |> List.map (String.make 1) with
+  match str
+  |> String.into_iter
+  |> Iter.Iterator.map ~fn:Unicode.Rune.to_char
+  |> Iter.Iterator.to_list
+  |> List.map (String.make 1) with
   | ["#";r1;r2;g1;g2;b1;b2] -> rgb (r1 ^ r2) (g1 ^ g2) (b1 ^ b2)
   | ["#";r1;g1;b1] -> rgb r1 g1 b1
   | _ -> raise (Invalid_color str)

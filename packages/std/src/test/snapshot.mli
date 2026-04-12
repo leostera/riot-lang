@@ -22,8 +22,7 @@ val assert_text: ctx:Test_context.t -> actual:string -> (unit, string) Kernel.re
 val assert_json: ctx:Test_context.t -> actual:Data.Json.t -> (unit, string) Kernel.result
 
 (** Compare canonical JSON against an external snapshot derived from [ctx]. *)
-val assert_with:
-  ctx:Test_context.t -> render:('a -> string) -> actual:'a -> (unit, string) Kernel.result
+val assert_with: ctx:Test_context.t -> render:('a -> string) -> actual:'a -> (unit, string) Kernel.result
 
 (** Render a value to text with a custom function before snapshotting it. *)
 val assert_inline_text:
@@ -31,10 +30,7 @@ val assert_inline_text:
 
 (** Compare two inline strings without creating external snapshot artifacts. *)
 val assert_inline_json:
-  ctx:Test_context.t ->
-  actual:Data.Json.t ->
-  expected:Data.Json.t ->
-  (unit, string) Kernel.result
+  ctx:Test_context.t -> actual:Data.Json.t -> expected:Data.Json.t -> (unit, string) Kernel.result
 
 (** Compare two inline JSON values after canonicalizing object-key order and
     rendering them through [Std.Data.Json.to_string_pretty]. *)

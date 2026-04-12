@@ -20,7 +20,7 @@
 open Global
 open Collections
 module String = Kernel.String
-module Uchar = Kernel.Uchar
+module Uchar = Kernel.Unicode.Rune
 
 (** Word break property - simplified *)
 type word_property =

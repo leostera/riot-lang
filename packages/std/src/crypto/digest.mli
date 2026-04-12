@@ -31,19 +31,19 @@
     - **to_int/to_int64**: Hash table indexing, fast comparison *)
 
 (** Convert hash to hexadecimal string. *)
-val hex: Kernel.Crypto.hash -> string
+val hex: Hash.t -> string
 
 (** Convert hash to base64 string. *)
-val base64: Kernel.Crypto.hash -> string
+val base64: Hash.t -> string
 
 (** Convert hash to URL-safe base64 string. *)
-val base64_url: Kernel.Crypto.hash -> string
+val base64_url: Hash.t -> string
 
 (** Get raw bytes of hash. *)
-val bytes: Kernel.Crypto.hash -> bytes
+val bytes: Hash.t -> bytes
 
 (** Convert hash to int64 (truncates if necessary). *)
-val to_int64: Kernel.Crypto.hash -> int64
+val to_int64: Hash.t -> int64
 
 (** Convert hash to int (truncates). *)
-val to_int: Kernel.Crypto.hash -> int
+val to_int: Hash.t -> int

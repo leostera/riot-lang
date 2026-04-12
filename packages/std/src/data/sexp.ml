@@ -286,7 +286,7 @@ module Csexp = struct
             if s = "" then
               raise (Parse_error "Expected number")
             else
-              int_of_string s
+              Int.of_string s
       in
       loop ()
     in

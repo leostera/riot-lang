@@ -16,7 +16,8 @@ let fail = fun message -> Error (Failure message)
 let config_path = fun () -> Riot_dirs.config_path ()
 
 let ensure_riot_dirs = fun () ->
-  Riot_dirs.ensure_created () |> Result.map_error (fun exn -> Failure (Exception.to_string exn))
+  Riot_dirs.ensure_created ()
+  |> Result.map_error (fun exn -> Failure (Kernel.Exception.to_string exn))
 
 let load_config = fun path ->
   match Fs.exists path with
@@ -31,7 +32,7 @@ let save_config = fun path config ->
 
 let prompt_for_token = fun () ->
   print "pkgs.ml API token: ";
-  match Tty.make ~stdin:IO.stdin () with
+  match Tty.make () with
   | Error Tty.NoTtyConnected ->
       fail "failed to read API token: no tty connected"
   | Error (Tty.SystemError io_error) ->

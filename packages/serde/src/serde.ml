@@ -1,5 +1,5 @@
 open Std
-module Vector = Collections.Vector
+open Std.Collections
 
 type error =
 [
@@ -132,7 +132,7 @@ module Fields = struct
           in
           { first = label.[0]; label; next = build_node next_entries })
     in
-    { tag; edges = array__init (List.length edges) (fun index -> list_nth edges index) }
+    { tag; edges = Array.init (List.length edges) (fun index -> list_nth edges index) }
 
   let string_equals_slice = fun source ~offset ~length other ->
     if not (Int.equal length (String.length other)) then
@@ -178,10 +178,10 @@ module Fields = struct
 
   let find_edge: 'tag. 'tag edge array -> char -> 'tag edge option = fun edges first ->
     let rec loop index =
-      if Int.equal index (array__length edges) then
+      if Int.equal index (Array.length edges) then
         None
       else
-        let edge = array__get edges index in
+        let edge = Array.get edges index in
         if Char.equal edge.first first then
           Some edge
         else
@@ -249,19 +249,20 @@ module Fields = struct
   let make = fun cases ->
     let root = List.map (fun case -> { suffix = case.key; tag = case.tag }) cases |> build_node in
     let tags =
-      array__init (List.length cases) (fun index -> list_nth cases index |> tag)
+      Array.init (List.length cases) (fun index -> list_nth cases index |> tag)
     in
     { root; tags }
 
-  let length = fun fields -> array__length fields.tags
+  let length = fun fields -> Array.length fields.tags
 
   let tag_at = fun fields index ->
-    if index < 0 || index >= array__length fields.tags then
+    if index < 0 || index >= Array.length fields.tags then
       None
     else
-      Some (array__get fields.tags index)
+      Some (Array.get fields.tags index)
 
-  let tag_at_unchecked = fun fields index -> array__get fields.tags index
+  let tag_at_unchecked = fun fields index ->
+    Array.get fields.tags index
 end
 
 type 'value t = {
@@ -388,11 +389,6 @@ let list_nth = fun values index ->
     | ([], _) -> panic "Serde.Fast.list_nth: index out of bounds"
   in
   loop values index
-
-let array_of_list = fun values ->
-  array__init (List.length values) (fun index -> list_nth values index)
-
-let array_of_vec = fun values -> Vector.to_array values
 
 let reader_of_backend = fun backend state ->
   {
@@ -596,7 +592,7 @@ module De = struct
     }
 
   let variant = fun cases ->
-    let compiled_cases = array_of_list cases in
+    let compiled_cases = Array.of_list cases in
     {
       run =
         fun backend state ->
@@ -738,7 +734,7 @@ module Ser = struct
 
   let field = Field.make
 
-  let fields = array_of_list
+  let fields = Array.of_list
 
   let record = fun fields ->
     {
@@ -748,7 +744,7 @@ module Ser = struct
     }
 
   let variant = fun cases ->
-    let cases = array_of_list cases in
+    let cases = Array.of_list cases in
     {
       run =
         fun backend state value ->

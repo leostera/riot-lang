@@ -14,19 +14,15 @@ module File = File
 module Walker = Walker
 module FileWatcher = File_watcher
 
-let kernel_path = fun path ->
-  Kernel.Path.of_string (Path.to_string path)
+let kernel_path = fun path -> Kernel.Path.of_string (Path.to_string path)
 
-let path_of_kernel = fun path ->
-  Path.v (Kernel.Path.to_string path)
+let path_of_kernel = fun path -> Path.v (Kernel.Path.to_string path)
 
 (** Basic filesystem operations - defined first as they're used by other
     functions *)
-let is_directory = fun path ->
-  Kernel.Fs.File.is_directory (kernel_path path) |> convert_kernel_result
+let is_directory = fun path -> Kernel.Fs.File.is_directory (kernel_path path) |> convert_kernel_result
 
-let rmdir = fun path ->
-  Kernel.Fs.File.remove_dir (kernel_path path) |> convert_kernel_result
+let rmdir = fun path -> Kernel.Fs.File.remove_dir (kernel_path path) |> convert_kernel_result
 
 (** Clean API implementations following the FIXME guidelines *)
 let canonicalize = fun path ->
@@ -34,8 +30,7 @@ let canonicalize = fun path ->
   | Ok abs_path -> Ok (path_of_kernel abs_path)
   | Error error -> Error (of_file_error error)
 
-let copy = fun ~src ~dst ->
-  Kernel.Fs.File.copy ~src:(kernel_path src) ~dst:(kernel_path dst) |> convert_kernel_result
+let copy = fun ~src ~dst -> Kernel.Fs.File.copy ~src:(kernel_path src) ~dst:(kernel_path dst) |> convert_kernel_result
 
 let create_dir_all = fun path ->
   let rec create_parents path =
@@ -43,8 +38,10 @@ let create_dir_all = fun path ->
     | None -> Ok ()
     | Some parent ->
         match Kernel.Fs.File.exists (kernel_path parent) with
-        | Error error -> Error (of_file_error error)
-        | Ok true -> Ok ()
+        | Error error ->
+            Error (of_file_error error)
+        | Ok true ->
+            Ok ()
         | Ok false -> (
             match create_parents parent with
             | Error error -> Error error
@@ -65,17 +62,14 @@ let create_dir_all = fun path ->
       | Error error -> Error (of_file_error error)
     )
 
-let exists = fun path ->
-  Kernel.Fs.File.exists (kernel_path path) |> convert_kernel_result
+let exists = fun path -> Kernel.Fs.File.exists (kernel_path path) |> convert_kernel_result
 
 let hard_link = fun ~src ~dst ->
   Kernel.Fs.File.hard_link ~src:(kernel_path src) ~dst:(kernel_path dst) |> convert_kernel_result
 
-let metadata = fun path ->
-  Kernel.Fs.File.metadata (kernel_path path) |> convert_kernel_result
+let metadata = fun path -> Kernel.Fs.File.metadata (kernel_path path) |> convert_kernel_result
 
-let symlink_metadata = fun path ->
-  Kernel.Fs.File.symlink_metadata (kernel_path path) |> convert_kernel_result
+let symlink_metadata = fun path -> Kernel.Fs.File.symlink_metadata (kernel_path path) |> convert_kernel_result
 
 let read_to_string = fun path ->
   match File.open_read path with
@@ -95,8 +89,7 @@ let read_dir = fun path ->
   | Error e -> Error e
   | Ok state -> Ok (MutIterator.make (module ReadDir) state)
 
-let remove_file = fun path ->
-  Kernel.Fs.File.remove_file (kernel_path path) |> convert_kernel_result
+let remove_file = fun path -> Kernel.Fs.File.remove_file (kernel_path path) |> convert_kernel_result
 
 let remove_dir_all = fun path ->
   let rec remove_recursive path =
@@ -159,17 +152,13 @@ let read_link = fun path ->
   | Ok target -> Ok (path_of_kernel target)
   | Error error -> Error (of_file_error error)
 
-let create_dir = fun path ->
-  Kernel.Fs.File.create_dir (kernel_path path) ~perm:0o755 |> convert_kernel_result
+let create_dir = fun path -> Kernel.Fs.File.create_dir (kernel_path path) ~perm:0o755 |> convert_kernel_result
 
-let file_exists = fun path ->
-  exists path
+let file_exists = fun path -> exists path
 
-let dir_exists = fun path ->
-  Kernel.Fs.File.is_directory (kernel_path path) |> convert_kernel_result
+let dir_exists = fun path -> Kernel.Fs.File.is_directory (kernel_path path) |> convert_kernel_result
 
-let stat = fun path ->
-  metadata path
+let stat = fun path -> metadata path
 
 let chmod = fun path perm ->
   Kernel.Fs.File.set_permissions (kernel_path path) ~perm:(Permissions.to_mode perm) |> convert_kernel_result
@@ -177,8 +166,7 @@ let chmod = fun path perm ->
 let symlink = fun ~src ~dst ->
   Kernel.Fs.File.symlink ~src:(kernel_path src) ~dst:(kernel_path dst) |> convert_kernel_result
 
-let mkdir = fun path perm ->
-  Kernel.Fs.File.create_dir (kernel_path path) ~perm |> convert_kernel_result
+let mkdir = fun path perm -> Kernel.Fs.File.create_dir (kernel_path path) ~perm |> convert_kernel_result
 
 let mkdir_safe = fun path perm ->
   match Kernel.Fs.File.create_dir (kernel_path path) ~perm with
@@ -186,8 +174,7 @@ let mkdir_safe = fun path perm ->
   | Error (Kernel.Fs.File.System Kernel.SystemError.AlreadyExists) -> Ok ()
   | Error error -> Error (of_file_error error)
 
-let rec mkdirp = fun path ->
-  create_dir_all path
+let rec mkdirp = fun path -> create_dir_all path
 
 let rec remove_dir = fun path ->
   match ReadDir.create path with
@@ -199,7 +186,8 @@ let rec remove_dir = fun path ->
         | Some file_path -> (
             let full_path = Path.join path file_path in
             match dir_exists full_path with
-            | Error error -> Error error
+            | Error error ->
+                Error error
             | Ok true -> (
                 match remove_dir full_path with
                 | Error error -> Error error

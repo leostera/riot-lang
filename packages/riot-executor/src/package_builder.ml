@@ -493,7 +493,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
         do_build with
       | exception exn ->
           let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
-          let error_msg = "Exception: " ^ Exception.to_string exn in
+          let error_msg = "Exception: " ^ Kernel.Exception.to_string exn in
           let error = ExecutionFailed { message = error_msg } in
           (* Mark as Failed in package graph *)
           (

@@ -144,7 +144,7 @@ let filter_tests = fun target tests ->
 let shuffle_list = fun lst ->
   let arr = Array.of_list lst in
   let len = Array.length arr in
-  let shuffle_index = fun i ->
+  let shuffle_index i =
     let modulus = i + 1 in
     let candidate = Int.rem ((i * 48_271) + 1) modulus in
     if candidate < 0 then

@@ -3,16 +3,13 @@ open Kernel
 module type Read = sig
   type t
   type err
-
   val read: t -> ?timeout:int64 -> bytes -> (int, err) result
 
   val read_vectored: t -> Kernel.IO.Iovec.t -> (int, err) result
 end
 
 type ('src, 'err) read = (module Read with type t = 'src and type err = 'err)
-
 type ('src, 'err) t
-
 val of_read_src: ('src, 'err) read -> 'src -> ('src, 'err) t
 
 val read: ('src, 'err) t -> ?timeout:int64 -> bytes -> (int, 'err) result

@@ -503,7 +503,9 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
           ("Package " ^ package.name ^ ": looking for target." ^ target_platform ^ " overrides");
         Log.info
           ("Available targets: ["
-          ^ (String.concat ", " (List.map fst package.compiler.target_overrides))
+          ^ (String.concat
+            ", "
+            (List.map (fun (target, _) -> target) package.compiler.target_overrides))
           ^ "]");
         match List.assoc_opt target_platform package.compiler.target_overrides with
         | Some target_override -> (
@@ -553,7 +555,7 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                       ("Package "
                       ^ package.name
                       ^ ": plan bundle decode raised exception, rebuilding plan graph ("
-                      ^ Exception.to_string exn
+                      ^ Kernel.Exception.to_string exn
                       ^ ")");
                     Error "plan bundle decode exception"
               in

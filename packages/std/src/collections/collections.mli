@@ -35,15 +35,22 @@
     [Deque] | | FIFO processing | [Queue] | | Priority queue | [Heap] | | Small
     ordered collection | [List] | *)
 
-(* Re-export kernel collections *)
+module Array = Array
 
-include module type of Kernel.Collections
+module List = List
 
-(* Std-specific collections *)
+module Stream = Stream
 
-(** Double-ended queue for efficient operations at both ends. See [Deque]. *)
+module Vector = Vector
 
-(** Binary heap for priority queue operations. See [Heap]. *)
+module Map = Map
+
+module HashMap = Hashmap
+
+module HashSet = Hashset
+
+module Queue = Queue
+
 module Deque = Deque
 
 module Heap = Heap

@@ -19,86 +19,83 @@ type entry = {
 }
 
 type t = {
+  path: Path.t;
   path_string: string;
   handle: Kernel.Fs.ReadDir.t;
   mutable closed: bool;
 }
 
-(** Directory reading iterator *)
 type state = t
 
 type item = Path.t
 
 let entry_kind_of_kernel = function
-  | Kernel.Fs.ReadDir.Unknown -> Unknown
-  | Kernel.Fs.ReadDir.Regular -> Regular
+  | Kernel.Fs.ReadDir.RegularFile -> Regular
   | Kernel.Fs.ReadDir.Directory -> Directory
-  | Kernel.Fs.ReadDir.Symlink -> Symlink
-  | Kernel.Fs.ReadDir.Block
-  | Kernel.Fs.ReadDir.Character
-  | Kernel.Fs.ReadDir.Fifo
+  | Kernel.Fs.ReadDir.SymbolicLink -> Symlink
+  | Kernel.Fs.ReadDir.CharacterDevice
+  | Kernel.Fs.ReadDir.BlockDevice
+  | Kernel.Fs.ReadDir.NamedPipe
   | Kernel.Fs.ReadDir.Socket -> Other
+  | Kernel.Fs.ReadDir.Unknown -> Unknown
+
+let create = fun path ->
+  let path_string = Path.to_string path in
+  match Kernel.Fs.ReadDir.open_dir path_string with
+  | Ok handle -> Ok { path; path_string; handle; closed = false }
+  | Error error -> Error (of_read_dir_error error)
 
 let create_string = fun path_string ->
-  match Kernel.Fs.ReadDir.open_ path_string with
-  | Error e -> Error e
-  | Ok handle -> Ok { path_string; handle; closed = false }
+  match Path.of_string path_string with
+  | Ok path -> create path
+  | Error (Path.InvalidUtf8 { path }) -> Error (IO.Unknown_error ("invalid UTF-8 path: " ^ path))
+  | Error (Path.SystemInvalidUtf8 { syscall; path }) -> Error (IO.Unknown_error ("invalid UTF-8 path from "
+  ^ syscall
+  ^ ": "
+  ^ path))
+  | Error (Path.SystemError message) -> Error (IO.Unknown_error message)
 
-let create = fun path -> create_string (Path.to_string path)
-
-let close = fun t ->
-  if not t.closed then
-    (
-      t.closed <- true;
-      try
-        Kernel.Fs.ReadDir.close t.handle |> ignore;
-        Ok ()
-      with
-      | e -> Error (IO.Unknown_error (Exception.to_string e))
-    )
-  else
+let close = fun dir ->
+  if dir.closed then
     Ok ()
+  else (
+    dir.closed <- true;
+    match Kernel.Fs.ReadDir.close dir.handle with
+    | Ok () -> Ok ()
+    | Error error -> Error (of_read_dir_error error)
+  )
 
-let next_raw_entry = fun t ->
-  if t.closed then
+let next_raw_entry = fun dir ->
+  if dir.closed then
     None
   else
-    try
-      let entry =
-        match Kernel.Fs.ReadDir.read_entry t.handle with
-        | Ok e -> e
-        | Error _ -> raise End_of_file
-      in
-      Some { name = entry.name; kind = entry_kind_of_kernel entry.kind }
-    with
-    | End_of_file ->
-        close t |> Result.expect ~msg:("Could not close ReadDir.t for " ^ t.path_string);
+    match Kernel.Fs.ReadDir.read_entry dir.handle with
+    | Ok None ->
+        let _ = close dir in
+        None
+    | Ok (Some entry) ->
+        Some { name = entry.name; kind = entry_kind_of_kernel entry.kind }
+    | Error _ ->
+        let _ = close dir in
         None
 
-let rec next_entry = fun t ->
-  match next_raw_entry t with
+let rec next_entry = fun dir ->
+  match next_raw_entry dir with
   | Some entry -> (
       match Path.of_string entry.name with
       | Ok path -> Some { path; kind = entry.kind }
-      | Error _ -> next_entry t
+      | Error _ -> next_entry dir
     )
   | None -> None
 
-let next = fun t ->
-  match next_entry t with
+let next = fun dir ->
+  match next_entry dir with
   | Some entry -> Some entry.path
   | None -> None
 
-(* MutIterator.Intf implementation *)
+let size = fun _ -> 0
 
-let size = fun _t -> 0
-
-(* Unknown size for directory iteration *)
-
-let clone = fun t ->
-  (* Can't really clone a directory handle, so we create a new one *)
-  match Kernel.Fs.ReadDir.open_ t.path_string with
-  | Ok handle -> { path_string = t.path_string; handle; closed = false }
-  | Error _ -> t
-
-(* Fall back to the original if we can't create a new one *)
+let clone = fun dir ->
+  match create_string dir.path_string with
+  | Ok clone -> clone
+  | Error _ -> dir

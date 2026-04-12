@@ -33,10 +33,11 @@ let from_nanos = fun nanos_total ->
 (* Creation *)
 
 let now = fun () ->
-  let time = Kernel.Time.gettimeofday () in
-  let secs = int_of_float time in
-  let nanos = int_of_float ((time -. float_of_int secs) *. 1_000_000_000.0) in
-  { secs; nanos }
+  match Kernel.Time.SystemTime.now () with
+  | Ok time ->
+      let secs, nanos = Kernel.Time.SystemTime.to_parts time in
+      { secs; nanos }
+  | Error err -> Kernel.SystemError.panic (Kernel.Time.SystemTime.error_to_string err)
 
 (* Duration operations *)
 
@@ -97,9 +98,9 @@ let checked_sub = fun systime duration ->
 (* Comparison *)
 
 let compare = fun a b ->
-  let secs_cmp = compare a.secs b.secs in
+  let secs_cmp = Int.compare a.secs b.secs in
   if secs_cmp = 0 then
-    compare a.nanos b.nanos
+    Int.compare a.nanos b.nanos
   else
     secs_cmp
 

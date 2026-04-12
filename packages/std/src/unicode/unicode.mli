@@ -38,7 +38,7 @@
 (** {1 Rune - Unicode Code Points} *)
 
 module Rune: sig
-  type t = Kernel.Uchar.t
+  type t = Kernel.Unicode.Rune.t
 
   (** A Unicode code point (scalar value).
       
@@ -70,6 +70,9 @@ module Rune: sig
   val of_char: char -> t
 
   (** [of_char c] converts an 8-bit character to a rune. *)
+  val to_char: t -> char
+
+  (** [to_char r] converts an ASCII or Latin-1 rune back to a char. *)
   val to_string: t -> string
 
   (** [to_string r] encodes rune [r] as a UTF-8 string. *)

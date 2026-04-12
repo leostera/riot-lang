@@ -1,6 +1,6 @@
-open Global
+open Kernel
 open Sync
-open Kernel.Collections
+module Array = Stdlib.Array
 
 type 'a t = {
   mutable data: 'a array;

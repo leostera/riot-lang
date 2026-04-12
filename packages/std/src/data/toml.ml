@@ -271,21 +271,25 @@ let parse = fun content ->
         done;
         let str = String.trim (String.sub content start (!pos - start)) in
         (
-          try Int (int_of_string str) with
+          try Int (Int.of_string str) with
           | Failure _ -> String str
         )
     | _ ->
         (* Bare string - read until comma, bracket, newline, or comment *)
         let start = !pos in
-        while not (at_end ()) do
-          match current_char () with
-          | ','
-          | ']'
-          | '\n'
-          | '#'
-          | '}' -> raise Exit
-          | _ -> advance ()
-        done;
+        let rec advance_bare_string () =
+          if not (at_end ()) then
+            match current_char () with
+            | ','
+            | ']'
+            | '\n'
+            | '#'
+            | '}' -> ()
+            | _ ->
+                advance ();
+                advance_bare_string ()
+        in
+        advance_bare_string ();
         let str = String.trim (String.sub content start (!pos - start)) in
         String str
   in
@@ -351,126 +355,102 @@ let parse = fun content ->
   let current_items = ref [] in
   let array_sections = ref [] in
   (* Track [[name]] sections *)
+  let save_current_section () =
+    match !current_section with
+    | Some (name, false) ->
+        sections := { name; items = List.rev !current_items } :: !sections
+    | Some (name, true) ->
+        let existing =
+          try List.assoc name !array_sections with
+          | Not_found -> []
+        in
+        array_sections := (name, Table (List.rev !current_items) :: existing)
+        :: List.remove_assoc name !array_sections
+    | None ->
+        if List.length !current_items > 0 then
+          sections := { name = ""; items = List.rev !current_items } :: !sections
+  in
   try
-    while not (at_end ()) do
+    let rec parse_loop () =
       skip_noise ();
-      if at_end () then
-        raise Exit;
-      match current_char () with
-      | '[' ->
-          (* Save previous section *)
-          (
-            match !current_section with
-            | Some (name, false) ->
-                sections := { name; items = List.rev !current_items } :: !sections
-            | Some (name, true) ->
-                (* Array section - add current items as a table to the array *)
-                let existing =
-                  try List.assoc name !array_sections with
-                  | Not_found -> []
-                in
-                array_sections := (name, Table (List.rev !current_items) :: existing)
-                :: List.remove_assoc name !array_sections
-            | None ->
-                (* Save top-level items with empty section name *)
-                if List.length !current_items > 0 then
-                  sections := { name = ""; items = List.rev !current_items } :: !sections
-          );
-          let section_name, is_array = parse_section_header () in
-          current_section := Some (section_name, is_array);
-          current_items := []
-      | _ ->
-          (* Parse key = value *)
-          let key = parse_key () in
-          if at_end () || current_char () != '=' then
-            skip_to_eol ()
-            (* Skip malformed lines *)
-          else (
-            advance ();
-            (* skip = *)
-            try
+      if not (at_end ()) then
+        match current_char () with
+        | '[' ->
+            save_current_section ();
+            let section_name, is_array = parse_section_header () in
+            current_section := Some (section_name, is_array);
+            current_items := [];
+            parse_loop ()
+        | _ ->
+            let key = parse_key () in
+            if at_end () || current_char () != '=' then
+              (
+                skip_to_eol ();
+                parse_loop ()
+              )
+            else (
+              advance ();
               let value = parse_value () in
               current_items := (key, value) :: List.remove_assoc key !current_items;
-              skip_to_eol ()
-            with
-            | Exit ->
-                (* Bare string parsing hit delimiter *)
-                let value = String "" in
-                current_items := (key, value) :: List.remove_assoc key !current_items;
-                skip_to_eol ()
-          )
-    done;
-    raise Exit
+              skip_to_eol ();
+              parse_loop ()
+            )
+    in
+    parse_loop ();
+    save_current_section ();
+    let all_sections = List.rev !sections in
+    (* Helper to insert a dotted key path into nested tables *)
+    let rec insert_nested_table path value acc =
+      match path with
+      | [] ->
+          acc
+      | [ key ] ->
+          (key, value) :: acc
+      | key :: rest ->
+          (* Check if this key already exists in acc *)
+          let existing_table =
+            match List.assoc_opt key acc with
+            | Some (Table items) -> items
+            | _ -> []
+          in
+          let updated_table = insert_nested_table rest value existing_table in
+          (* Replace or add the key with updated nested table *)
+          let acc_without_key =
+            List.filter (fun ((k, _)) -> not (String.equal k key)) acc
+          in
+          (key, Table updated_table) :: acc_without_key
+    in
+    (* Convert sections to nested tables *)
+    let items =
+      List.fold_left
+        (fun acc section ->
+          if section.name = "" then
+            section.items @ acc
+          else
+            (* Split dotted section names (e.g., "profile.debug" -> ["profile"; "debug"]) *)
+            let path = String.split_on_char '.' section.name in
+            insert_nested_table path (Table section.items) acc)
+        []
+        all_sections
+    in
+    (* Add array sections as arrays *)
+    let items_with_arrays =
+      List.fold_left
+        (fun acc ((name, tables)) ->
+          (* Split dotted array section names (e.g., "log.handler" -> ["log"; "handler"]) *)
+          let path = String.split_on_char '.' name in
+          insert_nested_table path (Array (List.rev tables)) acc)
+        items
+        !array_sections
+    in
+    Ok (Table (List.rev items_with_arrays))
   with
-  | Exit ->
-      (* Normal termination *)
-      (
-        match !current_section with
-        | Some (name, false) ->
-            sections := { name; items = List.rev !current_items } :: !sections
-        | Some (name, true) ->
-            (* Array section - add current items as final table *)
-            let existing =
-              try List.assoc name !array_sections with
-              | Not_found -> []
-            in
-            array_sections := (name, Table (List.rev !current_items) :: existing)
-            :: List.remove_assoc name !array_sections
-        | None ->
-            (* Save top-level items with empty section name *)
-            if List.length !current_items > 0 then
-              sections := { name = ""; items = List.rev !current_items } :: !sections
-      );
-      let all_sections = List.rev !sections in
-      (* Helper to insert a dotted key path into nested tables *)
-      let rec insert_nested_table path value acc =
-        match path with
-        | [] ->
-            acc
-        | [ key ] ->
-            (key, value) :: acc
-        | key :: rest ->
-            (* Check if this key already exists in acc *)
-            let existing_table =
-              match List.assoc_opt key acc with
-              | Some (Table items) -> items
-              | _ -> []
-            in
-            let updated_table = insert_nested_table rest value existing_table in
-            (* Replace or add the key with updated nested table *)
-            let acc_without_key =
-              List.filter (fun ((k, _)) -> not (String.equal k key)) acc
-            in
-            (key, Table updated_table) :: acc_without_key
-      in
-      (* Convert sections to nested tables *)
-      let items =
-        List.fold_left
-          (fun acc section ->
-            if section.name = "" then
-              section.items @ acc
-            else
-              (* Split dotted section names (e.g., "profile.debug" -> ["profile"; "debug"]) *)
-              let path = String.split_on_char '.' section.name in
-              insert_nested_table path (Table section.items) acc)
-          []
-          all_sections
-      in
-      (* Add array sections as arrays *)
-      let items_with_arrays =
-        List.fold_left
-          (fun acc ((name, tables)) ->
-            (* Split dotted array section names (e.g., "log.handler" -> ["log"; "handler"]) *)
-            let path = String.split_on_char '.' name in
-            insert_nested_table path (Array (List.rev tables)) acc)
-          items
-          !array_sections
-      in
-      Ok (Table (List.rev items_with_arrays))
-  | Parse_exception err ->
-      Error err
-  | exn ->
-      Error (Parse_error { position = !pos; context = "unknown"; reason = Exception.to_string exn })
+  | Parse_exception err -> Error err
+  | exn -> Error (Parse_error {
+    position = !pos;
+    context = "unknown";
+    reason = Kernel.Exception.to_string exn
+  })
 
 (* Recursive descent TOML parser *)
 

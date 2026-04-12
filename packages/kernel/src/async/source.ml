@@ -1,21 +1,19 @@
-open Common
-
 module type Intf = sig
   type t
-  val deregister: t -> Adapter.Selector.t -> (unit, IO.error) result
+  val register: t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, Adapter.error) Result.t
 
-  val register: t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, IO.error) result
+  val reregister: t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, Adapter.error) Result.t
 
-  val reregister: t -> Adapter.Selector.t -> Token.t -> Interest.t -> (unit, IO.error) result
+  val deregister: t -> Adapter.Selector.t -> (unit, Adapter.error) Result.t
 end
 
 type t =
-  S: ((module Intf with type t = 'state) * 'state) -> t
+  | S: (module Intf with type t = 'state) * 'state -> t
 
-let make = fun src state -> S (src, state)
+let make = fun implementation state -> S (implementation, state)
 
-let register = fun (S ((module Src), state)) -> Src.register state
+let register = fun (S ((module Source), state)) -> Source.register state
 
-let reregister = fun (S ((module Src), state)) -> Src.reregister state
+let reregister = fun (S ((module Source), state)) -> Source.reregister state
 
-let deregister = fun (S ((module Src), state)) -> Src.deregister state
+let deregister = fun (S ((module Source), state)) -> Source.deregister state

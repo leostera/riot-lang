@@ -10,20 +10,20 @@ let handle_format = fun file ->
   match Fs.read (Path.v file) with
   | Error _err ->
       Log.error ("Error reading file: " ^ file);
-      exit 1
+      System.exit 1
   | Ok source ->
       let result = parse_file ~file ~source in
       match Krasny.format result with
       | Ok formatted -> print formatted
       | Error _err ->
           Log.error ("Error formatting file without a CST: " ^ file);
-          exit 1
+          System.exit 1
 
 let handle_syntax_hash = fun file ->
   match Fs.read (Path.v file) with
   | Error _err ->
       Log.error ("Error reading file: " ^ file);
-      exit 1
+      System.exit 1
   | Ok source ->
       let result = parse_file ~file ~source in
       print (Krasny.syntax_hash result)

@@ -26,7 +26,7 @@ type Message.t +=
       result_ref: 'result Ref.t;
     } -> Message.t
 
-let rec loop: type task res. (task, res) state -> (unit, Process.exit_reason) result = fun state ->
+let rec loop: type task res. (task, res) state -> (unit, Actor.exit_reason) result = fun state ->
   let selector: ([
       `WorkerReady of task worker
       | `TaskResult of int * res
@@ -102,7 +102,7 @@ let run:
   tasks:task list ->
   fn:(task -> result) ->
   unit ->
-  (int * result) list = fun ?(concurrency = System.available_parallelism) ~tasks ~fn () ->
+  (int * result) list = fun ?(concurrency = Thread.available_parallelism) ~tasks ~fn () ->
   (* Edge case: empty task list *)
   if tasks = [] then
     []

@@ -163,7 +163,7 @@ let rec get_matches_internal = fun cmd args ->
         println ("Missing required argument: " ^ arg.name);
         println "";
         print_help cmd;
-        exit 1
+        System.exit 1
     | None -> Ok matches
   in
   let rec parse_args args_list =
@@ -173,17 +173,17 @@ let rec get_matches_internal = fun cmd args ->
         if List.length cmd.subcommands > 0 then
           (
             print_help cmd;
-            exit 0
+            System.exit 0
           )
         else
           validate_required ()
     | "--help" :: _
     | "-h" :: _ ->
         print_help cmd;
-        exit 0
+        System.exit 0
     | "--version" :: _ when Option.is_some cmd.version ->
         println (Option.unwrap cmd.version);
-        exit 0
+        System.exit 0
     | arg_str :: rest when String.starts_with ~prefix:"--" arg_str -> (
         let name = String.sub arg_str 2 (String.length arg_str - 2) in
         match find_arg_by_long cmd name with
@@ -444,12 +444,12 @@ let get_many = fun matches name -> HashMap.get matches.values name |> Option.unw
 
 let get_int = fun matches name ->
   match get_one matches name with
-  | Some s -> int_of_string_opt s
+  | Some s -> Int.of_string_opt s
   | None -> None
 
 let get_float = fun matches name ->
   match get_one matches name with
-  | Some s -> float_of_string_opt s
+  | Some s -> Float.of_string_opt s
   | None -> None
 
 let get_path = fun matches name ->

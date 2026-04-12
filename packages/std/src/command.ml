@@ -177,12 +177,11 @@ let wait_for_exit = fun proc ->
   let rec loop () =
     match Kernel.Process.try_wait proc with
     | Error err -> Error (SystemError (Kernel.Process.error_to_string err))
-    | Ok None ->
-        Runtime.syscall
-          ~name:"Command.wait"
-          ~interest:Kernel.Async.Interest.readable
-          ~source
-          loop
+    | Ok None -> Runtime.syscall
+      ~name:"Command.wait"
+      ~interest:Kernel.Async.Interest.readable
+      ~source
+      loop
     | Ok (Some status) -> Ok status
   in
   loop ()
@@ -204,38 +203,37 @@ let output = fun t ->
       match cwd_path t.cwd with
       | Error _ as err -> err
       | Ok current_dir -> (
-      (* Spawn the process *)
-      match Kernel.Process.spawn
-        ~program:t.cmd
-        ~args:(Array.of_list t.args)
-        ~env:(Array.of_list t.env)
-        ?current_dir
-        ~stdio
-        ()
-      with
-      | Error err -> Error (SystemError (Kernel.Process.error_to_string err))
-      | Ok proc ->
-          (* Get piped file descriptors *)
-          let stdout_fd = Kernel.Process.stdout proc |> Option.unwrap in
-          let stderr_fd = Kernel.Process.stderr proc |> Option.unwrap in
-          (* Update state to Running *)
-          t.state <- Running { proc; stdout = Some stdout_fd; stderr = Some stderr_fd };
-          let parent = self () in
-          let stdout_reader = spawn_reader ~parent ~stream:`stdout stdout_fd in
-          let stderr_reader = spawn_reader ~parent ~stream:`stderr stderr_fd in
-          let stdout_result, stderr_result = wait_for_reader_output ~stdout_reader ~stderr_reader in
-          let stdout_str = unwrap_reader_result ~stream:"stdout" ~cmd:t.cmd stdout_result in
-          let stderr_str = unwrap_reader_result ~stream:"stderr" ~cmd:t.cmd stderr_result in
-          (* Now wait for process to exit *)
-          match wait_for_exit proc with
-          | Error _ as err -> err
-          | Ok exit_status ->
-              ignore (Kernel.Process.close proc);
-              let status_code = kernel_status_code exit_status in
-              let result = { status = status_code; stdout = stdout_str; stderr = stderr_str } in
-              t.state <- Exited result;
-              Ok result
-      )
+          (* Spawn the process *)
+          match Kernel.Process.spawn
+            ~program:t.cmd
+            ~args:(Array.of_list t.args)
+            ~env:(Array.of_list t.env)
+            ?current_dir
+            ~stdio
+            () with
+          | Error err -> Error (SystemError (Kernel.Process.error_to_string err))
+          | Ok proc ->
+              (* Get piped file descriptors *)
+              let stdout_fd = Kernel.Process.stdout proc |> Option.unwrap in
+              let stderr_fd = Kernel.Process.stderr proc |> Option.unwrap in
+              (* Update state to Running *)
+              t.state <- Running { proc; stdout = Some stdout_fd; stderr = Some stderr_fd };
+              let parent = self () in
+              let stdout_reader = spawn_reader ~parent ~stream:`stdout stdout_fd in
+              let stderr_reader = spawn_reader ~parent ~stream:`stderr stderr_fd in
+              let stdout_result, stderr_result = wait_for_reader_output ~stdout_reader ~stderr_reader in
+              let stdout_str = unwrap_reader_result ~stream:"stdout" ~cmd:t.cmd stdout_result in
+              let stderr_str = unwrap_reader_result ~stream:"stderr" ~cmd:t.cmd stderr_result in
+              (* Now wait for process to exit *)
+              match wait_for_exit proc with
+              | Error _ as err -> err
+              | Ok exit_status ->
+                  ignore (Kernel.Process.close proc);
+                  let status_code = kernel_status_code exit_status in
+                  let result = { status = status_code; stdout = stdout_str; stderr = stderr_str } in
+                  t.state <- Exited result;
+                  Ok result
+        )
     )
 
 let status = fun t ->
@@ -250,23 +248,22 @@ let status = fun t ->
       match cwd_path t.cwd with
       | Error _ as err -> err
       | Ok current_dir -> (
-      (* Spawn the process *)
-      match Kernel.Process.spawn
-        ~program:t.cmd
-        ~args:(Array.of_list t.args)
-        ~env:(Array.of_list t.env)
-        ?current_dir
-        ~stdio
-        ()
-      with
-      | Error err -> Error (SystemError (Kernel.Process.error_to_string err))
-      | Ok proc ->
-          match wait_for_exit proc with
-          | Error _ as err -> err
-          | Ok exit_status ->
-              ignore (Kernel.Process.close proc);
-              let status_code = kernel_status_code exit_status in
-              t.state <- Exited { status = status_code; stdout = ""; stderr = "" };
-              Ok status_code
-      )
+          (* Spawn the process *)
+          match Kernel.Process.spawn
+            ~program:t.cmd
+            ~args:(Array.of_list t.args)
+            ~env:(Array.of_list t.env)
+            ?current_dir
+            ~stdio
+            () with
+          | Error err -> Error (SystemError (Kernel.Process.error_to_string err))
+          | Ok proc ->
+              match wait_for_exit proc with
+              | Error _ as err -> err
+              | Ok exit_status ->
+                  ignore (Kernel.Process.close proc);
+                  let status_code = kernel_status_code exit_status in
+                  t.state <- Exited { status = status_code; stdout = ""; stderr = "" };
+                  Ok status_code
+        )
     )

@@ -1,9 +1,9 @@
-open Global0
+open Prelude
 
 type t = int
 
-let make = fun a ->
-  if a > 0 then
-    Some a
+let make = fun value ->
+  if value = 0 then
+    Option.None
   else
-    None
+    Option.Some value

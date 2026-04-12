@@ -32,28 +32,22 @@ let path_error_message = function
   ^ path
   | Path.SystemError error -> error
 
-let kernel_tar_error_message = function
-  | Kernel.Archive.Tar.Invalid_header message -> "invalid tar header: " ^ message
-  | Kernel.Archive.Tar.Entry_in_progress -> "tar entry is still in progress"
-  | Kernel.Archive.Tar.Invalid_state message -> "invalid tar reader state: " ^ message
-  | Kernel.Archive.Tar.Unexpected_eof -> "unexpected end of tar archive"
-  | Kernel.Archive.Tar.Out_of_memory -> "tar reader ran out of memory"
-  | Kernel.Archive.Tar.Unknown_error message -> message
-
-let kernel_gzip_error_message = function
-  | Kernel.Compress.Gzip.Invalid_data -> "invalid gzip data"
-  | Kernel.Compress.Gzip.Need_dictionary -> "gzip stream requires a dictionary"
-  | Kernel.Compress.Gzip.Buffer_error -> "gzip decoder hit a buffer error"
-  | Kernel.Compress.Gzip.Out_of_memory -> "gzip decoder ran out of memory"
-  | Kernel.Compress.Gzip.Unknown_error message -> message
-
 let gzip_error_message = function
-  | Compress.Gzip.Kernel_error err -> kernel_gzip_error_message err
+  | Compress.Gzip.Engine_error err -> Compress.Gzip.error_to_string (Compress.Gzip.Engine_error err)
   | Compress.Gzip.Truncated_input -> "truncated gzip input"
 
 let gzip_read_error_message = function
-  | Compress.Gzip.Source_error err -> IO.error_message err
+  | Compress.Gzip.Source_error err -> Fs.File.error_to_string err
   | Compress.Gzip.Gzip_error err -> gzip_error_message err
+
+let protect = fun ~finally f ->
+  match f () with
+  | value ->
+      finally ();
+      value
+  | exception error ->
+      finally ();
+      raise error
 
 let version_label = fun version -> Option.unwrap_or ~default:"latest" version
 
@@ -78,9 +72,9 @@ let installed_binary_path = fun () ->
 let install_temp_path = fun dst ->
   let dir = Path.dirname dst in
   let name = Path.basename dst in
-  let pid = System.OsProcess.current_pid () in
-  let nonce = Random.bits () in
-  Path.(dir / Path.v ("." ^ name ^ ".upgrade-" ^ Int.to_string pid ^ "-" ^ Int.to_string nonce))
+  let pid = Process.id () in
+  let nonce = Random.bits () |> Result.expect ~msg:"failed to generate upgrade nonce" in
+  Path.(dir / Path.v ("." ^ name ^ ".upgrade-" ^ Int32.to_string pid ^ "-" ^ Int.to_string nonce))
 
 let cleanup_temp_file = fun path ->
   match Fs.remove_file path with
@@ -170,7 +164,7 @@ let download_archive = fun ~url ~dst ->
       Error error
 
 let tar_error_message = function
-  | Archive.Tar.Kernel_error err -> kernel_tar_error_message err
+  | Archive.Tar.Engine_error err -> Archive.Tar.error_to_string (Archive.Tar.Engine_error err)
   | Archive.Tar.Invalid_path path -> "invalid archive path: " ^ path
   | Archive.Tar.Unsafe_path path -> "unsafe archive path: " ^ path
   | Archive.Tar.Unsupported_entry_kind _ -> "unsupported archive entry kind"
@@ -178,9 +172,9 @@ let tar_error_message = function
 
 let extract_archive = fun ~archive_path ~into ->
   match Fs.File.open_read archive_path with
-  | Error err -> Error (IO.error_message err)
+  | Error err -> Error (Fs.File.error_to_string err)
   | Ok file ->
-      Kernel.Fun.protect ~finally:(fun () -> ignore (Fs.File.close file))
+      protect ~finally:(fun () -> ignore (Fs.File.close file))
         (fun () ->
           let reader = Compress.Gzip.to_reader (Fs.File.to_reader file) in
           match Archive.Tar.extract reader ~into with

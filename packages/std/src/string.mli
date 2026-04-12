@@ -16,8 +16,8 @@
     lower = String.lowercase_ascii text in let trimmed = String.trim " spaces "
     in
 
-    (* UTF-8 iteration *) String.into_iter text |> Iterator.for_each (fun char
-    -> Printf.printf "Char: %s\n" (Uchar.to_string char)) ```
+    (* UTF-8 iteration *) String.into_iter text |> Iterator.for_each (fun rune
+    -> Printf.printf "Char: %s\n" (Unicode.Rune.to_string rune)) ```
 
     ## UTF-8 Support
 
@@ -98,14 +98,14 @@ include module type of Kernel.String
     in println "Characters: %d" char_count;
 
     (* Process each character *) String.into_mut_iter text |>
-    MutIterator.for_each (fun uchar -> let code = Uchar.to_int uchar in
+    MutIterator.for_each (fun rune -> let code = Unicode.Rune.to_int rune in
     Printf.printf "U+%04X " code) ```
 
     ## Performance
 
     UTF-8 decoding has some overhead. For byte-level operations, use standard
     String functions instead. *)
-val into_mut_iter: string -> Uchar.t MutIterator.t
+val into_mut_iter: string -> Unicode.Rune.t MutIterator.t
 
 (** Creates an immutable iterator over UTF-8 characters.
 
@@ -117,18 +117,18 @@ val into_mut_iter: string -> Uchar.t MutIterator.t
     ```ocaml let text = "Café ☕" in
 
     (* Filter non-ASCII characters *) let ascii_only = String.into_iter text |>
-    Iterator.filter (fun uc -> Uchar.to_int uc < 128) |> Iterator.to_list |>
-    List.map Uchar.to_char |> String.of_list in (* ascii_only = "Caf " *)
+    Iterator.filter (fun rune -> Unicode.Rune.to_int rune < 128) |> Iterator.to_list |>
+    List.map Kernel.Unicode.Rune.to_char |> String.of_list in (* ascii_only = "Caf " *)
 
     (* Count emoji *) let emoji_count = String.into_iter text |> Iterator.filter
-    (fun uc -> let code = Uchar.to_int uc in code >= 0x1F600 && code <= 0x1F64F)
+    (fun rune -> let code = Unicode.Rune.to_int rune in code >= 0x1F600 && code <= 0x1F64F)
     |> Iterator.count ```
 
     ## UTF-8 Handling
 
     Invalid UTF-8 sequences are replaced with U+FFFD (�). For strict UTF-8
     validation, check bytes before iteration. *)
-val into_iter: string -> Uchar.t Iterator.t
+val into_iter: string -> Unicode.Rune.t Iterator.t
 
 (** # Unicode-Aware Operations *)
 (** Calculate display width for monospace fonts/terminals.

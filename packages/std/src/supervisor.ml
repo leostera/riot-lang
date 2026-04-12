@@ -71,7 +71,7 @@ type intensity = {
 type child_state = {
   spec: child_spec;
   pid: Pid.t option;
-  monitor: Process.Monitor.t option;
+  monitor: Actor.Monitor.t option;
 }
 
 (** {1 Supervisor State} *)
@@ -120,7 +120,7 @@ type Message.t +=
 let start_child = fun spec ->
   try
     let pid = spec.start () in
-    let monitor = Process.monitor pid in
+    let monitor = Actor.monitor pid in
     Some (pid, monitor)
   with
   | _exn -> None
@@ -139,13 +139,13 @@ let terminate_child_process = fun (child_state: child_state) ->
       match child_state.spec.shutdown with
       | BrutalKill ->
           (* TODO: Need Process.kill or Process.exit API in actors *)
-          send pid (Process.EXIT { from = self (); reason = Error (Failure "killed") })
+          send pid (Actor.EXIT { from = self (); reason = Error (Failure "killed") })
       | Timeout _timeout ->
           (* TODO: Implement graceful shutdown with timeout *)
-          send pid (Process.EXIT { from = self (); reason = Error (Failure "shutdown") })
+          send pid (Actor.EXIT { from = self (); reason = Error (Failure "shutdown") })
       | Infinity ->
           (* TODO: Implement graceful shutdown without timeout *)
-          send pid (Process.EXIT { from = self (); reason = Error (Failure "shutdown") })
+          send pid (Actor.EXIT { from = self (); reason = Error (Failure "shutdown") })
     )
 
 let add_restart = fun state child_id ->
@@ -180,7 +180,7 @@ let restart_one_for_one = fun state child_id reason ->
             (* Terminate old process if still alive *)
             (
               match child.monitor with
-              | Some mon -> Process.demonitor mon
+              | Some mon -> Actor.demonitor mon
               | None -> ()
             );
             (* Start new process *)
@@ -203,7 +203,7 @@ let restart_one_for_all = fun state _child_id reason ->
   List.iter
     (fun child ->
       match child.monitor with
-      | Some mon -> Process.demonitor mon
+      | Some mon -> Actor.demonitor mon
       | None -> ())
     children;
   (* Restart all children *)
@@ -443,7 +443,7 @@ let handle_terminate_child = fun state reply_to id ->
           terminate_child_process child;
           (
             match child.monitor with
-            | Some mon -> Process.demonitor mon
+            | Some mon -> Actor.demonitor mon
             | None -> ()
           );
           let updated =
@@ -472,7 +472,7 @@ let handle_stop = fun state reply_to ->
 let rec loop = fun state ->
   let selector msg =
     match msg with
-    | Process.DOWN _ -> `select msg
+    | Actor.DOWN _ -> `select msg
     | Supervisor_which_children _ -> `select msg
     | Supervisor_count_children _ -> `select msg
     | Supervisor_delete_child _ -> `select msg
@@ -482,7 +482,7 @@ let rec loop = fun state ->
     | _ -> `skip
   in
   match receive ~selector () with
-  | Process.DOWN { pid; reason; _ } ->
+  | Actor.DOWN { pid; reason; _ } ->
       (* Find which child died *)
       let children: child_state list = Cell.get state.children in
       let child_opt =
@@ -623,7 +623,7 @@ module Dynamic = struct
 
   type dynamic_child = {
     pid: Pid.t;
-    monitor: Process.Monitor.t;
+    monitor: Actor.Monitor.t;
     restart: restart;
     shutdown: shutdown;
   }
@@ -653,7 +653,7 @@ module Dynamic = struct
   let rec dynamic_loop = fun state ->
     let selector msg =
       match msg with
-      | Process.DOWN _ -> `select msg
+      | Actor.DOWN _ -> `select msg
       | Dynamic_start_child _ -> `select msg
       | Dynamic_terminate_child _ -> `select msg
       | Dynamic_which_children _ -> `select msg
@@ -661,7 +661,7 @@ module Dynamic = struct
       | _ -> `skip
     in
     match receive ~selector () with
-    | Process.DOWN { pid; reason; _ } -> (
+    | Actor.DOWN { pid; reason; _ } -> (
         match HashMap.get state.children pid with
         | None -> dynamic_loop state
         | Some child ->
@@ -706,7 +706,7 @@ module Dynamic = struct
         | _ -> (
             try
               let pid = start () in
-              let monitor = Process.monitor pid in
+              let monitor = Actor.monitor pid in
               let _ = HashMap.insert state.children pid { pid; monitor; restart; shutdown } in
               send reply_to (Dynamic_start_child_reply { result = Ok pid });
               dynamic_loop state
@@ -714,7 +714,7 @@ module Dynamic = struct
             | exn ->
                 send
                   reply_to
-                  (Dynamic_start_child_reply { result = Error (Exception.to_string exn) });
+                  (Dynamic_start_child_reply { result = Error (Kernel.Exception.to_string exn) });
                 dynamic_loop state
           )
       )
@@ -724,10 +724,10 @@ module Dynamic = struct
             send reply_to (Dynamic_terminate_child_reply { result = Error "not_found" });
             dynamic_loop state
         | Some child ->
-            Process.demonitor child.monitor;
+            Actor.demonitor child.monitor;
             let _ = HashMap.remove state.children pid in
             (* TODO: Actually terminate the child based on shutdown spec *)
-            send pid (Process.EXIT { from = self (); reason = Error (Failure "shutdown") });
+            send pid (Actor.EXIT { from = self (); reason = Error (Failure "shutdown") });
             send reply_to (Dynamic_terminate_child_reply { result = Ok () });
             dynamic_loop state
       )

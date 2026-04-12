@@ -1,4 +1,4 @@
-open Global0
+open Prelude
 
 type t = Non_zero_int.t
 
@@ -6,10 +6,14 @@ let readable = 0b0001
 
 let writable = 0b0010
 
-let add = fun a b -> a lor b
+let priority = 0b0100
 
-let remove = fun a b -> Non_zero_int.make (a land lnot b)
+let add = fun left right -> left lor right
 
-let is_readable = fun t -> t land readable != 0
+let remove = fun left right -> Non_zero_int.make (left land lnot right)
 
-let is_writable = fun t -> t land writable != 0
+let is_readable = fun value -> value land readable != 0
+
+let is_writable = fun value -> value land writable != 0
+
+let is_priority = fun value -> value land priority != 0

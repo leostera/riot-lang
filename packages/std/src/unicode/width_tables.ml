@@ -466,7 +466,7 @@ let in_table: table -> int -> bool = fun tbl c ->
       false
     else
       let mid = (low + high) / 2 in
-      let (range_start, range_end) = array__unsafe_get tbl mid in
+      let (range_start, range_end) = Array.unsafe_get tbl mid in
       if c < range_start then
         search low (mid - 1)
       else if c > range_end then

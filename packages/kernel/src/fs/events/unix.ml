@@ -113,12 +113,7 @@ let watch = fun t ~path ~latency ->
 let unwatch = fun t watch_id ->
   Result.map_error of_code_error (FFI.unwatch t.watcher watch_id)
 
-let event_of_raw = fun (path, flags, event_id) ->
-  {
-    path = Path.of_string path;
-    flags;
-    event_id;
-  }
+let event_of_raw = fun (path, flags, event_id) -> { path = Path.of_string path; flags; event_id }
 
 let poll = fun t ->
   Result.map

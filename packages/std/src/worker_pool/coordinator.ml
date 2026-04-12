@@ -11,7 +11,7 @@ type 'task state = {
   task_ref: 'task Ref.t;
 }
 
-let rec loop: type task. task state -> (unit, Process.exit_reason) result = fun state ->
+let rec loop: type task. task state -> (unit, Actor.exit_reason) result = fun state ->
   let selector msg =
     match msg with
     | ToCoordinator msg -> `select msg
@@ -24,7 +24,7 @@ let rec loop: type task. task state -> (unit, Process.exit_reason) result = fun 
       | None -> panic "Received worker of the wrong type?!"
     )
 
-and handle_worker_ready: type task. task state -> task worker -> (unit, Process.exit_reason) result = fun state worker ->
+and handle_worker_ready: type task. task state -> task worker -> (unit, Actor.exit_reason) result = fun state worker ->
   let _ = HashMap.remove state.busy_workers worker.pid in
   send state.owner PublicMessages.(WorkerReady worker);
   Queue.push state.idle_workers worker.pid;

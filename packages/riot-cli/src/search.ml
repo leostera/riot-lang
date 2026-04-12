@@ -26,8 +26,7 @@ let fail = fun err ->
   Error (Failure (message err))
 
 let int_of_string_opt = fun value ->
-  try Some (int_of_string value) with
-  | Failure _ -> None
+  Int.parse_opt value
 
 let request_of_matches = fun matches ->
   let query =

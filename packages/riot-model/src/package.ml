@@ -1083,7 +1083,8 @@ let parse_foreign_dependency:
 let parse_foreign_dependencies:
   (string * Toml.value) list -> package_path:Path.t -> (foreign_dependency list, string) result = fun items ~package_path ->
   Log.debug "[PACKAGE] parse_foreign_dependencies: checking for 'foreign-dependencies' key";
-  Log.debug ("[PACKAGE] Available keys: " ^ String.concat ", " (List.map fst items));
+  Log.debug
+    ("[PACKAGE] Available keys: " ^ String.concat ", " (List.map (fun (key, _) -> key) items));
   (* Collect all keys that start with "foreign-dependencies." *)
   let foreign_dep_items =
     List.filter_map

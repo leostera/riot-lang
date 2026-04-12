@@ -315,7 +315,7 @@ and public_tyvar_id = fun vars id ->
 let public_scheme_of_ty = fun ty ->
   let vars = ref [] in
   let body = public_type_of_ty vars ty in
-  let forall = !vars |> List.map snd |> List.rev in
+  let forall = !vars |> List.map (fun (_, public_id) -> public_id) |> List.rev in
   { Typing_context.forall; body }
 
 let public_binding_of_binding = fun binding ->

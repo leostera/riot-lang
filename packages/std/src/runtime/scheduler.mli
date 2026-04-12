@@ -5,7 +5,6 @@
     - a process registry shared by all workers
     - one runnable queue per scheduler worker
     - a dedicated reactor domain for timers and async I/O polling *)
-
 (** Opaque scheduler runtime handle. *)
 type t
 (** Snapshot of scheduler counters used for multicore tracing. *)

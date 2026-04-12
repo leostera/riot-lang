@@ -187,7 +187,9 @@ let apply_override = fun base (override: profile_override) ->
 (** Apply overrides from a list by looking up the profile's name *)
 let apply_overrides = fun base overrides ->
   Log.debug ("[PROFILE] apply_overrides: looking for profile '" ^ base.name ^ "' in overrides");
-  Log.debug ("[PROFILE] available overrides: " ^ String.concat ", " (List.map fst overrides));
+  Log.debug
+    ("[PROFILE] available overrides: "
+    ^ String.concat ", " (List.map (fun (name, _override) -> name) overrides));
   match List.assoc_opt base.name overrides with
   | None ->
       Log.debug ("[PROFILE] No override found for '" ^ base.name ^ "'");
@@ -216,11 +218,9 @@ let override_from_toml: (string * Std.Data.Toml.value) list -> profile_override 
     let get_int_opt key =
       match List.assoc_opt key table_items with
       | Some (String s) -> (
-          try
-            let i = int_of_string s in
-            Override (Some i)
-          with
-          | _ -> Inherit
+          match Int.parse_opt s with
+          | Some value -> Override (Some value)
+          | None -> Inherit
         )
       | _ -> Inherit
     in
@@ -268,8 +268,9 @@ let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_it
     let get_int_opt key =
       match List.assoc_opt key table_items with
       | Some (String s) -> (
-          try Some (int_of_string s) with
-          | _ -> base.inline
+          match Int.parse_opt s with
+          | Some value -> Some value
+          | None -> base.inline
         )
       | _ -> base.inline
     in

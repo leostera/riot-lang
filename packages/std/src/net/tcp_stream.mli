@@ -1,7 +1,7 @@
 (** TCP stream for connected sockets. *)
 open Global
 
-type t = Kernel.Net.Tcp_stream.t
+type t = Kernel.Net.TcpStream.t
 (** Errors returned by stream operations. *)
 type error =
   | Connection_refused

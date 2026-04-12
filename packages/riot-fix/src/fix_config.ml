@@ -181,7 +181,7 @@ let find_package_scope = fun scope file ->
       | Ok _ -> Some (String.length (Path.to_string package_scope.package_root), package_scope)
       | Error _ -> None) |> List.sort
     (fun ((left_len, _)) ((right_len, _)) ->
-      Int.compare right_len left_len) |> List.map snd |> function
+      Int.compare right_len left_len) |> List.map (fun (_, package_scope) -> package_scope) |> function
   | package_scope :: _ -> Some package_scope
   | [] -> None
 
@@ -208,7 +208,9 @@ let matching_rule_names = fun states name ->
   if String.contains name ":" then
     [ name ]
   else
-    let names = List.map fst states in
+    let names =
+      List.map (fun (rule_name, _) -> rule_name) states
+    in
     let exact_matches =
       List.filter
         (fun actual ->

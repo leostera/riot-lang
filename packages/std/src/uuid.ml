@@ -4,15 +4,27 @@ open IO
 
 (** {1 Type} *)
 
-type t = Kernel.UUID.t
+type t = bytes
+
+external v4_native: unit -> bytes = "std_uuid_v4"
+
+external v7_native: unit -> bytes = "std_uuid_v7"
+
+external to_string_native: bytes -> string = "std_uuid_to_string"
+
+external of_string_native: string -> bytes = "std_uuid_of_string"
+
+external compare: bytes -> bytes -> int = "std_uuid_compare"
+
+external is_nil_native: bytes -> bool = "std_uuid_is_nil"
 
 (** UUID represented as 16 bytes *)
 (** {1 Creation - Using Native Platform APIs} *)
 
-let v4 = fun () -> Kernel.UUID.v4 ()
+let v4 = fun () -> v4_native ()
 
 (** Generate random UUID v4 using platform's cryptographic RNG *)
-let v7 = fun () -> Kernel.UUID.v7 ()
+let v7 = fun () -> v7_native ()
 
 (** Generate timestamp-ordered UUID v7 (RFC 9562) - sortable by creation time *)
 let v5 = fun ~namespace:_ ~name:_ -> raise (Invalid_argument "UUID.v5 not yet implemented")
@@ -20,37 +32,44 @@ let v5 = fun ~namespace:_ ~name:_ -> raise (Invalid_argument "UUID.v5 not yet im
 let v3 = fun ~namespace:_ ~name:_ -> raise (Invalid_argument "UUID.v3 not yet implemented")
 
 let v4_from_bytes = fun bytes ->
-  match Kernel.UUID.of_bytes bytes with
-  | Ok uuid -> uuid
-  | Error _ -> raise (Invalid_argument "UUID.v4_from_bytes: invalid bytes")
+  if Bytes.length bytes = 16 then
+    Bytes.copy bytes
+  else
+    raise (Invalid_argument "UUID.v4_from_bytes: invalid bytes")
 
 let v7_from_parts = fun ~time_ms:_ ~rand_a:_ ~rand_b:_ ->
   raise (Invalid_argument "UUID.v7_from_parts not yet implemented")
 
 (** {1 Constants} *)
 
-let nil = Kernel.UUID.nil
+let nil = Bytes.make 16 '\x00'
 
-let max = Kernel.UUID.max
+let max = Bytes.make 16 '\xFF'
 
-let ns_dns = Kernel.UUID.ns_dns
+let ns_dns = Bytes.of_string "\x6b\xa7\xb8\x10\x9d\xad\x11\xd1\x80\xb4\x00\xc0\x4f\xd4\x30\xc8"
 
-let ns_url = Kernel.UUID.ns_url
+let ns_url = Bytes.of_string "\x6b\xa7\xb8\x11\x9d\xad\x11\xd1\x80\xb4\x00\xc0\x4f\xd4\x30\xc8"
 
-let ns_oid = Kernel.UUID.ns_oid
+let ns_oid = Bytes.of_string "\x6b\xa7\xb8\x12\x9d\xad\x11\xd1\x80\xb4\x00\xc0\x4f\xd4\x30\xc8"
 
-let ns_x500 = Kernel.UUID.ns_x500
+let ns_x500 = Bytes.of_string "\x6b\xa7\xb8\x14\x9d\xad\x11\xd1\x80\xb4\x00\xc0\x4f\xd4\x30\xc8"
 
 (** {1 Parsing} *)
 
-let of_string = Kernel.UUID.of_string
+let of_string = fun value ->
+  try Ok (of_string_native value) with
+  | Invalid_argument msg -> Error (`Invalid_uuid msg)
 
-let of_bytes = Kernel.UUID.of_bytes
+let of_bytes = fun value ->
+  if Bytes.length value = 16 then
+    Ok (Bytes.copy value)
+  else
+    Error (`Invalid_uuid "UUID must be exactly 16 bytes")
 
 (** {1 Serialization} *)
 
 let to_string = fun ?(upper = false) uuid ->
-  let str = Kernel.UUID.to_string uuid in
+  let str = to_string_native uuid in
   if upper then
     String.uppercase_ascii str
   else
@@ -64,19 +83,27 @@ let to_string_nodash = fun ?(upper = false) uuid ->
   else
     result
 
-let to_bytes = Kernel.UUID.to_bytes
+let to_bytes = fun uuid -> Bytes.copy uuid
 
 (** {1 Comparison} *)
 
-let equal = Kernel.UUID.equal
+let equal = fun left right ->
+  Bytes.equal left right
 
-let compare = Kernel.UUID.compare
-
-let is_nil = Kernel.UUID.is_nil
+let is_nil = is_nil_native
 
 (** {1 Query} *)
 
-let version = Kernel.UUID.version
+let version = fun uuid ->
+  if Bytes.length uuid < 7 then
+    None
+  else
+    let byte6 = Bytes.get uuid 6 |> Char.code in
+    let version = (byte6 lsr 4) land 0x0f in
+    if version >= 1 && version <= 8 then
+      Some version
+    else
+      None
 
 let variant = fun _uuid -> 0x8
 
@@ -108,24 +135,22 @@ module Monotonic = struct
   *)
   let extract_timestamp_ms = fun uuid ->
     let open Bytes in
-      let b0 = Int64.of_int (Char.code (get uuid 0)) in
-      let b1 = Int64.of_int (Char.code (get uuid 1)) in
-      let b2 = Int64.of_int (Char.code (get uuid 2)) in
-      let b3 = Int64.of_int (Char.code (get uuid 3)) in
-      let b4 = Int64.of_int (Char.code (get uuid 4)) in
-      let b5 = Int64.of_int (Char.code (get uuid 5)) in
-      Int64.(logor
-        (shift_left b0 40)
-        (logor
-          (shift_left b1 32)
-          (logor (shift_left b2 24) (logor (shift_left b3 16) (logor (shift_left b4 8) b5)))))
+      let base = Int64.of_int 256 in
+      let byte index = Int64.of_int (Char.code (get uuid index)) in
+      let rec loop index acc =
+        if index > 5 then
+          acc
+        else
+          loop (index + 1) (Int64.add (Int64.mul acc base) (byte index))
+      in
+      loop 0 0L
 
   (** Generate monotonic UUIDv7.
       If the current timestamp is less than the last seen timestamp,
       we clamp to last_timestamp + 1ms to preserve monotonicity.
   *)
   let v7 = fun state ->
-    let uuid = Kernel.UUID.v7 () in
+    let uuid = v7 () in
     let time_ms = extract_timestamp_ms uuid in
     let last_ms = Cell.get state.last_timestamp_ms in
     if time_ms < last_ms then
@@ -136,7 +161,7 @@ module Monotonic = struct
         (* Generate new UUID with clamped timestamp *)
         (* For MVP, we'll just generate a new one and hope it's >= clamped_ms
          A full implementation would rebuild the UUID with exact timestamp *)
-        let new_uuid = Kernel.UUID.v7 () in
+        let new_uuid = v7 () in
         Cell.set state.last_timestamp_ms (extract_timestamp_ms new_uuid);
         new_uuid
       end

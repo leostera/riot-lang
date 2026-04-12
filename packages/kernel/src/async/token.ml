@@ -1,14 +1,12 @@
 type t
 
-let unsafe_to_value = fun (x: t) -> Obj.magic x
+external make: 'value -> t = "kernel_new_async_token_make"
 
-let unsafe_to_int: t -> int = fun t -> unsafe_to_value t
+external unsafe_value: t -> 'value = "kernel_new_async_token_value"
 
-let hash = fun t -> Int.hash (unsafe_to_int t)
+external id: t -> int = "kernel_new_async_token_id"
 
-let equal = fun ?eq a b ->
-  match eq with
-  | Some f -> f (unsafe_to_value a) (unsafe_to_value b)
-  | None -> Int.equal (unsafe_to_int a) (unsafe_to_int b)
+let hash = fun token -> Int.hash (id token)
 
-let make: 'whatever -> t = fun x -> Obj.magic x
+let equal = fun left right ->
+  Int.equal (id left) (id right)

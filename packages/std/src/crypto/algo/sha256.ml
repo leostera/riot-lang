@@ -1,81 +1,45 @@
 (** SHA-256 cryptographic hash implementation *)
-open Global
-module Bytes = IO.Bytes
-module Iovec = IO.Iovec
-module List = Collections.List
-module Array = Collections.Array
+open Kernel
 
-type state = {
-  mutable segments_rev: Iovec.iov list;
-}
+type state = Common.state
 
-let create = fun () -> { segments_rev = [] }
+let create = Common.create_state
 
-let push_segment = fun state ba ~off ~len -> state.segments_rev <- { Iovec.ba; off; len } :: state.segments_rev
+let write = Common.write_string
 
-let write = fun state s ->
-  if String.length s > 0 then
-    push_segment state (Bytes.unsafe_of_string s) ~off:0 ~len:(String.length s)
+let write_hash = Common.write_hash
 
-let write_hash = fun state hash ->
-  let data = Kernel.Crypto.Hash.to_bytes hash |> Bytes.to_string in
-  write state data
+let write_unit = fun state () -> ()
 
-let write_unit = fun state () ->
-  (* SHA256 specific: unit is hashed as empty byte sequence *)
-  ()
+let write_int = fun state value ->
+  Common.push_bytes state (Common.bytes_of_int value)
 
-let write_int = fun state i ->
-  let bytes = Bytes.create 8 in
-  Bytes.set_int64_ne bytes 0 (Int64.of_int i);
-  write state (Bytes.unsafe_to_string bytes)
+let write_int32 = fun state value ->
+  Common.push_bytes state (Common.bytes_of_int32 value)
 
-let write_int32 = fun state i ->
-  let bytes = Bytes.create 4 in
-  Bytes.set_int32_ne bytes 0 i;
-  write state (Bytes.unsafe_to_string bytes)
+let write_int64 = fun state value ->
+  Common.push_bytes state (Common.bytes_of_int64 value)
 
-let write_int64 = fun state i ->
-  let bytes = Bytes.create 8 in
-  Bytes.set_int64_ne bytes 0 i;
-  write state (Bytes.unsafe_to_string bytes)
+let write_float = fun state value ->
+  Common.push_bytes state (Common.bytes_of_float value)
 
-let write_float = fun state f -> write_int64 state (Int64.bits_of_float f)
-
-let write_bool = fun state b ->
-  let bytes = Bytes.create 1 in
-  Bytes.set bytes 0
-    (
-      if b then
-        '\001'
-      else
-        '\000'
-    );
-  write state (Bytes.unsafe_to_string bytes)
+let write_bool = fun state value ->
+  Common.push_bytes state (Common.bytes_of_bool value)
 
 let write_list = fun writer state lst ->
-  (* SHA256: include length for collision resistance *)
-  write_int state (List.length lst);
-  List.iter (writer state) lst
+  write_int state (Common.list_length lst);
+  Common.iter_list (writer state) lst
 
 let write_array = fun writer state arr ->
-  (* SHA256: include length for collision resistance *)
   write_int state (Array.length arr);
   Array.iter (writer state) arr
 
 let finish = fun state ->
-  let segments = state.segments_rev |> List.rev |> Array.of_list in
-  Kernel.Crypto.FFI.sha256_iovec segments
+  Common.finish_iovec Ffi.sha256_iovec state
 
-(* Convenience functions *)
+let hash_string = Common.hash_string_with Ffi.sha256_iovec
 
-let hash_string = fun s ->
-  let state = create () in
-  write state s;
-  finish state
-
-let hash_bytes = fun b ->
-  Kernel.Crypto.FFI.sha256_iovec [|{ Iovec.ba = Bytes.copy b; off = 0; len = Bytes.length b }|]
+let hash_bytes = Common.hash_bytes_with Ffi.sha256_iovec
 
 let hash_unit = fun () ->
   let state = create () in

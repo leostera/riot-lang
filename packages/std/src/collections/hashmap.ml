@@ -1,0 +1,121 @@
+open Kernel
+module Hashtbl = Stdlib.Hashtbl
+
+type ('k, 'v) t = ('k, 'v) Hashtbl.t
+
+type ('k, 'v) entry =
+  Occupied of 'v
+  | Vacant
+
+let create = fun () -> Hashtbl.create 16
+
+let with_capacity = fun capacity -> Hashtbl.create capacity
+
+let of_list = fun pairs ->
+  let map = Hashtbl.create (List.length pairs) in
+  List.iter
+    (fun ((k, v)) ->
+      Hashtbl.replace map k v)
+    pairs;
+  map
+
+let insert = fun map key value ->
+  let previous = Hashtbl.find_opt map key in
+  Hashtbl.replace map key value;
+  previous
+
+let get = fun map key ->
+  Hashtbl.find_opt map key
+
+let remove = fun map key ->
+  let previous = get map key in
+  Hashtbl.remove map key;
+  previous
+
+let contains_key = fun map key ->
+  Hashtbl.mem map key
+
+let len = fun map -> Hashtbl.length map
+
+let is_empty = fun map -> Hashtbl.length map = 0
+
+let clear = fun map -> Hashtbl.clear map
+
+let keys = fun map ->
+  Hashtbl.fold (fun k _ acc -> k :: acc) map []
+
+let values = fun map ->
+  Hashtbl.fold (fun _ v acc -> v :: acc) map []
+
+let iter = fun f map ->
+  Hashtbl.iter f map
+
+let fold = fun f map acc ->
+  Hashtbl.fold f map acc
+
+let to_list = fun map ->
+  Hashtbl.fold (fun k v acc -> (k, v) :: acc) map []
+
+let entry = fun map key ->
+  match Hashtbl.find_opt map key with
+  | Some value -> Occupied value
+  | None -> Vacant
+
+let or_insert = fun map key default ->
+  match get map key with
+  | Some value -> value
+  | None ->
+      Hashtbl.replace map key default;
+      default
+
+let and_modify = fun map key f ->
+  match get map key with
+  | Some value ->
+      let new_value = f value in
+      Hashtbl.replace map key new_value
+  | None -> ()
+
+let into_iter: type k v. (k, v) t -> (k * v) Iter.Iterator.t = fun map ->
+  let module MapIter = struct
+    type state = {
+      items: (k * v) list;
+      pos: int;
+    }
+
+    type item = k * v
+
+    let next = fun state ->
+      if state.pos >= List.length state.items then
+        (None, state)
+      else
+        let item = List.nth state.items state.pos in
+        (Some item, { state with pos = state.pos + 1 })
+
+    let size = fun state -> max 0 (List.length state.items - state.pos)
+  end in
+  let items = to_list map in
+  Iter.Iterator.make (module MapIter) { MapIter.items; pos = 0 }
+
+let to_mut_iter: type k v. (k, v) t -> (k * v) Iter.MutIterator.t = fun map ->
+  let module MapIter = struct
+    type state = {
+      items: (k * v) list;
+      mutable pos: int;
+    }
+
+    type item = k * v
+
+    let next = fun state ->
+      if state.pos >= List.length state.items then
+        None
+      else
+        let item = List.nth state.items state.pos in
+        state.pos <- state.pos + 1;
+        Some item
+
+    let size = fun state -> max 0 (List.length state.items - state.pos)
+
+    let clone = fun state -> { items = state.items; pos = state.pos }
+  end in
+  let items = to_list map in
+  Iter.MutIterator.make (module MapIter) { MapIter.items; pos = 0 }

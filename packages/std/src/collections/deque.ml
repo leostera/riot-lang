@@ -1,6 +1,9 @@
-open Global
+open Kernel
 open Sync
-open Kernel.Collections
+
+let panic = Kernel.SystemError.panic
+
+module Array = Stdlib.Array
 
 type 'a t = {
   mutable data: 'a option array;

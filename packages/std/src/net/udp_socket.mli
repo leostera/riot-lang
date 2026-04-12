@@ -25,7 +25,7 @@
     is truncated to the buffer length by the operating system. *)
 open Global
 
-type t = Kernel.Net.Udp_socket.t
+type t = Kernel.Net.UdpSocket.t
 (** Errors returned by UDP socket operations. *)
 type error =
   | System_error of IO.error

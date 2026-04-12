@@ -79,7 +79,7 @@ let parse_request = fun matches ->
 
 let prompt_confirmation = fun ~package_name ~version ->
   eprint ("Yank " ^ package_name ^ "@" ^ version ^ " from pkgs.ml? [y/N]: ");
-  match Tty.make ~stdin:IO.stdin () with
+  match Tty.make () with
   | Error Tty.NoTtyConnected ->
       Error (PromptFailed "no tty connected")
   | Error (Tty.SystemError io_error) ->

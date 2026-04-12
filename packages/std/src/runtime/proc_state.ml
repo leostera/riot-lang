@@ -8,7 +8,7 @@ type ('a, 'b) continuation = ('a, 'b) Effect.Shallow.continuation
 
 type error_info = {
   exn: exn;
-  backtrace: Exception.raw_backtrace;
+  backtrace: Kernel.Exception.raw_backtrace;
 }
 
 type 'a t =
@@ -43,7 +43,7 @@ let suspended_with = fun k e -> Suspended (k, e)
 let handler_continue =
   let retc signal = finished (Ok signal) in
   let exnc exn =
-    let backtrace = Exception.get_raw_backtrace () in
+    let backtrace = Kernel.Exception.get_raw_backtrace () in
     finished (Error { exn; backtrace })
   in
   let effc: type c. c Effect.t -> ((c, 'a) continuation -> 'b) option = fun e ->

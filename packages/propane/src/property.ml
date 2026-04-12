@@ -92,8 +92,8 @@ let shrink_counter_example = fun arb value predicate max_steps ->
 let check = fun ?(config = default_config) (Prop prop) ->
   let rnd =
     match config.seed with
-    | Some seed -> Random.State.make [|seed|]
-    | None -> Random.State.make_self_init ()
+    | Some seed -> Random.Rng.standard ~seed:(Int.to_string seed) () |> Result.expect ~msg:"failed to build propane rng"
+    | None -> Random.Rng.standard () |> Result.expect ~msg:"failed to build propane rng"
   in
   let arbitrary = prop.arbitrary in
   let predicate = prop.predicate in
@@ -123,7 +123,8 @@ let check = fun ?(config = default_config) (Prop prop) ->
         | Property_failed msg ->
             Some (`Failed_with_msg (value, msg))
         | exn ->
-            let backtrace = Exception.get_backtrace () in
+            let backtrace = Kernel.Exception.raw_backtrace_to_string
+              (Kernel.Exception.get_raw_backtrace ()) in
             Some (`Exception (value, exn, backtrace))
       in
       match test_result with
@@ -214,7 +215,7 @@ let property = fun name arbitrary predicate ->
       | Error { exception_; backtrace } ->
           let msg = String.concat
             "\n"
-            [ "Exception raised:"; Exception.to_string exception_; backtrace; ] in
+            [ "Exception raised:"; Kernel.Exception.to_string exception_; backtrace ] in
           Error msg
       | Assumption_violated ->
           Error "Too many test cases violated assumptions (>10x test count)")

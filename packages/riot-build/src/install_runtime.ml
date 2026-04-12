@@ -163,9 +163,9 @@ let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~package_name ~bina
 let install_temp_path = fun dst ->
   let dir = Path.dirname dst in
   let name = Path.basename dst in
-  let pid = System.OsProcess.current_pid () in
-  let nonce = Random.bits () in
-  Path.(dir / Path.v ("." ^ name ^ ".install-" ^ Int.to_string pid ^ "-" ^ Int.to_string nonce))
+  let pid = Process.id () in
+  let nonce = Random.bits () |> Result.expect ~msg:"failed to generate install nonce" in
+  Path.(dir / Path.v ("." ^ name ^ ".install-" ^ Int32.to_string pid ^ "-" ^ Int.to_string nonce))
 
 let cleanup_temp_file = fun path ->
   match Fs.remove_file path with

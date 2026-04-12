@@ -168,9 +168,7 @@ let decode_codepoint = fun code ->
     | Some rune -> Unicode.Utf8.encode_rune rune
     | None -> Unicode.Rune.to_string Unicode.Rune.replacement
 
-let int_of_string_opt = fun text ->
-  try Some (int_of_string text) with
-  | _ -> None
+let int_of_string_opt = Int.parse_opt
 
 let named_entities = [
   ("nbsp", " ");

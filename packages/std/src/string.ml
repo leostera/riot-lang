@@ -1,6 +1,7 @@
 open Global
 open Collections
 open Iter
+module Uchar = Kernel.Unicode.Rune
 
 include Kernel.String
 
@@ -10,7 +11,7 @@ module MutIter = struct
     mutable current_pos: int;
   }
 
-  type item = Uchar.t
+  type item = Unicode.Rune.t
 
   let next = fun state ->
     if state.current_pos < length state.source then
@@ -38,7 +39,7 @@ module Iter = struct
     current_pos: int;
   }
 
-  type item = Uchar.t
+  type item = Unicode.Rune.t
 
   let next = fun ({ source; current_pos } as state) ->
     if current_pos < length source then
@@ -296,19 +297,20 @@ let to_reader = fun ?chunk_size value ->
     let read_vectored = fun source bufs ->
       let total = ref 0 in
       let continue = ref true in
-      IO.Iovec.iter bufs
-        (fun { IO.Iovec.ba; off; len } ->
+      IO.Iovec.iter
+        (fun { IO.Iovec.buffer; offset=segment_offset; length=segment_length } ->
           if !continue then
             let remaining = length source - !offset in
             if Int.equal remaining 0 then
               continue := false
             else
-              let to_read = min chunk_size (min remaining len) in
-              IO.Bytes.blit_string source !offset ba off to_read;
+              let to_read = min chunk_size (min remaining segment_length) in
+              IO.Bytes.blit_string source !offset buffer segment_offset to_read;
               offset := !offset + to_read;
               total := !total + to_read;
-              if Int.compare to_read len < 0 then
-                continue := false);
+              if Int.compare to_read segment_length < 0 then
+                continue := false)
+        bufs;
       Ok !total
   end in
   IO.Reader.of_read_src (module Read) value

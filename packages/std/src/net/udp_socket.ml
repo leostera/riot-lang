@@ -3,7 +3,7 @@ open Global
 open IO
 open Kernel.Async
 
-type t = Kernel.Net.Udp_socket.t
+type t = Kernel.Net.UdpSocket.t
 
 type error =
   | System_error of IO.error
@@ -14,27 +14,27 @@ type recv_result = {
 }
 
 let io_error_of_udp_error = function
-  | Kernel.Net.Udp_socket.InvalidSlice _ -> IO.Invalid_argument
-  | Kernel.Net.Udp_socket.InvalidSocketAddr _ -> IO.Invalid_argument
-  | Kernel.Net.Udp_socket.WouldBlock -> IO.Operation_would_block
-  | Kernel.Net.Udp_socket.TimedOut -> IO.Connection_timed_out
-  | Kernel.Net.Udp_socket.ConnectionRefused -> IO.Connection_refused
-  | Kernel.Net.Udp_socket.ConnectionReset -> IO.Connection_reset_by_peer
-  | Kernel.Net.Udp_socket.NetworkUnreachable -> IO.Network_is_unreachable
-  | Kernel.Net.Udp_socket.NotConnected -> IO.Transport_endpoint_not_connected
-  | Kernel.Net.Udp_socket.MessageTooLong -> IO.Message_too_long
-  | Kernel.Net.Udp_socket.DestinationAddressRequired -> IO.Destination_address_required
-  | Kernel.Net.Udp_socket.AddressInUse -> IO.Address_already_in_use
-  | Kernel.Net.Udp_socket.AddressNotAvailable -> IO.Cannot_assign_requested_address
-  | Kernel.Net.Udp_socket.System error -> IO.of_system_error error
+  | Kernel.Net.UdpSocket.InvalidSlice _ -> IO.Invalid_argument
+  | Kernel.Net.UdpSocket.InvalidSocketAddr _ -> IO.Invalid_argument
+  | Kernel.Net.UdpSocket.WouldBlock -> IO.Operation_would_block
+  | Kernel.Net.UdpSocket.TimedOut -> IO.Connection_timed_out
+  | Kernel.Net.UdpSocket.ConnectionRefused -> IO.Connection_refused
+  | Kernel.Net.UdpSocket.ConnectionReset -> IO.Connection_reset_by_peer
+  | Kernel.Net.UdpSocket.NetworkUnreachable -> IO.Network_is_unreachable
+  | Kernel.Net.UdpSocket.NotConnected -> IO.Transport_endpoint_not_connected
+  | Kernel.Net.UdpSocket.MessageTooLong -> IO.Message_too_long
+  | Kernel.Net.UdpSocket.DestinationAddressRequired -> IO.Destination_address_required
+  | Kernel.Net.UdpSocket.AddressInUse -> IO.Address_already_in_use
+  | Kernel.Net.UdpSocket.AddressNotAvailable -> IO.Cannot_assign_requested_address
+  | Kernel.Net.UdpSocket.System error -> IO.of_system_error error
 
 let bind = fun ?(reuse_addr = true) ?(reuse_port = false) addr ->
-  match Kernel.Net.Udp_socket.bind ~reuse_addr ~reuse_port addr with
+  match Kernel.Net.UdpSocket.bind ~reuse_addr ~reuse_port addr with
   | Ok socket -> Ok socket
   | Error err -> Error (System_error (io_error_of_udp_error err))
 
 let connect = fun socket addr ->
-  match Kernel.Net.Udp_socket.connect socket addr with
+  match Kernel.Net.UdpSocket.connect socket addr with
   | Ok () -> Ok ()
   | Error err -> Error (System_error (io_error_of_udp_error err))
 
@@ -44,12 +44,12 @@ let recv = fun socket buffer ?(pos = 0) ?len ?timeout () ->
     | None -> Bytes.length buffer - pos
     | Some requested -> requested
   in
-  let source = Kernel.Net.Udp_socket.to_source socket in
+  let source = Kernel.Net.UdpSocket.to_source socket in
   let timeout = Option.map Time.Duration.to_secs_float timeout in
   let rec recv_loop () =
-    match Kernel.Net.Udp_socket.recv socket buffer ~pos ~len with
+    match Kernel.Net.UdpSocket.recv socket buffer ~pos ~len with
     | Ok bytes_read -> Ok bytes_read
-    | Error Kernel.Net.Udp_socket.WouldBlock -> Runtime.syscall
+    | Error Kernel.Net.UdpSocket.WouldBlock -> Runtime.syscall
       ?timeout
       ~name:"UdpSocket.recv"
       ~interest:Interest.readable
@@ -65,12 +65,12 @@ let recv_from = fun socket buffer ?(pos = 0) ?len ?timeout () ->
     | None -> Bytes.length buffer - pos
     | Some requested -> requested
   in
-  let source = Kernel.Net.Udp_socket.to_source socket in
+  let source = Kernel.Net.UdpSocket.to_source socket in
   let timeout = Option.map Time.Duration.to_secs_float timeout in
   let rec recv_loop () =
-    match Kernel.Net.Udp_socket.recv_from socket buffer ~pos ~len with
+    match Kernel.Net.UdpSocket.recv_from socket buffer ~pos ~len with
     | Ok (bytes_read, from) -> Ok { bytes_read; from }
-    | Error Kernel.Net.Udp_socket.WouldBlock -> Runtime.syscall
+    | Error Kernel.Net.UdpSocket.WouldBlock -> Runtime.syscall
       ?timeout
       ~name:"UdpSocket.recv_from"
       ~interest:Interest.readable
@@ -86,11 +86,11 @@ let send = fun socket buffer ?(pos = 0) ?len () ->
     | None -> Bytes.length buffer - pos
     | Some requested -> requested
   in
-  let source = Kernel.Net.Udp_socket.to_source socket in
+  let source = Kernel.Net.UdpSocket.to_source socket in
   let rec send_loop () =
-    match Kernel.Net.Udp_socket.send socket buffer ~pos ~len with
+    match Kernel.Net.UdpSocket.send socket buffer ~pos ~len with
     | Ok bytes_written -> Ok bytes_written
-    | Error Kernel.Net.Udp_socket.WouldBlock -> Runtime.syscall
+    | Error Kernel.Net.UdpSocket.WouldBlock -> Runtime.syscall
       ~name:"UdpSocket.send"
       ~interest:Interest.writable
       ~source
@@ -105,11 +105,11 @@ let send_to = fun socket addr buffer ?(pos = 0) ?len () ->
     | None -> Bytes.length buffer - pos
     | Some requested -> requested
   in
-  let source = Kernel.Net.Udp_socket.to_source socket in
+  let source = Kernel.Net.UdpSocket.to_source socket in
   let rec send_loop () =
-    match Kernel.Net.Udp_socket.send_to socket addr buffer ~pos ~len with
+    match Kernel.Net.UdpSocket.send_to socket addr buffer ~pos ~len with
     | Ok bytes_written -> Ok bytes_written
-    | Error Kernel.Net.Udp_socket.WouldBlock -> Runtime.syscall
+    | Error Kernel.Net.UdpSocket.WouldBlock -> Runtime.syscall
       ~name:"UdpSocket.send_to"
       ~interest:Interest.writable
       ~source
@@ -119,10 +119,13 @@ let send_to = fun socket addr buffer ?(pos = 0) ?len () ->
   send_loop ()
 
 let local_addr = fun socket ->
-  match Kernel.Net.Udp_socket.local_addr socket with
+  match Kernel.Net.UdpSocket.local_addr socket with
   | Ok addr -> addr
   | Error err -> panic
-    (format Format.[ str "UdpSocket.local_addr failed: "; str (IO.error_message (io_error_of_udp_error err)) ])
+    (format
+      Format.[
+        str "UdpSocket.local_addr failed: ";
+        str (IO.error_message (io_error_of_udp_error err))
+      ])
 
-let close = fun socket ->
-  ignore (Kernel.Net.Udp_socket.close socket)
+let close = fun socket -> ignore (Kernel.Net.UdpSocket.close socket)

@@ -28,18 +28,12 @@ type error =
 (** Create and bind a TCP listener. The socket is automatically set to
     non-blocking mode. *)
 val bind:
-  ?reuse_addr:bool ->
-  ?reuse_port:bool ->
-  ?backlog:int ->
-  Addr.stream_addr ->
-  (t, error) Kernel.result
+  ?reuse_addr:bool -> ?reuse_port:bool -> ?backlog:int -> Addr.stream_addr -> (t, error) Kernel.result
 
 (** Accept a connection. This will suspend the process until a connection is
     available. Optionally specify a timeout for the syscall. *)
 val accept:
-  ?timeout:Time.Duration.t ->
-  t ->
-  (Kernel.Net.Tcp_stream.t * Addr.stream_addr, error) Kernel.result
+  ?timeout:Time.Duration.t -> t -> (Kernel.Net.TcpStream.t * Addr.stream_addr, error) Kernel.result
 
 (** Get the local address the listener is bound to. *)
 val local_addr: t -> Addr.stream_addr

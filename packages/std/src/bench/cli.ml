@@ -160,7 +160,7 @@ let main = fun ~name ~benchmarks ~args ->
                 let config = Bench_runner.{ reporter; suite_info } in
                 let summary = Bench_runner.run_benchmarks ~config benchmarks_to_run in
                 if summary.failed > 0 then
-                  exit 1;
+                  System.exit 1;
                 Ok ()
           )
       | _ ->
@@ -168,6 +168,6 @@ let main = fun ~name ~benchmarks ~args ->
           let config = Bench_runner.{ reporter = (module Reporter.Default); suite_info } in
           let summary = Bench_runner.run_benchmarks ~config benchmarks in
           if summary.failed > 0 then
-            exit 1;
+            System.exit 1;
           Ok ()
     )

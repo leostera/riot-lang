@@ -5,8 +5,9 @@
 
 * riot check kernel-new
 
-
 # Before Announcing
+
+* bug: changing riot.toml dep paths didn't break the cache :( 
 
 * regression: cold riot build takes _ages_ on syn.deps? 
 
@@ -34,6 +35,8 @@
 * `riot check` should be able to type-check Riot! 
 
 * `riot lsp` doesn't use 200gb of ram
+
+* Std.Random
 
 
 # Next

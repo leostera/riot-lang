@@ -1,7 +1,5 @@
-include Runtime.Actor
+include Kernel.Process
 
-let self = Runtime.self
+let execv = Kernel.Process.execv
 
-let spawn = Runtime.spawn
-
-let spawn_link = Runtime.spawn_link
+let id = fun () -> Int32.of_int (current_pid ())

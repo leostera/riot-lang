@@ -260,7 +260,7 @@ let build_with_connect = fun connect ~allow_partial_failures ?(record_cache_gene
                             else
                               Ok ()
                           in
-                          Ok (List.map snd lane_results |> List.concat)
+                          Ok (List.map (fun (_, results) -> results) lane_results |> List.concat)
                       | Error _ as err -> err
                     )
                   with

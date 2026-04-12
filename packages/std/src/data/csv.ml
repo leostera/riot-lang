@@ -164,7 +164,7 @@ let of_string = fun ?(config = default_config) str ->
     let next = fun () ->
       try parse_row () |> Option.map (fun row -> Ok row) with
       | Csv_parse_error err -> Some (Error err)
-      | exn -> Some (Error (Unknown_error (Exception.to_string exn)))
+      | exn -> Some (Error (Unknown_error (Kernel.Exception.to_string exn)))
 
     let size = fun () -> 0
 

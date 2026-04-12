@@ -3,8 +3,11 @@
     The top-level module intentionally exposes just the canonical type homes and the portable
     runtime, filesystem, network, time, environment, and process boundaries that higher layers
     build on. *)
-
 include module type of Prelude
+
+(** Use `dangerous_unsafe_cast value` only when a separate proof already establishes the target
+    type. This is the explicit replacement for leaking `Obj.magic` into higher layers. *)
+val dangerous_unsafe_cast: 'value -> 'cast
 
 (** Foundational type homes. *)
 module Bool = Bool
@@ -34,6 +37,8 @@ module String = String
 module Bytes = Bytes
 
 module Ptr = Ptr
+
+module Random = Random
 
 module Array = Array
 

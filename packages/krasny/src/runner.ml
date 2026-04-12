@@ -502,7 +502,7 @@ let summarize = fun ~duration files ->
     }
     files
 
-let run_streaming = fun ~mode ?(concurrency = System.available_parallelism) ?(should_ignore = fun _ ->
+let run_streaming = fun ~mode ?(concurrency = Thread.available_parallelism) ?(should_ignore = fun _ ->
   false) ~roots ~on_result () ->
   let concurrency = max 1 concurrency in
   let run_ref = Ref.make () in
@@ -546,7 +546,7 @@ let run_verify_streaming = fun ?concurrency ?should_ignore ~roots ~on_result () 
 let run_format_streaming = fun ?concurrency ?should_ignore ~roots ~on_result () ->
   run_streaming ~mode:Format ?concurrency ?should_ignore ~roots ~on_result ()
 
-let run_batch = fun ~mode ?(concurrency = System.available_parallelism) ?(should_ignore = fun _ -> false) files ->
+let run_batch = fun ~mode ?(concurrency = Thread.available_parallelism) ?(should_ignore = fun _ -> false) files ->
   let concurrency = max 1 concurrency in
   let start = Time.Instant.now () in
   let check_fn =
@@ -557,7 +557,7 @@ let run_batch = fun ~mode ?(concurrency = System.available_parallelism) ?(should
   in
   let files = files |> List.filter (fun path -> not (should_ignore path)) |> List.sort compare_paths in
   let results = WorkerPool.SimpleWorkerPool.run ~concurrency ~tasks:files ~fn:check_fn ()
-  |> List.map snd
+  |> List.map (fun (_, result) -> result)
   |> List.sort (fun left right -> compare_paths left.file right.file) in
   let duration = Time.Instant.elapsed start in
   { files = results; summary = summarize ~duration results }

@@ -173,7 +173,7 @@ val var: 't var_type -> name:string -> 't option
     - `Char`: Takes first character of the string
     - `String`: Returns value as-is
 *)
-val set_var: name:string -> value:string -> 't option
+val set_var: name:string -> value:string -> string option
 
 (** Sets an environment variable.
 

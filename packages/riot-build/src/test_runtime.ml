@@ -709,7 +709,7 @@ let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_er
         if suite_binaries = [] then
           Ok []
         else
-          let concurrency = Int.max 1 (Int.min 8 System.available_parallelism) in
+          let concurrency = Int.max 1 (Int.min 8 Thread.available_parallelism) in
           let parent = self () in
           let rec spawn_initial active remaining =
             if active >= concurrency then
@@ -729,7 +729,7 @@ let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_er
                             binary_path with
                           | exn -> Error (SuiteExecutionError {
                             suite;
-                            reason = Exception.to_string exn
+                            reason = Kernel.Exception.to_string exn
                           })
                         in
                         send parent (ListedTestsReady (suite, result));
@@ -772,7 +772,7 @@ let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_er
                             next_binary_path with
                           | exn -> Error (SuiteExecutionError {
                             suite = next_suite;
-                            reason = Exception.to_string exn
+                            reason = Kernel.Exception.to_string exn
                           })
                         in
                         send parent (ListedTestsReady (next_suite, result));
@@ -786,7 +786,7 @@ let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_er
             (fun collected ->
               collected
               |> List.sort (fun (left, _) (right, _) -> compare_suite_binary left right)
-              |> List.map snd)
+              |> List.map (fun (_, value) -> value))
 
 let test = fun ?(on_event = no_event) (request: test_request) ->
   let suites = collect_suite_binaries

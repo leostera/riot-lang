@@ -1,5 +1,6 @@
 (** Standard library extensions and utilities *)
 module Agent = Agent
+module Actor = Actor
 module Application = Application
 module Archive = Archive
 module ArgParser = Arg_parser
@@ -36,6 +37,7 @@ module Path = Path
 module Pid = Pid
 module Process = Process
 module Ptr = Ptr
+module Random = Random
 module Range = Range
 module Regex = Regex
 module Ref = Ref

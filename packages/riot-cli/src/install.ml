@@ -171,7 +171,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
       | Error (Failure message) ->
           Error (`Cli message)
       | Error err ->
-          Error (`Cli (Exception.to_string err))
+          Error (`Cli (Kernel.Exception.to_string err))
       | Ok (Remote_source { source_spec; binary_name }) ->
           if local_only then
             Error (`Cli "--local is only supported when installing a workspace binary")

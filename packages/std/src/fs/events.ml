@@ -24,10 +24,9 @@ let create = fun () ->
 
 let watch = fun t ~path ~latency ->
   match Ev.watch
-          t.kernel
-          ~path:(Kernel.Path.of_string (Path.to_string path))
-          ~latency:(Time.Duration.to_secs_float latency)
-  with
+    t.kernel
+    ~path:(Kernel.Path.of_string (Path.to_string path))
+    ~latency:(Time.Duration.to_secs_float latency) with
   | Ok watch_id -> Ok watch_id
   | Error error -> Error (of_events_error error)
 
@@ -45,15 +44,14 @@ let poll = fun t ->
     | [] -> []
     | event :: rest -> Event.from_kernel_event event :: map_events rest
   in
-  let rec await_ready = fun () ->
+  let rec await_ready () =
     match Ev.poll t.kernel with
     | Ok events -> Ok (map_events events)
-    | Error error when is_would_block error ->
-        Runtime.syscall
-          ~name:"Fs.Events.poll"
-          ~interest:Kernel.Async.Interest.readable
-          ~source:t.source
-          await_ready
+    | Error error when is_would_block error -> Runtime.syscall
+      ~name:"Fs.Events.poll"
+      ~interest:Kernel.Async.Interest.readable
+      ~source:t.source
+      await_ready
     | Error error -> Error (of_events_error error)
   in
   await_ready ()

@@ -157,7 +157,7 @@ module Ident = struct
               let width = width + 1 + String.length segment in
               (Qualified { syntax_node = make_node (); prefix; dot_token; name_token }, width))
             (initial, first_width)
-            rest |> fst
+            rest |> fun (ident, _) -> ident
 
   let equal = fun left right ->
     let left_segments = segments left |> List.map Token.text in

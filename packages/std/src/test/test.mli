@@ -47,11 +47,7 @@ type test_case = Test_case.t
 
 (** [case name fn] creates a regular unit test. *)
 val case:
-  ?size:size ->
-  ?reliability:reliability ->
-  string ->
-  (ctx -> (unit, string) Kernel.result) ->
-  test_case
+  ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) Kernel.result) -> test_case
 
 (** [property name ~examples fn] creates a property test.
     Use this for property-based tests to show the number of examples tested.
@@ -74,11 +70,7 @@ val property:
 
 (** [skip name fn] creates a skipped test. *)
 val skip:
-  ?size:size ->
-  ?reliability:reliability ->
-  string ->
-  (ctx -> (unit, string) Kernel.result) ->
-  test_case
+  ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) Kernel.result) -> test_case
 
 (** [todo name] creates a placeholder test marked as todo. *)
 val todo: ?size:size -> ?reliability:reliability -> string -> test_case

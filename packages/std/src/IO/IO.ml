@@ -1,5 +1,4 @@
 open Kernel
-
 module Buffer = Buffer
 module Bytes = Stdlib.Bytes
 module Iovec = Kernel.IO.Iovec
@@ -114,7 +113,8 @@ let of_system_error = function
   | Kernel.SystemError.MessageTooLong -> Message_too_long
   | Kernel.SystemError.NoSuchProcess -> Process_down
   | Kernel.SystemError.DirectoryNotEmpty -> Directory_not_empty
-  | Kernel.SystemError.Unknown code -> Unknown_error ("Unknown system error code " ^ Kernel.Int.to_string code)
+  | Kernel.SystemError.Unknown code -> Unknown_error ("Unknown system error code "
+  ^ Kernel.Int.to_string code)
 
 let of_async_error = function
   | Kernel.Async.InvalidTimeoutNs _ -> Invalid_argument

@@ -1,4 +1,6 @@
-type ('value, 'error) result = | Ok of 'value | Error of 'error
+type ('value, 'error) result =
+  | Ok of 'value
+  | Error of 'error
 
 exception Invalid_argument of string
 
@@ -80,6 +82,8 @@ let ( *. ) = Caml_runtime.mul_float
 
 let ( /. ) = Caml_runtime.div_float
 
+let ( @@ ) = fun f value -> f value
+
 let ( |> ) = fun value f -> f value
 
 let ( ^ ) = fun left right ->
@@ -89,6 +93,11 @@ let ( ^ ) = fun left right ->
   Caml_runtime.string_blit left 0 output 0 left_length;
   Caml_runtime.string_blit right 0 output left_length right_length;
   Caml_runtime.bytes_unsafe_to_string output
+
+let rec ( @ ) = fun left right ->
+  match left with
+  | [] -> right
+  | head :: tail -> head :: (tail @ right)
 
 let ( ** ) = Caml_runtime.pow_float
 
@@ -101,21 +110,21 @@ let float = Caml_runtime.float_of_int
 let string_of_int = Caml_runtime.format_int "%d"
 
 let string_of_float =
-  let valid_float_lexem = fun value ->
+  let valid_float_lexem value =
     let length = Caml_runtime.string_length value in
     let rec loop index =
-      if index >= length then (
-        let out = Caml_runtime.bytes_create (length + 1) in
-        Caml_runtime.string_blit value 0 out 0 length;
-        Caml_runtime.bytes_set out length '.';
-        Caml_runtime.bytes_unsafe_to_string out
-      ) else
+      if index >= length then
+        (
+          let out = Caml_runtime.bytes_create (length + 1) in
+          Caml_runtime.string_blit value 0 out 0 length;
+          Caml_runtime.bytes_set out length '.';
+          Caml_runtime.bytes_unsafe_to_string out
+        )
+      else
         match Caml_runtime.string_get value index with
         | '0' .. '9'
-        | '-' ->
-            loop (index + 1)
-        | _ ->
-            value
+        | '-' -> loop (index + 1)
+        | _ -> value
     in
     loop 0
   in

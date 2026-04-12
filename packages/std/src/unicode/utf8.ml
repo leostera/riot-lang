@@ -1,6 +1,6 @@
 open Global
 module String = Kernel.String
-module Uchar = Kernel.Uchar
+module Uchar = Kernel.Unicode.Rune
 
 (** UTF-8 encoding/decoding *)
 let decode_rune = fun s pos ->

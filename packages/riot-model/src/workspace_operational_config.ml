@@ -39,14 +39,31 @@ let message = function
   | InvalidConfig { path; error } -> "invalid workspace config '" ^ Path.to_string path ^ "': " ^ error
 
 let normalize_size = fun raw ->
-  raw
-  |> String.trim
-  |> String.to_seq
-  |> List.of_seq
-  |> List.filter (fun c -> not (Char.equal c ' ' || Char.equal c '\t'))
-  |> List.to_seq
-  |> String.of_seq
-  |> String.lowercase_ascii
+  let raw = String.trim raw in
+  let compact_length =
+    String.fold_left
+      (fun count c ->
+        if Char.equal c ' ' || Char.equal c '\t' then
+          count
+        else
+          count + 1)
+      0
+      raw
+  in
+  let compact = Kernel.Bytes.create compact_length in
+  let _ =
+    String.fold_left
+      (fun index c ->
+        if Char.equal c ' ' || Char.equal c '\t' then
+          index
+        else (
+          Kernel.Bytes.set compact index c;
+          index + 1
+        ))
+      0
+      raw
+  in
+  String.lowercase_ascii (Kernel.Bytes.to_string compact)
 
 let unit_multiplier = function
   | ""
@@ -84,15 +101,14 @@ let parse_max_size = fun raw ->
     match unit_multiplier unit_str with
     | None -> Error ("unsupported max_size unit '" ^ unit_str ^ "'")
     | Some multiplier -> (
-        try
-          let number = float_of_string number_str in
-          if number < 0.0 then
-            Error "max_size must be non-negative"
-          else
-            let bytes = number *. Int64.to_float multiplier in
-            Ok (Int64.of_float bytes)
-        with
-        | _ -> Error ("invalid max_size value '" ^ raw ^ "'")
+        match Float.parse_opt number_str with
+        | None -> Error ("invalid max_size value '" ^ raw ^ "'")
+        | Some number ->
+            if number < 0.0 then
+              Error "max_size must be non-negative"
+            else
+              let bytes = number *. Int64.to_float multiplier in
+              Ok (Int64.of_float bytes)
       )
 
 let parse_cache_policy = fun ~path fields ->
@@ -118,14 +134,31 @@ let parse_cache_policy = fun ~path fields ->
   | (_, Error error) -> Error (InvalidConfig { path; error })
 
 let normalize_duration = fun raw ->
-  raw
-  |> String.trim
-  |> String.to_seq
-  |> List.of_seq
-  |> List.filter (fun c -> not (Char.equal c ' ' || Char.equal c '\t'))
-  |> List.to_seq
-  |> String.of_seq
-  |> String.lowercase_ascii
+  let raw = String.trim raw in
+  let compact_length =
+    String.fold_left
+      (fun count c ->
+        if Char.equal c ' ' || Char.equal c '\t' then
+          count
+        else
+          count + 1)
+      0
+      raw
+  in
+  let compact = Kernel.Bytes.create compact_length in
+  let _ =
+    String.fold_left
+      (fun index c ->
+        if Char.equal c ' ' || Char.equal c '\t' then
+          index
+        else (
+          Kernel.Bytes.set compact index c;
+          index + 1
+        ))
+      0
+      raw
+  in
+  String.lowercase_ascii (Kernel.Bytes.to_string compact)
 
 let duration_unit_seconds = function
   | ""
@@ -156,14 +189,13 @@ let parse_duration = fun raw ->
     match duration_unit_seconds unit_str with
     | None -> Error ("unsupported small_test_timeout unit '" ^ unit_str ^ "'")
     | Some multiplier -> (
-        try
-          let number = float_of_string number_str in
-          if number < 0.0 then
-            Error "small_test_timeout must be non-negative"
-          else
-            Ok (Time.Duration.from_secs_float (number *. multiplier))
-        with
-        | _ -> Error ("invalid small_test_timeout value '" ^ raw ^ "'")
+        match Float.parse_opt number_str with
+        | None -> Error ("invalid small_test_timeout value '" ^ raw ^ "'")
+        | Some number ->
+            if number < 0.0 then
+              Error "small_test_timeout must be non-negative"
+            else
+              Ok (Time.Duration.from_secs_float (number *. multiplier))
       )
 
 let find_field = fun names fields ->

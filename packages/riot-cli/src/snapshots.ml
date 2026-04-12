@@ -306,7 +306,7 @@ let review_pending_snapshots_with_decider = fun ~workspace_root snapshots ~decid
   loop empty_review_summary snapshots
 
 let review_pending_snapshots_interactively = fun ~workspace_root snapshots ->
-  match Tty.make ~stdin:IO.stdin () with
+  match Tty.make () with
   | Error Tty.NoTtyConnected ->
       review_pending_snapshots ~workspace_root snapshots
       |> Result.map (fun () -> empty_review_summary)

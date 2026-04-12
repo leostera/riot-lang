@@ -30,7 +30,7 @@ let run_single_benchmark = fun index (bench: Bench_case.t) ->
       Bench_result.{ index; name = bench.name; result = Completed stats }
     with
     | exn ->
-        let msg = Exception.to_string exn in
+        let msg = Kernel.Exception.to_string exn in
         Bench_result.{ index; name = bench.name; result = Failed msg }
 
 (* Run a comparison benchmark *)

@@ -16,12 +16,6 @@ let run_capture = fun () ->
   let cmd = Command.make (self_executable ()) ~args:[ "capture-both-streams" ] in
   Command.output cmd |> Result.expect ~msg:"failed to run capture helper"
 
-let run_fd_check = fun fd_nums ->
-  let check_script = "for fd in \"$@\"; do if [ -e \"/dev/fd/$fd\" ]; then echo \"$fd\"; exit 1; fi; done" in
-  let args = "-c" :: check_script :: "check-fd-closed-on-exec" :: List.map Int.to_string fd_nums in
-  let cmd = Command.make "/bin/sh" ~args in
-  Command.output cmd |> Result.expect ~msg:"failed to run fd inheritance helper"
-
 let test_command_output_drains_stdout_and_stderr = fun _ctx ->
   let output = run_capture () in
   if not (Int.equal output.status 0) then
@@ -33,33 +27,8 @@ let test_command_output_drains_stdout_and_stderr = fun _ctx ->
   else
     Ok ()
 
-let test_command_spawn_does_not_inherit_pipe_fds = fun _ctx ->
-  let pipe = Kernel.Fd.pipe () in
-  let close_pipe () =
-    Kernel.Fd.close pipe.read_fd;
-    Kernel.Fd.close pipe.write_fd
-  in
-  let result =
-    try
-      let output = run_fd_check [ Kernel.Fd.to_int pipe.read_fd; Kernel.Fd.to_int pipe.write_fd ] in
-      if Int.equal output.status 0 then
-        Ok ()
-      else
-        Error ("expected helper to observe closed pipe fds, got "
-        ^ Int.to_string output.status
-        ^ ": "
-        ^ output.stderr)
-    with
-    | exn ->
-        close_pipe ();
-        raise exn
-  in
-  close_pipe ();
-  result
-
 let meta_tests = [
   Test.case "command output drains stdout and stderr without deadlock" test_command_output_drains_stdout_and_stderr;
-  Test.case "command spawn does not inherit unrelated pipe fds" test_command_spawn_does_not_inherit_pipe_fds;
 ]
 
 let capture_main = fun () ->

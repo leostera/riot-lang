@@ -1,8 +1,10 @@
-(* Re-export kernel collections *)
-
-include Kernel.Collections
-
-(* Std-specific collections *)
-
+module Array = Array
+module List = List
+module Stream = Stream
+module Vector = Vector
+module Map = Map
+module HashMap = Hashmap
+module HashSet = Hashset
+module Queue = Queue
 module Deque = Deque
 module Heap = Heap

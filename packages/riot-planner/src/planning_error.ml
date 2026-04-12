@@ -13,7 +13,7 @@ let to_string = function
   | ScanFailed { path; reason } -> "Failed to scan " ^ Path.to_string path ^ ": " ^ reason
   | DependencyAnalysisFailed { reason } -> "Dependency analysis failed: " ^ reason
   | GraphBuildFailed { reason } -> "Graph build failed: " ^ reason
-  | Exception { exn } -> "Unexpected exception: " ^ Exception.to_string exn
+  | Exception { exn } -> "Unexpected exception: " ^ Kernel.Exception.to_string exn
 
 let to_json = function
   | CyclicDependency { cycle } -> Data.Json.obj
@@ -34,5 +34,5 @@ let to_json = function
   | Exception { exn } -> Data.Json.obj
     [
       ("type", Data.Json.string "exception");
-      ("message", Data.Json.string (Exception.to_string exn))
+      ("message", Data.Json.string (Kernel.Exception.to_string exn))
     ]

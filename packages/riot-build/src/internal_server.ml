@@ -82,7 +82,7 @@ let build_state = fun ~(workspace:Workspace.t) ~workspace_manager ~load_errors ~
         println "\n❌ ERROR: Toolchain initialization failed!\n";
         println msg;
         println "";
-        exit 1
+        System.exit 1
   in
   let package_graph =
     match Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace with
@@ -102,7 +102,7 @@ let build_state = fun ~(workspace:Workspace.t) ~workspace_manager ~load_errors ~
     workspace;
     workspace_manager;
     toolchain;
-    concurrency = System.available_parallelism;
+    concurrency = Thread.available_parallelism;
     package_graph;
     load_errors;
     active_profile = "debug";
@@ -515,8 +515,8 @@ let start_server = fun ?(emit = no_emit) ?workspace_manager ?registry ?(registry
             Ok server_pid
   with
   | exn ->
-      trace_server ("start_local exception: " ^ Exception.to_string exn);
-      Error (UnexpectedException { error = Exception.to_string exn })
+      trace_server ("start_local exception: " ^ Kernel.Exception.to_string exn);
+      Error (UnexpectedException { error = Kernel.Exception.to_string exn })
 
 let start_local = fun ?(emit = no_emit) ?workspace_manager ?registry ?(registry_name = default_registry_name) ~workspace ~config () ->
   start_server

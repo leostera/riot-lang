@@ -2,24 +2,22 @@
 open Global
 open Collections
 
-let args = Array.to_list (Kernel.System.argv ())
+let args = Array.to_list Kernel.Env.args
 
 let current_dir = fun () ->
-  match Kernel.Fs.File.getcwd () with
+  match Kernel.Env.current_dir () with
   | Ok cwd -> Path.of_string cwd
-  | Error e -> Error (Path.SystemError (Kernel.IO.error_message e))
+  | Error error -> Error (Path.SystemError (Kernel.Env.error_to_string error))
 
 let set_current_dir = fun path ->
-  match Kernel.Fs.File.chdir (Path.to_string path) with
+  match Kernel.Env.set_current_dir (Path.to_string path) with
   | Ok () -> Ok ()
-  | Error e -> Error (Path.SystemError (Kernel.IO.error_message e))
+  | Error error -> Error (Path.SystemError (Kernel.Env.error_to_string error))
 
 let home_dir = fun () ->
-  try
-    let home = Kernel.Env.getenv_exn "HOME" |> Path.of_string |> Result.expect ~msg:"HOME path was an invalid UTF-8 path" in
-    Some home
-  with
-  | Not_found -> None
+  match Kernel.Env.home_dir () with
+  | Some home -> Some (Path.v home)
+  | None -> None
 
 type 't var_type =
   | String: string var_type
@@ -28,9 +26,7 @@ type 't var_type =
   | Bool: bool var_type
   | Char: char var_type
 
-let get = fun name ->
-  try Some (Kernel.Env.getenv_exn name) with
-  | Not_found -> None
+let get = fun name -> Kernel.Env.get name
 
 let var: type t. t var_type -> name:string -> t option = fun var_type ~name ->
   match get name with
@@ -39,14 +35,10 @@ let var: type t. t var_type -> name:string -> t option = fun var_type ~name ->
       match var_type with
       | String ->
           Some value
-      | Int -> (
-          try Some (int_of_string value) with
-          | _ -> None
-        )
-      | Float -> (
-          try Some (float_of_string value) with
-          | _ -> None
-        )
+      | Int ->
+          Int.of_string_opt value
+      | Float ->
+          Float.of_string_opt value
       | Bool -> (
           match String.lowercase_ascii value with
           | "true"
@@ -66,15 +58,8 @@ let var: type t. t var_type -> name:string -> t option = fun var_type ~name ->
             None
 
 let set_var = fun ~name ~value ->
-  Kernel.Env.putenv name value;
-  None
+  let previous = get name in
+  let _ = Kernel.Env.set_var ~name ~value in
+  previous
 
-let vars = fun () ->
-  Kernel.Env.environment () |> Array.to_list |> List.filter_map
-    (fun s ->
-      match String.index_opt s '=' with
-      | None -> None
-      | Some idx ->
-          let name = String.sub s 0 idx in
-          let value = String.sub s (idx + 1) (String.length s - idx - 1) in
-          Some (name, value))
+let vars = fun () -> Kernel.Env.vars () |> Array.to_list

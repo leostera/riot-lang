@@ -80,9 +80,15 @@ let create_decoder = fun () ->
 let encode = fun encoder ~src ~src_pos ~src_len ~dst ~dst_pos ~dst_len ~flush ->
   check_slice "Std.Compress.Gzip_engine.encode src" src ~pos:src_pos ~len:src_len;
   check_slice "Std.Compress.Gzip_engine.encode dst" dst ~pos:dst_pos ~len:dst_len;
-  let error_code, consumed, produced, status_code =
-    encode_raw encoder src src_pos src_len dst dst_pos dst_len (flush_to_code flush)
-  in
+  let error_code, consumed, produced, status_code = encode_raw
+    encoder
+    src
+    src_pos
+    src_len
+    dst
+    dst_pos
+    dst_len
+    (flush_to_code flush) in
   match error_of_code error_code with
   | Some error -> Error error
   | None -> Ok { consumed; produced; status = status_of_code status_code }
@@ -90,9 +96,14 @@ let encode = fun encoder ~src ~src_pos ~src_len ~dst ~dst_pos ~dst_len ~flush ->
 let decode = fun decoder ~src ~src_pos ~src_len ~dst ~dst_pos ~dst_len ->
   check_slice "Std.Compress.Gzip_engine.decode src" src ~pos:src_pos ~len:src_len;
   check_slice "Std.Compress.Gzip_engine.decode dst" dst ~pos:dst_pos ~len:dst_len;
-  let error_code, consumed, produced, status_code =
-    decode_raw decoder src src_pos src_len dst dst_pos dst_len
-  in
+  let error_code, consumed, produced, status_code = decode_raw
+    decoder
+    src
+    src_pos
+    src_len
+    dst
+    dst_pos
+    dst_len in
   match error_of_code error_code with
   | Some error -> Error error
   | None -> Ok { consumed; produced; status = status_of_code status_code }

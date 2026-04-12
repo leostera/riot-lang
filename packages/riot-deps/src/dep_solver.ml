@@ -204,7 +204,7 @@ let find_local_package_id_in_state = fun ~(state:resolution_state) ~package_name
     (fun (_, (package_id: Riot_model.Lockfile.package_id)) ->
       package_id.registry = None && String.equal package_id.name package_name)
     state.resolving
-  |> Option.map snd
+  |> Option.map (fun (_, package_id) -> package_id)
 
 let add_resolving = fun ~(state:resolution_state) ~key ~package_id ->
   { state with resolving = (key, package_id) :: state.resolving }

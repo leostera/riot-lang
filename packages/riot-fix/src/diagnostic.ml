@@ -250,7 +250,9 @@ let group_diagnostics: t list -> grouped list = fun diags ->
         | [] -> None
         | (fix, _) :: _ -> fix
       in
-      let spans = List.map snd spans in
+      let spans =
+        List.map (fun (_, span) -> span) spans
+      in
       ({
           severity;
           message;

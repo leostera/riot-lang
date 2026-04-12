@@ -294,8 +294,7 @@ module Parser = struct
     if pos + 2 > String.length s then
       None
     else
-      try Some (int_of_string (String.sub s pos 2)) with
-      | _ -> None
+      Int.of_string_opt (String.sub s pos 2)
 
   (* Parse 4 digits starting at position *)
 
@@ -303,8 +302,7 @@ module Parser = struct
     if pos + 4 > String.length s then
       None
     else
-      try Some (int_of_string (String.sub s pos 4)) with
-      | _ -> None
+      Int.of_string_opt (String.sub s pos 4)
 
   (* Check if format is extended (has separators) *)
 
@@ -371,7 +369,7 @@ module Parser = struct
         raise (Failure "Empty microseconds after decimal separator")
       else
         let micro_str = String.sub s start (end_pos - start) in
-        let micros = int_of_string micro_str in
+        let micros = Int.of_string micro_str in
         let precision = String.length micro_str in
         let micros = micros * (int_of_float (10.0 ** float (6 - precision))) in
         ((micros, 6), end_pos)

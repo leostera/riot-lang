@@ -1,196 +1,60 @@
 open Global
-open Common
-open IO
 
-(** # Fs.File - File handles for reading and writing
+(** `Std.Fs.File` layers runtime-aware read/write behavior over
+    `Kernel.Fs.File`. It never exposes raw descriptors. *)
+type t = Kernel.Fs.File.t
+type error = Kernel.Fs.File.error
+val error_to_string: error -> string
 
-    File handle type providing low-level file I/O operations with async support
-    through `Std.Runtime`. Wraps file descriptors with a safe interface.
-
-    ## Examples
-
-    Reading a file:
-
-    ```ocaml open Std
-
-    let path = Path.v "data.txt" in match Fs.File.open_read path with | Ok file
-    -> (match Fs.File.read_to_end file with | Ok content -> Log.info "Content:
-    %s" content; Fs.File.close file |> ignore | Error err -> Log.error "Read
-    failed") | Error err -> Log.error "Open failed" ```
-
-    Writing to a file:
-
-    ```ocaml let path = Path.v "output.txt" in match Fs.File.create path with |
-    Ok file -> (match Fs.File.write_all file "Hello, World!" with | Ok () ->
-    Fs.File.close file |> ignore | Error err -> Log.error "Write failed") |
-    Error err -> Log.error "Create failed" ```
-
-    ## Async I/O
-
-    All read/write operations use async I/O, suspending the calling process
-    instead of blocking the scheduler. *)
-
-type t
-
-(** Opaque file handle for reading and writing files. *)
-
-(** File open flags for low-level control *)
 module OpenFlags: sig
-  type t =
+  type t = Kernel.Fs.File.open_flag =
     | ReadOnly
-    (** Open for reading only *)
     | WriteOnly
-    (** Open for writing only *)
     | ReadWrite
-    (** Open for reading and writing *)
     | Create
-    (** Create file if it doesn't exist *)
     | Truncate
-    (** Truncate file to zero length *)
     | Append
-    (** Append mode (writes go to end) *)
     | Exclusive
-
-  (** Fail if file exists (with Create) *)
 end
 
-(** ## Opening Files *)
 val open_with_flags: Path.t -> OpenFlags.t list -> mode:Permissions.t -> (t, error) result
 
-(** Low-level: open file with custom flag combination.
-    
-    @param path Path to file
-    @param flags List of open flags (ReadOnly/WriteOnly/ReadWrite, Create, Append, etc.)
-    @param mode File permissions (e.g., Permissions.read_write)
-    
-    Example:
-    ```ocaml
-    (* Open for read+write+append, create if needed, no truncate *)
-    open_with_flags path 
-      OpenFlags.[ ReadWrite; Append; Create ]
-      ~mode:Permissions.read_write
-    ``` *)
 val create: Path.t -> (t, error) result
 
-(** Create or truncate file for writing (O_WRONLY | O_CREAT | O_TRUNC) *)
 val create_new: Path.t -> (t, error) result
 
-(** Create new file, fail if exists (O_WRONLY | O_CREAT | O_EXCL) *)
 val open_read: Path.t -> (t, error) result
 
-(** Open file for reading only (O_RDONLY) *)
 val open_write: Path.t -> (t, error) result
 
-(** Open file for writing, create if needed (O_WRONLY | O_CREAT) *)
 val open_append: Path.t -> (t, error) result
 
-(** Open file for reading and appending (O_RDWR | O_APPEND | O_CREAT)
-    
-    Useful for append-only logs that also need replay capability.
-    All writes go to end of file, but file can also be read from start. *)
 val open_read_write: Path.t -> (t, error) result
 
-(** Open file for reading and writing (O_RDWR) *)
-(** ## Reading *)
+val try_lock_exclusive: t -> (bool, error) result
+
+val unlock: t -> (unit, error) result
 
 val read: t -> bytes -> offset:int -> len:int -> (int, error) result
 
-(** Read up to len bytes into buffer at offset. Returns bytes actually read.
-    Uses async I/O. *)
 val read_to_end: t -> (string, error) result
 
-(** Read all remaining content as string *)
 val read_exact: t -> bytes -> offset:int -> len:int -> (unit, error) result
 
-(** Read exactly len bytes or fail *)
 val read_line: t -> (string, error) result
-
-(** Read a line from the file, including the newline character if present.
-    Returns empty string on EOF. *)
-(** ## Writing *)
 
 val write: t -> bytes -> offset:int -> len:int -> (int, error) result
 
-(** Write bytes from buffer at offset. Returns bytes actually written. Uses
-    async I/O. *)
 val write_all: t -> string -> (unit, error) result
 
-(** Write entire string to file *)
 val write_string: t -> string -> (int, error) result
-
-(** Write string, returns bytes written *)
-(** ## Seeking *)
-
-val seek: t -> int64 -> (int64, error) result
-
-(** Seek to absolute position from start of file *)
-val seek_from_current: t -> int64 -> (int64, error) result
-
-(** Seek relative to current position *)
-val seek_from_end: t -> int64 -> (int64, error) result
-
-(** Seek relative to end of file *)
-val tell: t -> (int64, error) result
-
-(** Get current position in file *)
-val rewind: t -> (unit, error) result
-
-(** Seek to beginning of file *)
-(** ## Synchronization *)
-
-val sync_all: t -> (unit, error) result
-
-(** Sync all data and metadata to disk (fsync) *)
-val sync_data: t -> (unit, error) result
-
-(** Sync data only, not metadata (fdatasync on Linux, fsync elsewhere) *)
-(** ## Metadata & Properties *)
 
 val metadata: t -> (Metadata.t, error) result
 
-(** Get file metadata from handle (fstat) *)
-val set_len: t -> len:int64 -> (unit, error) result
+val to_source: t -> Kernel.Async.Source.t
 
-(** Truncate or extend file to specified length (ftruncate) *)
-val set_permissions: t -> permissions:Permissions.t -> (unit, error) result
-
-(** Change file permissions (fchmod) *)
-(** ## File Locking *)
-
-val lock_exclusive: t -> (unit, error) result
-
-(** Acquire exclusive lock, blocking (Unix.lockf F_LOCK) *)
-val lock_shared: t -> (unit, error) result
-
-(** Acquire shared lock, blocking (Unix.lockf F_RLOCK) *)
-val try_lock_exclusive: t -> (bool, error) result
-
-(** Try to acquire exclusive lock, non-blocking (Unix.lockf F_TLOCK) *)
-val try_lock_shared: t -> (bool, error) result
-
-(** Try to acquire shared lock, non-blocking (Unix.lockf F_TRLOCK) *)
-val unlock: t -> (unit, error) result
-
-(** Release lock (Unix.lockf F_ULOCK) *)
-(** ## Advanced *)
-
-val try_clone: t -> (t, error) result
-
-(** Duplicate file descriptor (dup) *)
-val into_fd: t -> Kernel.Fd.t
-
-(** Extract raw file descriptor *)
-val from_fd: Kernel.Fd.t -> t
-
-(** Wrap file descriptor as file handle *)
 val to_reader: t -> (t, error) IO.Reader.t
 
-(** View the file as a generic reader. *)
 val to_writer: t -> (t, error) IO.Writer.t
 
-(** View the file as a generic writer. *)
-(** ## Closing *)
-
 val close: t -> (unit, error) result
-
-(** Close file handle *)

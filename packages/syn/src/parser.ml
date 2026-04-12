@@ -7264,6 +7264,7 @@ and parse_let_in_expr = fun parser ->
                   | _, true -> parse_expr parser
                   | _ -> parse_missing_in_body parser
                 in
+                let in_child_nodes, _ = in_children in
                 make_node
                   Syntax_kind.LET_EXPR
                   ([ make_token parser let_kw ]
@@ -7273,7 +7274,7 @@ and parse_let_in_expr = fun parser ->
                   @ attr_nodes
                   @ [ Ceibo.Green.Node exception_decl ]
                   @ tokens_to_green parser trivia_after_exception_decl
-                  @ (fst in_children)
+                  @ in_child_nodes
                   @ tokens_to_green parser trivia_after_in
                   @ [ Ceibo.Green.Node body_expr ])
             | _ ->
@@ -7558,6 +7559,7 @@ and parse_let_in_expr = fun parser ->
                   else
                     Syntax_kind.LET_EXPR
                 in
+                let in_child_nodes, _ = in_children in
                 make_node
                   syntax_kind
                   ([ make_token parser let_kw ]
@@ -7575,7 +7577,7 @@ and parse_let_in_expr = fun parser ->
                   @ [ Ceibo.Green.Node bound_expr ]
                   @ tokens_to_green parser trivia_after_bound
                   @ and_children
-                  @ (fst in_children)
+                  @ in_child_nodes
                   @ tokens_to_green parser trivia_after_in
                   @ [ Ceibo.Green.Node body_expr ])
           )

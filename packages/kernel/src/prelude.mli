@@ -1,7 +1,6 @@
 type ('value, 'error) result =
   | Ok of 'value
   | Error of 'error
-
 exception Invalid_argument of string
 
 exception Failure of string
@@ -74,9 +73,13 @@ val ( *. ): float -> float -> float
 
 val ( /. ): float -> float -> float
 
+val ( @@ ): ('value -> 'result) -> 'value -> 'result
+
 val ( |> ): 'value -> ('value -> 'result) -> 'result
 
 val ( ^ ): string -> string -> string
+
+val ( @ ): 'value list -> 'value list -> 'value list
 
 val ( ** ): float -> float -> float
 

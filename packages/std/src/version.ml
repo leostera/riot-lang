@@ -57,9 +57,7 @@ let is_digit = fun c -> c >= '0' && c <= '9'
 let is_alphanumeric = fun c ->
   is_digit c || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c = '-'
 
-let parse_int = fun s ->
-  try Some (int_of_string s) with
-  | Failure _ -> None
+let parse_int = Int.of_string_opt
 
 let split_on_char = fun delimiter str ->
   let len = String.length str in

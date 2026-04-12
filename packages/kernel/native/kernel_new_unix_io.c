@@ -9,6 +9,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/uio.h>
 #include <unistd.h>
@@ -179,6 +180,30 @@ CAMLprim value kernel_new_fs_file_close(value fd_val) {
   CAMLparam1(fd_val);
 
   if (close(Int_val(fd_val)) == -1) {
+    CAMLreturn(kernel_new_result_errno());
+  }
+
+  CAMLreturn(kernel_new_result_ok(Val_unit));
+}
+
+CAMLprim value kernel_new_fs_file_try_lock_exclusive(value fd_val) {
+  CAMLparam1(fd_val);
+
+  if (flock(Int_val(fd_val), LOCK_EX | LOCK_NB) == -1) {
+    if (errno == EWOULDBLOCK || errno == EAGAIN) {
+      CAMLreturn(kernel_new_result_ok(Val_bool(0)));
+    }
+
+    CAMLreturn(kernel_new_result_errno());
+  }
+
+  CAMLreturn(kernel_new_result_ok(Val_bool(1)));
+}
+
+CAMLprim value kernel_new_fs_file_unlock(value fd_val) {
+  CAMLparam1(fd_val);
+
+  if (flock(Int_val(fd_val), LOCK_UN) == -1) {
     CAMLreturn(kernel_new_result_errno());
   }
 

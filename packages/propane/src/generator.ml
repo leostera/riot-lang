@@ -1,10 +1,24 @@
 open Std
 
-(* Internal representation: a generator is a function from (Random.State, size) to value *)
+(* Internal representation: a generator is a function from (Random.Rng, size) to value *)
 
 type 'value t = {
-  run: Random.State.t -> int -> 'value;
+  run: Random.Rng.t -> int -> 'value;
 }
+
+let sample = fun value -> Result.unwrap value
+
+let random_bits = fun rnd -> sample (Random.bits ~rng:rnd ())
+
+let random_int = fun rnd bound -> sample (Random.int ~rng:rnd bound)
+
+let random_int32 = fun rnd bound -> sample (Random.int32 ~rng:rnd bound)
+
+let random_int64 = fun rnd bound -> sample (Random.int64 ~rng:rnd bound)
+
+let random_float = fun rnd bound -> sample (Random.float ~rng:rnd bound)
+
+let random_bool = fun rnd -> sample (Random.bool ~rng:rnd ())
 
 (* Helper: convert char list to string *)
 
@@ -59,7 +73,7 @@ let one_of = fun gens ->
         run =
           fun rnd size ->
             let n = List.length gens in
-            let idx = Random.State.int rnd n in
+            let idx = random_int rnd n in
             let rec get_nth lst i =
               match lst with
               | [] -> panic "one_of: index out of bounds"
@@ -88,7 +102,7 @@ let frequency = fun weighted_gens ->
       {
         run =
           fun rnd size ->
-            let target = Random.State.int rnd total_weight in
+            let target = random_int rnd total_weight in
             let rec find acc remaining =
               match remaining with
               | [] -> panic "frequency: impossible - empty after fold"
@@ -125,19 +139,11 @@ let fix = fun f ->
 
 (* Integers *)
 
-let int = { run = fun rnd _size -> Random.State.bits rnd }
+let int = { run = fun rnd _size -> random_bits rnd }
 
-let int32 = {
-  run =
-    fun rnd _size ->
-      Random.State.int32 rnd Int32.max_int;
-}
+let int32 = { run = fun rnd _size -> random_int32 rnd Int32.max_int }
 
-let int64 = {
-  run =
-    fun rnd _size ->
-      Random.State.int64 rnd Int64.max_int;
-}
+let int64 = { run = fun rnd _size -> random_int64 rnd Int64.max_int }
 
 let int_range = fun low high ->
   if low > high then
@@ -148,7 +154,7 @@ let int_range = fun low high ->
         if low = high then
           low
         else
-          low + Random.State.int rnd (high - low + 1);
+          low + random_int rnd (high - low + 1);
   }
 
 let int32_range = fun low high ->
@@ -160,7 +166,7 @@ let int32_range = fun low high ->
         if low = high then
           low
         else
-          Int32.add low (Random.State.int32 rnd (Int32.sub (Int32.add high 1l) low));
+          Int32.add low (random_int32 rnd (Int32.sub (Int32.add high 1l) low));
   }
 
 let int64_range = fun low high ->
@@ -172,7 +178,7 @@ let int64_range = fun low high ->
         if low = high then
           low
         else
-          Int64.add low (Random.State.int64 rnd (Int64.sub (Int64.add high 1L) low));
+          Int64.add low (random_int64 rnd (Int64.sub (Int64.add high 1L) low));
   }
 
 let int_bound = fun n ->
@@ -184,7 +190,7 @@ let small_int = int_range 0 100
 
 let big_int = int
 
-let positive_int = { run = fun rnd _size -> Random.State.bits rnd land max_int }
+let positive_int = { run = fun rnd _size -> random_bits rnd land max_int }
 
 let negative_int =
   map (fun n -> -n) positive_int
@@ -196,32 +202,24 @@ let non_zero_int =
 
 (* Floats *)
 
-let float = {
-  run =
-    fun rnd _size ->
-      Random.State.float rnd max_float;
-}
+let float = { run = fun rnd _size -> random_float rnd Float.max_float }
 
 let float_range = fun low high ->
   {
     run =
       fun rnd _size ->
         let range = high -. low in
-        low +. (Random.State.float rnd range);
+        low +. random_float rnd range;
   }
 
-let float_positive = {
-  run =
-    fun rnd _size ->
-      Random.State.float rnd max_float;
-}
+let float_positive = { run = fun rnd _size -> random_float rnd Float.max_float }
 
 let float_negative =
   map (fun f -> -.f) float_positive
 
 (* Booleans *)
 
-let bool = { run = fun rnd _size -> Random.State.bool rnd }
+let bool = { run = fun rnd _size -> random_bool rnd }
 
 let weighted_bool = fun weight_true weight_false ->
   if weight_true <= 0 || weight_false <= 0 then
@@ -230,7 +228,7 @@ let weighted_bool = fun weight_true weight_false ->
 
 (* Characters *)
 
-let char = { run = fun rnd _size -> Char.chr (Random.State.int rnd 256) }
+let char = { run = fun rnd _size -> Char.chr (random_int rnd 256) }
 
 let char_range = fun low high ->
   {
@@ -239,7 +237,7 @@ let char_range = fun low high ->
         let low_code = Char.code low in
         let high_code = Char.code high in
         let range = high_code - low_code + 1 in
-        Char.chr (low_code + Random.State.int rnd range);
+        Char.chr (low_code + random_int rnd range);
   }
 
 let char_lowercase = char_range 'a' 'z'
@@ -258,7 +256,7 @@ let rune = {
   run =
     fun rnd size ->
       let rec try_gen () =
-        let n = Random.State.int rnd 0x11_0000 in
+        let n = random_int rnd 0x11_0000 in
         match Unicode.Rune.of_int n with
         | Some r -> r
         | None -> try_gen ()
@@ -273,7 +271,7 @@ let rune_range = fun low high ->
     run =
       fun rnd size ->
         let rec try_gen () =
-          let n = low_int + Random.State.int rnd (high_int - low_int + 1) in
+          let n = low_int + random_int rnd (high_int - low_int + 1) in
           match Unicode.Rune.of_int n with
           | Some r -> r
           | None -> try_gen ()

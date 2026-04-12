@@ -86,4 +86,4 @@ let solve = fun ~width doc ->
         in
         solve_doc ~column ~indent ~mode doc
   in
-  solve_doc ~column:0 ~indent:0 ~mode:Break doc |> fst
+  solve_doc ~column:0 ~indent:0 ~mode:Break doc |> fun (solved, _) -> solved

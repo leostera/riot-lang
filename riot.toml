@@ -18,7 +18,6 @@ members = [
   "packages/ignore",
   "packages/jsonrpc",
   "packages/kernel",
-  "packages/kernel-new",
   "packages/krasny",
   "packages/lsp",
   "packages/mcp",

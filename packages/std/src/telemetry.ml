@@ -13,8 +13,8 @@ type handler = {
   fn: event -> unit;
 }
 
-open Kernel.Sync
-open Kernel.Collections
+open Sync
+open Collections
 
 module Server = struct
   type state = {

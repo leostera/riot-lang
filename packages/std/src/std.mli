@@ -1204,11 +1204,20 @@ module Pid = Pid
 (** **When to use:** Process identifiers
     
     Use Pid for actor/process identification and messaging. *)
+module Actor = Actor
+
+(** **When to use:** Actor lifecycle and monitoring
+
+    Use Actor for spawning, linking, monitoring, and managing actors running on
+    the std runtime. *)
 module Process = Process
 
-(** **When to use:** Process lifecycle and monitoring
-    
-    Use Process for monitoring, linking, and managing actor processes.
+(** **When to use:** Compatibility actor/process surface plus operating system
+    process id access
+
+    Use Actor for new actor runtime code. Process currently stays as a
+    compatibility surface and also exposes the current operating system process
+    id through `Process.id ()`.
     
     **Examples:**
     - Monitoring other processes
@@ -1220,6 +1229,13 @@ module Process = Process
     
     Rarely needed in normal application code. *)
 module Ptr = Ptr
+
+(** **When to use:** Random value generation
+
+    Use Random for simple pseudo-random values like `int`, `bool`, and `char`.
+    Initialize the default generator with `Random.init ?seed ()` when you need
+    deterministic runs. *)
+module Random = Random
 
 (** **When to use:** Representing open, closed, and unbounded intervals
 
@@ -1534,7 +1550,7 @@ val map: ('k * 'v) list -> ('k, 'v) map
     
     **Example:** `let m = map [("a", 1); ("b", 2)] in HashMap.get m "a"` *)
 
-(** Process Management *)
+(** Actor Runtime Management *)
 exception Receive_timeout
 
 (** Raised when a receive operation times out *)
@@ -1546,16 +1562,16 @@ type 'msg selector = 'msg Runtime.selector
 (** Message selector type *)
 val self: unit -> Pid.t
 
-(** Get the PID of the currently running process *)
-val spawn: (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
+(** Get the PID of the currently running actor *)
+val spawn: (unit -> (unit, Actor.exit_reason) Kernel.result) -> Pid.t
 
-(** Spawn a new process *)
-val spawn_link: (unit -> (unit, Process.exit_reason) Kernel.result) -> Pid.t
+(** Spawn a new actor *)
+val spawn_link: (unit -> (unit, Actor.exit_reason) Kernel.result) -> Pid.t
 
-(** Spawn a new process linked to the current process *)
+(** Spawn a new actor linked to the current actor *)
 val send: Pid.t -> Message.t -> unit
 
-(** Send a message to a process *)
+(** Send a message to an actor *)
 val receive: selector:'value selector -> ?timeout:Time.Duration.t -> unit -> 'value
 
 (** Receive a message using a selector *)
@@ -1564,7 +1580,7 @@ val receive_any: ?timeout:Time.Duration.t -> unit -> Message.t
 (** Receive any message *)
 val sleep: Time.Duration.t -> unit
 
-(** Sleeps the current process for at least the specified duration *)
+(** Sleeps the current actor for at least the specified duration *)
 val yield: unit -> unit
 
 (** Yield control to the scheduler *)

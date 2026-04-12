@@ -202,9 +202,12 @@ let of_int = function
   | 511 -> NetworkAuthenticationRequired
   | code -> Extension code
 
-let of_string : string -> (t, [ `InvalidStatus ]) Kernel.result = fun s ->
-  try Ok (of_int (Stdlib.int_of_string s)) with
-  | Failure _ -> Error `InvalidStatus
+let of_string: string -> (t, [
+    `InvalidStatus
+  ]) Kernel.result = fun s ->
+  match Int.of_string_opt s with
+  | Some code -> Ok (of_int code)
+  | None -> Error `InvalidStatus
 
 let to_string = fun status -> Int.to_string (to_int status)
 

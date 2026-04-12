@@ -3,7 +3,7 @@ open Global
 open IO
 
 type t = {
-  stream: Kernel.Net.Tcp_stream.t;
+  stream: Kernel.Net.TcpStream.t;
   mutable leftover: string;  (* Buffer for data read past newline *)
 }
 

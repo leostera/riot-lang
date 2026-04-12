@@ -1,10 +1,29 @@
 type t = int64
+val zero: t
+
+val min_int: t
+
+val max_int: t
 
 (** Use `of_int value` for explicit widening into `Int64`. *)
 val of_int: int -> t
 
 (** Use `to_int value` for explicit narrowing back into `Int`. *)
 val to_int: t -> int
+
+val logand: t -> t -> t
+
+val logor: t -> t -> t
+
+val logxor: t -> t -> t
+
+val shift_left: t -> int -> t
+
+val shift_right: t -> int -> t
+
+val shift_right_logical: t -> int -> t
+
+val abs: t -> t
 
 val neg: t -> t
 
@@ -27,6 +46,14 @@ val of_float: float -> t
 val to_float: t -> float
 
 val of_int32: int32 -> t
+
+val to_int32: t -> int32
+
+val of_string: string -> t
+
+val of_string_opt: string -> t option
+
+val to_string: t -> string
 
 val hash: t -> int
 

@@ -39,11 +39,9 @@
 module Format = Format
 
 type format = Format.t
-
 type ('value, 'error) result = ('value, 'error) Kernel.result =
   | Ok of 'value
   | Error of 'error
-
 val format: format list -> string
 
 val max_int: int
@@ -106,9 +104,13 @@ val ( *. ): float -> float -> float
 
 val ( /. ): float -> float -> float
 
+val ( @@ ): ('value -> 'result) -> 'value -> 'result
+
 val ( |> ): 'value -> ('value -> 'result) -> 'result
 
 val ( ^ ): string -> string -> string
+
+val ( @ ): 'value list -> 'value list -> 'value list
 
 val ( ** ): float -> float -> float
 
@@ -137,6 +139,12 @@ val not: bool -> bool
 val ( && ): bool -> bool -> bool
 
 val ( || ): bool -> bool -> bool
+
+val raise: exn -> 'value
+
+val raise_notrace: exn -> 'value
+
+val ignore: 'value -> unit
 
 (** {1 Process Management} *)
 

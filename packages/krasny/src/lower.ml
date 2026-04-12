@@ -3818,7 +3818,7 @@ let make_lowerer =
         | multiline_arguments ->
             Doc.concat
               [ head_with_inline_arguments; Doc.line; Doc.indent 2
-                  (multiline_arguments |> List.map snd |> Doc.join Doc.line); ]
+                  (multiline_arguments |> List.map (fun (_, doc) -> doc) |> Doc.join Doc.line); ]
       )
     else
       Doc.group

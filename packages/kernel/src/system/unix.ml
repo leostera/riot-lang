@@ -2,8 +2,11 @@ open Prelude
 
 module FFI = struct
   external architecture: unit -> string = "kernel_new_host_arch"
+
   external vendor: unit -> string = "kernel_new_host_vendor"
+
   external os: unit -> string = "kernel_new_host_os"
+
   external abi: unit -> string = "kernel_new_host_abi"
 end
 
@@ -22,9 +25,7 @@ module Host = struct
     && left.abi = right.abi
 
   let to_string = fun value ->
-    let base =
-      String.concat "" [ value.architecture; "-"; value.vendor; "-"; value.os ]
-    in
+    let base = String.concat "" [ value.architecture; "-"; value.vendor; "-"; value.os ] in
     match value.abi with
     | Some abi when abi != "" -> String.concat "" [ base; "-"; abi ]
     | _ -> base
@@ -60,14 +61,15 @@ module Host = struct
 
   let from_string = fun value ->
     match split_triplet value with
-    | Result.Error _ ->
-        Result.Error (String.concat "" [ "invalid host triplet format: "; value ])
-    | Result.Ok [ architecture; vendor; os ] ->
-        Result.Ok { architecture; vendor; os; abi = None }
-    | Result.Ok [ architecture; vendor; os; abi ] ->
-        Result.Ok { architecture; vendor; os; abi = Some abi }
-    | Result.Ok _ ->
-        Result.Error (String.concat "" [ "invalid host triplet format: "; value ])
+    | Result.Error _ -> Result.Error (String.concat "" [ "invalid host triplet format: "; value ])
+    | Result.Ok [architecture;vendor;os] -> Result.Ok { architecture; vendor; os; abi = None }
+    | Result.Ok [architecture;vendor;os;abi] -> Result.Ok {
+      architecture;
+      vendor;
+      os;
+      abi = Some abi
+    }
+    | Result.Ok _ -> Result.Error (String.concat "" [ "invalid host triplet format: "; value ])
 
   let current =
     let abi = FFI.abi () in
@@ -120,7 +122,11 @@ module OS = struct
 end
 
 let host_triplet = Host.current
+
 let os_type = OS.to_string OS.current
+
 let unix = OS.is_unix
+
 let win32 = OS.is_win32
+
 let cygwin = OS.is_cygwin

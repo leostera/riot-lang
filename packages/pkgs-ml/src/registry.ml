@@ -2,6 +2,15 @@ open Std
 
 let ( let* ) = Result.and_then
 
+let protect = fun ~finally f ->
+  match f () with
+  | value ->
+      finally ();
+      value
+  | exception error ->
+      finally ();
+      raise error
+
 type fetch_response = {
   status_code: int;
   body: string;
@@ -111,7 +120,7 @@ let blink_error_message = function
 
 let exn_message = function
   | Failure message -> message
-  | exn -> Exception.to_string exn
+  | exn -> Kernel.Exception.to_string exn
 
 let configured_riot_agent = ref None
 
@@ -613,7 +622,7 @@ let search_packages = fun registry ~query ?(limit = 5) () ->
       )
     | In_memory { packages; config=_; releases=_ } ->
         let normalized_query = Sparse_index.normalized_name query in
-        packages |> List.map snd |> List.filter
+        packages |> List.map (fun (_, document) -> document) |> List.filter
           (fun (document: Sparse_index.package_document) ->
             let normalized_name = Sparse_index.normalized_name document.name in
             String.equal normalized_name normalized_query
@@ -709,13 +718,7 @@ let write_release_files = fun ~root (release: release_source) ->
           loop release.files
     )
 
-let gzip_error_message = function
-  | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Invalid_data -> "invalid gzip data"
-  | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Need_dictionary -> "gzip stream requires a preset dictionary"
-  | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Buffer_error -> "gzip decoder buffer error"
-  | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Out_of_memory -> "gzip decoder out of memory"
-  | Compress.Gzip.Kernel_error (Kernel.Compress.Gzip.Unknown_error msg) -> msg
-  | Compress.Gzip.Truncated_input -> "truncated gzip input"
+let gzip_error_message = Compress.Gzip.error_to_string
 
 let tar_entry_kind_to_string = function
   | Archive.Tar.File -> "file"
@@ -724,20 +727,7 @@ let tar_entry_kind_to_string = function
   | Archive.Tar.Hardlink -> "hardlink"
   | Archive.Tar.Other kind -> kind
 
-let tar_error_message = function
-  | Archive.Tar.Kernel_error (Kernel.Archive.Tar.Invalid_header msg) -> "invalid tar header: " ^ msg
-  | Archive.Tar.Kernel_error Kernel.Archive.Tar.Entry_in_progress -> "tar entry is already being read"
-  | Archive.Tar.Kernel_error (Kernel.Archive.Tar.Invalid_state msg) -> "invalid tar reader state: "
-  ^ msg
-  | Archive.Tar.Kernel_error Kernel.Archive.Tar.Unexpected_eof -> "unexpected end of tar archive"
-  | Archive.Tar.Kernel_error Kernel.Archive.Tar.Out_of_memory -> "tar reader out of memory"
-  | Archive.Tar.Kernel_error (Kernel.Archive.Tar.Unknown_error msg) -> msg
-  | Archive.Tar.Invalid_path path -> "invalid archive path '" ^ path ^ "'"
-  | Archive.Tar.Unsafe_path path -> "unsafe archive path '" ^ path ^ "'"
-  | Archive.Tar.Unsupported_entry_kind kind -> "unsupported archive entry kind '"
-  ^ tar_entry_kind_to_string kind
-  ^ "'"
-  | Archive.Tar.Duplicate_entry path -> "duplicate archive entry '" ^ Path.to_string path ^ "'"
+let tar_error_message = Archive.Tar.error_to_string
 
 let tar_extract_file_error_message = function
   | Archive.Tar.Extract_source_error err -> IO.error_message err
@@ -745,7 +735,7 @@ let tar_extract_file_error_message = function
   | Archive.Tar.Extract_error err -> tar_error_message err
 
 let gzip_tar_extract_error_message = function
-  | Archive.Tar.Extract_source_error (Compress.Gzip.Source_error err) -> IO.error_message err
+  | Archive.Tar.Extract_source_error (Compress.Gzip.Source_error err) -> Fs.File.error_to_string err
   | Archive.Tar.Extract_source_error (Compress.Gzip.Gzip_error err) -> gzip_error_message err
   | Archive.Tar.Extract_fs_error err -> IO.error_message err
   | Archive.Tar.Extract_error err -> tar_error_message err
@@ -755,16 +745,16 @@ let cached_archive_is_gzip = fun archive_path ->
   | Error err -> Error ("failed to open cached package archive '"
   ^ Path.to_string archive_path
   ^ "': "
-  ^ IO.error_message err)
+  ^ Fs.File.error_to_string err)
   | Ok file ->
-      Kernel.Fun.protect ~finally:(fun () -> ignore (Fs.File.close file))
+      protect ~finally:(fun () -> ignore (Fs.File.close file))
         (fun () ->
           let magic = IO.Bytes.make 2 '\000' in
           match Fs.File.read file magic ~offset:0 ~len:2 with
           | Error err -> Error ("failed to read cached package archive '"
           ^ Path.to_string archive_path
           ^ "': "
-          ^ IO.error_message err)
+          ^ Fs.File.error_to_string err)
           | Ok bytes_read -> Ok (bytes_read = 2
           && Char.equal (IO.Bytes.get magic 0) '\x1f'
           && Char.equal (IO.Bytes.get magic 1) '\x8b'))
@@ -786,9 +776,9 @@ let extract_cached_archive = fun ~archive_path ~root ->
           err
       | Ok true -> (
           match Fs.File.open_read archive_path with
-          | Error err -> fail (IO.error_message err)
+          | Error err -> fail (Fs.File.error_to_string err)
           | Ok file ->
-              Kernel.Fun.protect ~finally:(fun () -> ignore (Fs.File.close file))
+              protect ~finally:(fun () -> ignore (Fs.File.close file))
                 (fun () ->
                   let reader = Fs.File.to_reader file |> Compress.Gzip.to_reader in
                   match Archive.Tar.extract reader ~into:root with

@@ -28,8 +28,7 @@ let monotonic_time_nanos = fun () ->
   | Ok time ->
       let secs, nanos = Kernel.Time.Monotonic.to_parts time in
       Int64.add (Int64.mul (Int64.of_int secs) 1_000_000_000L) (Int64.of_int nanos)
-  | Error err ->
-      Kernel.SystemError.panic (Kernel.Time.Monotonic.error_to_string err)
+  | Error err -> Kernel.SystemError.panic (Kernel.Time.Monotonic.error_to_string err)
 
 let create = fun ~config ->
   let now = monotonic_time_nanos () in

@@ -61,6 +61,10 @@ let string_of_engine_error = function
   | Engine.Out_of_memory -> "gzip decoder out of memory"
   | Engine.Unknown_error msg -> msg
 
+let error_to_string = function
+  | Engine_error err -> string_of_engine_error err
+  | Truncated_input -> "truncated gzip input"
+
 let buffered_input = fun (t: (_, _) reader) -> t.input_len - t.input_pos
 
 let buffered_output = fun (t: (_, _) reader) -> t.output_len - t.output_pos
@@ -246,7 +250,7 @@ let buffer_writer =
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
       Iovec.iter
-        (fun { Kernel.IO.Iovec.buffer = segment; offset; length } ->
+        (fun { Kernel.IO.Iovec.buffer=segment; offset; length } ->
           Buffer.add_string buffer (Bytes.sub_string segment offset length);
           written := !written + length)
         bufs;
@@ -358,16 +362,12 @@ let decompress = fun src dst ->
 let with_open_input = fun path fn ->
   match Fs.File.open_read path with
   | Error err -> Error (File_io_error (fs_error_of_file_error err))
-  | Ok file -> protect
-    ~finally:(fun () -> ignore (Fs.File.close file))
-    (fun () -> fn file)
+  | Ok file -> protect ~finally:(fun () -> ignore (Fs.File.close file)) (fun () -> fn file)
 
 let with_open_output = fun path fn ->
   match Fs.File.create path with
   | Error err -> Error (File_io_error (fs_error_of_file_error err))
-  | Ok file -> protect
-    ~finally:(fun () -> ignore (Fs.File.close file))
-    (fun () -> fn file)
+  | Ok file -> protect ~finally:(fun () -> ignore (Fs.File.close file)) (fun () -> fn file)
 
 let decompress_file = fun ~src ~dst ->
   with_open_input src

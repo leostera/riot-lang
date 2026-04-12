@@ -239,8 +239,12 @@ let rec load_external_package:
                           ~workspace_build_deps
                           ~dependant:(Some pkg.name))
                         (Package.all_dependencies pkg) in
-                      let transitive_pkgs = List.concat_map fst transitive_results in
-                      let transitive_errs = List.concat_map snd transitive_results in
+                      let transitive_pkgs =
+                        List.concat_map (fun (packages, _) -> packages) transitive_results
+                      in
+                      let transitive_errs =
+                        List.concat_map (fun (_, errors) -> errors) transitive_results
+                      in
                       (pkg :: transitive_pkgs, transitive_errs)
                   | Error error -> (
                     [],
@@ -266,8 +270,12 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
           ~workspace_build_deps:workspace_manifest.build_dependencies)
       workspace_manifest.members
   in
-  let member_packages = List.filter_map fst member_results in
-  let member_errors = List.concat_map snd member_results in
+  let member_packages =
+    List.filter_map (fun (pkg, _) -> pkg) member_results
+  in
+  let member_errors =
+    List.concat_map (fun (_, errors) -> errors) member_results
+  in
   let seen =
     Cell.create (List.map (fun (p: Package.t) -> p.name) member_packages)
   in
@@ -283,8 +291,12 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
       ~workspace_build_deps:workspace_manifest.build_dependencies
       ~dependant:None)
     (workspace_manifest.dependencies @ workspace_manifest.dev_dependencies @ workspace_manifest.build_dependencies) in
-  let workspace_packages = List.concat_map fst workspace_results in
-  let workspace_errors = List.concat_map snd workspace_results in
+  let workspace_packages =
+    List.concat_map (fun (packages, _) -> packages) workspace_results
+  in
+  let workspace_errors =
+    List.concat_map (fun (_, errors) -> errors) workspace_results
+  in
   (* Then load any additional dependencies from member packages *)
   let external_results =
     List.concat_map
@@ -302,8 +314,12 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
           (Package.all_dependencies pkg))
       member_packages
   in
-  let external_packages = List.concat_map fst external_results in
-  let external_errors = List.concat_map snd external_results in
+  let external_packages =
+    List.concat_map (fun (packages, _) -> packages) external_results
+  in
+  let external_errors =
+    List.concat_map (fun (_, errors) -> errors) external_results
+  in
   let all_packages = member_packages @ workspace_packages @ external_packages in
   let all_errors = member_errors @ workspace_errors @ external_errors in
   (
@@ -349,8 +365,12 @@ let build_single_package_workspace: t -> Path.t -> (Workspace.t * load_error lis
               ~workspace_build_deps:[]
               ~dependant:(Some package.name))
             (Package.all_dependencies package) in
-          let external_packages = List.concat_map fst external_results in
-          let external_errors = List.concat_map snd external_results in
+          let external_packages =
+            List.concat_map (fun (packages, _) -> packages) external_results
+          in
+          let external_errors =
+            List.concat_map (fun (_, errors) -> errors) external_results
+          in
           Ok (
             Workspace.make ~root:package_root ~packages:(package :: external_packages) (),
             external_errors
@@ -397,7 +417,7 @@ let scan: t -> Path.t -> ((Workspace.t * load_error list), string) result = fun 
     | None, None ->
         Error "No workspace root found"
   with
-  | exn -> Error ("Scan failed: " ^ Exception.to_string exn)
+  | exn -> Error ("Scan failed: " ^ Kernel.Exception.to_string exn)
 
 let load = fun t ~root -> scan t root
 

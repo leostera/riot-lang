@@ -315,30 +315,29 @@ let parse_csi = fun seq ->
         (* Format: \x1b[1;NX where N is modifier and X is key *)
         match String.split_on_char ';' rest with
         | [_;mod_key] when String.length mod_key >= 2 -> (
-            let mod_num = int_of_string (String.sub mod_key 0 (String.length mod_key - 1)) in
-            let key_char = mod_key.[String.length mod_key - 1] in
-            let mods =
-              let base_mods =
-                match mod_num with
-                | 2 -> [ Shift ]
-                | 3 -> [ Alt ]
-                | 4 -> [ Alt; Shift ]
-                | 5 -> [ Ctrl ]
-                | 6 -> [ Ctrl; Shift ]
-                | 7 -> [ Ctrl; Alt ]
-                | 8 -> [ Ctrl; Alt; Shift ]
-                | _ -> []
-              in
-              base_mods
-            in
-            match key_char with
-            | 'A' -> Some (make_key ~mods Up)
-            | 'B' -> Some (make_key ~mods Down)
-            | 'C' -> Some (make_key ~mods Right)
-            | 'D' -> Some (make_key ~mods Left)
-            | 'H' -> Some (make_key ~mods Home)
-            | 'F' -> Some (make_key ~mods End)
-            | _ -> None
+            match Int.parse_opt (String.sub mod_key 0 (String.length mod_key - 1)) with
+            | None -> None
+            | Some mod_num ->
+                let key_char = mod_key.[String.length mod_key - 1] in
+                let mods =
+                  match mod_num with
+                  | 2 -> [ Shift ]
+                  | 3 -> [ Alt ]
+                  | 4 -> [ Alt; Shift ]
+                  | 5 -> [ Ctrl ]
+                  | 6 -> [ Ctrl; Shift ]
+                  | 7 -> [ Ctrl; Alt ]
+                  | 8 -> [ Ctrl; Alt; Shift ]
+                  | _ -> []
+                in
+                match key_char with
+                | 'A' -> Some (make_key ~mods Up)
+                | 'B' -> Some (make_key ~mods Down)
+                | 'C' -> Some (make_key ~mods Right)
+                | 'D' -> Some (make_key ~mods Left)
+                | 'H' -> Some (make_key ~mods Home)
+                | 'F' -> Some (make_key ~mods End)
+                | _ -> None
           )
         | _ -> None
       )
@@ -349,61 +348,62 @@ let parse_csi = fun seq ->
           let is_release = last_char = 'm' in
           let coords = String.sub mouse_data 0 (String.length mouse_data - 1) in
           match String.split_on_char ';' coords with
-          | [cb;cx;cy] ->
-              let b = int_of_string cb in
-              let x = int_of_string cx in
-              let y = int_of_string cy in
-              let button_code = b land 0x43 in
-              (* Mask for button *)
-              let button =
-                match button_code with
-                | 0 -> Left
-                | 1 -> Middle
-                | 2 -> Right
-                | 64 -> ScrollUp
-                | 65 -> ScrollDown
-                | _ -> Left
-              in
-              let has_shift = b land 4 != 0 in
-              let has_meta = b land 8 != 0 in
-              let has_ctrl = b land 16 != 0 in
-              let is_motion = b land 32 != 0 in
-              let modifiers =
-                []
-                |> (fun acc ->
-                  if has_shift then
-                    Shift :: acc
-                  else
-                    acc)
-                |> (fun acc ->
-                  if has_meta then
-                    Meta :: acc
-                  else
-                    acc)
-                |> (fun acc ->
-                  if has_ctrl then
-                    Ctrl :: acc
-                  else
-                    acc)
-              in
-              let action =
-                if is_release then
-                  Mouse_release
-                else if is_motion then
-                  if button_code = 3 then
-                    Mouse_move
-                  else
-                    Mouse_drag
-                else
-                  Mouse_press
-              in
-              Some (`Mouse {
-                button;
-                action;
-                x;
-                y;
-                modifiers = List.rev modifiers;
-              })
+          | [cb;cx;cy] -> (
+              match Int.parse_opt cb, Int.parse_opt cx, Int.parse_opt cy with
+              | Some b, Some x, Some y ->
+                  let button_code = b land 0x43 in
+                  (* Mask for button *)
+                  let button =
+                    match button_code with
+                    | 0 -> Left
+                    | 1 -> Middle
+                    | 2 -> Right
+                    | 64 -> ScrollUp
+                    | 65 -> ScrollDown
+                    | _ -> Left
+                  in
+                  let has_shift = b land 4 != 0 in
+                  let has_meta = b land 8 != 0 in
+                  let has_ctrl = b land 16 != 0 in
+                  let is_motion = b land 32 != 0 in
+                  let modifiers =
+                    []
+                    |> (fun acc ->
+                      if has_shift then
+                        Shift :: acc
+                      else
+                        acc)
+                    |> (fun acc ->
+                      if has_meta then
+                        Meta :: acc
+                      else
+                        acc)
+                    |> (fun acc ->
+                      if has_ctrl then
+                        Ctrl :: acc
+                      else
+                        acc)
+                  in
+                  let action =
+                    if is_release then
+                      Mouse_release
+                    else if is_motion then
+                      if button_code = 3 then
+                        Mouse_move
+                      else
+                        Mouse_drag
+                    else
+                      Mouse_press
+                  in
+                  Some (`Mouse {
+                    button;
+                    action;
+                    x;
+                    y;
+                    modifiers = List.rev modifiers;
+                  })
+              | _ -> None
+            )
           | _ -> None
         with
         | _ -> None

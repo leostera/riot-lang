@@ -418,7 +418,7 @@ let assoc_package = fun packages name ->
   List.find_opt
     (fun (pkg_name, _pkg) ->
       String.equal pkg_name name)
-    packages |> Option.map snd
+    packages |> Option.map (fun (_, package) -> package)
 
 let workspace_runtime_dependency_names = fun ~workspace_packages (pkg: Riot_model.Package.t) ->
   let is_workspace_dependency (dep: Riot_model.Package.dependency) =
@@ -468,4 +468,4 @@ let workspace_publish_order = fun ~packages ->
         | Ok (visited, ordered) -> walk_names visited ordered rest
       )
   in
-  walk_names [] [] (List.map fst workspace_packages)
+  walk_names [] [] (List.map (fun (package_name, _) -> package_name) workspace_packages)

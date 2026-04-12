@@ -1,5 +1,4 @@
 open Global
-
 module Bytes = IO.Bytes
 
 type reader

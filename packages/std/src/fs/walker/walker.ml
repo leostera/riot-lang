@@ -171,11 +171,12 @@ let entry_kind_of_metadata = fun metadata ->
   | `Block
   | `Character
   | `Fifo
-  | `Socket -> Other
+  | `Socket
+  | `Unknown -> Other
 
 let metadata_for_path_string = fun ~follow_symlinks path_string ->
   if follow_symlinks then
-    Kernel.Fs.File.stat path_string |> Common.convert_kernel_result
+    Kernel.Fs.File.metadata path_string |> Common.convert_kernel_result
   else
     Kernel.Fs.File.lstat path_string |> Common.convert_kernel_result
 

@@ -13,9 +13,9 @@ type t =
   | True_color
 
 let from_env = fun () ->
-  let term = Kernel.Env.getenv "TERM" in
-  let color_term = Kernel.Env.getenv "COLORTERM" in
-  let term_program = Kernel.Env.getenv "TERM_PROGRAM" in
+  let term = Env.get "TERM" in
+  let color_term = Env.get "COLORTERM" in
+  let term_program = Env.get "TERM_PROGRAM" in
   let is_screen =
     match term with
     | Some term -> String.starts_with ~prefix:"screen" term

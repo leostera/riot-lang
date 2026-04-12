@@ -1,4 +1,6 @@
-type ('value, 'error) t =
+open Prelude
+
+type ('value, 'error) t = ('value, 'error) result =
   | Ok of 'value
   | Error of 'error
 

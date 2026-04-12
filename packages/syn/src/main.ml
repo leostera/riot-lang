@@ -82,7 +82,7 @@ let handle_token_stream = fun sub_matches ->
   match Fs.read (Path.v file) with
   | Error _err ->
       Log.error ("Error reading file " ^ file);
-      exit 1
+      System.exit 1
   | Ok content ->
       let tokens = Lexer.tokenize content in
       if json then
@@ -98,7 +98,7 @@ let handle_parse = fun sub_matches ->
   match Fs.read (Path.v file) with
   | Error _err ->
       Log.error ("Error reading file " ^ file);
-      exit 1
+      System.exit 1
   | Ok source ->
       let result = parse_file ~file ~source in
       if json then
@@ -123,7 +123,7 @@ let handle_print_ceibo = fun sub_matches ->
   match Fs.read (Path.v file) with
   | Error _err ->
       Log.error ("Error reading file " ^ file);
-      exit 1
+      System.exit 1
   | Ok source -> parse_file ~file ~source |> parse_result_to_ceibo_json |> Data.Json.to_string |> println
 
 let handle_print_cst = fun sub_matches ->
@@ -131,7 +131,7 @@ let handle_print_cst = fun sub_matches ->
   match Fs.read (Path.v file) with
   | Error _err ->
       Log.error ("Error reading file " ^ file);
-      exit 1
+      System.exit 1
   | Ok source ->
       let trace_timings = trace_cst_timings_enabled () in
       let parse_started = now_nanos () in
@@ -190,7 +190,7 @@ let handle_explain = fun sub_matches ->
   | Some id -> println (Error.explain id ^ "\n")
   | None ->
       Log.error ("Unknown error code: " ^ error_code);
-      exit 1
+      System.exit 1
 
 let main = fun ~args ->
   (* Parse command line arguments *)

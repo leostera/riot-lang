@@ -1,84 +1,48 @@
 (** Default hasher and random state for HashMap/HashSet *)
-open Global
-open IO
-open Collections
+open Kernel
 
 (** Default hasher using kernel's default hash algorithm *)
 module DefaultHasher = struct
-  type state = {
-    mutable segments_rev: Iovec.iov list;
-  }
+  type state = Common.state
 
-  let create = fun () -> { segments_rev = [] }
+  let create = Common.create_state
 
-  let push_segment = fun state ba ~off ~len ->
-    state.segments_rev <- { Iovec.ba; off; len } :: state.segments_rev
+  let write = Common.write_string
 
-  let write = fun state s ->
-    if String.length s > 0 then
-      push_segment state (Bytes.unsafe_of_string s) ~off:0 ~len:(String.length s)
-
-  let write_hash = fun state hash ->
-    let data = Kernel.Crypto.Hash.to_bytes hash |> Bytes.to_string in
-    write state data
+  let write_hash = Common.write_hash
 
   let write_unit = fun state () ->
-    (* Default: unit is a single zero byte *)
-    let bytes = Bytes.create 1 in
-    write state (Bytes.unsafe_to_string bytes)
+    Common.push_bytes state (Common.bytes_of_unit ())
 
-  let write_int = fun state i ->
-    let bytes = Bytes.create 8 in
-    Bytes.set_int64_ne bytes 0 (Int64.of_int i);
-    write state (Bytes.unsafe_to_string bytes)
+  let write_int = fun state value ->
+    Common.push_bytes state (Common.bytes_of_int value)
 
-  let write_int32 = fun state i ->
-    let bytes = Bytes.create 4 in
-    Bytes.set_int32_ne bytes 0 i;
-    write state (Bytes.unsafe_to_string bytes)
+  let write_int32 = fun state value ->
+    Common.push_bytes state (Common.bytes_of_int32 value)
 
-  let write_int64 = fun state i ->
-    let bytes = Bytes.create 8 in
-    Bytes.set_int64_ne bytes 0 i;
-    write state (Bytes.unsafe_to_string bytes)
+  let write_int64 = fun state value ->
+    Common.push_bytes state (Common.bytes_of_int64 value)
 
-  let write_float = fun state f -> write_int64 state (Int64.bits_of_float f)
+  let write_float = fun state value ->
+    Common.push_bytes state (Common.bytes_of_float value)
 
-  let write_bool = fun state b ->
-    let bytes = Bytes.create 1 in
-    Bytes.set bytes 0
-      (
-        if b then
-          '\001'
-        else
-          '\000'
-      );
-    write state (Bytes.unsafe_to_string bytes)
+  let write_bool = fun state value ->
+    Common.push_bytes state (Common.bytes_of_bool value)
 
   let write_list = fun writer state lst ->
-    (* Default: include length for better distribution *)
-    write_int state (List.length lst);
-    List.iter (writer state) lst
+    write_int state (Common.list_length lst);
+    Common.iter_list (writer state) lst
 
   let write_array = fun writer state arr ->
-    (* Default: include length for better distribution *)
     write_int state (Array.length arr);
     Array.iter (writer state) arr
 
   let finish = fun state ->
-    let segments = state.segments_rev |> List.rev |> Array.of_list in
-    Kernel.Crypto.FFI.default_hash_iovec segments
+    Common.finish_iovec Ffi.default_hash_iovec state
 
-  (* Convenience functions *)
+  let hash_string = Common.hash_string_with Ffi.default_hash_iovec
 
-  let hash_string = fun s ->
-    let state = create () in
-    write state s;
-    finish state
-
-  let hash_bytes = fun b ->
-    Kernel.Crypto.FFI.default_hash_iovec
-      [|{ Iovec.ba = Bytes.copy b; off = 0; len = Bytes.length b }|]
+  let hash_bytes = Common.hash_bytes_with Ffi.default_hash_iovec
 
   let hash_unit = fun () ->
     let state = create () in
@@ -138,33 +102,30 @@ module RandomState = struct
     seed2: int64;
   }
 
+  let seed_material = fun label ->
+    let pid = Int.to_string (Process.current_pid ()) in
+    match Time.Monotonic.now () with
+    | Ok now ->
+        let secs, nanos = Time.Monotonic.to_parts now in
+        String.concat ":" [ label; pid; Int.to_string secs; Int.to_string nanos ]
+    | Error _ -> String.concat ":" [ label; pid; "0"; "0" ]
+
   let create = fun () ->
-    (* In production, these should be truly random *)
     {
-      seed1 = Kernel.Random.int64 Kernel.Int64.max_int;
-      seed2 = Kernel.Random.int64 Kernel.Int64.max_int
+      seed1 = Digest.to_int64 (DefaultHasher.hash_string (seed_material "seed1"));
+      seed2 = Digest.to_int64 (DefaultHasher.hash_string (seed_material "seed2"))
     }
 
   (** Hash with this random state for DoS resistance *)
   let hash_with_seed = fun state data seed1 seed2 ->
-    (* Mix the default hash with random seeds *)
-    let base_hash = DefaultHasher.hash_string data in
-    let bytes = Kernel.Crypto.Hash.to_bytes base_hash in
-    let h = ref (Bytes.get_int64_ne bytes 0) in
-    h := Int64.logxor !h seed1;
-    h := Int64.mul !h 0x85eb_ca6bL;
-    h := Int64.logxor !h (Int64.shift_right_logical !h 13);
-    h := Int64.logxor !h seed2;
-    h := Int64.mul !h 0xc2b2_ae35L;
-    h := Int64.logxor !h (Int64.shift_right_logical !h 16);
-    let result = Bytes.create 8 in
-    Bytes.set_int64_ne result 0 !h;
-    Kernel.Crypto.Hash.of_bytes result
+    let hasher = DefaultHasher.create () in
+    DefaultHasher.write_int64 hasher seed1;
+    DefaultHasher.write hasher data;
+    DefaultHasher.write_int64 hasher seed2;
+    DefaultHasher.finish hasher
 
   let hash_with = fun state data -> hash_with_seed state data state.seed1 state.seed2
 
   let to_int64 = fun state hash ->
-    let base = Digest.to_int64 hash in
-    (* Mix with seed for consistency within a HashMap *)
-    Int64.logxor base state.seed1
+    Int64.add (Digest.to_int64 hash) state.seed1
 end

@@ -61,9 +61,7 @@ module Diagnostic = struct
     | Parsed of parsed
     | Raw of string
 
-  let parse_int_opt = fun value ->
-    try Some (int_of_string value) with
-    | _ -> None
+  let parse_int_opt = fun value -> Int.parse_opt value
 
   let rec find_substring_from = fun text ~needle ~start ->
     let text_len = String.length text in
@@ -91,7 +89,15 @@ module Diagnostic = struct
   let strip_ansi = fun line ->
     let rec loop acc idx =
       if idx >= String.length line then
-        acc |> List.rev |> List.to_seq |> String.of_seq
+        let chars = List.rev acc in
+        let out = Kernel.Bytes.create (List.length chars) in
+        let rec fill index = function
+          | [] -> Kernel.Bytes.to_string out
+          | ch :: rest ->
+              Kernel.Bytes.set out index ch;
+              fill (index + 1) rest
+        in
+        fill 0 chars
       else
         let ch = String.get line idx in
         if ch = '\027' then

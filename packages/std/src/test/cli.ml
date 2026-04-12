@@ -198,7 +198,7 @@ let main = fun ~name ~tests ~args ->
                 in
                 let summary = Runner.run_tests ~config tests in
                 if summary.failed > 0 then
-                  exit 1;
+                  System.exit 1;
                 Ok ()
         )
       | _ ->
@@ -217,6 +217,6 @@ let main = fun ~name ~tests ~args ->
           in
           let summary = Runner.run_tests ~config tests in
           if summary.failed > 0 then
-            exit 1;
+            System.exit 1;
           Ok ()
     )

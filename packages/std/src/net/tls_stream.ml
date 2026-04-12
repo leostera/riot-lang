@@ -19,7 +19,7 @@ type error =
 type 'src t = {
   reader: ('src, error) IO.Reader.t;
   writer: ('src, error) IO.Writer.t;
-  engine: Kernel.Net.Tls.engine;
+  engine: Tls.engine;
   mutable state: 
     [
       `Active
@@ -39,7 +39,7 @@ let read_from_network = fun t ->
         Error Closed
       else
         (
-          let _ = Kernel.Net.Tls.pump_encrypted_in t.engine t.network_in_buf ~pos:0 ~len:n in
+          let _ = Tls.pump_encrypted_in t.engine t.network_in_buf ~pos:0 ~len:n in
           Ok ()
         )
   | Error err -> Error err
@@ -50,7 +50,7 @@ let read_from_network = fun t ->
 
 let flush_to_network = fun t ->
   let rec flush_loop () =
-    let n = Kernel.Net.Tls.read_encrypted_out t.engine t.network_out_buf in
+    let n = Tls.read_encrypted_out t.engine t.network_out_buf in
     if n = 0 then
       Ok ()
     else
@@ -67,12 +67,12 @@ let flush_to_network = fun t ->
 
 let do_handshake = fun t ->
   let rec handshake_loop () =
-    if Kernel.Net.Tls.handshake_complete t.engine then
+    if Tls.handshake_complete t.engine then
       Ok ()
     else
       (
         (* Call do_handshake to advance the state machine *)
-        match Kernel.Net.Tls.do_handshake t.engine with
+        match Tls.do_handshake t.engine with
         | Handshake_done ->
             Ok ()
         | Need_network_read ->
@@ -92,14 +92,14 @@ let do_handshake = fun t ->
 let of_client_io = fun ~reader ~writer ~hostname () ->
   (* Initialize OpenSSL if not already done *)
   (
-    try Kernel.Net.Tls.init () with
+    try Tls.init () with
     | _ -> ()
   );
   (* Check if TLS is available *)
-  if not (Kernel.Net.Tls.is_available ()) then
+  if not (Tls.is_available ()) then
     Error Tls_not_available
   else
-    let engine = Kernel.Net.Tls.create_client_engine ~hostname in
+    let engine = Tls.create_client_engine ~hostname in
     let t = {
       reader;
       writer;
@@ -116,13 +116,13 @@ let of_client_io = fun ~reader ~writer ~hostname () ->
 let of_server_io = fun ~reader ~writer ~cert_file ~key_file () ->
   (* Initialize OpenSSL if not already done *)
   (
-    try Kernel.Net.Tls.init () with
+    try Tls.init () with
     | _ -> ()
   );
-  if not (Kernel.Net.Tls.is_available ()) then
+  if not (Tls.is_available ()) then
     Error Tls_not_available
   else
-    let engine = Kernel.Net.Tls.create_server_engine ~cert_file ~key_file in
+    let engine = Tls.create_server_engine ~cert_file ~key_file in
     let t = {
       reader;
       writer;
@@ -156,7 +156,7 @@ let of_tcp_server = fun ~cert_file ~key_file tcp ->
 
 let read_plaintext t dst: (int, error) result =
   let rec read_loop () =
-    match Kernel.Net.Tls.read_decrypted t.engine dst ~pos:0 ~len:(Bytes.length dst) with
+    match Tls.read_decrypted t.engine dst ~pos:0 ~len:(Bytes.length dst) with
     | Read n ->
         Ok n
     | Eof ->
@@ -196,7 +196,7 @@ let write_plaintext t src: (int, error) result =
     if remaining = 0 then
       Ok src_len
     else
-      match Kernel.Net.Tls.write_plaintext t.engine src_bytes ~pos ~len:remaining with
+      match Tls.write_plaintext t.engine src_bytes ~pos ~len:remaining with
       | Written n ->
           (* Flush encrypted data to network *)
           let* () = flush_to_network t in
@@ -257,7 +257,7 @@ let to_writer: type src. src t -> (src t, error) IO.Writer.t = fun tls ->
 
 (* TLS information *)
 
-let alpn_protocol = fun t -> Kernel.Net.Tls.alpn_protocol t.engine
+let alpn_protocol = fun t -> Tls.alpn_protocol t.engine
 
 let close = fun _t -> ()
 

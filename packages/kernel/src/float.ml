@@ -1,5 +1,9 @@
 type t = float
 
+let max_float = 1.79769313486231571e+308
+
+let min_float = 2.22507385850720138e-308
+
 let equal = Caml_runtime.equal
 
 let compare = Caml_runtime.compare
@@ -7,6 +11,28 @@ let compare = Caml_runtime.compare
 let of_int = Caml_runtime.float_of_int
 
 let to_int = Caml_runtime.int_of_float
+
+let parse = Caml_runtime.float_of_string
+
+let parse_opt = fun value ->
+  try Some (parse value) with
+  | Failure _ -> None
+
+let of_string = Caml_runtime.float_of_string
+
+let of_string_opt = fun value ->
+  try Some (of_string value) with
+  | Failure _ -> None
+
+let is_finite = fun value -> equal (Caml_runtime.sub_float value value) 0.0
+
+let is_infinite = fun value -> equal (Caml_runtime.div_float 1.0 value) 0.0
+
+let is_nan = fun value ->
+  if equal value value then
+    false
+  else
+    true
 
 let to_string = fun ?(precision = 6) value ->
   let precision =
@@ -19,7 +45,15 @@ let to_string = fun ?(precision = 6) value ->
 
 let rem = Caml_runtime.rem_float
 
+let abs = fun value ->
+  if Caml_runtime.less_than (compare value 0.0) 0 then
+    Caml_runtime.neg_float value
+  else
+    value
+
 let sqrt = Caml_runtime.sqrt_float
+
+external cbrt: float -> float = "caml_cbrt_float" "caml_cbrt"
 
 let floor = Caml_runtime.floor_float
 

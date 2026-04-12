@@ -358,10 +358,10 @@ val weighted_result: int -> int -> 'value t -> 'error t -> ('value, 'error) resu
 (** [weighted_result weight_ok weight_error ok_gen error_gen] generates results with weights. *)
 (** {1 Low-level Interface} *)
 
-val generate: Random.State.t -> 'value t -> 'value
+val generate: Random.Rng.t -> 'value t -> 'value
 
 (** [generate rnd gen] runs the generator with the given random state.
     This is the low-level interface - most users should use the Property module. *)
-val generate_with_size: Random.State.t -> int -> 'value t -> 'value
+val generate_with_size: Random.Rng.t -> int -> 'value t -> 'value
 
 (** [generate_with_size rnd size gen] runs a sized generator. *)

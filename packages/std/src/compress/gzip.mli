@@ -5,7 +5,10 @@ type error =
   | Engine_error of Gzip_engine.error
   (** The underlying incremental gzip engine rejected the stream. *)
   | Truncated_input
+
 (** The gzip stream ended before the decoder reached a complete end state. *)
+val error_to_string: error -> string
+
 (** Opaque reader state produced by [`to_reader`]. *)
 type ('src, 'read_err) reader
 (** Errors returned by the reader produced from a gzip source. *)

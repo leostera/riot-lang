@@ -43,7 +43,7 @@ let parse_line = fun line ->
         | "id" ->
             Some { data = ""; event_type = None; id = Some value; retry = None }
         | "retry" -> (
-            match int_of_string_opt value with
+            match Int.parse_opt value with
             | Some retry -> Some { data = ""; event_type = None; id = None; retry = Some retry }
             | None -> None
           )

@@ -1,38 +1,37 @@
 (** Rune - Unicode code points *)
 open Global
 open IO
-module Uchar = Kernel.Uchar
+module Scalar = Kernel.Unicode.Rune
 
-type t = Uchar.t
+type t = Scalar.t
 
 (* Constants *)
 
-let max = Uchar.unsafe_of_int 0x10_ffff
+let max = Scalar.max
 
-let replacement = Uchar.unsafe_of_int 0xfffd
+let replacement = Scalar.replacement
 
-let max_ascii = Uchar.unsafe_of_int 0x7f
+let max_ascii = Scalar.max_ascii
 
-let max_latin1 = Uchar.unsafe_of_int 0xff
+let max_latin1 = Scalar.max_latin1
 
 (* Conversion *)
 
 let of_int = fun n ->
-  if Uchar.is_valid n then
-    Some (Uchar.unsafe_of_int n)
+  if Scalar.is_valid n then
+    Some (Scalar.unsafe_of_int n)
   else
     None
 
-let to_int = Uchar.to_int
+let to_int = Scalar.to_int
 
-let of_char = fun c -> Uchar.of_char c
+let of_char = fun c -> Scalar.of_char c
 
-let unsafe_of_int = fun n -> Uchar.unsafe_of_int n
+let to_char = Scalar.to_char
 
-let to_string = fun r ->
-  let buf = Bytes.create 4 in
-  let len = Bytes.set_utf_8_uchar buf 0 r in
-  Bytes.sub_string buf 0 len
+let unsafe_of_int = fun n -> Scalar.unsafe_of_int n
+
+let to_string = Scalar.to_string
 
 (* Character classification - using full Unicode tables *)
 

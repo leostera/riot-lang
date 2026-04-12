@@ -12,7 +12,8 @@ let fail = fun message -> Error (Failure message)
 let config_path = fun () -> Riot_dirs.config_path ()
 
 let ensure_riot_dirs = fun () ->
-  Riot_dirs.ensure_created () |> Result.map_error (fun exn -> Failure (Exception.to_string exn))
+  Riot_dirs.ensure_created ()
+  |> Result.map_error (fun exn -> Failure (Kernel.Exception.to_string exn))
 
 let load_config = fun path ->
   match Fs.exists path with

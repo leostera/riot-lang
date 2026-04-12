@@ -952,7 +952,7 @@ let parse_list_marker = fun text ->
         if digit_len <= 0 || digit_len > 9 || digits_end >= len then
           None
         else if text.[digits_end] = '.' || text.[digits_end] = ')' then
-          let start_number = String.sub text indent_offset digit_len |> int_of_string in
+          let start_number = String.sub text indent_offset digit_len |> Int.parse in
           let marker_after, marker_after_columns =
             if digits_end + 1 >= len then
               (digits_end + 1, indent + digit_len + 2)
@@ -2041,7 +2041,7 @@ let parse = fun ?(flavor = Markdown) source ->
     { source; tokens; tree; diagnostics }
   with
   | exn ->
-      let message = Exception.to_string exn in
+      let message = Kernel.Exception.to_string exn in
       let found = { kind = "exception"; text = message } in
       let span = make_span ~start:0 ~len:(String.length source) in
       let diagnostic = parser_internal ~found ~message ~span in

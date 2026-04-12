@@ -28,7 +28,7 @@
 open Global
 open Collections
 module String = Kernel.String
-module Uchar = Kernel.Uchar
+module Uchar = Kernel.Unicode.Rune
 
 (** Line break opportunity type *)
 type break_opportunity =

@@ -1,8 +1,8 @@
 (** Grapheme clusters - user-perceived characters *)
 open Global
 module String = Kernel.String
-module List = Kernel.Collections.List
-module Uchar = Kernel.Uchar
+module List = Collections.List
+module Uchar = Kernel.Unicode.Rune
 
 type t = Rune.t list
 

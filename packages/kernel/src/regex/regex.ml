@@ -1,4 +1,5 @@
-(** Thin regular-expression bindings over the kernel's PCRE2 FFI. *)
+open Prelude
+
 type compile_error = {
   message: string;
   offset: int option;
@@ -13,8 +14,8 @@ type t = Regex_stubs.compiled
 
 let compile = fun pattern ->
   match Regex_stubs.compile pattern with
-  | Result.Ok regex -> Result.Ok regex
-  | Result.Error (message, offset) -> Result.Error { message; offset }
+  | Ok regex -> Ok regex
+  | Error (message, offset) -> Error { message; offset }
 
 let is_match = Regex_stubs.is_match
 

@@ -68,9 +68,13 @@ let ( *. ) = Kernel.( *. )
 
 let ( /. ) = Kernel.( /. )
 
+let ( @@ ) = Kernel.( @@ )
+
 let ( |> ) = Kernel.( |> )
 
 let ( ^ ) = Kernel.( ^ )
+
+let ( @ ) = Kernel.( @ )
 
 let ( ** ) = Kernel.( ** )
 
@@ -99,6 +103,12 @@ let not = Kernel.not
 let ( && ) = Kernel.( && )
 
 let ( || ) = Kernel.( || )
+
+let raise = Kernel.raise
+
+let raise_notrace = Kernel.raise_notrace
+
+let ignore = Kernel.ignore
 
 (** Process management globals *)
 include Runtime.Exception
@@ -134,7 +144,8 @@ let panic = Kernel.SystemError.panic
 
 let ( ! ) = fun cell -> Sync.Cell.get cell
 
-let ( := ) = fun cell value -> Sync.Cell.set cell value
+let ( := ) = fun cell value ->
+  Sync.Cell.set cell value
 
 let ref = fun value -> Sync.Cell.create value
 

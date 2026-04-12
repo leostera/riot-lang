@@ -1,5 +1,4 @@
 open Kernel
-
 module Bytes = Stdlib.Bytes
 module Buffer = Stdlib.Buffer
 module Iovec = Kernel.IO.Iovec
@@ -7,7 +6,6 @@ module Iovec = Kernel.IO.Iovec
 module type Read = sig
   type t
   type err
-
   val read: t -> ?timeout:int64 -> bytes -> (int, err) result
 
   val read_vectored: t -> Iovec.t -> (int, err) result
@@ -20,30 +18,30 @@ type ('src, 'err) t =
 
 let of_read_src = fun read src -> Reader (read, src)
 
-let read: type src err. (src, err) t -> ?timeout:int64 -> bytes -> (int, err) result =
-  fun (Reader ((module R), src)) ?timeout buf ->
+let read: type src err. (src, err) t -> ?timeout:int64 -> bytes -> (int, err) result = fun (Reader ((module R), src)) ?timeout buf ->
   R.read src ?timeout buf
 
-let read_vectored: type src err. (src, err) t -> Iovec.t -> (int, err) result =
-  fun (Reader ((module R), src)) bufs ->
+let read_vectored: type src err. (src, err) t -> Iovec.t -> (int, err) result = fun (Reader ((module R), src)) bufs ->
   R.read_vectored src bufs
 
-let read_to_end: type src err. (src, err) t -> buf:Buffer.t -> (int, err) result =
-  fun (Reader ((module R), src)) ~buf:out ->
-    let chunk = Bytes.create 1_024 in
-    let rec loop total =
-      match R.read src chunk with
-      | Ok 0 -> Ok total
-      | Ok len ->
-          Buffer.add_bytes out (Bytes.sub chunk 0 len);
-          loop (total + len)
-      | Error err -> Error err
-    in
-    loop 0
+let read_to_end: type src err. (src, err) t -> buf:Buffer.t -> (int, err) result = fun (Reader ((module R), src)) ~buf:out ->
+  let chunk = Bytes.create 1_024 in
+  let rec loop total =
+    match R.read src chunk with
+    | Ok 0 ->
+        Ok total
+    | Ok len ->
+        Buffer.add_bytes out (Bytes.sub chunk 0 len);
+        loop (total + len)
+    | Error err ->
+        Error err
+  in
+  loop 0
 
 let map_err: type src a b. (src, a) t -> fn:(a -> b) -> (src, b) t = fun (Reader ((module R), src)) ~fn ->
   let module Mapped = struct
     type t = R.t
+
     type err = b
 
     let read = fun value ?timeout buf ->
@@ -61,6 +59,7 @@ let map_err: type src a b. (src, a) t -> fn:(a -> b) -> (src, b) t = fun (Reader
 let empty =
   let module Empty = struct
     type t = unit
+
     type err = unit
 
     let read = fun () ?timeout:_ _ -> Ok 0
@@ -82,6 +81,7 @@ let from_bytes = fun data ->
   let state = { offset = 0 } in
   let module Bytes_read = struct
     type t = bytes
+
     type err = unit
 
     let read = fun source ?timeout:_ buf ->
@@ -116,6 +116,7 @@ let from_string = fun source ->
   let state = { offset = 0 } in
   let module String_read = struct
     type t = string
+
     type err = unit
 
     let read = fun value ?timeout:_ buf ->

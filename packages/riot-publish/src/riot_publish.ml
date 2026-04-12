@@ -62,7 +62,7 @@ let ( let* ) = Result.and_then
 let exn_message = fun exn ->
   match exn with
   | Failure message -> message
-  | exn -> Exception.to_string exn
+  | exn -> Kernel.Exception.to_string exn
 
 let publish_error_message = fun error ->
   match error with

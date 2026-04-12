@@ -190,11 +190,13 @@ module Value = struct
                       let value = String.trim
                         (String.sub trimmed (idx + 1) (String.length trimmed - idx - 1)) in
                       if String.equal key "q" then
-                        try
-                          quality := Some (float_of_string value);
-                          acc
-                        with
-                        | _ -> (key, value) :: acc
+                        (
+                          match Float.of_string_opt value with
+                          | Some parsed ->
+                              quality := Some parsed;
+                              acc
+                          | None -> (key, value) :: acc
+                        )
                       else
                         (key, value) :: acc)
                 []

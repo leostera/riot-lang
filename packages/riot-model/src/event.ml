@@ -7,25 +7,31 @@ module Pm_error = Pm_error
 
 (** Strip ANSI escape codes from a string *)
 let strip_ansi_codes = fun str ->
-  (* ANSI escape codes pattern: ESC[...m where ESC is \027 *)
-  let rec strip acc chars =
-    match chars with
-    | [] ->
-        List.rev acc |> List.to_seq |> String.of_seq
-    | '\027' :: '[' :: rest ->
-        (* Found start of ANSI escape sequence, skip until 'm' *)
-        let rec skip_until_m chars =
-          match chars with
-          | [] -> []
-          | 'm' :: rest -> rest
-          | _ :: rest -> skip_until_m rest
-        in
-        strip acc (skip_until_m rest)
-    | c :: rest ->
-        strip (c :: acc) rest
+  let len = String.length str in
+  let out = Kernel.Bytes.create len in
+  let rec skip_until_m index =
+    if index >= len then
+      index
+    else if Char.equal (String.get str index) 'm' then
+      index + 1
+    else
+      skip_until_m (index + 1)
   in
-  strip []
-    (String.to_seq str |> List.of_seq)
+  let rec strip read_index write_index =
+    if read_index >= len then
+      Kernel.Bytes.sub_string out 0 write_index
+    else if
+      read_index + 1 < len
+      && Char.equal (String.get str read_index) '\027'
+      && Char.equal (String.get str (read_index + 1)) '['
+    then
+      strip (skip_until_m (read_index + 2)) write_index
+    else (
+      Kernel.Bytes.set out write_index (String.get str read_index);
+      strip (read_index + 1) (write_index + 1)
+    )
+  in
+  strip 0 0
 
 type level =
   Error

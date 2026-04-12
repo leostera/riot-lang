@@ -673,7 +673,7 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
         if suite_binaries = [] then
           Ok []
         else
-          let concurrency = Int.max 1 (Int.min 8 System.available_parallelism) in
+          let concurrency = Int.max 1 (Int.min 8 Thread.available_parallelism) in
           let parent = self () in
           let rec spawn_initial active remaining =
             if active >= concurrency then
@@ -693,7 +693,7 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
                             binary_path with
                           | exn -> Error (SuiteExecutionError {
                             suite;
-                            reason = Exception.to_string exn
+                            reason = Kernel.Exception.to_string exn
                           })
                         in
                         send parent (ListedBenchmarksReady (suite, result));
@@ -736,7 +736,7 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
                             next_binary_path with
                           | exn -> Error (SuiteExecutionError {
                             suite = next_suite;
-                            reason = Exception.to_string exn
+                            reason = Kernel.Exception.to_string exn
                           })
                         in
                         send parent (ListedBenchmarksReady (next_suite, result));
@@ -750,7 +750,7 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
             (fun collected ->
               collected
               |> List.sort (fun (left, _) (right, _) -> compare_suite_binary left right)
-              |> List.map snd)
+              |> List.map (fun (_, value) -> value))
 
 let bench = fun ?(on_event = no_event) (request: bench_request) ->
   let suites = collect_suite_binaries

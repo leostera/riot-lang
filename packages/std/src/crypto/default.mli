@@ -35,13 +35,13 @@ module RandomState: sig
   val create: unit -> t
 
   (** Create a new random state with random seeds *)
-  val hash_with_seed: t -> string -> int64 -> int64 -> Kernel.Crypto.hash
+  val hash_with_seed: t -> string -> int64 -> int64 -> Hash.t
 
   (** Hash with this random state for DoS resistance *)
-  val hash_with: t -> string -> Kernel.Crypto.hash
+  val hash_with: t -> string -> Hash.t
 
   (** Hash with this random state *)
-  val to_int64: t -> Kernel.Crypto.hash -> int64
+  val to_int64: t -> Hash.t -> int64
 
   (** Convert hash to int64 mixed with seed for consistency *)
 end

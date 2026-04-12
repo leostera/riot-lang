@@ -8,7 +8,7 @@ type t = {
   session_id: Session_id.t;
 }
 
-let make = fun ~session_id ~profile ?target ?(available_parallelism = System.available_parallelism) () ->
+let make = fun ~session_id ~profile ?target ?(available_parallelism = Thread.available_parallelism) () ->
   let host_triplet = System.Host.current in
   (* Use provided target or default to Host (native compilation) *)
   let target =

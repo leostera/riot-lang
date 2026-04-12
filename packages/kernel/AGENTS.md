@@ -1,24 +1,26 @@
-# kernel AGENTS
+# kernel-new AGENTS
 
-`kernel` is the low-level systems boundary. It owns C FFI, platform integration, file descriptors, low-level I/O, and primitives that higher layers build on.
+`kernel-new` is Riot's new platform abstraction layer. It should stay narrow: portable public contracts over platform-specific implementations, with just enough foundational types to let `std` build on top of it.
 
 ## Rules
 
-1. This is the package where direct `stdlib` and `unix` usage is allowed.
-2. Keep the API narrow and mechanical. Higher-level policy belongs in `std` or above.
-3. Preserve cross-platform behavior. Check both macOS and Linux branches when changing FFI, link flags, or platform shims.
-4. Prefer explicit error variants over stringly failures.
-5. Treat interrupted poll syscalls (`EINTR` from `kevent`/`epoll_wait`) as retryable wakeups at the kernel boundary; do not surface them to the scheduler as hard polling errors.
-6. Archive and compression primitives must stay incremental and mechanical. Do not add monolithic C helpers that read, write, compress, or extract whole files or archives in one blocking call.
-7. Keep crypto FFI entrypoints mechanically aligned across algorithms. If one digest gets a segmented/iovec variant, add the same shape for the sibling digests rather than leaving SHA-only special cases behind.
-8. Keep `Kernel.Regex` thin and mechanical over PCRE2. Compile errors should stay explicit, and higher-level matching policy such as glob semantics belongs above `kernel`.
-9. Keep `Kernel.Fs.ReadDir` mechanical. It should expose cheap directory-entry kind hints from `readdir`, skip `.` and `..` at the kernel boundary, and leave metadata fallback policy to `std`.
-10. Keep `Kernel.Format` primitive-only. It should mechanically concatenate already-decided values into strings, not grow higher-level interpolation, styling, or domain-specific formatting policy.
-11. Kernel-owned autofixes should stay syntax-directed and conservative. Prefer explicit `Kernel.format` / `Format.format` rewrites over import-sensitive edits when scope is ambiguous.
-12. Keep UDP primitives mechanical. `Kernel.Net.Udp_socket` should expose bind/connect/send/recv operations and readiness sources, while packet parsing, retries, and handler orchestration stay above `kernel`.
+1. Keep public APIs portable. Platform-specific modules should live underneath public handles such as `Fs.File` or `Async`.
+2. Do not expose `Unix.file_descr` or similar platform-native handles in the public surface.
+3. Keep `Reader` and `Writer` out of `kernel-new`; those stay in `std`.
+4. Put all native code in `native/`, and keep it Riot-authored.
+5. Do not depend on `stdlib` or `unix` in `kernel-new` implementation code. If a compiler-owned type such as `string` or `option` must be referenced, keep that dependency explicit and minimal.
+6. Prefer explicit error variants over exception-driven APIs. Each public module should own a small typed `error` type, and `Kernel_new.Error` should wrap those typed errors at package boundaries. Native stubs should return `Result.t` with canonical `SystemError.t` codes instead of surfacing platform exceptions into OCaml.
+7. Keep numeric system-error code bridges internal. `Kernel_new.SystemError` is the public symbolic contract; raw code values belong only in package-internal native plumbing.
+8. Build new native stubs mechanically and narrowly. Avoid monolithic helpers that smuggle policy into C.
+9. If a capability has a real async or readiness-driven path, do not add a blocking helper for it in `kernel-new`. Fast metadata/sysinfo calls are fine when they are inherently synchronous.
+10. Tests belong in `tests/` and benchmarks in `bench/`, using `std` as a dev-dependency.
+11. Start with the Unix backend, but keep the directory structure ready for additional backends under each public module.
+12. Source-layout and code-hygiene rules do not belong in unit tests. Encode them in docs, review guidance, or separate tooling instead.
+13. Do not add `Backend.ml` shim modules. Prefer local backend files such as `env/unix.ml`; if the current planner cannot support a deeper nested split yet, keep the implementation in the public module rather than introducing a backend shim.
+14. Keep `Kernel.Random.Source` entropy-only. OS randomness belongs here; PRNG policy, distributions, and sampling combinators belong in `std`.
 
 ## Validate
 
-`timeout 30 riot build kernel`
-`timeout 180 riot test kernel:format_tests`
-`timeout 180 riot test kernel:format_fix_tests`
+`timeout 30 riot build kernel-new`
+`timeout 180 riot test -p kernel-new`
+`timeout 180 riot bench -p kernel-new --json`

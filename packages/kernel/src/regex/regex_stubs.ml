@@ -1,6 +1,8 @@
+open Prelude
+
 type compiled
 
-external compile: string -> (compiled, string * int option) Result.t = "kernel_regex_compile"
+external compile: string -> (compiled, string * int option) result = "kernel_regex_compile"
 
 external is_match: compiled -> string -> bool = "kernel_regex_is_match"
 

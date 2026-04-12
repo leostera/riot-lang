@@ -36,7 +36,7 @@ let parse_status_line = fun input ->
                   let version_cursor = Cursor.create version in
                   match Cursor.take_n version_cursor 5 with
                   | Some ("HTTP/", _) -> (
-                      match int_of_string_opt code_str with
+                      match Int.parse_opt code_str with
                       | None -> Error "Invalid status code"
                       | Some status_code -> Done {
                         value = (version, status_code, reason);

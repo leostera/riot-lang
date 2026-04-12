@@ -46,4 +46,10 @@
     {!MutIterator} | | Lazy sequences | {!Iterator}, {!MutIterator} | | String
     parsing | {!Cursor}, {!MutCursor} | *)
 
-include module type of Kernel.Iter
+module Iterator: module type of Iterator
+
+module MutIterator: module type of MutIterator
+
+module Cursor: module type of Cursor
+
+module MutCursor: module type of Mut_cursor

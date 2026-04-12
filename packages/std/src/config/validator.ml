@@ -143,7 +143,7 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
         | Some (Data.Toml.Int i) ->
             Ok (Spec.Int i)
         | Some (Data.Toml.String s) -> (
-            match int_of_string_opt s with
+            match Int.of_string_opt s with
             | Some i -> Ok (Spec.Int i)
             | None -> Error (field_name ^ ": invalid integer")
           )
@@ -212,7 +212,7 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
     | Float { default } -> (
         match toml_opt with
         | Some (Data.Toml.String s) -> (
-            match float_of_string_opt s with
+            match Float.of_string_opt s with
             | Some f -> Ok (Spec.Float f)
             | None -> Error (field_name ^ ": invalid float")
           )
@@ -364,7 +364,9 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
                     | Error err -> Error err
                   )
                 | None ->
-                    let valid_variants = String.concat ", " (Collections.List.map fst cases) in
+                    let valid_variants =
+                      String.concat ", " (Collections.List.map (fun (name, _) -> name) cases)
+                    in
                     Error (field_name
                     ^ ": unknown "
                     ^ discriminant

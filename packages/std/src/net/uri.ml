@@ -290,8 +290,7 @@ let port = fun url ->
       | None -> None
       | Some idx -> (
           let port_str = String.sub auth (idx + 1) (String.length auth - idx - 1) in
-          try Some (int_of_string port_str) with
-          | _ -> None
+          Int.of_string_opt port_str
         )
     )
 
@@ -348,8 +347,7 @@ module Authority = struct
     | None -> None
     | Some idx -> (
         let port_str = String.sub auth (idx + 1) (String.length auth - idx - 1) in
-        try Some (int_of_string port_str) with
-        | _ -> None
+        Int.of_string_opt port_str
       )
 
   let userinfo = fun auth ->

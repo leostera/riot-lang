@@ -1,5 +1,4 @@
 open Global
-
 module Buffer = IO.Buffer
 module Bytes = Kernel.Bytes
 module Iovec = IO.Iovec
@@ -21,13 +20,11 @@ end
 
 let error_to_string = Kernel.Fs.File.error_to_string
 
-let kernel_path = fun path ->
-  Kernel.Path.of_string (Path.to_string path)
+let kernel_path = fun path -> Kernel.Path.of_string (Path.to_string path)
 
-let wrap_result : type value error.
-  (value, error) Kernel.Result.t -> (value, error) result = function
-    | Ok value -> Ok value
-    | Error error -> Error error
+let wrap_result: type value error. (value, error) Kernel.Result.t -> (value, error) result = function
+  | Ok value -> Ok value
+  | Error error -> Error error
 
 let open_with_flags = fun path flags ~mode ->
   wrap_result (Kernel.Fs.File.open_file (kernel_path path) flags ~perm:(Permissions.to_mode mode))
@@ -35,38 +32,38 @@ let open_with_flags = fun path flags ~mode ->
 let create = fun path ->
   wrap_result
     (Kernel.Fs.File.open_write
-       (kernel_path path)
-       ~create:true
-       ~truncate:true
-       ~append:false
-       ~perm:(Permissions.to_mode Permissions.read_write))
+      (kernel_path path)
+      ~create:true
+      ~truncate:true
+      ~append:false
+      ~perm:(Permissions.to_mode Permissions.read_write))
 
 let create_new = fun path ->
   wrap_result
     (Kernel.Fs.File.open_file
-       (kernel_path path)
-       [ Kernel.Fs.File.WriteOnly; Kernel.Fs.File.Create; Kernel.Fs.File.Exclusive ]
-       ~perm:(Permissions.to_mode Permissions.read_write))
+      (kernel_path path)
+      [ Kernel.Fs.File.WriteOnly; Kernel.Fs.File.Create; Kernel.Fs.File.Exclusive ]
+      ~perm:(Permissions.to_mode Permissions.read_write))
 
 let open_read = fun path -> wrap_result (Kernel.Fs.File.open_read (kernel_path path))
 
 let open_write = fun path ->
   wrap_result
     (Kernel.Fs.File.open_write
-       (kernel_path path)
-       ~create:true
-       ~truncate:false
-       ~append:false
-       ~perm:(Permissions.to_mode Permissions.read_write))
+      (kernel_path path)
+      ~create:true
+      ~truncate:false
+      ~append:false
+      ~perm:(Permissions.to_mode Permissions.read_write))
 
 let open_append = fun path ->
   wrap_result
     (Kernel.Fs.File.open_write
-       (kernel_path path)
-       ~create:true
-       ~truncate:false
-       ~append:true
-       ~perm:(Permissions.to_mode Permissions.read_write))
+      (kernel_path path)
+      ~create:true
+      ~truncate:false
+      ~append:true
+      ~perm:(Permissions.to_mode Permissions.read_write))
 
 let open_read_write = fun path ->
   wrap_result
@@ -74,6 +71,10 @@ let open_read_write = fun path ->
        (kernel_path path)
        [ Kernel.Fs.File.ReadWrite ]
        ~perm:(Permissions.to_mode Permissions.read_write))
+
+let try_lock_exclusive = fun file -> wrap_result (Kernel.Fs.File.try_lock_exclusive file)
+
+let unlock = fun file -> wrap_result (Kernel.Fs.File.unlock file)
 
 let to_source = Kernel.Fs.File.to_source
 
@@ -86,12 +87,11 @@ let read = fun file buffer ~offset ~len ->
   let rec loop () =
     match Kernel.Fs.File.read file buffer ~pos:offset ~len with
     | Ok bytes_read -> Ok bytes_read
-    | Error err when is_would_block err ->
-        Runtime.syscall
-          ~name:"Fs.File.read"
-          ~interest:Kernel.Async.Interest.readable
-          ~source
-          loop
+    | Error err when is_would_block err -> Runtime.syscall
+      ~name:"Fs.File.read"
+      ~interest:Kernel.Async.Interest.readable
+      ~source
+      loop
     | Error err -> Error err
   in
   loop ()
@@ -101,11 +101,13 @@ let read_to_end = fun file ->
   let chunk = Bytes.create 4_096 in
   let rec loop () =
     match read file chunk ~offset:0 ~len:4_096 with
-    | Ok 0 -> Ok (Buffer.contents buf)
+    | Ok 0 ->
+        Ok (Buffer.contents buf)
     | Ok n ->
         Buffer.add_subbytes buf chunk 0 n;
         loop ()
-    | Error err -> Error err
+    | Error err ->
+        Error err
   in
   loop ()
 
@@ -115,8 +117,7 @@ let read_exact = fun file buffer ~offset ~len ->
       Ok ()
     else
       match read file buffer ~offset:pos ~len:remaining with
-      | Ok 0 ->
-          Error (Kernel.Fs.File.System Kernel.SystemError.EndOfFile)
+      | Ok 0 -> Error (Kernel.Fs.File.System Kernel.SystemError.EndOfFile)
       | Ok n -> loop (pos + n) (remaining - n)
       | Error err -> Error err
   in
@@ -127,7 +128,8 @@ let read_line = fun file ->
   let chunk = Bytes.create 1 in
   let rec loop () =
     match read file chunk ~offset:0 ~len:1 with
-    | Ok 0 -> Ok (Buffer.contents buf)
+    | Ok 0 ->
+        Ok (Buffer.contents buf)
     | Ok 1 ->
         let c = Bytes.get chunk 0 in
         Buffer.add_char buf c;
@@ -135,8 +137,10 @@ let read_line = fun file ->
           Ok (Buffer.contents buf)
         else
           loop ()
-    | Ok _ -> Ok (Buffer.contents buf)
-    | Error err -> Error err
+    | Ok _ ->
+        Ok (Buffer.contents buf)
+    | Error err ->
+        Error err
   in
   loop ()
 
@@ -145,12 +149,11 @@ let write = fun file buffer ~offset ~len ->
   let rec loop () =
     match Kernel.Fs.File.write file buffer ~pos:offset ~len with
     | Ok bytes_written -> Ok bytes_written
-    | Error err when is_would_block err ->
-        Runtime.syscall
-          ~name:"Fs.File.write"
-          ~interest:Kernel.Async.Interest.writable
-          ~source
-          loop
+    | Error err when is_would_block err -> Runtime.syscall
+      ~name:"Fs.File.write"
+      ~interest:Kernel.Async.Interest.writable
+      ~source
+      loop
     | Error err -> Error err
   in
   loop ()
@@ -181,8 +184,7 @@ let to_reader = fun file ->
 
     type err = error
 
-    let read = fun file ?timeout:_ buf ->
-      read_bytes file buf ~offset:0 ~len:(Bytes.length buf)
+    let read = fun file ?timeout:_ buf -> read_bytes file buf ~offset:0 ~len:(Bytes.length buf)
 
     let read_vectored = fun file bufs ->
       let total_len = Iovec.length bufs in

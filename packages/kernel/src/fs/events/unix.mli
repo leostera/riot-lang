@@ -1,25 +1,20 @@
 type t
-
 type watch_id = int
-
 type event = {
   path: Path.t;
   flags: int32;
   event_id: int64;
 }
-
 type event_kind =
   | Created
   | Modified
   | Deleted
   | Renamed
   | Metadata
-
 type error =
   | Closed
   | AlreadyWatching
   | System of System_error.t
-
 val error_to_string: error -> string
 
 (** Use `create ()` to allocate a filesystem watcher handle.

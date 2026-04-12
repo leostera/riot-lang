@@ -5,6 +5,7 @@
 
     The separate `actors` package is now a compatibility facade over this
     module. *)
+
 open Kernel
 
 module Exception: sig

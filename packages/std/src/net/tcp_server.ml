@@ -2,7 +2,7 @@
 open Global
 open IO
 
-type handler = req:string -> Kernel.Net.Tcp_stream.t -> unit
+type handler = req:string -> Kernel.Net.TcpStream.t -> unit
 
 (** Handler receives request string and stream for responses *)
 type t = {
@@ -15,7 +15,7 @@ type error =
   | Closed
   | System_error of IO.error
 
-let read_line = fun (stream: Kernel.Net.Tcp_stream.t) ->
+let read_line = fun (stream: Kernel.Net.TcpStream.t) ->
   let buffer = Bytes.create 4_096 in
   let rec loop acc =
     match Tcp_stream.read stream buffer () with

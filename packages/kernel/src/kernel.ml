@@ -1,5 +1,7 @@
 include Prelude
 
+external dangerous_unsafe_cast: 'value -> 'cast = "%identity"
+
 module Array = Array
 module Atomic = Atomic
 module Async = Async
@@ -25,6 +27,7 @@ module Option = Option
 module Path = Path
 module Process = Process
 module Ptr = Ptr
+module Random = Random
 module Regex = Regex
 module Result = Result
 module String = String

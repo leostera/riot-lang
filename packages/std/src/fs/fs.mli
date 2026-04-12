@@ -46,8 +46,9 @@
     ## Error Handling
 
     All operations return `Result.t` for explicit error handling. Never throws
-    exceptions for I/O errors. Common error conditions include permission denied, 
-    file not found, disk full, etc. All errors are typed using {!Kernel.IO.error}.
+    exceptions for I/O errors. Common error conditions include permission denied,
+    file not found, disk full, etc. Filesystem operations use the shared
+    {!Std.IO.error} surface today.
 
     ## Platform-specific behavior
 
@@ -58,12 +59,7 @@
 
 open Iter
 
-type error = Kernel.IO.error
-
-(** Filesystem error type - preserves structured error info *)
-module Fd = Fd
-
-(** File descriptor module *)
+type error = IO.error
 module Permissions: sig
   type t
 
@@ -133,6 +129,7 @@ module Metadata: sig
       | `Character
       | `Fifo
       | `Socket
+      | `Unknown
     ]
 
   (** Get the file type *)

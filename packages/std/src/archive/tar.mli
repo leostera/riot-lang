@@ -36,7 +36,10 @@ type error =
   | Unsupported_entry_kind of entry_kind
   (** Extraction rejected a non-file, non-directory entry kind. *)
   | Duplicate_entry of Path.t
+
 (** Extraction saw the same normalized target path more than once. *)
+val error_to_string: error -> string
+
 (** Errors raised while reading archive metadata from an [`IO.Reader`]. *)
 type 'read_err read_error =
   | Entries_source_error of 'read_err

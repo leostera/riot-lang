@@ -92,7 +92,7 @@ let format_code = fun t ~code ~file_path ->
           ".ml"
     | None -> ".ml"
   in
-  let temp_file = "/tmp/riot_format_" ^ Int.to_string (System.OsProcess.current_pid ()) ^ extension in
+  let temp_file = "/tmp/riot_format_" ^ Int32.to_string (Process.id ()) ^ extension in
   match Path.of_string temp_file with
   | Error _ -> Error "Failed to create temp file path"
   | Ok temp_file_path -> (

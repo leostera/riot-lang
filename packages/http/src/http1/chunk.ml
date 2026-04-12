@@ -17,11 +17,9 @@ let parse_size = fun cursor ->
       match Cursor.advance_by cursor 2 with
       | None -> Error "Invalid chunk size line ending"
       | Some cursor -> (
-          try
-            let size = int_of_string ("0x" ^ size_hex) in
-            Done { value = size; remaining = Cursor.remaining cursor }
-          with
-          | _ -> Error "Invalid chunk size"
+          match Int.parse_opt ("0x" ^ size_hex) with
+          | Some size -> Done { value = size; remaining = Cursor.remaining cursor }
+          | None -> Error "Invalid chunk size"
         )
     )
 

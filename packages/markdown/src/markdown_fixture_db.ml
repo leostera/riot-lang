@@ -187,7 +187,7 @@ let locate_fixture_path = fun () ->
     | Error _ -> Path.v "."
   in
   let executable =
-    let args = Kernel.System.argv () in
+    let args = Env.args |> Array.of_list in
     let relative_executable =
       if Array.length args > 0 then
         Path.v args.(0)

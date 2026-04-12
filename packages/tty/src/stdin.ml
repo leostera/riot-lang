@@ -1,42 +1,4 @@
 open Std
-open Std.IO
-
-(* Open /dev/tty directly for terminal control, like notcurses/bubbletea do.
-   This is the controlling terminal device and is used for both input and output. *)
-
-let get_tty_fd = fun () ->
-  try
-    let fd = Kernel.Fd.open_file "/dev/tty" [ Kernel.Fd.OpenFlags.ReadWrite ] 0o666 in
-    if not (Kernel.Terminal.is_tty fd) then
-      panic "/dev/tty is not a TTY";
-    fd
-  with
-  | Failure _ ->
-      (* Fallback to stdin if /dev/tty doesn't work *)
-      let fd = Kernel.IO.stdin in
-      if not (Kernel.Terminal.is_tty fd) then
-        panic "neither /dev/tty nor stdin is a TTY";
-      fd
-
-let set_raw_mode = fun () ->
-  let tty_fd = get_tty_fd () in
-  let termios = Kernel.Terminal.get_attributes tty_fd in
-  let new_termios = Kernel.Terminal.make_raw_mode termios in
-  Kernel.Terminal.set_attributes tty_fd Kernel.Terminal.Now new_termios;
-  Terminal.{
-    fd = tty_fd;
-    input = Terminal.SingleFd IO.stdin;
-    stdout = IO.stdout;
-    stderr = IO.stderr;
-    original_attrs = termios;
-    size = { rows = 24; cols = 80 };
-    mode = Immediate;
-    input_buffer = None;
-    data_buffer = None;
-  }
-
-let restore_mode = fun terminal ->
-  Kernel.Terminal.set_attributes terminal.Terminal.fd Kernel.Terminal.Now terminal.Terminal.original_attrs
 
 let utf8_char_length = fun first_byte ->
   if first_byte land 0x80 = 0 then
@@ -51,32 +13,68 @@ let utf8_char_length = fun first_byte ->
     0
 
 let read_utf8 = fun () ->
-  (* Use Riot's async I/O - will properly suspend/resume when data not available *)
-  let file = Fs.File.from_fd IO.stdin in
-  let bytes = Bytes.create 4 in
-  match Fs.File.read file bytes ~offset:0 ~len:1 with
+  let fd = Platform.stdin_fd () in
+  let bytes = IO.Bytes.create 4 in
+  match Platform.read fd bytes ~offset:0 ~len:1 with
   | Ok 0 ->
       `End
   | Ok 1 ->
-      let first_byte = Char.code (Bytes.get bytes 0) in
+      let first_byte = Char.code (IO.Bytes.get bytes 0) in
       let len = utf8_char_length first_byte in
       if len = 0 then
         `Malformed "Invalid UTF-8 start byte"
       else if len = 1 then
-        `Read (Bytes.sub_string bytes 0 1)
+        `Read (IO.Bytes.sub_string bytes 0 1)
       else
         (
-          (* Read remaining bytes for multi-byte UTF-8 *)
-          match Fs.File.read file bytes ~offset:1 ~len:(len - 1) with
-          | Ok n when n = len - 1 -> `Read (Bytes.sub_string bytes 0 len)
+          match Platform.read fd bytes ~offset:1 ~len:(len - 1) with
+          | Ok n when n = len - 1 -> `Read (IO.Bytes.sub_string bytes 0 len)
           | Ok _ -> `Malformed "Incomplete UTF-8 sequence"
+          | Error error when Kernel.SystemError.is_would_block error -> `Retry
           | Error _ -> `Malformed "Read error"
         )
   | Ok _ ->
       `Malformed "Unexpected read length"
+  | Error error when Kernel.SystemError.is_would_block error ->
+      `Retry
   | Error _ ->
       `End
 
-let make_raw = fun () -> set_raw_mode ()
+let make_raw = fun () ->
+  match Platform.open_tty () with
+  | Error _ -> panic "failed to open /dev/tty"
+  | Ok fd -> (
+      match Platform.get_attributes fd with
+      | Error _ ->
+          let _ = Platform.close fd in
+          panic "failed to read terminal attributes"
+      | Ok original_attrs ->
+          let raw_attrs = Platform.make_raw_mode original_attrs in
+          match Platform.set_attributes fd Platform.Now raw_attrs with
+          | Error _ ->
+              let _ = Platform.close fd in
+              panic "failed to enable raw mode"
+          | Ok () ->
+              let size =
+                match Platform.get_size fd with
+                | Ok (cols, rows) -> Terminal.{ rows; cols }
+                | Error _ -> Terminal.{ rows = 24; cols = 80 }
+              in
+              Terminal.{
+                fd;
+                owns_fd = true;
+                input_fd = Platform.stdin_fd ();
+                stdout = Platform.stdout_fd ();
+                stderr = Platform.stderr_fd ();
+                original_attrs;
+                size;
+                mode = Immediate;
+                input_buffer = None;
+              }
+    )
 
-let restore = fun termios -> restore_mode termios
+let restore = fun terminal ->
+  let _ = Platform.set_attributes terminal.Terminal.fd Platform.Now terminal.Terminal.original_attrs in
+  if terminal.Terminal.owns_fd then
+    let _ = Platform.close terminal.Terminal.fd in
+    ()

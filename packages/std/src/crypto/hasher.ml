@@ -10,7 +10,7 @@ module type Intf = sig
   (** Write immutable string data to the hasher - mutates state *)
   val write: state -> string -> unit
 
-  val write_hash: state -> Kernel.Crypto.hash -> unit
+  val write_hash: state -> Hash.t -> unit
 
   val write_unit: state -> unit -> unit
 
@@ -29,26 +29,26 @@ module type Intf = sig
   val write_array: (state -> 'a -> unit) -> state -> 'a array -> unit
 
   (** Finalize and get the hash *)
-  val finish: state -> Kernel.Crypto.hash
+  val finish: state -> Hash.t
 
   (** Convenience functions to hash values directly *)
-  val hash_string: string -> Kernel.Crypto.hash
+  val hash_string: string -> Hash.t
 
-  val hash_bytes: bytes -> Kernel.Crypto.hash
+  val hash_bytes: bytes -> Hash.t
 
-  val hash_unit: unit -> Kernel.Crypto.hash
+  val hash_unit: unit -> Hash.t
 
-  val hash_int: int -> Kernel.Crypto.hash
+  val hash_int: int -> Hash.t
 
-  val hash_int32: int32 -> Kernel.Crypto.hash
+  val hash_int32: int32 -> Hash.t
 
-  val hash_int64: int64 -> Kernel.Crypto.hash
+  val hash_int64: int64 -> Hash.t
 
-  val hash_float: float -> Kernel.Crypto.hash
+  val hash_float: float -> Hash.t
 
-  val hash_bool: bool -> Kernel.Crypto.hash
+  val hash_bool: bool -> Hash.t
 
-  val hash_list: ('a -> Kernel.Crypto.hash) -> 'a list -> Kernel.Crypto.hash
+  val hash_list: ('a -> Hash.t) -> 'a list -> Hash.t
 
-  val hash_array: ('a -> Kernel.Crypto.hash) -> 'a array -> Kernel.Crypto.hash
+  val hash_array: ('a -> Hash.t) -> 'a array -> Hash.t
 end

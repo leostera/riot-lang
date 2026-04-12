@@ -3,7 +3,6 @@ module Runtime_pid = Pid
 module Runtime_scheduler_id = Scheduler_id
 module Runtime_timer = Timer
 module Std_io = IO
-
 open Kernel
 open Collections
 open Sync
@@ -59,8 +58,7 @@ let monotonic_time_nanos = fun () ->
   | Ok time ->
       let secs, nanos = Kernel.Time.Monotonic.to_parts time in
       Int64.add (Int64.mul (Int64.of_int secs) 1_000_000_000L) (Int64.of_int nanos)
-  | Error err ->
-      panic (Kernel.Time.Monotonic.error_to_string err)
+  | Error err -> panic (Kernel.Time.Monotonic.error_to_string err)
 
 let trace = fun msg ->
   if Atomic.get trace_enabled then
@@ -570,7 +568,9 @@ let wait_for_blocking_work = fun t slot ->
   | Some lane ->
       let proc = slot_process slot in
       Mutex.lock lane.lock;
-      while (not (Atomic.get t.stop)) && Runtime_process.is_alive proc && not (Atomic.get slot.queued) do
+      while (not (Atomic.get t.stop))
+      && Runtime_process.is_alive proc
+      && not (Atomic.get slot.queued) do
         Condition.wait lane.cond lane.lock
       done;
       Mutex.unlock lane.lock;
@@ -806,7 +806,9 @@ let handle_exit_proc = fun t proc reason ->
               Runtime_process.unlink linked_proc pid;
               if Runtime_process.get_trap_exit linked_proc then
                 (
-                  Runtime_process.send_message linked_proc (Runtime_process.Messages.EXIT { from = pid; reason });
+                  Runtime_process.send_message
+                    linked_proc
+                    (Runtime_process.Messages.EXIT { from = pid; reason });
                   wake_process t linked_slot
                 )
               else
@@ -865,7 +867,7 @@ let handle_run_proc = fun t ctx slot ->
             ("[Scheduler] ERROR: Proc_state.run raised for process "
             ^ pid_str
             ^ ": "
-            ^ Exception.to_string exn);
+            ^ Kernel.Exception.to_string exn);
           raise exn
     in
     Runtime_process.set_cont proc next;
@@ -878,9 +880,12 @@ let handle_run_proc = fun t ctx slot ->
         handle_exit_proc t proc reason
     | Proc_state.Finished (Error { exn; backtrace }) ->
         eprintln
-          ("[Scheduler] Process " ^ pid_str ^ " finished with exception: " ^ Exception.to_string exn);
+          ("[Scheduler] Process "
+          ^ pid_str
+          ^ " finished with exception: "
+          ^ Kernel.Exception.to_string exn);
         eprintln "[Scheduler] Backtrace:";
-        eprintln (Exception.raw_backtrace_to_string backtrace);
+        eprintln (Kernel.Exception.raw_backtrace_to_string backtrace);
         Runtime_process.mark_as_exited proc (Error exn);
         handle_exit_proc t proc (Error exn)
     | _ when Runtime_process.is_waiting proc || Runtime_process.is_waiting_io proc ->
@@ -925,7 +930,10 @@ let step_process = fun t ctx slot ->
               else
                 mark_slot_pending slot
           | Waiting_message ->
-              if Runtime_process.has_messages proc && Runtime_process.try_mark_runnable_from_waiting_message proc then
+              if
+                Runtime_process.has_messages proc
+                && Runtime_process.try_mark_runnable_from_waiting_message proc
+              then
                 if try_mark_slot_executing slot then
                   handle_run_proc t ctx slot
                 else
@@ -1110,7 +1118,8 @@ let process_timers = fun t ->
                       deregister_io_in_reactor
                         t
                         source
-                        ~context:("for timed out process " ^ Runtime_pid.to_string (Runtime_process.pid proc))
+                        ~context:("for timed out process "
+                        ^ Runtime_pid.to_string (Runtime_process.pid proc))
                   | _ -> ()
                 );
               if Runtime_process.is_alive proc then
@@ -1141,9 +1150,11 @@ let handle_reactor_command = fun t cmd ->
       Timer_wheel.cancel_timer t.timer_wheel timer_id
   | Register_io { token; interest; source; reply } ->
       resolve_response reply
-        (match Async.Poll.register t.io_poll token interest source with
-        | Ok () -> Ok ()
-        | Error err -> Error (Std_io.of_async_error err))
+        (
+          match Async.Poll.register t.io_poll token interest source with
+          | Ok () -> Ok ()
+          | Error err -> Error (Std_io.of_async_error err)
+        )
   | Deregister_io source -> (
       match Async.Poll.deregister t.io_poll source with
       | Ok () -> ()

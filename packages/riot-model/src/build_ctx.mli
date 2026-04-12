@@ -1,7 +1,7 @@
 open Std
 
 type t = {
-  host_triplet: Kernel.System.Host.t;
+  host_triplet: System.Host.t;
   target: Target.t;
   (* Changed from target_triplet *)
   profile: Profile.t;
@@ -29,7 +29,7 @@ val is_cross_compile: t -> bool
 val sysroot: t -> Path.t option
 
 (** Get target triplet *)
-val target_triplet: t -> Kernel.System.Host.t
+val target_triplet: t -> System.Host.t
 
 (** Hash build context into a Sha256 hasher state *)
 val hash: Crypto.Sha256.state -> t -> unit

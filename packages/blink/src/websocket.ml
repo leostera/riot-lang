@@ -21,7 +21,11 @@ let generate_websocket_key = fun () ->
   let random_bytes = Bytes.create 16 in
   for i = 0 to 15 do
     yield ();
-    Bytes.set random_bytes i (Char.chr (Random.int 256))
+    Bytes.set random_bytes i
+      (
+        Char.chr
+          (Random.int 256 |> Result.expect ~msg:"failed to generate websocket key byte")
+      )
   done;
   Encoding.Base64.encode_bytes random_bytes
 
@@ -29,7 +33,7 @@ let compute_accept_key = fun key ->
   let magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11" in
   let concat = key ^ magic in
   let hash = Crypto.Sha1.hash_string concat in
-  let hash_bytes = Kernel.Crypto.Hash.to_bytes hash in
+  let hash_bytes = Crypto.Hash.to_bytes hash in
   Encoding.Base64.encode (Bytes.to_string hash_bytes)
 
 let connect = fun uri ->

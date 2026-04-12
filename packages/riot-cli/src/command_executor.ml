@@ -5,10 +5,10 @@ let array_of_list = fun lst ->
   | [] -> [||]
   | hd :: _ ->
       let len = List.length lst in
-      let arr = Kernel.Collections.Array.make len hd in
+      let arr = Kernel.Array.make len hd in
       List.iteri
         (fun i x ->
-          Kernel.Collections.Array.set arr i x)
+          Kernel.Array.set arr i x)
         lst;
       arr
 
@@ -26,6 +26,10 @@ let execute = fun ~command_binary ~args ->
       (* Execute the binary, replacing current process *)
       let args_list = command_path :: args in
       let argv = array_of_list args_list in
-      System.execv command_path argv;
-      (* execv never returns on success *)
-      Error (Failure "execv returned unexpectedly")
+      (
+        match Process.execv command_path argv with
+        | Ok () ->
+            Error (Failure "execv returned unexpectedly")
+        | Error error ->
+            Error (Failure ("Failed to exec command: " ^ Kernel.SystemError.to_string error))
+      )

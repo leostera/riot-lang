@@ -37,6 +37,28 @@ type error =
   | Unsupported_entry_kind of entry_kind
   | Duplicate_entry of Path.t
 
+let entry_kind_to_string = function
+  | File -> "file"
+  | Directory -> "directory"
+  | Symlink -> "symlink"
+  | Hardlink -> "hardlink"
+  | Other kind -> kind
+
+let engine_error_to_string = function
+  | Engine.Invalid_header msg -> "invalid tar header: " ^ msg
+  | Engine.Entry_in_progress -> "tar entry is already being read"
+  | Engine.Invalid_state msg -> "invalid tar reader state: " ^ msg
+  | Engine.Unexpected_eof -> "unexpected end of tar archive"
+  | Engine.Out_of_memory -> "tar reader out of memory"
+  | Engine.Unknown_error msg -> msg
+
+let error_to_string = function
+  | Engine_error err -> engine_error_to_string err
+  | Invalid_path path -> "invalid archive path '" ^ path ^ "'"
+  | Unsafe_path path -> "unsafe archive path '" ^ path ^ "'"
+  | Unsupported_entry_kind kind -> "unsupported archive entry kind '" ^ entry_kind_to_string kind ^ "'"
+  | Duplicate_entry path -> "duplicate archive entry '" ^ Path.to_string path ^ "'"
+
 type 'read_err read_error =
   | Entries_source_error of 'read_err
   | Entries_error of error
@@ -88,11 +110,7 @@ let feed_from_source_entries = fun source tar_reader ->
       Ok 0
   | Ok bytes_read ->
       let () = yield () in
-      let* consumed = Engine.feed_reader
-        tar_reader
-        ~src:source.buffer
-        ~src_pos:0
-        ~src_len:bytes_read
+      let* consumed = Engine.feed_reader tar_reader ~src:source.buffer ~src_pos:0 ~src_len:bytes_read
       |> Result.map_err (fun err -> Entries_error (Engine_error err)) in
       if consumed = bytes_read then
         Ok bytes_read
@@ -107,11 +125,7 @@ let feed_from_source_extract = fun source tar_reader ->
       Ok 0
   | Ok bytes_read ->
       let () = yield () in
-      let* consumed = Engine.feed_reader
-        tar_reader
-        ~src:source.buffer
-        ~src_pos:0
-        ~src_len:bytes_read
+      let* consumed = Engine.feed_reader tar_reader ~src:source.buffer ~src_pos:0 ~src_len:bytes_read
       |> Result.map_err (fun err -> Extract_error (Engine_error err)) in
       if consumed = bytes_read then
         Ok bytes_read
@@ -253,11 +267,7 @@ let fs_error_of_file_error = function
 let write_entry_file = fun source tar_reader file ->
   let chunk = Bytes.create source_buffer_size in
   let rec loop chunk_count =
-    match Engine.read_entry_data
-      tar_reader
-      ~dst:chunk
-      ~dst_pos:0
-      ~dst_len:(Bytes.length chunk) with
+    match Engine.read_entry_data tar_reader ~dst:chunk ~dst_pos:0 ~dst_len:(Bytes.length chunk) with
     | Error err ->
         Error (Extract_error (Engine_error err))
     | Ok Engine.End_of_entry ->
@@ -268,10 +278,8 @@ let write_entry_file = fun source tar_reader file ->
             yield ()
         in
         let data = Bytes.sub_string chunk 0 bytes_read in
-        let* () =
-          Fs.File.write_all file data
-          |> Result.map_err (fun err -> Extract_fs_error (fs_error_of_file_error err))
-        in
+        let* () = Fs.File.write_all file data
+        |> Result.map_err (fun err -> Extract_fs_error (fs_error_of_file_error err)) in
         loop (chunk_count + 1)
     | Ok Engine.Need_input -> (
         match feed_from_source_extract source tar_reader with
@@ -356,17 +364,17 @@ let extract = fun reader ~into ->
 let entries_file = fun archive ->
   match Fs.File.open_read archive with
   | Error err -> Error (Entries_source_error (fs_error_of_file_error err))
-  | Ok file -> protect
-    ~finally:(fun () -> ignore (Fs.File.close file))
-    (fun () ->
-      let reader = IO.Reader.map_err (Fs.File.to_reader file) ~fn:fs_error_of_file_error in
-      entries reader)
+  | Ok file ->
+      protect ~finally:(fun () -> ignore (Fs.File.close file))
+        (fun () ->
+          let reader = IO.Reader.map_err (Fs.File.to_reader file) ~fn:fs_error_of_file_error in
+          entries reader)
 
 let extract_file = fun ~archive ~into ->
   match Fs.File.open_read archive with
   | Error err -> Error (Extract_source_error (fs_error_of_file_error err))
-  | Ok file -> protect
-    ~finally:(fun () -> ignore (Fs.File.close file))
-    (fun () ->
-      let reader = IO.Reader.map_err (Fs.File.to_reader file) ~fn:fs_error_of_file_error in
-      extract reader ~into)
+  | Ok file ->
+      protect ~finally:(fun () -> ignore (Fs.File.close file))
+        (fun () ->
+          let reader = IO.Reader.map_err (Fs.File.to_reader file) ~fn:fs_error_of_file_error in
+          extract reader ~into)

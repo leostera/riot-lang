@@ -73,6 +73,14 @@ val open_write:
 
 val close: t -> (unit, error) Result.t
 
+(** Use `try_lock_exclusive file` for an immediate exclusive-lock attempt on an open handle.
+
+    It returns `Ok false` when another process already holds the lock instead of blocking. *)
+val try_lock_exclusive: t -> (bool, error) Result.t
+
+(** Use `unlock file` to release a lock previously acquired on the open handle. *)
+val unlock: t -> (unit, error) Result.t
+
 val read: t -> ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
 
 val write: t -> ?pos:int -> ?len:int -> bytes -> (int, error) Result.t

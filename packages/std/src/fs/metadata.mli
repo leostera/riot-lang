@@ -58,6 +58,7 @@ val file_type: t -> [
     | `Character
     | `Fifo
     | `Socket
+    | `Unknown
   ]
 
 val is_file: t -> bool

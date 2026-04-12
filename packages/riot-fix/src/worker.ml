@@ -21,7 +21,7 @@ let run_file = fun config file_path ->
         parse_diagnostics = [];
         applied_fixes = [];
         changed = false;
-        error = Some (Exception.to_string exn);
+        error = Some (Kernel.Exception.to_string exn);
       }
 
 let rec worker_loop = fun config ->

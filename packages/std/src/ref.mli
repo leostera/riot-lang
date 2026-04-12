@@ -111,7 +111,7 @@ val equal: 'a t -> 'b t -> bool
     Ref.type_equal ref1 ref2 (* None - different refs *)
     ```
 *)
-val type_equal: 'a t -> 'b t -> ('a, 'b) Kernel.Type.eq option
+val type_equal: 'a t -> 'b t -> ('a, 'b) Type.eq option
 
 (** Attempts to cast a value from type ['a] to type ['b] if the references are
     equal. Returns [Some value] if the cast succeeds, [None] otherwise.

@@ -5,9 +5,9 @@
     - Consistent digest formats (hex, base64, etc.)
     - Extensible design for adding new algorithms
     - DoS-resistant hashing for HashMap/HashSet *)
-type hash = Kernel.Crypto.hash
+type hash = Hash.t
 
-module Hash = Kernel.Crypto.Hash
+module Hash = Hash
 module Hasher = Hasher
 module Digest = Digest
 

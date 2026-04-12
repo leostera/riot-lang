@@ -74,7 +74,11 @@ external floor_float: float -> float = "caml_floor_float" "floor" [@@unboxed] [@
 
 external format_int: string -> int -> string = "caml_format_int"
 
+external int_of_string: string -> int = "caml_int_of_string"
+
 external format_float: string -> float -> string = "caml_format_float"
+
+external float_of_string: string -> float = "caml_float_of_string"
 
 external int_of_char: char -> int = "%identity"
 
@@ -122,6 +126,18 @@ external int64_of_int: int -> int64 = "%int64_of_int"
 
 external int64_to_int: int64 -> int = "%int64_to_int"
 
+external int64_logand: int64 -> int64 -> int64 = "%int64_and"
+
+external int64_logor: int64 -> int64 -> int64 = "%int64_or"
+
+external int64_logxor: int64 -> int64 -> int64 = "%int64_xor"
+
+external shift_left_int64: int64 -> int -> int64 = "%int64_lsl"
+
+external shift_right_int64: int64 -> int -> int64 = "%int64_asr"
+
+external shift_right_logical_int64: int64 -> int -> int64 = "%int64_lsr"
+
 external int64_neg: int64 -> int64 = "%int64_neg"
 
 external int64_add: int64 -> int64 -> int64 = "%int64_add"
@@ -142,10 +158,46 @@ external int64_to_float: int64 -> float
 
 external int64_of_int32: int32 -> int64 = "%int64_of_int32"
 
+external int64_to_int32: int64 -> int32 = "%int64_to_int32"
+
+external int32_neg: int32 -> int32 = "%int32_neg"
+
+external int32_add: int32 -> int32 -> int32 = "%int32_add"
+
+external int32_sub: int32 -> int32 -> int32 = "%int32_sub"
+
+external int32_mul: int32 -> int32 -> int32 = "%int32_mul"
+
+external int32_div: int32 -> int32 -> int32 = "%int32_div"
+
+external int32_rem: int32 -> int32 -> int32 = "%int32_mod"
+
+external int32_logand: int32 -> int32 -> int32 = "%int32_and"
+
+external int32_logor: int32 -> int32 -> int32 = "%int32_or"
+
+external int32_logxor: int32 -> int32 -> int32 = "%int32_xor"
+
+external shift_left_int32: int32 -> int -> int32 = "%int32_lsl"
+
+external shift_right_int32: int32 -> int -> int32 = "%int32_asr"
+
+external shift_right_logical_int32: int32 -> int -> int32 = "%int32_lsr"
+
+external int32_of_float: float -> int32
+  = "caml_int32_of_float" "caml_int32_of_float_unboxed" [@@unboxed] [@@noalloc]
+
+external int32_to_float: int32 -> float
+  = "caml_int32_to_float" "caml_int32_to_float_unboxed" [@@unboxed] [@@noalloc]
+
 external array_length: 'value array -> int = "%array_length"
 
 external array_get: 'value array -> int -> 'value = "%array_safe_get"
 
 external array_set: 'value array -> int -> 'value -> unit = "%array_safe_set"
+
+external array_unsafe_get: 'value array -> int -> 'value = "%array_unsafe_get"
+
+external array_unsafe_set: 'value array -> int -> 'value -> unit = "%array_unsafe_set"
 
 external array_make: int -> 'value -> 'value array = "caml_array_make"

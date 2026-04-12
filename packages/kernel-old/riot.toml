@@ -1,0 +1,49 @@
+[package]
+name = "kernel-old"
+description = "Low-level runtime primitives"
+version = "0.0.17"
+license = "Apache-2.0"
+public = true
+categories = ["runtime", "concurrency"]
+keywords = ["ffi", "io", "primitives"]
+
+[riot.fix]
+rules = [ "-no-stdlib" ]
+
+[riot.fix.provider]
+rules = [ "prefer-format-over-string-concat" ]
+
+[lib]
+path = "src/kernel.ml"
+
+[target.macos]
+cc_flags = [
+  "-I/opt/homebrew/opt/openssl@3/include",
+  "-I/opt/homebrew/opt/pcre2/include",
+]
+ld_flags = [
+  "-framework", "CoreFoundation", 
+  "-framework", "CoreServices", 
+  "-framework", "Security",
+  "-L/opt/homebrew/opt/openssl@3/lib", 
+  "-L/opt/homebrew/opt/pcre2/lib",
+  "-lssl", 
+  "-lcrypto",
+  "-lpcre2-8",
+  "-lz"
+]
+
+[target.linux]
+cc_flags = []
+ld_flags = ["-lssl", "-lcrypto", "-lpcre2-8", "-luuid", "-lz"]
+
+[dependencies]
+stdlib = "*"
+dynlink = "*"
+unix = "*"
+
+[dev-dependencies]
+std = { path = "../std", version = "*" }
+
+[build-dependencies]
+fixme = { path = "../fixme", version = "*" }
