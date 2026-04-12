@@ -2,6 +2,7 @@ open Global
 
 module Buffer = IO.Buffer
 module Bytes = Kernel.Bytes
+module Iovec = IO.Iovec
 
 type t = Kernel.Fs.File.t
 
@@ -20,46 +21,59 @@ end
 
 let error_to_string = Kernel.Fs.File.error_to_string
 
+let kernel_path = fun path ->
+  Kernel.Path.of_string (Path.to_string path)
+
+let wrap_result : type value error.
+  (value, error) Kernel.Result.t -> (value, error) result = function
+    | Ok value -> Ok value
+    | Error error -> Error error
+
 let open_with_flags = fun path flags ~mode ->
-  Kernel.Fs.File.open_file path flags ~perm:(Permissions.to_mode mode)
+  wrap_result (Kernel.Fs.File.open_file (kernel_path path) flags ~perm:(Permissions.to_mode mode))
 
 let create = fun path ->
-  Kernel.Fs.File.open_write
-    path
-    ~create:true
-    ~truncate:true
-    ~append:false
-    ~perm:(Permissions.to_mode Permissions.read_write)
+  wrap_result
+    (Kernel.Fs.File.open_write
+       (kernel_path path)
+       ~create:true
+       ~truncate:true
+       ~append:false
+       ~perm:(Permissions.to_mode Permissions.read_write))
 
 let create_new = fun path ->
-  Kernel.Fs.File.open_file
-    path
-    [ Kernel.Fs.File.WriteOnly; Kernel.Fs.File.Create; Kernel.Fs.File.Exclusive ]
-    ~perm:(Permissions.to_mode Permissions.read_write)
+  wrap_result
+    (Kernel.Fs.File.open_file
+       (kernel_path path)
+       [ Kernel.Fs.File.WriteOnly; Kernel.Fs.File.Create; Kernel.Fs.File.Exclusive ]
+       ~perm:(Permissions.to_mode Permissions.read_write))
 
-let open_read = Kernel.Fs.File.open_read
+let open_read = fun path -> wrap_result (Kernel.Fs.File.open_read (kernel_path path))
 
 let open_write = fun path ->
-  Kernel.Fs.File.open_write
-    path
-    ~create:true
-    ~truncate:false
-    ~append:false
-    ~perm:(Permissions.to_mode Permissions.read_write)
+  wrap_result
+    (Kernel.Fs.File.open_write
+       (kernel_path path)
+       ~create:true
+       ~truncate:false
+       ~append:false
+       ~perm:(Permissions.to_mode Permissions.read_write))
 
 let open_append = fun path ->
-  Kernel.Fs.File.open_write
-    path
-    ~create:true
-    ~truncate:false
-    ~append:true
-    ~perm:(Permissions.to_mode Permissions.read_write)
+  wrap_result
+    (Kernel.Fs.File.open_write
+       (kernel_path path)
+       ~create:true
+       ~truncate:false
+       ~append:true
+       ~perm:(Permissions.to_mode Permissions.read_write))
 
 let open_read_write = fun path ->
-  Kernel.Fs.File.open_file
-    path
-    [ Kernel.Fs.File.ReadWrite ]
-    ~perm:(Permissions.to_mode Permissions.read_write)
+  wrap_result
+    (Kernel.Fs.File.open_file
+       (kernel_path path)
+       [ Kernel.Fs.File.ReadWrite ]
+       ~perm:(Permissions.to_mode Permissions.read_write))
 
 let to_source = Kernel.Fs.File.to_source
 
@@ -158,21 +172,22 @@ let write_all = fun file str ->
   in
   loop 0 len
 
-let metadata = Kernel.Fs.File.fstat
+let metadata = fun file -> wrap_result (Kernel.Fs.File.fstat file)
 
 let to_reader = fun file ->
+  let read_bytes = read in
   let module Read = struct
     type nonrec t = t
 
     type err = error
 
     let read = fun file ?timeout:_ buf ->
-      read file buf ~offset:0 ~len:(Bytes.length buf)
+      read_bytes file buf ~offset:0 ~len:(Bytes.length buf)
 
     let read_vectored = fun file bufs ->
       let total_len = Iovec.length bufs in
       let scratch = Bytes.create total_len in
-      match read file scratch ~offset:0 ~len:total_len with
+      match read_bytes file scratch ~offset:0 ~len:total_len with
       | Error err -> Error err
       | Ok read_len ->
           let copied = ref 0 in
@@ -191,6 +206,7 @@ let to_reader = fun file ->
   IO.Reader.of_read_src (module Read) file
 
 let to_writer = fun file ->
+  let write_bytes = write in
   let module Write = struct
     type nonrec t = t
 
@@ -201,10 +217,10 @@ let to_writer = fun file ->
     let write_owned_vectored = fun file ~bufs ->
       let total_len = Iovec.length bufs in
       let scratch = Iovec.into_bytes bufs in
-      write file scratch ~offset:0 ~len:total_len
+      write_bytes file scratch ~offset:0 ~len:total_len
 
     let flush = fun _file -> Ok ()
   end in
   IO.Writer.of_write_src (module Write) file
 
-let close = Kernel.Fs.File.close
+let close = fun file -> wrap_result (Kernel.Fs.File.close file)

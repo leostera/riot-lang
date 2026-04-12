@@ -31,6 +31,8 @@ val of_file_error: Kernel.Fs.File.error -> error
 
 val of_read_dir_error: Kernel.Fs.ReadDir.error -> error
 
-val convert_kernel_result: ('a, Kernel.Fs.File.error) Kernel.result -> ('a, error) Kernel.result
+val convert_kernel_result:
+  ('a, Kernel.Fs.File.error) Kernel.Result.t -> ('a, error) result
 
-val convert_read_dir_result: ('a, Kernel.Fs.ReadDir.error) Kernel.result -> ('a, error) Kernel.result
+val convert_read_dir_result:
+  ('a, Kernel.Fs.ReadDir.error) Kernel.Result.t -> ('a, error) result

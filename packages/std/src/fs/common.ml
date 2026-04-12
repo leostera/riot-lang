@@ -1,4 +1,4 @@
-open Kernel
+open Global
 
 type error = IO.error
 
@@ -13,6 +13,12 @@ let of_read_dir_error = function
   | Kernel.Fs.ReadDir.Closed -> IO.Closed
   | Kernel.Fs.ReadDir.File error -> of_file_error error
 
-let convert_kernel_result = Result.map_error of_file_error
+let convert_kernel_result : 'a. ('a, Kernel.Fs.File.error) Kernel.Result.t -> ('a, error) result =
+  function
+  | Ok value -> Ok value
+  | Error error -> Error (of_file_error error)
 
-let convert_read_dir_result = Result.map_error of_read_dir_error
+let convert_read_dir_result : 'a. ('a, Kernel.Fs.ReadDir.error) Kernel.Result.t -> ('a, error) result =
+  function
+  | Ok value -> Ok value
+  | Error error -> Error (of_read_dir_error error)

@@ -11,100 +11,80 @@ module Permissions = Permissions
 module Metadata = Metadata
 module ReadDir = ReadDir
 module File = File
-module Fd = Fd
 module Walker = Walker
 module FileWatcher = File_watcher
+
+let kernel_path = fun path ->
+  Kernel.Path.of_string (Path.to_string path)
+
+let path_of_kernel = fun path ->
+  Path.v (Kernel.Path.to_string path)
 
 (** Basic filesystem operations - defined first as they're used by other
     functions *)
 let is_directory = fun path ->
-  let path_str = Path.to_string path in
-  Kernel.Fs.File.is_directory path_str |> convert_kernel_result
+  Kernel.Fs.File.is_directory (kernel_path path) |> convert_kernel_result
 
 let rmdir = fun path ->
-  let path_str = Path.to_string path in
-  Kernel.Fs.File.rmdir path_str |> convert_kernel_result
+  Kernel.Fs.File.remove_dir (kernel_path path) |> convert_kernel_result
 
 (** Clean API implementations following the FIXME guidelines *)
 let canonicalize = fun path ->
-  let path_str = Path.to_string path in
-  try
-    let abs_path =
-      match Kernel.Fs.File.realpath path_str with
-      | Ok p -> p
-      | Error _ -> path_str
-    in
-    match Path.of_string abs_path with
-    | Ok p -> Ok p
-    | Error _ -> Error (IO.Unknown_error "Invalid canonical path")
-  with
-  | e -> Error (IO.Unknown_error (Exception.to_string e))
+  match Kernel.Fs.File.canonicalize (kernel_path path) with
+  | Ok abs_path -> Ok (path_of_kernel abs_path)
+  | Error error -> Error (of_file_error error)
 
 let copy = fun ~src ~dst ->
-  let src_str = Path.to_string src in
-  let dst_str = Path.to_string dst in
-  match Kernel.Fs.File.copy_file src_str dst_str with
-  | Ok () -> Ok ()
-  | Error e -> Error e
+  Kernel.Fs.File.copy ~src:(kernel_path src) ~dst:(kernel_path dst) |> convert_kernel_result
 
 let create_dir_all = fun path ->
   let rec create_parents path =
     match Path.parent path with
     | None -> Ok ()
     | Some parent ->
-        if not (Path.exists parent) then
-          match create_parents parent with
-          | Error e -> Error e
-          | Ok () -> (
-              let parent_str = Path.to_string parent in
-              try
-                match Kernel.Fs.File.mkdir parent_str 0o755 with
+        match Kernel.Fs.File.exists (kernel_path parent) with
+        | Error error -> Error (of_file_error error)
+        | Ok true -> Ok ()
+        | Ok false -> (
+            match create_parents parent with
+            | Error error -> Error error
+            | Ok () -> (
+                match Kernel.Fs.File.create_dir (kernel_path parent) ~perm:0o755 with
                 | Ok () -> Ok ()
-                | Error Kernel.IO.File_exists -> Ok ()
-                | Error e -> Error e
-              with
-              | e -> Error (IO.Unknown_error (Exception.to_string e))
-            )
-        else
-          Ok ()
+                | Error (Kernel.Fs.File.System Kernel.SystemError.AlreadyExists) -> Ok ()
+                | Error error -> Error (of_file_error error)
+              )
+          )
   in
   match create_parents path with
-  | Error e -> Error e
+  | Error error -> Error error
   | Ok () -> (
-      let path_str = Path.to_string path in
-      try
-        match Kernel.Fs.File.mkdir path_str 0o755 with
-        | Ok () -> Ok ()
-        | Error Kernel.IO.File_exists -> Ok ()
-        | Error e -> Error e
-      with
-      | e -> Error (IO.Unknown_error (Exception.to_string e))
+      match Kernel.Fs.File.create_dir (kernel_path path) ~perm:0o755 with
+      | Ok () -> Ok ()
+      | Error (Kernel.Fs.File.System Kernel.SystemError.AlreadyExists) -> Ok ()
+      | Error error -> Error (of_file_error error)
     )
 
-let exists = fun path -> Ok (Path.exists path)
+let exists = fun path ->
+  Kernel.Fs.File.exists (kernel_path path) |> convert_kernel_result
 
 let hard_link = fun ~src ~dst ->
-  let src_str = Path.to_string src in
-  let dst_str = Path.to_string dst in
-  try Kernel.Fs.File.link src_str dst_str |> convert_kernel_result with
-  | e -> Error (IO.Unknown_error (Exception.to_string e))
+  Kernel.Fs.File.hard_link ~src:(kernel_path src) ~dst:(kernel_path dst) |> convert_kernel_result
 
 let metadata = fun path ->
-  let path_str = Path.to_string path in
-  Kernel.Fs.File.stat path_str |> convert_kernel_result
+  Kernel.Fs.File.metadata (kernel_path path) |> convert_kernel_result
 
 let symlink_metadata = fun path ->
-  let path_str = Path.to_string path in
-  Kernel.Fs.File.lstat path_str |> convert_kernel_result
+  Kernel.Fs.File.symlink_metadata (kernel_path path) |> convert_kernel_result
 
 let read_to_string = fun path ->
   match File.open_read path with
-  | Error e -> Error e
+  | Error error -> Error (of_file_error error)
   | Ok file -> (
       match File.read_to_end file with
-      | Error e ->
+      | Error error ->
           let _ = File.close file in
-          Error e
+          Error (of_file_error error)
       | Ok content ->
           let _ = File.close file in
           Ok content
@@ -116,8 +96,7 @@ let read_dir = fun path ->
   | Ok state -> Ok (MutIterator.make (module ReadDir) state)
 
 let remove_file = fun path ->
-  let path_str = Path.to_string path in
-  Kernel.Fs.File.remove path_str |> convert_kernel_result
+  Kernel.Fs.File.remove_file (kernel_path path) |> convert_kernel_result
 
 let remove_dir_all = fun path ->
   let rec remove_recursive path =
@@ -155,158 +134,98 @@ let remove_dir_all = fun path ->
   remove_recursive path
 
 let rename = fun ~src ~dst ->
-  let src_str = Path.to_string src in
-  let dst_str = Path.to_string dst in
-  try Kernel.Fs.File.rename src_str dst_str |> convert_kernel_result with
-  | e -> Error (IO.Unknown_error (Exception.to_string e))
+  Kernel.Fs.File.rename ~src:(kernel_path src) ~dst:(kernel_path dst) |> convert_kernel_result
 
 let set_permissions = fun path perm ->
-  let path_str = Path.to_string path in
-  Kernel.Fs.File.chmod path_str (Permissions.to_mode perm) |> convert_kernel_result
+  Kernel.Fs.File.set_permissions (kernel_path path) ~perm:(Permissions.to_mode perm) |> convert_kernel_result
 
 let write = fun content path ->
-  let path_str = Path.to_string path in
-  let fd = Kernel.Fd.open_file
-    path_str
-    [ Kernel.Fd.OpenFlags.WriteOnly; Kernel.Fd.OpenFlags.Create; Kernel.Fd.OpenFlags.Truncate; ]
-    0o644 in
-  let buf = Bytes.unsafe_of_string content in
-  let len = Bytes.length buf in
-  let close_with result =
-    match Kernel.Fs.File.close_fd fd with
-    | Ok () -> result
-    | Error e -> (
-        match result with
-        | Ok () -> Error e
-        | Error _ -> result
-      )
-  in
-  let rec write_loop offset remaining =
-    if remaining <= 0 then
-      Ok ()
-    else
-      match Kernel.Fs.File.write fd buf ~pos:offset ~len:remaining with
-      | Ok 0 -> Error (IO.Unknown_error ("short write while writing '" ^ path_str ^ "'"))
-      | Ok written -> write_loop (offset + written) (remaining - written)
-      | Error e -> Error e
-  in
-  close_with (write_loop 0 len)
+  match File.create path with
+  | Error error -> Error (of_file_error error)
+  | Ok file -> (
+      match File.write_all file content with
+      | Error error ->
+          let _ = File.close file in
+          Error (of_file_error error)
+      | Ok () -> (
+          match File.close file with
+          | Ok () -> Ok ()
+          | Error error -> Error (of_file_error error)
+        )
+    )
 
 let read_link = fun path ->
-  let path_str = Path.to_string path in
-  try
-    let target =
-      match Kernel.Fs.File.readlink path_str with
-      | Ok t -> t
-      | Error e -> raise (Sys_error (IO.error_message e))
-    in
-    match Path.of_string target with
-    | Ok p -> Ok p
-    | Error _ -> Error (IO.Unknown_error "Invalid link target")
-  with
-  | e -> Error (IO.Unknown_error (Exception.to_string e))
+  match Kernel.Fs.File.read_link (kernel_path path) with
+  | Ok target -> Ok (path_of_kernel target)
+  | Error error -> Error (of_file_error error)
 
 let create_dir = fun path ->
-  let path_str = Path.to_string path in
-  match Kernel.Fs.File.file_exists path_str with
-  | Ok false
-  | Error _ -> Kernel.Fs.File.mkdir path_str 0o755 |> convert_kernel_result
-  | Ok true -> Ok ()
+  Kernel.Fs.File.create_dir (kernel_path path) ~perm:0o755 |> convert_kernel_result
 
 let file_exists = fun path ->
-  let path_str = Path.to_string path in
-  Kernel.Fs.File.file_exists path_str |> convert_kernel_result
+  exists path
 
 let dir_exists = fun path ->
-  let path_str = Path.to_string path in
-  match Kernel.Fs.File.file_exists path_str with
-  | Ok true -> Kernel.Fs.File.is_directory path_str |> convert_kernel_result
-  | Ok false -> Ok false
-  | Error e -> Error e
+  Kernel.Fs.File.is_directory (kernel_path path) |> convert_kernel_result
 
 let stat = fun path ->
-  let path_str = Path.to_string path in
-  Kernel.Fs.File.stat path_str |> convert_kernel_result
+  metadata path
 
 let chmod = fun path perm ->
-  let path_str = Path.to_string path in
-  Kernel.Fs.File.chmod path_str (Permissions.to_mode perm) |> convert_kernel_result
+  Kernel.Fs.File.set_permissions (kernel_path path) ~perm:(Permissions.to_mode perm) |> convert_kernel_result
 
 let symlink = fun ~src ~dst ->
-  let src_str = Path.to_string src in
-  let dst_str = Path.to_string dst in
-  Kernel.Fs.File.symlink src_str dst_str |> convert_kernel_result
+  Kernel.Fs.File.symlink ~src:(kernel_path src) ~dst:(kernel_path dst) |> convert_kernel_result
 
 let mkdir = fun path perm ->
-  let path_str = Path.to_string path in
-  Kernel.Fs.File.mkdir path_str perm |> convert_kernel_result
+  Kernel.Fs.File.create_dir (kernel_path path) ~perm |> convert_kernel_result
 
 let mkdir_safe = fun path perm ->
-  let path_str = Path.to_string path in
-  match Kernel.Fs.File.mkdir path_str perm with
+  match Kernel.Fs.File.create_dir (kernel_path path) ~perm with
   | Ok () -> Ok ()
-  | Error Kernel.IO.File_exists -> Ok ()
-  | Error e -> Error e
+  | Error (Kernel.Fs.File.System Kernel.SystemError.AlreadyExists) -> Ok ()
+  | Error error -> Error (of_file_error error)
 
 let rec mkdirp = fun path ->
-  let path_str = Path.to_string path in
-  if not (Kernel.Fs.File.file_exists path_str = Ok true) then
-    match Path.parent path with
-    | Some parent ->
-        let _ = mkdirp parent in
-        mkdir_safe path 0o755
-    | None -> mkdir_safe path 0o755
-  else
-    Ok ()
+  create_dir_all path
 
 let rec remove_dir = fun path ->
-  let path_str = Path.to_string path in
-  match Kernel.Fs.ReadDir.open_ path_str with
-  | Error e -> Error e
-  | Ok handle -> (
+  match ReadDir.create path with
+  | Error error -> Error error
+  | Ok dir ->
       let rec process_entries () =
-        match Kernel.Fs.ReadDir.read handle with
-        | Error IO.End_of_file ->
-            Ok ()
-        | Error e ->
-            Error e
-        | Ok file when file = "." || file = ".." ->
-            process_entries ()
-        | Ok file -> (
-            let file_path = Path.join path
-              (Path.of_string file |> Result.expect ~msg:"Invalid file path")
-            in
-            let file_path_str = Path.to_string file_path in
-            match Kernel.Fs.File.is_directory file_path_str with
+        match ReadDir.next dir with
+        | None -> Ok ()
+        | Some file_path -> (
+            let full_path = Path.join path file_path in
+            match dir_exists full_path with
+            | Error error -> Error error
             | Ok true -> (
-                match remove_dir file_path with
-                | Error e -> Error e
+                match remove_dir full_path with
+                | Error error -> Error error
                 | Ok () -> process_entries ()
               )
-            | Ok false
-            | Error _ -> (
-                match Kernel.Fs.File.remove file_path_str with
-                | Error e -> Error e
+            | Ok false -> (
+                match remove_file full_path with
+                | Error error -> Error error
                 | Ok () -> process_entries ()
               )
           )
       in
       match process_entries () with
-      | Error e ->
-          let _ = Kernel.Fs.ReadDir.close handle in
-          Error e
+      | Error error ->
+          let _ = ReadDir.close dir in
+          Error error
       | Ok () -> (
-          match Kernel.Fs.ReadDir.close handle with
-          | Error e -> Error e
-          | Ok () -> Kernel.Fs.File.rmdir path_str |> convert_kernel_result
+          match ReadDir.close dir with
+          | Error error -> Error error
+          | Ok () -> rmdir path
         )
-    )
 
 let file_size = fun path ->
-  let path_str = Path.to_string path in
-  match Kernel.Fs.File.stat path_str with
-  | Ok stats -> Ok (Kernel.Fs.File.Metadata.size stats)
-  | Error e -> Error e
+  match Kernel.Fs.File.metadata (kernel_path path) with
+  | Ok stats -> Ok (Kernel.Int64.to_int (Kernel.Fs.File.Metadata.len stats))
+  | Error error -> Error (of_file_error error)
 
 let path_separator = fun () ->
   if Kernel.System.unix then
@@ -315,12 +234,9 @@ let path_separator = fun () ->
     "\\"
 
 let current_executable = fun () ->
-  try
-    match Path.of_string Kernel.System.executable_name with
-    | Ok path -> Ok path
-    | Error _ -> Error (IO.Unknown_error "Invalid executable path")
-  with
-  | e -> Error (IO.Unknown_error (Exception.to_string e))
+  match Kernel.Env.executable_name with
+  | Some path -> Ok (Path.v path)
+  | None -> Error (IO.Unknown_error "Current executable name is unavailable")
 
 let is_absolute = fun path -> Path.is_absolute path
 
@@ -331,12 +247,12 @@ let join = fun paths ->
 
 let read = fun path ->
   match File.open_read path with
-  | Error e -> Error e
+  | Error error -> Error (of_file_error error)
   | Ok file -> (
       match File.read_to_end file with
-      | Error e ->
+      | Error error ->
           let _ = File.close file in
-          Error e
+          Error (of_file_error error)
       | Ok content ->
           let _ = File.close file in
           Ok content
@@ -363,8 +279,14 @@ let get_temp_dir = fun () ->
 
 (** Create a unique temporary directory name *)
 let make_temp_dir_name = fun temp_base prefix ->
-  let pid = Kernel.System.OsProcess.current_pid () in
-  let random_suffix = Kernel.Random.bits () land 0xff_ffff in
+  let pid = Kernel.Process.current_pid () in
+  let random_suffix =
+    match Kernel.Time.Monotonic.now () with
+    | Ok time ->
+        let secs, nanos = Kernel.Time.Monotonic.to_parts time in
+        (secs lxor nanos lxor pid) land 0xff_ffff
+    | Error _ -> pid land 0xff_ffff
+  in
   (* Convert to 6-digit hex string with leading zeros *)
   let hex_suffix =
     let hex_chars = "0123456789abcdef" in
@@ -392,14 +314,14 @@ let with_tempdir = fun ?(prefix = "tmp") fn ->
         | Ok () ->
             let result =
               try Ok (fn temp_path) with
-              | e -> Error (IO.Unknown_error (Exception.to_string e))
+              | e -> Error (IO.Unknown_error (Kernel.Exception.to_string e))
             in
             (* Clean up the temp directory *)
             let _ = remove_dir_all temp_path in
             result
       )
   with
-  | e -> Error (IO.Unknown_error (Exception.to_string e))
+  | e -> Error (IO.Unknown_error (Kernel.Exception.to_string e))
 
 (** Walk directory tree and call function on each path *)
 let rec walk = fun path fn ->
