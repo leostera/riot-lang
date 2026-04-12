@@ -68,9 +68,9 @@ let open_append = fun path ->
 let open_read_write = fun path ->
   wrap_result
     (Kernel.Fs.File.open_file
-       (kernel_path path)
-       [ Kernel.Fs.File.ReadWrite ]
-       ~perm:(Permissions.to_mode Permissions.read_write))
+      (kernel_path path)
+      [ Kernel.Fs.File.ReadWrite ]
+      ~perm:(Permissions.to_mode Permissions.read_write))
 
 let try_lock_exclusive = fun file -> wrap_result (Kernel.Fs.File.try_lock_exclusive file)
 

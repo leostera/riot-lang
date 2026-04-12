@@ -228,9 +228,7 @@ let close = fun fd ->
   Result.map_error (fun code -> System (System_error.of_code code)) (FFI.close fd)
 
 let try_lock_exclusive = fun fd ->
-  Result.map_error
-    (fun code -> System (System_error.of_code code))
-    (FFI.try_lock_exclusive fd)
+  Result.map_error (fun code -> System (System_error.of_code code)) (FFI.try_lock_exclusive fd)
 
 let unlock = fun fd ->
   Result.map_error (fun code -> System (System_error.of_code code)) (FFI.unlock fd)

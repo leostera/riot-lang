@@ -1,8 +1,8 @@
 type t = float
 
-let max_float = 1.79769313486231571e+308
+let max_float = 1.797_693_134_862_315_71e + 308
 
-let min_float = 2.22507385850720138e-308
+let min_float = 2.225_073_858_507_201_38e - 308
 
 let equal = Caml_runtime.equal
 

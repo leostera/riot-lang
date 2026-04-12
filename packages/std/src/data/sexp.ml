@@ -285,11 +285,12 @@ module Csexp = struct
             let s = Buffer.contents buffer in
             if s = "" then
               raise (Parse_error "Expected number")
-            else (
-              match Int.parse s with
-              | Some value -> value
-              | None -> raise (Parse_error "Invalid number")
-            )
+            else
+              (
+                match Int.parse s with
+                | Some value -> value
+                | None -> raise (Parse_error "Invalid number")
+              )
       in
       loop ()
     in

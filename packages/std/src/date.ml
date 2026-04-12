@@ -97,11 +97,12 @@ let parse_signed_year = fun value ->
 let parse_2digit = fun label value ->
   if not (Int.equal (String.length value) 2) then
     Error (Invalid_format ("expected two-digit " ^ label))
-  else (
-    match Int.parse value with
-    | Some parsed -> Ok parsed
-    | None -> Error (Invalid_format ("invalid " ^ label ^ " component: " ^ value))
-  )
+  else
+    (
+      match Int.parse value with
+      | Some parsed -> Ok parsed
+      | None -> Error (Invalid_format ("invalid " ^ label ^ " component: " ^ value))
+    )
 
 let of_iso8601 = fun value ->
   match String.split_on_char '-' value with

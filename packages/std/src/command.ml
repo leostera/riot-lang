@@ -139,15 +139,12 @@ let wait_for_reader_output = fun ~stdout_reader ~stderr_reader ->
 let unwrap_reader_result = fun ~stream ~cmd ->
   function
   | Ok output -> Ok output
-  | Error err ->
-      Error
-        (SystemError
-           ("Failed to read "
-           ^ stream
-           ^ " from command '"
-           ^ cmd
-           ^ "': "
-           ^ Fs.File.error_to_string err))
+  | Error err -> Error (SystemError ("Failed to read "
+  ^ stream
+  ^ " from command '"
+  ^ cmd
+  ^ "': "
+  ^ Fs.File.error_to_string err))
 
 let stdio_of_config = fun stdin stdout stderr ->
   let stdin_config =
@@ -229,10 +226,10 @@ let output = fun t ->
               let stdout_reader = spawn_reader ~parent ~stream:`stdout stdout_fd in
               let stderr_reader = spawn_reader ~parent ~stream:`stderr stderr_fd in
               let stdout_result, stderr_result = wait_for_reader_output ~stdout_reader ~stderr_reader in
-              match
-                unwrap_reader_result ~stream:"stdout" ~cmd:t.cmd stdout_result,
-                unwrap_reader_result ~stream:"stderr" ~cmd:t.cmd stderr_result
-              with
+              match unwrap_reader_result ~stream:"stdout" ~cmd:t.cmd stdout_result, unwrap_reader_result
+                ~stream:"stderr"
+                ~cmd:t.cmd
+                stderr_result with
               | (Error _ as err), _ ->
                   ignore (Kernel.Process.close proc);
                   err

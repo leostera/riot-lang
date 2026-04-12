@@ -134,8 +134,7 @@ let test_extract_allows_dot_root_directory_entry = fun _ctx ->
           match Fs.read_to_string extracted with
           | Ok "let answer = 42\n" -> Ok ()
           | Ok text -> Error ("unexpected extracted dot-root content: " ^ text)
-          | Error err -> Error ("failed to read dot-root extracted file: "
-          ^ IO.error_message err)
+          | Error err -> Error ("failed to read dot-root extracted file: " ^ IO.error_message err)
         ))
 
 let test_extract_rejects_path_traversal = fun _ctx ->
@@ -163,8 +162,7 @@ let test_extract_skips_pax_extended_headers = fun _ctx ->
           match Fs.read_to_string extracted with
           | Ok "let answer = 42\n" -> Ok ()
           | Ok text -> Error ("unexpected extracted pax-header content: " ^ text)
-          | Error err -> Error ("failed to read pax-header extracted file: "
-          ^ IO.error_message err)
+          | Error err -> Error ("failed to read pax-header extracted file: " ^ IO.error_message err)
         ))
 
 let test_extract_skips_appledouble_entries = fun _ctx ->

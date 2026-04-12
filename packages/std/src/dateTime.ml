@@ -370,8 +370,7 @@ module Parser = struct
       else
         let micro_str = String.sub s start (end_pos - start) in
         match Int.parse micro_str with
-        | None ->
-            raise (Failure "Invalid microseconds after decimal separator")
+        | None -> raise (Failure "Invalid microseconds after decimal separator")
         | Some micros ->
             let precision = String.length micro_str in
             let micros = micros * (int_of_float (10.0 ** float (6 - precision))) in
