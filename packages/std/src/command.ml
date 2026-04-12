@@ -231,17 +231,14 @@ let output = fun t ->
                 ~cmd:t.cmd
                 stderr_result with
               | (Error _ as err), _ ->
-                  ignore (Kernel.Process.close proc);
                   err
               | _, (Error _ as err) ->
-                  ignore (Kernel.Process.close proc);
                   err
               | Ok stdout_str, Ok stderr_str ->
                   (* Now wait for process to exit *)
                   match wait_for_exit proc with
                   | Error _ as err -> err
                   | Ok exit_status ->
-                      ignore (Kernel.Process.close proc);
                       let status_code = kernel_status_code exit_status in
                       let result = { status = status_code; stdout = stdout_str; stderr = stderr_str } in
                       t.state <- Exited result;

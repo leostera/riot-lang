@@ -52,7 +52,7 @@ let test_simple_file_caching = fun _ctx ->
               Ok ()
             else
               Error "Artifact not found in store after save"
-        | Error e -> Error ("Save failed: " ^ e))
+        | Error e -> Error ("Save failed: " ^ Riot_store.Store.error_message e))
   with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"
@@ -118,7 +118,7 @@ let test_cache_promotion_workflow = fun _ctx ->
                   Error "Promoted content mismatch"
             | _ -> Error "Promoted files not found"
           )
-        | Error e -> Error ("Promotion failed: " ^ e))
+        | Error e -> Error ("Promotion failed: " ^ Riot_store.Store.error_message e))
   with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"

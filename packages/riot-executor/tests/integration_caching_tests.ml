@@ -204,7 +204,7 @@ let test_action_cache_stores_output () =
                 then Ok ()
                 else Error "Action artifact hash mismatch"
             | None -> Error "Action artifact not found in store")
-        | Error e -> Error ("Failed to save action to store: " ^ e))
+        | Error e -> Error ("Failed to save action to store: " ^ Riot_store.Store.error_message e))
   with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"
@@ -263,7 +263,7 @@ let test_action_cache_retrieval_and_promotion () =
                 | Error _ -> Error "Failed to read promoted file")
             | Ok false -> Error "Promoted file not found"
             | Error _ -> Error "Failed to check promoted file")
-        | Error e -> Error ("Promotion failed: " ^ e))
+        | Error e -> Error ("Promotion failed: " ^ Riot_store.Store.error_message e))
   with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"

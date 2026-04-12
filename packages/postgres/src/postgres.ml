@@ -352,7 +352,7 @@ module Driver = struct
 
   let strip_timezone_name = fun str ->
     (* Look for last space that might separate offset from timezone name *)
-    match String.rindex_opt str ' ' with
+    match String.last_index str ' ' with
     | Some idx when idx > 10 -> (
         (* Check if what comes after looks like a timezone abbreviation *)
         let after_space = String.sub str (idx + 1) (String.length str - idx - 1) in
@@ -373,7 +373,7 @@ module Driver = struct
     (* PostgreSQL uses space instead of 'T', so replace it for ISO8601 compatibility *)
     (* With timezone=UTC setting, TIMESTAMP values are already in UTC *)
     let iso_str =
-      match String.index_opt str ' ' with
+      match String.index str ' ' with
       | Some idx ->
           let before = String.sub str 0 idx in
           let after = String.sub str (idx + 1) (String.length str - idx - 1) in
@@ -389,7 +389,7 @@ module Driver = struct
     let str = strip_timezone_name str in
     (* Replace space with 'T' for ISO8601 compatibility *)
     let iso_str =
-      match String.index_opt str ' ' with
+      match String.index str ' ' with
       | Some idx ->
           let before = String.sub str 0 idx in
           let after = String.sub str (idx + 1) (String.length str - idx - 1) in

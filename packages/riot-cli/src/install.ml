@@ -38,7 +38,7 @@ let print_path_hint = fun () ->
   out "  export PATH='$HOME/.riot/bin:$PATH'"
 
 let split_remote_binary = fun raw ->
-  match String.rindex_opt raw '@' with
+  match String.last_index raw '@' with
   | Some idx when idx = String.length raw - 1 -> Error (Failure ("invalid remote target '" ^ raw ^ "': expected binary name after @"))
   | Some idx when idx > 0 && idx < String.length raw - 1 -> Ok (
     String.sub raw 0 idx,

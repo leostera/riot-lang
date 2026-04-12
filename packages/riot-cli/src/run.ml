@@ -62,7 +62,7 @@ let parse_local_target = fun ?package_filter name ->
   | _ -> Ok (Local { package_name = package_filter; binary_name = name })
 
 let split_remote_binary = fun raw ->
-  match String.rindex_opt raw '@' with
+  match String.last_index raw '@' with
   | Some idx when idx = String.length raw - 1 -> Error (Failure ("invalid remote target '" ^ raw ^ "': expected binary name after @"))
   | Some idx when idx > 0 && idx < String.length raw - 1 -> Ok (
     String.sub raw 0 idx,

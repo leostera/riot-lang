@@ -415,7 +415,7 @@ module Directory = struct
         request_path
     in
     let parent_href =
-      match String.rindex_opt parent_href '/' with
+      match String.last_index parent_href '/' with
       | Some idx -> String.sub parent_href 0 (idx + 1)
       | None -> "/"
     in

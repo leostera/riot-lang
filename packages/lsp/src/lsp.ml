@@ -17,7 +17,7 @@ let ignore_context = fun decode -> fun _ -> decode
 
 let string_contains_char = fun s ->
   fun ch ->
-    match String.index_opt s ch with
+    match String.index s ch with
     | Some _ -> true
     | None -> false
 

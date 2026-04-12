@@ -952,28 +952,32 @@ let parse_list_marker = fun text ->
         if digit_len <= 0 || digit_len > 9 || digits_end >= len then
           None
         else if text.[digits_end] = '.' || text.[digits_end] = ')' then
-          let start_number = String.sub text indent_offset digit_len |> Int.parse in
-          let marker_after, marker_after_columns =
-            if digits_end + 1 >= len then
-              (digits_end + 1, indent + digit_len + 2)
-            else if is_space text.[digits_end + 1] then
-              consume_list_padding text (digits_end + 1) (indent + digit_len + 1)
-            else
-              (digits_end, (-1))
-          in
-          if marker_after_columns < 0 then
-            None
-          else
-            Some {
-              indent;
-              indent_offset;
-              marker_char = text.[digits_end];
-              marker_len = digit_len + 1;
-              marker_after;
-              marker_after_columns;
-              ordered = true;
-              start_number;
-            }
+          (
+            match String.sub text indent_offset digit_len |> Int.parse with
+            | None -> None
+            | Some start_number ->
+                let marker_after, marker_after_columns =
+                  if digits_end + 1 >= len then
+                    (digits_end + 1, indent + digit_len + 2)
+                  else if is_space text.[digits_end + 1] then
+                    consume_list_padding text (digits_end + 1) (indent + digit_len + 1)
+                  else
+                    (digits_end, (-1))
+                in
+                if marker_after_columns < 0 then
+                  None
+                else
+                  Some {
+                    indent;
+                    indent_offset;
+                    marker_char = text.[digits_end];
+                    marker_len = digit_len + 1;
+                    marker_after;
+                    marker_after_columns;
+                    ordered = true;
+                    start_number;
+                  }
+          )
         else
           None
 

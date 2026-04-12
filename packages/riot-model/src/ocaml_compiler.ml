@@ -158,8 +158,9 @@ let flags_of_string = fun raw_flags ->
     | "-nopervasives" :: rest ->
         go (NoPervasives :: acc) rest
     | "-inline" :: threshold :: rest -> (
-        try go (Inline (Int.parse threshold) :: acc) rest with
-        | _ -> go (Raw threshold :: Raw "-inline" :: acc) rest
+        match Int.parse threshold with
+        | Some parsed -> go (Inline parsed :: acc) rest
+        | None -> go (Raw threshold :: Raw "-inline" :: acc) rest
       )
     | "-noassert" :: rest ->
         go (NoAssert :: acc) rest

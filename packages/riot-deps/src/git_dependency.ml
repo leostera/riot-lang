@@ -56,7 +56,7 @@ let message = function
       "failed to spawn git command '" ^ command ^ "': " ^ error
 
 let split_once = fun ~on text ->
-  match String.index_opt text on with
+  match String.index text on with
   | None -> None
   | Some idx -> Some (
     String.sub text 0 idx,

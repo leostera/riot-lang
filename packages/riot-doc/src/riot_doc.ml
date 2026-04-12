@@ -395,7 +395,8 @@ let run_for_package = fun ~on_event ~store ~cache_allowed ~request ~(package:Rio
           match Riot_store.Store.get store (Crypto.hash_string cache_key) with
           | Some _ ->
               let* () = Riot_store.Store.promote store (Crypto.hash_string cache_key) ~target_dir:output_dir
-              |> Result.map_error (fun err -> "failed to promote cache hit: " ^ err) in
+              |> Result.map_error
+                (fun err -> "failed to promote cache hit: " ^ Riot_store.Store.error_message err) in
               cache_hit_ref := true;
               Ok ()
           | None -> Ok ()
@@ -429,7 +430,8 @@ let run_for_package = fun ~on_event ~store ~cache_allowed ~request ~(package:Rio
               store
               ~sandbox_dir:output_dir
               ~outs
-            |> Result.map_error (fun err -> "failed to save cached docs: " ^ err)
+            |> Result.map_error
+              (fun err -> "failed to save cached docs: " ^ Riot_store.Store.error_message err)
             |> Result.map (fun _ -> ())
           else
             Ok ()

@@ -40,7 +40,7 @@ and t = {
 let empty = { current = Name_map.empty; by_owner = Owner_map.empty; layer = Nothing }
 
 let lookup_name = fun label_name ->
-  match String.rindex_opt label_name '.' with
+  match String.last_index label_name '.' with
   | Some index -> String.sub label_name (index + 1) (String.length label_name - index - 1)
   | None -> label_name
 

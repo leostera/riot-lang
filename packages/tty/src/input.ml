@@ -315,7 +315,7 @@ let parse_csi = fun seq ->
         (* Format: \x1b[1;NX where N is modifier and X is key *)
         match String.split_on_char ';' rest with
         | [_;mod_key] when String.length mod_key >= 2 -> (
-            match Int.parse_opt (String.sub mod_key 0 (String.length mod_key - 1)) with
+            match Int.parse (String.sub mod_key 0 (String.length mod_key - 1)) with
             | None -> None
             | Some mod_num ->
                 let key_char = mod_key.[String.length mod_key - 1] in
@@ -349,7 +349,7 @@ let parse_csi = fun seq ->
           let coords = String.sub mouse_data 0 (String.length mouse_data - 1) in
           match String.split_on_char ';' coords with
           | [cb;cx;cy] -> (
-              match Int.parse_opt cb, Int.parse_opt cx, Int.parse_opt cy with
+              match Int.parse cb, Int.parse cx, Int.parse cy with
               | Some b, Some x, Some y ->
                   let button_code = b land 0x43 in
                   (* Mask for button *)

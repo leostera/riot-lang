@@ -9,7 +9,24 @@ module Manifest = Manifest
 type t
 (** Abstract type representing a store *)
 (** Artifact witness - proof that build outputs have been stored *)
-type error = string
+type error =
+  | HashNotFound of { hash: Std.Crypto.hash }
+  | LoadManifestFailed of { path: Std.Path.t; cause: string }
+  | CreateTargetDirFailed of { path: Std.Path.t; cause: Std.Fs.error }
+  | CreateParentDirFailed of { path: Std.Path.t; cause: Std.Fs.error }
+  | CopyArtifactFailed of { src: Std.Path.t; dst: Std.Path.t; cause: Std.Fs.error }
+  | CreateTempDirFailed of { path: Std.Path.t; cause: Std.Fs.error }
+  | CheckSourceExistsFailed of { path: Std.Path.t; cause: Std.Fs.error }
+  | MetadataReadFailed of { path: Std.Path.t; cause: Std.Fs.error }
+  | SaveManifestFailed of { path: Std.Path.t; cause: string }
+  | CommitArtifactsFailed of { source_dir: Std.Path.t; destination_dir: Std.Path.t; cause: string }
+  | SavePlanBundleFailed of { hash: Std.Crypto.hash; cause: string }
+  | ExportPathMustBeRelative of { path: Std.Path.t }
+  | CreatePackageOutputDirFailed of { path: Std.Path.t; cause: Std.Fs.error }
+  | CopyExportFailed of { src: Std.Path.t; dst: Std.Path.t; cause: Std.Fs.error }
+  | ExportSourceMissing of { path: Std.Path.t }
+val error_message: error -> string
+
 type export_entry = Manifest.export_entry = {
   (** Public export name looked up by CLI flows such as `riot run`. *)
   name: string;

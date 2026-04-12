@@ -20,8 +20,9 @@ exception Invalid_color_param of string
 exception Invalid_color_num of string * int
 
 let to_255 = fun str ->
-  try Int.of_string ("0x" ^ str) with
-  | Failure _ -> raise (Invalid_color_param str)
+  match Int.parse ("0x" ^ str) with
+  | Some value -> value
+  | None -> raise (Invalid_color_param str)
 
 let rgb = fun r g b -> RGB (to_255 r, to_255 g, to_255 b)
 
@@ -49,14 +50,13 @@ let make = fun str ->
   if String.starts_with ~prefix:"#" str then
     rgb str
   else
-    try
-      let i = Int.of_string str in
-      if i < 16 then
-        ansi i
-      else
-        ansi256 i
-    with
-    | Failure _ -> raise (Invalid_color str)
+    match Int.parse str with
+    | Some i ->
+        if i < 16 then
+          ansi i
+        else
+          ansi256 i
+    | None -> raise (Invalid_color str)
 
 let to_escape_seq = fun ~mode t ->
   match t with

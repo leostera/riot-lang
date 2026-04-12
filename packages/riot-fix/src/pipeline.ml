@@ -237,7 +237,7 @@ let builtin_rule_category = fun rule_id ->
 let package_rules = fun () -> Provider_registry.rules ()
 
 let unqualified_rule_id = fun rule_id ->
-  match String.rindex_opt rule_id ':' with
+  match String.last_index rule_id ':' with
   | Some idx -> String.sub rule_id (idx + 1) (String.length rule_id - idx - 1)
   | None -> rule_id
 

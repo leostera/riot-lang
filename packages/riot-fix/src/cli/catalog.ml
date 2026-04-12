@@ -1,7 +1,7 @@
 open Std
 
 let split_rule_id = fun rule_id ->
-  match String.index_opt rule_id ':' with
+  match String.index rule_id ':' with
   | Some idx ->
       let package_name = String.sub rule_id 0 idx in
       let local_id = String.sub rule_id (idx + 1) (String.length rule_id - idx - 1) in

@@ -883,7 +883,7 @@ let from_json = fun json ->
                     ""
                   else
                     let rest = strip_prefix_str expected ~prefix in
-                    match String.index_opt rest '\'' with
+                    match String.index rest '\'' with
                     | Some idx -> String.sub rest 0 idx
                     | None -> rest
                 in

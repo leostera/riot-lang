@@ -116,7 +116,7 @@ let lookup_type_decl = fun scope path ->
         None)
 
 let lookup_label_name = fun label_name ->
-  match String.rindex_opt label_name '.' with
+  match String.last_index label_name '.' with
   | Some index -> String.sub label_name (index + 1) (String.length label_name - index - 1)
   | None -> label_name
 

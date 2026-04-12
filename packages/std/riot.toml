@@ -5,6 +5,9 @@ description = "Standard library for Riot"
 license = "Apache-2.0"
 public = true
 
+[lib]
+path = "src/std.ml"
+
 [riot.fix]
 rules = [ "-no-stdlib" ]
 
@@ -22,7 +25,7 @@ rules = [
 
 [dependencies]
 stdlib = "*"
-kernel = { path = "../kernel-new", version = "*" }
+kernel = { path = "../kernel", version = "*" }
 
 [dev-dependencies]
 propane = { path = "../propane", version = "*" }

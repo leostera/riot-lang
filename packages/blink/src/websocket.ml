@@ -96,7 +96,7 @@ let connect = fun uri ->
                 | Ok n -> (
                     Buffer.add_subbytes response_buffer buf 0 n;
                     let response = Buffer.contents response_buffer in
-                    match String.index_opt response '\r' with
+                    match String.index response '\r' with
                     | None -> read_response ()
                     | Some _ ->
                         if

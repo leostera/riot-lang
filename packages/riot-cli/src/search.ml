@@ -25,8 +25,7 @@ let fail = fun err ->
   eprintln ("\027[1;31mError\027[0m: " ^ message err);
   Error (Failure (message err))
 
-let int_of_string_opt = fun value ->
-  Int.parse_opt value
+let int_of_string_opt = fun value -> Int.parse value
 
 let request_of_matches = fun matches ->
   let query =

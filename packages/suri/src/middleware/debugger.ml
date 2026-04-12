@@ -386,13 +386,13 @@ let parse_sandbox_path = fun path ->
         let rest = String.sub path after_sandbox (String.length path - after_sandbox) in
         (* Find first slash to separate package-hash from path *)
         (
-          match String.index_opt rest '/' with
+          match String.index rest '/' with
           | None -> None
           | Some slash_pos ->
               let pkg_with_hash = String.sub rest 0 slash_pos in
               (* Remove hash suffix: "suri-abc123" -> "suri" *)
               let package_name =
-                match String.rindex_opt pkg_with_hash '-' with
+                match String.last_index pkg_with_hash '-' with
                 | None -> pkg_with_hash
                 | Some dash_pos -> String.sub pkg_with_hash 0 dash_pos
               in
@@ -478,7 +478,7 @@ let resolve_source_path = fun path ->
 
 (** Extract quoted string after a pattern *)
 let extract_quoted = fun line pattern ->
-  match String.index_opt line '"' with
+  match String.index line '"' with
   | None -> None
   | Some start_quote ->
       let after_quote = start_quote + 1 in
@@ -535,7 +535,7 @@ let parse_frame_line = fun line ->
             let after = idx + String.length "characters " in
             let rest = String.sub line after (String.length line - after) in
             (
-              match String.index_opt rest '-' with
+              match String.index rest '-' with
               | None -> None
               | Some dash_pos ->
                   let after_dash = dash_pos + 1 in
@@ -562,7 +562,7 @@ let parse_frame_line = fun line ->
       (* length of "Raised at " *)
       let rest = String.sub line after (String.length line - after) in
       (
-        match String.index_opt rest ' ' with
+        match String.index rest ' ' with
         | Some space_pos -> Some (String.sub rest 0 space_pos |> String.trim)
         | None -> Some (String.trim rest)
       )
@@ -571,7 +571,7 @@ let parse_frame_line = fun line ->
       (* length of "Called from " *)
       let rest = String.sub line after (String.length line - after) in
       (
-        match String.index_opt rest ' ' with
+        match String.index rest ' ' with
         | Some space_pos -> Some (String.sub rest 0 space_pos |> String.trim)
         | None -> Some (String.trim rest)
       )
@@ -702,7 +702,7 @@ let render_snippet = fun snippet ->
 *)
 let extract_module_from_function = fun func_name ->
   (* Split by dot to get module part *)
-  match String.index_opt func_name '.' with
+  match String.index func_name '.' with
   | None -> None
   | Some dot_pos ->
       let module_part = String.sub func_name 0 dot_pos in

@@ -36,3 +36,5 @@
 ## Validate
 
 `timeout 30 riot build std`
+`timeout 30 riot test -p std`
+`timeout 30 riot bench -p std`

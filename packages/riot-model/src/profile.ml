@@ -218,7 +218,7 @@ let override_from_toml: (string * Std.Data.Toml.value) list -> profile_override 
     let get_int_opt key =
       match List.assoc_opt key table_items with
       | Some (String s) -> (
-          match Int.parse_opt s with
+          match Int.parse s with
           | Some value -> Override (Some value)
           | None -> Inherit
         )
@@ -268,7 +268,7 @@ let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_it
     let get_int_opt key =
       match List.assoc_opt key table_items with
       | Some (String s) -> (
-          match Int.parse_opt s with
+          match Int.parse s with
           | Some value -> Some value
           | None -> base.inline
         )

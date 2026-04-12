@@ -98,7 +98,7 @@ let rec parse_content_type_string = fun value ->
       else
         str
     in
-    match String.index_opt str '=' with
+    match String.index str '=' with
     | None -> List.rev acc
     | Some eq_idx ->
         let key = String.trim (String.sub str 0 eq_idx) |> String.lowercase_ascii in
@@ -117,7 +117,7 @@ let rec parse_content_type_string = fun value ->
                 (value, remaining)
             | None -> (String.trim rest, "")
           else
-            match String.index_opt rest ';' with
+            match String.index rest ';' with
             | Some semi_idx ->
                 let value = String.trim (String.sub rest 0 semi_idx) in
                 let remaining = String.trim
@@ -128,7 +128,7 @@ let rec parse_content_type_string = fun value ->
         let value, remaining = value_end in
         parse_params remaining ((key, value) :: acc)
   in
-  match String.index_opt value ';' with
+  match String.index value ';' with
   | None -> (String.trim value, [])
   | Some idx ->
       let main_type = String.trim (String.sub value 0 idx) in
@@ -152,7 +152,7 @@ and combine_rfc2231_params = fun raw_params ->
     Cell.set parts ((num, decoded) :: Cell.get parts)
   in
   let parse_key key value =
-    match String.rindex_opt key '*' with
+    match String.last_index key '*' with
     | None -> `Regular (key, value)
     | Some idx ->
         let name = String.sub key 0 idx in
@@ -205,7 +205,7 @@ and combine_rfc2231_params = fun raw_params ->
 
 let parse_content_type = fun value ->
   let main_type, params = parse_content_type_string value in
-  match String.index_opt main_type '/' with
+  match String.index main_type '/' with
   | None -> { media_type = main_type; subtype = ""; parameters = params }
   | Some slash ->
       let media = String.sub main_type 0 slash in
@@ -215,7 +215,7 @@ let parse_content_type = fun value ->
 let parse_content_disposition = fun value ->
   let value = String.trim value in
   let disp_type, params =
-    match String.index_opt value ';' with
+    match String.index value ';' with
     | None -> (value, [])
     | Some idx ->
         let dtype = String.trim (String.sub value 0 idx) in
@@ -251,7 +251,7 @@ let parse_part_headers_and_body = fun content ->
         if trimmed = "" then
           (List.rev acc, String.concat "\n" rest)
         else
-          match String.index_opt line ':' with
+          match String.index line ':' with
           | None -> collect_headers acc rest
           | Some idx ->
               let name = String.sub line 0 idx in

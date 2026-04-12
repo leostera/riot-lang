@@ -127,7 +127,7 @@ let list_command_descriptions = fun (workspace: Riot_model.Workspace.t) ->
   list_commands workspace |> List.map
     (fun line ->
       (* Extract description after tab *)
-      match String.index_opt line '\t' with
+      match String.index line '\t' with
       | Some idx -> String.sub line (idx + 1) (String.length line - idx - 1)
       | None -> "Package command")
 

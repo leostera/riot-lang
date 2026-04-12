@@ -26,7 +26,7 @@ let header_separator = fun payload ->
   loop 0
 
 let parse_content_length = fun headers ->
-  let parse_int = Int.parse_opt in
+  let parse_int = Int.parse in
   let rec loop = function
     | [] -> Error "missing Content-Length header"
     | header :: rest -> (

@@ -14,7 +14,7 @@ type request = {
 }
 
 let split_once = fun value ch ->
-  match String.index_opt value ch with
+  match String.index value ch with
   | None -> None
   | Some idx ->
       let left = String.sub value 0 idx in

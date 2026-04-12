@@ -420,7 +420,7 @@ type oracle_interface = {
 }
 
 let split_once = fun line ch ->
-  match String.index_opt line ch with
+  match String.index line ch with
   | Some index ->
       let left = String.sub line 0 index in
       let right = String.sub line (index + 1) (String.length line - index - 1) in
@@ -1377,7 +1377,7 @@ let replace_standalone_occurrences = fun ~needle ~replacement haystack ->
     loop 0 []
 
 let export_scope = fun export_name ->
-  match String.rindex_opt export_name '.' with
+  match String.last_index export_name '.' with
   | Some index -> Some (String.sub export_name 0 index)
   | None -> None
 

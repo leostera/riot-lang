@@ -7,9 +7,9 @@ let create = fun source -> Cursor.create source
 
 let make_token = fun ~kind ~span -> { Token.kind; span; leading_trivia = [] }
 
-let int_of_string_opt = Int.parse_opt
+let int_of_string_opt = Int.parse
 
-let float_of_string_opt = Float.parse_opt
+let float_of_string_opt = Float.parse
 
 let is_whitespace = function
   | ' '
@@ -451,7 +451,7 @@ let lex_number = fun cursor token_start ->
       let _ = consume_numeric_suffix () in
       let hex_str = "0x" ^ hex_digits in
       let kind =
-        match Int.parse_opt hex_str with
+        match Int.parse hex_str with
         | Some i -> Token.Literal (Int i)
         | None -> Token.Literal (Int 0)
       in
@@ -466,7 +466,7 @@ let lex_number = fun cursor token_start ->
       let _ = consume_numeric_suffix () in
       let octal_str = "0o" ^ octal_digits in
       let kind =
-        match Int.parse_opt octal_str with
+        match Int.parse octal_str with
         | Some i -> Token.Literal (Int i)
         | None -> Token.Literal (Int 0)
       in
@@ -481,7 +481,7 @@ let lex_number = fun cursor token_start ->
       let _ = consume_numeric_suffix () in
       let binary_str = "0b" ^ binary_digits in
       let kind =
-        match Int.parse_opt binary_str with
+        match Int.parse binary_str with
         | Some i -> Token.Literal (Int i)
         | None -> Token.Literal (Int 0)
       in

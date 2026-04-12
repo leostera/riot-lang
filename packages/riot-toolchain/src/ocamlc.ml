@@ -61,7 +61,7 @@ module Diagnostic = struct
     | Parsed of parsed
     | Raw of string
 
-  let parse_int_opt = fun value -> Int.parse_opt value
+  let parse_int_opt = fun value -> Int.parse value
 
   let rec find_substring_from = fun text ~needle ~start ->
     let text_len = String.length text in

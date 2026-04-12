@@ -61,7 +61,7 @@ let decode_credentials = fun auth_header ->
       match Encoding.Base64.decode encoded with
       | Result.Ok decoded -> (
           (* Split on first colon only - password can contain colons *)
-          match String.index_opt decoded ':' with
+          match String.index decoded ':' with
           | Option.Some idx ->
               let username = String.sub decoded 0 idx in
               let password = String.sub decoded (idx + 1) (String.length decoded - idx - 1) in

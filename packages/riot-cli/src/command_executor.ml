@@ -28,8 +28,6 @@ let execute = fun ~command_binary ~args ->
       let argv = array_of_list args_list in
       (
         match Process.execv command_path argv with
-        | Ok () ->
-            Error (Failure "execv returned unexpectedly")
-        | Error error ->
-            Error (Failure ("Failed to exec command: " ^ Kernel.SystemError.to_string error))
+        | Ok () -> Error (Failure "execv returned unexpectedly")
+        | Error error -> Error (Failure ("Failed to exec command: " ^ Kernel.SystemError.to_string error))
       )

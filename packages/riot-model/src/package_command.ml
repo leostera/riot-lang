@@ -40,7 +40,7 @@ let parse_from_toml: Toml.value list -> package_name:string -> package_path:Path
                 command_source
                 |> Path.basename
                 |> (fun s ->
-                  match String.index_opt s '.' with
+                  match String.index s '.' with
                   | Some idx -> String.sub s 0 idx
                   | None -> s)
                 |> String.capitalize_ascii

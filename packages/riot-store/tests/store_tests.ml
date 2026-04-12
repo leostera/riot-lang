@@ -103,6 +103,48 @@ let test_get_preserves_relative_paths = fun _ctx ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_save_and_promote_self_host_style_outputs = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"store_self_host_output_test"
+      (fun tmpdir ->
+        let workspace = make_test_workspace tmpdir in
+        let store = Riot_store.Store.create ~workspace in
+        let sandbox = Path.(tmpdir / Path.v "sandbox") in
+        let _ = Fs.create_dir_all sandbox |> Result.expect ~msg:"create sandbox should succeed" in
+        let outputs = [
+          ("Kernel__Net__Tcp_listener__Aliases.cmi", "aliases");
+          ("Kernel__Time__Monotonic__Unix.o", "native-object");
+          ("Kernel__Time__Monotonic__Unix.cmx", "compiled-module");
+        ] in
+        let out_paths =
+          List.map
+            (fun (name, content) ->
+              let path = Path.(sandbox / Path.v name) in
+              let _ = Fs.write content path
+              |> Result.expect ~msg:("write " ^ name ^ " should succeed") in
+              path)
+            outputs
+        in
+        let hash = Crypto.hash_string "self-host-style-artifacts" in
+        let _ = Riot_store.Store.save store ~package:"kernel" ~hash ~sandbox_dir:sandbox ~outs:out_paths
+        |> Result.expect ~msg:"save should succeed for self-host-style outputs" in
+        let target = Path.(tmpdir / Path.v "out") in
+        let _ = Riot_store.Store.promote store hash ~target_dir:target |> Result.expect ~msg:"promote should succeed for self-host-style outputs" in
+        let promoted_ok =
+          List.for_all
+            (fun (name, content) ->
+              let path = Path.(target / Path.v name) in
+              String.equal (read_file path) content)
+            outputs
+        in
+        if promoted_ok then
+          Ok ()
+        else
+          Error "self-host-style outputs were not preserved through store save/promote")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_exists_requires_manifest_file = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"store_exists_manifest_test"
@@ -400,11 +442,39 @@ let test_materialize_package_exports_fails_when_source_missing = fun _ctx ->
         let target_dir = Path.(tmpdir / Path.v "out" / Path.v "pkg") in
         match Riot_store.Store.materialize_package_exports store ~exports ~target_dir with
         | Ok () -> Error "expected missing export source to fail materialization"
-        | Error message ->
-            if String.contains message "cache is corrupted; try `riot clean`" then
-              Ok ()
-            else
-              Error ("unexpected error: " ^ message))
+        | Error (Riot_store.Store.ExportSourceMissing _) -> Ok ()
+        | Error error -> Error ("unexpected error: " ^ Riot_store.Store.error_message error))
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_promote_overwrites_existing_target_files = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"store_promote_overwrite_test"
+      (fun tmpdir ->
+        let workspace = make_test_workspace tmpdir in
+        let store = Riot_store.Store.create ~workspace in
+        let sandbox = Path.(tmpdir / Path.v "sandbox") in
+        let _ = Fs.create_dir_all sandbox |> Result.expect ~msg:"create sandbox should succeed" in
+        let output = Path.(sandbox / Path.v "Kernel__Time__Common.cmx") in
+        let _ = Fs.write "fresh" output |> Result.expect ~msg:"write sandbox output should succeed" in
+        let hash = Crypto.hash_string "promote-overwrite" in
+        let _ = Riot_store.Store.save
+          store
+          ~package:"kernel"
+          ~hash
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
+        |> Result.expect ~msg:"save should succeed" in
+        let target_dir = Path.(tmpdir / Path.v "sandbox-target") in
+        let target_file = Path.(target_dir / Path.v "Kernel__Time__Common.cmx") in
+        let _ = Fs.create_dir_all target_dir |> Result.expect ~msg:"create target dir should succeed" in
+        let _ = Fs.write "stale" target_file |> Result.expect ~msg:"write stale target file should succeed" in
+        let _ = Riot_store.Store.promote store hash ~target_dir |> Result.expect ~msg:"promote should overwrite existing target files" in
+        if String.equal (read_file target_file) "fresh" then
+          Ok ()
+        else
+          Error "promote should overwrite stale target files")
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -568,6 +638,7 @@ let test_cache_gc_shrinks_retained_generations_to_meet_max_size = fun _ctx ->
 let tests =
   Test.[
     case "save/promote nested outputs" test_save_and_promote_nested_outputs;
+    case "save/promote self-host-style outputs" test_save_and_promote_self_host_style_outputs;
     case "get preserves relative paths" test_get_preserves_relative_paths;
     case "exists requires manifest" test_exists_requires_manifest_file;
     case "put-if-absent keeps first writer" test_put_if_absent_keeps_first_writer;
@@ -579,6 +650,7 @@ let tests =
     case "load manifest returns none for malformed payload" test_load_manifest_returns_none_for_malformed_payload;
     case "materialize package exports from action artifacts" test_materialize_package_exports_from_action_artifact;
     case "materialize package exports fails when source missing" test_materialize_package_exports_fails_when_source_missing;
+    case "promote overwrites existing target files" test_promote_overwrites_existing_target_files;
     case "get returns none when export source missing" test_get_returns_none_when_export_source_missing;
     case "cache GC drops unreferenced entries after generation overflow" test_cache_gc_drops_unreferenced_entries_after_generation_overflow;
     case "cache GC shrinks retained generations to meet max_size" test_cache_gc_shrinks_retained_generations_to_meet_max_size;

@@ -60,7 +60,7 @@ let uri = fun t -> Web_server.Request.uri t.req
 
 let path = fun t ->
   let uri_str = Web_server.Request.uri t.req in
-  match String.index_opt uri_str '?' with
+  match String.index uri_str '?' with
   | Some idx -> String.sub uri_str 0 idx
   | None -> uri_str
 
@@ -72,7 +72,7 @@ let params = fun t -> t.params
 
 let query_params = fun t ->
   let uri_str = Web_server.Request.uri t.req in
-  match String.index_opt uri_str '?' with
+  match String.index uri_str '?' with
   | None -> []
   | Some idx ->
       let query_string = String.sub uri_str (idx + 1) (String.length uri_str - idx - 1) in
@@ -80,7 +80,7 @@ let query_params = fun t ->
       let pairs = String.split_on_char '&' query_string in
       List.filter_map
         (fun pair ->
-          match String.index_opt pair '=' with
+          match String.index pair '=' with
           | None -> None
           | Some eq_idx ->
               let key = String.sub pair 0 eq_idx in

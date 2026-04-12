@@ -69,7 +69,7 @@ let parse_set_cookie = fun header ->
               (fun c attr ->
                 match parse_attribute attr with
                 | (Some "max-age", Some value) -> (
-                    match Int.parse_opt value with
+                    match Int.parse value with
                     | Some age -> { c with max_age = Some age }
                     | Option.None -> c
                   )

@@ -101,7 +101,7 @@ let parse_max_size = fun raw ->
     match unit_multiplier unit_str with
     | None -> Error ("unsupported max_size unit '" ^ unit_str ^ "'")
     | Some multiplier -> (
-        match Float.parse_opt number_str with
+        match Float.parse number_str with
         | None -> Error ("invalid max_size value '" ^ raw ^ "'")
         | Some number ->
             if number < 0.0 then
@@ -189,7 +189,7 @@ let parse_duration = fun raw ->
     match duration_unit_seconds unit_str with
     | None -> Error ("unsupported small_test_timeout unit '" ^ unit_str ^ "'")
     | Some multiplier -> (
-        match Float.parse_opt number_str with
+        match Float.parse number_str with
         | None -> Error ("invalid small_test_timeout value '" ^ raw ^ "'")
         | Some number ->
             if number < 0.0 then

@@ -31,7 +31,7 @@ type accept_entry = {
     Example: "q=0.8" -> Some 0.8 *)
 let parse_quality = fun param ->
   match String.split_on_char '=' (String.trim param) with
-  | ["q";value] -> Float.of_string_opt (String.trim value)
+  | ["q";value] -> Float.parse (String.trim value)
   | _ -> None
 
 (** Parse single Accept header entry with quality value.

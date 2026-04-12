@@ -36,11 +36,22 @@ let test_concat_preserves_separator_order = fun _ctx ->
   else
     Error "expected String.concat to preserve value and separator order"
 
+let test_capitalize_ascii_preserves_tail_casing = fun _ctx ->
+  let lower_mixed = Kernel.String.capitalize_ascii "mutIterator" in
+  let already_capitalized = Kernel.String.capitalize_ascii "MutIterator" in
+  if
+    Kernel.String.equal lower_mixed "MutIterator" && Kernel.String.equal already_capitalized "MutIterator"
+  then
+    Ok ()
+  else
+    Error "expected String.capitalize_ascii to uppercase only the first character and preserve the rest unchanged"
+
 let tests = [
   Test.case "String.of_bytes copies its input" test_of_bytes_copies_input;
   Test.case "String.to_bytes copies its input" test_to_bytes_copies_input;
   Test.case "String.init builds characters in order" test_init_builds_expected_string;
   Test.case "String.concat preserves separator order" test_concat_preserves_separator_order;
+  Test.case "String.capitalize_ascii preserves tail casing" test_capitalize_ascii_preserves_tail_casing;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_string_tests" ~tests ~args

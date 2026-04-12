@@ -352,6 +352,10 @@ let verify_outputs = fun outputs ->
   else
     Ok ()
 
+let save_action_artifact = fun ~store ~package ~action_hash ~ocamlc_warnings ~sandbox_dir ~outputs ->
+  Riot_store.Store.save store ~package ~ocamlc_warnings ~hash:action_hash ~sandbox_dir ~outs:outputs
+  |> Result.map_error Riot_store.Store.error_message
+
 let has_failed_dependencies = fun completed (node: Action_node.t) ->
   List.exists
     (fun dep_id ->
@@ -550,57 +554,23 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                       actions
                   in
                   if not needs_output_verification then
-                    let artifact = Riot_store.Store.save
-                      store
+                    match save_action_artifact
+                      ~store
                       ~package:node.value.package.name
+                      ~action_hash
                       ~ocamlc_warnings
-                      ~hash:action_hash
                       ~sandbox_dir
-                      ~outs:(List.map (Path.join sandbox_dir) outputs)
-                    |> Result.expect
-                      ~msg:("Failed to store action artifact for node " ^ G.Node_id.to_string node.id) in
-                    Telemetry.emit
-                      Telemetry_events.(
-                        ActionCompleted {
-                          session_id;
-                          package = node.value.package;
-                          action = node;
-                          artifact;
-                          status = `Fresh;
-                          duration;
-                        }
-                      );
-                    {
-                      node_id = node.id;
-                      status = Executed;
-                      ocamlc_warnings;
-                      duration;
-                      started_at = start;
-                      completed_at;
-                    }
-                  else
-                    let abs_outputs = List.map (Path.join sandbox_dir) outputs in
-                    match verify_outputs abs_outputs with
-                    | Error missing ->
+                      ~outputs:(List.map (Path.join sandbox_dir) outputs) with
+                    | Error message ->
                         {
                           node_id = node.id;
-                          status = Failed (OutputsNotCreated { missing });
+                          status = Failed (ExecutionFailed { message });
                           ocamlc_warnings = [];
                           duration;
                           started_at = start;
                           completed_at;
                         }
-                    | Ok () ->
-                        let artifact = Riot_store.Store.save
-                          store
-                          ~package:node.value.package.name
-                          ~ocamlc_warnings
-                          ~hash:action_hash
-                          ~sandbox_dir
-                          ~outs:abs_outputs
-                        |> Result.expect
-                          ~msg:("Failed to store action artifact for node "
-                          ^ G.Node_id.to_string node.id) in
+                    | Ok artifact ->
                         Telemetry.emit
                           Telemetry_events.(
                             ActionCompleted {
@@ -620,6 +590,55 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                           started_at = start;
                           completed_at;
                         }
+                  else
+                    let abs_outputs = List.map (Path.join sandbox_dir) outputs in
+                    match verify_outputs abs_outputs with
+                    | Error missing ->
+                        {
+                          node_id = node.id;
+                          status = Failed (OutputsNotCreated { missing });
+                          ocamlc_warnings = [];
+                          duration;
+                          started_at = start;
+                          completed_at;
+                        }
+                    | Ok () ->
+                        match save_action_artifact
+                          ~store
+                          ~package:node.value.package.name
+                          ~action_hash
+                          ~ocamlc_warnings
+                          ~sandbox_dir
+                          ~outputs:abs_outputs with
+                        | Error message ->
+                            {
+                              node_id = node.id;
+                              status = Failed (ExecutionFailed { message });
+                              ocamlc_warnings = [];
+                              duration;
+                              started_at = start;
+                              completed_at;
+                            }
+                        | Ok artifact ->
+                            Telemetry.emit
+                              Telemetry_events.(
+                                ActionCompleted {
+                                  session_id;
+                                  package = node.value.package;
+                                  action = node;
+                                  artifact;
+                                  status = `Fresh;
+                                  duration;
+                                }
+                              );
+                            {
+                              node_id = node.id;
+                              status = Executed;
+                              ocamlc_warnings;
+                              duration;
+                              started_at = start;
+                              completed_at;
+                            }
             )
     )
 

@@ -3,7 +3,7 @@ open Std
 (** Build the static CLI. Workspace commands are resolved lazily after parse. *)
 let build_cli = fun () ->
   let open ArgParser in
-      let open Arg in
+    let open Arg in
       let builtin_commands = [
         Add.command;
         Build.command;

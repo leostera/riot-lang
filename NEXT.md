@@ -1,11 +1,30 @@
 # Now
 
-* kernel-new migration
-    * redefine the entire interface of all the collections in Kernel and Std
-
-* riot check kernel-new
+* riot check -p kernel is fast <100ms
 
 # Before Announcing
+
+* Std.Log should be set up by default on the generated template code
+
+* riot build takes _ages_ to plan big packages like std: is it syn?
+
+* riot clean should take a build lock to ensure noone is using _build while it tries to clean it
+
+* suri depends on riot-model? how come?
+
+* when installing sources in ~/.riot/registry we should make them read-only! 
+
+* lint: if a function uses raise, it should be called _unchecked
+* lint: externals should be called unsafe_* 
+
+* riot init should initialize:
+    * .agents/skills/riot/* 
+    * config/dev.toml
+
+* riot info workspace
+  riot info pkg[@vsn]  should show information about that package (local or remote), including links to the docs, should also include the local ~/.riot/registry path
+
+* riot help == riot --help
 
 * bug: riot init arewedown.dev fails silently -- workspaces can contain dots in names, that's fine
 

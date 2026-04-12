@@ -237,7 +237,7 @@ let capitalize_ascii = fun value ->
         if index = 0 then
           first
         else
-          lowercase_ascii_char (get value index))
+          get value index)
 
 let uppercase_ascii = fun value ->
   init (length value) (fun index -> uppercase_ascii_char (get value index))
