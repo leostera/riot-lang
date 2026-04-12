@@ -2,7 +2,7 @@ open Global
 
 (** Gzip codec failures. *)
 type error =
-  | Kernel_error of Kernel.Compress.Gzip.error
+  | Engine_error of Gzip_engine.error
   (** The underlying incremental gzip engine rejected the stream. *)
   | Truncated_input
 (** The gzip stream ended before the decoder reached a complete end state. *)
