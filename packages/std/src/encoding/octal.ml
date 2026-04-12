@@ -77,7 +77,7 @@ let decode_int = fun s ->
   match classify s with
   | Error _ as err -> err
   | Ok normalized -> (
-      match Int.of_string_opt normalized with
+      match Int.parse normalized with
       | Some value -> Ok value
       | None -> Error `Invalid_octal
     )

@@ -1,5 +1,5 @@
 open Std
-module Kernel = Kernel_new
+module Kernel = Kernel
 
 let build_iovec = fun segments segment_size ->
   Kernel.Array.init segments

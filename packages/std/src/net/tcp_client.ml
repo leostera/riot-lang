@@ -51,7 +51,7 @@ let send = fun t data ->
 
 let receive = fun t ->
   (* Check if we already have a complete line in leftover buffer *)
-  match String.index_opt t.leftover '\n' with
+  match String.index t.leftover '\n' with
   | Some idx ->
       (* Found newline in leftover, return line and save remainder *)
       let line = String.sub t.leftover 0 idx in
@@ -75,7 +75,7 @@ let receive = fun t ->
             let data = Bytes.sub_string buffer 0 bytes_read in
             let full_data = acc ^ data in
             (* Check if we have a complete line *)
-            match String.index_opt full_data '\n' with
+            match String.index full_data '\n' with
             | Some idx ->
                 (* Found newline, save remainder and return line *)
                 let line = String.sub full_data 0 idx in

@@ -33,11 +33,9 @@ val equal: t -> t -> bool
 
 val compare: t -> t -> int
 
-val index_opt: t -> char -> int option
+val index: t -> char -> int option
 
-val index: t -> char -> int
-
-val rindex_opt: t -> char -> int option
+val last_index: t -> char -> int option
 
 val trim: t -> t
 

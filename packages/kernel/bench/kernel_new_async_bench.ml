@@ -1,5 +1,5 @@
 open Std
-module Kernel = Kernel_new
+module Kernel = Kernel
 
 let panic_file = fun error ->
   Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_fs_file error))

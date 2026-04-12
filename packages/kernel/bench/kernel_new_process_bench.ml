@@ -1,5 +1,5 @@
 open Std
-module Kernel = Kernel_new
+module Kernel = Kernel
 
 let lift_process result =
   match result with

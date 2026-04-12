@@ -348,9 +348,17 @@ let of_string = fun str ->
     consume ();
     let num_str = String.sub str start (!pos - start) in
     if !is_float then
-      Float (Float.of_string num_str)
+      (
+        match Float.parse num_str with
+        | Some value -> Float value
+        | None -> raise_error (Invalid_number { position = start; text = num_str })
+      )
     else
-      Int (Int.of_string num_str)
+      (
+        match Int.parse num_str with
+        | Some value -> Int value
+        | None -> raise_error (Invalid_number { position = start; text = num_str })
+      )
   in
   let rec parse_value () =
     skip_whitespace ();

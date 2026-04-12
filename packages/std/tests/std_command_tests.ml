@@ -32,10 +32,8 @@ let meta_tests = [
 ]
 
 let capture_main = fun () ->
-  ignore (Unix.alarm 1);
   eprint stderr_payload;
   print stdout_payload;
-  ignore (Unix.alarm 0);
   Ok ()
 
 let meta_main = fun ~args ->

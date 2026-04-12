@@ -12,17 +12,11 @@ let of_int = Caml_runtime.float_of_int
 
 let to_int = Caml_runtime.int_of_float
 
-let parse = Caml_runtime.float_of_string
+let parse_unchecked = Caml_runtime.float_of_string
 
-let parse_opt = fun value ->
-  try Some (parse value) with
-  | Failure _ -> None
-
-let of_string = Caml_runtime.float_of_string
-
-let of_string_opt = fun value ->
-  try Some (of_string value) with
-  | Failure _ -> None
+let parse = fun value ->
+  try Some (parse_unchecked value) with
+  | _ -> None
 
 let is_finite = fun value -> equal (Caml_runtime.sub_float value value) 0.0
 

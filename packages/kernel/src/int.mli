@@ -17,6 +17,8 @@ val equal: t -> t -> bool
 
 val compare: t -> t -> int
 
+val abs: t -> t
+
 val min: t -> t -> t
 
 val max: t -> t -> t
@@ -27,13 +29,9 @@ val pred: t -> t
 
 val of_float: float -> t
 
-val parse: string -> t
+val parse: string -> t option
 
-val parse_opt: string -> t option
-
-val of_string: string -> t
-
-val of_string_opt: string -> t option
+val parse_unchecked: string -> t
 
 val hash: t -> int
 

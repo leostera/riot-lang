@@ -2,7 +2,9 @@ open Std
 open Std.Collections
 
 let diff_hashmaps = fun left right ->
-  let keys = (HashMap.to_list left |> List.map fst) @ (HashMap.to_list right |> List.map fst)
+  let key_of_entry = fun (key, _) -> key in
+  let keys = (HashMap.to_list left |> List.map key_of_entry)
+  @ (HashMap.to_list right |> List.map key_of_entry)
   |> List.sort_uniq String.compare in
   List.filter_map
     (fun key ->

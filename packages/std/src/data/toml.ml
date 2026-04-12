@@ -271,8 +271,9 @@ let parse = fun content ->
         done;
         let str = String.trim (String.sub content start (!pos - start)) in
         (
-          try Int (Int.of_string str) with
-          | Failure _ -> String str
+          match Int.parse str with
+          | Some value -> Int value
+          | None -> String str
         )
     | _ ->
         (* Bare string - read until comma, bracket, newline, or comment *)

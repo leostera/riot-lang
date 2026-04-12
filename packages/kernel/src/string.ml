@@ -135,7 +135,7 @@ let equal = Caml_runtime.equal
 
 let compare = Caml_runtime.compare
 
-let index_opt = fun value needle ->
+let index = fun value needle ->
   let rec loop index =
     if index >= length value then
       None
@@ -146,12 +146,7 @@ let index_opt = fun value needle ->
   in
   loop 0
 
-let index = fun value needle ->
-  match index_opt value needle with
-  | Some index -> index
-  | None -> raise Not_found
-
-let rindex_opt = fun value needle ->
+let last_index = fun value needle ->
   let rec loop index =
     if index < 0 then
       None

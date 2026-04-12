@@ -1,6 +1,6 @@
 open Std
 module Test = Std.Test
-module Kernel = Kernel_new
+module Kernel = Kernel
 
 let ( let* ) = Result.and_then
 

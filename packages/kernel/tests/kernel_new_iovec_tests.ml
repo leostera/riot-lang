@@ -1,6 +1,6 @@
 open Std
 module Test = Std.Test
-module Kernel = Kernel_new
+module Kernel = Kernel
 
 let test_iovec_roundtrips_string_payload = fun _ctx ->
   let iovec = Kernel.IO.Iovec.of_string_array [|"hello"; " "; "riot"|] in

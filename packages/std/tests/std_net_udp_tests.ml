@@ -11,7 +11,7 @@ let string_of_udp_server_error = function
   | Net.UdpServer.System_error err -> IO.error_message err
 
 let local_udp_addr = fun port ->
-  Net.Addr.udp "127.0.0.1" port
+  Net.Addr.udp Net.Addr.loopback port
 
 let bind_socket = fun addr ->
   match Net.UdpSocket.bind addr with

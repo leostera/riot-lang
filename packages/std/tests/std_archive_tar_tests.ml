@@ -97,10 +97,11 @@ let with_temp_dir = fun label fn ->
     (Path.v "/tmp")
     (Path.v ("riot_" ^ label ^ "_" ^ UUID.to_string (UUID.v4 ()))) in
   match Fs.create_dir_all temp_root with
-  | Error err -> Error ("failed to create temp dir: " ^ Kernel.IO.error_message err)
-  | Ok () -> Kernel.Fun.protect
-    ~finally:(fun () -> ignore (Fs.remove_dir_all temp_root))
-    (fun () -> fn temp_root)
+  | Error err -> Error ("failed to create temp dir: " ^ IO.error_message err)
+  | Ok () ->
+      let result = fn temp_root in
+      ignore (Fs.remove_dir_all temp_root);
+      result
 
 let test_extract_writes_regular_files = fun _ctx ->
   let archive = build_archive
@@ -114,7 +115,7 @@ let test_extract_writes_regular_files = fun _ctx ->
           match Fs.read_to_string readme with
           | Ok content when content = "Hello from tar\n" -> Ok ()
           | Ok content -> Error ("unexpected extracted content: " ^ content)
-          | Error err -> Error ("failed to read extracted file: " ^ Kernel.IO.error_message err)
+          | Error err -> Error ("failed to read extracted file: " ^ IO.error_message err)
         ))
 
 let test_extract_allows_dot_root_directory_entry = fun _ctx ->
@@ -134,7 +135,7 @@ let test_extract_allows_dot_root_directory_entry = fun _ctx ->
           | Ok "let answer = 42\n" -> Ok ()
           | Ok text -> Error ("unexpected extracted dot-root content: " ^ text)
           | Error err -> Error ("failed to read dot-root extracted file: "
-          ^ Kernel.IO.error_message err)
+          ^ IO.error_message err)
         ))
 
 let test_extract_rejects_path_traversal = fun _ctx ->
@@ -163,7 +164,7 @@ let test_extract_skips_pax_extended_headers = fun _ctx ->
           | Ok "let answer = 42\n" -> Ok ()
           | Ok text -> Error ("unexpected extracted pax-header content: " ^ text)
           | Error err -> Error ("failed to read pax-header extracted file: "
-          ^ Kernel.IO.error_message err)
+          ^ IO.error_message err)
         ))
 
 let test_extract_skips_appledouble_entries = fun _ctx ->
@@ -185,7 +186,7 @@ let test_extract_skips_appledouble_entries = fun _ctx ->
           match Fs.read_to_string extracted, Fs.exists skipped with
           | Ok "let answer = 42\n", Ok false -> Ok ()
           | Ok text, _ -> Error ("unexpected extracted AppleDouble content: " ^ text)
-          | Error err, _ -> Error ("failed to read extracted file: " ^ Kernel.IO.error_message err)
+          | Error err, _ -> Error ("failed to read extracted file: " ^ IO.error_message err)
         ))
 
 let tests =

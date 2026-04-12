@@ -1,6 +1,6 @@
 open Std
 module Test = Std.Test
-module Kernel = Kernel_new
+module Kernel = Kernel
 
 let test_of_string_roundtrips_raw_text = fun _ctx ->
   let raw = "domains/admin/users/models/testing/user.ml" in

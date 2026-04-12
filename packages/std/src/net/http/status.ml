@@ -205,7 +205,7 @@ let of_int = function
 let of_string: string -> (t, [
     `InvalidStatus
   ]) Kernel.result = fun s ->
-  match Int.of_string_opt s with
+  match Int.parse s with
   | Some code -> Ok (of_int code)
   | None -> Error `InvalidStatus
 

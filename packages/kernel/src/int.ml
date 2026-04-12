@@ -20,6 +20,12 @@ let equal = Caml_runtime.equal
 
 let compare = Caml_runtime.compare
 
+let abs = fun value ->
+  if value < 0 then
+    0 - value
+  else
+    value
+
 let min = fun left right ->
   if compare left right <= 0 then
     left
@@ -38,17 +44,11 @@ let pred = fun value -> sub value 1
 
 let of_float = Caml_runtime.int_of_float
 
-let parse = Caml_runtime.int_of_string
+let parse_unchecked = Caml_runtime.int_of_string
 
-let parse_opt = fun value ->
-  try Some (parse value) with
-  | Failure _ -> None
-
-let of_string = Caml_runtime.int_of_string
-
-let of_string_opt = fun value ->
-  try Some (of_string value) with
-  | Failure _ -> None
+let parse = fun value ->
+  try Some (parse_unchecked value) with
+  | _ -> None
 
 let hash = fun value -> value
 

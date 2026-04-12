@@ -444,12 +444,12 @@ let get_many = fun matches name -> HashMap.get matches.values name |> Option.unw
 
 let get_int = fun matches name ->
   match get_one matches name with
-  | Some s -> Int.of_string_opt s
+  | Some s -> Int.parse s
   | None -> None
 
 let get_float = fun matches name ->
   match get_one matches name with
-  | Some s -> Float.of_string_opt s
+  | Some s -> Float.parse s
   | None -> None
 
 let get_path = fun matches name ->

@@ -8,18 +8,13 @@ let with_temp_dir = fun label fn ->
     (Path.v "/tmp")
     (Path.v ("riot_" ^ label ^ "_" ^ UUID.to_string (UUID.v4 ()))) in
   match Fs.create_dir_all temp_root with
-  | Error err -> Error ("failed to create temp dir: " ^ Kernel.IO.error_message err)
-  | Ok () -> Kernel.Fun.protect
-    ~finally:(fun () -> ignore (Fs.remove_dir_all temp_root))
-    (fun () -> fn temp_root)
+  | Error err -> Error ("failed to create temp dir: " ^ IO.error_message err)
+  | Ok () ->
+      let result = fn temp_root in
+      ignore (Fs.remove_dir_all temp_root);
+      result
 
-let render_gzip_error = function
-  | Gzip.Kernel_error Kernel.Compress.Gzip.Invalid_data -> "invalid gzip data"
-  | Gzip.Kernel_error Kernel.Compress.Gzip.Need_dictionary -> "gzip stream requires a preset dictionary"
-  | Gzip.Kernel_error Kernel.Compress.Gzip.Buffer_error -> "gzip decoder buffer error"
-  | Gzip.Kernel_error Kernel.Compress.Gzip.Out_of_memory -> "gzip decoder out of memory"
-  | Gzip.Kernel_error (Kernel.Compress.Gzip.Unknown_error msg) -> msg
-  | Gzip.Truncated_input -> "truncated input"
+let render_gzip_error = Gzip.error_to_string
 
 let test_decompress_string = fun _ctx ->
   match Gzip.decompress_string gzip_hello with
@@ -33,7 +28,7 @@ let test_decompress_file = fun _ctx ->
       let src = Path.join dir (Path.v "payload.txt.gz") in
       let dst = Path.join dir (Path.v "payload.txt") in
       match Fs.write gzip_hello src with
-      | Error err -> Error ("failed to write gzip fixture: " ^ Kernel.IO.error_message err)
+      | Error err -> Error ("failed to write gzip fixture: " ^ IO.error_message err)
       | Ok () -> (
           match Gzip.decompress_file ~src ~dst with
           | Error _ -> Error "failed to decompress gzip file"
@@ -41,7 +36,7 @@ let test_decompress_file = fun _ctx ->
               match Fs.read_to_string dst with
               | Ok "hello from gzip\n" -> Ok ()
               | Ok text -> Error ("unexpected decompressed file contents: " ^ text)
-              | Error err -> Error ("failed to read decompressed file: " ^ Kernel.IO.error_message err)
+              | Error err -> Error ("failed to read decompressed file: " ^ IO.error_message err)
             )
         ))
 
@@ -62,7 +57,7 @@ let test_compress_file_roundtrip = fun _ctx ->
       let gzip_path = Path.join dir (Path.v "payload.txt.gz") in
       let roundtrip = Path.join dir (Path.v "payload.roundtrip.txt") in
       match Fs.write "hello from gzip\n" src with
-      | Error err -> Error ("failed to write source file: " ^ Kernel.IO.error_message err)
+      | Error err -> Error ("failed to write source file: " ^ IO.error_message err)
       | Ok () -> (
           match Gzip.compress_file ~src ~dst:gzip_path with
           | Error _ -> Error "failed to compress file into gzip payload"
@@ -73,7 +68,7 @@ let test_compress_file_roundtrip = fun _ctx ->
                   match Fs.read_to_string roundtrip with
                   | Ok "hello from gzip\n" -> Ok ()
                   | Ok text -> Error ("unexpected roundtrip file contents: " ^ text)
-                  | Error err -> Error ("failed to read roundtrip file: " ^ Kernel.IO.error_message err)
+                  | Error err -> Error ("failed to read roundtrip file: " ^ IO.error_message err)
                 )
             )
         ))
@@ -82,8 +77,8 @@ let make_pseudorandom_string = fun len ->
   let bytes = IO.Bytes.create len in
   let state = ref 0x1234_abcd in
   for index = 0 to len - 1 do
-    state := Int.logand ((1_103_515_245 * !state) + 12_345) 0x7fff_ffff;
-    IO.Bytes.set bytes index (Char.chr (Int.logand !state 0xff))
+    state := Int.rem ((1_103_515_245 * !state) + 12_345) 0x7fff_ffff;
+    IO.Bytes.set bytes index (Char.unsafe_of_int (Int.rem (Int.abs !state) 256))
   done;
   IO.Bytes.to_string bytes
 

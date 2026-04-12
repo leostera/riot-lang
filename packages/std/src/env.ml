@@ -36,9 +36,9 @@ let var: type t. t var_type -> name:string -> t option = fun var_type ~name ->
       | String ->
           Some value
       | Int ->
-          Int.of_string_opt value
+          Int.parse value
       | Float ->
-          Float.of_string_opt value
+          Float.parse value
       | Bool -> (
           match String.lowercase_ascii value with
           | "true"

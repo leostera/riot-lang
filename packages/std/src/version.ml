@@ -57,7 +57,7 @@ let is_digit = fun c -> c >= '0' && c <= '9'
 let is_alphanumeric = fun c ->
   is_digit c || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c = '-'
 
-let parse_int = Int.of_string_opt
+let parse_int = Int.parse
 
 let split_on_char = fun delimiter str ->
   let len = String.length str in
@@ -100,10 +100,7 @@ let parse_pre_release_identifiers = fun s ->
 let parse = fun version_string ->
   let len = String.length version_string in
   (* Find build metadata separator (+) *)
-  let build_pos =
-    try Some (String.index version_string '+') with
-    | Not_found -> None
-  in
+  let build_pos = String.index version_string '+' in
   let core_and_pre, build =
     match build_pos with
     | None -> (version_string, None)
@@ -113,10 +110,7 @@ let parse = fun version_string ->
         (core, Some build_meta)
   in
   (* Find pre-release separator (-) *)
-  let pre_pos =
-    try Some (String.index core_and_pre '-') with
-    | Not_found -> None
-  in
+  let pre_pos = String.index core_and_pre '-' in
   let core, pre_string =
     match pre_pos with
     | None -> (core_and_pre, None)

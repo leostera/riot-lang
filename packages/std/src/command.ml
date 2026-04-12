@@ -138,9 +138,16 @@ let wait_for_reader_output = fun ~stdout_reader ~stderr_reader ->
 
 let unwrap_reader_result = fun ~stream ~cmd ->
   function
-  | Ok output -> output
-  | Error err -> panic
-    ("Failed to read " ^ stream ^ " from command '" ^ cmd ^ "': " ^ Fs.File.error_to_string err)
+  | Ok output -> Ok output
+  | Error err ->
+      Error
+        (SystemError
+           ("Failed to read "
+           ^ stream
+           ^ " from command '"
+           ^ cmd
+           ^ "': "
+           ^ Fs.File.error_to_string err))
 
 let stdio_of_config = fun stdin stdout stderr ->
   let stdin_config =
@@ -222,17 +229,26 @@ let output = fun t ->
               let stdout_reader = spawn_reader ~parent ~stream:`stdout stdout_fd in
               let stderr_reader = spawn_reader ~parent ~stream:`stderr stderr_fd in
               let stdout_result, stderr_result = wait_for_reader_output ~stdout_reader ~stderr_reader in
-              let stdout_str = unwrap_reader_result ~stream:"stdout" ~cmd:t.cmd stdout_result in
-              let stderr_str = unwrap_reader_result ~stream:"stderr" ~cmd:t.cmd stderr_result in
-              (* Now wait for process to exit *)
-              match wait_for_exit proc with
-              | Error _ as err -> err
-              | Ok exit_status ->
+              match
+                unwrap_reader_result ~stream:"stdout" ~cmd:t.cmd stdout_result,
+                unwrap_reader_result ~stream:"stderr" ~cmd:t.cmd stderr_result
+              with
+              | (Error _ as err), _ ->
                   ignore (Kernel.Process.close proc);
-                  let status_code = kernel_status_code exit_status in
-                  let result = { status = status_code; stdout = stdout_str; stderr = stderr_str } in
-                  t.state <- Exited result;
-                  Ok result
+                  err
+              | _, (Error _ as err) ->
+                  ignore (Kernel.Process.close proc);
+                  err
+              | Ok stdout_str, Ok stderr_str ->
+                  (* Now wait for process to exit *)
+                  match wait_for_exit proc with
+                  | Error _ as err -> err
+                  | Ok exit_status ->
+                      ignore (Kernel.Process.close proc);
+                      let status_code = kernel_status_code exit_status in
+                      let result = { status = status_code; stdout = stdout_str; stderr = stderr_str } in
+                      t.state <- Exited result;
+                      Ok result
         )
     )
 

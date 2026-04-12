@@ -1,6 +1,6 @@
 open Std
 module Test = Std.Test
-module Kernel = Kernel_new
+module Kernel = Kernel
 
 let test_bool_to_string_uses_stable_lowercase_literals = fun _ctx ->
   if

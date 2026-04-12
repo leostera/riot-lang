@@ -13,13 +13,9 @@ val of_int: int -> t
 
 val to_int: t -> int
 
-val parse: string -> t
+val parse: string -> t option
 
-val parse_opt: string -> t option
-
-val of_string: string -> t
-
-val of_string_opt: string -> t option
+val parse_unchecked: string -> t
 
 val is_finite: t -> bool
 

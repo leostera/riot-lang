@@ -80,7 +80,7 @@ let () =
           ("   First rune of '" ^ s ^ "': U+" ^ hex_str ^ " at byte position " ^ string_of_int next_pos)
     | None -> println "   Failed to decode"
   );
-  println ("   Is valid UTF-8: " ^ string_of_bool (Unicode.Utf8.is_valid s));
+  println ("   Is valid UTF-8: " ^ Bool.to_string (Unicode.Utf8.is_valid s));
   println "";
   (* Example 7: String truncation with width *)
   println "7. Truncating strings to display width:";

@@ -21,6 +21,7 @@ let test_parse_utc_basic = fun _ctx ->
 let test_parse_with_microseconds = fun _ctx ->
   match DateTime.parse "2025-08-27T14:07:31.426822Z" with
   | Ok dt ->
+      let (microseconds, precision) = dt.microseconds in
       if
         dt.year = 2_025
         && dt.month = 8
@@ -28,8 +29,8 @@ let test_parse_with_microseconds = fun _ctx ->
         && dt.hour = 14
         && dt.minute = 7
         && dt.second = 31
-        && fst dt.microseconds = 426_822
-        && snd dt.microseconds = 6
+        && microseconds = 426_822
+        && precision = 6
         && dt.time_zone = DateTime.Tz.Etc_UTC
       then
         Ok ()
@@ -187,6 +188,7 @@ let test_parse_basic_format_with_offset = fun _ctx ->
 let test_parse_with_comma_decimal = fun _ctx ->
   match DateTime.parse "2025-08-27T14:07:31,426822Z" with
   | Ok dt ->
+      let (microseconds, precision) = dt.microseconds in
       if
         dt.year = 2_025
         && dt.month = 8
@@ -194,8 +196,8 @@ let test_parse_with_comma_decimal = fun _ctx ->
         && dt.hour = 14
         && dt.minute = 7
         && dt.second = 31
-        && fst dt.microseconds = 426_822
-        && snd dt.microseconds = 6
+        && microseconds = 426_822
+        && precision = 6
         && dt.time_zone = DateTime.Tz.Etc_UTC
       then
         Ok ()
@@ -240,6 +242,7 @@ let test_parse_positive_year_sign = fun _ctx ->
 let test_parse_basic_with_microseconds = fun _ctx ->
   match DateTime.parse "20250827T140731.123Z" with
   | Ok dt ->
+      let (microseconds, precision) = dt.microseconds in
       if
         dt.year = 2_025
         && dt.month = 8
@@ -247,8 +250,8 @@ let test_parse_basic_with_microseconds = fun _ctx ->
         && dt.hour = 14
         && dt.minute = 7
         && dt.second = 31
-        && fst dt.microseconds = 123_000
-        && snd dt.microseconds = 6
+        && microseconds = 123_000
+        && precision = 6
       then
         Ok ()
       else
@@ -258,6 +261,7 @@ let test_parse_basic_with_microseconds = fun _ctx ->
 let test_parse_space_and_comma = fun _ctx ->
   match DateTime.parse "2025-08-27 14:07:31,123+02:30" with
   | Ok dt ->
+      let (microseconds, _) = dt.microseconds in
       if
         dt.year = 2_025
         && dt.month = 8
@@ -265,7 +269,7 @@ let test_parse_space_and_comma = fun _ctx ->
         && dt.hour = 14
         && dt.minute = 7
         && dt.second = 31
-        && fst dt.microseconds = 123_000
+        && microseconds = 123_000
         && dt.utc_offset = 9_000
       then
         Ok ()

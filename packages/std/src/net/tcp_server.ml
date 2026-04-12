@@ -27,7 +27,7 @@ let read_line = fun (stream: Kernel.Net.TcpStream.t) ->
         let data = Bytes.sub_string buffer 0 n in
         let combined = acc ^ data in
         (* Look for newline *)
-        match String.index_opt combined '\n' with
+        match String.index combined '\n' with
         | Some idx ->
             let line = String.sub combined 0 idx in
             Ok line

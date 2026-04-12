@@ -1,6 +1,6 @@
 open Std
 module Test = Std.Test
-module Kernel = Kernel_new
+module Kernel = Kernel
 
 let test_of_string_copies_input = fun _ctx ->
   let source = "riot" in

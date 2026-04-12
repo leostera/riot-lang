@@ -1,7 +1,7 @@
 open Std
 open Propane
 module Test = Std.Test
-module Kernel = Kernel_new
+module Kernel = Kernel
 
 let contains_slash = fun value ->
   let rec loop index =

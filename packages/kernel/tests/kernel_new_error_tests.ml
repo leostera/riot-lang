@@ -1,6 +1,6 @@
 open Std
 module Test = Std.Test
-module Kernel = Kernel_new
+module Kernel = Kernel
 
 let test_error_envelope_reports_module_and_system = fun _ctx ->
   let error = Kernel.Error.of_env (Kernel.Env.System Kernel.SystemError.PermissionDenied) in

@@ -49,22 +49,22 @@ let advance_by = fun cursor count ->
 let take_while = fun cursor predicate ->
   let start = cursor.pos in
   let rec loop () =
-    if cursor.pos < string_length cursor.source && predicate (string_get cursor.source cursor.pos) then
-      (
+    match peek cursor with
+    | Some value when predicate value ->
         cursor.pos <- cursor.pos + 1;
         loop ()
-      )
+    | _ -> ()
   in
   loop ();
   string_sub cursor.source start (cursor.pos - start)
 
 let skip_while = fun cursor predicate ->
   let rec loop () =
-    if cursor.pos < string_length cursor.source && predicate (string_get cursor.source cursor.pos) then
-      (
+    match peek cursor with
+    | Some value when predicate value ->
         cursor.pos <- cursor.pos + 1;
         loop ()
-      )
+    | _ -> ()
   in
   loop ()
 

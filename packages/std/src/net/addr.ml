@@ -48,7 +48,7 @@ let split_host_port = fun value ->
   if String.length value = 0 then
     None
   else if String.get value 0 = '[' then
-    match String.index_opt value ']' with
+    match String.index value ']' with
     | None -> None
     | Some close_index ->
         if close_index + 1 >= String.length value || String.get value (close_index + 1) != ':' then
@@ -59,7 +59,7 @@ let split_host_port = fun value ->
             String.sub value (close_index + 2) (String.length value - close_index - 2)
           )
   else
-    match String.rindex_opt value ':' with
+    match String.last_index value ':' with
     | None -> None
     | Some index -> Some (
       String.sub value 0 index,
@@ -67,7 +67,7 @@ let split_host_port = fun value ->
     )
 
 let parse_port = fun value ->
-  match Int.of_string_opt value with
+  match Int.parse value with
   | Some port -> Ok port
   | None -> Error (Invalid_port_number value)
 

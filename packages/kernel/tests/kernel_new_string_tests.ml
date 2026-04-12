@@ -1,6 +1,6 @@
 open Std
 module Test = Std.Test
-module Kernel = Kernel_new
+module Kernel = Kernel
 
 let test_of_bytes_copies_input = fun _ctx ->
   let bytes = Kernel.Bytes.of_string "riot" in

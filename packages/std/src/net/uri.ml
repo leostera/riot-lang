@@ -271,12 +271,12 @@ let host = fun url ->
   | Some auth ->
       (* Extract host from authority (removing userinfo and port) *)
       let auth =
-        match String.index_opt auth '@' with
+        match String.index auth '@' with
         | None -> auth
         | Some idx -> String.sub auth (idx + 1) (String.length auth - idx - 1)
       in
       let host =
-        match String.rindex_opt auth ':' with
+        match String.last_index auth ':' with
         | None -> auth
         | Some idx -> String.sub auth 0 idx
       in
@@ -286,11 +286,11 @@ let port = fun url ->
   match url.authority with
   | None -> None
   | Some auth -> (
-      match String.rindex_opt auth ':' with
+      match String.last_index auth ':' with
       | None -> None
       | Some idx -> (
           let port_str = String.sub auth (idx + 1) (String.length auth - idx - 1) in
-          Int.of_string_opt port_str
+          Int.parse port_str
         )
     )
 
@@ -334,24 +334,24 @@ module Authority = struct
 
   let host = fun auth ->
     let auth =
-      match String.index_opt auth '@' with
+      match String.index auth '@' with
       | None -> auth
       | Some idx -> String.sub auth (idx + 1) (String.length auth - idx - 1)
     in
-    match String.rindex_opt auth ':' with
+    match String.last_index auth ':' with
     | None -> auth
     | Some idx -> String.sub auth 0 idx
 
   let port = fun auth ->
-    match String.rindex_opt auth ':' with
+    match String.last_index auth ':' with
     | None -> None
     | Some idx -> (
         let port_str = String.sub auth (idx + 1) (String.length auth - idx - 1) in
-        Int.of_string_opt port_str
+        Int.parse port_str
       )
 
   let userinfo = fun auth ->
-    match String.index_opt auth '@' with
+    match String.index auth '@' with
     | None -> None
     | Some idx -> Some (String.sub auth 0 idx)
 end
@@ -363,7 +363,7 @@ module PathAndQuery = struct
   }
 
   let of_string = fun s ->
-    match String.index_opt s '?' with
+    match String.index s '?' with
     | None -> Ok { path = s; query = None }
     | Some idx ->
         let path = String.sub s 0 idx in
@@ -462,7 +462,7 @@ let join = fun base relative_path ->
           else
             let base_path = base.path in
             let base_dir =
-              match String.rindex_opt base_path '/' with
+              match String.last_index base_path '/' with
               | None -> ""
               | Some idx -> String.sub base_path 0 (idx + 1)
             in
@@ -639,7 +639,7 @@ module Query = struct
       let pairs = String.split_on_char '&' query_string in
       List.filter_map
         (fun pair ->
-          match String.index_opt pair '=' with
+          match String.index pair '=' with
           | None ->
               let key = form_decode pair in
               Some (key, "")

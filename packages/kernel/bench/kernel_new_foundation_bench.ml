@@ -1,5 +1,5 @@
 open Std
-module Kernel = Kernel_new
+module Kernel = Kernel
 
 let string_payload = Kernel.String.make 4_096 'x'
 

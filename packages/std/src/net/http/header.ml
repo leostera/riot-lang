@@ -129,7 +129,7 @@ module Value = struct
             List.fold_left
               (fun acc part ->
                 let trimmed = String.trim part in
-                match String.index_opt trimmed '=' with
+                match String.index trimmed '=' with
                 | None -> acc
                 | Some idx ->
                     let key = String.trim (String.sub trimmed 0 idx) in
@@ -145,7 +145,7 @@ module Value = struct
 
   let parse_authorization = fun value ->
     try
-      match String.index_opt value ' ' with
+      match String.index value ' ' with
       | None -> Error `InvalidAuthorization
       | Some idx ->
           let scheme = String.sub value 0 idx in
@@ -159,7 +159,7 @@ module Value = struct
     List.fold_left
       (fun acc directive ->
         let trimmed = String.trim directive in
-        match String.index_opt trimmed '=' with
+        match String.index trimmed '=' with
         | None -> (trimmed, None) :: acc
         | Some idx ->
             let name = String.trim (String.sub trimmed 0 idx) in
@@ -183,7 +183,7 @@ module Value = struct
               List.fold_left
                 (fun acc part ->
                   let trimmed = String.trim part in
-                  match String.index_opt trimmed '=' with
+                  match String.index trimmed '=' with
                   | None -> acc
                   | Some idx ->
                       let key = String.trim (String.sub trimmed 0 idx) in
@@ -191,7 +191,7 @@ module Value = struct
                         (String.sub trimmed (idx + 1) (String.length trimmed - idx - 1)) in
                       if String.equal key "q" then
                         (
-                          match Float.of_string_opt value with
+                          match Float.parse value with
                           | Some parsed ->
                               quality := Some parsed;
                               acc

@@ -143,7 +143,7 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
         | Some (Data.Toml.Int i) ->
             Ok (Spec.Int i)
         | Some (Data.Toml.String s) -> (
-            match Int.of_string_opt s with
+            match Int.parse s with
             | Some i -> Ok (Spec.Int i)
             | None -> Error (field_name ^ ": invalid integer")
           )
@@ -212,7 +212,7 @@ let rec validate_field (field: Spec.field) toml_opt: (Spec.value, string) result
     | Float { default } -> (
         match toml_opt with
         | Some (Data.Toml.String s) -> (
-            match Float.of_string_opt s with
+            match Float.parse s with
             | Some f -> Ok (Spec.Float f)
             | None -> Error (field_name ^ ": invalid float")
           )
