@@ -59,7 +59,7 @@ type t = {
 let from_kernel_event: Ev.event -> t = fun ev ->
   let has_flag flag = Int32.logand ev.flags flag != Int32.zero in
   {
-    path = Path.v ev.path;
+    path = Path.v (Kernel.Path.to_string ev.path);
     kind = Ev.decode_event_kind ev.flags;
     event_id = ev.event_id;
     file_type =
