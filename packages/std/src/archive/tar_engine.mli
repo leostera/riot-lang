@@ -1,3 +1,5 @@
+open Global
+
 type reader
 
 type error =

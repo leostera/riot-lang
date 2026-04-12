@@ -205,9 +205,6 @@
       For streaming large files, append mode, specific permissions.
       *Example:* `File.open_ path |> Result.and_then (File.read_all)`
     
-    - {!Fs.Fd} - **When:** Working with low-level file descriptors.
-      Rarely needed - use {!Fs} or {!Fs.File} instead.
-    
     - {!Fs.Permissions} - **When:** Checking or setting Unix file permissions.
       *Example:* `Fs.set_permissions path Permissions.executable`
     
@@ -378,12 +375,6 @@
     - {!Log} - **When:** Adding structured logging to your application.
       *Example:* `Log.info "User %s logged in" username; Log.set_level Debug`
     
-    - {!Exception} - **When:** Working with exceptions programmatically.
-      For exception handling utilities, custom exceptions.
-    
-    - {!Random} - **When:** Generating random values.
-      *Example:* `Random.int 100, Random.choice list`
-
     ## Iteration & Cursors
 
     - {!Iter} - **Parent module** for iteration utilities.
@@ -483,7 +474,7 @@
     → {!Data.Toml} for TOML, {!Data.Json} for JSON, {!Env} for env vars
 
     **...Handle Errors Gracefully**
-    → {!Result} for recoverable errors, {!Option} for missing values, {!Exception}
+    → {!Result} for recoverable errors, {!Option} for missing values
 
     **...Work with Collections**
     → {!Collections.Vector} for arrays, {!Collections.HashMap} for lookups,
@@ -562,7 +553,6 @@
     - {!Diff} - Compute differences in data structures
     - {!Encoding} - Binary/text and numeric encodings
     - {!Env} - Environment variables
-    - {!Exception} - Exception handling utilities
     - {!Float} - Floating-point operations
     - {!Fs} - Filesystem operations
     - {!GenStage} - Back-pressure aware pipelines
@@ -581,7 +571,6 @@
     - {!Pid} - Process identifiers
     - {!Process} - Process state and operations
     - {!Ptr} - Physical equality and pointers
-    - {!Random} - Random value generation
     - {!Range} - Order-aware open and closed intervals
     - {!Ref} - Unique opaque references
     - {!Result} - Error handling with Result type
@@ -706,8 +695,7 @@
     │   ├── Env - Environment variables
     │   ├── System - System info
     │   ├── Log - Structured logging
-    │   ├── Exception - Exception handling
-    │   └── Random - Random generation
+    │
     │
     ├── Iteration
     │   ├── Iter (parent)
@@ -1092,14 +1080,6 @@ module Env = Env
     - Detecting production vs development
     - Platform-specific behavior
     - Container orchestration config *)
-module Exception = Exception
-
-(** **When to use:** Exception handling utilities
-    
-    Use Exception for programmatic exception handling and custom exceptions.
-    
-    **Prefer:** Result type for expected errors
-    **Use exceptions for:** Unexpected/unrecoverable errors *)
 module Float = Float
 
 (** **When to use:** Floating-point operations
@@ -1241,17 +1221,6 @@ module Process = Process
     Rarely needed in normal application code. *)
 module Ptr = Ptr
 
-(** **When to use:** Random value generation
-    
-    Use Random for generating random integers, floats, selecting from lists.
-    
-    **Examples:**
-    - Game mechanics
-    - Testing with random data
-    - Load balancing
-    - Sampling *)
-module Random = Random
-
 (** **When to use:** Representing open, closed, and unbounded intervals
 
     Use Range for interval membership checks, interval intersection, and
@@ -1356,14 +1325,18 @@ module Telemetry = Telemetry
     - Counter metrics
     - Custom events
     - Performance monitoring *)
-module Test = Test
 
 (** **When to use:** Writing unit tests
     
     Use Test for building test suites with assertions and reporters.
     
     **Reporters:** TAP, JUnit XML, JSON, Pretty print *)
-module Time = Time
+module Test = Test
+
+(** **When to use:** Concurrency-capacity queries
+
+    Use Thread for runtime thread-budget hints like `available_parallelism`. *)
+module Thread = Thread
 
 (** **When to use:** Time measurement
     
@@ -1371,8 +1344,8 @@ module Time = Time
     
     **Use Duration for:** Time spans, timeouts, delays
     **Use Instant for:** Elapsed time, benchmarking
-    **Use SystemTime for:** Wall-clock time, timestamps *)
-module Timer = Timer
+    **Use SystemTime for:** Wall-clock timestamps *)
+module Time = Time
 
 (** **When to use:** Timed events in actor systems
     
@@ -1392,7 +1365,7 @@ module Timer = Timer
     Timeout pattern:
     ```ocaml
     let with_timeout ~duration operation =
-      let timer_ref = ref None in
+    let timer_ref = ref None in
       let operation_pid = spawn (fun () ->
         let result = operation () in
         Option.iter Timer.cancel !timer_ref;
@@ -1420,6 +1393,8 @@ module Timer = Timer
     ```
     
     **See also:** {!Time.Duration} for creating time spans *)
+module Timer = Timer
+
 module Type = Type
 
 (** **When to use:** Type-level programming utilities *)
@@ -1596,7 +1571,3 @@ val yield: unit -> unit
 val shutdown: status:int -> unit
 
 (** Shutdown the runtime with the given exit status *)
-module Dynlink = Kernel.Dynlink
-
-(** Dynamically link libraries *)
-module Ops = Kernel.Ops

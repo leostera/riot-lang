@@ -246,6 +246,10 @@ let set_permissions = fun path permissions ->
   | None -> Ok ()
   | Some perms -> Fs.set_permissions path perms
 
+let fs_error_of_file_error = function
+  | Kernel.Fs.File.InvalidSlice _ -> IO.Invalid_argument
+  | Kernel.Fs.File.System error -> IO.of_system_error error
+
 let write_entry_file = fun source tar_reader file ->
   let chunk = Bytes.create source_buffer_size in
   let rec loop chunk_count =
@@ -264,7 +268,10 @@ let write_entry_file = fun source tar_reader file ->
             yield ()
         in
         let data = Bytes.sub_string chunk 0 bytes_read in
-        let* () = Fs.File.write_all file data |> Result.map_err (fun err -> Extract_fs_error err) in
+        let* () =
+          Fs.File.write_all file data
+          |> Result.map_err (fun err -> Extract_fs_error (fs_error_of_file_error err))
+        in
         loop (chunk_count + 1)
     | Ok Engine.Need_input -> (
         match feed_from_source_extract source tar_reader with
@@ -326,7 +333,7 @@ let extract = fun reader ~into ->
                       in
                       begin
                         match Fs.File.create target with
-                        | Error err -> Error (Extract_fs_error err)
+                        | Error err -> Error (Extract_fs_error (fs_error_of_file_error err))
                         | Ok file ->
                             protect ~finally:(fun () -> ignore (Fs.File.close file))
                               (fun () ->
@@ -348,14 +355,18 @@ let extract = fun reader ~into ->
 
 let entries_file = fun archive ->
   match Fs.File.open_read archive with
-  | Error err -> Error (Entries_source_error err)
+  | Error err -> Error (Entries_source_error (fs_error_of_file_error err))
   | Ok file -> protect
     ~finally:(fun () -> ignore (Fs.File.close file))
-    (fun () -> entries (Fs.File.to_reader file))
+    (fun () ->
+      let reader = IO.Reader.map_err (Fs.File.to_reader file) ~fn:fs_error_of_file_error in
+      entries reader)
 
 let extract_file = fun ~archive ~into ->
   match Fs.File.open_read archive with
-  | Error err -> Error (Extract_source_error err)
+  | Error err -> Error (Extract_source_error (fs_error_of_file_error err))
   | Ok file -> protect
     ~finally:(fun () -> ignore (Fs.File.close file))
-    (fun () -> extract (Fs.File.to_reader file) ~into)
+    (fun () ->
+      let reader = IO.Reader.map_err (Fs.File.to_reader file) ~fn:fs_error_of_file_error in
+      extract reader ~into)

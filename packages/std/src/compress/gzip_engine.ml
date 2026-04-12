@@ -2,6 +2,8 @@ open Global
 
 let panic = Kernel.SystemError.panic
 
+module Bytes = IO.Bytes
+
 type encoder
 
 type decoder

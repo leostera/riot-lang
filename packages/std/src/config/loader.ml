@@ -27,7 +27,7 @@ let load_file = fun path ->
         Error ("File not found: " ^ path)
       else
         match Fs.read path_t with
-        | Error err -> Error ("Failed to read file: " ^ Kernel.IO.error_message err)
+        | Error err -> Error ("Failed to read file: " ^ IO.error_message err)
         | Ok contents ->
             match Data.Toml.parse contents with
             | Error toml_err -> Error ("TOML parse error: " ^ Data.Toml.error_to_string toml_err)

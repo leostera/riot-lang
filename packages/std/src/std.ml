@@ -16,10 +16,8 @@ module Data = Data
 module Date = Date
 module DateTime = DateTime
 module Diff = Diff
-module Dynlink = Kernel.Dynlink
 module Env = Env
 module Encoding = Encoding
-module Exception = Exception
 module Float = Float
 module Fs = Fs
 module Glob = Glob
@@ -38,7 +36,6 @@ module Path = Path
 module Pid = Pid
 module Process = Process
 module Ptr = Ptr
-module Random = Random
 module Range = Range
 module Regex = Regex
 module Ref = Ref
@@ -52,6 +49,7 @@ module System = System
 module Task = Task
 module Telemetry = Telemetry
 module Test = Test
+module Thread = Thread
 module Time = Time
 module Timer = Timer
 module Type = Type
@@ -59,7 +57,22 @@ module UUID = Uuid
 module Unicode = Unicode
 module Version = Version
 module WorkerPool = Worker_pool
-module Ops = Kernel.Ops
+
+type 'a vec = 'a Collections.Vector.t
+
+type 'a queue = 'a Collections.Queue.t
+
+type 'a set = 'a Collections.HashSet.t
+
+type ('k, 'v) map = ('k, 'v) Collections.HashMap.t
+
+let vec = Collections.Vector.of_list
+
+let queue = Collections.Queue.of_list
+
+let set = Collections.HashSet.of_list
+
+let map = Collections.HashMap.of_list
 
 (* Include std's Global module which re-exports from Kernel *)
 

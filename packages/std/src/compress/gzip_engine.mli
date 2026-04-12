@@ -1,3 +1,5 @@
+open Global
+
 type encoder
 
 type decoder

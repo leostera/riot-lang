@@ -144,8 +144,16 @@ let filter_tests = fun target tests ->
 let shuffle_list = fun lst ->
   let arr = Array.of_list lst in
   let len = Array.length arr in
+  let shuffle_index = fun i ->
+    let modulus = i + 1 in
+    let candidate = Int.rem ((i * 48_271) + 1) modulus in
+    if candidate < 0 then
+      candidate + modulus
+    else
+      candidate
+  in
   for i = len - 1 downto 1 do
-    let j = Kernel.Random.int (i + 1) in
+    let j = shuffle_index i in
     let temp = arr.(i) in
     arr.(i) <- arr.(j);
     arr.(j) <- temp
@@ -153,8 +161,8 @@ let shuffle_list = fun lst ->
   Array.to_list arr
 
 let render_exception_failure = fun exn ->
-  let exn = Exception.to_string exn in
-  let bt = Exception.get_backtrace () in
+  let exn = Kernel.Exception.to_string exn in
+  let bt = Kernel.Exception.raw_backtrace_to_string (Kernel.Exception.get_raw_backtrace ()) in
   exn ^ "\n\n" ^ bt
 
 let test_timeout_for = fun policy (test: Test_case.t) ->
@@ -284,7 +292,7 @@ let run_single_test = fun reporter ~suite_info ~policy index (test: Test_case.t)
   result
 
 let run_tests = fun ~config tests ->
-  Exception.record_backtrace true;
+  Kernel.Exception.record_backtrace true;
   let filtered_tests = filter_tests config.target tests in
   let tests_to_run =
     match config.mode with

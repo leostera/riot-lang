@@ -50,6 +50,10 @@ let output_buffer_size = 256 * 1_024
 
 let error_of_engine = fun err -> Engine_error err
 
+let fs_error_of_file_error = function
+  | Kernel.Fs.File.InvalidSlice _ -> IO.Invalid_argument
+  | Kernel.Fs.File.System error -> IO.of_system_error error
+
 let string_of_engine_error = function
   | Engine.Invalid_data -> "invalid gzip data"
   | Engine.Need_dictionary -> "gzip stream requires a preset dictionary"
@@ -353,14 +357,14 @@ let decompress = fun src dst ->
 
 let with_open_input = fun path fn ->
   match Fs.File.open_read path with
-  | Error err -> Error (File_io_error err)
+  | Error err -> Error (File_io_error (fs_error_of_file_error err))
   | Ok file -> protect
     ~finally:(fun () -> ignore (Fs.File.close file))
     (fun () -> fn file)
 
 let with_open_output = fun path fn ->
   match Fs.File.create path with
-  | Error err -> Error (File_io_error err)
+  | Error err -> Error (File_io_error (fs_error_of_file_error err))
   | Ok file -> protect
     ~finally:(fun () -> ignore (Fs.File.close file))
     (fun () -> fn file)
@@ -373,8 +377,8 @@ let decompress_file = fun ~src ~dst ->
           decompress (Fs.File.to_reader src_file) (Fs.File.to_writer dst_file) |> Result.map_err
             (
               function
-              | Stream_source_error err -> File_io_error err
-              | Stream_destination_error err -> File_io_error err
+              | Stream_source_error err -> File_io_error (fs_error_of_file_error err)
+              | Stream_destination_error err -> File_io_error (fs_error_of_file_error err)
               | Stream_gzip_error err -> File_gzip_error err
             )))
 
@@ -386,8 +390,8 @@ let compress_file = fun ~src ~dst ->
           compress (Fs.File.to_reader src_file) (Fs.File.to_writer dst_file) |> Result.map_err
             (
               function
-              | Stream_source_error err -> File_io_error err
-              | Stream_destination_error err -> File_io_error err
+              | Stream_source_error err -> File_io_error (fs_error_of_file_error err)
+              | Stream_destination_error err -> File_io_error (fs_error_of_file_error err)
               | Stream_gzip_error err -> File_gzip_error err
             )))
 
