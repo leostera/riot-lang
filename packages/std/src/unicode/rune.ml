@@ -16,7 +16,7 @@ let max_latin1 = Scalar.max_latin1
 
 (* Conversion *)
 
-let of_int = fun n ->
+let from_int = fun n ->
   if Scalar.is_valid n then
     Some (Scalar.from_int_unchecked n)
   else
@@ -24,11 +24,11 @@ let of_int = fun n ->
 
 let to_int = Scalar.to_int
 
-let of_char = fun c -> Scalar.from_char c
+let from_char = fun c -> Scalar.from_char c
 
 let to_char = Scalar.to_char
 
-let unsafe_of_int = fun n -> Scalar.from_int_unchecked n
+let from_int_unchecked = fun n -> Scalar.from_int_unchecked n
 
 let to_string = Scalar.to_string
 
@@ -75,11 +75,11 @@ let is_graphic = fun r -> is_print r && not (is_space r)
 
 (* Case conversion using full Unicode tables *)
 
-let to_upper = fun r -> unsafe_of_int (Case_tables.to_upper (to_int r))
+let to_upper = fun r -> from_int_unchecked (Case_tables.to_upper (to_int r))
 
-let to_lower = fun r -> unsafe_of_int (Case_tables.to_lower (to_int r))
+let to_lower = fun r -> from_int_unchecked (Case_tables.to_lower (to_int r))
 
-let to_title = fun r -> unsafe_of_int (Case_tables.to_title (to_int r))
+let to_title = fun r -> from_int_unchecked (Case_tables.to_title (to_int r))
 
 (* Display width calculation using complete width tables *)
 

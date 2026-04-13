@@ -1,4 +1,4 @@
-open Kernel
+open Prelude
 
 type error =
   | End_of_file

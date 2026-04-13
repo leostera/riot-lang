@@ -4,9 +4,8 @@ open Std.Archive
 let tar_block_size = 512
 
 let bytes_set_string = fun dst ~offset ~width value ->
-  let bytes = IO.Bytes.of_string value in
-  let copy_len = min width (IO.Bytes.length bytes) in
-  IO.Bytes.blit bytes 0 dst offset copy_len
+  let copy_len = Int.min width (String.length value) in
+  IO.Bytes.blit_string value ~src_offset:0 ~dst ~dst_offset:offset ~len:copy_len
 
 let octal_string = fun value ->
   let rec loop acc remaining =
@@ -14,8 +13,8 @@ let octal_string = fun value ->
       acc
     else
       let digit = Int64.to_int (Int64.rem remaining 8L) in
-      let ch = Char.chr (Char.code '0' + digit) in
-      loop (String.make 1 ch ^ acc) (Int64.div remaining 8L)
+      let ch = Char.from_int_unchecked (Char.to_int '0' + digit) in
+      loop (String.make ~len:1 ~char:ch ^ acc) (Int64.div remaining 8L)
   in
   if Int64.equal value 0L then
     "0"
@@ -24,25 +23,26 @@ let octal_string = fun value ->
 
 let zero_pad_left = fun width value ->
   if String.length value >= width then
-    String.sub value (String.length value - width) width
+    String.sub value ~offset:(String.length value - width) ~len:width
   else
-    String.make (width - String.length value) '0' ^ value
+    String.make ~len:(width - String.length value) ~char:'0' ^ value
 
 let bytes_set_octal = fun dst ~offset ~width value ->
-  let digits_width = max 1 (width - 1) in
+  let digits_width = Int.max 1 (width - 1) in
   let trimmed = zero_pad_left digits_width (octal_string value) in
   bytes_set_string dst ~offset ~width:(width - 1) trimmed;
-  IO.Bytes.set dst (offset + width - 1) '\000'
+  IO.Bytes.set_unchecked dst ~at:(offset + width - 1) ~char:'\000'
 
 let compute_checksum = fun header ->
   let sum = ref 0 in
   for index = 0 to tar_block_size - 1 do
-    sum := !sum + Char.code (IO.Bytes.get header index)
+    sum := !sum + Char.to_int (IO.Bytes.get_unchecked header ~at:index)
   done;
   !sum
 
 let make_header = fun ~name ~kind ~mode ~size ->
-  let header = IO.Bytes.make tar_block_size '\000' in
+  let header = IO.Bytes.create ~size:tar_block_size in
+  IO.Bytes.fill header ~offset:0 ~len:tar_block_size ~char:'\000';
   bytes_set_string header ~offset:0 ~width:100 name;
   bytes_set_octal header ~offset:100 ~width:8 mode;
   bytes_set_octal header ~offset:108 ~width:8 0L;
@@ -50,11 +50,11 @@ let make_header = fun ~name ~kind ~mode ~size ->
   bytes_set_octal header ~offset:124 ~width:12 size;
   bytes_set_octal header ~offset:136 ~width:12 0L;
   bytes_set_string header ~offset:148 ~width:8 "        ";
-  IO.Bytes.set header 156 kind;
+  IO.Bytes.set_unchecked header ~at:156 ~char:kind;
   bytes_set_string header ~offset:257 ~width:6 "ustar";
   bytes_set_string header ~offset:263 ~width:2 "00";
   let checksum = compute_checksum header in
-  let checksum_field = zero_pad_left 6 (octal_string (Int64.of_int checksum)) ^ "\000 " in
+  let checksum_field = zero_pad_left 6 (octal_string (Int64.from_int checksum)) ^ "\000 " in
   bytes_set_string header ~offset:148 ~width:8 checksum_field;
   header
 
@@ -64,18 +64,18 @@ let pad_data = fun data ->
   if remainder = 0 then
     ""
   else
-    String.make (tar_block_size - remainder) '\000'
+    String.make ~len:(tar_block_size - remainder) ~char:'\000'
 
 let build_archive = fun entries ->
-  let buffer = IO.Buffer.create 2_048 in
-  List.iter
-    (fun (name, kind, mode, data) ->
-      let size = Int64.of_int (String.length data) in
+  let buffer = IO.Buffer.create ~size:2_048 in
+  List.for_each entries
+    ~fn:(fun (name, kind, mode, data) ->
+      let size = Int64.from_int (String.length data) in
       IO.Buffer.add_bytes buffer (make_header ~name ~kind ~mode ~size);
       IO.Buffer.add_string buffer data;
       IO.Buffer.add_string buffer (pad_data data))
-    entries;
-  IO.Buffer.add_string buffer (String.make (tar_block_size * 2) '\000');
+  ;
+  IO.Buffer.add_string buffer (String.make ~len:(tar_block_size * 2) ~char:'\000');
   IO.Buffer.contents buffer
 
 let test_entries_lists_archive_members = fun _ctx ->
@@ -85,7 +85,7 @@ let test_entries_lists_archive_members = fun _ctx ->
   | Error _ -> Error "failed to list tar entries"
   | Ok entries ->
       let paths =
-        List.map (fun (entry: Tar.entry) -> Path.to_string entry.path) entries
+        List.map entries ~fn:(fun (entry: Tar.entry) -> Path.to_string entry.path)
       in
       if paths = [ "src/"; "src/hello.txt" ] || paths = [ "src"; "src/hello.txt" ] then
         Ok ()
@@ -100,8 +100,11 @@ let with_temp_dir = fun label fn ->
   | Error err -> Error ("failed to create temp dir: " ^ IO.error_message err)
   | Ok () ->
       let result = fn temp_root in
-      ignore (Fs.remove_dir_all temp_root);
-      result
+      let cleanup = Fs.remove_dir_all temp_root in
+      (match result, cleanup with
+      | Error err, _ -> Error err
+      | Ok (), Ok () -> Ok ()
+      | Ok (), Error err -> Error ("failed to remove temp dir: " ^ IO.error_message err))
 
 let test_extract_writes_regular_files = fun _ctx ->
   let archive = build_archive

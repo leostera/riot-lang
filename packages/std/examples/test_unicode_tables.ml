@@ -3,6 +3,24 @@ open Std
 let () =
   Runtime.run
     ~main:(fun ~args:_ ->
+      let rune_hex = fun rune ->
+        let hex_chars = "0123456789ABCDEF" in
+        let rec to_hex n acc =
+          if n = 0 then
+            if acc = "" then
+              "0000"
+            else
+              String.make ~len:(4 - String.length acc) ~char:'0' ^ acc
+          else
+            to_hex
+              (n / 16)
+              (String.make
+                 ~len:1
+                 ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
+               ^ acc)
+        in
+        to_hex (Unicode.Rune.to_int rune) ""
+      in
       (* Test Greek letter *)
       let alpha =
         match Unicode.Utf8.decode_rune "α" 0 with
@@ -29,81 +47,29 @@ let () =
       in
       println "Testing Unicode character classification:";
       println "";
-      let alpha_int = Unicode.Rune.to_int alpha in
-      let alpha_hex =
-        let hex_chars = "0123456789ABCDEF" in
-        let rec to_hex n acc =
-          if n = 0 then
-            if acc = "" then
-              "0000"
-            else
-              String.make (4 - String.length acc) '0' ^ acc
-          else
-            to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc)
-        in
-        to_hex alpha_int ""
-      in
+      let alpha_hex = rune_hex alpha in
       println ("Greek α (U+" ^ alpha_hex ^ "):");
       println ("  is_letter: " ^ Bool.to_string (Unicode.Rune.is_letter alpha) ^ " (should be true)");
       println ("  is_lower: " ^ Bool.to_string (Unicode.Rune.is_lower alpha) ^ " (should be true)");
       println "";
-      let cyrillic_int = Unicode.Rune.to_int cyrillic_a in
-      let cyrillic_hex =
-        let hex_chars = "0123456789ABCDEF" in
-        let rec to_hex n acc =
-          if n = 0 then
-            if acc = "" then
-              "0000"
-            else
-              String.make (4 - String.length acc) '0' ^ acc
-          else
-            to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc)
-        in
-        to_hex cyrillic_int ""
-      in
+      let cyrillic_hex = rune_hex cyrillic_a in
       println ("Cyrillic А (U+" ^ cyrillic_hex ^ "):");
       println
         ("  is_letter: " ^ Bool.to_string (Unicode.Rune.is_letter cyrillic_a) ^ " (should be true)");
       println
         ("  is_upper: " ^ Bool.to_string (Unicode.Rune.is_upper cyrillic_a) ^ " (should be true)");
       println "";
-      let zhong_int = Unicode.Rune.to_int zhong in
-      let zhong_hex =
-        let hex_chars = "0123456789ABCDEF" in
-        let rec to_hex n acc =
-          if n = 0 then
-            if acc = "" then
-              "0000"
-            else
-              String.make (4 - String.length acc) '0' ^ acc
-          else
-            to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc)
-        in
-        to_hex zhong_int ""
-      in
+      let zhong_hex = rune_hex zhong in
       println ("CJK 中 (U+" ^ zhong_hex ^ "):");
       println ("  is_letter: " ^ Bool.to_string (Unicode.Rune.is_letter zhong) ^ " (should be true)");
       println "";
-      let arabic_int = Unicode.Rune.to_int arabic_5 in
-      let arabic_hex =
-        let hex_chars = "0123456789ABCDEF" in
-        let rec to_hex n acc =
-          if n = 0 then
-            if acc = "" then
-              "0000"
-            else
-              String.make (4 - String.length acc) '0' ^ acc
-          else
-            to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc)
-        in
-        to_hex arabic_int ""
-      in
+      let arabic_hex = rune_hex arabic_5 in
       println ("Arabic digit ٥ (U+" ^ arabic_hex ^ "):");
       println
         ("  is_digit: " ^ Bool.to_string (Unicode.Rune.is_digit arabic_5) ^ " (should be true)");
       println "";
       (* Test ASCII for regression *)
-      let a = Unicode.Rune.of_char 'A' in
+      let a = Unicode.Rune.from_char 'A' in
       println "ASCII 'A':";
       println ("  is_letter: " ^ Bool.to_string (Unicode.Rune.is_letter a) ^ " (should be true)");
       println ("  is_upper: " ^ Bool.to_string (Unicode.Rune.is_upper a) ^ " (should be true)");

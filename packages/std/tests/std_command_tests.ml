@@ -3,7 +3,7 @@ module Test = Std.Test
 
 let stderr_payload_size = 256 * 1_024
 
-let stderr_payload = String.make stderr_payload_size 'e'
+let stderr_payload = String.make ~len:stderr_payload_size ~char:'e'
 
 let stdout_payload = "stdout-finished"
 
@@ -50,8 +50,7 @@ let test_command_output_handles_parallel_shell_commands = fun _ctx ->
   let count = 16 in
   let expected_stdout = "parallel-output" in
   let _workers =
-    List.init count
-      (fun index ->
+    List.init ~count ~fn:(fun index ->
         Runtime.spawn
           (fun () ->
             let result =
@@ -74,7 +73,7 @@ let test_command_output_handles_parallel_shell_commands = fun _ctx ->
       if failures = [] then
         Ok ()
       else
-        Error (String.concat "; " (List.rev failures))
+        Error (String.concat "; " (List.reverse failures))
     else
       match
         Runtime.receive
@@ -115,8 +114,7 @@ let test_command_output_handles_parallel_fast_exit_commands = fun _ctx ->
       | Ok () -> run_n (remaining - 1)
   in
   let _workers =
-    List.init worker_count
-      (fun index ->
+    List.init ~count:worker_count ~fn:(fun index ->
         Runtime.spawn
           (fun () ->
             let result = run_n iterations_per_worker in
@@ -128,7 +126,7 @@ let test_command_output_handles_parallel_fast_exit_commands = fun _ctx ->
       if failures = [] then
         Ok ()
       else
-        Error (String.concat "; " (List.rev failures))
+        Error (String.concat "; " (List.reverse failures))
     else
       match
         Runtime.receive

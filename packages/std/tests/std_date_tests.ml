@@ -13,10 +13,10 @@ let test_make_invalid_date = fun _ctx ->
   | Error _ -> Error "Date.make returned the wrong error for an invalid date"
 
 let test_iso8601_roundtrip = fun _ctx ->
-  match Date.of_iso8601 "2024-01-15" with
+  match Date.from_iso8601 "2024-01-15" with
   | Ok date when String.equal (Date.to_iso8601 date) "2024-01-15" -> Ok ()
   | Ok _ -> Error "Date ISO roundtrip produced the wrong string"
-  | Error _ -> Error "Date.of_iso8601 failed on a valid extended ISO date"
+  | Error _ -> Error "Date.from_iso8601 failed on a valid extended ISO date"
 
 let test_add_and_diff_days = fun _ctx ->
   let start = Date.make ~year:2_024 ~month:1 ~day:15 |> Result.unwrap in
@@ -30,11 +30,11 @@ let test_add_and_diff_days = fun _ctx ->
 
 let test_of_date_time_discards_time_fields = fun _ctx ->
   let date_time = DateTime.parse "2025-08-27T14:07:31Z" |> Result.unwrap in
-  let date = Date.of_date_time date_time in
+  let date = Date.from_date_time date_time in
   if date.year = 2_025 && date.month = 8 && date.day = 27 then
     Ok ()
   else
-    Error "Date.of_date_time should keep only the civil date fields"
+    Error "Date.from_date_time should keep only the civil date fields"
 
 let test_today_utc_matches_datetime_now_utc = fun _ctx ->
   let date = Date.today_utc () in

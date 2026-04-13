@@ -3,20 +3,22 @@ open Std.Collections
 
 let diff_hashmaps = fun left right ->
   let key_of_entry (key, _) = key in
-  let keys = (HashMap.to_list left |> List.map key_of_entry)
-  @ (HashMap.to_list right |> List.map key_of_entry)
-  |> List.sort_uniq String.compare in
+  let keys =
+    (HashMap.to_list left |> List.map ~fn:key_of_entry)
+    @ (HashMap.to_list right |> List.map ~fn:key_of_entry)
+    |> List.unique ~compare:String.compare
+  in
   List.filter_map
-    (fun key ->
-      match (HashMap.get left key, HashMap.get right key) with
+    keys
+    ~fn:(fun key ->
+      match (HashMap.get left ~key, HashMap.get right ~key) with
       | Some x, Some y when x = y -> None
       | None, Some y -> Some { Diff.path = [ Diff.Key key ]; kind = Diff.Added y }
       | Some x, None -> Some { Diff.path = [ Diff.Key key ]; kind = Diff.Removed x }
       | Some x, Some y -> Some { Diff.path = [ Diff.Key key ]; kind = Diff.Changed (x, y) }
       | None, None -> None)
-    keys
 
-let make_map = fun items -> HashMap.of_list items
+let make_map = fun items -> HashMap.from_list items
 
 let test_diff_identical_hashmaps = fun _ctx ->
   let diffs = diff_hashmaps (make_map [ ("a", 1) ]) (make_map [ ("a", 1) ]) in
@@ -66,8 +68,9 @@ let test_diff_nested_hashmaps = fun _ctx ->
   let after = make_map [ ("x", 1); ("y", 3) ] in
   let nested_change = { Diff.path = [ Diff.Key "outer" ]; kind = Diff.Changed (before, after) } in
   match Diff.changes [ nested_change ] with
-  | [ { kind=Diff.Changed (left, right); _ } ] when HashMap.get left "y" = Some 2
-  && HashMap.get right "y" = Some 3 -> Ok ()
+  | [ { kind=Diff.Changed (left, right); _ } ]
+    when HashMap.get left ~key:"y" = Some 2 && HashMap.get right ~key:"y" = Some 3 ->
+      Ok ()
   | _ -> Error "Expected changed nested hashmap payload"
 
 let test_diff_one_empty = fun _ctx ->

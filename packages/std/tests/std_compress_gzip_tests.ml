@@ -11,8 +11,11 @@ let with_temp_dir = fun label fn ->
   | Error err -> Error ("failed to create temp dir: " ^ IO.error_message err)
   | Ok () ->
       let result = fn temp_root in
-      ignore (Fs.remove_dir_all temp_root);
-      result
+      let cleanup = Fs.remove_dir_all temp_root in
+      (match result, cleanup with
+      | Error err, _ -> Error err
+      | Ok (), Ok () -> Ok ()
+      | Ok (), Error err -> Error ("failed to remove temp dir: " ^ IO.error_message err))
 
 let render_gzip_error = Gzip.error_to_string
 
@@ -74,11 +77,14 @@ let test_compress_file_roundtrip = fun _ctx ->
         ))
 
 let make_pseudorandom_string = fun len ->
-  let bytes = IO.Bytes.create len in
+  let bytes = IO.Bytes.create ~size:len in
   let state = ref 0x1234_abcd in
   for index = 0 to len - 1 do
     state := Int.rem ((1_103_515_245 * !state) + 12_345) 0x7fff_ffff;
-    IO.Bytes.set bytes index (Char.unsafe_of_int (Int.rem (Int.abs !state) 256))
+    IO.Bytes.set_unchecked
+      bytes
+      ~at:index
+      ~char:(Char.from_int_unchecked (Int.rem (Int.abs !state) 256))
   done;
   IO.Bytes.to_string bytes
 

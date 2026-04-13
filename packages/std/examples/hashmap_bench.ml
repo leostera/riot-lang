@@ -1,185 +1,108 @@
 open Std
 open Std.Collections
 
+let populate_map = fun count ->
+  let map = HashMap.create () in
+  for i = 1 to count do
+    let key = "key_" ^ Int.to_string i in
+    let _ = HashMap.insert map ~key ~value:i in
+    ()
+  done;
+  map
+
 (* Benchmark: Insert operations *)
 
 let bench_insert_100 = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 100 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done
+  let _ = populate_map 100 in
+  ()
 
 let bench_insert_10k = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 10_000 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done
+  let _ = populate_map 10_000 in
+  ()
 
 let bench_insert_100k = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 100_000 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done
+  let _ = populate_map 100_000 in
+  ()
 
 let bench_insert_1m = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 1_000_000 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done
+  let _ = populate_map 1_000_000 in
+  ()
 
 (* Benchmark: Lookup operations - single lookup from populated map *)
 
 let bench_get_from_100 = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 100 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done;
+  let map = populate_map 100 in
   (* Benchmark: single lookup *)
-  let _ = HashMap.get map "key_50" in
+  let _ = HashMap.get map ~key:"key_50" in
   ()
 
 let bench_get_from_10k = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 10_000 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done;
-  let _ = HashMap.get map "key_5000" in
+  let map = populate_map 10_000 in
+  let _ = HashMap.get map ~key:"key_5000" in
   ()
 
 let bench_get_from_100k = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 100_000 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done;
-  let _ = HashMap.get map "key_50000" in
+  let map = populate_map 100_000 in
+  let _ = HashMap.get map ~key:"key_50000" in
   ()
 
 let bench_get_from_1m = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 1_000_000 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done;
-  let _ = HashMap.get map "key_500000" in
+  let map = populate_map 1_000_000 in
+  let _ = HashMap.get map ~key:"key_500000" in
   ()
 
 let bench_get_missing = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 100_000 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done;
+  let map = populate_map 100_000 in
   (* Benchmark: lookup non-existing key *)
-  let _ = HashMap.get map "missing_key" in
+  let _ = HashMap.get map ~key:"missing_key" in
   ()
 
 (* Benchmark: Remove operations - single remove from populated map *)
 
 let bench_remove_from_100 = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 100 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done;
-  let _ = HashMap.remove map "key_50" in
+  let map = populate_map 100 in
+  let _ = HashMap.remove map ~key:"key_50" in
   ()
 
 let bench_remove_from_10k = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 10_000 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done;
-  let _ = HashMap.remove map "key_5000" in
+  let map = populate_map 10_000 in
+  let _ = HashMap.remove map ~key:"key_5000" in
   ()
 
 let bench_remove_from_100k = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 100_000 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done;
-  let _ = HashMap.remove map "key_50000" in
+  let map = populate_map 100_000 in
+  let _ = HashMap.remove map ~key:"key_50000" in
   ()
 
 (* Benchmark: Iteration *)
 
 let bench_iter_100 = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 100 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done;
-  HashMap.iter (fun _k _v -> ()) map
+  let map = populate_map 100 in
+  HashMap.for_each map ~fn:(fun _k _v -> ())
 
 let bench_iter_10k = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 10_000 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done;
-  HashMap.iter (fun _k _v -> ()) map
+  let map = populate_map 10_000 in
+  HashMap.for_each map ~fn:(fun _k _v -> ())
 
 let bench_iter_100k = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 100_000 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done;
-  HashMap.iter (fun _k _v -> ()) map
+  let map = populate_map 100_000 in
+  HashMap.for_each map ~fn:(fun _k _v -> ())
 
 (* Benchmark: Contains key check *)
 
 let bench_contains_key_from_100 = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 100 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done;
-  let _ = HashMap.contains_key map "key_50" in
+  let map = populate_map 100 in
+  let _ = HashMap.has_key map ~key:"key_50" in
   ()
 
 let bench_contains_key_from_10k = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 10_000 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done;
-  let _ = HashMap.contains_key map "key_5000" in
+  let map = populate_map 10_000 in
+  let _ = HashMap.has_key map ~key:"key_5000" in
   ()
 
 let bench_contains_key_from_100k = fun () ->
-  let map = HashMap.create () in
-  for i = 1 to 100_000 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
-    ()
-  done;
-  let _ = HashMap.contains_key map "key_50000" in
+  let map = populate_map 100_000 in
+  let _ = HashMap.has_key map ~key:"key_50000" in
   ()
 
 let benchmarks =

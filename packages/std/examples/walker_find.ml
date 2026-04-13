@@ -76,7 +76,7 @@ let main = fun ~args ->
             Ok ()
         | Some (Error (err: Fs.Walker.error)), iter' ->
             eprintln
-              ("walker error at depth " ^ string_of_int err.depth ^ ": " ^ IO.error_message err.cause);
+              ("walker error at depth " ^ Int.to_string err.depth ^ ": " ^ IO.error_message err.cause);
             loop iter'
         | Some (Ok (entry: Fs.Walker.FileItem.t)), iter' ->
             count := !count + 1;
@@ -84,9 +84,9 @@ let main = fun ~args ->
               println (Fs.Walker.FileItem.path_string entry);
             loop iter'
       in
-      loop iter |> Result.map
-        (fun () ->
-          if config.count_only then
-            println (string_of_int !count))
+      loop iter
+      |> Result.map ~fn:(fun () ->
+             if config.count_only then
+               println (Int.to_string !count))
 
 let () = Runtime.run ~main ~args:Env.args ()

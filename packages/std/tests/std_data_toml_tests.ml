@@ -24,13 +24,18 @@ let get_bool = function
   | Toml.Bool b -> Some b
   | _ -> None
 
+let find_value = fun items key ->
+  match List.find items ~fn:(fun (candidate, _) -> String.equal candidate key) with
+  | Some (_, value) -> Some value
+  | None -> None
+
 (* === BASIC VALUE TESTS === *)
 
 let test_simple_string = Test.case "parse simple string value" @@ fun _ctx ->
   let input = {|name = "hello"|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match List.assoc_opt "name" items with
+      match find_value items "name" with
       | Some (Toml.String "hello") -> Ok ()
       | Some _ -> Error "Expected string value"
       | None -> Error "Missing 'name' key"
@@ -41,7 +46,7 @@ let test_quoted_string_with_escapes = Test.case "parse string with escapes" @@ f
   let input = {|text = "hello\nworld\t\"quoted\""|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_string (List.assoc "text" items) with
+      match find_value items "text" |> Option.and_then ~fn:get_string with
       | Some s when String.contains s "\n" && String.contains s "\t" -> Ok ()
       | Some s -> Error ("String escapes not handled: " ^ s)
       | None -> Error "Expected string"
@@ -52,7 +57,7 @@ let test_boolean_true = Test.case "parse boolean true" @@ fun _ctx ->
   let input = {|enabled = true|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_bool (List.assoc "enabled" items) with
+      match find_value items "enabled" |> Option.and_then ~fn:get_bool with
       | Some true -> Ok ()
       | Some false -> Error "Got false, expected true"
       | None -> Error "Expected boolean"
@@ -63,7 +68,7 @@ let test_boolean_false = Test.case "parse boolean false" @@ fun _ctx ->
   let input = {|enabled = false|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_bool (List.assoc "enabled" items) with
+      match find_value items "enabled" |> Option.and_then ~fn:get_bool with
       | Some false -> Ok ()
       | Some true -> Error "Got true, expected false"
       | None -> Error "Expected boolean"
@@ -74,9 +79,9 @@ let test_integer_positive = Test.case "parse positive integer" @@ fun _ctx ->
   let input = {|port = 2112|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_int (List.assoc "port" items) with
+      match find_value items "port" |> Option.and_then ~fn:get_int with
       | Some 2_112 -> Ok ()
-      | Some i -> Error ("Got " ^ string_of_int i ^ ", expected 2112")
+      | Some i -> Error ("Got " ^ Int.to_string i ^ ", expected 2112")
       | None -> Error "Expected integer"
     )
   | _ -> Error "Parse failed"
@@ -85,9 +90,9 @@ let test_integer_negative = Test.case "parse negative integer" @@ fun _ctx ->
   let input = {|offset = -42|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_int (List.assoc "offset" items) with
+      match find_value items "offset" |> Option.and_then ~fn:get_int with
       | Some (-42) -> Ok ()
-      | Some i -> Error ("Got " ^ string_of_int i ^ ", expected -42")
+      | Some i -> Error ("Got " ^ Int.to_string i ^ ", expected -42")
       | None -> Error "Expected integer"
     )
   | _ -> Error "Parse failed"
@@ -96,9 +101,9 @@ let test_integer_zero = Test.case "parse zero" @@ fun _ctx ->
   let input = {|count = 0|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_int (List.assoc "count" items) with
+      match find_value items "count" |> Option.and_then ~fn:get_int with
       | Some 0 -> Ok ()
-      | Some i -> Error ("Got " ^ string_of_int i ^ ", expected 0")
+      | Some i -> Error ("Got " ^ Int.to_string i ^ ", expected 0")
       | None -> Error "Expected integer"
     )
   | _ -> Error "Parse failed"
@@ -107,9 +112,9 @@ let test_integer_in_array = Test.case "parse array of integers" @@ fun _ctx ->
   let input = {|ports = [8080, 8081, 8082]|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_array (List.assoc "ports" items) with
+      match find_value items "ports" |> Option.and_then ~fn:get_array with
       | Some [Toml.Int 8_080;Toml.Int 8_081;Toml.Int 8_082] -> Ok ()
-      | Some arr -> Error ("Got array with " ^ string_of_int (List.length arr) ^ " items")
+      | Some arr -> Error ("Got array with " ^ Int.to_string (List.length arr) ^ " items")
       | None -> Error "Expected array"
     )
   | _ -> Error "Parse failed"
@@ -118,7 +123,7 @@ let test_bare_string = Test.case "parse bare string value" @@ fun _ctx ->
   let input = {|version = release-1|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_string (List.assoc "version" items) with
+      match find_value items "version" |> Option.and_then ~fn:get_string with
       | Some "release-1" -> Ok ()
       | Some s -> Error ("Got '" ^ s ^ "', expected 'release-1'")
       | None -> Error "Expected string"
@@ -131,7 +136,7 @@ let test_simple_array = Test.case "parse simple array" @@ fun _ctx ->
   let input = {|numbers = [1, 2, 3]|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_array (List.assoc "numbers" items) with
+      match find_value items "numbers" |> Option.and_then ~fn:get_array with
       | Some arr when List.length arr = 3 -> Ok ()
       | Some arr -> Error ("Expected 3 items, got " ^ Int.to_string (List.length arr))
       | None -> Error "Expected array"
@@ -142,7 +147,7 @@ let test_string_array = Test.case "parse string array" @@ fun _ctx ->
   let input = {|tags = ["foo", "bar", "baz"]|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_array (List.assoc "tags" items) with
+      match find_value items "tags" |> Option.and_then ~fn:get_array with
       | Some [Toml.String "foo";Toml.String "bar";Toml.String "baz"] -> Ok ()
       | Some _ -> Error "Array contents don't match"
       | None -> Error "Expected array"
@@ -153,7 +158,7 @@ let test_empty_array = Test.case "parse empty array" @@ fun _ctx ->
   let input = {|empty = []|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_array (List.assoc "empty" items) with
+      match find_value items "empty" |> Option.and_then ~fn:get_array with
       | Some [] -> Ok ()
       | Some arr -> Error ("Expected empty array, got " ^ Int.to_string (List.length arr) ^ " items")
       | None -> Error "Expected array"
@@ -164,7 +169,7 @@ let test_nested_array = Test.case "parse nested array" @@ fun _ctx ->
   let input = {|matrix = [[1, 2], [3, 4]]|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_array (List.assoc "matrix" items) with
+      match find_value items "matrix" |> Option.and_then ~fn:get_array with
       | Some [Toml.Array _;Toml.Array _] -> Ok ()
       | Some _ -> Error "Expected nested arrays"
       | None -> Error "Expected array"
@@ -181,11 +186,11 @@ std = { path = "../std" }
   in
   match Toml.parse input with
   | Ok (Toml.Table sections) -> (
-      match get_table (List.assoc "dependencies" sections) with
+      match find_value sections "dependencies" |> Option.and_then ~fn:get_table with
       | Some deps -> (
-          match get_table (List.assoc "std" deps) with
+          match find_value deps "std" |> Option.and_then ~fn:get_table with
           | Some std_attrs -> (
-              match get_string (List.assoc "path" std_attrs) with
+              match find_value std_attrs "path" |> Option.and_then ~fn:get_string with
               | Some "../std" -> Ok ()
               | Some s -> Error ("Wrong path: " ^ s)
               | None -> Error "Missing path"
@@ -206,7 +211,7 @@ actors = { path = "../actors" }
   in
   match Toml.parse input with
   | Ok (Toml.Table sections) -> (
-      match get_table (List.assoc "dependencies" sections) with
+      match find_value sections "dependencies" |> Option.and_then ~fn:get_table with
       | Some deps when List.length deps = 3 -> Ok ()
       | Some deps -> Error ("Expected 3 deps, got " ^ Int.to_string (List.length deps))
       | None -> Error "dependencies is not a table"
@@ -218,12 +223,12 @@ let test_inline_table_multiple_keys = Test.case "parse inline table with multipl
   let input = {|person = { name = "John", age = "30", city = "NYC" }|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_table (List.assoc "person" items) with
+      match find_value items "person" |> Option.and_then ~fn:get_table with
       | Some attrs when List.length attrs = 3 -> (
           match (
-            get_string (List.assoc "name" attrs),
-            get_string (List.assoc "age" attrs),
-            get_string (List.assoc "city" attrs)
+            find_value attrs "name" |> Option.and_then ~fn:get_string,
+            find_value attrs "age" |> Option.and_then ~fn:get_string,
+            find_value attrs "city" |> Option.and_then ~fn:get_string
           ) with
           | Some "John", Some "30", Some "NYC" -> Ok ()
           | _ -> Error "Values don't match"
@@ -239,9 +244,12 @@ let test_inline_table_with_bool = Test.case "parse inline table with boolean" @@
   let input = {|config = { enabled = true, debug = false }|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_table (List.assoc "config" items) with
+      match find_value items "config" |> Option.and_then ~fn:get_table with
       | Some attrs -> (
-          match (get_bool (List.assoc "enabled" attrs), get_bool (List.assoc "debug" attrs)) with
+          match (
+            find_value attrs "enabled" |> Option.and_then ~fn:get_bool,
+            find_value attrs "debug" |> Option.and_then ~fn:get_bool
+          ) with
           | Some true, Some false -> Ok ()
           | _ -> Error "Boolean values don't match"
         )
@@ -253,11 +261,11 @@ let test_nested_inline_tables = Test.case "parse nested inline tables" @@ fun _c
   let input = {|server = { host = { ip = "127.0.0.1", port = "8080" } }|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_table (List.assoc "server" items) with
+      match find_value items "server" |> Option.and_then ~fn:get_table with
       | Some server -> (
-          match get_table (List.assoc "host" server) with
+          match find_value server "host" |> Option.and_then ~fn:get_table with
           | Some host -> (
-              match get_string (List.assoc "ip" host) with
+              match find_value host "ip" |> Option.and_then ~fn:get_string with
               | Some "127.0.0.1" -> Ok ()
               | _ -> Error "Nested value doesn't match"
             )
@@ -278,7 +286,7 @@ version = "1.0.0"
   in
   match Toml.parse input with
   | Ok (Toml.Table sections) -> (
-      match get_table (List.assoc "package" sections) with
+      match find_value sections "package" |> Option.and_then ~fn:get_table with
       | Some pkg when List.length pkg = 2 -> Ok ()
       | Some pkg -> Error ("Expected 2 keys, got " ^ Int.to_string (List.length pkg))
       | None -> Error "package is not a table"
@@ -308,18 +316,18 @@ port = "8080"
   in
   match Toml.parse input with
   | Ok (Toml.Table sections) -> (
-      match List.assoc_opt "server" sections with
+      match find_value sections "server" with
       | None -> Error "Nested section root not found"
       | Some server -> (
           match get_table server with
           | None -> Error "server is not a table"
           | Some server_fields -> (
-              match List.assoc_opt "config" server_fields with
+              match find_value server_fields "config" with
               | None -> Error "config table not found"
               | Some config -> (
                   match get_table config with
                   | Some fields -> (
-                      match get_string (List.assoc "port" fields) with
+                      match find_value fields "port" |> Option.and_then ~fn:get_string with
                       | Some "8080" -> Ok ()
                       | _ -> Error "Nested port value doesn't match"
                     )
@@ -345,13 +353,16 @@ path = "src/server.ml"
   in
   match Toml.parse input with
   | Ok (Toml.Table sections) -> (
-      match List.assoc_opt "bin" sections with
+      match find_value sections "bin" with
       | Some value -> (
           match get_array value with
           | Some bins when List.length bins = 2 -> (
               match bins with
               | [Toml.Table bin1;Toml.Table bin2] -> (
-                  match (get_string (List.assoc "name" bin1), get_string (List.assoc "path" bin1)) with
+                  match (
+                    find_value bin1 "name" |> Option.and_then ~fn:get_string,
+                    find_value bin1 "path" |> Option.and_then ~fn:get_string
+                  ) with
                   | Some "riot", Some "src/main.ml" -> Ok ()
                   | Some n, Some p -> Error ("First binary values wrong: name=" ^ n ^ " path=" ^ p)
                   | _ -> Error "Missing name or path in first binary"
@@ -392,7 +403,7 @@ tasty = true
   in
   match Toml.parse input with
   | Ok (Toml.Table sections) -> (
-      match get_array (List.assoc "fruits" sections) with
+      match find_value sections "fruits" |> Option.and_then ~fn:get_array with
       | Some [Toml.Table f1;Toml.Table f2] when List.length f1 = 3 && List.length f2 = 3 -> Ok ()
       | Some arr -> Error ("Array structure wrong: " ^ Int.to_string (List.length arr) ^ " items")
       | None -> Error "fruits is not an array"
@@ -414,13 +425,13 @@ path = "./app.log"
   match Toml.parse input with
   | Ok (Toml.Table sections) -> (
       (* Should create nested structure: { "log": { "handler": [...] } } *)
-      match List.assoc_opt "log" sections with
+      match find_value sections "log" with
       | None -> Error "No 'log' key found (bug: dotted paths not nested)"
       | Some log_value -> (
           match get_table log_value with
           | None -> Error "'log' is not a table"
           | Some log_fields -> (
-              match List.assoc_opt "handler" log_fields with
+              match find_value log_fields "handler" with
               | None -> Error "No 'handler' key in 'log' table"
               | Some handler_value -> (
                   match get_array handler_value with
@@ -443,7 +454,7 @@ name = "test"
   in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_string (List.assoc "name" items) with
+      match find_value items "name" |> Option.and_then ~fn:get_string with
       | Some "test" -> Ok ()
       | _ -> Error "Value doesn't match"
     )
@@ -453,7 +464,7 @@ let test_inline_comment = Test.case "parse with inline comment" @@ fun _ctx ->
   let input = {|name = "test" # inline comment|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_string (List.assoc "name" items) with
+      match find_value items "name" |> Option.and_then ~fn:get_string with
       | Some "test" -> Ok ()
       | _ -> Error "Value doesn't match"
     )
@@ -467,9 +478,9 @@ name = "test" # package name
   in
   match Toml.parse input with
   | Ok (Toml.Table sections) -> (
-      match get_table (List.assoc "package" sections) with
+      match find_value sections "package" |> Option.and_then ~fn:get_table with
       | Some pkg -> (
-          match get_string (List.assoc "name" pkg) with
+          match find_value pkg "name" |> Option.and_then ~fn:get_string with
           | Some "test" -> Ok ()
           | _ -> Error "Value doesn't match"
         )
@@ -483,7 +494,7 @@ let test_leading_whitespace = Test.case "parse with leading whitespace" @@ fun _
   let input = {|  name = "test"|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_string (List.assoc "name" items) with
+      match find_value items "name" |> Option.and_then ~fn:get_string with
       | Some "test" -> Ok ()
       | _ -> Error "Value doesn't match"
     )
@@ -493,7 +504,7 @@ let test_trailing_whitespace = Test.case "parse with trailing whitespace" @@ fun
   let input = {|name = "test"   |} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_string (List.assoc "name" items) with
+      match find_value items "name" |> Option.and_then ~fn:get_string with
       | Some "test" -> Ok ()
       | _ -> Error "Value doesn't match"
     )
@@ -503,7 +514,7 @@ let test_whitespace_around_equals = Test.case "parse with whitespace around =" @
   let input = {|name   =   "test"|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_string (List.assoc "name" items) with
+      match find_value items "name" |> Option.and_then ~fn:get_string with
       | Some "test" -> Ok ()
       | _ -> Error "Value doesn't match"
     )
@@ -530,7 +541,7 @@ let test_empty_string = Test.case "parse empty string value" @@ fun _ctx ->
   let input = {|text = ""|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_string (List.assoc "text" items) with
+      match find_value items "text" |> Option.and_then ~fn:get_string with
       | Some "" -> Ok ()
       | Some s -> Error ("Expected empty string, got '" ^ s ^ "'")
       | None -> Error "Expected string"
@@ -541,7 +552,7 @@ let test_empty_inline_table = Test.case "parse empty inline table" @@ fun _ctx -
   let input = {|empty = {}|} in
   match Toml.parse input with
   | Ok (Toml.Table items) -> (
-      match get_table (List.assoc "empty" items) with
+      match find_value items "empty" |> Option.and_then ~fn:get_table with
       | Some [] -> Ok ()
       | Some t -> Error ("Expected empty table, got " ^ Int.to_string (List.length t) ^ " items")
       | None -> Error "Expected table"
@@ -587,7 +598,7 @@ std = { path = "../std" }
   in
   match Toml.parse content with
   | Ok (Toml.Table sections) -> (
-      match List.assoc_opt "bin" sections with
+      match find_value sections "bin" with
       | Some (Toml.Array bins) when List.length bins = 1 -> Ok ()
       | Some (Toml.Array bins) -> Error ("Expected 1 bin, got " ^ Int.to_string (List.length bins))
       | Some _ -> Error "bin is not an array"
@@ -631,9 +642,9 @@ kernel = { path = "../riot/packages/kernel" }
   in
   match Toml.parse input with
   | Ok (Toml.Table sections) -> (
-      match get_table (List.assoc "workspace" sections) with
+      match find_value sections "workspace" |> Option.and_then ~fn:get_table with
       | Some ws -> (
-          match get_array (List.assoc "members" ws) with
+          match find_value ws "members" |> Option.and_then ~fn:get_array with
           | Some members when List.length members = 3 -> Ok ()
           | Some members -> Error ("Expected 3 members, got " ^ Int.to_string (List.length members))
           | None -> Error "members is not an array"
@@ -694,9 +705,9 @@ port = "9090"
   in
   match Toml.parse input with
   | Ok (Toml.Table sections) -> (
-      match get_table (List.assoc "config" sections) with
+      match find_value sections "config" |> Option.and_then ~fn:get_table with
       | Some cfg -> (
-          match get_string (List.assoc "port" cfg) with
+          match find_value cfg "port" |> Option.and_then ~fn:get_string with
           | Some "9090" -> Ok ()
           | Some p -> Error ("Expected last value '9090', got '" ^ p ^ "'")
           | None -> Error "Missing port"

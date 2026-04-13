@@ -243,7 +243,12 @@ let test_query_parse_special_chars = fun _ctx ->
 let test_query_parse_multiple_same_key = fun _ctx ->
   let params = Uri.Query.parse "tag=red&tag=blue&tag=green" in
   let tags = Uri.Query.get_all params "tag" in
-  if List.length tags = 3 && List.mem "red" tags && List.mem "blue" tags && List.mem "green" tags then
+  if
+    List.length tags = 3
+    && List.contains tags ~value:"red"
+    && List.contains tags ~value:"blue"
+    && List.contains tags ~value:"green"
+  then
     Ok ()
   else
     Error "Failed to handle multiple values for same key"
@@ -343,9 +348,9 @@ let test_reserved_gen_delims = fun _ctx ->
     ("%40", "@");
   ] in
   let results =
-    List.map (fun ((enc, dec)) -> Uri.percent_decode enc = dec) tests
+    List.map tests ~fn:(fun (enc, dec) -> Uri.percent_decode enc = dec)
   in
-  if List.for_all (fun x -> x) results then
+  if List.all results ~fn:(fun value -> value) then
     Ok ()
   else
     Error "Failed to decode gen-delims"
@@ -367,9 +372,9 @@ let test_reserved_sub_delims = fun _ctx ->
   ]
   in
   let results =
-    List.map (fun ((enc, dec)) -> Uri.percent_decode enc = dec) tests
+    List.map tests ~fn:(fun (enc, dec) -> Uri.percent_decode enc = dec)
   in
-  if List.for_all (fun x -> x) results then
+  if List.all results ~fn:(fun value -> value) then
     Ok ()
   else
     Error "Failed to decode sub-delims"
@@ -408,9 +413,9 @@ let test_percent_decode_preserves_length = fun _ctx ->
       ""
       [
         "Length mismatch: expected ";
-        string_of_int expected_length;
+        Int.to_string expected_length;
         " but got ";
-        string_of_int (String.length decoded);
+        Int.to_string (String.length decoded);
         " for '";
         decoded;
         "'"

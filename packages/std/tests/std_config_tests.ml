@@ -1,5 +1,10 @@
 open Std
 
+let assoc_value = fun entries key ->
+  match Collections.List.find entries ~fn:(fun (entry_key, _) -> String.equal entry_key key) with
+  | Some (_, value) -> Some value
+  | None -> None
+
 (* Test 1: Spec DSL construction *)
 
 let test_spec_dsl = fun _ctx ->
@@ -68,7 +73,7 @@ let test_defaults = fun _ctx ->
   | Error err ->
       Error ("Validation failed: " ^ err)
   | Ok (Config.Spec.Map validated) -> (
-      match Collections.List.assoc_opt "log_level" validated with
+      match assoc_value validated "log_level" with
       | Some (Config.Spec.String "info") -> Ok ()
       | _ -> Error "Default value not applied"
     )
@@ -125,7 +130,7 @@ let test_enum_string_valid = fun _ctx ->
   | Error err ->
       Error ("Validation failed: " ^ err)
   | Ok (Config.Spec.Map validated) -> (
-      match Collections.List.assoc_opt "log_level" validated with
+      match assoc_value validated "log_level" with
       | Some (Config.Spec.String "debug") -> Ok ()
       | _ -> Error "Enum string value not validated correctly"
     )
@@ -172,7 +177,7 @@ let test_enum_string_default = fun _ctx ->
   | Error err ->
       Error ("Validation failed: " ^ err)
   | Ok (Config.Spec.Map validated) -> (
-      match Collections.List.assoc_opt "log_level" validated with
+      match assoc_value validated "log_level" with
       | Some (Config.Spec.String "info") -> Ok ()
       | _ -> Error "Enum string default not applied"
     )
@@ -200,7 +205,7 @@ let test_enum_int_valid = fun _ctx ->
   | Error err ->
       Error ("Validation failed: " ^ err)
   | Ok (Config.Spec.Map validated) -> (
-      match Collections.List.assoc_opt "status_code" validated with
+      match assoc_value validated "status_code" with
       | Some (Config.Spec.Int 404) -> Ok ()
       | _ -> Error "Enum int value not validated correctly"
     )
@@ -244,9 +249,9 @@ let test_list_of_strings = fun _ctx ->
   | Error err ->
       Error ("Validation failed: " ^ err)
   | Ok (Config.Spec.Map validated) -> (
-      match Collections.List.assoc_opt "tags" validated with
+      match assoc_value validated "tags" with
       | Some (Config.Spec.List items) ->
-          let strings = Collections.List.map Config.as_string items in
+          let strings = Collections.List.map items ~fn:Config.as_string in
           if strings = [ "tag1"; "tag2"; "tag3" ] then
             Ok ()
           else
@@ -267,7 +272,7 @@ let test_list_default = fun _ctx ->
   | Error err ->
       Error ("Validation failed: " ^ err)
   | Ok (Config.Spec.Map validated) -> (
-      match Collections.List.assoc_opt "ports" validated with
+      match assoc_value validated "ports" with
       | Some (Config.Spec.List []) -> Ok ()
       | _ -> Error "Default empty list not applied"
     )
@@ -299,12 +304,12 @@ let test_list_of_maps = fun _ctx ->
   | Error err ->
       Error ("Validation failed: " ^ err)
   | Ok (Config.Spec.Map validated) -> (
-      match Collections.List.assoc_opt "users" validated with
+      match assoc_value validated "users" with
       | Some (Config.Spec.List items) ->
           if Collections.List.length items = 2 then
             Ok ()
           else
-            Error ("Expected 2 users, got " ^ string_of_int (Collections.List.length items))
+            Error ("Expected 2 users, got " ^ Int.to_string (Collections.List.length items))
       | _ -> Error "List of maps not validated correctly"
     )
   | Ok _ ->
@@ -349,7 +354,7 @@ let test_discriminated_union_console = fun _ctx ->
   | Ok validated ->
       let (disc, variant, fields) = Config.get_discriminated_union validated "handler" in
       if disc = "type" && variant = "console" then
-        match Collections.List.assoc_opt "id" fields with
+        match assoc_value fields "id" with
         | Some (Config.Spec.String "main") -> Ok ()
         | _ -> Error "ID not found or incorrect"
       else
@@ -426,11 +431,11 @@ let test_list_of_discriminated_unions = fun _ctx ->
   | Error err ->
       Error ("Validation failed: " ^ err)
   | Ok (Config.Spec.Map validated) -> (
-      match Collections.List.assoc_opt "handlers" validated with
+      match assoc_value validated "handlers" with
       | Some (Config.Spec.List items) ->
           if Collections.List.length items = 2 then
             (
-              match Collections.List.nth_opt items 0 with
+              match Collections.List.get items ~at:0 with
               | Some handler ->
                   let (_, variant, _) = Config.as_discriminated_union handler in
                   if variant = "console" then
@@ -440,7 +445,7 @@ let test_list_of_discriminated_unions = fun _ctx ->
               | None -> Error "First handler not found"
             )
           else
-            Error ("Expected 2 handlers, got " ^ string_of_int (Collections.List.length items))
+            Error ("Expected 2 handlers, got " ^ Int.to_string (Collections.List.length items))
       | _ -> Error "Handlers list not validated correctly"
     )
   | Ok _ ->
@@ -472,7 +477,7 @@ let test_dotted_path_three_levels = fun _ctx ->
       | Ok section -> (
           match section with
           | Data.Toml.Table fields -> (
-              match Collections.List.assoc_opt "format" fields with
+              match assoc_value fields "format" with
               | Some (Data.Toml.String "full") -> Ok ()
               | _ -> Error "Expected format = full"
             )
@@ -503,7 +508,7 @@ let test_int_values_both_forms = fun _ctx ->
   | Error err ->
       Error ("Native int validation failed: " ^ err)
   | Ok (Config.Spec.Map validated) -> (
-      match Collections.List.assoc_opt "port" validated with
+      match assoc_value validated "port" with
       | Some (Config.Spec.Int 2_112) -> (
           (* Test with Data.Toml.String (backward compatibility) *)
           let toml_string = Data.Toml.Table [
@@ -514,7 +519,7 @@ let test_int_values_both_forms = fun _ctx ->
           | Error err ->
               Error ("String int validation failed: " ^ err)
           | Ok (Config.Spec.Map validated2) -> (
-              match Collections.List.assoc_opt "port" validated2 with
+              match assoc_value validated2 "port" with
               | Some (Config.Spec.Int 3_000) -> Ok ()
               | _ -> Error "String form port not parsed correctly"
             )

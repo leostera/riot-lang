@@ -17,7 +17,7 @@ let test_encode_empty = fun _ctx ->
     Error "Empty string should encode to empty string"
 
 let test_encode_bytes = fun _ctx ->
-  let bytes = Bytes.of_string "test" in
+  let bytes = Bytes.from_string "test" in
   let encoded = Base16.encode_bytes bytes in
   if encoded = "74657374" then
     Ok ()

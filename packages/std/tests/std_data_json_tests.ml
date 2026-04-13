@@ -64,9 +64,9 @@ let test_parse_string_with_escapes = fun _ctx ->
 let test_parse_string_with_unicode_escape = fun _ctx ->
   match Json.of_string {|"\u0000\t\u001F"|} with
   | Ok (Json.String s) when String.length s = 3
-  && Char.code s.[0] = 0
-  && Char.code s.[1] = 9
-  && Char.code s.[2] = 31 -> Ok ()
+  && Char.code (String.get_unchecked s ~at:0) = 0
+  && Char.code (String.get_unchecked s ~at:1) = 9
+  && Char.code (String.get_unchecked s ~at:2) = 31 -> Ok ()
   | _ -> Error "Failed to parse string with unicode escapes"
 
 let test_parse_empty_string = fun _ctx ->

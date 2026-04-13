@@ -1,24 +1,14 @@
 open Std
 
 let diff_strings = fun left right ->
-  let max_len = max (String.length left) (String.length right) in
+  let max_len = Int.max (String.length left) (String.length right) in
   let rec loop idx acc =
     if idx >= max_len then
-      List.rev acc
+      List.reverse acc
     else
       let next =
-        let left_char =
-          if idx < String.length left then
-            Some left.[idx]
-          else
-            None
-        in
-        let right_char =
-          if idx < String.length right then
-            Some right.[idx]
-          else
-            None
-        in
+        let left_char = String.get left ~at:idx in
+        let right_char = String.get right ~at:idx in
         match (left_char, right_char) with
         | Some x, Some y when x = y -> acc
         | None, Some y -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Added y } :: acc

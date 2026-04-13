@@ -1,7 +1,7 @@
 open Std
 module Test = Std.Test
 
-let ( let* ) = Result.and_then
+let ( let* ) = fun value fn -> Result.and_then value ~fn
 
 let with_tempdir = fun prefix fn ->
   match Fs.with_tempdir ~prefix fn with
@@ -13,10 +13,12 @@ let test_fs_write_roundtrips_large_binary_payload = fun _ctx ->
     (fun tempdir ->
       let path = Path.(tempdir / Path.v "payload.bin") in
       let payload =
-        String.init (1_024 * 1_024) (fun idx -> Char.unsafe_of_int (idx mod 256))
+        String.init
+          ~len:(1_024 * 1_024)
+          ~fn:(fun idx -> Char.from_int_unchecked (idx mod 256))
       in
-      let* () = Fs.write payload path |> Result.map_error IO.error_message in
-      let* actual = Fs.read_to_string path |> Result.map_error IO.error_message in
+      let* () = Fs.write payload path |> Result.map_err ~fn:IO.error_message in
+      let* actual = Fs.read_to_string path |> Result.map_err ~fn:IO.error_message in
       if String.equal actual payload then
         Ok ()
       else

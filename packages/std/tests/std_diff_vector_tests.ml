@@ -2,13 +2,13 @@ open Std
 open Std.Collections
 
 let diff_vectors = fun left right ->
-  let max_len = max (Vector.len left) (Vector.len right) in
+  let max_len = Int.max (Vector.length left) (Vector.length right) in
   let rec loop idx acc =
     if idx >= max_len then
-      List.rev acc
+      List.reverse acc
     else
       let next =
-        match (Vector.get left idx, Vector.get right idx) with
+        match (Vector.get left ~at:idx, Vector.get right ~at:idx) with
         | Some x, Some y when x = y -> acc
         | None, Some y -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Added y } :: acc
         | Some x, None -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Removed x } :: acc
@@ -19,7 +19,7 @@ let diff_vectors = fun left right ->
   in
   loop 0 []
 
-let make_vec = fun items -> Vector.of_list items
+let make_vec = fun items -> Vector.from_list items
 
 let test_diff_identical_vectors = fun _ctx ->
   let diffs = diff_vectors (make_vec [ 1; 2 ]) (make_vec [ 1; 2 ]) in
@@ -79,7 +79,7 @@ let test_diff_nested_vectors = fun _ctx ->
   let right = make_vec [ make_vec [ 2 ] ] in
   let diffs = [ { Diff.path = [ Diff.Index 0 ]; kind = Diff.Changed (left, right) } ] in
   match Diff.changes diffs with
-  | [ { kind=Diff.Changed (l, r); _ } ] when Vector.len l = 1 && Vector.len r = 1 -> Ok ()
+  | [ { kind=Diff.Changed (l, r); _ } ] when Vector.length l = 1 && Vector.length r = 1 -> Ok ()
   | _ -> Error "Expected changed nested vector payload"
 
 let test_diff_mixed_changes = fun _ctx ->

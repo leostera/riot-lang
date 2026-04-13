@@ -6,7 +6,7 @@ let fill_vector = fun vector ~count ~start ->
     if index >= count then
       ()
     else (
-      Vector.push vector (start + index);
+      Vector.push vector ~value:(start + index);
       loop (index + 1)
     )
   in
@@ -18,21 +18,26 @@ let build_vector = fun count ->
   vector
 
 let build_vector_with_capacity = fun capacity count ->
-  let vector = Vector.with_capacity capacity in
+  let vector = Vector.with_capacity ~size:capacity in
   fill_vector vector ~count ~start:0;
   vector
 
-let bench_push_growing = fun count () -> ignore (build_vector count)
+let bench_push_growing = fun count () ->
+  let _ = build_vector count in
+  ()
 
-let bench_push_preallocated = fun count () -> ignore (build_vector_with_capacity count count)
+let bench_push_preallocated = fun count () ->
+  let _ = build_vector_with_capacity count count in
+  ()
 
 let bench_get_middle = fun count () ->
   let vector = build_vector count in
-  ignore (Vector.get vector (count / 2))
+  let _ = Vector.get vector ~at:(count / 2) in
+  ()
 
 let bench_iter = fun count () ->
   let vector = build_vector count in
-  Vector.iter (fun _ -> ()) vector
+  Vector.for_each vector ~fn:(fun _ -> ())
 
 let bench_append_growing_dst = fun count () ->
   let left = build_vector count in

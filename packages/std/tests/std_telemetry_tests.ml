@@ -21,7 +21,10 @@ let test_emit_and_receive = Test.case "telemetry: emit and receive" @@ fun _ctx 
   Telemetry.stop ();
   match !received with
   | [99;42] -> Ok ()
-  | _ -> Error ("Expected [99; 42], got " ^ String.concat ", " (List.map string_of_int !received))
+  | _ ->
+      Error
+        ("Expected [99; 42], got "
+        ^ String.concat ", " (List.map !received ~fn:Int.to_string))
 
 let test_multiple_handlers = Test.case "telemetry: multiple handlers" @@ fun _ctx ->
   let _pid = Telemetry.start () in
@@ -90,9 +93,9 @@ let test_pattern_matching = Test.case "telemetry: pattern matching" @@ fun _ctx 
     Ok ()
   else
     Error ("Expected test=2, another=1, got test="
-    ^ string_of_int !test_count
+    ^ Int.to_string !test_count
     ^ ", another="
-    ^ string_of_int !another_count)
+    ^ Int.to_string !another_count)
 
 let test_handler_exception_isolation = Test.case "telemetry: exception isolation" @@ fun _ctx ->
   let _pid = Telemetry.start () in
@@ -124,9 +127,9 @@ let test_restart_after_stop = Test.case "telemetry: restart after stop" @@ fun _
     Ok ()
   else
     Error ("Expected restart to isolate handler calls; first="
-    ^ string_of_int !first_called
+    ^ Int.to_string !first_called
     ^ ", second="
-    ^ string_of_int !second_called)
+    ^ Int.to_string !second_called)
 
 let test_stop_idempotent = Test.case "telemetry: stop idempotent and clears handlers view"
 @@ fun _ctx ->

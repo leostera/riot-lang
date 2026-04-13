@@ -131,7 +131,7 @@ let test_roundtrip = fun _ctx ->
   let original = [ [ "a"; "b"; "c" ]; [ "1"; "2"; "3" ] ] in
   let str = Csv.to_string original in
   let iter = Csv.of_string str in
-  let parsed = Iter.MutIterator.to_list iter |> List.filter_map Result.to_option in
+  let parsed = Iter.MutIterator.to_list iter |> List.filter_map ~fn:Result.to_option in
   if parsed = original then
     Ok ()
   else

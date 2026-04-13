@@ -57,6 +57,8 @@ val init: len:int -> fn:(int -> char) -> t
 (** Use `make length char` to fill a fresh string with repeated copies of `char`. *)
 val make: len:int -> char:char -> t
 
+val from_char: char -> t
+
 (** Use `append left right` to concatenate two strings into a fresh result. *)
 val append: t -> t -> t
 

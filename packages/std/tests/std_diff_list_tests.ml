@@ -1,13 +1,13 @@
 open Std
 
 let diff_lists = fun left right ->
-  let max_len = max (List.length left) (List.length right) in
+  let max_len = Int.max (List.length left) (List.length right) in
   let rec loop idx acc =
     if idx >= max_len then
-      List.rev acc
+      List.reverse acc
     else
       let next =
-        match (List.nth_opt left idx, List.nth_opt right idx) with
+        match (List.get left ~at:idx, List.get right ~at:idx) with
         | Some x, Some y when x = y -> acc
         | None, Some y -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Added y } :: acc
         | Some x, None -> { Diff.path = [ Diff.Index idx ]; kind = Diff.Removed x } :: acc

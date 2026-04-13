@@ -25,16 +25,20 @@ let self_executable = fun () ->
   | [] -> panic "missing argv[0] for std_test_cli_tests"
 
 let split_lines = fun output ->
-  output |> String.split_on_char '\n' |> List.filter (fun line -> not (String.equal line ""))
+  output |> String.split ~by:"\n" |> List.filter ~fn:(fun line -> not (String.equal line ""))
 
 let parse_json_output = fun stdout -> Data.Json.of_string stdout |> Result.expect ~msg:"failed to parse json output"
+
+let assoc_value = fun key entries ->
+  match List.find entries ~fn:(fun (entry_key, _) -> String.equal entry_key key) with
+  | Some (_, value) -> Some value
+  | None -> None
 
 let test_names_from_json = fun stdout ->
   let json = parse_json_output stdout in
   match Data.Json.get_field "tests" json with
   | Some (Data.Json.Array tests) ->
-      tests |> List.filter_map
-        (fun test_json ->
+      tests |> List.filter_map ~fn:(fun test_json ->
           match Data.Json.get_field "name" test_json with
           | Some (Data.Json.String name) -> Some name
           | _ -> None)
@@ -44,11 +48,10 @@ let listed_test_fields_from_json = fun stdout ->
   let json = parse_json_output stdout in
   match Data.Json.get_field "tests" json with
   | Some (Data.Json.Array tests) ->
-      tests |> List.filter_map
-        (
-          function
-          | Data.Json.Object fields -> Some fields
-          | _ -> None
+      tests
+      |> List.filter_map ~fn:(function
+        | Data.Json.Object fields -> Some fields
+        | _ -> None
         )
   | _ -> []
 
@@ -61,9 +64,11 @@ let test_list_tests_lists_all_cases = fun _ctx ->
   if not (Int.equal output.status 0) then
     Error ("expected list-tests to succeed, got " ^ Int.to_string output.status)
   else
-    let names = split_lines output.stdout |> List.sort String.compare in
-    let expected = [ "alpha_large"; "beta"; "middle_large_case"; "flaky_then_ok"; "timeout_probe" ]
-    |> List.sort String.compare in
+    let names = split_lines output.stdout |> List.sort ~compare:String.compare in
+    let expected =
+      [ "alpha_large"; "beta"; "middle_large_case"; "flaky_then_ok"; "timeout_probe" ]
+      |> List.sort ~compare:String.compare
+    in
     if names = expected then
       Ok ()
     else
@@ -76,7 +81,7 @@ let test_list_tests_json_includes_metadata = fun _ctx ->
   else
     match listed_test_fields_from_json output.stdout with
     | first :: _ ->
-        let has name value = List.assoc_opt name first = Some value in
+        let has name value = assoc_value name first = Some value in
         if
           has "index" (Data.Json.Int 1)
           && has "name" (Data.Json.String "alpha_large")
@@ -97,12 +102,10 @@ let test_list_tests_respects_filters = fun _ctx ->
   else
     let names =
       listed_test_fields_from_json output.stdout
-      |> List.filter_map (List.assoc_opt "name")
-      |> List.filter_map
-        (
-          function
-          | Data.Json.String name -> Some name
-          | _ -> None
+      |> List.filter_map ~fn:(assoc_value "name")
+      |> List.filter_map ~fn:(function
+        | Data.Json.String name -> Some name
+        | _ -> None
         )
     in
     if names = [ "flaky_then_ok" ] then
@@ -115,8 +118,10 @@ let test_run_tests_pattern_matches_suffix_substring = fun _ctx ->
   if not (Int.equal output.status 0) then
     Error ("expected filtered run to succeed, got " ^ Int.to_string output.status)
   else
-    let names = test_names_from_json output.stdout |> List.sort String.compare in
-    let expected = [ "alpha_large"; "middle_large_case" ] |> List.sort String.compare in
+    let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
+    let expected =
+      [ "alpha_large"; "middle_large_case" ] |> List.sort ~compare:String.compare
+    in
     if names = expected then
       Ok ()
     else
@@ -147,8 +152,10 @@ let test_run_tests_json_flag_alias_emits_json = fun _ctx ->
   if not (Int.equal output.status 0) then
     Error ("expected --json run to succeed, got " ^ Int.to_string output.status)
   else
-    let names = test_names_from_json output.stdout |> List.sort String.compare in
-    let expected = [ "alpha_large"; "middle_large_case" ] |> List.sort String.compare in
+    let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
+    let expected =
+      [ "alpha_large"; "middle_large_case" ] |> List.sort ~compare:String.compare
+    in
     if names = expected then
       Ok ()
     else
@@ -159,8 +166,10 @@ let test_run_tests_small_flag_filters_small_tests = fun _ctx ->
   if not (Int.equal output.status 0) then
     Error ("expected --small run to succeed, got " ^ Int.to_string output.status)
   else
-    let names = test_names_from_json output.stdout |> List.sort String.compare in
-    let expected = [ "beta"; "flaky_then_ok"; "timeout_probe" ] |> List.sort String.compare in
+    let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
+    let expected =
+      [ "beta"; "flaky_then_ok"; "timeout_probe" ] |> List.sort ~compare:String.compare
+    in
     if names = expected then
       Ok ()
     else
@@ -171,8 +180,10 @@ let test_run_tests_large_flag_filters_large_tests = fun _ctx ->
   if not (Int.equal output.status 0) then
     Error ("expected --large run to succeed, got " ^ Int.to_string output.status)
   else
-    let names = test_names_from_json output.stdout |> List.sort String.compare in
-    let expected = [ "alpha_large"; "middle_large_case" ] |> List.sort String.compare in
+    let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
+    let expected =
+      [ "alpha_large"; "middle_large_case" ] |> List.sort ~compare:String.compare
+    in
     if names = expected then
       Ok ()
     else
@@ -201,9 +212,8 @@ let test_run_tests_json_includes_timing_fields = fun _ctx ->
     in
     let tests_have_duration =
       match Data.Json.get_field "tests" json with
-      | Some (Data.Json.Array tests) -> List.for_all
-        (fun test_json -> has_int_field "duration_us" test_json)
-        tests
+      | Some (Data.Json.Array tests) ->
+          List.all tests ~fn:(fun test_json -> has_int_field "duration_us" test_json)
       | _ -> false
     in
     let summary_has_duration =
@@ -230,7 +240,7 @@ let test_run_tests_json_includes_reliability_metadata = fun _ctx ->
     let json = parse_json_output output.stdout in
     match Data.Json.get_field "tests" json with
     | Some (Data.Json.Array [ Data.Json.Object fields ]) ->
-        let has name value = List.assoc_opt name fields = Some value in
+        let has name value = assoc_value name fields = Some value in
         if
           has "size" (Data.Json.String "small")
           && has "reliability" (Data.Json.String "flaky")
@@ -252,7 +262,7 @@ let test_run_tests_small_timeout_reports_timed_out = fun _ctx ->
     let json = parse_json_output output.stdout in
     match Data.Json.get_field "tests" json with
     | Some (Data.Json.Array [ Data.Json.Object fields ]) ->
-        let has name value = List.assoc_opt name fields = Some value in
+        let has name value = assoc_value name fields = Some value in
         if has "status" (Data.Json.String "timed_out") && has "timeout_ms" (Data.Json.Int 1) then
           Ok ()
         else

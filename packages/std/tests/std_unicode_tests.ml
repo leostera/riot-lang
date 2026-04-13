@@ -156,7 +156,13 @@ let test_utf8_decode = fun _ctx ->
             if len = 0 then
               acc
             else
-              to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc) (len - 1)
+              to_hex
+                (n / 16)
+                (String.make
+                  ~len:1
+                  ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
+                ^ acc)
+                (len - 1)
           in
           "U+" ^ to_hex code "" 4
         in
@@ -176,7 +182,7 @@ let test_utf8_encode = fun _ctx ->
 (* ===== Rune Conversion Tests ===== *)
 
 let test_rune_of_int_valid = fun _ctx ->
-  match Unicode.Rune.of_int 0x41 with
+  match Unicode.Rune.from_int 0x41 with
   | Some r ->
       let s = Unicode.Rune.to_string r in
       if s = "A" then
@@ -186,7 +192,7 @@ let test_rune_of_int_valid = fun _ctx ->
   | None -> Error "Valid code point should succeed"
 
 let test_rune_of_int_invalid = fun _ctx ->
-  match Unicode.Rune.of_int 0x11_0000 with
+  match Unicode.Rune.from_int 0x11_0000 with
   | Some _ -> Error "Invalid code point should return None"
   | None -> Ok ()
 
@@ -206,7 +212,12 @@ let test_rune_to_int = fun _ctx ->
               else
                 acc
             else
-              to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc)
+              to_hex
+                (n / 16)
+                (String.make
+                  ~len:1
+                  ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
+                ^ acc)
           in
           to_hex code ""
         in
@@ -232,7 +243,7 @@ let test_word_split_simple = fun _ctx ->
 let test_word_split_contractions = fun _ctx ->
   let words = String.split_words "don't" in
   (* Should NOT split contractions *)
-  if List.exists (fun w -> w = "don't") words then
+  if List.any words ~fn:(fun w -> w = "don't") then
     Ok ()
   else
     Error "Contractions should stay together"
@@ -240,7 +251,7 @@ let test_word_split_contractions = fun _ctx ->
 let test_word_split_identifiers = fun _ctx ->
   let words = String.split_words "foo_bar" in
   (* Should NOT split snake_case identifiers *)
-  if List.exists (fun w -> w = "foo_bar") words then
+  if List.any words ~fn:(fun w -> w = "foo_bar") then
     Ok ()
   else
     Error "Identifiers with underscores should stay together"
@@ -315,7 +326,7 @@ let test_wrap_lines_preserves_newlines = fun _ctx ->
 let test_wrap_lines_width_respected = fun _ctx ->
   let lines = Unicode.Segmentation.wrap_lines ~width:20 "The quick brown fox jumps" in
   let all_fit =
-    List.for_all (fun line -> String.width line <= 20) lines
+    List.all lines ~fn:(fun line -> String.width line <= 20)
   in
   if all_fit then
     Ok ()
@@ -553,18 +564,18 @@ let test_fraction_as_number = fun _ctx ->
 (* ===== Edge Cases Tests ===== *)
 
 let test_invalid_code_point_beyond_unicode = fun _ctx ->
-  match Unicode.Rune.of_int 0x11_0000 with
+  match Unicode.Rune.from_int 0x11_0000 with
   | Some _ -> Error "Code point beyond Unicode range should return None"
   | None -> Ok ()
 
 let test_invalid_negative_code_point = fun _ctx ->
-  match Unicode.Rune.of_int (-1) with
+  match Unicode.Rune.from_int (-1) with
   | Some _ -> Error "Negative code point should return None"
   | None -> Ok ()
 
 let test_surrogate_pair_invalid = fun _ctx ->
   (* U+D800 - High surrogate (invalid in UTF-8) *)
-  match Unicode.Rune.of_int 0xd800 with
+  match Unicode.Rune.from_int 0xd800 with
   | Some _ -> Error "Surrogate pair code point should return None"
   | None -> Ok ()
 
@@ -592,7 +603,7 @@ let test_titlecase_letter_detection = fun _ctx ->
 
 let test_max_unicode_code_point = fun _ctx ->
   (* U+10FFFF - Maximum valid Unicode code point *)
-  match Unicode.Rune.of_int 0x10_ffff with
+  match Unicode.Rune.from_int 0x10_ffff with
   | Some r ->
       let code = Unicode.Rune.to_int r in
       if code = 0x10_ffff then
@@ -607,7 +618,12 @@ let test_max_unicode_code_point = fun _ctx ->
               else
                 acc
             else
-              to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc)
+              to_hex
+                (n / 16)
+                (String.make
+                  ~len:1
+                  ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
+                ^ acc)
           in
           to_hex code ""
         in
@@ -662,7 +678,7 @@ let test_utf8_encode_decode_roundtrip = fun _ctx ->
 let test_rune_to_int_of_int_roundtrip = fun _ctx ->
   let code = 0x1_f44d in
   (* 👍 *)
-  match Unicode.Rune.of_int code with
+  match Unicode.Rune.from_int code with
   | Some r ->
       let code2 = Unicode.Rune.to_int r in
       if code = code2 then
@@ -677,7 +693,12 @@ let test_rune_to_int_of_int_roundtrip = fun _ctx ->
               else
                 acc
             else
-              helper (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc)
+              helper
+                (n / 16)
+                (String.make
+                  ~len:1
+                  ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
+                ^ acc)
           in
           helper n ""
         in
@@ -687,10 +708,10 @@ let test_rune_to_int_of_int_roundtrip = fun _ctx ->
 let test_ascii_roundtrip_regression = fun _ctx ->
   (* Ensure ASCII still works after Unicode tables *)
   let test_char c =
-    match Unicode.Utf8.decode_rune (String.make 1 c) 0 with
+    match Unicode.Utf8.decode_rune (String.make ~len:1 ~char:c) 0 with
     | Some (r, _) ->
         let encoded = Unicode.Utf8.encode_rune r in
-        encoded = String.make 1 c
+        encoded = String.make ~len:1 ~char:c
     | None -> false
   in
   if test_char 'A' && test_char 'z' && test_char '0' && test_char '!' then
@@ -714,7 +735,13 @@ let test_greek_case_conversion = fun _ctx ->
           if len = 0 then
             acc
           else
-            to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc) (len - 1)
+            to_hex
+              (n / 16)
+              (String.make
+                ~len:1
+                ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
+              ^ acc)
+              (len - 1)
         in
         Error ("Expected U+0391 (Α), got U+" ^ to_hex upper_code "" 4)
   | None -> Error "Failed to decode Greek α"
@@ -733,7 +760,13 @@ let test_cyrillic_case_conversion = fun _ctx ->
           if len = 0 then
             acc
           else
-            to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc) (len - 1)
+            to_hex
+              (n / 16)
+              (String.make
+                ~len:1
+                ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
+              ^ acc)
+              (len - 1)
         in
         Error ("Expected U+0410 (А), got U+" ^ to_hex upper_code "" 4)
   | None -> Error "Failed to decode Cyrillic а"
@@ -752,7 +785,13 @@ let test_greek_uppercase_to_lowercase = fun _ctx ->
           if len = 0 then
             acc
           else
-            to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc) (len - 1)
+            to_hex
+              (n / 16)
+              (String.make
+                ~len:1
+                ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
+              ^ acc)
+              (len - 1)
         in
         Error ("Expected U+03B1 (α), got U+" ^ to_hex lower_code "" 4)
   | None -> Error "Failed to decode Greek Α"
@@ -772,7 +811,13 @@ let test_latin_extended_uppercase = fun _ctx ->
           if len = 0 then
             acc
           else
-            to_hex (n / 16) (String.make 1 (String.get hex_chars (n mod 16)) ^ acc) (len - 1)
+            to_hex
+              (n / 16)
+              (String.make
+                ~len:1
+                ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
+              ^ acc)
+              (len - 1)
         in
         Error ("Expected U+0101 (ā), got U+" ^ to_hex lower_code "" 4)
   | None -> Error "Failed to decode Ā"
@@ -793,11 +838,11 @@ let test_integration_wrap_and_width = fun _ctx ->
   let text = "Hello world, this is a test" in
   let lines = Unicode.Segmentation.wrap_lines ~width:15 text in
   let all_valid =
-    List.for_all
-      (fun line ->
+    List.all
+      lines
+      ~fn:(fun line ->
         let w = String.width line in
         w <= 15)
-      lines
   in
   if all_valid then
     Ok ()

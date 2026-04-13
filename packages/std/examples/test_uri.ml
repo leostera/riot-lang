@@ -8,8 +8,8 @@ let () =
         "https://leostera.com";
         "https://httpbin.org/get";
       ] in
-      List.iter
-        (fun uri_str ->
+      List.for_each test_uris
+        ~fn:(fun uri_str ->
           println ("Testing: " ^ uri_str);
           match Net.Uri.of_string uri_str with
           | Ok uri ->
@@ -18,9 +18,8 @@ let () =
               println ("  host: " ^ (Option.unwrap_or ~default:"none" (Net.Uri.host uri)));
               println ("  path: " ^ (Net.Uri.path uri));
               println ("  query: " ^ (Option.unwrap_or ~default:"none" (Net.Uri.query uri)));
-          | Error e ->
-              println "  ERROR - Parse failed";)
-        test_uris;
+          | Error _ ->
+              println "  ERROR - Parse failed");
       Ok ())
     ~args:Env.args
     ()

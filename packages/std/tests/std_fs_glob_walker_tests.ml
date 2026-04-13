@@ -44,11 +44,15 @@ let tests = [ Test.case "fs walker rejects invalid depth ranges"
               else
                 Fs.Walker.Continue)
             () |> Result.expect ~msg:"walk";
-          let seen = List.rev !seen in
+          let seen = List.reverse !seen in
           Test.assert_true
-            (List.exists (String.equal (Path.to_string Path.(keep_dir / Path.v "a.ml"))) seen);
+            (List.any
+              seen
+              ~fn:(String.equal (Path.to_string Path.(keep_dir / Path.v "a.ml"))));
           Test.assert_false
-            (List.exists (String.equal (Path.to_string Path.(skip_dir / Path.v "b.ml"))) seen);
+            (List.any
+              seen
+              ~fn:(String.equal (Path.to_string Path.(skip_dir / Path.v "b.ml"))));
           Ok ())); Test.case "fs walker filter_entry skips directories lazily"
     (fun _ctx ->
       with_tempdir "std_fs_walker_filter"
@@ -70,7 +74,7 @@ let tests = [ Test.case "fs walker rejects invalid depth ranges"
           in
           let rec collect iter acc =
             match Iter.Iterator.next iter with
-            | None, _ -> List.rev acc
+            | None, _ -> List.reverse acc
             | Some (Ok (entry: Fs.Walker.FileItem.t)), iter' -> collect
               iter'
               (Fs.Walker.FileItem.path_string entry :: acc)
@@ -78,9 +82,13 @@ let tests = [ Test.case "fs walker rejects invalid depth ranges"
           in
           let seen = collect iter [] in
           Test.assert_true
-            (List.exists (String.equal (Path.to_string Path.(keep_dir / Path.v "a.ml"))) seen);
+            (List.any
+              seen
+              ~fn:(String.equal (Path.to_string Path.(keep_dir / Path.v "a.ml"))));
           Test.assert_false
-            (List.exists (String.equal (Path.to_string Path.(skip_dir / Path.v "b.ml"))) seen);
+            (List.any
+              seen
+              ~fn:(String.equal (Path.to_string Path.(skip_dir / Path.v "b.ml"))));
           Ok ())); Test.case "fs walker contents_first emits directories after descendants"
     (fun _ctx ->
       with_tempdir "std_fs_walker_contents_first"
@@ -94,9 +102,7 @@ let tests = [ Test.case "fs walker rejects invalid depth ranges"
             |> Result.expect ~msg:"create walker"
             |> Fs.Walker.into_iter
             |> Iter.Iterator.to_list
-            |> List.filter_map
-              (
-                function
+            |> List.filter_map ~fn:(function
                 | Ok (entry: Fs.Walker.FileItem.t) -> Some (Fs.Walker.FileItem.path_string entry)
                 | Error _ -> None
               )
@@ -116,7 +122,7 @@ let tests = [ Test.case "fs walker rejects invalid depth ranges"
           Fs.write "let x = 1\n" nested_file |> Result.expect ~msg:"write nested";
           let entries = Fs.Walker.to_list ~roots:[ root ] ~sort:true ~include_directories:false ()
           |> Result.expect ~msg:"to_list"
-          |> List.map Fs.Walker.FileItem.path_string in
+          |> List.map ~fn:Fs.Walker.FileItem.path_string in
           Test.assert_equal ~expected:[ Path.to_string nested_file ] ~actual:entries;
           Ok ())); ]
 

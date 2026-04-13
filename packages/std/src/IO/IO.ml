@@ -1,4 +1,5 @@
-open Kernel
+open Prelude
+
 module Buffer = Buffer
 module Bytes = Bytes
 module Iovec = Kernel.IO.Iovec

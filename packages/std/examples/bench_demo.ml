@@ -3,24 +3,24 @@ open Std.Collections
 
 let bench_vector_push = fun () ->
   let v = Vector.create () in
-  Vector.push v 42
+  Vector.push v ~value:42
 
 let bench_vector_100_pushes = fun () ->
   let v = Vector.create () in
   for i = 1 to 100 do
-    Vector.push v i
+    Vector.push v ~value:i
   done
 
 let bench_hashmap_insert = fun () ->
   let map = HashMap.create () in
-  let _ = HashMap.insert map "key" "value" in
+  let _ = HashMap.insert map ~key:"key" ~value:"value" in
   ()
 
 let bench_hashmap_100_inserts = fun () ->
   let map = HashMap.create () in
   for i = 1 to 100 do
-    let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
+    let key = "key_" ^ Int.to_string i in
+    let _ = HashMap.insert map ~key ~value:i in
     ()
   done
 
@@ -31,15 +31,15 @@ let bench_list_append = fun () ->
 (* Comparison: Array vs Vector for sequential inserts *)
 
 let bench_array_set_100 = fun () ->
-  let arr = Array.make 100 0 in
+  let arr = Array.make ~count:100 ~value:0 in
   for i = 0 to 99 do
-    Array.set arr i i
+    Array.set arr ~at:i ~value:i
   done
 
 let bench_vector_push_100 = fun () ->
   let v = Vector.create () in
   for i = 0 to 99 do
-    Vector.push v i
+    Vector.push v ~value:i
   done
 
 let benchmarks =

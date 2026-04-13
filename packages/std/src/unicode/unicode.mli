@@ -60,25 +60,25 @@ module Rune: sig
   (** [max_latin1] is U+00FF, the maximum Latin-1 character. *)
   (** {2 Conversion} *)
 
-  val of_int: int -> t option
+  val from_int: int -> t option
 
-  (** [of_int n] converts an integer to a rune.
+  (** [from_int n] converts an integer to a rune.
       Returns [None] if n is not a valid Unicode code point. *)
   val to_int: t -> int
 
   (** [to_int r] returns the integer value of rune [r]. *)
-  val of_char: char -> t
+  val from_char: char -> t
 
-  (** [of_char c] converts an 8-bit character to a rune. *)
+  (** [from_char c] converts an 8-bit character to a rune. *)
   val to_char: t -> char
 
   (** [to_char r] converts an ASCII or Latin-1 rune back to a char. *)
   val to_string: t -> string
 
   (** [to_string r] encodes rune [r] as a UTF-8 string. *)
-  val unsafe_of_int: int -> t
+  val from_int_unchecked: int -> t
 
-  (** [unsafe_of_int n] converts an integer to a rune without validation.
+  (** [from_int_unchecked n] converts an integer to a rune without validation.
       {b Warning}: Only use if you know [n] is a valid code point. *)
   (** {2 Character Classification} *)
 

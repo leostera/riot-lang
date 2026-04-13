@@ -38,7 +38,7 @@ let test_snapshot_missing_approved_writes_pending =
           | Ok () -> Error "expected snapshot assertion to fail when approved snapshot is missing"
           | Error _ ->
               let pending = snapshot_path workspace_root "missing_approved"
-              |> fun path -> Path.of_string (Path.to_string path ^ ".new") |> Result.expect ~msg:"pending snapshot path should be valid" in
+              |> fun path -> Path.from_string (Path.to_string path ^ ".new") |> Result.expect ~msg:"pending snapshot path should be valid" in
               let approved_exists = Fs.exists (snapshot_path workspace_root "missing_approved")
               |> Result.expect ~msg:"stat approved" in
               let pending_exists = Fs.exists pending |> Result.expect ~msg:"stat pending" in
@@ -69,7 +69,7 @@ let test_snapshot_matching_approved_passes =
                   match Test.Snapshot.assert_text ~ctx ~actual:"matching text\n" with
                   | Error msg -> Error msg
                   | Ok () ->
-                      let pending = Path.of_string (Path.to_string approved ^ ".new")
+                      let pending = Path.from_string (Path.to_string approved ^ ".new")
                       |> Result.expect ~msg:"pending snapshot path should be valid" in
                       let pending_exists = Fs.exists pending |> Result.expect ~msg:"stat pending snapshot" in
                       if pending_exists then
@@ -94,7 +94,7 @@ let test_snapshot_mismatch_writes_pending =
                   match Test.Snapshot.assert_text ~ctx ~actual:"new text\n" with
                   | Ok () -> Error "expected snapshot mismatch to fail"
                   | Error msg ->
-                      let pending = Path.of_string (Path.to_string approved ^ ".new")
+                      let pending = Path.from_string (Path.to_string approved ^ ".new")
                       |> Result.expect ~msg:"pending snapshot path should be valid" in
                       let pending_content = Fs.read pending |> Result.expect ~msg:"read pending snapshot" in
                       if not (String.equal pending_content "new text\n") then

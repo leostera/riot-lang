@@ -5,6 +5,8 @@ module Rune = Kernel.Unicode.Rune
 
 include Kernel.String
 
+let from_char = fun value -> make ~len:1 ~char:value
+
 module MutIter = struct
   type state = {
     source: string;
