@@ -1,7 +1,7 @@
 open Std
 module Test = Std.Test
 
-let ( let* ) = Result.and_then
+let ( let* ) result fn = Result.and_then result ~fn
 
 let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
   Riot_model.Package.{
@@ -91,17 +91,22 @@ let test_dev_scope_keeps_only_dev_outputs = fun _ctx ->
   let no_library = projected.library = None in
   let no_commands = projected.commands = [] in
   let no_runtime_sources = projected.sources.src = [] && projected.sources.native = [] in
-  let kept_dev_deps = List.map (fun (dep: Riot_model.Package.dependency) -> dep.name) projected.dev_dependencies
-  = [ "propane" ] in
-  let kept_runtime_deps = List.map (fun (dep: Riot_model.Package.dependency) -> dep.name) projected.dependencies
-  = [ "std" ] in
+  let kept_dev_deps =
+    projected.dev_dependencies
+    |> List.map ~fn:(fun (dep: Riot_model.Package.dependency) -> dep.name)
+    = [ "propane" ]
+  in
+  let kept_runtime_deps =
+    projected.dependencies
+    |> List.map ~fn:(fun (dep: Riot_model.Package.dependency) -> dep.name)
+    = [ "std" ]
+  in
   let no_normal_binaries =
-    List.for_all
-      (fun (bin: Riot_model.Package.binary) ->
+    projected.binaries
+    |> List.all ~fn:(fun (bin: Riot_model.Package.binary) ->
         String.starts_with ~prefix:"tests/" (Path.to_string bin.path)
         || String.starts_with ~prefix:"examples/" (Path.to_string bin.path)
         || String.starts_with ~prefix:"bench/" (Path.to_string bin.path))
-      projected.binaries
   in
   if
     no_library && no_commands && no_runtime_sources && kept_dev_deps && kept_runtime_deps && no_normal_binaries
@@ -147,8 +152,8 @@ path = "examples/test_https_httpbin.ml"
         ~relative_path:(Path.v "packages/demo")
       |> Result.expect ~msg:"Expected package manifest to parse" in
       let binary_names = pkg.binaries
-      |> List.map (fun (bin: Riot_model.Package.binary) -> bin.name)
-      |> List.sort String.compare in
+      |> List.map ~fn:(fun (bin: Riot_model.Package.binary) -> bin.name)
+      |> List.sort ~compare:String.compare in
       match binary_names with
       | ["simple_https";"test_https_httpbin"] -> Ok ()
       | _ ->
@@ -599,11 +604,11 @@ version = "0.1.0"
       | Ok (workspace, errors) ->
           if errors != [] then
             Error ("expected no workspace loading errors, got: "
-            ^ String.concat "; " (List.map Riot_model.Workspace_manager.load_error_to_string errors))
+            ^ String.concat "; " (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
           else
             let names = workspace.Riot_model.Workspace.packages
-            |> List.map (fun p -> p.Riot_model.Package.name)
-            |> List.sort String.compare in
+            |> List.map ~fn:(fun p -> p.Riot_model.Package.name)
+            |> List.sort ~compare:String.compare in
             Test.assert_equal ~expected:[ "app"; "kernel"; "vendor" ] ~actual:names;
             Ok ())
 
@@ -670,35 +675,26 @@ std = { path = "../std", version = "*" }
       match Riot_model.Workspace_manager.scan workspace_manager root with
       | Error err -> Error err
       | Ok (workspace, errors) ->
-          if not (List.is_empty errors) then
-            Error ("expected missing path+version dependency to defer to later resolution, got: "
-            ^ String.concat "; " (List.map Riot_model.Workspace_manager.load_error_to_string errors))
-          else
-            let names = workspace.Riot_model.Workspace.packages
-            |> List.map (fun p -> p.Riot_model.Package.name)
-            |> List.sort String.compare in
+        if not (List.is_empty errors) then
+          Error ("expected missing path+version dependency to defer to later resolution, got: "
+            ^ String.concat "; " (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
+        else
+          let names = workspace.Riot_model.Workspace.packages
+            |> List.map ~fn:(fun p -> p.Riot_model.Package.name)
+            |> List.sort ~compare:String.compare in
             Test.assert_equal ~expected:[ "app" ] ~actual:names;
             Ok ())
 
 let test_workspace_manager_synthesizes_single_package_workspace = fun _ctx ->
-  let root = Path.v
-    ("/tmp/riot_model_single_package_workspace_"
-    ^ Int.to_string (System.OsProcess.current_pid ())
-    ^ "_"
-    ^ Int.to_string (Random.bits ())) in
-  let cleanup () =
-    match Fs.remove_dir_all root with
-    | Ok () -> ()
-    | Error _ -> ()
-  in
-  let original_dir = Env.current_dir () in
-  let result =
-    let* () = Fs.create_dir_all root |> Result.map_error IO.error_message in
-    let src_dir = Path.(root / Path.v "src") in
-    let* () = Fs.create_dir_all src_dir |> Result.map_error IO.error_message in
-    let* () =
-      Fs.write
-        {|
+  with_tempdir "riot_model_single_package_workspace"
+    (fun root ->
+      let original_dir = Env.current_dir () in
+      let result =
+        let src_dir = Path.(root / Path.v "src") in
+        let* () = Fs.create_dir_all src_dir |> Result.map_err ~fn:IO.error_message in
+        let* () =
+          Fs.write
+            {|
 [package]
 name = "demo"
 version = "0.1.0"
@@ -710,47 +706,46 @@ path = "src/demo.ml"
 name = "main"
 path = "src/demo.ml"
 |}
-        Path.(root / Path.v "riot.toml") |> Result.map_error IO.error_message
-    in
-    let* () = Fs.write "let () = print_endline \"demo\"\n" Path.(src_dir / Path.v "demo.ml")
-    |> Result.map_error IO.error_message in
-    let* () = Env.set_current_dir root |> Result.map_error path_error_message in
-    let workspace_manager = Riot_model.Workspace_manager.create () in
-    match Riot_model.Workspace_manager.scan workspace_manager (Path.v ".") with
-    | Error err -> Error err
-    | Ok (workspace, errors) ->
-        if not (List.is_empty errors) then
-          Error ("expected no standalone package load errors, got: "
-          ^ String.concat "; " (List.map Riot_model.Workspace_manager.load_error_to_string errors))
-        else
-          match workspace.Riot_model.Workspace.packages with
-          | [ package ] ->
-              if
-                String.equal package.Riot_model.Package.name "demo"
-                && Path.equal package.Riot_model.Package.relative_path (Path.v ".")
-              then
-                Ok ()
-              else
-                Error ("expected detached package scan to synthesize a one-package workspace, got root="
-                ^ Path.to_string workspace.root
-                ^ " package="
-                ^ package.Riot_model.Package.name
-                ^ " relative="
-                ^ Path.to_string package.Riot_model.Package.relative_path)
-          | packages -> Error ("expected one package, got "
-          ^ Int.to_string (List.length packages)
-          ^ " root="
-          ^ Path.to_string workspace.root
-          ^ " names="
-          ^ String.concat ", " (List.map (fun (pkg: Riot_model.Package.t) -> pkg.name) packages))
-  in
-  let _ =
-    match original_dir with
-    | Ok dir -> Env.set_current_dir dir
-    | Error _ -> Ok ()
-  in
-  cleanup ();
-  result
+            Path.(root / Path.v "riot.toml") |> Result.map_err ~fn:IO.error_message
+        in
+        let* () = Fs.write "let () = print_endline \"demo\"\n" Path.(src_dir / Path.v "demo.ml")
+        |> Result.map_err ~fn:IO.error_message in
+        let* () = Env.set_current_dir root |> Result.map_err ~fn:path_error_message in
+        let workspace_manager = Riot_model.Workspace_manager.create () in
+        match Riot_model.Workspace_manager.scan workspace_manager (Path.v ".") with
+        | Error err -> Error err
+        | Ok (workspace, errors) ->
+            if not (List.is_empty errors) then
+              Error ("expected no standalone package load errors, got: "
+              ^ String.concat "; " (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
+            else
+              match workspace.Riot_model.Workspace.packages with
+              | [ package ] ->
+                  if
+                    String.equal package.Riot_model.Package.name "demo"
+                    && Path.equal package.Riot_model.Package.relative_path (Path.v ".")
+                  then
+                    Ok ()
+                  else
+                    Error ("expected detached package scan to synthesize a one-package workspace, got root="
+                    ^ Path.to_string workspace.root
+                    ^ " package="
+                    ^ package.Riot_model.Package.name
+                    ^ " relative="
+                    ^ Path.to_string package.Riot_model.Package.relative_path)
+              | packages -> Error ("expected one package, got "
+              ^ Int.to_string (List.length packages)
+              ^ " root="
+              ^ Path.to_string workspace.root
+              ^ " names="
+              ^ String.concat ", " (List.map packages ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.name)))
+      in
+      let _ =
+        match original_dir with
+        | Ok dir -> Env.set_current_dir dir
+        | Error _ -> Ok ()
+      in
+      result)
 
 let test_user_config_parses_registry_api_token = fun _ctx ->
   let toml =
@@ -818,10 +813,10 @@ api_token = "publish-token"
   | Error err -> Error (Riot_model.User_config.message err)
   | Ok config -> (
       match
-        List.find_opt
-          (fun (name, _registry) ->
-            String.equal name "pkgs.ml")
+        List.find
           config.Riot_model.User_config.registries
+          ~fn:(fun (name, _registry) ->
+            String.equal name "pkgs.ml")
       with
       | None -> Error "expected pkgs.ml registry entry to be present"
       | Some (_name, registry) ->
@@ -923,9 +918,9 @@ let test_debug_profile_defaults_to_native_with_debug_symbols = fun _ctx ->
   let flags = Riot_model.Profile.to_compiler_flags profile in
   if
     profile.kind = Riot_model.Ocaml_compiler.Native
-    && List.mem "-inline" flags
-    && List.mem "0" flags
-    && List.mem "-g" flags
+    && List.contains flags ~value:"-inline"
+    && List.contains flags ~value:"0"
+    && List.contains flags ~value:"-g"
   then
     Ok ()
   else
@@ -940,13 +935,13 @@ let test_release_profile_defaults_to_strict_native_optimization = fun _ctx ->
   let flags = Riot_model.Profile.to_compiler_flags profile in
   if not (profile.kind = Riot_model.Ocaml_compiler.Native) then
     Error "expected release profile to stay native"
-  else if not (List.mem "-noassert" flags) then
+  else if not (List.contains flags ~value:"-noassert") then
     Error "expected release profile to include -noassert"
-  else if not (List.mem "-compact" flags) then
+  else if not (List.contains flags ~value:"-compact") then
     Error "expected release profile to include -compact"
-  else if not (List.mem "-inline" flags && List.mem "100" flags) then
+  else if not (List.contains flags ~value:"-inline" && List.contains flags ~value:"100") then
     Error "expected release profile to include -inline 100"
-  else if not (List.mem "-warn-error" flags && List.mem "+a" flags) then
+  else if not (List.contains flags ~value:"-warn-error" && List.contains flags ~value:"+a") then
     Error "expected release profile to treat all warnings as errors"
   else
     Ok ()

@@ -10,26 +10,31 @@ let strip_ansi_codes = fun str ->
   let len = String.length str in
   let out = Kernel.Bytes.create ~size:len in
   let rec skip_until_m index =
-    if index >= len then
-      index
-    else if Char.equal (String.get_unchecked str ~at:index) 'm' then
-      index + 1
-    else
-      skip_until_m (index + 1)
+    match String.get str ~at:index with
+    | None -> len
+    | Some char ->
+        if Char.equal char 'm' then
+          index + 1
+        else
+          skip_until_m (index + 1)
   in
   let rec strip read_index write_index =
     if read_index >= len then
       Kernel.Bytes.sub_unchecked out ~offset:0 ~len:write_index |> Kernel.Bytes.to_string
-    else if
-      read_index + 1 < len
-      && Char.equal (String.get_unchecked str ~at:read_index) '\027'
-      && Char.equal (String.get_unchecked str ~at:(read_index + 1)) '['
-    then
-      strip (skip_until_m (read_index + 2)) write_index
-    else (
-      Kernel.Bytes.set_unchecked out ~at:write_index ~char:(String.get_unchecked str ~at:read_index);
-      strip (read_index + 1) (write_index + 1)
-    )
+    else
+      match String.get str ~at:read_index with
+      | None ->
+          Kernel.Bytes.sub_unchecked out ~offset:0 ~len:write_index |> Kernel.Bytes.to_string
+      | Some '\027' -> (
+          match String.get str ~at:(read_index + 1) with
+          | Some '[' -> strip (skip_until_m (read_index + 2)) write_index
+          | _ ->
+              Kernel.Bytes.set_unchecked out ~at:write_index ~char:'\027';
+              strip (read_index + 1) (write_index + 1)
+        )
+      | Some char ->
+          Kernel.Bytes.set_unchecked out ~at:write_index ~char;
+          strip (read_index + 1) (write_index + 1)
   in
   strip 0 0
 
@@ -1318,11 +1323,17 @@ let kind_from_json = fun json ->
                     if message = "Syntax error" then
                       SyntaxError
                     else if String.starts_with ~prefix:"Unbound value " message then
-                      UnboundValue { name = String.sub message 14 (String.length message - 14) }
+                      UnboundValue {
+                        name = String.sub message ~offset:14 ~len:(String.length message - 14)
+                      }
                     else if String.starts_with ~prefix:"Unbound module " message then
-                      UnboundModule { name = String.sub message 15 (String.length message - 15) }
+                      UnboundModule {
+                        name = String.sub message ~offset:15 ~len:(String.length message - 15)
+                      }
                     else if String.starts_with ~prefix:"Cannot find file " message then
-                      FileNotFound { filename = String.sub message 17 (String.length message - 17) }
+                      FileNotFound {
+                        filename = String.sub message ~offset:17 ~len:(String.length message - 17)
+                      }
                     else
                       OtherError { message }
                   in
