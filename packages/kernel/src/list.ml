@@ -30,7 +30,7 @@ let concat =
     | [] -> reverse acc
     | values :: rest -> loop (reverse_append values acc) rest
   in
-  fun values -> loop [] (reverse values)
+  fun values -> loop [] values
 
 let init = fun ~count ~fn ->
   if count < 0 then

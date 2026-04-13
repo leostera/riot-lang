@@ -623,7 +623,7 @@ let from_json = fun json ->
         | Error err -> Error err
         | Ok () ->
             Vector.iter dependencies_to_wire |> Iterator.to_list |> List.for_each ~fn:(fun (node, dependency_ids) ->
-                List.for_each dependency_ids ~fn:(fun dep_id ->
+                List.for_each (List.reverse dependency_ids) ~fn:(fun dep_id ->
                     match HashMap.get id_to_node ~key:dep_id with
                     | Some dep_node -> add_dependency graph node ~depends_on:dep_node
                     | None -> ())

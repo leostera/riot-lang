@@ -286,7 +286,7 @@ let module_graph_of_json = fun json ->
               | Error e -> Error e
               | Ok () ->
                   Vector.iter pending_deps |> Iterator.to_list |> List.for_each ~fn:(fun (node, dep_ids) ->
-                      List.for_each dep_ids ~fn:(fun dep_id ->
+                      List.for_each (List.reverse dep_ids) ~fn:(fun dep_id ->
                           match HashMap.get id_to_node ~key:dep_id with
                           | Some dep_node -> G.add_edge node ~depends_on:dep_node
                           | None -> ()));
