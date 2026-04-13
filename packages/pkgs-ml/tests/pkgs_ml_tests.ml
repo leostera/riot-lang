@@ -1,7 +1,7 @@
 open Std
 module Test = Std.Test
 
-let ( let* ) = Result.and_then
+let ( let* ) = fun value fn -> Result.and_then value ~fn
 
 let test_registry_split_layout = fun _ctx ->
   let cache = Pkgs_ml.Registry_cache.create
@@ -65,7 +65,11 @@ let test_sparse_index_document_parsing = fun _ctx ->
         String.equal document.name "kernel"
         && String.equal document.latest "0.0.1"
         && List.length document.releases = 1
-        && (List.hd document.releases).yanked
+        && (
+          match List.head document.releases with
+          | Some release -> release.yanked
+          | None -> false
+        )
       then
         Ok ()
       else
@@ -197,7 +201,7 @@ let make_fetch_recorder = fun ?post_handler get_handler ->
         requests := { method_ = "GET"; url = Net.Uri.to_string uri; headers = []; body = None } :: !requests;
         get_handler uri)
       ?post:(Option.map
-        (fun post_handler ->
+        ~fn:(fun post_handler ->
           fun uri ~headers ~body ->
             requests := { method_ = "POST"; url = Net.Uri.to_string uri; headers; body = Some body }
             :: !requests;
@@ -219,16 +223,24 @@ let with_riot_agent = fun value f ->
       raise exn
 
 let with_env_var = fun name value_opt f ->
-  let restore_value = Env.var Env.String ~name in
+  let restore_value = Env.get Env.String ~var:name in
   let restore () =
     match restore_value with
-    | Some value -> Kernel.Env.putenv name value
-    | None -> Kernel.Env.unsetenv name
+    | Some value ->
+        let _ = Kernel.Env.set ~var:name ~value in
+        ()
+    | None ->
+        let _ = Kernel.Env.remove ~var:name in
+        ()
   in
   let () =
     match value_opt with
-    | Some value -> Kernel.Env.putenv name value
-    | None -> Kernel.Env.unsetenv name
+    | Some value ->
+        let _ = Kernel.Env.set ~var:name ~value in
+        ()
+    | None ->
+        let _ = Kernel.Env.remove ~var:name in
+        ()
   in
   try
     let result = f () in
@@ -324,7 +336,7 @@ let test_filesystem_registry_fetches_config_on_cache_miss = fun _ctx ->
             | Ok None ->
                 Error "expected fetched config to be cached"
             | Ok (Some cached) ->
-                let requested = List.rev !requests |> List.map (fun request -> request.url) in
+                let requested = List.reverse !requests |> List.map ~fn:(fun request -> request.url) in
                 if
                   String.equal config.kind "sparse"
                   && String.equal cached.index_base_url "https://cdn.pkgs.ml/index/v1"
@@ -378,7 +390,7 @@ let test_filesystem_registry_fetches_package_document_on_cache_miss = fun _ctx -
             | (_, Ok None) ->
                 Error "expected fetched sparse index files to be cached"
             | Ok (Some _), Ok (Some cached) ->
-                let requested = List.rev !requests |> List.map (fun request -> request.url) in
+                let requested = List.reverse !requests |> List.map ~fn:(fun request -> request.url) in
                 if
                   String.equal document.name "kernel"
                   && String.equal cached.name "kernel"
@@ -432,7 +444,7 @@ let test_filesystem_registry_returns_none_for_missing_package_document = fun _ct
             | Ok (Some _) ->
                 Error "expected missing package document lookup to leave cache empty"
             | Ok None ->
-                let requested = List.rev !requests |> List.map (fun request -> request.url) in
+                let requested = List.reverse !requests |> List.map ~fn:(fun request -> request.url) in
                 if
                   requested
                   = [
@@ -494,7 +506,7 @@ let test_filesystem_registry_refetches_stale_cached_config = fun _ctx ->
         let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
         match Pkgs_ml.Registry.read_config registry with
         | Ok (Some config) when String.equal config.index_base_url "https://cdn.pkgs.ml/index/v1"
-        && List.map (fun request -> request.url) (List.rev !requests)
+        && List.map (List.reverse !requests) ~fn:(fun request -> request.url)
         = [ "https://cdn.pkgs.ml/index/v1/config.json" ] -> Ok ()
         | Ok (Some _) -> Error "expected stale cached config to be refreshed from the registry"
         | Ok None -> Error "expected refreshed config to be available"
@@ -540,7 +552,7 @@ let test_filesystem_registry_refetches_stale_cached_package_document = fun _ctx 
         let registry = Pkgs_ml.Registry.filesystem ~fetch cache in
         match Pkgs_ml.Registry.read_package_document registry ~package_name:"kernel" with
         | Ok (Some document) when String.equal document.latest "0.0.3"
-        && List.map (fun request -> request.url) (List.rev !requests)
+        && List.map (List.reverse !requests) ~fn:(fun request -> request.url)
         = [ "https://cdn.pkgs.ml/index/v1/ke/rn/kernel.json" ] -> Ok ()
         | Ok (Some _) -> Error "expected stale cached package document to be refreshed from the registry"
         | Ok None -> Error "expected refreshed package document to be available"
@@ -572,7 +584,7 @@ let test_registry_search_packages = fun _ctx ->
           { package_name="kernel"; latest_version="0.0.1"; description=Some "Core primitives" };
           { package_name="kernel-tools"; latest_version="0.1.0"; description=None };
 
-        ] when List.map (fun request -> request.url) (List.rev !requests)
+        ] when List.map (List.reverse !requests) ~fn:(fun request -> request.url)
         = [ "https://api.pkgs.ml/v1/search?q=ker&limit=3" ] -> Ok ()
         | Ok _ -> Error "expected search results to decode from the registry search api"
         | Error err -> Error err)
@@ -675,9 +687,9 @@ let test_registry_materialize_skips_existing_release = fun _ctx ->
 let tar_block_size = 512
 
 let tar_bytes_set_string = fun dst ~offset ~width value ->
-  let bytes = IO.Bytes.of_string value in
+  let bytes = IO.Bytes.from_string value in
   let copy_len = min width (IO.Bytes.length bytes) in
-  IO.Bytes.blit bytes 0 dst offset copy_len
+  IO.Bytes.blit_unchecked bytes ~src_offset:0 ~dst ~dst_offset:offset ~len:copy_len
 
 let tar_octal_string = fun value ->
   let rec loop acc remaining =
@@ -685,8 +697,8 @@ let tar_octal_string = fun value ->
       acc
     else
       let digit = Int64.to_int (Int64.rem remaining 8L) in
-      let ch = Char.chr (Char.code '0' + digit) in
-      loop (String.make 1 ch ^ acc) (Int64.div remaining 8L)
+      let ch = Char.from_int_unchecked (Char.code '0' + digit) in
+      loop (String.make ~len:1 ~char:ch ^ acc) (Int64.div remaining 8L)
   in
   if Int64.equal value 0L then
     "0"
@@ -695,25 +707,26 @@ let tar_octal_string = fun value ->
 
 let tar_zero_pad_left = fun width value ->
   if String.length value >= width then
-    String.sub value (String.length value - width) width
+    String.sub value ~offset:(String.length value - width) ~len:width
   else
-    String.make (width - String.length value) '0' ^ value
+    String.make ~len:(width - String.length value) ~char:'0' ^ value
 
 let tar_bytes_set_octal = fun dst ~offset ~width value ->
   let digits_width = max 1 (width - 1) in
   let trimmed = tar_zero_pad_left digits_width (tar_octal_string value) in
   tar_bytes_set_string dst ~offset ~width:(width - 1) trimmed;
-  IO.Bytes.set dst (offset + width - 1) '\000'
+  IO.Bytes.set_unchecked dst ~at:(offset + width - 1) ~char:'\000'
 
 let tar_compute_checksum = fun header ->
   let sum = ref 0 in
   for index = 0 to tar_block_size - 1 do
-    sum := !sum + Char.code (IO.Bytes.get header index)
+    sum := !sum + Char.code (IO.Bytes.get_unchecked header ~at:index)
   done;
   !sum
 
 let tar_make_header = fun ~name ~kind ~mode ~size ->
-  let header = IO.Bytes.make tar_block_size '\000' in
+  let header = IO.Bytes.create ~size:tar_block_size in
+  IO.Bytes.fill header ~offset:0 ~len:tar_block_size ~char:'\000';
   tar_bytes_set_string header ~offset:0 ~width:100 name;
   tar_bytes_set_octal header ~offset:100 ~width:8 mode;
   tar_bytes_set_octal header ~offset:108 ~width:8 0L;
@@ -721,11 +734,11 @@ let tar_make_header = fun ~name ~kind ~mode ~size ->
   tar_bytes_set_octal header ~offset:124 ~width:12 size;
   tar_bytes_set_octal header ~offset:136 ~width:12 0L;
   tar_bytes_set_string header ~offset:148 ~width:8 "        ";
-  IO.Bytes.set header 156 kind;
+  IO.Bytes.set_unchecked header ~at:156 ~char:kind;
   tar_bytes_set_string header ~offset:257 ~width:6 "ustar";
   tar_bytes_set_string header ~offset:263 ~width:2 "00";
   let checksum = tar_compute_checksum header in
-  let checksum_field = tar_zero_pad_left 6 (tar_octal_string (Int64.of_int checksum)) ^ "\000 " in
+  let checksum_field = tar_zero_pad_left 6 (tar_octal_string (Int64.from_int checksum)) ^ "\000 " in
   tar_bytes_set_string header ~offset:148 ~width:8 checksum_field;
   header
 
@@ -735,7 +748,7 @@ let tar_pad_data = fun data ->
   if remainder = 0 then
     ""
   else
-    String.make (tar_block_size - remainder) '\000'
+    String.make ~len:(tar_block_size - remainder) ~char:'\000'
 
 let create_test_archive = fun ~source_root ~archive_path ->
   let archive_parent =
@@ -753,9 +766,9 @@ let create_test_archive = fun ~source_root ~archive_path ->
       | (_, Error err) -> Error ("failed to read source fixture for test archive: "
       ^ IO.error_message err)
       | Ok manifest, Ok source ->
-          let buffer = IO.Buffer.create 2_048 in
+          let buffer = IO.Buffer.create ~size:2_048 in
           let add_entry ~name ~kind ~mode data =
-            let size = Int64.of_int (String.length data) in
+            let size = Int64.from_int (String.length data) in
             IO.Buffer.add_bytes buffer (tar_make_header ~name ~kind ~mode ~size);
             IO.Buffer.add_string buffer data;
             IO.Buffer.add_string buffer (tar_pad_data data)
@@ -764,9 +777,9 @@ let create_test_archive = fun ~source_root ~archive_path ->
           add_entry ~name:"./src/" ~kind:'5' ~mode:0o755L "";
           add_entry ~name:"./riot.toml" ~kind:'0' ~mode:0o644L manifest;
           add_entry ~name:"./src/std.ml" ~kind:'0' ~mode:0o644L source;
-          IO.Buffer.add_string buffer (String.make (tar_block_size * 2) '\000');
+          IO.Buffer.add_string buffer (String.make ~len:(tar_block_size * 2) ~char:'\000');
           Fs.write (IO.Buffer.contents buffer) archive_path
-          |> Result.map_err (fun err -> "failed to write test archive: " ^ IO.error_message err)
+          |> Result.map_err ~fn:(fun err -> "failed to write test archive: " ^ IO.error_message err)
     )
 
 let gzip_file = fun ~src ~dst ->
@@ -778,20 +791,11 @@ let gzip_file = fun ~src ~dst ->
   match Fs.create_dir_all parent with
   | Error err -> Error ("failed to create gzip output parent directory: " ^ IO.error_message err)
   | Ok () ->
-      Compress.Gzip.compress_file ~src ~dst |> Result.map_err
+      Compress.Gzip.compress_file ~src ~dst |> Result.map_err ~fn:
         (
           function
           | Compress.Gzip.File_io_error err -> "failed to gzip test archive: " ^ IO.error_message err
-          | Compress.Gzip.File_gzip_error err -> (
-              match err with
-              | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Invalid_data -> "failed to gzip test archive: invalid gzip data"
-              | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Need_dictionary -> "failed to gzip test archive: gzip stream requires a preset dictionary"
-              | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Buffer_error -> "failed to gzip test archive: gzip encoder buffer error"
-              | Compress.Gzip.Kernel_error Kernel.Compress.Gzip.Out_of_memory -> "failed to gzip test archive: gzip encoder out of memory"
-              | Compress.Gzip.Kernel_error (Kernel.Compress.Gzip.Unknown_error msg) -> "failed to gzip test archive: "
-              ^ msg
-              | Compress.Gzip.Truncated_input -> "failed to gzip test archive: truncated gzip input"
-            )
+          | Compress.Gzip.File_gzip_error err -> "failed to gzip test archive: " ^ Compress.Gzip.error_to_string err
         )
 
 let test_filesystem_registry_materializes_cached_release = fun _ctx ->
@@ -966,7 +970,7 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
                     | Ok false, _, _ ->
                         Error "expected downloaded archive to be cached"
                     | Ok true, Ok manifest, Ok source ->
-                        let requested = List.rev !requests |> List.map (fun request -> request.url) in
+                        let requested = List.reverse !requests |> List.map ~fn:(fun request -> request.url) in
                         if
                           String.equal manifest "[package]\nname = \"std\"\nversion = \"0.1.0\"\n"
                           && String.equal source "let answer = 42\n"
@@ -1054,7 +1058,7 @@ let test_filesystem_registry_refetches_corrupt_cached_archive = fun _ctx ->
                     match Fs.read manifest_path, Fs.read materialized_source with
                     | Ok manifest, Ok source when String.equal manifest "[package]\nname = \"std\"\nversion = \"0.1.0\"\n"
                     && String.equal source "let answer = 42\n" ->
-                        let requested = List.rev !requests |> List.map (fun request -> request.url) in
+                        let requested = List.reverse !requests |> List.map ~fn:(fun request -> request.url) in
                         if
                           requested
                           = [
@@ -1123,14 +1127,14 @@ let test_registry_publish_artifact_posts_tarball_to_artifact_publish_route = fun
       match Pkgs_ml.Registry.publish_artifact registry ~api_token:"root-secret" ~artifact with
       | Error err -> Error err
       | Ok published ->
-          let requested = List.rev !requests in
+          let requested = List.reverse !requests in
           match requested with
           | [ request ] ->
               let has_header name value =
-                List.exists
-                  (fun (header_name, header_value) ->
-                    String.equal header_name name && String.equal header_value value)
+                List.any
                   request.headers
+                  ~fn:(fun (header_name, header_value) ->
+                    String.equal header_name name && String.equal header_value value)
               in
               if
                 String.equal request.method_ "POST"
@@ -1200,13 +1204,13 @@ let test_registry_yank_release_posts_to_yank_route = fun _ctx ->
         ~version:"0.1.0" with
       | Error err -> Error err
       | Ok yanked_release -> (
-          match List.rev !requests with
+          match List.reverse !requests with
           | [ request ] ->
               let has_header name value =
-                List.exists
-                  (fun (header_name, header_value) ->
-                    String.equal header_name name && String.equal header_value value)
+                List.any
                   request.headers
+                  ~fn:(fun (header_name, header_value) ->
+                    String.equal header_name name && String.equal header_value value)
               in
               if
                 String.equal request.method_ "POST"
@@ -1272,13 +1276,13 @@ let test_registry_riot_agent_env_override_wins_over_default_agent = fun _ctx ->
           match Pkgs_ml.Registry.publish_artifact registry ~api_token:"root-secret" ~artifact with
           | Error err -> Error err
           | Ok _ -> (
-              match List.rev !requests with
+              match List.reverse !requests with
               | [ request ] ->
                   let header =
-                    List.find_opt
-                      (fun (name, _value) ->
-                        String.equal name "X-Riot-Agent")
+                    List.find
                       request.headers
+                      ~fn:(fun (name, _value) ->
+                        String.equal name "X-Riot-Agent")
                   in
                   if header = Some ("X-Riot-Agent", "riot-docs-pipeline@1.0") then
                     Ok ()
