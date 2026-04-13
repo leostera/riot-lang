@@ -1,6 +1,10 @@
 open Std
 module Test = Std.Test
 
+type Message.t +=
+  | ConcurrentSaveGo
+  | ConcurrentSaveComplete of (string * (unit, Riot_store.Store.error) result)
+
 let make_test_workspace = fun tmpdir ->
   Riot_model.Workspace.{
     name = None;
@@ -15,6 +19,13 @@ let make_test_workspace = fun tmpdir ->
   }
 
 let read_file = fun path -> Fs.read_to_string path |> Result.expect ~msg:"failed to read file"
+
+let write_output = fun sandbox relative_path content ->
+  let output = Path.(sandbox / relative_path) in
+  let parent = Path.dirname output in
+  let _ = Fs.create_dir_all parent |> Result.expect ~msg:"create output parent should succeed" in
+  let _ = Fs.write content output |> Result.expect ~msg:"write output should succeed" in
+  output
 
 let write_workspace_cache_config = fun tmpdir ~keep_generations ~max_size ->
   let riot_dir = Path.(tmpdir / Path.v ".riot") in
@@ -194,6 +205,69 @@ let test_put_if_absent_keeps_first_writer = fun _ctx ->
           Ok ()
         else
           Error "second writer should not replace existing cache entry")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_concurrent_same_hash_saves_share_cache_safely = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"store_concurrent_same_hash_test"
+      (fun tmpdir ->
+        let workspace = make_test_workspace tmpdir in
+        let store = Riot_store.Store.create ~workspace in
+        let hash = Crypto.hash_string "concurrent-shared-hash" in
+        let left_sandbox = Path.(tmpdir / Path.v "sandbox-left") in
+        let right_sandbox = Path.(tmpdir / Path.v "sandbox-right") in
+        let left_output = write_output left_sandbox (Path.v "pkg.cmx") "shared-artifact" in
+        let right_output = write_output right_sandbox (Path.v "pkg.cmx") "shared-artifact" in
+        let parent = self () in
+        let spawn_worker = fun name sandbox output ->
+          spawn
+            (fun () ->
+              let selector msg =
+                match msg with
+                | ConcurrentSaveGo -> `select msg
+                | _ -> `skip
+              in
+              let _ = receive ~selector () in
+              let result =
+                Riot_store.Store.save
+                  store
+                  ~package:"pkg"
+                  ~hash
+                  ~sandbox_dir:sandbox
+                  ~outs:[ output ]
+                |> Result.map ~fn:(fun _ -> ())
+              in
+              send parent (ConcurrentSaveComplete (name, result));
+              Ok ())
+        in
+        let left_worker = spawn_worker "left" left_sandbox left_output in
+        let right_worker = spawn_worker "right" right_sandbox right_output in
+        send left_worker ConcurrentSaveGo;
+        send right_worker ConcurrentSaveGo;
+        let selector msg =
+          match msg with
+          | ConcurrentSaveComplete _ -> `select msg
+          | _ -> `skip
+        in
+        let result1 = receive ~selector () in
+        let result2 = receive ~selector () in
+        match (result1, result2) with
+        | ConcurrentSaveComplete (_, Ok ()), ConcurrentSaveComplete (_, Ok ()) ->
+            let target = Path.(tmpdir / Path.v "out") in
+            let _ = Riot_store.Store.promote store hash ~target_dir:target
+            |> Result.expect ~msg:"promote should succeed after concurrent saves" in
+            if String.equal (read_file Path.(target / Path.v "pkg.cmx")) "shared-artifact" then
+              Ok ()
+            else
+              Error "expected concurrent same-hash saves to leave a readable artifact"
+        | ConcurrentSaveComplete (name, Error err), _ ->
+            Error (name ^ " save failed: " ^ Riot_store.Store.error_message err)
+        | _, ConcurrentSaveComplete (name, Error err) ->
+            Error (name ^ " save failed: " ^ Riot_store.Store.error_message err)
+        | _ ->
+            Error "unexpected concurrent save result")
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -720,6 +794,7 @@ let tests =
     case "get preserves relative paths" test_get_preserves_relative_paths;
     case "exists requires manifest" test_exists_requires_manifest_file;
     case "put-if-absent keeps first writer" test_put_if_absent_keeps_first_writer;
+    case "concurrent same-hash saves share cache safely" test_concurrent_same_hash_saves_share_cache_safely;
     case "plan bundle round trip" test_plan_bundle_round_trip;
     case "hash manifest round trip preserves exports" test_hash_manifest_round_trip_preserves_exports;
     case "artifact round trip preserves manifest payload" test_artifact_round_trip_preserves_ocamlc_warnings;

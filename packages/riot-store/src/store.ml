@@ -165,6 +165,28 @@ let cleanup_temp_dir = fun temp_dir ->
   | Ok false
   | Error _ -> Ok ()
 
+let artifact_temp_counter = cell 0L
+
+let next_artifact_temp_nonce = fun () ->
+  let nonce = Sync.Cell.get artifact_temp_counter in
+  Sync.Cell.set artifact_temp_counter (Int64.add nonce 1L);
+  nonce
+
+let artifact_temp_dir = fun store hash ->
+  let nanos = Time.SystemTime.duration_since_epoch () |> Time.Duration.to_nanos in
+  let pid = Process.id () |> Int32.to_string in
+  let nonce = next_artifact_temp_nonce () |> Int64.to_string in
+  let temp_name =
+    Std.Crypto.Digest.hex hash
+    ^ ".tmp."
+    ^ pid
+    ^ "."
+    ^ Int64.to_string nanos
+    ^ "."
+    ^ nonce
+  in
+  Path.(ContentStore.root store.content_store / Path.v temp_name)
+
 let hash_of_hex = fun hex ->
   let hex_nibble = fun ch ->
     match ch with
@@ -246,11 +268,7 @@ let promote = fun store hash ~target_dir ->
 (** Store artifacts from sandbox to content-addressable store *)
 let store_artifacts = fun store ~package ?(ocamlc_warnings = []) ?(exports = []) hash sandbox_dir declared_outputs ->
   let hash_dir = get_hash_dir store hash in
-  let temp_dir =
-    let nanos = Time.SystemTime.duration_since_epoch () |> Time.Duration.to_nanos in
-    let temp_name = Std.Crypto.Digest.hex hash ^ ".tmp." ^ Int64.to_string nanos in
-    Path.(ContentStore.root store.content_store / Path.v temp_name)
-  in
+  let temp_dir = artifact_temp_dir store hash in
   let* () = Fs.create_dir_all temp_dir
   |> Result.map_err ~fn:(fun cause -> CreateTempDirFailed { path = temp_dir; cause }) in
   (* Copy declared outputs to store and track what was actually stored *)
