@@ -33,7 +33,7 @@ let empty = fun ~root -> { root; rules = []; unmatched_is_ignore_on_files = fals
 let drop_prefix = fun value prefix ->
   let prefix_len = String.length prefix in
   if String.starts_with ~prefix value then
-    String.sub value prefix_len (String.length value - prefix_len)
+    String.sub value ~offset:prefix_len ~len:(String.length value - prefix_len)
   else
     value
 
@@ -41,7 +41,7 @@ let drop_suffix = fun value suffix ->
   let value_len = String.length value in
   let suffix_len = String.length suffix in
   if String.ends_with ~suffix value then
-    String.sub value 0 (value_len - suffix_len)
+    String.sub value ~offset:0 ~len:(value_len - suffix_len)
   else
     value
 
@@ -49,7 +49,7 @@ let strip_leading_dot_slash = fun value -> drop_prefix value "./"
 
 let strip_trailing_carriage_return = fun value ->
   if String.ends_with ~suffix:"\r" value then
-    String.sub value 0 (String.length value - 1)
+    String.sub value ~offset:0 ~len:(String.length value - 1)
   else
     value
 
@@ -84,9 +84,9 @@ let parse_line = fun ~syntax ~line_number input ->
     let negated = String.starts_with ~prefix:"!" input in
     let body =
       if String.starts_with ~prefix:"\\#" input || String.starts_with ~prefix:"\\!" input then
-        String.sub input 1 (String.length input - 1)
+        String.sub input ~offset:1 ~len:(String.length input - 1)
       else if negated then
-        String.sub input 1 (String.length input - 1)
+        String.sub input ~offset:1 ~len:(String.length input - 1)
       else
         input
     in
@@ -125,11 +125,11 @@ let parse_line = fun ~syntax ~line_number input ->
 let of_lines = fun ~root ~syntax lines ->
   let rec loop line_number acc = function
     | [] ->
-        let rules = List.rev acc in
+        let rules = List.reverse acc in
         let unmatched_is_ignore_on_files =
           match syntax with
           | Ignore_file -> false
-          | Override -> List.exists (fun rule -> Match.is_whitelist rule.action) rules
+          | Override -> List.any rules ~fn:(fun rule -> Match.is_whitelist rule.action)
         in
         Ok { root; rules; unmatched_is_ignore_on_files }
     | line :: rest -> (
@@ -141,7 +141,7 @@ let of_lines = fun ~root ~syntax lines ->
   in
   loop 1 [] lines
 
-let of_string = fun ~root ~syntax text -> of_lines ~root ~syntax (String.split_on_char '\n' text)
+let of_string = fun ~root ~syntax text -> of_lines ~root ~syntax (String.split ~by:"\n" text)
 
 let from_file = fun ~syntax path ->
   match Fs.exists path with
@@ -151,9 +151,10 @@ let from_file = fun ~syntax path ->
       Ok None
   | Ok true -> (
       match Fs.read path with
-      | Ok text -> of_string ~root:(Path.dirname path) ~syntax text
-      |> Result.map Option.some
-      |> Result.map_err (fun err -> Invalid_glob err)
+      | Ok text ->
+          of_string ~root:(Path.dirname path) ~syntax text
+          |> fun result -> Result.map result ~fn:Option.some
+          |> fun result -> Result.map_err result ~fn:(fun err -> Invalid_glob err)
       | Error err -> Error (File_system err)
     )
 
@@ -181,4 +182,4 @@ let matched = fun matcher ~path ~is_dir ->
         else
           loop rest
   in
-  loop (List.rev matcher.rules)
+  loop (List.reverse matcher.rules)

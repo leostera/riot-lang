@@ -14,7 +14,7 @@ type t
 (** Create a recursive walk plan with ignore-aware pruning.
 
     Defaults:
-    - `concurrency = System.available_parallelism`
+    - `concurrency = Thread.available_parallelism`
     - `sort = false`
     - `follow_symlinks = false`
     - `hidden = true`

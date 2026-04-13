@@ -231,19 +231,24 @@ let root_entry_for_path = fun opts ~depth path ->
       }
   | Error cause -> Error (make_error ~path ~depth cause)
 
-let hinted_entry_for_name = fun opts ~depth ~dir_path ~name kind ->
+let hinted_entry = fun opts ~depth ~dir_path (entry: ReadDir.entry) ->
+  let name = Path.to_string entry.path in
+  let kind = entry.kind in
   match kind with
-  | ReadDir.Regular ->
+  | ReadDir.RegularFile ->
       Ok (joined_entry ~depth ~kind:File ~dir_path ~name)
   | ReadDir.Directory ->
       Ok (joined_entry ~depth ~kind:Directory ~dir_path ~name)
-  | ReadDir.Symlink ->
+  | ReadDir.SymbolicLink ->
       let path_string = join_path_string dir_path name in
       if opts.follow_symlinks then
         entry_for_path_string opts ~depth path_string
       else
         Ok (joined_entry ~depth ~kind:Symlink ~dir_path ~name)
-  | ReadDir.Other ->
+  | ReadDir.CharacterDevice
+  | ReadDir.BlockDevice
+  | ReadDir.NamedPipe
+  | ReadDir.Socket ->
       Ok (joined_entry ~depth ~kind:Other ~dir_path ~name)
   | ReadDir.Unknown ->
       let path_string = join_path_string dir_path name in
@@ -263,14 +268,13 @@ let compare_item_path = fun left right ->
       1
 
 let next_dir_entry = fun opts ~depth ~dir_path handle ->
-  match ReadDir.next_raw_entry handle with
+  match ReadDir.next handle with
   | None -> None
-  | Some relative -> Some (hinted_entry_for_name
+  | Some entry -> Some (hinted_entry
     opts
     ~depth:(depth + 1)
     ~dir_path
-    ~name:relative.name
-    relative.kind)
+    entry)
 
 let next_dir_list = fun opts dir_list ->
   match dir_list with
@@ -326,7 +330,8 @@ let push = fun state (dent: entry) ->
       | None -> ()
   );
   let dir_path = FileItem.path_string dent in
-  match ReadDir.create_string dir_path with
+  let dir_path_value = FileItem.path dent in
+  match ReadDir.open_dir dir_path_value with
   | Error cause -> Error (make_error ?path:(path_option_of_string dir_path) ~depth:dent.depth cause)
   | Ok handle ->
       let dir_list = Opened { depth = dent.depth; dir_path; handle } in

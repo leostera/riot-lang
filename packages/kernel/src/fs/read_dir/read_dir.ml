@@ -13,7 +13,7 @@ type kind = File.kind =
   | Unknown
 
 type entry = {
-  name: string;
+  path: Path.t;
   kind: kind;
 }
 
@@ -60,9 +60,9 @@ let read_entry = fun dir ->
     match next_name dir with
     | None -> Result.Ok None
     | Some name ->
-        let path = Path.join dir.root (Path.from_string name) in
-        let* metadata = File.symlink_metadata path |> Result.map_err ~fn:(fun error -> File error) in
-        Result.Ok (Some { name; kind = File.Metadata.file_type metadata })
+        let path = Path.from_string name in
+        let* metadata = File.symlink_metadata Path.(dir.root / path) |> Result.map_err ~fn:(fun error -> File error) in
+        Result.Ok (Some { path; kind = File.Metadata.file_type metadata })
 
 let close = fun dir ->
   dir.closed <- true;

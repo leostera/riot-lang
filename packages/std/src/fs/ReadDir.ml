@@ -1,17 +1,15 @@
 open Global
 open Common
 
-type entry_kind =
-  | Unknown
-  | Regular
+type entry_kind = Kernel.Fs.ReadDir.kind =
+  | RegularFile
   | Directory
-  | Symlink
-  | Other
-
-type raw_entry = {
-  name: string;
-  kind: entry_kind;
-}
+  | SymbolicLink
+  | CharacterDevice
+  | BlockDevice
+  | NamedPipe
+  | Socket
+  | Unknown
 
 type entry = {
   path: Path.t;
@@ -27,33 +25,13 @@ type t = {
 
 type state = t
 
-type item = Path.t
+type item = entry
 
-let entry_kind_of_kernel = function
-  | Kernel.Fs.ReadDir.RegularFile -> Regular
-  | Kernel.Fs.ReadDir.Directory -> Directory
-  | Kernel.Fs.ReadDir.SymbolicLink -> Symlink
-  | Kernel.Fs.ReadDir.CharacterDevice
-  | Kernel.Fs.ReadDir.BlockDevice
-  | Kernel.Fs.ReadDir.NamedPipe
-  | Kernel.Fs.ReadDir.Socket -> Other
-  | Kernel.Fs.ReadDir.Unknown -> Unknown
-
-let create = fun path ->
+let open_dir = fun path ->
   let path_string = Path.to_string path in
   match Kernel.Fs.ReadDir.open_dir path_string with
   | Ok handle -> Ok { path; path_string; handle; closed = false }
   | Error error -> Error (of_read_dir_error error)
-
-let create_string = fun path_string ->
-  match Path.from_string path_string with
-  | Ok path -> create path
-  | Error (Path.InvalidUtf8 { path }) -> Error (IO.Unknown_error ("invalid UTF-8 path: " ^ path))
-  | Error (Path.SystemInvalidUtf8 { syscall; path }) -> Error (IO.Unknown_error ("invalid UTF-8 path from "
-  ^ syscall
-  ^ ": "
-  ^ path))
-  | Error (Path.SystemError message) -> Error (IO.Unknown_error message)
 
 let close = fun dir ->
   if dir.closed then
@@ -65,7 +43,7 @@ let close = fun dir ->
     | Error error -> Error (of_read_dir_error error)
   )
 
-let next_raw_entry = fun dir ->
+let next = fun dir ->
   if dir.closed then
     None
   else
@@ -74,28 +52,14 @@ let next_raw_entry = fun dir ->
         let _ = close dir in
         None
     | Ok (Some entry) ->
-        Some { name = entry.name; kind = entry_kind_of_kernel entry.kind }
+        Some { path = Path.from_string_unchecked entry.path; kind = entry.kind }
     | Error _ ->
         let _ = close dir in
         None
 
-let rec next_entry = fun dir ->
-  match next_raw_entry dir with
-  | Some entry -> (
-      match Path.from_string entry.name with
-      | Ok path -> Some { path; kind = entry.kind }
-      | Error _ -> next_entry dir
-    )
-  | None -> None
-
-let next = fun dir ->
-  match next_entry dir with
-  | Some entry -> Some entry.path
-  | None -> None
-
 let size = fun _ -> 0
 
 let clone = fun dir ->
-  match create_string dir.path_string with
+  match open_dir dir.path with
   | Ok clone -> clone
   | Error _ -> dir

@@ -200,3 +200,7 @@ let fold = fun value ~ok ~error ->
   match value with
   | Ok x -> ok x
   | Error e -> error e
+
+module Syntax = struct
+  let ( let* ) t fn = and_then t ~fn
+end

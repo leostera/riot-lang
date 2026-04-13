@@ -517,3 +517,7 @@ val both: ('a, 'e) t -> ('b, 'e) t -> ('a * 'b, 'e) t
     (* Convert any result to an exit code *) let to_exit_code = Result.fold
     ~ok:(fun _ -> 0) ~error:(fun _ -> 1) ``` *)
 val fold: ('a, 'e) t -> ok:('a -> 'c) -> error:('e -> 'c) -> 'c
+
+module Syntax: sig
+  val ( let* ): ('a, 'e) t -> ('a -> ('b, 'e) t) -> ('b, 'e) t
+end

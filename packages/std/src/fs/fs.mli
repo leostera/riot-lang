@@ -184,8 +184,25 @@ module ReadDir: sig
   (** Directory iterator *)
   type t
 
+  type entry_kind = Kernel.Fs.ReadDir.kind =
+    | RegularFile
+    | Directory
+    | SymbolicLink
+    | CharacterDevice
+    | BlockDevice
+    | NamedPipe
+    | Socket
+    | Unknown
+
+  type entry = {
+    path: Path.t;
+    kind: entry_kind;
+  }
+
+  val open_dir: Path.t -> (t, error) Result.t
+
   (** Opaque directory handle *)
-  val next: t -> Path.t option
+  val next: t -> entry option
 
   (** Get next entry, or None when done. Skips . and .. *)
   val close: t -> (unit, error) Result.t

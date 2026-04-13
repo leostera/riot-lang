@@ -46,12 +46,46 @@ let test_capitalize_ascii_preserves_tail_casing = fun _ctx ->
   else
     Error "expected String.capitalize_ascii to uppercase only the first character and preserve the rest unchanged"
 
+let test_equal_matches_only_identical_strings = fun _ctx ->
+  if
+    Kernel.String.equal "tests/fixtures" "tests/fixtures"
+    && not (Kernel.String.equal "tests/fixtures" "tests/fixtures/")
+    && not (Kernel.String.equal "tests/fixtures" "tests/generated")
+  then
+    Ok ()
+  else
+    Error "expected String.equal to match only byte-identical strings"
+
+let test_starts_with_matches_exact_prefix_and_descendants = fun _ctx ->
+  if
+    Kernel.String.starts_with ~prefix:"tests/fixtures" "tests/fixtures"
+    && Kernel.String.starts_with ~prefix:"tests/fixtures" "tests/fixtures/case.ml"
+    && Kernel.String.starts_with ~prefix:"tests/fixtures/" "tests/fixtures/case.ml"
+    && not (Kernel.String.starts_with ~prefix:"tests/fixtures/" "tests/fixtures")
+  then
+    Ok ()
+  else
+    Error "expected String.starts_with to match exact prefixes without inventing path-boundary rules"
+
+let test_starts_with_is_raw_prefix_not_path_segment_match = fun _ctx ->
+  if
+    Kernel.String.starts_with ~prefix:"tests/fixtures" "tests/fixtures-generated"
+    && Kernel.String.starts_with ~prefix:"tests/fixtures" "tests/fixtures_extra"
+    && not (Kernel.String.starts_with ~prefix:"tests/fixtures/" "tests/fixtures-generated")
+  then
+    Ok ()
+  else
+    Error "expected String.starts_with to use raw byte prefixes rather than path-aware matching"
+
 let tests = [
   Test.case "String.of_bytes copies its input" test_of_bytes_copies_input;
   Test.case "String.to_bytes copies its input" test_to_bytes_copies_input;
   Test.case "String.init builds characters in order" test_init_builds_expected_string;
   Test.case "String.concat preserves separator order" test_concat_preserves_separator_order;
   Test.case "String.capitalize_ascii preserves tail casing" test_capitalize_ascii_preserves_tail_casing;
+  Test.case "String.equal matches only identical strings" test_equal_matches_only_identical_strings;
+  Test.case "String.starts_with matches exact prefixes and descendants" test_starts_with_matches_exact_prefix_and_descendants;
+  Test.case "String.starts_with is raw prefix matching" test_starts_with_is_raw_prefix_not_path_segment_match;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_string_tests" ~tests ~args

@@ -35,18 +35,14 @@
     - Windows: `\` (though `/` is also accepted) *)
 
 (** The type of filesystem paths. Always contains valid UTF-8. *)
-type t
-(** # Errors *)
-
+type t = string
 type error =
-  | InvalidUtf8 of { path: string }
   (** Path contains invalid UTF-8 bytes *)
-  | SystemInvalidUtf8 of { syscall: string; path: string }
+  | InvalidUtf8 of { path: string }
   (** System call returned invalid UTF-8 *)
+  | SystemInvalidUtf8 of { syscall: string; path: string }
+  (** Other system-level error *)
   | SystemError of string
-
-(** Other system-level error *)
-(** # Construction and Conversion *)
 
 (** Creates a path from a string, validating UTF-8 encoding.
     
@@ -65,6 +61,8 @@ type error =
     ```
 *)
 val from_string: string -> (t, error) Result.t
+
+val from_string_unchecked: string -> t
 
 (** Creates a path from a string literal.
 

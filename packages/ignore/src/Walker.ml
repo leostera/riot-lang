@@ -28,7 +28,7 @@ type t = {
 
 let basename_is_hidden = fun entry ->
   let name = Fs.Walker.FileItem.name entry in
-  String.length name > 0 && Char.equal name.[0] '.'
+  String.length name > 0 && Char.equal (String.get_unchecked name ~at:0) '.'
 
 let trim_frames = fun frames depth ->
   let rec loop index = function
@@ -59,7 +59,7 @@ let load_ignore_file = fun path ->
 let load_frame = fun config entry ->
   let dir = Fs.Walker.FileItem.path entry in
   let rec load_custom acc = function
-    | [] -> Ok (List.rev acc)
+    | [] -> Ok (List.reverse acc)
     | name :: rest ->
         let path = Path.(dir / Path.v name) in
         begin
@@ -92,9 +92,9 @@ let load_frame = fun config entry ->
 let match_across_frames = fun config frames path ~is_dir ->
   let frames =
     if config.parents then
-      List.rev frames
+      List.reverse frames
     else
-      match List.rev frames with
+      match List.reverse frames with
       | [] -> []
       | frame :: _ -> [ frame ]
   in
@@ -116,7 +116,7 @@ let match_across_frames = fun config frames path ~is_dir ->
     find_in_frames frames
   in
   let custom_match =
-    match_group (fun frame -> List.rev frame.custom)
+    match_group (fun frame -> List.reverse frame.custom)
   in
   let ignore_match =
     if Match.is_none custom_match then
@@ -163,8 +163,8 @@ let decision_for_entry = fun config frames entry ->
     else
       Ok Match.None_
 
-let create = fun ~roots ?(concurrency = System.available_parallelism) ?(sort = false) ?(follow_symlinks = false) ?(hidden = true) ?(parents = true) ?(ignore = true) ?(git_ignore = true) ?(custom_ignore_filenames = []) ?(overrides = []) () ->
-  let concurrency = max 1 concurrency in
+let create = fun ~roots ?(concurrency = Thread.available_parallelism) ?(sort = false) ?(follow_symlinks = false) ?(hidden = true) ?(parents = true) ?(ignore = true) ?(git_ignore = true) ?(custom_ignore_filenames = []) ?(overrides = []) () ->
+  let concurrency = Int.max 1 concurrency in
   let root =
     match roots with
     | [] -> Path.v "."
@@ -172,7 +172,7 @@ let create = fun ~roots ?(concurrency = System.available_parallelism) ?(sort = f
   in
   match Gitignore.of_lines ~root ~syntax:Gitignore.Override overrides with
   | Error { line; input; message; offset } -> Error (Glob.Invalid_glob {
-    input = "line " ^ string_of_int line ^ ": " ^ input;
+    input = "line " ^ Int.to_string line ^ ": " ^ input;
     message;
     offset
   })
@@ -193,7 +193,7 @@ let create = fun ~roots ?(concurrency = System.available_parallelism) ?(sort = f
 let join_path_string = fun dir_path name ->
   if String.equal dir_path "" then
     name
-  else if dir_path.[String.length dir_path - 1] = '/' then
+  else if Char.equal (String.get_unchecked dir_path ~at:(String.length dir_path - 1)) '/' then
     dir_path ^ name
   else
     dir_path ^ "/" ^ name
@@ -206,63 +206,66 @@ let entry_kind_of_metadata = fun metadata ->
   | `Block
   | `Character
   | `Fifo
-  | `Socket -> Fs.Walker.Other
+  | `Socket
+  | `Unknown -> Fs.Walker.Other
 
 let metadata_for_path_string = fun config path_string ->
-  match Path.of_string path_string with
-  | Error _ -> Error (Kernel.IO.Unknown_error ("Invalid path " ^ path_string))
+  match Path.from_string path_string with
+  | Error _ -> Error (IO.Unknown_error ("Invalid path " ^ path_string))
   | Ok path ->
       if config.follow_symlinks then
         Fs.metadata path
       else
         Fs.symlink_metadata path
 
-let child_entry_for_raw = fun config ~dir_path ~depth (raw: Kernel.Fs.ReadDir.entry) ->
-  let { Kernel.Fs.ReadDir.name; kind } = raw in
+let child_entry = fun config ~dir_path ~depth (raw: Fs.ReadDir.entry) ->
+  let { Fs.ReadDir.path; kind } = raw in
+  let name = Path.to_string path in
   let path_string = join_path_string dir_path name in
   match kind with
-  | Kernel.Fs.ReadDir.Regular -> Ok (Fs.Walker.FileItem.make
+  | Fs.ReadDir.RegularFile -> Ok (Fs.Walker.FileItem.make
     ~path_string
     ~name
     ~depth
     ~kind:Fs.Walker.File)
-  | Kernel.Fs.ReadDir.Directory -> Ok (Fs.Walker.FileItem.make
+  | Fs.ReadDir.Directory -> Ok (Fs.Walker.FileItem.make
     ~path_string
     ~name
     ~depth
     ~kind:Fs.Walker.Directory)
-  | Kernel.Fs.ReadDir.Symlink ->
+  | Fs.ReadDir.SymbolicLink ->
       if config.follow_symlinks then
         metadata_for_path_string config path_string
-        |> Result.map
-          (fun metadata ->
+        |> fun result ->
+          Result.map result ~fn:(fun metadata ->
             Fs.Walker.FileItem.make ~path_string ~name ~depth ~kind:(entry_kind_of_metadata metadata))
       else
         Ok (Fs.Walker.FileItem.make ~path_string ~name ~depth ~kind:Fs.Walker.Symlink)
-  | Kernel.Fs.ReadDir.Block
-  | Kernel.Fs.ReadDir.Character
-  | Kernel.Fs.ReadDir.Fifo
-  | Kernel.Fs.ReadDir.Socket -> Ok (Fs.Walker.FileItem.make
+  | Fs.ReadDir.CharacterDevice
+  | Fs.ReadDir.BlockDevice
+  | Fs.ReadDir.NamedPipe
+  | Fs.ReadDir.Socket -> Ok (Fs.Walker.FileItem.make
     ~path_string
     ~name
     ~depth
     ~kind:Fs.Walker.Other)
-  | Kernel.Fs.ReadDir.Unknown -> metadata_for_path_string config path_string
-  |> Result.map
-    (fun metadata ->
-      Fs.Walker.FileItem.make ~path_string ~name ~depth ~kind:(entry_kind_of_metadata metadata))
+  | Fs.ReadDir.Unknown ->
+      metadata_for_path_string config path_string
+      |> fun result ->
+        Result.map result ~fn:(fun metadata ->
+          Fs.Walker.FileItem.make ~path_string ~name ~depth ~kind:(entry_kind_of_metadata metadata))
 
 let root_entry = fun _config root ->
   let path_string = Path.to_string root in
   Fs.symlink_metadata root
-  |> Result.map
-    (fun metadata ->
+  |> fun result ->
+    Result.map result ~fn:(fun metadata ->
       Fs.Walker.FileItem.make
         ~path_string
         ~name:(Path.basename root)
         ~depth:0
         ~kind:(entry_kind_of_metadata metadata))
-  |> Result.map_err (fun cause -> File_system { path = Some root; cause })
+  |> fun result -> Result.map_err result ~fn:(fun cause -> File_system { path = Some root; cause })
 
 let should_descend_root = fun entry ->
   match Fs.Walker.FileItem.kind entry with
@@ -276,27 +279,26 @@ let compare_entry = fun left right ->
 
 let read_child_entries = fun config entry ->
   let dir_path = Fs.Walker.FileItem.path_string entry in
-  match Kernel.Fs.ReadDir.open_ dir_path with
-  | Error cause -> Error (File_system { path = Some (Fs.Walker.FileItem.path entry); cause })
+  let dir = Fs.Walker.FileItem.path entry in
+  match Fs.ReadDir.open_dir dir with
+  | Error cause ->
+      Error (File_system { path = Some dir; cause })
   | Ok handle ->
       let rec loop acc =
-        match Kernel.Fs.ReadDir.read_entry handle with
-        | Error Kernel.IO.End_of_file ->
-            ignore (Kernel.Fs.ReadDir.close handle);
-            let entries = List.rev acc in
+        match Fs.ReadDir.next handle with
+        | None ->
+            let _ = Fs.ReadDir.close handle in
+            let entries = List.reverse acc in
             if config.sort then
-              Ok (List.sort compare_entry entries)
+              Ok (List.sort entries ~compare:compare_entry)
             else
               Ok entries
-        | Error cause ->
-            ignore (Kernel.Fs.ReadDir.close handle);
-            Error (File_system { path = Some (Fs.Walker.FileItem.path entry); cause })
-        | Ok raw -> (
-            match child_entry_for_raw config ~dir_path ~depth:(Fs.Walker.FileItem.depth entry + 1) raw with
+        | Some raw -> (
+            match child_entry config ~dir_path ~depth:(Fs.Walker.FileItem.depth entry + 1) raw with
             | Ok child -> loop (child :: acc)
             | Error cause ->
-                ignore (Kernel.Fs.ReadDir.close handle);
-                Error (File_system { path = Some (Fs.Walker.FileItem.path entry); cause })
+                let _ = Fs.ReadDir.close handle in
+                Error (File_system { path = Some dir; cause })
           )
       in
       loop []
@@ -380,7 +382,7 @@ let process_directory_task = fun config task f ->
   | Error err -> Error err
   | Ok entries ->
       let rec loop child_tasks = function
-        | [] -> Ok { child_tasks = List.rev child_tasks; stop = false }
+        | [] -> Ok { child_tasks = List.reverse child_tasks; stop = false }
         | entry :: rest ->
             match decision_for_entry config task.frames entry with
             | Error err ->
@@ -394,7 +396,7 @@ let process_directory_task = fun config task f ->
                     | Error err -> Error err
                     | Ok frame -> (
                         match f entry with
-                        | Fs.Walker.Stop -> Ok { child_tasks = List.rev child_tasks; stop = true }
+                        | Fs.Walker.Stop -> Ok { child_tasks = List.reverse child_tasks; stop = true }
                         | Fs.Walker.Skip_subtree -> loop child_tasks rest
                         | Fs.Walker.Continue -> loop
                           ({ dir = entry; frames = task.frames @ [ frame ] } :: child_tasks)
@@ -405,7 +407,7 @@ let process_directory_task = fun config task f ->
                 | Fs.Walker.Symlink
                 | Fs.Walker.Other -> (
                     match f entry with
-                    | Fs.Walker.Stop -> Ok { child_tasks = List.rev child_tasks; stop = true }
+                    | Fs.Walker.Stop -> Ok { child_tasks = List.reverse child_tasks; stop = true }
                     | Fs.Walker.Skip_subtree
                     | Fs.Walker.Continue -> loop child_tasks rest
                   )
@@ -476,9 +478,8 @@ let enqueue_root_task = fun config state ~f root ->
                 match f entry with
                 | Fs.Walker.Stop -> state.stop <- true
                 | Fs.Walker.Skip_subtree -> ()
-                | Fs.Walker.Continue -> Queue.push
-                  state.pending_tasks
-                  { dir = entry; frames = [ frame ] }
+                | Fs.Walker.Continue ->
+                    Queue.push state.pending_tasks ~value:{ dir = entry; frames = [ frame ] }
               )
           else
             match f entry with
@@ -509,14 +510,14 @@ let rec coordinator_loop = fun state ->
     in
     match receive ~selector () with
     | Worker_ready worker ->
-        Queue.push state.idle_workers worker;
+        Queue.push state.idle_workers ~value:worker;
         coordinator_loop state
     | Walk_event (Scan_finished { child_tasks; stop }) ->
         state.in_flight <- state.in_flight - 1;
         if stop then
           state.stop <- true
         else
-          List.iter (Queue.push state.pending_tasks) child_tasks;
+          List.for_each child_tasks ~fn:(fun task -> Queue.push state.pending_tasks ~value:task);
         coordinator_loop state
     | Walk_event (Scan_failed err) ->
         state.in_flight <- state.in_flight - 1;
@@ -552,7 +553,7 @@ let parallel_walk = fun config ~f ->
       error = None;
     }
     in
-    List.iter (enqueue_root_task config state ~f) config.roots;
+    List.for_each config.roots ~fn:(enqueue_root_task config state ~f);
     coordinator_loop state
   in
   let coordinator = spawn init in
@@ -574,4 +575,5 @@ let to_list = fun config ->
   sequential_walk config
     ~f:(fun entry ->
       items := entry :: !items;
-      Fs.Walker.Continue) |> Result.map (fun () -> List.rev !items)
+      Fs.Walker.Continue)
+  |> fun result -> Result.map result ~fn:(fun () -> List.reverse !items)

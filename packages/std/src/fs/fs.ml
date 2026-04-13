@@ -85,9 +85,9 @@ let read_to_string = fun path ->
     )
 
 let read_dir = fun path ->
-  match ReadDir.create path with
+  match ReadDir.open_dir path with
   | Error e -> Error e
-  | Ok state -> Ok (MutIterator.make (module ReadDir) state)
+  | Ok state -> Ok (MutIterator.make (module ReadDir) state |> MutIterator.map ~fn:(fun (entry: ReadDir.entry) -> entry.path))
 
 let remove_file = fun path -> Kernel.Fs.File.remove_file (kernel_path path) |> convert_kernel_result
 
@@ -101,13 +101,13 @@ let remove_dir_all = fun path ->
         remove_file path
     | Ok true -> (
         (* It's a directory *)
-        match ReadDir.create path with
+        match ReadDir.open_dir path with
         | Error e -> Error e
         | Ok dir ->
             let rec collect_entries acc =
               match ReadDir.next dir with
               | None -> Ok (List.reverse acc)
-              | Some entry_path -> collect_entries (entry_path :: acc)
+              | Some entry -> collect_entries (entry.path :: acc)
             in
             match collect_entries [] with
             | Error _ as err -> err
@@ -177,13 +177,14 @@ let mkdir_safe = fun path perm ->
 let rec mkdirp = fun path -> create_dir_all path
 
 let rec remove_dir = fun path ->
-  match ReadDir.create path with
+  match ReadDir.open_dir path with
   | Error error -> Error error
   | Ok dir ->
       let rec process_entries () =
         match ReadDir.next dir with
         | None -> Ok ()
-        | Some file_path -> (
+        | Some entry -> (
+            let file_path = entry.path in
             let full_path = Path.join path file_path in
             match dir_exists full_path with
             | Error error ->
@@ -323,13 +324,14 @@ let rec walk = fun path fn ->
       Ok ()
   | Ok true -> (
       fn path;
-      match ReadDir.create path with
+      match ReadDir.open_dir path with
       | Error e -> Error e
       | Ok dir ->
           let rec walk_entries () =
             match ReadDir.next dir with
             | None -> Ok ()
-            | Some entry_path -> (
+            | Some entry -> (
+                let entry_path = entry.path in
                 let full_path = Path.join path entry_path in
                 match walk full_path fn with
                 | Error e -> Error e

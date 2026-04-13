@@ -37,6 +37,11 @@ let get = fun values ~at -> Kernel.List.get values ~at
 
 let get_unchecked = fun values ~at -> Kernel.List.get_unchecked values ~at
 
+let rec take = fun list ~len ->
+  match list with
+  | x :: xs when len > 0 -> x :: (take xs ~len:(len - 1))
+  | _ -> []
+
 let enumerate = fun list ->
   let rec loop list idx =
     match list with

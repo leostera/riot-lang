@@ -8,7 +8,7 @@ type kind = File.kind =
   | Socket
   | Unknown
 type entry = {
-  name: string;
+  path: Path.t;
   kind: kind;
 }
 type t
@@ -28,7 +28,7 @@ val open_dir: Path.t -> (t, error) Result.t
     It returns `Ok None` once the iterator reaches the end of the snapshot. *)
 val read_name: t -> (string option, error) Result.t
 
-(** Use `read_entry dir` to pull the next snapshotted entry with its current kind.
+(** Use `read_entry dir` to pull the next snapshotted relative path with its current kind.
 
     Entry kinds are resolved lazily through `Fs.File.symlink_metadata`, so this can fail if an
     entry disappears after `open_dir`. *)

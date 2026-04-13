@@ -1,10 +1,7 @@
 open Global
 open Collections
 
-(** Path manipulation module - Type-safe filesystem paths *)
 type t = string
-
-(* Internal representation - always valid UTF-8 *)
 
 type error =
   | InvalidUtf8 of { path: string }
@@ -23,10 +20,8 @@ let is_valid_utf8 = fun s ->
         let c = Char.code (String.get_unchecked s ~at:i) in
         if c < 0x80 then
           check (i + 1)
-          (* ASCII *)
         else if c < 0xc0 then
           false
-          (* Invalid start byte *)
         else if c < 0xe0 then
           if i + 1 >= len then
             false
@@ -67,7 +62,7 @@ let from_string = fun s ->
   else
     Result.err (InvalidUtf8 { path = s })
 
-let of_string = from_string
+let from_string_unchecked = fun s -> s
 
 let v = fun path -> from_string path |> Result.expect ~msg:("Invalid string path " ^ path)
 
@@ -91,7 +86,6 @@ let dirname = fun path ->
   else if path = "/" then
     "/"
   else
-    (* Split by separator, drop last element, rejoin by separator *)
     let parts = String.split ~by:"/" path in
     let without_last =
       match List.reverse parts with
@@ -117,7 +111,6 @@ let basename = fun path ->
   else if path = "/" then
     "/"
   else
-    (* Split by separator, return last element *)
     let parts = String.split ~by:"/" path in
     match List.reverse parts with
     | [] -> ""
@@ -133,7 +126,6 @@ let extension = fun path ->
   let rec find_dot i =
     if i < 1 then
       None
-      (* Don't consider leading dot *)
     else if String.get_unchecked base ~at:i = '.' then
       Some i
     else
@@ -150,7 +142,6 @@ let remove_extension = fun path ->
   let rec find_dot i =
     if i < 1 then
       len
-      (* Don't consider leading dot *)
     else if String.get_unchecked base ~at:i = '.' then
       i
     else
@@ -187,19 +178,15 @@ let components = fun t ->
     let rec build_components acc parts =
       match parts with
       | [] -> List.reverse acc
-      | "" :: rest when acc = [] ->
-          (* Leading slash means absolute path *)
-          build_components [ "/" ] rest
-      | "" :: rest ->
-          (* Empty component from // in path, skip it *)
-          build_components acc rest
+      | "" :: rest when acc = [] -> build_components [ "/" ] rest
+      | "" :: rest -> build_components acc rest
       | part :: rest -> build_components (part :: acc) rest
     in
     build_components [] parts
 
 let rec normalize = fun path ->
   let parts = String.split ~by:"/" path in
-  let rec process = fun acc ->
+  let rec process acc =
     function
     | [] ->
         List.reverse acc
@@ -243,14 +230,11 @@ let compare = fun p1 p2 ->
 let strip_prefix = fun path ~prefix ->
   let path_components = components path in
   let prefix_components = components prefix in
-  (* Recursively consume matching prefix components *)
   let rec consume path_parts prefix_parts =
     match (path_parts, prefix_parts) with
     | _, [] ->
-        (* Prefix fully consumed, return remaining path components *)
         Result.ok path_parts
     | [], _ :: _ ->
-        (* Ran out of path before consuming prefix *)
         Result.err
           (SystemError ("Path " ^ to_string path ^ " does not start with prefix " ^ to_string prefix))
     | p :: path_rest, pre :: prefix_rest ->
@@ -258,13 +242,13 @@ let strip_prefix = fun path ~prefix ->
           consume path_rest prefix_rest
         else
           Result.err
-            (SystemError ("Path " ^ to_string path ^ " does not start with prefix " ^ to_string prefix))
+            (SystemError
+               ("Path " ^ to_string path ^ " does not start with prefix " ^ to_string prefix))
   in
   match consume path_components prefix_components with
   | Ok [] ->
       Result.ok (v "")
   | Ok remaining ->
-      (* Join remaining components back into a path *)
       let result =
         match remaining with
         | first :: rest -> List.fold_left rest ~acc:first ~fn:join

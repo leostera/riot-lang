@@ -1,6 +1,22 @@
-open Prelude
+(**************************************************************************)
+(*                                                                        *)
+(*                                 OCaml                                  *)
+(*                                                                        *)
+(*      KC Sivaramakrishnan, Indian Institute of Technology, Madras       *)
+(*                 Stephen Dolan, University of Cambridge                 *)
+(*                   Tom Kelly, OCaml Labs Consultancy                    *)
+(*                                                                        *)
+(*   Copyright 2019 Indian Institute of Technology, Madras                *)
+(*   Copyright 2014 University of Cambridge                               *)
+(*   Copyright 2021 OCaml Labs Consultancy Ltd                            *)
+(*                                                                        *)
+(*   All rights reserved.  This file is distributed under the terms of    *)
+(*   the GNU Lesser General Public License version 2.1, with the          *)
+(*   special exception on linking described in the file LICENSE.          *)
+(*                                                                        *)
+(**************************************************************************)
 
-let available_parallelism = Unix.available_parallelism
+open Prelude
 
 module Raw = struct
   type id = private int
@@ -16,7 +32,16 @@ module Raw = struct
   }
 
   external spawn: (unit -> 'value) -> 'value term_sync -> id = "caml_domain_spawn"
+
+  external get_recommended_domain_count: unit -> int = "caml_recommended_domain_count" [@@noalloc]
 end
+
+let available_parallelism =
+  let count = Raw.get_recommended_domain_count () in
+  if count < 1 then
+    1
+  else
+    count
 
 type 'value t = {
   domain: Raw.id;
@@ -25,18 +50,22 @@ type 'value t = {
 
 external dangerously_cast_value: 'original -> 'casted = "%identity"
 
+external opaque_identity: 'value -> 'value = "%opaque"
+
 module DLS = struct
-  type packed = unit
+  module Obj_opt = struct
+    type t = unit
 
-  let none: packed = dangerously_cast_value [||]
+    let none: t = dangerously_cast_value [||]
 
-  let some = fun value -> dangerously_cast_value value
+    let some = fun value -> dangerously_cast_value value
 
-  let is_some = fun value -> not (Ptr.equal value none)
+    let is_some = fun value -> not (Ptr.equal value none)
 
-  let unsafe_get = fun value -> dangerously_cast_value value
+    let unsafe_get = fun value -> dangerously_cast_value value
+  end
 
-  type dls_state = packed array
+  type dls_state = Obj_opt.t array
 
   external get_dls_state: unit -> dls_state = "%dls_get"
 
@@ -46,7 +75,7 @@ module DLS = struct
     = "caml_domain_dls_compare_and_set" [@@noalloc]
 
   let create_dls = fun () ->
-    let state = Array.make ~count:8 ~value:none in
+    let state = Array.make ~count:8 ~value:Obj_opt.none in
     set_dls_state state
 
   let _ = create_dls ()
@@ -87,16 +116,16 @@ module DLS = struct
         else
           next_size (size * 2)
       in
-      let grown = Array.make ~count:(next_size size) ~value:none in
+      let grown = Array.make ~count:(next_size size) ~value:Obj_opt.none in
       Array.blit state ~src_offset:0 ~dst:grown ~dst_offset:0 ~len:size;
       if compare_and_set_dls_state state grown then
         grown
       else
         maybe_grow index
 
-  let set = fun (index, _init) value ->
+  let set = fun ((index, _init): 'value key) value ->
     let state = maybe_grow index in
-    Array.set_unchecked state ~at:index ~value:(some value)
+    Array.set_unchecked state ~at:index ~value:(Obj_opt.some (opaque_identity value))
 
   let array_compare_and_set = fun values index current next ->
     let seen = Array.get_unchecked values ~at:index in
@@ -111,18 +140,18 @@ module DLS = struct
   let get = fun ((index, init): 'value key) ->
     let state = maybe_grow index in
     let value = Array.get_unchecked state ~at:index in
-    if is_some value then
-      (unsafe_get value: 'value)
+    if Obj_opt.is_some value then
+      (Obj_opt.unsafe_get value: 'value)
     else
       let initialized = init () in
-      let packed = some initialized in
+      let packed = Obj_opt.some (opaque_identity initialized) in
       let state = get_dls_state () in
       if array_compare_and_set state index value packed then
         initialized
       else
         let updated = Array.get_unchecked state ~at:index in
-        if is_some updated then
-          (unsafe_get updated: 'value)
+        if Obj_opt.is_some updated then
+          (Obj_opt.unsafe_get updated: 'value)
         else
           System_error.panic "Thread.DLS.get observed an uninitialized slot after compare-and-set"
 
