@@ -59,12 +59,26 @@ let test_linux_env_degrades_to_ansi = fun _ctx ->
       | Tty.Color.ANSI _ -> Ok ()
       | color -> Error ("Expected linux profile to degrade RGB to ANSI, got " ^ Tty.Color.to_string color))
 
+let test_xterm_256color_detects_ansi256 = fun _ctx ->
+  with_env [ ("TERM", Some "xterm-256color"); ("COLORTERM", None); ("TERM_PROGRAM", None) ]
+    (fun () ->
+      match Tty.Profile.convert (Tty.Profile.from_env ()) (Tty.Color.of_rgb (12, 34, 56)) with
+      | Tty.Color.ANSI256 _ -> Ok ()
+      | color -> Error ("Expected xterm-256color to degrade RGB to ANSI256, got " ^ Tty.Color.to_string color))
+
 let test_missing_color_env_disables_color = fun _ctx ->
   with_env [ ("TERM", None); ("COLORTERM", None); ("TERM_PROGRAM", None) ]
     (fun () ->
       match Tty.Profile.convert (Tty.Profile.from_env ()) (Tty.Color.of_rgb (255, 0, 0)) with
       | Tty.Color.No_color -> Ok ()
       | color -> Error ("Expected missing color env to disable color, got " ^ Tty.Color.to_string color))
+
+let test_convert_no_color_is_stable = fun _ctx ->
+  with_env [ ("TERM", Some "linux"); ("COLORTERM", None); ("TERM_PROGRAM", None) ]
+    (fun () ->
+      match Tty.Profile.convert (Tty.Profile.from_env ()) Tty.Color.no_color with
+      | Tty.Color.No_color -> Ok ()
+      | color -> Error ("Expected no_color input to remain no_color, got " ^ Tty.Color.to_string color))
 
 let test_convert_ansi256_to_ansi = fun _ctx ->
   with_env [ ("TERM", Some "linux"); ("COLORTERM", None); ("TERM_PROGRAM", None) ]
@@ -73,14 +87,46 @@ let test_convert_ansi256_to_ansi = fun _ctx ->
       | Tty.Color.ANSI _ -> Ok ()
       | color -> Error ("Expected ANSI profile to degrade ANSI256, got " ^ Tty.Color.to_string color))
 
+let test_convert_rgb_to_ansi256 = fun _ctx ->
+  with_env [ ("TERM", Some "xterm-256color"); ("COLORTERM", None); ("TERM_PROGRAM", None) ]
+    (fun () ->
+      match Tty.Profile.convert (Tty.Profile.from_env ()) (Tty.Color.of_rgb (12, 34, 56)) with
+      | Tty.Color.ANSI256 _ -> Ok ()
+      | color -> Error ("Expected ANSI256 profile to degrade RGB to ANSI256, got " ^ Tty.Color.to_string color))
+
+let test_convert_rgb_to_ansi = fun _ctx ->
+  with_env [ ("TERM", Some "linux"); ("COLORTERM", None); ("TERM_PROGRAM", None) ]
+    (fun () ->
+      match Tty.Profile.convert (Tty.Profile.from_env ()) (Tty.Color.of_rgb (12, 34, 56)) with
+      | Tty.Color.ANSI _ -> Ok ()
+      | color -> Error ("Expected ANSI profile to degrade RGB to ANSI, got " ^ Tty.Color.to_string color))
+
+let test_default_is_snapshot = fun _ctx ->
+  let snapshot = Tty.Profile.default in
+  let sample = Tty.Color.of_rgb (255, 0, 0) in
+  let before = Tty.Profile.convert snapshot sample in
+  with_env [ ("TERM", None); ("COLORTERM", None); ("TERM_PROGRAM", None) ]
+    (fun () ->
+      let still_default = Tty.Profile.convert Tty.Profile.default sample in
+      let dynamic = Tty.Profile.convert (Tty.Profile.from_env ()) sample in
+      if before = still_default && dynamic = Tty.Color.no_color then
+        Ok ()
+      else
+        Error "Expected default profile to stay stable while from_env follows the current environment")
+
 let tests =
   Test.[
     case "truecolor_env_preserves_rgb" test_truecolor_env_preserves_rgb;
     case "screen_truecolor_without_tmux_degrades_to_ansi256" test_screen_truecolor_without_tmux_degrades_to_ansi256;
     case "tmux_truecolor_preserves_rgb" test_tmux_truecolor_preserves_rgb;
     case "linux_env_degrades_to_ansi" test_linux_env_degrades_to_ansi;
+    case "xterm_256color_detects_ansi256" test_xterm_256color_detects_ansi256;
     case "missing_color_env_disables_color" test_missing_color_env_disables_color;
+    case "convert_no_color_is_stable" test_convert_no_color_is_stable;
     case "convert_ansi256_to_ansi" test_convert_ansi256_to_ansi;
+    case "convert_rgb_to_ansi256" test_convert_rgb_to_ansi256;
+    case "convert_rgb_to_ansi" test_convert_rgb_to_ansi;
+    case "default_is_snapshot" test_default_is_snapshot;
   ]
 
 let () =

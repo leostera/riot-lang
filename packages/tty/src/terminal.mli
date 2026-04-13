@@ -10,11 +10,7 @@ type error =
 type mode =
   | LineBuffered
   | Immediate
-type input_buffer = {
-  data: bytes;
-  mutable pos: int;
-  mutable len: int;
-}
+type input_buffer = Utf8_reader.t
 type t = {
   fd: Platform.fd;
   owns_fd: bool;
@@ -25,7 +21,7 @@ type t = {
   mutable size: size;
   mutable mode: mode;
   mutable resume_mode: mode option;
-  mutable input_buffer: input_buffer option;
+  input_buffer: input_buffer;
 }
 val write_to_fd: Platform.fd -> string -> unit
 

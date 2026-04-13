@@ -13,11 +13,7 @@ type mode =
   | LineBuffered
   | Immediate
 
-type input_buffer = {
-  data: bytes;
-  mutable pos: int;
-  mutable len: int;
-}
+type input_buffer = Utf8_reader.t
 
 type t = {
   fd: Platform.fd;
@@ -29,7 +25,7 @@ type t = {
   mutable size: size;
   mutable mode: mode;
   mutable resume_mode: mode option;
-  mutable input_buffer: input_buffer option;
+  input_buffer: input_buffer;
 }
 
 let io_error_of_system_error = fun error -> IO.of_system_error error

@@ -89,6 +89,7 @@ type mouse_event = {
 type event =
 [
   `Key of key_event
+  | `Text of string
   | `Mouse of mouse_event
   | `Resize of int * int
   | `Paste of string
@@ -201,6 +202,8 @@ let event_to_string = function
           mod_str ^ "+" ^ key_str
       in
       base ^ kind_str
+  | `Text value ->
+      "text(\"" ^ String.escaped value ^ "\")"
   | `Mouse { button; action; x; y; modifiers = _ } ->
       let act =
         match action with
@@ -596,7 +599,7 @@ module Parser = struct
         let char = String.get_unchecked head ~at:0 in
         events_of_text ~mods rest (event_of_ascii_char ~mods char :: acc)
       else
-        events_of_text ~mods rest (`Unknown head :: acc)
+        events_of_text ~mods rest (`Text head :: acc)
 
   let handle_text = fun state text ->
     if state.in_paste then

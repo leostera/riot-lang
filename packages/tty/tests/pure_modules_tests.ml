@@ -7,10 +7,20 @@ let test_color_make_long_hex = fun _ctx ->
   | Tty.Color.RGB (255, 0, 128) -> Ok ()
   | value -> Error ("Expected RGB(255,0,128), got " ^ Tty.Color.to_string value)
 
+let test_color_make_long_hex_lowercase = fun _ctx ->
+  match Tty.Color.make "#00ff7f" with
+  | Tty.Color.RGB (0, 255, 127) -> Ok ()
+  | value -> Error ("Expected RGB(0,255,127), got " ^ Tty.Color.to_string value)
+
 let test_color_make_short_hex = fun _ctx ->
   match Tty.Color.make "#F0A" with
   | Tty.Color.RGB (255, 0, 170) -> Ok ()
   | value -> Error ("Expected RGB(255,0,170), got " ^ Tty.Color.to_string value)
+
+let test_color_make_short_hex_lowercase = fun _ctx ->
+  match Tty.Color.make "#0f8" with
+  | Tty.Color.RGB (0, 255, 136) -> Ok ()
+  | value -> Error ("Expected RGB(0,255,136), got " ^ Tty.Color.to_string value)
 
 let test_color_make_invalid_length_rejected = fun _ctx ->
   try
@@ -33,6 +43,14 @@ let test_color_ansi_accepts_bounds = fun _ctx ->
   | Tty.Color.ANSI 0, Tty.Color.ANSI 15 -> Ok ()
   | _ -> Error "Expected ansi color bounds 0 and 15 to be accepted"
 
+let test_color_ansi_rejects_negative = fun _ctx ->
+  try
+    let _ = Tty.Color.ansi (-1) in
+    Error "Expected ansi -1 to be rejected"
+  with
+  | Tty.Color.Invalid_color_num ("ansi", -1) -> Ok ()
+  | _ -> Error "Expected Invalid_color_num for negative ansi input"
+
 let test_color_ansi_range_validation = fun _ctx ->
   try
     let _ = Tty.Color.ansi 16 in
@@ -48,6 +66,14 @@ let test_color_ansi256_range_validation = fun _ctx ->
   with
   | Tty.Color.Invalid_color_num ("ansi256", 256) -> Ok ()
   | _ -> Error "Expected Invalid_color_num for ansi256 range overflow"
+
+let test_color_ansi256_rejects_negative = fun _ctx ->
+  try
+    let _ = Tty.Color.ansi256 (-1) in
+    Error "Expected ansi256 -1 to be rejected"
+  with
+  | Tty.Color.Invalid_color_num ("ansi256", -1) -> Ok ()
+  | _ -> Error "Expected Invalid_color_num for negative ansi256 input"
 
 let test_color_ansi256_accepts_bounds = fun _ctx ->
   match (Tty.Color.ansi256 0, Tty.Color.ansi256 255) with
@@ -75,6 +101,30 @@ let test_color_to_escape_seq_bright_ansi = fun _ctx ->
     Ok ()
   else
     Error ("Unexpected bright ANSI escape sequences: fg=" ^ fg ^ " bg=" ^ bg)
+
+let test_color_to_escape_seq_basic_ansi = fun _ctx ->
+  let fg = Tty.Color.ansi 1 |> Tty.Color.to_escape_seq ~mode:`fg in
+  let bg = Tty.Color.ansi 4 |> Tty.Color.to_escape_seq ~mode:`bg in
+  if fg = "31" && bg = "44" then
+    Ok ()
+  else
+    Error ("Unexpected basic ANSI escape sequences: fg=" ^ fg ^ " bg=" ^ bg)
+
+let test_color_to_escape_seq_rgb_modes = fun _ctx ->
+  let fg = Tty.Color.of_rgb (1, 2, 3) |> Tty.Color.to_escape_seq ~mode:`fg in
+  let bg = Tty.Color.of_rgb (1, 2, 3) |> Tty.Color.to_escape_seq ~mode:`bg in
+  if fg = "38;2;1;2;3" && bg = "48;2;1;2;3" then
+    Ok ()
+  else
+    Error ("Unexpected RGB escape sequences: fg=" ^ fg ^ " bg=" ^ bg)
+
+let test_color_to_escape_seq_ansi256_modes = fun _ctx ->
+  let fg = Tty.Color.ansi256 196 |> Tty.Color.to_escape_seq ~mode:`fg in
+  let bg = Tty.Color.ansi256 46 |> Tty.Color.to_escape_seq ~mode:`bg in
+  if fg = "38;5;196" && bg = "48;5;46" then
+    Ok ()
+  else
+    Error ("Unexpected ANSI256 escape sequences: fg=" ^ fg ^ " bg=" ^ bg)
 
 let test_color_to_escape_seq_no_color = fun _ctx ->
   let value = Tty.Color.to_escape_seq ~mode:`fg Tty.Color.no_color in
@@ -111,12 +161,68 @@ let test_style_styled_wraps_text = fun _ctx ->
   else
     Error ("Unexpected styled rendering: seq=" ^ seq ^ " styled=" ^ styled)
 
+let test_style_attribute_order_is_deterministic = fun _ctx ->
+  let style =
+    Tty.Style.default
+    |> Tty.Style.underline
+    |> Tty.Style.italic
+    |> Tty.Style.bold
+  in
+  let seq = Tty.Style.to_escape_seq style in
+  if seq = "1;3;4" then
+    Ok ()
+  else
+    Error ("Expected deterministic attribute order, got " ^ seq)
+
 let test_style_fg_no_color_is_noop = fun _ctx ->
   let style = Tty.Style.default |> Tty.Style.fg Tty.Color.no_color in
   if String.equal (Tty.Style.to_escape_seq style) "" && String.equal (Tty.Style.styled style "hello") "hello" then
     Ok ()
   else
     Error "Expected no_color foreground style to be a no-op"
+
+let test_style_ansi_foreground_render = fun _ctx ->
+  let style = Tty.Style.default |> Tty.Style.fg (Tty.Color.ansi 1) in
+  let styled = Tty.Style.styled style "hi" in
+  if styled = "\x1b[31mhi\x1b[0m" then
+    Ok ()
+  else
+    Error ("Expected ANSI foreground rendering, got " ^ styled)
+
+let test_style_ansi_background_render = fun _ctx ->
+  let style = Tty.Style.default |> Tty.Style.bg (Tty.Color.ansi 4) in
+  let styled = Tty.Style.styled style "hi" in
+  if styled = "\x1b[44mhi\x1b[0m" then
+    Ok ()
+  else
+    Error ("Expected ANSI background rendering, got " ^ styled)
+
+let test_style_ansi256_render = fun _ctx ->
+  let style =
+    Tty.Style.default
+    |> Tty.Style.fg (Tty.Color.ansi256 196)
+    |> Tty.Style.bg (Tty.Color.ansi256 46)
+  in
+  let styled = Tty.Style.styled style "hi" in
+  if styled = "\x1b[38;5;196;48;5;46mhi\x1b[0m" then
+    Ok ()
+  else
+    Error ("Expected ANSI256 rendering, got " ^ styled)
+
+let test_style_empty_string_policy = fun _ctx ->
+  let styled = Tty.Style.styled (Tty.Style.bold Tty.Style.default) "" in
+  if styled = "\x1b[1m\x1b[0m" then
+    Ok ()
+  else
+    Error ("Expected styled empty string to preserve wrapper policy, got " ^ styled)
+
+let test_style_nested_policy = fun _ctx ->
+  let inner = Tty.Style.styled (Tty.Style.fg (Tty.Color.ansi 1) Tty.Style.default) "inner" in
+  let outer = Tty.Style.styled (Tty.Style.bold Tty.Style.default) ("before " ^ inner) in
+  if outer = "\x1b[1mbefore \x1b[31minner\x1b[0m\x1b[0m" then
+    Ok ()
+  else
+    Error ("Unexpected nested styling policy: " ^ outer)
 
 let test_style_preserves_unicode_width = fun _ctx ->
   let plain = "Cafe\u{0301} 🙂" in
@@ -171,6 +277,45 @@ let test_input_parse_mouse_release_with_modifiers = fun _ctx ->
   | Some event -> Error ("Expected modified mouse release, got " ^ Tty.Input.event_to_string event)
   | None -> Error "Expected parsed mouse release event"
 
+let test_input_parse_home_end_variants = fun _ctx ->
+  match
+    ( Tty.Input.parse_escape "\x1b[H",
+      Tty.Input.parse_escape "\x1b[F",
+      Tty.Input.parse_escape "\x1b[1~",
+      Tty.Input.parse_escape "\x1b[4~" )
+  with
+  | Some home, Some ending, Some legacy_home, Some legacy_end
+    when Tty.Input.event_to_string home = "home"
+      && Tty.Input.event_to_string ending = "end"
+      && Tty.Input.event_to_string legacy_home = "home"
+      && Tty.Input.event_to_string legacy_end = "end" ->
+      Ok ()
+  | _ ->
+      Error "Expected home/end variants to parse"
+
+let test_input_parse_insert_delete_paging = fun _ctx ->
+  match
+    ( Tty.Input.parse_escape "\x1b[2~",
+      Tty.Input.parse_escape "\x1b[3~",
+      Tty.Input.parse_escape "\x1b[5~",
+      Tty.Input.parse_escape "\x1b[6~" )
+  with
+  | Some insert, Some delete, Some page_up, Some page_down
+    when Tty.Input.event_to_string insert = "insert"
+      && Tty.Input.event_to_string delete = "delete"
+      && Tty.Input.event_to_string page_up = "pageup"
+      && Tty.Input.event_to_string page_down = "pagedown" ->
+      Ok ()
+  | _ ->
+      Error "Expected insert/delete/page navigation variants to parse"
+
+let test_input_event_to_string_text = fun _ctx ->
+  let rendered = Tty.Input.event_to_string (`Text "🙂") in
+  if rendered = "text(\"\\240\\159\\153\\130\")" then
+    Ok ()
+  else
+    Error ("Expected text event rendering, got " ^ rendered)
+
 let test_input_event_to_string_repeat = fun _ctx ->
   let event = `Key { Tty.Input.code = Tty.Input.Char 'x'; modifiers = [ Tty.Input.Alt ]; kind = Tty.Input.Repeat } in
   let rendered = Tty.Input.event_to_string event in
@@ -210,21 +355,34 @@ let test_size_to_string = fun _ctx ->
 let tests =
   Test.[
     case "color_make_long_hex" test_color_make_long_hex;
+    case "color_make_long_hex_lowercase" test_color_make_long_hex_lowercase;
     case "color_make_short_hex" test_color_make_short_hex;
+    case "color_make_short_hex_lowercase" test_color_make_short_hex_lowercase;
     case "color_make_invalid_length_rejected" test_color_make_invalid_length_rejected;
     case "color_make_invalid_hex_rejected" test_color_make_invalid_hex_rejected;
     case "color_ansi_accepts_bounds" test_color_ansi_accepts_bounds;
+    case "color_ansi_rejects_negative" test_color_ansi_rejects_negative;
     case "color_ansi_range_validation" test_color_ansi_range_validation;
+    case "color_ansi256_rejects_negative" test_color_ansi256_rejects_negative;
     case "color_ansi256_range_validation" test_color_ansi256_range_validation;
     case "color_ansi256_accepts_bounds" test_color_ansi256_accepts_bounds;
     case "color_of_rgb_clamps" test_color_of_rgb_clamps;
     case "color_to_escape_seq" test_color_to_escape_seq;
     case "color_to_escape_seq_bright_ansi" test_color_to_escape_seq_bright_ansi;
+    case "color_to_escape_seq_basic_ansi" test_color_to_escape_seq_basic_ansi;
+    case "color_to_escape_seq_rgb_modes" test_color_to_escape_seq_rgb_modes;
+    case "color_to_escape_seq_ansi256_modes" test_color_to_escape_seq_ansi256_modes;
     case "color_to_escape_seq_no_color" test_color_to_escape_seq_no_color;
     case "style_default_escape_seq_is_empty" test_style_default_escape_seq_is_empty;
     case "style_default_is_noop" test_style_default_is_noop;
     case "style_styled_wraps_text" test_style_styled_wraps_text;
+    case "style_attribute_order_is_deterministic" test_style_attribute_order_is_deterministic;
     case "style_fg_no_color_is_noop" test_style_fg_no_color_is_noop;
+    case "style_ansi_foreground_render" test_style_ansi_foreground_render;
+    case "style_ansi_background_render" test_style_ansi_background_render;
+    case "style_ansi256_render" test_style_ansi256_render;
+    case "style_empty_string_policy" test_style_empty_string_policy;
+    case "style_nested_policy" test_style_nested_policy;
     case "style_preserves_unicode_width" test_style_preserves_unicode_width;
     case "input_parse_csi_arrow" test_input_parse_csi_arrow;
     case "input_parse_modified_arrow" test_input_parse_modified_arrow;
@@ -232,6 +390,9 @@ let tests =
     case "input_parse_focus_events" test_input_parse_focus_events;
     case "input_parse_mouse_press" test_input_parse_mouse_press;
     case "input_parse_mouse_release_with_modifiers" test_input_parse_mouse_release_with_modifiers;
+    case "input_parse_home_end_variants" test_input_parse_home_end_variants;
+    case "input_parse_insert_delete_paging" test_input_parse_insert_delete_paging;
+    case "input_event_to_string_text" test_input_event_to_string_text;
     case "input_event_to_string_repeat" test_input_event_to_string_repeat;
     case "tty_make_self_equal" test_tty_make_self_equal;
     case "tty_to_string_has_prefix" test_tty_to_string_has_prefix;

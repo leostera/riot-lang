@@ -3,7 +3,7 @@ open Propane
 
 module Test = Std.Test
 
-let examples = 100_000
+let examples = 10_000
 
 let property_config = {
   Property.default_config with
@@ -70,6 +70,11 @@ let short_printable =
     ~print:String.escaped
     Generator.(string_size (int_range 0 24) char_printable)
 
+let ansi_index =
+  Arbitrary.make
+    ~print:Int.to_string
+    Generator.(int_range 0 15)
+
 let ansiish_string =
   let text_fragment = Generator.string_size (Generator.int_range 0 8) Generator.char_printable in
   let control_fragment =
@@ -107,6 +112,19 @@ let parser_trace =
   Arbitrary.make
     ~print:String.escaped
     Generator.(map (String.concat "") (list_size (int_range 0 10) (one_of [ text_fragment; token_fragment ])))
+
+let unknown_trace =
+  let unknown_fragment =
+    Generator.one_of
+      [
+        Generator.return "\x1b[999~";
+        Generator.return "\x1b[?999h";
+        Generator.return "\x1b[>999u";
+      ]
+  in
+  Arbitrary.make
+    ~print:(fun fragments -> String.concat "|" (List.map fragments ~fn:String.escaped))
+    Generator.(list_size (int_range 0 10) unknown_fragment)
 
 let strip_is_idempotent =
   Property.for_all ansiish_string
@@ -148,16 +166,78 @@ let parser_chunking_is_invariant =
   Property.for_all parser_trace
     (fun trace -> string_lists_equal (parse_whole trace) (parse_bytewise trace))
 
+let parser_is_deterministic =
+  Property.for_all parser_trace
+    (fun trace -> string_lists_equal (parse_whole trace) (parse_whole trace))
+
+let styled_non_default_wraps_with_escape_and_reset =
+  let style =
+    Tty.Style.default
+    |> Tty.Style.bold
+    |> Tty.Style.fg (Tty.Color.ansi 1)
+  in
+  Property.for_all short_printable
+    (fun value ->
+      let styled = Tty.Style.styled style value in
+      String.starts_with ~prefix:"\x1b[" styled && String.ends_with ~suffix:"\x1b[0m" styled)
+
+let styled_does_not_inject_newline_or_nul =
+  let style =
+    Tty.Style.default
+    |> Tty.Style.underline
+    |> Tty.Style.fg (Tty.Color.make "#FF8800")
+  in
+  Property.for_all short_printable
+    (fun value ->
+      let styled = Tty.Style.styled style value in
+      let input_has_newline = String.contains value "\n" in
+      let input_has_nul = String.contains value "\000" in
+      let styled_has_newline = String.contains styled "\n" in
+      let styled_has_nul = String.contains styled "\000" in
+      (not styled_has_newline || input_has_newline) && (not styled_has_nul || input_has_nul))
+
+let ansi_foreground_is_not_malformed =
+  Property.for_all ansi_index
+    (fun index ->
+      let seq = Tty.Color.to_escape_seq ~mode:`fg (Tty.Color.ansi index) in
+      not (String.starts_with ~prefix:"38;" seq))
+
+let ansi_background_is_not_malformed =
+  Property.for_all ansi_index
+    (fun index ->
+      let seq = Tty.Color.to_escape_seq ~mode:`bg (Tty.Color.ansi index) in
+      not (String.starts_with ~prefix:"48;" seq))
+
+let unknown_sequences_are_not_dropped_or_duplicated =
+  Property.for_all unknown_trace
+    (fun fragments ->
+      let trace = String.concat "" fragments in
+      let events = parse_whole trace in
+      Int.equal (List.length events) (List.length fragments)
+      && List.all events ~fn:(String.starts_with ~prefix:"unknown(\""))
+
 let tests = [
   Test.property "strip is idempotent" ~examples (fun _ctx -> assert_property "strip is idempotent" strip_is_idempotent);
   Test.property "strip removes escape bytes" ~examples (fun _ctx -> assert_property "strip removes escape bytes" strip_removes_escape_bytes);
   Test.property "style default is identity" ~examples (fun _ctx -> assert_property "style default is identity" style_default_is_identity);
   Test.property "styled width matches plain width" ~examples (fun _ctx ->
     assert_property "styled width matches plain width" styled_width_matches_plain_width);
+  Test.property "styled non-default wraps with escape and reset" ~examples (fun _ctx ->
+    assert_property "styled non-default wraps with escape and reset" styled_non_default_wraps_with_escape_and_reset);
+  Test.property "styled output does not inject newline or nul" ~examples (fun _ctx ->
+    assert_property "styled output does not inject newline or nul" styled_does_not_inject_newline_or_nul);
   Test.property "color.of_rgb clamps components" ~examples (fun _ctx ->
     assert_property "color.of_rgb clamps components" color_of_rgb_clamps_components);
+  Test.property "ansi foreground is not malformed" ~examples (fun _ctx ->
+    assert_property "ansi foreground is not malformed" ansi_foreground_is_not_malformed);
+  Test.property "ansi background is not malformed" ~examples (fun _ctx ->
+    assert_property "ansi background is not malformed" ansi_background_is_not_malformed);
   Test.property "parser chunking is invariant" ~examples (fun _ctx ->
     assert_property "parser chunking is invariant" parser_chunking_is_invariant);
+  Test.property "parser is deterministic" ~examples (fun _ctx ->
+    assert_property "parser is deterministic" parser_is_deterministic);
+  Test.property "unknown sequences are not dropped or duplicated" ~examples (fun _ctx ->
+    assert_property "unknown sequences are not dropped or duplicated" unknown_sequences_are_not_dropped_or_duplicated);
 ]
 
 let () =

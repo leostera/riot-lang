@@ -147,6 +147,8 @@ type key_event = {
 type event =
 [
   `Key of key_event
+  | `Text of string
+  (** UTF-8 text input that cannot be represented as a single Latin-1 char *)
   | `Mouse of mouse_event
   | `Resize of int * int
   (** width × height *)

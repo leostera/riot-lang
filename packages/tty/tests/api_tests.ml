@@ -71,6 +71,28 @@ let test_mode_switching = fun _ctx ->
         )
       )
 
+let test_set_raw_is_idempotent = fun _ctx ->
+  match Tty.make () with
+  | Error _ -> Ok ()
+  | Ok tty ->
+      Tty.set_raw tty;
+      Tty.set_raw tty;
+      if Tty.mode tty = Tty.Immediate then
+        Ok ()
+      else
+        Error "Expected set_raw to be idempotent"
+
+let test_set_line_buffered_is_idempotent = fun _ctx ->
+  match Tty.make_raw () with
+  | Error _ -> Ok ()
+  | Ok tty ->
+      Tty.set_line_buffered tty;
+      Tty.set_line_buffered tty;
+      if Tty.mode tty = Tty.LineBuffered then
+        Ok ()
+      else
+        Error "Expected set_line_buffered to be idempotent"
+
 let test_suspend_resume = fun _ctx ->
   match Tty.make_raw () with
   | Error _ -> Ok ()
@@ -85,6 +107,14 @@ let test_suspend_resume = fun _ctx ->
         else
           Error "Expected resume to restore immediate mode after suspend"
       )
+
+let test_restore_is_idempotent = fun _ctx ->
+  match Tty.make () with
+  | Error _ -> Ok ()
+  | Ok tty ->
+      Tty.restore tty;
+      Tty.restore tty;
+      Ok ()
 
 let test_escape_sequences_are_strings = fun _ctx ->
   (* Test that escape sequences are pure strings, not functions *)
@@ -162,7 +192,10 @@ let tests =
     case "size_accessors" test_size_accessors;
     case "refresh_size" test_refresh_size;
     case "mode_switching" test_mode_switching;
+    case "set_raw_is_idempotent" test_set_raw_is_idempotent;
+    case "set_line_buffered_is_idempotent" test_set_line_buffered_is_idempotent;
     case "suspend_resume" test_suspend_resume;
+    case "restore_is_idempotent" test_restore_is_idempotent;
     case "escape_sequences_are_strings" test_escape_sequences_are_strings;
     case "csi_constant" test_csi_constant;
     case "strip_ansi" test_strip_ansi;

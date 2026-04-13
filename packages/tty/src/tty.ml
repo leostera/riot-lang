@@ -70,7 +70,7 @@ let make = fun ?fd ?stdin ?stdout ?stderr ?size ?(mode = LineBuffered) () ->
               size = detected_size;
               mode = LineBuffered;
               resume_mode = None;
-              input_buffer = None;
+              input_buffer = Utf8_reader.create ();
             }
           in
           match mode with
@@ -165,7 +165,7 @@ let read_from_input = fun input_fd bytes ~offset ~len ->
       | Error _ -> `Error
 
 let read_utf8 = fun t ->
-  match Utf8_reader.read ~read:(read_from_input t.Terminal.input_fd) with
+  match Utf8_reader.read t.Terminal.input_buffer ~read:(read_from_input t.Terminal.input_fd) with
   | `Read value -> Read value
   | `End -> End
   | `Malformed reason -> Malformed reason
