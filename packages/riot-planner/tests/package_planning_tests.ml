@@ -5,7 +5,8 @@ module G = Graph.SimpleGraph
 let test_toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
 |> Result.expect ~msg:"Failed to initialize toolchain"
 
-let planner_artifacts_version = "planner-artifacts:v11"
+let planner_artifacts_version = "planner-artifacts:v12"
+let legacy_planner_artifacts_version = "planner-artifacts:v11"
 
 let make_test_workspace = fun tmpdir packages ->
   Riot_model.Workspace.{
@@ -130,6 +131,114 @@ let require_order = fun items ~before ~after ->
   | _, None ->
       Error ("missing " ^ after ^ " in [" ^ String.concat ", " items ^ "]")
 
+let move_item_to_front = fun needle items ->
+  let matches, rest =
+    List.fold_right
+      items
+      ~acc:([], [])
+      ~fn:(fun item (matches, rest) ->
+        if String.equal item needle then
+          (item :: matches, rest)
+        else
+          (matches, item :: rest))
+  in
+  matches @ rest
+
+let rewrite_create_library_objects_json = fun json ~rewrite ->
+  let open Std.Data.Json in
+  let rewrite_action = fun action_json ->
+    match action_json with
+    | Object _ -> (
+        match (
+          get_field "type" action_json,
+          get_field "outputs" action_json,
+          get_field "objects" action_json,
+          get_field "includes" action_json
+        ) with
+        | Some (String "CreateLibrary"), Some outputs, Some (Array object_jsons), Some includes ->
+            let objects =
+              List.filter_map object_jsons ~fn:(function
+                | String path -> Some path
+                | _ -> None)
+            in
+            Object [
+              ("type", String "CreateLibrary");
+              ("outputs", outputs);
+              ("objects", Array (List.map (rewrite objects) ~fn:(fun path -> String path)));
+              ("includes", includes);
+            ]
+        | _ ->
+            action_json
+      )
+    | _ ->
+        action_json
+  in
+  let rewrite_node = fun node_json ->
+    match node_json with
+    | Object _ -> (
+        match (
+          get_field "id" node_json,
+          get_field "actions" node_json,
+          get_field "outputs" node_json,
+          get_field "sources" node_json,
+          get_field "package" node_json,
+          get_field "package_path" node_json,
+          get_field "package_relative_path" node_json,
+          get_field "hash" node_json,
+          get_field "dependencies" node_json
+        ) with
+        | Some id, Some (Array actions), Some outputs, Some sources, Some package, Some package_path, Some package_relative_path, Some hash, Some dependencies ->
+            Object [
+              ("id", id);
+              ("actions", Array (List.map actions ~fn:rewrite_action));
+              ("outputs", outputs);
+              ("sources", sources);
+              ("package", package);
+              ("package_path", package_path);
+              ("package_relative_path", package_relative_path);
+              ("hash", hash);
+              ("dependencies", dependencies);
+            ]
+        | _ ->
+            node_json
+      )
+    | _ ->
+        node_json
+  in
+  match json with
+  | Object _ -> (
+      match get_field "nodes" json with
+      | Some (Array nodes) ->
+          Object [ ("nodes", Array (List.map nodes ~fn:rewrite_node)) ]
+      | _ ->
+          json
+    )
+  | _ ->
+      json
+
+let rewrite_plan_bundle_action_graph = fun bundle ~rewrite ->
+  let open Std.Data.Json in
+  match bundle with
+  | Object _ -> (
+      match (
+        get_field "version" bundle,
+        get_field "package" bundle,
+        get_field "module_graph" bundle,
+        get_field "action_graph" bundle
+      ) with
+      | Some version, Some package, Some module_graph, Some action_graph ->
+          Object [
+            ("version", version);
+            ("package", package);
+            ("module_graph", module_graph);
+            ("action_graph", rewrite_create_library_objects_json action_graph ~rewrite);
+          ]
+      | _ ->
+          bundle
+    )
+  | _ ->
+      bundle
+
 let render_module_graph_dependency_walk = fun graph ->
   let render_dependencies = fun deps ->
     match deps with
@@ -242,7 +351,52 @@ let plan_kernel_package_with_fresh_store = fun () ->
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
-let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ~package ~workspace ~profile ~build_ctx () ->
+let plan_kernel_runtime_graphs = fun ~workspace ~store ~build_ctx ->
+  match find_package_by_name workspace "kernel" with
+  | None ->
+      Error "kernel package not found in workspace"
+  | Some package ->
+      let package_graph =
+        Riot_planner.Package_graph.create
+          ~scope:Riot_planner.Package_graph.Runtime
+          workspace
+        |> Result.expect ~msg:"package graph should build"
+      in
+      let build_key =
+        Riot_planner.Package_graph.package_key
+          ~package_name:package.name
+          Riot_planner.Package_graph.Build
+      in
+      let runtime_key =
+        Riot_planner.Package_graph.package_key
+          ~package_name:package.name
+          Riot_planner.Package_graph.Runtime
+      in
+      match plan_graph_package ~workspace ~store ~package_graph ~package_key:build_key ~build_ctx with
+      | Error err ->
+          Error ("kernel build-scope plan failed: " ^ err)
+      | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; hash; _ }) ->
+          let _ =
+            Riot_planner.Package_graph.mark_planned
+              package_graph
+              build_key
+              ~module_graph
+              ~action_graph
+              ~hash
+          in
+          (
+            match plan_graph_package ~workspace ~store ~package_graph ~package_key:runtime_key ~build_ctx with
+            | Error err ->
+                Error ("kernel runtime plan failed: " ^ err)
+            | Ok (Riot_planner.Package_planner.Planned { module_graph; action_graph; hash; depset; _ }) ->
+                Ok (package, module_graph, action_graph, hash, depset)
+            | Ok _ ->
+                Error "expected kernel runtime plan to return Planned"
+          )
+      | Ok _ ->
+          Error "expected kernel build-scope plan to return Planned"
+
+let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ?(depset = []) ~package ~workspace ~profile ~build_ctx () ->
   let module H = Std.Crypto.Sha256 in
   let state = H.create () in
   H.write state planner_version;
@@ -280,6 +434,10 @@ let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ~pac
       | _ ->
           ())
   ;
+  let dep_hashes = depset
+  |> List.map ~fn:(fun (dep: Riot_planner.Dependency.t) -> dep.hash)
+  |> List.sort ~compare:Std.Crypto.Hash.compare in
+  List.for_each dep_hashes ~fn:(fun hash -> H.write_hash state hash);
   H.finish state
 
 let test_plan_bundle_cache_hit_restores_module_and_action_graphs = fun _ctx ->
@@ -763,6 +921,80 @@ let test_kernel_dependency_walk_snapshot = fun ctx ->
       in
       Test.Snapshot.assert_text ~ctx ~actual
 
+let test_legacy_kernel_plan_bundle_is_ignored_after_version_bump = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_kernel_legacy_bundle"
+      (fun tempdir ->
+        match load_repo_workspace () with
+        | Error _ as err ->
+            err
+        | Ok repo_workspace ->
+            let analysis_workspace =
+              clone_workspace_with_target
+                repo_workspace
+                ~target_dir:Path.(tempdir / Path.v "analysis-target")
+            in
+            let test_workspace =
+              clone_workspace_with_target
+                repo_workspace
+                ~target_dir:Path.(tempdir / Path.v "test-target")
+            in
+            let analysis_store = Riot_store.Store.create ~workspace:analysis_workspace in
+            let test_store = Riot_store.Store.create ~workspace:test_workspace in
+            let session_id = Riot_model.Session_id.make () in
+            let profile = Riot_model.Profile.debug in
+            let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+            match plan_kernel_runtime_graphs ~workspace:analysis_workspace ~store:analysis_store ~build_ctx with
+            | Error _ as err ->
+                err
+            | Ok (package, _module_graph, action_graph, current_input_hash, depset) -> (
+                match Riot_store.Store.load_plan_bundle analysis_store ~hash:current_input_hash with
+                | None ->
+                    Error "expected current kernel plan bundle to be persisted"
+                | Some bundle ->
+                    let stale_bundle =
+                      rewrite_plan_bundle_action_graph
+                        bundle
+                        ~rewrite:(move_item_to_front "Kernel__Error.cmx")
+                    in
+                    let stale_input_hash = compute_input_hash
+                      ~planner_version:legacy_planner_artifacts_version
+                      ~depset
+                      ~package
+                      ~workspace:test_workspace
+                      ~profile
+                      ~build_ctx
+                      () in
+                    let _ = Riot_store.Store.save_plan_bundle test_store ~hash:stale_input_hash ~plan:stale_bundle
+                    |> Result.expect ~msg:"expected legacy plan bundle save to succeed" in
+                    match plan_kernel_runtime_graphs ~workspace:test_workspace ~store:test_store ~build_ctx with
+                    | Error _ as err ->
+                        err
+                    | Ok (_, _, replanned_action_graph, _, _) -> (
+                        match find_create_library_objects replanned_action_graph with
+                        | Error _ as err ->
+                            err
+                        | Ok objects -> (
+                            match require_order objects ~before:"Kernel__Net__Tcp_listener.cmx" ~after:"Kernel__Error.cmx" with
+                            | Error _ as err ->
+                                err
+                            | Ok () -> (
+                                match require_order objects ~before:"Kernel__Net__Udp_socket.cmx" ~after:"Kernel__Error.cmx" with
+                                | Error _ as err ->
+                                    err
+                                | Ok () ->
+                                    require_order objects ~before:"Kernel__Process.cmx" ~after:"Kernel__Error.cmx"
+                              )
+                          )
+                      )
+              )
+      )
+  with
+  | Ok x ->
+      x
+  | Error _ ->
+      Error "tempdir creation failed"
+
 let tests =
   Test.[
     case "plan bundle cache hit restores module and action graphs" test_plan_bundle_cache_hit_restores_module_and_action_graphs;
@@ -772,6 +1004,7 @@ let tests =
     case ~size:Large "kernel live CreateLibrary orders dependencies before Error" test_kernel_live_create_library_orders_dependencies_before_error;
     case ~size:Large "kernel plan bundle cache hit preserves live CreateLibrary order" test_kernel_plan_bundle_cache_hit_preserves_live_create_library_order;
     case ~size:Large "kernel dependency walk snapshot" test_kernel_dependency_walk_snapshot;
+    case ~size:Large "legacy kernel plan bundle is ignored after version bump" test_legacy_kernel_plan_bundle_is_ignored_after_version_bump;
   ]
 
 let name = "Planner Package Planning Tests"
