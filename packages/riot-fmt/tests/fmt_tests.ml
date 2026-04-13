@@ -13,13 +13,13 @@ let parse_fmt = fun args ->
 
 let make_capture_writer = fun () ->
   let chunks = ref [] in
-  ((fun chunk -> chunks := chunk :: !chunks), fun () -> !chunks |> List.rev |> String.concat "")
+  ((fun chunk -> chunks := chunk :: !chunks), fun () -> !chunks |> List.reverse |> String.concat "")
 
 let parse_jsonl = fun output ->
   output
-  |> String.split_on_char '\n'
-  |> List.filter (fun line -> not (String.equal line ""))
-  |> List.map (fun line -> Data.Json.of_string line |> Result.expect ~msg:"parse json line")
+  |> String.split ~by:"\n"
+  |> List.filter ~fn:(fun line -> not (String.equal line ""))
+  |> List.map ~fn:(fun line -> Data.Json.of_string line |> Result.expect ~msg:"parse json line")
 
 let test_fmt_accepts_multiple_paths = fun _ctx ->
   match parse_fmt [ "fmt"; "packages/blink/src/connection.ml"; "packages/syn/src/parser.ml" ] with
@@ -178,14 +178,14 @@ let test_fmt_json_includes_structured_syn_diagnostics_for_syntax_errors = fun _c
               let file_event =
                 stdout_contents ()
                 |> parse_jsonl
-                |> List.find_opt
-                  (fun json ->
+                |> List.find
+                  ~fn:(fun json ->
                     match Data.Json.get_field "type" json with
                     | Some (Data.Json.String "file") -> true
                     | _ -> false)
                 |> Option.expect ~msg:"file event missing"
               in
-              let expected = Some (Data.Json.Array (List.map Syn.Diagnostic.to_json parsed.diagnostics)) in
+              let expected = Some (Data.Json.Array (List.map parsed.diagnostics ~fn:Syn.Diagnostic.to_json)) in
               Test.assert_equal ~expected ~actual:(Data.Json.get_field "diagnostics" file_event);
               Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
               Ok ()
