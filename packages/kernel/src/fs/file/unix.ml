@@ -362,6 +362,7 @@ let is_directory = fun path ->
   | Result.Error error -> Result.Error error
 
 let copy = fun ~src ~dst ->
+  let* src_metadata = metadata src in
   let* src_file = open_read src in
   let* dst_file = open_write dst in
   let buffer = Bytes.create ~size:65_536 in
@@ -392,7 +393,7 @@ let copy = fun ~src ~dst ->
       match (close_first, close_second) with
       | (Result.Error error, _) -> Result.Error error
       | (Result.Ok (), Result.Error error) -> Result.Error error
-      | (Result.Ok (), Result.Ok ()) -> Result.Ok ()
+      | (Result.Ok (), Result.Ok ()) -> set_permissions dst ~perm:(Metadata.permissions src_metadata)
     )
 
 let is_tty = FFI.is_tty

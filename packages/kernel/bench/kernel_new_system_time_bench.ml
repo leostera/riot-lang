@@ -2,7 +2,7 @@ open Std
 module Kernel = Kernel
 
 let panic_async = fun error ->
-  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_async error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_async error))
 
 let lift_async result =
   match result with
@@ -13,7 +13,7 @@ let bench_now = fun () ->
   match Kernel.Time.SystemTime.now () with
   | Kernel.Result.Ok _ -> ()
   | Kernel.Result.Error error -> Kernel.SystemError.panic
-    (Kernel.Error.to_string (Kernel.Error.of_time_system_time error))
+    (Kernel.Error.to_string (Kernel.Error.from_time_system_time error))
 
 let bench_compare = fun () ->
   match Kernel.Time.SystemTime.now (), Kernel.Time.SystemTime.now () with
@@ -22,13 +22,13 @@ let bench_compare = fun () ->
       ()
   | (Kernel.Result.Error error, _)
   | (_, Kernel.Result.Error error) -> Kernel.SystemError.panic
-    (Kernel.Error.to_string (Kernel.Error.of_time_system_time error))
+    (Kernel.Error.to_string (Kernel.Error.from_time_system_time error))
 
 let bench_monotonic_now = fun () ->
   match Kernel.Time.Monotonic.now () with
   | Kernel.Result.Ok _ -> ()
   | Kernel.Result.Error error -> Kernel.SystemError.panic
-    (Kernel.Error.to_string (Kernel.Error.of_time_monotonic error))
+    (Kernel.Error.to_string (Kernel.Error.from_time_monotonic error))
 
 let bench_monotonic_compare = fun () ->
   match Kernel.Time.Monotonic.now (), Kernel.Time.Monotonic.now () with
@@ -37,7 +37,7 @@ let bench_monotonic_compare = fun () ->
       ()
   | (Kernel.Result.Error error, _)
   | (_, Kernel.Result.Error error) -> Kernel.SystemError.panic
-    (Kernel.Error.to_string (Kernel.Error.of_time_monotonic error))
+    (Kernel.Error.to_string (Kernel.Error.from_time_monotonic error))
 
 let protect = fun ~finally fn ->
   try
@@ -64,7 +64,7 @@ let bench_timer_after_ns_latency = fun () ->
     (fun poll ->
       match Kernel.Time.Timer.after_ns 1_000_000L with
       | Kernel.Result.Error error -> Kernel.SystemError.panic
-        (Kernel.Error.to_string (Kernel.Error.of_time_timer error))
+        (Kernel.Error.to_string (Kernel.Error.from_time_timer error))
       | Kernel.Result.Ok timer ->
           let source = Kernel.Time.Timer.to_source timer in
           let token = Kernel.Async.Token.make "system-time-bench-timer" in
@@ -82,15 +82,15 @@ let bench_timer_many_same_tick_wakeups = fun () ->
     (fun poll ->
       let rec create remaining acc =
         if remaining = 0 then
-          List.rev acc
+          List.reverse acc
         else
           match Kernel.Time.Timer.after_ns 1_000_000L with
           | Kernel.Result.Ok timer -> create (remaining - 1) (timer :: acc)
           | Kernel.Result.Error error -> Kernel.SystemError.panic
-            (Kernel.Error.to_string (Kernel.Error.of_time_timer error))
+            (Kernel.Error.to_string (Kernel.Error.from_time_timer error))
       in
       let timers = create 16 [] in
-      let sources = List.map Kernel.Time.Timer.to_source timers in
+      let sources = List.map timers ~fn:Kernel.Time.Timer.to_source in
       let rec deregister_all = function
         | [] -> ()
         | source :: rest ->
@@ -109,20 +109,20 @@ let bench_timer_many_same_tick_wakeups = fun () ->
                   (Kernel.Time.Timer.to_source timer) in
                 register (index + 1) rest
           in
-          let seen = Kernel.Array.make 16 false in
+          let seen = Kernel.Array.make ~count:16 ~value:false in
           let rec mark = function
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_readable event then
                   let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
                   if token >= 0 && token < 16 then
-                    Kernel.Array.set seen token true;
+                    Kernel.Array.set seen ~at:token ~value:true;
                   mark rest
           in
           let rec all_seen index =
             if index = 16 then
               true
-            else if Kernel.Array.get seen index then
+            else if Kernel.Array.get_unchecked seen ~at:index then
               all_seen (index + 1)
             else
               false

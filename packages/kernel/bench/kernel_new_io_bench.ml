@@ -1,8 +1,6 @@
 open Std
 module Kernel = Kernel
 
-let panic_file = fun error -> Kernel.SystemError.panic (Kernel.IO.error_to_string error)
-
 let panic_async = fun error -> Kernel.SystemError.panic (Kernel.Async.error_to_string error)
 
 let with_poll = fun fn ->
@@ -20,64 +18,64 @@ let with_poll = fun fn ->
     )
 
 let bench_stdin_read_len_zero = fun () ->
-  let buffer = Kernel.Bytes.create 16 in
+  let buffer = Kernel.Bytes.create ~size:16 in
   match Kernel.IO.Stdin.read ~len:0 buffer with
   | Kernel.Result.Ok count ->
-      if count <> 0 then
+      if count != 0 then
         Kernel.SystemError.panic "unexpected stdin read count"
       else
         ()
-  | Kernel.Result.Error error -> panic_file error
+  | Kernel.Result.Error error -> Kernel.SystemError.panic (Kernel.IO.Stdin.error_to_string error)
 
 let bench_stdout_write_len_zero = fun () ->
-  let buffer = Kernel.Bytes.create 16 in
+  let buffer = Kernel.Bytes.create ~size:16 in
   match Kernel.IO.Stdout.write ~len:0 buffer with
   | Kernel.Result.Ok count ->
-      if count <> 0 then
+      if count != 0 then
         Kernel.SystemError.panic "unexpected stdout write count"
       else
         ()
-  | Kernel.Result.Error error -> panic_file error
+  | Kernel.Result.Error error -> Kernel.SystemError.panic (Kernel.IO.Stdout.error_to_string error)
 
 let bench_stderr_write_len_zero = fun () ->
-  let buffer = Kernel.Bytes.create 16 in
+  let buffer = Kernel.Bytes.create ~size:16 in
   match Kernel.IO.Stderr.write ~len:0 buffer with
   | Kernel.Result.Ok count ->
-      if count <> 0 then
+      if count != 0 then
         Kernel.SystemError.panic "unexpected stderr write count"
       else
         ()
-  | Kernel.Result.Error error -> panic_file error
+  | Kernel.Result.Error error -> Kernel.SystemError.panic (Kernel.IO.Stderr.error_to_string error)
 
 let bench_stdin_read_vectored_len_zero = fun () ->
-  let iovec = Kernel.IO.Iovec.of_bytes_array [|Kernel.Bytes.create 0|] in
+  let iovec = Kernel.IO.Iovec.from_bytes_array [|Kernel.Bytes.create ~size:0|] in
   match Kernel.IO.Stdin.read_vectored iovec with
   | Kernel.Result.Ok count ->
-      if count <> 0 then
+      if count != 0 then
         Kernel.SystemError.panic "unexpected stdin readv count"
       else
         ()
-  | Kernel.Result.Error error -> panic_file error
+  | Kernel.Result.Error error -> Kernel.SystemError.panic (Kernel.IO.Stdin.error_to_string error)
 
 let bench_stdout_write_vectored_len_zero = fun () ->
-  let iovec = Kernel.IO.Iovec.of_bytes_array [|Kernel.Bytes.create 0|] in
+  let iovec = Kernel.IO.Iovec.from_bytes_array [|Kernel.Bytes.create ~size:0|] in
   match Kernel.IO.Stdout.write_vectored iovec with
   | Kernel.Result.Ok count ->
-      if count <> 0 then
+      if count != 0 then
         Kernel.SystemError.panic "unexpected stdout writev count"
       else
         ()
-  | Kernel.Result.Error error -> panic_file error
+  | Kernel.Result.Error error -> Kernel.SystemError.panic (Kernel.IO.Stdout.error_to_string error)
 
 let bench_stderr_write_vectored_len_zero = fun () ->
-  let iovec = Kernel.IO.Iovec.of_bytes_array [|Kernel.Bytes.create 0|] in
+  let iovec = Kernel.IO.Iovec.from_bytes_array [|Kernel.Bytes.create ~size:0|] in
   match Kernel.IO.Stderr.write_vectored iovec with
   | Kernel.Result.Ok count ->
-      if count <> 0 then
+      if count != 0 then
         Kernel.SystemError.panic "unexpected stderr writev count"
       else
         ()
-  | Kernel.Result.Error error -> panic_file error
+  | Kernel.Result.Error error -> Kernel.SystemError.panic (Kernel.IO.Stderr.error_to_string error)
 
 let bench_stdin_source_poll = fun () ->
   with_poll

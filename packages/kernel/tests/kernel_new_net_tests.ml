@@ -2,17 +2,17 @@ open Std
 module Test = Std.Test
 module Kernel = Kernel
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
-let string_of_async_error = fun error -> Kernel.Error.to_string (Kernel.Error.of_async error)
+let string_of_async_error = fun error -> Kernel.Error.to_string (Kernel.Error.from_async error)
 
 let string_of_tcp_listener_error = fun error ->
-  Kernel.Error.to_string (Kernel.Error.of_net_tcp_listener error)
+  Kernel.Error.to_string (Kernel.Error.from_net_tcp_listener error)
 
 let string_of_tcp_stream_error = fun error ->
-  Kernel.Error.to_string (Kernel.Error.of_net_tcp_stream error)
+  Kernel.Error.to_string (Kernel.Error.from_net_tcp_stream error)
 
-let string_of_udp_error = fun error -> Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error)
+let string_of_udp_error = fun error -> Kernel.Error.to_string (Kernel.Error.from_net_udp_socket error)
 
 let lift_async result =
   match result with
@@ -47,19 +47,19 @@ let protect = fun ~finally fn ->
 let is_tcp_listener_would_block error =
   match error with
   | Kernel.Net.TcpListener.WouldBlock -> true
-  | Kernel.Net.TcpListener.System system_error -> Kernel.SystemError.is_would_block system_error
+  | Kernel.Net.TcpListener.System system_error -> Kernel.SystemError.would_block system_error
   | _ -> false
 
 let is_tcp_stream_would_block error =
   match error with
   | Kernel.Net.TcpStream.WouldBlock -> true
-  | Kernel.Net.TcpStream.System system_error -> Kernel.SystemError.is_would_block system_error
+  | Kernel.Net.TcpStream.System system_error -> Kernel.SystemError.would_block system_error
   | _ -> false
 
 let is_udp_would_block error =
   match error with
   | Kernel.Net.UdpSocket.WouldBlock -> true
-  | Kernel.Net.UdpSocket.System system_error -> Kernel.SystemError.is_would_block system_error
+  | Kernel.Net.UdpSocket.System system_error -> Kernel.SystemError.would_block system_error
   | _ -> false
 
 let close_stream = fun stream ->
@@ -98,9 +98,8 @@ let wait_for = fun poll ~token ~interest ~source ~pred ->
     (fun () ->
       let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
       let found =
-        List.exists
-          (fun event -> Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
-          events
+        List.any events ~fn:(fun event ->
+          Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
       in
       if found then
         Ok ()
@@ -114,11 +113,9 @@ let wait_writable = fun poll ~token source ->
   wait_for poll ~token ~interest:Kernel.Async.Interest.writable ~source ~pred:Kernel.Async.Event.is_writable
 
 let has_readable_token = fun token events ->
-  List.exists
-    (fun event ->
-      Kernel.Async.Event.is_readable event
-      && Kernel.Async.Token.equal token (Kernel.Async.Event.token event))
-    events
+  List.any events ~fn:(fun event ->
+    Kernel.Async.Event.is_readable event
+    && Kernel.Async.Token.equal token (Kernel.Async.Event.token event))
 
 let rec write_all_stream = fun poll ~token stream buffer ~pos ~len ->
   if len = 0 then
@@ -294,9 +291,9 @@ let with_connected_udp_pair = fun fn ->
 
 let test_ip_addr_validates_ipv4_and_ipv6 = fun _ctx ->
   match (
-    Kernel.Net.IpAddr.of_string "127.0.0.1",
-    Kernel.Net.IpAddr.of_string "::1",
-    Kernel.Net.IpAddr.of_string "nope"
+    Kernel.Net.IpAddr.from_string "127.0.0.1",
+    Kernel.Net.IpAddr.from_string "::1",
+    Kernel.Net.IpAddr.from_string "nope"
   ) with
   | (Kernel.Result.Ok ipv4, Kernel.Result.Ok ipv6, Kernel.Result.Error (Kernel.Net.IpAddr.InvalidText _)) ->
       if
@@ -337,8 +334,8 @@ let test_tcp_listener_and_stream_roundtrip = fun _ctx ->
       then
         Error "expected tcp peer addresses to line up across connect and accept"
       else
-        let ping = Kernel.Bytes.of_string "ping" in
-        let pong = Kernel.IO.Iovec.of_string_array [|"po"; "ng"|] in
+        let ping = Kernel.Bytes.from_string "ping" in
+        let pong = Kernel.IO.Iovec.from_string_array [|"po"; "ng"|] in
         let* () = write_all_stream
           poll
           ~token:(Kernel.Async.Token.make 303)
@@ -346,7 +343,7 @@ let test_tcp_listener_and_stream_roundtrip = fun _ctx ->
           ping
           ~pos:0
           ~len:(Kernel.Bytes.length ping) in
-        let server_buf = Kernel.Bytes.create 4 in
+        let server_buf = Kernel.Bytes.create ~size:4 in
         let* () = read_exact_stream
           poll
           ~token:(Kernel.Async.Token.make 304)
@@ -370,8 +367,8 @@ let test_tcp_listener_and_stream_roundtrip = fun _ctx ->
           ~pos:0
           ~len:4 in
         if
-          Kernel.String.equal (Kernel.Bytes.sub_string server_buf 0 4) "ping"
-          && Kernel.String.equal (Kernel.IO.Iovec.into_string client_buf) "pong"
+          Kernel.String.equal (Kernel.Bytes.sub_string server_buf ~offset:0 ~len:4) "ping"
+          && Kernel.String.equal (Kernel.IO.Iovec.to_string client_buf) "pong"
         then
           Ok ()
         else
@@ -381,10 +378,10 @@ let test_tcp_vectored_burst_roundtrip_preserves_order = fun _ctx ->
   with_tcp_pair
     (fun ~poll ~listener:_ ~listener_addr:_ ~client ~server ~peer:_ ->
       let parts = [|"a"; "bb"; "ccc"; "dddd"; "eeeee"|] in
-      let outbound = Kernel.IO.Iovec.of_string_array parts in
-      let payload = Kernel.IO.Iovec.into_string outbound in
+      let outbound = Kernel.IO.Iovec.from_string_array parts in
+      let payload = Kernel.IO.Iovec.to_string outbound in
       let total = Kernel.IO.Iovec.length outbound in
-      let inbound = Kernel.Bytes.create total in
+      let inbound = Kernel.Bytes.create ~size:total in
       let rec write_many remaining =
         if remaining = 0 then
           Ok ()
@@ -400,7 +397,7 @@ let test_tcp_vectored_burst_roundtrip_preserves_order = fun _ctx ->
       in
       let rec read_many remaining acc =
         if remaining = 0 then
-          Ok (Kernel.String.concat "" (List.rev acc))
+          Ok (Kernel.String.concat "" (List.reverse acc))
         else
           let* () = read_exact_stream
             poll
@@ -409,11 +406,13 @@ let test_tcp_vectored_burst_roundtrip_preserves_order = fun _ctx ->
             inbound
             ~pos:0
             ~len:total in
-          read_many (remaining - 1) (Kernel.Bytes.sub_string inbound 0 total :: acc)
+          read_many
+            (remaining - 1)
+            (Kernel.Bytes.sub_string inbound ~offset:0 ~len:total :: acc)
       in
       let* () = write_many 8 in
       let* actual = read_many 8 [] in
-      if actual = Kernel.String.concat "" (List.init 8 (fun _ -> payload)) then
+      if actual = Kernel.String.concat "" (List.init ~count:8 ~fn:(fun _ -> payload)) then
         Ok ()
       else
         Error "expected repeated small vectored tcp writes to preserve segment order")
@@ -426,7 +425,7 @@ let test_tcp_stream_reports_eof_after_peer_close = fun _ctx ->
         poll
         ~token:(Kernel.Async.Token.make 309)
         (Kernel.Net.TcpStream.to_source client) in
-      let buffer = Kernel.Bytes.create 8 in
+      let buffer = Kernel.Bytes.create ~size:8 in
       let* read = lift_tcp_stream (Kernel.Net.TcpStream.read client buffer) in
       if read = 0 then
         Ok ()
@@ -441,7 +440,7 @@ let test_tcp_stream_shutdown_write_reports_eof_to_peer = fun _ctx ->
         poll
         ~token:(Kernel.Async.Token.make 312)
         (Kernel.Net.TcpStream.to_source server) in
-      let buffer = Kernel.Bytes.create 8 in
+      let buffer = Kernel.Bytes.create ~size:8 in
       let* read = lift_tcp_stream (Kernel.Net.TcpStream.read server buffer) in
       if read = 0 then
         Ok ()
@@ -452,7 +451,7 @@ let test_tcp_stream_shutdown_write_rejects_further_writes = fun _ctx ->
   with_tcp_pair
     (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
       let* () = lift_tcp_stream (Kernel.Net.TcpStream.shutdown client Kernel.Net.TcpStream.Write) in
-      match Kernel.Net.TcpStream.write client (Kernel.Bytes.of_string "x") with
+      match Kernel.Net.TcpStream.write client (Kernel.Bytes.from_string "x") with
       | Kernel.Result.Error Kernel.Net.TcpStream.BrokenPipe -> Ok ()
       | Kernel.Result.Error Kernel.Net.TcpStream.NotConnected -> Ok ()
       | Kernel.Result.Error error -> Error (string_of_tcp_stream_error error)
@@ -462,7 +461,7 @@ let test_tcp_stream_shutdown_read_preserves_write_half = fun _ctx ->
   with_tcp_pair
     (fun ~poll ~listener:_ ~listener_addr:_ ~client ~server ~peer:_ ->
       let* () = lift_tcp_stream (Kernel.Net.TcpStream.shutdown client Kernel.Net.TcpStream.Read) in
-      let payload = Kernel.Bytes.of_string "ping" in
+      let payload = Kernel.Bytes.from_string "ping" in
       let* () = write_all_stream
         poll
         ~token:(Kernel.Async.Token.make 314)
@@ -470,7 +469,7 @@ let test_tcp_stream_shutdown_read_preserves_write_half = fun _ctx ->
         payload
         ~pos:0
         ~len:(Kernel.Bytes.length payload) in
-      let buffer = Kernel.Bytes.create 4 in
+      let buffer = Kernel.Bytes.create ~size:4 in
       let* () = read_exact_stream
         poll
         ~token:(Kernel.Async.Token.make 315)
@@ -478,7 +477,7 @@ let test_tcp_stream_shutdown_read_preserves_write_half = fun _ctx ->
         buffer
         ~pos:0
         ~len:4 in
-      if Kernel.String.equal (Kernel.Bytes.sub_string buffer 0 4) "ping" then
+      if Kernel.String.equal (Kernel.Bytes.sub_string buffer ~offset:0 ~len:4) "ping" then
         Ok ()
       else
         Error "expected read-shutdown tcp stream to preserve the write half")
@@ -491,12 +490,12 @@ let test_tcp_stream_shutdown_read_write_disables_both_halves = fun _ctx ->
         poll
         ~token:(Kernel.Async.Token.make 318)
         (Kernel.Net.TcpStream.to_source server) in
-      let buffer = Kernel.Bytes.create 8 in
+      let buffer = Kernel.Bytes.create ~size:8 in
       let* read = lift_tcp_stream (Kernel.Net.TcpStream.read server buffer) in
       if read != 0 then
         Error "expected read-write shutdown to surface eof to the peer"
       else
-        match Kernel.Net.TcpStream.write client (Kernel.Bytes.of_string "x") with
+        match Kernel.Net.TcpStream.write client (Kernel.Bytes.from_string "x") with
         | Kernel.Result.Error Kernel.Net.TcpStream.BrokenPipe -> Ok ()
         | Kernel.Result.Error Kernel.Net.TcpStream.NotConnected -> Ok ()
         | Kernel.Result.Error error -> Error (string_of_tcp_stream_error error)
@@ -510,12 +509,12 @@ let test_tcp_stream_peer_write_shutdown_preserves_local_write_half = fun _ctx ->
         poll
         ~token:(Kernel.Async.Token.make 319)
         (Kernel.Net.TcpStream.to_source client) in
-      let eof_buffer = Kernel.Bytes.create 8 in
+      let eof_buffer = Kernel.Bytes.create ~size:8 in
       let* eof_read = lift_tcp_stream (Kernel.Net.TcpStream.read client eof_buffer) in
       if eof_read != 0 then
         Error "expected peer write shutdown to surface eof to the local reader"
       else
-        let payload = Kernel.Bytes.of_string "pong" in
+        let payload = Kernel.Bytes.from_string "pong" in
         let* () = write_all_stream
           poll
           ~token:(Kernel.Async.Token.make 320)
@@ -523,7 +522,7 @@ let test_tcp_stream_peer_write_shutdown_preserves_local_write_half = fun _ctx ->
           payload
           ~pos:0
           ~len:(Kernel.Bytes.length payload) in
-        let buffer = Kernel.Bytes.create 4 in
+        let buffer = Kernel.Bytes.create ~size:4 in
         let* () = read_exact_stream
           poll
           ~token:(Kernel.Async.Token.make 321)
@@ -531,7 +530,7 @@ let test_tcp_stream_peer_write_shutdown_preserves_local_write_half = fun _ctx ->
           buffer
           ~pos:0
           ~len:4 in
-        if Kernel.String.equal (Kernel.Bytes.sub_string buffer 0 4) "pong" then
+        if Kernel.String.equal (Kernel.Bytes.sub_string buffer ~offset:0 ~len:4) "pong" then
           Ok ()
         else
           Error "expected peer write shutdown to preserve the local write half")
@@ -572,7 +571,7 @@ let test_tcp_listener_and_stream_ipv6_roundtrip = fun _ctx ->
       then
         Error "expected ipv6 tcp loopback peers to preserve the loopback address"
       else
-        let payload = Kernel.Bytes.of_string "ipv6" in
+        let payload = Kernel.Bytes.from_string "ipv6" in
         let* () = write_all_stream
           poll
           ~token:(Kernel.Async.Token.make 316)
@@ -580,7 +579,7 @@ let test_tcp_listener_and_stream_ipv6_roundtrip = fun _ctx ->
           payload
           ~pos:0
           ~len:(Kernel.Bytes.length payload) in
-        let buffer = Kernel.Bytes.create 4 in
+        let buffer = Kernel.Bytes.create ~size:4 in
         let* () = read_exact_stream
           poll
           ~token:(Kernel.Async.Token.make 317)
@@ -588,7 +587,7 @@ let test_tcp_listener_and_stream_ipv6_roundtrip = fun _ctx ->
           buffer
           ~pos:0
           ~len:4 in
-        if Kernel.String.equal (Kernel.Bytes.sub_string buffer 0 4) "ipv6" then
+        if Kernel.String.equal (Kernel.Bytes.sub_string buffer ~offset:0 ~len:4) "ipv6" then
           Ok ()
         else
           Error "expected ipv6 tcp loopback to preserve payload")
@@ -664,7 +663,7 @@ let test_tcp_listener_accepts_many_clients_in_one_burst = fun _ctx ->
           let* addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
           let rec connect_many remaining acc =
             if remaining = 0 then
-              Ok (List.rev acc)
+              Ok (List.reverse acc)
             else
               let* client = connect_stream poll addr in
               connect_many (remaining - 1) (client :: acc)
@@ -783,8 +782,8 @@ let test_async_poll_handles_many_tcp_streams = fun _ctx ->
               let* servers = accept_many 12 [] in
               protect ~finally:(fun () -> close_streams servers)
                 (fun () ->
-                  let clients = List.rev clients in
-                  let servers = List.rev servers in
+                  let clients = List.reverse clients in
+                  let servers = List.reverse servers in
                   let rec register index = function
                     | [] -> Ok ()
                     | stream :: rest ->
@@ -800,13 +799,13 @@ let test_async_poll_handles_many_tcp_streams = fun _ctx ->
                     | [] -> Ok ()
                     | stream :: rest ->
                         let* written = lift_tcp_stream
-                          (Kernel.Net.TcpStream.write stream (Kernel.Bytes.of_string "x")) in
+                          (Kernel.Net.TcpStream.write stream (Kernel.Bytes.from_string "x")) in
                         if written != 1 then
                           Error "expected tcp write to make progress during many-stream readiness"
                         else
                           write_all_clients rest
                   in
-                  let seen = Kernel.Array.make 12 false in
+                  let seen = Kernel.Array.make ~count:12 ~value:false in
                   let rec mark = function
                     | [] -> ()
                     | event :: rest ->
@@ -814,13 +813,13 @@ let test_async_poll_handles_many_tcp_streams = fun _ctx ->
                           let token = Kernel.Async.Token.unsafe_value
                             (Kernel.Async.Event.token event) in
                           if token >= 0 && token < 12 then
-                            Kernel.Array.set seen token true;
+                            Kernel.Array.set seen ~at:token ~value:true;
                           mark rest
                   in
                   let rec all_seen index =
                     if index = 12 then
                       true
-                    else if Kernel.Array.get seen index then
+                    else if Kernel.Array.get_unchecked seen ~at:index then
                       all_seen (index + 1)
                     else
                       false
@@ -854,15 +853,18 @@ let test_udp_socket_send_to_and_recv_from = fun _ctx ->
               let* server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
               let* client_addr = lift_udp (Kernel.Net.UdpSocket.local_addr client) in
               let* sent = lift_udp
-                (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.of_string "ping")) in
+                (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.from_string "ping")) in
               if sent != 4 then
                 Error "expected udp send_to to send one datagram"
               else
-                let server_buf = Kernel.Bytes.create 32 in
+                let server_buf = Kernel.Bytes.create ~size:32 in
                 let* (read, from) = recv_from_udp poll ~token:(Kernel.Async.Token.make 307) server server_buf in
                 if
                   read != 4
-                  || not (Kernel.String.equal (Kernel.Bytes.sub_string server_buf 0 read) "ping")
+                  || not
+                    (Kernel.String.equal
+                      (Kernel.Bytes.sub_string server_buf ~offset:0 ~len:read)
+                      "ping")
                   || Kernel.Net.SocketAddr.port from != Kernel.Net.SocketAddr.port client_addr
                 then
                   Error "expected udp recv_from to preserve sender and payload"
@@ -870,11 +872,14 @@ let test_udp_socket_send_to_and_recv_from = fun _ctx ->
                   let* () = lift_udp (Kernel.Net.UdpSocket.connect server client_addr) in
                   let* () = lift_udp (Kernel.Net.UdpSocket.connect client server_addr) in
                   let* _ = lift_udp
-                    (Kernel.Net.UdpSocket.send server (Kernel.Bytes.of_string "pong")) in
-                  let client_buf = Kernel.Bytes.create 32 in
+                    (Kernel.Net.UdpSocket.send server (Kernel.Bytes.from_string "pong")) in
+                  let client_buf = Kernel.Bytes.create ~size:32 in
                   let* reply = recv_udp poll ~token:(Kernel.Async.Token.make 308) client client_buf in
                   if
-                    reply = 4 && Kernel.String.equal (Kernel.Bytes.sub_string client_buf 0 reply) "pong"
+                    reply = 4
+                    && Kernel.String.equal
+                      (Kernel.Bytes.sub_string client_buf ~offset:0 ~len:reply)
+                      "pong"
                   then
                     Ok ()
                   else
@@ -911,19 +916,17 @@ let test_udp_connected_socket_ignores_other_peers = fun _ctx ->
                         (Kernel.Net.UdpSocket.send_to
                           other
                           server_addr
-                          (Kernel.Bytes.of_string "rogue")) in
+                          (Kernel.Bytes.from_string "rogue")) in
                       if sent != 5 then
                         Error "expected udp send_to to send the rogue datagram"
                       else
                         let* events = lift_async (Kernel.Async.Poll.poll ~timeout:1_000_000L poll) in
                         let server_ready =
-                          List.exists
-                            (fun event ->
-                              Kernel.Async.Event.is_readable event
-                              && Kernel.Async.Token.equal token (Kernel.Async.Event.token event))
-                            events
+                          List.any events ~fn:(fun event ->
+                            Kernel.Async.Event.is_readable event
+                            && Kernel.Async.Token.equal token (Kernel.Async.Event.token event))
                         in
-                        let buffer = Kernel.Bytes.create 32 in
+                        let buffer = Kernel.Bytes.create ~size:32 in
                         match Kernel.Net.UdpSocket.recv server buffer with
                         | Kernel.Result.Error Kernel.Net.UdpSocket.WouldBlock when not server_ready -> Ok ()
                         | Kernel.Result.Error error -> Error (string_of_udp_error error)
@@ -960,12 +963,12 @@ let test_udp_connected_socket_delivers_connected_peer_after_filtering_foreign_da
                         (Kernel.Net.UdpSocket.send_to
                           other
                           server_addr
-                          (Kernel.Bytes.of_string "rogue-a")) in
+                          (Kernel.Bytes.from_string "rogue-a")) in
                       let* sent_b = lift_udp
                         (Kernel.Net.UdpSocket.send_to
                           other
                           server_addr
-                          (Kernel.Bytes.of_string "rogue-b")) in
+                          (Kernel.Bytes.from_string "rogue-b")) in
                       if sent_a != 7 || sent_b != 7 then
                         Error "expected udp send_to to preserve both foreign datagrams"
                       else
@@ -974,11 +977,11 @@ let test_udp_connected_socket_delivers_connected_peer_after_filtering_foreign_da
                         if has_readable_token token quiet then
                           Error "expected connected udp socket to stay unreadable for foreign datagrams"
                         else
-                          let buffer = Kernel.Bytes.create 32 in
+                          let buffer = Kernel.Bytes.create ~size:32 in
                           match Kernel.Net.UdpSocket.recv server buffer with
                           | Kernel.Result.Error Kernel.Net.UdpSocket.WouldBlock ->
                               let* sent = lift_udp
-                                (Kernel.Net.UdpSocket.send client (Kernel.Bytes.of_string "peer")) in
+                                (Kernel.Net.UdpSocket.send client (Kernel.Bytes.from_string "peer")) in
                               if sent != 4 then
                                 Error "expected connected udp send to write one datagram"
                               else
@@ -991,7 +994,9 @@ let test_udp_connected_socket_delivers_connected_peer_after_filtering_foreign_da
                                     (Kernel.Net.UdpSocket.recv_from server buffer) in
                                   if
                                     read = 4
-                                    && Kernel.String.equal (Kernel.Bytes.sub_string buffer 0 read) "peer"
+                                    && Kernel.String.equal
+                                      (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read)
+                                      "peer"
                                     && Kernel.Net.SocketAddr.port from = Kernel.Net.SocketAddr.port client_addr
                                   then
                                     Ok ()
@@ -1025,7 +1030,7 @@ let test_async_poll_handles_many_udp_sockets = fun _ctx ->
       let* pairs = bind_many 16 [] in
       protect ~finally:(fun () -> close_many pairs)
         (fun () ->
-          let pairs = List.rev pairs in
+          let pairs = List.reverse pairs in
           let rec register index = function
             | [] -> Ok ()
             | (server, _) :: rest ->
@@ -1042,7 +1047,7 @@ let test_async_poll_handles_many_udp_sockets = fun _ctx ->
             | (server, client) :: rest ->
                 let* server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
                 let* sent = lift_udp
-                  (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.of_string "x")) in
+                  (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.from_string "x")) in
                 if sent != 1 then
                   Error "expected udp send_to to write one byte"
                 else
@@ -1050,20 +1055,20 @@ let test_async_poll_handles_many_udp_sockets = fun _ctx ->
           in
           let* () = register 0 pairs in
           let* () = send_all pairs in
-          let seen = Kernel.Array.make 16 false in
+          let seen = Kernel.Array.make ~count:16 ~value:false in
           let rec mark = function
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_readable event then
                   let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
                   if token >= 0 && token < 16 then
-                    Kernel.Array.set seen token true;
+                    Kernel.Array.set seen ~at:token ~value:true;
                   mark rest
           in
           let rec all_seen index =
             if index = 16 then
               true
-            else if Kernel.Array.get seen index then
+            else if Kernel.Array.get_unchecked seen ~at:index then
               all_seen (index + 1)
             else
               false
@@ -1105,7 +1110,7 @@ let test_async_poll_tolerates_closed_registered_udp_sockets = fun _ctx ->
       let* pairs = bind_many 8 [] in
       protect ~finally:(fun () -> close_many pairs)
         (fun () ->
-          let pairs = List.rev pairs in
+          let pairs = List.reverse pairs in
           let rec register index = function
             | [] -> Ok ()
             | (server, _) :: rest ->
@@ -1132,20 +1137,20 @@ let test_async_poll_tolerates_closed_registered_udp_sockets = fun _ctx ->
                 else
                   let* server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
                   let* sent = lift_udp
-                    (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.of_string "x")) in
+                    (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.from_string "x")) in
                   if sent != 1 then
                     Error "expected udp send_to to write one byte"
                   else
                     send_live (index + 1) rest
           in
-          let seen = Kernel.Array.make 8 false in
+          let seen = Kernel.Array.make ~count:8 ~value:false in
           let rec mark = function
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_readable event then
                   let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
                   if token >= 0 && token < 8 then
-                    Kernel.Array.set seen token true;
+                    Kernel.Array.set seen ~at:token ~value:true;
                   mark rest
           in
           let rec live_seen index =
@@ -1153,29 +1158,27 @@ let test_async_poll_tolerates_closed_registered_udp_sockets = fun _ctx ->
               true
             else if index land 1 = 0 then
               live_seen (index + 1)
-            else if Kernel.Array.get seen index then
+            else if Kernel.Array.get_unchecked seen ~at:index then
               live_seen (index + 1)
             else
               false
           in
-          Result.and_then (register 0 pairs)
-            (fun () ->
-              close_even 0 pairs;
-              Result.and_then (send_live 0 pairs)
-                (fun () ->
-                  let rec poll_until attempts =
-                    if attempts = 0 then
-                      Error "expected closed registered udp sockets to not poison remaining readiness"
-                    else
-                      let* events = lift_async
-                        (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
-                      mark events;
-                      if live_seen 0 then
-                        Ok ()
-                      else
-                        poll_until (attempts - 1)
-                  in
-                  poll_until 8))))
+          let* () = register 0 pairs in
+          close_even 0 pairs;
+          let* () = send_live 0 pairs in
+          let rec poll_until attempts =
+            if attempts = 0 then
+              Error "expected closed registered udp sockets to not poison remaining readiness"
+            else
+              let* events = lift_async
+                (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+              mark events;
+              if live_seen 0 then
+                Ok ()
+              else
+                poll_until (attempts - 1)
+          in
+          poll_until 8))
 
 let test_udp_socket_source_deregister_after_close_is_harmless = fun _ctx ->
   with_poll
@@ -1241,8 +1244,8 @@ let test_async_poll_tolerates_closed_registered_tcp_streams = fun _ctx ->
               let* servers = accept_many 8 [] in
               protect ~finally:(fun () -> close_streams servers)
                 (fun () ->
-                  let clients = List.rev clients in
-                  let servers = List.rev servers in
+                  let clients = List.reverse clients in
+                  let servers = List.reverse servers in
                   let rec register index = function
                     | [] -> Ok ()
                     | stream :: rest ->
@@ -1269,14 +1272,14 @@ let test_async_poll_tolerates_closed_registered_tcp_streams = fun _ctx ->
                           write_live (index + 1) client_rest server_rest
                         else
                           let* written = lift_tcp_stream
-                            (Kernel.Net.TcpStream.write client (Kernel.Bytes.of_string "x")) in
+                            (Kernel.Net.TcpStream.write client (Kernel.Bytes.from_string "x")) in
                           if written != 1 then
                             Error "expected tcp write to make progress for live registered streams"
                           else
                             write_live (index + 1) client_rest server_rest
                     | _ -> Error "expected tcp client/server lists to stay aligned"
                   in
-                  let seen = Kernel.Array.make 8 false in
+                  let seen = Kernel.Array.make ~count:8 ~value:false in
                   let rec mark = function
                     | [] -> ()
                     | event :: rest ->
@@ -1284,7 +1287,7 @@ let test_async_poll_tolerates_closed_registered_tcp_streams = fun _ctx ->
                           let token = Kernel.Async.Token.unsafe_value
                             (Kernel.Async.Event.token event) in
                           if token >= 0 && token < 8 then
-                            Kernel.Array.set seen token true;
+                            Kernel.Array.set seen ~at:token ~value:true;
                           mark rest
                   in
                   let rec live_seen index =
@@ -1292,29 +1295,27 @@ let test_async_poll_tolerates_closed_registered_tcp_streams = fun _ctx ->
                       true
                     else if index land 1 = 0 then
                       live_seen (index + 1)
-                    else if Kernel.Array.get seen index then
+                    else if Kernel.Array.get_unchecked seen ~at:index then
                       live_seen (index + 1)
                     else
                       false
                   in
-                  Result.and_then (register 0 servers)
-                    (fun () ->
-                      close_even 0 servers;
-                      Result.and_then (write_live 0 clients servers)
-                        (fun () ->
-                          let rec poll_until attempts =
-                            if attempts = 0 then
-                              Error "expected closed registered tcp streams to not poison remaining readiness"
-                            else
-                              let* events = lift_async
-                                (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
-                              mark events;
-                              if live_seen 0 then
-                                Ok ()
-                              else
-                                poll_until (attempts - 1)
-                          in
-                          poll_until 8))))))
+                  let* () = register 0 servers in
+                  close_even 0 servers;
+                  let* () = write_live 0 clients servers in
+                  let rec poll_until attempts =
+                    if attempts = 0 then
+                      Error "expected closed registered tcp streams to not poison remaining readiness"
+                    else
+                      let* events = lift_async
+                        (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:32 poll) in
+                      mark events;
+                      if live_seen 0 then
+                        Ok ()
+                      else
+                        poll_until (attempts - 1)
+                  in
+                  poll_until 8))))
 
 let test_udp_socket_ipv6_send_to_and_recv_from = fun _ctx ->
   with_poll
@@ -1328,15 +1329,17 @@ let test_udp_socket_ipv6_send_to_and_recv_from = fun _ctx ->
             (fun () ->
               let* server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
               let* sent = lift_udp
-                (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.of_string "ipv6")) in
+                (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.from_string "ipv6")) in
               if sent != 4 then
                 Error "expected ipv6 udp send_to to send one datagram"
               else
-                let buffer = Kernel.Bytes.create 32 in
+                let buffer = Kernel.Bytes.create ~size:32 in
                 let* (read, from) = recv_from_udp poll ~token:(Kernel.Async.Token.make 314) server buffer in
                 if
                   read = 4
-                  && Kernel.String.equal (Kernel.Bytes.sub_string buffer 0 read) "ipv6"
+                  && Kernel.String.equal
+                    (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read)
+                    "ipv6"
                   && Kernel.String.equal
                     (Kernel.Net.IpAddr.to_string (Kernel.Net.SocketAddr.ip from))
                     "::1"
@@ -1376,7 +1379,7 @@ let test_udp_connected_ipv6_socket_ignores_other_peers = fun _ctx ->
                         (Kernel.Net.UdpSocket.send_to
                           other
                           server_addr
-                          (Kernel.Bytes.of_string "rogue")) in
+                          (Kernel.Bytes.from_string "rogue")) in
                       if sent != 5 then
                         Error "expected ipv6 udp send_to to preserve the rogue datagram"
                       else
@@ -1385,11 +1388,11 @@ let test_udp_connected_ipv6_socket_ignores_other_peers = fun _ctx ->
                         if has_readable_token token quiet then
                           Error "expected connected ipv6 udp socket to ignore foreign datagrams"
                         else
-                          let buffer = Kernel.Bytes.create 32 in
+                          let buffer = Kernel.Bytes.create ~size:32 in
                           match Kernel.Net.UdpSocket.recv_from server buffer with
                           | Kernel.Result.Error Kernel.Net.UdpSocket.WouldBlock ->
                               let* sent = lift_udp
-                                (Kernel.Net.UdpSocket.send client (Kernel.Bytes.of_string "v6ok")) in
+                                (Kernel.Net.UdpSocket.send client (Kernel.Bytes.from_string "v6ok")) in
                               if sent != 4 then
                                 Error "expected connected ipv6 udp send to write one datagram"
                               else
@@ -1402,7 +1405,9 @@ let test_udp_connected_ipv6_socket_ignores_other_peers = fun _ctx ->
                                     (Kernel.Net.UdpSocket.recv_from server buffer) in
                                   if
                                     read = 4
-                                    && Kernel.String.equal (Kernel.Bytes.sub_string buffer 0 read) "v6ok"
+                                    && Kernel.String.equal
+                                      (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read)
+                                      "v6ok"
                                     && Kernel.String.equal
                                       (Kernel.Net.IpAddr.to_string (Kernel.Net.SocketAddr.ip from))
                                       "::1"
@@ -1450,7 +1455,7 @@ let test_udp_send_requires_connected_peer = fun _ctx ->
   let* socket = lift_udp (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
   protect ~finally:(fun () -> close_udp socket)
     (fun () ->
-      match Kernel.Net.UdpSocket.send socket (Kernel.Bytes.of_string "ping") with
+      match Kernel.Net.UdpSocket.send socket (Kernel.Bytes.from_string "ping") with
       | Kernel.Result.Error Kernel.Net.UdpSocket.DestinationAddressRequired -> Ok ()
       | Kernel.Result.Error Kernel.Net.UdpSocket.NotConnected -> Ok ()
       | Kernel.Result.Error error -> Error (Kernel.String.append
@@ -1468,9 +1473,9 @@ let test_udp_send_and_recv_after_close_report_bad_file_descriptor = fun _ctx ->
           let* peer_addr = lift_udp (Kernel.Net.UdpSocket.local_addr peer) in
           let* () = lift_udp (Kernel.Net.UdpSocket.connect server peer_addr) in
           let* () = lift_udp (Kernel.Net.UdpSocket.close server) in
-          let buffer = Kernel.Bytes.create 8 in
+          let buffer = Kernel.Bytes.create ~size:8 in
           match (
-            Kernel.Net.UdpSocket.send server (Kernel.Bytes.of_string "x"),
+            Kernel.Net.UdpSocket.send server (Kernel.Bytes.from_string "x"),
             Kernel.Net.UdpSocket.recv server buffer
           ) with
           | (Kernel.Result.Error (Kernel.Net.UdpSocket.System Kernel.SystemError.BadFileDescriptor), Kernel.Result.Error (Kernel.Net.UdpSocket.System Kernel.SystemError.BadFileDescriptor)) -> Ok ()
@@ -1518,7 +1523,7 @@ let test_tcp_listener_bind_rejects_invalid_backlog = fun _ctx ->
       Error "expected invalid backlog to be rejected before binding"
 
 let test_socket_addr_rejects_negative_ports = fun _ctx ->
-  match Kernel.Net.IpAddr.of_string "127.0.0.1" with
+  match Kernel.Net.IpAddr.from_string "127.0.0.1" with
   | Kernel.Result.Ok ip -> (
       match Kernel.Net.SocketAddr.make ~ip ~port:(-1) with
       | Kernel.Result.Error (Kernel.Net.SocketAddr.InvalidPort { port=(-1) }) -> Ok ()
@@ -1528,7 +1533,7 @@ let test_socket_addr_rejects_negative_ports = fun _ctx ->
   | Kernel.Result.Error error -> Error (Kernel.Net.IpAddr.error_to_string error)
 
 let test_socket_addr_rejects_ports_past_65535 = fun _ctx ->
-  match Kernel.Net.IpAddr.of_string "127.0.0.1" with
+  match Kernel.Net.IpAddr.from_string "127.0.0.1" with
   | Kernel.Result.Ok ip -> (
       match Kernel.Net.SocketAddr.make ~ip ~port:65_536 with
       | Kernel.Result.Error (Kernel.Net.SocketAddr.InvalidPort { port=65_536 }) -> Ok ()
@@ -1556,7 +1561,7 @@ let test_tcp_listener_close_twice_reports_bad_file_descriptor = fun _ctx ->
 let test_tcp_stream_read_len_zero_is_a_no_op = fun _ctx ->
   with_tcp_pair
     (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
-      let buffer = Kernel.Bytes.of_string "unchanged" in
+      let buffer = Kernel.Bytes.from_string "unchanged" in
       match Kernel.Net.TcpStream.read client ~pos:2 ~len:0 buffer with
       | Kernel.Result.Ok 0 when Kernel.Bytes.to_string buffer = "unchanged" -> Ok ()
       | Kernel.Result.Ok _ -> Error "expected TcpStream.read ~len:0 to leave the buffer unchanged"
@@ -1574,7 +1579,7 @@ let test_tcp_stream_write_len_zero_sends_nothing = fun _ctx ->
           let _ = Kernel.Async.Poll.deregister poll source in
           ())
         (fun () ->
-          match Kernel.Net.TcpStream.write client ~pos:1 ~len:0 (Kernel.Bytes.of_string "riot") with
+          match Kernel.Net.TcpStream.write client ~pos:1 ~len:0 (Kernel.Bytes.from_string "riot") with
           | Kernel.Result.Ok 0 ->
               let* events = lift_async
                 (Kernel.Async.Poll.poll ~timeout:20_000_000L ~max_events:8 poll) in
@@ -1590,7 +1595,7 @@ let test_tcp_stream_write_len_zero_sends_nothing = fun _ctx ->
 let test_tcp_stream_read_rejects_invalid_slices = fun _ctx ->
   with_tcp_pair
     (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
-      match Kernel.Net.TcpStream.read client ~pos:(-1) (Kernel.Bytes.create 4) with
+      match Kernel.Net.TcpStream.read client ~pos:(-1) (Kernel.Bytes.create ~size:4) with
       | Kernel.Result.Error (Kernel.Net.TcpStream.InvalidSlice { pos=(-1); _ }) -> Ok ()
       | Kernel.Result.Error error -> Error (string_of_tcp_stream_error error)
       | Kernel.Result.Ok _ -> Error "expected TcpStream.read to reject invalid slices")
@@ -1598,7 +1603,7 @@ let test_tcp_stream_read_rejects_invalid_slices = fun _ctx ->
 let test_tcp_stream_write_rejects_invalid_slices = fun _ctx ->
   with_tcp_pair
     (fun ~poll:_ ~listener:_ ~listener_addr:_ ~client ~server:_ ~peer:_ ->
-      match Kernel.Net.TcpStream.write client ~pos:2 ~len:3 (Kernel.Bytes.create 4) with
+      match Kernel.Net.TcpStream.write client ~pos:2 ~len:3 (Kernel.Bytes.create ~size:4) with
       | Kernel.Result.Error (Kernel.Net.TcpStream.InvalidSlice { pos=2; len=3; buffer_len=4 }) -> Ok ()
       | Kernel.Result.Error error -> Error (string_of_tcp_stream_error error)
       | Kernel.Result.Ok _ -> Error "expected TcpStream.write to reject invalid slices")
@@ -1648,13 +1653,13 @@ let test_udp_recv_on_unconnected_socket_accepts_any_peer = fun _ctx ->
   with_udp_pair
     (fun ~poll ~server ~server_addr ~client ~client_addr:_ ->
       let* sent = lift_udp
-        (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.of_string "ping")) in
+        (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.from_string "ping")) in
       if sent != 4 then
         Error "expected udp send_to to write a single datagram"
       else
-        let buffer = Kernel.Bytes.create 16 in
+        let buffer = Kernel.Bytes.create ~size:16 in
         let* read = recv_udp poll ~token:(Kernel.Async.Token.make 925) server buffer in
-        if read = 4 && Kernel.Bytes.sub_string buffer 0 read = "ping" then
+        if read = 4 && Kernel.Bytes.sub_string buffer ~offset:0 ~len:read = "ping" then
           Ok ()
         else
           Error "expected recv on an unconnected udp socket to accept peer traffic")
@@ -1663,8 +1668,8 @@ let test_udp_send_and_recv_reject_invalid_slices = fun _ctx ->
   with_connected_udp_pair
     (fun ~poll:_ ~server ~server_addr:_ ~client ~client_addr:_ ->
       match (
-        Kernel.Net.UdpSocket.send client ~pos:2 ~len:3 (Kernel.Bytes.create 4),
-        Kernel.Net.UdpSocket.recv server ~pos:(-1) (Kernel.Bytes.create 4)
+        Kernel.Net.UdpSocket.send client ~pos:2 ~len:3 (Kernel.Bytes.create ~size:4),
+        Kernel.Net.UdpSocket.recv server ~pos:(-1) (Kernel.Bytes.create ~size:4)
       ) with
       | (Kernel.Result.Error (Kernel.Net.UdpSocket.InvalidSlice { pos=2; len=3; buffer_len=4 }), Kernel.Result.Error (Kernel.Net.UdpSocket.InvalidSlice {
         pos=(-1);
@@ -1694,11 +1699,11 @@ let test_udp_connect_after_close_reports_bad_file_descriptor = fun _ctx ->
 let test_udp_zero_length_datagrams_have_a_stable_contract = fun _ctx ->
   with_connected_udp_pair
     (fun ~poll ~server ~server_addr:_ ~client ~client_addr:_ ->
-      let* sent = lift_udp (Kernel.Net.UdpSocket.send client (Kernel.Bytes.of_string "")) in
+      let* sent = lift_udp (Kernel.Net.UdpSocket.send client (Kernel.Bytes.from_string "")) in
       if sent != 0 then
         Error "expected sending a zero-length udp datagram to report zero bytes"
       else
-        let buffer = Kernel.Bytes.create 1 in
+        let buffer = Kernel.Bytes.create ~size:1 in
         let* read = recv_udp poll ~token:(Kernel.Async.Token.make 926) server buffer in
         if read = 0 then
           Ok ()
@@ -1708,8 +1713,8 @@ let test_udp_zero_length_datagrams_have_a_stable_contract = fun _ctx ->
 let test_oversized_udp_datagrams_are_rejected_cleanly = fun _ctx ->
   with_udp_pair
     (fun ~poll:_ ~server:_ ~server_addr ~client ~client_addr:_ ->
-      let payload = Kernel.Bytes.create 70_000 in
-      Kernel.Bytes.fill payload 0 (Kernel.Bytes.length payload) 'x';
+      let payload = Kernel.Bytes.create ~size:70_000 in
+      Kernel.Bytes.fill payload ~offset:0 ~len:(Kernel.Bytes.length payload) ~char:'x';
       match Kernel.Net.UdpSocket.send_to client server_addr payload with
       | Kernel.Result.Error Kernel.Net.UdpSocket.MessageTooLong -> Ok ()
       | Kernel.Result.Error error -> Error (string_of_udp_error error)

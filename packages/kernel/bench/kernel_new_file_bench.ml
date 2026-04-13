@@ -2,10 +2,10 @@ open Std
 module Kernel = Kernel
 
 let panic_file = fun error ->
-  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_fs_file error))
 
 let with_tempdir = fun prefix fn ->
-  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.of_string (Path.to_string tempdir))) with
+  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.from_string (Path.to_string tempdir))) with
   | Ok value -> value
   | Error _ -> Kernel.SystemError.panic "failed to create temporary directory"
 
@@ -29,15 +29,12 @@ let with_file = fun file fn ->
       let _ = Kernel.Fs.File.close file in
       raise error
 
-let scalar_payload = Kernel.Bytes.of_string (Kernel.String.make 4_096 'x')
+let scalar_payload = Kernel.Bytes.from_string (Kernel.String.make ~len:4_096 ~char:'x')
 
 let vectored_payload =
-  Kernel.IO.Iovec.of_string_array
-    (
-      Kernel.Array.init 4
-        (fun _ ->
-          Kernel.String.make 1_024 'x')
-    )
+  Kernel.IO.Iovec.from_string_array
+    (Kernel.Array.init ~count:4 ~fn:(fun _ ->
+       Kernel.String.make ~len:1_024 ~char:'x'))
 
 let bench_scalar_write = fun () ->
   with_temp_path "kernel_new_file_bench" "scalar.bin"
@@ -91,7 +88,7 @@ let bench_scalar_read = fun () ->
       match Kernel.Fs.File.open_read path with
       | Kernel.Result.Error error -> panic_file error
       | Kernel.Result.Ok file ->
-          let buffer = Kernel.Bytes.create (Kernel.Bytes.length scalar_payload) in
+          let buffer = Kernel.Bytes.create ~size:(Kernel.Bytes.length scalar_payload) in
           with_file file
             (fun file ->
               match Kernel.Fs.File.read file buffer with
@@ -114,7 +111,7 @@ let bench_partial_read = fun () ->
       match Kernel.Fs.File.open_read path with
       | Kernel.Result.Error error -> panic_file error
       | Kernel.Result.Ok file ->
-          let buffer = Kernel.Bytes.create (Kernel.Bytes.length scalar_payload) in
+          let buffer = Kernel.Bytes.create ~size:(Kernel.Bytes.length scalar_payload) in
           with_file file
             (fun file ->
               match Kernel.Fs.File.read file ~pos:512 ~len:2_048 buffer with
@@ -175,7 +172,7 @@ let bench_read_dir_names = fun () ->
         | Kernel.Result.Ok file ->
             with_file file
               (fun file ->
-                match Kernel.Fs.File.write file (Kernel.Bytes.of_string "a") with
+                match Kernel.Fs.File.write file (Kernel.Bytes.from_string "a") with
                 | Kernel.Result.Ok _ -> ()
                 | Kernel.Result.Error error -> panic_file error)
       in
@@ -197,7 +194,7 @@ let bench_read_dir_names_large = fun () ->
               let _ =
                 with_file file
                   (fun file ->
-                    match Kernel.Fs.File.write file (Kernel.Bytes.of_string "x") with
+                    match Kernel.Fs.File.write file (Kernel.Bytes.from_string "x") with
                     | Kernel.Result.Ok _ -> ()
                     | Kernel.Result.Error error -> panic_file error)
               in

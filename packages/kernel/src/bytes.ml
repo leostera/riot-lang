@@ -57,3 +57,8 @@ let sub = fun value ~offset ~len ->
     Error (OutOfBoundSet { bytes = value; lenght = length value; at = offset; char = '\000' })
   else
     Ok (sub_unchecked value ~offset ~len)
+
+let sub_string = fun value ~offset ~len ->
+  match sub value ~offset ~len with
+  | Ok slice -> to_string slice
+  | Error _ -> System_error.panic "Kernel.Bytes.sub_string: out of bounds"

@@ -2,19 +2,19 @@ open Std
 module Kernel = Kernel
 
 let panic_file = fun error ->
-  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_fs_file error))
 
 let panic_async = fun error ->
-  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_async error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_async error))
 
 let panic_time_timer = fun error ->
-  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_time_timer error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_time_timer error))
 
 let panic_udp = fun error ->
-  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_net_udp_socket error))
 
 let panic_process = fun error ->
-  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_process error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_process error))
 
 let lift_async result =
   match result with
@@ -61,7 +61,7 @@ let with_pipes = fun count fn ->
   in
   match create count [] with
   | Error error -> panic_file error
-  | Ok pipes -> protect ~finally:(fun () -> close_pipes pipes) (fun () -> fn (List.rev pipes))
+  | Ok pipes -> protect ~finally:(fun () -> close_pipes pipes) (fun () -> fn (List.reverse pipes))
 
 let with_poll = fun fn ->
   match Kernel.Async.Poll.make () with
@@ -117,7 +117,7 @@ let bench_pipe_wakeup = fun () ->
           let source = Kernel.Fs.File.to_source pipe.read_end in
           let token = Kernel.Async.Token.make 9 in
           let _ = Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source in
-          let _ = Kernel.Fs.File.write pipe.write_end (Kernel.Bytes.of_string "x") in
+          let _ = Kernel.Fs.File.write pipe.write_end (Kernel.Bytes.from_string "x") in
           let _ = Kernel.Async.Poll.poll ~timeout:100_000_000L poll in
           ()))
 
@@ -144,7 +144,7 @@ let bench_timer_wakeup = fun () ->
     (fun poll ->
       match Kernel.Time.Timer.after_ns 1_000_000L with
       | Error error -> Kernel.SystemError.panic
-        (Kernel.Error.to_string (Kernel.Error.of_time_timer error))
+        (Kernel.Error.to_string (Kernel.Error.from_time_timer error))
       | Ok timer ->
           let source = Kernel.Time.Timer.to_source timer in
           let _ = Kernel.Async.Poll.register
@@ -174,7 +174,7 @@ let bench_many_source_poll = fun () ->
           let rec wake = function
             | [] -> ()
             | Kernel.Fs.File.{ write_end; _ } :: rest ->
-                let _ = Kernel.Fs.File.write write_end (Kernel.Bytes.of_string "x") in
+                let _ = Kernel.Fs.File.write write_end (Kernel.Bytes.from_string "x") in
                 wake rest
           in
           register 0 pipes;
@@ -238,11 +238,11 @@ let bench_mixed_source_poll = fun () ->
                             (fun () ->
                               let _ = Kernel.Fs.File.write
                                 pipe.write_end
-                                (Kernel.Bytes.of_string "x") in
+                                (Kernel.Bytes.from_string "x") in
                               let _ = Kernel.Net.UdpSocket.send_to
                                 client
                                 server_addr
-                                (Kernel.Bytes.of_string "u") in
+                                (Kernel.Bytes.from_string "u") in
                               let seen_pipe = ref false in
                               let seen_timer = ref false in
                               let seen_process = ref false in

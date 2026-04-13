@@ -4,7 +4,7 @@ module Kernel = Kernel
 
 let test_of_string_roundtrips_raw_text = fun _ctx ->
   let raw = "domains/admin/users/models/testing/user.ml" in
-  if Kernel.String.equal (Kernel.Path.to_string (Kernel.Path.of_string raw)) raw then
+  if Kernel.String.equal (Kernel.Path.to_string (Kernel.Path.from_string raw)) raw then
     Ok ()
   else
     Error "expected Path.of_string and Path.to_string to roundtrip raw path text"
@@ -27,8 +27,8 @@ let test_join_avoids_duplicate_separators = fun _ctx ->
     Error "expected Path.join to avoid inserting an extra separator"
 
 let test_infix_join_matches_function = fun _ctx ->
-  let left = Kernel.Path.of_string "domains" in
-  let right = Kernel.Path.of_string "admin" in
+  let left = Kernel.Path.from_string "domains" in
+  let right = Kernel.Path.from_string "admin" in
   if
     Kernel.String.equal
       (Kernel.Path.to_string Kernel.Path.(left / right))

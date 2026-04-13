@@ -3,9 +3,9 @@ module Test = Std.Test
 module Kernel = Kernel
 
 let test_of_bytes_copies_input = fun _ctx ->
-  let bytes = Kernel.Bytes.of_string "riot" in
-  let value = Kernel.String.of_bytes bytes in
-  Kernel.Bytes.set bytes 0 'R';
+  let bytes = Kernel.Bytes.from_string "riot" in
+  let value = Kernel.String.from_bytes bytes in
+  let _ = Kernel.Bytes.set bytes ~at:0 ~char:'R' in
   if Kernel.String.equal value "riot" then
     Ok ()
   else
@@ -14,7 +14,7 @@ let test_of_bytes_copies_input = fun _ctx ->
 let test_to_bytes_copies_input = fun _ctx ->
   let original = Kernel.String.append "ri" "ot" in
   let bytes = Kernel.String.to_bytes original in
-  Kernel.Bytes.set bytes 0 'R';
+  let _ = Kernel.Bytes.set bytes ~at:0 ~char:'R' in
   if Kernel.String.equal original "riot" then
     Ok ()
   else
@@ -22,7 +22,7 @@ let test_to_bytes_copies_input = fun _ctx ->
 
 let test_init_builds_expected_string = fun _ctx ->
   let built =
-    Kernel.String.init 4 (fun index -> Kernel.Char.unsafe_of_int (65 + index))
+    Kernel.String.init ~len:4 ~fn:(fun index -> Kernel.Char.from_int_unchecked (65 + index))
   in
   if Kernel.String.equal built "ABCD" then
     Ok ()

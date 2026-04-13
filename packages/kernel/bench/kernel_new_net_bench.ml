@@ -2,16 +2,16 @@ open Std
 module Kernel = Kernel
 
 let panic_async = fun error ->
-  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_async error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_async error))
 
 let panic_tcp_listener = fun error ->
-  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_net_tcp_listener error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_net_tcp_listener error))
 
 let panic_tcp_stream = fun error ->
-  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_net_tcp_stream error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_net_tcp_stream error))
 
 let panic_udp = fun error ->
-  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_net_udp_socket error))
+  Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_net_udp_socket error))
 
 let protect = fun ~finally fn ->
   try
@@ -46,19 +46,19 @@ let lift_udp result =
 let is_tcp_listener_would_block error =
   match error with
   | Kernel.Net.TcpListener.WouldBlock -> true
-  | Kernel.Net.TcpListener.System system_error -> Kernel.SystemError.is_would_block system_error
+  | Kernel.Net.TcpListener.System system_error -> Kernel.SystemError.would_block system_error
   | _ -> false
 
 let is_tcp_stream_would_block error =
   match error with
   | Kernel.Net.TcpStream.WouldBlock -> true
-  | Kernel.Net.TcpStream.System system_error -> Kernel.SystemError.is_would_block system_error
+  | Kernel.Net.TcpStream.System system_error -> Kernel.SystemError.would_block system_error
   | _ -> false
 
 let is_udp_would_block error =
   match error with
   | Kernel.Net.UdpSocket.WouldBlock -> true
-  | Kernel.Net.UdpSocket.System system_error -> Kernel.SystemError.is_would_block system_error
+  | Kernel.Net.UdpSocket.System system_error -> Kernel.SystemError.would_block system_error
   | _ -> false
 
 let wait_for = fun poll ~token ~interest ~source ~pred ->
@@ -70,9 +70,8 @@ let wait_for = fun poll ~token ~interest ~source ~pred ->
     (fun () ->
       let events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
       let found =
-        List.exists
-          (fun event -> Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
-          events
+        List.any events ~fn:(fun event ->
+          Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
       in
       if not found then
         Kernel.SystemError.panic "expected readiness event")
@@ -234,10 +233,10 @@ let bench_tcp_loopback_roundtrip = fun () ->
               let server = accept_stream poll listener in
               protect ~finally:(fun () -> close_stream server)
                 (fun () ->
-                  let payload = Kernel.Bytes.of_string "ping" in
-                  let reply = Kernel.Bytes.of_string "pong" in
-                  let server_buf = Kernel.Bytes.create 4 in
-                  let client_buf = Kernel.Bytes.create 4 in
+                  let payload = Kernel.Bytes.from_string "ping" in
+                  let reply = Kernel.Bytes.from_string "pong" in
+                  let server_buf = Kernel.Bytes.create ~size:4 in
+                  let client_buf = Kernel.Bytes.create ~size:4 in
                   write_all_stream
                     poll
                     ~token:(Kernel.Async.Token.make 403)
@@ -281,8 +280,8 @@ let bench_tcp_vectored_roundtrip = fun () ->
               let server = accept_stream poll listener in
               protect ~finally:(fun () -> close_stream server)
                 (fun () ->
-                  let payload = Kernel.IO.Iovec.of_string_array [|"pi"; "ng"|] in
-                  let reply = Kernel.IO.Iovec.of_string_array [|"po"; "ng"|] in
+                  let payload = Kernel.IO.Iovec.from_string_array [|"pi"; "ng"|] in
+                  let reply = Kernel.IO.Iovec.from_string_array [|"po"; "ng"|] in
                   let server_buf = Kernel.IO.Iovec.create ~count:2 ~size:4 () in
                   let client_buf = Kernel.IO.Iovec.create ~count:2 ~size:4 () in
                   write_all_vectored
@@ -368,7 +367,7 @@ let bench_tcp_accept_burst = fun () ->
           let addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
           let rec connect_many remaining acc =
             if remaining = 0 then
-              List.rev acc
+              List.reverse acc
             else
               let client = connect_stream poll addr in
               connect_many (remaining - 1) (client :: acc)
@@ -378,7 +377,7 @@ let bench_tcp_accept_burst = fun () ->
             (fun () ->
               let rec accept_many remaining acc =
                 if remaining = 0 then
-                  List.rev acc
+                  List.reverse acc
                 else
                   let server = accept_stream poll listener in
                   accept_many (remaining - 1) (server :: acc)
@@ -398,9 +397,10 @@ let bench_udp_loopback_datagram = fun () ->
             (fun () ->
               let server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
               let _ = lift_udp
-                (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.of_string "ping")) in
-              let buffer = Kernel.Bytes.create 32 in
-              ignore (recv_from_udp poll ~token:(Kernel.Async.Token.make 407) server buffer))))
+                (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.from_string "ping")) in
+              let buffer = Kernel.Bytes.create ~size:32 in
+              let _ = recv_from_udp poll ~token:(Kernel.Async.Token.make 407) server buffer in
+              ())))
 
 let bench_udp_connected_roundtrip = fun () ->
   with_poll
@@ -416,12 +416,13 @@ let bench_udp_connected_roundtrip = fun () ->
               let client_addr = lift_udp (Kernel.Net.UdpSocket.local_addr client) in
               let _ = lift_udp (Kernel.Net.UdpSocket.connect server client_addr) in
               let _ = lift_udp (Kernel.Net.UdpSocket.connect client server_addr) in
-              let _ = lift_udp (Kernel.Net.UdpSocket.send client (Kernel.Bytes.of_string "ping")) in
-              let server_buf = Kernel.Bytes.create 32 in
-              ignore (recv_udp poll ~token:(Kernel.Async.Token.make 408) server server_buf);
-              let _ = lift_udp (Kernel.Net.UdpSocket.send server (Kernel.Bytes.of_string "pong")) in
-              let client_buf = Kernel.Bytes.create 32 in
-              ignore (recv_udp poll ~token:(Kernel.Async.Token.make 409) client client_buf))))
+              let _ = lift_udp (Kernel.Net.UdpSocket.send client (Kernel.Bytes.from_string "ping")) in
+              let server_buf = Kernel.Bytes.create ~size:32 in
+              let _ = recv_udp poll ~token:(Kernel.Async.Token.make 408) server server_buf in
+              let _ = lift_udp (Kernel.Net.UdpSocket.send server (Kernel.Bytes.from_string "pong")) in
+              let client_buf = Kernel.Bytes.create ~size:32 in
+              let _ = recv_udp poll ~token:(Kernel.Async.Token.make 409) client client_buf in
+              ())))
 
 let bench_udp_burst_datagrams = fun () ->
   with_poll
@@ -434,7 +435,7 @@ let bench_udp_burst_datagrams = fun () ->
           protect ~finally:(fun () -> close_udp client)
             (fun () ->
               let server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
-              let payload = Kernel.Bytes.of_string (String.make 64 'x') in
+              let payload = Kernel.Bytes.from_string (String.make ~len:64 ~char:'x') in
               let rec send_many remaining =
                 if remaining = 0 then
                   ()
@@ -442,7 +443,7 @@ let bench_udp_burst_datagrams = fun () ->
                   let _ = lift_udp (Kernel.Net.UdpSocket.send_to client server_addr payload) in
                   send_many (remaining - 1)
               in
-              let buffer = Kernel.Bytes.create 128 in
+              let buffer = Kernel.Bytes.create ~size:128 in
               let rec recv_many remaining =
                 if remaining = 0 then
                   ()
@@ -457,9 +458,9 @@ let bench_udp_burst_datagrams = fun () ->
               send_many 32;
               recv_many 32)))
 
-let bulk_payload = Kernel.Bytes.of_string (String.make 65_536 'x')
+let bulk_payload = Kernel.Bytes.from_string (String.make ~len:65_536 ~char:'x')
 
-let bulk_reply = Kernel.Bytes.of_string (String.make 65_536 'y')
+let bulk_reply = Kernel.Bytes.from_string (String.make ~len:65_536 ~char:'y')
 
 let bulk_len = Kernel.Bytes.length bulk_payload
 
@@ -477,8 +478,8 @@ let bench_tcp_bulk_roundtrip = fun () ->
               let server = accept_stream poll listener in
               protect ~finally:(fun () -> close_stream server)
                 (fun () ->
-                  let server_buf = Kernel.Bytes.create bulk_len in
-                  let client_buf = Kernel.Bytes.create bulk_len in
+                  let server_buf = Kernel.Bytes.create ~size:bulk_len in
+                  let client_buf = Kernel.Bytes.create ~size:bulk_len in
                   write_all_stream
                     poll
                     ~token:(Kernel.Async.Token.make 420)
@@ -527,8 +528,8 @@ let bench_udp_connected_peer_filtered_roundtrip = fun () ->
                   let _ = lift_udp (Kernel.Net.UdpSocket.connect server client_addr) in
                   let _ = lift_udp (Kernel.Net.UdpSocket.connect client server_addr) in
                   let _ = lift_udp
-                    (Kernel.Net.UdpSocket.send_to other server_addr (Kernel.Bytes.of_string "rogue")) in
-                  let ignored = Kernel.Bytes.create 32 in
+                    (Kernel.Net.UdpSocket.send_to other server_addr (Kernel.Bytes.from_string "rogue")) in
+                  let ignored = Kernel.Bytes.create ~size:32 in
                   (
                     match Kernel.Net.UdpSocket.recv server ignored with
                     | Kernel.Result.Error error ->
@@ -536,12 +537,12 @@ let bench_udp_connected_peer_filtered_roundtrip = fun () ->
                           panic_udp error
                     | Kernel.Result.Ok _ -> Kernel.SystemError.panic "expected connected udp bench to ignore foreign datagrams"
                   );
-                  let _ = lift_udp (Kernel.Net.UdpSocket.send client (Kernel.Bytes.of_string "ping")) in
-                  let server_buf = Kernel.Bytes.create 32 in
-                  ignore (recv_udp poll ~token:(Kernel.Async.Token.make 424) server server_buf);
-                  let _ = lift_udp (Kernel.Net.UdpSocket.send server (Kernel.Bytes.of_string "pong")) in
-                  let client_buf = Kernel.Bytes.create 32 in
-                  ignore (recv_udp poll ~token:(Kernel.Async.Token.make 425) client client_buf);
+                  let _ = lift_udp (Kernel.Net.UdpSocket.send client (Kernel.Bytes.from_string "ping")) in
+                  let server_buf = Kernel.Bytes.create ~size:32 in
+                  let _ = recv_udp poll ~token:(Kernel.Async.Token.make 424) server server_buf in
+                  let _ = lift_udp (Kernel.Net.UdpSocket.send server (Kernel.Bytes.from_string "pong")) in
+                  let client_buf = Kernel.Bytes.create ~size:32 in
+                  let _ = recv_udp poll ~token:(Kernel.Async.Token.make 425) client client_buf in
                   ()))))
 
 let bench_udp_many_source_readiness = fun () ->
@@ -557,7 +558,7 @@ let bench_udp_many_source_readiness = fun () ->
             (Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0)) in
           bind_many (remaining - 1) ((server, client) :: acc)
       in
-      let pairs = List.rev (bind_many 16 []) in
+      let pairs = List.reverse (bind_many 16 []) in
       protect ~finally:(fun () -> close_udp_pairs pairs)
         (fun () ->
           let rec register index = function
@@ -576,7 +577,7 @@ let bench_udp_many_source_readiness = fun () ->
             | (server, client) :: rest ->
                 let server_addr = lift_udp (Kernel.Net.UdpSocket.local_addr server) in
                 let _ = lift_udp
-                  (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.of_string "x")) in
+                  (Kernel.Net.UdpSocket.send_to client server_addr (Kernel.Bytes.from_string "x")) in
                 send_all rest
           in
           register 0 pairs;
@@ -594,7 +595,7 @@ let bench_tcp_many_stream_readiness = fun () ->
           let addr = lift_tcp_listener (Kernel.Net.TcpListener.local_addr listener) in
           let rec connect_many remaining clients servers =
             if remaining = 0 then
-              (List.rev clients, List.rev servers)
+              (List.reverse clients, List.reverse servers)
             else
               let client = connect_stream poll addr in
               let server = accept_stream poll listener in
@@ -620,7 +621,7 @@ let bench_tcp_many_stream_readiness = fun () ->
               let rec send_all index = function
                 | [] -> ()
                 | client :: rest ->
-                    let payload = Kernel.Bytes.of_string "x" in
+                    let payload = Kernel.Bytes.from_string "x" in
                     write_all_stream
                       poll
                       ~token:(Kernel.Async.Token.make (800 + index))

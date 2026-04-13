@@ -2,18 +2,18 @@ open Std
 module Test = Std.Test
 module Kernel = Kernel
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 let lift result =
   match result with
   | Kernel.Result.Ok value -> Ok value
-  | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.of_net_addr error))
+  | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.from_net_addr error))
 
 let all_ports_are = fun addrs expected_port ->
   let rec loop index =
     if index = Kernel.Array.length addrs then
       true
-    else if Kernel.Net.SocketAddr.port (Kernel.Array.get addrs index) = expected_port then
+    else if Kernel.Net.SocketAddr.port (Kernel.Array.get_unchecked addrs ~at:index) = expected_port then
       loop (index + 1)
     else
       false
@@ -23,7 +23,8 @@ let all_ports_are = fun addrs expected_port ->
 let test_resolve_stream_fast_path_accepts_ip_literals = fun _ctx ->
   let* addrs = lift (Kernel.Net.Addr.resolve_stream ~host:"127.0.0.1" ~port:8_080) in
   if
-    Kernel.Array.length addrs = 1 && Kernel.Net.SocketAddr.to_string (Kernel.Array.get addrs 0) = "127.0.0.1:8080"
+    Kernel.Array.length addrs = 1
+    && Kernel.Net.SocketAddr.to_string (Kernel.Array.get_unchecked addrs ~at:0) = "127.0.0.1:8080"
   then
     Ok ()
   else
@@ -31,7 +32,7 @@ let test_resolve_stream_fast_path_accepts_ip_literals = fun _ctx ->
 
 let test_resolve_datagram_fast_path_accepts_ipv6_literals = fun _ctx ->
   let* addrs = lift (Kernel.Net.Addr.resolve_datagram ~host:"::1" ~port:5_353) in
-  let addr = Kernel.Array.get addrs 0 in
+  let addr = Kernel.Array.get_unchecked addrs ~at:0 in
   if
     Kernel.Array.length addrs = 1
     && Kernel.Net.SocketAddr.port addr = 5_353

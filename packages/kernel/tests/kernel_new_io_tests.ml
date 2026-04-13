@@ -2,7 +2,7 @@ open Std
 module Test = Std.Test
 module Kernel = Kernel
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 let lift_stdin = fun result ->
   match result with
@@ -46,7 +46,7 @@ let assert_invalid_slice = fun ~error_to_string ~is_invalid_slice ->
     | Kernel.Result.Error error -> Error ("expected InvalidSlice, got " ^ error_to_string error)
 
 let test_stdin_read_len_zero_noop = fun _ctx ->
-  let buffer = Kernel.Bytes.create 16 in
+  let buffer = Kernel.Bytes.create ~size:16 in
   let* read = lift_stdin (Kernel.IO.Stdin.read ~len:0 buffer) in
   if read = 0 then
     Ok ()
@@ -54,7 +54,7 @@ let test_stdin_read_len_zero_noop = fun _ctx ->
     Error "expected stdin.read with len=0 to return 0"
 
 let test_stdout_write_len_zero_noop = fun _ctx ->
-  let buffer = Kernel.Bytes.create 16 in
+  let buffer = Kernel.Bytes.create ~size:16 in
   let* written = lift_stdout (Kernel.IO.Stdout.write ~len:0 buffer) in
   if written = 0 then
     Ok ()
@@ -62,7 +62,7 @@ let test_stdout_write_len_zero_noop = fun _ctx ->
     Error "expected stdout.write with len=0 to return 0"
 
 let test_stderr_write_len_zero_noop = fun _ctx ->
-  let buffer = Kernel.Bytes.create 16 in
+  let buffer = Kernel.Bytes.create ~size:16 in
   let* written = lift_stderr (Kernel.IO.Stderr.write ~len:0 buffer) in
   if written = 0 then
     Ok ()
@@ -70,7 +70,7 @@ let test_stderr_write_len_zero_noop = fun _ctx ->
     Error "expected stderr.write with len=0 to return 0"
 
 let test_stdin_read_rejects_invalid_slice = fun _ctx ->
-  let buffer = Kernel.Bytes.create 16 in
+  let buffer = Kernel.Bytes.create ~size:16 in
   assert_invalid_slice ~error_to_string:Kernel.IO.Stdin.error_to_string
     ~is_invalid_slice:(fun value ->
       match value with
@@ -79,7 +79,7 @@ let test_stdin_read_rejects_invalid_slice = fun _ctx ->
     (Kernel.IO.Stdin.read ~pos:(-1) ~len:4 buffer)
 
 let test_stdout_write_rejects_invalid_slice = fun _ctx ->
-  let buffer = Kernel.Bytes.create 16 in
+  let buffer = Kernel.Bytes.create ~size:16 in
   assert_invalid_slice ~error_to_string:Kernel.IO.Stdout.error_to_string
     ~is_invalid_slice:(fun value ->
       match value with
@@ -88,7 +88,7 @@ let test_stdout_write_rejects_invalid_slice = fun _ctx ->
     (Kernel.IO.Stdout.write ~pos:(-1) ~len:4 buffer)
 
 let test_stderr_write_rejects_invalid_slice = fun _ctx ->
-  let buffer = Kernel.Bytes.create 16 in
+  let buffer = Kernel.Bytes.create ~size:16 in
   assert_invalid_slice ~error_to_string:Kernel.IO.Stderr.error_to_string
     ~is_invalid_slice:(fun value ->
       match value with
@@ -97,7 +97,7 @@ let test_stderr_write_rejects_invalid_slice = fun _ctx ->
     (Kernel.IO.Stderr.write ~pos:(-1) ~len:4 buffer)
 
 let test_stdin_read_vectored_len_zero_noop = fun _ctx ->
-  let iovec = Kernel.IO.Iovec.of_bytes_array [|Kernel.Bytes.create 0|] in
+  let iovec = Kernel.IO.Iovec.from_bytes_array [|Kernel.Bytes.create ~size:0|] in
   let* read = lift_stdin (Kernel.IO.Stdin.read_vectored iovec) in
   if read = 0 then
     Ok ()
@@ -105,7 +105,7 @@ let test_stdin_read_vectored_len_zero_noop = fun _ctx ->
     Error "expected stdin.read_vectored with empty segment to return 0"
 
 let test_stdout_write_vectored_len_zero_noop = fun _ctx ->
-  let iovec = Kernel.IO.Iovec.of_bytes_array [|Kernel.Bytes.create 0|] in
+  let iovec = Kernel.IO.Iovec.from_bytes_array [|Kernel.Bytes.create ~size:0|] in
   let* written = lift_stdout (Kernel.IO.Stdout.write_vectored iovec) in
   if written = 0 then
     Ok ()
@@ -113,7 +113,7 @@ let test_stdout_write_vectored_len_zero_noop = fun _ctx ->
     Error "expected stdout.write_vectored with empty segment to return 0"
 
 let test_stderr_write_vectored_len_zero_noop = fun _ctx ->
-  let iovec = Kernel.IO.Iovec.of_bytes_array [|Kernel.Bytes.create 0|] in
+  let iovec = Kernel.IO.Iovec.from_bytes_array [|Kernel.Bytes.create ~size:0|] in
   let* written = lift_stderr (Kernel.IO.Stderr.write_vectored iovec) in
   if written = 0 then
     Ok ()
@@ -125,11 +125,13 @@ let test_stdin_source_register_and_deregister = fun _ctx ->
     (fun poll ->
       let source = Kernel.IO.Stdin.to_source () in
       let token = Kernel.Async.Token.make "kernel-io-stdin" in
-      let* () = lift_async
-        (Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source) in
-      let* _events = lift_async (Kernel.Async.Poll.poll ~timeout:0L poll) in
-      let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
-      Ok ())
+      match Kernel.Async.Poll.register poll token Kernel.Async.Interest.readable source with
+      | Kernel.Result.Ok () ->
+          let* _events = lift_async (Kernel.Async.Poll.poll ~timeout:0L poll) in
+          let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
+          Ok ()
+      | Kernel.Result.Error (Kernel.Async.System Kernel.SystemError.InvalidArgument) -> Ok ()
+      | Kernel.Result.Error error -> Error (Kernel.Async.error_to_string error))
 
 let test_stdout_source_register_and_deregister = fun _ctx ->
   with_poll

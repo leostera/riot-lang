@@ -2,7 +2,7 @@ open Std
 module Test = Std.Test
 module Kernel = Kernel
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 let lift_process result =
   match result with
@@ -21,7 +21,7 @@ let lift_file result =
 
 let is_would_block error =
   match error with
-  | Kernel.Fs.File.System system_error -> Kernel.SystemError.is_would_block system_error
+  | Kernel.Fs.File.System system_error -> Kernel.SystemError.would_block system_error
   | _ -> false
 
 let protect = fun ~finally fn ->
@@ -35,7 +35,7 @@ let protect = fun ~finally fn ->
       raise error
 
 let with_tempdir = fun prefix fn ->
-  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.of_string (Path.to_string tempdir))) with
+  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.from_string (Path.to_string tempdir))) with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
@@ -77,9 +77,8 @@ let wait_for = fun poll ~token ~interest ~source ~pred ->
     (fun () ->
       let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
       let found =
-        List.exists
-          (fun event -> Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
-          events
+        List.any events ~fn:(fun event ->
+          Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
       in
       if found then
         Ok ()
@@ -93,10 +92,10 @@ let wait_writable = fun poll ~token source ->
   wait_for poll ~token ~interest:Kernel.Async.Interest.writable ~source ~pred:Kernel.Async.Event.is_writable
 
 let read_once = fun poll ~token file ->
-  let buffer = Kernel.Bytes.create 128 in
+  let buffer = Kernel.Bytes.create ~size:128 in
   let rec loop () =
     match Kernel.Fs.File.read file buffer with
-    | Kernel.Result.Ok count -> Ok (Kernel.Bytes.sub_string buffer 0 count)
+    | Kernel.Result.Ok count -> Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:count)
     | Kernel.Result.Error error ->
         if is_would_block error then
           let* () = wait_readable poll ~token (Kernel.Fs.File.to_source file) in
@@ -107,11 +106,12 @@ let read_once = fun poll ~token file ->
   loop ()
 
 let read_all = fun poll ~token file ->
-  let buffer = Kernel.Bytes.create 128 in
+  let buffer = Kernel.Bytes.create ~size:128 in
   let rec loop parts =
     match Kernel.Fs.File.read file buffer with
-    | Kernel.Result.Ok 0 -> Ok (Kernel.String.concat "" (List.rev parts))
-    | Kernel.Result.Ok count -> loop (Kernel.Bytes.sub_string buffer 0 count :: parts)
+    | Kernel.Result.Ok 0 -> Ok (Kernel.String.concat "" (List.reverse parts))
+    | Kernel.Result.Ok count ->
+        loop (Kernel.Bytes.sub_string buffer ~offset:0 ~len:count :: parts)
     | Kernel.Result.Error error ->
         if is_would_block error then
           let* () = wait_readable poll ~token (Kernel.Fs.File.to_source file) in
@@ -168,11 +168,9 @@ let wait_for_priority_token = fun poll ~token ->
     else
       let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll) in
       if
-        List.exists
-          (fun event ->
-            Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
-            && Kernel.Async.Event.is_priority event)
-          events
+        List.any events ~fn:(fun event ->
+          Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
+          && Kernel.Async.Event.is_priority event)
       then
         Ok ()
       else
@@ -231,7 +229,7 @@ let test_stdin_and_stdout_pipes_roundtrip = fun _ctx ->
       | (Some stdin, Some stdout) ->
           with_poll
             (fun poll ->
-              let payload = Kernel.Bytes.of_string "ping" in
+              let payload = Kernel.Bytes.from_string "ping" in
               let* () = write_all poll ~token:(Kernel.Async.Token.make 502) stdin payload in
               let* () = lift_file (Kernel.Fs.File.close stdin) in
               let* echoed = read_once poll ~token:(Kernel.Async.Token.make 503) stdout in
@@ -528,15 +526,15 @@ let test_spawn_applies_current_dir = fun _ctx ->
                   let output =
                     if
                       String.length payload != 0
-                      && String.get payload (String.length payload - 1) = '\n'
+                      && String.get_unchecked payload ~at:(String.length payload - 1) = '\n'
                     then
-                      String.sub payload 0 (String.length payload - 1)
+                      String.sub payload ~offset:0 ~len:(String.length payload - 1)
                     else
                       payload
                   in
                   let* expected = lift_file (Kernel.Fs.File.canonicalize tempdir) in
                   let* actual = lift_file
-                    (Kernel.Fs.File.canonicalize (Kernel.Path.of_string output)) in
+                    (Kernel.Fs.File.canonicalize (Kernel.Path.from_string output)) in
                   if
                     Kernel.Path.to_string actual = Kernel.Path.to_string expected
                     && status = Kernel.Process.Exited 0
@@ -555,7 +553,7 @@ let test_file_backed_stdio_roundtrips = fun _ctx ->
         with_file input_file
           (fun () ->
             let* _ = lift_file
-              (Kernel.Fs.File.write input_file (Kernel.Bytes.of_string "file-stdio")) in
+              (Kernel.Fs.File.write input_file (Kernel.Bytes.from_string "file-stdio")) in
             Ok ())
       in
       let* stdin_file = lift_file (Kernel.Fs.File.open_read input_path) in
@@ -587,12 +585,12 @@ let test_file_backed_stdio_roundtrips = fun _ctx ->
                       (fun poll -> wait_for_exit poll ~token:(Kernel.Async.Token.make 529) process))
               in
               let* output = lift_file (Kernel.Fs.File.open_read output_path) in
-              let buffer = Kernel.Bytes.create 32 in
+              let buffer = Kernel.Bytes.create ~size:32 in
               let* payload =
                 with_file output
                   (fun () ->
                     let* count = lift_file (Kernel.Fs.File.read output buffer) in
-                    Ok (Kernel.Bytes.sub_string buffer 0 count))
+                    Ok (Kernel.Bytes.sub_string buffer ~offset:0 ~len:count))
               in
               if status = Kernel.Process.Exited 0 && payload = "file-stdio" then
                 Ok ()
@@ -609,7 +607,7 @@ let test_file_backed_stdio_uses_no_kernel_pipes = fun _ctx ->
         with_file input_file
           (fun () ->
             let* _ = lift_file
-              (Kernel.Fs.File.write input_file (Kernel.Bytes.of_string "file-stdio")) in
+              (Kernel.Fs.File.write input_file (Kernel.Bytes.from_string "file-stdio")) in
             Ok ())
       in
       let* stdin_file = lift_file (Kernel.Fs.File.open_read input_path) in
@@ -682,7 +680,7 @@ let test_requested_pipe_ownership_matches_stdio = fun _ctx ->
             Kernel.Process.stderr process
           ) with
           | (Some stdin, None, Some stderr) ->
-              let payload = Kernel.Bytes.of_string "pipes" in
+              let payload = Kernel.Bytes.from_string "pipes" in
               let* () = write_all poll ~token:(Kernel.Async.Token.make 507) stdin payload in
               let* () = lift_file (Kernel.Fs.File.close stdin) in
               let* echoed = read_once poll ~token:(Kernel.Async.Token.make 508) stderr in
@@ -783,13 +781,13 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
     (fun poll ->
       let rec spawn_many remaining acc =
         if remaining = 0 then
-          Ok (List.rev acc)
+          Ok (List.reverse acc)
         else
           let* process = lift_process (Kernel.Process.spawn ~program:"/bin/cat" ~args:[||] ~stdio ()) in
           spawn_many (remaining - 1) (process :: acc)
       in
       let* processes = spawn_many 12 [] in
-      let sources = List.map Kernel.Process.to_source processes in
+      let sources = List.map processes ~fn:Kernel.Process.to_source in
       let rec deregister_all = function
         | [] -> ()
         | source :: rest ->
@@ -822,20 +820,20 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
                     (Kernel.Process.to_source process)) in
                 register (index + 1) rest
           in
-          let seen = Kernel.Array.make 12 false in
+          let seen = Kernel.Array.make ~count:12 ~value:false in
           let rec mark = function
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_priority event then
                   let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
                   if token >= 0 && token < 12 then
-                    Kernel.Array.set seen token true;
+                    Kernel.Array.set seen ~at:token ~value:true;
                   mark rest
           in
           let rec all_seen index =
             if index = 12 then
               true
-            else if Kernel.Array.get seen index then
+            else if Kernel.Array.get_unchecked seen ~at:index then
               all_seen (index + 1)
             else
               false
@@ -843,13 +841,13 @@ let test_many_process_sources_report_burst_exit_readiness = fun _ctx ->
           let rec mark_observed index = function
             | [] -> Ok ()
             | process :: rest ->
-                if Kernel.Array.get seen index then
+                if Kernel.Array.get_unchecked seen ~at:index then
                   mark_observed (index + 1) rest
                 else
                   let* status = lift_process (Kernel.Process.try_wait process) in
                   match status with
                   | Some (Kernel.Process.Exited 0) ->
-                      Kernel.Array.set seen index true;
+                      Kernel.Array.set seen ~at:index ~value:true;
                       mark_observed (index + 1) rest
                   | Some _ ->
                       Error "expected burst-exit process sources to preserve a clean exit status"
@@ -888,14 +886,14 @@ let test_many_process_sources_report_burst_signals = fun _ctx ->
     (fun poll ->
       let rec spawn_many remaining acc =
         if remaining = 0 then
-          Ok (List.rev acc)
+          Ok (List.reverse acc)
         else
           let* process = lift_process
             (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 5"|] ~stdio ()) in
           spawn_many (remaining - 1) (process :: acc)
       in
       let* processes = spawn_many 12 [] in
-      let sources = List.map Kernel.Process.to_source processes in
+      let sources = List.map processes ~fn:Kernel.Process.to_source in
       let rec deregister_all = function
         | [] -> ()
         | source :: rest ->
@@ -924,20 +922,20 @@ let test_many_process_sources_report_burst_signals = fun _ctx ->
                     (Kernel.Process.to_source process)) in
                 register (index + 1) rest
           in
-          let seen = Kernel.Array.make 12 false in
+          let seen = Kernel.Array.make ~count:12 ~value:false in
           let rec mark = function
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_priority event then
                   let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
                   if token >= 0 && token < 12 then
-                    Kernel.Array.set seen token true;
+                    Kernel.Array.set seen ~at:token ~value:true;
                   mark rest
           in
           let rec all_seen index =
             if index = 12 then
               true
-            else if Kernel.Array.get seen index then
+            else if Kernel.Array.get_unchecked seen ~at:index then
               all_seen (index + 1)
             else
               false
@@ -945,13 +943,13 @@ let test_many_process_sources_report_burst_signals = fun _ctx ->
           let rec mark_observed index = function
             | [] -> Ok ()
             | process :: rest ->
-                if Kernel.Array.get seen index then
+                if Kernel.Array.get_unchecked seen ~at:index then
                   mark_observed (index + 1) rest
                 else
                   let* status = lift_process (Kernel.Process.try_wait process) in
                   match status with
                   | Some (Kernel.Process.Signaled 15) ->
-                      Kernel.Array.set seen index true;
+                      Kernel.Array.set seen ~at:index ~value:true;
                       mark_observed (index + 1) rest
                   | Some _ ->
                       Error "expected burst-signaled process sources to preserve a signaled status"
@@ -1080,13 +1078,13 @@ let test_stderr_null_discards_stderr_without_creating_a_pipe = fun _ctx ->
 let test_spawn_with_empty_env_still_inherits_unrelated_parent_vars = fun _ctx ->
   let name = "RIOT_KERNEL_NEW_PROCESS_PARENT_VAR" in
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
-  let _ = Kernel.Env.remove_var ~name in
+  let _ = Kernel.Env.remove ~var:name in
   protect
     ~finally:(fun () ->
-      let _ = Kernel.Env.remove_var ~name in
+      let _ = Kernel.Env.remove ~var:name in
       ())
     (fun () ->
-      match Kernel.Env.set_var ~name ~value:"present" with
+      match Kernel.Env.set ~var:name ~value:"present" with
       | Kernel.Result.Error error -> Error (Kernel.Env.error_to_string error)
       | Kernel.Result.Ok () ->
           let* process = lift_process
@@ -1110,17 +1108,17 @@ let test_spawn_env_override_leaves_unrelated_parent_vars_intact = fun _ctx ->
   let preserved = "RIOT_KERNEL_NEW_PROCESS_KEEP" in
   let replaced = "RIOT_KERNEL_NEW_PROCESS_REPLACE" in
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
-  let _ = Kernel.Env.remove_var ~name:preserved in
-  let _ = Kernel.Env.remove_var ~name:replaced in
+  let _ = Kernel.Env.remove ~var:preserved in
+  let _ = Kernel.Env.remove ~var:replaced in
   protect
     ~finally:(fun () ->
-      let _ = Kernel.Env.remove_var ~name:preserved in
-      let _ = Kernel.Env.remove_var ~name:replaced in
+      let _ = Kernel.Env.remove ~var:preserved in
+      let _ = Kernel.Env.remove ~var:replaced in
       ())
     (fun () ->
       match (
-        Kernel.Env.set_var ~name:preserved ~value:"keep",
-        Kernel.Env.set_var ~name:replaced ~value:"before"
+        Kernel.Env.set ~var:preserved ~value:"keep",
+        Kernel.Env.set ~var:replaced ~value:"before"
       ) with
       | (Kernel.Result.Ok (), Kernel.Result.Ok ()) ->
           let* process = lift_process
@@ -1156,7 +1154,7 @@ let test_file_backed_stdin_honors_the_current_file_offset = fun _ctx ->
         with_file input_file
           (fun () ->
             let* written = lift_file
-              (Kernel.Fs.File.write input_file (Kernel.Bytes.of_string "012345")) in
+              (Kernel.Fs.File.write input_file (Kernel.Bytes.from_string "012345")) in
             if written = 6 then
               Ok ()
             else
@@ -1168,7 +1166,7 @@ let test_file_backed_stdin_honors_the_current_file_offset = fun _ctx ->
           let _ = Kernel.Fs.File.close stdin_file in
           ())
         (fun () ->
-          let scratch = Kernel.Bytes.create 2 in
+          let scratch = Kernel.Bytes.create ~size:2 in
           let* consumed = lift_file (Kernel.Fs.File.read stdin_file scratch) in
           if consumed != 2 then
             Error "expected to advance the file-backed stdin handle before spawning"
@@ -1285,7 +1283,7 @@ let test_spawn_missing_current_dir_reports_no_such_file = fun _ctx ->
   match Kernel.Process.spawn
     ~program:"/usr/bin/true"
     ~args:[||]
-    ~current_dir:(Kernel.Path.of_string "/definitely/missing/kernel-new-process-dir")
+    ~current_dir:(Kernel.Path.from_string "/definitely/missing/kernel-new-process-dir")
     ~stdio
     () with
   | Kernel.Result.Error (Kernel.Process.System Kernel.SystemError.NoSuchFileOrDirectory) ->
@@ -1304,7 +1302,7 @@ let test_spawn_regular_file_current_dir_reports_not_directory = fun _ctx ->
       let* _ =
         with_file
           file
-          (fun () -> lift_file (Kernel.Fs.File.write file (Kernel.Bytes.of_string "riot")))
+          (fun () -> lift_file (Kernel.Fs.File.write file (Kernel.Bytes.from_string "riot")))
       in
       let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
       match Kernel.Process.spawn ~program:"/usr/bin/true" ~args:[||] ~current_dir:file_path ~stdio () with

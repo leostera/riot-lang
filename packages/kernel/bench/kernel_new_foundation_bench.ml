@@ -1,12 +1,12 @@
 open Std
 module Kernel = Kernel
 
-let string_payload = Kernel.String.make 4_096 'x'
+let string_payload = Kernel.String.make ~len:4_096 ~char:'x'
 
-let bytes_payload = Kernel.Bytes.of_string string_payload
+let bytes_payload = Kernel.Bytes.from_string string_payload
 
 let bench_bytes_of_string = fun () ->
-  let _ = Kernel.Bytes.of_string string_payload in
+  let _ = Kernel.Bytes.from_string string_payload in
   ()
 
 let bench_bytes_to_string = fun () ->
@@ -18,7 +18,7 @@ let bench_string_to_bytes = fun () ->
   ()
 
 let bench_string_of_bytes = fun () ->
-  let _ = Kernel.String.of_bytes bytes_payload in
+  let _ = Kernel.String.from_bytes bytes_payload in
   ()
 
 let benchmarks =

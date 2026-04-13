@@ -5,23 +5,23 @@ let lift_process result =
   match result with
   | Kernel.Result.Ok value -> value
   | Kernel.Result.Error error -> Kernel.SystemError.panic
-    (Kernel.Error.to_string (Kernel.Error.of_process error))
+    (Kernel.Error.to_string (Kernel.Error.from_process error))
 
 let lift_async result =
   match result with
   | Kernel.Result.Ok value -> value
   | Kernel.Result.Error error -> Kernel.SystemError.panic
-    (Kernel.Error.to_string (Kernel.Error.of_async error))
+    (Kernel.Error.to_string (Kernel.Error.from_async error))
 
 let lift_file result =
   match result with
   | Kernel.Result.Ok value -> value
   | Kernel.Result.Error error -> Kernel.SystemError.panic
-    (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
+    (Kernel.Error.to_string (Kernel.Error.from_fs_file error))
 
 let is_would_block error =
   match error with
-  | Kernel.Fs.File.System system_error -> Kernel.SystemError.is_would_block system_error
+  | Kernel.Fs.File.System system_error -> Kernel.SystemError.would_block system_error
   | _ -> false
 
 let with_process = fun process fn ->
@@ -63,7 +63,7 @@ let with_processes = fun count fn ->
   let stdio = Kernel.Process.{ stdin = Stdin.Null; stdout = Stdout.Null; stderr = Stderr.Null } in
   let rec spawn remaining acc =
     if remaining = 0 then
-      List.rev acc
+      List.reverse acc
     else
       let process = lift_process
         (Kernel.Process.spawn ~program:"/bin/sh" ~args:[|"-c"; "sleep 0.02"|] ~stdio ()) in
@@ -81,9 +81,8 @@ let wait_for = fun poll ~token ~interest ~source ~pred ->
     (fun () ->
       let events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
       let found =
-        List.exists
-          (fun event -> Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
-          events
+        List.any events ~fn:(fun event ->
+          Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
       in
       if not found then
         Kernel.SystemError.panic "expected readiness event")
@@ -92,10 +91,12 @@ let wait_readable = fun poll ~token source ->
   wait_for poll ~token ~interest:Kernel.Async.Interest.readable ~source ~pred:Kernel.Async.Event.is_readable
 
 let read_once = fun poll ~token file ->
-  let buffer = Kernel.Bytes.create 128 in
+  let buffer = Kernel.Bytes.create ~size:128 in
   let rec loop () =
     match Kernel.Fs.File.read file buffer with
-    | Kernel.Result.Ok count -> ignore (Kernel.Bytes.sub_string buffer 0 count)
+    | Kernel.Result.Ok count ->
+        let _ = Kernel.Bytes.sub_string buffer ~offset:0 ~len:count in
+        ()
     | Kernel.Result.Error error ->
         if is_would_block error then
           (
@@ -103,12 +104,12 @@ let read_once = fun poll ~token file ->
             loop ()
           )
         else
-          Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
+          Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_fs_file error))
   in
   loop ()
 
 let drain_all = fun poll ~token file ->
-  let buffer = Kernel.Bytes.create 4_096 in
+  let buffer = Kernel.Bytes.create ~size:4_096 in
   let rec loop () =
     match Kernel.Fs.File.read file buffer with
     | Kernel.Result.Ok 0 ->
@@ -122,7 +123,7 @@ let drain_all = fun poll ~token file ->
             loop ()
           )
         else
-          Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
+          Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_fs_file error))
   in
   loop ()
 
@@ -144,7 +145,7 @@ let wait_for_exit = fun poll ~token process ->
             let _ = lift_async (Kernel.Async.Poll.poll ~timeout:exit_poll_timeout poll) in
             loop ())
     | Kernel.Result.Error error ->
-        Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.of_process error))
+        Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_process error))
   in
   loop ()
 
@@ -159,7 +160,9 @@ let bench_spawn_true = fun () ->
           ()) in
       with_process
         process
-        (fun process -> ignore (wait_for_exit poll ~token:(Kernel.Async.Token.make 610) process)))
+        (fun process ->
+          let _ = wait_for_exit poll ~token:(Kernel.Async.Token.make 610) process in
+          ()))
 
 let bench_spawn_echo_with_pipe = fun () ->
   with_poll
@@ -173,7 +176,8 @@ let bench_spawn_echo_with_pipe = fun () ->
           | None -> Kernel.SystemError.panic "expected stdout pipe"
           | Some stdout ->
               read_once poll ~token:(Kernel.Async.Token.make 601) stdout;
-              ignore (wait_for_exit poll ~token:(Kernel.Async.Token.make 611) process)))
+              let _ = wait_for_exit poll ~token:(Kernel.Async.Token.make 611) process in
+              ()))
 
 let bench_many_process_exit_sources = fun () ->
   with_poll
@@ -191,14 +195,14 @@ let bench_many_process_exit_sources = fun () ->
                     (Kernel.Process.to_source process)) in
                 register (index + 1) rest
           in
-          let seen = Kernel.Array.make 16 false in
+          let seen = Kernel.Array.make ~count:16 ~value:false in
           let rec mark_events = function
             | [] -> ()
             | event :: rest ->
                 if Kernel.Async.Event.is_priority event then
                   let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
                   if token >= 0 && token < 16 then
-                    Kernel.Array.set seen token true;
+                    Kernel.Array.set seen ~at:token ~value:true;
                   mark_events rest
           in
           let rec mark_exits index = function
@@ -208,7 +212,7 @@ let bench_many_process_exit_sources = fun () ->
                   match Kernel.Process.try_wait process with
                   | Kernel.Result.Ok (Some (Kernel.Process.Exited 0)) ->
                       if index < 16 then
-                        Kernel.Array.set seen index true
+                        Kernel.Array.set seen ~at:index ~value:true
                   | _ -> ()
                 );
                 mark_exits (index + 1) rest
@@ -216,7 +220,7 @@ let bench_many_process_exit_sources = fun () ->
           let rec all_seen index =
             if index = 16 then
               true
-            else if Kernel.Array.get seen index then
+            else if Kernel.Array.get_unchecked seen ~at:index then
               all_seen (index + 1)
             else
               false
@@ -251,7 +255,7 @@ let bench_stdout_pipe_drain_small_output = fun () ->
           match Kernel.Process.stdout process with
           | None -> Kernel.SystemError.panic "expected stdout pipe"
           | Some stdout ->
-              ignore (wait_for_exit poll ~token:(Kernel.Async.Token.make 612) process);
+              let _ = wait_for_exit poll ~token:(Kernel.Async.Token.make 612) process in
               drain_all poll ~token:(Kernel.Async.Token.make 602) stdout))
 
 let bench_stdout_pipe_drain_medium_output = fun () ->
@@ -269,7 +273,7 @@ let bench_stdout_pipe_drain_medium_output = fun () ->
           match Kernel.Process.stdout process with
           | None -> Kernel.SystemError.panic "expected stdout pipe"
           | Some stdout ->
-              ignore (wait_for_exit poll ~token:(Kernel.Async.Token.make 613) process);
+              let _ = wait_for_exit poll ~token:(Kernel.Async.Token.make 613) process in
               drain_all poll ~token:(Kernel.Async.Token.make 603) stdout))
 
 let benchmarks =

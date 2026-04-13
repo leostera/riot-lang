@@ -31,3 +31,7 @@ val to_string: t -> string
 val sub: t -> offset:int -> len:int -> (t, error) result
 
 val sub_unchecked: t -> offset:int -> len:int -> t
+
+(** Use `sub_string value offset len` to copy the selected byte slice into a fresh immutable
+    string. *)
+val sub_string: t -> offset:int -> len:int -> string

@@ -2,7 +2,7 @@ open Std
 module Test = Std.Test
 module Kernel = Kernel
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 let lift result =
   match result with
@@ -20,15 +20,12 @@ let protect = fun ~finally fn ->
       raise error
 
 let vars_contain = fun entries ~name ?value () ->
-  Kernel.Array.fold_left
-    (fun found (entry_name, entry_value) ->
-      found || (
-        Kernel.String.equal entry_name name && match value with
-        | None -> true
-        | Some value -> Kernel.String.equal entry_value value
-      ))
-    false
-    entries
+  Kernel.Array.fold_left entries ~acc:false ~fn:(fun found (entry_name, entry_value) ->
+    found || (
+      Kernel.String.equal entry_name name && match value with
+      | None -> true
+      | Some value -> Kernel.String.equal entry_value value
+    ))
 
 let test_args_include_program_name = fun _ctx ->
   if Kernel.Array.length Kernel.Env.args > 0 then
@@ -38,35 +35,32 @@ let test_args_include_program_name = fun _ctx ->
 
 let test_set_get_and_remove_var_roundtrip = fun _ctx ->
   let name = "RIOT_KERNEL_NEW_ENV_TEST" in
-  let _ = Kernel.Env.remove_var ~name in
+  let _ = Kernel.Env.remove ~var:name in
   protect
     ~finally:(fun () ->
-      let _ = Kernel.Env.remove_var ~name in
+      let _ = Kernel.Env.remove ~var:name in
       ())
     (fun () ->
-      let* () = lift (Kernel.Env.set_var ~name ~value:"kernel-new") in
-      let value = Kernel.Env.get name in
+      let* () = lift (Kernel.Env.set ~var:name ~value:"kernel-new") in
+      let value = Kernel.Env.get ~var:name in
       let found =
-        Kernel.Array.fold_left
-          (fun found (entry_name, entry_value) ->
-            found
-            || (Kernel.String.equal entry_name name && Kernel.String.equal entry_value "kernel-new"))
-          false
-          (Kernel.Env.vars ())
+        Kernel.Array.fold_left (Kernel.Env.vars ()) ~acc:false ~fn:(fun found (entry_name, entry_value) ->
+          found
+          || (Kernel.String.equal entry_name name && Kernel.String.equal entry_value "kernel-new"))
       in
-      let* () = lift (Kernel.Env.remove_var ~name) in
-      if value = Some "kernel-new" && found && Kernel.Env.get name = None then
+      let* () = lift (Kernel.Env.remove ~var:name) in
+      if value = Some "kernel-new" && found && Kernel.Env.get ~var:name = None then
         Ok ()
       else
         Error "expected kernel env variable roundtrip to preserve value and cleanup")
 
 let test_missing_var_and_home_dir_behave_as_expected = fun _ctx ->
   let name = "RIOT_KERNEL_NEW_ENV_MISSING" in
-  let _ = Kernel.Env.remove_var ~name in
+  let _ = Kernel.Env.remove ~var:name in
   let snapshot = Kernel.Env.vars () in
-  let missing = Kernel.Env.get name = None && not (vars_contain snapshot ~name ()) in
+  let missing = Kernel.Env.get ~var:name = None && not (vars_contain snapshot ~name ()) in
   let home_matches =
-    match (Kernel.Env.get "HOME", Kernel.Env.home_dir ()) with
+    match (Kernel.Env.get ~var:"HOME", Kernel.Env.home_dir ()) with
     | (None, None) -> true
     | (Some home, Some path) -> Kernel.Path.to_string path = home
     | _ -> false
@@ -78,15 +72,15 @@ let test_missing_var_and_home_dir_behave_as_expected = fun _ctx ->
 
 let test_vars_snapshots_are_independent = fun _ctx ->
   let name = "RIOT_KERNEL_NEW_ENV_SNAPSHOT" in
-  let _ = Kernel.Env.remove_var ~name in
+  let _ = Kernel.Env.remove ~var:name in
   protect
     ~finally:(fun () ->
-      let _ = Kernel.Env.remove_var ~name in
+      let _ = Kernel.Env.remove ~var:name in
       ())
     (fun () ->
-      let* () = lift (Kernel.Env.set_var ~name ~value:"before") in
+      let* () = lift (Kernel.Env.set ~var:name ~value:"before") in
       let before = Kernel.Env.vars () in
-      let* () = lift (Kernel.Env.set_var ~name ~value:"after") in
+      let* () = lift (Kernel.Env.set ~var:name ~value:"after") in
       let after = Kernel.Env.vars () in
       if
         vars_contain before ~name ~value:"before" ()
@@ -102,7 +96,7 @@ let test_current_dir_roundtrips = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"kernel_new_env"
       (fun tempdir ->
-        let tempdir = Kernel.Path.of_string (Path.to_string tempdir) in
+        let tempdir = Kernel.Path.from_string (Path.to_string tempdir) in
         protect
           ~finally:(fun () ->
             let _ = Kernel.Env.set_current_dir original in
@@ -122,7 +116,7 @@ let test_current_dir_roundtrips = fun _ctx ->
   | Error err -> Error (IO.error_message err)
 
 let test_invalid_var_name_is_rejected = fun _ctx ->
-  match (Kernel.Env.set_var ~name:"bad=name" ~value:"x", Kernel.Env.remove_var ~name:"") with
+  match (Kernel.Env.set ~var:"bad=name" ~value:"x", Kernel.Env.remove ~var:"") with
   | (Kernel.Result.Error (Kernel.Env.InvalidVarName { name="bad=name" }), Kernel.Result.Error (Kernel.Env.InvalidVarName {
     name=""
   })) -> Ok ()
@@ -131,45 +125,45 @@ let test_invalid_var_name_is_rejected = fun _ctx ->
   | _ -> Error "expected invalid env variable names to be rejected in kernel-new"
 
 let with_tempdir = fun prefix fn ->
-  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.of_string (Path.to_string tempdir))) with
+  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.from_string (Path.to_string tempdir))) with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
 let test_set_var_accepts_equals_in_values = fun _ctx ->
   let name = "RIOT_KERNEL_NEW_ENV_EQUALS_VALUE" in
-  let _ = Kernel.Env.remove_var ~name in
+  let _ = Kernel.Env.remove ~var:name in
   protect
     ~finally:(fun () ->
-      let _ = Kernel.Env.remove_var ~name in
+      let _ = Kernel.Env.remove ~var:name in
       ())
     (fun () ->
-      let* () = lift (Kernel.Env.set_var ~name ~value:"a=b=c") in
-      match Kernel.Env.get name with
+      let* () = lift (Kernel.Env.set ~var:name ~value:"a=b=c") in
+      match Kernel.Env.get ~var:name with
       | Some "a=b=c" -> Ok ()
       | Some _ -> Error "expected Env.set_var to preserve '=' characters in values"
       | None -> Error "expected Env.get to recover the stored value")
 
 let test_remove_var_on_missing_name_is_harmless = fun _ctx ->
   let name = "RIOT_KERNEL_NEW_ENV_REMOVE_MISSING" in
-  let _ = Kernel.Env.remove_var ~name in
-  let* () = lift (Kernel.Env.remove_var ~name) in
-  if Kernel.Env.get name = None then
+  let _ = Kernel.Env.remove ~var:name in
+  let* () = lift (Kernel.Env.remove ~var:name) in
+  if Kernel.Env.get ~var:name = None then
     Ok ()
   else
     Error "expected removing a missing environment variable to be harmless"
 
 let test_set_var_overwrites_existing_value = fun _ctx ->
   let name = "RIOT_KERNEL_NEW_ENV_OVERWRITE" in
-  let _ = Kernel.Env.remove_var ~name in
+  let _ = Kernel.Env.remove ~var:name in
   protect
     ~finally:(fun () ->
-      let _ = Kernel.Env.remove_var ~name in
+      let _ = Kernel.Env.remove ~var:name in
       ())
     (fun () ->
-      let* () = lift (Kernel.Env.set_var ~name ~value:"before") in
-      let* () = lift (Kernel.Env.set_var ~name ~value:"after") in
+      let* () = lift (Kernel.Env.set ~var:name ~value:"before") in
+      let* () = lift (Kernel.Env.set ~var:name ~value:"after") in
       let snapshot = Kernel.Env.vars () in
-      if Kernel.Env.get name = Some "after" && vars_contain snapshot ~name ~value:"after" () then
+      if Kernel.Env.get ~var:name = Some "after" && vars_contain snapshot ~name ~value:"after" () then
         Ok ()
       else
         Error "expected Env.set_var to overwrite the existing value")

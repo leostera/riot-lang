@@ -9,14 +9,20 @@ let lift result =
 let env_name = "RIOT_KERNEL_NEW_ENV_BENCH"
 
 let () =
-  let _ = Kernel.Env.set_var ~name:env_name ~value:"kernel-new" in
+  let _ = Kernel.Env.set ~var:env_name ~value:"kernel-new" in
   ()
 
-let bench_get_var = fun () -> ignore (Kernel.Env.get env_name)
+let bench_get_var = fun () ->
+  let _ = Kernel.Env.get ~var:env_name in
+  ()
 
-let bench_current_dir = fun () -> ignore (lift (Kernel.Env.current_dir ()))
+let bench_current_dir = fun () ->
+  let _ = lift (Kernel.Env.current_dir ()) in
+  ()
 
-let bench_vars = fun () -> ignore (Kernel.Env.vars ())
+let bench_vars = fun () ->
+  let _ = Kernel.Env.vars () in
+  ()
 
 let benchmarks =
   Bench.[

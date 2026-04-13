@@ -2,28 +2,28 @@ open Std
 module Test = Std.Test
 module Kernel = Kernel
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 let lift_system_time result =
   match result with
   | Kernel.Result.Ok value -> Ok value
   | Kernel.Result.Error error -> Error (Kernel.Error.to_string
-    (Kernel.Error.of_time_system_time error))
+    (Kernel.Error.from_time_system_time error))
 
 let lift_monotonic result =
   match result with
   | Kernel.Result.Ok value -> Ok value
-  | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.of_time_monotonic error))
+  | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.from_time_monotonic error))
 
 let lift_timer result =
   match result with
   | Kernel.Result.Ok value -> Ok value
-  | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.of_time_timer error))
+  | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.from_time_timer error))
 
 let lift_async result =
   match result with
   | Kernel.Result.Ok value -> Ok value
-  | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.of_async error))
+  | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.from_async error))
 
 let protect = fun ~finally fn ->
   try
@@ -53,22 +53,18 @@ let wait_for_timer = fun poll ~token timer ->
     (fun () ->
       let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll) in
       if
-        List.exists
-          (fun event ->
-            Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
-            && Kernel.Async.Event.is_readable event)
-          events
+        List.any events ~fn:(fun event ->
+          Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
+          && Kernel.Async.Event.is_readable event)
       then
         Ok ()
       else
         Error "expected timer source to wake the poller")
 
 let has_readable_token = fun token events ->
-  List.exists
-    (fun event ->
-      Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
-      && Kernel.Async.Event.is_readable event)
-    events
+  List.any events ~fn:(fun event ->
+    Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
+    && Kernel.Async.Event.is_readable event)
 
 let wait_for_readable_token = fun poll ~token ->
   let rec loop attempts =
@@ -84,7 +80,7 @@ let wait_for_readable_token = fun poll ~token ->
   loop 8
 
 let test_of_parts_roundtrips = fun _ctx ->
-  let* value = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:42 ~nanos:123_456_789) in
+  let* value = lift_system_time (Kernel.Time.SystemTime.from_parts ~secs:42 ~nanos:123_456_789) in
   let (secs, nanos) = Kernel.Time.SystemTime.to_parts value in
   if secs = 42 && nanos = 123_456_789 then
     Ok ()
@@ -107,8 +103,8 @@ let test_now_has_valid_nanoseconds = fun _ctx ->
     Error "expected current system time nanoseconds to be normalized"
 
 let test_system_time_diff_ns_matches_parts = fun _ctx ->
-  let* later = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:12 ~nanos:250_000_000) in
-  let* earlier = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:10 ~nanos:125_000_000) in
+  let* later = lift_system_time (Kernel.Time.SystemTime.from_parts ~secs:12 ~nanos:250_000_000) in
+  let* earlier = lift_system_time (Kernel.Time.SystemTime.from_parts ~secs:10 ~nanos:125_000_000) in
   if Kernel.Time.SystemTime.diff_ns later earlier = 2_125_000_000L then
     Ok ()
   else
@@ -136,8 +132,8 @@ let test_monotonic_diff_ns_matches_parts = fun _ctx ->
   let earlier_secs, earlier_nanos = Kernel.Time.Monotonic.to_parts earlier in
   let later_secs, later_nanos = Kernel.Time.Monotonic.to_parts later in
   let expected = Int64.add
-    (Int64.mul (Int64.of_int (later_secs - earlier_secs)) 1_000_000_000L)
-    (Int64.of_int (later_nanos - earlier_nanos)) in
+    (Int64.mul (Int64.from_int (later_secs - earlier_secs)) 1_000_000_000L)
+    (Int64.from_int (later_nanos - earlier_nanos)) in
   if Kernel.Time.Monotonic.diff_ns later earlier = expected then
     Ok ()
   else
@@ -199,7 +195,7 @@ let test_many_same_tick_timers_wake_the_poller = fun _ctx ->
     (fun poll ->
       let rec create remaining acc =
         if remaining = 0 then
-          Ok (List.rev acc)
+          Ok (List.reverse acc)
         else
           let* timer = lift_timer (Kernel.Time.Timer.after_ns 5_000_000L) in
           create (remaining - 1) (timer :: acc)
@@ -216,20 +212,20 @@ let test_many_same_tick_timers_wake_the_poller = fun _ctx ->
                 (Kernel.Time.Timer.to_source timer)) in
             register (index + 1) rest
       in
-      let seen = Kernel.Array.make 12 false in
+      let seen = Kernel.Array.make ~count:12 ~value:false in
       let rec mark = function
         | [] -> ()
         | event :: rest ->
             if Kernel.Async.Event.is_readable event then
               let token = Kernel.Async.Token.unsafe_value (Kernel.Async.Event.token event) in
               if token >= 0 && token < 12 then
-                Kernel.Array.set seen token true;
+                Kernel.Array.set seen ~at:token ~value:true;
               mark rest
       in
       let rec all_seen index =
         if index = 12 then
           true
-        else if Kernel.Array.get seen index then
+        else if Kernel.Array.get_unchecked seen ~at:index then
           all_seen (index + 1)
         else
           false
@@ -268,11 +264,9 @@ let test_timer_every_ns_repeats = fun _ctx ->
               let* events = lift_async
                 (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll) in
               if
-                List.exists
-                  (fun event ->
-                    Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
-                    && Kernel.Async.Event.is_readable event)
-                  events
+                List.any events ~fn:(fun event ->
+                  Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
+                  && Kernel.Async.Event.is_readable event)
               then
                 poll_twice (remaining - 1)
               else
@@ -458,19 +452,19 @@ let test_timer_after_ns_elapsed_time_is_reasonable = fun _ctx ->
             Error "expected one-shot timer latency to stay within a reasonable tolerance"))
 
 let test_system_time_rejects_negative_nanoseconds = fun _ctx ->
-  match Kernel.Time.SystemTime.of_parts ~secs:1 ~nanos:(-1) with
+  match Kernel.Time.SystemTime.from_parts ~secs:1 ~nanos:(-1) with
   | Kernel.Result.Error (Kernel.Time.SystemTime.InvalidNanoseconds { nanos=(-1) }) -> Ok ()
   | Kernel.Result.Error error -> Error (Kernel.Time.SystemTime.error_to_string error)
   | Kernel.Result.Ok _ -> Error "expected SystemTime.of_parts to reject negative nanoseconds"
 
 let test_system_time_rejects_upper_bound_nanoseconds = fun _ctx ->
-  match Kernel.Time.SystemTime.of_parts ~secs:1 ~nanos:1_000_000_000 with
+  match Kernel.Time.SystemTime.from_parts ~secs:1 ~nanos:1_000_000_000 with
   | Kernel.Result.Error (Kernel.Time.SystemTime.InvalidNanoseconds { nanos=1_000_000_000 }) -> Ok ()
   | Kernel.Result.Error error -> Error (Kernel.Time.SystemTime.error_to_string error)
   | Kernel.Result.Ok _ -> Error "expected SystemTime.of_parts to keep the nanosecond upper bound exclusive"
 
 let test_system_time_accessors_match_the_constructor = fun _ctx ->
-  let* value = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:17 ~nanos:123_456_789) in
+  let* value = lift_system_time (Kernel.Time.SystemTime.from_parts ~secs:17 ~nanos:123_456_789) in
   let secs, nanos = Kernel.Time.SystemTime.to_parts value in
   if
     secs = 17
@@ -483,9 +477,9 @@ let test_system_time_accessors_match_the_constructor = fun _ctx ->
     Error "expected SystemTime accessors to preserve constructor inputs exactly"
 
 let test_system_time_compare_and_equal_are_antisymmetric = fun _ctx ->
-  let* earlier = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:1 ~nanos:5) in
-  let* same = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:1 ~nanos:5) in
-  let* later = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:1 ~nanos:6) in
+  let* earlier = lift_system_time (Kernel.Time.SystemTime.from_parts ~secs:1 ~nanos:5) in
+  let* same = lift_system_time (Kernel.Time.SystemTime.from_parts ~secs:1 ~nanos:5) in
+  let* later = lift_system_time (Kernel.Time.SystemTime.from_parts ~secs:1 ~nanos:6) in
   if
     Kernel.Time.SystemTime.equal earlier same
     && Kernel.Time.SystemTime.compare earlier same = 0
@@ -497,8 +491,8 @@ let test_system_time_compare_and_equal_are_antisymmetric = fun _ctx ->
     Error "expected SystemTime compare and equal to preserve antisymmetric ordering"
 
 let test_system_time_diff_ns_is_antisymmetric = fun _ctx ->
-  let* left = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:10 ~nanos:5) in
-  let* right = lift_system_time (Kernel.Time.SystemTime.of_parts ~secs:7 ~nanos:10) in
+  let* left = lift_system_time (Kernel.Time.SystemTime.from_parts ~secs:10 ~nanos:5) in
+  let* right = lift_system_time (Kernel.Time.SystemTime.from_parts ~secs:7 ~nanos:10) in
   if
     Kernel.Time.SystemTime.diff_ns left right = Int64.neg (Kernel.Time.SystemTime.diff_ns right left)
   then

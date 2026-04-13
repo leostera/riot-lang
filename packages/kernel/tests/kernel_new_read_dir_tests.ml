@@ -2,17 +2,17 @@ open Std
 module Test = Std.Test
 module Kernel = Kernel
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 let lift result =
   match result with
   | Kernel.Result.Ok value -> Ok value
-  | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.of_fs_read_dir error))
+  | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.from_fs_read_dir error))
 
 let lift_file result =
   match result with
   | Kernel.Result.Ok value -> Ok value
-  | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.of_fs_file error))
+  | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.from_fs_file error))
 
 let protect = fun ~finally fn ->
   try
@@ -25,7 +25,7 @@ let protect = fun ~finally fn ->
       raise error
 
 let with_tempdir = fun prefix fn ->
-  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.of_string (Path.to_string tempdir))) with
+  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.from_string (Path.to_string tempdir))) with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
@@ -40,7 +40,7 @@ let array_contains = fun values target ->
   let rec loop index =
     if index = Kernel.Array.length values then
       false
-    else if Kernel.String.equal (Kernel.Array.get values index) target then
+    else if Kernel.String.equal (Kernel.Array.get_unchecked values ~at:index) target then
       true
     else
       loop (index + 1)
@@ -51,7 +51,7 @@ let collect_names = fun dir ->
   let rec loop acc =
     let* next = lift (Kernel.Fs.ReadDir.read_name dir) in
     match next with
-    | None -> Ok (List.rev acc)
+    | None -> Ok (List.reverse acc)
     | Some name -> loop (name :: acc)
   in
   loop []
@@ -66,7 +66,7 @@ let test_open_dir_reads_snapshotted_names = fun _ctx ->
       let* () =
         with_file file
           (fun () ->
-            let* _ = lift_file (Kernel.Fs.File.write file (Kernel.Bytes.of_string "alpha")) in
+            let* _ = lift_file (Kernel.Fs.File.write file (Kernel.Bytes.from_string "alpha")) in
             Ok ())
       in
       let* dir = lift (Kernel.Fs.ReadDir.open_dir root) in
@@ -75,7 +75,7 @@ let test_open_dir_reads_snapshotted_names = fun _ctx ->
       let* () =
         with_file later
           (fun () ->
-            let* _ = lift_file (Kernel.Fs.File.write later (Kernel.Bytes.of_string "later")) in
+            let* _ = lift_file (Kernel.Fs.File.write later (Kernel.Bytes.from_string "later")) in
             Ok ())
       in
       protect
@@ -84,7 +84,7 @@ let test_open_dir_reads_snapshotted_names = fun _ctx ->
           ())
         (fun () ->
           let* names = collect_names dir in
-          let names = Kernel.Array.of_list names in
+          let names = Kernel.Array.from_list names in
           if
             array_contains names "nested"
             && array_contains names "alpha.txt"
@@ -107,7 +107,7 @@ let test_read_entry_reports_entry_kinds = fun _ctx ->
       let* () =
         with_file file
           (fun () ->
-            let* _ = lift_file (Kernel.Fs.File.write file (Kernel.Bytes.of_string "alpha")) in
+            let* _ = lift_file (Kernel.Fs.File.write file (Kernel.Bytes.from_string "alpha")) in
             Ok ())
       in
       let* () = lift_file (Kernel.Fs.File.symlink ~src:child_file ~dst:child_link) in
@@ -151,7 +151,7 @@ let test_read_entry_surfaces_removed_entries = fun _ctx ->
       let* () =
         with_file file
           (fun () ->
-            let* _ = lift_file (Kernel.Fs.File.write file (Kernel.Bytes.of_string "alpha")) in
+            let* _ = lift_file (Kernel.Fs.File.write file (Kernel.Bytes.from_string "alpha")) in
             Ok ())
       in
       let* dir = lift (Kernel.Fs.ReadDir.open_dir root) in
