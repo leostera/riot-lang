@@ -11,6 +11,5 @@ path = "src/contentstore.ml"
 [dependencies]
 std = "*"
 
-[[bin]]
-name = "store_tests"
-path = "tests/store_tests.ml"
+[dev-dependencies]
+propane = { path = "../propane", version = "*" }

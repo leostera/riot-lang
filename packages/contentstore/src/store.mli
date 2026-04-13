@@ -1,53 +1,66 @@
 open Std
 
-(** Store retention policy. *)
+(** Store retention policy handle. *)
 type policy = Policy.t
-(** Generic content-addressable storage rooted at one filesystem directory. *)
+module Namespace = Namespace
+
+(** Generic content-addressable store bound to one namespace under one
+    filesystem root. *)
 type t
+
+type source_path_error =
+  | Source_missing
+  | Source_not_file
+  | Source_not_directory
+
+type io_detail =
+  | Fs of Fs.error
+  | File of Fs.File.error
+
 (** Store operation error. *)
-type error = string
+type error =
+  | Missing of { path: Path.t }
+  | Invalid_source_path of { path: Path.t; reason: source_path_error }
+  | Io of { op: string; path: Path.t; related_path: Path.t option; detail: io_detail }
 
-(** Create a content-addressable store rooted at [root]. *)
-val create: root:Path.t -> policy:policy -> unit -> t
+val error_message: error -> string
 
-(** Return the root directory backing this store. *)
+(** Create one logical store handle rooted at [root] scoped to [ns]. *)
+val create: root:Path.t -> ns:Namespace.t -> policy:policy -> t
+
 val root: t -> Path.t
 
-(** Return the stable hash-addressed directory for [hash], whether or not it
-    exists yet. *)
+val namespace: t -> Namespace.t
+
+val policy: t -> policy
+
+(** Return the stable hash-addressed tree directory for [hash]. *)
 val hash_dir_of: t -> Crypto.hash -> Path.t
 
 (** Check whether a hash-addressed directory currently exists. *)
 val exists: t -> Crypto.hash -> bool
 
-(** Atomically commit [source_dir] into the hash-addressed location for [hash].
+(** Atomically commit [source_dir] into the hash-addressed tree location for [hash].
 
-    If another writer already committed the same [hash], this is a no-op
-    success and the caller may discard [source_dir]. *)
+    Successful commits consume [source_dir]. If another writer already committed
+    the same [hash], this still succeeds and [source_dir] is treated as
+    disposable. *)
 val commit_dir: t -> hash:Crypto.hash -> source_dir:Path.t -> (unit, error) result
 
-(** Save one arbitrary blob in a namespaced cache area keyed by [hash]. *)
-val save_blob: t -> namespace:string -> hash:Crypto.hash -> content:string -> (unit, error) result
+(** Save one immutable object keyed by [hash]. *)
+val save_object: t -> hash:Crypto.hash -> content:string -> (unit, error) result
 
-(** Load one arbitrary blob from a namespaced cache area keyed by [hash]. *)
-val load_blob: t -> namespace:string -> hash:Crypto.hash -> string option
+(** Import one immutable object from an existing file keyed by [hash]. *)
+val save_file: t -> hash:Crypto.hash -> source:Path.t -> (unit, error) result
 
-(** Save one JSON value in a namespaced cache area keyed by [hash]. *)
-val save_json_bundle:
-  t -> namespace:string -> hash:Crypto.hash -> json:Data.Json.t -> (unit, error) result
+(** Open one immutable object keyed by [hash] for reading. *)
+val open_object: t -> hash:Crypto.hash -> (Fs.File.t, error) result
 
-(** Load one JSON value from a namespaced cache area keyed by [hash]. *)
-val load_json_bundle: t -> namespace:string -> hash:Crypto.hash -> Data.Json.t option
+(** Save one mutable named object keyed by [key]. *)
+val save_named_object: t -> key:string -> content:string -> (unit, error) result
 
-(** Save one arbitrary blob in a mutable namespaced index keyed by [key]. *)
-val save_named_blob: t -> namespace:string -> key:string -> content:string -> (unit, error) result
+(** Import one mutable named object from an existing file keyed by [key]. *)
+val save_named_file: t -> key:string -> source:Path.t -> (unit, error) result
 
-(** Load one arbitrary blob from a mutable namespaced index keyed by [key]. *)
-val load_named_blob: t -> namespace:string -> key:string -> string option
-
-(** Save one JSON value in a mutable namespaced index keyed by [key]. *)
-val save_named_json_bundle:
-  t -> namespace:string -> key:string -> json:Data.Json.t -> (unit, error) result
-
-(** Load one JSON value from a mutable namespaced index keyed by [key]. *)
-val load_named_json_bundle: t -> namespace:string -> key:string -> Data.Json.t option
+(** Open one mutable named object keyed by [key] for reading. *)
+val open_named_object: t -> key:string -> (Fs.File.t, error) result

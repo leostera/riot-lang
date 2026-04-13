@@ -1,123 +1,97 @@
 open Std
 
 type policy = Policy.t
+module Namespace = Namespace
+
+type source_path_error = Store_error.source_path_error =
+  | Source_missing
+  | Source_not_file
+  | Source_not_directory
+
+type io_detail = Store_error.io_detail =
+  | Fs of Fs.error
+  | File of Fs.File.error
+
+type error = Store_error.t =
+  | Missing of { path: Path.t }
+  | Invalid_source_path of { path: Path.t; reason: source_path_error }
+  | Io of { op: string; path: Path.t; related_path: Path.t option; detail: io_detail }
 
 type t = {
   root: Path.t;
+  ns: Namespace.t;
   policy: policy;
 }
 
-type error = string
+let ( let* ) value fn = Result.and_then value ~fn
 
-let create = fun ~root ~policy () ->
-  let _ = Fs.create_dir_all root
-  |> Result.expect ~msg:("Failed to create content store root: " ^ Path.to_string root) in
-  { root; policy }
+let create = fun ~root ~ns ~policy -> { root; ns; policy }
+
+let error_message = Store_error.error_message
 
 let root = fun store -> store.root
 
-let hash_dir_of = fun store hash -> Path.(store.root / Path.v (Crypto.Digest.hex hash))
+let namespace = fun store -> store.ns
 
-let exists = fun store hash -> Fs.exists (hash_dir_of store hash) |> Result.unwrap_or ~default:false
+let policy = fun store -> store.policy
+
+let hash_dir_of = fun store hash ->
+  Layout.tree_dir store.root hash
+
+let exists = fun store hash ->
+  Fs.exists (hash_dir_of store hash)
+  |> Result.unwrap_or ~default:false
+
+let open_path = fun path ->
+  let* path_exists =
+    Fs.exists path
+    |> Result.map_err ~fn:(fun detail ->
+      Io { op = "exists"; path; related_path = None; detail = Fs detail })
+  in
+  if not path_exists then
+    Error (Missing { path })
+  else
+    Fs.File.open_read path
+    |> Result.map_err ~fn:(fun detail ->
+      Io { op = "open_read"; path; related_path = None; detail = File detail })
+
+let temp_path = fun store ~scope ~seed ->
+  Layout.temp_path store.root ~scope ~seed
+
+let seed_of_hash = fun hash ->
+  Crypto.Digest.hex hash
+
+let seed_of_key = fun key ->
+  Crypto.hash_string key
+  |> Crypto.Digest.hex
+
+let save_object = fun store ~hash ~content ->
+  let destination = Layout.object_path store.root ~ns:store.ns ~hash in
+  let temp = temp_path store ~scope:Layout.Immutable ~seed:(seed_of_hash hash) in
+  Atomic.write_object_if_absent ~temp ~dst:destination ~content
+
+let save_file = fun store ~hash ~source ->
+  let destination = Layout.object_path store.root ~ns:store.ns ~hash in
+  let temp = temp_path store ~scope:Layout.Immutable ~seed:(seed_of_hash hash) in
+  Atomic.copy_file_if_absent ~source ~temp ~dst:destination
+
+let open_object = fun store ~hash ->
+  open_path (Layout.object_path store.root ~ns:store.ns ~hash)
+
+let save_named_object = fun store ~key ~content ->
+  let destination = Layout.named_object_path store.root ~ns:store.ns ~key in
+  let temp = temp_path store ~scope:Layout.Mutable ~seed:(seed_of_key key) in
+  Atomic.replace_with_object ~temp ~dst:destination ~content
+
+let save_named_file = fun store ~key ~source ->
+  let destination = Layout.named_object_path store.root ~ns:store.ns ~key in
+  let temp = temp_path store ~scope:Layout.Mutable ~seed:(seed_of_key key) in
+  Atomic.replace_with_file ~source ~temp ~dst:destination
+
+let open_named_object = fun store ~key ->
+  open_path (Layout.named_object_path store.root ~ns:store.ns ~key)
 
 let commit_dir = fun store ~hash ~source_dir ->
   let destination = hash_dir_of store hash in
-  if exists store hash then
-    Ok ()
-  else
-    match Fs.rename ~src:source_dir ~dst:destination with
-    | Ok () -> Ok ()
-    | Error _ ->
-        if exists store hash then
-          Ok ()
-        else
-          Error ("Failed to commit content-addressed directory: "
-          ^ Path.to_string source_dir
-          ^ " -> "
-          ^ Path.to_string destination)
-
-let namespace_dir = fun store namespace -> Path.(store.root / Path.v namespace)
-
-let blob_path = fun store ~namespace ~hash ->
-  Path.(namespace_dir store namespace / Path.v (Crypto.Digest.hex hash))
-
-let named_namespace_dir = fun store namespace ->
-  Path.(store.root / Path.v "__named" / Path.v namespace)
-
-let named_blob_path = fun store ~namespace ~key ->
-  let key_hash = Crypto.hash_string key |> Crypto.Digest.hex in
-  Path.(named_namespace_dir store namespace / Path.v key_hash)
-
-let save_blob = fun store ~namespace ~hash ~content ->
-  let root = namespace_dir store namespace in
-  let _ = Fs.create_dir_all root
-  |> Result.expect ~msg:("Failed to create content namespace root: " ^ Path.to_string root) in
-  let destination = blob_path store ~namespace ~hash in
-  let temp_path =
-    let nanos = Time.SystemTime.duration_since_epoch () |> Time.Duration.to_nanos in
-    Path.(root / Path.v (Crypto.Digest.hex hash ^ ".tmp." ^ Int64.to_string nanos))
-  in
-  match Fs.write content temp_path with
-  | Error _ -> Error ("Failed to write temporary blob: " ^ Path.to_string temp_path)
-  | Ok () -> (
-      if Fs.exists destination |> Result.unwrap_or ~default:false then
-        (
-          let _ = Fs.remove_file temp_path in
-          Ok ()
-        )
-      else
-        match Fs.rename ~src:temp_path ~dst:destination with
-        | Ok () -> Ok ()
-        | Error _ ->
-            let _ = Fs.remove_file temp_path in
-            if Fs.exists destination |> Result.unwrap_or ~default:false then
-              Ok ()
-            else
-              Error ("Failed to commit blob: " ^ Path.to_string destination)
-    )
-
-let load_blob = fun store ~namespace ~hash -> Fs.read (blob_path store ~namespace ~hash) |> Result.to_option
-
-let save_json_bundle = fun store ~namespace ~hash ~json ->
-  save_blob store ~namespace ~hash ~content:(Data.Json.to_string json)
-
-let load_json_bundle = fun store ~namespace ~hash ->
-  match load_blob store ~namespace ~hash with
-  | None -> None
-  | Some content -> Data.Json.of_string content |> Result.to_option
-
-let save_named_blob = fun store ~namespace ~key ~content ->
-  let root = named_namespace_dir store namespace in
-  let _ = Fs.create_dir_all root
-  |> Result.expect ~msg:("Failed to create named namespace root: " ^ Path.to_string root) in
-  let destination = named_blob_path store ~namespace ~key in
-  let temp_path =
-    let nanos = Time.SystemTime.duration_since_epoch () |> Time.Duration.to_nanos in
-    Path.(root / Path.v (Path.basename destination ^ ".tmp." ^ Int64.to_string nanos))
-  in
-  match Fs.write content temp_path with
-  | Error _ -> Error ("Failed to write temporary named blob: " ^ Path.to_string temp_path)
-  | Ok () -> (
-      let _ =
-        match Fs.exists destination with
-        | Ok true -> Fs.remove_file destination
-        | Ok false
-        | Error _ -> Ok ()
-      in
-      match Fs.rename ~src:temp_path ~dst:destination with
-      | Ok () -> Ok ()
-      | Error _ ->
-          let _ = Fs.remove_file temp_path in
-          Error ("Failed to commit named blob: " ^ Path.to_string destination)
-    )
-
-let load_named_blob = fun store ~namespace ~key ->
-  Fs.read (named_blob_path store ~namespace ~key) |> Result.to_option
-
-let save_named_json_bundle = fun store ~namespace ~key ~json ->
-  save_named_blob store ~namespace ~key ~content:(Data.Json.to_string json)
-
-let load_named_json_bundle = fun store ~namespace ~key ->
-  match load_named_blob store ~namespace ~key with
-  | None -> None
-  | Some content -> Data.Json.of_string content |> Result.to_option
+  let temp = temp_path store ~scope:Layout.Trees ~seed:(seed_of_hash hash) in
+  Atomic.commit_dir_if_absent ~source_dir ~staging:temp ~dst:destination
