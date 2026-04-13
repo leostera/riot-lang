@@ -14,12 +14,12 @@ let make_test_workspace = fun tmpdir ->
     profile_overrides = [];
   }
 
-let test_cache_store_creation = fun _ctx ->
+let test_cache_store_creation_is_lazy_until_first_save = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"cache_test"
       (fun tmpdir ->
         let workspace = make_test_workspace tmpdir in
-        ignore (Riot_store.Store.create ~workspace);
+        let store = Riot_store.Store.create ~workspace in
         let cache_dir =
           Path.(tmpdir
           / Path.v "target"
@@ -27,8 +27,22 @@ let test_cache_store_creation = fun _ctx ->
           / Path.v (Riot_model.Riot_dirs.host_target ())
           / Path.v "cache") in
         match Fs.exists cache_dir with
-        | Ok true -> Ok ()
-        | Ok false -> Error "Cache directory was not created"
+        | Ok true -> Error "cache directory should stay lazy before first save"
+        | Ok false ->
+            let sandbox = Path.(tmpdir / Path.v "sandbox") in
+            Result.expect (Fs.create_dir_all sandbox) ~msg:"Create sandbox failed";
+            let output = Path.(sandbox / Path.v "test.txt") in
+            Result.expect (Fs.write "test content" output) ~msg:"Write failed";
+            let hash = Crypto.hash_string "test_action" in
+            let _ = Result.expect
+              (Riot_store.Store.save store ~package:"test" ~hash ~sandbox_dir:sandbox ~outs:[ output ])
+              ~msg:"Save failed" in
+            (
+              match Fs.exists cache_dir with
+              | Ok true -> Ok ()
+              | Ok false -> Error "cache directory should be created on first save"
+              | Error _ -> Error "Failed to check cache directory after save"
+            )
         | Error _ -> Error "Failed to check cache directory")
   with
   | Ok r -> r
@@ -177,7 +191,7 @@ let test_different_hashes_isolated = fun _ctx ->
 
 let tests =
   let open Test in [
-    case "cache store creation" test_cache_store_creation;
+    case "cache store creation is lazy until first save" test_cache_store_creation_is_lazy_until_first_save;
     case "simple file caching" test_simple_file_caching;
     case "cache hit retrieval" test_cache_hit_retrieval;
     case "cache promotion workflow" test_cache_promotion_workflow;

@@ -22,16 +22,16 @@ let test_collect_source_files = fun _ctx ->
         let package = Riot_model.Package.make ~name:"test" ~path:tmpdir ~relative_path:(Path.v ".") () in
         let files = Riot_executor.Package_builder.collect_source_files package in
         let has_ml =
-          List.exists (fun p -> Path.to_string p = Path.to_string ml_file) files
+          List.any files ~fn:(fun p -> Path.to_string p = Path.to_string ml_file)
         in
         let has_mli =
-          List.exists (fun p -> Path.to_string p = Path.to_string mli_file) files
+          List.any files ~fn:(fun p -> Path.to_string p = Path.to_string mli_file)
         in
         let has_c =
-          List.exists (fun p -> Path.to_string p = Path.to_string c_file) files
+          List.any files ~fn:(fun p -> Path.to_string p = Path.to_string c_file)
         in
         let has_txt =
-          List.exists (fun p -> Path.to_string p = Path.to_string txt_file) files
+          List.any files ~fn:(fun p -> Path.to_string p = Path.to_string txt_file)
         in
         let count = List.length files in
         if has_ml && has_mli && has_c && (not has_txt) && count = 3 then
@@ -48,7 +48,7 @@ let test_collect_source_files = fun _ctx ->
           ^ " has_txt="
           ^ Bool.to_string has_txt
           ^ ". Files: "
-          ^ String.concat ", " (List.map (fun p -> Path.basename p) files)))
+          ^ String.concat ", " (List.map files ~fn:(fun p -> Path.basename p))))
   with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"

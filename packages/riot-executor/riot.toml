@@ -9,8 +9,8 @@ public = false
 path = "src/riot_executor.ml"
 
 [dependencies]
-std = { path = "../riot-planner", version = "*" }
-riot-model = { path = "../riot-planner", version = "*" }
+std = { path = "../std", version = "*" }
+riot-model = { path = "../riot-model", version = "*" }
 riot-planner = { path = "../riot-planner", version = "*" }
-riot-toolchain = { path = "../riot-planner", version = "*" }
-riot-store = { path = "../riot-planner", version = "*" }
+riot-toolchain = { path = "../riot-toolchain", version = "*" }
+riot-store = { path = "../riot-store", version = "*" }

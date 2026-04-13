@@ -102,11 +102,11 @@ let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list
   let seen = HashSet.create () in
   List.filter_map entries
     ~fn:(fun (entry: Riot_store.Store.export_entry) ->
-      if HashSet.contains seen entry.name then
+      if HashSet.contains seen ~value:entry.name then
         None
       else
         (
-          let _ = HashSet.insert seen entry.name in
+          let _ = HashSet.insert seen ~value:entry.name in
           Some entry
         ))
 
@@ -118,11 +118,11 @@ let collect_package_artifact_outputs = fun ~sandbox_dir ~outputs ->
       match Path.strip_prefix abs_path ~prefix:sandbox_dir with
       | Ok _ ->
           let abs_path_str = Path.to_string abs_path in
-          if HashSet.contains seen abs_path_str then
+          if HashSet.contains seen ~value:abs_path_str then
             None
           else
             (
-              let _ = HashSet.insert seen abs_path_str in
+              let _ = HashSet.insert seen ~value:abs_path_str in
               Some abs_path
             )
       | Error _ -> None)
@@ -135,10 +135,10 @@ let collect_ocamlc_warnings = fun completed_actions ->
       List.fold_left result.Action_executor.ocamlc_warnings
         ~acc
         ~fn:(fun acc warning ->
-          if HashSet.contains seen warning then
+          if HashSet.contains seen ~value:warning then
             acc
           else
-            let _ = HashSet.insert seen warning in
+            let _ = HashSet.insert seen ~value:warning in
             acc @ [ warning ]))
 
 let emit_package_ocamlc_warnings = fun ~session_id ~package ~target ~source ocamlc_warnings ->
@@ -522,7 +522,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 ~package
                 ~reason:(Some ("Missing dependencies: "
                 ^ (missing |> List.map ~fn:(fun p -> p.Package.name) |> String.concat ", ")));
-              Vector.push still_pending package_node
+              Vector.push still_pending ~value:package_node
           | Ok (FailedDependencies { failed; _ }) ->
               update_planning_progress
                 package_key
@@ -531,7 +531,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 ~package
                 ~reason:(Some ("Failed dependencies: "
                 ^ (failed |> List.map ~fn:(fun p -> p.Package.name) |> String.concat ", ")));
-              Vector.push still_pending package_node
+              Vector.push still_pending ~value:package_node
           | Ok (Cached {
             package_key;
             hash;

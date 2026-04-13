@@ -36,7 +36,8 @@ let test_rewrite_ocamlc_result_rewrites_workspace_paths = fun _ctx ->
         let diagnostic = make_warning
           (Path.to_string Path.(sandbox_dir / Path.v "src" / Path.v "install.ml"))
         |> Riot_toolchain.Ocamlc.Diagnostic.parse
-        |> List.hd in
+        |> List.head
+        |> Option.expect ~msg:"expected one parsed diagnostic" in
         let result = Riot_toolchain.Ocamlc.Success { message = ""; diagnostics = [ diagnostic ] } in
         let rewritten = Riot_executor.Diagnostic_rewrite.rewrite_ocamlc_result
           ~package
@@ -61,7 +62,8 @@ let test_rewrite_ocamlc_result_leaves_generated_paths_alone = fun _ctx ->
         let diagnostic = make_warning
           (Path.to_string Path.(sandbox_dir / Path.v "Riot_cli__Aliases.ml.gen"))
         |> Riot_toolchain.Ocamlc.Diagnostic.parse
-        |> List.hd in
+        |> List.head
+        |> Option.expect ~msg:"expected one parsed diagnostic" in
         let rewritten = Riot_executor.Diagnostic_rewrite.rewrite_ocamlc_result
           ~package
           ~sandbox_dir

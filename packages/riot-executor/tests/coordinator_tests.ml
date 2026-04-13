@@ -18,7 +18,7 @@ let write_package = fun ~root ~name ~lib_body ~deps ->
     match deps with
     | [] -> ""
     | _ -> "\n[dependencies]\n"
-    ^ String.concat "\n" (List.map (fun dep -> dep ^ " = \"*\"") deps)
+    ^ String.concat "\n" (List.map deps ~fn:(fun dep -> dep ^ " = \"*\""))
     ^ "\n"
   in
   let riot_toml = "[package]\nname = \""
@@ -30,7 +30,7 @@ let write_package = fun ~root ~name ~lib_body ~deps ->
 
 let write_workspace = fun ~root members ->
   let riot_toml = "[workspace]\nmembers = ["
-  ^ String.concat ", " (List.map (fun member -> "\"" ^ member ^ "\"") members)
+  ^ String.concat ", " (List.map members ~fn:(fun member -> "\"" ^ member ^ "\""))
   ^ "]\n" in
   let _ = Fs.write riot_toml Path.(root / Path.v "riot.toml") |> Result.expect ~msg:"write workspace riot.toml failed" in
   ()
@@ -83,7 +83,7 @@ let test_build_workspace_two_packages_success = fun _ctx ->
                   ^ " failed_count="
                   ^ Int.to_string result.failed_count
                   ^ " statuses=["
-                  ^ String.concat ", " (List.map result_status_to_string result.results)
+                  ^ String.concat ", " (List.map result.results ~fn:result_status_to_string)
                   ^ "]")))
   with
   | Ok x -> x
@@ -121,7 +121,7 @@ let test_build_workspace_respects_serial_package_orchestration = fun _ctx ->
                   ^ " failed_count="
                   ^ Int.to_string result.failed_count
                   ^ " statuses=["
-                  ^ String.concat ", " (List.map result_status_to_string result.results)
+                  ^ String.concat ", " (List.map result.results ~fn:result_status_to_string)
                   ^ "]")))
   with
   | Ok x -> x
@@ -158,7 +158,7 @@ let test_failed_dependency_updates_package_graph = fun _ctx ->
                 | None ->
                     let graph_nodes = Riot_planner.Package_graph.topological_sort result.package_graph
                     |> List.map
-                      (fun node -> Riot_planner.Package_graph.get_key node |> Riot_model.Package.key_to_string) in
+                      ~fn:(fun node -> Riot_planner.Package_graph.get_key node |> Riot_model.Package.key_to_string) in
                     Error ("missing package graph node for failed package; graph keys=["
                     ^ String.concat ", " graph_nodes
                     ^ "]")

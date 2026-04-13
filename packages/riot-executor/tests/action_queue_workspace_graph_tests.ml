@@ -102,9 +102,9 @@ let queue_marks_dependents_skipped_after_failure = fun _ctx ->
   Riot_planner.Action_graph.add_dependency graph dependent_node ~depends_on:dep_node;
   Riot_executor.Action_queue.queue queue dependent_node;
   Riot_executor.Action_queue.queue queue dep_node;
-  ignore (Riot_executor.Action_queue.next queue);
+  let _ = Riot_executor.Action_queue.next queue in
   Riot_executor.Action_queue.mark_completed queue (failed_result dep_node.id);
-  ignore (Riot_executor.Action_queue.next queue);
+  let _ = Riot_executor.Action_queue.next queue in
   match Riot_executor.Action_queue.get_result queue dependent_node.id with
   | Some { status=Skipped; _ } -> Ok ()
   | Some _ -> Error "expected dependent action to be skipped"
@@ -116,7 +116,7 @@ let requeue_with_deps_moves_blocked_node_and_queues_missing_dependency = fun _ct
   let blocked = make_action_node "std" ~deps:[ missing_dep.id ] in
   blocked.deps <- [ missing_dep.id ];
   Riot_executor.Action_queue.queue queue blocked;
-  ignore (Riot_executor.Action_queue.next queue);
+  let _ = Riot_executor.Action_queue.next queue in
   Riot_executor.Action_queue.requeue_with_deps
     queue
     blocked
@@ -134,9 +134,9 @@ let is_complete_checks_all_nodes_accounted_for = fun _ctx ->
   let node_b = make_action_node "b" in
   Riot_executor.Action_queue.queue queue node_a;
   Riot_executor.Action_queue.queue queue node_b;
-  ignore (Riot_executor.Action_queue.next queue);
+  let _ = Riot_executor.Action_queue.next queue in
   Riot_executor.Action_queue.mark_completed queue (executed_result node_a.id);
-  ignore (Riot_executor.Action_queue.next queue);
+  let _ = Riot_executor.Action_queue.next queue in
   Riot_executor.Action_queue.mark_completed queue (executed_result node_b.id);
   if Riot_executor.Action_queue.is_complete queue ~total_nodes:2 then
     Ok ()

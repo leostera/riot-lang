@@ -32,6 +32,7 @@ type t = {
 type Message.t +=
   | ActionCompleted of { worker_pid: Pid.t; result: execution_result }
   | AssignAction of Action_node.t
+  | StopWorker of { reply_to: Pid.t }
 
 let make_flags_absolute = fun sandbox_dir flags ->
   List.map flags
@@ -641,104 +642,123 @@ let rec worker_loop = fun ~coordinator ~toolchain ~sandbox_dir ~completed ~store
       let result = execute_node ~completed ~store ~session_id toolchain sandbox_dir node in
       send coordinator (ActionCompleted { worker_pid = self (); result });
       worker_loop ~coordinator ~toolchain ~sandbox_dir ~completed ~store ~session_id
+  | StopWorker { reply_to = _ } ->
+      Ok ()
   | _ -> worker_loop ~coordinator ~toolchain ~sandbox_dir ~completed ~store ~session_id
 
 let execute = fun ~action_graph ~sandbox ~store ~session_id toolchain ~concurrency ->
   let sandbox_dir = Sandbox.get_dir sandbox in
   let sorted_nodes = Action_graph.nodes action_graph in
   let total_nodes = List.length sorted_nodes in
-  let coordinator_pid = self () in
-  Log.info
-    ("Starting action executor: total_nodes="
-    ^ Int.to_string total_nodes
-    ^ " concurrency="
-    ^ Int.to_string concurrency);
-  let queue = Action_queue.create () in
-  List.for_each sorted_nodes
-    ~fn:(fun node -> Action_queue.queue queue node);
-  let workers =
-    List.init
-      ~count:concurrency
-      ~fn:(fun _ ->
-        spawn
-          (fun () ->
-            worker_loop
-              ~coordinator:coordinator_pid
-              ~toolchain
-              ~sandbox_dir
-              ~completed:queue.completed
-              ~store
-              ~session_id))
-  in
-  let idle_workers = Queue.create () in
-  List.for_each workers
-    ~fn:(fun pid -> Queue.push idle_workers ~value:pid);
-  let busy_workers: (Pid.t, Action_node.t) HashMap.t = HashMap.create () in
-  let completed_count = ref 0 in
-  let rec drain_work_queue () =
-    match Queue.pop idle_workers with
-    | None -> ()
-    | Some worker_pid -> (
-        match Action_queue.next queue with
-        | None -> Queue.push idle_workers ~value:worker_pid
-        | Some node ->
-            let _ = HashMap.insert busy_workers ~key:worker_pid ~value:node in
-            send worker_pid (AssignAction node);
-            drain_work_queue ()
-      )
-  in
-  let rec dispatch_loop () =
-    drain_work_queue ();
-    if !completed_count = total_nodes then
-      (
-        let _, _, _, completed, succeeded, failed = Action_queue.stats queue in
-        Log.info
-          ("Action executor: all done, completed="
-          ^ Int.to_string completed
-          ^ " succeeded="
-          ^ Int.to_string succeeded
-          ^ " failed="
-          ^ Int.to_string failed
-          ^ " total="
-          ^ Int.to_string total_nodes);
-        ()
-      )
-    else
-      match receive_any () with
-      | ActionCompleted { worker_pid; result } ->
-          Action_queue.mark_completed queue result;
-          completed_count := !completed_count + 1;
-          let _ = HashMap.remove busy_workers ~key:worker_pid in
-          Queue.push idle_workers ~value:worker_pid;
-          let status_str =
-            match result.status with
-            | Cached _ -> "cached"
-            | Executed -> "executed"
-            | Failed _ -> "failed"
-            | Skipped -> "skipped"
-          in
+  if total_nodes = 0 then
+    { completed = HashMap.create () }
+  else
+    let coordinator_pid = self () in
+    Log.info
+      ("Starting action executor: total_nodes="
+      ^ Int.to_string total_nodes
+      ^ " concurrency="
+      ^ Int.to_string concurrency);
+    let queue = Action_queue.create () in
+    List.for_each sorted_nodes
+      ~fn:(fun node -> Action_queue.queue queue node);
+    let workers =
+      List.init
+        ~count:concurrency
+        ~fn:(fun _ ->
+          spawn
+            (fun () ->
+              worker_loop
+                ~coordinator:coordinator_pid
+                ~toolchain
+                ~sandbox_dir
+                ~completed:queue.completed
+                ~store
+                ~session_id))
+    in
+    let worker_pids = HashSet.from_list workers in
+    let _worker_monitors = List.map workers ~fn:Runtime.Actor.monitor in
+    let idle_workers = Queue.create () in
+    List.for_each workers
+      ~fn:(fun pid -> Queue.push idle_workers ~value:pid);
+    let busy_workers: (Pid.t, Action_node.t) HashMap.t = HashMap.create () in
+    let rec drain_work_queue () =
+      match Queue.pop idle_workers with
+      | None -> ()
+      | Some worker_pid -> (
+          match Action_queue.next queue with
+          | None -> Queue.push idle_workers ~value:worker_pid
+          | Some node ->
+              let _ = HashMap.insert busy_workers ~key:worker_pid ~value:node in
+              send worker_pid (AssignAction node);
+              drain_work_queue ()
+        )
+    in
+    let rec dispatch_loop () =
+      drain_work_queue ();
+      if Action_queue.is_complete queue ~total_nodes then
+        (
+          let _, _, _, completed, succeeded, failed = Action_queue.stats queue in
           Log.info
-            ("Action node "
-            ^ G.Node_id.to_string result.node_id
-            ^ " completed: "
-            ^ status_str
-            ^ " ("
-            ^ Int.to_string (Duration.to_millis result.duration)
-            ^ "ms)");
-          (
-            match result.status with
-            | Failed (ExecutionFailed { message }) -> Log.error ("Action failed: " ^ message)
-            | Failed (OutputsNotCreated { missing }) -> Log.error
-              ("Expected outputs not created: "
-              ^ String.concat ", " (List.map missing ~fn:Path.to_string))
-            | Failed (DependenciesFailed { failed }) -> Log.error
-              ("Action dependencies failed: "
-              ^ String.concat ", " (List.map failed ~fn:G.Node_id.to_string))
-            | Skipped -> Log.warn "Action skipped due to failed dependencies"
-            | _ -> ()
-          );
-          dispatch_loop ()
-      | _ -> dispatch_loop ()
-  in
-  dispatch_loop ();
-  { completed = queue.completed }
+            ("Action executor: all done, completed="
+            ^ Int.to_string completed
+            ^ " succeeded="
+            ^ Int.to_string succeeded
+            ^ " failed="
+            ^ Int.to_string failed
+            ^ " total="
+            ^ Int.to_string total_nodes);
+          ()
+        )
+      else
+        match receive_any () with
+        | ActionCompleted { worker_pid; result } ->
+            Action_queue.mark_completed queue result;
+            let _ = HashMap.remove busy_workers ~key:worker_pid in
+            Queue.push idle_workers ~value:worker_pid;
+            let status_str =
+              match result.status with
+              | Cached _ -> "cached"
+              | Executed -> "executed"
+              | Failed _ -> "failed"
+              | Skipped -> "skipped"
+            in
+            Log.info
+              ("Action node "
+              ^ G.Node_id.to_string result.node_id
+              ^ " completed: "
+              ^ status_str
+              ^ " ("
+              ^ Int.to_string (Duration.to_millis result.duration)
+              ^ "ms)");
+            (
+              match result.status with
+              | Failed (ExecutionFailed { message }) -> Log.error ("Action failed: " ^ message)
+              | Failed (OutputsNotCreated { missing }) -> Log.error
+                ("Expected outputs not created: "
+                ^ String.concat ", " (List.map missing ~fn:Path.to_string))
+              | Failed (DependenciesFailed { failed }) -> Log.error
+                ("Action dependencies failed: "
+                ^ String.concat ", " (List.map failed ~fn:G.Node_id.to_string))
+              | Skipped -> Log.warn "Action skipped due to failed dependencies"
+              | _ -> ()
+            );
+            dispatch_loop ()
+        | _ -> dispatch_loop ()
+    in
+    let rec wait_for_workers () =
+      if HashSet.is_empty worker_pids then
+        ()
+      else
+        match receive_any () with
+        | Runtime.Actor.DOWN { pid; ref = _; reason = _ } ->
+            let _ = HashSet.remove worker_pids ~value:pid in
+            wait_for_workers ()
+        | _ -> wait_for_workers ()
+    in
+    dispatch_loop ();
+    List.for_each workers
+      ~fn:(fun worker ->
+        send worker (StopWorker { reply_to = coordinator_pid }));
+    wait_for_workers ();
+    { completed = queue.completed }

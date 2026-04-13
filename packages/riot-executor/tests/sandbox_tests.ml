@@ -1,235 +1,99 @@
-(*
 open Std
 module Test = Std.Test
 
-let test_with_sandbox_copies_inputs () =
+let make_workspace = fun root ->
+  Riot_model.Workspace.{
+    name = None;
+    root;
+    target_dir_root =
+      Path.(root / Path.v "target");
+    packages = [];
+    dependencies = [];
+    dev_dependencies = [];
+    build_dependencies = [];
+    profile_overrides = [];
+  }
+
+let make_package = fun ~root ~name ->
+  let path = Path.(root / Path.v "packages" / Path.v name) in
+  Riot_model.Package.make
+    ~name
+    ~path
+    ~relative_path:(Path.v ("packages/" ^ name))
+    ~library:{ path = Path.v "src/lib.ml" }
+    ()
+
+let test_sandbox_create_and_get_dir = fun _ctx ->
   match
-    Fs.with_tempdir ~prefix:"sandbox_test" (fun tmpdir ->
-        let workspace =
-          Riot_model.Workspace.
-            {
-              root = tmpdir;
-              target_dir_root = Path.(tmpdir / Path.v "target");
-              packages = [];
-              profile_overrides = [];
-            }
-        in
-        let input1 = Path.(tmpdir / Path.v "input1.txt") in
-        let input2 = Path.(tmpdir / Path.v "input2.txt") in
-        let _ =
-          Fs.write "content1" input1 |> Result.expect ~msg:"Write failed"
-        in
-        let _ =
-          Fs.write "content2" input2 |> Result.expect ~msg:"Write failed"
-        in
-
-        Riot_executor.Sandbox.with_sandbox ~workspace ~inputs:[ input1; input2 ]
-          ~expected_outputs:[] (fun sandbox ->
-            let sandbox_dir = Riot_executor.Sandbox.get_dir sandbox in
-            let copied1 = Path.(sandbox_dir / Path.v "input1.txt") in
-            let copied2 = Path.(sandbox_dir / Path.v "input2.txt") in
-
-            let exists1 =
-              Fs.exists copied1 |> Result.unwrap_or ~default:false
-            in
-            let exists2 =
-              Fs.exists copied2 |> Result.unwrap_or ~default:false
-            in
-
-            if exists1 && exists2 then
-              match (Fs.read copied1, Fs.read copied2) with
-              | Ok c1, Ok c2
-                when String.equal c1 "content1" && String.equal c2 "content2" ->
-                  Ok ()
-              | _ -> Error "Content mismatch"
-            else Error "Inputs not copied to sandbox"))
+    Fs.with_tempdir ~prefix:"sandbox_create"
+      (fun tmpdir ->
+        let workspace = make_workspace tmpdir in
+        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:"pkg" in
+        let dir = Riot_executor.Sandbox.get_dir sandbox in
+        let exists = Fs.exists dir |> Result.unwrap_or ~default:false in
+        let _ = Riot_executor.Sandbox.cleanup sandbox in
+        if exists then
+          Ok ()
+        else
+          Error "expected sandbox directory to exist")
   with
-  | Ok r -> r
-  | Error _ -> Error "Tempdir creation failed"
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
-let test_with_sandbox_verifies_outputs () =
+let test_sandbox_prepare_copies_package_inputs = fun _ctx ->
   match
-    Fs.with_tempdir ~prefix:"sandbox_test" (fun tmpdir ->
-        let workspace =
-          Riot_model.Workspace.
-            {
-              root = tmpdir;
-              target_dir_root = Path.(tmpdir / Path.v "target");
-              packages = [];
-              profile_overrides = [];
-            }
+    Fs.with_tempdir ~prefix:"sandbox_prepare"
+      (fun tmpdir ->
+        let workspace = make_workspace tmpdir in
+        let package = make_package ~root:tmpdir ~name:"pkg" in
+        let package_src = Path.(package.Riot_model.Package.path / Path.v "src") in
+        let _ = Fs.create_dir_all package_src |> Result.expect ~msg:"create package src failed" in
+        let source = Path.(package_src / Path.v "lib.ml") in
+        let _ = Fs.write "let answer = 42" source |> Result.expect ~msg:"write package source failed" in
+        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:package.Riot_model.Package.name in
+        Riot_executor.Sandbox.prepare
+          ~sandbox
+          ~package
+          ~inputs:[ Path.v "src/lib.ml" ]
+          ~depset:[]
+          ~store:(Riot_store.Store.create ~workspace);
+        let copied = Path.(Riot_executor.Sandbox.get_dir sandbox / Path.v "src/lib.ml") in
+        let result =
+          match Fs.read_to_string copied with
+          | Ok content when String.equal content "let answer = 42" -> Ok ()
+          | Ok content -> Error ("unexpected copied content: " ^ content)
+          | Error err -> Error ("failed to read copied input: " ^ IO.error_message err)
         in
-        let output1 = Path.v "output1.txt" in
-        let output2 = Path.v "output2.txt" in
-
-        Riot_executor.Sandbox.with_sandbox ~workspace ~inputs:[]
-          ~expected_outputs:[ output1; output2 ] (fun sandbox ->
-            let sandbox_dir = Riot_executor.Sandbox.get_dir sandbox in
-            let out1_path = Path.(sandbox_dir / output1) in
-            let out2_path = Path.(sandbox_dir / output2) in
-
-            let _ =
-              Fs.write "out1" out1_path |> Result.expect ~msg:"Write failed"
-            in
-            let _ =
-              Fs.write "out2" out2_path |> Result.expect ~msg:"Write failed"
-            in
-            Ok ()))
+        let _ = Riot_executor.Sandbox.cleanup sandbox in
+        result)
   with
-  | Ok r -> r
-  | Error _ -> Error "Tempdir creation failed"
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
-let test_with_sandbox_fails_on_missing_output () =
+let test_sandbox_cleanup_removes_dir = fun _ctx ->
   match
-    Fs.with_tempdir ~prefix:"sandbox_test" (fun tmpdir ->
-        let workspace =
-          Riot_model.Workspace.
-            {
-              root = tmpdir;
-              target_dir_root = Path.(tmpdir / Path.v "target");
-              packages = [];
-              profile_overrides = [];
-            }
-        in
-        let output = Path.v "missing.txt" in
-
-        try
-          let _ =
-            Riot_executor.Sandbox.with_sandbox ~workspace ~inputs:[]
-              ~expected_outputs:[ output ] (fun _sandbox -> ())
-          in
-          Error "Expected panic for missing output"
-        with _ -> Ok ())
+    Fs.with_tempdir ~prefix:"sandbox_cleanup"
+      (fun tmpdir ->
+        let workspace = make_workspace tmpdir in
+        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:"pkg" in
+        let dir = Riot_executor.Sandbox.get_dir sandbox in
+        let _ = Riot_executor.Sandbox.cleanup sandbox in
+        let exists = Fs.exists dir |> Result.unwrap_or ~default:true in
+        if not exists then
+          Ok ()
+        else
+          Error "expected sandbox cleanup to remove directory")
   with
-  | Ok r -> r
-  | Error _ -> Error "Tempdir creation failed"
-
-let test_with_sandbox_cleans_up () =
-  match
-    Fs.with_tempdir ~prefix:"sandbox_test" (fun tmpdir ->
-        let workspace =
-          Riot_model.Workspace.
-            {
-              root = tmpdir;
-              target_dir_root = Path.(tmpdir / Path.v "target");
-              packages = [];
-              profile_overrides = [];
-            }
-        in
-        let sandbox_ref = Cell.create None in
-
-        let _ =
-          Riot_executor.Sandbox.with_sandbox ~workspace ~inputs:[]
-            ~expected_outputs:[] (fun sandbox ->
-              let dir = Riot_executor.Sandbox.get_dir sandbox in
-              Cell.set sandbox_ref (Some dir);
-              ())
-        in
-
-        match Cell.get sandbox_ref with
-        | Some dir ->
-            let exists = Fs.exists dir |> Result.unwrap_or ~default:true in
-            if not exists then Ok ()
-            else Error "Sandbox directory not cleaned up"
-        | None -> Error "Sandbox directory not captured")
-  with
-  | Ok r -> r
-  | Error _ -> Error "Tempdir creation failed"
-
-let test_with_sandbox_empty_inputs_outputs () =
-  match
-    Fs.with_tempdir ~prefix:"sandbox_test" (fun tmpdir ->
-        let workspace =
-          Riot_model.Workspace.
-            {
-              root = tmpdir;
-              target_dir_root = Path.(tmpdir / Path.v "target");
-              packages = [];
-              profile_overrides = [];
-            }
-        in
-        Riot_executor.Sandbox.with_sandbox ~workspace ~inputs:[]
-          ~expected_outputs:[] (fun sandbox ->
-            let dir = Riot_executor.Sandbox.get_dir sandbox in
-            let exists = Fs.exists dir |> Result.unwrap_or ~default:false in
-            if exists then Ok () else Error "Sandbox directory not created"))
-  with
-  | Ok r -> r
-  | Error _ -> Error "Tempdir creation failed"
-
-let test_with_sandbox_nested_input_paths () =
-  match
-    Fs.with_tempdir ~prefix:"sandbox_test" (fun tmpdir ->
-        let workspace =
-          Riot_model.Workspace.
-            {
-              root = tmpdir;
-              target_dir_root = Path.(tmpdir / Path.v "target");
-              packages = [];
-              profile_overrides = [];
-            }
-        in
-        let nested_dir = Path.(tmpdir / Path.v "nested" / Path.v "deep") in
-        let _ = Fs.create_dir_all nested_dir in
-        let input = Path.(nested_dir / Path.v "file.txt") in
-        let _ = Fs.write "nested" input |> Result.expect ~msg:"Write failed" in
-
-        Riot_executor.Sandbox.with_sandbox ~workspace ~inputs:[ input ]
-          ~expected_outputs:[] (fun sandbox ->
-            let sandbox_dir = Riot_executor.Sandbox.get_dir sandbox in
-            let copied =
-              Path.(
-                sandbox_dir / Path.v "nested" / Path.v "deep"
-                / Path.v "file.txt")
-            in
-
-            let file_exists =
-              Fs.exists copied |> Result.unwrap_or ~default:false
-            in
-
-            if file_exists then Ok ()
-            else Error "Nested input not copied correctly"))
-  with
-  | Ok r -> r
-  | Error _ -> Error "Tempdir creation failed"
-
-let test_sandbox_get_dir_returns_valid_path () =
-  match
-    Fs.with_tempdir ~prefix:"sandbox_test" (fun tmpdir ->
-        let workspace =
-          Riot_model.Workspace.
-            {
-              root = tmpdir;
-              target_dir_root = Path.(tmpdir / Path.v "target");
-              packages = [];
-              profile_overrides = [];
-            }
-        in
-        Riot_executor.Sandbox.with_sandbox ~workspace ~inputs:[]
-          ~expected_outputs:[] (fun sandbox ->
-            let dir = Riot_executor.Sandbox.get_dir sandbox in
-            let dir_str = Path.to_string dir in
-            if String.length dir_str > 0 then Ok ()
-            else Error "get_dir returned empty path"))
-  with
-  | Ok r -> r
-  | Error _ -> Error "Tempdir creation failed"
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
 let tests =
-  Test.
-    [
-      case "with_sandbox: copies inputs" test_with_sandbox_copies_inputs;
-      case "with_sandbox: verifies outputs" test_with_sandbox_verifies_outputs;
-      case "with_sandbox: fails on missing output"
-        test_with_sandbox_fails_on_missing_output;
-      case "with_sandbox: cleans up" test_with_sandbox_cleans_up;
-      case "with_sandbox: empty inputs/outputs"
-        test_with_sandbox_empty_inputs_outputs;
-      case "with_sandbox: nested input paths"
-        test_with_sandbox_nested_input_paths;
-      case "get_dir: returns valid path" test_sandbox_get_dir_returns_valid_path;
-    ]
+  Test.[
+    case "sandbox create makes a directory" test_sandbox_create_and_get_dir;
+    case "sandbox prepare copies package inputs" test_sandbox_prepare_copies_package_inputs;
+    case "sandbox cleanup removes directory" test_sandbox_cleanup_removes_dir;
+  ]
 
-let name = "Sandbox Tests"
+let name = "riot-executor:sandbox"
+
 let () = Actors.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()
-*)
