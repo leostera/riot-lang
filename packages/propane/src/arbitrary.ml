@@ -237,7 +237,13 @@ let pair = fun arb_a arb_b ->
         | Some printer_a, Some printer_b -> Some (Printer.pair printer_a printer_b)
         | _ -> None
       );
-    small = None;
+    small =
+      (
+        match arb_a.small, arb_b.small with
+        | Some small_a, Some small_b ->
+            Some (fun ((a, b)) -> small_a a + small_b b)
+        | _ -> None
+      );
   }
 
 let triple = fun arb_a arb_b arb_c ->
@@ -261,7 +267,13 @@ let triple = fun arb_a arb_b arb_c ->
           printer_c)
         | _ -> None
       );
-    small = None;
+    small =
+      (
+        match arb_a.small, arb_b.small, arb_c.small with
+        | Some small_a, Some small_b, Some small_c ->
+            Some (fun ((a, b, c)) -> small_a a + small_b b + small_c c)
+        | _ -> None
+      );
   }
 
 (* === OPTION & RESULT ARBITRARIES === *)
@@ -281,7 +293,17 @@ let option = fun elem_arb ->
         | Some elem_printer -> Some (Printer.option elem_printer)
         | None -> None
       );
-    small = None;
+    small =
+      (
+        match elem_arb.small with
+        | Some small_elem ->
+            Some
+              (fun option_value ->
+                match option_value with
+                | None -> 0
+                | Some value -> 1 + small_elem value)
+        | None -> None
+      );
   }
 
 let result = fun ok_arb err_arb ->
@@ -299,7 +321,17 @@ let result = fun ok_arb err_arb ->
         | Some ok_printer, Some err_printer -> Some (Printer.result ok_printer err_printer)
         | _ -> None
       );
-    small = None;
+    small =
+      (
+        match ok_arb.small, err_arb.small with
+        | Some small_ok, Some small_error ->
+            Some
+              (fun result_value ->
+                match result_value with
+                | Ok value -> 1 + small_ok value
+                | Error error -> 1 + small_error error)
+        | _ -> None
+      );
   }
 
 (* === COMBINATORS === *)

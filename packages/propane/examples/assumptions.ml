@@ -22,7 +22,7 @@ let implies_example_prop =
     (fun lst ->
       implies (List.length lst > 0)
         (
-          let sorted = List.sort Int.compare lst in
+          let sorted = List.sort lst ~compare:Int.compare in
           List.length sorted = List.length lst
         ))
 

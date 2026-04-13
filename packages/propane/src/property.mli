@@ -27,6 +27,8 @@ type config = {
   test_count: int;
   (** Maximum number of shrinking passes after a failure is found. *)
   max_shrink_steps: int;
+  (** Largest size passed to sized generators during a property run. *)
+  max_size: int;
   (** Optional deterministic seed for reproducible runs. *)
   seed: int option;
   (** Whether to print verbose progress while checking the property. *)
@@ -68,10 +70,11 @@ val property: string -> 'value Arbitrary.t -> ('value -> bool) -> Test.test_case
 *)
 val for_all: 'value Arbitrary.t -> ('value -> bool) -> test_property
 
-(** Logical implication for conditional properties.
+(** Conditional implication with assumption semantics.
 
-    [implies precondition conclusion] returns [true] whenever the precondition
-    is false, and otherwise returns [conclusion].
+    [implies precondition conclusion] discards the current generated case when
+    [precondition] is false. When [precondition] is true, it returns
+    [conclusion].
 
     Example:
     ```ocaml

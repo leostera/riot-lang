@@ -11,11 +11,12 @@ type property_result =
 type config = {
   test_count: int;
   max_shrink_steps: int;
+  max_size: int;
   seed: int option;
   verbose: bool;
 }
 
-let default_config = { test_count = 100; max_shrink_steps = 1_000; seed = None; verbose = false }
+let default_config = { test_count = 100; max_shrink_steps = 1_000; max_size = 100; seed = None; verbose = false }
 
 (* Internal property representation *)
 
@@ -55,6 +56,20 @@ let fail = fun msg -> raise (Property_failed msg)
 
 let get_name = fun (Prop prop) -> prop.name
 
+let order_candidates = fun arb candidates ->
+  match arb.Arbitrary.small with
+  | None -> candidates
+  | Some small ->
+      List.sort candidates
+        ~compare:(fun left right -> Int.compare (small left) (small right))
+
+let size_for_test = fun config index ->
+  let max_size = Int.max config.max_size 0 in
+  if config.test_count <= 1 then
+    max_size
+  else
+    (index * max_size) / (config.test_count - 1)
+
 (* Shrink a counter-example to find minimal failing value *)
 
 let shrink_counter_example = fun arb value predicate max_steps ->
@@ -65,7 +80,10 @@ let shrink_counter_example = fun arb value predicate max_steps ->
         if steps_taken >= max_steps then
           (current, steps_taken)
         else
-          let candidates = Shrinker.shrink shrinker current in
+          let candidates =
+            Shrinker.shrink shrinker current
+            |> order_candidates arb
+          in
           let rec try_candidates = function
             | [] -> (current, steps_taken)
             | candidate :: rest ->
@@ -107,7 +125,8 @@ let check = fun ?(config = default_config) (Prop prop) ->
       Assumption_violated
     else
       (* Generate a test value *)
-      let value = Generator.generate rnd arbitrary.gen in
+      let size = size_for_test config n in
+      let value = Generator.generate_with_size rnd size arbitrary.gen in
       (* Test the property *)
       let test_result =
         try
@@ -135,7 +154,13 @@ let check = fun ?(config = default_config) (Prop prop) ->
           tests_run := !tests_run + 1;
           if config.verbose then
             println
-              ("Test " ^ Int.to_string (!tests_run) ^ "/" ^ Int.to_string config.test_count ^ " passed");
+              ("Test "
+               ^ Int.to_string (!tests_run)
+               ^ "/"
+               ^ Int.to_string config.test_count
+               ^ " passed (size="
+               ^ Int.to_string size
+               ^ ")");
           test_loop (n + 1)
       | Some (`Failed value) ->
           (* Property failed! Shrink to find minimal counter-example *)
@@ -192,10 +217,14 @@ let get_test_count_from_env = fun () ->
 
 let get_seed_from_env = fun () -> Env.get Env.Int ~var:"PROPANE_SEED"
 
+let get_max_size_from_env = fun () ->
+  Env.get Env.Int ~var:"PROPANE_MAX_SIZE" |> Option.unwrap_or ~default:default_config.max_size
+
 let property = fun name arbitrary predicate ->
   let test_count = get_test_count_from_env () in
   let seed = get_seed_from_env () in
-  let config = { default_config with test_count; seed } in
+  let max_size = get_max_size_from_env () in
+  let config = { default_config with test_count; max_size; seed } in
   let prop = Prop { name; arbitrary; predicate } in
   Test.property name ~examples:test_count
     (fun _ctx ->

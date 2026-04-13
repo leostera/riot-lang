@@ -1,9 +1,75 @@
 open Std
 open Std.Collections
 
+module Array = Collections.Array
+
 (* A shrinker is a function that takes a value and returns a list of smaller values *)
 
 type 'value t = 'value -> 'value list
+
+let contains = fun values candidate ->
+  let rec loop remaining =
+    match remaining with
+    | [] -> false
+    | value :: rest ->
+        if value = candidate then
+          true
+        else
+          loop rest
+  in
+  loop values
+
+let dedupe = fun values ->
+  let rec loop acc remaining =
+    match remaining with
+    | [] -> List.reverse acc
+    | value :: rest ->
+        if contains acc value then
+          loop acc rest
+        else
+          loop (value :: acc) rest
+  in
+  loop [] values
+
+let rec take = fun count values ->
+  match count, values with
+  | (0, _)
+  | (_, []) -> []
+  | count, value :: rest -> value :: take (count - 1) rest
+
+let nth = fun values ~at ->
+  let rec loop index remaining =
+    match remaining with
+    | [] -> None
+    | value :: rest ->
+        if index = at then
+          Some value
+        else
+          loop (index + 1) rest
+  in
+  loop 0 values
+
+let replace_nth = fun values ~at ~value ->
+  let rec loop index remaining =
+    match remaining with
+    | [] -> []
+    | head :: rest ->
+        if index = at then
+          value :: rest
+        else
+          head :: loop (index + 1) rest
+  in
+  loop 0 values
+
+let string_remove_at = fun value at ->
+  let prefix = String.sub value ~offset:0 ~len:at in
+  let suffix = String.sub value ~offset:(at + 1) ~len:(String.length value - at - 1) in
+  prefix ^ suffix
+
+let string_replace_at = fun value ~at ~char ->
+  let prefix = String.sub value ~offset:0 ~len:at in
+  let suffix = String.sub value ~offset:(at + 1) ~len:(String.length value - at - 1) in
+  prefix ^ String.make ~len:1 ~char ^ suffix
 
 (* === BASIC SHRINKERS === *)
 
@@ -14,7 +80,6 @@ let towards = fun target ->
     if value = target then
       []
     else
-      (* Simple binary shrinking towards target *)
       let diff = value - target in
       let abs_diff =
         if diff < 0 then
@@ -26,48 +91,30 @@ let towards = fun target ->
         if n = 0 then
           acc
         else
-          let half = n / 2 in
-          halve half (n :: acc)
+          halve (n / 2) (n :: acc)
       in
-      (* Generate sequence, remove last element (original value) *)
       let steps = halve abs_diff [] in
-      let steps = List.reverse steps in
-      (* Reverse to get decreasing order *)
       let steps =
-        match steps with
-        | _ :: rest -> rest
+        match List.reverse steps with
+        | _original :: rest -> List.reverse rest
         | [] -> []
       in
-      List.map steps
-        ~fn:(fun step ->
-          if diff > 0 then
-            target + step
-          else
-            target - step)
+      let smaller_values =
+        List.map steps
+          ~fn:(fun step ->
+            if diff > 0 then
+              target + step
+            else
+              target - step)
+      in
+      target :: smaller_values
 
 (* === PRIMITIVE SHRINKERS === *)
 
 let int = towards 0
 
 let int_towards = fun target ->
-  fun value ->
-    if value = target then
-      []
-    else
-      let diff = Int.abs (value - target) in
-      let rec halve n acc =
-        if n = 0 then
-          acc
-        else
-          halve (n / 2) (n :: acc)
-      in
-      let steps = halve diff [] in
-      List.map steps
-        ~fn:(fun step ->
-          if value > target then
-            value - step
-          else
-            value + step)
+  towards target
 
 let int32 = fun value ->
   if value = 0l then
@@ -79,13 +126,19 @@ let int32 = fun value ->
       else
         halve (Int32.div n 2l) (n :: acc)
     in
-    let steps = halve (Int32.abs value) [] in
-    List.map steps
+    let steps = halve (Int32.abs value) [] |> List.reverse in
+    let smaller_steps =
+      match steps with
+      | _original :: rest -> List.reverse rest
+      | [] -> []
+    in
+    0l
+    :: List.map smaller_steps
       ~fn:(fun step ->
         if value > 0l then
-          Int32.sub value step
+          step
         else
-          Int32.add value step)
+          Int32.neg step)
 
 let int64 = fun value ->
   if value = 0L then
@@ -97,13 +150,19 @@ let int64 = fun value ->
       else
         halve (Int64.div n 2L) (n :: acc)
     in
-    let steps = halve (Int64.abs value) [] in
-    List.map steps
+    let steps = halve (Int64.abs value) [] |> List.reverse in
+    let smaller_steps =
+      match steps with
+      | _original :: rest -> List.reverse rest
+      | [] -> []
+    in
+    0L
+    :: List.map smaller_steps
       ~fn:(fun step ->
         if value > 0L then
-          Int64.sub value step
+          step
         else
-          Int64.add value step)
+          Int64.neg step)
 
 let float = fun value ->
   if value = 0.0 then
@@ -115,13 +174,19 @@ let float = fun value ->
       else
         halve (n /. 2.0) (n :: acc)
     in
-    let steps = halve (Float.abs value) [] in
-    List.map steps
+    let steps = halve (Float.abs value) [] |> List.reverse in
+    let smaller_steps =
+      match steps with
+      | _original :: rest -> List.reverse rest
+      | [] -> []
+    in
+    0.0
+    :: List.map smaller_steps
       ~fn:(fun step ->
         if value > 0.0 then
-          value -. step
+          step
         else
-          value +. step)
+          -.step)
 
 let bool = fun value ->
   if value then
@@ -145,8 +210,13 @@ let char = fun value ->
         else
           halve (n / 2) (n :: acc)
       in
-      let steps = halve diff [] in
-      List.map steps ~fn:(fun step -> Char.from_int_unchecked (code - step))
+      let steps = halve diff [] |> List.reverse in
+      let smaller_steps =
+        match steps with
+        | _original :: rest -> List.reverse rest
+        | [] -> []
+      in
+      'a' :: List.map smaller_steps ~fn:(fun step -> Char.from_int_unchecked (target_code + step))
 
 let rune = fun value ->
   let code = Unicode.Rune.to_int value in
@@ -159,35 +229,48 @@ let rune = fun value ->
       else
         halve (n / 2) (n :: acc)
     in
-    let steps = halve code [] in
-    List.filter_map steps ~fn:(fun step -> Unicode.Rune.of_int (code - step))
+    let steps = halve code [] |> List.reverse in
+    let smaller_steps =
+      match steps with
+      | _original :: rest -> List.reverse rest
+      | [] -> []
+    in
+    let candidates =
+      0 :: smaller_steps
+    in
+    List.filter_map candidates ~fn:Unicode.Rune.from_int
 
 let string = fun value ->
   let len = String.length value in
   if len = 0 then
     []
   else
-    (* Strategy 1: Remove characters *)
-    let rec remove_positions n acc =
-      if n >= len then
+    let rec remove_positions index acc =
+      if index >= len then
         acc
       else
-        let prefix = String.sub value ~offset:0 ~len:n in
-        let suffix = String.sub value ~offset:(n + 1) ~len:(len - n - 1) in
-        remove_positions (n + 1) ((prefix ^ suffix) :: acc)
+        remove_positions (index + 1) (string_remove_at value index :: acc)
     in
     let removed = remove_positions 0 [] in
-    (* Strategy 2: Shrink to shorter lengths *)
-    let rec shrink_length curr acc =
-      if curr <= 0 then
+    let rec shrink_length current acc =
+      if current <= 0 then
         acc
       else
-        let half = curr / 2 in
-        let shorter = String.sub value ~offset:0 ~len:half in
-        shrink_length half (shorter :: acc)
+        let half = current / 2 in
+        shrink_length half (String.sub value ~offset:0 ~len:half :: acc)
     in
     let shortened = shrink_length len [] in
-    removed @ shortened
+    let rec shrink_chars index acc =
+      if index >= len then
+        acc
+      else
+        let current_char = String.get_unchecked value ~at:index in
+        let shrunk =
+          List.map (char current_char) ~fn:(fun char' -> string_replace_at value ~at:index ~char:char')
+        in
+        shrink_chars (index + 1) (List.reverse_append shrunk acc)
+    in
+    dedupe (removed @ shortened @ shrink_chars 0 [])
 
 (* === COLLECTION SHRINKERS === *)
 
@@ -197,7 +280,6 @@ let list = fun elem_shrinker ->
     if len = 0 then
       []
     else
-      (* Strategy 1: Remove elements *)
       let rec remove_at n acc =
         if n >= len then
           acc
@@ -214,13 +296,6 @@ let list = fun elem_shrinker ->
           remove_at (n + 1) (remove_nth 0 lst :: acc)
       in
       let removed = remove_at 0 [] in
-      (* Strategy 2: Shrink to shorter lengths *)
-      let rec take n lst =
-        match n, lst with
-        | (0, _)
-        | (_, []) -> []
-        | n, x :: xs -> x :: take (n - 1) xs
-      in
       let rec shrink_length curr acc =
         if curr <= 0 then
           acc
@@ -229,7 +304,17 @@ let list = fun elem_shrinker ->
           shrink_length half (take half lst :: acc)
       in
       let shortened = shrink_length len [] in
-      removed @ shortened
+      let rec shrink_elements index acc =
+        match nth lst ~at:index with
+        | None -> acc
+        | Some value ->
+            let shrunk =
+              List.map (elem_shrinker value)
+                ~fn:(fun value' -> replace_nth lst ~at:index ~value:value')
+            in
+            shrink_elements (index + 1) (List.reverse_append shrunk acc)
+      in
+      dedupe (removed @ shortened @ shrink_elements 0 [])
 
 let array = fun elem_shrinker ->
   fun arr ->
@@ -268,7 +353,16 @@ let vector = fun elem_shrinker ->
 let hashmap = fun key_shrinker value_shrinker ->
   fun hm ->
     let lst = HashMap.to_list hm in
-    List.map (list nil lst) ~fn:HashMap.from_list
+    let entry_shrinker = fun ((key, value)) ->
+      let shrunk_keys =
+        List.map (key_shrinker key) ~fn:(fun key' -> (key', value))
+      in
+      let shrunk_values =
+        List.map (value_shrinker value) ~fn:(fun value' -> (key, value'))
+      in
+      shrunk_keys @ shrunk_values
+    in
+    List.map (list entry_shrinker lst) ~fn:HashMap.from_list
 
 let hashset = fun elem_shrinker ->
   fun hs ->

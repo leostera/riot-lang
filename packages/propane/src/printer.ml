@@ -1,6 +1,41 @@
 open Std
 
+module Buffer = IO.Buffer
+
 type 'value t = 'value -> string
+
+let hex_chars = "0123456789ABCDEF"
+
+let hex_escape = fun code ->
+  let high = String.get_unchecked hex_chars ~at:((code lsr 4) land 0x0f) in
+  let low = String.get_unchecked hex_chars ~at:(code land 0x0f) in
+  "\\x" ^ String.make ~len:1 ~char:high ^ String.make ~len:1 ~char:low
+
+let escape_char_fragment = fun c ->
+  match c with
+  | '\'' -> "\\'"
+  | '"' -> "\\\""
+  | '\\' -> "\\\\"
+  | '\n' -> "\\n"
+  | '\r' -> "\\r"
+  | '\t' -> "\\t"
+  | '\b' -> "\\b"
+  | '\012' -> "\\f"
+  | c when Char.code c < 0x20 || Char.code c = 0x7f ->
+      hex_escape (Char.code c)
+  | c -> String.make ~len:1 ~char:c
+
+let escape_string = fun value ->
+  let buffer = Buffer.create ~size:(String.length value) in
+  let rec loop index =
+    if index >= String.length value then
+      Buffer.contents buffer
+    else (
+      Buffer.add_string buffer (escape_char_fragment (String.get_unchecked value ~at:index));
+      loop (index + 1)
+    )
+  in
+  loop 0
 
 (* === PRIMITIVE PRINTERS === *)
 
@@ -14,13 +49,13 @@ let float = fun ?precision -> Float.to_string ?precision
 
 let bool = Bool.to_string
 
-let char = fun c -> "'" ^ String.make ~len:1 ~char:c ^ "'"
+let char = fun c -> "'" ^ escape_char_fragment c ^ "'"
 
 let rune = fun r ->
   let code = Unicode.Rune.to_int r in
   "U+" ^ Int.to_string code
 
-let string = fun s -> "\"" ^ s ^ "\""
+let string = fun s -> "\"" ^ escape_string s ^ "\""
 
 (* === COLLECTION PRINTERS === *)
 
@@ -40,11 +75,17 @@ let hashmap = fun key_printer value_printer hm ->
   let pairs = Collections.HashMap.iter hm |> Iter.Iterator.to_list in
   let pair_strs =
     List.map pairs ~fn:(fun ((k, v)) -> key_printer k ^ " => " ^ value_printer v)
+    |> List.sort ~compare:String.compare
   in
   "map{" ^ String.concat "; " pair_strs ^ "}"
 
 let hashset = fun elem_printer hs ->
-  let elements = Collections.HashSet.iter hs |> Iter.Iterator.to_list |> List.map ~fn:elem_printer in
+  let elements =
+    Collections.HashSet.iter hs
+    |> Iter.Iterator.to_list
+    |> List.map ~fn:elem_printer
+    |> List.sort ~compare:String.compare
+  in
   "set{" ^ String.concat "; " elements ^ "}"
 
 let queue = fun elem_printer q ->

@@ -7,7 +7,7 @@ let list_rev_prop =
   property
     "list reverse is involutive"
     Arbitrary.(list int)
-    (fun lst -> List.rev (List.rev lst) = lst)
+    (fun lst -> List.reverse (List.reverse lst) = lst)
 
 (* Property with assumptions *)
 
@@ -22,9 +22,9 @@ let division_prop =
 let vector_length_prop =
   property "vector length after push" Arbitrary.(pair int (vector int))
     (fun ((x, vec)) ->
-      let original_len = Collections.Vector.len vec in
-      Collections.Vector.push vec x;
-      Collections.Vector.len vec = original_len + 1)
+      let original_len = Collections.Vector.length vec in
+      Collections.Vector.push vec ~value:x;
+      Collections.Vector.length vec = original_len + 1)
 
 (* String property *)
 

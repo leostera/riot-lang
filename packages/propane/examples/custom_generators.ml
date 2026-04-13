@@ -61,10 +61,10 @@ let point_shrinker = fun point ->
   let y_shrunk = Shrinker.shrink (Shrinker.towards 0) point.y in
   (* Combine shrinking on both axes *)
   let x_only =
-    List.map (fun x -> { x; y = point.y }) x_shrunk
+    List.map x_shrunk ~fn:(fun x -> { x; y = point.y })
   in
   let y_only =
-    List.map (fun y -> { x = point.x; y }) y_shrunk
+    List.map y_shrunk ~fn:(fun y -> { x = point.x; y })
   in
   x_only @ y_only
 

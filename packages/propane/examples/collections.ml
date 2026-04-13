@@ -7,10 +7,10 @@ open Propane
 let vector_push_pop_prop =
   property "vector push then pop returns the element" Arbitrary.(pair int (vector int))
     (fun ((x, vec)) ->
-      let vec_copy = Collections.Vector.of_list
-        (Collections.Vector.into_iter vec |> Iter.Iterator.to_list)
+      let vec_copy = Collections.Vector.from_list
+        (Collections.Vector.iter vec |> Iter.Iterator.to_list)
       in
-      Collections.Vector.push vec_copy x;
+      Collections.Vector.push vec_copy ~value:x;
       match Collections.Vector.pop vec_copy with
       | Some y -> x = y
       | None -> false)
@@ -23,8 +23,8 @@ let hashmap_insert_get_prop =
     int
     (hashmap string int))
     (fun ((key, value, map)) ->
-      Collections.HashMap.insert map key value |> ignore;
-      match Collections.HashMap.get map key with
+      let _ = Collections.HashMap.insert map ~key ~value in
+      match Collections.HashMap.get map ~key with
       | Some v -> v = value
       | None -> false)
 
@@ -33,8 +33,8 @@ let hashmap_insert_get_prop =
 let hashset_insert_contains_prop =
   property "hashset contains element after insert" Arbitrary.(pair int (hashset int))
     (fun ((x, set)) ->
-      Collections.HashSet.insert set x |> ignore;
-      Collections.HashSet.contains set x)
+      let _ = Collections.HashSet.insert set ~value:x in
+      Collections.HashSet.contains set ~value:x)
 
 (* Property: Queue push/pop FIFO order *)
 
@@ -42,12 +42,12 @@ let queue_fifo_prop =
   property "queue maintains FIFO order" Arbitrary.(list int)
     (fun items ->
       let q = Collections.Queue.create () in
-      List.iter (Collections.Queue.push q) items;
+      List.for_each items ~fn:(fun item -> Collections.Queue.push q ~value:item);
       (* Pop all and check order *)
       let rec pop_all acc =
         match Collections.Queue.pop q with
         | Some x -> pop_all (x :: acc)
-        | None -> List.rev acc
+        | None -> List.reverse acc
       in
       let popped = pop_all [] in
       popped = items)
@@ -58,7 +58,7 @@ let deque_lifo_prop =
   property "deque push_back/pop_back acts as stack" Arbitrary.(list int)
     (fun items ->
       let d = Collections.Deque.create () in
-      List.iter (Collections.Deque.push_back d) items;
+      List.for_each items ~fn:(fun item -> Collections.Deque.push_back d ~value:item);
       let rec pop_all acc =
         match Collections.Deque.pop_back d with
         | Some x -> pop_all (x :: acc)
@@ -72,7 +72,7 @@ let deque_lifo_prop =
 let array_length_prop =
   property "array length equals list length" Arbitrary.(list int)
     (fun lst ->
-      let arr = Collections.Array.of_list lst in
+      let arr = Collections.Array.from_list lst in
       Collections.Array.length arr = List.length lst)
 
 (* Property: Vector sort is sorted *)
@@ -81,7 +81,7 @@ let vector_sort_prop =
   property "vector sort produces sorted result" Arbitrary.(vector int)
     (fun vec ->
       Collections.Vector.sort vec;
-      let lst = Collections.Vector.into_iter vec |> Iter.Iterator.to_list in
+      let lst = Collections.Vector.iter vec |> Iter.Iterator.to_list in
       let rec is_sorted = function
         | []
         | [ _ ] -> true

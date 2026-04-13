@@ -32,7 +32,7 @@ let list_rev_prop =
   property
     "list reverse is involutive"
     Arbitrary.(list int)
-    (fun lst -> List.rev (List.rev lst) = lst)
+    (fun lst -> List.reverse (List.reverse lst) = lst)
 
 let tests = [ list_rev_prop ]
 

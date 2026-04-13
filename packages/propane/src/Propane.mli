@@ -21,7 +21,7 @@
       let list_rev_prop = 
         property "list reverse is involutive" 
           Arbitrary.(list int) 
-          (fun lst -> List.rev (List.rev lst) = lst)
+          (fun lst -> List.reverse (List.reverse lst) = lst)
       
       (* Property with assumptions *)
       let division_prop =
@@ -144,7 +144,7 @@
       property "vector push/pop round-trip"
         Arbitrary.(pair int (vector int))
         (fun (x, vec) ->
-          Collections.Vector.push vec x;
+          Collections.Vector.push vec ~value:x;
           match Collections.Vector.pop vec with
           | Some y -> x = y
           | None -> false)
@@ -153,8 +153,8 @@
       property "hashmap get after insert"
         Arbitrary.(triple string int (hashmap string int))
         (fun (key, value, map) ->
-          Collections.HashMap.insert map key value |> ignore;
-          Collections.HashMap.get map key = Some value)
+          let _ = Collections.HashMap.insert map ~key ~value in
+          Collections.HashMap.get map ~key = Some value)
     ]}
     
     {2 Testing String Operations}
@@ -218,6 +218,7 @@
       let config = Property.{
         test_count = 1000;        (* Run 1000 tests *)
         max_shrink_steps = 500;   (* Max shrinking iterations *)
+        max_size = 200;           (* Largest size seen by sized generators *)
         seed = Some 42;           (* Reproducible tests *)
         verbose = true;           (* Print progress *)
       }
@@ -276,7 +277,7 @@ val property: string -> 'value Arbitrary.t -> ('value -> bool) -> Std.Test.test_
     {[
       let my_prop = property "list reverse is involutive"
         Arbitrary.(list int)
-        (fun lst -> List.rev (List.rev lst) = lst)
+        (fun lst -> List.reverse (List.reverse lst) = lst)
       
       let tests = [ my_prop ]
     ]}
@@ -316,7 +317,7 @@ val implies: bool -> bool -> bool
     
     Equivalent to:
     {[
-      if not precondition then true else conclusion
+      if not precondition then assume_fail () else conclusion
     ]}
 *)
 val assume: bool -> unit

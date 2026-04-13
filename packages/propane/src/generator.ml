@@ -1,5 +1,8 @@
 open Std
 
+module Buffer = IO.Buffer
+module Array = Collections.Array
+
 (* Internal representation: a generator is a function from (Random.Rng, size) to value *)
 
 type 'value t = {
@@ -20,10 +23,45 @@ let random_float = fun rnd bound -> sample (Random.float ~rng:rnd bound)
 
 let random_bool = fun rnd -> sample (Random.bool ~rng:rnd ())
 
+let random_int_range = fun rnd ~low ~high ->
+  sample (Random.int_range ~rng:rnd ~min:low ~max:high ())
+
+let random_int32_range = fun rnd ~low ~high ->
+  sample (Random.int32_range ~rng:rnd ~min:low ~max:high ())
+
+let random_int64_range = fun rnd ~low ~high ->
+  sample (Random.int64_range ~rng:rnd ~min:low ~max:high ())
+
+let random_float_range = fun rnd ~low ~high ->
+  sample (Random.float_range ~rng:rnd ~min:low ~max:high ())
+
+let invalid_arg = fun message -> raise (Invalid_argument message)
+
 (* Helper: convert char list to string *)
 
 let string_of_char_list = fun chars ->
   String.concat "" (List.map chars ~fn:(fun char -> String.make ~len:1 ~char))
+
+let build_list_values = fun rnd size gen len ->
+  let rec loop remaining acc =
+    if remaining <= 0 then
+      List.reverse acc
+    else
+      loop (remaining - 1) (gen.run rnd size :: acc)
+  in
+  loop len []
+
+let build_string = fun rnd size char_gen len ->
+  let buffer = Buffer.create ~size:len in
+  let rec loop remaining =
+    if remaining <= 0 then
+      Buffer.contents buffer
+    else (
+      Buffer.add_char buffer (char_gen.run rnd size);
+      loop (remaining - 1)
+    )
+  in
+  loop len
 
 (* === CONSTANTS === *)
 
@@ -67,52 +105,54 @@ let and_then = fun gen f ->
 
 let one_of = fun gens ->
   match gens with
-  | [] -> panic "one_of: empty list"
+  | [] -> invalid_arg "Generator.one_of: empty list"
   | _ ->
+      let choices = Array.from_list gens in
       {
         run =
           fun rnd size ->
-            let n = List.length gens in
-            let idx = random_int rnd n in
-            let rec get_nth lst i =
-              match lst with
-              | [] -> panic "one_of: index out of bounds"
-              | x :: _ when i = 0 -> x
-              | _ :: xs -> get_nth xs (i - 1)
-            in
-            let gen = get_nth gens idx in
+            let idx = random_int rnd (Array.length choices) in
+            let gen = Array.get_unchecked choices ~at:idx in
             gen.run rnd size;
       }
 
 let frequency = fun weighted_gens ->
   match weighted_gens with
-  | [] -> panic "frequency: empty list"
+  | [] -> invalid_arg "Generator.frequency: empty list"
   | _ ->
-      (* Validate weights *)
-      let () =
-        List.for_each weighted_gens
-          ~fn:(fun ((w, _)) ->
-            if w <= 0 then
-              panic "frequency: non-positive weight")
+      let choices = Array.from_list weighted_gens in
+      let count = Array.length choices in
+      let cumulative = Array.make ~count ~value:0 in
+      let rec populate index total =
+        if index >= count then
+          total
+        else
+          let (weight, _) = Array.get_unchecked choices ~at:index in
+          if weight <= 0 then
+            invalid_arg "Generator.frequency: non-positive weight";
+          let total = total + weight in
+          Array.set_unchecked cumulative ~at:index ~value:total;
+          populate (index + 1) total
       in
-      let total_weight =
-        List.fold_left weighted_gens ~acc:0 ~fn:(fun acc ((w, _)) -> acc + w)
-      in
+      let total_weight = populate 0 0 in
       {
         run =
           fun rnd size ->
             let target = random_int rnd total_weight in
-            let rec find acc remaining =
-              match remaining with
-              | [] -> panic "frequency: impossible - empty after fold"
-              | (w, gen) :: rest ->
-                  let acc' = acc + w in
-                  if target < acc' then
-                    gen.run rnd size
-                  else
-                    find acc' rest
+            let rec find low high =
+              if low >= high then
+                low
+              else
+                let mid = low + ((high - low) / 2) in
+                let boundary = Array.get_unchecked cumulative ~at:mid in
+                if target < boundary then
+                  find low mid
+                else
+                  find (mid + 1) high
             in
-            find 0 weighted_gens;
+            let index = find 0 (count - 1) in
+            let (_, gen) = Array.get_unchecked choices ~at:index in
+            gen.run rnd size;
       }
 
 (* === SIZE CONTROL === *)
@@ -136,63 +176,60 @@ let fix = fun f ->
 
 (* === PRIMITIVE GENERATORS === *)
 
-(* Integers *)
+let int = { run = fun rnd _size -> random_int_range rnd ~low:Int.min_int ~high:Int.max_int }
 
-let int = { run = fun rnd _size -> random_bits rnd }
+let int32 = { run = fun rnd _size -> random_int32_range rnd ~low:Int32.min_int ~high:Int32.max_int }
 
-let int32 = { run = fun rnd _size -> random_int32 rnd Int32.max_int }
-
-let int64 = { run = fun rnd _size -> random_int64 rnd Int64.max_int }
+let int64 = { run = fun rnd _size -> random_int64_range rnd ~low:Int64.min_int ~high:Int64.max_int }
 
 let int_range = fun low high ->
   if low > high then
-    panic "int_range: low > high";
+    invalid_arg "Generator.int_range: low > high";
   {
     run =
       fun rnd _size ->
         if low = high then
           low
         else
-          low + random_int rnd (high - low + 1);
+          random_int_range rnd ~low ~high;
   }
 
 let int32_range = fun low high ->
   if low > high then
-    panic "int32_range: low > high";
+    invalid_arg "Generator.int32_range: low > high";
   {
     run =
       fun rnd _size ->
         if low = high then
           low
         else
-          Int32.add low (random_int32 rnd (Int32.sub (Int32.add high 1l) low));
+          random_int32_range rnd ~low ~high;
   }
 
 let int64_range = fun low high ->
   if low > high then
-    panic "int64_range: low > high";
+    invalid_arg "Generator.int64_range: low > high";
   {
     run =
       fun rnd _size ->
         if low = high then
           low
         else
-          Int64.add low (random_int64 rnd (Int64.sub (Int64.add high 1L) low));
+          random_int64_range rnd ~low ~high;
   }
 
 let int_bound = fun n ->
   if n < 0 then
-    panic "int_bound: negative bound";
+    invalid_arg "Generator.int_bound: negative bound";
   int_range 0 n
 
 let small_int = int_range 0 100
 
 let big_int = int
 
-let positive_int = { run = fun rnd _size -> random_bits rnd land Int.max_int }
+let positive_int = int_range 0 Int.max_int
 
-let negative_int =
-  map (fun n -> -n) positive_int
+let negative_int = int_range Int.min_int 0
 
 let non_zero_int =
   let pos: int t = int_range 1 Int.max_int in
@@ -201,17 +238,18 @@ let non_zero_int =
 
 (* Floats *)
 
-let float = { run = fun rnd _size -> random_float rnd Float.max_float }
+let float = { run = fun rnd _size -> random_float_range rnd ~low:(-.1_000_000.0) ~high:1_000_000.0 }
 
 let float_range = fun low high ->
+  if low > high then
+    invalid_arg "Generator.float_range: low > high";
   {
     run =
       fun rnd _size ->
-        let range = high -. low in
-        low +. random_float rnd range;
+        random_float_range rnd ~low ~high;
   }
 
-let float_positive = { run = fun rnd _size -> random_float rnd Float.max_float }
+let float_positive = { run = fun rnd _size -> random_float_range rnd ~low:0.0 ~high:1_000_000.0 }
 
 let float_negative =
   map (fun f -> -.f) float_positive
@@ -222,7 +260,7 @@ let bool = { run = fun rnd _size -> random_bool rnd }
 
 let weighted_bool = fun weight_true weight_false ->
   if weight_true <= 0 || weight_false <= 0 then
-    panic "weighted_bool: non-positive weights";
+    invalid_arg "Generator.weighted_bool: non-positive weights";
   frequency [ (weight_true, return true); (weight_false, return false) ]
 
 (* Characters *)
@@ -230,13 +268,14 @@ let weighted_bool = fun weight_true weight_false ->
 let char = { run = fun rnd _size -> Char.from_int_unchecked (random_int rnd 256) }
 
 let char_range = fun low high ->
+  if Char.code low > Char.code high then
+    invalid_arg "Generator.char_range: low > high";
   {
     run =
       fun rnd _size ->
         let low_code = Char.code low in
         let high_code = Char.code high in
-        let range = high_code - low_code + 1 in
-        Char.from_int_unchecked (low_code + random_int rnd range);
+        Char.from_int_unchecked (random_int_range rnd ~low:low_code ~high:high_code);
   }
 
 let char_lowercase = char_range 'a' 'z'
@@ -245,7 +284,7 @@ let char_uppercase = char_range 'A' 'Z'
 
 let char_digit = char_range '0' '9'
 
-let char_printable = one_of [ char_range ' ' '~'; return '\n'; ]
+let char_printable = char_range ' ' '~'
 
 let char_whitespace = one_of [ return ' '; return '\t'; return '\n'; return '\r'; ]
 
@@ -256,7 +295,7 @@ let rune = {
     fun rnd size ->
       let rec try_gen () =
         let n = random_int rnd 0x11_0000 in
-        match Unicode.Rune.of_int n with
+        match Unicode.Rune.from_int n with
         | Some r -> r
         | None -> try_gen ()
       in
@@ -266,12 +305,14 @@ let rune = {
 let rune_range = fun low high ->
   let low_int = Unicode.Rune.to_int low in
   let high_int = Unicode.Rune.to_int high in
+  if low_int > high_int then
+    invalid_arg "Generator.rune_range: low > high";
   {
     run =
-      fun rnd size ->
+      fun rnd _size ->
         let rec try_gen () =
-          let n = low_int + random_int rnd (high_int - low_int + 1) in
-          match Unicode.Rune.of_int n with
+          let n = random_int_range rnd ~low:low_int ~high:high_int in
+          match Unicode.Rune.from_int n with
           | Some r -> r
           | None -> try_gen ()
         in
@@ -279,54 +320,51 @@ let rune_range = fun low high ->
   }
 
 let rune_printable =
-  (* Simplified - just ASCII printable for now *)
-  map
-    (fun c ->
-      match Unicode.Rune.of_int (Char.code c) with
-      | Some r -> r
-      | None -> Unicode.Rune.replacement)
-    char_printable
+  {
+    run =
+      fun rnd _size ->
+        let rec try_gen () =
+          let candidate = rune.run rnd 0 in
+          if Unicode.Rune.is_print candidate then
+            candidate
+          else
+            try_gen ()
+        in
+        try_gen ();
+  }
 
 (* Strings *)
 
 let string =
   sized
     (fun size ->
-      let len_gen = int_range 0 size in
-      and_then len_gen
-        (fun len ->
-          let rec build_string acc n =
-            if n <= 0 then
-              return (string_of_char_list (List.reverse acc))
-            else
-              and_then char (fun c -> build_string (c :: acc) (n - 1))
-          in
-          build_string [] len))
+      {
+        run =
+          fun rnd _ambient_size ->
+            let len = random_int_range rnd ~low:0 ~high:size in
+            build_string rnd size char len;
+      })
 
 let string_of = fun char_gen ->
   sized
     (fun size ->
-      let len_gen = int_range 0 size in
-      and_then len_gen
-        (fun len ->
-          let rec build_string acc n =
-            if n <= 0 then
-              return (string_of_char_list (List.reverse acc))
-            else
-              and_then char_gen (fun c -> build_string (c :: acc) (n - 1))
-          in
-          build_string [] len))
+      {
+        run =
+          fun rnd _ambient_size ->
+            let len = random_int_range rnd ~low:0 ~high:size in
+            build_string rnd size char_gen len;
+      })
 
 let string_size = fun size_gen char_gen ->
-  and_then size_gen
-    (fun len ->
-      let rec build_string acc n =
-        if n <= 0 then
-          return (string_of_char_list (List.reverse acc))
+  {
+    run =
+      fun rnd size ->
+        let len = size_gen.run rnd size in
+        if len <= 0 then
+          ""
         else
-          and_then char_gen (fun c -> build_string (c :: acc) (n - 1))
-      in
-      build_string [] len)
+          build_string rnd size char_gen len;
+  }
 
 let string_printable = string_of char_printable
 
@@ -339,27 +377,23 @@ let string_uppercase = string_of char_uppercase
 let list = fun gen ->
   sized
     (fun size ->
-      let len_gen = int_range 0 size in
-      and_then len_gen
-        (fun len ->
-          let rec build_list acc n =
-            if n <= 0 then
-              return (List.reverse acc)
-            else
-              and_then gen (fun v -> build_list (v :: acc) (n - 1))
-          in
-          build_list [] len))
+      {
+        run =
+          fun rnd _ambient_size ->
+            let len = random_int_range rnd ~low:0 ~high:size in
+            build_list_values rnd size gen len;
+      })
 
 let list_size = fun size_gen gen ->
-  and_then size_gen
-    (fun len ->
-      let rec build_list acc n =
-        if n <= 0 then
-          return (List.reverse acc)
+  {
+    run =
+      fun rnd size ->
+        let len = size_gen.run rnd size in
+        if len <= 0 then
+          []
         else
-          and_then gen (fun v -> build_list (v :: acc) (n - 1))
-      in
-      build_list [] len)
+          build_list_values rnd size gen len;
+  }
 
 let list_repeat = fun n gen -> list_size (return n) gen
 

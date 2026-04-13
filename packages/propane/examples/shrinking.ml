@@ -7,7 +7,7 @@ open Propane
 let failing_list_prop =
   property "DEMO: list sum is always positive (FALSE - will find counter-example)" Arbitrary.(list int)
     (fun lst ->
-      let sum = List.fold_left ( + ) 0 lst in
+      let sum = List.fold_left lst ~acc:0 ~fn:(fun acc value -> acc + value) in
       sum >= 0)
 
 (* This is false when list contains negative numbers *)
@@ -37,7 +37,7 @@ let failing_nested_prop =
   property "DEMO: nested lists never contain empty sublist (FALSE)" Arbitrary.(list (list int))
     (fun nested ->
       let has_empty =
-        List.exists (fun sublist -> List.length sublist = 0) nested
+        List.any nested ~fn:(fun sublist -> List.length sublist = 0)
       in
       not has_empty)
 
