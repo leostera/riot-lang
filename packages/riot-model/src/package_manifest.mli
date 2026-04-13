@@ -1,0 +1,33 @@
+open Std
+
+type dependency_source = Package.dependency_source
+type dependency_scope = Package.dependency_scope
+type dependency = Package.dependency
+type publish_metadata = Package.publish_metadata
+type binary = Package.binary
+type library = Package.library
+type realization_intent = Package.realization_intent =
+  | Build
+  | Runtime
+  | Dev
+  | Run
+  | Test
+  | Bench
+  | Doc
+  | Check
+type profile_override = Package.profile_override
+type compiler_config = Package.compiler_config
+type foreign_dependency = Package.foreign_dependency
+
+type t = Package.manifest_spec
+
+val from_toml:
+  Std.Data.Toml.value ->
+  workspace_deps:dependency list ->
+  workspace_dev_deps:dependency list ->
+  workspace_build_deps:dependency list ->
+  path:Path.t ->
+  relative_path:Path.t ->
+  (t, string) result
+
+val realize: intent:realization_intent -> t -> Package.t

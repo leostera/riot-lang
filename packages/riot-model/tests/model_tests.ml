@@ -280,6 +280,182 @@ path = "src/demo.ml"
       else
         Error "expected test support entries under tests/fixtures|generated|diagnostics to be ignored")
 
+let test_scan_sources_keeps_similarly_named_test_directories = fun _ctx ->
+  with_tempdir "riot_model_test_support_boundary_sources"
+    (fun tmpdir ->
+      let src_dir = Path.(tmpdir / Path.v "src") in
+      let tests_dir = Path.(tmpdir / Path.v "tests") in
+      let fixtures_dir = Path.(tests_dir / Path.v "fixtures") in
+      let fixtures_generated_dir = Path.(tests_dir / Path.v "fixtures-generated") in
+      Result.expect (Fs.create_dir_all src_dir) ~msg:"Failed to create src directory";
+      Result.expect (Fs.create_dir_all fixtures_dir) ~msg:"Failed to create fixtures directory";
+      Result.expect (Fs.create_dir_all fixtures_generated_dir) ~msg:"Failed to create similarly named fixtures directory";
+      Result.expect (Fs.write "let version = 1\n" Path.(src_dir / Path.v "demo.ml")) ~msg:"Failed to write visible source";
+      Result.expect (Fs.write "let () = ()\n" Path.(tests_dir / Path.v "demo_tests.ml")) ~msg:"Failed to write real test source";
+      Result.expect (Fs.write "let () = ()\n" Path.(fixtures_dir / Path.v "ignored.ml")) ~msg:"Failed to write ignored fixture source";
+      Result.expect
+        (Fs.write "let () = ()\n" Path.(fixtures_generated_dir / Path.v "keep.ml"))
+        ~msg:"Failed to write similarly named test source";
+      let manifest =
+        Std.Data.Toml.parse
+          {|
+[package]
+name = "demo"
+version = "0.1.0"
+
+[lib]
+path = "src/demo.ml"
+|}
+        |> Result.expect ~msg:"Expected package TOML to parse"
+      in
+      let pkg = Riot_model.Package.from_toml
+        manifest
+        ~workspace_deps:[]
+        ~workspace_dev_deps:[]
+        ~workspace_build_deps:[]
+        ~path:tmpdir
+        ~relative_path:(Path.v "packages/demo")
+      |> Result.expect ~msg:"Expected package manifest to parse" in
+      let expected_tests =
+        [ Path.v "tests/demo_tests.ml"; Path.v "tests/fixtures-generated/keep.ml" ]
+      in
+      if pkg.sources.tests = expected_tests then
+        Ok ()
+      else
+        Error "expected only exact test support directories to be ignored")
+
+let test_scan_sources_respects_package_root_gitignore = fun _ctx ->
+  with_tempdir "riot_model_gitignore_sources"
+    (fun tmpdir ->
+      let src_dir = Path.(tmpdir / Path.v "src") in
+      let generated_dir = Path.(src_dir / Path.v "generated") in
+      let gitignore = Path.(tmpdir / Path.v ".gitignore") in
+      Result.expect (Fs.create_dir_all generated_dir) ~msg:"Failed to create generated directory";
+      Result.expect (Fs.write "generated/\n" gitignore) ~msg:"Failed to write gitignore";
+      Result.expect (Fs.write "let version = 1\n" Path.(src_dir / Path.v "demo.ml")) ~msg:"Failed to write visible source";
+      Result.expect
+        (Fs.write "let generated = 1\n" Path.(generated_dir / Path.v "skip.ml"))
+        ~msg:"Failed to write ignored generated source";
+      let manifest =
+        Std.Data.Toml.parse
+          {|
+[package]
+name = "demo"
+version = "0.1.0"
+
+[lib]
+path = "src/demo.ml"
+|}
+        |> Result.expect ~msg:"Expected package TOML to parse"
+      in
+      let pkg = Riot_model.Package.from_toml
+        manifest
+        ~workspace_deps:[]
+        ~workspace_dev_deps:[]
+        ~workspace_build_deps:[]
+        ~path:tmpdir
+        ~relative_path:(Path.v "packages/demo")
+      |> Result.expect ~msg:"Expected package manifest to parse" in
+      if pkg.sources.src = [ Path.v "src/demo.ml" ] then
+        Ok ()
+      else
+        Error "expected package-root gitignore entries to prune source scanning")
+
+let test_scan_sources_ignores_non_ocaml_files = fun _ctx ->
+  with_tempdir "riot_model_non_ocaml_sources"
+    (fun tmpdir ->
+      let src_dir = Path.(tmpdir / Path.v "src") in
+      let tests_dir = Path.(tmpdir / Path.v "tests") in
+      let examples_dir = Path.(tmpdir / Path.v "examples") in
+      let bench_dir = Path.(tmpdir / Path.v "bench") in
+      let native_dir = Path.(tmpdir / Path.v "native") in
+      Result.expect (Fs.create_dir_all src_dir) ~msg:"Failed to create src directory";
+      Result.expect (Fs.create_dir_all tests_dir) ~msg:"Failed to create tests directory";
+      Result.expect (Fs.create_dir_all examples_dir) ~msg:"Failed to create examples directory";
+      Result.expect (Fs.create_dir_all bench_dir) ~msg:"Failed to create bench directory";
+      Result.expect (Fs.create_dir_all native_dir) ~msg:"Failed to create native directory";
+      Result.expect (Fs.write "let version = 1\n" Path.(src_dir / Path.v "demo.ml")) ~msg:"Failed to write src source";
+      Result.expect (Fs.write "not ocaml\n" Path.(src_dir / Path.v "README.txt")) ~msg:"Failed to write src non-ocaml file";
+      Result.expect (Fs.write "let () = ()\n" Path.(tests_dir / Path.v "demo_tests.ml")) ~msg:"Failed to write test source";
+      Result.expect (Fs.write "print('hi')\n" Path.(tests_dir / Path.v "fixture_audit.py")) ~msg:"Failed to write test non-ocaml file";
+      Result.expect (Fs.write "let () = ()\n" Path.(examples_dir / Path.v "demo.ml")) ~msg:"Failed to write example source";
+      Result.expect (Fs.write "#!/bin/sh\n" Path.(examples_dir / Path.v "demo.sh")) ~msg:"Failed to write example non-ocaml file";
+      Result.expect (Fs.write "let () = ()\n" Path.(bench_dir / Path.v "demo_bench.ml")) ~msg:"Failed to write bench source";
+      Result.expect (Fs.write "#!/bin/sh\n" Path.(bench_dir / Path.v "bench.sh")) ~msg:"Failed to write bench non-ocaml file";
+      Result.expect (Fs.write "int demo(void) { return 1; }\n" Path.(native_dir / Path.v "demo.c")) ~msg:"Failed to write native source";
+      let manifest =
+        Std.Data.Toml.parse
+          {|
+[package]
+name = "demo"
+version = "0.1.0"
+
+[lib]
+path = "src/demo.ml"
+|}
+        |> Result.expect ~msg:"Expected package TOML to parse"
+      in
+      let pkg = Riot_model.Package.from_toml
+        manifest
+        ~workspace_deps:[]
+        ~workspace_dev_deps:[]
+        ~workspace_build_deps:[]
+        ~path:tmpdir
+        ~relative_path:(Path.v "packages/demo")
+      |> Result.expect ~msg:"Expected package manifest to parse" in
+      if
+        pkg.sources.src = [ Path.v "src/demo.ml" ]
+        && pkg.sources.tests = [ Path.v "tests/demo_tests.ml" ]
+        && pkg.sources.examples = [ Path.v "examples/demo.ml" ]
+        && pkg.sources.bench = [ Path.v "bench/demo_bench.ml" ]
+        && pkg.sources.native = [ Path.v "native/demo.c" ]
+      then
+        Ok ()
+      else
+        Error "expected non-OCaml files outside native/ to be ignored during source scanning")
+
+let test_scan_sources_ignores_deps_fixture_support_entries = fun _ctx ->
+  with_tempdir "riot_model_deps_fixture_sources"
+    (fun tmpdir ->
+      let src_dir = Path.(tmpdir / Path.v "src") in
+      let tests_dir = Path.(tmpdir / Path.v "tests") in
+      let deps_fixtures_dir = Path.(tests_dir / Path.v "deps_fixtures") in
+      Result.expect (Fs.create_dir_all src_dir) ~msg:"Failed to create src directory";
+      Result.expect (Fs.create_dir_all deps_fixtures_dir) ~msg:"Failed to create deps_fixtures directory";
+      Result.expect (Fs.write "let version = 1\n" Path.(src_dir / Path.v "demo.ml")) ~msg:"Failed to write src source";
+      Result.expect (Fs.write "let () = ()\n" Path.(tests_dir / Path.v "demo_tests.ml")) ~msg:"Failed to write test source";
+      Result.expect (Fs.write "let fixture = 1\n" Path.(deps_fixtures_dir / Path.v "sample.ml")) ~msg:"Failed to write deps fixture source";
+      Result.expect (Fs.write "module Sample : sig end\n" Path.(deps_fixtures_dir / Path.v "sample.mli")) ~msg:"Failed to write deps fixture interface";
+      Result.expect (Fs.write "fixture\n" Path.(deps_fixtures_dir / Path.v "sample.expected")) ~msg:"Failed to write deps fixture support file";
+      let manifest =
+        Std.Data.Toml.parse
+          {|
+[package]
+name = "demo"
+version = "0.1.0"
+
+[lib]
+path = "src/demo.ml"
+|}
+        |> Result.expect ~msg:"Expected package TOML to parse"
+      in
+      let pkg = Riot_model.Package.from_toml
+        manifest
+        ~workspace_deps:[]
+        ~workspace_dev_deps:[]
+        ~workspace_build_deps:[]
+        ~path:tmpdir
+        ~relative_path:(Path.v "packages/demo")
+      |> Result.expect ~msg:"Expected package manifest to parse" in
+      if
+        pkg.sources.tests = [ Path.v "tests/demo_tests.ml" ]
+        && pkg.binaries
+        = [ Riot_model.Package.{ name = "demo_tests"; path = Path.v "tests/demo_tests.ml" } ]
+      then
+        Ok ()
+      else
+        Error "expected tests/deps_fixtures to be treated as non-compilable support input")
+
 let test_workspace_fmt_ignore_parses = fun _ctx ->
   let toml =
     Std.Data.Toml.parse
@@ -955,6 +1131,18 @@ let tests =
     case "package: src/main.ml autodiscovers runtime binary" test_src_main_autodiscovers_runtime_binary;
     case "package: source scan ignores hidden entries" test_scan_sources_ignores_hidden_entries;
     case "package: source scan ignores test support entries" test_scan_sources_ignores_test_support_entries;
+    case
+      "package: source scan keeps similarly named test directories"
+      test_scan_sources_keeps_similarly_named_test_directories;
+    case
+      "package: source scan respects package-root gitignore"
+      test_scan_sources_respects_package_root_gitignore;
+    case
+      "package: source scan ignores non-ocaml files"
+      test_scan_sources_ignores_non_ocaml_files;
+    case
+      "package: source scan ignores deps fixture support entries"
+      test_scan_sources_ignores_deps_fixture_support_entries;
     case "fmt config: workspace ignore parses" test_workspace_fmt_ignore_parses;
     case "fmt config: package ignore loads" test_package_fmt_ignore_loads;
     case "fmt config: legacy top-level fmt still loads" test_legacy_fmt_ignore_still_loads;

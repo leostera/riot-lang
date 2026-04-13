@@ -41,6 +41,15 @@ type sources = {
   examples: Path.t list;
   bench: Path.t list;
 }
+type realization_intent =
+  | Build
+  | Runtime
+  | Dev
+  | Run
+  | Test
+  | Bench
+  | Doc
+  | Check
 type target_platform = string
 (* "macos", "linux", "windows", etc. *)
 
@@ -64,6 +73,21 @@ type foreign_dependency = {
   test_cmd: string list option;
   outputs: Path.t list;
   env: (string * string) list;
+}
+type manifest_spec = {
+  name: string;
+  path: Path.t;
+  relative_path: Path.t;
+  dependencies: dependency list;
+  dev_dependencies: dependency list;
+  build_dependencies: dependency list;
+  foreign_dependencies: foreign_dependency list;
+  declared_binaries: binary list;
+  library: library option;
+  compiler: compiler_config;
+  commands: Package_command.t list;
+  fix_providers: Fix_provider.t list;
+  publish: publish_metadata;
 }
 type t = private {
   name: string;
@@ -117,6 +141,17 @@ val from_toml:
   path:Path.t ->
   relative_path:Path.t ->
   (t, string) result
+
+val parse_manifest_spec:
+  Std.Data.Toml.value ->
+  workspace_deps:dependency list ->
+  workspace_dev_deps:dependency list ->
+  workspace_build_deps:dependency list ->
+  path:Path.t ->
+  relative_path:Path.t ->
+  (manifest_spec, string) result
+
+val realize_manifest_spec: intent:realization_intent -> manifest_spec -> t
 
 val to_json: t -> Std.Data.Json.t
 
