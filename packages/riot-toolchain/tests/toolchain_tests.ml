@@ -29,16 +29,24 @@ let with_temp_dir = fun label f ->
   | Error err -> Error ("failed to create temp dir: " ^ IO.error_message err)
 
 let with_env_var = fun name value_opt f ->
-  let restore_value = Env.var Env.String ~name in
+  let restore_value = Env.get Env.String ~var:name in
   let restore () =
     match restore_value with
-    | Some value -> Kernel.Env.putenv name value
-    | None -> Kernel.Env.unsetenv name
+    | Some value ->
+        let _ = Kernel.Env.set ~var:name ~value in
+        ()
+    | None ->
+        let _ = Kernel.Env.remove ~var:name in
+        ()
   in
   let () =
     match value_opt with
-    | Some value -> Kernel.Env.putenv name value
-    | None -> Kernel.Env.unsetenv name
+    | Some value ->
+        let _ = Kernel.Env.set ~var:name ~value in
+        ()
+    | None ->
+        let _ = Kernel.Env.remove ~var:name in
+        ()
   in
   try
     let result = f () in
@@ -264,10 +272,10 @@ let test_list_available_toolchains_reads_manifest = fun _ctx ->
               | Error msg -> Error ("expected manifest to parse, got: " ^ msg)
               | Ok toolchains ->
                   let find_toolchain ~host ~target =
-                    List.find_opt
-                      (fun (toolchain: Riot_toolchain.available_toolchain) ->
-                        String.equal toolchain.host host && String.equal toolchain.target target)
+                    List.find
                       toolchains
+                      ~fn:(fun (toolchain: Riot_toolchain.available_toolchain) ->
+                        String.equal toolchain.host host && String.equal toolchain.target target)
                   in
                   if not (Int.equal (List.length toolchains) 2) then
                     Error ("expected 2 available toolchains, got "
