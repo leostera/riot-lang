@@ -1385,8 +1385,6 @@ let bucket_of_rel_path path_components =
   | _ -> None
 
 let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) ?(excluded_relpaths = []) (): sources =
-  let started_at = Time.Instant.now () in
-  let duration_us = fun start -> Time.Instant.elapsed start |> Time.Duration.to_micros in
   let excluded_relpath_strings = excluded_relpaths |> List.map ~fn:Path.to_string in
   let path_components = fun path -> Path.components path |> List.map ~fn:Path.to_string in
   let enabled_buckets = source_buckets_for_intent intent in
@@ -1418,9 +1416,6 @@ let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) 
     let native = ref [] in
     let examples = ref [] in
     let bench = ref [] in
-    let visited_entries = ref 0 in
-    let visited_directories = ref 0 in
-    let visited_files = ref 0 in
     let walker =
       match Ignore.Walker.create ~roots:[ package_path ] ~concurrency:1 ~sort:true ~follow_symlinks:true () with
       | Ok walker -> walker
@@ -1428,14 +1423,6 @@ let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) 
     in
     let collect = fun (entry: Fs.Walker.FileItem.t) ->
       let path = Fs.Walker.FileItem.path entry in
-      visited_entries := !visited_entries + 1;
-      (
-        match Fs.Walker.FileItem.kind entry with
-        | Directory -> visited_directories := !visited_directories + 1
-        | File -> visited_files := !visited_files + 1
-        | Symlink
-        | Other -> ()
-      );
       if Int.equal (Fs.Walker.FileItem.depth entry) 0 then
         Fs.Walker.Continue
       else
@@ -1495,37 +1482,13 @@ let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) 
     in
     match Ignore.Walker.walk walker ~f:collect with
     | Ok () ->
-        let sources = {
+        {
           src = List.reverse !src;
           tests = List.reverse !tests;
           native = List.reverse !native;
           examples = List.reverse !examples;
           bench = List.reverse !bench;
-        } in
-        let total_us = duration_us started_at in
-        if total_us >= 1_000 then
-          eprintln
-            ("[riot-model.package] scan-sources path="
-            ^ Path.to_string package_path
-            ^ " total_us="
-            ^ Int.to_string total_us
-            ^ " visited_entries="
-            ^ Int.to_string !visited_entries
-            ^ " visited_directories="
-            ^ Int.to_string !visited_directories
-            ^ " visited_files="
-            ^ Int.to_string !visited_files
-            ^ " kept_src="
-            ^ Int.to_string (List.length sources.src)
-            ^ " kept_tests="
-            ^ Int.to_string (List.length sources.tests)
-            ^ " kept_native="
-            ^ Int.to_string (List.length sources.native)
-            ^ " kept_examples="
-            ^ Int.to_string (List.length sources.examples)
-            ^ " kept_bench="
-            ^ Int.to_string (List.length sources.bench));
-        sources
+        }
     | Error _ -> empty_sources
 
 let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) (): sources =
@@ -1651,8 +1614,6 @@ let parse_manifest_spec:
   path:Path.t ->
   relative_path:Path.t ->
   (manifest_spec, string) result = fun toml ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~path ~relative_path ->
-  let started_at = Time.Instant.now () in
-  let duration_us = fun start -> Time.Instant.elapsed start |> Time.Duration.to_micros in
   match toml with
   | Toml.Table items -> (
       let fallback_name = Path.basename path in
@@ -1669,7 +1630,6 @@ let parse_manifest_spec:
                   match parse_dependency_section "build-dependencies" items ~workspace_deps:workspace_build_deps with
                   | Error _ as err -> err
                   | Ok build_dependencies ->
-                      let binaries_started_at = Time.Instant.now () in
                       let declared_binaries =
                         match parse_binaries items ~package_path:path with
                         | Ok bins -> bins
@@ -1677,8 +1637,6 @@ let parse_manifest_spec:
                             Log.warn ("[PACKAGE] Failed to parse binaries for " ^ name ^ ": " ^ msg);
                             []
                       in
-                      let binaries_us = duration_us binaries_started_at in
-                      let library_started_at = Time.Instant.now () in
                       let library =
                         match parse_library items ~package_path:path ~package_name:name with
                         | Ok lib -> lib
@@ -1686,8 +1644,6 @@ let parse_manifest_spec:
                             Log.warn ("[PACKAGE] Failed to parse library for " ^ name ^ ": " ^ msg);
                             None
                       in
-                      let library_us = duration_us library_started_at in
-                      let foreign_started_at = Time.Instant.now () in
                       let foreign_dependencies =
                         match parse_foreign_dependencies items ~package_path:path with
                         | Ok deps -> deps
@@ -1699,17 +1655,11 @@ let parse_manifest_spec:
                               ^ msg);
                             []
                       in
-                      let foreign_us = duration_us foreign_started_at in
-                      let fix_providers_started_at = Time.Instant.now () in
                       let fix_providers = Fix_provider.parse_from_toml
                         items
                         ~package_name:name
                         ~package_path:path in
-                      let fix_providers_us = duration_us fix_providers_started_at in
-                      let compiler_started_at = Time.Instant.now () in
                       let compiler = parse_compiler_config items in
-                      let compiler_us = duration_us compiler_started_at in
-                      let commands_started_at = Time.Instant.now () in
                       let commands =
                         match Fields.get "command" items with
                         | Some (Toml.Array cmd_entries) -> Package_command.parse_from_toml
@@ -1718,26 +1668,6 @@ let parse_manifest_spec:
                           ~package_path:path
                         | _ -> []
                       in
-                      let commands_us = duration_us commands_started_at in
-                      let total_us = duration_us started_at in
-                      if total_us >= 1_000 then
-                        eprintln
-                          ("[riot-model.package] parse-manifest name="
-                          ^ name
-                          ^ " total_us="
-                          ^ Int.to_string total_us
-                          ^ " binaries_us="
-                          ^ Int.to_string binaries_us
-                          ^ " library_us="
-                          ^ Int.to_string library_us
-                          ^ " foreign_us="
-                          ^ Int.to_string foreign_us
-                          ^ " fix_providers_us="
-                          ^ Int.to_string fix_providers_us
-                          ^ " compiler_us="
-                          ^ Int.to_string compiler_us
-                          ^ " commands_us="
-                          ^ Int.to_string commands_us);
                       Ok (
                         canonicalize_manifest_spec
                           {

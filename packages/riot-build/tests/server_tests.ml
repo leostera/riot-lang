@@ -3,7 +3,7 @@ module Test = Std.Test
 
 let write_workspace_manifest = fun ~root ~members ->
   let members = members
-  |> List.map (fun member -> "  \"" ^ Path.to_string member ^ "\"")
+  |> List.map ~fn:(fun member -> "  \"" ^ Path.to_string member ^ "\"")
   |> String.concat ",\n" in
   let content = "[workspace]\nmembers = [\n" ^ members ^ "\n]\n" in
   Fs.write content Path.(root / Path.v "riot.toml") |> Result.expect ~msg:"expected workspace manifest to be written"
@@ -55,17 +55,11 @@ let test_cache_hit_using_package_builder = fun _ctx ->
       (fun tmpdir ->
         let package = make_simple_package tmpdir "test-pkg" in
         let workspace =
-          Riot_model.Workspace.{
-            name = None;
-            root = tmpdir;
-            target_dir_root =
-              Path.(tmpdir / Path.v "target");
-            packages = [ package ];
-            dependencies = [];
-            dev_dependencies = [];
-            build_dependencies = [];
-            profile_overrides = [];
-          }
+          Riot_model.Workspace.make_realized
+            ~root:tmpdir
+            ~packages:[ package ]
+            ~target_dir:(Path.to_string Path.(Path.v "target"))
+            ()
         in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"Failed to initialize toolchain" in
@@ -160,17 +154,11 @@ let test_cache_invalidation_on_source_change = fun _ctx ->
         (fun tmpdir ->
           let package = make_simple_package tmpdir "test-pkg" in
           let workspace =
-            Riot_model.Workspace.{
-              name = None;
-              root = tmpdir;
-              target_dir_root =
-                Path.(tmpdir / Path.v "target");
-              packages = [ package ];
-              dependencies = [];
-              dev_dependencies = [];
-              build_dependencies = [];
-              profile_overrides = [];
-            }
+            Riot_model.Workspace.make_realized
+              ~root:tmpdir
+              ~packages:[ package ]
+              ~target_dir:(Path.to_string Path.(Path.v "target"))
+              ()
           in
           let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
           |> Result.expect ~msg:"Failed to initialize toolchain" in
@@ -211,7 +199,7 @@ let test_cache_invalidation_on_source_change = fun _ctx ->
     | Ok r -> r
     | Error _ -> Error "Tempdir creation failed"
   with
-  | exn -> Error ("Exception in test: " ^ Exception.to_string exn)
+  | exn -> Error ("Exception in test: " ^ Kernel.Exception.to_string exn)
 
 let test_telemetry_events_during_build = fun _ctx -> Ok ()
 
@@ -273,7 +261,7 @@ std = "*"
             ~relative_path:(Path.v "packages/app")
           |> Result.expect ~msg:"expected app package to load"
         in
-        let workspace = Riot_model.Workspace.make ~root:tmpdir ~packages:[ app_pkg ] () in
+        let workspace = Riot_model.Workspace.make_realized ~root:tmpdir ~packages:[ app_pkg ] () in
         let registry_cache = Pkgs_ml.Registry_cache.create
           ~riot_home:Path.(tmpdir / Path.v ".riot")
           ~registry_name:"pkgs.ml"
@@ -338,14 +326,16 @@ version = "0.2.0"
               | _ -> `skip
             in
             let prepared_workspace = receive ~selector () in
+            let realized_packages =
+              Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Runtime prepared_workspace
+            in
             let package_names =
-              List.map (fun (pkg: Riot_model.Package.t) -> pkg.name) prepared_workspace.packages
+              List.map realized_packages ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.name)
             in
             let std_pkg =
-              List.find_opt
-                (fun (pkg: Riot_model.Package.t) ->
+              List.find realized_packages
+                ~fn:(fun (pkg: Riot_model.Package.t) ->
                   String.equal pkg.name "std")
-                prepared_workspace.packages
             in
             let expected_std_root = Pkgs_ml.Registry_cache.package_src_dir
               registry_cache
@@ -404,7 +394,7 @@ std = "*"
             ~relative_path:(Path.v "packages/app")
           |> Result.expect ~msg:"expected app package to load"
         in
-        let workspace = Riot_model.Workspace.make ~root:tmpdir ~packages:[ app_pkg ] () in
+        let workspace = Riot_model.Workspace.make_realized ~root:tmpdir ~packages:[ app_pkg ] () in
         let registry_cache = Pkgs_ml.Registry_cache.create
           ~riot_home:Path.(tmpdir / Path.v ".riot")
           ~registry_name:"pkgs.ml"
@@ -461,13 +451,14 @@ version = "0.2.0"
           () with
         | Error err -> Error ("expected local server to start: " ^ Riot_build.error_message err)
         | Ok _ ->
-            if List.exists
-                (
+            if List.any
+                !seen
+                ~fn:(
                   function
                   | Riot_model.Event.DependencyResolutionStarted _ -> true
                   | _ -> false
                 )
-                !seen then
+            then
               Ok ()
             else
               Error "expected start_local to emit dependency resolution events")

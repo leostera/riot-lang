@@ -96,7 +96,8 @@ let implicit_local_targets = fun ?package_filter (workspace: Riot_model.Workspac
     | Some expected_package -> String.equal expected_package pkg.name
     | None -> true
   in
-  workspace.packages
+  Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Run workspace
+  |> List.filter ~fn:Package.is_workspace_member
   |> List.filter ~fn:package_matches_filter
   |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
       Riot_model.Package.binaries_for_scope Riot_model.Package.Normal pkg

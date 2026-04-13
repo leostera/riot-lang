@@ -8,7 +8,7 @@ let make_workspace = fun binaries ->
     ~relative_path:(Path.v "packages/demo")
     ~binaries
     () in
-  Riot_model.Workspace.make ~root:(Path.v "/workspace") ~packages:[ package ] ()
+  Riot_model.Workspace.make_realized ~root:(Path.v "/workspace") ~packages:[ package ] ()
 
 let test_collect_test_suites_filters_workspace_binaries = fun _ctx ->
   let workspace = make_workspace
@@ -59,9 +59,22 @@ let test_test_event_to_json_serializes_summary = fun _ctx ->
   | Some (Data.Json.Object fields) ->
       Test.assert_equal
         ~expected:(Some (Data.Json.String "TestSummary"))
-        ~actual:(List.assoc_opt "type" fields);
-      Test.assert_equal ~expected:(Some (Data.Json.Int 3)) ~actual:(List.assoc_opt "total" fields);
-      Test.assert_equal ~expected:(Some (Data.Json.Int 4)) ~actual:(List.assoc_opt "skipped" fields);
+        ~actual:(
+          List.find fields ~fn:(fun (name, _) -> String.equal name "type")
+          |> Option.map ~fn:(fun (_, value) -> value)
+        );
+      Test.assert_equal
+        ~expected:(Some (Data.Json.Int 3))
+        ~actual:(
+          List.find fields ~fn:(fun (name, _) -> String.equal name "total")
+          |> Option.map ~fn:(fun (_, value) -> value)
+        );
+      Test.assert_equal
+        ~expected:(Some (Data.Json.Int 4))
+        ~actual:(
+          List.find fields ~fn:(fun (name, _) -> String.equal name "skipped")
+          |> Option.map ~fn:(fun (_, value) -> value)
+        );
       Test.assert_equal
         ~expected:(Some (Data.Json.Array [
           Data.Json.Object [
@@ -72,7 +85,10 @@ let test_test_event_to_json_serializes_summary = fun _ctx ->
             ("duration_us", Data.Json.Int 42);
           ]
         ]))
-        ~actual:(List.assoc_opt "failed_tests" fields);
+        ~actual:(
+          List.find fields ~fn:(fun (name, _) -> String.equal name "failed_tests")
+          |> Option.map ~fn:(fun (_, value) -> value)
+        );
       Ok ()
   | Some json ->
       Error ("expected JSON object, got " ^ Data.Json.to_string json)

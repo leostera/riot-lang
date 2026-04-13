@@ -8,14 +8,14 @@ let make_workspace = fun binaries ->
     ~relative_path:(Path.v "packages/demo")
     ~binaries
     () in
-  Riot_model.Workspace.make ~root:(Path.v "/workspace") ~packages:[ package ] ()
+  Riot_model.Workspace.make_realized ~root:(Path.v "/workspace") ~packages:[ package ] ()
 
-let test_build_scope_for_test_binary_uses_dev = fun _ctx ->
+let test_build_scope_for_example_binary_uses_dev = fun _ctx ->
   let workspace = make_workspace
-    [ Riot_model.Package.{ name = "pm_tests"; path = Path.v "tests/pm_tests.ml" } ] in
+    [ Riot_model.Package.{ name = "sqltool"; path = Path.v "examples/sqltool.ml" } ] in
   Test.assert_equal
     ~expected:Riot_build.Dev
-    ~actual:(Riot_build.build_scope_for_binary workspace ~package_name:"demo" ~binary_name:"pm_tests");
+    ~actual:(Riot_build.build_scope_for_binary workspace ~package_name:"demo" ~binary_name:"sqltool");
   Ok ()
 
 let test_run_event_to_json_serializes_running_binary = fun _ctx ->
@@ -28,10 +28,16 @@ let test_run_event_to_json_serializes_running_binary = fun _ctx ->
   | Some (Data.Json.Object fields) ->
       Test.assert_equal
         ~expected:(Some (Data.Json.String "RunningBinary"))
-        ~actual:(List.assoc_opt "type" fields);
+        ~actual:(
+          List.find fields ~fn:(fun (name, _) -> String.equal name "type")
+          |> Option.map ~fn:(fun (_, value) -> value)
+        );
       Test.assert_equal
         ~expected:(Some (Data.Json.String "demo"))
-        ~actual:(List.assoc_opt "package" fields);
+        ~actual:(
+          List.find fields ~fn:(fun (name, _) -> String.equal name "package")
+          |> Option.map ~fn:(fun (_, value) -> value)
+        );
       Ok ()
   | Some json ->
       Error ("expected JSON object, got " ^ Data.Json.to_string json)
@@ -47,7 +53,7 @@ let test_run_error_message_names_external_target_load_failure = fun _ctx ->
 
 let tests =
   let open Test in [
-    case "run: test binaries use dev scope" test_build_scope_for_test_binary_uses_dev;
+    case "run: example binaries use dev scope" test_build_scope_for_example_binary_uses_dev;
     case "run: running binary event json" test_run_event_to_json_serializes_running_binary;
     case "run: external target load error message" test_run_error_message_names_external_target_load_failure;
   ]

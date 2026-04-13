@@ -103,7 +103,8 @@ let publish_error_is_already_published = fun error ->
   | _ -> false
 
 let workspace_packages = fun (workspace: Workspace.t) ->
-  workspace.packages |> List.filter ~fn:Package.is_workspace_member
+  Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Runtime workspace
+  |> List.filter ~fn:Package.is_workspace_member
 
 let is_public_package = fun (package: Package.t) ->
   match package.publish.is_public with

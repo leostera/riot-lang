@@ -97,9 +97,9 @@ let format_duration_us = fun duration_us ->
   if duration_us < 1_000 then
     Int.to_string duration_us ^ "us"
   else if duration_us < 1_000_000 then
-    Float.to_string ~precision:2 (float_of_int duration_us /. 1000.0) ^ "ms"
+    Float.to_string ~precision:2 (Float.from_int duration_us /. 1000.0) ^ "ms"
   else
-    Float.to_string ~precision:2 (float_of_int duration_us /. 1000000.0) ^ "s"
+    Float.to_string ~precision:2 (Float.from_int duration_us /. 1000000.0) ^ "s"
 
 let metadata_labels = fun size reliability ->
   let size_labels =
@@ -180,7 +180,7 @@ let print_summary = fun ~label ~total ~passed ~failed ~skipped ~(timing:timing_s
       timing.slowest_tests
       |> List.enumerate
       |> List.for_each ~fn:
-        (fun idx (test: slow_test) ->
+        (fun (idx, (test: slow_test)) ->
           println
             ("    "
             ^ Int.to_string (idx + 1)
@@ -196,7 +196,7 @@ let print_summary = fun ~label ~total ~passed ~failed ~skipped ~(timing:timing_s
     (
       println "  Failed tests:";
       timing.failed_tests |> List.reverse |> List.enumerate |> List.for_each ~fn:
-        (fun idx (test: failed_test) ->
+        (fun (idx, (test: failed_test)) ->
           println
             ("    "
             ^ Int.to_string (idx + 1)
@@ -216,7 +216,7 @@ let event_elapsed_us = fun ~command_started_at ->
 
 let json_int_field = fun name fields ->
   match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with
-  | Some (Data.Json.Int value) -> Some value
+  | Some (_, Data.Json.Int value) -> Some value
   | _ -> None
 
 let upsert_int_field = fun name value fields ->
@@ -304,7 +304,7 @@ let write_test_event_json = fun ~command_started_at ?(pending_suite = None) (
       Some None
 
 let find_suite_source_path = fun ~(workspace:Riot_model.Workspace.t) (suite: Riot_build.suite_binary) ->
-  workspace.packages
+  Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Test workspace
   |> List.find ~fn:(fun (pkg: Riot_model.Package.t) -> String.equal pkg.name suite.package_name)
   |> Option.and_then ~fn:(fun (pkg: Riot_model.Package.t) ->
     pkg.binaries

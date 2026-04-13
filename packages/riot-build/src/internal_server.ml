@@ -209,7 +209,8 @@ and handle_get_package_info = fun state client_pid package_name ->
   Log.debug
     ("Server: Received GetPackageInfo for " ^ package_name ^ " from " ^ Pid.to_string client_pid);
   let package_opt =
-    List.find state.workspace.packages ~fn:(fun (pkg: Package.t) -> pkg.name = package_name)
+    List.find state.workspace.packages ~fn:(fun (pkg: Package_manifest.t) -> pkg.name = package_name)
+    |> Option.map ~fn:(Riot_model.Workspace.realize_package ~intent:Riot_model.Package.Dev)
   in
   (
     match package_opt with
@@ -251,7 +252,10 @@ and handle_get_package_graph = fun state client_pid ->
 and handle_find_executable = fun state client_pid name ->
   Log.debug ("Server: handle_find_executable " ^ name);
   (* Only search in workspace member packages, not external dependencies *)
-  let workspace_packages = List.filter state.workspace.packages ~fn:Package.is_workspace_member in
+  let workspace_packages =
+    Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Run state.workspace
+    |> List.filter ~fn:Package.is_workspace_member
+  in
   let found =
     List.find workspace_packages ~fn:(fun (pkg: Package.t) ->
       List.find pkg.binaries ~fn:(fun (bin: Package.binary) -> bin.name = name)

@@ -18,13 +18,16 @@ let shell_from_string = function
 
 let list_packages = fun (workspace: Riot_model.Workspace.t) ->
   workspace.packages
-  |> List.map ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.name)
+  |> List.map ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.name)
   |> List.sort ~compare:String.compare
+
+let realized_workspace_packages = fun ~intent (workspace: Riot_model.Workspace.t) ->
+  Riot_model.Workspace.realize_packages ~intent workspace
+  |> List.filter ~fn:Riot_model.Package.is_workspace_member
 
 (** List binaries as "package:binary" for display in completions, excluding tests *)
 let list_binaries = fun (workspace: Riot_model.Workspace.t) ->
-  workspace.packages
-  |> List.filter ~fn:Riot_model.Package.is_workspace_member
+  realized_workspace_packages ~intent:Riot_model.Package.Run workspace
   |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
       List.filter_map pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
           (* Filter out test binaries *)
@@ -39,8 +42,7 @@ let list_binaries = fun (workspace: Riot_model.Workspace.t) ->
 (** List package names, package wildcards, and test binaries for completions *)
 let list_tests = fun (workspace: Riot_model.Workspace.t) ->
   let test_packages =
-    workspace.packages
-    |> List.filter ~fn:Riot_model.Package.is_workspace_member
+    realized_workspace_packages ~intent:Riot_model.Package.Test workspace
     |> List.filter_map ~fn:(fun (pkg: Riot_model.Package.t) ->
         let has_tests =
           List.any pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
@@ -52,8 +54,7 @@ let list_tests = fun (workspace: Riot_model.Workspace.t) ->
           None)
   in
   let individual_tests =
-    workspace.packages
-    |> List.filter ~fn:Riot_model.Package.is_workspace_member
+    realized_workspace_packages ~intent:Riot_model.Package.Test workspace
     |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
         List.filter_map pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
             if
@@ -72,8 +73,7 @@ let list_tests = fun (workspace: Riot_model.Workspace.t) ->
 (** List benchmark binaries as "package:bench" for display in completions *)
 let list_benchmarks = fun (workspace: Riot_model.Workspace.t) ->
   let individual_benches =
-    workspace.packages
-    |> List.filter ~fn:Riot_model.Package.is_workspace_member
+    realized_workspace_packages ~intent:Riot_model.Package.Bench workspace
     |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
         List.filter_map pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
             if String.ends_with ~suffix:"_bench" bin.name then
@@ -83,8 +83,7 @@ let list_benchmarks = fun (workspace: Riot_model.Workspace.t) ->
   in
   (* Add pkg:... entries for packages with benchmarks *)
   let package_wildcards =
-    workspace.packages
-    |> List.filter ~fn:Riot_model.Package.is_workspace_member
+    realized_workspace_packages ~intent:Riot_model.Package.Bench workspace
     |> List.filter_map ~fn:(fun (pkg: Riot_model.Package.t) ->
         let has_benches =
           List.any pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
@@ -136,7 +135,6 @@ _riot() {
 
     builtin_commands=(
         'build:Build packages'
-        'check:Typecheck one or more OCaml files'
         'fix:Lint code and optionally apply safe fixes'
         'run:Run a binary'
         'test:Run tests'
@@ -232,22 +230,6 @@ _riot() {
                 '--all-targets[Build for all configured targets]' \
                 '--json[Emit machine-readable JSONL events]' \
                 '*:package:->packages'
-
-            case $state in
-                packages)
-                    local -a packages
-                    packages=(${(f)"$(riot completions --packages 2>/dev/null)"})
-                    _describe 'package' packages
-                    ;;
-            esac
-            ;;
-        check)
-            _arguments \
-                '(-p --package)'{-p,--package}'[Typecheck sources from package]:package:->packages' \
-                '--json[Emit machine-readable JSON output]' \
-                '--quiet[Suppress the success summary when no diagnostics are found]' \
-                '--explain[Explain a typ diagnostic id]:diagnostic-id:' \
-                '*:path:_files'
 
             case $state in
                 packages)

@@ -1,5 +1,5 @@
 module Proc = Process
-open Kernel
+open Kernel.Prelude
 
 let panic = Kernel.SystemError.panic
 
@@ -96,7 +96,9 @@ let run = fun ~main ~args ?config () ->
   in
   Kernel.Exception.record_backtrace true;
   let status =
-    Scheduler.run ~config ~main:(fun () -> main ~args)
+    Scheduler.run ~config
+      ~main:(fun () ->
+        main ~args)
   in
   sys_exit status
 
@@ -126,7 +128,7 @@ let send = Scheduler.send
 (* Cooperative I/O syscall for actor-aware I/O operations *)
 
 let syscall = fun ~name ~interest ~source ~timeout ->
-  Effect.perform (Proc_effect.Syscall { name; interest; source; timeout })
+  Kernel.Effect.perform (Proc_effect.Syscall { name; interest; source; timeout })
 
 module Timer = struct
   type t = Timer_id.t

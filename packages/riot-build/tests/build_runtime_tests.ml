@@ -30,7 +30,7 @@ let make_broken_workspace = fun ?target_dir tmpdir ->
     }
     ()
   in
-  Riot_model.Workspace.make ~root:tmpdir ?target_dir ~packages:[ package ] ()
+  Riot_model.Workspace.make_realized ~root:tmpdir ?target_dir ~packages:[ package ] ()
 
 let make_valid_workspace = fun ?target_dir tmpdir ->
   let pkg_dir = Path.(tmpdir / Path.v "demo") in
@@ -54,7 +54,7 @@ let make_valid_workspace = fun ?target_dir tmpdir ->
     }
     ()
   in
-  Riot_model.Workspace.make ~root:tmpdir ?target_dir ~packages:[ package ] ()
+  Riot_model.Workspace.make_realized ~root:tmpdir ?target_dir ~packages:[ package ] ()
 
 let test_build_surfaces_failed_builds = fun _ctx ->
   match

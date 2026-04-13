@@ -6,17 +6,11 @@ let make_test_build_ctx = fun () ->
   Riot_model.Build_ctx.make ~session_id ~profile:Riot_model.Profile.debug ()
 
 let make_test_workspace = fun tmpdir packages ->
-  Riot_model.Workspace.{
-    name = None;
-    root = tmpdir;
-    target_dir_root =
-      Path.(tmpdir / Path.v "target");
-    packages;
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    profile_overrides = [];
-  }
+  Riot_model.Workspace.make_realized
+    ~root:tmpdir
+    ~packages
+    ~target_dir:(Path.to_string Path.(Path.v "target"))
+    ()
 
 let package_error_message = fun err ->
   match err with

@@ -116,7 +116,7 @@ let load_member_package:
   workspace_deps:Package.dependency list ->
   workspace_dev_deps:Package.dependency list ->
   workspace_build_deps:Package.dependency list ->
-  (Package.t option * load_error list) = fun t workspace_root member ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ->
+  (Package_manifest.t option * load_error list) = fun t workspace_root member ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ->
   let member_path = Path.(workspace_root / Path.v member) in
   let toml_path = Path.(member_path / riot_toml) in
   let member_name = Path.basename member_path in
@@ -135,7 +135,7 @@ let load_member_package:
           )
       | Ok toml -> (
           let relative_path = Path.v member in
-          match Package.from_toml
+          match Package_manifest.from_toml
             toml
             ~workspace_deps
             ~workspace_dev_deps
@@ -181,7 +181,7 @@ let rec load_external_package:
   workspace_dev_deps:Package.dependency list ->
   workspace_build_deps:Package.dependency list ->
   dependant:string option ->
-  (Package.t list * load_error list) = fun t workspace_root ~declared_from dep ~seen ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~dependant ->
+  (Package_manifest.t list * load_error list) = fun t workspace_root ~declared_from dep ~seen ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~dependant ->
   match dep.source with
   | { workspace=true; _ } ->
       ([], [])
@@ -220,7 +220,7 @@ let rec load_external_package:
                       abs_str
                   in
                   let relative_path = Path.v rel_path in
-                  match Package.from_toml
+                  match Package_manifest.from_toml
                     toml
                     ~workspace_deps
                     ~workspace_dev_deps
@@ -230,7 +230,7 @@ let rec load_external_package:
                   | Ok pkg ->
                       let transitive_results =
                         List.map
-                          (Package.all_dependencies pkg)
+                          (Package_manifest.all_dependencies pkg)
                           ~fn:(load_external_package
                             t
                             workspace_root
@@ -262,13 +262,13 @@ let rec load_external_package:
 let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_error list) = fun t workspace_root workspace_manifest ->
   let member_results =
     List.map workspace_manifest.members ~fn:(fun member ->
-        load_member_package
-          t
-          workspace_root
-          (Path.to_string member)
-          ~workspace_deps:workspace_manifest.dependencies
-          ~workspace_dev_deps:workspace_manifest.dev_dependencies
-          ~workspace_build_deps:workspace_manifest.build_dependencies)
+      load_member_package
+        t
+        workspace_root
+        (Path.to_string member)
+        ~workspace_deps:workspace_manifest.dependencies
+        ~workspace_dev_deps:workspace_manifest.dev_dependencies
+        ~workspace_build_deps:workspace_manifest.build_dependencies)
   in
   let member_packages =
     List.filter_map member_results ~fn:(fun (pkg, _) -> pkg)
@@ -277,7 +277,7 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
     member_results |> List.map ~fn:(fun (_, errors) -> errors) |> List.concat
   in
   let seen =
-    Cell.create (List.map member_packages ~fn:(fun (p: Package.t) -> p.name))
+    Cell.create (List.map member_packages ~fn:(fun (p: Package_manifest.t) -> p.name))
   in
   (* Load workspace-level dependencies first *)
   let workspace_results =
@@ -302,9 +302,9 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
   (* Then load any additional dependencies from member packages *)
   let external_results =
     member_packages
-    |> List.map ~fn:(fun (pkg: Package.t) ->
+    |> List.map ~fn:(fun (pkg: Package_manifest.t) ->
       List.map
-        (Package.all_dependencies pkg)
+        (Package_manifest.all_dependencies pkg)
         ~fn:(load_external_package
           t
           workspace_root
@@ -346,7 +346,7 @@ let build_single_package_workspace: t -> Path.t -> (Workspace.t * load_error lis
   | Error err ->
       Error ("Failed to parse package TOML: " ^ err)
   | Ok toml -> (
-      match Package.from_toml
+      match Package_manifest.from_toml
         toml
         ~workspace_deps:[]
         ~workspace_dev_deps:[]
@@ -358,7 +358,7 @@ let build_single_package_workspace: t -> Path.t -> (Workspace.t * load_error lis
           let seen = Cell.create [ package.name ] in
           let external_results =
             List.map
-              (Package.all_dependencies package)
+              (Package_manifest.all_dependencies package)
               ~fn:(load_external_package
                 t
                 package_root

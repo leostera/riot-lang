@@ -100,11 +100,11 @@ let command_error_event_to_json = fun kind details ->
 let format_pm_event = fun ~seen_registry_updates kind ->
   match kind with
   | Riot_model.Event.RegistryIndexUpdating { registry } ->
-      if HashSet.contains seen_registry_updates registry then
+      if HashSet.contains seen_registry_updates ~value:registry then
         None
       else
         (
-          let _ = HashSet.insert seen_registry_updates registry in
+          let _ = HashSet.insert seen_registry_updates ~value:registry in
           Some ("    \027[1;32mUpdating\027[0m " ^ registry ^ " index")
         )
   | Riot_model.Event.PackageResolvedForBuild _ ->
@@ -543,8 +543,7 @@ type loaded_workspace = {
 let load_workspace_strict = fun cwd ->
   let workspace_manager = Workspace_manager.create () in
   match Workspace_manager.scan workspace_manager cwd with
-  | Error err ->
-      Error (Failure err)
+  | Error err -> Error (Failure err)
   | Ok (_workspace, load_errors) when List.length load_errors > 0 ->
       print_workspace_load_errors load_errors;
       Error (Failure "Workspace load failed")

@@ -17,6 +17,7 @@ let build_cli = fun () ->
         Install.command;
         Login.command;
         Logout.command;
+        Lsp_cmd.command;
         New.command;
         Publish.command;
         Run.command;
@@ -185,7 +186,7 @@ format = "full"
 let is_lsp_invocation = fun args ->
   let rec loop = function
     | [] -> false
-    | arg :: rest when String.length arg > 0 && arg.[0] = '-' -> loop rest
+    | arg :: rest when String.length arg > 0 && String.get_unchecked arg ~at:0 = '-' -> loop rest
     | "lsp" :: _ -> true
     | _ :: _ -> false
   in
@@ -421,6 +422,8 @@ let run = fun ~args ->
               Login.run login_matches
           | Some ("logout", logout_matches) ->
               Logout.run logout_matches
+          | Some ("lsp", lsp_matches) ->
+              Lsp_cmd.run lsp_matches
           | Some ("yank", yank_matches) ->
               Yank.run yank_matches
           | Some ("init", init_matches) ->
@@ -489,8 +492,8 @@ let run = fun ~args ->
               (* Check if this is a package command *)
               (* Extract remaining args after the command name *)
               let remaining_args =
-                match List.tl args with
-                | cmd_arg :: rest when cmd_arg = cmd -> rest
+                match args with
+                | _program :: cmd_arg :: rest when cmd_arg = cmd -> rest
                 | _ -> []
               in
               match try_command ?workspace_scan:(Some get_workspace_scan) cmd remaining_args with

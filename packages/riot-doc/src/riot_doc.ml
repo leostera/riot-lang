@@ -94,7 +94,7 @@ let read_lockfile = fun workspace_root ->
   | Error _ -> Ok None
 
 let workspace_release_versions = fun (workspace: Riot_model.Workspace.t) ->
-  workspace.packages |> List.filter_map ~fn:(fun (pkg: Riot_model.Package.t) ->
+  workspace.packages |> List.filter_map ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
       match pkg.publish.version with
       | Some version -> Some (pkg.name, Version.to_string version)
       | None -> None)
@@ -271,8 +271,10 @@ let sanitize_output_path = fun path ->
 let emit = fun ~on_event event -> on_event event
 
 let selected_packages = fun (request: request) ->
-  let workspace_members = request.workspace.packages
-  |> List.filter ~fn:(fun (pkg: Riot_model.Package.t) -> Package.is_workspace_member pkg) in
+  let workspace_members =
+    Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Doc request.workspace
+    |> List.filter ~fn:(fun (pkg: Riot_model.Package.t) -> Package.is_workspace_member pkg)
+  in
   match request.package_name, request.all with
   | Some name, _ -> (
       match List.find workspace_members ~fn:(fun (pkg: Riot_model.Package.t) ->

@@ -40,9 +40,17 @@ let ( let* ) value fn = Result.and_then value ~fn
 
 let no_event: run_event -> unit = fun _ -> ()
 
+let realized_runnable_packages = fun ?package_filter (workspace: Riot_model.Workspace.t) ->
+  Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Run workspace
+  |> List.filter ~fn:Riot_model.Package.is_workspace_member
+  |> List.filter ~fn:(fun (pkg: Riot_model.Package.t) ->
+      match package_filter with
+      | None -> true
+      | Some package_name -> String.equal package_name pkg.name)
+
 let build_scope_for_binary = fun (workspace: Riot_model.Workspace.t) ~package_name ~binary_name ->
   match
-    List.find workspace.packages ~fn:(fun (pkg: Riot_model.Package.t) ->
+    List.find (realized_runnable_packages workspace) ~fn:(fun (pkg: Riot_model.Package.t) ->
       String.equal pkg.name package_name)
   with
   | None -> Build_runtime.Runtime
@@ -62,12 +70,7 @@ let is_listed_runnable = fun (bin: Riot_model.Package.binary) ->
   || String.starts_with ~prefix:"examples/" path
 
 let list_binaries = fun (workspace: Riot_model.Workspace.t) ?package_filter () ->
-  workspace.packages
-  |> List.filter ~fn:Riot_model.Package.is_workspace_member
-  |> List.filter ~fn:(fun (pkg: Riot_model.Package.t) ->
-      match package_filter with
-      | None -> true
-      | Some package_name -> String.equal package_name pkg.name)
+  realized_runnable_packages ?package_filter workspace
   |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
       pkg.binaries
       |> List.filter ~fn:is_listed_runnable
@@ -129,6 +132,21 @@ let load_source_workspace = fun ~on_event ~source_spec ~update ->
       ExternalTargetLoadFailed { target = source_spec; reason = Riot_deps.package_error_message err })
 
 let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~package_name ~binary_name results ->
+  let ensure_executable_binary_path = fun path ->
+    let binary_path = Path.v path in
+    match Fs.metadata binary_path with
+    | Error err ->
+        Error ("failed to read binary metadata: " ^ IO.error_message err)
+    | Ok metadata ->
+        let mode = Fs.Metadata.mode metadata in
+        if mode land 0o111 != 0 then
+          Ok path
+        else
+          Fs.set_permissions binary_path (Fs.Permissions.of_mode (mode lor 0o111))
+          |> Result.map ~fn:(fun () -> path)
+          |> Result.map_err ~fn:(fun err ->
+              "failed to mark binary executable: " ^ IO.error_message err)
+  in
   let find_binary_export (result: Riot_executor.Package_builder.build_result) =
     if String.equal result.package.name package_name then
       match result.status with
@@ -150,7 +168,8 @@ let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~package_name ~bina
   })
   | Some export_entry -> (
       match Riot_store.Store.export_source_path store export_entry with
-      | Some path -> Ok (Path.to_string path)
+      | Some path -> ensure_executable_binary_path (Path.to_string path)
+      |> Result.map_err ~fn:(fun reason -> ArtifactNotFound { package_name; binary_name; reason })
       | None -> Error (ArtifactNotFound {
         package_name;
         binary_name;

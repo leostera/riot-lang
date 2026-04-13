@@ -116,13 +116,16 @@ let compare_suite_binary = fun left right ->
 let requested_packages = fun suites ->
   suites |> List.map ~fn:(fun (suite: suite_binary) -> suite.package_name) |> List.unique ~compare:String.compare
 
-let collect_suite_binaries = fun (workspace: Riot_model.Workspace.t) ?package_filter ?suite_filter () ->
-  workspace.packages
+let realized_test_packages = fun ?package_filter (workspace: Riot_model.Workspace.t) ->
+  Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Test workspace
   |> List.filter ~fn:Riot_model.Package.is_workspace_member
   |> List.filter ~fn:(fun (pkg: Riot_model.Package.t) ->
       match package_filter with
       | None -> true
       | Some package_name -> String.equal pkg.name package_name)
+
+let collect_suite_binaries = fun (workspace: Riot_model.Workspace.t) ?package_filter ?suite_filter () ->
+  realized_test_packages ?package_filter workspace
   |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
       List.filter_map pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
           if is_test_binary_name bin.name && (
@@ -136,7 +139,7 @@ let collect_suite_binaries = fun (workspace: Riot_model.Workspace.t) ?package_fi
   |> List.sort ~compare:compare_suite_binary
 
 let find_suite_source_path = fun ~(workspace:Riot_model.Workspace.t) (suite: suite_binary) ->
-  match List.find workspace.packages ~fn:(fun (pkg: Riot_model.Package.t) ->
+  match List.find (realized_test_packages workspace) ~fn:(fun (pkg: Riot_model.Package.t) ->
     String.equal pkg.name suite.package_name) with
   | None -> None
   | Some pkg ->
@@ -594,6 +597,21 @@ let test_event_to_json = function
       ])
 
 let find_suite_binary_path = fun ~(store:Riot_store.Store.t) ~(suite:suite_binary) results ->
+  let ensure_executable_binary_path = fun path ->
+    let binary_path = Path.v path in
+    match Fs.metadata binary_path with
+    | Error err ->
+        Error ("failed to read suite binary metadata: " ^ IO.error_message err)
+    | Ok metadata ->
+        let mode = Fs.Metadata.mode metadata in
+        if mode land 0o111 != 0 then
+          Ok path
+        else
+          Fs.set_permissions binary_path (Fs.Permissions.of_mode (mode lor 0o111))
+          |> Result.map ~fn:(fun () -> path)
+          |> Result.map_err ~fn:(fun err ->
+              "failed to mark suite binary executable: " ^ IO.error_message err)
+  in
   let find_suite_export (result: Riot_executor.Package_builder.build_result) =
     if String.equal result.package.name suite.package_name then
       match result.status with
@@ -614,7 +632,8 @@ let find_suite_binary_path = fun ~(store:Riot_store.Store.t) ~(suite:suite_binar
   })
   | Some export_entry -> (
       match Riot_store.Store.export_source_path store export_entry with
-      | Some path -> Ok (Path.to_string path)
+      | Some path -> ensure_executable_binary_path (Path.to_string path)
+      |> Result.map_err ~fn:(fun reason -> SuiteArtifactNotFound { suite; reason })
       | None -> Error (SuiteArtifactNotFound {
         suite;
         reason = "suite '" ^ suite.suite_name ^ "' resolved to an invalid absolute export path"

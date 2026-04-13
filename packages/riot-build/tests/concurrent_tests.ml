@@ -39,17 +39,11 @@ let test_concurrent_builds_different_packages = fun _ctx ->
         let pkg1 = make_package tmpdir "pkg-1" "let x = 1" in
         let pkg2 = make_package tmpdir "pkg-2" "let x = 2" in
         let workspace =
-          Riot_model.Workspace.{
-            name = None;
-            root = tmpdir;
-            target_dir_root =
-              Path.(tmpdir / Path.v "target");
-            packages = [ pkg1; pkg2 ];
-            dependencies = [];
-            dev_dependencies = [];
-            build_dependencies = [];
-            profile_overrides = [];
-          }
+          Riot_model.Workspace.make_realized
+            ~root:tmpdir
+            ~packages:[ pkg1; pkg2 ]
+            ~target_dir:(Path.to_string Path.(Path.v "target"))
+            ()
         in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"Failed to initialize toolchain" in
@@ -146,17 +140,11 @@ let test_concurrent_builds_same_package = fun _ctx ->
       (fun tmpdir ->
         let package = make_package tmpdir "test-pkg" "let x = 42" in
         let workspace =
-          Riot_model.Workspace.{
-            name = None;
-            root = tmpdir;
-            target_dir_root =
-              Path.(tmpdir / Path.v "target");
-            packages = [ package ];
-            dependencies = [];
-            dev_dependencies = [];
-            build_dependencies = [];
-            profile_overrides = [];
-          }
+          Riot_model.Workspace.make_realized
+            ~root:tmpdir
+            ~packages:[ package ]
+            ~target_dir:(Path.to_string Path.(Path.v "target"))
+            ()
         in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"Failed to initialize toolchain" in
@@ -249,17 +237,11 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
       (fun tmpdir ->
         let package = make_package tmpdir "test-pkg" "let x = 42" in
         let workspace =
-          Riot_model.Workspace.{
-            name = None;
-            root = tmpdir;
-            target_dir_root =
-              Path.(tmpdir / Path.v "target");
-            packages = [ package ];
-            dependencies = [];
-            dev_dependencies = [];
-            build_dependencies = [];
-            profile_overrides = [];
-          }
+          Riot_model.Workspace.make_realized
+            ~root:tmpdir
+            ~packages:[ package ]
+            ~target_dir:(Path.to_string Path.(Path.v "target"))
+            ()
         in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"Failed to initialize toolchain" in
