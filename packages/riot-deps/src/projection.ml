@@ -21,7 +21,7 @@ let package_id_key = fun (id: Riot_model.Lockfile.package_id) ->
   in
   registry ^ ":" ^ id.name ^ ":" ^ version
 
-let workspace_package_id_of_package = fun (package: Riot_model.Package.t) ->
+let workspace_package_id_of_package = fun (package: Riot_model.Package_manifest.t) ->
   Riot_model.Lockfile.{ registry = None; name = package.name; version = None; sha256 = None }
 
 let find_lock_package_by_id = fun ~(package_id:Riot_model.Lockfile.package_id) ~(lockfile:Riot_model.Lockfile.t) ->
@@ -29,10 +29,10 @@ let find_lock_package_by_id = fun ~(package_id:Riot_model.Lockfile.package_id) ~
     lockfile.packages
     ~fn:(fun (lock_package: Riot_model.Lockfile.package) -> lock_package.id = package_id)
 
-let find_workspace_package_by_id = fun ~(package_id:Riot_model.Lockfile.package_id) ~(packages:Riot_model.Package.t list) ->
+let find_workspace_package_by_id = fun ~(package_id:Riot_model.Lockfile.package_id) ~(packages:Riot_model.Package_manifest.t list) ->
   List.find
     packages
-    ~fn:(fun (package: Riot_model.Package.t) -> workspace_package_id_of_package package = package_id)
+    ~fn:(fun (package: Riot_model.Package_manifest.t) -> workspace_package_id_of_package package = package_id)
 
 let materialized_root_of_lock_package = fun ~materialize_emit ~registry ~workspace_root ~(lock_package:Riot_model.Lockfile.package) ->
   match lock_package.provenance with
@@ -139,11 +139,11 @@ let load_external_package = fun ~emit ~materialize_emit ~registry ~workspace_roo
               emit_failed err;
               err)
 
-let load_package_for_lock_package = fun ~emit ~materialize_emit ~registry ~workspace_root ~(packages:Riot_model.Package.t list) ~(lock_package:Riot_model.Lockfile.package) ->
+let load_package_for_lock_package = fun ~emit ~materialize_emit ~registry ~workspace_root ~(packages:Riot_model.Package_manifest.t list) ~(lock_package:Riot_model.Lockfile.package) ->
   match lock_package.provenance with
   | Riot_model.Lockfile.Workspace -> (
       match find_workspace_package_by_id ~package_id:lock_package.id ~packages with
-      | Some package -> Ok package
+      | Some package -> Ok (Riot_model.Package_manifest.realize ~intent:Riot_model.Package.Runtime package)
       | None -> Error (Error.ProjectionFailed {
         error = "workspace package '" ^ lock_package.id.name ^ "' was not provided to projection"
       })
@@ -162,7 +162,7 @@ let resolve_dependency_ids = fun (resolved: Riot_model.Package.resolved) ->
   @ List.map resolved.build_resolved ~fn:(fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id)
   @ List.map resolved.dev_resolved ~fn:(fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id)
 
-let rec resolve_package_graph = fun ~emit ~materialize_emit ~registry ~workspace_root ~(packages:Riot_model.Package.t list) ~(lockfile:Riot_model.Lockfile.t) seen acc pending ->
+let rec resolve_package_graph = fun ~emit ~materialize_emit ~registry ~workspace_root ~(packages:Riot_model.Package_manifest.t list) ~(lockfile:Riot_model.Lockfile.t) seen acc pending ->
   match pending with
   | [] -> Ok (List.reverse acc)
   | package_id :: rest ->

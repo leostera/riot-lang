@@ -346,7 +346,7 @@ let load_source_dependency = fun ~(emit:event_sink) ~raw ->
     | Ok relative_path -> relative_path
     | Error _ -> Path.v "."
   in
-  let* package = Riot_model.Package.from_toml
+  let* package = Riot_model.Package_manifest.from_toml
     toml
     ~workspace_deps:[]
     ~workspace_dev_deps:[]
@@ -398,14 +398,14 @@ let select_materialized_package = fun ~(workspace:Riot_model.Workspace.t) ?prefe
           match
             List.find
               workspace.packages
-              ~fn:(fun (pkg: Riot_model.Package.t) -> String.equal pkg.name preferred_package_name)
+              ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> String.equal pkg.name preferred_package_name)
           with
           | Some pkg -> Ok pkg.name
           | None ->
               match workspace.packages with
               | [ pkg ] -> Ok pkg.name
               | _ -> (
-                  match List.filter workspace.packages ~fn:Riot_model.Package.is_workspace_member with
+                  match List.filter workspace.packages ~fn:Riot_model.Package_manifest.is_workspace_member with
                   | [ pkg ] -> Ok pkg.name
                   | _ -> Error (MaterializedPackageNotFound {
                     package_root;
@@ -417,7 +417,7 @@ let select_materialized_package = fun ~(workspace:Riot_model.Workspace.t) ?prefe
           match workspace.packages with
           | [ pkg ] -> Ok pkg.name
           | _ -> (
-              match List.filter workspace.packages ~fn:Riot_model.Package.is_workspace_member with
+              match List.filter workspace.packages ~fn:Riot_model.Package_manifest.is_workspace_member with
               | [ pkg ] -> Ok pkg.name
               | _ -> Error (MaterializedPackageNotFound {
                 package_root;
@@ -465,7 +465,7 @@ let decode_detached_package = fun ~package_root ->
   let manifest_path = Path.(package_root / Path.v "riot.toml") in
   let* source = Fs.read_to_string manifest_path |> Result.map_err ~fn:(fun err -> IO.error_message err) in
   let* toml = Data.Toml.parse source |> Result.map_err ~fn:Data.Toml.error_to_string in
-  Riot_model.Package.from_toml
+  Riot_model.Package_manifest.from_toml
     toml
     ~workspace_deps:[]
     ~workspace_dev_deps:[]
@@ -473,7 +473,7 @@ let decode_detached_package = fun ~package_root ->
     ~path:package_root
     ~relative_path:(Path.v ".")
 
-let dependency_lists_for_package = fun scope (pkg: Riot_model.Package.t) ->
+let dependency_lists_for_package = fun scope (pkg: Riot_model.Package_manifest.t) ->
   match scope with
   | Runtime -> pkg.dependencies
   | Build -> pkg.build_dependencies
@@ -526,7 +526,7 @@ let select_current_package = fun ~(workspace:Riot_model.Workspace.t) ~cwd ->
   match Riot_model.Workspace.find_package_for_path workspace ~path:cwd with
   | Some pkg -> Ok pkg
   | None -> (
-      match List.filter workspace.packages ~fn:Riot_model.Package.is_workspace_member with
+      match List.filter workspace.packages ~fn:Riot_model.Package_manifest.is_workspace_member with
       | [ pkg ] -> Ok pkg
       | _ -> Error (CurrentPackageNotFound { cwd })
     )
@@ -545,8 +545,8 @@ let target_manifest = fun ~(workspace:Riot_model.Workspace.t) ~cwd selection sco
   | Package package_name -> (
       match
         workspace.packages
-        |> List.filter ~fn:Riot_model.Package.is_workspace_member
-        |> List.find ~fn:(fun (pkg: Riot_model.Package.t) -> String.equal pkg.name package_name)
+        |> List.filter ~fn:Riot_model.Package_manifest.is_workspace_member
+        |> List.find ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> String.equal pkg.name package_name)
       with
       | Some pkg ->
           let path = Path.(pkg.path / Path.v "riot.toml") in
@@ -747,7 +747,7 @@ let load_source_workspace = fun ?(emit = no_emit) ?workspace_manager ?(update = 
   let selected_package =
     List.find
       loaded.workspace.packages
-      ~fn:(fun (pkg: Riot_model.Package.t) -> String.equal pkg.name loaded.package_name)
+      ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> String.equal pkg.name loaded.package_name)
   in
   if emit_materialization_events then
     emit
@@ -857,7 +857,7 @@ let load_registry_workspace = fun ?(emit = no_emit) ?registry ?workspace_manager
         registry = registry_name;
         error = Data.Toml.error_to_string err
       }) in
-  let* package = Riot_model.Package.from_toml
+  let* package = Riot_model.Package_manifest.from_toml
     toml
     ~workspace_deps:[]
     ~workspace_dev_deps:[]

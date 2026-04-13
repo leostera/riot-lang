@@ -10,17 +10,11 @@ let legacy_planner_artifacts_version = "planner-artifacts:v12"
 let explicit_root_library_path_fix_planner_artifacts_version = "planner-artifacts:v12"
 
 let make_test_workspace = fun tmpdir packages ->
-  Riot_model.Workspace.{
-    name = None;
-    root = tmpdir;
-    target_dir_root =
-      Path.(tmpdir / Path.v "target");
-    packages;
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    profile_overrides = [];
-  }
+  Riot_model.Workspace.make_realized
+    ~root:tmpdir
+    ~packages
+    ~target_dir:"target"
+    ()
 
 let make_package = fun tmpdir name ->
   let pkg_dir = Path.(tmpdir / Path.v name) in
@@ -40,7 +34,8 @@ let clone_workspace_with_target = fun (workspace: Riot_model.Workspace.t) ~targe
     ()
 
 let find_package_by_name = fun (workspace: Riot_model.Workspace.t) name ->
-  List.find workspace.packages ~fn:(fun (pkg: Riot_model.Package.t) -> String.equal pkg.name name)
+  Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Dev workspace
+  |> List.find ~fn:(fun (pkg: Riot_model.Package.t) -> String.equal pkg.name name)
 
 let plan_graph_package = fun ~workspace ~store ~package_graph ~package_key ~build_ctx ->
   match Riot_planner.Package_graph.get_node_by_key package_graph package_key with
@@ -501,7 +496,7 @@ let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ?(de
       | { workspace=true; _ } -> (
           match List.find
             workspace.Riot_model.Workspace.packages
-            ~fn:(fun (p: Riot_model.Package.t) -> p.name = dep.name)
+            ~fn:(fun (p: Riot_model.Package_manifest.t) -> p.name = dep.name)
           with
           | Some dep_pkg ->
               H.write state (Path.to_string dep_pkg.path);

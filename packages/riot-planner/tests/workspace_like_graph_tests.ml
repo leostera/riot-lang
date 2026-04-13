@@ -30,16 +30,10 @@ let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dep
     ()
 
 let make_workspace = fun packages ->
-  Workspace.{
-    name = None;
-    root = Path.v "/tmp/workspace_like_graph_tests";
-    target_dir_root = Path.v "/tmp/workspace_like_graph_tests/_build";
-    packages;
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    profile_overrides = [];
-  }
+  Workspace.make_realized
+    ~root:(Path.v "/tmp/workspace_like_graph_tests")
+    ~packages
+    ()
 
 let node_for = fun graph package_name scope ->
   Package_graph.package_key ~package_name scope

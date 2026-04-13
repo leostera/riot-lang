@@ -30,16 +30,10 @@ let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dep
     ()
 
 let make_workspace = fun packages ->
-  Workspace.{
-    name = None;
-    root = Path.v "/tmp/workspace_planner_target_tests";
-    target_dir_root = Path.v "/tmp/workspace_planner_target_tests/_build";
-    packages;
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    profile_overrides = [];
-  }
+  Workspace.make_realized
+    ~root:(Path.v "/tmp/workspace_planner_target_tests")
+    ~packages
+    ()
 
 let plan_workspace = fun workspace target scope ->
   Workspace_planner.plan_workspace ~workspace ~target ~scope ~load_errors:[]

@@ -73,17 +73,11 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
           ()
         in
         let workspace =
-          Riot_model.Workspace.{
-            name = None;
-            root = tmpdir;
-            target_dir_root =
-              Path.(tmpdir / Path.v "target");
-            packages = [ package ];
-            dependencies = [];
-            dev_dependencies = [];
-            build_dependencies = [];
-            profile_overrides = [];
-          }
+          Riot_model.Workspace.make_realized
+            ~root:tmpdir
+            ~packages:[ package ]
+            ~target_dir:"target"
+            ()
         in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"expected toolchain init to succeed" in
@@ -194,17 +188,11 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
           ()
         in
         let workspace =
-          Riot_model.Workspace.{
-            name = None;
-            root = tmpdir;
-            target_dir_root =
-              Path.(tmpdir / Path.v "target");
-            packages = [ package ];
-            dependencies = [];
-            dev_dependencies = [];
-            build_dependencies = [];
-            profile_overrides = [];
-          }
+          Riot_model.Workspace.make_realized
+            ~root:tmpdir
+            ~packages:[ package ]
+            ~target_dir:"target"
+            ()
         in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"expected toolchain init to succeed" in
@@ -285,17 +273,11 @@ let test_module_graph_uses_explicit_root_library_path = fun _ctx ->
           ()
         in
         let workspace =
-          Riot_model.Workspace.{
-            name = None;
-            root = tmpdir;
-            target_dir_root =
-              Path.(tmpdir / Path.v "target");
-            packages = [ package ];
-            dependencies = [];
-            dev_dependencies = [];
-            build_dependencies = [];
-            profile_overrides = [];
-          }
+          Riot_model.Workspace.make_realized
+            ~root:tmpdir
+            ~packages:[ package ]
+            ~target_dir:"target"
+            ()
         in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"expected toolchain init to succeed" in
@@ -376,17 +358,11 @@ let test_module_graph_uses_explicit_root_library_path_case_insensitively = fun _
           ()
         in
         let workspace =
-          Riot_model.Workspace.{
-            name = None;
-            root = tmpdir;
-            target_dir_root =
-              Path.(tmpdir / Path.v "target");
-            packages = [ package ];
-            dependencies = [];
-            dev_dependencies = [];
-            build_dependencies = [];
-            profile_overrides = [];
-          }
+          Riot_model.Workspace.make_realized
+            ~root:tmpdir
+            ~packages:[ package ]
+            ~target_dir:"target"
+            ()
         in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"expected toolchain init to succeed" in
@@ -486,17 +462,11 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
           ()
         in
         let workspace =
-          Riot_model.Workspace.{
-            name = None;
-            root = tmpdir;
-            target_dir_root =
-              Path.(tmpdir / Path.v "target");
-            packages = [ package ];
-            dependencies = [];
-            dev_dependencies = [];
-            build_dependencies = [];
-            profile_overrides = [];
-          }
+          Riot_model.Workspace.make_realized
+            ~root:tmpdir
+            ~packages:[ package ]
+            ~target_dir:"target"
+            ()
         in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"expected toolchain init to succeed" in

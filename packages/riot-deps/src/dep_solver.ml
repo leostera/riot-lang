@@ -33,10 +33,10 @@ type resolution_state = {
   resolved: (string * Riot_model.Lockfile.package) list;
 }
 
-let package_id_of_local_package = fun (pkg: Riot_model.Package.t) ->
+let package_id_of_local_package = fun (pkg: Riot_model.Package_manifest.t) ->
   Riot_model.Lockfile.{ registry = None; name = pkg.name; version = None; sha256 = None }
 
-let package_id_of_source_package = fun (pkg: Riot_model.Package.t) ->
+let package_id_of_source_package = fun (pkg: Riot_model.Package_manifest.t) ->
   Riot_model.Lockfile.{
     registry = None;
     name = pkg.name;
@@ -44,7 +44,7 @@ let package_id_of_source_package = fun (pkg: Riot_model.Package.t) ->
     sha256 = None
   }
 
-let required_by_local_package = fun (pkg: Riot_model.Package.t) ->
+let required_by_local_package = fun (pkg: Riot_model.Package_manifest.t) ->
   Riot_model.Pm_error.{ package = pkg.name; path = Some pkg.path }
 
 let resolve_dependency_root = fun ~declared_from dep_path ->
@@ -97,7 +97,7 @@ let load_path_dependency_package = fun ~declared_from ~dependency_name dep_path 
     dependency_path = dep_path;
     error = err
   })
-  | Ok toml -> Riot_model.Package.from_toml
+  | Ok toml -> Riot_model.Package_manifest.from_toml
     toml
     ~workspace_deps:[]
     ~workspace_dev_deps:[]
@@ -142,7 +142,7 @@ let load_source_dependency_package = fun ~dependency_name ~source_locator ~ref_ 
     | Ok relative_path -> relative_path
     | Error _ -> Path.v "."
   in
-  Riot_model.Package.from_toml
+  Riot_model.Package_manifest.from_toml
     toml
     ~workspace_deps:[]
     ~workspace_dev_deps:[]
@@ -173,15 +173,15 @@ let path_resolution_key = fun ~package_root -> "path:" ^ Path.to_string (Path.no
 let source_resolution_key = fun ~source_locator ~ref_ ->
   "source:" ^ source_locator ^ "#" ^ Option.unwrap_or ~default:"main" ref_
 
-let find_workspace_package_by_name = fun ~(workspace_packages:Riot_model.Package.t list) ~package_name ->
+let find_workspace_package_by_name = fun ~(workspace_packages:Riot_model.Package_manifest.t list) ~package_name ->
   List.find workspace_packages
-    ~fn:(fun (pkg: Riot_model.Package.t) ->
+    ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
       String.equal pkg.name package_name)
 
-let find_workspace_package_by_root = fun ~(workspace_packages:Riot_model.Package.t list) ~package_root ->
+let find_workspace_package_by_root = fun ~(workspace_packages:Riot_model.Package_manifest.t list) ~package_root ->
   let package_root = Path.normalize package_root in
   List.find workspace_packages
-    ~fn:(fun (pkg: Riot_model.Package.t) ->
+    ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
       Path.equal (Path.normalize pkg.path) package_root)
 
 let empty_resolution_state = { resolving = []; resolved = [] }
@@ -274,7 +274,7 @@ let dependency_counts = fun (packages: Riot_model.Lockfile.package list) ->
       ))
 
 let rec lock_package_of_local_package = fun ~(ctx:context) ~state ~provenance (
-  pkg: Riot_model.Package.t
+  pkg: Riot_model.Package_manifest.t
 ) ->
   let required_by = Some (required_by_local_package pkg) in
   match resolve_manifest_dependencies ~ctx ~state ~required_by ~declared_from:pkg.path [] [] pkg.dependencies with
@@ -786,7 +786,7 @@ and resolve_manifest_dependencies = fun ~(ctx:context) ~state ~required_by ~decl
         )
     )
 
-let lock_package_of_workspace_package = fun ~(ctx:context) ~state (pkg: Riot_model.Package.t) ->
+let lock_package_of_workspace_package = fun ~(ctx:context) ~state (pkg: Riot_model.Package_manifest.t) ->
   lock_package_of_local_package ~ctx ~state ~provenance:Riot_model.Lockfile.Workspace pkg
 
 let rec lock_packages = fun ~(ctx:context) ~state acc_workspace acc_external packages ->
@@ -805,7 +805,7 @@ let rec lock_packages = fun ~(ctx:context) ~state acc_workspace acc_external pac
 
 let keep_existing_package = fun workspace_packages (pkg: Riot_model.Lockfile.package) ->
   let workspace_names =
-    List.map workspace_packages ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.name)
+    List.map workspace_packages ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.name)
   in
   not (List.contains workspace_names ~value:pkg.id.name)
 
@@ -869,7 +869,7 @@ let pubgrub_version_compare = fun left right ->
   | Gt -> 1
 
 type local_entry = {
-  package: Riot_model.Package.t;
+  package: Riot_model.Package_manifest.t;
   provenance: Riot_model.Lockfile.provenance;
 }
 
@@ -882,7 +882,7 @@ type catalog = {
   requested_requirements: (string, string list) HashMap.t;
 }
 
-let local_solver_version = fun (pkg: Riot_model.Package.t) ->
+let local_solver_version = fun (pkg: Riot_model.Package_manifest.t) ->
   match pkg.publish.version with
   | Some version -> version
   | None -> pubgrub_root_version
@@ -933,7 +933,7 @@ let register_local_entry = fun (catalog: catalog) (entry: local_entry) ->
 let register_workspace_packages = fun (catalog: catalog) packages ->
   let rec loop = function
     | [] -> Ok ()
-    | (pkg: Riot_model.Package.t) :: rest ->
+    | (pkg: Riot_model.Package_manifest.t) :: rest ->
         let* () = register_local_entry
           catalog
           { package = pkg; provenance = Riot_model.Lockfile.Workspace } in
@@ -1021,7 +1021,7 @@ let requested_requirement_for_package = fun (catalog: catalog) package_name ->
 
 let validate_source_requirement = fun ~dependency_name ~source_locator (
   dep: Riot_model.Package.dependency
-) (pkg: Riot_model.Package.t) ->
+) (pkg: Riot_model.Package_manifest.t) ->
   match dep.source.version, pkg.publish.version with
   | Some requirement, Some version when Std.Version.matches requirement version -> Ok ()
   | Some requirement, Some version -> Error (Error.Unexpected {
@@ -1412,14 +1412,14 @@ let provider_dependencies_of_local_entry = fun (catalog: catalog) (entry: local_
     catalog
     ~declared_from:entry.package.path
     ~required_by:(Some (required_by_local_package entry.package))
-    (Riot_model.Package.all_dependencies entry.package)
+    (Riot_model.Package_manifest.all_dependencies entry.package)
   |> Result.map ~fn:(fun deps -> Pubgrub.Provider.Available deps)
 
 let provider_dependencies_of_root = fun (catalog: catalog) (
-  workspace_packages: Riot_model.Package.t list
+  workspace_packages: Riot_model.Package_manifest.t list
 ) ->
   let workspace_deps =
-    List.map workspace_packages ~fn:(fun (pkg: Riot_model.Package.t) -> (pkg.name, Pubgrub.full))
+    List.map workspace_packages ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> (pkg.name, Pubgrub.full))
   in
   let* runtime_deps = provider_dependencies_of_manifest
     catalog
@@ -1708,12 +1708,12 @@ let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace 
     workspace;
   }
   in
-  let workspace_packages = List.filter workspace.packages ~fn:Riot_model.Package.is_workspace_member in
+  let workspace_packages = List.filter workspace.packages ~fn:Riot_model.Package_manifest.is_workspace_member in
   let catalog = create_catalog ~ctx in
   let* () = register_workspace_packages catalog workspace_packages in
   emit
     (Riot_model.Event.DependencyUniverseBuilding {
-      packages = List.map workspace_packages ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.name)
+      packages = List.map workspace_packages ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.name)
     });
   let provider = provider_of_catalog catalog workspace_packages in
   match Pubgrub.solve provider pubgrub_root_package pubgrub_root_version with
@@ -1725,7 +1725,7 @@ let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace 
       let selected_versions = selected_versions_of_solution solution in
       let rec lock_workspace_packages acc = function
         | [] -> Ok (List.reverse acc)
-        | (pkg: Riot_model.Package.t) :: rest ->
+        | (pkg: Riot_model.Package_manifest.t) :: rest ->
             let* lock_package = lock_package_of_local_entry
               catalog
               ~selected_versions
@@ -1738,7 +1738,7 @@ let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace 
             not
               (
                 List.any workspace_packages
-                  ~fn:(fun (pkg: Riot_model.Package.t) ->
+                  ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
                     String.equal pkg.name package_name)
               ) && not (String.equal package_name pubgrub_root_package) && match HashMap.get
               selected_versions

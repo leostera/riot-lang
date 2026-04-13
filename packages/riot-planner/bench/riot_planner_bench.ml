@@ -34,16 +34,7 @@ let write_file = fun path contents ->
   Fs.write contents path |> Result.expect ~msg:"write bench file should succeed"
 
 let make_workspace = fun ~root ~packages ->
-  Workspace.{
-    name = None;
-    root;
-    target_dir_root = Path.(root / Path.v "_build");
-    packages;
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    profile_overrides = [];
-  }
+  Workspace.make_realized ~root ~packages ()
 
 let make_workspace_package = fun ~root ~name ~dependencies ~dev_dependencies ~build_dependencies ->
   Package.make

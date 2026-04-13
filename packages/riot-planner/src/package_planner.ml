@@ -368,7 +368,7 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
       (* Package.hash already includes dep name and source, we just add workspace-specific details *)
       match dep.source with
       | { Package.workspace=true; _ } -> (
-          match List.find workspace.Workspace.packages ~fn:(fun (p: Package.t) -> p.name = dep.name) with
+          match List.find workspace.Workspace.packages ~fn:(fun (p: Package_manifest.t) -> p.name = dep.name) with
           | Some dep_pkg -> (
               H.write state (Path.to_string dep_pkg.path);
               match dep_pkg.library with

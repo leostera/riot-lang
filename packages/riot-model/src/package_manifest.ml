@@ -35,6 +35,30 @@ type t = Package.manifest_spec = {
   publish: publish_metadata;
 }
 
+let of_package = fun (pkg: Package.t) ->
+  {
+    name = pkg.name;
+    path = pkg.path;
+    relative_path = pkg.relative_path;
+    dependencies = pkg.dependencies;
+    dev_dependencies = pkg.dev_dependencies;
+    build_dependencies = pkg.build_dependencies;
+    foreign_dependencies = pkg.foreign_dependencies;
+    declared_binaries = pkg.binaries;
+    library = pkg.library;
+    compiler = pkg.compiler;
+    commands = pkg.commands;
+    fix_providers = pkg.fix_providers;
+    publish = pkg.publish;
+  }
+
+let is_workspace_member = fun manifest ->
+  let rel_str = Path.to_string manifest.relative_path in
+  not (String.starts_with ~prefix:"../" rel_str || Path.is_absolute manifest.relative_path)
+
+let all_dependencies = fun manifest ->
+  manifest.dependencies @ manifest.dev_dependencies @ manifest.build_dependencies
+
 let from_toml = Package.parse_manifest_spec
 
 let realize = Package.realize_manifest_spec

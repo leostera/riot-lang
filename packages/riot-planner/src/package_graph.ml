@@ -140,7 +140,17 @@ let projected_package = fun scope pkg ->
   | Runtime -> Package.for_scope Package.Normal pkg
   | Dev -> Package.for_scope Package.Dev pkg
 
-let needs_build_scope_node = fun (pkg: Package.t) -> List.length pkg.build_dependencies > 0
+let needs_build_scope_node = fun (pkg: Package_manifest.t) -> List.length pkg.build_dependencies > 0
+
+let realize_projected_package = fun (workspace: Workspace.t) scope (pkg: Package_manifest.t) ->
+  let intent =
+    match scope with
+    | Build -> Package.Build
+    | Runtime -> Package.Runtime
+    | Dev -> Package.Dev
+  in
+  Workspace.realize_package ~intent pkg
+  |> projected_package scope
 
 let create ~scope (workspace: Workspace.t): (t, create_error) result =
   let graph = G.make () in
@@ -159,14 +169,15 @@ let create ~scope (workspace: Workspace.t): (t, create_error) result =
     | Build ->
         List.for_each
           workspace.packages
-          ~fn:(fun (pkg: Package.t) -> insert_node (projected_package Build pkg) Build)
+          ~fn:(fun (pkg: Package_manifest.t) ->
+            insert_node (realize_projected_package workspace Build pkg) Build)
     | Runtime
     | Dev ->
         List.for_each
           workspace.packages
-          ~fn:(fun (pkg: Package.t) ->
+          ~fn:(fun (pkg: Package_manifest.t) ->
             if needs_build_scope_node pkg then
-              insert_node (projected_package Build pkg) Build)
+              insert_node (realize_projected_package workspace Build pkg) Build)
   );
   (
     match scope with
@@ -175,20 +186,22 @@ let create ~scope (workspace: Workspace.t): (t, create_error) result =
     | Dev ->
         List.for_each
           workspace.packages
-          ~fn:(fun (pkg: Package.t) -> insert_node (projected_package Runtime pkg) Runtime)
+          ~fn:(fun (pkg: Package_manifest.t) ->
+            insert_node (realize_projected_package workspace Runtime pkg) Runtime)
   );
   (
     match scope with
     | Dev ->
         List.for_each
           workspace.packages
-          ~fn:(fun (pkg: Package.t) -> insert_node (projected_package Dev pkg) Dev)
+          ~fn:(fun (pkg: Package_manifest.t) ->
+            insert_node (realize_projected_package workspace Dev pkg) Dev)
     | Build
     | Runtime -> ()
   );
   List.for_each
     workspace.packages
-    ~fn:(fun (pkg: Package.t) ->
+    ~fn:(fun (pkg: Package_manifest.t) ->
       let add_dep_edge ~from_scope dep_name =
         match HashMap.get name_to_node ~key:(package_key ~package_name:pkg.name from_scope) with
         | None -> ()

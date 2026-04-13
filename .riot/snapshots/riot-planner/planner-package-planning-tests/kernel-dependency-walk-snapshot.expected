@@ -761,7 +761,6 @@ MLI(Kernel__Effect)
 
 ML(Kernel__Thread)
   deps:
-    - ML(Kernel__Thread__Unix)
     - ML(Kernel__System_error)
     - ML(Kernel__Sync)
     - ML(Kernel__Ptr)

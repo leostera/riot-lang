@@ -1,5 +1,7 @@
 open Std
 
+module Package_manifest = Riot_model.Package_manifest
+
 let registry_version = "0.0.1"
 
 let bench_config: Bench.bench_config = { iterations = 20; warmup = 3 }
@@ -155,7 +157,7 @@ let prepare_fixture = fun root ->
     ~path:app_root
     ~relative_path:app_relative
     ~dependencies:[ { name = root_dependency; source = dependency_source Std.Version.any } ] in
-  let workspace = Riot_model.Workspace.make
+  let workspace = Riot_model.Workspace.make_realized
     ~root:workspace_root
     ~packages:[ app_package ]
     ~dependencies:[]
@@ -220,7 +222,7 @@ let bench_projection_warm = fun (fixture: fixture) () ->
     Riot_deps.Projection.resolve_packages
       ~registry:fixture.registry
       ~workspace_root:fixture.workspace.root
-      ~packages:[ fixture.app_package ]
+      ~packages:[ Package_manifest.of_package fixture.app_package ]
       ~lockfile:fixture.lockfile
       ()
     |> Result.expect ~msg:"expected warm projection benchmark to succeed"

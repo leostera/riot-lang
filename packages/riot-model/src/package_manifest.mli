@@ -21,6 +21,12 @@ type foreign_dependency = Package.foreign_dependency
 
 type t = Package.manifest_spec
 
+val of_package: Package.t -> t
+
+val is_workspace_member: t -> bool
+
+val all_dependencies: t -> dependency list
+
 val from_toml:
   Std.Data.Toml.value ->
   workspace_deps:dependency list ->

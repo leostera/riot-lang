@@ -1,5 +1,6 @@
 open Std
 module Test = Std.Test
+module Package_manifest = Riot_model.Package_manifest
 
 let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
   Riot_model.Package.{
@@ -121,9 +122,12 @@ let workspace_package = fun ~workspace_root (pkg: Riot_model.Package.t) ->
     ()
   | Error _ -> pkg
 
+let manifests_of_packages = fun packages ->
+  List.map packages ~fn:Package_manifest.of_package
+
 let make_workspace = fun ?(workspace_root = Path.v "/workspace") ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) packages ->
   let packages = List.map packages ~fn:(workspace_package ~workspace_root) in
-  Riot_model.Workspace.make
+  Riot_model.Workspace.make_realized
     ~root:workspace_root
     ~packages
     ~dependencies
@@ -2210,7 +2214,7 @@ let test_ensure_workspace_projects_materialized_registry_packages = fun _ctx ->
         ~fix_providers:app_pkg.fix_providers
         ~publish:app_pkg.publish
         () in
-      let workspace = Riot_model.Workspace.make ~root:workspace_root ~packages:[ app_pkg ] () in
+      let workspace = Riot_model.Workspace.make_realized ~root:workspace_root ~packages:[ app_pkg ] () in
       let registry = Pkgs_ml.Registry.in_memory ~cache:registry_cache ~packages:[
         make_registry_document
           ~name:"std"
@@ -2236,7 +2240,7 @@ version = "0.2.0"
       | Ok resolved_workspace ->
           let std_pkg =
             List.find resolved_workspace.packages
-              ~fn:(fun (pkg: Riot_model.Package.t) ->
+              ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
                 String.equal pkg.name "std")
           in
           let expected_std_root = Pkgs_ml.Registry_cache.package_src_dir
@@ -2246,7 +2250,7 @@ version = "0.2.0"
           match std_pkg with
           | Some std_pkg ->
               if
-                List.map resolved_workspace.packages ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.name)
+                List.map resolved_workspace.packages ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.name)
                 = [ "app"; "std" ]
                 && Path.equal std_pkg.path expected_std_root
               then
@@ -2269,7 +2273,7 @@ let test_projection_resolves_workspace_packages = fun _ctx ->
   match Riot_deps.Projection.resolve_packages
     ~registry:(make_registry [])
     ~workspace_root:(Path.v "/workspace")
-    ~packages:[ app_pkg; std_pkg ]
+    ~packages:(manifests_of_packages [ app_pkg; std_pkg ])
     ~lockfile
     () with
   | Error err -> Error ("expected projection to resolve workspace packages: " ^ pm_error_message err)
@@ -2391,7 +2395,7 @@ version = "1.0.0"
             ~emit
             ~registry
             ~workspace_root
-            ~packages:[ app_pkg ]
+            ~packages:(manifests_of_packages [ app_pkg ])
             ~lockfile
             ()) with
       | Error err -> Error ("expected projection to load external manifests: " ^ pm_error_message err)
@@ -2492,7 +2496,7 @@ kernel = 123
       match Riot_deps.Projection.resolve_packages
         ~registry
         ~workspace_root
-        ~packages:[ app_pkg ]
+        ~packages:(manifests_of_packages [ app_pkg ])
         ~lockfile
         () with
       | Ok _ -> Error "expected invalid external manifest to fail projection"
@@ -2511,7 +2515,7 @@ let test_projection_fails_when_lockfile_is_missing_package = fun _ctx ->
   match Riot_deps.Projection.resolve_packages
     ~registry:(make_registry [])
     ~workspace_root:(Path.v "/workspace")
-    ~packages:[ app_pkg ]
+    ~packages:(manifests_of_packages [ app_pkg ])
     ~lockfile
     () with
   | Ok _ -> Error "expected projection to fail when lockfile is missing package"

@@ -14,14 +14,14 @@ let resolved_edge_count = fun (lockfile: Riot_model.Lockfile.t) ->
     ~fn:(fun total (pkg: Riot_model.Lockfile.package) ->
       total + List.length pkg.dependencies + List.length pkg.build_dependencies + List.length pkg.dev_dependencies)
 
-let manifest_path_for_package = fun (pkg: Riot_model.Package.t) ->
+let manifest_path_for_package = fun (pkg: Riot_model.Package_manifest.t) ->
   Path.(pkg.path / Path.v "riot.toml")
 
 let workspace_manifest_paths = fun (workspace: Riot_model.Workspace.t) ->
   Path.(workspace.root / Path.v "riot.toml") :: List.map workspace.packages ~fn:manifest_path_for_package
 
 let root_packages_for_workspace = fun (workspace: Riot_model.Workspace.t) ->
-  List.filter workspace.packages ~fn:Riot_model.Package.is_workspace_member
+  List.filter workspace.packages ~fn:Riot_model.Package_manifest.is_workspace_member
 
 let lock_package_version_map = fun (lockfile_opt: Riot_model.Lockfile.t option) ->
   match lockfile_opt with
@@ -101,7 +101,7 @@ let ensure_lock = fun ?(emit = no_emit) ?workspace_manager ~mode ~registry ~(wor
               | Dep_solver.Unlock ->
 	                  emit
 	                    (Riot_model.Event.DependencyResolutionStarted {
-	                      packages = List.map packages ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.name);
+	                      packages = List.map packages ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.name);
 	                      mode = `Unlock
 	                    });
                   emit
@@ -135,7 +135,7 @@ let ensure_lock = fun ?(emit = no_emit) ?workspace_manager ~mode ~registry ~(wor
                   else (
 	                    emit
 	                      (Riot_model.Event.DependencyResolutionStarted {
-	                        packages = List.map packages ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.name);
+	                        packages = List.map packages ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.name);
 	                        mode = `Refresh
 	                      });
                     emit
@@ -214,5 +214,6 @@ let ensure_workspace = fun ?(emit = no_emit) ?workspace_manager ~mode ~registry 
   | Error _ as err -> err
   | Ok (_lockfile, resolved_packages) -> Ok {
     workspace
-    with packages = List.map resolved_packages ~fn:(fun (pkg: Riot_model.Package.resolved) -> pkg.package)
+    with packages = List.map resolved_packages ~fn:(fun (pkg: Riot_model.Package.resolved) ->
+      Riot_model.Package_manifest.of_package pkg.package)
   }

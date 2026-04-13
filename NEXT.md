@@ -4,13 +4,17 @@
 
 # Before Announcing
 
+* Bug: riot build doesn't promote binaries with the right permissions?
+
 * Std.Log should be set up by default on the generated template code
+
+* Std.Collections.Proplist : ('key, 'value) list helpers
 
 * riot build takes _ages_ to plan big packages like std: is it syn?
 
 * riot clean should take a build lock to ensure noone is using _build while it tries to clean it
 
-* suri depends on riot-model? how come?
+* suri depends on riot-model? how come? <- this was for the debugger!
 
 * when installing sources in ~/.riot/registry we should make them read-only! 
 
@@ -56,8 +60,6 @@
 * `riot check` should be able to type-check Riot! 
 
 * `riot lsp` doesn't use 200gb of ram
-
-* Std.Random
 
 
 # Next

@@ -783,7 +783,7 @@ version = "0.1.0"
             ^ String.concat "; " (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
           else
             let names = workspace.Riot_model.Workspace.packages
-            |> List.map ~fn:(fun p -> p.Riot_model.Package.name)
+            |> List.map ~fn:(fun (p: Riot_model.Package_manifest.t) -> p.name)
             |> List.sort ~compare:String.compare in
             Test.assert_equal ~expected:[ "app"; "kernel"; "vendor" ] ~actual:names;
             Ok ())
@@ -856,7 +856,7 @@ std = { path = "../std", version = "*" }
             ^ String.concat "; " (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
         else
           let names = workspace.Riot_model.Workspace.packages
-            |> List.map ~fn:(fun p -> p.Riot_model.Package.name)
+            |> List.map ~fn:(fun (p: Riot_model.Package_manifest.t) -> p.name)
             |> List.sort ~compare:String.compare in
             Test.assert_equal ~expected:[ "app" ] ~actual:names;
             Ok ())
@@ -898,23 +898,23 @@ path = "src/demo.ml"
               match workspace.Riot_model.Workspace.packages with
               | [ package ] ->
                   if
-                    String.equal package.Riot_model.Package.name "demo"
-                    && Path.equal package.Riot_model.Package.relative_path (Path.v ".")
+                    String.equal package.name "demo"
+                    && Path.equal package.relative_path (Path.v ".")
                   then
                     Ok ()
                   else
                     Error ("expected detached package scan to synthesize a one-package workspace, got root="
                     ^ Path.to_string workspace.root
                     ^ " package="
-                    ^ package.Riot_model.Package.name
+                    ^ package.name
                     ^ " relative="
-                    ^ Path.to_string package.Riot_model.Package.relative_path)
+                    ^ Path.to_string package.relative_path)
               | packages -> Error ("expected one package, got "
               ^ Int.to_string (List.length packages)
               ^ " root="
               ^ Path.to_string workspace.root
               ^ " names="
-              ^ String.concat ", " (List.map packages ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.name)))
+              ^ String.concat ", " (List.map packages ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.name)))
       in
       let _ =
         match original_dir with
