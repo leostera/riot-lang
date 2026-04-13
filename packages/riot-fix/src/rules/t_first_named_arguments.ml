@@ -29,14 +29,13 @@ let make_diagnostic = fun parameter ->
 
 let diagnostic_for_binding = fun binding ->
   let parameters = Syn.Cst.LetBinding.parameters binding in
-  let has_named_args = List.exists Syn.Cst.Parameter.is_named parameters in
+  let has_named_args = List.any parameters ~fn:Syn.Cst.Parameter.is_named in
   if not has_named_args then
     None
   else
     let positional_params =
       parameters
-      |> List.filter
-        (
+      |> List.filter ~fn:(
           function
           | Syn.Cst.Parameter.Positional _ -> true
           | Syn.Cst.Parameter.Labeled _
@@ -51,11 +50,11 @@ let diagnostic_for_binding = fun binding ->
         if first_name = Some "t" then
           None
         else if
-          List.exists (fun parameter -> Syn.Cst.Parameter.name parameter = Some "t") positional_params
+          List.any positional_params ~fn:(fun parameter -> Syn.Cst.Parameter.name parameter = Some "t")
         then
           positional_params
-          |> List.find_opt (fun parameter -> Syn.Cst.Parameter.name parameter = Some "t")
-          |> Option.map make_diagnostic
+          |> List.find ~fn:(fun parameter -> Syn.Cst.Parameter.name parameter = Some "t")
+          |> Option.map ~fn:make_diagnostic
         else
           None
 
@@ -63,9 +62,10 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.let_bindings_of_structure_item
-  |> List.filter Syn.Cst.LetBinding.is_function
-  |> List.filter_map diagnostic_for_binding
+  |> List.map ~fn:Traversal.let_bindings_of_structure_item
+  |> List.concat
+  |> List.filter ~fn:Syn.Cst.LetBinding.is_function
+  |> List.filter_map ~fn:diagnostic_for_binding
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

@@ -1,6 +1,10 @@
 open Std
 
-let ( let* ) = Result.and_then
+let ( let* ) result fn = Result.and_then result ~fn
+
+let field_value = fun fields ~field ->
+  List.find fields ~fn:(fun (name, _) -> String.equal name field)
+  |> Option.map ~fn:(fun (_, value) -> value)
 
 type config = {
   schema_version: int;
@@ -46,7 +50,7 @@ type package_document = {
 }
 
 let object_field = fun ~context ~field fields ->
-  match List.assoc_opt field fields with
+  match field_value fields ~field with
   | Some value -> Ok value
   | None -> Error (context ^ " is missing required field '" ^ field ^ "'")
 
@@ -63,33 +67,33 @@ let int_field = fun ~context ~field fields ->
   | Ok _ -> Error (context ^ "." ^ field ^ " must be an integer")
 
 let optional_string_field = fun ~field fields ->
-  match List.assoc_opt field fields with
+  match field_value fields ~field with
   | None
   | Some Data.Json.Null -> Ok None
   | Some (Data.Json.String value) -> Ok (Some value)
   | Some _ -> Error ("field '" ^ field ^ "' must be a string when present")
 
 let string_field_with_fallback = fun ~context ~field ~fallback fields ->
-  match List.assoc_opt field fields with
+  match field_value fields ~field with
   | Some (Data.Json.String value) ->
       Ok value
   | Some _ ->
       Error (context ^ "." ^ field ^ " must be a string")
   | None -> (
-      match List.assoc_opt fallback fields with
+      match field_value fields ~field:fallback with
       | Some (Data.Json.String value) -> Ok value
       | Some _ -> Error (context ^ "." ^ fallback ^ " must be a string")
       | None -> Error (context ^ " is missing required field '" ^ field ^ "'")
     )
 
 let optional_string_list_field = fun ~field fields ->
-  match List.assoc_opt field fields with
+  match field_value fields ~field with
   | None
   | Some Data.Json.Null ->
       Ok []
   | Some (Data.Json.Array items) ->
       let rec loop acc = function
-        | [] -> Ok (List.rev acc)
+        | [] -> Ok (List.reverse acc)
         | Data.Json.String value :: rest -> loop (value :: acc) rest
         | _ :: _ -> Error ("field '" ^ field ^ "' must be an array of strings")
       in
@@ -110,7 +114,7 @@ let dependencies_of_json = fun json ->
   match json with
   | Data.Json.Array items ->
       let rec loop acc = function
-        | [] -> Ok (List.rev acc)
+        | [] -> Ok (List.reverse acc)
         | item :: rest -> (
             match dependency_of_json item with
             | Ok dependency -> loop (dependency :: acc) rest
@@ -150,7 +154,7 @@ let release_of_json = fun json ->
       let* dependency_json = object_field ~context:"release" ~field:"dependencies" fields in
       let* dependencies = dependencies_of_json dependency_json in
       let* yanked =
-        match List.assoc_opt "yanked" fields with
+        match field_value fields ~field:"yanked" with
         | None -> Ok false
         | Some (Data.Json.Bool value) -> Ok value
         | Some _ -> Error "release.yanked must be a boolean when present"
@@ -184,7 +188,7 @@ let releases_of_json = fun json ->
   match json with
   | Data.Json.Array items ->
       let rec loop acc = function
-        | [] -> Ok (List.rev acc)
+        | [] -> Ok (List.reverse acc)
         | item :: rest -> (
             match release_of_json item with
             | Ok release -> loop (release :: acc) rest
@@ -247,15 +251,15 @@ let package_prefix = fun package_name ->
   | 0 -> Path.v ""
   | 1 -> Path.v "1"
   | 2 -> Path.v "2"
-  | 3 -> Path.(Path.v "3" / Path.v (String.sub name 0 1))
-  | _ -> Path.(Path.v (String.sub name 0 2) / Path.v (String.sub name 2 2))
+  | 3 -> Path.(Path.v "3" / Path.v (String.sub name ~offset:0 ~len:1))
+  | _ -> Path.(Path.v (String.sub name ~offset:0 ~len:2) / Path.v (String.sub name ~offset:2 ~len:2))
 
 let package_relpath = fun package_name ->
   let name = normalized_name package_name in
   Path.(package_prefix name / Path.v (name ^ ".json"))
 
 let ensure_dir_url = fun url ->
-  if String.length url > 0 && url.[String.length url - 1] = '/' then
+  if String.length url > 0 && String.get_unchecked url ~at:(String.length url - 1) = '/' then
     url
   else
     url ^ "/"
@@ -271,16 +275,16 @@ let package_document_url = fun config ~package_name ->
   match Net.Uri.of_string base_url with
   | Error _ -> Error ("failed to parse sparse index base url '" ^ base_url ^ "'")
   | Ok base -> Net.Uri.join base (Path.to_string (package_relpath package_name))
-  |> Result.map_error
-    (fun _ -> "failed to build sparse index package url for '" ^ package_name ^ "'")
+  |> Result.map_err
+    ~fn:(fun _ -> "failed to build sparse index package url for '" ^ package_name ^ "'")
 
 let release_source_url = fun config (release: release) ->
   let base_url = ensure_dir_url config.artifact_base_url in
   match Net.Uri.of_string base_url with
   | Error _ -> Error ("failed to parse sparse index artifact base url '" ^ base_url ^ "'")
   | Ok base -> Net.Uri.join base release.source_key
-  |> Result.map_error
-    (fun _ -> "failed to build sparse index archive url for '" ^ release.source_key ^ "'")
+  |> Result.map_err
+    ~fn:(fun _ -> "failed to build sparse index archive url for '" ^ release.source_key ^ "'")
 
 let package_cache_path = fun cache ~package_name ->
   Path.(Registry_cache.index_dir cache / package_relpath package_name)
@@ -426,7 +430,9 @@ module Tests = struct
               && String.equal release.version "0.0.1"
               && String.equal release.manifest_key "packages/kernel/0.0.1/2aef0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json"
               && List.length release.dependencies = 1
-              && String.equal (List.hd release.dependencies).name "std"
+              && (match List.get release.dependencies ~at:0 with
+                 | Some dependency -> String.equal dependency.name "std"
+                 | None -> false)
             then
               Ok ()
             else

@@ -24,7 +24,7 @@ let rewrite_path = fun ~(package:Riot_model.Package.t) ~sandbox_dir path_str ->
       | Error _ -> None
 
 let rewrite_diagnostics = fun ~package ~sandbox_dir diagnostics ->
-  List.map (Riot_toolchain.Ocamlc.Diagnostic.map_path (rewrite_path ~package ~sandbox_dir)) diagnostics
+  List.map ~fn:(Riot_toolchain.Ocamlc.Diagnostic.map_path (rewrite_path ~package ~sandbox_dir)) diagnostics
 
 let rewrite_ocamlc_result = fun ~package ~sandbox_dir result ->
   match result with

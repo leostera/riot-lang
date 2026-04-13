@@ -40,7 +40,7 @@ let run = fun matches ->
         true
     in
     let path_obj =
-      match Path.of_string path with
+      match Path.from_string path with
       | Ok p -> p
       | Error _ -> Path.v path
     in

@@ -17,35 +17,34 @@ let shell_from_string = function
   | _ -> None
 
 let list_packages = fun (workspace: Riot_model.Workspace.t) ->
-  workspace.packages |> List.map (fun (pkg: Riot_model.Package.t) -> pkg.name) |> List.sort String.compare
+  workspace.packages
+  |> List.map ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.name)
+  |> List.sort ~compare:String.compare
 
 (** List binaries as "package:binary" for display in completions, excluding tests *)
 let list_binaries = fun (workspace: Riot_model.Workspace.t) ->
-  workspace.packages |> List.filter Riot_model.Package.is_workspace_member |> List.concat_map
-    (fun (pkg: Riot_model.Package.t) ->
-      List.filter_map
-        (fun (bin: Riot_model.Package.binary) ->
+  workspace.packages
+  |> List.filter ~fn:Riot_model.Package.is_workspace_member
+  |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
+      List.filter_map pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
           (* Filter out test binaries *)
           if
             String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name
           then
             None
           else
-            Some (pkg.name ^ ":" ^ bin.name))
-        pkg.binaries) |> List.sort_uniq String.compare
+            Some (pkg.name ^ ":" ^ bin.name)))
+  |> List.unique ~compare:String.compare
 
 (** List package names, package wildcards, and test binaries for completions *)
 let list_tests = fun (workspace: Riot_model.Workspace.t) ->
   let test_packages =
     workspace.packages
-    |> List.filter Riot_model.Package.is_workspace_member
-    |> List.filter_map
-      (fun (pkg: Riot_model.Package.t) ->
+    |> List.filter ~fn:Riot_model.Package.is_workspace_member
+    |> List.filter_map ~fn:(fun (pkg: Riot_model.Package.t) ->
         let has_tests =
-          List.exists
-            (fun (bin: Riot_model.Package.binary) ->
-              String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name)
-            pkg.binaries
+          List.any pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
+            String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name)
         in
         if has_tests then
           Some pkg.name
@@ -54,62 +53,53 @@ let list_tests = fun (workspace: Riot_model.Workspace.t) ->
   in
   let individual_tests =
     workspace.packages
-    |> List.filter Riot_model.Package.is_workspace_member
-    |> List.concat_map
-      (fun (pkg: Riot_model.Package.t) ->
-        List.filter_map
-          (fun (bin: Riot_model.Package.binary) ->
+    |> List.filter ~fn:Riot_model.Package.is_workspace_member
+    |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
+        List.filter_map pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
             if
               String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name
             then
               Some (pkg.name ^ ":" ^ bin.name)
             else
-              None)
-          pkg.binaries)
+              None))
   in
   (* Add pkg:... entries for packages with tests *)
   let package_wildcards =
-    List.map (fun pkg_name -> pkg_name ^ ":...") test_packages
+    List.map test_packages ~fn:(fun pkg_name -> pkg_name ^ ":...")
   in
-  (test_packages @ package_wildcards @ individual_tests) |> List.sort_uniq String.compare
+  (test_packages @ package_wildcards @ individual_tests) |> List.unique ~compare:String.compare
 
 (** List benchmark binaries as "package:bench" for display in completions *)
 let list_benchmarks = fun (workspace: Riot_model.Workspace.t) ->
   let individual_benches =
     workspace.packages
-    |> List.filter Riot_model.Package.is_workspace_member
-    |> List.concat_map
-      (fun (pkg: Riot_model.Package.t) ->
-        List.filter_map
-          (fun (bin: Riot_model.Package.binary) ->
+    |> List.filter ~fn:Riot_model.Package.is_workspace_member
+    |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
+        List.filter_map pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
             if String.ends_with ~suffix:"_bench" bin.name then
               Some (pkg.name ^ ":" ^ bin.name)
             else
-              None)
-          pkg.binaries)
+              None))
   in
   (* Add pkg:... entries for packages with benchmarks *)
   let package_wildcards =
     workspace.packages
-    |> List.filter Riot_model.Package.is_workspace_member
-    |> List.filter_map
-      (fun (pkg: Riot_model.Package.t) ->
+    |> List.filter ~fn:Riot_model.Package.is_workspace_member
+    |> List.filter_map ~fn:(fun (pkg: Riot_model.Package.t) ->
         let has_benches =
-          List.exists
-            (fun (bin: Riot_model.Package.binary) -> String.ends_with ~suffix:"_bench" bin.name)
-            pkg.binaries
+          List.any pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
+            String.ends_with ~suffix:"_bench" bin.name)
         in
         if has_benches then
           Some (pkg.name ^ ":...")
         else
           None)
   in
-  (package_wildcards @ individual_benches) |> List.sort_uniq String.compare
+  (package_wildcards @ individual_benches) |> List.unique ~compare:String.compare
 
 (** List package commands as "package:command\tdescription" (tab-separated) for display in completions *)
 let list_commands = fun (workspace: Riot_model.Workspace.t) ->
-  Riot_model.Workspace.discover_commands workspace |> List.map
-    (fun (cmd: Riot_model.Package_command.t) ->
+  Riot_model.Workspace.discover_commands workspace |> List.map ~fn:(fun (cmd: Riot_model.Package_command.t) ->
       let name = cmd.package_name ^ ":" ^ cmd.name in
       (* Use help text from TOML, or provide fallback *)
       let desc =
@@ -118,17 +108,24 @@ let list_commands = fun (workspace: Riot_model.Workspace.t) ->
         else
           cmd.description
       in
-      let tab = Char.chr 9 in
+      let tab = '\t' in
       (* Explicit tab character *)
-      name ^ String.make 1 tab ^ desc) |> List.sort_uniq String.compare
+      name ^ String.make ~len:1 ~char:tab ^ desc) |> List.unique ~compare:String.compare
 
 (** List package command descriptions matching the order of list_commands *)
 let list_command_descriptions = fun (workspace: Riot_model.Workspace.t) ->
-  list_commands workspace |> List.map
-    (fun line ->
+  list_commands workspace |> List.map ~fn:(fun line ->
       (* Extract description after tab *)
-      match String.index line '\t' with
-      | Some idx -> String.sub line (idx + 1) (String.length line - idx - 1)
+      let rec find_tab at =
+        if at >= String.length line then
+          None
+        else if Char.equal (String.get_unchecked line ~at) '\t' then
+          Some at
+        else
+          find_tab (at + 1)
+      in
+      match find_tab 0 with
+      | Some idx -> String.sub line ~offset:(idx + 1) ~len:(String.length line - idx - 1)
       | None -> "Package command")
 
 let generate_zsh_script = fun () ->

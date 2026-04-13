@@ -79,10 +79,8 @@ let scan_workspace = fun () ->
       )
 
 let report_workspace_load_errors = fun load_errors ->
-  List.iter
-    (fun err ->
-      eprintln ("\027[1;31mError\027[0m: " ^ Riot_model.Workspace_manager.load_error_to_string err))
-    load_errors
+  List.for_each load_errors ~fn:(fun err ->
+    eprintln ("\027[1;31mError\027[0m: " ^ Riot_model.Workspace_manager.load_error_to_string err))
 
 let require_clean_workspace = fun workspace_scan_opt ->
   match workspace_scan_opt with
@@ -130,14 +128,12 @@ let try_command = fun ?workspace_scan cmd_name remaining_args ->
   | ScanFailed _ -> None
   | Loaded (workspace, _load_errors) -> (
       (* Parse package:command format *)
-      match String.split_on_char ':' cmd_name with
+      match String.split cmd_name ~by:":" with
       | [package_name;command_name] -> (
           (* Find the command in the specified package *)
           let commands = Riot_model.Workspace.discover_commands workspace in
-          match List.find_opt
-            (fun (cmd: Riot_model.Package_command.t) ->
-              cmd.package_name = package_name && cmd.name = command_name)
-            commands with
+          match List.find commands ~fn:(fun (cmd: Riot_model.Package_command.t) ->
+              cmd.package_name = package_name && cmd.name = command_name) with
           | None -> None
           | Some cmd ->
               Log.info ("Found command: " ^ cmd.package_name ^ ":" ^ cmd.name);
@@ -209,10 +205,10 @@ let render_init_event = function
       println "✓ Workspace initialized successfully!";
       println "";
       println "Next steps:";
-      List.iter (fun step -> println ("  " ^ step)) next_steps;
+      List.for_each next_steps ~fn:(fun step -> println ("  " ^ step));
       println "";
-      List.iteri
-        (fun idx (kind, command) ->
+      List.enumerate package_hints
+      |> List.for_each ~fn:(fun (idx, (kind, command)) ->
           if idx > 0 then
             println "";
           let kind_name =
@@ -221,8 +217,7 @@ let render_init_event = function
             | Riot_init.Binary -> "binary"
           in
           println ("To add a new " ^ kind_name ^ " package run");
-          println ("  " ^ command))
-        package_hints;
+          println ("  " ^ command));
       println ""
 
 let run = fun ~args ->
@@ -301,7 +296,7 @@ let run = fun ~args ->
                   Some workspace,
                   Some (String.concat
                     "\n"
-                    (List.map Riot_model.Workspace_manager.load_error_to_string load_errors))
+                    (List.map load_errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
                 )
                 | NoWorkspace -> (None, None)
                 | ScanFailed err -> (None, Some err)
@@ -415,7 +410,7 @@ let run = fun ~args ->
               (
                 match workspace with
                 | Some workspace -> Doc.run ~workspace doc_matches
-                |> Result.map_error (fun err -> Failure err)
+                |> Result.map_err ~fn:(fun err -> Failure err)
                 | None -> fail_not_in_workspace ()
               )
           | Some ("completions", completions_matches) ->
@@ -449,7 +444,7 @@ let run = fun ~args ->
                   Some workspace,
                   Some (String.concat
                     "\n"
-                    (List.map Riot_model.Workspace_manager.load_error_to_string load_errors))
+                    (List.map load_errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
                 )
                 | NoWorkspace -> (None, None)
                 | ScanFailed err -> (None, Some err)

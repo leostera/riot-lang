@@ -23,32 +23,30 @@ has become too implicit.
 let open_statements = fun source_file ->
   match source_file with
   | Syn.Cst.Implementation { items; _ } ->
-      items |> List.filter_map
-        (
-          function
-          | Syn.Cst.StructureItem.OpenStatement stmt -> Some stmt
-          | _ -> None
-        )
+      items
+      |> List.filter_map ~fn:(function
+        | Syn.Cst.StructureItem.OpenStatement stmt -> Some stmt
+        | _ -> None)
   | Syn.Cst.Interface { items; _ } ->
-      items |> List.filter_map
-        (
-          function
-          | Syn.Cst.SignatureItem.OpenStatement stmt -> Some stmt
-          | _ -> None
-        )
+      items
+      |> List.filter_map ~fn:(function
+        | Syn.Cst.SignatureItem.OpenStatement stmt -> Some stmt
+        | _ -> None)
 
 let diagnostic_for_open_count = fun opens ->
   if List.length opens <= 2 then
     None
   else
-    match List.drop 2 opens with
-    | third_open :: _ -> Some (Diagnostic.make
-      ~severity:Warning
-      ~kind:(Diagnostic.Known { rule_id; message = rule_description })
-      ~span:(Syn.Cst.OpenStatement.syntax_node third_open |> Syn.Ceibo.Red.SyntaxNode.span)
-      ~suggestion:"Keep only the most useful opens and qualify the remaining names."
-      ())
-    | [] -> None
+    match opens with
+    | _first :: _second :: third_open :: _ ->
+        Some (Diagnostic.make
+          ~severity:Warning
+          ~kind:(Diagnostic.Known { rule_id; message = rule_description })
+          ~span:(Syn.Cst.OpenStatement.syntax_node third_open |> Syn.Ceibo.Red.SyntaxNode.span)
+          ~suggestion:"Keep only the most useful opens and qualify the remaining names."
+          ())
+    | _ ->
+        None
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in

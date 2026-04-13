@@ -157,31 +157,44 @@ let utf8_char_length = fun first_byte ->
   else
     0
 
+let read_from_input = fun input_fd bytes ~offset ~len ->
+  if Platform.fd_equal input_fd (Platform.stdin_fd ()) then
+    match IO.Stdin.read ~offset ~len bytes with
+    | Ok count -> `Ok count
+    | Error IO.Operation_would_block -> `Would_block
+    | Error _ -> `Error
+  else
+    match Platform.read input_fd bytes ~offset ~len with
+    | Ok count -> `Ok count
+    | Error error when Kernel.SystemError.would_block error -> `Would_block
+    | Error _ -> `Error
+
 let read_utf8 = fun t ->
-  let bytes = IO.Bytes.create 4 in
-  match Platform.read t.Terminal.input_fd bytes ~offset:0 ~len:1 with
-  | Ok 0 ->
+  let bytes = IO.Bytes.create ~size:4 in
+  match read_from_input t.Terminal.input_fd bytes ~offset:0 ~len:1 with
+  | `Ok 0 ->
       End
-  | Ok 1 ->
-      let first_byte = Char.code (IO.Bytes.get bytes 0) in
+  | `Ok 1 ->
+      let first_byte = Char.code (IO.Bytes.get_unchecked bytes ~at:0) in
       let len = utf8_char_length first_byte in
       if len = 0 then
         Malformed "Invalid UTF-8 start byte"
       else if len = 1 then
-        Read (IO.Bytes.sub_string bytes 0 1)
+        Read (IO.Bytes.sub_unchecked bytes ~offset:0 ~len:1 |> IO.Bytes.to_string)
       else
         (
-          match Platform.read t.Terminal.input_fd bytes ~offset:1 ~len:(len - 1) with
-          | Ok n when n = len - 1 -> Read (IO.Bytes.sub_string bytes 0 len)
-          | Ok _ -> Malformed "Incomplete UTF-8 sequence"
-          | Error error when Kernel.SystemError.is_would_block error -> Retry
-          | Error _ -> Malformed "Read error"
+          match read_from_input t.Terminal.input_fd bytes ~offset:1 ~len:(len - 1) with
+          | `Ok n when n = len - 1 ->
+              Read (IO.Bytes.sub_unchecked bytes ~offset:0 ~len |> IO.Bytes.to_string)
+          | `Ok _ -> Malformed "Incomplete UTF-8 sequence"
+          | `Would_block -> Retry
+          | `Error -> Malformed "Read error"
         )
-  | Ok _ ->
+  | `Ok _ ->
       Malformed "Unexpected read length"
-  | Error error when Kernel.SystemError.is_would_block error ->
+  | `Would_block ->
       Retry
-  | Error _ ->
+  | `Error ->
       End
 
 let read = fun t ->
@@ -192,7 +205,7 @@ let read = fun t ->
   | Retry -> Error IO.Resource_unavailable_try_again
 
 let read_line = fun t ->
-  let buffer = Buffer.create 256 in
+  let buffer = Buffer.create ~size:256 in
   let rec loop () =
     match read t with
     | Ok value ->

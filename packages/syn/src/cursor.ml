@@ -16,20 +16,20 @@ let peek = fun t ->
   if is_eof t then
     None
   else
-    Some (String.get t.source t.pos)
+    String.get t.source ~at:t.pos
 
 let peek_n = fun t n ->
   if t.pos + n >= t.length then
     None
   else
-    Some (String.get t.source (t.pos + n))
+    String.get t.source ~at:(t.pos + n)
 
 let advance = fun t ->
   if not (is_eof t) then
     t.pos <- t.pos + 1
 
 let skip_while = fun t f ->
-  while (not (is_eof t)) && Option.map f (peek t) = Some true do
+  while (not (is_eof t)) && Option.map (peek t) ~fn:f = Some true do
     advance t
   done
 
@@ -37,7 +37,7 @@ let take_while = fun t f ->
   let start = t.pos in
   skip_while t f;
   let len = t.pos - start in
-  String.sub t.source start len
+  String.sub t.source ~offset:start ~len
 
 let slice = fun t start len ->
-  String.sub t.source start len
+  String.sub t.source ~offset:start ~len

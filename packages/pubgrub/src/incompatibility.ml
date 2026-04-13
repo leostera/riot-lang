@@ -52,7 +52,7 @@ let terms = fun incompat ->
 
 let get_term = fun incompat pkg ->
   let all_terms = terms incompat in
-  List.find_opt (fun term -> Term.package term = pkg) all_terms
+  List.find all_terms ~fn:(fun term -> Term.package term = pkg)
 
 let version_compare = fun a b ->
   match Version.compare a b with
@@ -104,9 +104,9 @@ let merge_dependents = fun incompat1 incompat2 ->
   | _ -> None
 
 let normalize_terms = fun terms ->
-  List.fold_left
-    (fun acc term ->
-      match List.find_opt (fun existing -> Term.package existing = Term.package term) acc with
+  List.fold_left terms ~acc:[]
+    ~fn:(fun acc term ->
+      match List.find acc ~fn:(fun existing -> Term.package existing = Term.package term) with
       | None ->
           if Term.is_any term then
             acc
@@ -115,28 +115,27 @@ let normalize_terms = fun terms ->
       | Some existing ->
           let merged = Term.intersection existing term in
           let acc_without_pkg =
-            List.filter (fun existing -> Term.package existing != Term.package term) acc
+            List.filter acc ~fn:(fun existing -> Term.package existing != Term.package term)
           in
           if Term.is_any merged then
             acc_without_pkg
           else
             merged :: acc_without_pkg)
-    []
-    terms |> List.rev
+    |> List.reverse
 
 let prior_cause = fun ?extra_term incompat satisfier_cause package ->
   let incompat_terms = terms incompat in
   let satisfier_terms = terms satisfier_cause in
   Log.info
     ("prior_cause: incompat has "
-    ^ string_of_int (List.length incompat_terms)
+    ^ Int.to_string (List.length incompat_terms)
     ^ " terms, satisfier has "
-    ^ string_of_int (List.length satisfier_terms)
+    ^ Int.to_string (List.length satisfier_terms)
     ^ " terms, package="
     ^ package);
   Log.info "  incompat terms:";
-  List.iter
-    (fun t ->
+  List.for_each incompat_terms
+    ~fn:(fun t ->
       Log.info
         (
           "    " ^ (
@@ -145,11 +144,10 @@ let prior_cause = fun ?extra_term incompat satisfier_cause package ->
             else
               "NOT "
           ) ^ Term.package t
-        ))
-    incompat_terms;
+        ));
   Log.info "  satisfier_cause terms:";
-  List.iter
-    (fun t ->
+  List.for_each satisfier_terms
+    ~fn:(fun t ->
       Log.info
         (
           "    " ^ (
@@ -158,17 +156,16 @@ let prior_cause = fun ?extra_term incompat satisfier_cause package ->
             else
               "NOT "
           ) ^ Term.package t
-        ))
-    satisfier_terms;
+        ));
   match incompat with
   | External _
   | Derived _ ->
       (* Find the term for the package in both incompatibilities and merge them *)
       let incompat_term =
-        List.find_opt (fun t -> Term.package t = package) incompat_terms
+        List.find incompat_terms ~fn:(fun t -> Term.package t = package)
       in
       let satisfier_term =
-        List.find_opt (fun t -> Term.package t = package) satisfier_terms
+        List.find satisfier_terms ~fn:(fun t -> Term.package t = package)
       in
       let merged_term =
         match (incompat_term, satisfier_term) with
@@ -178,26 +175,23 @@ let prior_cause = fun ?extra_term incompat satisfier_cause package ->
         | None, None -> panic "Package not found in either incompatibility"
       in
       let other_incompat_terms =
-        List.filter (fun t -> Term.package t != package) incompat_terms
+        List.filter incompat_terms ~fn:(fun t -> Term.package t != package)
       in
       let other_satisfier_terms =
-        List.filter (fun t -> Term.package t != package) satisfier_terms
+        List.filter satisfier_terms ~fn:(fun t -> Term.package t != package)
       in
       let merged_other_terms =
-        List.fold_left
-          (fun acc incompat_t ->
+        List.fold_left other_incompat_terms ~acc:[]
+          ~fn:(fun acc incompat_t ->
             let pkg = Term.package incompat_t in
-            match List.find_opt (fun t -> Term.package t = pkg) other_satisfier_terms with
+            match List.find other_satisfier_terms ~fn:(fun t -> Term.package t = pkg) with
             | Some satisfier_t -> Term.intersection incompat_t satisfier_t :: acc
             | None -> incompat_t :: acc)
-          []
-          other_incompat_terms
       in
       let remaining_satisfier_terms =
-        List.filter
-          (fun t ->
-            not (List.exists (fun it -> Term.package it = Term.package t) other_incompat_terms))
-          other_satisfier_terms
+        List.filter other_satisfier_terms
+          ~fn:(fun t ->
+            not (List.any other_incompat_terms ~fn:(fun it -> Term.package it = Term.package t)))
       in
       let all_terms =
         if Term.is_any merged_term then
@@ -211,7 +205,7 @@ let prior_cause = fun ?extra_term incompat satisfier_cause package ->
         | None -> all_terms
       in
       let all_terms = normalize_terms all_terms in
-      Log.info ("prior_cause: all_terms has " ^ string_of_int (List.length all_terms) ^ " terms");
+      Log.info ("prior_cause: all_terms has " ^ Int.to_string (List.length all_terms) ^ " terms");
       (* Even if all_terms is empty, create a derived incompatibility *)
       (* An empty incompatibility is terminal (fundamental contradiction) *)
       create_derived all_terms incompat satisfier_cause None

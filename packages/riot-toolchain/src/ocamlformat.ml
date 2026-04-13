@@ -12,21 +12,17 @@ type format_result =
 
 let find_ocamlformat_config = fun path ->
   let rec search dir =
-    match Path.of_string ".ocamlformat" with
-    | Error _ -> None
-    | Ok ocamlformat_name -> (
-        let ocamlformat_file = Path.join dir ocamlformat_name in
-        if Fs.exists ocamlformat_file |> Result.unwrap_or ~default:false then
-          Some ocamlformat_file
-        else
-          match Path.parent dir with
-          | None -> None
-          | Some parent ->
-              if Path.equal parent dir then
-                None
-              else
-                search parent
-      )
+    let ocamlformat_file = Path.join dir (Path.v ".ocamlformat") in
+    if Fs.exists ocamlformat_file |> Result.unwrap_or ~default:false then
+      Some ocamlformat_file
+    else
+      match Path.parent dir with
+      | None -> None
+      | Some parent ->
+          if Path.equal parent dir then
+            None
+          else
+            search parent
   in
   search
     (
@@ -93,9 +89,8 @@ let format_code = fun t ~code ~file_path ->
     | None -> ".ml"
   in
   let temp_file = "/tmp/riot_format_" ^ Int32.to_string (Process.id ()) ^ extension in
-  match Path.of_string temp_file with
-  | Error _ -> Error "Failed to create temp file path"
-  | Ok temp_file_path -> (
+  let temp_file_path = Path.v temp_file in
+  (
       match Fs.write code temp_file_path with
       | Error err -> Error ("Failed to write temp file: " ^ IO.error_message err)
       | Ok () ->

@@ -9,12 +9,13 @@ type source_layout = {
 }
 
 let make_source_layout = fun source ->
-  let lines = String.split_on_char '\n' source |> Array.of_list in
-  let line_starts = Array.make (Array.length lines) 0 in
+  let lines = String.split source ~by:"\n" |> Array.from_list in
+  let line_starts = Array.make ~count:(Array.length lines) ~value:0 in
   let offset = ref 0 in
   for index = 0 to Array.length lines - 1 do
-    line_starts.(index) <- !offset;
-    offset := !offset + String.length lines.(index) + 1
+    Array.set_unchecked line_starts ~at:index ~value:(!offset);
+    let line = Array.get_unchecked lines ~at:index in
+    offset := !offset + String.length line + 1
   done;
   { lines; line_starts }
 
@@ -24,7 +25,8 @@ let line_for_pos = fun layout pos ->
       best
     else
       let mid = (low + high) / 2 in
-      if layout.line_starts.(mid) <= pos then
+      let mid_line = Array.get_unchecked layout.line_starts ~at:mid in
+      if mid_line <= pos then
         search (mid + 1) high mid
       else
         search low (mid - 1) best
@@ -36,12 +38,7 @@ let line_for_pos = fun layout pos ->
     else
       search 0 last_index 0
   in
-  let start_offset =
-    if Array.length layout.line_starts = 0 then
-      0
-    else
-      layout.line_starts.(line_idx)
-  in
+  let start_offset = Array.get layout.line_starts ~at:line_idx |> Option.unwrap_or ~default:0 in
   (line_idx, Int.max 0 (pos - start_offset))
 
 let extract_code_snippet_from_layout = fun layout (span: Ceibo.Span.t) ->
@@ -51,8 +48,8 @@ let extract_code_snippet_from_layout = fun layout (span: Ceibo.Span.t) ->
     let start_pos = span.start in
     let line_idx, start_col = line_for_pos layout start_pos in
     if line_idx >= 0 && line_idx < Array.length layout.lines then
-      let code_line = layout.lines.(line_idx) in
-      let pointer_line = String.make start_col ' ' ^ "^" in
+      let code_line = Array.get_unchecked layout.lines ~at:line_idx in
+      let pointer_line = String.make ~len:start_col ~char:' ' ^ "^" in
       Some (code_line, pointer_line, line_idx + 1)
     else
       None
@@ -121,7 +118,7 @@ let format_diagnostic = fun ~layout diag ->
 
 let format = fun ~file ~source diagnostics ->
   let layout = make_source_layout source in
-  file ^ "\n\n" ^ (diagnostics |> List.map (format_diagnostic ~layout) |> String.concat "") ^ "\n"
+  file ^ "\n\n" ^ (diagnostics |> List.map ~fn:(format_diagnostic ~layout) |> String.concat "") ^ "\n"
 
 (* Print diagnostics in a nice formatted way *)
 

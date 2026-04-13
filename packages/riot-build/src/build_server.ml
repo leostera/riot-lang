@@ -77,7 +77,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
   if List.length load_errors > 0 then
     (
       let error_msg = load_errors
-      |> List.map Workspace_manager.load_error_to_string
+      |> List.map ~fn:Workspace_manager.load_error_to_string
       |> String.concat "\n" in
       send
         client_pid
@@ -165,8 +165,9 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
     match result with
     | Ok workspace_result ->
         Protocol.BuildStats.set_total_modules stats (List.length workspace_result.results);
-        List.iter
-          (fun (result: Package_builder.build_result) ->
+        List.for_each
+          workspace_result.results
+          ~fn:(fun (result: Package_builder.build_result) ->
             match result.status with
             | Package_builder.Built _ ->
                 Protocol.BuildStats.inc_packages_built stats;
@@ -176,30 +177,29 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
             | Package_builder.Skipped _ ->
                 ()
             | Package_builder.Failed _ ->
-                Protocol.BuildStats.inc_packages_failed stats)
-          workspace_result.results;
+                Protocol.BuildStats.inc_packages_failed stats);
         Protocol.BuildStats.mark_completed stats;
         if workspace_result.failed_count > 0 then
           (
             let errors =
               List.filter
-                (fun (result: Package_builder.build_result) ->
+                workspace_result.results
+                ~fn:(fun (result: Package_builder.build_result) ->
                   match result.status with
                   | Package_builder.Failed _ -> true
                   | Package_builder.Skipped _
                   | Package_builder.Built _
                   | Package_builder.Cached _ -> false)
-                workspace_result.results
             in
             let built =
               List.filter
-                (fun (result: Package_builder.build_result) ->
+                workspace_result.results
+                ~fn:(fun (result: Package_builder.build_result) ->
                   match result.status with
                   | Package_builder.Failed _ -> false
                   | Package_builder.Skipped _
                   | Package_builder.Built _
                   | Package_builder.Cached _ -> true)
-                workspace_result.results
             in
             send client_pid
               (
@@ -267,28 +267,27 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
               }))
         | Riot_planner.Workspace_planner.MissingDependencies { missing } ->
             Log.error "Planning failed: Missing dependencies";
-            List.iter
-              (fun { Riot_planner.Package_graph.package; dependency } ->
-                Log.error ("  " ^ package ^ " requires: " ^ dependency))
-              missing;
+            List.for_each
+              missing
+              ~fn:(fun { Riot_planner.Package_graph.package; dependency } ->
+                Log.error ("  " ^ package ^ " requires: " ^ dependency));
             (* Group missing deps by package for cleaner error messages *)
             let grouped = Collections.HashMap.create () in
-            List.iter
-              (fun { Riot_planner.Package_graph.package; dependency } ->
-                match Collections.HashMap.get grouped package with
+            List.for_each
+              missing
+              ~fn:(fun { Riot_planner.Package_graph.package; dependency } ->
+                match Collections.HashMap.get grouped ~key:package with
                 | None ->
-                    let _ = Collections.HashMap.insert grouped package [ dependency ] in
+                    let _ = Collections.HashMap.insert grouped ~key:package ~value:[ dependency ] in
                     ()
                 | Some deps ->
-                    let _ = Collections.HashMap.insert grouped package (dependency :: deps) in
-                    ())
-              missing;
+                    let _ = Collections.HashMap.insert grouped ~key:package ~value:(dependency :: deps) in
+                    ());
             let error_msg = grouped
-            |> Collections.HashMap.into_iter
-            |> Iter.Iterator.map
+            |> Collections.HashMap.to_list
+              |> List.map
               ~fn:(fun ((pkg, deps)) ->
-                "  • " ^ pkg ^ " requires: " ^ String.concat ", " (List.rev deps))
-            |> Iter.Iterator.to_list
+                "  • " ^ pkg ^ " requires: " ^ String.concat ", " (List.reverse deps))
             |> String.concat "\n" in
             send
               client_pid
@@ -299,9 +298,10 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
               }))
         | Riot_planner.Workspace_planner.PackageLoadFailed { errors } ->
             Log.error "Planning failed: Could not load external packages";
-            List.iter (fun err -> Log.error ("  " ^ Workspace_manager.load_error_to_string err)) errors;
+            List.for_each errors ~fn:(fun err ->
+              Log.error ("  " ^ Workspace_manager.load_error_to_string err));
             let error_msg = errors
-            |> List.map Workspace_manager.load_error_to_string
+            |> List.map ~fn:Workspace_manager.load_error_to_string
             |> String.concat "\n  " in
             send
               client_pid

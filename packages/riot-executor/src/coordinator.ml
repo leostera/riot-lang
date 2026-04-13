@@ -69,11 +69,11 @@ let package_error_to_telemetry_error = function
 let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list = fun action_graph ->
   let entries =
     Action_graph.nodes action_graph
-    |> List.concat_map
-      (fun (node: Action_node.t) ->
+    |> List.flat_map
+      ~fn:(fun (node: Action_node.t) ->
         let is_package_export =
-          List.exists
-            (
+          List.any node.value.actions
+            ~fn:(
               function
               | Action.CreateLibrary _
               | Action.CreateExecutable _
@@ -86,24 +86,22 @@ let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list
               | Action.WriteFile _
               | Action.BuildForeignDependency _ -> false
             )
-            node.value.actions
         in
         if not is_package_export then
           []
         else
           let action_hash_hex = Crypto.Digest.hex (Action_node.get_hash node) in
-          List.map
-            (fun out_path ->
+          List.map node.value.outs
+            ~fn:(fun out_path ->
               Riot_store.Store.{
                 name = Path.basename out_path;
                 path = out_path;
                 action_hash = action_hash_hex
-              })
-            node.value.outs)
+              }))
   in
   let seen = HashSet.create () in
-  List.filter_map
-    (fun (entry: Riot_store.Store.export_entry) ->
+  List.filter_map entries
+    ~fn:(fun (entry: Riot_store.Store.export_entry) ->
       if HashSet.contains seen entry.name then
         None
       else
@@ -111,12 +109,11 @@ let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list
           let _ = HashSet.insert seen entry.name in
           Some entry
         ))
-    entries
 
 let collect_package_artifact_outputs = fun ~sandbox_dir ~outputs ->
   let seen = HashSet.create () in
   outputs |> List.filter_map
-    (fun out_path ->
+    ~fn:(fun out_path ->
       let abs_path = Path.join sandbox_dir out_path in
       match Path.strip_prefix abs_path ~prefix:sandbox_dir with
       | Ok _ ->
@@ -133,17 +130,16 @@ let collect_package_artifact_outputs = fun ~sandbox_dir ~outputs ->
 let collect_ocamlc_warnings = fun completed_actions ->
   let seen = HashSet.create () in
   HashMap.to_list completed_actions |> List.fold_left
-    (fun acc ((_id, result): Graph.SimpleGraph.Node_id.t * Action_executor.execution_result) ->
-      List.fold_left
-        (fun acc warning ->
+    ~acc:[]
+    ~fn:(fun acc ((_id, result): Graph.SimpleGraph.Node_id.t * Action_executor.execution_result) ->
+      List.fold_left result.Action_executor.ocamlc_warnings
+        ~acc
+        ~fn:(fun acc warning ->
           if HashSet.contains seen warning then
             acc
           else
             let _ = HashSet.insert seen warning in
-            acc @ [ warning ])
-        acc
-        result.Action_executor.ocamlc_warnings)
-    []
+            acc @ [ warning ]))
 
 let emit_package_ocamlc_warnings = fun ~session_id ~package ~target ~source ocamlc_warnings ->
   if List.length ocamlc_warnings > 0 then
@@ -160,15 +156,14 @@ let emit_package_ocamlc_warnings = fun ~session_id ~package ~target ~source ocam
 
 let summarize_results = fun ~package_graph (results: Package_builder.build_result list) ->
   let cached_count, built_count, failed_count =
-    List.fold_left
-      (fun ((cached, built, failed)) result ->
+    List.fold_left results
+      ~acc:(0, 0, 0)
+      ~fn:(fun (cached, built, failed) result ->
         match result.Package_builder.status with
         | Cached _ -> (cached + 1, built, failed)
         | Built _ -> (cached, built + 1, failed)
         | Skipped _ -> (cached, built, failed)
         | Failed _ -> (cached, built, failed + 1))
-      (0, 0, 0)
-      results
   in
   {
     results;
@@ -197,7 +192,7 @@ let dependency_keys = fun package_graph package_key ->
   match Package_graph.get_node_by_key package_graph package_key with
   | None -> []
   | Some node -> Package_graph.get_dependencies_for_node package_graph node
-  |> List.map Package_graph.get_key
+  |> List.map ~fn:Package_graph.get_key
 
 let mark_package_failed_in_graph = fun package_graph ~package ~package_key ~hash ~error ->
   match Package_graph.get_node_by_key package_graph package_key with
@@ -257,9 +252,8 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
   let package_outputs =
     collect_package_artifact_outputs
       ~sandbox_dir
-      ~outputs:(List.concat_map
-        (fun (node: Action_node.t) -> node.value.outs)
-        (Action_graph.nodes runtime.action_graph))
+      ~outputs:(Action_graph.nodes runtime.action_graph
+        |> List.flat_map ~fn:(fun (node: Action_node.t) -> node.value.outs))
   in
   let artifact = Riot_store.Store.save
     store
@@ -271,10 +265,10 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
     ~outs:package_outputs
   |> Result.expect ~msg:("Failed to save package hash artifact for " ^ runtime.package.name) in
   let all_cached =
-    HashMap.into_iter runtime.completed_actions
+    HashMap.iter runtime.completed_actions
     |> Iter.Iterator.to_list
-    |> List.for_all
-      (fun ((_, r)) ->
+    |> List.all
+      ~fn:(fun ((_, r)) ->
         match r.Action_executor.status with
         | Action_executor.Cached _ -> true
         | Action_executor.Executed
@@ -319,7 +313,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
   let ready_count = ref 0 in
   let coordinator_pid = self () in
   let enqueue_ready item =
-    Queue.push action_ready_queue item;
+    Queue.push action_ready_queue ~value:item;
     ready_count := !ready_count + 1
   in
   let pop_ready () =
@@ -340,7 +334,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
         duration = Time.Duration.zero;
       }
     in
-    let _ = HashMap.insert package_results package_key result in
+    let _ = HashMap.insert package_results ~key:package_key ~value:result in
     (
       match status with
       | Package_builder.Failed err -> Telemetry.emit
@@ -364,7 +358,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
   in
   let update_planning_progress package_key status ~duration ~package ~reason =
     planning_duration := Time.Duration.add !planning_duration duration;
-    let _ = HashMap.insert planning_results package_key status in
+    let _ = HashMap.insert planning_results ~key:package_key ~value:status in
     Telemetry.emit
       (
         PackagePlanningResult {
@@ -396,7 +390,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
             duration = Time.Duration.zero;
           }
         in
-        let _ = HashMap.insert package_results package_key result in
+        let _ = HashMap.insert package_results ~key:package_key ~value:result in
         mark_package_cached_in_graph package_graph ~package ~package_key ~hash ~artifact ~depset ~exports;
         emit_package_ocamlc_warnings
           ~session_id
@@ -424,7 +418,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
             duration = Time.Duration.zero;
           }
         in
-        let _ = HashMap.insert package_results package_key result in
+        let _ = HashMap.insert package_results ~key:package_key ~value:result in
         mark_package_failed_in_graph package_graph ~package ~package_key ~hash ~error:message;
         Telemetry.emit
           (BuildFailed {
@@ -446,7 +440,8 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
     Sandbox.prepare ~sandbox ~package ~inputs ~depset ~store;
     let action_queue = Action_queue.create () in
     let action_nodes = Action_graph.nodes action_graph in
-    List.iter (Action_queue.queue action_queue) action_nodes;
+    List.for_each action_nodes
+      ~fn:(Action_queue.queue action_queue);
     let runtime = {
       package_key;
       package;
@@ -466,7 +461,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
       compilation_started = false;
     }
     in
-    let _ = HashMap.insert runtimes package_key runtime in
+    let _ = HashMap.insert runtimes ~key:package_key ~value:runtime in
     match Package_graph.get_node_by_key package_graph package_key with
     | Some node ->
         node.value <- Package_graph.Planned {
@@ -494,8 +489,8 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
     else
       let progressed = ref false in
       let still_pending = vec [] in
-      List.iter
-        (fun package_node ->
+      List.for_each pending_nodes
+        ~fn:(fun package_node ->
           let package = Package_graph.get_package package_node in
           let package_key = Package_graph.get_key package_node in
           let planning_start = Time.Instant.now () in
@@ -526,7 +521,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 ~duration:(Time.Instant.duration_since ~earlier:planning_start (Time.Instant.now ()))
                 ~package
                 ~reason:(Some ("Missing dependencies: "
-                ^ (missing |> List.map (fun p -> p.Package.name) |> String.concat ", ")));
+                ^ (missing |> List.map ~fn:(fun p -> p.Package.name) |> String.concat ", ")));
               Vector.push still_pending package_node
           | Ok (FailedDependencies { failed; _ }) ->
               update_planning_progress
@@ -535,7 +530,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 ~duration:(Time.Instant.duration_since ~earlier:planning_start (Time.Instant.now ()))
                 ~package
                 ~reason:(Some ("Failed dependencies: "
-                ^ (failed |> List.map (fun p -> p.Package.name) |> String.concat ", ")));
+                ^ (failed |> List.map ~fn:(fun p -> p.Package.name) |> String.concat ", ")));
               Vector.push still_pending package_node
           | Ok (Cached {
             package_key;
@@ -570,52 +565,48 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 ~package
                 ~reason:None;
               progressed := true;
-              stage_runtime ~package_key ~package ~hash ~depset ~module_graph ~action_graph)
-        pending_nodes;
-      let next_pending = Vector.into_iter still_pending |> Iter.Iterator.to_list in
+              stage_runtime ~package_key ~package ~hash ~depset ~module_graph ~action_graph);
+      let next_pending = Vector.iter still_pending |> Iter.Iterator.to_list in
       if next_pending = [] then
         ()
       else if !progressed then
         plan_pass next_pending
       else
-        List.iter
-          (fun package_node ->
+        List.for_each next_pending
+          ~fn:(fun package_node ->
             let package_key = Package_graph.get_key package_node in
-            let _ = HashMap.insert pending_planning package_key package_node in
+            let _ = HashMap.insert pending_planning ~key:package_key ~value:package_node in
             ())
-          next_pending
   in
   plan_pass nodes;
   let try_plan_pending_packages () =
     let pending_entries = HashMap.to_list pending_planning in
-    List.iter
-      (fun ((package_key, package_node)) ->
-        if Option.is_some (HashMap.get package_results package_key) then
-          let _ = HashMap.remove pending_planning package_key in
+    List.for_each pending_entries
+      ~fn:(fun (package_key, package_node) ->
+        if Option.is_some (HashMap.get package_results ~key:package_key) then
+          let _ = HashMap.remove pending_planning ~key:package_key in
           ()
-        else if Option.is_some (HashMap.get runtimes package_key) then
-          let _ = HashMap.remove pending_planning package_key in
+        else if Option.is_some (HashMap.get runtimes ~key:package_key) then
+          let _ = HashMap.remove pending_planning ~key:package_key in
           ()
         else
           let package = Package_graph.get_package package_node in
           let dep_keys = dependency_keys package_graph package_key in
           let deps_failed =
-            List.exists
-              (fun dep_key ->
-                match HashMap.get package_results dep_key with
+            List.any dep_keys
+              ~fn:(fun dep_key ->
+                match HashMap.get package_results ~key:dep_key with
                 | Some result -> result_is_failed result
                 | None -> false)
-              dep_keys
           in
           if deps_failed then
             (
               let names =
-                List.filter_map
-                  (fun dep_key ->
-                    match HashMap.get package_results dep_key with
+                List.filter_map dep_keys
+                  ~fn:(fun dep_key ->
+                    match HashMap.get package_results ~key:dep_key with
                     | Some result when result_is_failed result -> Some result.package.Package.name
                     | _ -> None)
-                  dep_keys
               in
               update_planning_progress
                 package_key
@@ -632,17 +623,16 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 ~package
                 ~package_key
                 ~reason:("needs " ^ String.concat ", " names);
-              let _ = HashMap.remove pending_planning package_key in
+              let _ = HashMap.remove pending_planning ~key:package_key in
               ()
             )
           else
             let deps_satisfied =
-              List.for_all
-                (fun dep_key ->
-                  match HashMap.get package_results dep_key with
+              List.all dep_keys
+                ~fn:(fun dep_key ->
+                  match HashMap.get package_results ~key:dep_key with
                   | Some result -> result_is_success result
                   | None -> false)
-                dep_keys
             in
             if deps_satisfied then
               let planning_start = Time.Instant.now () in
@@ -667,7 +657,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                     package_key
                     package
                     (Package_builder.Failed (PlanningFailed err)) in
-                  let _ = HashMap.remove pending_planning package_key in
+                  let _ = HashMap.remove pending_planning ~key:package_key in
                   ()
               | Ok (MissingDependencies { missing }) ->
                   update_planning_progress
@@ -678,7 +668,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                       (Time.Instant.now ()))
                     ~package
                     ~reason:(Some ("Missing dependencies: "
-                    ^ (missing |> List.map (fun p -> p.Package.name) |> String.concat ", ")));
+                    ^ (missing |> List.map ~fn:(fun p -> p.Package.name) |> String.concat ", ")));
                   ()
               | Ok (FailedDependencies { failed; _ }) ->
                   update_planning_progress
@@ -689,9 +679,9 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                       (Time.Instant.now ()))
                     ~package
                     ~reason:(Some ("Failed dependencies: "
-                    ^ (failed |> List.map (fun p -> p.Package.name) |> String.concat ", ")));
+                    ^ (failed |> List.map ~fn:(fun p -> p.Package.name) |> String.concat ", ")));
                   let names =
-                    List.map (fun p -> p.Package.name) failed
+                    List.map failed ~fn:(fun p -> p.Package.name)
                   in
                   let _ = materialize_initial_result
                     package_key
@@ -702,7 +692,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                     ~package
                     ~package_key
                     ~reason:("needs " ^ String.concat ", " names);
-                  let _ = HashMap.remove pending_planning package_key in
+                  let _ = HashMap.remove pending_planning ~key:package_key in
                   ()
               | Ok (Cached {
                 package_key;
@@ -722,7 +712,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                     ~package
                     ~reason:None;
                   finalize_cached_package ~package_key ~package ~hash ~artifact ~depset ~exports;
-                  let _ = HashMap.remove pending_planning package_key in
+                  let _ = HashMap.remove pending_planning ~key:package_key in
                   ()
               | Ok (Planned {
                 package_key;
@@ -742,27 +732,26 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                     ~package
                     ~reason:None;
                   stage_runtime ~package_key ~package ~hash ~depset ~module_graph ~action_graph;
-                  let _ = HashMap.remove pending_planning package_key in
+                  let _ = HashMap.remove pending_planning ~key:package_key in
                   ())
-      pending_entries
+      
   in
   let activate_ready_packages () =
     try_plan_pending_packages ();
-    HashMap.iter
-      (fun package_key runtime ->
+    HashMap.for_each runtimes
+      ~fn:(fun package_key runtime ->
         if runtime.active then
           ()
-        else if Option.is_some (HashMap.get package_results package_key) then
+        else if Option.is_some (HashMap.get package_results ~key:package_key) then
           ()
         else
           let dep_keys = dependency_keys package_graph package_key in
           let deps_failed =
-            List.exists
-              (fun dep_key ->
-                match HashMap.get package_results dep_key with
+            List.any dep_keys
+              ~fn:(fun dep_key ->
+                match HashMap.get package_results ~key:dep_key with
                 | Some result -> result_is_failed result
                 | None -> false)
-              dep_keys
           in
           if deps_failed then
             (
@@ -776,36 +765,35 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
             )
           else
             let deps_satisfied =
-              List.for_all
-                (fun dep_key ->
-                  match HashMap.get package_results dep_key with
+              List.all dep_keys
+                ~fn:(fun dep_key ->
+                  match HashMap.get package_results ~key:dep_key with
                   | Some result -> result_is_success result
                   | None -> false)
-                dep_keys
             in
-            if deps_satisfied then
-              (
-                runtime.active <- true;
-                Telemetry.emit
-                  (BuildStarted {
-                    session_id;
-                    package = runtime.package;
-                    target = Workspace_planner.Package runtime.package.name
-                  });
-                enqueue_all_ready_actions ~package_key runtime enqueue_ready
-              ))
-      runtimes
-  in
+	            if deps_satisfied then
+	              (
+	                runtime.active <- true;
+	                Telemetry.emit
+	                  (BuildStarted {
+	                    session_id;
+	                    package = runtime.package;
+	                    target = Workspace_planner.Package runtime.package.name
+	                  });
+	                enqueue_all_ready_actions ~package_key runtime enqueue_ready
+	              )
+	      );
+	  in
   let finalize_if_complete package_key runtime =
     if
-      Option.is_none (HashMap.get package_results package_key)
+      Option.is_none (HashMap.get package_results ~key:package_key)
       && Action_queue.is_complete runtime.action_queue ~total_nodes:runtime.total_actions
     then
       let failures =
-        HashMap.into_iter runtime.completed_actions
+        HashMap.iter runtime.completed_actions
         |> Iter.Iterator.to_list
         |> List.filter_map
-          (fun ((_, r)) ->
+          ~fn:(fun ((_, r)) ->
             match r.Action_executor.status with
             | Failed err -> Some err
             | Cached _
@@ -824,7 +812,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
               duration = Time.Duration.zero;
             }
           in
-          let _ = HashMap.insert package_results package_key result in
+          let _ = HashMap.insert package_results ~key:package_key ~value:result in
           mark_package_failed_in_graph
             package_graph
             ~package:runtime.package
@@ -863,7 +851,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
               duration = Time.Duration.zero;
             }
           in
-          let _ = HashMap.insert package_results package_key result in
+          let _ = HashMap.insert package_results ~key:package_key ~value:result in
           Sandbox.cleanup runtime.sandbox
   in
   let total_packages = List.length nodes in
@@ -884,54 +872,52 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
     | _ -> workspace_worker_loop ()
   in
   let workers =
-    List.make ~len:worker_count ~fn:(fun _ -> spawn workspace_worker_loop)
+    List.init ~count:worker_count ~fn:(fun _ -> spawn workspace_worker_loop)
   in
   let idle_workers: Pid.t Queue.t = Queue.create () in
-  List.iter
-    (fun pid ->
-      Queue.push idle_workers pid)
-    workers;
+  List.for_each workers
+    ~fn:(fun pid -> Queue.push idle_workers ~value:pid);
   let busy_workers: (Pid.t, Package.key) HashMap.t = HashMap.create () in
   let rec drain_work_queue () =
     match Queue.pop idle_workers with
     | None -> ()
     | Some worker_pid -> (
         match pop_ready () with
-        | None -> Queue.push idle_workers worker_pid
+        | None -> Queue.push idle_workers ~value:worker_pid
         | Some (package_key, action_node) -> (
-            match HashMap.get runtimes package_key with
+            match HashMap.get runtimes ~key:package_key with
             | None ->
-                Queue.push idle_workers worker_pid;
+                Queue.push idle_workers ~value:worker_pid;
                 drain_work_queue ()
             | Some runtime ->
-                let _ = HashMap.insert busy_workers worker_pid package_key in
+                let _ = HashMap.insert busy_workers ~key:worker_pid ~value:package_key in
                 send worker_pid (WorkspaceAssignAction { package_key; runtime; node = action_node });
                 drain_work_queue ()
           )
       )
   in
   let rec loop () =
-    if HashMap.len package_results = total_packages then
+    if HashMap.length package_results = total_packages then
       ()
     else (
       activate_ready_packages ();
       drain_work_queue ();
-      if HashMap.len package_results = total_packages then
+      if HashMap.length package_results = total_packages then
         ()
-      else if HashMap.len busy_workers = 0 && !ready_count = 0 then
+      else if HashMap.length busy_workers = 0 && !ready_count = 0 then
         (
-          let before = HashMap.len package_results in
-          HashMap.into_iter runtimes
+          let before = HashMap.length package_results in
+          HashMap.iter runtimes
           |> Iter.Iterator.to_list
-          |> List.iter
-            (fun ((package_key, pkg_runtime): Package.key * package_runtime) ->
+          |> List.for_each
+            ~fn:(fun ((package_key, pkg_runtime): Package.key * package_runtime) ->
               finalize_if_complete package_key pkg_runtime);
-          let after = HashMap.len package_results in
+          let after = HashMap.length package_results in
           if after = before then
             (
-              HashMap.into_iter runtimes |> Iter.Iterator.to_list |> List.iter
-                (fun ((package_key, pkg_runtime): Package.key * package_runtime) ->
-                  if Option.is_none (HashMap.get package_results package_key) then
+              HashMap.iter runtimes |> Iter.Iterator.to_list |> List.for_each
+                ~fn:(fun ((package_key, pkg_runtime): Package.key * package_runtime) ->
+                  if Option.is_none (HashMap.get package_results ~key:package_key) then
                     (
                       let error = "No ready actions remaining for package" in
                       let result =
@@ -943,7 +929,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                           duration = Time.Duration.zero;
                         }
                       in
-                      let _ = HashMap.insert package_results package_key result in
+                      let _ = HashMap.insert package_results ~key:package_key ~value:result in
                       mark_package_failed_in_graph
                         package_graph
                         ~package:pkg_runtime.package
@@ -958,9 +944,9 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
       else
         match receive_any () with
         | WorkspaceActionCompleted { worker_pid; package_key; result } -> (
-            let _ = HashMap.remove busy_workers worker_pid in
-            Queue.push idle_workers worker_pid;
-            match HashMap.get runtimes package_key with
+            let _ = HashMap.remove busy_workers ~key:worker_pid in
+            Queue.push idle_workers ~value:worker_pid;
+            match HashMap.get runtimes ~key:package_key with
             | None -> loop ()
             | Some runtime ->
                 if (not runtime.compilation_started) && match result.status with
@@ -986,16 +972,16 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
     )
   in
   let planning_counts () =
-    HashMap.into_iter planning_results
+    HashMap.iter planning_results
     |> Iter.Iterator.to_list
     |> List.fold_left
-      (fun ((planned, missing, failed)) ((_, status)) ->
+      ~acc:(0, 0, 0)
+      ~fn:(fun (planned, missing, failed) (_, status) ->
         match status with
         | `Planned -> (planned + 1, missing, failed)
         | `MissingDependencies -> (planned, missing + 1, failed)
         | `FailedDependencies
         | `Failed -> (planned, missing, failed + 1))
-      (0, 0, 0)
   in
   loop ();
   let planned_count, missing_count, failed_count = planning_counts () in
@@ -1012,9 +998,9 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
       }
     );
   package_results
-  |> HashMap.into_iter
+  |> HashMap.iter
   |> Iter.Iterator.to_list
-  |> List.map (fun ((_, result)) -> result)
+  |> List.map ~fn:(fun (_, result) -> result)
 
 let build_workspace = fun ~workspace ~toolchain ~store ~target ~scope ~concurrency ~build_ctx ~session_id ->
   let start = Time.Instant.now () in

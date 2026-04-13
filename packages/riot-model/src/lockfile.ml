@@ -51,25 +51,25 @@ let package_id_to_toml = fun (id: package_id) ->
     | Some sha256 -> ("sha256", Toml.String sha256) :: fields
     | None -> fields
   in
-  Toml.Table (List.rev fields)
+  Toml.Table (List.reverse fields)
 
 let package_id_of_toml = fun value ->
   match value with
   | Toml.Table fields -> (
-      match List.assoc_opt "name" fields with
+      match Fields.get "name" fields with
       | Some (Toml.String name) ->
           let registry =
-            match List.assoc_opt "registry" fields with
+            match Fields.get "registry" fields with
             | Some (Toml.String registry) -> Some registry
             | _ -> None
           in
           let version =
-            match List.assoc_opt "version" fields with
+            match Fields.get "version" fields with
             | Some (Toml.String version) -> Some version
             | _ -> None
           in
           let sha256 =
-            match List.assoc_opt "sha256" fields with
+            match Fields.get "sha256" fields with
             | Some (Toml.String sha256) -> Some sha256
             | _ -> None
           in
@@ -79,20 +79,20 @@ let package_id_of_toml = fun value ->
   | _ -> Error "lockfile package id must be a table"
 
 let package_id_of_fields = fun fields ->
-  match List.assoc_opt "name" fields with
+  match Fields.get "name" fields with
   | Some (Toml.String name) ->
       let registry =
-        match List.assoc_opt "registry" fields with
+        match Fields.get "registry" fields with
         | Some (Toml.String registry) -> Some registry
         | _ -> None
       in
       let version =
-        match List.assoc_opt "version" fields with
+        match Fields.get "version" fields with
         | Some (Toml.String version) -> Some version
         | _ -> None
       in
       let sha256 =
-        match List.assoc_opt "sha256" fields with
+        match Fields.get "sha256" fields with
         | Some (Toml.String sha256) -> Some sha256
         | _ -> None
       in
@@ -112,26 +112,26 @@ let provenance_to_toml = fun provenance ->
         | Some ref_ -> ("ref", Toml.String ref_) :: fields
         | None -> fields
       in
-      Toml.Table (List.rev fields)
+      Toml.Table (List.reverse fields)
   | Registry { registry } ->
       Toml.Table [ ("kind", Toml.String "registry"); ("registry", Toml.String registry) ]
 
 let provenance_of_toml = fun value ->
   match value with
   | Toml.Table fields -> (
-      match List.assoc_opt "kind" fields with
+      match Fields.get "kind" fields with
       | Some (Toml.String "workspace") ->
           Ok Workspace
       | Some (Toml.String "path") -> (
-          match List.assoc_opt "path" fields with
+          match Fields.get "path" fields with
           | Some (Toml.String path) -> Ok (Path (Path.v path))
           | _ -> Error "lockfile path provenance is missing required field 'path'"
         )
       | Some (Toml.String "source") -> (
-          match List.assoc_opt "locator" fields with
+          match Fields.get "locator" fields with
           | Some (Toml.String locator) ->
               let ref_ =
-                match List.assoc_opt "ref" fields with
+                match Fields.get "ref" fields with
                 | Some (Toml.String ref_) -> Some ref_
                 | _ -> None
               in
@@ -139,7 +139,7 @@ let provenance_of_toml = fun value ->
           | _ -> Error "lockfile source provenance is missing required field 'locator'"
         )
       | Some (Toml.String "registry") -> (
-          match List.assoc_opt "registry" fields with
+          match Fields.get "registry" fields with
           | Some (Toml.String registry) -> Ok (Registry { registry })
           | _ -> Error "lockfile registry provenance is missing required field 'registry'"
         )
@@ -175,40 +175,43 @@ let dependency_to_toml = fun (dep: dependency) ->
       | Some sha256 -> ("sha256", Toml.String sha256) :: fields
       | None -> fields
     in
-    Toml.Table (List.rev fields)
+    Toml.Table (List.reverse fields)
   else
     Toml.Table [ ("name", Toml.String dep.name); ("package", package_id_to_toml dep.package) ]
 
 let dependency_of_toml = fun value ->
   match value with
   | Toml.Table fields -> (
-      match List.assoc_opt "name" fields with
+      match Fields.get "name" fields with
       | Some (Toml.String name) -> (
-          match List.assoc_opt "package" fields with
+          match Fields.get "package" fields with
           | Some package_value -> package_id_of_toml package_value
-          |> Result.map (fun package -> { name; package })
+          |> Result.map ~fn:(fun package -> { name; package })
           | None ->
               let package_name =
-                match List.assoc_opt "package_name" fields with
+                match Fields.get "package_name" fields with
                 | Some (Toml.String package_name) -> package_name
                 | _ -> name
               in
               let registry =
-                match List.assoc_opt "registry" fields with
+                match Fields.get "registry" fields with
                 | Some (Toml.String registry) -> Some registry
                 | _ ->
-                    if List.mem_assoc "version" fields || List.mem_assoc "sha256" fields then
+                    if
+                      List.any fields ~fn:(fun (field_name, _value) -> String.equal field_name "version")
+                      || List.any fields ~fn:(fun (field_name, _value) -> String.equal field_name "sha256")
+                    then
                       Some "pkgs.ml"
                     else
                       None
               in
               let version =
-                match List.assoc_opt "version" fields with
+                match Fields.get "version" fields with
                 | Some (Toml.String version) -> Some version
                 | _ -> None
               in
               let sha256 =
-                match List.assoc_opt "sha256" fields with
+                match Fields.get "sha256" fields with
                 | Some (Toml.String sha256) -> Some sha256
                 | _ -> None
               in
@@ -218,13 +221,13 @@ let dependency_of_toml = fun value ->
     )
   | _ -> Error "lockfile dependency must be a table"
 
-let dependency_list_to_toml = fun deps -> Toml.Array (List.map dependency_to_toml deps)
+let dependency_list_to_toml = fun deps -> Toml.Array (List.map deps ~fn:dependency_to_toml)
 
 let dependency_list_of_toml = fun value ->
   match value with
   | Toml.Array items ->
       let rec loop acc = function
-        | [] -> Ok (List.rev acc)
+        | [] -> Ok (List.reverse acc)
         | item :: rest -> (
             match dependency_of_toml item with
             | Ok dep -> loop (dep :: acc) rest
@@ -262,17 +265,17 @@ let package_to_toml = fun (pkg: package) ->
     | Some root -> ("root", Toml.String (Path.to_string root)) :: fields
     | None -> fields
   in
-  Toml.Table (List.rev fields)
+  Toml.Table (List.reverse fields)
 
 let package_of_toml = fun value ->
   match value with
   | Toml.Table fields -> (
-      match List.assoc_opt "provenance" fields, List.assoc_opt "dependencies" fields, List.assoc_opt
+      match Fields.get "provenance" fields, Fields.get "dependencies" fields, Fields.get
         "build_dependencies"
-        fields, List.assoc_opt "dev_dependencies" fields with
+        fields, Fields.get "dev_dependencies" fields with
       | Some provenance_value, Some dependencies_value, Some build_dependencies_value, Some dev_dependencies_value -> (
           let id_result =
-            match List.assoc_opt "id" fields with
+            match Fields.get "id" fields with
             | Some id_value -> package_id_of_toml id_value
             | None -> package_id_of_fields fields
           in
@@ -280,10 +283,10 @@ let package_of_toml = fun value ->
           | Error _ as err -> err
           | Ok id -> (
               let root =
-                match List.assoc_opt "root" fields with
+                match Fields.get "root" fields with
                 | Some (Toml.String root) -> Some (Path.v root)
                 | _ -> (
-                    match List.assoc_opt "path" fields with
+                    match Fields.get "path" fields with
                     | Some (Toml.String legacy_path) -> Some (Path.v legacy_path)
                     | _ -> None
                   )
@@ -322,18 +325,18 @@ let to_toml = fun (lockfile: t) ->
     ("format_version", Toml.Int lockfile.format_version);
     ("dependency_hash", Toml.String lockfile.dependency_hash);
   ] in
-  let fields = ("packages", Toml.Array (List.map package_to_toml lockfile.packages)) :: fields in
-  Toml.Table (List.rev fields)
+  let fields = ("packages", Toml.Array (List.map lockfile.packages ~fn:package_to_toml)) :: fields in
+  Toml.Table (List.reverse fields)
 
 let of_toml = fun value ->
   match value with
   | Toml.Table fields -> (
-      match List.assoc_opt "format_version" fields, List.assoc_opt "dependency_hash" fields, List.assoc_opt
+      match Fields.get "format_version" fields, Fields.get "dependency_hash" fields, Fields.get
         "packages"
         fields with
       | Some (Toml.Int format_version), Some (Toml.String dependency_hash), Some (Toml.Array packages) ->
           let rec loop acc = function
-            | [] -> Ok { format_version; dependency_hash; packages = List.rev acc }
+            | [] -> Ok { format_version; dependency_hash; packages = List.reverse acc }
             | pkg :: rest -> (
                 match package_of_toml pkg with
                 | Ok pkg -> loop (pkg :: acc) rest
@@ -364,7 +367,9 @@ let render_package_id = fun (id: package_id) ->
     | Some sha256 -> ("sha256", render_string sha256) :: fields
     | None -> fields
   in
-  "{ " ^ String.concat ", " (List.rev_map (fun (key, value) -> key ^ " = " ^ value) fields) ^ " }"
+  "{ "
+  ^ String.concat ", " (fields |> List.reverse |> List.map ~fn:(fun (key, value) -> key ^ " = " ^ value))
+  ^ " }"
 
 let render_provenance = fun provenance ->
   match provenance with
@@ -379,7 +384,9 @@ let render_provenance = fun provenance ->
         | Some ref_ -> ("ref", render_string ref_) :: fields
         | None -> fields
       in
-      "{ " ^ String.concat ", " (List.rev_map (fun (key, value) -> key ^ " = " ^ value) fields) ^ " }"
+      "{ "
+      ^ String.concat ", " (fields |> List.reverse |> List.map ~fn:(fun (key, value) -> key ^ " = " ^ value))
+      ^ " }"
   | Registry { registry } ->
       "{ kind = " ^ render_string "registry" ^ ", registry = " ^ render_string registry ^ " }"
 
@@ -408,12 +415,14 @@ let render_dependency = fun (dep: dependency) ->
       | Some sha256 -> ("sha256", render_string sha256) :: fields
       | None -> fields
     in
-    "{ " ^ String.concat ", " (List.rev_map (fun (key, value) -> key ^ " = " ^ value) fields) ^ " }"
+    "{ "
+    ^ String.concat ", " (fields |> List.reverse |> List.map ~fn:(fun (key, value) -> key ^ " = " ^ value))
+    ^ " }"
   else
     "{ name = " ^ render_string dep.name ^ ", package = " ^ render_package_id dep.package ^ " }"
 
 let render_dependency_list = fun deps ->
-  "[" ^ String.concat ", " (List.map render_dependency deps) ^ "]"
+  "[" ^ String.concat ", " (List.map deps ~fn:render_dependency) ^ "]"
 
 let render_package = fun (pkg: package) ->
   let header_lines =
@@ -437,7 +446,7 @@ let render_package = fun (pkg: package) ->
       ^ render_dependency_list pkg.dependencies); Some ("build_dependencies = "
       ^ render_dependency_list pkg.build_dependencies); Some ("dev_dependencies = "
       ^ render_dependency_list pkg.dev_dependencies); ]
-    |> List.filter_map (fun item -> item)
+    |> List.filter_map ~fn:(fun item -> item)
   in
   String.concat "\n" ("[[packages]]" :: header_lines)
 
@@ -450,7 +459,7 @@ let to_string = fun lockfile ->
     if List.is_empty lockfile.packages then
       [ "packages = []" ]
     else
-      List.map render_package lockfile.packages
+      List.map lockfile.packages ~fn:render_package
   )
   in
   String.concat "\n\n" parts ^ "\n"
@@ -503,13 +512,27 @@ module Tests = struct
     | Ok toml -> (
         match of_toml toml with
         | Ok parsed ->
+            let first_package = List.get parsed.packages ~at:0 in
+            let second_package = List.get parsed.packages ~at:1 in
             if
               parsed.format_version = 1
               && String.equal parsed.dependency_hash "deadbeefcafebabe"
               && List.length parsed.packages = 2
-              && (List.hd parsed.packages).id.name = "app"
-              && (List.nth parsed.packages 1).id.version = Some "0.1.0"
-              && (List.nth parsed.packages 1).id.sha256 = Some "deadbeef"
+              && (
+                match first_package with
+                | Some package -> String.equal package.id.name "app"
+                | None -> false
+              )
+              && (
+                match second_package with
+                | Some package -> package.id.version = Some "0.1.0"
+                | None -> false
+              )
+              && (
+                match second_package with
+                | Some package -> package.id.sha256 = Some "deadbeef"
+                | None -> false
+              )
               && String.contains rendered {|dependency_hash = "deadbeefcafebabe"|}
               && String.contains rendered {|dependencies = [{ name = "std", version = "0.1.0", sha256 = "deadbeef" }]|}
               && not (String.contains rendered "package = {")

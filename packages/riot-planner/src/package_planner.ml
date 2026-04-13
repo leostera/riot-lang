@@ -45,11 +45,11 @@ let file_to_json = fun (file: Module_node.file) ->
 let file_of_json = fun json ->
   let open Std.Data.Json in
     match json with
-    | Object fields -> (
+    | Object _ -> (
         match (
-          List.assoc_opt "kind" fields,
-          List.assoc_opt "path" fields,
-          List.assoc_opt "contents" fields
+          get_field "kind" json,
+          get_field "path" json,
+          get_field "contents" json
         ) with
         | Some (String "concrete"), Some (String path), _ -> Ok (Module_node.Concrete (Path.v path))
         | Some (String "generated"), Some (String path), Some (String contents) -> Ok (Module_node.Generated {
@@ -68,14 +68,14 @@ let module_kind_to_json = fun (kind: Module_node.kind) ->
         Object [
           ("kind", String "ml");
           ("filename", String (Path.to_string (Module.filename mod_)));
-          ("namespace", Array (List.map (fun s -> String s) ns));
+          ("namespace", Array (List.map ns ~fn:(fun s -> String s)));
         ]
     | Module_node.MLI mod_ ->
         let ns = Module.module_name mod_ |> Module_name.namespace |> Namespace.to_list in
         Object [
           ("kind", String "mli");
           ("filename", String (Path.to_string (Module.filename mod_)));
-          ("namespace", Array (List.map (fun s -> String s) ns));
+          ("namespace", Array (List.map ns ~fn:(fun s -> String s)));
         ]
     | Module_node.C ->
         Object [ ("kind", String "c") ]
@@ -88,42 +88,43 @@ let module_kind_to_json = fun (kind: Module_node.kind) ->
     | Module_node.Native { files } ->
         Object [
           ("kind", String "native");
-          ("files", Array (List.map (fun p -> String (Path.to_string p)) files));
+          ("files", Array (List.map files ~fn:(fun p -> String (Path.to_string p))));
         ]
     | Module_node.Library { name; includes } ->
         Object [
           ("kind", String "library");
           ("name", String name);
-          ("includes", Array (List.map (fun p -> String (Path.to_string p)) includes));
+          ("includes", Array (List.map includes ~fn:(fun p -> String (Path.to_string p))));
         ]
     | Module_node.Binary { name; source; libraries; includes } ->
         Object [
           ("kind", String "binary");
           ("name", String name);
           ("source", String (Path.to_string source));
-          ("libraries", Array (List.map (fun p -> String (Path.to_string p)) libraries));
-          ("includes", Array (List.map (fun p -> String (Path.to_string p)) includes));
+          ("libraries", Array (List.map libraries ~fn:(fun p -> String (Path.to_string p))));
+          ("includes", Array (List.map includes ~fn:(fun p -> String (Path.to_string p))));
         ]
 
 let parse_string_array = function
   | Std.Data.Json.Array xs ->
       List.fold_left
-        (fun acc item ->
+        xs
+        ~acc:(Ok [])
+        ~fn:(fun acc item ->
           match (acc, item) with
           | Error e, _ -> Error e
           | Ok items, Std.Data.Json.String s -> Ok (s :: items)
           | Ok _, _ -> Error "expected string array")
-        (Ok [])
-        xs |> Result.map List.rev
+      |> Result.map ~fn:List.reverse
   | _ -> Error "expected array"
 
 let module_kind_of_json = fun json ->
   let open Std.Data.Json in
     match json with
-    | Object fields -> (
-        match List.assoc_opt "kind" fields with
+    | Object _ -> (
+        match get_field "kind" json with
         | Some (String "ml") -> (
-            match (List.assoc_opt "filename" fields, List.assoc_opt "namespace" fields) with
+            match (get_field "filename" json, get_field "namespace" json) with
             | Some (String filename), Some namespace_json -> (
                 match parse_string_array namespace_json with
                 | Ok ns ->
@@ -136,7 +137,7 @@ let module_kind_of_json = fun json ->
             | _ -> Error "invalid ml kind payload"
           )
         | Some (String "mli") -> (
-            match (List.assoc_opt "filename" fields, List.assoc_opt "namespace" fields) with
+            match (get_field "filename" json, get_field "namespace" json) with
             | Some (String filename), Some namespace_json -> (
                 match parse_string_array namespace_json with
                 | Ok ns ->
@@ -153,28 +154,28 @@ let module_kind_of_json = fun json ->
         | Some (String "h") ->
             Ok Module_node.H
         | Some (String "other") -> (
-            match List.assoc_opt "value" fields with
+            match get_field "value" json with
             | Some (String v) -> Ok (Module_node.Other v)
             | _ -> Error "invalid other kind payload"
           )
         | Some (String "root") ->
             Ok Module_node.Root
         | Some (String "native") -> (
-            match List.assoc_opt "files" fields with
+            match get_field "files" json with
             | Some files_json -> (
                 match parse_string_array files_json with
-                | Ok files -> Ok (Module_node.Native { files = List.map Path.v files })
+                | Ok files -> Ok (Module_node.Native { files = List.map files ~fn:Path.v })
                 | Error e -> Error e
               )
             | None -> Error "invalid native kind payload"
           )
         | Some (String "library") -> (
-            match (List.assoc_opt "name" fields, List.assoc_opt "includes" fields) with
+            match (get_field "name" json, get_field "includes" json) with
             | Some (String name), Some includes_json -> (
                 match parse_string_array includes_json with
                 | Ok includes -> Ok (Module_node.Library {
                   name;
-                  includes = List.map Path.v includes
+                  includes = List.map includes ~fn:Path.v
                 })
                 | Error e -> Error e
               )
@@ -182,18 +183,18 @@ let module_kind_of_json = fun json ->
           )
         | Some (String "binary") -> (
             match (
-              List.assoc_opt "name" fields,
-              List.assoc_opt "source" fields,
-              List.assoc_opt "libraries" fields,
-              List.assoc_opt "includes" fields
+              get_field "name" json,
+              get_field "source" json,
+              get_field "libraries" json,
+              get_field "includes" json
             ) with
             | (Some (String name), Some (String source), Some libraries_json, Some includes_json) -> (
                 match (parse_string_array libraries_json, parse_string_array includes_json) with
                 | Ok libraries, Ok includes -> Ok (Module_node.Binary {
                   name;
                   source = Path.v source;
-                  libraries = List.map Path.v libraries;
-                  includes = List.map Path.v includes
+                  libraries = List.map libraries ~fn:Path.v;
+                  includes = List.map includes ~fn:Path.v
                 })
                 | (Error e, _)
                 | (_, Error e) -> Error e
@@ -216,16 +217,16 @@ let module_graph_to_json = fun (module_graph: Module_node.t G.t) ->
       ("id", Int (G.Node_id.to_int node.id));
       ("file", file_to_json node.value.file);
       ("kind", module_kind_to_json node.value.kind);
-      ("deps", Array (List.map (fun dep -> Int (G.Node_id.to_int dep)) node.deps));
+      ("deps", Array (List.map node.deps ~fn:(fun dep -> Int (G.Node_id.to_int dep))));
       ("opens", Array []);
     ] in
-    Object [ ("nodes", Array (List.map node_to_json nodes)) ]
+    Object [ ("nodes", Array (List.map nodes ~fn:node_to_json)) ]
 
 let module_graph_of_json = fun json ->
   let open Std.Data.Json in
     match json with
-    | Object fields -> (
-        match List.assoc_opt "nodes" fields with
+    | Object _ -> (
+        match get_field "nodes" json with
         | Some (Array node_jsons) ->
             let graph = G.make () in
             let id_to_node: (int, Module_node.t G.node) HashMap.t = HashMap.create () in
@@ -233,28 +234,31 @@ let module_graph_of_json = fun json ->
             let parse_int_array = function
               | Array xs ->
                   List.fold_left
-                    (fun acc item ->
+                    xs
+                    ~acc:(Ok [])
+                    ~fn:(fun acc item ->
                       match (acc, item) with
                       | Error e, _ -> Error e
                       | Ok items, Int i -> Ok (i :: items)
                       | Ok _, _ -> Error "expected int array")
-                    (Ok [])
-                    xs |> Result.map List.rev
+                  |> Result.map ~fn:List.reverse
               | _ -> Error "expected int array"
             in
             let result =
               List.fold_left
-                (fun acc node_json ->
+                node_jsons
+                ~acc:(Ok ())
+                ~fn:(fun acc node_json ->
                   match acc with
                   | Error _ -> acc
                   | Ok () -> (
                       match node_json with
-                      | Object node_fields -> (
+                      | Object _ -> (
                           match (
-                            List.assoc_opt "id" node_fields,
-                            List.assoc_opt "file" node_fields,
-                            List.assoc_opt "kind" node_fields,
-                            List.assoc_opt "deps" node_fields
+                            get_field "id" node_json,
+                            get_field "file" node_json,
+                            get_field "kind" node_json,
+                            get_field "deps" node_json
                           ) with
                           | (Some (Int legacy_id), Some file_json, Some kind_json, Some deps_json) -> (
                               match (
@@ -265,8 +269,8 @@ let module_graph_of_json = fun json ->
                               | Ok file, Ok kind, Ok deps ->
                                   let node_value: Module_node.t = { file; open_modules = []; kind } in
                                   let node = G.add_node graph node_value in
-                                  let _ = HashMap.insert id_to_node legacy_id node in
-                                  Vector.push pending_deps (node, deps);
+                                  let _ = HashMap.insert id_to_node ~key:legacy_id ~value:node in
+                                  Vector.push pending_deps ~value:(node, deps);
                                   Ok ()
                               | (Error e, _, _)
                               | (_, Error e, _)
@@ -276,21 +280,16 @@ let module_graph_of_json = fun json ->
                         )
                       | _ -> Error "module node must be an object"
                     ))
-                (Ok ())
-                node_jsons
             in
             (
               match result with
               | Error e -> Error e
               | Ok () ->
-                  Vector.into_iter pending_deps |> Iterator.to_list |> List.iter
-                    (fun ((node, dep_ids)) ->
-                      List.iter
-                        (fun dep_id ->
-                          match HashMap.get id_to_node dep_id with
+                  Vector.iter pending_deps |> Iterator.to_list |> List.for_each ~fn:(fun (node, dep_ids) ->
+                      List.for_each dep_ids ~fn:(fun dep_id ->
+                          match HashMap.get id_to_node ~key:dep_id with
                           | Some dep_node -> G.add_edge node ~depends_on:dep_node
-                          | None -> ())
-                        dep_ids);
+                          | None -> ()));
                   Ok graph
             )
         | _ -> Error "missing module graph nodes"
@@ -308,12 +307,12 @@ let plan_bundle_to_json = fun ~(package:Package.t) ~(module_graph:Module_node.t 
 let plan_bundle_of_json = fun ~(package:Package.t) json ->
   let open Std.Data.Json in
     match json with
-    | Object fields -> (
+    | Object _ -> (
         match (
-          List.assoc_opt "version" fields,
-          List.assoc_opt "package" fields,
-          List.assoc_opt "module_graph" fields,
-          List.assoc_opt "action_graph" fields
+          get_field "version" json,
+          get_field "package" json,
+          get_field "module_graph" json,
+          get_field "action_graph" json
         ) with
         | Some (Int 1), Some (String pkg_name), Some module_graph_json, Some action_graph_json when String.equal
           pkg_name
@@ -359,16 +358,17 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
   (* Add workspace-specific dependency info not captured in package metadata *)
   let sorted_deps =
     List.sort
-      (fun (a: Package.dependency) (b: Package.dependency) ->
-        String.compare a.name b.name)
       (Package.build_graph_dependencies package)
+      ~compare:(fun (a: Package.dependency) (b: Package.dependency) ->
+        String.compare a.name b.name)
   in
-  List.iter
-    (fun (dep: Package.dependency) ->
+  List.for_each
+    sorted_deps
+    ~fn:(fun (dep: Package.dependency) ->
       (* Package.hash already includes dep name and source, we just add workspace-specific details *)
       match dep.source with
       | { Package.workspace=true; _ } -> (
-          match List.find_opt (fun (p: Package.t) -> p.name = dep.name) workspace.Workspace.packages with
+          match List.find workspace.Workspace.packages ~fn:(fun (p: Package.t) -> p.name = dep.name) with
           | Some dep_pkg -> (
               H.write state (Path.to_string dep_pkg.path);
               match dep_pkg.library with
@@ -380,16 +380,12 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
       | { Package.builtin=true; _ } ->
           ()
       | _ ->
-          ())
-    sorted_deps;
+          ());
   (* Dependency hashes *)
   let dep_hashes = depset
-  |> List.map (fun (dep: Dependency.t) -> dep.hash)
-  |> List.sort Std.Crypto.Hash.compare in
-  List.iter
-    (fun hash ->
-      H.write_hash state hash)
-    dep_hashes;
+  |> List.map ~fn:(fun (dep: Dependency.t) -> dep.hash)
+  |> List.sort ~compare:Std.Crypto.Hash.compare in
+  List.for_each dep_hashes ~fn:(fun hash -> H.write_hash state hash);
   H.finish state
 
 let check_dependencies_built = fun ~store ~package_graph ~package_key ->
@@ -430,7 +426,7 @@ let check_dependencies_built = fun ~store ~package_graph ~package_key ->
             | Some node -> Package_graph.get_dependencies_for_node package_graph node
             | None -> []
           in
-          let dep_depset = List.filter_map summarize_dependency dep_nodes in
+          let dep_depset = List.filter_map dep_nodes ~fn:summarize_dependency in
           Some Dependency.{
             package;
             artifact_dir = Riot_store.Store.hash_dir_of store hash;
@@ -460,7 +456,7 @@ let check_dependencies_built = fun ~store ~package_graph ~package_key ->
             | Some node -> Package_graph.get_dependencies_for_node package_graph node
             | None -> []
           in
-          let dep_depset = List.filter_map summarize_dependency dep_nodes in
+          let dep_depset = List.filter_map dep_nodes ~fn:summarize_dependency in
           Some Dependency.{
             package;
             artifact_dir = Riot_store.Store.hash_dir_of store hash;
@@ -476,7 +472,7 @@ let check_dependencies_built = fun ~store ~package_graph ~package_key ->
         failed := pkg :: !failed;
         None
   in
-  let depset = List.filter_map summarize_dependency deps in
+  let depset = List.filter_map deps ~fn:summarize_dependency in
   (* Check the sets in order: failed takes precedence *)
   if !failed != [] then
     Error (Failed !failed)
@@ -505,10 +501,13 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
           ("Available targets: ["
           ^ (String.concat
             ", "
-            (List.map (fun (target, _) -> target) package.compiler.target_overrides))
+            (List.map package.compiler.target_overrides ~fn:(fun (target, _) -> target)))
           ^ "]");
-        match List.assoc_opt target_platform package.compiler.target_overrides with
-        | Some target_override -> (
+        match
+          List.find package.compiler.target_overrides
+            ~fn:(fun (target, _) -> String.equal target target_platform)
+        with
+        | Some (_, target_override) -> (
             Log.info ("Found target." ^ target_platform ^ " override, applying...");
             match target_override.profile_override with
             | Some override ->
@@ -595,7 +594,8 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                       (* Add foreign dependency build actions and make all other nodes depend on them *)
                       let foreign_nodes =
                         List.map
-                          (fun (fdep: Package.foreign_dependency) ->
+                          package.foreign_dependencies
+                          ~fn:(fun (fdep: Package.foreign_dependency) ->
                             Log.info
                               ("[PACKAGE_PLANNER] Adding foreign dependency: "
                               ^ fdep.name
@@ -621,13 +621,12 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                                 ~deps:[]
                             in
                             Action_graph.add_node action_graph foreign_node)
-                          package.foreign_dependencies
                       in
                       (* Make all existing nodes depend on foreign dependency nodes *)
                       if List.length foreign_nodes > 0 then
                         (
                           let foreign_node_ids =
-                            List.map (fun (node: Action_node.t) -> node.id) foreign_nodes
+                            List.map foreign_nodes ~fn:(fun (node: Action_node.t) -> node.id)
                           in
                           Log.info
                             ("[PACKAGE_PLANNER] Making all action nodes depend on "
@@ -638,16 +637,17 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                             ("[PACKAGE_PLANNER] Total action nodes (including foreign): "
                             ^ Int.to_string (List.length all_nodes));
                           let dep_count = ref 0 in
-                          List.iter
-                            (fun (node: Action_node.t) ->
-                              let is_foreign_node = List.mem node.id foreign_node_ids in
+                          List.for_each
+                            all_nodes
+                            ~fn:(fun (node: Action_node.t) ->
+                              let is_foreign_node = List.contains foreign_node_ids ~value:node.id in
                               if not is_foreign_node then
-                                List.iter
-                                  (fun foreign_node ->
+                                List.for_each
+                                  foreign_nodes
+                                  ~fn:(fun foreign_node ->
                                     Action_graph.add_dependency action_graph node ~depends_on:foreign_node;
                                     dep_count := !dep_count + 1)
-                                  foreign_nodes)
-                            all_nodes;
+                            );
                           Log.info
                             ("[PACKAGE_PLANNER] Added " ^ Int.to_string !dep_count ^ " dependency edges to foreign nodes")
                         );
@@ -691,7 +691,8 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                   (* Add foreign dependency build actions and make all other nodes depend on them *)
                   let foreign_nodes =
                     List.map
-                      (fun (fdep: Package.foreign_dependency) ->
+                      package.foreign_dependencies
+                      ~fn:(fun (fdep: Package.foreign_dependency) ->
                         Log.info
                           ("[PACKAGE_PLANNER] Adding foreign dependency: "
                           ^ fdep.name
@@ -717,13 +718,12 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                             ~deps:[]
                         in
                         Action_graph.add_node action_graph foreign_node)
-                      package.foreign_dependencies
                   in
                   (* Make all existing nodes depend on foreign dependency nodes *)
                   if List.length foreign_nodes > 0 then
                     (
                       let foreign_node_ids =
-                        List.map (fun (node: Action_node.t) -> node.id) foreign_nodes
+                        List.map foreign_nodes ~fn:(fun (node: Action_node.t) -> node.id)
                       in
                       Log.info
                         ("[PACKAGE_PLANNER] Making all action nodes depend on "
@@ -734,20 +734,21 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                         ("[PACKAGE_PLANNER] Total action nodes (including foreign): "
                         ^ Int.to_string (List.length all_nodes));
                       let dep_count = ref 0 in
-                      List.iter
-                        (fun (node: Action_node.t) ->
+                      List.for_each
+                        all_nodes
+                        ~fn:(fun (node: Action_node.t) ->
                           (* Skip foreign dependency nodes themselves *)
-                          let is_foreign_node = List.mem node.id foreign_node_ids in
+                          let is_foreign_node = List.contains foreign_node_ids ~value:node.id in
                           if not is_foreign_node then
                             (
                               (* Make this node depend on all foreign nodes *)
-                              List.iter
-                                (fun foreign_node ->
+                              List.for_each
+                                foreign_nodes
+                                ~fn:(fun foreign_node ->
                                   Action_graph.add_dependency action_graph node ~depends_on:foreign_node;
                                   dep_count := !dep_count + 1)
-                                foreign_nodes
-                            ))
-                        all_nodes;
+                            )
+                        );
                       Log.info
                         ("[PACKAGE_PLANNER] Added " ^ Int.to_string !dep_count ^ " dependency edges to foreign nodes")
                     );

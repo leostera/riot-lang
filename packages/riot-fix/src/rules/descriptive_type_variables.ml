@@ -19,7 +19,8 @@ For example, `('value, 'error) resultish` tells a much clearer story than
 
 let is_lower_alpha = fun ch -> ch >= 'a' && ch <= 'z'
 
-let should_flag_type_variable_name = fun name -> String.length name = 1 && is_lower_alpha name.[0]
+let should_flag_type_variable_name = fun name ->
+  String.length name = 1 && is_lower_alpha (String.get_unchecked name ~at:0)
 
 let make_diagnostic = fun type_variable ->
   let original = Syn.Cst.TypeVariable.text type_variable in
@@ -41,24 +42,26 @@ let diagnostic_for_type_param type_parameter =
   | Syn.Cst.TypeParameter.{ type_variable=None; _ } -> None
 
 let diagnostic_for_decl = fun (Syn.Cst.TypeDeclaration.{ type_params; _ }) ->
-  type_params |> List.filter_map diagnostic_for_type_param
+  type_params |> List.filter_map ~fn:diagnostic_for_type_param
 
 let diagnostics_for_items = fun source_file ->
   match source_file with
   | Syn.Cst.Implementation { items; _ } ->
-      items |> List.concat_map
-        (
+      items
+      |> List.map ~fn:(
           function
           | Syn.Cst.StructureItem.TypeDeclaration decl -> diagnostic_for_decl decl
           | _ -> []
         )
+      |> List.concat
   | Syn.Cst.Interface { items; _ } ->
-      items |> List.concat_map
-        (
+      items
+      |> List.map ~fn:(
           function
           | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostic_for_decl decl
           | _ -> []
         )
+      |> List.concat
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in

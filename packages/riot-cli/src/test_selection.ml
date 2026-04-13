@@ -14,11 +14,19 @@ type request = {
 }
 
 let split_once = fun value ch ->
-  match String.index value ch with
+  let rec find at =
+    if at >= String.length value then
+      None
+    else if Char.equal (String.get_unchecked value ~at) ch then
+      Some at
+    else
+      find (at + 1)
+  in
+  match find 0 with
   | None -> None
   | Some idx ->
-      let left = String.sub value 0 idx in
-      let right = String.sub value (idx + 1) (String.length value - idx - 1) in
+      let left = String.sub value ~offset:0 ~len:idx in
+      let right = String.sub value ~offset:(idx + 1) ~len:(String.length value - idx - 1) in
       Some (left, right)
 
 let has_text = fun value -> not (String.equal value "")

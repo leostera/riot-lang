@@ -89,17 +89,16 @@ let make_relative = fun ~base ~path ->
   let prefix = base_str ^ "/" in
   if String.starts_with ~prefix path_str then
     let len = String.length prefix in
-    Path.v (String.sub path_str len (String.length path_str - len))
+    Path.v (String.sub path_str ~offset:len ~len:(String.length path_str - len))
   else
     path
 
 let sanitize_module_name = fun name ->
-  String.map
-    (fun ch ->
-      if ch = '-' then
-        '_'
-      else
-        ch)
+  String.map ~fn:(fun ch ->
+    if ch = '-' then
+      '_'
+    else
+      ch)
     name
 
 let source_hash = fun ~implicit_opens ~cst ->
@@ -111,48 +110,45 @@ let source_hash = fun ~implicit_opens ~cst ->
   let () = H.write state "\x1f" in
   let () =
     implicit_opens
-    |> List.iter
-      (fun module_name ->
-        H.write state module_name;
-        H.write state "\x1f")
+    |> List.for_each ~fn:(fun module_name ->
+      H.write state module_name;
+      H.write state "\x1f")
   in
   H.finish state
 
 let rec filter_entries = fun ~allowed entries ->
-  let allowed_strings = List.map Path.to_string allowed in
-  List.filter_map
-    (
-      function
-      | Module_scanner.ML (name, path) ->
-          if List.mem (Path.to_string path) allowed_strings then
-            Some (Module_scanner.ML (name, path))
-          else
-            None
-      | Module_scanner.MLI (name, path) ->
-          if List.mem (Path.to_string path) allowed_strings then
-            Some (Module_scanner.MLI (name, path))
-          else
-            None
-      | Module_scanner.C (name, path) ->
-          if List.mem (Path.to_string path) allowed_strings then
-            Some (Module_scanner.C (name, path))
-          else
-            None
-      | Module_scanner.H (name, path) ->
-          if List.mem (Path.to_string path) allowed_strings then
-            Some (Module_scanner.H (name, path))
-          else
-            None
-      | Module_scanner.Other _ ->
+  let allowed_strings = List.map allowed ~fn:Path.to_string in
+  List.filter_map entries ~fn:(
+    function
+    | Module_scanner.ML (name, path) ->
+        if List.contains allowed_strings ~value:(Path.to_string path) then
+          Some (Module_scanner.ML (name, path))
+        else
           None
-      | Module_scanner.Dir (name, path, children) ->
-          let children = filter_entries ~allowed children in
-          if List.length children = 0 then
-            None
-          else
-            Some (Module_scanner.Dir (name, path, children))
-    )
-    entries
+    | Module_scanner.MLI (name, path) ->
+        if List.contains allowed_strings ~value:(Path.to_string path) then
+          Some (Module_scanner.MLI (name, path))
+        else
+          None
+    | Module_scanner.C (name, path) ->
+        if List.contains allowed_strings ~value:(Path.to_string path) then
+          Some (Module_scanner.C (name, path))
+        else
+          None
+    | Module_scanner.H (name, path) ->
+        if List.contains allowed_strings ~value:(Path.to_string path) then
+          Some (Module_scanner.H (name, path))
+        else
+          None
+    | Module_scanner.Other _ ->
+        None
+    | Module_scanner.Dir (name, path, children) ->
+        let children = filter_entries ~allowed children in
+        if List.length children = 0 then
+          None
+        else
+          Some (Module_scanner.Dir (name, path, children))
+  )
 
 (** Check if a path is a binary source file.
 
@@ -160,11 +156,9 @@ let rec filter_entries = fun ~allowed entries ->
     are RELATIVE to package root. We must normalize both before comparing. *)
 let is_binary = fun config path ->
   let bin_rel = make_relative ~base:config.package.path ~path in
-  List.exists
-    (fun (bin: Package.binary) ->
-      let bin_abs_rel = make_relative ~base:config.package.path ~path:bin.path in
-      Path.equal path bin_rel && Path.equal bin_rel bin_abs_rel)
-    config.package.binaries
+  List.any config.package.binaries ~fn:(fun (bin: Package.binary) ->
+    let bin_abs_rel = make_relative ~base:config.package.path ~path:bin.path in
+    Path.equal path bin_rel && Path.equal bin_rel bin_abs_rel)
 
 (** Recursively scan directory entries and build graph nodes.
 
@@ -232,18 +226,16 @@ and handle_ocaml_module = fun ~t ~ctx path ->
         let qualified_name = Module.module_name mod_ |> Module_name.qualified_name in
         try
           let node_ids = Module_registry.get_by_qualified_name t.registry qualified_name in
-          List.iter
-            (fun intf_node_id ->
-              match G.get_node t.graph intf_node_id with
-              | Some intf_node -> (
-                  match intf_node.value.kind with
-                  | MLI intf_mod when Module.module_name intf_mod |> Module_name.qualified_name = qualified_name -> G.add_edge
-                    node
-                    ~depends_on:intf_node
-                  | _ -> ()
-                )
-              | None -> ())
-            node_ids
+          List.for_each node_ids ~fn:(fun intf_node_id ->
+            match G.get_node t.graph intf_node_id with
+            | Some intf_node -> (
+                match intf_node.value.kind with
+                | MLI intf_mod when Module.module_name intf_mod |> Module_name.qualified_name = qualified_name -> G.add_edge
+                  node
+                  ~depends_on:intf_node
+                | _ -> ()
+              )
+            | None -> ())
         with
         | Not_found -> ()
       )
@@ -255,7 +247,7 @@ and handle_ocaml_module = fun ~t ~ctx path ->
     | `implementation -> parent_impl
   in
   G.add_edge parent ~depends_on:node;
-  List.iter (fun aliases_node -> G.add_edge node ~depends_on:aliases_node) aliases
+  List.for_each aliases ~fn:(fun aliases_node -> G.add_edge node ~depends_on:aliases_node)
 
 (** Handle a directory as a library.
 
@@ -358,23 +350,19 @@ and handle_library = fun ~t ~ctx dir name children ->
     } in
     do_scan ~t ~ctx children_without_lib;
     let deps_for_library_interface = Library_definition.deps_for_library_interface lib_def in
-    List.iter
-      (fun child_mod ->
-        try
-          let child_node_ids = Module_registry.get_by_qualified_name t.registry
-            (Module.module_name child_mod |> Module_name.qualified_name)
-          in
-          List.iter
-            (fun child_node_id ->
-              match G.get_node t.graph child_node_id with
-              | Some child_node ->
-                  G.add_edge intf_node ~depends_on:child_node;
-                  G.add_edge impl_node ~depends_on:child_node
-              | None -> ())
-            child_node_ids
-        with
-        | Not_found -> ())
-      deps_for_library_interface
+    List.for_each deps_for_library_interface ~fn:(fun child_mod ->
+      try
+        let child_node_ids = Module_registry.get_by_qualified_name t.registry
+          (Module.module_name child_mod |> Module_name.qualified_name)
+        in
+        List.for_each child_node_ids ~fn:(fun child_node_id ->
+          match G.get_node t.graph child_node_id with
+          | Some child_node ->
+              G.add_edge intf_node ~depends_on:child_node;
+              G.add_edge impl_node ~depends_on:child_node
+          | None -> ())
+      with
+      | Not_found -> ())
 
 let scan_sources = fun t (sources: Module_scanner.entry list) ->
   let root_node = Module_node.make_root () in
@@ -389,7 +377,7 @@ let create = fun config ->
   |> filter_entries ~allowed:config.allowed_source_files in
   let graph = G.make () in
   let registry = Module_registry.create () in
-  let analyzed_modules = HashMap.with_capacity 64 in
+  let analyzed_modules = HashMap.with_capacity ~size:64 in
   let t = {
     config;
     graph;
@@ -437,18 +425,17 @@ let wire_dependencies = fun t ->
   in
   let implicit_open_modules (open_modules: Module_node.t G.node list) =
     open_modules
-    |> List.filter_map
-      (fun (node: Module_node.t G.node) ->
-        match node.value.kind with
-        | Module_node.ML mod_
-        | Module_node.MLI mod_ -> Some (Module.namespaced_name mod_)
-        | _ -> None)
+    |> List.filter_map ~fn:(fun (node: Module_node.t G.node) ->
+      match node.value.kind with
+      | Module_node.ML mod_
+      | Module_node.MLI mod_ -> Some (Module.namespaced_name mod_)
+      | _ -> None)
   in
   let injected_open_lines open_modules = implicit_open_modules open_modules
-  |> List.map (fun module_name -> "open " ^ module_name) in
+  |> List.map ~fn:(fun module_name -> "open " ^ module_name) in
   let preferred_dependency_nodes dep_node_ids =
     let rec collect acc has_ml = function
-      | [] -> (List.rev acc, has_ml)
+      | [] -> (List.reverse acc, has_ml)
       | dep_node_id :: rest -> (
           match G.get_node t.graph dep_node_id with
           | Some (dep_node: Module_node.t G.node) -> (
@@ -461,12 +448,10 @@ let wire_dependencies = fun t ->
     in
     let resolved_nodes, has_ml = collect [] false dep_node_ids in
     if has_ml then
-      List.filter
-        (fun ((_dep_node_id, (dep_node: Module_node.t G.node))) ->
-          match dep_node.value.kind with
-          | Module_node.ML _ -> true
-          | _ -> false)
-        resolved_nodes
+      List.filter resolved_nodes ~fn:(fun (_dep_node_id, (dep_node: Module_node.t G.node)) ->
+        match dep_node.value.kind with
+        | Module_node.ML _ -> true
+        | _ -> false)
     else
       resolved_nodes
   in
@@ -488,31 +473,27 @@ let wire_dependencies = fun t ->
   in
   (* Sort nodes by ID to ensure deterministic ordering - G.map uses Hashtbl.to_seq which is non-deterministic *)
   let sorted_nodes =
-    List.sort
-      (fun ((id1, _)) ((id2, _)) ->
-        Int.compare (G.Node_id.to_int id1) (G.Node_id.to_int id2))
-      all_nodes
+    List.sort all_nodes ~compare:(fun (id1, _) (id2, _) ->
+      Int.compare (G.Node_id.to_int id1) (G.Node_id.to_int id2))
   in
   let files_with_nodes =
-    List.filter_map
-      (fun ((_node_id, (node: Module_node.t G.node))) ->
-        let module_node = node.value in
-        match module_node.kind with
-        | Module_node.ML _
-        | Module_node.MLI _ -> (
-            match module_node.file with
-            | Module_node.Concrete path
-            | Module_node.Generated { path; _ } -> Some (path, node)
-          )
-        | _ -> None)
-      sorted_nodes
+    List.filter_map sorted_nodes ~fn:(fun (_node_id, (node: Module_node.t G.node)) ->
+      let module_node = node.value in
+      match module_node.kind with
+      | Module_node.ML _
+      | Module_node.MLI _ -> (
+          match module_node.file with
+          | Module_node.Concrete path
+          | Module_node.Generated { path; _ } -> Some (path, node)
+        )
+      | _ -> None)
   in
   let namespace = Namespace.of_string t.config.namespace in
   let source_dir_prefix = Path.to_string t.config.source_dir ^ "/" in
   let stringify_dependency_error = fun path ->
     function
     | Syn.Deps.Parse_diagnostics diagnostics ->
-        let messages = List.map Syn.Diagnostic.to_string diagnostics in
+        let messages = List.map diagnostics ~fn:Syn.Diagnostic.to_string in
         "failed to parse "
         ^ Path.to_string path
         ^ " for dependency analysis: "
@@ -532,7 +513,7 @@ let wire_dependencies = fun t ->
             else
               Path.(t.config.package.path / path)
           in
-          Fs.read display_path |> Result.map (fun text -> (text, display_path))
+          Fs.read display_path |> Result.map ~fn:(fun text -> (text, display_path))
       | Module_node.Generated { path; contents } ->
           let display_path =
             if Path.is_absolute path then
@@ -556,7 +537,7 @@ let wire_dependencies = fun t ->
     let rel_path =
       if String.starts_with ~prefix:source_dir_prefix file_str then
         let len = String.length source_dir_prefix in
-        String.sub file_str len (String.length file_str - len)
+        String.sub file_str ~offset:len ~len:(String.length file_str - len)
       else
         Path.basename path
     in
@@ -569,9 +550,9 @@ let wire_dependencies = fun t ->
       if file_dir = "." then
         []
       else
-        String.split_on_char '/' file_dir |> List.map String.capitalize_ascii
+        String.split file_dir ~by:"/" |> List.map ~fn:String.capitalize_ascii
     in
-    List.fold_left Namespace.append namespace subdir_parts
+    List.fold_left subdir_parts ~acc:namespace ~fn:Namespace.append
   in
   let analyze_node path (node: Module_node.t G.node) =
     match raw_source_text node with
@@ -602,12 +583,13 @@ let wire_dependencies = fun t ->
           deps;
         }
         in
-        let _ = HashMap.insert t.analyzed_modules node.id analyzed in
+        let _ = HashMap.insert t.analyzed_modules ~key:node.id ~value:analyzed in
         match deps, node.value.file with
         | Ok deps, Module_node.Concrete _ ->
             let names = Syn.Deps.modules deps
-            |> List.map
-              (fun modname -> Module_name.of_string ~namespace:(file_namespace path) modname) in
+            |> List.map ~fn:(fun modname ->
+              Module_name.of_string ~namespace:(file_namespace path) modname)
+            in
             Ok names
         | Error err, Module_node.Concrete _ ->
             Error (Planning_error.DependencyAnalysisFailed {
@@ -622,47 +604,36 @@ let wire_dependencies = fun t ->
   in
   (* Sort files deterministically to ensure consistent hashing *)
   let sorted_file_nodes =
-    List.sort
-      (fun ((left_path, _)) ((right_path, _)) ->
-        String.compare (Path.to_string left_path) (Path.to_string right_path))
-      files_with_nodes
+    List.sort files_with_nodes ~compare:(fun (left_path, _) (right_path, _) ->
+      String.compare (Path.to_string left_path) (Path.to_string right_path))
   in
   let deps =
-    List.fold_left
-      (fun acc (path, node) ->
-        match acc with
-        | Error _ as error -> error
-        | Ok deps -> (
-            match analyze_node path node with
-            | Error _ as error -> error
-            | Ok module_deps -> Ok ((node, module_deps) :: deps)
-          ))
-      (Ok [])
-      sorted_file_nodes
+    List.fold_left sorted_file_nodes ~acc:(Ok []) ~fn:(fun acc (path, node) ->
+      match acc with
+      | Error _ as error -> error
+      | Ok deps -> (
+          match analyze_node path node with
+          | Error _ as error -> error
+          | Ok module_deps -> Ok ((node, module_deps) :: deps)
+        ))
   in
   match deps with
   | Error _ as error -> error
   | Ok deps ->
-      List.iter
-        (fun (((node: Module_node.t G.node), module_deps)) ->
-          List.iter
-            (fun dep_mod_name ->
-              try
-                let dep_node_ids = resolve_dependency_node_ids dep_mod_name in
-                List.iter
-                  (fun (dep_node_id, dep_node) ->
-                    (* Skip self-references: a module can't depend on itself.
-                       This happens when dependency analysis reports "A" as a dependency of A.ml,
-                       which actually refers to a different module A (e.g., Bar.A when using 'open Bar'). *)
-                    if G.Node_id.eq dep_node_id node.id then
-                      ()
-                    else
-                      G.add_edge node ~depends_on:dep_node)
-                  (preferred_dependency_nodes dep_node_ids)
-              with
-              | Not_found -> ())
-            module_deps)
-        deps;
+      List.for_each deps ~fn:(fun ((node: Module_node.t G.node), module_deps) ->
+        List.for_each module_deps ~fn:(fun dep_mod_name ->
+          try
+            let dep_node_ids = resolve_dependency_node_ids dep_mod_name in
+            List.for_each (preferred_dependency_nodes dep_node_ids) ~fn:(fun (dep_node_id, dep_node) ->
+              (* Skip self-references: a module can't depend on itself.
+                 This happens when dependency analysis reports "A" as a dependency of A.ml,
+                 which actually refers to a different module A (e.g., Bar.A when using 'open Bar'). *)
+              if G.Node_id.eq dep_node_id node.id then
+                ()
+              else
+                G.add_edge node ~depends_on:dep_node)
+          with
+          | Not_found -> ()));
       Ok ()
 
 let add_library_node = fun t ~name ~includes ->
@@ -684,15 +655,13 @@ let add_library_node = fun t ~name ~includes ->
   in
   (* Add edges in REVERSE topological order because add_edge prepends to deps list.
      This ensures lib_node.deps ends up in correct topological order. *)
-  List.iter
-    (fun (node: Module_node.t G.node) ->
-      match node.value.kind with
-      | Module_node.ML _
-      | Module_node.MLI _
-      | Module_node.C
-      | Module_node.Native _ -> G.add_edge lib_node ~depends_on:node
-      | _ -> ())
-    (List.rev sorted_nodes)
+  List.for_each (List.reverse sorted_nodes) ~fn:(fun (node: Module_node.t G.node) ->
+    match node.value.kind with
+    | Module_node.ML _
+    | Module_node.MLI _
+    | Module_node.C
+    | Module_node.Native _ -> G.add_edge lib_node ~depends_on:node
+    | _ -> ())
 
 let add_binary_node = fun t ~name ~source ~libraries ~includes ->
   let bin_node_value = Module_node.make_binary ~name ~source ~libraries ~includes in
@@ -710,9 +679,8 @@ let add_command_node = add_binary_node
 let graph = fun t -> t.graph
 
 let analyzed_modules = fun t ->
-  HashMap.to_list t.analyzed_modules |> List.sort
-    (fun ((left_id, _)) ((right_id, _)) ->
-      Int.compare (G.Node_id.to_int left_id) (G.Node_id.to_int right_id))
+  HashMap.to_list t.analyzed_modules |> List.sort ~compare:(fun (left_id, _) (right_id, _) ->
+    Int.compare (G.Node_id.to_int left_id) (G.Node_id.to_int right_id))
 
 let registry = fun t -> t.registry
 

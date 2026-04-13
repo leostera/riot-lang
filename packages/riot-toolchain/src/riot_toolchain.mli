@@ -9,8 +9,6 @@ module Ocamldep = Ocamldep
 
 module Ocamlc = Ocamlc
 
-module Ocamlformat = Ocamlformat
-
 module CrossCompilingToolchain = Cross_compiling_toolchain
 
 type t
@@ -47,8 +45,6 @@ val ocamlc: t -> Ocamlc.t
 val ocamlopt_path: t -> Path.t
 
 val ocamldep: t -> Ocamldep.t
-
-val ocamlformat: t -> Ocamlformat.t
 
 val hash: t -> Crypto.hash
 

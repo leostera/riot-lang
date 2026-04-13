@@ -61,25 +61,24 @@ let serialize = fun frame ->
       0x80
     else
       0x00
-  ) lor List.hd length_bytes
+  ) lor List.get_unchecked length_bytes ~at:0
   in
   (* Build header *)
-  let header = Buffer.create 14 in
-  Buffer.add_char header (Char.chr byte0);
-  Buffer.add_char header (Char.chr byte1);
-  List.iter
-    (fun b ->
-      Buffer.add_char header (Char.chr b))
-    extended_length;
+  let header = Buffer.create ~size:14 in
+  Buffer.add_char header (Char.from_int_unchecked byte0);
+  Buffer.add_char header (Char.from_int_unchecked byte1);
+  List.for_each extended_length
+    ~fn:(fun byte ->
+      Buffer.add_char header (Char.from_int_unchecked byte));
   (* Add mask and masked payload if needed *)
   if masked then
     (
       let mask = Frame.generate_mask () in
       (* Write mask (4 bytes) *)
-      Buffer.add_char header (Char.chr Int32.(to_int (logand (shift_right mask 24) 0xffl)));
-      Buffer.add_char header (Char.chr Int32.(to_int (logand (shift_right mask 16) 0xffl)));
-      Buffer.add_char header (Char.chr Int32.(to_int (logand (shift_right mask 8) 0xffl)));
-      Buffer.add_char header (Char.chr Int32.(to_int (logand mask 0xffl)));
+      Buffer.add_char header (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 24) 0xffl)));
+      Buffer.add_char header (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 16) 0xffl)));
+      Buffer.add_char header (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 8) 0xffl)));
+      Buffer.add_char header (Char.from_int_unchecked Int32.(to_int (logand mask 0xffl)));
       (* Apply mask to payload *)
       let masked_payload = Frame.apply_mask mask payload in
       Buffer.add_string header masked_payload

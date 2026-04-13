@@ -148,7 +148,7 @@ let json_of_path = fun path -> Json.String (Path.to_string path)
 
 let path_of_json = function
   | Json.String path -> (
-      match Path.of_string path with
+      match Path.from_string path with
       | Ok path -> Ok path
       | Error (Path.InvalidUtf8 { path=invalid_path }) -> Error ("invalid path '"
       ^ path
@@ -276,7 +276,7 @@ let rec to_json = function
         ("requirement", Json.String requirement);
         (
           "available_versions",
-          Json.Array (List.map (fun version -> Json.String version) available_versions)
+          Json.Array (List.map available_versions ~fn:(fun version -> Json.String version))
         );
         (
           "required_by",
@@ -323,21 +323,21 @@ let rec to_json = function
 
 let rec of_json = function
   | Json.Object fields -> (
-      match List.assoc_opt "kind" fields with
+      match Fields.get "kind" fields with
       | Some (Json.String "ManifestReadFailed") -> (
-          match List.assoc_opt "manifest_path" fields, List.assoc_opt "error" fields with
+          match Fields.get "manifest_path" fields, Fields.get "error" fields with
           | Some path_json, Some (Json.String error) -> path_of_json path_json
-          |> Result.map (fun manifest_path -> ManifestReadFailed { manifest_path; error })
+          |> Result.map ~fn:(fun manifest_path -> ManifestReadFailed { manifest_path; error })
           | _ -> Error "invalid ManifestReadFailed"
         )
       | Some (Json.String "ManifestParseFailed") -> (
-          match List.assoc_opt "manifest_path" fields, List.assoc_opt "error" fields with
+          match Fields.get "manifest_path" fields, Fields.get "error" fields with
           | Some path_json, Some (Json.String error) -> path_of_json path_json
-          |> Result.map (fun manifest_path -> ManifestParseFailed { manifest_path; error })
+          |> Result.map ~fn:(fun manifest_path -> ManifestParseFailed { manifest_path; error })
           | _ -> Error "invalid ManifestParseFailed"
         )
       | Some (Json.String "PathDependencyLoadFailed") -> (
-          match List.assoc_opt "dependency_name" fields, List.assoc_opt "dependency_path" fields, List.assoc_opt
+          match Fields.get "dependency_name" fields, Fields.get "dependency_path" fields, Fields.get
             "error"
             fields with
           | Some (Json.String dependency_name), Some path_json, Some error_json -> (
@@ -353,20 +353,19 @@ let rec of_json = function
           | _ -> Error "invalid PathDependencyLoadFailed"
         )
       | Some (Json.String "PathDependencyDecodeFailed") -> (
-          match List.assoc_opt "dependency_name" fields, List.assoc_opt "manifest_path" fields, List.assoc_opt
+          match Fields.get "dependency_name" fields, Fields.get "manifest_path" fields, Fields.get
             "error"
             fields with
           | Some (Json.String dependency_name), Some path_json, Some (Json.String error) -> path_of_json
             path_json
-          |> Result.map
-            (fun manifest_path ->
+          |> Result.map ~fn:(fun manifest_path ->
               PathDependencyDecodeFailed { dependency_name; manifest_path; error })
           | _ -> Error "invalid PathDependencyDecodeFailed"
         )
       | Some (Json.String "SourceDependencyLoadFailed") -> (
-          match List.assoc_opt "dependency_name" fields, List.assoc_opt "source_locator" fields, List.assoc_opt
+          match Fields.get "dependency_name" fields, Fields.get "source_locator" fields, Fields.get
             "ref"
-            fields, List.assoc_opt "error" fields with
+            fields, Fields.get "error" fields with
           | Some (Json.String dependency_name), Some (Json.String source_locator), ref_json_opt, Some (Json.String error) ->
               let ref_ =
                 match ref_json_opt with
@@ -376,24 +375,22 @@ let rec of_json = function
                 | Some _ -> Error "invalid SourceDependencyLoadFailed.ref"
               in
               ref_
-              |> Result.map
-                (fun ref_ ->
+              |> Result.map ~fn:(fun ref_ ->
                   SourceDependencyLoadFailed { dependency_name; source_locator; ref_; error })
           | _ -> Error "invalid SourceDependencyLoadFailed"
         )
       | Some (Json.String "SourceDependencyDecodeFailed") -> (
-          match List.assoc_opt "dependency_name" fields, List.assoc_opt "manifest_path" fields, List.assoc_opt
+          match Fields.get "dependency_name" fields, Fields.get "manifest_path" fields, Fields.get
             "error"
             fields with
           | Some (Json.String dependency_name), Some path_json, Some (Json.String error) -> path_of_json
             path_json
-          |> Result.map
-            (fun manifest_path ->
+          |> Result.map ~fn:(fun manifest_path ->
               SourceDependencyDecodeFailed { dependency_name; manifest_path; error })
           | _ -> Error "invalid SourceDependencyDecodeFailed"
         )
       | Some (Json.String "RegistryLatestReleaseMissing") -> (
-          match List.assoc_opt "package" fields, List.assoc_opt "latest_version" fields with
+          match Fields.get "package" fields, Fields.get "latest_version" fields with
           | Some (Json.String package), Some (Json.String latest_version) -> Ok (RegistryLatestReleaseMissing {
             package;
             latest_version
@@ -401,9 +398,9 @@ let rec of_json = function
           | _ -> Error "invalid RegistryLatestReleaseMissing"
         )
       | Some (Json.String "RegistryReleaseYanked") -> (
-          match List.assoc_opt "package" fields, List.assoc_opt "registry" fields, List.assoc_opt
+          match Fields.get "package" fields, Fields.get "registry" fields, Fields.get
             "version"
-            fields, List.assoc_opt "required_by" fields with
+            fields, Fields.get "required_by" fields with
           | Some (Json.String package), Some (Json.String registry), Some (Json.String version), required_by_json_opt ->
               let required_by =
                 match required_by_json_opt with
@@ -411,12 +408,12 @@ let rec of_json = function
                 | None ->
                     Ok None
                 | Some (Json.Object required_by_fields) -> (
-                    match List.assoc_opt "package" required_by_fields, List.assoc_opt "path" required_by_fields with
+                    match Fields.get "package" required_by_fields, Fields.get "path" required_by_fields with
                     | Some (Json.String package), Some path_json -> (
                         match path_json with
                         | Json.Null -> Ok (Some { package; path = None })
                         | _ -> path_of_json path_json
-                        |> Result.map (fun path -> Some { package; path = Some path })
+                        |> Result.map ~fn:(fun path -> Some { package; path = Some path })
                       )
                     | _ -> Error "invalid RegistryReleaseYanked.required_by"
                   )
@@ -424,12 +421,11 @@ let rec of_json = function
                     Error "invalid RegistryReleaseYanked.required_by"
               in
               required_by
-              |> Result.map
-                (fun required_by -> RegistryReleaseYanked { package; registry; version; required_by })
+              |> Result.map ~fn:(fun required_by -> RegistryReleaseYanked { package; registry; version; required_by })
           | _ -> Error "invalid RegistryReleaseYanked"
         )
       | Some (Json.String "PackageMetadataReadFailed") -> (
-          match List.assoc_opt "package" fields, List.assoc_opt "registry" fields, List.assoc_opt
+          match Fields.get "package" fields, Fields.get "registry" fields, Fields.get
             "error"
             fields with
           | Some (Json.String package), Some (Json.String registry), Some (Json.String error) -> Ok (PackageMetadataReadFailed {
@@ -440,41 +436,41 @@ let rec of_json = function
           | _ -> Error "invalid PackageMetadataReadFailed"
         )
       | Some (Json.String "PackageNotFound") -> (
-          match List.assoc_opt "package" fields, List.assoc_opt "registry" fields with
+          match Fields.get "package" fields, Fields.get "registry" fields with
           | Some (Json.String package), Some (Json.String registry) ->
               let required_by =
-                match List.assoc_opt "required_by" fields with
+                match Fields.get "required_by" fields with
                 | Some Json.Null
                 | None ->
                     Ok None
                 | Some (Json.Object required_by_fields) -> (
-                    match List.assoc_opt "package" required_by_fields with
+                    match Fields.get "package" required_by_fields with
                     | Some (Json.String package) ->
                         let path_result =
-                          match List.assoc_opt "path" required_by_fields with
+                          match Fields.get "path" required_by_fields with
                           | Some Json.Null
                           | None -> Ok None
                           | Some path_json -> path_of_json path_json
-                          |> Result.map (fun path -> Some path)
+                          |> Result.map ~fn:(fun path -> Some path)
                         in
-                        path_result |> Result.map (fun path -> Some { package; path })
+                        path_result |> Result.map ~fn:(fun path -> Some { package; path })
                     | _ -> Error "invalid PackageNotFound.required_by"
                   )
                 | Some _ ->
                     Error "invalid PackageNotFound.required_by"
               in
               required_by
-              |> Result.map (fun required_by -> PackageNotFound { package; registry; required_by })
+              |> Result.map ~fn:(fun required_by -> PackageNotFound { package; registry; required_by })
           | _ -> Error "invalid PackageNotFound"
         )
       | Some (Json.String "RegistryVersionNotFound") -> (
-          match List.assoc_opt "package" fields, List.assoc_opt "registry" fields, List.assoc_opt
+          match Fields.get "package" fields, Fields.get "registry" fields, Fields.get
             "requirement"
-            fields, List.assoc_opt "available_versions" fields, List.assoc_opt "required_by" fields with
+            fields, Fields.get "available_versions" fields, Fields.get "required_by" fields with
           | Some (Json.String package), Some (Json.String registry), Some (Json.String requirement), Some (Json.Array available_versions), required_by_json_opt ->
               let available_versions =
                 let rec loop acc = function
-                  | [] -> Ok (List.rev acc)
+                  | [] -> Ok (List.reverse acc)
                   | Json.String version :: rest -> loop (version :: acc) rest
                   | _ -> Error "invalid RegistryVersionNotFound.available_versions"
                 in
@@ -486,12 +482,12 @@ let rec of_json = function
                 | None ->
                     Ok None
                 | Some (Json.Object required_by_fields) -> (
-                    match List.assoc_opt "package" required_by_fields, List.assoc_opt "path" required_by_fields with
+                    match Fields.get "package" required_by_fields, Fields.get "path" required_by_fields with
                     | Some (Json.String package), Some path_json -> (
                         match path_json with
                         | Json.Null -> Ok (Some { package; path = None })
                         | _ -> path_of_json path_json
-                        |> Result.map (fun path -> Some { package; path = Some path })
+                        |> Result.map ~fn:(fun path -> Some { package; path = Some path })
                       )
                     | _ -> Error "invalid RegistryVersionNotFound.required_by"
                   )
@@ -516,35 +512,35 @@ let rec of_json = function
           | _ -> Error "invalid RegistryVersionNotFound"
         )
       | Some (Json.String "LockfileReadFailed") -> (
-          match List.assoc_opt "path" fields, List.assoc_opt "error" fields with
+          match Fields.get "path" fields, Fields.get "error" fields with
           | Some path_json, Some (Json.String error) -> path_of_json path_json
-          |> Result.map (fun path -> LockfileReadFailed { path; error })
+          |> Result.map ~fn:(fun path -> LockfileReadFailed { path; error })
           | _ -> Error "invalid LockfileReadFailed"
         )
       | Some (Json.String "LockRefreshCheckFailed") -> (
-          match List.assoc_opt "workspace_root" fields, List.assoc_opt "error" fields with
+          match Fields.get "workspace_root" fields, Fields.get "error" fields with
           | Some path_json, Some (Json.String error) -> path_of_json path_json
-          |> Result.map (fun workspace_root -> LockRefreshCheckFailed { workspace_root; error })
+          |> Result.map ~fn:(fun workspace_root -> LockRefreshCheckFailed { workspace_root; error })
           | _ -> Error "invalid LockRefreshCheckFailed"
         )
       | Some (Json.String "LockfileWriteFailed") -> (
-          match List.assoc_opt "path" fields, List.assoc_opt "error" fields with
+          match Fields.get "path" fields, Fields.get "error" fields with
           | Some path_json, Some (Json.String error) -> path_of_json path_json
-          |> Result.map (fun path -> LockfileWriteFailed { path; error })
+          |> Result.map ~fn:(fun path -> LockfileWriteFailed { path; error })
           | _ -> Error "invalid LockfileWriteFailed"
         )
       | Some (Json.String "MaterializationFailed") -> (
-          match List.assoc_opt "error" fields with
+          match Fields.get "error" fields with
           | Some (Json.String error) -> Ok (MaterializationFailed { error })
           | _ -> Error "invalid MaterializationFailed"
         )
       | Some (Json.String "ProjectionFailed") -> (
-          match List.assoc_opt "error" fields with
+          match Fields.get "error" fields with
           | Some (Json.String error) -> Ok (ProjectionFailed { error })
           | _ -> Error "invalid ProjectionFailed"
         )
       | Some (Json.String "Unexpected") -> (
-          match List.assoc_opt "error" fields with
+          match Fields.get "error" fields with
           | Some (Json.String error) -> Ok (Unexpected { error })
           | _ -> Error "invalid Unexpected"
         )

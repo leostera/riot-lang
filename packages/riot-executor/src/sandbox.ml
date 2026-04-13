@@ -11,7 +11,7 @@ let sandbox_id = fun ~package_name ->
   let nanos = Time.SystemTime.duration_since_epoch () |> Time.Duration.to_nanos in
   let hash = Crypto.hash_int64 nanos in
   let hex = Crypto.Digest.hex hash in
-  let truncated_hash = String.sub hex 0 8 in
+  let truncated_hash = String.sub hex ~offset:0 ~len:8 in
   let id = package_name ^ "-" ^ truncated_hash in
   Path.v id
 
@@ -32,16 +32,16 @@ let copy_object_files = fun ~store ~sandbox ~package ~depset ->
   let _ = store in
   let _ = package in
   let depset = Riot_planner.Dependency.transitive_closure depset in
-  List.iter
-    (fun dep ->
+  List.for_each depset
+    ~fn:(fun dep ->
       match Fs.read_dir dep.Riot_planner.Dependency.artifact_dir with
       | Error _ -> ()
       | Ok reader ->
           let entries = Std.Iter.MutIterator.to_list reader in
           entries
-          |> List.filter (fun path -> String.ends_with ~suffix:".o" (Path.to_string path))
-          |> List.iter
-            (fun entry ->
+          |> List.filter ~fn:(fun path -> String.ends_with ~suffix:".o" (Path.to_string path))
+          |> List.for_each
+            ~fn:(fun entry ->
               let src =
                 if Path.is_absolute entry then
                   entry
@@ -53,11 +53,10 @@ let copy_object_files = fun ~store ~sandbox ~package ~depset ->
               | Ok () -> ()
               | Error _ -> Log.warn
                 ("Skipping unavailable dependency object file " ^ Path.to_string src)))
-    depset
 
 let copy_inputs = fun ~sandbox ~package ~inputs ->
-  List.iter
-    (fun rel_path ->
+  List.for_each inputs
+    ~fn:(fun rel_path ->
       let src = Path.(sandbox.workspace.Workspace.root / package.Package.relative_path / rel_path) in
       let dest = Path.(sandbox.dir / rel_path) in
       let dest_parent = Path.dirname dest in
@@ -66,7 +65,6 @@ let copy_inputs = fun ~sandbox ~package ~inputs ->
       Fs.copy ~src ~dst:dest
       |> Result.expect
         ~msg:("Failed to copy input " ^ Path.to_string src ^ " to " ^ (Path.to_string dest)))
-    inputs
 
 let prepare = fun ~sandbox ~package ~inputs ~depset ~store ->
   (* No longer copy dependencies wholesale - dependencies are resolved via

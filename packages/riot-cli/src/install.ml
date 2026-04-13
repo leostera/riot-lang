@@ -41,8 +41,8 @@ let split_remote_binary = fun raw ->
   match String.last_index raw '@' with
   | Some idx when idx = String.length raw - 1 -> Error (Failure ("invalid remote target '" ^ raw ^ "': expected binary name after @"))
   | Some idx when idx > 0 && idx < String.length raw - 1 -> Ok (
-    String.sub raw 0 idx,
-    Some (String.sub raw (idx + 1) (String.length raw - idx - 1))
+    String.sub raw ~offset:0 ~len:idx,
+    Some (String.sub raw ~offset:(idx + 1) ~len:(String.length raw - idx - 1))
   )
   | _ -> Ok (raw, None)
 
@@ -52,7 +52,7 @@ let default_remote_binary_name = fun source_spec ->
   | Error _ -> "main"
 
 let parse_local_target = fun ?package_filter name ->
-  match String.split_on_char ':' name with
+  match String.split name ~by:":" with
   | [package_name;binary_name] -> (
       match package_filter with
       | Some expected_package when not (String.equal expected_package package_name) -> Error (Failure ("conflicting package filters: got --package "
@@ -161,10 +161,9 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
         | None -> (
             match workspace with
             | Some workspace -> Run.resolve_implicit_local_target ?package_filter workspace
-            |> Result.map
-              (fun (Run.{ package_name; binary_name }) ->
+            |> Result.map ~fn:(fun (Run.{ package_name; binary_name }) ->
                 Local { package_name = Some package_name; binary_name; registry_fallback = None })
-            |> Result.map_error (fun err -> Failure err)
+            |> Result.map_err ~fn:(fun err -> Failure err)
             | None -> Error (Failure (Option.unwrap_or ~default:"Not in a riot workspace" workspace_error))
           )
       with
@@ -179,7 +178,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
             Riot_build.install_source
               ~on_event
               { source_spec; binary_name; update; local_only = false }
-            |> Result.map_error (fun err -> `Install err)
+            |> Result.map_err ~fn:(fun err -> `Install err)
       | Ok (Local { package_name; binary_name; registry_fallback }) -> (
           match workspace with
           | Some workspace -> (
@@ -191,7 +190,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
                   | Some package_spec -> Riot_build.install_registry
                     ~on_event
                     { package_spec; binary_name = "main"; local_only = false }
-                  |> Result.map_error (fun err -> `Install err)
+                  |> Result.map_err ~fn:(fun err -> `Install err)
                   | None -> Error (`Install (Riot_build.BinaryNotFound { binary_name }))
                 )
               | Error err ->
@@ -206,7 +205,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
                   | Some package_spec -> Riot_build.install_registry
                     ~on_event
                     { package_spec; binary_name = "main"; local_only = false }
-                  |> Result.map_error (fun err -> `Install err)
+                  |> Result.map_err ~fn:(fun err -> `Install err)
                   | None -> Error (`Cli (Option.unwrap_or ~default:"Not in a riot workspace" workspace_error))
                 )
         )

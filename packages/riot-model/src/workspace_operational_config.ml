@@ -42,25 +42,25 @@ let normalize_size = fun raw ->
   let raw = String.trim raw in
   let compact_length =
     String.fold_left
-      (fun count c ->
+      ~fn:(fun count c ->
         if Char.equal c ' ' || Char.equal c '\t' then
           count
         else
           count + 1)
-      0
+      ~acc:0
       raw
   in
-  let compact = Kernel.Bytes.create compact_length in
+  let compact = Kernel.Bytes.create ~size:compact_length in
   let _ =
     String.fold_left
-      (fun index c ->
+      ~fn:(fun index c ->
         if Char.equal c ' ' || Char.equal c '\t' then
           index
         else (
-          Kernel.Bytes.set compact index c;
+          Kernel.Bytes.set_unchecked compact ~at:index ~char:c;
           index + 1
         ))
-      0
+      ~acc:0
       raw
   in
   String.lowercase_ascii (Kernel.Bytes.to_string compact)
@@ -89,10 +89,11 @@ let parse_max_size = fun raw ->
     if idx >= len then
       (normalized, "")
     else
-      match normalized.[idx] with
+      match String.get_unchecked normalized ~at:idx with
       | '0' .. '9'
       | '.' -> split (idx + 1)
-      | _ -> (String.sub normalized 0 idx, String.sub normalized idx (len - idx))
+      | _ ->
+          (String.sub normalized ~offset:0 ~len:idx, String.sub normalized ~offset:idx ~len:(len - idx))
   in
   let number_str, unit_str = split 0 in
   if String.equal number_str "" then
@@ -108,12 +109,12 @@ let parse_max_size = fun raw ->
               Error "max_size must be non-negative"
             else
               let bytes = number *. Int64.to_float multiplier in
-              Ok (Int64.of_float bytes)
+              Ok (Int64.from_float bytes)
       )
 
 let parse_cache_policy = fun ~path fields ->
   let keep_generations =
-    match List.assoc_opt "keep_generations" fields with
+    match Fields.get "keep_generations" fields with
     | None -> Ok default_cache_policy.keep_generations
     | Some value -> (
         match Toml.get_int value with
@@ -123,7 +124,7 @@ let parse_cache_policy = fun ~path fields ->
       )
   in
   let max_size_bytes =
-    match List.assoc_opt "max_size" fields with
+    match Fields.get "max_size" fields with
     | None -> Ok default_cache_policy.max_size_bytes
     | Some (Toml.String raw) -> parse_max_size raw
     | Some _ -> Error "riot.cache.max_size must be a string like \"50 GiB\""
@@ -137,25 +138,25 @@ let normalize_duration = fun raw ->
   let raw = String.trim raw in
   let compact_length =
     String.fold_left
-      (fun count c ->
+      ~fn:(fun count c ->
         if Char.equal c ' ' || Char.equal c '\t' then
           count
         else
           count + 1)
-      0
+      ~acc:0
       raw
   in
-  let compact = Kernel.Bytes.create compact_length in
+  let compact = Kernel.Bytes.create ~size:compact_length in
   let _ =
     String.fold_left
-      (fun index c ->
+      ~fn:(fun index c ->
         if Char.equal c ' ' || Char.equal c '\t' then
           index
         else (
-          Kernel.Bytes.set compact index c;
+          Kernel.Bytes.set_unchecked compact ~at:index ~char:c;
           index + 1
         ))
-      0
+      ~acc:0
       raw
   in
   String.lowercase_ascii (Kernel.Bytes.to_string compact)
@@ -177,10 +178,11 @@ let parse_duration = fun raw ->
     if idx >= len then
       (normalized, "")
     else
-      match normalized.[idx] with
+      match String.get_unchecked normalized ~at:idx with
       | '0' .. '9'
       | '.' -> split (idx + 1)
-      | _ -> (String.sub normalized 0 idx, String.sub normalized idx (len - idx))
+      | _ ->
+          (String.sub normalized ~offset:0 ~len:idx, String.sub normalized ~offset:idx ~len:(len - idx))
   in
   let number_str, unit_str = split 0 in
   if String.equal number_str "" then
@@ -199,9 +201,7 @@ let parse_duration = fun raw ->
       )
 
 let find_field = fun names fields ->
-  names |> List.find_map
-    (fun name ->
-      List.assoc_opt name fields)
+  Fields.get_first names fields
 
 let parse_test_policy = fun ~path fields ->
   let small_test_timeout =
@@ -209,7 +209,7 @@ let parse_test_policy = fun ~path fields ->
     | None ->
         Ok default_test_policy.small_test_timeout
     | Some (Toml.String raw) ->
-        parse_duration raw |> Result.map Option.some
+        parse_duration raw |> Result.map ~fn:Option.some
     | Some value -> (
         match Toml.get_int value with
         | Some millis when millis >= 0 -> Ok (Some (Time.Duration.from_millis millis))
@@ -237,12 +237,12 @@ let parse_test_policy = fun ~path fields ->
 let of_toml = fun ~path toml ->
   match toml with
   | Toml.Table fields -> (
-      match List.assoc_opt "riot" fields with
+      match Fields.get "riot" fields with
       | None ->
           Ok default
       | Some (Toml.Table riot_fields) -> (
           let cache =
-            match List.assoc_opt "cache" riot_fields with
+            match Fields.get "cache" riot_fields with
             | None -> Ok default_cache_policy
             | Some (Toml.Table cache_fields) -> parse_cache_policy ~path cache_fields
             | Some _ -> Error (InvalidConfig {
@@ -251,7 +251,7 @@ let of_toml = fun ~path toml ->
             })
           in
           let test =
-            match List.assoc_opt "test" riot_fields with
+            match Fields.get "test" riot_fields with
             | None -> Ok default_test_policy
             | Some (Toml.Table test_fields) -> parse_test_policy ~path test_fields
             | Some _ -> Error (InvalidConfig {

@@ -23,8 +23,7 @@ definition where the author already knows what the boolean means.
 |}
 
 let rec direct_non_trivia_nodes = fun (node: Syn.Cst.syntax_node) ->
-  Syn.Ceibo.Red.SyntaxNode.children node |> List.filter_map
-    (
+  Syn.Ceibo.Red.SyntaxNode.children node |> List.filter_map ~fn:(
       function
       | Syn.Ceibo.Red.Node child when not (is_trivia (Syn.Ceibo.Red.SyntaxNode.kind child)) -> Some child
       | _ -> None
@@ -49,7 +48,7 @@ let is_type_syntax_kind = function
 let rec first_core_type_node = fun (node: Syn.Cst.syntax_node) ->
   match Syn.Ceibo.Red.SyntaxNode.kind node with
   | Syn.SyntaxKind.ATTRIBUTE_EXPR -> (
-      match direct_non_trivia_nodes node |> List.find_map first_core_type_node with
+      match direct_non_trivia_nodes node |> List.filter_map ~fn:first_core_type_node |> List.head with
       | Some child -> Some child
       | None when is_type_syntax_kind (Syn.Ceibo.Red.SyntaxNode.kind node) -> Some node
       | None -> None
@@ -57,19 +56,18 @@ let rec first_core_type_node = fun (node: Syn.Cst.syntax_node) ->
   | kind when is_type_syntax_kind kind ->
       Some node
   | _ ->
-      direct_non_trivia_nodes node |> List.find_map first_core_type_node
+      direct_non_trivia_nodes node |> List.filter_map ~fn:first_core_type_node |> List.head
 
 let rec is_bool_type_node = fun (node: Syn.Cst.syntax_node) ->
   match Syn.Ceibo.Red.SyntaxNode.kind node with
   | Syn.SyntaxKind.ATTRIBUTE_EXPR
   | Syn.SyntaxKind.TYPE_PAREN
   | Syn.SyntaxKind.TYPE_ALIAS ->
-      direct_non_trivia_nodes node |> List.exists is_bool_type_node
+      direct_non_trivia_nodes node |> List.any ~fn:is_bool_type_node
   | Syn.SyntaxKind.TYPE_CONSTR ->
       let token_texts: string list =
         Syn.Ceibo.Red.SyntaxNode.children node
-        |> List.filter_map
-          (
+        |> List.filter_map ~fn:(
             function
             | Syn.Ceibo.Red.Token syntax_token when not
               (is_trivia (Syn.Ceibo.Red.SyntaxToken.kind syntax_token)) -> Some (Syn.Ceibo.Red.SyntaxToken.text
@@ -142,14 +140,15 @@ let diagnostic_for_parameter = fun parameter ->
   | _ -> None
 
 let diagnostics_for_binding = fun binding ->
-  let inline_parameter_diagnostics = Syn.Cst.LetBinding.parameters binding |> List.filter_map diagnostic_for_parameter in
+  let inline_parameter_diagnostics =
+    Syn.Cst.LetBinding.parameters binding |> List.filter_map ~fn:diagnostic_for_parameter
+  in
   let typed_arrow_diagnostic =
     match typed_value_function_type binding with
     | Some (_expression, type_) ->
         let positional_parameters =
           Syn.Cst.LetBinding.parameters binding
-          |> List.filter_map
-            (
+          |> List.filter_map ~fn:(
               function
               | Syn.Cst.Parameter.Positional _ as parameter -> Some parameter
               | _ -> None
@@ -157,8 +156,7 @@ let diagnostics_for_binding = fun binding ->
         in
         let unlabeled_arrow_types =
           arrow_parameters type_
-          |> List.filter_map
-            (
+          |> List.filter_map ~fn:(
               function
               | None, parameter_type -> Some parameter_type
               | Some _, _ -> None
@@ -185,12 +183,11 @@ let diagnostics_for_value_declaration = fun ({ name_tokens; type_; _ }: Syn.Cst.
     | [] -> panic "value declaration missing name tokens"
     | name_token :: _ -> Syn.Cst.Token.span name_token
   in
-  arrow_parameters type_ |> List.find_map
-    (
+  arrow_parameters type_ |> List.filter_map ~fn:(
       function
       | None, parameter_type when is_bool_core_type parameter_type -> Some (make_diagnostic ~span:name_span)
       | _ -> None
-    ) |> Option.to_list
+    ) |> List.head |> Option.to_list
 
 let diagnostics_for_external_declaration = fun (
   { name_tokens; type_; _ }: Syn.Cst.external_declaration
@@ -200,36 +197,35 @@ let diagnostics_for_external_declaration = fun (
     | [] -> panic "external declaration missing name tokens"
     | name_token :: _ -> Syn.Cst.Token.span name_token
   in
-  arrow_parameters type_ |> List.find_map
-    (
+  arrow_parameters type_ |> List.filter_map ~fn:(
       function
       | None, parameter_type when is_bool_core_type parameter_type -> Some (make_diagnostic ~span:name_span)
       | _ -> None
-    ) |> Option.to_list
+    ) |> List.head |> Option.to_list
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   let structure_diagnostics =
     Syn.Cst.SourceFile.structure_items source_file
     |> Option.unwrap_or ~default:[]
-    |> List.concat_map
-      (
+    |> List.map ~fn:(
         function
         | Syn.Cst.StructureItem.LetBinding binding when Syn.Cst.LetBinding.is_function binding -> diagnostics_for_binding
           binding
         | Syn.Cst.StructureItem.ExternalDeclaration decl -> diagnostics_for_external_declaration decl
         | _ -> []
       )
+    |> List.concat
   in
   let signature_diagnostics =
     Syn.Cst.SourceFile.signature_items source_file
     |> Option.unwrap_or ~default:[]
-    |> List.concat_map
-      (
+    |> List.map ~fn:(
         function
         | Syn.Cst.SignatureItem.ValueDeclaration decl -> diagnostics_for_value_declaration decl
         | _ -> []
       )
+    |> List.concat
   in
   structure_diagnostics @ signature_diagnostics
 

@@ -53,9 +53,9 @@ let relative_or_absolute = fun ~root path ->
 
 let write_block = fun text ->
   text
-  |> String.split_on_char '\n'
-  |> List.filter (fun line -> not (String.equal line ""))
-  |> List.iter out
+  |> String.split ~by:"\n"
+  |> List.filter ~fn:(fun line -> not (String.equal line ""))
+  |> List.for_each ~fn:out
 
 let format_fmt_file_result = fun ~root (result: Krasny.Runner.file_result) ->
   let status_char, suffix =

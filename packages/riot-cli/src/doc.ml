@@ -1,7 +1,7 @@
 open Std
 open Riot_model
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 let out = eprintln
 
@@ -30,7 +30,7 @@ let build_request = fun ~workspace matches ->
       package_name = ArgParser.get_one matches "package";
       all = ArgParser.get_flag matches "all";
       release = ArgParser.get_flag matches "release";
-      output_root = Option.map Path.v (ArgParser.get_one matches "output");
+      output_root = ArgParser.get_one matches "output" |> Option.map ~fn:Path.v;
       force = ArgParser.get_flag matches "force";
       no_cache = ArgParser.get_flag matches "no-cache";
     }: Riot_doc.request)

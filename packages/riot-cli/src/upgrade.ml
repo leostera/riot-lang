@@ -1,6 +1,6 @@
 open Std
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 type archive_source =
   | Local of Path.t
@@ -174,7 +174,10 @@ let extract_archive = fun ~archive_path ~into ->
   match Fs.File.open_read archive_path with
   | Error err -> Error (Fs.File.error_to_string err)
   | Ok file ->
-      protect ~finally:(fun () -> ignore (Fs.File.close file))
+      protect ~finally:(fun () ->
+        match Fs.File.close file with
+        | Ok () -> ()
+        | Error err -> out ("warning: failed to close archive: " ^ Fs.File.error_to_string err))
         (fun () ->
           let reader = Compress.Gzip.to_reader (Fs.File.to_reader file) in
           match Archive.Tar.extract reader ~into with
@@ -214,21 +217,21 @@ let binary_version = fun path ->
       Error ("failed to execute riot binary: " ^ msg)
 
 let resolve_metadata_source = fun ?version () ->
-  match Env.var Env.String ~name:"RIOT_UPGRADE_METADATA_PATH" with
+  match Env.get Env.String ~var:"RIOT_UPGRADE_METADATA_PATH" with
   | Some raw_path -> (
-      match Path.of_string raw_path with
+      match Path.from_string raw_path with
       | Ok path -> Ok (Metadata_local path)
       | Error err -> Error ("invalid RIOT_UPGRADE_METADATA_PATH: " ^ path_error_message err)
     )
   | None ->
-      let base_url = Env.var Env.String ~name:"RIOT_UPGRADE_METADATA_BASE_URL"
+      let base_url = Env.get Env.String ~var:"RIOT_UPGRADE_METADATA_BASE_URL"
       |> Option.unwrap_or ~default:default_metadata_base_url in
       Ok (Metadata_remote (metadata_url ?version ~base_url ()))
 
 let load_metadata = fun source ->
   let* content =
     match source with
-    | Metadata_local path -> Fs.read path |> Result.map_error IO.error_message
+    | Metadata_local path -> Fs.read path |> Result.map_err ~fn:IO.error_message
     | Metadata_remote url -> download_text ~url
   in
   Version_info.of_json_string content
@@ -238,7 +241,7 @@ let display_label = fun metadata -> Version_info.release_label metadata
 let read_extracted_metadata = fun ~extract_dir ->
   let path = Path.(extract_dir / Path.v "release.json") in
   match Fs.exists path with
-  | Ok true -> Version_info.of_path path |> Result.map Option.some
+  | Ok true -> Version_info.of_path path |> Result.map ~fn:Option.some
   | Ok false
   | Error _ -> Ok None
 
@@ -265,21 +268,21 @@ let resolved_metadata = fun ~latest_metadata ~extract_dir ~downloaded_binary ->
       | None -> metadata_from_binary_version downloaded_binary
 
 let resolve_archive_source = fun ?version ~target () ->
-  match Env.var Env.String ~name:"RIOT_UPGRADE_ARCHIVE_PATH" with
+  match Env.get Env.String ~var:"RIOT_UPGRADE_ARCHIVE_PATH" with
   | Some raw_path -> (
-      match Path.of_string raw_path with
+      match Path.from_string raw_path with
       | Ok path -> Ok (Local path)
       | Error err -> Error ("invalid RIOT_UPGRADE_ARCHIVE_PATH: " ^ path_error_message err)
     )
   | None ->
-      let base_url = Env.var Env.String ~name:"RIOT_UPGRADE_ARCHIVE_BASE_URL"
+      let base_url = Env.get Env.String ~var:"RIOT_UPGRADE_ARCHIVE_BASE_URL"
       |> Option.unwrap_or ~default:default_archive_base_url in
       Ok (Remote (archive_url ?version ~target ~base_url ()))
 
 let ensure_install_dir = fun () ->
   let* riot_home = riot_home_dir () in
-  let* () = Fs.create_dir_all riot_home |> Result.map_error IO.error_message in
-  Fs.create_dir_all Path.(riot_home / Path.v "bin") |> Result.map_error IO.error_message
+  let* () = Fs.create_dir_all riot_home |> Result.map_err ~fn:IO.error_message in
+  Fs.create_dir_all Path.(riot_home / Path.v "bin") |> Result.map_err ~fn:IO.error_message
 
 let copy_local_archive = fun ~src ~dst ->
   match Fs.copy ~src ~dst with
@@ -337,31 +340,30 @@ let run = fun matches ->
       Error (Failure message)
   | Ok () -> (
       let requested_metadata =
-        if Env.var Env.String ~name:"RIOT_UPGRADE_ARCHIVE_PATH" |> Option.is_some then
+        if Env.get Env.String ~var:"RIOT_UPGRADE_ARCHIVE_PATH" |> Option.is_some then
           Ok None
         else
           match resolve_metadata_source ?version () with
           | Error message ->
               Error message
           | Ok (Metadata_local path) ->
-              Version_info.of_path path |> Result.map Option.some
+              Version_info.of_path path |> Result.map ~fn:Option.some
           | Ok (Metadata_remote url) -> (
               match download_text ~url with
-              | Ok content -> Version_info.of_json_string content |> Result.map Option.some
+              | Ok content -> Version_info.of_json_string content |> Result.map ~fn:Option.some
               | Error _ -> Ok None
             )
       in
       let* latest_metadata = requested_metadata
-      |> Result.map
-        (Option.map
-          (fun (metadata: Version_info.t) ->
+      |> Result.map ~fn:(
+        Option.map ~fn:(fun (metadata: Version_info.t) ->
             {
               metadata
               with issues_url = Option.or_else
                 metadata.issues_url
                 (fun () -> Some default_issues_url)
             }))
-      |> Result.map_error (fun message -> Failure message) in
+      |> Result.map_err ~fn:(fun message -> Failure message) in
       match
         resolve_archive_source
           ?version:(
@@ -377,7 +379,7 @@ let run = fun matches ->
           Error (Failure message)
       | Ok archive_source ->
           let* current_binary = installed_binary_path ()
-          |> Result.map_error (fun message -> Failure message) in
+          |> Result.map_err ~fn:(fun message -> Failure message) in
           let current_exists = Fs.exists current_binary |> Result.unwrap_or ~default:false in
           (
             match current_metadata, latest_metadata with
@@ -396,7 +398,7 @@ let run = fun matches ->
                         | Local path -> copy_local_archive ~src:path ~dst:archive_path
                         | Remote url -> download_archive ~url ~dst:archive_path
                       in
-                      let* () = Fs.create_dir_all extract_dir |> Result.map_error IO.error_message in
+                      let* () = Fs.create_dir_all extract_dir |> Result.map_err ~fn:IO.error_message in
                       let* () = extract_archive ~archive_path ~into:extract_dir in
                       let* metadata = resolved_metadata ~latest_metadata ~extract_dir ~downloaded_binary in
                       let unchanged =
@@ -427,7 +429,7 @@ let run = fun matches ->
                             | None -> ()
                           in
                           let install_dir = Path.dirname current_binary in
-                          let* () = Fs.create_dir_all install_dir |> Result.map_error IO.error_message in
+                          let* () = Fs.create_dir_all install_dir |> Result.map_err ~fn:IO.error_message in
                           let* () = install_binary_atomically ~src:downloaded_binary ~dst:current_binary in
                           let* () = Version_info.write_installed metadata in
                           let duration = Time.Instant.duration_since

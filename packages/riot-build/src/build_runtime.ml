@@ -61,14 +61,11 @@ let resolve_target_pattern = fun workspace pattern ->
       Ok [ host ]
   | "all" ->
       Ok configured
-  | exact when List.mem exact configured ->
+  | exact when List.contains configured ~value:exact ->
       Ok [ exact ]
   | pattern ->
       let matches =
-        List.filter
-          (fun target ->
-            String.contains target pattern)
-          configured
+        List.filter configured ~fn:(fun target -> String.contains target pattern)
       in
       if List.length matches = 0 then
         Error (NoTargetsMatched { pattern; available_targets = configured })
@@ -84,13 +81,11 @@ let resolve_targets = fun (request: build_request) ->
 let ensure_toolchains_for_targets = fun workspace targets ->
   let config = Riot_model.Toolchain_config.from_workspace workspace in
   let missing =
-    List.filter
-      (fun target ->
+    List.filter targets ~fn:(fun target ->
         match Riot_toolchain.check_toolchain_status ~version:config.version ~target with
         | Riot_toolchain.NotInstalled _
         | Riot_toolchain.Incomplete _ -> true
         | Riot_toolchain.Installed _ -> false)
-      targets
   in
   let host = Riot_toolchain.get_host_triple () in
   let rec loop = function
@@ -127,38 +122,35 @@ let client_target = fun packages ->
 
 let sort_uniq_strings = fun values ->
   let rec dedupe acc = function
-    | [] -> List.rev acc
-    | [ value ] -> List.rev (value :: acc)
+    | [] -> List.reverse acc
+    | [ value ] -> List.reverse (value :: acc)
     | left :: ((right :: _) as rest) ->
         if String.equal left right then
           dedupe acc rest
         else
           dedupe (left :: acc) rest
   in
-  values |> List.sort String.compare |> dedupe []
+  values |> List.sort ~compare:String.compare |> dedupe []
 
 let referenced_hashes_of_artifact = fun (artifact: Riot_store.Artifact.t) ->
   Std.Crypto.Digest.hex artifact.hash
-  :: List.map (fun (entry: Riot_store.Manifest.export_entry) -> entry.action_hash) artifact.exports
+  :: List.map artifact.exports ~fn:(fun (entry: Riot_store.Manifest.export_entry) -> entry.action_hash)
   |> sort_uniq_strings
 
 let generation_lane_of_results = fun ~profile ~target results ->
   let hashes =
-    List.concat_map
-      (fun (result: Riot_executor.Package_builder.build_result) ->
+    List.flat_map results ~fn:(fun (result: Riot_executor.Package_builder.build_result) ->
         match result.status with
         | Riot_executor.Package_builder.Built artifact
         | Riot_executor.Package_builder.Cached artifact -> referenced_hashes_of_artifact artifact
         | Riot_executor.Package_builder.Skipped _
         | Riot_executor.Package_builder.Failed _ -> [])
-      results
     |> sort_uniq_strings
   in
   Riot_store.Cache_gc.{ profile; target; hashes }
 
 let new_entries_of_results = fun ~profile ~target results ->
-  List.filter_map
-    (fun (result: Riot_executor.Package_builder.build_result) ->
+  List.filter_map results ~fn:(fun (result: Riot_executor.Package_builder.build_result) ->
       match result.status with
       | Riot_executor.Package_builder.Built artifact -> Some Riot_store.Cache_gc.{
         profile;
@@ -168,17 +160,14 @@ let new_entries_of_results = fun ~profile ~target results ->
       | Riot_executor.Package_builder.Cached _
       | Riot_executor.Package_builder.Skipped _
       | Riot_executor.Package_builder.Failed _ -> None)
-    results
 
 let record_successful_build_cache_generation = fun request lane_results ->
   let lanes =
-    List.map
-      (fun (target, results) -> generation_lane_of_results ~profile:request.profile ~target results)
-      lane_results
+    List.map lane_results ~fn:(fun (target, results) ->
+      generation_lane_of_results ~profile:request.profile ~target results)
   in
-  let new_entries = List.map
-    (fun (target, results) -> new_entries_of_results ~profile:request.profile ~target results)
-    lane_results
+  let new_entries = List.map lane_results ~fn:(fun (target, results) ->
+    new_entries_of_results ~profile:request.profile ~target results)
   |> List.concat in
   match Riot_store.Cache_gc.record_successful_build ~workspace:request.workspace ~lanes ~new_entries with
   | Ok _ -> Ok ()
@@ -201,7 +190,7 @@ let build_with_connect = fun connect ~allow_partial_failures ?(record_cache_gene
                     let host = Riot_toolchain.get_host_triple () in
                     let request_target = client_target request.packages in
                     let rec loop acc had_partial_failure = function
-                      | [] -> Ok (List.rev acc, had_partial_failure)
+                      | [] -> Ok (List.reverse acc, had_partial_failure)
                       | target :: rest ->
                           on_event (BuildingTarget { target; host = String.equal target host });
                           let target_arch =
@@ -260,7 +249,7 @@ let build_with_connect = fun connect ~allow_partial_failures ?(record_cache_gene
                             else
                               Ok ()
                           in
-                          Ok (List.map (fun (_, results) -> results) lane_results |> List.concat)
+                          Ok (List.map lane_results ~fn:(fun (_, results) -> results) |> List.concat)
                       | Error _ as err -> err
                     )
                   with

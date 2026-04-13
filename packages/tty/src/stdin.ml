@@ -13,29 +13,29 @@ let utf8_char_length = fun first_byte ->
     0
 
 let read_utf8 = fun () ->
-  let fd = Platform.stdin_fd () in
-  let bytes = IO.Bytes.create 4 in
-  match Platform.read fd bytes ~offset:0 ~len:1 with
+  let bytes = IO.Bytes.create ~size:4 in
+  match IO.Stdin.read ~offset:0 ~len:1 bytes with
   | Ok 0 ->
       `End
   | Ok 1 ->
-      let first_byte = Char.code (IO.Bytes.get bytes 0) in
+      let first_byte = Char.code (IO.Bytes.get_unchecked bytes ~at:0) in
       let len = utf8_char_length first_byte in
       if len = 0 then
         `Malformed "Invalid UTF-8 start byte"
       else if len = 1 then
-        `Read (IO.Bytes.sub_string bytes 0 1)
+        `Read (IO.Bytes.sub_unchecked bytes ~offset:0 ~len:1 |> IO.Bytes.to_string)
       else
         (
-          match Platform.read fd bytes ~offset:1 ~len:(len - 1) with
-          | Ok n when n = len - 1 -> `Read (IO.Bytes.sub_string bytes 0 len)
+          match IO.Stdin.read ~offset:1 ~len:(len - 1) bytes with
+          | Ok n when n = len - 1 ->
+              `Read (IO.Bytes.sub_unchecked bytes ~offset:0 ~len |> IO.Bytes.to_string)
           | Ok _ -> `Malformed "Incomplete UTF-8 sequence"
-          | Error error when Kernel.SystemError.is_would_block error -> `Retry
+          | Error IO.Operation_would_block -> `Retry
           | Error _ -> `Malformed "Read error"
         )
   | Ok _ ->
       `Malformed "Unexpected read length"
-  | Error error when Kernel.SystemError.is_would_block error ->
+  | Error IO.Operation_would_block ->
       `Retry
   | Error _ ->
       `End

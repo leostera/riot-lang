@@ -19,13 +19,13 @@ code had two lines often becomes opaque once the function grows.
 |}
 
 let contains_prime = fun text ->
-  String.exists (fun ch -> ch = '\'') text
+  String.exists ~fn:(fun ch -> ch = '\'') text
 
 let trailing_prime_count = fun text ->
   let rec loop index count =
     if index < 0 then
       count
-    else if String.get text index = '\'' then
+    else if String.get_unchecked text ~at:index = '\'' then
       loop (index - 1) (count + 1)
     else
       count
@@ -38,11 +38,11 @@ let replacement_for = fun text ->
   else
     let trailing_primes = trailing_prime_count text in
     if trailing_primes > 0 then
-      let base = String.sub text 0 (String.length text - trailing_primes) in
+      let base = String.sub text ~offset:0 ~len:(String.length text - trailing_primes) in
       base ^ Int.to_string (trailing_primes + 1)
     else
       String.map
-        (fun ch ->
+        ~fn:(fun ch ->
           if ch = '\'' then
             '2'
           else
@@ -79,8 +79,9 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.binding_sites_of_structure_item
-  |> List.filter_map diagnostic_for_binding_site
+  |> List.map ~fn:Traversal.binding_sites_of_structure_item
+  |> List.concat
+  |> List.filter_map ~fn:diagnostic_for_binding_site
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

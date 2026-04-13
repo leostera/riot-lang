@@ -36,12 +36,12 @@ type install_error =
   | ExternalTargetLoadFailed of { target: string; reason: string }
   | ClientError of Client.error
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 let no_event: install_event -> unit = fun _ -> ()
 
 let reconnect = fun ~workspace ->
-  Client.connect_local ~workspace () |> Result.map_error (fun err -> ClientError err)
+  Client.connect_local ~workspace () |> Result.map_err ~fn:(fun err -> ClientError err)
 
 let install_error_message = function
   | BinaryNotFound { binary_name } -> "binary '" ^ binary_name ^ "' not found in workspace"
@@ -112,8 +112,7 @@ let load_source_workspace = fun ~on_event ~source_spec ~update ->
     ~update
     ~spec:source_spec
     ()
-  |> Result.map_error
-    (fun err ->
+  |> Result.map_err ~fn:(fun err ->
       ExternalTargetLoadFailed { target = source_spec; reason = Riot_deps.package_error_message err })
 
 let load_registry_workspace = fun ~on_event ~package_spec ->
@@ -122,8 +121,7 @@ let load_registry_workspace = fun ~on_event ~package_spec ->
     ~emit:(emit_pm_build_event ~session_id ~on_event)
     ~spec:package_spec
     ()
-  |> Result.map_error
-    (fun err ->
+  |> Result.map_err ~fn:(fun err ->
       ExternalTargetLoadFailed {
         target = package_spec;
         reason = Riot_deps.package_error_message err
@@ -135,16 +133,15 @@ let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~package_name ~bina
       match result.status with
       | Riot_executor.Package_builder.Built artifact
       | Riot_executor.Package_builder.Cached artifact ->
-          List.find_opt
-            (fun (entry: Riot_store.Manifest.export_entry) ->
-              String.equal entry.name binary_name)
-            artifact.exports
+          List.find artifact.exports ~fn:(fun (entry: Riot_store.Manifest.export_entry) ->
+            String.equal entry.name binary_name)
       | Riot_executor.Package_builder.Skipped _
       | Riot_executor.Package_builder.Failed _ -> None
     else
       None
   in
-  match List.find_map find_binary_export results with
+  match List.find results ~fn:(fun result -> Option.is_some (find_binary_export result))
+    |> Option.and_then ~fn:find_binary_export with
   | None -> Error (ArtifactNotFound {
     package_name;
     binary_name;

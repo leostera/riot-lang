@@ -67,24 +67,18 @@ let hash = fun action ->
     (* Helper to write a sorted list of paths *)
     let write_sorted_paths hasher paths =
       let sorted =
-        List.sort
-          (fun a b ->
-            String.compare (Path.to_string a) (Path.to_string b))
-          paths
+        List.sort paths ~compare:(fun a b ->
+          String.compare (Path.to_string a) (Path.to_string b))
       in
-      List.iter
-        (fun path ->
-          Sha256.write hasher (Path.to_string path))
-        sorted
+      List.for_each sorted ~fn:(fun path ->
+        Sha256.write hasher (Path.to_string path))
     in
     (* Helper to write sorted flags - use flags_to_string which returns string list *)
     let write_sorted_flags hasher flags =
       let flag_strings = Riot_toolchain.Ocamlc.flags_to_string flags in
-      let sorted = List.sort String.compare flag_strings in
-      List.iter
-        (fun s ->
-          Sha256.write hasher s)
-        sorted
+      let sorted = List.sort flag_strings ~compare:String.compare in
+      List.for_each sorted ~fn:(fun s ->
+        Sha256.write hasher s)
     in
     match action with
     | CompileInterface { source; outputs; includes; flags } ->
@@ -112,7 +106,7 @@ let hash = fun action ->
         Sha256.write hasher "CompileC";
         Sha256.write hasher (Path.to_string source);
         write_sorted_paths hasher outputs;
-        List.iter (Sha256.write hasher) ccflags;
+        List.for_each ccflags ~fn:(Sha256.write hasher);
         Sha256.finish hasher
     | CreateLibrary { outputs; objects; includes } ->
         Sha256.write hasher "CreateLibrary";
@@ -135,16 +129,12 @@ let hash = fun action ->
         write_sorted_paths hasher libraries;
         write_sorted_paths hasher includes;
         write_sorted_paths hasher cclibs;
-        let sorted_ccopt = List.sort String.compare ccopt_flags in
-        List.iter
-          (fun s ->
-            Sha256.write hasher s)
-          sorted_ccopt;
-        let sorted_cclib = List.sort String.compare cclib_flags in
-        List.iter
-          (fun s ->
-            Sha256.write hasher s)
-          sorted_cclib;
+        let sorted_ccopt = List.sort ccopt_flags ~compare:String.compare in
+        List.for_each sorted_ccopt ~fn:(fun s ->
+          Sha256.write hasher s);
+        let sorted_cclib = List.sort cclib_flags ~compare:String.compare in
+        List.for_each sorted_cclib ~fn:(fun s ->
+          Sha256.write hasher s);
         Sha256.finish hasher
     | CreateSharedLibrary {
       outputs;
@@ -161,16 +151,12 @@ let hash = fun action ->
         write_sorted_paths hasher libraries;
         write_sorted_paths hasher includes;
         write_sorted_paths hasher cclibs;
-        let sorted_ccopt = List.sort String.compare ccopt_flags in
-        List.iter
-          (fun s ->
-            Sha256.write hasher s)
-          sorted_ccopt;
-        let sorted_cclib = List.sort String.compare cclib_flags in
-        List.iter
-          (fun s ->
-            Sha256.write hasher s)
-          sorted_cclib;
+        let sorted_ccopt = List.sort ccopt_flags ~compare:String.compare in
+        List.for_each sorted_ccopt ~fn:(fun s ->
+          Sha256.write hasher s);
+        let sorted_cclib = List.sort cclib_flags ~compare:String.compare in
+        List.for_each sorted_cclib ~fn:(fun s ->
+          Sha256.write hasher s);
         Sha256.finish hasher
     | CopyFile { source; destination } ->
         Sha256.write hasher "CopyFile";
@@ -192,62 +178,58 @@ let hash = fun action ->
         Sha256.write hasher "BuildForeignDependency";
         Sha256.write hasher name;
         Sha256.write hasher (Path.to_string path);
-        let sorted_cmd = List.sort String.compare build_cmd in
-        List.iter (Sha256.write hasher) sorted_cmd;
+        let sorted_cmd = List.sort build_cmd ~compare:String.compare in
+        List.for_each sorted_cmd ~fn:(Sha256.write hasher);
         write_sorted_paths hasher outputs;
         let sorted_env =
-          List.sort
-            (fun ((k1, _)) ((k2, _)) ->
-              String.compare k1 k2)
-            env
+          List.sort env ~compare:(fun (k1, _) (k2, _) ->
+            String.compare k1 k2)
         in
-        List.iter
-          (fun ((k, v)) ->
-            Sha256.write hasher (k ^ "=" ^ v))
-          sorted_env;
+        List.for_each sorted_env ~fn:(fun (k, v) ->
+          Sha256.write hasher (k ^ "=" ^ v));
         Sha256.finish hasher
 
 let to_string = function
   | CompileInterface { source; outputs; includes; flags } -> "CompileInterface("
   ^ Path.to_string source
   ^ "->"
-  ^ String.concat "," (List.map Path.to_string outputs)
+  ^ String.concat "," (List.map outputs ~fn:Path.to_string)
   ^ ",includes="
-  ^ String.concat "," (List.map Path.to_string includes)
+  ^ String.concat "," (List.map includes ~fn:Path.to_string)
   ^ ",flags="
   ^ String.concat " " (Riot_toolchain.Ocamlc.flags_to_string flags)
   ^ ")"
   | CompileImplementation { source; outputs; includes; flags } -> "CompileImplementation("
   ^ Path.to_string source
   ^ "->"
-  ^ String.concat "," (List.map Path.to_string outputs)
+  ^ String.concat "," (List.map outputs ~fn:Path.to_string)
   ^ ",includes="
-  ^ String.concat "," (List.map Path.to_string includes)
+  ^ String.concat "," (List.map includes ~fn:Path.to_string)
   ^ ",flags="
   ^ String.concat " " (Riot_toolchain.Ocamlc.flags_to_string flags)
   ^ ")"
   | GenerateInterface { source; outputs; includes; flags } -> "GenerateInterface("
   ^ Path.to_string source
   ^ "->"
-  ^ String.concat "," (List.map Path.to_string outputs)
+  ^ String.concat "," (List.map outputs ~fn:Path.to_string)
   ^ ",includes="
-  ^ String.concat "," (List.map Path.to_string includes)
+  ^ String.concat "," (List.map includes ~fn:Path.to_string)
   ^ ",flags="
   ^ String.concat " " (Riot_toolchain.Ocamlc.flags_to_string flags)
   ^ ")"
   | CompileC { source; outputs; ccflags } -> "CompileC("
   ^ Path.to_string source
   ^ "->"
-  ^ String.concat "," (List.map Path.to_string outputs)
+  ^ String.concat "," (List.map outputs ~fn:Path.to_string)
   ^ ",ccflags="
   ^ String.concat " " ccflags
   ^ ")"
   | CreateLibrary { outputs; objects; includes } -> "CreateLibrary("
-  ^ String.concat "," (List.map Path.to_string outputs)
+  ^ String.concat "," (List.map outputs ~fn:Path.to_string)
   ^ ",objects="
-  ^ String.concat "," (List.map Path.to_string objects)
+  ^ String.concat "," (List.map objects ~fn:Path.to_string)
   ^ ",includes="
-  ^ String.concat "," (List.map Path.to_string includes)
+  ^ String.concat "," (List.map includes ~fn:Path.to_string)
   ^ ")"
   | CreateExecutable {
     outputs;
@@ -258,15 +240,15 @@ let to_string = function
     ccopt_flags;
     cclib_flags
   } -> "CreateExecutable("
-  ^ String.concat "," (List.map Path.to_string outputs)
+  ^ String.concat "," (List.map outputs ~fn:Path.to_string)
   ^ ",objects="
-  ^ String.concat "," (List.map Path.to_string objects)
+  ^ String.concat "," (List.map objects ~fn:Path.to_string)
   ^ ",libraries="
-  ^ String.concat "," (List.map Path.to_string libraries)
+  ^ String.concat "," (List.map libraries ~fn:Path.to_string)
   ^ ",includes="
-  ^ String.concat "," (List.map Path.to_string includes)
+  ^ String.concat "," (List.map includes ~fn:Path.to_string)
   ^ ",cclibs="
-  ^ String.concat "," (List.map Path.to_string cclibs)
+  ^ String.concat "," (List.map cclibs ~fn:Path.to_string)
   ^ ",ccopt_flags="
   ^ String.concat " " ccopt_flags
   ^ ",cclib_flags="
@@ -281,15 +263,15 @@ let to_string = function
     ccopt_flags;
     cclib_flags
   } -> "CreateSharedLibrary("
-  ^ String.concat "," (List.map Path.to_string outputs)
+  ^ String.concat "," (List.map outputs ~fn:Path.to_string)
   ^ ",objects="
-  ^ String.concat "," (List.map Path.to_string objects)
+  ^ String.concat "," (List.map objects ~fn:Path.to_string)
   ^ ",libraries="
-  ^ String.concat "," (List.map Path.to_string libraries)
+  ^ String.concat "," (List.map libraries ~fn:Path.to_string)
   ^ ",includes="
-  ^ String.concat "," (List.map Path.to_string includes)
+  ^ String.concat "," (List.map includes ~fn:Path.to_string)
   ^ ",cclibs="
-  ^ String.concat "," (List.map Path.to_string cclibs)
+  ^ String.concat "," (List.map cclibs ~fn:Path.to_string)
   ^ ",ccopt_flags="
   ^ String.concat " " ccopt_flags
   ^ ",cclib_flags="
@@ -318,7 +300,7 @@ let to_string = function
   ^ ",cmd="
   ^ String.concat " " build_cmd
   ^ ",outputs="
-  ^ String.concat "," (List.map Path.to_string outputs)
+  ^ String.concat "," (List.map outputs ~fn:Path.to_string)
   ^ ")"
 
 let to_json = fun action ->
@@ -328,39 +310,39 @@ let to_json = fun action ->
       [
         ("type", string "CompileInterface");
         ("source", string (Path.to_string source));
-        ("outputs", array (List.map (fun p -> string (Path.to_string p)) outputs));
-        ("includes", array (List.map (fun p -> string (Path.to_string p)) includes));
-        ("flags", array (List.map string (Riot_toolchain.Ocamlc.flags_to_string flags)));
+        ("outputs", array (List.map outputs ~fn:(fun p -> string (Path.to_string p))));
+        ("includes", array (List.map includes ~fn:(fun p -> string (Path.to_string p))));
+        ("flags", array (List.map (Riot_toolchain.Ocamlc.flags_to_string flags) ~fn:string));
       ]
     | CompileImplementation { source; outputs; includes; flags } -> obj
       [
         ("type", string "CompileImplementation");
         ("source", string (Path.to_string source));
-        ("outputs", array (List.map (fun p -> string (Path.to_string p)) outputs));
-        ("includes", array (List.map (fun p -> string (Path.to_string p)) includes));
-        ("flags", array (List.map string (Riot_toolchain.Ocamlc.flags_to_string flags)));
+        ("outputs", array (List.map outputs ~fn:(fun p -> string (Path.to_string p))));
+        ("includes", array (List.map includes ~fn:(fun p -> string (Path.to_string p))));
+        ("flags", array (List.map (Riot_toolchain.Ocamlc.flags_to_string flags) ~fn:string));
       ]
     | GenerateInterface { source; outputs; includes; flags } -> obj
       [
         ("type", string "GenerateInterface");
         ("source", string (Path.to_string source));
-        ("outputs", array (List.map (fun p -> string (Path.to_string p)) outputs));
-        ("includes", array (List.map (fun p -> string (Path.to_string p)) includes));
-        ("flags", array (List.map string (Riot_toolchain.Ocamlc.flags_to_string flags)));
+        ("outputs", array (List.map outputs ~fn:(fun p -> string (Path.to_string p))));
+        ("includes", array (List.map includes ~fn:(fun p -> string (Path.to_string p))));
+        ("flags", array (List.map (Riot_toolchain.Ocamlc.flags_to_string flags) ~fn:string));
       ]
     | CompileC { source; outputs; ccflags } -> obj
       [
         ("type", string "CompileC");
         ("source", string (Path.to_string source));
-        ("outputs", array (List.map (fun p -> string (Path.to_string p)) outputs));
-        ("ccflags", array (List.map string ccflags));
+        ("outputs", array (List.map outputs ~fn:(fun p -> string (Path.to_string p))));
+        ("ccflags", array (List.map ccflags ~fn:string));
       ]
     | CreateLibrary { outputs; objects; includes } -> obj
       [
         ("type", string "CreateLibrary");
-        ("outputs", array (List.map (fun p -> string (Path.to_string p)) outputs));
-        ("objects", array (List.map (fun p -> string (Path.to_string p)) objects));
-        ("includes", array (List.map (fun p -> string (Path.to_string p)) includes));
+        ("outputs", array (List.map outputs ~fn:(fun p -> string (Path.to_string p))));
+        ("objects", array (List.map objects ~fn:(fun p -> string (Path.to_string p))));
+        ("includes", array (List.map includes ~fn:(fun p -> string (Path.to_string p))));
       ]
     | CreateExecutable {
       outputs;
@@ -372,14 +354,14 @@ let to_json = fun action ->
       cclib_flags
     } -> obj
       [
-        ("outputs", array (List.map (fun p -> string (Path.to_string p)) outputs));
+        ("outputs", array (List.map outputs ~fn:(fun p -> string (Path.to_string p))));
         ("type", string "CreateExecutable");
-        ("objects", array (List.map (fun p -> string (Path.to_string p)) objects));
-        ("libraries", array (List.map (fun p -> string (Path.to_string p)) libraries));
-        ("includes", array (List.map (fun p -> string (Path.to_string p)) includes));
-        ("cclibs", array (List.map (fun p -> string (Path.to_string p)) cclibs));
-        ("ccopt_flags", array (List.map string ccopt_flags));
-        ("cclib_flags", array (List.map string cclib_flags));
+        ("objects", array (List.map objects ~fn:(fun p -> string (Path.to_string p))));
+        ("libraries", array (List.map libraries ~fn:(fun p -> string (Path.to_string p))));
+        ("includes", array (List.map includes ~fn:(fun p -> string (Path.to_string p))));
+        ("cclibs", array (List.map cclibs ~fn:(fun p -> string (Path.to_string p))));
+        ("ccopt_flags", array (List.map ccopt_flags ~fn:string));
+        ("cclib_flags", array (List.map cclib_flags ~fn:string));
       ]
     | CreateSharedLibrary {
       outputs;
@@ -391,14 +373,14 @@ let to_json = fun action ->
       cclib_flags
     } -> obj
       [
-        ("outputs", array (List.map (fun p -> string (Path.to_string p)) outputs));
+        ("outputs", array (List.map outputs ~fn:(fun p -> string (Path.to_string p))));
         ("type", string "CreateSharedLibrary");
-        ("objects", array (List.map (fun p -> string (Path.to_string p)) objects));
-        ("libraries", array (List.map (fun p -> string (Path.to_string p)) libraries));
-        ("includes", array (List.map (fun p -> string (Path.to_string p)) includes));
-        ("cclibs", array (List.map (fun p -> string (Path.to_string p)) cclibs));
-        ("ccopt_flags", array (List.map string ccopt_flags));
-        ("cclib_flags", array (List.map string cclib_flags));
+        ("objects", array (List.map objects ~fn:(fun p -> string (Path.to_string p))));
+        ("libraries", array (List.map libraries ~fn:(fun p -> string (Path.to_string p))));
+        ("includes", array (List.map includes ~fn:(fun p -> string (Path.to_string p))));
+        ("cclibs", array (List.map cclibs ~fn:(fun p -> string (Path.to_string p))));
+        ("ccopt_flags", array (List.map ccopt_flags ~fn:string));
+        ("cclib_flags", array (List.map cclib_flags ~fn:string));
       ]
     | CopyFile { source; destination } -> obj
       [
@@ -423,9 +405,9 @@ let to_json = fun action ->
         ("type", string "BuildForeignDependency");
         ("name", string name);
         ("path", string (Path.to_string path));
-        ("build_cmd", array (List.map string build_cmd));
-        ("outputs", array (List.map (fun p -> string (Path.to_string p)) outputs));
-        ("env", obj (List.map (fun ((k, v)) -> (k, string v)) env));
+        ("build_cmd", array (List.map build_cmd ~fn:string));
+        ("outputs", array (List.map outputs ~fn:(fun p -> string (Path.to_string p))));
+        ("env", obj (List.map env ~fn:(fun (k, v) -> (k, string v))));
       ]
 
 let from_json = fun json ->
@@ -434,13 +416,11 @@ let from_json = fun json ->
       match get_field field json with
       | Some (Array arr) ->
           Some (
-            List.filter_map
-              (
-                function
-                | String s -> Some (Path.v s)
-                | _ -> None
-              )
-              arr
+            List.filter_map arr ~fn:(
+              function
+              | String s -> Some (Path.v s)
+              | _ -> None
+            )
           )
       | _ -> None
     in
@@ -448,13 +428,11 @@ let from_json = fun json ->
       match get_field field json with
       | Some (Array arr) ->
           Some (
-            List.filter_map
-              (
-                function
-                | String s -> Some s
-                | _ -> None
-              )
-              arr
+            List.filter_map arr ~fn:(
+              function
+              | String s -> Some s
+              | _ -> None
+            )
           )
       | _ -> None
     in
@@ -604,25 +582,21 @@ let from_json = fun json ->
           match get_field "build_cmd" json with
           | Some (Array arr) ->
               Some (
-                List.filter_map
-                  (
-                    function
-                    | String s -> Some s
-                    | _ -> None
-                  )
-                  arr
+                List.filter_map arr ~fn:(
+                  function
+                  | String s -> Some s
+                  | _ -> None
+                )
               )
           | _ -> None
         in
         let parse_env json =
           match get_field "env" json with
           | Some (Object fields) ->
-              List.filter_map
-                (fun ((k, v)) ->
-                  match v with
-                  | String s -> Some (k, s)
-                  | _ -> None)
-                fields
+              List.filter_map fields ~fn:(fun (k, v) ->
+                match v with
+                | String s -> Some (k, s)
+                | _ -> None)
           | _ -> []
         in
         match (
@@ -650,45 +624,49 @@ let from_json = fun json ->
         Error "type must be string"
 
 let equal = fun a1 a2 ->
+  let list_all2 = fun left right ~fn ->
+    List.compare_lengths ~left ~right = 0
+    && List.all (List.zip left right) ~fn:(fun (left, right) -> fn left right)
+  in
   match (a1, a2) with
   | CompileInterface r1, CompileInterface r2 -> Path.equal r1.source r2.source
-  && List.for_all2 Path.equal r1.outputs r2.outputs
-  && List.for_all2 Path.equal r1.includes r2.includes
+  && list_all2 r1.outputs r2.outputs ~fn:Path.equal
+  && list_all2 r1.includes r2.includes ~fn:Path.equal
   && r1.flags = r2.flags
   | CompileImplementation r1, CompileImplementation r2 -> Path.equal r1.source r2.source
-  && List.for_all2 Path.equal r1.outputs r2.outputs
-  && List.for_all2 Path.equal r1.includes r2.includes
+  && list_all2 r1.outputs r2.outputs ~fn:Path.equal
+  && list_all2 r1.includes r2.includes ~fn:Path.equal
   && r1.flags = r2.flags
   | GenerateInterface r1, GenerateInterface r2 -> Path.equal r1.source r2.source
-  && List.for_all2 Path.equal r1.outputs r2.outputs
-  && List.for_all2 Path.equal r1.includes r2.includes
+  && list_all2 r1.outputs r2.outputs ~fn:Path.equal
+  && list_all2 r1.includes r2.includes ~fn:Path.equal
   && r1.flags = r2.flags
   | CompileC r1, CompileC r2 -> Path.equal r1.source r2.source
-  && List.for_all2 Path.equal r1.outputs r2.outputs
-  | CreateLibrary r1, CreateLibrary r2 -> List.for_all2 Path.equal r1.outputs r2.outputs
-  && List.for_all2 Path.equal r1.objects r2.objects
-  && List.for_all2 Path.equal r1.includes r2.includes
-  | CreateExecutable r1, CreateExecutable r2 -> List.for_all2 Path.equal r1.outputs r2.outputs
-  && List.for_all2 Path.equal r1.objects r2.objects
-  && List.for_all2 Path.equal r1.libraries r2.libraries
-  && List.for_all2 Path.equal r1.includes r2.includes
-  && List.for_all2 Path.equal r1.cclibs r2.cclibs
-  && List.for_all2 String.equal r1.ccopt_flags r2.ccopt_flags
-  && List.for_all2 String.equal r1.cclib_flags r2.cclib_flags
-  | CreateSharedLibrary r1, CreateSharedLibrary r2 -> List.for_all2 Path.equal r1.outputs r2.outputs
-  && List.for_all2 Path.equal r1.objects r2.objects
-  && List.for_all2 Path.equal r1.libraries r2.libraries
-  && List.for_all2 Path.equal r1.includes r2.includes
-  && List.for_all2 Path.equal r1.cclibs r2.cclibs
-  && List.for_all2 String.equal r1.ccopt_flags r2.ccopt_flags
-  && List.for_all2 String.equal r1.cclib_flags r2.cclib_flags
+  && list_all2 r1.outputs r2.outputs ~fn:Path.equal
+  | CreateLibrary r1, CreateLibrary r2 -> list_all2 r1.outputs r2.outputs ~fn:Path.equal
+  && list_all2 r1.objects r2.objects ~fn:Path.equal
+  && list_all2 r1.includes r2.includes ~fn:Path.equal
+  | CreateExecutable r1, CreateExecutable r2 -> list_all2 r1.outputs r2.outputs ~fn:Path.equal
+  && list_all2 r1.objects r2.objects ~fn:Path.equal
+  && list_all2 r1.libraries r2.libraries ~fn:Path.equal
+  && list_all2 r1.includes r2.includes ~fn:Path.equal
+  && list_all2 r1.cclibs r2.cclibs ~fn:Path.equal
+  && list_all2 r1.ccopt_flags r2.ccopt_flags ~fn:String.equal
+  && list_all2 r1.cclib_flags r2.cclib_flags ~fn:String.equal
+  | CreateSharedLibrary r1, CreateSharedLibrary r2 -> list_all2 r1.outputs r2.outputs ~fn:Path.equal
+  && list_all2 r1.objects r2.objects ~fn:Path.equal
+  && list_all2 r1.libraries r2.libraries ~fn:Path.equal
+  && list_all2 r1.includes r2.includes ~fn:Path.equal
+  && list_all2 r1.cclibs r2.cclibs ~fn:Path.equal
+  && list_all2 r1.ccopt_flags r2.ccopt_flags ~fn:String.equal
+  && list_all2 r1.cclib_flags r2.cclib_flags ~fn:String.equal
   | CopyFile r1, CopyFile r2 -> Path.equal r1.source r2.source && Path.equal r1.destination r2.destination
   | WriteFile r1, WriteFile r2 -> Path.equal r1.destination r2.destination
   && String.equal r1.content r2.content
   | BuildForeignDependency r1, BuildForeignDependency r2 -> r1.name = r2.name
   && Path.equal r1.path r2.path
   && r1.build_cmd = r2.build_cmd
-  && List.for_all2 Path.equal r1.outputs r2.outputs
+  && list_all2 r1.outputs r2.outputs ~fn:Path.equal
   && r1.env = r2.env
   | _ -> false
 

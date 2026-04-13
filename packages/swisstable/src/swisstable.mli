@@ -92,9 +92,9 @@ val and_modify: ('k, 'v) t -> 'k -> ('v -> 'v) -> unit
     No effect if the key is absent. *)
 (** {1 Iterators} *)
 
-val into_iter: ('k, 'v) t -> ('k * 'v) Kernel.Iter.Iterator.t
+val into_iter: ('k, 'v) t -> ('k * 'v) Std.Iter.Iterator.t
 
 (** [into_iter map] converts the map into an iterator over key-value pairs. *)
-val to_mut_iter: ('k, 'v) t -> ('k * 'v) Kernel.Iter.MutIterator.t
+val to_mut_iter: ('k, 'v) t -> ('k * 'v) Std.Iter.MutIterator.t
 
 (** [to_mut_iter map] returns a mutable iterator over the map's key-value pairs. *)

@@ -346,7 +346,7 @@ module RawTable = struct
     | Some idx ->
         let previous = table.buckets.(idx) in
         table.buckets.(idx) <- Some (key, value);
-        Option.map snd previous
+        Option.map (fun (_, value) -> value) previous
     | None ->
         (* Insert new entry - reuse hash *)
         let (idx, _) = find_insert_slot_with_hash table hash in
@@ -367,7 +367,7 @@ module RawTable = struct
         table.buckets.(idx) <- None;
         set_ctrl table idx Tag.deleted;
         table.len <- table.len - 1;
-        Option.map snd previous
+        Option.map (fun (_, value) -> value) previous
 
   (* Get value for key *)
 
@@ -376,7 +376,7 @@ module RawTable = struct
     let h2 = hash_h2 hash in
     match find_with_hash table key hash h2 with
     | None -> None
-    | Some idx -> Option.map snd table.buckets.(idx)
+    | Some idx -> Option.map (fun (_, value) -> value) table.buckets.(idx)
 
   (* Check if key exists *)
 
@@ -467,7 +467,7 @@ let clear = fun map -> RawTable.clear map
 
 (* Iteration *)
 
-module Cell = Kernel.Sync.Cell
+module Cell = Sync.Cell
 
 let keys = fun map ->
   let result = Cell.create [] in
@@ -520,7 +520,7 @@ let and_modify = fun map key f ->
 
 (* Iterators *)
 
-let into_iter: type k v. (k, v) t -> (k * v) Kernel.Iter.Iterator.t = fun map ->
+let into_iter: type k v. (k, v) t -> (k * v) Iter.Iterator.t = fun map ->
   let module MapIter = struct
     type state = {
       items: (k * v) list;
@@ -539,9 +539,9 @@ let into_iter: type k v. (k, v) t -> (k * v) Kernel.Iter.Iterator.t = fun map ->
     let size = fun state -> max 0 (List.length state.items - state.pos)
   end in
   let items = to_list map in
-  Kernel.Iter.Iterator.make (module MapIter) { MapIter.items; pos = 0 }
+  Iter.Iterator.make (module MapIter) { MapIter.items; pos = 0 }
 
-let to_mut_iter: type k v. (k, v) t -> (k * v) Kernel.Iter.MutIterator.t = fun map ->
+let to_mut_iter: type k v. (k, v) t -> (k * v) Iter.MutIterator.t = fun map ->
   let module MapIter = struct
     type state = {
       items: (k * v) list;
@@ -563,4 +563,4 @@ let to_mut_iter: type k v. (k, v) t -> (k * v) Kernel.Iter.MutIterator.t = fun m
     let clone = fun state -> { items = state.items; pos = state.pos }
   end in
   let items = to_list map in
-  Kernel.Iter.MutIterator.make (module MapIter) { MapIter.items; pos = 0 }
+  Iter.MutIterator.make (module MapIter) { MapIter.items; pos = 0 }

@@ -76,8 +76,9 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.expressions_of_structure_item
-  |> List.filter_map diagnostic_for_expression
+  |> List.map ~fn:Traversal.expressions_of_structure_item
+  |> List.concat
+  |> List.filter_map ~fn:diagnostic_for_expression
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

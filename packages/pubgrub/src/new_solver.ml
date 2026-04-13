@@ -43,7 +43,7 @@ let equal_incompatibility_terms = fun left right ->
   let right_terms = Incompatibility.terms right in
   let rec remove_first_match term acc = function
     | [] -> None
-    | candidate :: tail when equal_term term candidate -> Some (List.rev_append acc tail)
+    | candidate :: tail when equal_term term candidate -> Some (List.reverse_append acc tail)
     | candidate :: tail -> remove_first_match term (candidate :: acc) tail
   in
   let rec consume unmatched remaining =
@@ -89,27 +89,27 @@ module DependencyGraph = struct
 
   let add_dependencies = fun graph pkg ver deps ->
     (* Store forward mapping: (pkg, ver) -> deps *)
-    ignore (HashMap.insert graph.deps (pkg, ver) deps);
+    let _ = HashMap.insert graph.deps ~key:(pkg, ver) ~value:deps in
     (* Store reverse mapping: dep_pkg -> [(pkg, ver), ...] *)
-    List.iter
-      (fun ((dep_pkg, _ranges)) ->
+    List.for_each deps
+      ~fn:(fun (dep_pkg, _ranges) ->
         let existing =
-          match HashMap.get graph.reverse dep_pkg with
+          match HashMap.get graph.reverse ~key:dep_pkg with
           | Some l -> l
           | None -> []
         in
-        if not (List.mem (pkg, ver) existing) then
-          ignore (HashMap.insert graph.reverse dep_pkg ((pkg, ver) :: existing)))
-      deps;
+        if not (List.contains existing ~value:(pkg, ver)) then
+          let _ = HashMap.insert graph.reverse ~key:dep_pkg ~value:((pkg, ver) :: existing) in
+          ());
     graph
 
   let get_dependencies = fun graph pkg ver ->
-    match HashMap.get graph.deps (pkg, ver) with
+    match HashMap.get graph.deps ~key:(pkg, ver) with
     | Some deps -> deps
     | None -> []
 
   let get_dependents = fun graph pkg ->
-    match HashMap.get graph.reverse pkg with
+    match HashMap.get graph.reverse ~key:pkg with
     | Some dependents -> dependents
     | None -> []
 end
@@ -145,7 +145,7 @@ let compute_pending state: (package * version Ranges.t) list =
   (* Helper to add a package to pending with range merging *)
   let add_to_pending pkg ranges =
     let existing_ranges =
-      match HashMap.get pending_map pkg with
+      match HashMap.get pending_map ~key:pkg with
       | Some r -> r
       | None -> Ranges.full
     in
@@ -158,73 +158,66 @@ let compute_pending state: (package * version Ranges.t) list =
           Ranges.intersection ~compare_v:version_compare new_ranges derived_ranges
       | _ -> new_ranges
     in
-    ignore (HashMap.insert pending_map pkg final_ranges)
+    let _ = HashMap.insert pending_map ~key:pkg ~value:final_ranges in
+    ()
   in
   (* Get all assignments from solution - we need to expose this in Partial_solution *)
   (* For now, we'll work around by iterating through incompatibilities *)
   (* which contain dependency information *)
   (* Alternative: iterate through incompatibilities to find dependencies *)
-  HashMap.iter
-    (fun pkg incompats ->
+  HashMap.for_each state.incompatibilities
+    ~fn:(fun pkg _incompats ->
       match Partial_solution.get_constraint state.solution pkg with
       | `Decided ver ->
           (* This package is decided, check its dependencies *)
           let deps = DependencyGraph.get_dependencies state.dependency_graph pkg ver in
-          List.iter
-            (fun ((dep_pkg, dep_ranges)) ->
+          List.for_each deps
+            ~fn:(fun (dep_pkg, dep_ranges) ->
               match Partial_solution.get_constraint state.solution dep_pkg with
               | `Undecided -> add_to_pending dep_pkg dep_ranges
-              | `Constrained constrained_ranges ->
+              | `Constrained _constrained_ranges ->
                   (* Constrained but not decided - still needs version chosen *)
                   add_to_pending dep_pkg dep_ranges
               | `Decided _ -> ())
-            deps
       | `Constrained _ranges ->
           (* Constrained packages will be picked up as dependencies of decided packages *)
           ()
-      | `Undecided ->
-          ())
-    state.incompatibilities;
+      | `Undecided -> ());
   (* Convert HashMap to list *)
   let result = ref [] in
-  HashMap.iter (fun pkg ranges -> result := (pkg, ranges) :: !result) pending_map;
+  HashMap.for_each pending_map ~fn:(fun pkg ranges -> result := (pkg, ranges) :: !result);
   (* Sort by constraint score (higher = more constrained = choose first) *)
   (* Strategy: Choose packages with constrained ranges first, but deprioritize *)
   (* packages that are involved in 2-term conflicts with other pending packages *)
   let pending_packages =
-    List.map (fun (pkg, _ranges) -> pkg) !result
+    List.map !result ~fn:(fun (pkg, _ranges) -> pkg)
   in
   let score_package ((pkg, ranges)) =
     let num_incompats =
-      match HashMap.get state.incompatibilities pkg with
+      match HashMap.get state.incompatibilities ~key:pkg with
       | Some incompats ->
           (* Check how many are simple 2-term conflicts with other pending packages *)
           let num_pending_conflicts =
-            List.fold_left
-              (fun count incompat ->
+            List.fold_left incompats
+              ~acc:0
+              ~fn:(fun count incompat ->
                 let terms = Incompatibility.terms incompat in
                 if List.length terms = 2 then
                   let other_packages =
-                    List.filter_map
-                      (fun t ->
+                    List.filter_map terms
+                      ~fn:(fun t ->
                         let t_pkg = Term.package t in
                         if t_pkg != pkg then
                           Some t_pkg
                         else
                           None)
-                      terms
                   in
-                  if List.exists
-                      (fun p ->
-                        List.mem p pending_packages)
-                      other_packages then
+                  if List.any other_packages ~fn:(fun p -> List.contains pending_packages ~value:p) then
                     count + 1
                   else
                     count
                 else
                   count)
-              0
-              incompats
           in
           (List.length incompats, num_pending_conflicts)
       | None -> (0, 0)
@@ -241,29 +234,25 @@ let compute_pending state: (package * version Ranges.t) list =
     ) + total_incompats - (pending_conflicts * 500)
   in
   let sorted =
-    List.sort
-      (fun ((pkg1, _r1)) ((pkg2, _r2)) ->
-        let score1 = score_package (pkg1, _r1) in
-        let score2 = score_package (pkg2, _r2) in
+    List.sort !result
+      ~compare:(fun (pkg1, ranges1) (pkg2, ranges2) ->
+        let score1 = score_package (pkg1, ranges1) in
+        let score2 = score_package (pkg2, ranges2) in
         if score1 = score2 then
           String.compare pkg1 pkg2
         else
           (* Higher score first *)
-          compare score2 score1)
-      !result
+          Int.compare score2 score1)
   in
   Log.info "📊 Pending packages sorted by score:";
-  List.iter
-    (fun ((pkg, _)) ->
+  List.for_each sorted
+    ~fn:(fun (pkg, ranges) ->
       Log.info
         ("   "
         ^ pkg
         ^ " (score: "
-        ^ string_of_int
-          (score_package
-            (pkg, List.find (fun ((p, _)) -> p = pkg) !result |> fun (_pkg, ranges) -> ranges))
-        ^ ")"))
-    sorted;
+        ^ Int.to_string (score_package (pkg, ranges))
+        ^ ")"));
   sorted
 
 (* ============================================================================
@@ -272,11 +261,12 @@ let compute_pending state: (package * version Ranges.t) list =
 
 let add_incompatibility = fun state package incompat ->
   let existing =
-    match HashMap.get state.incompatibilities package with
+    match HashMap.get state.incompatibilities ~key:package with
     | Some incompats -> incompats
     | None -> []
   in
-  ignore (HashMap.insert state.incompatibilities package (incompat :: existing))
+  let _ = HashMap.insert state.incompatibilities ~key:package ~value:(incompat :: existing) in
+  ()
 
 (* ============================================================================
    Conflict Resolution
@@ -300,32 +290,33 @@ let rec conflict_resolution = fun ~emit root_package root_version state incompat
               previous_level;
               incompatibility = current_incompat
             });
-          Log.info ("🔙 Backtracking to decision level " ^ string_of_int previous_level);
+          Log.info ("🔙 Backtracking to decision level " ^ Int.to_string previous_level);
           (* Backtrack the solution *)
           let new_solution = Partial_solution.backtrack state.solution previous_level in
           (* Clean up contradicted incompatibilities at higher levels *)
           let to_remove = ref [] in
-          HashMap.iter
-            (fun incompat level ->
+          HashMap.for_each state.contradicted
+            ~fn:(fun incompat level ->
               if level > previous_level then
-                to_remove := incompat :: !to_remove)
-            state.contradicted;
-          List.iter (fun incompat -> ignore (HashMap.remove state.contradicted incompat)) !to_remove;
+                to_remove := incompat :: !to_remove);
+          List.for_each !to_remove
+            ~fn:(fun incompat ->
+              let _ = HashMap.remove state.contradicted ~key:incompat in
+              ());
           (* If incompatibility changed, merge it (like Rust's backtrack does) *)
           if current_incompat_changed then
-            List.iter
-              (fun term ->
+            List.for_each (Incompatibility.terms current_incompat)
+              ~fn:(fun term ->
                 let term_pkg = Term.package term in
-                add_incompatibility state term_pkg current_incompat)
-              (Incompatibility.terms current_incompat);
+                add_incompatibility state term_pkg current_incompat);
           let terms = Incompatibility.terms current_incompat in
           Log.info
             ("📚 Learned incompatibility with "
-            ^ string_of_int (List.length terms)
+            ^ Int.to_string (List.length terms)
             ^ " terms, backtracked to level "
-            ^ string_of_int previous_level);
-          List.iter
-            (fun t ->
+            ^ Int.to_string previous_level);
+          List.for_each terms
+            ~fn:(fun t ->
               Log.info
                 (
                   "    Term: " ^ (
@@ -334,8 +325,7 @@ let rec conflict_resolution = fun ~emit root_package root_version state incompat
                     else
                       "NOT "
                   ) ^ Term.package t
-                ))
-            terms;
+                ));
           (* Return the package, root cause, and backtracked solution *)
           Ok (pkg, current_incompat, new_solution)
       | `SameDecisionLevels { cause=satisfier_cause; extra_term } ->
@@ -387,7 +377,7 @@ let unit_propagation = fun ~emit root_package root_version state changed_package
         Ok state
     | pkg :: rest -> (
         Log.info ("🔄 Processing package: " ^ pkg);
-        match HashMap.get state.incompatibilities pkg with
+        match HashMap.get state.incompatibilities ~key:pkg with
         | None ->
             Log.info ("🔄 No incompatibilities for " ^ pkg ^ ", skipping");
             process_packages state rest
@@ -407,15 +397,14 @@ let unit_propagation = fun ~emit root_package root_version state changed_package
                   let terms_str =
                     String.concat ", "
                       (
-                        List.map
-                          (fun t ->
+                        List.map incompat_terms
+                          ~fn:(fun t ->
                             (Term.package t) ^ "@" ^ "ranges" ^ (
                               if Term.is_positive t then
                                 ""
                               else
                                 "(neg)"
                             ))
-                          incompat_terms
                       )
                   in
                   Log.info ("    🔍 Checking incomp [" ^ terms_str ^ "]");
@@ -453,11 +442,10 @@ let unit_propagation = fun ~emit root_package root_version state changed_package
                             root_cause in
                           let after_constraint = Partial_solution.get_constraint new_solution resolved_pkg in
                           (* Add the root_cause to incompatibilities so choose_version can see it *)
-                          List.iter
-                            (fun term ->
+                          List.for_each (Incompatibility.terms root_cause)
+                            ~fn:(fun term ->
                               let term_pkg = Term.package term in
-                              add_incompatibility state term_pkg root_cause)
-                            (Incompatibility.terms root_cause);
+                              add_incompatibility state term_pkg root_cause);
                           let new_state =
                             if equal_constraint before_constraint after_constraint then
                               state
@@ -545,7 +533,7 @@ let choose_version = fun provider state pkg ranges ->
   Log.debug ("Choosing version for " ^ pkg);
   (* Get incompatibilities for this package to constrain the search *)
   let incompats =
-    match HashMap.get state.incompatibilities pkg with
+    match HashMap.get state.incompatibilities ~key:pkg with
     | Some incompats -> incompats
     | None -> []
   in
@@ -553,71 +541,66 @@ let choose_version = fun provider state pkg ranges ->
     ("  💡 Found " ^ (Int.to_string (List.length incompats)) ^ " incompatibilities for " ^ pkg);
   (* Find effective ranges by checking which incompatibilities apply *)
   let effective_ranges = ref ranges in
-  List.iter
-    (fun incompat ->
-      let terms = Incompatibility.terms incompat in
-      Log.debug ("  Checking incompatibility with " ^ string_of_int (List.length terms) ^ " terms");
-      (* Check if all OTHER terms are satisfied *)
-      let all_other_satisfied = ref true in
-      List.iter
-        (fun term ->
-          let term_pkg = Term.package term in
-          if term_pkg != pkg then
-            (
-              let constraint_status = Partial_solution.get_constraint state.solution term_pkg in
-              (
-                match constraint_status with
-                | `Undecided -> Log.info ("      Term pkg=" ^ term_pkg ^ " is Undecided")
-                | `Decided v -> Log.info
-                  ("      Term pkg=" ^ term_pkg ^ " is Decided@" ^ (Version.to_string v))
-                | `Constrained _ -> Log.info ("      Term pkg=" ^ term_pkg ^ " is Constrained")
-              );
-              match constraint_status with
-              | `Undecided ->
-                  all_other_satisfied := false
-              | `Decided ver ->
-                  let in_range = Ranges.contains ~compare_v:version_compare (Term.ranges term) ver in
-                  let term_satisfied =
-                    (Term.is_positive term && in_range)
-                    || ((not (Term.is_positive term)) && not in_range) in
-                  if not term_satisfied then
-                    all_other_satisfied := false
-              | `Constrained constrained_ranges ->
-                  let term_satisfied =
-                    if Term.is_positive term then
-                      Ranges.subset_of
-                        ~compare_v:version_compare
-                        constrained_ranges
-                        (Term.ranges term)
-                    else
-                      Ranges.is_disjoint
-                        ~compare_v:version_compare
-                        constrained_ranges
-                        (Term.ranges term)
-                  in
-                  if not term_satisfied then
-                    all_other_satisfied := false
-            ))
-        terms;
-      (* If all other terms satisfied, constrain by this incompatibility *)
-      if !all_other_satisfied then
+  List.for_each incompats ~fn:(fun incompat ->
+    let terms = Incompatibility.terms incompat in
+    Log.debug ("  Checking incompatibility with " ^ Int.to_string (List.length terms) ^ " terms");
+    (* Check if all OTHER terms are satisfied *)
+    let all_other_satisfied = ref true in
+    List.for_each terms ~fn:(fun term ->
+      let term_pkg = Term.package term in
+      if term_pkg != pkg then (
+        let constraint_status = Partial_solution.get_constraint state.solution term_pkg in
         (
-          Log.info ("    ✨ All other terms satisfied for " ^ pkg ^ "!");
-          match Incompatibility.get_term incompat pkg with
-          | Some term when Term.is_positive term ->
-              Log.info "    ➕ Positive term - EXCLUDE these ranges to avoid conflict";
-              let complement_ranges = Ranges.complement ~compare_v:version_compare (Term.ranges term) in
-              effective_ranges := Ranges.intersection ~compare_v:version_compare !effective_ranges complement_ranges
-          | Some term ->
-              Log.info "    ➖ Negative term - INCLUDE only these ranges";
-              effective_ranges := Ranges.intersection
-                ~compare_v:version_compare
-                !effective_ranges
-                (Term.ranges term)
-          | None ->
-              ()
-        ))
-    incompats;
+          match constraint_status with
+          | `Undecided -> Log.info ("      Term pkg=" ^ term_pkg ^ " is Undecided")
+          | `Decided v ->
+              Log.info ("      Term pkg=" ^ term_pkg ^ " is Decided@" ^ Version.to_string v)
+          | `Constrained _ -> Log.info ("      Term pkg=" ^ term_pkg ^ " is Constrained")
+        );
+        match constraint_status with
+        | `Undecided ->
+            all_other_satisfied := false
+        | `Decided ver ->
+            let in_range = Ranges.contains ~compare_v:version_compare (Term.ranges term) ver in
+            let term_satisfied =
+              (Term.is_positive term && in_range)
+              || ((not (Term.is_positive term)) && not in_range)
+            in
+            if not term_satisfied then
+              all_other_satisfied := false
+        | `Constrained constrained_ranges ->
+            let term_satisfied =
+              if Term.is_positive term then
+                Ranges.subset_of
+                  ~compare_v:version_compare
+                  constrained_ranges
+                  (Term.ranges term)
+              else
+                Ranges.is_disjoint
+                  ~compare_v:version_compare
+                  constrained_ranges
+                  (Term.ranges term)
+            in
+            if not term_satisfied then
+              all_other_satisfied := false
+      ));
+    (* If all other terms satisfied, constrain by this incompatibility *)
+    if !all_other_satisfied then (
+      Log.info ("    ✨ All other terms satisfied for " ^ pkg ^ "!");
+      match Incompatibility.get_term incompat pkg with
+      | Some term when Term.is_positive term ->
+          Log.info "    ➕ Positive term - EXCLUDE these ranges to avoid conflict";
+          let complement_ranges = Ranges.complement ~compare_v:version_compare (Term.ranges term) in
+          effective_ranges := Ranges.intersection ~compare_v:version_compare !effective_ranges complement_ranges
+      | Some term ->
+          Log.info "    ➖ Negative term - INCLUDE only these ranges";
+          effective_ranges := Ranges.intersection
+            ~compare_v:version_compare
+            !effective_ranges
+            (Term.ranges term)
+      | None ->
+          ()
+    ));
   Log.debug "  Effective ranges computed";
   (* Ask provider for a version in the effective ranges *)
   match provider.Provider.choose_version pkg !effective_ranges with
@@ -667,7 +650,7 @@ let solve = fun ?trace_ctx provider root_package root_version ->
   | Ok (Provider.Available deps) -> (
       (* Add root dependencies to graph *)
       let dep_list =
-        List.map (fun ((dep_pkg, dep_ranges)) -> (dep_pkg, dep_ranges)) deps
+        List.map deps ~fn:(fun (dep_pkg, dep_ranges) -> (dep_pkg, dep_ranges))
       in
       let dep_graph = DependencyGraph.add_dependencies
         initial_state.dependency_graph
@@ -677,8 +660,8 @@ let solve = fun ?trace_ctx provider root_package root_version ->
       let state = { initial_state with dependency_graph = dep_graph } in
       (* Check for impossible root dependencies *)
       let has_impossible_root_dep = ref None in
-      List.iter
-        (fun ((dep_pkg, dep_ranges)) ->
+      List.for_each deps
+        ~fn:(fun (dep_pkg, dep_ranges) ->
           (* Check for self-dependency with incompatible version *)
           if
             dep_pkg = root_package
@@ -706,8 +689,7 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                 ^ dep_pkg
                 ^ " with empty range");
               has_impossible_root_dep := Some (dep_pkg, dep_ranges)
-            ))
-        deps;
+            ));
       (* If there's an impossible root dependency, fail immediately *)
       match !has_impossible_root_dep with
       | Some (dep_pkg, dep_ranges) ->
@@ -720,15 +702,14 @@ let solve = fun ?trace_ctx provider root_package root_version ->
       | None ->
           (* Add dependency incompatibilities *)
           let dep_packages = ref [] in
-          List.iter
-            (fun ((dep_pkg, dep_ranges)) ->
+          List.for_each deps
+            ~fn:(fun (dep_pkg, dep_ranges) ->
               let dep_incompat = Incompatibility.from_dependency
                 root_package
                 root_version
                 (dep_pkg, dep_ranges) in
               add_incompatibility state dep_pkg dep_incompat;
-              dep_packages := dep_pkg :: !dep_packages)
-            deps;
+              dep_packages := dep_pkg :: !dep_packages);
           (* Run initial unit propagation on all root dependencies to create derivations *)
           let state =
             match unit_propagation ~emit root_package root_version state !dep_packages with
@@ -755,14 +736,14 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                   (* Pick next highest priority package *)
                   let prioritizer pkg ranges =
                     let num_incompats =
-                      match HashMap.get state.incompatibilities pkg with
+                      match HashMap.get state.incompatibilities ~key:pkg with
                       | Some incompats -> List.length incompats
                       | None -> 0
                     in
                     let matching_versions =
                       match provider.Provider.count_versions pkg ranges with
                       | Ok n -> n
-                      | Error _ -> max_int
+                      | Error _ -> Int.max_int
                     in
                     let constraint_score =
                       if Ranges.is_empty ranges || ranges = Ranges.full then
@@ -771,10 +752,10 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                         1_000_000
                     in
                     let availability_score =
-                      if matching_versions = max_int then
+                      if matching_versions = Int.max_int then
                         0
                       else
-                        max 0 (100_000 - matching_versions)
+                        Int.max 0 (100_000 - matching_versions)
                     in
                     constraint_score + availability_score + num_incompats
                   in
@@ -817,15 +798,15 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                           | Ok (Provider.Available pkg_deps) -> (
                               Log.debug
                                 ("Processing "
-                                ^ string_of_int (List.length pkg_deps)
+                                ^ Int.to_string (List.length pkg_deps)
                                 ^ " dependencies for "
                                 ^ pkg
                                 ^ "@"
                                 ^ Version.to_string ver);
                               (* Check for impossible dependencies first *)
                               let has_impossible_dep = ref None in
-                              List.iter
-                                (fun ((dep_pkg, dep_ranges)) ->
+                              List.for_each pkg_deps
+                                ~fn:(fun (dep_pkg, dep_ranges) ->
                                   (* Check for self-dependency with incompatible version *)
                                   if
                                     dep_pkg = pkg
@@ -854,8 +835,7 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                                         ^ dep_pkg
                                         ^ " with empty range");
                                       has_impossible_dep := Some (dep_pkg, dep_ranges)
-                                    ))
-                                pkg_deps;
+                                    ));
                               (* If impossible dependency, fail *)
                               match !has_impossible_dep with
                               | Some (dep_pkg, dep_ranges) ->
@@ -876,7 +856,7 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                                   let new_state = { propagated_state with solution = new_solution } in
                                   (* Add dependencies to graph *)
                                   let dep_list =
-                                    List.map (fun ((d, r)) -> (d, r)) pkg_deps
+                                    List.map pkg_deps ~fn:(fun (dep_pkg, dep_ranges) -> (dep_pkg, dep_ranges))
                                   in
                                   let new_dep_graph = DependencyGraph.add_dependencies
                                     new_state.dependency_graph
@@ -886,8 +866,8 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                                   let new_state = { new_state with dependency_graph = new_dep_graph } in
                                   (* Add dependency incompatibilities and collect affected packages *)
                                   let affected_packages = ref [] in
-                                  List.iter
-                                    (fun ((dep_pkg, dep_ranges)) ->
+                                  List.for_each pkg_deps
+                                    ~fn:(fun (dep_pkg, dep_ranges) ->
                                       let dep_incompat = Incompatibility.from_dependency
                                         pkg
                                         ver
@@ -895,8 +875,7 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                                       Log.info
                                         ("📦 Added dependency incompatibility for " ^ dep_pkg);
                                       add_incompatibility new_state dep_pkg dep_incompat;
-                                      affected_packages := dep_pkg :: !affected_packages)
-                                    pkg_deps;
+                                      affected_packages := dep_pkg :: !affected_packages);
                                   Log.info
                                     ("🔄 Added "
                                     ^ (Int.to_string (List.length !affected_packages))

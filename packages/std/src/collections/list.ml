@@ -37,7 +37,22 @@ let get = fun values ~at -> Kernel.List.get values ~at
 
 let get_unchecked = fun values ~at -> Kernel.List.get_unchecked values ~at
 
+let enumerate = fun list ->
+  let rec loop list idx =
+    match list with
+    | [] -> []
+    | x :: xs -> (idx, x) :: (loop xs (idx + 1))
+  in
+  loop list 0
+
 let map = fun values ~fn -> Kernel.List.map values ~fn
+
+let flat_map = fun values ~fn ->
+  let rec loop acc = function
+    | [] -> acc
+    | value :: rest -> loop (fn value @ acc) rest
+  in
+  loop [] values
 
 let for_each = fun values ~fn -> Kernel.List.for_each values ~fn
 

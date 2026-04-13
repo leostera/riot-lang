@@ -32,7 +32,7 @@ let create = fun () -> { events = [] }
 
 let record = fun t event -> t.events <- event :: t.events
 
-let events = fun t -> List.rev t.events
+let events = fun t -> List.reverse t.events
 
 let json_string = Data.Json.string
 
@@ -55,8 +55,7 @@ let bound_to_json = function
 
 let ranges_to_json = fun ranges ->
   ranges
-  |> List.map
-    (fun (start, finish) ->
+  |> List.map ~fn:(fun (start, finish) ->
       json_obj [ ("start", bound_to_json start); ("end", bound_to_json finish) ])
   |> json_array
 
@@ -69,12 +68,11 @@ let term_to_json = fun term ->
     ]
 
 let incompatibility_to_json = fun incompat ->
-  json_obj [ ("terms", incompat |> Incompatibility.terms |> List.map term_to_json |> json_array) ]
+  json_obj [ ("terms", incompat |> Incompatibility.terms |> List.map ~fn:term_to_json |> json_array) ]
 
 let solution_to_json = fun solution ->
   solution
-  |> List.map
-    (fun (package, version) ->
+  |> List.map ~fn:(fun (package, version) ->
       json_obj [ ("package", json_string package); ("version", version_to_json version) ])
   |> json_array
 
@@ -134,4 +132,4 @@ let event_to_json = function
   | Solved { solution } -> json_obj
     [ ("type", json_string "solved"); ("solution", solution_to_json solution) ]
 
-let to_json = fun t -> json_obj [ ("events", events t |> List.map event_to_json |> json_array) ]
+let to_json = fun t -> json_obj [ ("events", events t |> List.map ~fn:event_to_json |> json_array) ]

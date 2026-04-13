@@ -57,7 +57,7 @@ let default_registry_name = "pkgs.ml"
 
 let no_event: publish_event -> unit = fun _ -> ()
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 let exn_message = fun exn ->
   match exn with
@@ -102,7 +102,8 @@ let publish_error_is_already_published = fun error ->
   && String.ends_with ~suffix:" is already published." error
   | _ -> false
 
-let workspace_packages = fun (workspace: Workspace.t) -> workspace.packages |> List.filter Package.is_workspace_member
+let workspace_packages = fun (workspace: Workspace.t) ->
+  workspace.packages |> List.filter ~fn:Package.is_workspace_member
 
 let is_public_package = fun (package: Package.t) ->
   match package.publish.is_public with
@@ -112,14 +113,12 @@ let is_public_package = fun (package: Package.t) ->
 
 let select_packages = fun ~(emit:publish_event -> unit) ~(workspace:Workspace.t) request ->
   let packages = workspace_packages workspace in
-  let public_packages = List.filter is_public_package packages in
+  let public_packages = List.filter packages ~fn:is_public_package in
   match request.selection with
   | Package package_name -> (
       match
-        List.find_opt
-          (fun (pkg: Package.t) ->
-            String.equal pkg.name package_name)
-          packages
+        List.find packages ~fn:(fun (pkg: Package.t) ->
+          String.equal pkg.name package_name)
       with
       | Some pkg when not (is_public_package pkg) ->
           emit (SkippedNotPublic { package = pkg.name; version = pkg.publish.version });
@@ -136,7 +135,7 @@ let select_packages = fun ~(emit:publish_event -> unit) ~(workspace:Workspace.t)
         Ok []
       else
         Riot_deps.Publisher.workspace_publish_order ~packages:public_packages
-        |> Result.map_error (fun err -> PublishPlanFailed err)
+        |> Result.map_err ~fn:(fun err -> PublishPlanFailed err)
 
 let load_api_token = fun ~registry_name ->
   let config_path = Riot_model.Riot_dirs.config_path () in
@@ -160,7 +159,7 @@ let load_api_token = fun ~registry_name ->
 
 let resolve_registry = fun ?(registry_name = default_registry_name) () ->
   Pkgs_ml.Registry.create_filesystem ~registry_name ()
-  |> Result.map_error (fun error -> RegistryInitializationFailed { registry_name; error })
+  |> Result.map_err ~fn:(fun error -> RegistryInitializationFailed { registry_name; error })
 
 let run_check = fun ~emit ~package_name ~version ~stage check_fn ->
   emit (CheckStarted { package = package_name; version; stage });
@@ -178,7 +177,7 @@ let scan_workspace_strict = fun workspace_root ->
       else
         Error (WorkspaceScanFailed {
           workspace_root;
-          error = load_errors |> List.map Workspace_manager.load_error_to_string |> String.concat "\n"
+          error = load_errors |> List.map ~fn:Workspace_manager.load_error_to_string |> String.concat "\n"
         })
 
 let build_package = fun ~emit ~(workspace:Workspace.t) ~package_name ~profile ->
@@ -189,8 +188,7 @@ let build_package = fun ~emit ~(workspace:Workspace.t) ~package_name ~profile ->
       targets = Riot_build.Host;
       scope = Riot_build.Runtime;
       profile;
-    } |> Result.map_error
-    (fun err ->
+    } |> Result.map_err ~fn:(fun err ->
       BuildCheckFailed { package = package_name; error = Riot_build.build_error_message err })
 
 let build_package_in_workspace_root = fun ~emit ~workspace_root ~package_name ~profile ->
@@ -237,7 +235,7 @@ let run_publish_checks = fun ~emit ~registry ~(workspace:Workspace.t) ~request ~
     ~stage:`fmt
     (fun () ->
       Riot_fmt.run_check_paths ~workspace ~on_event:(fun event -> emit (Fmt event)) [ package.path ])
-  |> Result.map_error (fun exn -> FmtCheckFailed { package = package.name; error = exn_message exn }) in
+  |> Result.map_err ~fn:(fun exn -> FmtCheckFailed { package = package.name; error = exn_message exn }) in
   let fix_request = fix_request_for_publish ~cwd:workspace.root ~target:package.path in
   let* () =
     if request.skip_check then
@@ -262,10 +260,10 @@ let run_publish_checks = fun ~emit ~registry ~(workspace:Workspace.t) ~request ~
                       targets = Riot_build.Host;
                       scope = Riot_build.Runtime;
                       profile;
-                    } |> Result.map (fun _ -> ()) |> Result.map_error
-                    (fun err -> Failure (Riot_build.build_error_message err)))
-            fix_request |> Result.map (fun _ -> ())) |> Result.map_error
-        (fun exn -> FixCheckFailed { package = package.name; error = exn_message exn })
+                    } |> Result.map ~fn:(fun _ -> ()) |> Result.map_err ~fn:(fun err ->
+                      Failure (Riot_build.build_error_message err)))
+            fix_request |> Result.map ~fn:(fun _ -> ())) |> Result.map_err ~fn:(fun exn ->
+          FixCheckFailed { package = package.name; error = exn_message exn })
   in
   let* () =
     run_check
@@ -275,7 +273,7 @@ let run_publish_checks = fun ~emit ~registry ~(workspace:Workspace.t) ~request ~
       ~stage:`build
       (fun () ->
         build_package ~emit ~workspace ~package_name:package.name ~profile:"release"
-        |> Result.map (fun _ -> ()))
+        |> Result.map ~fn:(fun _ -> ()))
   in
   run_check
     ~emit
@@ -283,11 +281,11 @@ let run_publish_checks = fun ~emit ~registry ~(workspace:Workspace.t) ~request ~
     ~version:package.publish.version
     ~stage:`metadata
     (fun () -> Riot_deps.Publisher.plan_publish ~registry ~publishing_workspace_packages ~package)
-  |> Result.map_error (fun err -> PublishPlanFailed err)
+  |> Result.map_err ~fn:(fun err -> PublishPlanFailed err)
 
 let rec run_packages = fun ~(emit:publish_event -> unit) ~registry ~(workspace:Workspace.t) ~request ~publishing_workspace_packages ~api_token_opt ~mode acc packages ->
   match packages with
-  | [] -> Ok (List.rev acc)
+  | [] -> Ok (List.reverse acc)
   | (package: Package.t) :: rest ->
       let* already_published =
         match package.publish.version with
@@ -295,7 +293,7 @@ let rec run_packages = fun ~(emit:publish_event -> unit) ~registry ~(workspace:W
           ~registry
           ~package_name:package.name
           ~version
-        |> Result.map_error (fun err -> PublishPlanFailed err)
+        |> Result.map_err ~fn:(fun err -> PublishPlanFailed err)
         | None -> Ok false
       in
       if already_published then
@@ -324,7 +322,7 @@ let rec run_packages = fun ~(emit:publish_event -> unit) ~registry ~(workspace:W
         let* prepared = Riot_deps.Publisher.prepare_publish_artifact
           ~target_dir_root:workspace.target_dir_root
           plan
-        |> Result.map_error (fun err -> PublishPlanFailed err) in
+        |> Result.map_err ~fn:(fun err -> PublishPlanFailed err) in
         emit
           (Packing {
             package = package.name;
@@ -388,13 +386,13 @@ let publish = fun ?(on_event = no_event) ~(workspace:Workspace.t) ~request ~mode
   let* registry = resolve_registry () in
   let* packages = select_packages ~emit:on_event ~workspace request in
   let publishing_workspace_packages =
-    List.map (fun (pkg: Package.t) -> pkg.name) packages
+    List.map packages ~fn:(fun (pkg: Package.t) -> pkg.name)
   in
   let* api_token_opt =
     match mode with
     | DryRun -> Ok None
     | Publish -> load_api_token ~registry_name:(Pkgs_ml.Registry.name registry)
-    |> Result.map (fun token -> Some token)
+    |> Result.map ~fn:(fun token -> Some token)
   in
   run_packages
     ~emit:on_event

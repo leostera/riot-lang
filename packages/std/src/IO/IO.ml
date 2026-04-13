@@ -190,6 +190,138 @@ let error_message = function
   | Operation_now_in_progress -> "Operation now in progress"
   | Unknown_error message -> message
 
+module Stdin = struct
+  type nonrec error = error
+
+  let read = fun ?offset ?len buffer ->
+    let source = Kernel.IO.Stdin.to_source () in
+    let rec loop () =
+      match Kernel.IO.Stdin.read ?pos:offset ?len buffer with
+      | Ok value -> Ok value
+      | Error (Kernel.IO.Stdin.System error) when Kernel.SystemError.would_block error -> Runtime.syscall
+        ~name:"IO.Stdin.read"
+        ~interest:Kernel.Async.Interest.readable
+        ~source
+        loop
+      | Error (Kernel.IO.Stdin.System error) -> Error (of_system_error error)
+      | Error (Kernel.IO.Stdin.InvalidSlice _) -> Error Invalid_argument
+    in
+    loop ()
+
+  let read_vectored = fun bufs ->
+    let source = Kernel.IO.Stdin.to_source () in
+    let rec loop () =
+      match Kernel.IO.Stdin.read_vectored bufs with
+      | Ok value -> Ok value
+      | Error (Kernel.IO.Stdin.System error) when Kernel.SystemError.would_block error -> Runtime.syscall
+        ~name:"IO.Stdin.read_vectored"
+        ~interest:Kernel.Async.Interest.readable
+        ~source
+        loop
+      | Error (Kernel.IO.Stdin.System error) -> Error (of_system_error error)
+      | Error (Kernel.IO.Stdin.InvalidSlice _) -> Error Invalid_argument
+    in
+    loop ()
+end
+
+module Stdout = struct
+  type nonrec error = error
+
+  let write = fun ?offset ?len buffer ->
+    let source = Kernel.IO.Stdout.to_source () in
+    let rec loop () =
+      match Kernel.IO.Stdout.write ?pos:offset ?len buffer with
+      | Ok value -> Ok value
+      | Error (Kernel.IO.Stdout.System error) when Kernel.SystemError.would_block error -> Runtime.syscall
+        ~name:"IO.Stdout.write"
+        ~interest:Kernel.Async.Interest.writable
+        ~source
+        loop
+      | Error (Kernel.IO.Stdout.System error) -> Error (of_system_error error)
+      | Error (Kernel.IO.Stdout.InvalidSlice _) -> Error Invalid_argument
+    in
+    loop ()
+
+  let write_vectored = fun bufs ->
+    let source = Kernel.IO.Stdout.to_source () in
+    let rec loop () =
+      match Kernel.IO.Stdout.write_vectored bufs with
+      | Ok value -> Ok value
+      | Error (Kernel.IO.Stdout.System error) when Kernel.SystemError.would_block error -> Runtime.syscall
+        ~name:"IO.Stdout.write_vectored"
+        ~interest:Kernel.Async.Interest.writable
+        ~source
+        loop
+      | Error (Kernel.IO.Stdout.System error) -> Error (of_system_error error)
+      | Error (Kernel.IO.Stdout.InvalidSlice _) -> Error Invalid_argument
+    in
+    loop ()
+
+  let flush = fun () ->
+    let source = Kernel.IO.Stdout.to_source () in
+    let rec loop () =
+      match Kernel.IO.Stdout.flush () with
+      | Ok () -> Ok ()
+      | Error (Kernel.IO.Stdout.System error) when Kernel.SystemError.would_block error -> Runtime.syscall
+        ~name:"IO.Stdout.flush"
+        ~interest:Kernel.Async.Interest.writable
+        ~source
+        loop
+      | Error (Kernel.IO.Stdout.System error) -> Error (of_system_error error)
+      | Error (Kernel.IO.Stdout.InvalidSlice _) -> Error Invalid_argument
+    in
+    loop ()
+end
+
+module Stderr = struct
+  type nonrec error = error
+
+  let write = fun ?offset ?len buffer ->
+    let source = Kernel.IO.Stderr.to_source () in
+    let rec loop () =
+      match Kernel.IO.Stderr.write ?pos:offset ?len buffer with
+      | Ok value -> Ok value
+      | Error (Kernel.IO.Stderr.System error) when Kernel.SystemError.would_block error -> Runtime.syscall
+        ~name:"IO.Stderr.write"
+        ~interest:Kernel.Async.Interest.writable
+        ~source
+        loop
+      | Error (Kernel.IO.Stderr.System error) -> Error (of_system_error error)
+      | Error (Kernel.IO.Stderr.InvalidSlice _) -> Error Invalid_argument
+    in
+    loop ()
+
+  let write_vectored = fun bufs ->
+    let source = Kernel.IO.Stderr.to_source () in
+    let rec loop () =
+      match Kernel.IO.Stderr.write_vectored bufs with
+      | Ok value -> Ok value
+      | Error (Kernel.IO.Stderr.System error) when Kernel.SystemError.would_block error -> Runtime.syscall
+        ~name:"IO.Stderr.write_vectored"
+        ~interest:Kernel.Async.Interest.writable
+        ~source
+        loop
+      | Error (Kernel.IO.Stderr.System error) -> Error (of_system_error error)
+      | Error (Kernel.IO.Stderr.InvalidSlice _) -> Error Invalid_argument
+    in
+    loop ()
+
+  let flush = fun () ->
+    let source = Kernel.IO.Stderr.to_source () in
+    let rec loop () =
+      match Kernel.IO.Stderr.flush () with
+      | Ok () -> Ok ()
+      | Error (Kernel.IO.Stderr.System error) when Kernel.SystemError.would_block error -> Runtime.syscall
+        ~name:"IO.Stderr.flush"
+        ~interest:Kernel.Async.Interest.writable
+        ~source
+        loop
+      | Error (Kernel.IO.Stderr.System error) -> Error (of_system_error error)
+      | Error (Kernel.IO.Stderr.InvalidSlice _) -> Error Invalid_argument
+    in
+    loop ()
+end
+
 let read = Reader.read
 
 let read_vectored = Reader.read_vectored

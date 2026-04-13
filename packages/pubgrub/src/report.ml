@@ -43,7 +43,7 @@ let format_terms = fun terms ->
   | [ t ] ->
       format_term t
   | _ ->
-      let formatted = List.map format_term terms in
+      let formatted = List.map terms ~fn:format_term in
       String.concat ", " formatted
 
 let rec format_derivation_tree = fun tree ->

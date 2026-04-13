@@ -93,7 +93,7 @@ let if_text = fun ~condition ~then_branch ?else_branch () ->
 
 let source_slice = fun ~source span ->
   let len = Syn.Ceibo.Span.(span.end_ - span.start) in
-  String.sub source span.start len
+  String.sub source ~offset:span.start ~len
 
 let source_of_node_without_outer_trivia = fun ~source node ->
   let tokens =
@@ -105,7 +105,7 @@ let source_of_node_without_outer_trivia = fun ~source node ->
   | [] -> source_slice ~source (Syn.Ceibo.Red.SyntaxNode.span node)
   | first :: rest ->
       let last =
-        match List.rev rest with
+        match List.reverse rest with
         | last :: _ -> last
         | [] -> first
       in
@@ -202,8 +202,9 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.expressions_of_structure_item
-  |> List.filter_map (diagnostic_for_expression ~source:ctx.source)
+  |> List.map ~fn:Traversal.expressions_of_structure_item
+  |> List.concat
+  |> List.filter_map ~fn:(diagnostic_for_expression ~source:ctx.source)
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

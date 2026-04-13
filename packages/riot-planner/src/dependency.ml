@@ -18,14 +18,14 @@ let transitive_closure = fun deps ->
   let seen = HashSet.create () in
   let ordered = vec [] in
   let rec collect dep =
-    if HashSet.contains seen dep.package.name then
+    if HashSet.contains seen ~value:dep.package.name then
       ()
     else
       (
-        let _ = HashSet.insert seen dep.package.name in
-        List.iter collect dep.depset;
-        Vector.push ordered dep
+        let _ = HashSet.insert seen ~value:dep.package.name in
+        List.for_each dep.depset ~fn:collect;
+        Vector.push ordered ~value:dep
       )
   in
-  List.iter collect deps;
-  Vector.into_iter ordered |> Iterator.to_list
+  List.for_each deps ~fn:collect;
+  Vector.iter ordered |> Iterator.to_list

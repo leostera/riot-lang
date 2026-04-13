@@ -10,7 +10,7 @@ let of_string = fun s ->
   if s = "" then
     []
   else
-    String.split_on_char '_' s |> List.filter (fun x -> x != "") |> function
+    String.split ~by:"_" s |> List.filter ~fn:(fun part -> not (String.is_empty part)) |> function
     | [] ->
         []
     | parts when List.length parts mod 2 = 0 ->

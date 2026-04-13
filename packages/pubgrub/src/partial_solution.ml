@@ -57,7 +57,7 @@ let version_compare = fun a b ->
 let add_decision = fun solution pkg ver ->
   let new_level = solution.decision_level + 1 in
   let global_index = solution.next_global_index in
-  ignore (Collections.HashMap.insert solution.decisions pkg ver);
+  let _ = Collections.HashMap.insert solution.decisions ~key:pkg ~value:ver in
   {
     solution
     with assignments = Decision (pkg, ver, new_level, global_index) :: solution.assignments;
@@ -94,7 +94,7 @@ let add_derivation = fun solution pkg incompat ->
   }
 
 let get_decision = fun solution pkg ->
-  Collections.HashMap.get solution.decisions pkg
+  Collections.HashMap.get solution.decisions ~key:pkg
 
 (* Get the effective constraint for a package, considering both decisions and derivations *)
 
@@ -103,8 +103,8 @@ let get_constraint = fun solution pkg ->
   | Some ver -> `Decided ver
   | None ->
       let derived_ranges =
-        List.fold_left
-          (fun acc ->
+        List.fold_left solution.assignments ~acc:None
+          ~fn:(fun acc ->
             function
             | Derivation (p, ranges, _, _, _) when p = pkg ->
                 Some (
@@ -113,8 +113,6 @@ let get_constraint = fun solution pkg ->
                   | Some existing -> Ranges.intersection ~compare_v:version_compare existing ranges
                 )
             | _ -> acc)
-          None
-          solution.assignments
       in
       match derived_ranges with
       | Some ranges -> `Constrained ranges
@@ -125,13 +123,13 @@ let extract_solution = fun solution -> Collections.HashMap.to_list solution.deci
 let pick_highest_priority_pkg = fun solution prioritizer ->
   let seen = Collections.HashSet.create () in
   let candidates = ref [] in
-  List.iter
-    (
+  List.for_each (List.reverse solution.assignments)
+    ~fn:(
       function
       | Derivation (pkg, _, _, _, gidx) -> (
-          match Collections.HashMap.get solution.decisions pkg with
-          | None when not (Collections.HashSet.contains seen pkg) -> (
-              ignore (Collections.HashSet.insert seen pkg);
+          match Collections.HashMap.get solution.decisions ~key:pkg with
+          | None when not (Collections.HashSet.contains seen ~value:pkg) -> (
+              let _ = Collections.HashSet.insert seen ~value:pkg in
               match get_constraint solution pkg with
               | `Constrained ranges ->
                   Log.info ("🔍 pick: found candidate " ^ pkg);
@@ -147,26 +145,24 @@ let pick_highest_priority_pkg = fun solution prioritizer ->
               Log.info ("🔍 pick: " ^ pkg ^ " already decided, skipping")
         )
       | Decision _ -> ()
-    )
-    (List.rev solution.assignments);
-  Log.info ("🔍 pick: found " ^ string_of_int (List.length !candidates) ^ " total candidates");
+    );
+  Log.info ("🔍 pick: found " ^ Int.to_string (List.length !candidates) ^ " total candidates");
   match !candidates with
   | [] -> None
   | _ ->
       let sorted =
-        List.sort
-          (fun ((p1, r1, gidx1)) ((p2, r2, gidx2)) ->
+        List.sort !candidates
+          ~compare:(fun ((p1, r1, gidx1)) ((p2, r2, gidx2)) ->
             let pri1 = prioritizer p1 r1 in
             let pri2 = prioritizer p2 r2 in
             if pri1 = pri2 then
               compare gidx1 gidx2
             else
               compare pri2 pri1)
-          !candidates
       in
-      let pkg, _, _ = List.hd sorted in
+      let pkg, _, _ = List.get_unchecked sorted ~at:0 in
       Log.info ("🔍 pick: selected " ^ pkg);
-      let pkg, ranges, _ = List.hd sorted in
+      let pkg, ranges, _ = List.get_unchecked sorted ~at:0 in
       Some (pkg, ranges)
 
 let backtrack = fun solution target_level ->
@@ -174,9 +170,9 @@ let backtrack = fun solution target_level ->
   let rec filter_assignments = fun acc ->
     function
     | [] ->
-        List.rev acc
+        List.reverse acc
     | Decision (pkg, ver, level, gidx) :: rest when level <= target_level ->
-        ignore (Collections.HashMap.insert new_decisions pkg ver);
+        let _ = Collections.HashMap.insert new_decisions ~key:pkg ~value:ver in
         filter_assignments (Decision (pkg, ver, level, gidx) :: acc) rest
     | Decision (_, _, level, _) :: rest when level > target_level ->
         filter_assignments acc rest
@@ -204,8 +200,8 @@ let relation = fun solution incompat ->
   let undecided_count = ref 0 in
   let contradicted_pkg = ref None in
   let contradicted_count = ref 0 in
-  List.iter
-    (fun term ->
+  List.for_each terms
+    ~fn:(fun term ->
       let pkg = Term.package term in
       let ranges = Term.ranges term in
       let is_positive = Term.is_positive term in
@@ -254,13 +250,12 @@ let relation = fun solution incompat ->
           else (
             incr undecided_count;
             undecided_pkg := Some pkg
-          ))
-    terms;
+          ));
   let total = List.length terms in
   if !satisfied_count = total then
     (
       Log.debug
-        ("Incompatibility SATISFIED (all " ^ string_of_int total ^ " terms' constraints met → conflict!)");
+        ("Incompatibility SATISFIED (all " ^ Int.to_string total ^ " terms' constraints met → conflict!)");
       `Satisfied
     )
   else if !satisfied_count = total - 1 && !undecided_count = 1 then
@@ -274,22 +269,22 @@ let relation = fun solution incompat ->
     | Some pkg ->
         Log.debug
           ("Incompatibility CONTRADICTED ("
-          ^ string_of_int !contradicted_count
+          ^ Int.to_string !contradicted_count
           ^ "/"
-          ^ string_of_int total
+          ^ Int.to_string total
           ^ " terms' constraints unmet, pkg="
           ^ pkg
           ^ ")");
-        `Contradicted pkg
+      `Contradicted pkg
     | None -> `Unknown
   else (
     Log.debug
       ("Incompatibility INCONCLUSIVE ("
-      ^ string_of_int !satisfied_count
+      ^ Int.to_string !satisfied_count
       ^ " satisfied, "
-      ^ string_of_int !undecided_count
+      ^ Int.to_string !undecided_count
       ^ " undecided, "
-      ^ string_of_int !contradicted_count
+      ^ Int.to_string !contradicted_count
       ^ " contradicted)");
     `Unknown
   )
@@ -306,21 +301,20 @@ let get_assignment_level = fun solution pkg ->
 (* Port of Rust's satisfier_search algorithm *)
 
 let satisfier_search = fun solution incompat ->
-  let chronological = List.rev solution.assignments in
+  let chronological = List.reverse solution.assignments in
   let solution_of_chronological assignments =
     let decisions = Collections.HashMap.create () in
     let decision_level = ref 0 in
-    List.iter
-      (
+    List.for_each assignments
+      ~fn:(
         function
         | Decision (pkg, ver, level, _) ->
-            ignore (Collections.HashMap.insert decisions pkg ver);
+            let _ = Collections.HashMap.insert decisions ~key:pkg ~value:ver in
             decision_level := max !decision_level level
         | Derivation (_, _, _, level, _) -> decision_level := max !decision_level level
-      )
-      assignments;
+      );
     {
-      assignments = List.rev assignments;
+      assignments = List.reverse assignments;
       decisions;
       decision_level = !decision_level;
       next_global_index = List.length assignments
@@ -372,8 +366,7 @@ let satisfier_search = fun solution incompat ->
         panic
           (
             "No satisfier found in satisfier_search for " ^ (
-              Incompatibility.terms incompat |> List.map
-                (fun term ->
+              Incompatibility.terms incompat |> List.map ~fn:(fun term ->
                   let prefix =
                     if Term.is_positive term then
                       ""
@@ -411,7 +404,7 @@ let satisfier_search = fun solution incompat ->
         else
           find_previous_satisfier prefix' candidate rest
   in
-  let before_satisfier = List.rev (List.tl (List.rev satisfier_prefix)) in
+  let before_satisfier = List.reverse (List.tail (List.reverse satisfier_prefix)) in
   let previous_satisfier = find_previous_satisfier [] None before_satisfier in
   let previous_level =
     match previous_satisfier with

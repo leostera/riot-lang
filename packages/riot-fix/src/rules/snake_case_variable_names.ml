@@ -29,21 +29,21 @@ let to_snake_case = fun text ->
     pieces := piece :: !pieces
   in
   let prev_was_lower_or_digit = ref false in
-  String.iter
-    (fun ch ->
+  String.for_each
+    text
+    ~fn:(fun ch ->
       if is_upper ch then
         (
           if !prev_was_lower_or_digit then
             push "_";
-          push (String.make 1 (Char.lowercase_ascii ch));
+          push (String.make ~len:1 ~char:(Char.lowercase_ascii ch));
           prev_was_lower_or_digit := false
         )
       else (
-        push (String.make 1 ch);
+        push (String.make ~len:1 ~char:ch);
         prev_was_lower_or_digit := is_lower ch || is_digit ch
-      ))
-    text;
-  String.concat "" (List.rev !pieces)
+      ));
+  String.concat "" (List.reverse !pieces)
 
 let should_flag_variable_name = fun text -> not (String.equal text (to_snake_case text))
 
@@ -77,8 +77,9 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.binding_sites_of_structure_item
-  |> List.filter_map diagnostic_for_binding_site
+  |> List.map ~fn:Traversal.binding_sites_of_structure_item
+  |> List.concat
+  |> List.filter_map ~fn:diagnostic_for_binding_site
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

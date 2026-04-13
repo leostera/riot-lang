@@ -82,7 +82,7 @@ let concat = fun docs ->
   let rec flatten = fun acc ->
     function
     | [] ->
-        List.rev acc
+        List.reverse acc
     | Empty :: rest ->
         flatten acc rest
     | Space :: rest ->
@@ -110,7 +110,7 @@ let join = fun separator docs ->
   match docs with
   | [] -> Empty
   | first :: rest -> concat
-    (first :: (rest |> List.map (fun doc -> [ separator; doc ]) |> List.flatten))
+    (first :: (rest |> List.map ~fn:(fun doc -> [ separator; doc ]) |> List.concat))
 
 let words = fun docs -> join space docs
 
@@ -132,5 +132,5 @@ let rec is_multiline = function
   | Line -> true
   | Break _ -> false
   | Group doc -> is_multiline doc
-  | Concat docs -> List.exists is_multiline docs
+  | Concat docs -> List.any docs ~fn:is_multiline
   | Indent (_, doc) -> is_multiline doc

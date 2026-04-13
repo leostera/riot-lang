@@ -17,7 +17,7 @@ let to_json = fun artifact ->
   ] in
   Json.Object [
     ("hash", Json.String (Crypto.Digest.hex artifact.hash));
-    ("files", Json.Array (List.map (fun p -> Json.String (Path.to_string p)) artifact.files));
-    ("ocamlc_warnings", Json.Array (List.map (fun msg -> Json.String msg) artifact.ocamlc_warnings));
-    ("exports", Json.Array (List.map export_to_json artifact.exports));
+    ("files", Json.Array (List.map artifact.files ~fn:(fun p -> Json.String (Path.to_string p))));
+    ("ocamlc_warnings", Json.Array (List.map artifact.ocamlc_warnings ~fn:(fun msg -> Json.String msg)));
+    ("exports", Json.Array (List.map artifact.exports ~fn:export_to_json));
   ]

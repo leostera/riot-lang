@@ -11,6 +11,10 @@ type green_node = (Syntax_kind.t, string) Ceibo.Green.node
 
 let is_trivia = fun kind -> let open Syntax_kind in kind = WHITESPACE || kind = COMMENT || kind = DOCSTRING
 
+let char_at = fun text at -> String.get_unchecked text ~at
+
+let substring = fun text offset len -> String.sub text ~offset ~len
+
 module Token = struct
   type fixed_operator =
     | BooleanAnd
@@ -29,7 +33,7 @@ module Token = struct
 
   let full_text = fun token ->
     let leading = Ceibo.Red.SyntaxToken.leading_trivia token.syntax_token
-    |> List.map Ceibo.Red.SyntaxTrivia.text
+    |> List.map ~fn:Ceibo.Red.SyntaxTrivia.text
     |> String.concat "" in
     leading ^ text token
 
@@ -70,10 +74,10 @@ module Token = struct
 
   let is_operator_like_name = fun token ->
     let token_text = text token in
-    let rec contains_non_identifier_char index =
-      if index >= String.length token_text then
-        false
-      else if is_identifier_char token_text.[index] then
+      let rec contains_non_identifier_char index =
+        if index >= String.length token_text then
+          false
+      else if is_identifier_char (char_at token_text index) then
         contains_non_identifier_char (index + 1)
       else
         true
@@ -139,7 +143,7 @@ module Ident = struct
         { Token.syntax_token = syntax_token }
       in
       let make_node () = Green.make_node_list ~kind:Syntax_kind.PATH_EXPR [] |> Red.new_root in
-      let segments = String.split_on_char '.' text in
+      let segments = String.split ~by:"." text in
       match segments with
       | []
       | [ "" ] -> raise (Failure "Syn.Cst.Ident.from_string requires a non-empty path")
@@ -148,21 +152,21 @@ module Ident = struct
           let first_width = String.length first in
           let first_node = make_node () in
           let initial = Ident { syntax_node = first_node; name_token = first_token } in
-          List.fold_left
-            (fun ((prefix, width)) segment ->
+          List.fold_left rest
+            ~acc:(initial, first_width)
+            ~fn:(fun (prefix, width) segment ->
               if String.length segment = 0 then
                 raise (Failure "Syn.Cst.Ident.from_string does not allow empty path segments");
               let name_token = make_ident_segment segment in
               let dot_token = make_ident_segment "." in
               let width = width + 1 + String.length segment in
               (Qualified { syntax_node = make_node (); prefix; dot_token; name_token }, width))
-            (initial, first_width)
-            rest |> fun (ident, _) -> ident
+            |> fun (ident, _) -> ident
 
   let equal = fun left right ->
-    let left_segments = segments left |> List.map Token.text in
-    let right_segments = segments right |> List.map Token.text in
-    List.equal String.equal left_segments right_segments
+    let left_segments = segments left |> List.map ~fn:Token.text in
+    let right_segments = segments right |> List.map ~fn:Token.text in
+    left_segments = right_segments
 end
 
 type attribute = {
@@ -2214,7 +2218,7 @@ module InfixExpression = struct
 
   let operator_tokens = fun expr -> expr.operator_tokens
 
-  let operator = fun expr -> expr.operator_tokens |> List.map Token.text |> String.concat ""
+  let operator = fun expr -> expr.operator_tokens |> List.map ~fn:Token.text |> String.concat ""
 
   let right = fun expr -> expr.right
 
@@ -2251,10 +2255,10 @@ module TypeVariable = struct
 
   let text = fun type_variable ->
     Ceibo.Red.SyntaxNode.children type_variable.syntax_node |> List.filter_map
-      (
+      ~fn:(
         function
-        | Ceibo.Red.Token tok when not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)) -> Some (Ceibo.Red.SyntaxToken.text
-          tok)
+        | Ceibo.Red.Token tok when not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)) ->
+            Some (Ceibo.Red.SyntaxToken.text tok)
         | _ -> None
       ) |> String.concat ""
 
@@ -2446,7 +2450,7 @@ module PolyVariant = struct
 
   let tags = fun poly_variant ->
     poly_variant.fields |> List.filter_map
-      (
+      ~fn:(
         function
         | RowField.Tag tag -> Some tag
         | RowField.Inherit _ -> None
@@ -2614,8 +2618,8 @@ module LetBinding = struct
   let value_syntax_node = fun binding -> Expression.syntax_node binding.value
 
   let has_direct_token_text = fun node expected ->
-    Ceibo.Red.SyntaxNode.direct_tokens node |> List.exists
-      (fun token ->
+    Ceibo.Red.SyntaxNode.direct_tokens node |> List.any
+      ~fn:(fun token ->
         String.equal (Ceibo.Red.SyntaxToken.text token) expected)
 
   let is_recursive = fun binding ->
@@ -2675,8 +2679,8 @@ module ModuleSignature = struct
   let next_and_declaration = fun decl -> decl.next_and_declaration
 
   let has_direct_token_text = fun node expected ->
-    Ceibo.Red.SyntaxNode.direct_tokens node |> List.exists
-      (fun token ->
+    Ceibo.Red.SyntaxNode.direct_tokens node |> List.any
+      ~fn:(fun token ->
         String.equal (Ceibo.Red.SyntaxToken.text token) expected)
 
   let is_recursive = fun decl ->
@@ -2722,8 +2726,8 @@ module ModuleStructure = struct
   let next_and_declaration = fun decl -> decl.next_and_declaration
 
   let has_direct_token_text = fun node expected ->
-    Ceibo.Red.SyntaxNode.direct_tokens node |> List.exists
-      (fun token ->
+    Ceibo.Red.SyntaxNode.direct_tokens node |> List.any
+      ~fn:(fun token ->
         String.equal (Ceibo.Red.SyntaxToken.text token) expected)
 
   let is_recursive = fun decl ->
@@ -2870,8 +2874,8 @@ let docstring_kind_from_text = fun comment_text ->
   if len < 5 then
     Ordinary
   else
-    let body = String.sub comment_text 3 (len - 5) |> String.trim in
-    if String.length body > 0 && (Char.equal body.[0] '{' || Char.equal body.[0] '#') then
+    let body = substring comment_text 3 (len - 5) |> String.trim in
+    if String.length body > 0 && (Char.equal (char_at body 0) '{' || Char.equal (char_at body 0) '#') then
       Section
     else
       Ordinary
@@ -2901,7 +2905,7 @@ let trivia_of_syntax_trivia = fun trivia ->
 
 let leading_trivia_after = fun ~after token ->
   Ceibo.Red.SyntaxToken.leading_trivia token.Token.syntax_token |> List.filter_map
-    (fun trivia ->
+    ~fn:(fun trivia ->
       let span = Ceibo.Red.SyntaxTrivia.span trivia in
       if span.start >= after then
         trivia_of_syntax_trivia trivia
@@ -2928,7 +2932,7 @@ let token_body_span = fun syntax_node ->
   | [] -> full_span
   | first :: rest ->
       let last =
-        List.fold_left (fun _ token -> token) first rest
+        List.fold_left rest ~acc:first ~fn:(fun _ token -> token)
       in
       {
         Ceibo.Span.start = (Ceibo.Red.SyntaxToken.span first).start;
@@ -3185,8 +3189,8 @@ let semantic_hash = fun source_file ->
   let () = write_sep () in
   let () =
     Ceibo.Red.SyntaxNode.tokens syntax_node
-    |> List.iter
-      (fun token ->
+    |> List.for_each
+      ~fn:(fun token ->
         write_kind (Ceibo.Red.SyntaxToken.kind token);
         write (Ceibo.Red.SyntaxToken.text token);
         write_sep ())

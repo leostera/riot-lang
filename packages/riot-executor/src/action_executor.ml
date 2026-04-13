@@ -34,16 +34,15 @@ type Message.t +=
   | AssignAction of Action_node.t
 
 let make_flags_absolute = fun sandbox_dir flags ->
-  List.map
-    (fun flag ->
+  List.map flags
+    ~fn:(fun flag ->
       match flag with
       | Riot_toolchain.Ocamlc.Impl path -> Riot_toolchain.Ocamlc.Impl (Path.join sandbox_dir path)
       | other -> other)
-    flags
 
 let resolve_include_paths = fun sandbox_dir includes ->
-  List.map
-    (fun inc ->
+  List.map includes
+    ~fn:(fun inc ->
       let inc_str = Path.to_string inc in
       if Path.is_absolute inc then
         inc
@@ -51,7 +50,6 @@ let resolve_include_paths = fun sandbox_dir includes ->
         inc
       else
         Path.join sandbox_dir inc)
-    includes
 
 let emit_action_command = fun ~session_id ~package ~node command ->
   Telemetry.emit
@@ -151,16 +149,16 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
         ^ " objects, "
         ^ Int.to_string (List.length libraries)
         ^ " libraries: ["
-        ^ String.concat ", " (List.map Path.to_string libraries)
+        ^ String.concat ", " (List.map libraries ~fn:Path.to_string)
         ^ "], cclibs: ["
-        ^ String.concat ", " (List.map Path.to_string cclibs)
+        ^ String.concat ", " (List.map cclibs ~fn:Path.to_string)
         ^ "], ccopt_flags: ["
         ^ String.concat ", " ccopt_flags
         ^ "], cclib_flags: ["
         ^ String.concat ", " cclib_flags
         ^ "]");
       let abs_output = Path.join sandbox_dir output in
-      let abs_objects = List.map (Path.join sandbox_dir) objects in
+      let abs_objects = List.map objects ~fn:(Path.join sandbox_dir) in
       let abs_libraries = libraries in
       let abs_includes = resolve_include_paths sandbox_dir includes in
       let abs_cclibs = cclibs in
@@ -206,16 +204,16 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
         ^ " objects, "
         ^ Int.to_string (List.length libraries)
         ^ " libraries: ["
-        ^ String.concat ", " (List.map Path.to_string libraries)
+        ^ String.concat ", " (List.map libraries ~fn:Path.to_string)
         ^ "], cclibs: ["
-        ^ String.concat ", " (List.map Path.to_string cclibs)
+        ^ String.concat ", " (List.map cclibs ~fn:Path.to_string)
         ^ "], ccopt_flags: ["
         ^ String.concat ", " ccopt_flags
         ^ "], cclib_flags: ["
         ^ String.concat ", " cclib_flags
         ^ "]");
       let abs_output = Path.join sandbox_dir output in
-      let abs_objects = List.map (Path.join sandbox_dir) objects in
+      let abs_objects = List.map objects ~fn:(Path.join sandbox_dir) in
       let abs_libraries = libraries in
       let abs_includes = resolve_include_paths sandbox_dir includes in
       let abs_cclibs = cclibs in
@@ -292,21 +290,20 @@ let run_action = fun ~session_id ~package ~node ocamlc sandbox_dir action ->
               if String.length output.Command.stdout > 0 then
                 Log.debug ("stdout: " ^ output.Command.stdout);
               let abs_outputs =
-                List.map (fun out -> Path.normalize (Path.join path out)) outputs
+                List.map outputs ~fn:(fun out -> Path.normalize (Path.join path out))
               in
               let missing =
-                List.filter
-                  (fun out ->
+                List.filter abs_outputs
+                  ~fn:(fun out ->
                     match Fs.exists out with
                     | Ok true -> false
                     | Ok false
                     | Error _ -> true)
-                  abs_outputs
               in
               if List.length missing > 0 then
                 ocamlc_failed
                   ("Foreign build succeeded but outputs not created: "
-                  ^ String.concat ", " (List.map Path.to_string missing))
+                  ^ String.concat ", " (List.map missing ~fn:Path.to_string))
               else
                 ocamlc_success ("Built foreign dependency: " ^ name)
           | Ok output ->
@@ -339,13 +336,12 @@ let execute_actions = fun ~session_id ~(node:Action_node.t) toolchain sandbox_di
 
 let verify_outputs = fun outputs ->
   let missing =
-    List.filter
-      (fun out ->
+    List.filter outputs
+      ~fn:(fun out ->
         match Fs.exists out with
         | Ok true -> false
         | Ok false
         | Error _ -> true)
-      outputs
   in
   if List.length missing > 0 then
     Error missing
@@ -354,15 +350,14 @@ let verify_outputs = fun outputs ->
 
 let save_action_artifact = fun ~store ~package ~action_hash ~ocamlc_warnings ~sandbox_dir ~outputs ->
   Riot_store.Store.save store ~package ~ocamlc_warnings ~hash:action_hash ~sandbox_dir ~outs:outputs
-  |> Result.map_error Riot_store.Store.error_message
+  |> Result.map_err ~fn:Riot_store.Store.error_message
 
 let has_failed_dependencies = fun completed (node: Action_node.t) ->
-  List.exists
-    (fun dep_id ->
-      match HashMap.get completed dep_id with
+  List.any node.deps
+    ~fn:(fun dep_id ->
+      match HashMap.get completed ~key:dep_id with
       | Some { status=Failed _ | Skipped; _ } -> true
       | _ -> false)
-    node.deps
 
 let resolve_source_for_copy = fun ~(package:Riot_model.Package.t) ~src_path ->
   let pkg_dir = package.path in
@@ -371,10 +366,10 @@ let resolve_source_for_copy = fun ~(package:Riot_model.Package.t) ~src_path ->
     let rel_path_str = Path.to_string package.relative_path in
     if String.length rel_path_str > 0 && String.ends_with ~suffix:rel_path_str pkg_path_str then
       let root_len = String.length pkg_path_str - String.length rel_path_str in
-      let raw_root = String.sub pkg_path_str 0 root_len in
+      let raw_root = String.sub pkg_path_str ~offset:0 ~len:root_len in
       let normalized_root =
         if String.ends_with ~suffix:"/" raw_root then
-          String.sub raw_root 0 (String.length raw_root - 1)
+          String.sub raw_root ~offset:0 ~len:(String.length raw_root - 1)
         else
           raw_root
       in
@@ -411,7 +406,7 @@ let resolve_source_for_copy = fun ~(package:Riot_model.Package.t) ~src_path ->
   | None -> Error ("source not found for "
   ^ Path.to_string src_path
   ^ " (checked "
-  ^ String.concat ", " (List.map Path.to_string candidates)
+  ^ String.concat ", " (List.map candidates ~fn:Path.to_string)
   ^ ")")
 
 let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node: Action_node.t) ->
@@ -482,8 +477,9 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
               action = node
             });
           let copy_result: (unit, string) Result.t =
-            List.fold_left
-              (fun acc src_path ->
+            List.fold_left sources
+              ~acc:(Ok ())
+              ~fn:(fun acc src_path ->
                 match acc with
                 | Error _ -> acc
                 | Ok () ->
@@ -510,8 +506,6 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                           | Ok () -> Ok ()
                           | Error err -> Error (IO.error_message err)
                         ))
-              (Ok ())
-              sources
           in
           let completed_at = Instant.now () in
           let duration = Instant.duration_since ~earlier:start completed_at in
@@ -545,13 +539,12 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                   }
               | Ok ocamlc_warnings ->
                   let needs_output_verification =
-                    List.exists
-                      (
+                    List.any actions
+                      ~fn:(
                         function
                         | Action.BuildForeignDependency _ -> false
                         | _ -> true
                       )
-                      actions
                   in
                   if not needs_output_verification then
                     match save_action_artifact
@@ -560,7 +553,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                       ~action_hash
                       ~ocamlc_warnings
                       ~sandbox_dir
-                      ~outputs:(List.map (Path.join sandbox_dir) outputs) with
+                      ~outputs:(List.map outputs ~fn:(Path.join sandbox_dir)) with
                     | Error message ->
                         {
                           node_id = node.id;
@@ -591,7 +584,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                           completed_at;
                         }
                   else
-                    let abs_outputs = List.map (Path.join sandbox_dir) outputs in
+                    let abs_outputs = List.map outputs ~fn:(Path.join sandbox_dir) in
                     match verify_outputs abs_outputs with
                     | Error missing ->
                         {
@@ -661,13 +654,11 @@ let execute = fun ~action_graph ~sandbox ~store ~session_id toolchain ~concurren
     ^ " concurrency="
     ^ Int.to_string concurrency);
   let queue = Action_queue.create () in
-  List.iter
-    (fun node ->
-      Action_queue.queue queue node)
-    sorted_nodes;
+  List.for_each sorted_nodes
+    ~fn:(fun node -> Action_queue.queue queue node);
   let workers =
-    List.make
-      ~len:concurrency
+    List.init
+      ~count:concurrency
       ~fn:(fun _ ->
         spawn
           (fun () ->
@@ -680,10 +671,8 @@ let execute = fun ~action_graph ~sandbox ~store ~session_id toolchain ~concurren
               ~session_id))
   in
   let idle_workers = Queue.create () in
-  List.iter
-    (fun pid ->
-      Queue.push idle_workers pid)
-    workers;
+  List.for_each workers
+    ~fn:(fun pid -> Queue.push idle_workers ~value:pid);
   let busy_workers: (Pid.t, Action_node.t) HashMap.t = HashMap.create () in
   let completed_count = ref 0 in
   let rec drain_work_queue () =
@@ -691,9 +680,9 @@ let execute = fun ~action_graph ~sandbox ~store ~session_id toolchain ~concurren
     | None -> ()
     | Some worker_pid -> (
         match Action_queue.next queue with
-        | None -> Queue.push idle_workers worker_pid
+        | None -> Queue.push idle_workers ~value:worker_pid
         | Some node ->
-            let _ = HashMap.insert busy_workers worker_pid node in
+            let _ = HashMap.insert busy_workers ~key:worker_pid ~value:node in
             send worker_pid (AssignAction node);
             drain_work_queue ()
       )
@@ -719,8 +708,8 @@ let execute = fun ~action_graph ~sandbox ~store ~session_id toolchain ~concurren
       | ActionCompleted { worker_pid; result } ->
           Action_queue.mark_completed queue result;
           completed_count := !completed_count + 1;
-          let _ = HashMap.remove busy_workers worker_pid in
-          Queue.push idle_workers worker_pid;
+          let _ = HashMap.remove busy_workers ~key:worker_pid in
+          Queue.push idle_workers ~value:worker_pid;
           let status_str =
             match result.status with
             | Cached _ -> "cached"
@@ -741,10 +730,10 @@ let execute = fun ~action_graph ~sandbox ~store ~session_id toolchain ~concurren
             | Failed (ExecutionFailed { message }) -> Log.error ("Action failed: " ^ message)
             | Failed (OutputsNotCreated { missing }) -> Log.error
               ("Expected outputs not created: "
-              ^ String.concat ", " (List.map Path.to_string missing))
+              ^ String.concat ", " (List.map missing ~fn:Path.to_string))
             | Failed (DependenciesFailed { failed }) -> Log.error
               ("Action dependencies failed: "
-              ^ String.concat ", " (List.map G.Node_id.to_string failed))
+              ^ String.concat ", " (List.map failed ~fn:G.Node_id.to_string))
             | Skipped -> Log.warn "Action skipped due to failed dependencies"
             | _ -> ()
           );

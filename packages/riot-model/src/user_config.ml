@@ -18,7 +18,7 @@ type error =
   | InvalidConfig of { error: string }
   | InvalidRegistryConfig of { registry_name: string; error: string }
 
-let ( let* ) = Result.and_then
+let ( let* ) result fn = Result.and_then result ~fn
 
 let empty = { registries = [] }
 
@@ -56,8 +56,8 @@ let uri_error_message = function
 
 let default_api_url = fun ~registry_name ->
   Net.Uri.of_string ("https://api." ^ registry_name)
-  |> Result.map_error
-    (fun error ->
+  |> Result.map_err
+    ~fn:(fun error ->
       InvalidRegistryConfig {
         registry_name;
         error = "invalid default api_url: " ^ uri_error_message error
@@ -65,8 +65,8 @@ let default_api_url = fun ~registry_name ->
 
 let default_cdn_url = fun ~registry_name ->
   Net.Uri.of_string ("https://cdn." ^ registry_name)
-  |> Result.map_error
-    (fun error ->
+  |> Result.map_err
+    ~fn:(fun error ->
       InvalidRegistryConfig {
         registry_name;
         error = "invalid default cdn_url: " ^ uri_error_message error
@@ -82,11 +82,11 @@ let registry_of_toml = fun ~registry_name value ->
   | Toml.Table fields ->
       let* defaults = default_registry ~registry_name in
       let* api_url =
-        match List.assoc_opt "api_url" fields with
+        match Fields.get "api_url" fields with
         | None -> Ok defaults.api_url
         | Some (Toml.String url) -> Net.Uri.of_string url
-        |> Result.map_error
-          (fun error ->
+        |> Result.map_err
+          ~fn:(fun error ->
             InvalidRegistryConfig {
               registry_name;
               error = "field 'api_url' must be a valid URI: " ^ uri_error_message error
@@ -97,11 +97,11 @@ let registry_of_toml = fun ~registry_name value ->
         })
       in
       let* cdn_url =
-        match List.assoc_opt "cdn_url" fields with
+        match Fields.get "cdn_url" fields with
         | None -> Ok defaults.cdn_url
         | Some (Toml.String url) -> Net.Uri.of_string url
-        |> Result.map_error
-          (fun error ->
+        |> Result.map_err
+          ~fn:(fun error ->
             InvalidRegistryConfig {
               registry_name;
               error = "field 'cdn_url' must be a valid URI: " ^ uri_error_message error
@@ -112,7 +112,7 @@ let registry_of_toml = fun ~registry_name value ->
         })
       in
       let api_token =
-        match List.assoc_opt "api_token" fields with
+        match Fields.get "api_token" fields with
         | None -> Ok None
         | Some (Toml.String token) -> Ok (Some token)
         | Some _ -> Error (InvalidRegistryConfig {
@@ -120,33 +120,33 @@ let registry_of_toml = fun ~registry_name value ->
           error = "field 'api_token' must be a string"
         })
       in
-      Result.map (fun api_token -> { api_url; cdn_url; api_token }) api_token
+      Result.map api_token ~fn:(fun api_token -> { api_url; cdn_url; api_token })
   | _ -> Error (InvalidRegistryConfig { registry_name; error = "registry entry must be a table" })
 
 let normalize_registry_name = fun name ->
   let len = String.length name in
-  if len >= 2 && Char.equal (String.get name 0) '"' && Char.equal (String.get name (len - 1)) '"' then
-    String.sub name 1 (len - 2)
+  if
+    len >= 2
+    && Char.equal (String.get_unchecked name ~at:0) '"'
+    && Char.equal (String.get_unchecked name ~at:(len - 1)) '"'
+  then
+    String.sub name ~offset:1 ~len:(len - 2)
   else
     name
 
 let rec collect_registries = fun ~path acc fields ->
   let has_registry_fields =
-    List.exists
-      (fun (name, _value) ->
-        String.equal name "api_token")
-      fields
+    List.any fields ~fn:(fun (name, _value) ->
+      String.equal name "api_token")
   in
   let has_nested_tables =
-    List.exists
-      (fun (_name, value) ->
-        match value with
-        | Toml.Table _ -> true
-        | _ -> false)
-      fields
+    List.any fields ~fn:(fun (_name, value) ->
+      match value with
+      | Toml.Table _ -> true
+      | _ -> false)
   in
   if List.length path > 0 && (has_registry_fields || not has_nested_tables) then
-    let registry_name = String.concat "." (List.rev path) |> normalize_registry_name in
+    let registry_name = String.concat "." (List.reverse path) |> normalize_registry_name in
     match registry_of_toml ~registry_name (Toml.Table fields) with
     | Ok registry -> Ok ((registry_name, registry) :: acc)
     | Error _ as err -> err
@@ -167,10 +167,10 @@ let rec collect_registries = fun ~path acc fields ->
 let of_toml = fun value ->
   match value with
   | Toml.Table fields -> (
-      match List.assoc_opt "registry" fields with
+      match Fields.get "registry" fields with
       | None -> Ok empty
       | Some (Toml.Table registry_fields) -> collect_registries ~path:[] [] registry_fields
-      |> Result.map (fun registries -> { registries = List.rev registries })
+      |> Result.map ~fn:(fun registries -> { registries = List.reverse registries })
       | Some _ -> Error (InvalidConfig { error = "top-level 'registry' entry must be a table" })
     )
   | _ -> Ok empty
@@ -202,21 +202,21 @@ let to_string = fun config ->
     | Some token -> String.concat "\n" (header :: fields @ [ "api_token = " ^ render_string token ])
     | None -> String.concat "\n" (header :: fields)
   in
-  config.registries |> List.map render_registry |> String.concat "\n\n"
+  config.registries |> List.map ~fn:render_registry |> String.concat "\n\n"
 
 let save = fun config path ->
   Fs.write (to_string config) path
-  |> Result.map_error (fun io_error -> WriteFailed { path; error = IO.error_message io_error })
+  |> Result.map_err ~fn:(fun io_error -> WriteFailed { path; error = IO.error_message io_error })
 
 let upsert_registry = fun config ~registry_name ~update ->
   let rec loop acc = function
     | [] -> (
         match default_registry ~registry_name with
-        | Ok registry -> List.rev ((registry_name, update registry) :: acc)
-        | Error _ -> List.rev acc
+        | Ok registry -> List.reverse ((registry_name, update registry) :: acc)
+        | Error _ -> List.reverse acc
       )
     | (name, registry) :: rest when String.equal name registry_name ->
-        List.rev_append acc ((name, update registry) :: rest)
+        List.reverse_append acc ((name, update registry) :: rest)
     | entry :: rest ->
         loop (entry :: acc) rest
   in
@@ -224,10 +224,10 @@ let upsert_registry = fun config ~registry_name ~update ->
 
 let api_token = fun config ~registry_name ->
   match
-    List.find_opt
-      (fun (name, _registry) ->
-        String.equal name registry_name)
+    List.find
       config.registries
+      ~fn:(fun (name, _registry) ->
+        String.equal name registry_name)
   with
   | None -> None
   | Some (_name, registry) -> registry.api_token

@@ -70,7 +70,7 @@ module Diagnostic = struct
       Some start
     else if start + needle_len > text_len then
       None
-    else if String.equal (String.sub text start needle_len) needle then
+    else if String.equal (String.sub text ~offset:start ~len:needle_len) needle then
       Some start
     else
       find_substring_from text ~needle ~start:(start + 1)
@@ -83,29 +83,29 @@ module Diagnostic = struct
     | Some start -> (
         match find_substring_from line ~needle:"]" ~start:(start + 1) with
         | None -> None
-        | Some stop -> Some (String.sub line (start + 1) (stop - start - 1))
+        | Some stop -> Some (String.sub line ~offset:(start + 1) ~len:(stop - start - 1))
       )
 
   let strip_ansi = fun line ->
     let rec loop acc idx =
       if idx >= String.length line then
-        let chars = List.rev acc in
-        let out = Kernel.Bytes.create (List.length chars) in
+        let chars = List.reverse acc in
+        let out = Kernel.Bytes.create ~size:(List.length chars) in
         let rec fill index = function
           | [] -> Kernel.Bytes.to_string out
           | ch :: rest ->
-              Kernel.Bytes.set out index ch;
+              Kernel.Bytes.set_unchecked out ~at:index ~char:ch;
               fill (index + 1) rest
         in
         fill 0 chars
       else
-        let ch = String.get line idx in
+        let ch = String.get_unchecked line ~at:idx in
         if ch = '\027' then
           let rec skip_escape j =
             if j >= String.length line then
               j
             else
-              let escape_ch = String.get line j in
+              let escape_ch = String.get_unchecked line ~at:j in
               if (escape_ch >= 'A' && escape_ch <= 'Z') || (escape_ch >= 'a' && escape_ch <= 'z') then
                 j + 1
               else
@@ -130,9 +130,9 @@ module Diagnostic = struct
         match find_substring_from line ~needle:"\", line " ~start:path_start with
         | None -> None
         | Some path_end ->
-            let prefix = String.sub line 0 path_start in
-            let path = String.sub line path_start (path_end - path_start) in
-            let suffix = String.sub line path_end (String.length line - path_end) in
+            let prefix = String.sub line ~offset:0 ~len:path_start in
+            let path = String.sub line ~offset:path_start ~len:(path_end - path_start) in
+            let suffix = String.sub line ~offset:path_end ~len:(String.length line - path_end) in
             let location =
               match find_substring suffix "\", line " with
               | None ->
@@ -150,7 +150,7 @@ module Diagnostic = struct
                     | Some idx -> idx
                     | None -> String.length suffix
                   in
-                  let line_no = parse_int_opt (String.sub suffix line_start (line_stop - line_start)) in
+                  let line_no = parse_int_opt (String.sub suffix ~offset:line_start ~len:(line_stop - line_start)) in
                   let start_char, end_char =
                     match find_substring suffix ", characters " with
                     | None -> (None, None)
@@ -167,11 +167,11 @@ module Diagnostic = struct
                           | None -> String.length suffix
                         in
                         let start_char = parse_int_opt
-                          (String.sub suffix chars_start (dash_idx - chars_start)) in
+                          (String.sub suffix ~offset:chars_start ~len:(dash_idx - chars_start)) in
                         let end_char =
                           if dash_idx < chars_end then
                             parse_int_opt
-                              (String.sub suffix (dash_idx + 1) (chars_end - dash_idx - 1))
+                              (String.sub suffix ~offset:(dash_idx + 1) ~len:(chars_end - dash_idx - 1))
                           else
                             None
                         in
@@ -190,7 +190,7 @@ module Diagnostic = struct
 
   let starts_with_c_header = fun line ->
     let line = strip_ansi line in
-    let parts = String.split_on_char ':' line in
+    let parts = String.split ~by:":" line in
     match parts with
     | path :: line_no :: column :: rest ->
         String.length path > 0 && (
@@ -202,7 +202,7 @@ module Diagnostic = struct
 
   let split_c_header = fun line ->
     let line = strip_ansi line in
-    match String.split_on_char ':' line with
+    match String.split ~by:":" line with
     | path :: line_no_str :: column_str :: rest when String.length path > 0 ->
         let rest_str = String.concat ":" rest in
         let trimmed_rest = String.trim rest_str in
@@ -213,8 +213,8 @@ module Diagnostic = struct
           || String.starts_with ~prefix:"note:" trimmed_rest ->
               let suffix = String.sub
                 line
-                (String.length path)
-                (String.length line - String.length path) in
+                ~offset:(String.length path)
+                ~len:(String.length line - String.length path) in
               Some (
                 "",
                 {
@@ -290,9 +290,9 @@ module Diagnostic = struct
     if String.equal trimmed "" then
       []
     else
-      let lines = String.split_on_char '\n' trimmed in
+      let lines = String.split ~by:"\n" trimmed in
       let flush_block acc current =
-        match parse_block (List.rev current) with
+        match parse_block (List.reverse current) with
         | Some diag -> acc @ [ diag ]
         | None -> acc
       in
@@ -323,7 +323,7 @@ module Diagnostic = struct
     | Raw raw -> raw
     | Parsed { body; _ } -> String.concat "\n" (render_header diagnostic :: body)
 
-  let render_all = fun diagnostics -> diagnostics |> List.map render |> String.concat "\n"
+  let render_all = fun diagnostics -> diagnostics |> List.map ~fn:render |> String.concat "\n"
 
   let map_path = fun rewrite diagnostic ->
     match diagnostic with
@@ -404,7 +404,7 @@ let warning_code = function
   | warning -> Riot_model.Ocaml_compiler.warning_to_number warning |> Int.to_string
 
 let render_warning_baseline = fun warnings ->
-  warnings |> List.map (fun warning -> "-" ^ warning_code warning) |> String.concat ""
+  warnings |> List.map ~fn:(fun warning -> "-" ^ warning_code warning) |> String.concat ""
 
 let is_dev_source = fun source ->
   let path = Path.to_string source in
@@ -430,14 +430,14 @@ let flags_to_string = Ocaml_compiler.flags_to_string
 
 let flags_of_string = Ocaml_compiler.flags_of_string
 
-let make_include_flags = fun dirs -> dirs |> List.map (fun dir -> "-I " ^ dir) |> String.concat " "
+let make_include_flags = fun dirs -> dirs |> List.map ~fn:(fun dir -> "-I " ^ dir) |> String.concat " "
 
 let make_invocation = fun ?(output_mode = Normal) ~cwd command_string ->
   { cwd; env = [ ("OCAML_COLOR", "always") ]; command_string; output_mode }
 
 let build_invocation = fun t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?(ccflags = []) ?(ccopt_flags = []) ?(cclib_flags = []) ?(output = None) ?(mode = Compile) ?(flags = []) sources ->
   let ocamlc = base_command t in
-  let include_flags = make_include_flags (List.map Path.to_string includes) in
+  let include_flags = make_include_flags (List.map includes ~fn:Path.to_string) in
   let mode_flag =
     match mode with
     | Compile -> "-c"
@@ -452,28 +452,28 @@ let build_invocation = fun t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?
     | None -> ""
   in
   let sources_str = String.concat " " sources in
-  let libs_str = String.concat " " (List.map Path.to_string libs) in
+  let libs_str = String.concat " " (List.map libs ~fn:Path.to_string) in
   let cclibs_str =
     if List.length cclibs > 0 then
-      String.concat " " (List.map (fun lib -> "-cclib " ^ Path.to_string lib) cclibs)
+      String.concat " " (List.map cclibs ~fn:(fun lib -> "-cclib " ^ Path.to_string lib))
     else
       ""
   in
   let ccflags_str =
     if List.length ccflags > 0 then
-      String.concat " " (List.map (fun flag -> "-ccopt \"" ^ flag ^ "\"") ccflags)
+      String.concat " " (List.map ccflags ~fn:(fun flag -> "-ccopt \"" ^ flag ^ "\""))
     else
       ""
   in
   let ccopt_flags_str =
     if List.length ccopt_flags > 0 then
-      String.concat " " (List.map (fun flag -> "-ccopt \"" ^ flag ^ "\"") ccopt_flags)
+      String.concat " " (List.map ccopt_flags ~fn:(fun flag -> "-ccopt \"" ^ flag ^ "\""))
     else
       ""
   in
   let cclib_flags_str =
     if List.length cclib_flags > 0 then
-      String.concat " " (List.map (fun flag -> "-cclib \"" ^ flag ^ "\"") cclib_flags)
+      String.concat " " (List.map cclib_flags ~fn:(fun flag -> "-cclib \"" ^ flag ^ "\""))
     else
       ""
   in
@@ -494,15 +494,15 @@ let build_invocation = fun t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?
       cclib_flags_str;
       sources_str;
     ]
-    |> List.filter (fun s -> s != "")
+    |> List.filter ~fn:(fun s -> not (String.equal s ""))
     |> String.concat " "
   in
   if mode = SharedLibrary then
     begin
       Log.info
         ("[OCAMLC] Building shared library with includes: "
-        ^ String.concat ", " (List.map Path.to_string includes));
-      Log.info ("[OCAMLC] cclibs: " ^ String.concat ", " (List.map Path.to_string cclibs));
+        ^ String.concat ", " (List.map includes ~fn:Path.to_string));
+      Log.info ("[OCAMLC] cclibs: " ^ String.concat ", " (List.map cclibs ~fn:Path.to_string));
       Log.info ("[OCAMLC] objects/sources: " ^ sources_str);
       Log.info ("[OCAMLC] Full command: " ^ command_string)
     end;
@@ -511,18 +511,17 @@ let build_invocation = fun t ~cwd ?(includes = []) ?(libs = []) ?(cclibs = []) ?
 let compile_interface = fun t ~cwd ~includes ~flags ~output source ->
   let includes_with_dot = Path.v "." :: includes in
   let has_impl_flag =
-    List.exists
-      (
+    List.any flags
+      ~fn:(
         function
         | Impl _ -> true
         | _ -> false
       )
-      flags
   in
   let args = [ "-bin-annot"; "-c" ]
   @ warning_baseline_flags source
   @ flags_to_string flags
-  @ List.concat_map (fun dir -> [ "-I"; Path.to_string dir ]) includes_with_dot
+  @ List.fold_right includes_with_dot ~acc:[] ~fn:(fun dir acc -> [ "-I"; Path.to_string dir ] @ acc)
   @ [ "-o"; Path.to_string output ]
   @ if has_impl_flag then
     []
@@ -534,18 +533,17 @@ let compile_interface = fun t ~cwd ~includes ~flags ~output source ->
 let compile_impl = fun t ~cwd ~includes ~flags ~output source ->
   let includes_with_dot = Path.v "." :: includes in
   let has_impl_flag =
-    List.exists
-      (
+    List.any flags
+      ~fn:(
         function
         | Impl _ -> true
         | _ -> false
       )
-      flags
   in
   let args = [ "-bin-annot"; "-c" ]
   @ warning_baseline_flags source
   @ flags_to_string flags
-  @ List.concat_map (fun dir -> [ "-I"; Path.to_string dir ]) includes_with_dot
+  @ List.fold_right includes_with_dot ~acc:[] ~fn:(fun dir acc -> [ "-I"; Path.to_string dir ] @ acc)
   @ [ "-o"; Path.to_string output ]
   @ if has_impl_flag then
     []
@@ -559,7 +557,7 @@ let generate_interface = fun t ~cwd ~includes ~flags ~output source ->
   let args = [ "-i" ]
   @ warning_baseline_flags source
   @ flags_to_string flags
-  @ List.concat_map (fun dir -> [ "-I"; Path.to_string dir ]) includes_with_dot
+  @ List.fold_right includes_with_dot ~acc:[] ~fn:(fun dir acc -> [ "-I"; Path.to_string dir ] @ acc)
   @ [ Path.to_string source ] in
   make_invocation
     ~output_mode:(WriteStdoutToFile output)
@@ -581,7 +579,7 @@ let create_library = fun t ~cwd ~includes ~output objects ->
     ~cwd
     ~includes
     ~output:(Some output)
-    ~mode:Library (List.map Path.to_string objects)
+    ~mode:Library (List.map objects ~fn:Path.to_string)
 
 let create_executable = fun t ~cwd ~includes ~output ~libs ?(cclibs = []) ?(ccopt_flags = []) ?(cclib_flags = []) objects ->
   let includes_with_dot = Path.v "." :: includes in
@@ -596,7 +594,7 @@ let create_executable = fun t ~cwd ~includes ~output ~libs ?(cclibs = []) ?(ccop
     ~output:(Some output)
     ~mode:Executable
     ~flags:[ LinkAll ]
-    (List.map Path.to_string objects)
+    (List.map objects ~fn:Path.to_string)
 
 let create_shared_library = fun t ~cwd ~includes ~output ~libs ?(cclibs = []) ?(ccopt_flags = []) ?(cclib_flags = []) objects ->
   let includes_with_dot = Path.v "." :: includes in
@@ -611,7 +609,7 @@ let create_shared_library = fun t ~cwd ~includes ~output ~libs ?(cclibs = []) ?(
     ~output:(Some output)
     ~mode:SharedLibrary
     ~flags:[ LinkAll ]
-    (List.map Path.to_string objects)
+    (List.map objects ~fn:Path.to_string)
 
 let create_custom_executable = fun t ~cwd ~includes ~output ~libs objects ->
   let includes_with_dot = Path.v "." :: includes in
@@ -621,13 +619,13 @@ let create_custom_executable = fun t ~cwd ~includes ~output ~libs objects ->
     ~includes:includes_with_dot
     ~libs
     ~output:(Some output)
-    ~mode:CustomExe (List.map Path.to_string objects)
+    ~mode:CustomExe (List.map objects ~fn:Path.to_string)
 
 let to_string = fun invocation ->
   let env_prefix =
     match invocation.env with
     | [] -> ""
-    | env -> String.concat " " (List.map (fun ((key, value)) -> key ^ "=" ^ value) env) ^ " "
+    | env -> String.concat " " (List.map env ~fn:(fun (key, value) -> key ^ "=" ^ value)) ^ " "
   in
   "cd " ^ Path.to_string invocation.cwd ^ " && " ^ env_prefix ^ invocation.command_string
 
@@ -670,7 +668,7 @@ let is_success = function
 let get_output = function
   | Success { message; _ } -> message
   | Failed { message; diagnostics } ->
-      let rendered = Diagnostic.render_all diagnostics in
+  let rendered = Diagnostic.render_all diagnostics in
       if String.equal rendered "" then
         message
       else
@@ -678,6 +676,6 @@ let get_output = function
 
 let get_ocamlc_warnings = function
   | Success { diagnostics; _ } -> diagnostics
-  |> List.filter Diagnostic.is_warning
-  |> List.map Diagnostic.render
+  |> List.filter ~fn:Diagnostic.is_warning
+  |> List.map ~fn:Diagnostic.render
   | Failed _ -> []

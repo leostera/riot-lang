@@ -25,38 +25,41 @@ type config = {
 
 let default_config = { max_frame_size = default_max_frame_size }
 
+let byte_at = fun data offset ->
+  data |> String.get_unchecked ~at:offset |> Char.to_int
+
 let read_uint24_be = fun data offset ->
   if offset + 3 > String.length data then
     None
   else
-    let b0 = Char.code data.[offset] in
-    let b1 = Char.code data.[offset + 1] in
-    let b2 = Char.code data.[offset + 2] in
+    let b0 = byte_at data offset in
+    let b1 = byte_at data (offset + 1) in
+    let b2 = byte_at data (offset + 2) in
     Some ((b0 lsl 16) lor (b1 lsl 8) lor b2)
 
 let read_uint32_be = fun data offset ->
   if offset + 4 > String.length data then
     None
   else
-    let b0 = Char.code data.[offset] in
-    let b1 = Char.code data.[offset + 1] in
-    let b2 = Char.code data.[offset + 2] in
-    let b3 = Char.code data.[offset + 3] in
+    let b0 = byte_at data offset in
+    let b1 = byte_at data (offset + 1) in
+    let b2 = byte_at data (offset + 2) in
+    let b3 = byte_at data (offset + 3) in
     Some ((b0 lsl 24) lor (b1 lsl 16) lor (b2 lsl 8) lor b3)
 
 let read_uint16_be = fun data offset ->
   if offset + 2 > String.length data then
     None
   else
-    let b0 = Char.code data.[offset] in
-    let b1 = Char.code data.[offset + 1] in
+    let b0 = byte_at data offset in
+    let b1 = byte_at data (offset + 1) in
     Some ((b0 lsl 8) lor b1)
 
 let read_uint8 = fun data offset ->
   if offset >= String.length data then
     None
   else
-    Some (Char.code data.[offset])
+    Some (byte_at data offset)
 
 let int_to_frame_type = function
   | 0x0 -> Some Frame.Data
@@ -255,7 +258,7 @@ let parse_settings_payload = fun length flags data ->
   else
     let rec parse_settings offset acc =
       if offset >= length then
-        Ok (List.rev acc)
+        Ok (List.reverse acc)
       else
         match read_uint16_be data offset with
         | None -> Result.Error "Failed to read setting ID"

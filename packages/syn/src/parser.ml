@@ -134,11 +134,15 @@ let token_text = fun parser token ->
 
 let ident_text_payload = fun text ->
   try
-    if String.length text >= 2 && text.[0] = '\\' && text.[1] = '#' then
+    if
+      String.length text >= 2
+      && String.get_unchecked text ~at:0 = '\\'
+      && String.get_unchecked text ~at:1 = '#'
+    then
       if String.length text = 2 then
         ""
       else
-        String.sub text 2 (String.length text - 2)
+        String.sub text ~offset:2 ~len:(String.length text - 2)
     else
       text
   with
@@ -146,7 +150,7 @@ let ident_text_payload = fun text ->
 
 let ident_starts_uppercase = fun text ->
   let payload = ident_text_payload text in
-  String.length payload > 0 && match payload.[0] with
+  String.length payload > 0 && match String.get_unchecked payload ~at:0 with
   | 'A' .. 'Z' -> true
   | _ -> false
 
@@ -164,12 +168,10 @@ let green_nontrivia_token_texts = fun element ->
             | None -> acc
           )
       )
-    | Ceibo.Green.Node ((node: (Syntax_kind.t, string) Ceibo.Green.node)) -> List.fold_left
-      loop
-      acc
-      (Ceibo.Green.children node)
+    | Ceibo.Green.Node ((node: (Syntax_kind.t, string) Ceibo.Green.node)) ->
+        List.fold_left (Ceibo.Green.children node) ~acc ~fn:loop
   in
-  loop [] element |> List.rev
+  loop [] element |> List.reverse
 
 let green_expr_is_module_path_like = fun expr ->
   let texts = green_nontrivia_token_texts (Ceibo.Green.Node expr) in
@@ -370,11 +372,12 @@ let is_trivia_kind = function
     @return The expected token if found, otherwise the found token (as dummy) *)
 let consume_trivia = fun parser -> Token_cursor.consume_leading_trivia parser.cursor
 
-let peek_trivia = fun parser -> Token_cursor.peek_leading_trivia parser.cursor |> List.map Token.trivia_to_token
+let peek_trivia = fun parser ->
+  Token_cursor.peek_leading_trivia parser.cursor |> List.map ~fn:Token.trivia_to_token
 
 let leading_trivia_contains_newline = fun parser ->
-  Token_cursor.peek_leading_trivia parser.cursor |> List.exists
-    (fun (trivia: Token.trivia) ->
+  Token_cursor.peek_leading_trivia parser.cursor |> List.any
+    ~fn:(fun (trivia: Token.trivia) ->
       match trivia.Token.kind with
       | Token.WhitespaceTrivia -> String.contains
         (Token_cursor.view parser.cursor trivia.Token.span)
@@ -383,16 +386,16 @@ let leading_trivia_contains_newline = fun parser ->
 
 let error_recover_until = fun parser ~sync_tokens ->
   let is_sync_token kind =
-    List.exists (fun sync -> sync = kind) sync_tokens
+    List.any sync_tokens ~fn:(fun sync -> sync = kind)
   in
   let rec skip_to_sync acc =
     match peek_kind parser with
     | Token.EOF ->
-        List.rev acc
+        List.reverse acc
     | kind when is_sync_token kind ->
-        List.rev acc
+        List.reverse acc
     | _ when leading_trivia_contains_newline parser ->
-        List.rev acc
+        List.reverse acc
     | _ ->
         let tok = consume parser in
         skip_to_sync (tok :: acc)
@@ -544,7 +547,7 @@ let make_token = fun parser token ->
   let syntax_kind = syntax_kind_of_token_kind token_kind in
   let text = Token_cursor.view parser.cursor token.Token.span in
   let width = String.length text in
-  let leading_trivia = List.map (green_trivia_of_token_trivia parser) token.Token.leading_trivia in
+  let leading_trivia = List.map token.Token.leading_trivia ~fn:(green_trivia_of_token_trivia parser) in
   let green_token = Ceibo.Green.make_token ~leading_trivia ~kind:syntax_kind ~text ~width in
   Ceibo.Green.Token green_token
 
@@ -555,12 +558,12 @@ let make_token = fun parser token ->
 *)
 let tokens_to_green = fun parser tokens ->
   List.filter_map
-    (fun token ->
+    tokens
+    ~fn:(fun token ->
       if is_trivia_kind token.Token.kind then
         None
       else
         Some (make_token parser token))
-    tokens
 
 let make_error_node = fun parser ~diagnostic ~consumed_tokens ->
   report_diagnostic parser diagnostic;
@@ -638,7 +641,7 @@ let rec parse_type_variable = fun parser ->
           (* Check if type variable starts with uppercase *)
           let first_char =
             if String.length ident_text > 0 then
-              String.get ident_text 0
+              String.get_unchecked ident_text ~at:0
             else
               'a'
           in
@@ -752,7 +755,7 @@ and parse_type_params = fun parser ->
         match peek_kind parser with
         | Token.CloseDelim Token.Paren ->
             (* End of parameter list *)
-            List.rev acc
+            List.reverse acc
         | Token.Quote
         | Token.Plus
         | Token.Minus
@@ -774,14 +777,14 @@ and parse_type_params = fun parser ->
                   @ [ Ceibo.Green.Node param ]
                   @ acc)
             | Token.CloseDelim Token.Paren ->
-                List.rev (trivia_green @ [ Ceibo.Green.Node param ] @ acc)
+                List.reverse (trivia_green @ [ Ceibo.Green.Node param ] @ acc)
             | _ ->
                 (* Expected comma or ) *)
-                List.rev (trivia_green @ [ Ceibo.Green.Node param ] @ acc)
+                List.reverse (trivia_green @ [ Ceibo.Green.Node param ] @ acc)
           )
         | _ ->
             (* Invalid token in type params *)
-            List.rev acc
+            List.reverse acc
       in
       let params = parse_params [] in
       let trivia_before_close = consume_trivia parser in
@@ -1044,17 +1047,11 @@ and parse_poly_type = fun ?(stop_before_arrow = false) parser ->
   let inner_type = parse_arrow_type ~stop_before_arrow parser in
   (* Build the POLY_TYPE node *)
   let type_var_nodes =
-    List.rev !type_vars
-    |> List.mapi
-      (fun i var ->
-        let trivia =
-          if i < List.length !type_vars_trivia then
-            tokens_to_green parser (List.nth (List.rev !type_vars_trivia) i)
-          else
-            []
-        in
-        [ Ceibo.Green.Node var ] @ trivia)
-    |> List.flatten
+    let type_vars = List.reverse !type_vars in
+    let type_vars_trivia = List.reverse !type_vars_trivia in
+    List.zip type_vars type_vars_trivia
+    |> List.map ~fn:(fun (var, trivia) -> [ Ceibo.Green.Node var ] @ tokens_to_green parser trivia)
+    |> List.concat
   in
   make_node
     Syntax_kind.POLY_TYPE
@@ -1103,17 +1100,11 @@ and parse_locally_abstract_type = fun ?(stop_before_arrow = false) parser ->
   let inner_type = parse_arrow_type ~stop_before_arrow parser in
   (* Build type variable nodes *)
   let var_nodes =
-    List.rev !type_vars
-    |> List.mapi
-      (fun i var ->
-        let trivia =
-          if i < List.length !type_vars_trivia then
-            tokens_to_green parser (List.nth (List.rev !type_vars_trivia) i)
-          else
-            []
-        in
-        [ make_token parser var ] @ trivia)
-    |> List.flatten
+    let type_vars = List.reverse !type_vars in
+    let type_vars_trivia = List.reverse !type_vars_trivia in
+    List.zip type_vars type_vars_trivia
+    |> List.map ~fn:(fun (var, trivia) -> [ make_token parser var ] @ tokens_to_green parser trivia)
+    |> List.concat
   in
   (* Build POLY_TYPE node *)
   make_node
@@ -1301,7 +1292,7 @@ and parse_tuple_type = fun parser ->
           @ tokens_to_green parser trivia_after_star
           @ acc)
       else
-        List.rev acc
+        List.reverse acc
     in
     let rest = collect_tuple_types [] in
     make_node
@@ -1681,7 +1672,7 @@ and parse_poly_variant_type = fun parser ->
           (None, [])
       in
       (* Parse variant row fields in source order, preserving explicit separators. *)
-      let push_children acc children = List.rev_append children acc in
+      let push_children acc children = List.reverse_append children acc in
       let rec parse_fields acc =
         match peek_kind parser with
         | Token.CloseDelim Token.Bracket -> acc
@@ -1713,7 +1704,7 @@ and parse_poly_variant_type = fun parser ->
             else
               acc
       in
-      let field_children = parse_fields [] |> List.rev in
+      let field_children = parse_fields [] |> List.reverse in
       let close_bracket =
         expect
           parser
@@ -2700,7 +2691,7 @@ and parse_tuple_pattern = fun parser open_paren trivia_after_open first_pat triv
       let trivia_after_comma = consume_trivia parser in
       (* Check for trailing comma before close paren *)
       if peek_kind parser = Token.CloseDelim Token.Paren then
-        (List.rev acc_patterns, List.rev acc_commas_trivia)
+        (List.reverse acc_patterns, List.reverse acc_commas_trivia)
       else
         let pat = parse_pattern parser in
         let trivia_after_pat = consume_trivia parser in
@@ -2711,7 +2702,7 @@ and parse_tuple_pattern = fun parser open_paren trivia_after_open first_pat triv
           ((comma_trivia_green @ tokens_to_green parser trivia_after_pat) @ acc_commas_trivia)
     else
       (* No more commas - return accumulated *)
-      (List.rev acc_patterns, List.rev acc_commas_trivia)
+      (List.reverse acc_patterns, List.reverse acc_commas_trivia)
   in
   let rest_patterns, commas_trivia = parse_rest_elements [] [] in
   let trivia_before_close = consume_trivia parser in
@@ -2734,7 +2725,7 @@ and parse_tuple_pattern = fun parser open_paren trivia_after_open first_pat triv
     @ [ Ceibo.Green.Node first_pat ]
     @ tokens_to_green parser trivia_after_first
     @ commas_trivia
-    @ List.concat_map (fun p -> [ Ceibo.Green.Node p ]) rest_patterns
+    @ (rest_patterns |> List.map ~fn:(fun pattern -> [ Ceibo.Green.Node pattern ]) |> List.concat)
     @ tokens_to_green parser trivia_before_close
     @ [ make_token parser close_paren ])
 
@@ -2890,7 +2881,7 @@ and parse_operator_pattern = fun parser open_paren trivia_after_open ->
     Syntax_kind.OPERATOR_PATTERN
     ([ make_token parser open_paren ]
     @ tokens_to_green parser trivia_after_open
-    @ List.map (fun t -> make_token parser t) (List.rev !operator_tokens)
+    @ List.map (List.reverse !operator_tokens) ~fn:(fun token -> make_token parser token)
     @ tokens_to_green parser trivia_before_close
     @ [ make_token parser close_paren ])
 
@@ -3489,7 +3480,7 @@ and parse_attribute = fun parser ->
         @ tokens_to_green parser trivia_after_at
         @ [ make_token parser attr_name ]
         @ tokens_to_green parser trivia_after_name
-        @ List.rev_map (make_token parser) !payload_tokens
+        @ (!payload_tokens |> List.reverse |> List.map ~fn:(make_token parser))
         @ [ make_token parser close_bracket ])
   | _ ->
       let found_tok = peek parser in
@@ -3548,18 +3539,11 @@ and parse_attributes = fun parser ->
     attrs_trivia := trivia :: !attrs_trivia;
   done;
   (* Return attributes and trivia as green nodes *)
-  let attr_list = List.rev !attrs in
-  let trivia_list = List.rev !attrs_trivia in
-  List.mapi
-    (fun i attr ->
-      let trivia =
-        if i < List.length trivia_list then
-          List.nth trivia_list i
-        else
-          []
-      in
-      [ Ceibo.Green.Node attr ] @ tokens_to_green parser trivia)
-    attr_list |> List.flatten
+  let attr_list = List.reverse !attrs in
+  let trivia_list = List.reverse !attrs_trivia in
+  List.zip attr_list trivia_list
+  |> List.map ~fn:(fun (attr, trivia) -> [ Ceibo.Green.Node attr ] @ tokens_to_green parser trivia)
+  |> List.concat
 
 (** Parse optional extension name after keyword: %identifier
     Used for: let%foo, match%bar, etc.
@@ -3695,7 +3679,7 @@ and parse_extension = fun parser ->
         @ tokens_to_green parser trivia_after_percent
         @ [ make_token parser ext_name ]
         @ tokens_to_green parser trivia_after_name
-        @ List.rev_map (make_token parser) !payload_tokens
+        @ (!payload_tokens |> List.reverse |> List.map ~fn:(make_token parser))
         @ [ make_token parser close_bracket ])
   | Token.OpenDelim Token.Brace ->
       let open_brace = consume parser in
@@ -3771,7 +3755,7 @@ and parse_extension = fun parser ->
         @ percent_tokens
         @ tokens_to_green parser trivia_after_percent
         @ !ext_name_tokens
-        @ List.rev_map (make_token parser) !payload_tokens
+        @ (!payload_tokens |> List.reverse |> List.map ~fn:(make_token parser))
         @ [ make_token parser close_brace ])
   | _ ->
       let found_tok = peek parser in
@@ -4121,20 +4105,20 @@ and parse_fun_expr = fun parser ->
               ~text:(token_text parser found)
               ~span:(expected_span parser) in
             report_diagnostic parser diagnostic;
-            List.rev acc
+            List.reverse acc
           )
         else
           let trivia = consume_trivia parser in
           match peek_kind parser with
           | Token.Arrow ->
               (* Done collecting params *)
-              List.rev (tokens_to_green parser trivia @ acc)
+              List.reverse (tokens_to_green parser trivia @ acc)
           | Token.Colon ->
               (* Return-type annotation starts here. *)
-              List.rev (tokens_to_green parser trivia @ acc)
+              List.reverse (tokens_to_green parser trivia @ acc)
           | Token.EOF ->
               (* Reached EOF without finding -> *)
-              List.rev (tokens_to_green parser trivia @ acc)
+              List.reverse (tokens_to_green parser trivia @ acc)
           | _ ->
               (* Parse one parameter - save position to detect infinite loops *)
               let pos_before = position parser in
@@ -4142,7 +4126,7 @@ and parse_fun_expr = fun parser ->
               let pos_after = position parser in
               (* If we didn't make progress, stop to prevent infinite loop *)
               if pos_before = pos_after then
-                List.rev (tokens_to_green parser trivia @ acc)
+                List.reverse (tokens_to_green parser trivia @ acc)
               else
                 collect_params
                   ([ Ceibo.Green.Node param ] @ tokens_to_green parser trivia @ acc)
@@ -5126,14 +5110,14 @@ and parse_application_expr = fun parser ->
     if can_start_arg_expr parser then
       let func_trivia = peek_trivia parser in
       let has_newline =
-        List.exists
-          (fun tok ->
+        List.any
+          func_trivia
+          ~fn:(fun tok ->
             match tok.Token.kind with
             | Token.Whitespace ->
                 let text = token_text parser tok in
                 String.contains text "\n"
             | _ -> false)
-          func_trivia
       in
       (* Check if next token is a structure-level keyword *)
       let is_structure_keyword =
@@ -5221,7 +5205,7 @@ and parse_binary_expr = fun parser min_prec ->
                 skip_to_recovery (tok :: consumed_tokens)
           in
           let consumed = skip_to_recovery [ next_op ] in
-          let error_node = make_error_node parser ~diagnostic ~consumed_tokens:(List.rev consumed) in
+          let error_node = make_error_node parser ~diagnostic ~consumed_tokens:(List.reverse consumed) in
           (* Build partial binary expression with error on right *)
           let bin_expr = make_node
             Syntax_kind.INFIX_EXPR
@@ -5298,7 +5282,7 @@ and parse_tuple_expr = fun parser ->
               @ acc)
         | _ ->
             (* No more commas *)
-            List.rev acc
+            List.reverse acc
       in
       let elements = parse_elements
         (tokens_to_green parser trivia_after_first @ [ Ceibo.Green.Node first ]) in
@@ -6189,7 +6173,7 @@ and parse_if_expr = fun parser ->
             error_tokens := consume parser :: !error_tokens
           done;
           (* Wrap consumed tokens in ERROR node *)
-          let error_children = tokens_to_green parser (List.rev !error_tokens) in
+          let error_children = tokens_to_green parser (List.reverse !error_tokens) in
           let error_node = make_node Syntax_kind.ERROR error_children in
           ([], [], error_node, [])
       in
@@ -6277,17 +6261,17 @@ and parse_function_expr = fun parser ->
       (* Parse remaining cases *)
       parse_cases ();
       (* Build children list - interleave cases with trivia *)
-      let case_list = List.rev !cases in
-      let trivia_list = List.rev !trivia_parts in
+      let case_list = List.reverse !cases in
+      let trivia_list = List.reverse !trivia_parts in
       let rec interleave cases trivias acc =
         match (cases, trivias) with
-        | [], [] -> List.rev acc
+        | [], [] -> List.reverse acc
         | c :: cs, [] -> interleave cs [] (Ceibo.Green.Node c :: acc)
         | c :: cs, t :: ts -> interleave
           cs
           ts
-          (List.rev_append (tokens_to_green parser t) (Ceibo.Green.Node c :: acc))
-        | [], _ :: _ -> List.rev acc
+          (List.reverse_append (tokens_to_green parser t) (Ceibo.Green.Node c :: acc))
+        | [], _ :: _ -> List.reverse acc
       in
       let case_elements = interleave case_list trivia_list [] in
       let children =
@@ -6389,17 +6373,17 @@ and parse_match_expr = fun parser ->
               )
       );
       (* Interleave cases with trivia *)
-      let case_list = List.rev !cases in
-      let trivia_list = List.rev !trivia_parts in
+      let case_list = List.reverse !cases in
+      let trivia_list = List.reverse !trivia_parts in
       let rec interleave cases trivias acc =
         match (cases, trivias) with
-        | [], [] -> List.rev acc
+        | [], [] -> List.reverse acc
         | c :: cs, [] -> interleave cs [] (Ceibo.Green.Node c :: acc)
         | c :: cs, t :: ts -> interleave
           cs
           ts
-          (List.rev_append (tokens_to_green parser t) (Ceibo.Green.Node c :: acc))
-        | [], _ :: _ -> List.rev acc
+          (List.reverse_append (tokens_to_green parser t) (Ceibo.Green.Node c :: acc))
+        | [], _ :: _ -> List.reverse acc
       in
       let case_elements = interleave case_list trivia_list [] in
       make_node
@@ -6618,17 +6602,17 @@ and parse_try_expr = fun parser ->
               )
       );
       (* Interleave cases with trivia *)
-      let case_list = List.rev !cases in
-      let trivia_list = List.rev !trivia_parts in
+      let case_list = List.reverse !cases in
+      let trivia_list = List.reverse !trivia_parts in
       let rec interleave cases trivias acc =
         match (cases, trivias) with
-        | [], [] -> List.rev acc
+        | [], [] -> List.reverse acc
         | c :: cs, [] -> interleave cs [] (Ceibo.Green.Node c :: acc)
         | c :: cs, t :: ts -> interleave
           cs
           ts
-          (List.rev_append (tokens_to_green parser t) (Ceibo.Green.Node c :: acc))
-        | [], _ :: _ -> List.rev acc
+          (List.reverse_append (tokens_to_green parser t) (Ceibo.Green.Node c :: acc))
+        | [], _ :: _ -> List.reverse acc
       in
       let case_elements = interleave case_list trivia_list [] in
       make_node
@@ -6906,7 +6890,7 @@ and parse_parallel_bindings = fun parser ->
     | _ -> ()
   in
   loop ();
-  List.concat (List.rev !bindings)
+  List.concat (List.reverse !bindings)
 
 (** Parse binding operator expression: let* x = e1 in e2 *)
 and parse_binding_operator_expr = fun parser let_kw trivia_after_let op_token ->
@@ -7340,17 +7324,11 @@ and parse_let_in_expr = fun parser ->
                 collect_params ();
                 (* Build parameter nodes *)
                 let param_nodes =
-                  List.rev !params
-                  |> List.mapi
-                    (fun i param ->
-                      let trivia =
-                        if i < List.length !params_trivia then
-                          List.nth (List.rev !params_trivia) i
-                        else
-                          []
-                      in
-                      tokens_to_green parser trivia @ [ Ceibo.Green.Node param ])
-                  |> List.flatten
+                  let params = List.reverse !params in
+                  let params_trivia = List.reverse !params_trivia in
+                  List.zip params params_trivia
+                  |> List.map ~fn:(fun (param, trivia) -> tokens_to_green parser trivia @ [ Ceibo.Green.Node param ])
+                  |> List.concat
                 in
                 let type_annotation_nodes =
                   if peek_kind parser = Token.Colon then
@@ -7460,17 +7438,11 @@ and parse_let_in_expr = fun parser ->
                       in
                       collect_params2 ();
                       let param_nodes2 =
-                        List.rev !params2
-                        |> List.mapi
-                          (fun i param ->
-                            let trivia =
-                              if i < List.length !params_trivia2 then
-                                List.nth (List.rev !params_trivia2) i
-                              else
-                                []
-                            in
-                            tokens_to_green parser trivia @ [ Ceibo.Green.Node param ])
-                        |> List.flatten
+                        let params2 = List.reverse !params2 in
+                        let params_trivia2 = List.reverse !params_trivia2 in
+                        List.zip params2 params_trivia2
+                        |> List.map ~fn:(fun (param, trivia) -> tokens_to_green parser trivia @ [ Ceibo.Green.Node param ])
+                        |> List.concat
                       in
                       let eq_children2 =
                         match peek_kind parser with
@@ -7607,7 +7579,10 @@ and parse_locally_abstract_types = fun parser ->
         let type_vars_trivia = ref [] in
         let rec collect_types () =
           match peek_kind parser with
-          | Token.Ident name when String.length name > 0 && name.[0] >= 'a' && name.[0] <= 'z' ->
+          | Token.Ident name
+            when String.length name > 0
+            && String.get_unchecked name ~at:0 >= 'a'
+            && String.get_unchecked name ~at:0 <= 'z' ->
               (* Lowercase identifier - type variable *)
               let var = consume parser in
               type_vars := var :: !type_vars;
@@ -7628,17 +7603,11 @@ and parse_locally_abstract_types = fun parser ->
         in
         (* Build type variable nodes *)
         let type_var_nodes =
-          List.rev !type_vars
-          |> List.mapi
-            (fun i var ->
-              let trivia =
-                if i < List.length !type_vars_trivia then
-                  List.nth (List.rev !type_vars_trivia) i
-                else
-                  []
-              in
-              [ make_token parser var ] @ tokens_to_green parser trivia)
-          |> List.flatten
+          let type_vars = List.reverse !type_vars in
+          let type_vars_trivia = List.reverse !type_vars_trivia in
+          List.zip type_vars type_vars_trivia
+          |> List.map ~fn:(fun (var, trivia) -> [ make_token parser var ] @ tokens_to_green parser trivia)
+          |> List.concat
         in
         Some (make_node
           Syntax_kind.LOCALLY_ABSTRACT_TYPE_PARAM
@@ -7744,17 +7713,11 @@ and parse_let_binding = fun parser ->
       collect_params ();
       (* Build parameter nodes *)
       let param_nodes =
-        List.rev !params
-        |> List.mapi
-          (fun i param ->
-            let trivia =
-              if i < List.length !params_trivia then
-                List.nth (List.rev !params_trivia) i
-              else
-                []
-            in
-            tokens_to_green parser trivia @ [ Ceibo.Green.Node param ])
-        |> List.flatten
+        let params = List.reverse !params in
+        let params_trivia = List.reverse !params_trivia in
+        List.zip params params_trivia
+        |> List.map ~fn:(fun (param, trivia) -> tokens_to_green parser trivia @ [ Ceibo.Green.Node param ])
+        |> List.concat
       in
       (* Check for optional type annotation: : type *)
       let type_annotation_nodes =
@@ -7980,17 +7943,11 @@ and parse_let_binding = fun parser ->
                 in
                 collect_params2 ();
                 let param_nodes2 =
-                  List.rev !params2
-                  |> List.mapi
-                    (fun i param ->
-                      let trivia =
-                        if i < List.length !params_trivia2 then
-                          List.nth (List.rev !params_trivia2) i
-                        else
-                          []
-                      in
-                      tokens_to_green parser trivia @ [ Ceibo.Green.Node param ])
-                  |> List.flatten
+                  let params2 = List.reverse !params2 in
+                  let params_trivia2 = List.reverse !params_trivia2 in
+                  List.zip params2 params_trivia2
+                  |> List.map ~fn:(fun (param, trivia) -> tokens_to_green parser trivia @ [ Ceibo.Green.Node param ])
+                  |> List.concat
                 in
                 (* Check for optional type annotation *)
                 let type_annotation_nodes2 =
@@ -8039,7 +7996,7 @@ and parse_let_binding = fun parser ->
                   @ tokens_to_green parser trivia_after_and
                   @ [ make_token parser and_kw ]
                   @ acc)
-            | _ -> List.rev acc
+            | _ -> List.reverse acc
           in
           let and_bindings = parse_and_bindings [] in
           (* If we found 'and' bindings, wrap in MUTUAL, else return single *)
@@ -8085,7 +8042,7 @@ and parse_variant_constr = fun parser ->
   let constr_name =
     match peek_kind parser with
     | Token.Ident name when String.length name > 0
-    && (String.get name 0 >= 'A' && String.get name 0 <= 'Z') ->
+    && (String.get_unchecked name ~at:0 >= 'A' && String.get_unchecked name ~at:0 <= 'Z') ->
         let ident = consume parser in
         make_node Syntax_kind.IDENT_EXPR [ make_token parser ident ]
     | Token.OpenDelim Token.Bracket ->
@@ -8182,7 +8139,7 @@ and parse_variant_constr = fun parser ->
                 @ tokens_to_green parser trivia_after_star
                 @ [ make_token parser star ]
                 @ acc)
-          | _ -> List.rev acc
+          | _ -> List.reverse acc
         in
         let additional_args = parse_args [] in
         [ make_token parser of_kw ]
@@ -8230,7 +8187,7 @@ and parse_variant_representation = fun parser ->
           @ tokens_to_green parser trivia_after_pipe
           @ [ make_token parser pipe ]
           @ acc)
-    | _ -> List.rev acc
+    | _ -> List.reverse acc
   in
   let additional_constrs = parse_constrs [] in
   leading_pipe_children
@@ -8271,7 +8228,7 @@ and parse_type_constraints = fun parser ->
           @ [ Ceibo.Green.Node concrete_type ]) in
         parse_constraints
           ([ Ceibo.Green.Node constraint_node ] @ tokens_to_green parser trivia @ acc)
-    | _ -> (List.rev acc, trivia)
+    | _ -> (List.reverse acc, trivia)
   in
   parse_constraints []
 
@@ -8318,10 +8275,10 @@ and parse_type_decl = fun parser ->
                 match peek_kind parser with
                 | Token.Gt ->
                     let gt_tok = consume parser in
-                    List.rev (gt_tok :: acc)
+                    List.reverse (gt_tok :: acc)
                 | Token.Eq
                 | Token.EOF ->
-                    List.rev acc
+                    List.reverse acc
                 | _ ->
                     let tok = consume parser in
                     skip_bracketed (tok :: acc)
@@ -8367,7 +8324,7 @@ and parse_type_decl = fun parser ->
                 else
                   (* Single _ is a wildcard type param for GADTs: type _ t *)
                   parse_type_params parser
-            | Token.Ident name when String.length name > 0 && String.get name 0 = '_' ->
+            | Token.Ident name when String.length name > 0 && String.get_unchecked name ~at:0 = '_' ->
                 let tok = consume parser in
                 let diagnostic = Diagnostic.invalid_type_parameter
                   ~text:name
@@ -8931,7 +8888,7 @@ and parse_type_decl = fun parser ->
                       @ tokens_to_green parser trivia_after_and
                       @ [ make_token parser and_kw ]
                       @ acc)
-                | _ -> List.rev acc
+                | _ -> List.reverse acc
               in
               let and_decls = parse_and_types [] in
               (* If we found 'and' types, wrap in MUTUAL, else return single *)
@@ -9117,7 +9074,7 @@ and parse_module_decl = fun parser ->
       (* Continue parsing more functor parameters *)
       parse_functor_params (param_node :: acc)
     else
-      List.rev acc
+      List.reverse acc
   in
   let functor_params = parse_functor_params [] in
   (* Check for optional signature constraint : S *)
@@ -9164,7 +9121,7 @@ and parse_module_decl = fun parser ->
     @ tokens_to_green parser trivia_after_rec
     @ [ make_token parser module_name ]
     @ tokens_to_green parser trivia_after_name
-    @ List.concat_map (fun param -> [ Ceibo.Green.Node param ]) functor_params
+    @ (functor_params |> List.map ~fn:(fun param -> [ Ceibo.Green.Node param ]) |> List.concat)
     @ (
       match signature_constraint with
       | Some (colon, trivia1, sig_expr, trivia2) -> [ make_token parser colon ]
@@ -9432,7 +9389,7 @@ and parse_module_type_expr = fun parser ->
             in
             parse_functor_type_params (param_node :: acc)
           else
-            List.rev acc
+            List.reverse acc
         in
         let functor_params = parse_functor_type_params [] in
         (* Expect -> *)
@@ -9454,7 +9411,7 @@ and parse_module_type_expr = fun parser ->
           ([ make_token parser functor_kw ]
           @ tokens_to_green parser trivia_after_functor
           @ attr_nodes
-          @ List.concat_map (fun param -> [ Ceibo.Green.Node param ]) functor_params
+          @ (functor_params |> List.map ~fn:(fun param -> [ Ceibo.Green.Node param ]) |> List.concat)
           @ [ make_token parser arrow ]
           @ tokens_to_green parser trivia_after_arrow
           @ [ Ceibo.Green.Node return_type ])
@@ -9649,7 +9606,7 @@ and parse_module_expr = fun parser ->
             in
             parse_functor_params (param :: acc)
           else
-            List.rev acc
+            List.reverse acc
         in
         let functor_params = parse_functor_params [] in
         let arrow =
@@ -9669,7 +9626,7 @@ and parse_module_expr = fun parser ->
           ([ make_token parser functor_kw ]
           @ tokens_to_green parser trivia_after_functor
           @ attr_nodes
-          @ List.concat_map (fun param -> [ Ceibo.Green.Node param ]) functor_params
+          @ (functor_params |> List.map ~fn:(fun param -> [ Ceibo.Green.Node param ]) |> List.concat)
           @ [ make_token parser arrow ]
           @ tokens_to_green parser trivia_after_arrow
           @ [ Ceibo.Green.Node body ])
@@ -9828,9 +9785,9 @@ and parse_struct_expr = fun parser ->
   let rec parse_items acc =
     match peek_kind parser with
     | Token.CloseDelim Token.StructEnd ->
-        List.rev acc
+        List.reverse acc
     | Token.EOF ->
-        List.rev acc
+        List.reverse acc
     | _ ->
         let item = parse_structure_item ~in_block:true parser in
         parse_items ([ Ceibo.Green.Node item ] @ acc)
@@ -9861,9 +9818,9 @@ and parse_sig_expr = fun parser ->
   let rec parse_items acc =
     match peek_kind parser with
     | Token.CloseDelim Token.SigEnd ->
-        List.rev acc
+        List.reverse acc
     | Token.EOF ->
-        List.rev acc
+        List.reverse acc
     | _ ->
         let item = parse_signature_item parser in
         parse_items ([ Ceibo.Green.Node item ] @ acc)
@@ -9990,20 +9947,12 @@ and parse_external_decl = fun parser ->
   (* Collect additional primitives *)
   collect_primitives ();
   (* Build primitive nodes *)
-  let prim_list = List.rev !primitive_names in
-  let trivia_list = List.rev !primitive_trivia in
+  let prim_list = List.reverse !primitive_names in
+  let trivia_list = List.reverse !primitive_trivia in
   let additional_prims =
-    List.mapi
-      (fun i prim ->
-        let trivia =
-          if i < List.length trivia_list then
-            List.nth trivia_list i
-          else
-            []
-        in
-        [ make_token parser prim ] @ tokens_to_green parser trivia)
-      prim_list
-    |> List.flatten
+    List.zip prim_list trivia_list
+    |> List.map ~fn:(fun (prim, trivia) -> [ make_token parser prim ] @ tokens_to_green parser trivia)
+    |> List.concat
   in
   (* Parse optional trailing attributes: external f : int = "foo" [@@unboxed] *)
   let attr_nodes = parse_attributes parser in
@@ -10064,6 +10013,13 @@ and parse_exception_decl = fun parser ->
         let type_expr = parse_typexpr parser in
         [ make_token parser of_kw ]
         @ tokens_to_green parser trivia_after_of
+        @ [ Ceibo.Green.Node type_expr ]
+    | Token.Colon ->
+        let colon_tok = consume parser in
+        let trivia_after_colon = consume_trivia parser in
+        let type_expr = parse_typexpr parser in
+        [ make_token parser colon_tok ]
+        @ tokens_to_green parser trivia_after_colon
         @ [ Ceibo.Green.Node type_expr ]
     | _ ->
         []
@@ -10133,12 +10089,12 @@ and parse_hash_ident_expr = fun parser ->
     match peek_kind parser with
     | Token.Ident _ ->
         let ident = consume parser in
-        List.rev ([ make_token parser ident ] @ acc)
+        List.reverse ([ make_token parser ident ] @ acc)
     | tok when is_operator_token tok ->
         let op = consume parser in
         collect (make_token parser op :: acc)
     | _ ->
-        List.rev acc
+        List.reverse acc
   in
   let suffix = collect [ make_token parser hash ] in
   make_node Syntax_kind.IDENT_EXPR suffix
@@ -10679,7 +10635,7 @@ and parse = fun ~cst_kind ~parse_item ~source ~tokens ->
   let dedupe_diagnostics diagnostics =
     let rec loop = fun prev acc ->
       function
-      | [] -> List.rev acc
+      | [] -> List.reverse acc
       | diag :: rest -> (
           match prev with
           | Some previous when same_diagnostic previous diag -> loop prev acc rest
@@ -10692,9 +10648,9 @@ and parse = fun ~cst_kind ~parse_item ~source ~tokens ->
   let rec parse_items acc =
     yield ();
     if is_eof parser then
-      List.rev acc
+      List.reverse acc
     else if peek_kind parser = Token.EOF then
-      List.rev acc
+      List.reverse acc
     else if peek_kind parser = Token.Semi then
       let semi = consume parser in
       parse_items ([ make_token parser semi ] @ acc)
@@ -10706,7 +10662,7 @@ and parse = fun ~cst_kind ~parse_item ~source ~tokens ->
   (* Build SOURCE_FILE with ALL trivia preserved *)
   let children = items in
   let tree = make_node Syntax_kind.SOURCE_FILE children in
-  let diagnostics = List.rev (Cell.get parser.diagnostics) |> dedupe_diagnostics in
+  let diagnostics = List.reverse (Cell.get parser.diagnostics) |> dedupe_diagnostics in
   {
     source;
     tokens;

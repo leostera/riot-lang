@@ -24,7 +24,7 @@ module SSEIterator = struct
     let rec find_pattern pos =
       if pos + pattern_len > String.length str then
         None
-      else if String.sub str pos pattern_len = pattern then
+      else if String.sub str ~offset:pos ~len:pattern_len = pattern then
         Some pos
       else
         find_pattern (pos + 1)
@@ -32,8 +32,10 @@ module SSEIterator = struct
     match find_pattern 0 with
     | None -> None
     | Some pos ->
-        let before = String.sub str 0 pos in
-        let after = String.sub str (pos + pattern_len) (String.length str - pos - pattern_len) in
+        let before = String.sub str ~offset:0 ~len:pos in
+        let after =
+          String.sub str ~offset:(pos + pattern_len) ~len:(String.length str - pos - pattern_len)
+        in
         Some (before, after)
 
   (* Parse one complete SSE event from buffer *)
@@ -47,30 +49,30 @@ module SSEIterator = struct
         (* Empty event, skip it and continue *)
         Some (None, remaining)
     | Some (event_str, remaining) ->
-        let lines = String.split_on_char '\n' event_str in
+        let lines = String.split ~by:"\n" event_str in
         let data_lines = ref [] in
         let event_type = ref None in
         let id = ref None in
-        List.iter
-          (fun line ->
+        List.for_each lines
+          ~fn:(fun line ->
             let line = String.trim line in
             if line = "" then
               ()
             else if String.starts_with ~prefix:"data: " line then
-              data_lines := String.sub line 6 (String.length line - 6) :: !data_lines
+              data_lines := String.sub line ~offset:6 ~len:(String.length line - 6) :: !data_lines
             else if String.starts_with ~prefix:"data:" line then
-              data_lines := String.sub line 5 (String.length line - 5) :: !data_lines
+              data_lines := String.sub line ~offset:5 ~len:(String.length line - 5) :: !data_lines
             else if String.starts_with ~prefix:"event: " line then
-              event_type := Some (String.sub line 7 (String.length line - 7))
+              event_type := Some (String.sub line ~offset:7 ~len:(String.length line - 7))
             else if String.starts_with ~prefix:"id: " line then
-              id := Some (String.sub line 4 (String.length line - 4))
+              id := Some (String.sub line ~offset:4 ~len:(String.length line - 4))
             else if String.starts_with ~prefix:":" line then
               ()
               (* Comment line, ignore *)
             else
               ())
-          lines;
-        let data = String.concat "\n" (List.rev !data_lines) in
+        ;
+        let data = String.concat "\n" (List.reverse !data_lines) in
         (* Check for [DONE] marker *)
         if data = "[DONE]" then
           Some (None, remaining)
@@ -100,14 +102,14 @@ module SSEIterator = struct
               None
           | Ok msgs ->
               (* Accumulate data messages, ignore status/headers *)
-              List.iter
-                (fun msg ->
+              List.for_each msgs
+                ~fn:(fun msg ->
                   match msg with
                   | Connection.Data chunk -> state.buffer <- state.buffer ^ chunk
                   | Connection.Done -> state.done_ <- true
                   | Connection.Status _
                   | Connection.Headers _ -> ())
-                msgs;
+              ;
               if state.done_ && state.buffer = "" then
                 None
               else

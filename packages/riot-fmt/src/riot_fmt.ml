@@ -16,13 +16,13 @@ let command =
 
 let default_stdout = fun buf ->
   if String.ends_with ~suffix:"\n" buf then
-    println (String.sub buf 0 (String.length buf - 1))
+    println (String.sub buf ~offset:0 ~len:(String.length buf - 1))
   else
     print buf
 
 let default_stderr = fun buf ->
   if String.ends_with ~suffix:"\n" buf then
-    eprintln (String.sub buf 0 (String.length buf - 1))
+    eprintln (String.sub buf ~offset:0 ~len:(String.length buf - 1))
   else
     eprint buf
 
@@ -43,7 +43,8 @@ let writer_of_emit = fun emit ->
   IO.Writer.of_write_src (module Write) emit
 
 let workspace_roots = fun workspace ->
-  workspace.Workspace.packages |> List.map (fun (pkg: Package.t) -> Path.(workspace.root / pkg.path))
+  workspace.Workspace.packages
+  |> List.map ~fn:(fun (pkg: Package.t) -> Path.(workspace.root / pkg.path))
 
 type package_scope = {
   package_root: Path.t;
@@ -70,8 +71,7 @@ let load_fmt_scope = function
       let workspace_toml = Path.(workspace.Workspace.root / Path.v "riot.toml") in
       let packages =
         workspace.Workspace.packages
-        |> List.map
-          (fun (pkg: Package.t) ->
+        |> List.map ~fn:(fun (pkg: Package.t) ->
             let package_toml = Path.(pkg.path / Path.v "riot.toml") in
             { package_root = pkg.path; config = Fmt_config.load package_toml })
       in
@@ -102,13 +102,14 @@ let matches_ignore_pattern = fun ~root pattern path ->
   String.contains (relative_or_absolute ~root path) pattern
 
 let find_package_scope = fun scope file ->
-  scope.packages |> List.filter_map
-    (fun package_scope ->
+  scope.packages
+  |> List.filter_map ~fn:(fun package_scope ->
       match Path.strip_prefix file ~prefix:package_scope.package_root with
       | Ok _ -> Some (String.length (Path.to_string package_scope.package_root), package_scope)
-      | Error _ -> None) |> List.sort
-    (fun ((left_len, _)) ((right_len, _)) ->
-      Int.compare right_len left_len) |> List.map (fun (_, package_scope) -> package_scope) |> function
+      | Error _ -> None)
+  |> List.sort ~compare:(fun (left_len, _) (right_len, _) -> Int.compare right_len left_len)
+  |> List.map ~fn:(fun (_, package_scope) -> package_scope)
+  |> function
   | package_scope :: _ -> Some package_scope
   | [] -> None
 
@@ -117,7 +118,7 @@ let should_ignore_file = fun scope file ->
   | None -> false
   | Some scope ->
       let matches patterns ~root =
-        List.exists (fun pattern -> matches_ignore_pattern ~root pattern file) patterns
+        List.any patterns ~fn:(fun pattern -> matches_ignore_pattern ~root pattern file)
       in
       if matches scope.workspace_config.ignore_patterns ~root:scope.workspace_root then
         true
@@ -160,8 +161,8 @@ let write_failed_file = fun ~writer file_result ->
 
 let write_silent_failures = fun ~writer (result: Krasny.Runner.run_result) ->
   result.files
-  |> List.filter (fun (file_result: Krasny.Runner.file_result) -> file_result.status = Failed)
-  |> List.iter (write_failed_file ~writer)
+  |> List.filter ~fn:(fun (file_result: Krasny.Runner.file_result) -> file_result.status = Failed)
+  |> List.for_each ~fn:(write_failed_file ~writer)
 
 type output_mode =
   | Silent
@@ -170,7 +171,10 @@ type output_mode =
   | QuietCheck
 
 let explicit_targets = fun matches ->
-  ArgParser.get_many matches "path" |> List.map Path.v |> List.sort_uniq compare_paths
+  ArgParser.get_many matches "path"
+  |> List.map ~fn:Path.v
+  |> List.sort ~compare:compare_paths
+  |> List.unique ~compare:compare_paths
 
 let no_event = fun (_: Krasny.Report.event) -> ()
 
@@ -283,7 +287,7 @@ let run_check_paths = fun ?workspace ?(on_event = no_event) paths ->
     ~on_event
     ~mode:Krasny.Runner.Check
     ~output_mode:Silent
-    ~explicit_targets:(List.sort_uniq compare_paths paths)
+    ~explicit_targets:(paths |> List.sort ~compare:compare_paths |> List.unique ~compare:compare_paths)
     ()
 
 let run_explain = fun ?(stdout = default_stdout) ?(stderr = default_stderr) error_code ->

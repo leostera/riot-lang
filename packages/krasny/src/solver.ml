@@ -7,15 +7,15 @@ type mode =
 type frame = int * mode * Doc.t
 
 let last_line_width = fun text ->
-  match List.rev (String.split_on_char '\n' text) with
+  match List.reverse (String.split text ~by:"\n") with
   | [] -> 0
   | last :: _ -> String.length last
 
 let solve = fun ~width doc ->
   let rec push_many indent mode docs rest =
-    match List.rev docs with
+    match List.reverse docs with
     | [] -> rest
-    | docs -> docs |> List.fold_left (fun acc doc -> (indent, mode, doc) :: acc) rest
+    | docs -> List.fold_left docs ~acc:rest ~fn:(fun acc doc -> (indent, mode, doc) :: acc)
   in
   let rec fits = fun remaining ->
     function

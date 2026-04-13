@@ -66,17 +66,17 @@ let dynamic_table_size = fun decoder ->
 
 (** Try to read one byte from reader *)
 let read_byte = fun reader ->
-  let buf = Bytes.create 1 in
+  let buf = Bytes.create ~size:1 in
   match IO.Reader.read reader buf with
-  | Ok 1 -> Some (Char.code (Bytes.get buf 0))
+  | Ok 1 -> Some (Bytes.get_unchecked buf ~at:0 |> Char.to_int)
   | _ -> None
 
 (** Try to read N bytes from reader *)
 let read_n_bytes = fun reader n ->
   if n = 0 then
-    Some Bytes.empty
+    Some (Bytes.create ~size:0)
   else
-    let buf = Bytes.create n in
+    let buf = Bytes.create ~size:n in
     match IO.Reader.read reader buf with
     | Ok bytes_read when bytes_read = n -> Some buf
     | _ -> None
@@ -233,7 +233,7 @@ let decode = fun decoder reader ->
               (* Check if we have complete header block *)
               (* For simplicity, return headers when we've decoded at least one *)
               if List.length (Cell.get decoder.accumulated_headers) > 0 then
-                let result = List.rev (Cell.get decoder.accumulated_headers) in
+                let result = List.reverse (Cell.get decoder.accumulated_headers) in
                 Cell.set decoder.accumulated_headers [];
                 Headers result
               else

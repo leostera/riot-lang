@@ -1,6 +1,10 @@
 open Std
 
-let ( let* ) = Result.and_then
+let ( let* ) result fn = Result.and_then result ~fn
+
+let assoc_value = fun entries ~key ->
+  List.find entries ~fn:(fun (entry_key, _) -> entry_key = key)
+  |> Option.map ~fn:(fun (_, value) -> value)
 
 let protect = fun ~finally f ->
   match f () with
@@ -135,14 +139,12 @@ let normalize_riot_agent = function
 
 let set_riot_agent = fun value -> configured_riot_agent := normalize_riot_agent value
 
-let riot_agent_override = fun () -> Env.var Env.String ~name:"RIOT_AGENT_HEADER" |> normalize_riot_agent
+let riot_agent_override = fun () -> Env.get Env.String ~var:"RIOT_AGENT_HEADER" |> normalize_riot_agent
 
 let default_http_headers = fun headers ->
   let has_riot_agent =
-    List.exists
-      (fun (name, _value) ->
-        String.equal (String.lowercase_ascii name) "x-riot-agent")
-      headers
+    List.any headers ~fn:(fun (name, _value) ->
+      String.equal (String.lowercase_ascii name) "x-riot-agent")
   in
   if has_riot_agent then
     headers
@@ -171,11 +173,8 @@ let default_fetch =
       | Error err -> Error (blink_error_message err)
       | Ok conn ->
           let request =
-            List.fold_left
-              (fun request (name, value) ->
+            List.fold_left headers ~acc:(Net.Http.Request.create method_ uri) ~fn:(fun request (name, value) ->
                 Net.Http.Request.add_header request name value)
-              (Net.Http.Request.create method_ uri)
-              headers
           in
           let finish result =
             try
@@ -227,16 +226,12 @@ let release_key = fun ~package_name ~version -> (Sparse_index.normalized_name pa
 
 let in_memory = fun ?config ~cache ?(releases = []) ~packages () ->
   let packages =
-    List.map
-      (fun (document: Sparse_index.package_document) ->
-        (Sparse_index.normalized_name document.name, document))
-      packages
+    List.map packages ~fn:(fun (document: Sparse_index.package_document) ->
+      (Sparse_index.normalized_name document.name, document))
   in
   let releases =
-    List.map
-      (fun (release: release_source) ->
-        (release_key ~package_name:release.package_name ~version:release.version, release))
-      releases
+    List.map releases ~fn:(fun (release: release_source) ->
+      (release_key ~package_name:release.package_name ~version:release.version, release))
   in
   { cache; fetch = default_fetch; source = In_memory { config; packages; releases } }
 
@@ -276,7 +271,7 @@ let post_required = fun registry uri ~headers ~body ->
   | Ok { status_code; body } -> (
       match Data.Json.of_string body with
       | Ok (Data.Json.Object fields) -> (
-          match List.assoc_opt "message" fields with
+          match assoc_value fields ~key:"message" with
           | Some (Data.Json.String message) -> Error message
           | _ -> Error ("request to '"
           ^ Net.Uri.to_string uri
@@ -310,7 +305,7 @@ let rec take = fun n items ->
     | item :: rest -> item :: take (n - 1) rest
 
 let object_field = fun ~context ~field fields ->
-  match List.assoc_opt field fields with
+  match assoc_value fields ~key:field with
   | Some value -> Ok value
   | None -> Error (context ^ " is missing required field '" ^ field ^ "'")
 
@@ -321,20 +316,20 @@ let string_field = fun ~context ~field fields ->
   | Ok _ -> Error (context ^ "." ^ field ^ " must be a string")
 
 let optional_string_field = fun ~context ~field fields ->
-  match List.assoc_opt field fields with
+  match assoc_value fields ~key:field with
   | None -> Ok None
   | Some Data.Json.Null -> Ok None
   | Some (Data.Json.String value) -> Ok (Some value)
   | Some _ -> Error (context ^ "." ^ field ^ " must be a string")
 
 let string_field_with_fallback = fun ~context ~field ~fallback fields ->
-  match List.assoc_opt field fields with
+  match assoc_value fields ~key:field with
   | Some (Data.Json.String value) ->
       Ok value
   | Some _ ->
       Error (context ^ "." ^ field ^ " must be a string")
   | None -> (
-      match List.assoc_opt fallback fields with
+      match assoc_value fields ~key:fallback with
       | Some (Data.Json.String value) -> Ok value
       | Some _ -> Error (context ^ "." ^ fallback ^ " must be a string")
       | None -> Error (context ^ " is missing required field '" ^ field ^ "'")
@@ -470,7 +465,7 @@ let search_results_of_json = fun json ->
       match object_field ~context:"search response" ~field:"results" fields with
       | Ok (Data.Json.Array values) ->
           let rec loop acc = function
-            | [] -> Ok (List.rev acc)
+            | [] -> Ok (List.reverse acc)
             | value :: rest ->
                 let* result = search_result_of_json value in
                 loop (result :: acc) rest
@@ -588,9 +583,8 @@ let read_package_document = fun registry ~package_name ->
           | Ok (Some config) -> fetch_package_document config
         )
     )
-  | In_memory { packages; config=_; releases=_ } -> Ok (List.assoc_opt
-    (Sparse_index.normalized_name package_name)
-    packages)
+  | In_memory { packages; config=_; releases=_ } ->
+      Ok (assoc_value packages ~key:(Sparse_index.normalized_name package_name))
 
 let search_packages = fun registry ~query ?(limit = 5) () ->
   if String.equal (String.trim query) "" then
@@ -622,23 +616,26 @@ let search_packages = fun registry ~query ?(limit = 5) () ->
       )
     | In_memory { packages; config=_; releases=_ } ->
         let normalized_query = Sparse_index.normalized_name query in
-        packages |> List.map (fun (_, document) -> document) |> List.filter
-          (fun (document: Sparse_index.package_document) ->
+        packages
+        |> List.map ~fn:(fun (_, document) -> document)
+        |> List.filter ~fn:(fun (document: Sparse_index.package_document) ->
             let normalized_name = Sparse_index.normalized_name document.name in
             String.equal normalized_name normalized_query
             || String.starts_with ~prefix:normalized_query normalized_name
-            || String.contains normalized_name normalized_query) |> List.sort
-          (fun (left: Sparse_index.package_document) (right: Sparse_index.package_document) ->
-            String.compare left.name right.name) |> take limit |> List.map
-          (fun (document: Sparse_index.package_document) ->
-            {
-              package_name = document.name;
-              latest_version = document.latest;
-              description =
-                match document.releases with
-                | release :: _ -> release.description
-                | [] -> None;
-            }) |> fun results -> Ok results
+            || String.contains normalized_name normalized_query)
+        |> List.sort ~compare:(fun (left: Sparse_index.package_document) (right: Sparse_index.package_document) ->
+          String.compare left.name right.name)
+        |> take limit
+        |> List.map ~fn:(fun (document: Sparse_index.package_document) ->
+          {
+            package_name = document.name;
+            latest_version = document.latest;
+            description =
+              match document.releases with
+              | release :: _ -> release.description
+              | [] -> None;
+          })
+        |> fun results -> Ok results
 
 let refresh_package_document = fun registry ~package_name ->
   match registry.source with
@@ -674,9 +671,8 @@ let refresh_package_document = fun registry ~package_name ->
                 )
             )
     )
-  | In_memory { packages; config=_; releases=_ } -> Ok (List.assoc_opt
-    (Sparse_index.normalized_name package_name)
-    packages)
+  | In_memory { packages; config=_; releases=_ } ->
+      Ok (assoc_value packages ~key:(Sparse_index.normalized_name package_name))
 
 let write_release_files = fun ~root (release: release_source) ->
   let manifest_path = Path.(root / Path.v "riot.toml") in
@@ -747,17 +743,20 @@ let cached_archive_is_gzip = fun archive_path ->
   ^ "': "
   ^ Fs.File.error_to_string err)
   | Ok file ->
-      protect ~finally:(fun () -> ignore (Fs.File.close file))
+      protect ~finally:(fun () ->
+        let _ = Fs.File.close file in
+        ())
         (fun () ->
-          let magic = IO.Bytes.make 2 '\000' in
+          let magic = IO.Bytes.create ~size:2 in
+          IO.Bytes.fill magic ~offset:0 ~len:2 ~char:'\000';
           match Fs.File.read file magic ~offset:0 ~len:2 with
           | Error err -> Error ("failed to read cached package archive '"
           ^ Path.to_string archive_path
           ^ "': "
           ^ Fs.File.error_to_string err)
           | Ok bytes_read -> Ok (bytes_read = 2
-          && Char.equal (IO.Bytes.get magic 0) '\x1f'
-          && Char.equal (IO.Bytes.get magic 1) '\x8b'))
+          && Char.equal (IO.Bytes.get_unchecked magic ~at:0) '\x1f'
+          && Char.equal (IO.Bytes.get_unchecked magic ~at:1) '\x8b'))
 
 let extract_cached_archive = fun ~archive_path ~root ->
   match Fs.create_dir_all root with
@@ -778,7 +777,9 @@ let extract_cached_archive = fun ~archive_path ~root ->
           match Fs.File.open_read archive_path with
           | Error err -> fail (Fs.File.error_to_string err)
           | Ok file ->
-              protect ~finally:(fun () -> ignore (Fs.File.close file))
+              protect ~finally:(fun () ->
+                let _ = Fs.File.close file in
+                ())
                 (fun () ->
                   let reader = Fs.File.to_reader file |> Compress.Gzip.to_reader in
                   match Archive.Tar.extract reader ~into:root with
@@ -808,8 +809,8 @@ let move_directory_contents = fun ~src ~dst ->
         let from_path = Path.(src / entry) in
         let to_path = Path.(dst / entry) in
         let* () = Fs.rename ~src:from_path ~dst:to_path
-        |> Result.map_error
-          (fun err ->
+        |> Result.map_err
+          ~fn:(fun err ->
             "failed to move extracted entry '"
             ^ Path.to_string from_path
             ^ "' into '"
@@ -838,18 +839,16 @@ let normalize_legacy_package_root = fun ~root ~(release:Sparse_index.release) ->
   | Ok false ->
       let* entries = read_dir_entries root in
       let top_level_dirs =
-        List.filter_map
-          (fun entry ->
-            let full_path = Path.(root / entry) in
-            match path_is_directory full_path with
-            | Ok true -> Some (Ok full_path)
-            | Ok false -> None
-            | Error err -> Some (Error err))
-          entries
+        List.filter_map entries ~fn:(fun entry ->
+          let full_path = Path.(root / entry) in
+          match path_is_directory full_path with
+          | Ok true -> Some (Ok full_path)
+          | Ok false -> None
+          | Error err -> Some (Error err))
       in
       let* top_level_dirs =
         let rec collect acc = function
-          | [] -> Ok (List.rev acc)
+          | [] -> Ok (List.reverse acc)
           | Ok path :: rest -> collect (path :: acc) rest
           | (Error _ as err) :: _ -> err
         in
@@ -885,8 +884,8 @@ let normalize_legacy_package_root = fun ~root ~(release:Sparse_index.release) ->
               in
               let* () = move_directory_contents ~src:candidate_root ~dst:root in
               let* () = Fs.remove_dir_all top_level_dir
-              |> Result.map_error
-                (fun err ->
+              |> Result.map_err
+                ~fn:(fun err ->
                   "failed to clean extracted archive root '"
                   ^ Path.to_string top_level_dir
                   ^ "': "
@@ -911,8 +910,8 @@ let reset_materialized_root = fun root ->
   ^ IO.error_message err)
   | Ok false -> Ok ()
   | Ok true -> Fs.remove_dir_all root
-  |> Result.map_error
-    (fun err ->
+  |> Result.map_err
+    ~fn:(fun err ->
       "failed to clean package source directory '" ^ Path.to_string root ^ "': " ^ IO.error_message err)
 
 let find_release = fun registry ~package_name ~version ->
@@ -923,10 +922,8 @@ let find_release = fun registry ~package_name ~version ->
       Error ("package '" ^ package_name ^ "' was not found in registry '" ^ name registry ^ "'")
   | Ok (Some document) -> (
       match
-        List.find_opt
-          (fun (release: Sparse_index.release) ->
-            String.equal release.version version)
-          document.releases
+        List.find document.releases ~fn:(fun (release: Sparse_index.release) ->
+          String.equal release.version version)
       with
       | Some release when release.yanked -> Error ("package '"
       ^ package_name
@@ -981,8 +978,8 @@ let remove_cached_archive = fun archive_path ->
   ^ IO.error_message err)
   | Ok false -> Ok ()
   | Ok true -> Fs.remove_file archive_path
-  |> Result.map_error
-    (fun err ->
+  |> Result.map_err
+    ~fn:(fun err ->
       "failed to remove cached package archive '"
       ^ Path.to_string archive_path
       ^ "': "
@@ -1023,7 +1020,7 @@ let materialize_release = fun registry ~package_name ~version ->
         Ok `Materialized
     | Ok false ->
         let* release = find_release registry ~package_name ~version in
-        normalize_legacy_package_root ~root ~release |> Result.map (fun () -> `Materialized)
+        normalize_legacy_package_root ~root ~release |> Result.map ~fn:(fun () -> `Materialized)
   in
   let ensure_cached_archive () =
     match Fs.exists archive_path with
@@ -1066,7 +1063,7 @@ let materialize_release = fun registry ~package_name ~version ->
           | Ok () -> extract_with_single_retry ()
         )
       | In_memory { releases; config=_; packages=_ } -> (
-          match List.assoc_opt (release_key ~package_name ~version) releases with
+          match assoc_value releases ~key:(release_key ~package_name ~version) with
           | None -> Error ("in-memory registry is missing source contents for '"
           ^ package_name
           ^ "@"

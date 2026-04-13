@@ -4,7 +4,7 @@ let rec string_contains = fun ~sub_str ->
   function
   | "" -> sub_str = ""
   | s -> String.starts_with ~prefix:sub_str s
-  || string_contains ~sub_str (String.sub s 1 (String.length s - 1))
+  || string_contains ~sub_str (String.sub s ~offset:1 ~len:(String.length s - 1))
 
 type t =
   No_color
@@ -13,9 +13,9 @@ type t =
   | True_color
 
 let from_env = fun () ->
-  let term = Env.get "TERM" in
-  let color_term = Env.get "COLORTERM" in
-  let term_program = Env.get "TERM_PROGRAM" in
+  let term = Env.get Env.String ~var:"TERM" in
+  let color_term = Env.get Env.String ~var:"COLORTERM" in
+  let term_program = Env.get Env.String ~var:"TERM_PROGRAM" in
   let is_screen =
     match term with
     | Some term -> String.starts_with ~prefix:"screen" term
@@ -26,7 +26,11 @@ let from_env = fun () ->
     | Some "tmux" -> true
     | _ -> false
   in
-  let is_term sub_str = term |> Option.map (string_contains ~sub_str) |> Option.unwrap_or ~default:false in
+  let is_term sub_str =
+    term
+    |> Option.map ~fn:(string_contains ~sub_str)
+    |> Option.unwrap_or ~default:false
+  in
   let is_256color = is_term "256color" in
   let is_color = is_term "color" in
   let is_ansi = is_term "ansi" in

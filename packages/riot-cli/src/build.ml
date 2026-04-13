@@ -29,7 +29,7 @@ type request = {
 }
 
 let build_trace_enabled = fun () ->
-  match Env.var String ~name:"RIOT_BUILD_TRACE" with
+  match Env.get Env.String ~var:"RIOT_BUILD_TRACE" with
   | Some ("1" | "true" | "yes") -> true
   | _ -> false
 
@@ -77,7 +77,7 @@ let stamp_json_event = fun (json: Data.Json.t) ->
   match json with
   | Data.Json.Object fields ->
       let fields =
-        if Option.is_some (List.assoc_opt "emitted_at_us" fields) then
+        if Option.is_some (List.find fields ~fn:(fun (name, _) -> String.equal name "emitted_at_us")) then
           fields
         else
           fields @ [ ("emitted_at_us", Data.Json.Int (event_elapsed_us ())) ]
@@ -342,11 +342,11 @@ let write_build_error = fun ~mode err ->
         "NoTargetsMatched"
         [
           ("pattern", Data.Json.String pattern);
-          (
-            "available_targets",
-            Data.Json.Array (List.map (fun target -> Data.Json.String target) available_targets)
-          );
-        ]
+                  (
+                    "available_targets",
+                    Data.Json.Array (List.map available_targets ~fn:(fun target -> Data.Json.String target))
+                  );
+                ]
         (Riot_build.build_error_message err)
   | Riot_build.ToolchainInstallFailed { target; error } ->
       write_command_error
@@ -371,14 +371,14 @@ let write_build_error = fun ~mode err ->
                   ("package_name", Data.Json.String package_name);
                   (
                     "available_packages",
-                    Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) available_packages)
+                    Data.Json.Array (List.map available_packages ~fn:(fun pkg -> Data.Json.String pkg))
                   );
                 ])
           else (
             out ("\027[1;31mError\027[0m: Package '" ^ package_name ^ "' not found");
             out "";
             out "Available packages:";
-            List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages
+            List.for_each available_packages ~fn:(fun pkg -> out ("  • " ^ pkg))
           )
       | Client.PackagesNotFound { package_names; available_packages } ->
           if mode = Json then
@@ -388,18 +388,18 @@ let write_build_error = fun ~mode err ->
                 [
                   (
                     "package_names",
-                    Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) package_names)
+                    Data.Json.Array (List.map package_names ~fn:(fun pkg -> Data.Json.String pkg))
                   );
                   (
                     "available_packages",
-                    Data.Json.Array (List.map (fun pkg -> Data.Json.String pkg) available_packages)
+                    Data.Json.Array (List.map available_packages ~fn:(fun pkg -> Data.Json.String pkg))
                   );
                 ])
           else (
             out ("\027[1;31mError\027[0m: Packages not found: " ^ String.concat ", " package_names);
             out "";
             out "Available packages:";
-            List.iter (fun pkg -> out ("  • " ^ pkg)) available_packages
+            List.for_each available_packages ~fn:(fun pkg -> out ("  • " ^ pkg))
           )
       | Client.BuildAlreadyRunning { lock_path } ->
           write_command_error
@@ -414,7 +414,7 @@ let write_build_error = fun ~mode err ->
             [
               (
                 "errors",
-                Data.Json.Array (List.map Riot_executor.Package_builder.build_result_to_json errors)
+                Data.Json.Array (List.map errors ~fn:Riot_executor.Package_builder.build_result_to_json)
               );
             ]
             (Client.error_message client_error)
@@ -428,7 +428,7 @@ let write_build_error = fun ~mode err ->
           write_command_error
             ~mode
             "CycleDetected"
-            [ ("cycle_nodes", Data.Json.Array (List.map Data.Json.string cycle_nodes)) ]
+            [ ("cycle_nodes", Data.Json.Array (List.map cycle_nodes ~fn:Data.Json.string)) ]
             (Client.error_message client_error)
       | Client.UnexpectedEvent { reason } ->
           write_command_error ~mode "UnexpectedEvent" [ ("reason", Data.Json.String reason) ] reason
@@ -532,9 +532,8 @@ let run_request = fun (request: request) ->
       Error (Failure (Riot_build.build_error_message err))
 
 let print_workspace_load_errors = fun errors ->
-  List.iter
+  List.for_each errors ~fn:
     (fun err -> out ("\027[1;31mError\027[0m: " ^ Workspace_manager.load_error_to_string err))
-    errors
 
 type loaded_workspace = {
   workspace: Workspace.t;

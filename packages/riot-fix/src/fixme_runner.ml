@@ -26,12 +26,12 @@ let generator_version = "v6"
 
 let sanitize_component = fun text ->
   String.map
-    (fun ch ->
+    text
+    ~fn:(fun ch ->
       if (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') then
         ch
       else
         '_')
-    text
 
 let generated_module_name = fun (provider: Riot_model.Fix_provider.t) ->
   "Provider_" ^ sanitize_component provider.package_name ^ "_" ^ sanitize_component provider.name
@@ -41,7 +41,8 @@ let ocaml_module_name_of_path = fun path ->
   if String.length base = 0 then
     "Generated"
   else
-    String.uppercase_ascii (String.sub base 0 1) ^ String.sub base 1 (String.length base - 1)
+    String.uppercase_ascii (String.sub base ~offset:0 ~len:1)
+    ^ String.sub base ~offset:1 ~len:(String.length base - 1)
 
 let support_module_sources = fun (provider: Riot_model.Fix_provider.t) ->
   let provider_dir = Path.dirname provider.source_path in
@@ -49,8 +50,8 @@ let support_module_sources = fun (provider: Riot_model.Fix_provider.t) ->
   match Fs.read_dir provider_dir with
   | Error _ -> []
   | Ok iter ->
-      Std.Iter.MutIterator.to_list iter |> List.filter_map
-        (fun entry ->
+      Std.Iter.MutIterator.to_list iter
+      |> List.filter_map ~fn:(fun entry ->
           let source_path = Path.(provider_dir / entry) in
           let entry_name = Path.basename source_path in
           if
@@ -59,8 +60,8 @@ let support_module_sources = fun (provider: Riot_model.Fix_provider.t) ->
           then
             None
           else
-            Some (ocaml_module_name_of_path source_path, source_path)) |> List.sort
-        (fun ((left_name, left_path)) ((right_name, right_path)) ->
+            Some (ocaml_module_name_of_path source_path, source_path))
+      |> List.sort ~compare:(fun (left_name, left_path) (right_name, right_path) ->
           match String.compare left_name right_name with
           | 0 -> String.compare (Path.to_string left_path) (Path.to_string right_path)
           | cmp -> cmp)
@@ -72,8 +73,7 @@ let file_content_hash = fun path ->
 
 let provider_fingerprint = fun (provider: Riot_model.Fix_provider.t) ->
   let support_hashes = support_module_sources provider
-  |> List.map
-    (fun (module_name, source_path) ->
+  |> List.map ~fn:(fun (module_name, source_path) ->
       module_name ^ ":" ^ Path.to_string source_path ^ ":" ^ file_content_hash source_path)
   |> String.concat "," in
   String.concat
@@ -88,9 +88,11 @@ let provider_fingerprint = fun (provider: Riot_model.Fix_provider.t) ->
     ]
 
 let provider_hash = fun providers ->
-  providers |> List.sort
-    (fun (left: Riot_model.Fix_provider.t) right ->
-      String.compare (provider_fingerprint left) (provider_fingerprint right)) |> List.map provider_fingerprint |> fun fingerprints ->
+  providers
+  |> List.sort ~compare:(fun (left: Riot_model.Fix_provider.t) right ->
+    String.compare (provider_fingerprint left) (provider_fingerprint right))
+  |> List.map ~fn:provider_fingerprint
+  |> fun fingerprints ->
     String.concat "\n" (generator_version :: fingerprints) |> Crypto.hash_string |> Crypto.Digest.hex
 
 let generated_provider = fun plan provider ->
@@ -114,7 +116,8 @@ let provider_module_line = fun (provider: generated_provider) ->
 let registry_source = fun providers ->
   let provider_lines = providers
   |> List.map
-    (fun (provider: Riot_model.Fix_provider.t) -> "    (module " ^ generated_module_name provider ^ " : Riot_fix.Provider.S);") in
+    ~fn:(fun (provider: Riot_model.Fix_provider.t) -> "    (module " ^ generated_module_name provider ^ " : Riot_fix.Provider.S);")
+  in
   String.concat
     "\n"
     [
@@ -136,12 +139,12 @@ let embedded_provider_module_source = fun (provider: generated_provider) ->
     [ "module " ^ provider.module_name ^ " = struct"; String.concat "\n"
         (
           List.map
-            (fun ((module_name, source_path)) ->
+            provider.support_module_sources
+            ~fn:(fun (module_name, source_path) ->
               let source = Fs.read source_path
               |> Result.expect
                 ~msg:("failed to read provider support source " ^ Path.to_string source_path) in
               String.concat "\n" [ "module " ^ module_name ^ " = struct"; source; "end"; "" ])
-            provider.support_module_sources
         ); source; "end"; ""; ]
 
 let dependency_entries = fun workspace_root providers ->
@@ -159,25 +162,21 @@ let dependency_entries = fun workspace_root providers ->
   in
   let workspace_package_path name =
     workspace_packages
-    |> List.find_opt
-      (fun (pkg: Riot_model.Package.t) ->
-        String.equal pkg.name name)
-    |> Option.map (fun (pkg: Riot_model.Package.t) -> pkg.path)
+    |> List.find ~fn:(fun (pkg: Riot_model.Package.t) -> String.equal pkg.name name)
+    |> Option.map ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.path)
   in
   let provider_build_deps =
     providers
-    |> List.concat_map
-      (fun ({ provider; _ }: generated_provider) ->
-        workspace_packages |> List.find_opt
-          (fun (pkg: Riot_model.Package.t) ->
-            String.equal pkg.name provider.package_name) |> Option.map
-          (fun (pkg: Riot_model.Package.t) -> (pkg.path, pkg.build_dependencies)) |> Option.unwrap_or
-          ~default:(provider.package_path, []) |> fun (package_path, build_dependencies) ->
-          build_dependencies |> List.filter_map
-            (fun (dep: Riot_model.Package.dependency) ->
+    |> List.map ~fn:(fun ({ provider; _ }: generated_provider) ->
+        workspace_packages
+        |> List.find ~fn:(fun (pkg: Riot_model.Package.t) -> String.equal pkg.name provider.package_name)
+        |> Option.map ~fn:(fun (pkg: Riot_model.Package.t) -> (pkg.path, pkg.build_dependencies))
+        |> Option.unwrap_or ~default:(provider.package_path, [])
+        |> fun (package_path, build_dependencies) ->
+          build_dependencies |> List.filter_map ~fn:(fun (dep: Riot_model.Package.dependency) ->
               match dep.source with
               | { workspace=true; _ } ->
-                  workspace_package_path dep.name |> Option.map (fun path -> (dep.name, path))
+                  workspace_package_path dep.name |> Option.map ~fn:(fun path -> (dep.name, path))
               | { builtin=true; _ } ->
                   None
               | { path=Some path; _ } ->
@@ -189,6 +188,7 @@ let dependency_entries = fun workspace_root providers ->
                   Some (dep.name, path)
               | { path=None; _ } ->
                   None))
+    |> List.concat
   in
   let entries = [
     ("std", Path.(workspace_root / Path.v "packages" / Path.v "std"));
@@ -197,13 +197,12 @@ let dependency_entries = fun workspace_root providers ->
     ("fixme", Path.(workspace_root / Path.v "packages" / Path.v "fixme"));
   ]
   @ provider_build_deps
-  @ List.map
-    (fun ({ provider; _ }: generated_provider) -> (provider.package_name, provider.package_path))
-    providers in
+  @ List.map providers ~fn:(fun ({ provider; _ }: generated_provider) -> (provider.package_name, provider.package_path))
+  in
   let rec dedupe_by_name seen acc = function
-    | [] -> List.rev acc
+    | [] -> List.reverse acc
     | (name, path) :: rest ->
-        if List.mem name seen then
+        if List.contains seen ~value:name then
           dedupe_by_name seen acc rest
         else
           dedupe_by_name (name :: seen) ((name, path) :: acc) rest
@@ -225,7 +224,7 @@ let dependency_of_entry = fun (name, path) ->
   }
 
 let package_dependencies = fun ~workspace_root providers ->
-  dependency_entries workspace_root providers |> List.map dependency_of_entry
+  dependency_entries workspace_root providers |> List.map ~fn:dependency_of_entry
 
 let plan = fun ~workspace_root ~target_dir_root providers ->
   let hash = provider_hash providers in
@@ -264,7 +263,7 @@ let plan = fun ~workspace_root ~target_dir_root providers ->
     providers = [];
   }
   in
-  let providers = List.map (generated_provider plan) providers in
+  let providers = List.map providers ~fn:(generated_provider plan) in
   let package = Riot_model.Package.make ~name:package_name ~path:package_dir ~relative_path:(relative_path_for_package
     ~workspace_root
     package_dir) ~dependencies:(package_dependencies ~workspace_root providers) ~binaries:[
@@ -286,7 +285,7 @@ let library_source = fun plan ->
     [
       "open Std";
       "";
-      String.concat "\n" (List.map embedded_provider_module_source plan.providers);
+      String.concat "\n" (List.map plan.providers ~fn:embedded_provider_module_source);
       "let print_response_output response =";
       "  match Riot_fix.response_output response with";
       "  | Some output ->";
@@ -332,7 +331,7 @@ let library_source = fun plan ->
       "let main ~args =";
       "  Riot_fix.Provider_registry.register_providers";
       "    [";
-      String.concat "\n" (List.map provider_module_line plan.providers);
+      String.concat "\n" (List.map plan.providers ~fn:provider_module_line);
       "    ];";
       "  run_generated_request ~args";
       "";
@@ -343,11 +342,11 @@ let main_source = String.concat
   [ "open Std"; ""; "let () ="; "  Actors.run ~main:Fixme_runner.main ~args:Env.args ()"; ""; ]
 
 let ensure_directories = fun plan ->
-  List.iter
-    (fun path ->
+  List.for_each
+    [ plan.generated_dir; plan.package_dir; plan.src_dir; plan.providers_dir ]
+    ~fn:(fun path ->
       Fs.create_dir_all path
       |> Result.expect ~msg:("failed to create generated fixme runner dir " ^ Path.to_string path))
-    [ plan.generated_dir; plan.package_dir; plan.src_dir; plan.providers_dir ]
 
 let remove_if_exists = fun path remove ->
   match Fs.exists path with
@@ -366,7 +365,8 @@ let copy_provider_source = fun (provider: generated_provider) ->
 
 let attach_to_workspace = fun workspace plan ->
   let other_packages = workspace.Riot_model.Workspace.packages
-  |> List.filter (fun (pkg: Riot_model.Package.t) -> not (String.equal pkg.name plan.package_name)) in
+  |> List.filter ~fn:(fun (pkg: Riot_model.Package.t) -> not (String.equal pkg.name plan.package_name))
+  in
   { workspace with packages = other_packages @ [ plan.package ] }
 
 let materialize = fun ~workspace_root ~target_dir_root providers ->
@@ -375,5 +375,5 @@ let materialize = fun ~workspace_root ~target_dir_root providers ->
   ensure_directories plan;
   write_file plan.library_path (library_source plan);
   write_file plan.main_path main_source;
-  List.iter copy_provider_source plan.providers;
+  List.for_each plan.providers ~fn:copy_provider_source;
   plan

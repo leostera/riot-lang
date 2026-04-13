@@ -50,7 +50,7 @@ let no_runnable_binaries_message = fun ?package_name () ->
   | None -> "no runnable binaries found; pass a binary name or " ^ hint
 
 let parse_local_target = fun ?package_filter name ->
-  match String.split_on_char ':' name with
+  match String.split name ~by:":" with
   | [package_name;binary_name] -> (
       match package_filter with
       | Some expected_package when not (String.equal expected_package package_name) -> Error (Failure ("conflicting package filters: got --package "
@@ -65,8 +65,8 @@ let split_remote_binary = fun raw ->
   match String.last_index raw '@' with
   | Some idx when idx = String.length raw - 1 -> Error (Failure ("invalid remote target '" ^ raw ^ "': expected binary name after @"))
   | Some idx when idx > 0 && idx < String.length raw - 1 -> Ok (
-    String.sub raw 0 idx,
-    Some (String.sub raw (idx + 1) (String.length raw - idx - 1))
+    String.sub raw ~offset:0 ~len:idx,
+    Some (String.sub raw ~offset:(idx + 1) ~len:(String.length raw - idx - 1))
   )
   | _ -> Ok (raw, None)
 
@@ -97,12 +97,10 @@ let implicit_local_targets = fun ?package_filter (workspace: Riot_model.Workspac
     | None -> true
   in
   workspace.packages
-  |> List.filter package_matches_filter
-  |> List.concat_map
-    (fun (pkg: Riot_model.Package.t) ->
+  |> List.filter ~fn:package_matches_filter
+  |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
       Riot_model.Package.binaries_for_scope Riot_model.Package.Normal pkg
-      |> List.map
-        (fun (bin: Riot_model.Package.binary) -> { package_name = pkg.name; binary_name = bin.name }))
+      |> List.map ~fn:(fun (bin: Riot_model.Package.binary) -> { package_name = pkg.name; binary_name = bin.name }))
 
 let resolve_implicit_local_target = fun ?package_filter (workspace: Riot_model.Workspace.t) ->
   match implicit_local_targets ?package_filter workspace with
@@ -115,15 +113,12 @@ let resolve_implicit_local_target = fun ?package_filter (workspace: Riot_model.W
     )
   | targets ->
       let rendered = targets
-      |> List.map (fun { package_name; binary_name } -> package_name ^ ":" ^ binary_name)
+      |> List.map ~fn:(fun { package_name; binary_name } -> package_name ^ ":" ^ binary_name)
       |> String.concat ", " in
       Error ("multiple runnable binaries found; pass a binary name or --package (" ^ rendered ^ ")")
 
 let json_requested_for_child = fun args ->
-  List.exists
-    (fun arg ->
-      String.equal arg "--json")
-    args
+  List.any args ~fn:(fun arg -> String.equal arg "--json")
 
 let write_json_event = fun (json: Data.Json.t) ->
   print (Data.Json.to_string json);
@@ -175,7 +170,7 @@ let run_error_to_json = fun (err: Riot_build.run_error) ->
 
 let write_run_event = fun ~mode (event: Riot_build.run_event) ->
   match mode with
-  | Build.Json -> Riot_build.run_event_to_json event |> Option.iter write_json_event
+  | Build.Json -> Riot_build.run_event_to_json event |> Option.for_each ~fn:write_json_event
   | Build.Human -> (
       match event with
       | Riot_build.Build _ -> ()
@@ -212,8 +207,7 @@ let binary_source_label = fun ~(workspace:Riot_model.Workspace.t) (
 
 let write_binary_list = fun ~(workspace:Riot_model.Workspace.t) binaries ->
   binaries
-  |> List.iter
-    (fun (binary: Riot_build.runnable_binary) ->
+  |> List.for_each ~fn:(fun (binary: Riot_build.runnable_binary) ->
       println
         (binary.package_name
         ^ ":"
@@ -225,7 +219,7 @@ let write_binary_list = fun ~(workspace:Riot_model.Workspace.t) binaries ->
 let write_binary_list_json = fun ~(workspace:Riot_model.Workspace.t) binaries ->
   let binary_kind (binary: Riot_build.runnable_binary) =
     let path = binary_source_label ~workspace binary in
-    if List.mem "examples" (String.split_on_char '/' path) then
+    if List.contains (String.split path ~by:"/") ~value:"examples" then
       "example"
     else
       "binary"
@@ -240,7 +234,7 @@ let write_binary_list_json = fun ~(workspace:Riot_model.Workspace.t) binaries ->
   write_json_event
     (Data.Json.Object [
       ("type", Data.Json.String "RunList");
-      ("binaries", Data.Json.Array (List.map binary_json binaries));
+      ("binaries", Data.Json.Array (List.map binaries ~fn:binary_json));
     ])
 
 let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
@@ -314,10 +308,9 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
       | None -> (
           match workspace with
           | Some workspace -> resolve_implicit_local_target ?package_filter:pkg_filter workspace
-          |> Result.map
-            (fun { package_name; binary_name } ->
+          |> Result.map ~fn:(fun { package_name; binary_name } ->
               Local { package_name = Some package_name; binary_name })
-          |> Result.map_error (fun err -> Failure err)
+          |> Result.map_err ~fn:(fun err -> Failure err)
           | None -> Error (Failure (Option.unwrap_or ~default:"Not in a riot workspace" workspace_error))
         )
     in
@@ -338,7 +331,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
                   profile;
                   update;
                   args = extra;
-                } |> Result.map_error (fun err -> `Run err)
+                } |> Result.map_err ~fn:(fun err -> `Run err)
           | Local { package_name; binary_name } -> (
               match workspace with
               | Some workspace ->
@@ -349,7 +342,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
                       binary_name;
                       profile;
                       args = extra;
-                    } |> Result.map_error (fun err -> `Run err)
+                    } |> Result.map_err ~fn:(fun err -> `Run err)
               | None -> Error (`Cli (Option.unwrap_or ~default:"Not in a riot workspace" workspace_error))
             )
         in

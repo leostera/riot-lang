@@ -50,12 +50,12 @@ let to_json manifest: Data.Json.t =
     ("package", Data.Json.String manifest.package);
     ("build_hash", Data.Json.String manifest.build_hash);
     ("timestamp", Data.Json.Int (Time.SystemTime.to_unix_timestamp manifest.timestamp));
-    ("files", Data.Json.Array (List.map file_entry_to_json manifest.files));
+    ("files", Data.Json.Array (List.map manifest.files ~fn:file_entry_to_json));
     (
       "ocamlc_warnings",
-      Data.Json.Array (List.map (fun msg -> Data.Json.String msg) manifest.ocamlc_warnings)
+      Data.Json.Array (List.map manifest.ocamlc_warnings ~fn:(fun msg -> Data.Json.String msg))
     );
-    ("exports", Data.Json.Array (List.map export_entry_to_json manifest.exports));
+    ("exports", Data.Json.Array (List.map manifest.exports ~fn:export_entry_to_json));
   ]
 
 (** Parse manifest from JSON *)
@@ -65,7 +65,10 @@ let of_json = fun json ->
       try
         match json with
         | Object fields -> (
-            let get_field name = List.assoc_opt name fields in
+            let get_field name =
+              List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name)
+              |> Option.map ~fn:(fun (_, value) -> value)
+            in
             let version =
               match get_field "version" with
               | Some (String "v0") -> Ok V0
@@ -92,7 +95,10 @@ let of_json = fun json ->
               | Some (Array entries) ->
                   let parse_entry = function
                     | Object entry_fields -> (
-                        let get_entry_field name = List.assoc_opt name entry_fields in
+                        let get_entry_field name =
+                          List.find entry_fields ~fn:(fun (field_name, _) -> String.equal field_name name)
+                          |> Option.map ~fn:(fun (_, value) -> value)
+                        in
                         match (
                           get_entry_field "path",
                           get_entry_field "hash",
@@ -107,28 +113,28 @@ let of_json = fun json ->
                       )
                     | _ -> Error "File entry must be an object"
                   in
-                  List.fold_left
-                    (fun acc entry ->
+                  List.fold_left entries
+                    ~acc:(Ok [])
+                    ~fn:(fun acc entry ->
                       match (acc, parse_entry entry) with
                       | Ok entries, Ok e -> Ok (e :: entries)
                       | (Error e, _)
                       | (_, Error e) -> Error e)
-                    (Ok [])
-                    entries |> Result.map List.rev
+                  |> Result.map ~fn:List.reverse
               | _ -> Error "Invalid or missing files"
             in
             let ocamlc_warnings =
               match get_field "ocamlc_warnings" with
               | None -> Ok []
               | Some (Array entries) ->
-                  List.fold_left
-                    (fun acc entry ->
+                  List.fold_left entries
+                    ~acc:(Ok [])
+                    ~fn:(fun acc entry ->
                       match (acc, entry) with
                       | Ok messages, String msg -> Ok (msg :: messages)
                       | Ok _, _ -> Error "Invalid ocamlc warning entry"
                       | Error e, _ -> Error e)
-                    (Ok [])
-                    entries |> Result.map List.rev
+                  |> Result.map ~fn:List.reverse
               | Some _ -> Error "Invalid ocamlc_warnings"
             in
             let exports =
@@ -138,7 +144,10 @@ let of_json = fun json ->
               | Some (Array entries) ->
                   let parse_entry = function
                     | Object entry_fields -> (
-                        let get_entry_field name = List.assoc_opt name entry_fields in
+                        let get_entry_field name =
+                          List.find entry_fields ~fn:(fun (field_name, _) -> String.equal field_name name)
+                          |> Option.map ~fn:(fun (_, value) -> value)
+                        in
                         match (
                           get_entry_field "name",
                           get_entry_field "path",
@@ -153,14 +162,14 @@ let of_json = fun json ->
                       )
                     | _ -> Error "Export entry must be an object"
                   in
-                  List.fold_left
-                    (fun acc entry ->
+                  List.fold_left entries
+                    ~acc:(Ok [])
+                    ~fn:(fun acc entry ->
                       match (acc, parse_entry entry) with
                       | Ok parsed, Ok export -> Ok (export :: parsed)
                       | (Error e, _)
                       | (_, Error e) -> Error e)
-                    (Ok [])
-                    entries |> Result.map List.rev
+                  |> Result.map ~fn:List.reverse
               | Some _ ->
                   Error "Invalid exports"
             in
@@ -210,8 +219,8 @@ let load = fun ~path ->
 let create = fun ?base_dir ?(ocamlc_warnings = []) ?(exports = []) () ~package ~build_hash ~files ->
   let timestamp = Time.SystemTime.now () in
   let file_entries =
-    List.filter_map
-      (fun ((path, size)) ->
+    List.filter_map files
+      ~fn:(fun (path, size) ->
         let readable_path =
           if Path.is_absolute path then
             path
@@ -226,7 +235,6 @@ let create = fun ?base_dir ?(ocamlc_warnings = []) ?(exports = []) () ~package ~
             let hash = Std.Crypto.(Sha512.hash_string file |> Digest.hex) in
             Some { path; hash; size }
         | Error _ -> None)
-      files
   in
   {
     version = V1;

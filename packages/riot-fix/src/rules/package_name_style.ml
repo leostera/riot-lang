@@ -23,23 +23,23 @@ That gives the workspace one predictable package naming story instead of several
 near-misses.
 |}
 
-let split_path = fun path -> Path.to_string path |> String.split_on_char '/'
+let split_path = fun path -> Path.to_string path |> String.split ~by:"/"
 
 let rec find_package_root_components = fun prefix ->
   function
   | []
   | [ _ ] -> None
-  | "packages" :: package_dir :: _ -> Some (List.rev_append prefix [ "packages"; package_dir ])
+  | "packages" :: package_dir :: _ -> Some (List.reverse_append prefix [ "packages"; package_dir ])
   | segment :: rest -> find_package_root_components (segment :: prefix) rest
 
 let package_root_for_file = fun path ->
   split_path path
   |> find_package_root_components []
-  |> Option.map (fun components -> Path.v (String.concat "/" components))
+  |> Option.map ~fn:(fun components -> Path.v (String.concat "/" components))
 
 let package_toml_for_file = fun path ->
   package_root_for_file path
-  |> Option.map (fun package_root -> Path.(package_root / Path.v "riot.toml"))
+  |> Option.map ~fn:(fun package_root -> Path.(package_root / Path.v "riot.toml"))
 
 let get_table value =
   match value with
@@ -62,11 +62,17 @@ let package_name = fun path ->
           | Error _ ->
               None
           | Ok (Toml.Table fields) -> (
-              match List.assoc_opt "package" fields with
+              match
+                List.find fields ~fn:(fun (field_name, _) -> String.equal field_name "package")
+                |> Option.map ~fn:(fun (_, value) -> value)
+              with
               | Some package_value -> (
                   match get_table package_value with
                   | Some package_fields -> (
-                      match List.assoc_opt "name" package_fields with
+                      match
+                        List.find package_fields ~fn:(fun (field_name, _) -> String.equal field_name "name")
+                        |> Option.map ~fn:(fun (_, value) -> value)
+                      with
                       | Some name_value -> get_string name_value
                       | None -> None
                     )
@@ -80,7 +86,7 @@ let package_name = fun path ->
     )
 
 let starts_with_letter = fun name ->
-  String.length name > 0 && match String.get name 0 with
+  String.length name > 0 && match String.get_unchecked name ~at:0 with
   | 'a' .. 'z'
   | 'A' .. 'Z' -> true
   | _ -> false
@@ -93,8 +99,8 @@ let is_kebab_case_char ch =
   | _ -> false
 
 let is_kebab_case = fun name ->
-  String.length name > 0 && String.for_all is_kebab_case_char name && String.exists
-    (
+  String.length name > 0 && String.for_all ~fn:is_kebab_case_char name && String.exists
+    ~fn:(
       function
       | 'A' .. 'Z' -> true
       | _ -> false

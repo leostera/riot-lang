@@ -45,11 +45,14 @@ type parse_result =
   | Need_more
   | Error of parse_error
 
+let byte_at = fun data offset ->
+  data |> String.get_unchecked ~at:offset |> Char.to_int
+
 let create = fun ?(config = default_config) () ->
-  { config; phase = Cell.create (ReadingFrameHeader { buffer = Buffer.create 9; bytes_read = 0 }) }
+  { config; phase = Cell.create (ReadingFrameHeader { buffer = Buffer.create ~size:9; bytes_read = 0 }) }
 
 let reset = fun state ->
-  Cell.set state.phase (ReadingFrameHeader { buffer = Buffer.create 9; bytes_read = 0 })
+  Cell.set state.phase (ReadingFrameHeader { buffer = Buffer.create ~size:9; bytes_read = 0 })
 
 let buffered_bytes = fun state ->
   match Cell.get state.phase with
@@ -58,7 +61,7 @@ let buffered_bytes = fun state ->
 
 (** Read exactly N bytes from reader into buffer, returning number actually read *)
 let read_n_bytes = fun reader buffer n ->
-  let bytes = Bytes.create n in
+  let bytes = Bytes.create ~size:n in
   match IO.Reader.read reader bytes with
   | Ok bytes_read when bytes_read > 0 ->
       Buffer.add_subbytes buffer bytes 0 bytes_read;
@@ -76,16 +79,16 @@ let parse_frame_header_bytes = fun config data ->
     Error Incomplete_frame_header
   else
     (* Read length (24-bit big-endian) *)
-    let b0 = Char.code data.[0] in
-    let b1 = Char.code data.[1] in
-    let b2 = Char.code data.[2] in
+    let b0 = byte_at data 0 in
+    let b1 = byte_at data 1 in
+    let b2 = byte_at data 2 in
     let length = (b0 lsl 16) lor (b1 lsl 8) lor b2 in
     (* Security: Validate frame size *)
     if length > config.max_frame_size then
       Error (Frame_size_exceeds_maximum { size = length; max_size = config.max_frame_size })
     else
       (* Read type *)
-      let type_byte = Char.code data.[3] in
+      let type_byte = byte_at data 3 in
       let frame_type_opt =
         match type_byte with
         | 0x0 -> Some Frame.Data
@@ -104,7 +107,7 @@ let parse_frame_header_bytes = fun config data ->
       | None -> Error (Unknown_frame_type type_byte)
       | Some frame_type ->
           (* Read flags *)
-          let flags_byte = Char.code data.[4] in
+          let flags_byte = byte_at data 4 in
           let end_headers = flags_byte land 0x04 != 0 in
           let padded = flags_byte land 0x08 != 0 in
           let priority = flags_byte land 0x20 != 0 in
@@ -126,10 +129,10 @@ let parse_frame_header_bytes = fun config data ->
           }
           in
           (* Read stream ID (31-bit, ignore reserved bit) *)
-          let s0 = Char.code data.[5] in
-          let s1 = Char.code data.[6] in
-          let s2 = Char.code data.[7] in
-          let s3 = Char.code data.[8] in
+          let s0 = byte_at data 5 in
+          let s1 = byte_at data 6 in
+          let s2 = byte_at data 7 in
+          let s3 = byte_at data 8 in
           let stream_id_raw = (s0 lsl 24) lor (s1 lsl 16) lor (s2 lsl 8) lor s3 in
           let stream_id = stream_id_raw land 0x7fff_ffff in
           Frame {
@@ -161,15 +164,15 @@ let parse_payload = fun frame payload_data ->
       (* Parse settings pairs: each is 6 bytes (2-byte ID + 4-byte value) *)
       let rec parse_settings offset acc =
         if offset >= String.length payload_data then
-          Ok (List.rev acc)
+          Ok (List.reverse acc)
         else if offset + 6 > String.length payload_data then
           Error Incomplete_settings_payload
         else
-          let id = (Char.code payload_data.[offset] lsl 8) lor Char.code payload_data.[offset + 1] in
-          let value = (Char.code payload_data.[offset + 2] lsl 24)
-          lor (Char.code payload_data.[offset + 3] lsl 16)
-          lor (Char.code payload_data.[offset + 4] lsl 8)
-          lor Char.code payload_data.[offset + 5] in
+          let id = (byte_at payload_data offset lsl 8) lor byte_at payload_data (offset + 1) in
+          let value = (byte_at payload_data (offset + 2) lsl 24)
+          lor (byte_at payload_data (offset + 3) lsl 16)
+          lor (byte_at payload_data (offset + 4) lsl 8)
+          lor byte_at payload_data (offset + 5) in
           let setting_opt =
             match id with
             | 0x1 -> Some (Frame.HeaderTableSize value)
@@ -206,10 +209,10 @@ let parse_payload = fun frame payload_data ->
           actual = String.length payload_data
         })
       else
-        let increment = (Char.code payload_data.[0] lsl 24)
-        lor (Char.code payload_data.[1] lsl 16)
-        lor (Char.code payload_data.[2] lsl 8)
-        lor Char.code payload_data.[3] in
+        let increment = (byte_at payload_data 0 lsl 24)
+        lor (byte_at payload_data 1 lsl 16)
+        lor (byte_at payload_data 2 lsl 8)
+        lor byte_at payload_data 3 in
         let increment = increment land 0x7fff_ffff in
         Ok { frame with payload = Frame.WindowUpdatePayload increment }
   | Frame.RstStream ->
@@ -220,10 +223,10 @@ let parse_payload = fun frame payload_data ->
           actual = String.length payload_data
         })
       else
-        let code = (Char.code payload_data.[0] lsl 24)
-        lor (Char.code payload_data.[1] lsl 16)
-        lor (Char.code payload_data.[2] lsl 8)
-        lor Char.code payload_data.[3] in
+        let code = (byte_at payload_data 0 lsl 24)
+        lor (byte_at payload_data 1 lsl 16)
+        lor (byte_at payload_data 2 lsl 8)
+        lor byte_at payload_data 3 in
         let error_code =
           match code with
           | 0x0 -> Frame.NoError
@@ -251,15 +254,15 @@ let parse_payload = fun frame payload_data ->
           actual = String.length payload_data
         })
       else
-        let last_stream_id = ((Char.code payload_data.[0] lsl 24)
-        lor (Char.code payload_data.[1] lsl 16)
-        lor (Char.code payload_data.[2] lsl 8)
-        lor Char.code payload_data.[3])
+        let last_stream_id = ((byte_at payload_data 0 lsl 24)
+        lor (byte_at payload_data 1 lsl 16)
+        lor (byte_at payload_data 2 lsl 8)
+        lor byte_at payload_data 3)
         land 0x7fff_ffff in
-        let error_code_int = (Char.code payload_data.[4] lsl 24)
-        lor (Char.code payload_data.[5] lsl 16)
-        lor (Char.code payload_data.[6] lsl 8)
-        lor Char.code payload_data.[7] in
+        let error_code_int = (byte_at payload_data 4 lsl 24)
+        lor (byte_at payload_data 5 lsl 16)
+        lor (byte_at payload_data 6 lsl 8)
+        lor byte_at payload_data 7 in
         let error_code =
           match error_code_int with
           | 0x0 -> Frame.NoError
@@ -269,7 +272,7 @@ let parse_payload = fun frame payload_data ->
         in
         let debug_data =
           if String.length payload_data > 8 then
-            String.sub payload_data 8 (String.length payload_data - 8)
+            String.sub payload_data ~offset:8 ~len:(String.length payload_data - 8)
           else
             ""
         in
@@ -318,7 +321,7 @@ let rec parse = fun state reader ->
                   state.phase
                   (ReadingFramePayload {
                     header = frame_header;
-                    buffer = Buffer.create frame_header.length;
+                    buffer = Buffer.create ~size:frame_header.length;
                     bytes_read = 0;
                     total_length = frame_header.length
                   });

@@ -83,7 +83,7 @@ let rec parse_headers = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = [])
   match Cursor.take_n cursor 2 with
   | Some ("\r\n", cursor) ->
       (* End of headers *)
-      Done { value = (List.rev acc, Cursor.remaining cursor); remaining = "" }
+      Done { value = (List.reverse acc, Cursor.remaining cursor); remaining = "" }
   | _ -> (
       if List.length acc >= max_count then
         Error "Too many headers"

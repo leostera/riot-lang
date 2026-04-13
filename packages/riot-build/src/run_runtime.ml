@@ -36,16 +36,14 @@ type run_error =
   | ExternalTargetLoadFailed of { target: string; reason: string }
   | ClientError of Client.error
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 let no_event: run_event -> unit = fun _ -> ()
 
 let build_scope_for_binary = fun (workspace: Riot_model.Workspace.t) ~package_name ~binary_name ->
   match
-    List.find_opt
-      (fun (pkg: Riot_model.Package.t) ->
-        String.equal pkg.name package_name)
-      workspace.packages
+    List.find workspace.packages ~fn:(fun (pkg: Riot_model.Package.t) ->
+      String.equal pkg.name package_name)
   with
   | None -> Build_runtime.Runtime
   | Some pkg -> (
@@ -64,21 +62,23 @@ let is_listed_runnable = fun (bin: Riot_model.Package.binary) ->
   || String.starts_with ~prefix:"examples/" path
 
 let list_binaries = fun (workspace: Riot_model.Workspace.t) ?package_filter () ->
-  workspace.packages |> List.filter Riot_model.Package.is_workspace_member |> List.filter
-    (fun (pkg: Riot_model.Package.t) ->
+  workspace.packages
+  |> List.filter ~fn:Riot_model.Package.is_workspace_member
+  |> List.filter ~fn:(fun (pkg: Riot_model.Package.t) ->
       match package_filter with
       | None -> true
-      | Some package_name -> String.equal package_name pkg.name) |> List.concat_map
-    (fun (pkg: Riot_model.Package.t) ->
-      pkg.binaries |> List.filter is_listed_runnable |> List.map
-        (fun (bin: Riot_model.Package.binary) ->
+      | Some package_name -> String.equal package_name pkg.name)
+  |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
+      pkg.binaries
+      |> List.filter ~fn:is_listed_runnable
+      |> List.map ~fn:(fun (bin: Riot_model.Package.binary) ->
           {
             package_name = pkg.name;
             binary_name = bin.name;
             source_path =
               Path.(pkg.path / bin.path);
-          })) |> List.sort
-    (fun left right ->
+          }))
+  |> List.sort ~compare:(fun left right ->
       String.compare
         (left.package_name ^ ":" ^ left.binary_name)
         (right.package_name ^ ":" ^ right.binary_name))
@@ -106,11 +106,11 @@ let run_event_to_json = function
     ("type", Data.Json.String "RunningBinary");
     ("package", Data.Json.String package);
     ("binary", Data.Json.String binary);
-    ("args", Data.Json.Array (List.map Data.Json.string args));
+    ("args", Data.Json.Array (List.map args ~fn:Data.Json.string));
   ])
 
 let reconnect = fun ~workspace ->
-  Client.connect_local ~workspace () |> Result.map_error (fun err -> ClientError err)
+  Client.connect_local ~workspace () |> Result.map_err ~fn:(fun err -> ClientError err)
 
 let make_pm_event = fun session_id kind ->
   Riot_model.Event.create ~session_id ~level:Riot_model.Event.Info kind
@@ -125,8 +125,7 @@ let load_source_workspace = fun ~on_event ~source_spec ~update ->
     ~update
     ~spec:source_spec
     ()
-  |> Result.map_error
-    (fun err ->
+  |> Result.map_err ~fn:(fun err ->
       ExternalTargetLoadFailed { target = source_spec; reason = Riot_deps.package_error_message err })
 
 let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~package_name ~binary_name results ->
@@ -135,16 +134,15 @@ let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~package_name ~bina
       match result.status with
       | Riot_executor.Package_builder.Built artifact
       | Riot_executor.Package_builder.Cached artifact ->
-          List.find_opt
-            (fun (entry: Riot_store.Manifest.export_entry) ->
-              String.equal entry.name binary_name)
-            artifact.exports
+          List.find artifact.exports ~fn:(fun (entry: Riot_store.Manifest.export_entry) ->
+            String.equal entry.name binary_name)
       | Riot_executor.Package_builder.Skipped _
       | Riot_executor.Package_builder.Failed _ -> None
     else
       None
   in
-  match List.find_map find_binary_export results with
+  match List.find results ~fn:(fun result -> Option.is_some (find_binary_export result))
+    |> Option.and_then ~fn:find_binary_export with
   | None -> Error (ArtifactNotFound {
     package_name;
     binary_name;

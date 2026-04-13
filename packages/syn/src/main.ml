@@ -7,7 +7,7 @@ let duration_ms = fun ~start ~finish ->
   Int64.sub finish start |> Int64.to_float |> fun nanos -> nanos /. 1000000.0
 
 let trace_cst_timings_enabled = fun () ->
-  Env.var Env.Bool ~name:"SYN_TRACE_CST_TIMINGS" |> Option.unwrap_or ~default:false
+  Env.get Env.Bool ~var:"SYN_TRACE_CST_TIMINGS" |> Option.unwrap_or ~default:false
 
 let trace_cst_timing = fun label duration ->
   eprintln ("[syn] " ^ label ^ ": " ^ Float.to_string duration ^ "ms")
@@ -30,7 +30,7 @@ let span_text = fun source span ->
   if width <= 0 then
     ""
   else
-    String.sub source span.Ceibo.Span.start width
+    String.sub source ~offset:span.Ceibo.Span.start ~len:width
 
 let trivia_kind_to_json = function
   | Token.CommentTrivia { terminated; _ } -> Data.Json.Object [
@@ -57,7 +57,7 @@ let token_to_json = fun ~source (token: Token.t) ->
     ("kind", Data.Json.string (Token.show_kind token.kind));
     ("span", span_to_json token.span);
     ("text", Data.Json.string (span_text source token.span));
-    ("leading_trivia", Data.Json.Array (List.map (trivia_to_json ~source) token.leading_trivia))
+    ("leading_trivia", Data.Json.Array (List.map token.leading_trivia ~fn:(trivia_to_json ~source)))
   ]
 
 let parse_result_to_ceibo_json = fun result ->
@@ -70,10 +70,10 @@ let parse_result_to_ceibo_json = fun result ->
   Data.Json.Object [
     (
       "tokens",
-      Data.Json.Array (List.map (token_to_json ~source:result.Parser.source) result.Parser.tokens)
+      Data.Json.Array (List.map result.Parser.tokens ~fn:(token_to_json ~source:result.Parser.source))
     );
     ("tree", tree_json);
-    ("diagnostics", Data.Json.Array (List.map Diagnostic.to_json result.diagnostics))
+    ("diagnostics", Data.Json.Array (List.map result.diagnostics ~fn:Diagnostic.to_json))
   ]
 
 let handle_token_stream = fun sub_matches ->
@@ -86,10 +86,10 @@ let handle_token_stream = fun sub_matches ->
   | Ok content ->
       let tokens = Lexer.tokenize content in
       if json then
-        let json_tokens = List.map (token_to_json ~source:content) tokens in
+        let json_tokens = List.map tokens ~fn:(token_to_json ~source:content) in
         println (Data.Json.to_string (Data.Json.array json_tokens))
       else
-        List.iter (fun tok -> println (Token.show_kind tok.Token.kind)) tokens
+        List.for_each tokens ~fn:(fun tok -> println (Token.show_kind tok.Token.kind))
 
 let handle_parse = fun sub_matches ->
   let file = ArgParser.get_one sub_matches "FILE" |> Option.expect ~msg:"FILE required" in
@@ -141,7 +141,7 @@ let handle_print_cst = fun sub_matches ->
         if result.diagnostics != [] then
           Data.Json.Object [
             ("status", Data.Json.String "parse_error");
-            ("diagnostics", Data.Json.Array (List.map Diagnostic.to_json result.diagnostics))
+            ("diagnostics", Data.Json.Array (List.map result.diagnostics ~fn:Diagnostic.to_json))
           ]
         else
           (

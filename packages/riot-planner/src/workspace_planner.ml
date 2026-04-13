@@ -30,13 +30,16 @@ let plan_workspace = fun ~workspace ~target ~(scope:Package_graph.build_scope) ~
     | Ok package_graph ->
         let target_graph =
           let available =
-            List.map (fun (p: Package.t) -> p.name) workspace.packages
+            List.map workspace.packages ~fn:(fun (p: Package.t) -> p.name)
           in
           let filter_packages pkg_names =
-            let missing = List.filter
-              (fun pkg_name -> Option.is_none (Package_graph.find_package package_graph pkg_name))
-              pkg_names
-            |> List.sort_uniq String.compare in
+            let missing =
+              List.filter
+                pkg_names
+                ~fn:(fun pkg_name -> Option.is_none (Package_graph.find_package package_graph pkg_name))
+              |> List.sort ~compare:String.compare
+              |> List.unique ~compare:String.compare
+            in
             match missing with
             | [] -> Ok (Package_graph.filter_for_packages package_graph pkg_names)
             | [ name ] -> Error (PackageNotFound { name; available })
@@ -57,7 +60,7 @@ let plan_workspace = fun ~workspace ~target ~(scope:Package_graph.build_scope) ~
             match sorted_packages with
             | Error e -> Error e
             | Ok nodes ->
-                let packages = List.map Package_graph.get_package nodes in
+                let packages = List.map nodes ~fn:Package_graph.get_package in
                 Ok { packages; package_graph = graph; workspace }
           )
 

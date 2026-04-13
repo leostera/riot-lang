@@ -32,9 +32,9 @@ let is_ocaml_source = fun path ->
 
 let should_exclude = fun scanner path ->
   let dir_name = Path.basename path in
-  List.exists
-    (fun pattern -> String.starts_with ~prefix:pattern dir_name || String.equal pattern dir_name)
+  List.any
     scanner.exclude_patterns
+    ~fn:(fun pattern -> String.starts_with ~prefix:pattern dir_name || String.equal pattern dir_name)
 
 let init_state = fun ?owner scanner -> { scanner; owner; seen = HashSet.create () }
 
@@ -78,7 +78,7 @@ let scan = fun scanner ->
       ~f:(fun entry -> handle_entry state entry (fun path -> files := path :: !files))
       ()
   in
-  List.rev !files
+  List.reverse !files
 
 let start = fun ~owner scanner ->
   let state = init_state ~owner scanner in

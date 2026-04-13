@@ -11,7 +11,9 @@ module Env = struct
     let singleton = fun name -> [ name ]
 
     let union = fun left right ->
-      List.sort_uniq String.compare (left @ right)
+      List.unique
+        (List.sort (left @ right) ~compare:String.compare)
+        ~compare:String.compare
 
     let elements = fun names -> names
   end
@@ -40,15 +42,15 @@ module Env = struct
   let add = fun name node env -> (name, node) :: remove name env
 
   let merge = fun left right ->
-    List.fold_left (fun env (name, node) -> add name node env) left right
+    List.fold_left right ~acc:left ~fn:(fun env (name, node) -> add name node env)
 
   let rec add_path = fun env ~path ~free_names ->
     match path with
     | [] -> env
     | segment :: rest ->
         let existing =
-          match List.assoc_opt segment env with
-          | Some node -> node
+          match List.find env ~fn:(fun (name, _) -> String.equal name segment) with
+          | Some (_, node) -> node
           | None -> Node (Names.empty, [])
         in
         let Node (free, children) = existing in
@@ -68,43 +70,42 @@ module Env = struct
   let rec collect_free = function
     | Node (free, children) ->
         List.fold_left
-          (fun acc (_, child) ->
-            Names.union acc (collect_free child))
-          free
           children
+          ~acc:free
+          ~fn:(fun acc (_, child) ->
+            Names.union acc (collect_free child))
 
   let merge_children env node = merge env (children node)
 
-  let rec find = fun name ->
-    function
-    | [] -> raise Not_found
-    | (key, value) :: _ when key = name -> value
-    | _ :: rest -> find name rest
+  let find = fun name env ->
+    List.find env ~fn:(fun (key, _) -> String.equal key name)
+    |> Option.map ~fn:(fun (_, value) -> value)
 
   let rec lookup_free segments env =
     match segments with
-    | [] -> raise Not_found
+    | [] -> None
     | segment :: rest ->
-        let Node (free, children) = find segment env in
-        (
-          match rest with
-          | [] -> free
-          | _ -> (
-              match lookup_free rest children with
-              | free -> free
-              | exception Not_found -> free
-            )
-        )
+        match find segment env with
+        | None -> None
+        | Some (Node (free, children)) -> (
+            match rest with
+            | [] -> Some free
+            | _ -> (
+                match lookup_free rest children with
+                | Some free -> Some free
+                | None -> Some free
+              )
+          )
 
   let rec lookup_map segments env =
     match segments with
-    | [] ->
-        raise Not_found
+    | [] -> None
     | [ segment ] ->
         find segment env
     | segment :: rest ->
-        let Node (_, children) = find segment env in
-        lookup_map rest children
+        match find segment env with
+        | None -> None
+        | Some (Node (_, children)) -> lookup_map rest children
 end
 
 module DepSet = struct
@@ -113,18 +114,18 @@ module DepSet = struct
   let empty = fun () -> HashSet.create ()
 
   let add = fun deps name ->
-    let _ = HashSet.insert deps name in
+    let _ = HashSet.insert deps ~value:name in
     deps
 
   let add_names = fun deps names ->
-    List.iter
-      (fun name ->
-        let _ = HashSet.insert deps name in
-        ())
-      names;
+    List.for_each
+      names
+      ~fn:(fun name ->
+        let _ = HashSet.insert deps ~value:name in
+        ());
     deps
 
-  let elements = fun deps -> HashSet.to_list deps |> List.sort String.compare
+  let elements = fun deps -> HashSet.to_list deps |> List.sort ~compare:String.compare
 end
 
 type t = {
@@ -146,9 +147,9 @@ let modules = fun t -> t.modules
 let env = fun t -> t.env
 
 let to_json = fun t ->
-  Json.Object [ ("modules", Json.Array (List.map (fun name -> Json.String name) t.modules)) ]
+  Json.Object [ ("modules", Json.Array (List.map t.modules ~fn:(fun name -> Json.String name))) ]
 
-let segments_of_ident = fun ident -> Cst.Ident.segments ident |> List.map Cst.Token.text
+let segments_of_ident = fun ident -> Cst.Ident.segments ident |> List.map ~fn:Cst.Token.text
 
 let drop_last = function
   | [] ->
@@ -158,14 +159,16 @@ let drop_last = function
   | items ->
       let rec loop acc = function
         | []
-        | [ _ ] -> List.rev acc
+        | [ _ ] -> List.reverse acc
         | head :: tail -> loop (head :: acc) tail
       in
       loop [] items
 
 let is_uppercase_ascii = fun ch -> ch >= 'A' && ch <= 'Z'
 
-let is_module_head = fun segment -> String.length segment > 0 && is_uppercase_ascii segment.[0]
+let is_module_head = fun segment ->
+  String.length segment > 0
+  && is_uppercase_ascii (String.get_unchecked segment ~at:0)
 
 let add_names = DepSet.add_names
 
@@ -175,8 +178,8 @@ let add_path = fun env deps segments ->
   | head :: _ ->
       let names =
         match Env.lookup_free segments env with
-        | names -> names
-        | exception Not_found -> Env.singleton_name head
+        | Some names -> names
+        | None -> Env.singleton_name head
       in
       add_names deps names
 
@@ -207,26 +210,26 @@ let collect_option = fun f env deps value ->
 
 let collect_list = fun f env deps values ->
   List.fold_left
-    (fun acc value ->
+    values
+    ~acc:(Ok deps)
+    ~fn:(fun acc value ->
       let* deps = acc in
       f env deps value)
-    (Ok deps)
-    values
 
 let collect_list_with = fun f acc values ->
   List.fold_left
-    (fun acc value ->
+    values
+    ~acc:(Ok acc)
+    ~fn:(fun acc value ->
       let* acc = acc in
       f acc value)
-    (Ok acc)
-    values
 
 let module_alias = fun env deps ident ->
   let deps = add_module_path env deps ident in
   let binding =
     match Env.lookup_map (segments_of_ident ident) env with
-    | node -> node
-    | exception Not_found -> (
+    | Some node -> node
+    | None -> (
         match segments_of_ident ident with
         | [ name ] -> Env.make_leaf name
         | _ -> Env.bound
@@ -358,13 +361,13 @@ and collect_type_declaration env deps declaration =
 
 and collect_functor_parameters env deps parameters =
   List.fold_left
-    (fun acc parameter ->
+    parameters
+    ~acc:(Ok (deps, env))
+    ~fn:(fun acc parameter ->
       let* (deps, env) = acc in
       let* deps = collect_module_type env deps parameter.Cst.FunctorParameter.module_type in
       let env = Env.add (Cst.Token.text parameter.name_token) Env.bound env in
       Ok (deps, env))
-    (Ok (deps, env))
-    parameters
 
 and module_type_binding env deps module_type =
   match module_type with
@@ -514,29 +517,29 @@ and bind_pattern_modules env pattern =
   | Cst.Pattern.PolyVariantInherit _ ->
       env
   | Cst.Pattern.Constructor { arguments; _ } ->
-      List.fold_left bind_pattern_modules env arguments
+      List.fold_left arguments ~acc:env ~fn:bind_pattern_modules
   | Cst.Pattern.Tuple { elements; _ } ->
       List.fold_left
-        (fun env (element: Cst.tuple_pattern_element) -> bind_pattern_modules env element.pattern)
-        env
         elements
+        ~acc:env
+        ~fn:(fun env (element: Cst.tuple_pattern_element) -> bind_pattern_modules env element.pattern)
   | Cst.Pattern.List { elements; _ } ->
-      List.fold_left bind_pattern_modules env elements
+      List.fold_left elements ~acc:env ~fn:bind_pattern_modules
   | Cst.Pattern.Array { elements; _ } ->
-      List.fold_left bind_pattern_modules env elements
+      List.fold_left elements ~acc:env ~fn:bind_pattern_modules
   | Cst.Pattern.Record { fields; _ } ->
       List.fold_left
-        (fun env (field: Cst.record_pattern_field) ->
+        fields
+        ~acc:env
+        ~fn:(fun env (field: Cst.record_pattern_field) ->
           match field.pattern with
           | Some pattern -> bind_pattern_modules env pattern
           | None -> env)
-        env
-        fields
   | Cst.Pattern.Cons { head; tail; _ } ->
       let env = bind_pattern_modules env head in
       bind_pattern_modules env tail
   | Cst.Pattern.Or { alternatives; _ } ->
-      List.fold_left bind_pattern_modules env alternatives
+      List.fold_left alternatives ~acc:env ~fn:bind_pattern_modules
   | Cst.Pattern.Alias { pattern; _ } ->
       bind_pattern_modules env pattern
   | Cst.Pattern.Typed { pattern; _ } ->
@@ -568,13 +571,13 @@ and bind_parameter_modules env parameter =
 
 and collect_parameters env deps parameters =
   List.fold_left
-    (fun acc parameter ->
+    parameters
+    ~acc:(Ok (deps, env))
+    ~fn:(fun acc parameter ->
       let* (deps, env) = acc in
       let* deps = collect_parameter env deps parameter in
       let env = bind_parameter_modules env parameter in
       Ok (deps, env))
-    (Ok (deps, env))
-    parameters
 
 and bind_let_binding_chain_modules env (binding: Cst.let_binding) =
   let env = bind_pattern_modules env binding.binding_pattern in
@@ -628,9 +631,9 @@ and collect_pattern env deps pattern =
   | Cst.Pattern.Record { fields; _ } ->
       let deps =
         List.fold_left
-          (fun deps (field: Cst.record_pattern_field) -> add_parent env deps field.field_path)
-          deps
           fields
+          ~acc:deps
+          ~fn:(fun deps (field: Cst.record_pattern_field) -> add_parent env deps field.field_path)
       in
       collect_list
         (fun env deps (field: Cst.record_pattern_field) ->
@@ -793,9 +796,9 @@ and collect_expression env deps expression =
   | Cst.Expression.Record (Cst.Literal { fields; _ }) ->
       let deps =
         List.fold_left
-          (fun deps (field: Cst.record_expression_field) -> add_parent env deps field.field_path)
-          deps
           fields
+          ~acc:deps
+          ~fn:(fun deps (field: Cst.record_expression_field) -> add_parent env deps field.field_path)
       in
       collect_list
         (fun env deps (field: Cst.record_expression_field) -> collect_expression env deps field.value)
@@ -806,9 +809,9 @@ and collect_expression env deps expression =
       let* deps = collect_expression env deps base in
       let deps =
         List.fold_left
-          (fun deps (field: Cst.record_expression_field) -> add_parent env deps field.field_path)
-          deps
           fields
+          ~acc:deps
+          ~fn:(fun deps (field: Cst.record_expression_field) -> add_parent env deps field.field_path)
       in
       collect_list
         (fun env deps (field: Cst.record_expression_field) -> collect_expression env deps field.value)
@@ -857,11 +860,11 @@ and collect_structure env deps items =
 
 and collect_structure_binding env deps items =
   List.fold_left
-    (fun acc item ->
+    items
+    ~acc:(Ok (deps, env, Env.empty))
+    ~fn:(fun acc item ->
       let* (deps, env, bindings) = acc in
       collect_structure_item env deps bindings item)
-    (Ok (deps, env, Env.empty))
-    items
 
 and module_structure_binding env deps (declaration: Cst.ModuleStructure.t) =
   match declaration.functor_parameters with
@@ -976,11 +979,11 @@ and collect_structure_item env deps bindings item =
 
 and collect_signature_binding env deps items =
   List.fold_left
-    (fun acc item ->
+    items
+    ~acc:(Ok (deps, env, Env.empty))
+    ~fn:(fun acc item ->
       let* (deps, env, bindings) = acc in
       collect_signature_item env deps bindings item)
-    (Ok (deps, env, Env.empty))
-    items
 
 and module_signature_binding env deps (declaration: Cst.ModuleSignature.t) =
   let* (deps, env) = collect_functor_parameters env deps declaration.Cst.ModuleSignature.functor_parameters in

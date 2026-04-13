@@ -35,7 +35,7 @@ let file_result_to_json = fun ~root (result: Runner.file_result) ->
       (
         "diagnostics",
         match result.diagnostics with
-        | Some diagnostics -> Array (List.map Syn.Diagnostic.to_json diagnostics)
+        | Some diagnostics -> Array (List.map diagnostics ~fn:Syn.Diagnostic.to_json)
         | None -> Null
       );
     ]

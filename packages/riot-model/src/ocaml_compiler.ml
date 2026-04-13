@@ -90,7 +90,9 @@ let warning_code = function
   | warning -> warning_to_number warning |> Int.to_string
 
 let render_warning_spec = fun ~sign warnings ->
-  warnings |> List.map (fun warning -> String.make 1 sign ^ warning_code warning) |> String.concat ""
+  warnings
+  |> List.map ~fn:(fun warning -> String.make ~len:1 ~char:sign ^ warning_code warning)
+  |> String.concat ""
 
 let parse_warning_spec = fun ~sign spec ->
   let warning_of_code = function
@@ -104,22 +106,27 @@ let parse_warning_spec = fun ~sign spec ->
     | "a" -> Some All
     | _ -> None
   in
-  if String.is_empty spec || not (String.starts_with ~prefix:(String.make 1 sign) spec) then
+  if String.is_empty spec || not (String.starts_with ~prefix:(String.make ~len:1 ~char:sign) spec) then
     None
   else
-    String.split_on_char sign spec |> List.filter (fun token -> token != "") |> List.fold_left
-      (fun acc token ->
+    String.split ~by:(String.make ~len:1 ~char:sign) spec
+    |> List.filter ~fn:(fun token -> not (String.is_empty token))
+    |> List.fold_left
+      ~acc:(Ok [])
+      ~fn:(fun acc token ->
         match (acc, warning_of_code token) with
         | Error _, _ -> acc
         | Ok warnings, Some warning -> Ok (warning :: warnings)
         | Ok _, None -> Error ())
-      (Ok []) |> function
-    | Ok warnings -> Some (List.rev warnings)
+    |> function
+    | Ok warnings -> Some (List.reverse warnings)
     | Error () -> None
 
 let flags_to_string = fun flags ->
   List.fold_left
-    (fun acc flag ->
+    flags
+    ~acc:[]
+    ~fn:(fun acc flag ->
       match flag with
       | Open m -> acc @ [ "-open"; m ]
       | NoAliasDeps -> acc @ [ "-no-alias-deps" ]
@@ -142,13 +149,11 @@ let flags_to_string = fun flags ->
             acc @ [ "-warn-error"; render_warning_spec ~sign:'+' warnings ]
       | Raw flag -> acc @ [ flag ]
       | LinkAll -> acc @ [ "-linkall" ])
-    []
-    flags
 
 let flags_of_string = fun raw_flags ->
   let rec go acc = function
     | [] ->
-        List.rev acc
+        List.reverse acc
     | "-open" :: mod_name :: rest ->
         go (Open mod_name :: acc) rest
     | "-no-alias-deps" :: rest ->

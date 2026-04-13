@@ -14,7 +14,6 @@ type source =
 
 module Ocamldep = Ocamldep
 module Ocamlc = Ocamlc
-module Ocamlformat = Ocamlformat
 module CrossCompilingToolchain = Cross_compiling_toolchain
 
 type t = {
@@ -24,7 +23,6 @@ type t = {
   ocamlc: Ocamlc.t;
   ocamlopt: Path.t;
   ocamldep: Ocamldep.t;
-  ocamlformat: Ocamlformat.t;
 }
 
 let default_ocaml_version = "5.5.0-riot.2"
@@ -58,7 +56,6 @@ let make_toolchain = fun version source ~target ->
     ocamlc = Ocamlc.make (bin_path "ocamlopt.opt");
     ocamlopt = bin_path "ocamlopt.opt";
     ocamldep = Ocamldep.make (bin_path "ocamldep.opt");
-    ocamlformat = Ocamlformat.make (bin_path "ocamlformat");
   }
 
 let ocamlc = fun t -> t.ocamlc
@@ -66,8 +63,6 @@ let ocamlc = fun t -> t.ocamlc
 let ocamlopt_path = fun t -> t.ocamlopt
 
 let ocamldep = fun t -> t.ocamldep
-
-let ocamlformat = fun t -> t.ocamlformat
 
 let check_binaries_exist = fun toolchain ->
   let ocamlc_path = Ocamlc.path toolchain.ocamlc in
@@ -100,13 +95,16 @@ let write_path_fingerprint = fun hasher path ->
   | Error _ -> Crypto.Sha256.write hasher "missing"
 
 let first_existing = fun paths ->
-  List.find_map
-    (fun path ->
-      if path_exists path then
-        Some path
-      else
-        None)
-    paths
+  let rec loop = fun remaining ->
+    match remaining with
+    | [] -> None
+    | path :: rest ->
+        if path_exists path then
+          Some path
+        else
+          loop rest
+  in
+  loop paths
 
 let parse_json_field_string = fun json fields ->
   let rec resolve = fun value ->
@@ -151,19 +149,19 @@ let manifest_error = fun target manifest_path ->
   ^ "(the release artifact must include a stable toolchain_fingerprint)."
 
 let trim_trailing_slash = fun value ->
-  if String.length value > 0 && value.[String.length value - 1] = '/' then
-    String.sub value 0 (String.length value - 1)
+  if String.length value > 0 && String.get_unchecked value ~at:(String.length value - 1) = '/' then
+    String.sub value ~offset:0 ~len:(String.length value - 1)
   else
     value
 
 let ocaml_download_base_url = fun () ->
-  match Env.var Env.String ~name:"RIOT_OCAML_CDN_URL" with
+  match Env.get Env.String ~var:"RIOT_OCAML_CDN_URL" with
   | Some value when not (String.equal value "") -> trim_trailing_slash value
   | _ -> (
-      match Env.var Env.String ~name:"OCAML_CDN_PUBLIC_BASE_URL" with
+      match Env.get Env.String ~var:"OCAML_CDN_PUBLIC_BASE_URL" with
       | Some value when not (String.equal value "") -> trim_trailing_slash value
       | _ -> (
-          match Env.var Env.String ~name:"RIOT_CDN_PUBLIC_BASE_URL" with
+          match Env.get Env.String ~var:"RIOT_CDN_PUBLIC_BASE_URL" with
           | Some value when not (String.equal value "") -> trim_trailing_slash value ^ "/ocaml"
           | _ -> "https://cdn.pkgs.ml/ocaml"
         )
@@ -201,7 +199,7 @@ let bundled_sysroot_marker_paths = fun sysroot ->
 
 let explicit_sysroot_override = fun () ->
   let present name =
-    match Env.var Env.String ~name with
+    match Env.get Env.String ~var:name with
     | Some value -> not (String.equal value "")
     | None -> false
   in
@@ -218,14 +216,14 @@ let missing_cross_components = fun ~toolchain_path ~target ->
       ] in
       let sysroot_candidates = sysroot_candidates ~toolchain_path ~target in
       let compiler_missing =
-        if List.exists path_exists compiler_candidates then
+        if List.any compiler_candidates ~fn:path_exists then
           []
         else
           [ "cross-compiler" ]
       in
       let sysroot_missing =
         match first_existing sysroot_candidates with
-        | Some sysroot when List.for_all path_exists (bundled_sysroot_marker_paths sysroot) -> []
+        | Some sysroot when List.all (bundled_sysroot_marker_paths sysroot) ~fn:path_exists -> []
         | _ -> [ "sysroot" ]
       in
       compiler_missing @ sysroot_missing
@@ -439,7 +437,7 @@ let check_health = fun toolchain ->
 let hash = fun t ->
   let hasher = Crypto.Sha256.create () in
   let toolchain_path = get_toolchain_path_for_target t.version t.target in
-  let write_legacy_path_fingerprint paths = List.iter (write_path_fingerprint hasher) paths in
+  let write_legacy_path_fingerprint paths = List.for_each paths ~fn:(write_path_fingerprint hasher) in
   Crypto.Sha256.write hasher t.version;
   Crypto.Sha256.write hasher t.target;
   let () =
@@ -450,7 +448,6 @@ let hash = fun t ->
             Ocamlc.path t.ocamlc;
             t.ocamlopt;
             Ocamldep.path t.ocamldep;
-            Ocamlformat.path t.ocamlformat;
             Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "stdlib.cmxa");
             Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "unix" / Path.v "unix.cmi");
             Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "unix" / Path.v "unix.cmxa");
@@ -635,20 +632,19 @@ let list_toolchains = fun ~config ->
     | [] -> [ host ]
     | ts -> ts
   in
-  List.map
-    (fun target ->
+  List.map targets
+    ~fn:(fun target ->
       let is_host = target = host in
       let status = check_toolchain_status ~version ~target in
       { version; target; is_host; status })
-    targets
 
 let install_all_toolchains = fun ~config ->
   let version = config.Riot_model.Toolchain_config.version in
   let toolchains = list_toolchains ~config in
   let host = get_host_triple () in
   let results =
-    List.map
-      (fun info ->
+    List.map toolchains
+      ~fn:(fun info ->
         match info.status with
         | Installed _ ->
             println
@@ -679,47 +675,36 @@ let install_all_toolchains = fun ~config ->
                   println ("     ✗ Failed: " ^ msg);
                   Error (info.target, msg)
             ))
-      toolchains
   in
-  let (successes, failures) =
-    List.partition
-      (
-        function
-        | Ok _ -> true
-        | Error _ -> false
-      )
-      results
-  in
+  let successes = List.filter results ~fn:(function Ok _ -> true | Error _ -> false) in
+  let failures = List.filter results ~fn:(function Error _ -> true | Ok _ -> false) in
   if List.length failures > 0 then
     let errors =
-      List.filter_map
-        (
+      List.filter_map results
+        ~fn:(
           function
           | Error (target, msg) -> Some (target ^ ": " ^ msg)
           | _ -> None
         )
-        results
     in
     Error ("Failed to install toolchains:\n  " ^ String.concat "\n  " errors)
   else
     let installed =
-      List.filter
-        (
+      List.filter successes
+        ~fn:(
           function
           | Ok `Installed -> true
           | _ -> false
         )
-        successes
       |> List.length
     in
     let skipped =
-      List.filter
-        (
+      List.filter successes
+        ~fn:(
           function
           | Ok `Skipped -> true
           | _ -> false
         )
-        successes
       |> List.length
     in
     Ok (installed, skipped)
@@ -850,8 +835,8 @@ let parse_available_toolchains_manifest = fun raw ->
               let rec loop acc = function
                 | [] ->
                     Ok (
-                      List.rev acc |> List.sort
-                        (fun left right ->
+                      List.reverse acc |> List.sort
+                        ~compare:(fun left right ->
                           let by_version = String.compare left.version right.version in
                           if not (Int.equal by_version 0) then
                             by_version

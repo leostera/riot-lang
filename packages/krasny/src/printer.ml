@@ -1,7 +1,7 @@
 open Std
 
 let to_string = fun doc ->
-  let buffer = IO.Buffer.create 1_024 in
+  let buffer = IO.Buffer.create ~size:1_024 in
   let rec write = fun ~line_start ~indent ->
     function
     | Doc.Empty ->
@@ -32,7 +32,7 @@ let to_string = fun doc ->
     | Doc.Group doc ->
         write ~line_start ~indent doc
     | Doc.Concat docs ->
-        List.fold_left (fun line_start doc -> write ~line_start ~indent doc) line_start docs
+        List.fold_left docs ~acc:line_start ~fn:(fun line_start doc -> write ~line_start ~indent doc)
     | Doc.Indent (extra, doc) ->
         write ~line_start ~indent:(indent + extra) doc
   and write_text ~line_start ~indent value =
@@ -42,17 +42,17 @@ let to_string = fun doc ->
           line_start
       | [ line ] ->
           if is_first && line_start && String.length line > 0 then
-            IO.Buffer.add_string buffer (String.make indent ' ');
+            IO.Buffer.add_string buffer (String.make ~len:indent ~char:' ');
           IO.Buffer.add_string buffer line;
           line_start && String.length line = 0
       | line :: rest ->
           if is_first && line_start && String.length line > 0 then
-            IO.Buffer.add_string buffer (String.make indent ' ');
+            IO.Buffer.add_string buffer (String.make ~len:indent ~char:' ');
           IO.Buffer.add_string buffer line;
           IO.Buffer.add_char buffer '\n';
           write_lines true false rest
     in
-    write_lines line_start true (String.split_on_char '\n' value)
+    write_lines line_start true (String.split value ~by:"\n")
   in
-  ignore (write ~line_start:true ~indent:0 doc);
+  let _ = write ~line_start:true ~indent:0 doc in
   IO.Buffer.contents buffer

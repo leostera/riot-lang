@@ -87,8 +87,8 @@ let empty_timing_summary = fun () ->
 let take = fun limit values ->
   let rec loop remaining acc rest =
     match (remaining, rest) with
-    | (0, _) -> List.rev acc
-    | (_, []) -> List.rev acc
+    | (0, _) -> List.reverse acc
+    | (_, []) -> List.reverse acc
     | (_, value :: tail) -> loop (remaining - 1) (value :: acc) tail
   in
   loop limit [] values
@@ -133,21 +133,18 @@ let record_suite_timing = fun (timing: timing_summary) ~suite_label (
   timing.measured_duration_us <- timing.measured_duration_us + summary.duration_us;
   timing.measured_test_count <- timing.measured_test_count + summary.total;
   let slow_suite_tests: slow_test list = summary.results
-  |> List.map
-    (fun (result: Riot_build.test_case_result) ->
+  |> List.map ~fn:(fun (result: Riot_build.test_case_result) ->
       ({ suite_label; test_name = result.name; duration_us = result.duration_us }: slow_test)) in
   let slowest_tests: slow_test list =
     List.append timing.slowest_tests slow_suite_tests
-    |> List.sort
-      (fun (left: slow_test) (right: slow_test) ->
+    |> List.sort ~compare:(fun (left: slow_test) (right: slow_test) ->
         Int.compare right.duration_us left.duration_us)
     |> take 5
   in
   timing.slowest_tests <- slowest_tests;
-  timing.failed_tests <- List.rev_append
+  timing.failed_tests <- List.reverse_append
     (
-      summary.results |> List.filter_map
-        (fun (result: Riot_build.test_case_result) ->
+      summary.results |> List.filter_map ~fn:(fun (result: Riot_build.test_case_result) ->
           match result.result with
           | Riot_build.Failed message -> Some (
             { suite_label; test_name = result.name; message; duration_us = result.duration_us }: failed_test
@@ -181,7 +178,8 @@ let print_summary = fun ~label ~total ~passed ~failed ~skipped ~(timing:timing_s
         ^ format_duration_us (timing.measured_duration_us / timing.measured_test_count));
       println "  Slowest tests:";
       timing.slowest_tests
-      |> List.iteri
+      |> List.enumerate
+      |> List.for_each ~fn:
         (fun idx (test: slow_test) ->
           println
             ("    "
@@ -197,7 +195,7 @@ let print_summary = fun ~label ~total ~passed ~failed ~skipped ~(timing:timing_s
   if not (List.is_empty timing.failed_tests) then
     (
       println "  Failed tests:";
-      timing.failed_tests |> List.rev |> List.iteri
+      timing.failed_tests |> List.reverse |> List.enumerate |> List.for_each ~fn:
         (fun idx (test: failed_test) ->
           println
             ("    "
@@ -217,13 +215,13 @@ let event_elapsed_us = fun ~command_started_at ->
   Time.Instant.elapsed command_started_at |> Time.Duration.to_micros
 
 let json_int_field = fun name fields ->
-  match List.assoc_opt name fields with
+  match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with
   | Some (Data.Json.Int value) -> Some value
   | _ -> None
 
 let upsert_int_field = fun name value fields ->
   let filtered =
-    List.filter (fun (field_name, _) -> not (String.equal field_name name)) fields
+    List.filter fields ~fn:(fun (field_name, _) -> not (String.equal field_name name))
   in
   filtered @ [ (name, Data.Json.Int value) ]
 
@@ -273,17 +271,17 @@ let write_test_event_json = fun ~command_started_at ?(pending_suite = None) (
       if summary.total > 0 then
         (
           pending_suite
-          |> Option.iter
+          |> Option.for_each ~fn:
             (fun suite ->
               Riot_build.test_event_to_json (Riot_build.RunningSuite suite)
-              |> Option.iter
+              |> Option.for_each ~fn:
                 (fun json ->
                   write_json_event
                     ~command_started_at
                     ~duration_us:None (Riot_build.RunningSuite suite)
                     json));
           Riot_build.test_event_to_json event
-          |> Option.iter
+          |> Option.for_each ~fn:
             (fun json ->
               write_json_event
                 ~command_started_at
@@ -296,7 +294,7 @@ let write_test_event_json = fun ~command_started_at ?(pending_suite = None) (
         Some None
   | _ ->
       Riot_build.test_event_to_json event
-      |> Option.iter
+      |> Option.for_each ~fn:
         (fun json ->
           write_json_event
             ~command_started_at
@@ -306,17 +304,12 @@ let write_test_event_json = fun ~command_started_at ?(pending_suite = None) (
       Some None
 
 let find_suite_source_path = fun ~(workspace:Riot_model.Workspace.t) (suite: Riot_build.suite_binary) ->
-  workspace.packages |> List.find_map
-    (fun (pkg: Riot_model.Package.t) ->
-      if String.equal pkg.name suite.package_name then
-        pkg.binaries |> List.find_map
-          (fun (bin: Riot_model.Package.binary) ->
-            if String.equal bin.name suite.suite_name then
-              Some Path.(pkg.path / bin.path)
-            else
-              None)
-      else
-        None)
+  workspace.packages
+  |> List.find ~fn:(fun (pkg: Riot_model.Package.t) -> String.equal pkg.name suite.package_name)
+  |> Option.and_then ~fn:(fun (pkg: Riot_model.Package.t) ->
+    pkg.binaries
+    |> List.find ~fn:(fun (bin: Riot_model.Package.binary) -> String.equal bin.name suite.suite_name)
+    |> Option.map ~fn:(fun (bin: Riot_model.Package.binary) -> Path.(pkg.path / bin.path)))
 
 let suite_source_label = fun ~(workspace:Riot_model.Workspace.t) (suite: Riot_build.suite_binary) ->
   match find_suite_source_path ~workspace suite with
@@ -441,11 +434,11 @@ let write_test_list_completed_json = fun ~command_started_at ~suite_count ~test_
     ])
 
 let write_test_list = fun ~(workspace:Riot_model.Workspace.t) suites ->
-  List.iter
+  List.for_each suites ~fn:
     (fun (suite: Riot_build.listed_test_suite) ->
       println "";
       println (listed_suite_source_label ~workspace suite);
-      suite.tests |> List.iter
+      suite.tests |> List.for_each ~fn:
         (fun (test: Riot_build.listed_test_case) ->
           let metadata = metadata_suffix test.size test.reliability in
           let type_prefix =
@@ -461,7 +454,6 @@ let write_test_list = fun ~(workspace:Riot_model.Workspace.t) suites ->
           in
           println
             ("  [" ^ Int.to_string test.index ^ "] " ^ type_prefix ^ " " ^ test.name ^ metadata ^ skip_suffix)))
-    suites
 
 let print_suite_header = fun ~(workspace:Riot_model.Workspace.t) (suite: Riot_build.suite_binary) total ->
   println "";
@@ -527,7 +519,7 @@ let print_suite_results = fun ~(workspace:Riot_model.Workspace.t) ~verbose ~(sui
   if summary.total > 0 then
     (
       print_suite_header ~workspace suite summary.total;
-      summary.results |> List.iter print_test_result;
+      summary.results |> List.for_each ~fn:print_test_result;
       print_suite_footer summary;
       if verbose > 0 then
         print_command_output Command.{ stdout; stderr; status = 0 }
@@ -651,7 +643,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
                 listed_suite_count := !listed_suite_count + 1;
                 listed_test_count := !listed_test_count + List.length suite.tests;
                 write_test_suite_listed_json ~command_started_at ~workspace suite;
-                List.iter (write_test_case_listed_json ~command_started_at suite.suite) suite.tests
+                List.for_each suite.tests ~fn:(write_test_case_listed_json ~command_started_at suite.suite)
               )
           in
           let on_suite_error (suite: Riot_build.suite_binary) err =
@@ -682,9 +674,8 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           with
           | Ok suites ->
               let suites =
-                List.filter
-                  (fun (suite: Riot_build.listed_test_suite) -> not (List.is_empty suite.tests))
-                  suites
+                List.filter suites ~fn:(fun (suite: Riot_build.listed_test_suite) ->
+                  not (List.is_empty suite.tests))
               in
               (
                 match output_mode with

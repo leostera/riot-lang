@@ -1210,8 +1210,9 @@ let parse_int_reader = fun state reader ->
     if number.is_float then
       invalid_field_type ()
     else
-      try Int.of_string number.text with
-      | _ -> invalid_field_type ()
+      match Int.parse number.text with
+      | Some value -> value
+      | None -> invalid_field_type ()
   in
   let start = ref reader.Input.pos in
   try
@@ -1314,8 +1315,9 @@ let parse_int64 = fun state ->
   if number.is_float then
     invalid_field_type ()
   else
-    try Int64.of_string number.text with
-    | _ -> invalid_field_type ()
+    match Int64.of_string_opt number.text with
+    | Some value -> value
+    | None -> invalid_field_type ()
 
 let parse_int = fun state ->
   match state.input with
@@ -1327,18 +1329,21 @@ let parse_int32 = fun state ->
   if number.is_float then
     invalid_field_type ()
   else
-    try Int32.of_string number.text with
-    | _ -> invalid_field_type ()
+    match Int32.of_string_opt number.text with
+    | Some value -> value
+    | None -> invalid_field_type ()
 
 let parse_float_generic = fun state ->
   let number = parse_number_text_generic state in
-  try Float.of_string number.text with
-  | _ -> invalid_field_type ()
+  match Float.parse number.text with
+  | Some value -> value
+  | None -> invalid_field_type ()
 
 let parse_float_reader = fun state reader ->
   let number = parse_number_text_reader_slow state reader in
-  try Float.of_string number.text with
-  | _ -> invalid_field_type ()
+  match Float.parse number.text with
+  | Some value -> value
+  | None -> invalid_field_type ()
 
 let parse_float = fun state ->
   match state.input with

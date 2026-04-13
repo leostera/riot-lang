@@ -19,7 +19,7 @@ let expressions = fun (ctx: Rule.context) ->
           walk.descend_expression (expression :: expressions) expression);
     }
     []
-    ctx.cst |> List.rev
+    ctx.cst |> List.reverse
 
 let let_bindings = fun (ctx: Rule.context) ->
   Syn.Visit.source_file
@@ -30,7 +30,7 @@ let let_bindings = fun (ctx: Rule.context) ->
           walk.descend_let_binding (binding :: bindings) binding);
     }
     []
-    ctx.cst |> List.rev
+    ctx.cst |> List.reverse
 
 let type_declarations = fun (ctx: Rule.context) ->
   Syn.Visit.source_file
@@ -41,4 +41,4 @@ let type_declarations = fun (ctx: Rule.context) ->
           walk.descend_type_declaration (declaration :: declarations) declaration);
     }
     []
-    ctx.cst |> List.rev
+    ctx.cst |> List.reverse

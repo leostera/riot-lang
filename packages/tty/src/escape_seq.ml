@@ -162,13 +162,13 @@ let hide_cursor_seq = escape "?25l"
 (* Strip ANSI escape sequences from a string *)
 
 let strip = fun str ->
-  let buf = Buffer.create (String.length str) in
+  let buf = Buffer.create ~size:(String.length str) in
   let len = String.length str in
   let rec skip_csi j =
     if j >= len then
       len
     else
-      let c = str.[j] in
+      let c = String.get_unchecked str ~at:j in
       if (c >= '@' && c <= '~') then
         j + 1
       else
@@ -177,13 +177,13 @@ let strip = fun str ->
   let rec scan i =
     if i >= len then
       Buffer.contents buf
-    else if str.[i] = '\x1b' then
-      if i + 1 < len && str.[i + 1] = '[' then
+    else if String.get_unchecked str ~at:i = '\x1b' then
+      if i + 1 < len && String.get_unchecked str ~at:(i + 1) = '[' then
         scan (skip_csi (i + 2))
       else
         scan (i + 1)
     else begin
-      Buffer.add_char buf str.[i];
+      Buffer.add_char buf (String.get_unchecked str ~at:i);
       scan (i + 1)
     end
   in

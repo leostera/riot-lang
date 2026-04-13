@@ -4,7 +4,7 @@ open Riot_executor
 
 let format_prefixed_block = fun ~prefix message ->
   let trimmed = String.trim message in
-  match String.split_on_char '\n' trimmed with
+  match String.split trimmed ~by:"\n" with
   | [] -> prefix
   | first :: rest ->
       prefix ^ first ^ (
@@ -37,10 +37,8 @@ let format = fun ~displayed_packages (event: Telemetry.event) ->
   | Telemetry_events.PackageOcamlcWarnings { package; messages; _ } ->
       String.concat
         "\n"
-        (List.map
-          (fun message ->
-            format_prefixed_block ~prefix:("      \027[1;33mWarning\027[0m " ^ package.name ^ ": ") message)
-          messages)
+        (List.map messages ~fn:(fun message ->
+           format_prefixed_block ~prefix:("      \027[1;33mWarning\027[0m " ^ package.name ^ ": ") message))
   | Telemetry_events.BuildFailed { package; error; _ } ->
       let error_msg =
         match error with
@@ -55,7 +53,8 @@ let format = fun ~displayed_packages (event: Telemetry.event) ->
         | Telemetry_events.ActionExecutionFailed { message } ->
             "Action failed: " ^ message
         | Telemetry_events.ActionOutputsNotCreated { missing } ->
-            "Expected outputs not created: " ^ String.concat ", " (List.map Path.to_string missing)
+            "Expected outputs not created: "
+            ^ String.concat ", " (List.map missing ~fn:Path.to_string)
         | Telemetry_events.ActionDependenciesFailed { failed } ->
             "Dependencies failed: " ^ Int.to_string (List.length failed) ^ " actions"
       in

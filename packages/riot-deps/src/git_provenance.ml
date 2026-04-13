@@ -84,16 +84,16 @@ let run_git = fun ~cwd args ->
 
 let strip_git_suffix = fun url ->
   if String.ends_with ~suffix:".git" url then
-    String.sub url 0 (String.length url - 4)
+    String.sub url ~offset:0 ~len:(String.length url - 4)
   else
     url
 
 let split_once = fun ~on text ->
-  match String.index text on with
+  match String.index_of text ~char:on with
   | None -> None
   | Some idx -> Some (
-    String.sub text 0 idx,
-    String.sub text (idx + 1) (String.length text - idx - 1)
+    String.sub text ~offset:0 ~len:idx,
+    String.sub text ~offset:(idx + 1) ~len:(String.length text - idx - 1)
   )
 
 let normalize_remote_url = fun raw_url ->
@@ -101,7 +101,7 @@ let normalize_remote_url = fun raw_url ->
   let mk_locator host path =
     let path =
       if String.starts_with ~prefix:"/" path then
-        String.sub path 1 (String.length path - 1)
+        String.sub path ~offset:1 ~len:(String.length path - 1)
       else
         path
     in
@@ -111,22 +111,22 @@ let normalize_remote_url = fun raw_url ->
       Ok (host ^ "/" ^ path)
   in
   if String.starts_with ~prefix:"https://" url then
-    let rest = String.sub url 8 (String.length url - 8) in
+    let rest = String.sub url ~offset:8 ~len:(String.length url - 8) in
     match split_once ~on:'/' rest with
     | Some (host, path) -> mk_locator host path
     | None -> Error (UnsupportedRemoteUrl { url = raw_url })
   else if String.starts_with ~prefix:"http://" url then
-    let rest = String.sub url 7 (String.length url - 7) in
+    let rest = String.sub url ~offset:7 ~len:(String.length url - 7) in
     match split_once ~on:'/' rest with
     | Some (host, path) -> mk_locator host path
     | None -> Error (UnsupportedRemoteUrl { url = raw_url })
   else if String.starts_with ~prefix:"ssh://git@" url then
-    let rest = String.sub url 10 (String.length url - 10) in
+    let rest = String.sub url ~offset:10 ~len:(String.length url - 10) in
     match split_once ~on:'/' rest with
     | Some (host, path) -> mk_locator host path
     | None -> Error (UnsupportedRemoteUrl { url = raw_url })
   else if String.starts_with ~prefix:"git@" url then
-    let rest = String.sub url 4 (String.length url - 4) in
+    let rest = String.sub url ~offset:4 ~len:(String.length url - 4) in
     match split_once ~on:':' rest with
     | Some (host, path) -> mk_locator host path
     | None -> Error (UnsupportedRemoteUrl { url = raw_url })
@@ -150,7 +150,7 @@ let discover = fun ~package_root ->
   match run_git ~cwd:package_root [ "rev-parse"; "--show-toplevel" ] with
   | Error _ as err -> err
   | Ok repository_root_str -> (
-      match Path.of_string repository_root_str with
+      match Path.from_string repository_root_str with
       | Error err -> Error (InvalidRepositoryRoot {
         path = repository_root_str;
         error = path_error_message err

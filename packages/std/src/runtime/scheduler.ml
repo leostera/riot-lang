@@ -2,7 +2,6 @@ module Runtime_process = Process
 module Runtime_pid = Pid
 module Runtime_scheduler_id = Scheduler_id
 module Runtime_timer = Timer
-module Std_io = IO
 module Cell = Sync.Cell
 open Kernel
 open Collections
@@ -31,6 +30,12 @@ type runtime_counters = Scheduler_types.runtime_counters
 type t = Scheduler_types.t
 
 type domain_context = Scheduler_types.domain_context
+
+type io_registration_error = Scheduler_types.io_registration_error
+
+let io_registration_error_message = function
+  | Closed -> "Closed"
+  | Async error -> Async.error_to_string error
 
 let current_context = Scheduler_types.current_context
 
@@ -253,7 +258,7 @@ let create = fun ~config ->
   | Error err ->
       eprintln
         ("[Scheduler] ERROR: Failed to create Async.Poll: "
-        ^ Std_io.error_message (Std_io.of_async_error err));
+        ^ Async.error_to_string err);
       panic "Failed to create I/O polling system"
 
 let get_context = fun () ->
@@ -491,7 +496,7 @@ let cancel_timer = fun t timer_id -> push_reactor_command t (Cancel_timer timer_
 
 let register_io = fun t ~token ~interest ~source ->
   if Atomic.get t.stop then
-    Error Std_io.Closed
+    Error Closed
   else
     let reply = make_response () in
     push_reactor_command t (Register_io { token; interest; source; reply });
@@ -755,7 +760,7 @@ let handle_syscall = fun k t proc name interest source timeout ->
                     ("[Scheduler] ERROR: Failed to register I/O for process "
                     ^ Runtime_pid.to_string (Runtime_process.pid proc)
                     ^ ": "
-                    ^ Std_io.error_message err);
+                    ^ io_registration_error_message err);
                   Runtime_process.mark_as_runnable proc;
                   k (Discontinue (Failure "Failed to register I/O"))
             )
@@ -1095,7 +1100,7 @@ let deregister_io_in_reactor = fun t source ~context ->
     ("[Scheduler] WARN: Failed to deregister I/O "
     ^ context
     ^ ": "
-    ^ Std_io.error_message (Std_io.of_async_error err))
+    ^ Async.error_to_string err)
 
 let process_timers = fun t ->
   if Timer_wheel.size t.timer_wheel = 0 then
@@ -1156,14 +1161,14 @@ let handle_reactor_command = fun t cmd ->
         (
           match Async.Poll.register t.io_poll token interest source with
           | Ok () -> Ok ()
-          | Error err -> Error (Std_io.of_async_error err)
+          | Error err -> Error (Async err)
         )
   | Deregister_io source -> (
       match Async.Poll.deregister t.io_poll source with
       | Ok () -> ()
       | Error err -> eprintln
         ("[Scheduler] WARN: Failed to deregister I/O source: "
-        ^ Std_io.error_message (Std_io.of_async_error err))
+        ^ Async.error_to_string err)
     )
 
 let poll_io = fun t ->
@@ -1174,7 +1179,7 @@ let poll_io = fun t ->
     | Error err ->
         eprintln
           ("[Scheduler] ERROR: Failed to poll I/O: "
-          ^ Std_io.error_message (Std_io.of_async_error err));
+          ^ Async.error_to_string err);
         []
   in
   List.for_each events

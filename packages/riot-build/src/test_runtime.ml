@@ -114,17 +114,17 @@ let compare_suite_binary = fun left right ->
     (right.package_name ^ ":" ^ right.suite_name)
 
 let requested_packages = fun suites ->
-  suites |> List.map (fun (suite: suite_binary) -> suite.package_name) |> List.sort_uniq String.compare
+  suites |> List.map ~fn:(fun (suite: suite_binary) -> suite.package_name) |> List.unique ~compare:String.compare
 
 let collect_suite_binaries = fun (workspace: Riot_model.Workspace.t) ?package_filter ?suite_filter () ->
-  workspace.packages |> List.filter Riot_model.Package.is_workspace_member |> List.filter
-    (fun (pkg: Riot_model.Package.t) ->
+  workspace.packages
+  |> List.filter ~fn:Riot_model.Package.is_workspace_member
+  |> List.filter ~fn:(fun (pkg: Riot_model.Package.t) ->
       match package_filter with
       | None -> true
-      | Some package_name -> String.equal pkg.name package_name) |> List.concat_map
-    (fun (pkg: Riot_model.Package.t) ->
-      List.filter_map
-        (fun (bin: Riot_model.Package.binary) ->
+      | Some package_name -> String.equal pkg.name package_name)
+  |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
+      List.filter_map pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
           if is_test_binary_name bin.name && (
               match suite_filter with
               | None -> true
@@ -132,21 +132,17 @@ let collect_suite_binaries = fun (workspace: Riot_model.Workspace.t) ?package_fi
             ) then
             Some { package_name = pkg.name; suite_name = bin.name }
           else
-            None)
-        pkg.binaries) |> List.sort compare_suite_binary
+            None))
+  |> List.sort ~compare:compare_suite_binary
 
 let find_suite_source_path = fun ~(workspace:Riot_model.Workspace.t) (suite: suite_binary) ->
-  workspace.packages |> List.find_map
-    (fun (pkg: Riot_model.Package.t) ->
-      if String.equal pkg.name suite.package_name then
-        pkg.binaries |> List.find_map
-          (fun (bin: Riot_model.Package.binary) ->
-            if String.equal bin.name suite.suite_name then
-              Some Path.(pkg.path / bin.path)
-            else
-              None)
-      else
-        None)
+  match List.find workspace.packages ~fn:(fun (pkg: Riot_model.Package.t) ->
+    String.equal pkg.name suite.package_name) with
+  | None -> None
+  | Some pkg ->
+      List.find pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
+        String.equal bin.name suite.suite_name)
+      |> Option.map ~fn:(fun (bin: Riot_model.Package.binary) -> Path.(pkg.path / bin.path))
 
 let test_error_message = function
   | BuildFailed err -> Build_runtime.error_message err
@@ -189,8 +185,8 @@ let get_bool = function
   | other -> error_expected "bool" other
 
 let field = fun name fields ->
-  match List.assoc_opt name fields with
-  | Some value -> Ok value
+  match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with
+  | Some (_, value) -> Ok value
   | None -> Error ("missing field " ^ name)
 
 let ( let* ) result f =
@@ -199,24 +195,21 @@ let ( let* ) result f =
   | Error _ as err -> err
 
 let optional_int_field = fun name fields ->
-  match List.assoc_opt name fields with
-  | Some value -> get_int value |> Result.map Option.some
+  match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with
+  | Some (_, value) -> get_int value |> Result.map ~fn:Option.some
   | None -> Ok None
 
 let split_json_stdout = fun stdout ->
-  let lines = String.split_on_char '\n' stdout in
-  let indexed =
-    List.mapi (fun idx line -> (idx, line)) lines
-  in
+  let lines = String.split stdout ~by:"\n" in
+  let indexed = List.enumerate lines in
   match indexed
-  |> List.rev
-  |> List.find_opt (fun (_, line) -> not (String.equal (String.trim line) "")) with
+  |> List.reverse
+  |> List.find ~fn:(fun (_, line) -> not (String.equal (String.trim line) "")) with
   | None -> Error "missing JSON output"
   | Some (json_idx, json_line) ->
       let prefix =
         indexed
-        |> List.filter_map
-          (fun (idx, line) ->
+        |> List.filter_map ~fn:(fun (idx, line) ->
             if idx < json_idx then
               Some line
             else
@@ -227,7 +220,7 @@ let split_json_stdout = fun stdout ->
 
 let remove_json_args = fun args ->
   let rec loop acc = function
-    | [] -> List.rev acc
+    | [] -> List.reverse acc
     | "--json" :: rest -> loop acc rest
     | "--format" :: _value :: rest -> loop acc rest
     | arg :: rest when String.starts_with ~prefix:"--format=" arg -> loop acc rest
@@ -237,7 +230,7 @@ let remove_json_args = fun args ->
 
 let remove_list_args = fun args ->
   let rec loop acc = function
-    | [] -> List.rev acc
+    | [] -> List.reverse acc
     | "--json" :: rest -> loop acc rest
     | "--format" :: _value :: rest -> loop acc rest
     | arg :: rest when String.starts_with ~prefix:"--format=" arg -> loop acc rest
@@ -264,9 +257,9 @@ let test_type_of_json = fun json ->
       Error ("unknown test type " ^ other)
 
 let test_size_of_json = fun fields ->
-  match List.assoc_opt "size" fields with
+  match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name "size") with
   | None -> Ok Small
-  | Some value ->
+  | Some (_, value) ->
       let* size = get_string value in
       match size with
       | "small" -> Ok Small
@@ -274,20 +267,20 @@ let test_size_of_json = fun fields ->
       | other -> Error ("unknown test size " ^ other)
 
 let test_reliability_of_json = fun fields ->
-  match List.assoc_opt "reliability" fields with
+  match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name "reliability") with
   | None -> Ok Stable
-  | Some value ->
+  | Some (_, value) ->
       let* reliability = get_string value in
       match reliability with
       | "stable" ->
           Ok Stable
       | "flaky" ->
           let retry_attempts =
-            match List.assoc_opt "retry_attempts" fields with
-            | Some value -> get_int value
+            match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name "retry_attempts") with
+            | Some (_, value) -> get_int value
             | None -> Ok 0
           in
-          retry_attempts |> Result.map (fun retry_attempts -> Flaky { retry_attempts })
+          retry_attempts |> Result.map ~fn:(fun retry_attempts -> Flaky { retry_attempts })
       | other ->
           Error ("unknown test reliability " ^ other)
 
@@ -342,8 +335,8 @@ let listed_test_case_of_json = fun json ->
   let* size = test_size_of_json fields in
   let* reliability = test_reliability_of_json fields in
   let skip =
-    match List.assoc_opt "skip" fields with
-    | Some value -> get_bool value
+    match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name "skip") with
+    | Some (_, value) -> get_bool value
     | None -> Ok false
   in
   let* skip = skip in
@@ -371,13 +364,13 @@ let test_summary_of_json = fun json ->
 
 let parse_test_suite_output = fun stdout ->
   let* (prefix_stdout, json_line) = split_json_stdout stdout in
-  let* json = Data.Json.of_string json_line |> Result.map_error Data.Json.error_to_string in
+  let* json = Data.Json.of_string json_line |> Result.map_err ~fn:Data.Json.error_to_string in
   let* fields = get_object json in
   let* tests_json = field "tests" fields in
   let* summary_json = field "summary" fields in
   let* tests = get_array tests_json in
   let rec parse_results index acc = function
-    | [] -> Ok (List.rev acc)
+    | [] -> Ok (List.reverse acc)
     | test_json :: rest ->
         let* result = test_result_of_json index test_json in
         parse_results (index + 1) (result :: acc) rest
@@ -404,12 +397,12 @@ let parse_test_suite_output = fun stdout ->
 
 let parse_listed_tests_output = fun stdout ->
   let* (_prefix_stdout, json_line) = split_json_stdout stdout in
-  let* json = Data.Json.of_string json_line |> Result.map_error Data.Json.error_to_string in
+  let* json = Data.Json.of_string json_line |> Result.map_err ~fn:Data.Json.error_to_string in
   let* fields = get_object json in
   let* tests_json = field "tests" fields in
   let* tests = get_array tests_json in
   let rec loop acc = function
-    | [] -> Ok (List.rev acc)
+    | [] -> Ok (List.reverse acc)
     | json :: rest ->
         let* listed = listed_test_case_of_json json in
         loop (listed :: acc) rest
@@ -437,7 +430,7 @@ let summarize_output = fun value ->
     if String.length trimmed <= limit then
       trimmed
     else
-      String.sub trimmed 0 limit ^ "..."
+      String.sub trimmed ~offset:0 ~len:limit ^ "..."
 
 let parse_failure_reason = fun ~suite ~(output:Command.output) reason ->
   String.concat ""
@@ -490,8 +483,7 @@ let test_event_to_json = function
   } ->
       let test_results =
         summary.results
-        |> List.map
-          (fun (result: test_case_result) ->
+        |> List.map ~fn:(fun (result: test_case_result) ->
             let status_fields =
               match result.result with
               | Passed -> [ ("status", Data.Json.String "passed") ]
@@ -584,8 +576,7 @@ let test_event_to_json = function
     failed_tests
   } ->
       let failed_tests = failed_tests
-      |> List.map
-        (fun (failed_test: failed_test) ->
+      |> List.map ~fn:(fun (failed_test: failed_test) ->
           Data.Json.Object [
             ("package", Data.Json.String failed_test.suite.package_name);
             ("suite", Data.Json.String failed_test.suite.suite_name);
@@ -608,16 +599,15 @@ let find_suite_binary_path = fun ~(store:Riot_store.Store.t) ~(suite:suite_binar
       match result.status with
       | Riot_executor.Package_builder.Built artifact
       | Riot_executor.Package_builder.Cached artifact ->
-          List.find_opt
-            (fun (entry: Riot_store.Manifest.export_entry) ->
-              String.equal entry.name suite.suite_name)
-            artifact.exports
+          List.find artifact.exports ~fn:(fun (entry: Riot_store.Manifest.export_entry) ->
+            String.equal entry.name suite.suite_name)
       | Riot_executor.Package_builder.Skipped _
       | Riot_executor.Package_builder.Failed _ -> None
     else
       None
   in
-  match List.find_map find_suite_export results with
+  match List.find results ~fn:(fun result -> Option.is_some (find_suite_export result))
+    |> Option.and_then ~fn:find_suite_export with
   | None -> Error (SuiteArtifactNotFound {
     suite;
     reason = "suite '" ^ suite.suite_name ^ "' was not produced by build results"
@@ -693,7 +683,7 @@ let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_er
           ~profile:request.profile
           ~target:(Riot_model.Riot_dirs.host_target ()) in
         let rec resolve_binaries acc = function
-          | [] -> (List.rev acc, [])
+          | [] -> (List.reverse acc, [])
           | suite :: rest -> (
               match find_suite_binary_path ~store ~suite results with
               | Ok binary_path ->
@@ -705,7 +695,7 @@ let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_er
             )
         in
         let suite_binaries, missing_suites = resolve_binaries [] suites in
-        List.iter (fun (suite, err) -> on_suite_error suite err) missing_suites;
+        List.for_each missing_suites ~fn:(fun (suite, err) -> on_suite_error suite err);
         if suite_binaries = [] then
           Ok []
         else
@@ -739,7 +729,7 @@ let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_er
           in
           let rec collect active remaining acc =
             if active <= 0 then
-              Ok (List.rev acc)
+              Ok (List.reverse acc)
             else
               let suite, result =
                 receive
@@ -782,11 +772,10 @@ let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_er
           in
           let initial_active, remaining = spawn_initial 0 suite_binaries in
           collect initial_active remaining []
-          |> Result.map
-            (fun collected ->
+          |> Result.map ~fn:(fun collected ->
               collected
-              |> List.sort (fun (left, _) (right, _) -> compare_suite_binary left right)
-              |> List.map (fun (_, value) -> value))
+              |> List.sort ~compare:(fun (left, _) (right, _) -> compare_suite_binary left right)
+              |> List.map ~fn:(fun (_, value) -> value))
 
 let test = fun ?(on_event = no_event) (request: test_request) ->
   let suites = collect_suite_binaries
@@ -832,7 +821,7 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
                     passed = !passed;
                     failed = !failed;
                     skipped = !skipped;
-                    failed_tests = List.rev !failed_tests;
+                    failed_tests = List.reverse !failed_tests;
                   }
                 );
               if !failed > 0 then
@@ -872,10 +861,9 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
                           passed := !passed + summary.passed;
                           failed := !failed + summary.failed;
                           skipped := !skipped + summary.skipped;
-                          failed_tests := List.rev_append
+                          failed_tests := List.reverse_append
                             (
-                              summary.results |> List.filter_map
-                                (fun (result: test_case_result) ->
+                              summary.results |> List.filter_map ~fn:(fun (result: test_case_result) ->
                                   match result.result with
                                   | Failed message -> Some {
                                     suite;

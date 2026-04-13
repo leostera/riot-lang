@@ -2,33 +2,33 @@ open Std
 open Markdown_parser
 
 let escape_html = fun text ->
-  let buffer = IO.Buffer.create (String.length text) in
-  String.iter
-    (fun char ->
+  let buffer = IO.Buffer.create ~size:(String.length text) in
+  String.for_each
+    text
+    ~fn:(fun char ->
       match char with
       | '&' -> IO.Buffer.add_string buffer "&amp;"
       | '<' -> IO.Buffer.add_string buffer "&lt;"
       | '>' -> IO.Buffer.add_string buffer "&gt;"
       | '"' -> IO.Buffer.add_string buffer "&quot;"
-      | c -> IO.Buffer.add_char buffer c)
-    text;
+      | c -> IO.Buffer.add_char buffer c);
   IO.Buffer.contents buffer
 
 let escape_attribute = fun text ->
-  let buffer = IO.Buffer.create (String.length text) in
-  String.iter
-    (fun char ->
+  let buffer = IO.Buffer.create ~size:(String.length text) in
+  String.for_each
+    text
+    ~fn:(fun char ->
       match char with
       | '&' -> IO.Buffer.add_string buffer "&amp;"
       | '"' -> IO.Buffer.add_string buffer "&quot;"
       | '<' -> IO.Buffer.add_string buffer "&lt;"
       | '>' -> IO.Buffer.add_string buffer "&gt;"
-      | c -> IO.Buffer.add_char buffer c)
-    text;
+      | c -> IO.Buffer.add_char buffer c);
   IO.Buffer.contents buffer
 
 let rec render_plaintext = fun inlines ->
-  let buffer = IO.Buffer.create 32 in
+  let buffer = IO.Buffer.create ~size:32 in
   let rec append nodes =
     match nodes with
     | [] -> IO.Buffer.contents buffer
@@ -51,7 +51,7 @@ let rec render_plaintext = fun inlines ->
 
 let render_inlines = fun inlines ->
   let rec loop nodes =
-    let buffer = IO.Buffer.create 32 in
+    let buffer = IO.Buffer.create ~size:32 in
     let rec append acc =
       match acc with
       | [] -> IO.Buffer.contents buffer
@@ -127,7 +127,7 @@ let rec render_item_blocks = fun ~tight blocks ->
   | block :: tail -> render_block block ^ render_item_blocks ~tight tail
 
 and render_block = fun block ->
-  let render_children blocks = blocks |> List.map render_block |> String.concat "" in
+  let render_children blocks = blocks |> List.map ~fn:render_block |> String.concat "" in
   let render_list_item ~tight item =
     match item with
     | [] ->
@@ -173,8 +173,8 @@ and render_block = fun block ->
     "<" ^ tag ^ align_attr ^ ">" ^ content ^ "</" ^ tag ^ ">\n"
   in
   let render_table_row tag row =
-    let cells = List.combine row.alignments row.cells
-    |> List.map (fun (alignment, cell) -> render_aligned_cell tag alignment cell)
+    let cells = List.zip row.alignments row.cells
+    |> List.map ~fn:(fun (alignment, cell) -> render_aligned_cell tag alignment cell)
     |> String.concat "" in
     "<tr>\n" ^ cells ^ "</tr>\n"
   in
@@ -203,7 +203,7 @@ and render_block = fun block ->
         else
           ("ul", "ul")
       in
-      let children = items |> List.map (render_list_item ~tight) |> String.concat "" in
+      let children = items |> List.map ~fn:(render_list_item ~tight) |> String.concat "" in
       "<" ^ open_tag ^ ">\n" ^ children ^ "</" ^ close_tag ^ ">\n"
   | Task_list_item { checked; blocks; _ } ->
       let checkbox =
@@ -236,10 +236,10 @@ and render_block = fun block ->
         if rows = [] then
           ""
         else
-          "<tbody>\n" ^ (rows |> List.map (render_table_row "td") |> String.concat "") ^ "</tbody>\n"
+          "<tbody>\n" ^ (rows |> List.map ~fn:(render_table_row "td") |> String.concat "") ^ "</tbody>\n"
       in
       "<table>\n" ^ thead ^ tbody ^ "</table>\n"
   | Error_block { message; _ } ->
       "<!-- " ^ escape_html message ^ " -->\n"
 
-let render = fun blocks -> blocks |> List.map render_block |> String.concat ""
+let render = fun blocks -> blocks |> List.map ~fn:render_block |> String.concat ""

@@ -13,7 +13,7 @@ let normalize_newlines = fun source ->
     let rec loop index =
       if index >= String.length subject then
         false
-      else if subject.[index] = char then
+      else if String.get_unchecked subject ~at:index = char then
         true
       else
         loop (index + 1)
@@ -23,14 +23,13 @@ let normalize_newlines = fun source ->
   if not (has_char source '\r') then
     source
   else
-    let buffer = IO.Buffer.create (String.length source) in
-    String.iter
-      (fun char ->
+    let buffer = IO.Buffer.create ~size:(String.length source) in
+    String.for_each source
+      ~fn:(fun char ->
         if not (Char.equal char '\r') then
           IO.Buffer.add_char buffer char
         else
-          ())
-      source;
+          ());
     IO.Buffer.contents buffer
 
 let line_field = fun fields name ->
@@ -102,15 +101,15 @@ let parse_fixtures_json = fun source ->
   | Ok json -> (
       match Data.Json.get_array json with
       | None -> []
-      | Some rows -> rows |> List.filter_map parse_fixture_entry
+      | Some rows -> rows |> List.filter_map ~fn:parse_fixture_entry
     )
 
 let derive_workspace_root = fun path ->
-  let segments = Path.components path |> List.map Path.to_string in
+  let segments = Path.components path |> List.map ~fn:Path.to_string in
   let rec take_prefix index values acc =
     match (index, values) with
-    | (0, _) -> List.rev acc
-    | (_, []) -> List.rev acc
+    | (0, _) -> List.reverse acc
+    | (_, []) -> List.reverse acc
     | (_, value :: rest) -> take_prefix (index - 1) rest (value :: acc)
   in
   let rec find_build_index index values =
@@ -138,11 +137,7 @@ let derive_workspace_root = fun path ->
       match prefix with
       | []
       | [ "." ] -> None
-      | _ -> (
-          match Path.of_string (join_path_segments prefix) with
-          | Ok root -> Some root
-          | Error _ -> None
-        )
+      | _ -> Some (Path.v (join_path_segments prefix))
     )
 
 let ancestry = fun start ->
@@ -154,7 +149,7 @@ let ancestry = fun start ->
       | None -> path :: acc
       | Some next -> (
           let deduped = path :: acc in
-          if List.mem next deduped then
+          if List.contains deduped ~value:next then
             deduped
           else
             loop (count - 1) next deduped
@@ -167,18 +162,14 @@ let rec dedupe = fun items ->
   | [] -> []
   | head :: tail ->
       let tail' =
-        List.filter (fun path -> not (Path.equal path head)) tail
+        List.filter tail ~fn:(fun path -> not (Path.equal path head))
       in
       head :: dedupe tail'
 
 let locate_fixture_path = fun () ->
   let workspace =
-    match Env.var Env.String ~name:"RIOT_WORKSPACE_ROOT" with
-    | Some root -> (
-        match Path.of_string root with
-        | Ok workspace_root -> Some workspace_root
-        | Error _ -> None
-      )
+    match Env.get Env.String ~var:"RIOT_WORKSPACE_ROOT" with
+    | Some root -> Some (Path.v root)
     | None -> None
   in
   let current_dir =
@@ -187,10 +178,10 @@ let locate_fixture_path = fun () ->
     | Error _ -> Path.v "."
   in
   let executable =
-    let args = Env.args |> Array.of_list in
+    let args = Env.args |> Array.from_list in
     let relative_executable =
       if Array.length args > 0 then
-        Path.v args.(0)
+        Path.v (Array.get_unchecked args ~at:0)
       else
         Path.v "spec_fixtures_tests"
     in
@@ -202,12 +193,12 @@ let locate_fixture_path = fun () ->
   let executable_root = derive_workspace_root executable in
   let root_candidates =
     let roots = [ workspace; executable_root; Some current_dir; ]
-    |> List.filter_map (fun value -> value) in
-    dedupe (List.concat_map ancestry roots)
+    |> List.filter_map ~fn:(fun value -> value) in
+    dedupe (List.concat (List.map roots ~fn:ancestry))
   in
   let file_candidates = root_candidates
   |> List.map
-    (fun root ->
+    ~fn:(fun root ->
       [
         Path.join root (Path.v "packages/markdown/tests/spec_fixtures.json");
         Path.join root (Path.v "packages/markdown/tests/spec_fixtures.json");
@@ -254,11 +245,13 @@ let spec_fixture_cache: fixture list = load_spec_fixtures ()
 let fixture_index: (string, fixture) HashMap.t =
   let table = HashMap.create () in
   spec_fixture_cache
-  |> List.iter (fun fixture -> HashMap.insert table fixture.markdown fixture |> ignore);
+  |> List.for_each ~fn:(fun fixture ->
+    let _ = HashMap.insert table ~key:fixture.markdown ~value:fixture in
+    ());
   table
 
 let all_spec_fixtures = fun () -> spec_fixture_cache
 
 let fixture_lookup = fun markdown ->
   let normalized = normalize_newlines markdown in
-  HashMap.get fixture_index normalized
+  HashMap.get fixture_index ~key:normalized

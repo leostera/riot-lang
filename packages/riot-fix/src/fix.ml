@@ -142,5 +142,5 @@ let operation_to_json operation =
 let to_json = fun fix ->
   Data.Json.Object [
     ("title", Data.Json.String fix.title);
-    ("operations", Data.Json.Array (List.map operation_to_json fix.operations));
+    ("operations", Data.Json.Array (List.map fix.operations ~fn:operation_to_json));
   ]

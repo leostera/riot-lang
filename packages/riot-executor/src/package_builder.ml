@@ -26,7 +26,7 @@ let package_error_to_string = function
   | ExecutionFailed { message } -> "Execution failed: " ^ message ^ ""
   | ActionExecutionFailed { message } -> "Action failed: " ^ message ^ ""
   | ActionOutputsNotCreated { missing } -> "Outputs not created: "
-  ^ (String.concat ", " (List.map Path.to_string missing))
+  ^ String.concat ", " (List.map missing ~fn:Path.to_string)
   | ActionDependenciesFailed { failed } -> "Dependencies failed: "
   ^ Int.to_string (List.length failed)
   ^ " actions"
@@ -48,7 +48,7 @@ let package_error_to_json = function
     ("type", Std.Data.Json.String "outputs_not_created");
     (
       "missing",
-      Std.Data.Json.Array (List.map (fun p -> Std.Data.Json.String (Path.to_string p)) missing)
+      Std.Data.Json.Array (List.map missing ~fn:(fun p -> Std.Data.Json.String (Path.to_string p)))
     );
   ]
   | ActionDependenciesFailed { failed } -> Std.Data.Json.Object [
@@ -95,11 +95,11 @@ let build_result_to_json = fun result ->
     ("status", build_status_to_json result.status);
     (
       "ocamlc_warnings",
-      Std.Data.Json.Array (List.map (fun msg -> Std.Data.Json.String msg) result.ocamlc_warnings)
+      Std.Data.Json.Array (List.map result.ocamlc_warnings ~fn:(fun msg -> Std.Data.Json.String msg))
     );
     (
       "duration_ms",
-      Std.Data.Json.Int (int_of_float (Duration.to_secs_float result.duration *. 1000.0))
+      Std.Data.Json.Int (Int.from_float (Duration.to_secs_float result.duration *. 1000.0))
     );
   ]
 
@@ -109,8 +109,8 @@ let collect_source_files = fun package ->
   | Error _ -> []
   | Ok reader ->
       let all_files = Std.Iter.MutIterator.to_list reader in
-      List.filter_map
-        (fun file_path ->
+      List.filter_map all_files
+        ~fn:(fun file_path ->
           let path_str = Path.to_string file_path in
           if
             String.ends_with ~suffix:".ml" path_str
@@ -127,13 +127,12 @@ let collect_source_files = fun package ->
             Some abs_path
           else
             None)
-        all_files
 
 let summarize_package_names = fun names ->
   let rec take_first n acc remaining =
     match (n, remaining) with
-    | 0, _ -> (List.rev acc, remaining)
-    | _, [] -> (List.rev acc, [])
+    | 0, _ -> (List.reverse acc, remaining)
+    | _, [] -> (List.reverse acc, [])
     | _, name :: rest -> take_first (n - 1) (name :: acc) rest
   in
   let shown, hidden = take_first 3 [] names in
@@ -153,26 +152,25 @@ let summarize_package_names = fun names ->
 let collect_ocamlc_warnings = fun completed_actions ->
   let seen = HashSet.create () in
   HashMap.to_list completed_actions |> List.fold_left
-    (fun acc ((_id, result): Graph.SimpleGraph.Node_id.t * Action_executor.execution_result) ->
-      List.fold_left
-        (fun acc warning ->
+    ~acc:[]
+    ~fn:(fun acc ((_id, result): Graph.SimpleGraph.Node_id.t * Action_executor.execution_result) ->
+      List.fold_left result.Action_executor.ocamlc_warnings
+        ~acc
+        ~fn:(fun acc warning ->
           if HashSet.contains seen warning then
             acc
           else
             let _ = HashSet.insert seen warning in
-            acc @ [ warning ])
-        acc
-        result.Action_executor.ocamlc_warnings)
-    []
+            acc @ [ warning ]))
 
 let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list = fun action_graph ->
   let entries =
     Action_graph.nodes action_graph
-    |> List.concat_map
-      (fun (node: Action_node.t) ->
+    |> List.flat_map
+      ~fn:(fun (node: Action_node.t) ->
         let is_package_export =
-          List.exists
-            (
+          List.any node.value.actions
+            ~fn:(
               function
               | Action.CreateLibrary _
               | Action.CreateExecutable _
@@ -185,24 +183,22 @@ let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list
               | Action.WriteFile _
               | Action.BuildForeignDependency _ -> false
             )
-            node.value.actions
         in
         if not is_package_export then
           []
         else
           let action_hash_hex = Crypto.Digest.hex (Action_node.get_hash node) in
-          List.map
-            (fun out_path ->
+          List.map node.value.outs
+            ~fn:(fun out_path ->
               Riot_store.Store.{
                 name = Path.basename out_path;
                 path = out_path;
                 action_hash = action_hash_hex
-              })
-            node.value.outs)
+              }))
   in
   let seen = HashSet.create () in
-  List.filter_map
-    (fun (entry: Riot_store.Store.export_entry) ->
+  List.filter_map entries
+    ~fn:(fun (entry: Riot_store.Store.export_entry) ->
       if HashSet.contains seen entry.name then
         None
       else
@@ -210,12 +206,11 @@ let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list
           let _ = HashSet.insert seen entry.name in
           Some entry
         ))
-    entries
 
 let collect_package_artifact_outputs = fun ~sandbox_dir ~outputs ->
   let seen = HashSet.create () in
   outputs |> List.filter_map
-    (fun out_path ->
+    ~fn:(fun out_path ->
       let abs_path = Path.join sandbox_dir out_path in
       match Path.strip_prefix abs_path ~prefix:sandbox_dir with
       | Ok _ ->
@@ -279,7 +274,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
       }
   | Ok (MissingDependencies { missing; _ }) ->
       let missing_names =
-        List.map (fun p -> p.Package.name) missing
+        List.map missing ~fn:(fun p -> p.Package.name)
       in
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       let error = "Missing dependencies: " ^ String.concat ", " missing_names in
@@ -301,7 +296,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
       }
   | Ok (FailedDependencies { failed; _ }) ->
       let failed_names =
-        List.map (fun p -> p.Package.name) failed
+        List.map failed ~fn:(fun p -> p.Package.name)
       in
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       let reason = "needs " ^ summarize_package_names failed_names in
@@ -451,9 +446,8 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
       let inputs = List.concat
         [ package.sources.src; package.sources.native; package.sources.tests; ] in
       let outputs =
-        List.concat_map
-          (fun (node: Action_node.t) -> node.value.outs)
-          (Action_graph.nodes action_graph)
+        Action_graph.nodes action_graph
+        |> List.flat_map ~fn:(fun (node: Action_node.t) -> node.value.outs)
       in
       let do_build sandbox =
         let exec_result = Action_executor.execute
@@ -467,7 +461,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
         let failed_actions =
           HashMap.to_list exec_result.completed
           |> List.filter_map
-            (fun ((_id, result)) ->
+            ~fn:(fun ((_id, result)) ->
               match result.Action_executor.status with
               | Action_executor.Failed err -> Some err
               | _ -> None)

@@ -29,8 +29,7 @@ let make_diagnostic = fun (field: Syn.Cst.RecordField.t) ->
 let diagnostics_for_decl = fun ({ type_definition; _ }: Syn.Cst.TypeDeclaration.t) ->
   match type_definition with
   | Syn.Cst.TypeDefinition.Record { fields; _ } ->
-      fields |> List.filter_map
-        (fun (field: Syn.Cst.RecordField.t) ->
+      fields |> List.filter_map ~fn:(fun (field: Syn.Cst.RecordField.t) ->
           if Option.is_some field.mutable_token then
             Some (make_diagnostic field)
           else
@@ -45,12 +44,13 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
     (
       match Syn.Cst.SourceFile.signature_items source_file with
       | Some items ->
-          items |> List.concat_map
-            (
+          items
+          |> List.map ~fn:(
               function
               | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostics_for_decl decl
               | _ -> []
             )
+          |> List.concat
       | None -> []
     )
 

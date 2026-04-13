@@ -19,10 +19,10 @@ type t = {
 
 (** Parse Cookie header: "name1=value1; name2=value2" *)
 let parse = fun header ->
-  String.split_on_char ';' header |> List.filter_map
-    (fun pair ->
+  String.split ~by:";" header |> List.filter_map
+    ~fn:(fun pair ->
       let trimmed = String.trim pair in
-      match String.split_on_char '=' trimmed with
+      match String.split ~by:"=" trimmed with
       | [] ->
           Option.none
       | [ name ] ->
@@ -34,7 +34,7 @@ let parse = fun header ->
 (** Helper: Parse Set-Cookie attribute *)
 let parse_attribute = fun attr ->
   let trimmed = String.trim attr in
-  match String.split_on_char '=' trimmed with
+  match String.split ~by:"=" trimmed with
   | [] ->
       (Option.none, Option.none)
   | [ key ] ->
@@ -45,11 +45,11 @@ let parse_attribute = fun attr ->
 
 (** Parse Set-Cookie header *)
 let parse_set_cookie = fun header ->
-  match String.split_on_char ';' header with
+  match String.split ~by:";" header with
   | [] -> Option.none
   | first :: attrs -> (* Parse name=value *)
     (
-      match String.split_on_char '=' first with
+      match String.split ~by:"=" first with
       | name :: value_parts ->
           let cookie = {
             name = String.trim name;
@@ -65,8 +65,9 @@ let parse_set_cookie = fun header ->
           in
           (* Parse attributes *)
           let cookie =
-            List.fold_left
-              (fun c attr ->
+            List.fold_left attrs
+              ~acc:cookie
+              ~fn:(fun c attr ->
                 match parse_attribute attr with
                 | (Some "max-age", Some value) -> (
                     match Int.parse value with
@@ -94,8 +95,6 @@ let parse_set_cookie = fun header ->
                     { c with same_site }
                 | _ ->
                     c)
-              cookie
-              attrs
           in
           Some cookie
       | [] -> Option.none
@@ -114,7 +113,7 @@ let to_set_cookie = fun t ->
   (* Add Max-Age *)
   let parts =
     match t.max_age with
-    | Some age -> (String.concat "=" [ "Max-Age"; string_of_int age ]) :: parts
+    | Some age -> (String.concat "=" [ "Max-Age"; Int.to_string age ]) :: parts
     | Option.None -> parts
   in
   (* Add Expires *)
@@ -157,7 +156,7 @@ let to_set_cookie = fun t ->
     | Option.None -> parts
   in
   (* Join with "; " *)
-  String.concat "; " (List.rev parts)
+  String.concat "; " (List.reverse parts)
 
 (** Create a cookie with defaults *)
 let make = fun ~name ~value ?max_age ?expires ?(path = "/") ?domain ?(secure = false) ?(http_only = true) ?(same_site = Lax) () ->
@@ -183,7 +182,7 @@ let is_valid_name = fun name ->
       if i >= len then
         true
       else
-        let c = String.get name i in
+        let c = String.get_unchecked name ~at:i in
         match c with
         | 'a' .. 'z'
         | 'A' .. 'Z'
@@ -201,8 +200,8 @@ let is_valid_value = fun value ->
     if i >= len then
       true
     else
-      let c = String.get value i in
-      if Char.code c < 32 || c = ';' || c = ',' then
+      let c = String.get_unchecked value ~at:i in
+      if Char.to_int c < 32 || c = ';' || c = ',' then
         false
       else
         check (i + 1)

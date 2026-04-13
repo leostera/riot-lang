@@ -2,7 +2,7 @@ open Std
 
 let escape_html = fun input ->
   String.fold_left
-    (fun acc ch ->
+    ~fn:(fun acc ch ->
       acc ^ (
         match ch with
         | '<' -> "&lt;"
@@ -10,9 +10,9 @@ let escape_html = fun input ->
         | '&' -> "&amp;"
         | '"' -> "&quot;"
         | '\'' -> "&#39;"
-        | _ -> String.make 1 ch
+        | _ -> String.make ~len:1 ~char:ch
       ))
-    ""
+    ~acc:""
     input
 
 let assets = [ (
@@ -170,9 +170,9 @@ let render_sidebar_group = fun ~title links ->
     ^ "</h2>\n"
     ^ "  <ul>\n"
     ^ (links
-    |> List.map
-      (fun (href, label) -> "    <li><a href=\"" ^ href ^ "\">" ^ escape_html label ^ "</a></li>")
-    |> String.concat "\n")
+      |> List.map ~fn:(fun (href, label) ->
+        "    <li><a href=\"" ^ href ^ "\">" ^ escape_html label ^ "</a></li>")
+      |> String.concat "\n")
     ^ "\n  </ul>\n"
     ^ "</section>\n"
 
@@ -198,9 +198,9 @@ let render_docstring_block = fun ~class_name docstring ->
 
 let first_doc_line = function
   | Some docstring -> docstring
-  |> String.split_on_char '\n'
-  |> List.find_opt (fun line -> not (String.equal (String.trim line) ""))
-  |> Option.map String.trim
+  |> String.split ~by:"\n"
+  |> List.find ~fn:(fun line -> not (String.equal (String.trim line) ""))
+  |> Option.map ~fn:String.trim
   | None -> None
 
 let summary_text = fun ~meta ~signature ~docstring ->
@@ -270,8 +270,7 @@ let render_detail_section = fun ~section_id ~title ~note details ->
 
 let render_dependency_section = fun dependencies ->
   let rows = dependencies
-  |> List.map
-    (fun (dep: Doctree.dependency_link) ->
+  |> List.map ~fn:(fun (dep: Doctree.dependency_link) ->
       render_item_row
         ~href:dep.url
         ~name:dep.name
@@ -284,8 +283,7 @@ let render_dependency_section = fun dependencies ->
   render_kind_section ~section_id:"dependencies" ~title:"Dependencies" ~note:"" rows
 
 let render_module_rows = fun ~from_module modules ->
-  modules |> List.map
-    (fun (module_doc: Doctree.module_doc) ->
+  modules |> List.map ~fn:(fun (module_doc: Doctree.module_doc) ->
       let href =
         match from_module with
         | Some from_module -> Doctree.relative_module_href ~from_module ~to_module:module_doc
@@ -315,8 +313,7 @@ let render_item_detail = fun (item: Doctree.item) ->
     ^ "</h4>\n"
     ^ "  <div class=\"item-subitem-list\">\n"
     ^ (
-      group.details |> List.map
-        (fun (detail: Doctree.item_detail) ->
+      group.details |> List.map ~fn:(fun (detail: Doctree.item_detail) ->
           "<div class=\"item-subitem\">\n"
           ^ "  <div class=\"item-subitem-signature\">"
           ^ escape_html detail.signature
@@ -327,7 +324,8 @@ let render_item_detail = fun (item: Doctree.item) ->
             ^ render_docstring_block ~class_name:"item-subitem-docstring" (Some docstring)
             | _ -> ""
           )
-          ^ "</div>") |> String.concat "\n"
+          ^ "</div>")
+      |> String.concat "\n"
     )
     ^ "\n  </div>\n"
     ^ "</section>"
@@ -346,14 +344,13 @@ let render_item_detail = fun (item: Doctree.item) ->
     match item.detail_groups with
     | [] -> ""
     | groups -> "<div class=\"item-subsections\">\n"
-    ^ String.concat "\n" (List.map render_detail_group groups)
+    ^ String.concat "\n" (List.map groups ~fn:render_detail_group)
     ^ "\n</div>\n"
   )
   ^ "</article>"
 
 let package_module_name = fun package_name ->
-  package_name |> String.map
-    (fun ch ->
+  package_name |> String.map ~fn:(fun ch ->
       match ch with
       | '-' -> '_'
       | _ -> ch) |> String.capitalize_ascii
@@ -361,10 +358,8 @@ let package_module_name = fun package_name ->
 let package_summary_module = fun (package_doc: Doctree.package_doc) ->
   let expected = package_module_name package_doc.package in
   match
-    List.find_opt
-      (fun (module_doc: Doctree.module_doc) ->
-        String.equal module_doc.name expected)
-      package_doc.modules
+    List.find package_doc.modules ~fn:(fun (module_doc: Doctree.module_doc) ->
+      String.equal module_doc.name expected)
   with
   | Some module_doc -> Some module_doc
   | None -> (
@@ -474,15 +469,14 @@ let render_index = fun (package_doc: Doctree.package_doc) ->
         let children = summary_module.modules in
         (
           children
-          |> List.map
-            (fun (module_doc: Doctree.module_doc) ->
-              (Doctree.module_href module_doc, module_doc.name)),
+          |> List.map ~fn:(fun (module_doc: Doctree.module_doc) ->
+            (Doctree.module_href module_doc, module_doc.name)),
           render_module_rows ~from_module:None children
         )
     | None -> (
       package_doc.modules
-      |> List.map
-        (fun (module_doc: Doctree.module_doc) -> (Doctree.module_href module_doc, module_doc.name)),
+      |> List.map ~fn:(fun (module_doc: Doctree.module_doc) ->
+        (Doctree.module_href module_doc, module_doc.name)),
       render_module_rows ~from_module:None package_doc.modules
     )
   in
@@ -491,8 +485,7 @@ let render_index = fun (package_doc: Doctree.package_doc) ->
     | None -> ""
     | Some summary_module ->
         let rows = Doctree.items_of_kind kind summary_module.items
-        |> List.map
-          (fun (item: Doctree.item) ->
+        |> List.map ~fn:(fun (item: Doctree.item) ->
             render_item_row
               ~href:(Doctree.module_href summary_module ^ "#" ^ item.anchor)
               ~name:item.name
@@ -546,7 +539,7 @@ let render_index = fun (package_doc: Doctree.package_doc) ->
 
 let render_module = fun (package_doc: Doctree.package_doc) (module_doc: Doctree.module_doc) ->
   let render_item_section kind =
-    let details = Doctree.items_of_kind kind module_doc.items |> List.map render_item_detail in
+    let details = Doctree.items_of_kind kind module_doc.items |> List.map ~fn:render_item_detail in
     render_detail_section
       ~section_id:(Doctree.item_kind_slug kind)
       ~title:(Doctree.item_kind_title kind)
@@ -554,10 +547,9 @@ let render_module = fun (package_doc: Doctree.package_doc) (module_doc: Doctree.
       details
   in
   let sidebar_items kind = Doctree.items_of_kind kind module_doc.items
-  |> List.map (fun (item: Doctree.item) -> ("#" ^ item.anchor, item.name)) in
+  |> List.map ~fn:(fun (item: Doctree.item) -> ("#" ^ item.anchor, item.name)) in
   let sidebar_modules = module_doc.modules
-  |> List.map
-    (fun child_module ->
+  |> List.map ~fn:(fun child_module ->
       (
         Doctree.relative_module_href ~from_module:module_doc ~to_module:child_module,
         child_module.name

@@ -1,10 +1,10 @@
 open Std
 
 let split_rule_id = fun rule_id ->
-  match String.index rule_id ':' with
+  match String.index_of rule_id ~char:':' with
   | Some idx ->
-      let package_name = String.sub rule_id 0 idx in
-      let local_id = String.sub rule_id (idx + 1) (String.length rule_id - idx - 1) in
+      let package_name = String.sub rule_id ~offset:0 ~len:idx in
+      let local_id = String.sub rule_id ~offset:(idx + 1) ~len:(String.length rule_id - idx - 1) in
       (package_name, local_id)
   | None -> ("riot", rule_id)
 
@@ -22,31 +22,31 @@ let display_rule_id_text = fun rule_id ->
 let display_rule_id = fun rule -> display_rule_id_text (Rule.id rule)
 
 let sorted_rules = fun () ->
-  Pipeline.default_rules () |> List.sort
-    (fun left right ->
-      let left_package, left_local = split_rule_id (Rule.id left) in
-      let right_package, right_local = split_rule_id (Rule.id right) in
-      let package_cmp = compare_package_name left_package right_package in
-      if package_cmp != 0 then
-        package_cmp
-      else if String.equal left_package "riot" then
-        let left_category = Pipeline.builtin_rule_category left_local |> Option.unwrap_or ~default:"Other" in
-        let right_category = Pipeline.builtin_rule_category right_local
-        |> Option.unwrap_or ~default:"Other" in
-        let category_cmp = String.compare left_category right_category in
-        if category_cmp != 0 then
-          category_cmp
-        else
-          String.compare left_local right_local
+  Pipeline.default_rules ()
+  |> List.sort ~compare:(fun left right ->
+    let left_package, left_local = split_rule_id (Rule.id left) in
+    let right_package, right_local = split_rule_id (Rule.id right) in
+    let package_cmp = compare_package_name left_package right_package in
+    if package_cmp != 0 then
+      package_cmp
+    else if String.equal left_package "riot" then
+      let left_category = Pipeline.builtin_rule_category left_local |> Option.unwrap_or ~default:"Other" in
+      let right_category = Pipeline.builtin_rule_category right_local
+      |> Option.unwrap_or ~default:"Other" in
+      let category_cmp = String.compare left_category right_category in
+      if category_cmp != 0 then
+        category_cmp
       else
-        String.compare left_local right_local)
+        String.compare left_local right_local
+    else
+      String.compare left_local right_local)
 
 let sorted_diagnostics = fun () ->
-  Explanations.all () |> List.sort
-    (fun left right ->
-      String.compare
-        (display_rule_id_text Explanation.(left.rule_id))
-        (display_rule_id_text Explanation.(right.rule_id)))
+  Explanations.all ()
+  |> List.sort ~compare:(fun left right ->
+    String.compare
+      (display_rule_id_text Explanation.(left.rule_id))
+      (display_rule_id_text Explanation.(right.rule_id)))
 
 let rule_to_json = fun rule ->
   let open Data.Json in
@@ -80,7 +80,7 @@ let list_rules_text = fun rules ->
   let bold text = "\027[1m" ^ text ^ "\027[0m" in
   let rec build_lines = fun current_package current_category acc ->
     function
-    | [] -> List.rev acc
+    | [] -> List.reverse acc
     | rule :: rest ->
         let package_name, local_id = split_rule_id (Rule.id rule) in
         let category =
@@ -119,22 +119,21 @@ let list_rules_text = fun rules ->
 let list_diagnostics_text = fun entries ->
   let bold text = "\027[1m" ^ text ^ "\027[0m" in
   entries
-  |> List.map
-    (fun entry ->
-      bold (display_rule_id_text Explanation.(entry.rule_id)) ^ " - " ^ Explanation.(entry.message))
+  |> List.map ~fn:(fun entry ->
+    bold (display_rule_id_text Explanation.(entry.rule_id)) ^ " - " ^ Explanation.(entry.message))
   |> String.concat "\n"
 
 let list_rules_output = fun ~format ->
   let rules = sorted_rules () in
   match format with
   | Reporter.Text -> list_rules_text rules
-  | Reporter.Json -> Data.Json.Array (List.map rule_to_json rules) |> Data.Json.to_string
+  | Reporter.Json -> Data.Json.Array (List.map rules ~fn:rule_to_json) |> Data.Json.to_string
 
 let list_diagnostics_output = fun ~format ->
   let entries = sorted_diagnostics () in
   match format with
   | Reporter.Text -> list_diagnostics_text entries
-  | Reporter.Json -> Data.Json.Array (List.map diagnostic_to_json entries) |> Data.Json.to_string
+  | Reporter.Json -> Data.Json.Array (List.map entries ~fn:diagnostic_to_json) |> Data.Json.to_string
 
 let list_rules = fun format ->
   print (list_rules_output ~format);

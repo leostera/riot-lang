@@ -1,6 +1,6 @@
 open Std
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 type t = {
   release_id: string;
@@ -46,15 +46,15 @@ let json_of_metadata = fun t ->
   ]
 
 let string_field = fun fields name ->
-  match List.assoc_opt name fields with
-  | Some (Data.Json.String value) -> Ok value
+  match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with
+  | Some (_, Data.Json.String value) -> Ok value
   | _ -> Error ("missing or invalid '" ^ name ^ "' field")
 
 let optional_string_field = fun fields name ->
-  match List.assoc_opt name fields with
+  match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with
   | None
-  | Some Data.Json.Null -> Ok None
-  | Some (Data.Json.String value) -> Ok (Some value)
+  | Some (_, Data.Json.Null) -> Ok None
+  | Some (_, Data.Json.String value) -> Ok (Some value)
   | Some _ -> Error ("invalid '" ^ name ^ "' field")
 
 let metadata_of_json = function
@@ -74,7 +74,7 @@ let metadata_of_json = function
   | _ -> Error "release metadata must be a JSON object"
 
 let of_json_string = fun content ->
-  let* json = Data.Json.of_string content |> Result.map_error Data.Json.error_to_string in
+  let* json = Data.Json.of_string content |> Result.map_err ~fn:Data.Json.error_to_string in
   metadata_of_json json
 
 let of_version_string = fun version ->
@@ -126,13 +126,13 @@ let of_version_string = fun version ->
           }
 
 let of_path = fun path ->
-  let* content = Fs.read path |> Result.map_error IO.error_message in
+  let* content = Fs.read path |> Result.map_err ~fn:IO.error_message in
   of_json_string content
 
 let write_path = fun ~path t ->
-  let* () = Fs.create_dir_all (Path.dirname path) |> Result.map_error IO.error_message in
+  let* () = Fs.create_dir_all (Path.dirname path) |> Result.map_err ~fn:IO.error_message in
   let content = Data.Json.to_string_pretty (json_of_metadata t) ^ "\n" in
-  Fs.write content path |> Result.map_error IO.error_message
+  Fs.write content path |> Result.map_err ~fn:IO.error_message
 
 let same_identity = fun left right ->
   String.equal left.release_id right.release_id && String.equal left.build_sha right.build_sha

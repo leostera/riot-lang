@@ -99,7 +99,15 @@ let run_file = fun ?pipeline ?pipeline_for_file ?on_progress ~mode file ->
 
 let summarize = fun files ->
   List.fold_left
-    (fun acc result ->
+    files
+    ~acc:{
+      total_files = 0;
+      changed_files = 0;
+      remaining_diagnostics = 0;
+      applied_fixes = 0;
+      failed_files = 0;
+    }
+    ~fn:(fun acc result ->
       {
         total_files = acc.total_files + 1;
         changed_files =
@@ -117,23 +125,15 @@ let summarize = fun files ->
           else
             0;
       })
-    {
-      total_files = 0;
-      changed_files = 0;
-      remaining_diagnostics = 0;
-      applied_fixes = 0;
-      failed_files = 0;
-    }
-    files
 
 let run_files = fun ?pipeline ?pipeline_for_file ~mode files ->
   let files =
     List.sort
-      (fun a b ->
-        String.compare (Path.to_string a) (Path.to_string b))
       files
+      ~compare:(fun a b ->
+        String.compare (Path.to_string a) (Path.to_string b))
   in
-  let results = List.map (run_file ?pipeline ?pipeline_for_file ~mode) files in
+  let results = List.map files ~fn:(run_file ?pipeline ?pipeline_for_file ~mode) in
   { files = results; summary = summarize results }
 
 let summary_to_json = fun summary ->
@@ -152,13 +152,13 @@ let file_result_to_json = fun result ->
         match result.error with
         | Some err -> String err
         | None -> Null
-      ); ("applied_fixes", Array (List.map Fix.to_json result.applied_fixes)); (
+      ); ("applied_fixes", Array (List.map result.applied_fixes ~fn:Fix.to_json)); (
         "parse_diagnostics",
-        Array (List.map Syn.Diagnostic.to_json result.parse_diagnostics)
-      ); ("diagnostics", Array (List.map Diagnostic.to_json result.diagnostics)); ]
+        Array (List.map result.parse_diagnostics ~fn:Syn.Diagnostic.to_json)
+      ); ("diagnostics", Array (List.map result.diagnostics ~fn:Diagnostic.to_json)); ]
 
 let run_result_to_json = fun result ->
   let open Data.Json in Object [
     ("summary", summary_to_json result.summary);
-    ("files", Array (List.map file_result_to_json result.files));
+    ("files", Array (List.map result.files ~fn:file_result_to_json));
   ]

@@ -14,14 +14,14 @@ let sort = fun t ~cwd ~files ->
     []
   else
     let ocamldep = Path.to_string t in
-    let files_str = String.concat " " (List.map Path.to_string files) in
+    let files_str = String.concat " " (List.map files ~fn:Path.to_string) in
     let cmd = "cd " ^ Path.to_string cwd ^ " && " ^ ocamldep ^ " -sort " ^ files_str ^ " 2>/dev/null" in
     Log.trace @@ "  $ " ^ cmd;
     let sorted_str =
       let command = Command.make ~args:[ "-c"; cmd ] "sh" in
       match Command.output command with
       | Ok output -> (
-          match String.split_on_char '\n' output.Command.stdout with
+          match String.split ~by:"\n" output.Command.stdout with
           | line :: _ -> String.trim line
           | [] -> ""
         )
@@ -32,15 +32,14 @@ let sort = fun t ~cwd ~files ->
       files
       (* Return original list if ocamldep fails *)
     else
-      let sorted_basenames = String.split_on_char ' ' sorted_str in
+      let sorted_basenames = String.split ~by:" " sorted_str in
       (* Filter out empty strings and return files in dependency order *)
-      List.filter_map
-        (fun s ->
+      List.filter_map sorted_basenames
+        ~fn:(fun s ->
           if s = "" then
             None
           else
             Some (Path.v s))
-        sorted_basenames
 
 let deps = fun t ~cwd ~file ~package_namespace ->
   let ocamldep = Path.to_string t in
@@ -51,7 +50,7 @@ let deps = fun t ~cwd ~file ~package_namespace ->
     let command = Command.make ~args:[ "-c"; cmd ] "sh" in
     match Command.output command with
     | Ok output -> (
-        match String.split_on_char '\n' output.Command.stdout with
+        match String.split ~by:"\n" output.Command.stdout with
         | line :: _ ->
             let trimmed = String.trim line in
             Log.trace ("[OCAMLDEP] Result for " ^ file_str ^ ": " ^ trimmed);
@@ -71,7 +70,7 @@ let deps = fun t ~cwd ~file ~package_namespace ->
     )
   else
     (* Output format: "file.ml: Module1 Module2 Module3" *)
-    match String.split_on_char ':' deps_str with
+    match String.split ~by:":" deps_str with
     | [_;deps_part] ->
         let deps = String.trim deps_part in
         if deps = "" then
@@ -80,9 +79,10 @@ let deps = fun t ~cwd ~file ~package_namespace ->
             []
           )
         else
-          let result = String.split_on_char ' ' deps
-          |> List.map String.trim
-          |> List.map (fun modname -> Module_name.of_string ~namespace:package_namespace modname) in
+          let result = String.split ~by:" " deps
+          |> List.map ~fn:String.trim
+          |> List.map ~fn:(fun modname -> Module_name.of_string ~namespace:package_namespace modname)
+          in
           Log.trace
             ("[OCAMLDEP] Parsed "
             ^ Int.to_string (List.length result)
@@ -117,7 +117,7 @@ let deps_with_flags = fun t ~cwd ~file ~flags ~package_namespace ->
     let command = Command.make ~args:[ "-c"; cmd ] "sh" in
     match Command.output command with
     | Ok output -> (
-        match String.split_on_char '\n' output.Command.stdout with
+        match String.split ~by:"\n" output.Command.stdout with
         | line :: _ -> String.trim line
         | [] -> ""
       )
@@ -127,15 +127,15 @@ let deps_with_flags = fun t ~cwd ~file ~flags ~package_namespace ->
     []
   else
     (* Output format: "file.ml: Module1 Module2 Module3" *)
-    match String.split_on_char ':' deps_str with
+    match String.split ~by:":" deps_str with
     | [_;deps_part] ->
         let deps = String.trim deps_part in
         if deps = "" then
           []
         else
-          String.split_on_char ' ' deps
-          |> List.map String.trim
-          |> List.map (fun modname -> Module_name.of_string ~namespace:package_namespace modname)
+          String.split ~by:" " deps
+          |> List.map ~fn:String.trim
+          |> List.map ~fn:(fun modname -> Module_name.of_string ~namespace:package_namespace modname)
     | _ -> []
 
 (** Get dependencies for multiple files in one ocamldep call - returns (file,
@@ -145,7 +145,7 @@ let batch_deps = fun t ~cwd ~files ~package_namespace ->
     []
   else
     let ocamldep = Path.to_string t in
-    let files_str = String.concat " " (List.map Path.to_string files) in
+    let files_str = String.concat " " (List.map files ~fn:Path.to_string) in
     let cmd = "cd " ^ Path.to_string cwd ^ " && " ^ ocamldep ^ " -modules " ^ files_str in
     Log.trace ("[OCAMLDEP] Batch running for " ^ Int.to_string (List.length files) ^ " files");
     Log.debug ("[OCAMLDEP] CMD: " ^ cmd);
@@ -160,17 +160,17 @@ let batch_deps = fun t ~cwd ~files ~package_namespace ->
           ""
     in
     if output = "" then
-      List.map (fun file -> (file, [])) files
+      List.map files ~fn:(fun file -> (file, []))
     else
       (* Parse output - each line is "file.ml: Module1 Module2 Module3" *)
-      let lines = String.split_on_char '\n' output in
-      List.filter_map
-        (fun line ->
+      let lines = String.split ~by:"\n" output in
+      List.filter_map lines
+        ~fn:(fun line ->
           let trimmed = String.trim line in
           if trimmed = "" then
             None
           else
-            match String.split_on_char ':' trimmed with
+            match String.split ~by:":" trimmed with
             | [file_part;deps_part] ->
                 let file = Path.v (String.trim file_part) in
                 let deps = String.trim deps_part in
@@ -178,20 +178,18 @@ let batch_deps = fun t ~cwd ~files ~package_namespace ->
                   if deps = "" then
                     []
                   else
-                    String.split_on_char ' ' deps
-                    |> List.map String.trim
-                    |> List.filter (fun s -> s != "")
+                    String.split ~by:" " deps
+                    |> List.map ~fn:String.trim
+                    |> List.filter ~fn:(fun s -> not (String.equal s ""))
                     |> List.map
-                      (fun modname -> Module_name.of_string ~namespace:package_namespace modname)
+                      ~fn:(fun modname -> Module_name.of_string ~namespace:package_namespace modname)
                 in
                 Some (file, dep_list)
             | _ -> None)
-        lines
 
 (** Get all module dependencies (for building .merlin files) *)
 let all_deps = fun t ~cwd ~files ~package_namespace ->
-  List.map
-    (fun file ->
+  List.map files
+    ~fn:(fun file ->
       let deps = deps t ~cwd ~file ~package_namespace in
       (file, deps))
-    files

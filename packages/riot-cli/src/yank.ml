@@ -1,7 +1,7 @@
 open Std
 open Riot_model
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 let registry_name = "pkgs.ml"
 
@@ -48,7 +48,7 @@ let load_config = fun path ->
   ^ IO.error_message io_error))
   | Ok false -> Ok User_config.default
   | Ok true -> User_config.load path
-  |> Result.map_error (fun err -> ConfigFailed (User_config.message err))
+  |> Result.map_err ~fn:(fun err -> ConfigFailed (User_config.message err))
 
 let version_parse_error_to_string = function
   | Version.Invalid_format msg -> msg
@@ -56,7 +56,7 @@ let version_parse_error_to_string = function
   | Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: " ^ segment
 
 let parse_package_spec = fun raw ->
-  match String.split_on_char '@' (String.trim raw) with
+  match String.split ~by:"@" (String.trim raw) with
   | [package_name;version] when not (String.equal (String.trim package_name) "")
   && not (String.equal (String.trim version) "") -> (
       match Package.validate_name (String.trim package_name) with

@@ -93,7 +93,7 @@ let listed_bench_item_json = fun (suite: Riot_build.suite_binary) (
     ("iterations", Data.Json.Int item.iterations);
     ("warmup", Data.Json.Int item.warmup);
     ("skip", Data.Json.Bool item.skip);
-    ("cases", Data.Json.Array (List.map Data.Json.string item.cases));
+    ("cases", Data.Json.Array (List.map item.cases ~fn:Data.Json.string));
   ]
 
 let listed_suite_path_json = fun ~(workspace:Riot_model.Workspace.t) (
@@ -163,11 +163,11 @@ let write_bench_list_completed_json = fun ~command_started_at ~suite_count ~benc
     ])
 
 let write_bench_list = fun ~(workspace:Riot_model.Workspace.t) suites ->
-  List.iter
+  List.for_each suites ~fn:
     (fun (suite: Riot_build.listed_bench_suite) ->
       println "";
       println (listed_suite_source_label ~workspace suite);
-      suite.benchmarks |> List.iter
+      suite.benchmarks |> List.for_each ~fn:
         (fun (item: Riot_build.listed_bench_item) ->
           let kind =
             match item.kind with
@@ -181,7 +181,6 @@ let write_bench_list = fun ~(workspace:Riot_model.Workspace.t) suites ->
               ""
           in
           println ("  [" ^ Int.to_string item.index ^ "] " ^ kind ^ " " ^ item.name ^ skip_suffix)))
-    suites
 
 let print_bench_result = fun (result: Riot_build.bench_case_result) ->
   match result.result with
@@ -205,7 +204,7 @@ let print_bench_result = fun (result: Riot_build.bench_case_result) ->
 let print_comparison = fun (result: Riot_build.bench_comparison_result) ->
   println ("Comparison: " ^ result.description);
   println ("  Fastest: " ^ result.fastest);
-  result.case_results |> List.iter
+  result.case_results |> List.for_each ~fn:
     (fun (case_result: Riot_build.bench_comparison_case_result) ->
       let stats = case_result.statistics in
       println ("  " ^ case_result.name ^ ":");
@@ -217,7 +216,7 @@ let print_comparison = fun (result: Riot_build.bench_comparison_result) ->
   if not (result.speedup_ratios = []) then
     (
       println "  Relative speed:";
-      result.speedup_ratios |> List.iter
+      result.speedup_ratios |> List.for_each ~fn:
         (fun (name, ratio) ->
           if not (String.equal name result.fastest) then
             println
@@ -239,7 +238,7 @@ let print_summary = fun ~total ~completed ~skipped ~failed ->
   println ("  Failed: " ^ Int.to_string failed)
 
 let json_int_field = fun name fields ->
-  match List.assoc_opt name fields with
+  match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with
   | Some (Data.Json.Int value) -> Some value
   | _ -> None
 
@@ -309,8 +308,8 @@ let write_bench_event = fun (event: Riot_build.bench_event) ->
       if should_print_suite then
         (
           print_run_label suite;
-          List.iter print_bench_result results;
-          List.iter print_comparison comparisons;
+          List.for_each results ~fn:print_bench_result;
+          List.for_each comparisons ~fn:print_comparison;
           print_command_output Command.{ stdout; stderr; status = 0 }
         )
   | Riot_build.Summary { total; completed; skipped; failed } ->
@@ -373,7 +372,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           listed_suite_count := !listed_suite_count + 1;
           listed_benchmark_count := !listed_benchmark_count + List.length suite.benchmarks;
           write_bench_suite_listed_json ~command_started_at ~workspace suite;
-          List.iter (write_bench_item_listed_json ~command_started_at suite.suite) suite.benchmarks
+          List.for_each suite.benchmarks ~fn:(write_bench_item_listed_json ~command_started_at suite.suite)
         )
     in
     let on_suite_error (suite: Riot_build.suite_binary) err =
@@ -404,9 +403,8 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
     with
     | Ok suites ->
         let suites =
-          List.filter
-            (fun (suite: Riot_build.listed_bench_suite) -> not (List.is_empty suite.benchmarks))
-            suites
+          List.filter suites ~fn:(fun (suite: Riot_build.listed_bench_suite) ->
+            not (List.is_empty suite.benchmarks))
         in
         (
           match output_mode with
@@ -453,7 +451,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
       | _ -> (
           match output_mode with
           | Build.Json -> Riot_build.bench_event_to_json event
-          |> Option.iter
+          |> Option.for_each ~fn:
             (fun json ->
               write_json_event
                 ~command_started_at

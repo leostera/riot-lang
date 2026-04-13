@@ -25,11 +25,15 @@ val get_unchecked: 'value list -> at:int -> 'value
 
 val map: 'value list -> fn:('value -> 'mapped) -> 'mapped list
 
+val flat_map: 'value list -> fn:('value -> 'mapped list) -> 'mapped list
+
 val for_each: 'value list -> fn:('value -> unit) -> unit
 
 val fold_left: 'value list -> acc:'acc -> fn:('acc -> 'value -> 'acc) -> 'acc
 
 val fold_right: 'value list -> acc:'acc -> fn:('value -> 'acc -> 'acc) -> 'acc
+
+val enumerate: 'value list -> (int * 'value) list
 
 val all: 'value list -> fn:('value -> bool) -> bool
 

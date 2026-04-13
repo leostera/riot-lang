@@ -76,14 +76,14 @@ let normalize_source_locator = fun raw ->
   let raw = String.trim raw in
   let raw =
     if String.starts_with ~prefix:"https://" raw then
-      String.sub raw 8 (String.length raw - 8)
+      String.sub raw ~offset:8 ~len:(String.length raw - 8)
     else if String.starts_with ~prefix:"http://" raw then
-      String.sub raw 7 (String.length raw - 7)
+      String.sub raw ~offset:7 ~len:(String.length raw - 7)
     else
       raw
   in
   if String.ends_with ~suffix:".git" raw then
-    String.sub raw 0 (String.length raw - 4)
+    String.sub raw ~offset:0 ~len:(String.length raw - 4)
   else
     raw
 
@@ -94,13 +94,13 @@ let parse_dependency: string -> Toml.value -> (Package.dependency, string) resul
   match value with
   | Toml.Table attrs -> (
       let path =
-        match List.assoc_opt "path" attrs with
+        match Fields.get "path" attrs with
         | Some (Toml.String path_str) -> Ok (Some (Path.v path_str))
         | Some _ -> Error ("dependency '" ^ name ^ "' has non-string path")
         | None -> Ok None
       in
       let source_locator =
-        match List.assoc_opt "source" attrs, List.assoc_opt "github" attrs with
+        match Fields.get "source" attrs, Fields.get "github" attrs with
         | Some _, Some _ -> Error ("dependency '" ^ name ^ "' cannot specify both source and github")
         | Some (Toml.String locator), None -> Ok (Some (normalize_source_locator locator))
         | Some _, None -> Error ("dependency '" ^ name ^ "' has non-string source locator")
@@ -109,15 +109,16 @@ let parse_dependency: string -> Toml.value -> (Package.dependency, string) resul
         | None, None -> Ok None
       in
       let ref_ =
-        match List.assoc_opt "ref" attrs with
+        match Fields.get "ref" attrs with
         | Some (Toml.String ref_) -> Ok (Some (String.trim ref_))
         | Some _ -> Error ("dependency '" ^ name ^ "' has non-string ref")
         | None -> Ok None
       in
       let version =
-        match List.assoc_opt "version" attrs with
-        | Some (Toml.String requirement) -> validate_requirement ~dependency_name:name requirement
-        |> Result.map (fun version -> Some version)
+        match Fields.get "version" attrs with
+        | Some (Toml.String requirement) ->
+            validate_requirement ~dependency_name:name requirement
+            |> Result.map ~fn:(fun version -> Some version)
         | Some _ -> Error ("dependency '" ^ name ^ "' has non-string version requirement")
         | None -> Ok None
       in
@@ -135,7 +136,8 @@ let parse_dependency: string -> Toml.value -> (Package.dependency, string) resul
               source_locator;
               ref_;
               version;
-            } |> Result.map make_dependency
+            }
+          |> Result.map ~fn:make_dependency
     )
   | Toml.String requirement -> (
       match validate_requirement ~dependency_name:name requirement with
@@ -149,7 +151,8 @@ let parse_dependency: string -> Toml.value -> (Package.dependency, string) resul
               source_locator = None;
               ref_ = None;
               version = Some version;
-            } |> Result.map make_dependency
+            }
+          |> Result.map ~fn:make_dependency
     )
   | _ ->
       Error ("dependency '" ^ name ^ "' must be a string or table")
@@ -157,7 +160,7 @@ let parse_dependency: string -> Toml.value -> (Package.dependency, string) resul
 let parse_dependencies: (string * Toml.value) list -> (Package.dependency list, string) result = fun items ->
   let rec loop acc entries =
     match entries with
-    | [] -> Ok (List.rev acc)
+    | [] -> Ok (List.reverse acc)
     | (name, value) :: rest -> (
         match parse_dependency name value with
         | Ok dep -> loop (dep :: acc) rest
@@ -169,7 +172,7 @@ let parse_dependencies: (string * Toml.value) list -> (Package.dependency list, 
 let parse_dependency_section section_name (toml: Toml.value): (Package.dependency list, string) result =
   match toml with
   | Toml.Table items -> (
-      match List.assoc_opt section_name items with
+      match Fields.get section_name items with
       | Some (Toml.Table dep_items) -> parse_dependencies dep_items
       | Some _ -> Error ("[" ^ section_name ^ "] must be a table")
       | None -> Ok []
@@ -179,14 +182,12 @@ let parse_dependency_section section_name (toml: Toml.value): (Package.dependenc
 let parse_members: Toml.value -> Path.t list = fun toml ->
   match toml with
   | Toml.Table items -> (
-      match List.assoc_opt "workspace" items with
+      match Fields.get "workspace" items with
       | Some (Toml.Table workspace_items) -> (
-          match List.assoc_opt "members" workspace_items with
+          match Fields.get "members" workspace_items with
           | Some (Toml.Array members) ->
-              List.filter_map
-                (fun m ->
-                  Option.map Path.v (Toml.get_string m))
-                members
+              List.filter_map members ~fn:(fun m ->
+                Option.map (Toml.get_string m) ~fn:Path.v)
           | _ -> []
         )
       | _ -> []
@@ -196,9 +197,9 @@ let parse_members: Toml.value -> Path.t list = fun toml ->
 let parse_workspace_name: Toml.value -> string option = fun toml ->
   match toml with
   | Toml.Table items -> (
-      match List.assoc_opt "workspace" items with
+      match Fields.get "workspace" items with
       | Some (Toml.Table workspace_items) -> (
-          match List.assoc_opt "name" workspace_items with
+          match Fields.get "name" workspace_items with
           | Some (Toml.String name) ->
               let trimmed = String.trim name in
               if String.is_empty trimmed then
@@ -228,16 +229,15 @@ let parse_profile_overrides: Toml.value -> (string * Profile.profile_override) l
       Log.debug
         ("[WORKSPACE] Looking for [profile] in TOML with " ^ Int.to_string (List.length items) ^ " top-level keys");
       Log.debug
-        ("[WORKSPACE] Top-level keys: " ^ String.concat ", " (List.map (fun (key, _) -> key) items));
-      match List.assoc_opt "profile" items with
+        ("[WORKSPACE] Top-level keys: " ^ String.concat ", " (List.map items ~fn:(fun (key, _) -> key)));
+      match Fields.get "profile" items with
       | Some (Toml.Table profile_items) ->
           Log.debug
             ("[WORKSPACE] Found [profile] section with "
             ^ Int.to_string (List.length profile_items)
             ^ " profiles");
           let result =
-            List.filter_map
-              (fun ((profile_name, value)) ->
+            List.filter_map profile_items ~fn:(fun (profile_name, value) ->
                 Log.debug ("[WORKSPACE] Parsing profile: " ^ profile_name);
                 match value with
                 | Toml.Table profile_table ->
@@ -251,7 +251,6 @@ let parse_profile_overrides: Toml.value -> (string * Profile.profile_override) l
                 | _ ->
                     Log.debug ("[WORKSPACE] Profile " ^ profile_name ^ " is not a table, skipping");
                     None)
-              profile_items
           in
           Log.debug
             ("[WORKSPACE] Parsed " ^ Int.to_string (List.length result) ^ " profile overrides");
@@ -267,9 +266,9 @@ let parse_profile_overrides: Toml.value -> (string * Profile.profile_override) l
 let parse_target_dir: Toml.value -> string option = fun toml ->
   match toml with
   | Toml.Table items -> (
-      match List.assoc_opt "riot" items with
+      match Fields.get "riot" items with
       | Some (Toml.Table riot_items) -> (
-          match List.assoc_opt "target_dir" riot_items with
+          match Fields.get "target_dir" riot_items with
           | Some (Toml.String target_dir) -> Some target_dir
           | _ -> None
         )
@@ -347,41 +346,41 @@ let find_package_for_path = fun (workspace: t) ~path ->
     | Ok _ -> true
     | Error _ -> false
   in
-  workspace.packages |> List.filter contains_path |> List.sort
-    (fun (left: Package.t) (right: Package.t) ->
+  workspace.packages
+  |> List.filter ~fn:contains_path
+  |> List.sort ~compare:(fun (left: Package.t) (right: Package.t) ->
       Int.compare
         (String.length (Path.to_string (package_root workspace right)))
-        (String.length (Path.to_string (package_root workspace left)))) |> function
+        (String.length (Path.to_string (package_root workspace left))))
+  |> function
   | pkg :: _ -> Some pkg
   | [] -> None
 
 (** Utility functions *)
 let project_id = fun workspace ->
   let root_str = Path.to_string workspace.root in
-  String.map
-    (fun c ->
-      if c = '/' then
-        '-'
-      else
-        c)
-    root_str
+  String.map root_str ~fn:(fun c ->
+    if c = '/' then
+      '-'
+    else
+      c)
 
 let server_port = fun workspace ->
   let root_str = Path.to_string workspace.root in
   let hash = Std.Crypto.hash_string root_str in
   let hash_int = Std.Crypto.Digest.to_int hash in
   let port_range = 65_535 - 49_152 in
-  50_152 + (abs hash_int mod port_range)
+  50_152 + (Int.abs hash_int mod port_range)
 
 (** Command discovery functions - moved here to avoid circular dependency *)
 let discover_commands: t -> Package_command.t list = fun workspace ->
-  List.concat_map (fun (pkg: Package.t) -> pkg.commands) workspace.packages
+  List.map workspace.packages ~fn:(fun (pkg: Package.t) -> pkg.commands) |> List.concat
 
 let find_command: t -> string -> Package_command.t option = fun workspace name ->
-  discover_commands workspace |> List.find_opt (fun (cmd: Package_command.t) -> cmd.name = name)
+  discover_commands workspace |> List.find ~fn:(fun (cmd: Package_command.t) -> cmd.name = name)
 
 let discover_fix_providers: t -> Fix_provider.t list = fun workspace ->
-  List.concat_map (fun (pkg: Package.t) -> pkg.fix_providers) workspace.packages
+  List.map workspace.packages ~fn:(fun (pkg: Package.t) -> pkg.fix_providers) |> List.concat
 
 module Tests = struct
   let test_parse_workspace_toml (): (unit, string) result = Ok () [@test]
@@ -515,10 +514,10 @@ fixme = { path = "packages/fixme" }
     in
     let manifest = of_toml toml |> Result.expect ~msg:"expected workspace manifest" in
     if
-      List.map (fun (dep: Package.dependency) -> dep.Package.name) manifest.dependencies = [ "std" ]
-      && List.map (fun (dep: Package.dependency) -> dep.Package.name) manifest.dev_dependencies
+      List.map manifest.dependencies ~fn:(fun (dep: Package.dependency) -> dep.Package.name) = [ "std" ]
+      && List.map manifest.dev_dependencies ~fn:(fun (dep: Package.dependency) -> dep.Package.name)
       = [ "propane" ]
-      && List.map (fun (dep: Package.dependency) -> dep.Package.name) manifest.build_dependencies
+      && List.map manifest.build_dependencies ~fn:(fun (dep: Package.dependency) -> dep.Package.name)
       = [ "fixme" ]
     then
       Ok ()

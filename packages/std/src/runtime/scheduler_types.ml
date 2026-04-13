@@ -4,7 +4,10 @@ module Runtime_pid = Pid
 module Runtime_process = Process
 module Runtime_scheduler_id = Scheduler_id
 module Runtime_timer = Timer
-module Std_io = IO
+
+type io_registration_error =
+  | Closed
+  | Async of Kernel.Async.error
 
 type placement =
   | Normal
@@ -60,7 +63,7 @@ type reactor_command =
       token: Kernel.Async.Token.t;
       interest: Kernel.Async.Interest.t;
       source: Kernel.Async.Source.t;
-      reply: (unit, Std_io.error) Kernel.result response
+      reply: (unit, io_registration_error) Kernel.result response
     }
   | Deregister_io of Kernel.Async.Source.t
 

@@ -25,14 +25,14 @@ let workspace_package_id_of_package = fun (package: Riot_model.Package.t) ->
   Riot_model.Lockfile.{ registry = None; name = package.name; version = None; sha256 = None }
 
 let find_lock_package_by_id = fun ~(package_id:Riot_model.Lockfile.package_id) ~(lockfile:Riot_model.Lockfile.t) ->
-  List.find_opt
-    (fun (lock_package: Riot_model.Lockfile.package) -> lock_package.id = package_id)
+  List.find
     lockfile.packages
+    ~fn:(fun (lock_package: Riot_model.Lockfile.package) -> lock_package.id = package_id)
 
 let find_workspace_package_by_id = fun ~(package_id:Riot_model.Lockfile.package_id) ~(packages:Riot_model.Package.t list) ->
-  List.find_opt
-    (fun (package: Riot_model.Package.t) -> workspace_package_id_of_package package = package_id)
+  List.find
     packages
+    ~fn:(fun (package: Riot_model.Package.t) -> workspace_package_id_of_package package = package_id)
 
 let materialized_root_of_lock_package = fun ~materialize_emit ~registry ~workspace_root ~(lock_package:Riot_model.Lockfile.package) ->
   match lock_package.provenance with
@@ -72,7 +72,7 @@ let materialized_root_of_lock_package = fun ~materialize_emit ~registry ~workspa
             })
           else
             Materializer.ensure_registry_package ~emit:materialize_emit ~registry ~pkg:lock_package ()
-            |> Result.map_error (fun err -> Error.ProjectionFailed { error = Error.message err })
+            |> Result.map_err ~fn:(fun err -> Error.ProjectionFailed { error = Error.message err })
     )
 
 let manifest_path_of_root = fun root -> Path.(root / Path.v "riot.toml")
@@ -131,12 +131,10 @@ let load_external_package = fun ~emit ~materialize_emit ~registry ~workspace_roo
               | Some root -> root
               | None -> package_root
             )
-          |> Result.map
-            (fun pkg ->
+          |> Result.map ~fn:(fun pkg ->
               emit_finished ();
               Riot_model.Package.for_scope Riot_model.Package.Normal pkg)
-          |> Result.map_error
-            (fun err ->
+          |> Result.map_err ~fn:(fun err ->
               let err = Error.ProjectionFailed { error = err } in
               emit_failed err;
               err)
@@ -160,16 +158,16 @@ let load_package_for_lock_package = fun ~emit ~materialize_emit ~registry ~works
     ~lock_package
 
 let resolve_dependency_ids = fun (resolved: Riot_model.Package.resolved) ->
-  List.map (fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id) resolved.runtime_resolved
-  @ List.map (fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id) resolved.build_resolved
-  @ List.map (fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id) resolved.dev_resolved
+  List.map resolved.runtime_resolved ~fn:(fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id)
+  @ List.map resolved.build_resolved ~fn:(fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id)
+  @ List.map resolved.dev_resolved ~fn:(fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id)
 
 let rec resolve_package_graph = fun ~emit ~materialize_emit ~registry ~workspace_root ~(packages:Riot_model.Package.t list) ~(lockfile:Riot_model.Lockfile.t) seen acc pending ->
   match pending with
-  | [] -> Ok (List.rev acc)
+  | [] -> Ok (List.reverse acc)
   | package_id :: rest ->
       let key = package_id_key package_id in
-      if List.mem key seen then
+      if List.contains seen ~value:key then
         resolve_package_graph
           ~emit
           ~materialize_emit
@@ -222,5 +220,5 @@ let rec resolve_package_graph = fun ~emit ~materialize_emit ~registry ~workspace
           )
 
 let resolve_packages = fun ?(emit = no_emit) ?(materialize_emit = no_emit) ~registry ~workspace_root ~packages ~lockfile () ->
-  let root_ids = List.map workspace_package_id_of_package packages in
+  let root_ids = List.map packages ~fn:workspace_package_id_of_package in
   resolve_package_graph ~emit ~materialize_emit ~registry ~workspace_root ~packages ~lockfile [] [] root_ids

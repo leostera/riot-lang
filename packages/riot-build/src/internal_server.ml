@@ -32,7 +32,7 @@ let default_registry_name = "pkgs.ml"
 let no_emit: Riot_model.Event.kind -> unit = fun _ -> ()
 
 let server_trace_enabled = fun () ->
-  match Env.var String ~name:"RIOT_SERVER_TRACE" with
+  match Env.get Env.String ~var:"RIOT_SERVER_TRACE" with
   | Some ("1" | "true" | "yes") -> true
   | _ -> false
 
@@ -72,7 +72,8 @@ let build_state = fun ~(workspace:Workspace.t) ~workspace_manager ~load_errors ~
     (
       Log.warn
         ("Workspace loaded with " ^ Int.to_string (List.length load_errors) ^ " package load errors:");
-      List.iter (fun err -> Log.warn ("  " ^ Workspace_manager.load_error_to_string err)) load_errors
+      List.for_each load_errors ~fn:(fun err ->
+        Log.warn ("  " ^ Workspace_manager.load_error_to_string err))
     );
   let toolchain_config = Toolchain_config.from_workspace workspace in
   let toolchain =
@@ -89,10 +90,8 @@ let build_state = fun ~(workspace:Workspace.t) ~workspace_manager ~load_errors ~
     | Ok graph -> graph
     | Error (Riot_planner.Package_graph.MissingPackages { missing }) ->
         Log.warn "Package graph has missing dependencies at startup:";
-        List.iter
-          (fun { Riot_planner.Package_graph.package; dependency } ->
-            Log.warn ("  " ^ package ^ " requires: " ^ dependency))
-          missing;
+        List.for_each missing ~fn:(fun { Riot_planner.Package_graph.package; dependency } ->
+          Log.warn ("  " ^ package ^ " requires: " ^ dependency));
         Log.warn "Build operations will report this error to clients.";
         let ws = Workspace.make ~root:workspace.root ~packages:[] () in
         Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime ws
@@ -210,7 +209,7 @@ and handle_get_package_info = fun state client_pid package_name ->
   Log.debug
     ("Server: Received GetPackageInfo for " ^ package_name ^ " from " ^ Pid.to_string client_pid);
   let package_opt =
-    List.find_opt (fun (pkg: Package.t) -> pkg.name = package_name) state.workspace.packages
+    List.find state.workspace.packages ~fn:(fun (pkg: Package.t) -> pkg.name = package_name)
   in
   (
     match package_opt with
@@ -221,14 +220,14 @@ and handle_get_package_info = fun state client_pid package_name ->
           (Protocol.ServerResponse (Protocol.PackageInfo {
             package = Package.synthetic
               ~name:package_name
-              ~path:(Path.of_string "" |> Result.expect ~msg:"Failed to create empty path")
-              ~relative_path:(Path.of_string "" |> Result.expect ~msg:"Failed to create empty relative path");
+              ~path:(Path.v "")
+              ~relative_path:(Path.v "");
             sources = [];
             dependencies = []
           }))
     | Some package ->
         let dep_nodes = Riot_planner.Package_graph.get_dependencies state.package_graph package in
-        let dependencies = List.map Riot_planner.Package_graph.get_package dep_nodes in
+        let dependencies = List.map dep_nodes ~fn:Riot_planner.Package_graph.get_package in
         let all_sources = List.concat
           [ package.sources.src; package.sources.native; package.sources.tests ] in
         send
@@ -245,20 +244,18 @@ and handle_get_package_info = fun state client_pid package_name ->
 and handle_get_package_graph = fun state client_pid ->
   Log.debug ("Server: Received GetPackageGraph from " ^ Pid.to_string client_pid);
   let sorted_packages = Riot_planner.Package_graph.(topological_sort state.package_graph
-  |> List.map get_package) in
+  |> List.map ~fn:get_package) in
   send client_pid (Protocol.ServerResponse (Protocol.PackageGraph { nodes = sorted_packages }));
   loop state
 
 and handle_find_executable = fun state client_pid name ->
   Log.debug ("Server: handle_find_executable " ^ name);
   (* Only search in workspace member packages, not external dependencies *)
-  let workspace_packages = List.filter Package.is_workspace_member state.workspace.packages in
+  let workspace_packages = List.filter state.workspace.packages ~fn:Package.is_workspace_member in
   let found =
-    List.find_map
-      (fun (pkg: Package.t) ->
-        List.find_opt (fun (bin: Package.binary) -> bin.name = name) pkg.binaries
-        |> Option.map (fun _ -> pkg))
-      workspace_packages
+    List.find workspace_packages ~fn:(fun (pkg: Package.t) ->
+      List.find pkg.binaries ~fn:(fun (bin: Package.binary) -> bin.name = name)
+      |> Option.is_some)
   in
   (
     match found with
@@ -278,28 +275,26 @@ and handle_format_file = fun state client_pid file_path check_only ->
     ^ " (check_only="
     ^ Bool.to_string check_only
     ^ ")");
-  let ocamlformat = Riot_toolchain.ocamlformat state.toolchain in
+  let _ = state in
+  let _ = file_path in
+  let _ = check_only in
   let response =
-    match Riot_toolchain.Ocamlformat.format_file ocamlformat ~file_path ~check_only with
-    | Riot_toolchain.Ocamlformat.Formatted { code; changed } -> Protocol.FormatResult {
-      formatted_code = code;
-      changed
+    Protocol.FormatError {
+      error = "formatting through riot-build is not available in this runtime"
     }
-    | Riot_toolchain.Ocamlformat.Error err -> Protocol.FormatError { error = err }
   in
   send client_pid (Protocol.ServerResponse response);
   loop state
 
 and handle_format_code = fun state client_pid code file_path ->
   Log.debug ("Server: Received FormatCode from " ^ Pid.to_string client_pid);
-  let ocamlformat = Riot_toolchain.ocamlformat state.toolchain in
+  let _ = state in
+  let _ = code in
+  let _ = file_path in
   let response =
-    match Riot_toolchain.Ocamlformat.format_code ocamlformat ~code ~file_path with
-    | Riot_toolchain.Ocamlformat.Formatted { code; changed } -> Protocol.FormatResult {
-      formatted_code = code;
-      changed
+    Protocol.FormatError {
+      error = "formatting through riot-build is not available in this runtime"
     }
-    | Riot_toolchain.Ocamlformat.Error err -> Protocol.FormatError { error = err }
   in
   send client_pid (Protocol.ServerResponse response);
   loop state
@@ -338,8 +333,8 @@ and handle_new_package = fun state client_pid path name is_library ->
         }));
       loop state
   | Ok () -> (
-      let module_name = String.split_on_char '-' name
-      |> List.map String.capitalize_ascii
+      let module_name = String.split ~by:"-" name
+      |> List.map ~fn:String.capitalize_ascii
       |> String.concat "" in
       let main_ml =
         if is_library then
@@ -489,8 +484,8 @@ let start_server = fun ?(emit = no_emit) ?workspace_manager ?registry ?(registry
         in
         let workspace_result =
           if prepare_workspace_first then
-            prepare_workspace ~emit ~workspace_manager ~registry ~workspace () |> Result.map_error
-              (fun err ->
+            prepare_workspace ~emit ~workspace_manager ~registry ~workspace ()
+            |> Result.map_err ~fn:(fun err ->
                 trace_server
                   ("start_local prepare_workspace failed: " ^ Riot_model.Pm_error.message err);
                 WorkspacePreparationFailed { error = err })

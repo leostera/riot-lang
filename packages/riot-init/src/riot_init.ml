@@ -1,7 +1,7 @@
 open Std
 open Riot_model
 
-let ( let* ) = Result.and_then
+let ( let* ) result fn = Result.and_then result ~fn
 
 (** ArgParser command definition *)
 let command =
@@ -431,11 +431,7 @@ let run = fun ~on_event matches ->
         let resolved =
           match path_arg with
           | Some p ->
-              let path =
-                match Path.of_string p with
-                | Ok p -> p
-                | Error _ -> Path.v p
-              in
+              let path = Path.v p in
               if Path.is_absolute path then
                 path
               else

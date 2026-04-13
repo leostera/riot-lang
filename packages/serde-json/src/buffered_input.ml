@@ -62,9 +62,8 @@ let refill = fun state ->
     if Int.equal state.limit (IO.Bytes.length state.buf) then
       false
     else
-      let bufs = [|
-        { IO.Iovec.ba = state.buf; off = state.limit; len = IO.Bytes.length state.buf - state.limit }
-      |] in
+      let bufs = IO.Iovec.of_bytes state.buf
+      |> IO.Iovec.sub ~pos:state.limit ~len:(IO.Bytes.length state.buf - state.limit) in
       match IO.Reader.read_vectored state.reader bufs with
       | Ok 0 ->
           state.eof <- true;

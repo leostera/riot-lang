@@ -101,7 +101,7 @@ type event =
 
 let key_to_string = function
   | Char c ->
-      String.make 1 c
+      String.make ~len:1 ~char:c
   | Enter ->
       "enter"
   | Tab ->
@@ -186,7 +186,7 @@ let button_to_string = function
 let event_to_string = function
   | `Key { code; modifiers; kind } ->
       let key_str = key_to_string code in
-      let mod_str = String.concat "+" (List.map modifier_to_string modifiers) in
+      let mod_str = String.concat "+" (List.map modifiers ~fn:modifier_to_string) in
       let kind_str =
         match kind with
         | Press -> ""
@@ -228,7 +228,7 @@ let event_to_string = function
   | `Paste s ->
       let preview =
         if String.length s > 20 then
-          String.sub s 0 17 ^ "..."
+          String.sub s ~offset:0 ~len:17 ^ "..."
         else
           s
       in
@@ -256,8 +256,8 @@ let parse_csi = fun seq ->
   let len = String.length seq in
   if len < 3 then
     None
-  else if seq.[0] = '\x1b' && seq.[1] = '[' then
-    let rest = String.sub seq 2 (len - 2) in
+  else if String.get_unchecked seq ~at:0 = '\x1b' && String.get_unchecked seq ~at:1 = '[' then
+    let rest = String.sub seq ~offset:2 ~len:(len - 2) in
     match rest with
     | "A" ->
         Some (make_key Up)
@@ -313,12 +313,12 @@ let parse_csi = fun seq ->
         Some (make_key (F 12))
     | _ when String.contains rest ";" -> (
         (* Format: \x1b[1;NX where N is modifier and X is key *)
-        match String.split_on_char ';' rest with
+        match String.split ~by:";" rest with
         | [_;mod_key] when String.length mod_key >= 2 -> (
-            match Int.parse (String.sub mod_key 0 (String.length mod_key - 1)) with
+            match Int.parse (String.sub mod_key ~offset:0 ~len:(String.length mod_key - 1)) with
             | None -> None
             | Some mod_num ->
-                let key_char = mod_key.[String.length mod_key - 1] in
+                let key_char = String.get_unchecked mod_key ~at:(String.length mod_key - 1) in
                 let mods =
                   match mod_num with
                   | 2 -> [ Shift ]
@@ -341,13 +341,13 @@ let parse_csi = fun seq ->
           )
         | _ -> None
       )
-    | _ when String.length rest > 0 && rest.[0] = '<' -> (
+    | _ when String.length rest > 0 && String.get_unchecked rest ~at:0 = '<' -> (
         try
-          let mouse_data = String.sub rest 1 (String.length rest - 1) in
-          let last_char = mouse_data.[String.length mouse_data - 1] in
+          let mouse_data = String.sub rest ~offset:1 ~len:(String.length rest - 1) in
+          let last_char = String.get_unchecked mouse_data ~at:(String.length mouse_data - 1) in
           let is_release = last_char = 'm' in
-          let coords = String.sub mouse_data 0 (String.length mouse_data - 1) in
-          match String.split_on_char ';' coords with
+          let coords = String.sub mouse_data ~offset:0 ~len:(String.length mouse_data - 1) in
+          match String.split ~by:";" coords with
           | [cb;cx;cy] -> (
               match Int.parse cb, Int.parse cx, Int.parse cy with
               | Some b, Some x, Some y ->
@@ -400,7 +400,7 @@ let parse_csi = fun seq ->
                     action;
                     x;
                     y;
-                    modifiers = List.rev modifiers;
+                    modifiers = List.reverse modifiers;
                   })
               | _ -> None
             )
@@ -421,8 +421,8 @@ let parse_csi = fun seq ->
 
 let parse_ss3 = fun seq ->
   let len = String.length seq in
-  if len = 3 && seq.[0] = '\x1b' && seq.[1] = 'O' then
-    match seq.[2] with
+  if len = 3 && String.get_unchecked seq ~at:0 = '\x1b' && String.get_unchecked seq ~at:1 = 'O' then
+    match String.get_unchecked seq ~at:2 with
     | 'A' -> Some (make_key Up)
     | 'B' -> Some (make_key Down)
     | 'C' -> Some (make_key Right)
@@ -441,7 +441,7 @@ let parse_ss3 = fun seq ->
 
 let parse_osc = fun seq ->
   if String.length seq >= 6 then
-    if String.sub seq 0 6 = "\x1b[200~" then
+    if String.sub seq ~offset:0 ~len:6 = "\x1b[200~" then
       Some (`Unknown seq)
     else
       None
@@ -452,9 +452,9 @@ let parse_escape = fun seq ->
   if String.length seq = 0 then
     None
   else
-    match seq.[0] with
+    match String.get_unchecked seq ~at:0 with
     | '\x1b' when String.length seq > 1 -> (
-        match seq.[1] with
+        match String.get_unchecked seq ~at:1 with
         | '[' -> parse_csi seq
         | 'O' -> parse_ss3 seq
         | _ -> parse_osc seq
@@ -498,7 +498,7 @@ let read_event = fun () ->
           `Retry
         )
       else if String.length s = 1 then
-        match s.[0] with
+        match String.get_unchecked s ~at:0 with
         | '\r'
         | '\n' ->
             make_key Enter

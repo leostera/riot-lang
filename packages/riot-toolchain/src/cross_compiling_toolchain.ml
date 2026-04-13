@@ -48,7 +48,7 @@ let bin_dir_of_compiler = Path.parent
 
 let env_sysroot = fun () ->
   let from_env name =
-    match Env.var Env.String ~name with
+    match Env.get Env.String ~var:name with
     | Some path when not (String.equal path "") -> Some (Path.v path)
     | _ -> None
   in
@@ -57,12 +57,16 @@ let env_sysroot = fun () ->
   | None -> from_env "SYSROOT"
 
 let first_existing = fun paths ->
-  List.find_map
-    (fun path ->
-      match Fs.exists path with
-      | Ok true -> Some path
-      | _ -> None)
-    paths
+  let rec loop = fun remaining ->
+    match remaining with
+    | [] -> None
+    | path :: rest -> (
+        match Fs.exists path with
+        | Ok true -> Some path
+        | _ -> loop rest
+      )
+  in
+  loop paths
 
 let bundled_c_compiler = fun ~toolchain_root ~bin_prefix ->
   first_existing
@@ -141,4 +145,4 @@ let detect = fun ?toolchain_root () ~target_triplet ->
 
 (** Get full path to a cross-compilation binary *)
 let binary_path = fun config bin_name ->
-  config.bin_dir |> Option.map (fun dir -> Path.(dir / v (config.bin_prefix ^ bin_name)))
+  config.bin_dir |> Option.map ~fn:(fun dir -> Path.(dir / v (config.bin_prefix ^ bin_name)))

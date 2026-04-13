@@ -94,12 +94,12 @@ let trim_right = fun text ->
     if i < 0 then
       ""
     else
-      match String.get text i with
+      match String.get_unchecked text ~at:i with
       | ' '
       | '\t'
       | '\n'
       | '\r' -> loop (i - 1)
-      | _ -> String.sub text 0 (i + 1)
+      | _ -> String.sub text ~offset:0 ~len:(i + 1)
   in
   loop (String.length text - 1)
 
@@ -112,7 +112,7 @@ let delimiter_of_quoted_string_header = fun header ~is_extension ->
       if i < 0 then
         None
       else
-        match String.get trimmed i with
+        match String.get_unchecked trimmed ~at:i with
         | ' '
         | '\t'
         | '\n'
@@ -120,10 +120,8 @@ let delimiter_of_quoted_string_header = fun header ~is_extension ->
         | _ -> find_last_space (i - 1)
     in
     match find_last_space (String.length trimmed - 1) with
-    | Some i when i + 1 < String.length trimmed -> String.sub
-      trimmed
-      (i + 1)
-      (String.length trimmed - i - 1)
+    | Some i when i + 1 < String.length trimmed ->
+        String.sub trimmed ~offset:(i + 1) ~len:(String.length trimmed - i - 1)
     | _ -> ""
 
 let rec find_quoted_string_pipe_offset = fun cursor offset ~is_extension ->
@@ -148,7 +146,7 @@ let delimiter_matches_after_pipe = fun cursor delimiter ->
       | _ -> false
     else
       match Cursor.peek_n cursor (index + 1) with
-      | Some c when c = String.get delimiter index -> loop (index + 1)
+      | Some c when c = String.get_unchecked delimiter ~at:index -> loop (index + 1)
       | _ -> false
   in
   loop 0
@@ -393,12 +391,12 @@ let lex_raw_ident = fun cursor token_start ->
 let lex_number = fun cursor token_start ->
   (* Helper to remove underscores from a string *)
   let remove_underscores s =
-    let buf = Buffer.create (String.length s) in
-    String.iter
-      (fun c ->
+    let buf = Buffer.create ~size:(String.length s) in
+    String.for_each s
+      ~fn:(fun c ->
         if c != '_' then
           Buffer.add_char buf c)
-      s;
+    ;
     Buffer.contents buf
   in
   let consume_numeric_suffix () =
@@ -666,12 +664,12 @@ let lex_char = fun cursor token_start ->
                 Cursor.advance cursor;
                 let code = (d1 * 64) + (d2 * 8) + d3 in
                 if code <= 255 then
-                  Some (Char.chr code)
+                  Some (Char.from_int_unchecked code)
                 else
                   None
-            | _ -> Some (Char.chr ((d1 * 8) + d2))
+            | _ -> Some (Char.from_int_unchecked ((d1 * 8) + d2))
           )
-        | _ -> Some (Char.chr d1)
+        | _ -> Some (Char.from_int_unchecked d1)
       )
     | Some 'x' -> (
         Cursor.advance cursor;
@@ -692,7 +690,7 @@ let lex_char = fun cursor token_start ->
                     match hex_to_int c2 with
                     | Some h2 ->
                         Cursor.advance cursor;
-                        Some (Char.chr ((h1 * 16) + h2))
+                        Some (Char.from_int_unchecked ((h1 * 16) + h2))
                     | None -> None
                   )
                 | None -> None
@@ -1059,7 +1057,7 @@ let tokenize = fun source ->
   let cursor = create source in
   let attach_pending_trivia token pending_rev = Token.with_leading_trivia
     token
-    (List.rev_append pending_rev token.Token.leading_trivia) in
+    (List.reverse_append pending_rev token.Token.leading_trivia) in
   let rec lex_all delim_stack pending_trivia_rev acc =
     yield ();
     let token = next cursor delim_stack in
@@ -1080,7 +1078,7 @@ let tokenize = fun source ->
     | None -> (
         let token = attach_pending_trivia token pending_trivia_rev in
         match token.Token.kind with
-        | Token.EOF -> List.rev (token :: acc)
+        | Token.EOF -> List.reverse (token :: acc)
         | _ -> lex_all new_stack [] (token :: acc)
       )
   in

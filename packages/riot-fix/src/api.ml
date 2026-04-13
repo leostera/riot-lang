@@ -74,7 +74,7 @@ let fix = fun ?(build_package = unavailable_build_package) ?(on_event = no_event
     output = Cli.Catalog.list_diagnostics_output ~format
   })
   | ExplainRule { rule_id } -> explain_rule_output rule_id
-  |> Result.map (fun output -> ExplainedRule { rule_id; output })
+  |> Result.map ~fn:(fun output -> ExplainedRule { rule_id; output })
   | Run {
     mode;
     limit;
@@ -108,4 +108,4 @@ let fix = fun ?(build_package = unavailable_build_package) ?(on_event = no_event
           ~limit
           ~roots:[ target ]
           ()
-      ) |> Result.map (fun () -> Completed)
+      ) |> Result.map ~fn:(fun () -> Completed)

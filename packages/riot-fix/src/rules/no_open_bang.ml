@@ -31,20 +31,18 @@ let make_diagnostic = fun token ->
 
 let diagnostic_for_open_statement = fun stmt ->
   Syn.Cst.OpenStatement.bang_token stmt
-  |> Option.map (fun bang_token -> make_diagnostic (Syn.Cst.Token.syntax_token bang_token))
+  |> Option.map ~fn:(fun bang_token -> make_diagnostic (Syn.Cst.Token.syntax_token bang_token))
 
 let diagnostics_for_items = fun source_file ->
   match source_file with
   | Syn.Cst.Implementation { items; _ } ->
-      items |> List.filter_map
-        (
+      items |> List.filter_map ~fn:(
           function
           | Syn.Cst.StructureItem.OpenStatement stmt -> diagnostic_for_open_statement stmt
           | _ -> None
         )
   | Syn.Cst.Interface { items; _ } ->
-      items |> List.filter_map
-        (
+      items |> List.filter_map ~fn:(
           function
           | Syn.Cst.SignatureItem.OpenStatement stmt -> diagnostic_for_open_statement stmt
           | _ -> None

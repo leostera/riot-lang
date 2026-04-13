@@ -66,7 +66,7 @@ let target_span = fun target ->
 
 let source_slice = fun ~source span ->
   let len = Syn.Ceibo.Span.(span.end_ - span.start) in
-  String.sub source span.start len
+  String.sub source ~offset:span.start ~len
 
 let replacement_text = fun ~source ->
   function
@@ -110,11 +110,11 @@ let same_text_edit = fun a b ->
   a.span.start = b.span.start && a.span.end_ = b.span.end_ && String.equal a.new_text b.new_text
 
 let dedupe_text_edits = fun edits ->
-  let sorted = List.sort compare_text_edit edits in
+  let sorted = List.sort edits ~compare:compare_text_edit in
   let rec loop = fun acc ->
     function
-    | [] -> List.rev acc
-    | [ edit ] -> List.rev (edit :: acc)
+    | [] -> List.reverse acc
+    | [ edit ] -> List.reverse (edit :: acc)
     | edit :: (next :: rest) ->
         if same_text_edit edit next then
           loop acc (next :: rest)
@@ -152,10 +152,10 @@ let validate_edits = fun ~source edits ->
   loop None edits
 
 let apply_text_edit_unchecked = fun ~source edit ->
-  let prefix = String.sub source 0 edit.span.start in
+  let prefix = String.sub source ~offset:0 ~len:edit.span.start in
   let suffix_start = edit.span.end_ in
   let suffix_len = String.length source - suffix_start in
-  let suffix = String.sub source suffix_start suffix_len in
+  let suffix = String.sub source ~offset:suffix_start ~len:suffix_len in
   prefix ^ edit.new_text ^ suffix
 
 let apply_operation = fun ~source operation ->
@@ -166,53 +166,46 @@ let apply_operation = fun ~source operation ->
       | Error _ as err -> err
       | Ok edits ->
           let edits_desc =
-            List.sort
-              (fun a b ->
-                Int.compare b.span.start a.span.start)
-              edits
+            List.sort edits ~compare:(fun a b ->
+              Int.compare b.span.start a.span.start)
           in
-          Ok (List.fold_left (fun acc edit -> apply_text_edit_unchecked ~source:acc edit) source edits_desc)
+          Ok (List.fold_left edits_desc ~acc:source ~fn:(fun acc edit -> apply_text_edit_unchecked ~source:acc edit))
     )
 
 let lower_fix = fun ~source fix ->
-  match List.map (lower_operation ~source) fix.operations |> Result.all with
+  match List.map fix.operations ~fn:(lower_operation ~source) |> Result.all with
   | Error _ as err -> err
   | Ok edits -> validate_edits ~source (List.concat edits)
 
 let lower_fixes = fun ~source fixes ->
   let lowered =
     fixes
-    |> List.map
-      (fun fix ->
-        List.map (lower_operation ~source) fix.operations)
+    |> List.map ~fn:(fun fix ->
+      List.map fix.operations ~fn:(lower_operation ~source))
     |> List.concat
   in
   match Result.all lowered with
   | Error _ as err -> err
   | Ok edits -> validate_edits ~source (List.concat edits)
 
-let validate_fix = fun ~source fix -> lower_fix ~source fix |> Result.map (fun _ -> ())
+let validate_fix = fun ~source fix -> lower_fix ~source fix |> Result.map ~fn:(fun _ -> ())
 
 let apply_fix = fun ~source fix ->
   match lower_fix ~source fix with
   | Error _ as err -> err
   | Ok edits ->
       let edits_desc =
-        List.sort
-          (fun a b ->
-            Int.compare b.span.start a.span.start)
-          edits
+        List.sort edits ~compare:(fun a b ->
+          Int.compare b.span.start a.span.start)
       in
-      Ok (List.fold_left (fun acc edit -> apply_text_edit_unchecked ~source:acc edit) source edits_desc)
+      Ok (List.fold_left edits_desc ~acc:source ~fn:(fun acc edit -> apply_text_edit_unchecked ~source:acc edit))
 
 let apply_fixes = fun ~source fixes ->
   match lower_fixes ~source fixes with
   | Error _ as err -> err
   | Ok edits ->
       let edits_desc =
-        List.sort
-          (fun a b ->
-            Int.compare b.span.start a.span.start)
-          edits
+        List.sort edits ~compare:(fun a b ->
+          Int.compare b.span.start a.span.start)
       in
-      Ok (List.fold_left (fun acc edit -> apply_text_edit_unchecked ~source:acc edit) source edits_desc)
+      Ok (List.fold_left edits_desc ~acc:source ~fn:(fun acc edit -> apply_text_edit_unchecked ~source:acc edit))

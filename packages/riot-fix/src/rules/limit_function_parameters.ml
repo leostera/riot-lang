@@ -35,7 +35,7 @@ let count_parameter = fun counts parameter ->
 
 let parameter_counts = fun binding ->
   Syn.Cst.LetBinding.parameters binding
-  |> List.fold_left count_parameter { positional_count = 0; named_count = 0 }
+  |> List.fold_left ~acc:{ positional_count = 0; named_count = 0 } ~fn:count_parameter
 
 let exceeds_limit = fun counts ->
   let total = counts.positional_count + counts.named_count in
@@ -57,17 +57,16 @@ let threshold_description = fun counts ->
 let make_diagnostic = fun binding counts ->
   let total = counts.positional_count + counts.named_count in
   Syn.Cst.LetBinding.binding_name_token binding
-  |> Option.map
-    (fun token ->
-      Diagnostic.make
-        ~severity:Warning
-        ~kind:(Diagnostic.Known { rule_id; message = rule_description })
-        ~span:(Syn.Cst.Token.span token)
-        ~suggestion:("This function has "
-        ^ Int.to_string total
-        ^ " parameters; consider introducing a named record parameter because "
-        ^ threshold_description counts)
-        ())
+  |> Option.map ~fn:(fun token ->
+    Diagnostic.make
+      ~severity:Warning
+      ~kind:(Diagnostic.Known { rule_id; message = rule_description })
+      ~span:(Syn.Cst.Token.span token)
+      ~suggestion:("This function has "
+      ^ Int.to_string total
+      ^ " parameters; consider introducing a named record parameter because "
+      ^ threshold_description counts)
+      ())
 
 let diagnostic_for_binding = fun binding ->
   let counts = parameter_counts binding in
@@ -80,9 +79,10 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.let_bindings_of_structure_item
-  |> List.filter Syn.Cst.LetBinding.is_function
-  |> List.filter_map diagnostic_for_binding
+  |> List.map ~fn:Traversal.let_bindings_of_structure_item
+  |> List.concat
+  |> List.filter ~fn:Syn.Cst.LetBinding.is_function
+  |> List.filter_map ~fn:diagnostic_for_binding
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

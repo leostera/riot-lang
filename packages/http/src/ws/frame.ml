@@ -58,11 +58,11 @@ let opcode_of_int = function
 
 let unmask = fun mask payload ->
   let len = String.length payload in
-  let result = Bytes.create len in
+  let result = Bytes.create ~size:len in
   for i = 0 to len - 1 do
     let mask_byte = Int32.(logand (shift_right mask (8 * (3 - (i mod 4)))) 0xffl |> to_int) in
-    let payload_byte = Char.code payload.[i] in
-    Bytes.set result i (Char.chr (payload_byte lxor mask_byte))
+    let payload_byte = payload |> String.get_unchecked ~at:i |> Char.to_int in
+    Bytes.set result i (Char.from_int_unchecked (payload_byte lxor mask_byte))
   done;
   Bytes.to_string result
 

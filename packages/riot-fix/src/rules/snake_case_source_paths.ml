@@ -32,10 +32,10 @@ let is_snake_case = fun name ->
     if idx >= len then
       true
     else
-      let ch = String.get name idx in
+      let ch = String.get_unchecked name ~at:idx in
       (is_lower ch || is_digit ch || Char.equal ch '_') && loop (idx + 1)
   in
-  len > 0 && is_lower (String.get name 0) && loop 1
+  len > 0 && is_lower (String.get_unchecked name ~at:0) && loop 1
 
 let split_source_path = fun path ->
   let path_str = Path.to_string path in
@@ -44,14 +44,14 @@ let split_source_path = fun path ->
     | "src" :: rest -> rest
     | _ :: rest -> after_src rest
   in
-  String.split_on_char '/' path_str |> after_src
+  String.split ~by:"/" path_str |> after_src
 
 let path_segments = fun path ->
-  match List.rev (split_source_path path) with
+  match List.reverse (split_source_path path) with
   | [] -> []
   | file_name :: rev_dirs ->
       let stem = Path.(v file_name |> remove_extension |> basename) in
-      List.rev rev_dirs @ [ stem ]
+      List.reverse rev_dirs @ [ stem ]
 
 let make_diagnostic = fun name ->
   Diagnostic.make
@@ -71,8 +71,7 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
   then
     []
   else
-    path_segments path |> List.filter_map
-      (fun name ->
+    path_segments path |> List.filter_map ~fn:(fun name ->
         if is_snake_case name then
           None
         else

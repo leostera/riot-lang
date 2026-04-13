@@ -60,13 +60,13 @@ let first_out_of_order = fun parameters ->
 let diagnostic_for_binding = fun binding ->
   let labeled_params, optional_params =
     Syn.Cst.LetBinding.parameters binding
-    |> List.filter_map classify_parameter
+    |> List.filter_map ~fn:classify_parameter
     |> List.fold_left
-      (fun ((labeled, optional)) ((kind, parameter)) ->
+      ~acc:([], [])
+      ~fn:(fun (labeled, optional) (kind, parameter) ->
         match kind with
         | `Labeled -> (labeled @ [ parameter ], optional)
         | `Optional -> (labeled, optional @ [ parameter ]))
-      ([], [])
   in
   match first_out_of_order labeled_params with
   | Some (previous_name, parameter) -> Some (make_diagnostic ~previous_name parameter)
@@ -80,9 +80,10 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.let_bindings_of_structure_item
-  |> List.filter Syn.Cst.LetBinding.is_function
-  |> List.filter_map diagnostic_for_binding
+  |> List.map ~fn:Traversal.let_bindings_of_structure_item
+  |> List.concat
+  |> List.filter ~fn:Syn.Cst.LetBinding.is_function
+  |> List.filter_map ~fn:diagnostic_for_binding
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

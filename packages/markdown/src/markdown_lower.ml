@@ -1,6 +1,14 @@
 open Std
 open Markdown_parser
 
+let char_at = fun text at -> String.get_unchecked text ~at
+
+let substring = fun text offset len -> String.sub text ~offset ~len
+
+let repeat_char = fun len char -> String.make ~len ~char
+
+let string_iter = fun fn text -> String.for_each text ~fn
+
 type reference = {
   destination: string;
   title: string option;
@@ -12,7 +20,7 @@ let has_char = fun subject char ->
   let rec loop index =
     if index >= String.length subject then
       false
-    else if subject.[index] = char then
+    else if (char_at subject (index)) = char then
       true
     else
       loop (index + 1)
@@ -23,27 +31,27 @@ let string_of_char = fun char len ->
   if len <= 0 then
     ""
   else
-    String.make len char
+    repeat_char len char
 
 let trim_left = fun text ->
   let len = String.length text in
   let rec loop index =
     if index >= len then
       index
-    else if is_space text.[index] then
+    else if is_space (char_at text (index)) then
       loop (index + 1)
     else
       index
   in
   let left = loop 0 in
-  String.sub text left (len - left)
+  substring text left (len - left)
 
 let trim_right = fun text ->
   let len = String.length text in
   let rec loop index =
     if index <= 0 then
       index
-    else if is_space text.[index - 1] then
+    else if is_space (char_at text (index - 1)) then
       loop (index - 1)
     else
       index
@@ -52,7 +60,7 @@ let trim_right = fun text ->
   if right <= 0 then
     ""
   else
-    String.sub text 0 right
+    substring text 0 right
 
 let trim = fun text -> trim_right (trim_left text)
 
@@ -62,7 +70,7 @@ let starts_with = fun ~prefix text index ->
   if index < 0 || index + prefix_len > len then
     false
   else
-    String.sub text index prefix_len = prefix
+    substring text index prefix_len = prefix
 
 let find_substring = fun text start pattern ->
   let pattern_len = String.length pattern in
@@ -79,7 +87,7 @@ let find_substring = fun text start pattern ->
     let rec loop index =
       if index + pattern_len > len then
         None
-      else if String.sub text index pattern_len = pattern then
+      else if substring text index pattern_len = pattern then
         Some index
       else
         loop (index + 1)
@@ -87,8 +95,8 @@ let find_substring = fun text start pattern ->
     loop start
 
 let normalize_code_span = fun marker_len text ->
-  let buffer = IO.Buffer.create (String.length text) in
-  String.iter
+  let buffer = IO.Buffer.create ~size:(String.length text) in
+  string_iter
     (fun char ->
       if char = '\n' then
         IO.Buffer.add_char buffer ' '
@@ -99,27 +107,27 @@ let normalize_code_span = fun marker_len text ->
   let len = String.length normalized in
   if
     len >= 2
-    && normalized.[0] = ' '
-    && normalized.[len - 1] = ' '
+    && (char_at normalized (0)) = ' '
+    && (char_at normalized (len - 1)) = ' '
     && not (String.equal (trim normalized) "")
     && (marker_len > 1 || has_char text '`' || has_char text '\n')
   then
-    String.sub normalized 1 (len - 2)
+    substring normalized 1 (len - 2)
   else
     normalized
 
 let unescape_backslashes = fun text ->
-  let buffer = IO.Buffer.create (String.length text) in
+  let buffer = IO.Buffer.create ~size:(String.length text) in
   let rec loop index =
     if index >= String.length text then
       IO.Buffer.contents buffer
-    else if text.[index] = '\\' && index + 1 < String.length text then
+    else if (char_at text (index)) = '\\' && index + 1 < String.length text then
       (
-        IO.Buffer.add_char buffer text.[index + 1];
+        IO.Buffer.add_char buffer (char_at text (index + 1));
         loop (index + 2)
       )
     else (
-      IO.Buffer.add_char buffer text.[index];
+      IO.Buffer.add_char buffer (char_at text (index));
       loop (index + 1)
     )
   in
@@ -188,13 +196,13 @@ let named_entities = [
 
 let decode_entity_at = fun text index ->
   let len = String.length text in
-  if index >= len || not (Char.equal text.[index] '&') then
+  if index >= len || not (Char.equal (char_at text (index)) '&') then
     None
   else
     let rec find_end current =
       if current >= len then
         None
-      else if text.[current] = ';' then
+      else if (char_at text (current)) = ';' then
         Some current
       else
         find_end (current + 1)
@@ -202,14 +210,14 @@ let decode_entity_at = fun text index ->
     match find_end (index + 1) with
     | None -> None
     | Some end_index ->
-        let body = String.sub text (index + 1) (end_index - index - 1) in
+        let body = substring text (index + 1) (end_index - index - 1) in
         let decoded =
-          if String.length body > 1 && body.[0] = '#' then
+          if String.length body > 1 && (char_at body (0)) = '#' then
             let numeric =
-              if body.[1] = 'x' || body.[1] = 'X' then
-                int_of_string_opt ("0x" ^ String.sub body 2 (String.length body - 2))
+              if (char_at body (1)) = 'x' || (char_at body (1)) = 'X' then
+                int_of_string_opt ("0x" ^ substring body 2 (String.length body - 2))
               else
-                int_of_string_opt (String.sub body 1 (String.length body - 1))
+                int_of_string_opt (substring body 1 (String.length body - 1))
             in
             (
               match numeric with
@@ -218,12 +226,13 @@ let decode_entity_at = fun text index ->
               | None -> None
             )
           else
-            List.assoc_opt body named_entities
+            List.find named_entities ~fn:(fun (name, _) -> String.equal name body)
+            |> Option.map ~fn:(fun (_, value) -> value)
         in
-        Option.map (fun value -> (value, end_index + 1)) decoded
+        Option.map decoded ~fn:(fun value -> (value, end_index + 1))
 
 let decode_entities = fun text ->
-  let buffer = IO.Buffer.create (String.length text) in
+  let buffer = IO.Buffer.create ~size:(String.length text) in
   let rec loop index =
     if index >= String.length text then
       IO.Buffer.contents buffer
@@ -233,7 +242,7 @@ let decode_entities = fun text ->
           IO.Buffer.add_string buffer decoded;
           loop next
       | None ->
-          IO.Buffer.add_char buffer text.[index];
+          IO.Buffer.add_char buffer (char_at text (index));
           loop (index + 1)
   in
   loop 0
@@ -249,7 +258,7 @@ let skip_spaces_tabs = fun text index ->
     if current >= len then
       current
     else
-      let char = text.[current] in
+      let char = (char_at text (current)) in
       if char = ' ' || char = '\t' then
         loop (current + 1)
       else
@@ -263,7 +272,7 @@ let only_spaces_tabs_and_newlines = fun text index ->
     if current >= len then
       true
     else
-      match text.[current] with
+      match (char_at text (current)) with
       | ' '
       | '\t'
       | '\n' -> loop (current + 1)
@@ -273,19 +282,19 @@ let only_spaces_tabs_and_newlines = fun text index ->
 
 let parse_bracket_label = fun text start ->
   let len = String.length text in
-  if start >= len || not (Char.equal text.[start] '[') then
+  if start >= len || not (Char.equal (char_at text (start)) '[') then
     None
   else
     let rec loop index depth =
       if index >= len then
         None
-      else if text.[index] = '\\' && index + 1 < len then
+      else if (char_at text (index)) = '\\' && index + 1 < len then
         loop (index + 2) depth
-      else if text.[index] = '[' then
+      else if (char_at text (index)) = '[' then
         loop (index + 1) (depth + 1)
-      else if text.[index] = ']' then
+      else if (char_at text (index)) = ']' then
         if depth = 0 then
-          Some (String.sub text (start + 1) (index - start - 1), index)
+          Some (substring text (start + 1) (index - start - 1), index)
         else
           loop (index + 1) (depth - 1)
       else
@@ -295,18 +304,18 @@ let parse_bracket_label = fun text start ->
 
 let parse_reference_label = fun text start ->
   let len = String.length text in
-  if start >= len || not (Char.equal text.[start] '[') then
+  if start >= len || not (Char.equal (char_at text (start)) '[') then
     None
   else
     let rec loop index =
       if index >= len then
         None
-      else if text.[index] = '\\' && index + 1 < len then
+      else if (char_at text (index)) = '\\' && index + 1 < len then
         loop (index + 2)
-      else if text.[index] = '[' then
+      else if (char_at text (index)) = '[' then
         None
-      else if text.[index] = ']' then
-        Some (String.sub text (start + 1) (index - start - 1), index)
+      else if (char_at text (index)) = ']' then
+        Some (substring text (start + 1) (index - start - 1), index)
       else
         loop (index + 1)
     in
@@ -317,7 +326,7 @@ let find_inline_label_end = fun text start ->
   let rec count_backticks index =
     if index >= len then
       index
-    else if text.[index] = '`' then
+    else if (char_at text (index)) = '`' then
       count_backticks (index + 1)
     else
       index
@@ -336,18 +345,18 @@ let find_inline_label_end = fun text start ->
     else
       match quote with
       | Some quote ->
-          if text.[index] = '\\' && index + 1 < len then
+          if (char_at text (index)) = '\\' && index + 1 < len then
             skip_angle (index + 2) (Some quote)
-          else if text.[index] = quote then
+          else if (char_at text (index)) = quote then
             skip_angle (index + 1) None
           else
             skip_angle (index + 1) (Some quote)
       | None ->
-          if text.[index] = '>' then
+          if (char_at text (index)) = '>' then
             index + 1
-          else if text.[index] = '"' || text.[index] = '\'' then
-            skip_angle (index + 1) (Some text.[index])
-          else if text.[index] = '\\' && index + 1 < len then
+          else if (char_at text (index)) = '"' || (char_at text (index)) = '\'' then
+            skip_angle (index + 1) (Some (char_at text (index)))
+          else if (char_at text (index)) = '\\' && index + 1 < len then
             skip_angle (index + 2) None
           else
             skip_angle (index + 1) None
@@ -355,15 +364,15 @@ let find_inline_label_end = fun text start ->
   let rec loop index depth =
     if index >= len then
       None
-    else if text.[index] = '\\' && index + 1 < len then
+    else if (char_at text (index)) = '\\' && index + 1 < len then
       loop (index + 2) depth
-    else if text.[index] = '`' then
+    else if (char_at text (index)) = '`' then
       loop (skip_code_span index) depth
-    else if text.[index] = '<' then
+    else if (char_at text (index)) = '<' then
       loop (skip_angle (index + 1) None) depth
-    else if text.[index] = '[' then
+    else if (char_at text (index)) = '[' then
       loop (index + 1) (depth + 1)
-    else if text.[index] = ']' then
+    else if (char_at text (index)) = ']' then
       if depth = 0 then
         Some index
       else
@@ -378,21 +387,21 @@ let find_inline_link_close = fun text start ->
   let rec loop index depth in_angle title_delim =
     if index >= len then
       None
-    else if text.[index] = '\\' && index + 1 < len then
+    else if (char_at text (index)) = '\\' && index + 1 < len then
       loop (index + 2) depth in_angle title_delim
     else if Option.is_some title_delim then
       let closer = Option.unwrap_or ~default:'"' title_delim in
-      if Char.equal text.[index] closer then
+      if Char.equal (char_at text (index)) closer then
         loop (index + 1) depth in_angle None
       else
         loop (index + 1) depth in_angle title_delim
     else if in_angle then
-      if Char.equal text.[index] '>' then
+      if Char.equal (char_at text (index)) '>' then
         loop (index + 1) depth false None
       else
         loop (index + 1) depth true None
     else
-      match text.[index] with
+      match (char_at text (index)) with
       | '<' -> loop (index + 1) depth true None
       | '"'
       | '\'' as quote -> loop (index + 1) depth false (Some quote)
@@ -413,14 +422,14 @@ let is_title_opener = function
   | _ -> false
 
 let normalize_destination_backslashes = fun text ->
-  let buffer = IO.Buffer.create (String.length text) in
+  let buffer = IO.Buffer.create ~size:(String.length text) in
   let rec loop index =
     if index >= String.length text then
       IO.Buffer.contents buffer
-    else if text.[index] = '\\' && index + 1 < String.length text then
-      if is_escapable text.[index + 1] then
+    else if (char_at text (index)) = '\\' && index + 1 < String.length text then
+      if is_escapable (char_at text (index + 1)) then
         (
-          IO.Buffer.add_char buffer text.[index + 1];
+          IO.Buffer.add_char buffer (char_at text (index + 1));
           loop (index + 2)
         )
       else (
@@ -428,7 +437,7 @@ let normalize_destination_backslashes = fun text ->
         loop (index + 1)
       )
     else (
-      IO.Buffer.add_char buffer text.[index];
+      IO.Buffer.add_char buffer (char_at text (index));
       loop (index + 1)
     )
   in
@@ -448,15 +457,15 @@ let percent_encode_destination = fun text ->
     || char = '\\'
     || char = '`'
   in
-  let buffer = IO.Buffer.create (String.length text) in
-  String.iter
+  let buffer = IO.Buffer.create ~size:(String.length text) in
+  string_iter
     (fun char ->
       if needs_encoding char then
         let code = Char.code char in
         (
           IO.Buffer.add_char buffer '%';
-          IO.Buffer.add_char buffer hex.[code lsr 4];
-          IO.Buffer.add_char buffer hex.[code land 15]
+          IO.Buffer.add_char buffer (char_at hex (code lsr 4));
+          IO.Buffer.add_char buffer (char_at hex (code land 15))
         )
       else
         IO.Buffer.add_char buffer char)
@@ -472,19 +481,19 @@ let parse_link_destination_piece = fun text start ->
   let len = String.length text in
   if start >= len then
     None
-  else if text.[start] = '<' then
-    let buffer = IO.Buffer.create (len - start) in
+  else if (char_at text (start)) = '<' then
+    let buffer = IO.Buffer.create ~size:(len - start) in
     let rec loop index =
       if index >= len then
         None
-      else if text.[index] = '>' then
+      else if (char_at text (index)) = '>' then
         Some (IO.Buffer.contents buffer, index + 1)
-      else if text.[index] = '\n' || text.[index] = '<' then
+      else if (char_at text (index)) = '\n' || (char_at text (index)) = '<' then
         None
-      else if text.[index] = '\\' && index + 1 < len then
-        if is_escapable text.[index + 1] then
+      else if (char_at text (index)) = '\\' && index + 1 < len then
+        if is_escapable (char_at text (index + 1)) then
           (
-            IO.Buffer.add_char buffer text.[index + 1];
+            IO.Buffer.add_char buffer (char_at text (index + 1));
             loop (index + 2)
           )
         else (
@@ -492,13 +501,13 @@ let parse_link_destination_piece = fun text start ->
           loop (index + 1)
         )
       else (
-        IO.Buffer.add_char buffer text.[index];
+        IO.Buffer.add_char buffer (char_at text (index));
         loop (index + 1)
       )
     in
     loop (start + 1)
   else
-    let buffer = IO.Buffer.create (len - start) in
+    let buffer = IO.Buffer.create ~size:(len - start) in
     let rec loop index depth consumed =
       if index >= len then
         if consumed then
@@ -506,7 +515,7 @@ let parse_link_destination_piece = fun text start ->
         else
           None
       else
-        match text.[index] with
+        match (char_at text (index)) with
         | ' '
         | '\t'
         | '\n' ->
@@ -530,9 +539,9 @@ let parse_link_destination_piece = fun text start ->
         | '<' ->
             None
         | '\\' when index + 1 < len ->
-            if is_escapable text.[index + 1] then
+            if is_escapable (char_at text (index + 1)) then
               (
-                IO.Buffer.add_char buffer text.[index + 1];
+                IO.Buffer.add_char buffer (char_at text (index + 1));
                 loop (index + 2) depth true
               )
             else (
@@ -547,26 +556,26 @@ let parse_link_destination_piece = fun text start ->
 
 let parse_link_title_piece = fun text start ->
   let len = String.length text in
-  if start >= len || not (is_title_opener text.[start]) then
+  if start >= len || not (is_title_opener (char_at text (start))) then
     None
   else
-    let opener = text.[start] in
+    let opener = (char_at text (start)) in
     let closer =
       if opener = '(' then
         ')'
       else
         opener
     in
-    let buffer = IO.Buffer.create (len - start) in
+    let buffer = IO.Buffer.create ~size:(len - start) in
     let rec loop index =
       if index >= len then
         None
-      else if text.[index] = closer then
+      else if (char_at text (index)) = closer then
         Some (IO.Buffer.contents buffer |> decode_entities, index + 1)
-      else if text.[index] = '\\' && index + 1 < len then
-        if is_escapable text.[index + 1] || Char.equal text.[index + 1] closer then
+      else if (char_at text (index)) = '\\' && index + 1 < len then
+        if is_escapable (char_at text (index + 1)) || Char.equal (char_at text (index + 1)) closer then
           (
-            IO.Buffer.add_char buffer text.[index + 1];
+            IO.Buffer.add_char buffer (char_at text (index + 1));
             loop (index + 2)
           )
         else (
@@ -574,7 +583,7 @@ let parse_link_title_piece = fun text start ->
           loop (index + 1)
         )
       else (
-        IO.Buffer.add_char buffer text.[index];
+        IO.Buffer.add_char buffer (char_at text (index));
         loop (index + 1)
       )
     in
@@ -593,7 +602,7 @@ let parse_link_target_parts = fun raw ->
         let after_gap, had_gap =
           if space_index >= len then
             (space_index, space_index > after_destination)
-          else if Char.equal raw.[space_index] '\n' then
+          else if Char.equal (char_at raw (space_index)) '\n' then
             (skip_spaces_tabs raw (space_index + 1), true)
           else
             (space_index, space_index > after_destination)
@@ -604,7 +613,7 @@ let parse_link_target_parts = fun raw ->
               Some { destination = normalize_destination destination; title = None }
             else
               None
-          else if had_gap && is_title_opener raw.[after_gap] then
+          else if had_gap && is_title_opener (char_at raw (after_gap)) then
             match parse_link_title_piece raw after_gap with
             | Some (title, after_title) ->
                 if only_spaces_tabs_and_newlines raw after_title then
@@ -625,7 +634,7 @@ let parse_link_target = fun raw ->
   | None -> ("", None)
 
 let casefold_utf8 = fun text ->
-  let buffer = IO.Buffer.create (String.length text) in
+  let buffer = IO.Buffer.create ~size:(String.length text) in
   let rec loop index =
     if index >= String.length text then
       IO.Buffer.contents buffer
@@ -643,19 +652,19 @@ let casefold_utf8 = fun text ->
             loop next
           )
       | None ->
-          IO.Buffer.add_char buffer text.[index];
+          IO.Buffer.add_char buffer (char_at text (index));
           loop (index + 1)
   in
   loop 0
 
 let normalize_reference_label = fun label ->
   let label = decode_entities label |> trim |> casefold_utf8 in
-  let buffer = IO.Buffer.create (String.length label) in
+  let buffer = IO.Buffer.create ~size:(String.length label) in
   let rec loop index previous_space =
     if index >= String.length label then
       IO.Buffer.contents buffer
     else
-      let char = label.[index] in
+      let char = (char_at label (index)) in
       if char = ' ' || char = '\t' || char = '\n' then
         if previous_space then
           loop (index + 1) true
@@ -672,13 +681,13 @@ let normalize_reference_label = fun label ->
 
 let parse_reference_definition = fun text ->
   try
-    if String.length text = 0 || not (Char.equal text.[0] '[') then
+    if String.length text = 0 || not (Char.equal (char_at text (0)) '[') then
       None
     else
       match parse_reference_label text 0 with
       | None -> None
       | Some (label, close) ->
-          if close + 1 >= String.length text || not (Char.equal text.[close + 1] ':') then
+          if close + 1 >= String.length text || not (Char.equal (char_at text (close + 1)) ':') then
             None
           else
             let normalized = normalize_reference_label label in
@@ -689,7 +698,7 @@ let parse_reference_definition = fun text ->
                 if close + 2 >= String.length text then
                   ""
                 else
-                  String.sub text (close + 2) (String.length text - close - 2)
+                  substring text (close + 2) (String.length text - close - 2)
               in
               if trim remainder = "" then
                 None
@@ -721,8 +730,8 @@ let looks_like_email = fun inside ->
   match at with
   | None -> false
   | Some at ->
-      let local = String.sub inside 0 at in
-      at > 0 && at + 1 < len && let last = local.[String.length local - 1] in
+      let local = substring inside 0 at in
+      at > 0 && at + 1 < len && let last = (char_at local (String.length local - 1)) in
       ((last >= 'a' && last <= 'z') || (last >= 'A' && last <= 'Z') || (last >= '0' && last <= '9'))
       && Option.is_some (find_substring inside (at + 1) ".")
 
@@ -731,15 +740,15 @@ let looks_like_scheme = fun inside ->
   let rec scan index =
     if index >= len then
       None
-    else if inside.[index] = ':' then
+    else if (char_at inside (index)) = ':' then
       Some index
     else if
-      (inside.[index] >= 'a' && inside.[index] <= 'z')
-      || (inside.[index] >= 'A' && inside.[index] <= 'Z')
-      || (inside.[index] >= '0' && inside.[index] <= '9')
-      || inside.[index] = '+'
-      || inside.[index] = '-'
-      || inside.[index] = '.'
+      ((char_at inside (index)) >= 'a' && (char_at inside (index)) <= 'z')
+      || ((char_at inside (index)) >= 'A' && (char_at inside (index)) <= 'Z')
+      || ((char_at inside (index)) >= '0' && (char_at inside (index)) <= '9')
+      || (char_at inside (index)) = '+'
+      || (char_at inside (index)) = '-'
+      || (char_at inside (index)) = '.'
     then
       scan (index + 1)
     else
@@ -802,13 +811,13 @@ let is_unquoted_html_attribute_value_char = function
 
 let scan_html_tag_name_at = fun text start ->
   let len = String.length text in
-  if start >= len || not (is_ascii_letter text.[start]) then
+  if start >= len || not (is_ascii_letter (char_at text (start))) then
     None
   else
     let rec loop index =
       if index >= len then
         index
-      else if is_html_tag_name_char text.[index] then
+      else if is_html_tag_name_char (char_at text (index)) then
         loop (index + 1)
       else
         index
@@ -817,13 +826,13 @@ let scan_html_tag_name_at = fun text start ->
 
 let scan_html_attribute_name_at = fun text start ->
   let len = String.length text in
-  if start >= len || not (is_html_attribute_name_start text.[start]) then
+  if start >= len || not (is_html_attribute_name_start (char_at text (start))) then
     None
   else
     let rec loop index =
       if index >= len then
         index
-      else if is_html_attribute_name_char text.[index] then
+      else if is_html_attribute_name_char (char_at text (index)) then
         loop (index + 1)
       else
         index
@@ -835,12 +844,12 @@ let scan_html_attribute_value_at = fun text start ->
   if start >= len then
     None
   else
-    match text.[start] with
+    match (char_at text (start)) with
     | '"' ->
         let rec loop index =
           if index >= len then
             None
-          else if text.[index] = '"' then
+          else if (char_at text (index)) = '"' then
             Some (index + 1)
           else
             loop (index + 1)
@@ -850,20 +859,20 @@ let scan_html_attribute_value_at = fun text start ->
         let rec loop index =
           if index >= len then
             None
-          else if text.[index] = '\'' then
+          else if (char_at text (index)) = '\'' then
             Some (index + 1)
           else
             loop (index + 1)
         in
         loop (start + 1)
     | _ ->
-        if not (is_unquoted_html_attribute_value_char text.[start]) then
+        if not (is_unquoted_html_attribute_value_char (char_at text (start))) then
           None
         else
           let rec loop index =
             if index >= len then
               index
-            else if is_unquoted_html_attribute_value_char text.[index] then
+            else if is_unquoted_html_attribute_value_char (char_at text (index)) then
               loop (index + 1)
             else
               index
@@ -876,20 +885,20 @@ let skip_html_tag_whitespace = fun text index ->
     if current >= len then
       current
     else
-      match text.[current] with
+      match (char_at text (current)) with
       | ' '
       | '\t' -> skip_spaces_tabs (current + 1)
       | _ -> current
   in
   let after_spaces = skip_spaces_tabs index in
-  if after_spaces < len && text.[after_spaces] = '\n' then
+  if after_spaces < len && (char_at text (after_spaces)) = '\n' then
     skip_spaces_tabs (after_spaces + 1)
   else
     after_spaces
 
 let scan_inline_open_tag_end = fun text start ->
   let len = String.length text in
-  if start >= len || not (Char.equal text.[start] '<') then
+  if start >= len || not (Char.equal (char_at text (start)) '<') then
     None
   else
     match scan_html_tag_name_at text (start + 1) with
@@ -899,11 +908,11 @@ let scan_inline_open_tag_end = fun text start ->
           if index >= len then
             None
           else
-            match text.[index] with
+            match (char_at text (index)) with
             | '>' ->
                 Some (index + 1)
             | '/' ->
-                if index + 1 < len && text.[index + 1] = '>' then
+                if index + 1 < len && (char_at text (index + 1)) = '>' then
                   Some (index + 2)
                 else
                   None
@@ -915,11 +924,11 @@ let scan_inline_open_tag_end = fun text start ->
                   None
                 else
                   (
-                    match text.[after_space] with
+                    match (char_at text (after_space)) with
                     | '>' ->
                         Some (after_space + 1)
                     | '/' ->
-                        if after_space + 1 < len && text.[after_space + 1] = '>' then
+                        if after_space + 1 < len && (char_at text (after_space + 1)) = '>' then
                           Some (after_space + 2)
                         else
                           None
@@ -929,7 +938,7 @@ let scan_inline_open_tag_end = fun text start ->
                         | Some after_attribute_name ->
                             let after_gap = skip_html_tag_whitespace text after_attribute_name in
                             let after_attribute =
-                              if after_gap < len && text.[after_gap] = '=' then
+                              if after_gap < len && (char_at text (after_gap)) = '=' then
                                 let value_start = skip_html_tag_whitespace text (after_gap + 1) in
                                 scan_html_attribute_value_at text value_start
                               else
@@ -956,7 +965,7 @@ let scan_inline_closing_tag_end = fun text start ->
     | None -> None
     | Some after_name ->
         let after_name = skip_html_tag_whitespace text after_name in
-        if after_name < len && text.[after_name] = '>' then
+        if after_name < len && (char_at text (after_name)) = '>' then
           Some (after_name + 1)
         else
           None
@@ -967,17 +976,17 @@ let scan_inline_html_end = fun text start ->
   else if starts_with ~prefix:"<!--->" text start then
     Some (start + 6)
   else if starts_with ~prefix:"<!--" text start then
-    Option.map (fun close -> close + 3) (find_substring text (start + 4) "-->")
+    Option.map (find_substring text (start + 4) "-->") ~fn:(fun close -> close + 3)
   else if starts_with ~prefix:"<?" text start then
-    Option.map (fun close -> close + 2) (find_substring text (start + 2) "?>")
+    Option.map (find_substring text (start + 2) "?>") ~fn:(fun close -> close + 2)
   else if starts_with ~prefix:"<![CDATA[" text start then
-    Option.map (fun close -> close + 3) (find_substring text (start + 9) "]]>")
+    Option.map (find_substring text (start + 9) "]]>") ~fn:(fun close -> close + 3)
   else if
     start + 2 < String.length text
     && starts_with ~prefix:"<!" text start
-    && is_ascii_letter text.[start + 2]
+    && is_ascii_letter (char_at text (start + 2))
   then
-    Option.map (fun close -> close + 1) (find_substring text (start + 2) ">")
+    Option.map (find_substring text (start + 2) ">") ~fn:(fun close -> close + 1)
   else
     match scan_inline_open_tag_end text start with
     | Some ending -> Some ending
@@ -987,7 +996,7 @@ let trailing_space_count = fun text ->
   let rec loop index count =
     if index < 0 then
       count
-    else if text.[index] = ' ' || text.[index] = '\t' then
+    else if (char_at text (index)) = ' ' || (char_at text (index)) = '\t' then
       loop (index - 1) (count + 1)
     else
       count
@@ -999,7 +1008,7 @@ let trim_trailing_spaces = fun text ->
   if count = 0 then
     text
   else
-    String.sub text 0 (String.length text - count)
+    substring text 0 (String.length text - count)
 
 let is_gfm = fun flavor -> flavor = Gfm
 
@@ -1031,7 +1040,7 @@ let rune_before = fun text index ->
     let rec find_start current =
       if current <= 0 then
         0
-      else if Unicode.Utf8.is_continuation text.[current] then
+      else if Unicode.Utf8.is_continuation (char_at text (current)) then
         find_start (current - 1)
       else
         current
@@ -1039,7 +1048,7 @@ let rune_before = fun text index ->
     let start = find_start (index - 1) in
     match Unicode.Utf8.decode_rune text start with
     | Some (rune, _) -> Some rune
-    | None -> Some (rune_of_byte text.[index - 1])
+    | None -> Some (rune_of_byte (char_at text (index - 1)))
 
 let rune_after = fun text index ->
   if index >= String.length text then
@@ -1047,7 +1056,7 @@ let rune_after = fun text index ->
   else
     match Unicode.Utf8.decode_rune text index with
     | Some (rune, _) -> Some rune
-    | None -> Some (rune_of_byte text.[index])
+    | None -> Some (rune_of_byte (char_at text (index)))
 
 let rune_is_space = fun rune ->
   let code = Unicode.Rune.to_int rune in
@@ -1060,7 +1069,7 @@ let delimiter_run_properties = fun text index marker ->
   let rec count current =
     if current >= len then
       current
-    else if Char.equal text.[current] marker then
+    else if Char.equal (char_at text (current)) marker then
       count (current + 1)
     else
       current
@@ -1119,10 +1128,10 @@ let inline_stack_push_text = fun text stack ->
 
 let inline_stack_to_nodes = fun items ->
   let rec loop acc = function
-    | [] -> List.rev acc
+    | [] -> List.reverse acc
     | Inline_node node :: tail -> loop (node :: acc) tail
     | Delimiter delimiter :: tail -> loop
-      (Text (String.make delimiter.count delimiter.marker) :: acc)
+      (Text (repeat_char delimiter.count delimiter.marker) :: acc)
       tail
   in
   loop [] items
@@ -1186,17 +1195,17 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
     let rec loop index acc =
       if index >= len then
         acc
-      else if text.[index] = '\\' then
+      else if (char_at text (index)) = '\\' then
         if index + 1 < len then
-          if text.[index + 1] = '\n' then
+          if (char_at text (index + 1)) = '\n' then
             loop (index + 2) (inline_stack_push Hard_break acc)
-          else if is_escapable text.[index + 1] then
-            loop (index + 2) (inline_stack_push_text (String.make 1 text.[index + 1]) acc)
+          else if is_escapable (char_at text (index + 1)) then
+            loop (index + 2) (inline_stack_push_text (repeat_char 1 (char_at text (index + 1))) acc)
           else
             loop (index + 1) (inline_stack_push_text "\\" acc)
         else
           loop (index + 1) (inline_stack_push_text "\\" acc)
-      else if text.[index] = '\n' then
+      else if (char_at text (index)) = '\n' then
         (
           match acc with
           | Inline_node (Text head) :: tail when trailing_space_count head >= 2 ->
@@ -1211,7 +1220,7 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
                 if current >= len then
                   current
                 else
-                  let char = text.[current] in
+                  let char = (char_at text (current)) in
                   if char = ' ' || char = '\t' then
                     skip_spaces (current + 1)
                   else
@@ -1235,7 +1244,7 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
           match find_inline_label_end text (index + 2) with
           | None -> loop (index + 1) (inline_stack_push_text "!" acc)
           | Some close_text ->
-              let alt_text = String.sub text (index + 2) (close_text - index - 2) in
+              let alt_text = substring text (index + 2) (close_text - index - 2) in
               let after_label = close_text + 1 in
               if after_label >= len then
                 let shortcut = Some (alt_text, close_text + 1) in
@@ -1256,15 +1265,17 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
                     )
                   | None -> loop (index + 1) (inline_stack_push_text "!" acc)
                 )
-              else if Char.equal text.[after_label] '(' then
+              else if Char.equal (char_at text (after_label)) '(' then
                 (
                   match find_inline_link_close text (after_label + 1) with
                   | None -> loop (index + 1) (inline_stack_push_text "!" acc)
                   | Some close_link ->
-                      let raw_target = String.sub
-                        text
-                        (after_label + 1)
-                        (close_link - after_label - 1) in
+                      let raw_target =
+                        String.sub
+                          text
+                          ~offset:(after_label + 1)
+                          ~len:(close_link - after_label - 1)
+                      in
                       (
                         match parse_link_target_parts raw_target with
                         | Some target -> loop
@@ -1281,7 +1292,7 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
                 )
               else
                 let shortcut =
-                  if close_text + 1 < len && text.[close_text + 1] = '[' then
+                  if close_text + 1 < len && (char_at text (close_text + 1)) = '[' then
                     match parse_reference_label text (close_text + 1) with
                     | Some (explicit, close_ref) ->
                         let reference_label =
@@ -1318,7 +1329,7 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
           match find_substring text (index + 2) "~~" with
           | None -> loop (index + 2) (inline_stack_push_text "~~" acc)
           | Some close ->
-              let body = String.sub text (index + 2) (close - index - 2) in
+              let body = substring text (index + 2) (close - index - 2) in
               if is_gfm flavor then
                 loop
                   (close + 2)
@@ -1328,23 +1339,23 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
               else
                 loop
                   (close + 2)
-                  (inline_stack_push_text (String.sub text index (close - index + 2)) acc)
+                  (inline_stack_push_text (substring text index (close - index + 2)) acc)
         )
-      else if text.[index] = '*' || text.[index] = '_' then
-        let marker = text.[index] in
+      else if (char_at text (index)) = '*' || (char_at text (index)) = '_' then
+        let marker = (char_at text (index)) in
         let count, can_open, can_close = delimiter_run_properties text index marker in
         let acc =
           if can_open || can_close then
             push_delimiter { marker; count; can_open; can_close } acc
           else
-            inline_stack_push_text (String.make count marker) acc
+            inline_stack_push_text (repeat_char count marker) acc
         in
         loop (index + count) acc
-      else if text.[index] = '`' then
+      else if (char_at text (index)) = '`' then
         let rec count_backticks current =
           if current >= len then
             current
-          else if Char.equal text.[current] '`' then
+          else if Char.equal (char_at text (current)) '`' then
             count_backticks (current + 1)
           else
             current
@@ -1354,7 +1365,7 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
         let rec find_matching_run current =
           if current >= len then
             None
-          else if Char.equal text.[current] '`' then
+          else if Char.equal (char_at text (current)) '`' then
             let run_end = count_backticks current in
             if run_end - current = marker_len then
               Some current
@@ -1367,22 +1378,22 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
           match find_matching_run close_start with
           | None -> loop
             (index + marker_len)
-            (inline_stack_push_text (String.sub text index marker_len) acc)
+            (inline_stack_push_text (substring text index marker_len) acc)
           | Some close ->
               let body =
                 if close <= close_start then
                   ""
                 else
-                  String.sub text close_start (close - close_start) |> normalize_code_span marker_len
+                  substring text close_start (close - close_start) |> normalize_code_span marker_len
               in
               loop (close + marker_len) (inline_stack_push (Code_span body) acc)
         )
-      else if allow_links && text.[index] = '[' then
+      else if allow_links && (char_at text (index)) = '[' then
         (
           match find_inline_label_end text (index + 1) with
           | None -> loop (index + 1) (inline_stack_push_text "[" acc)
           | Some close_text ->
-              let label_text = String.sub text (index + 1) (close_text - index - 1) in
+              let label_text = substring text (index + 1) (close_text - index - 1) in
               let after_label = close_text + 1 in
               if after_label >= len then
                 let shortcut = Some (label_text, close_text + 1) in
@@ -1408,15 +1419,17 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
                     )
                   | None -> loop (index + 1) (inline_stack_push_text "[" acc)
                 )
-              else if Char.equal text.[after_label] '(' then
+              else if Char.equal (char_at text (after_label)) '(' then
                 (
                   match find_inline_link_close text (after_label + 1) with
                   | None -> loop (index + 1) (inline_stack_push_text "[" acc)
                   | Some close_link ->
-                      let raw_target = String.sub
-                        text
-                        (after_label + 1)
-                        (close_link - after_label - 1) in
+                      let raw_target =
+                        String.sub
+                          text
+                          ~offset:(after_label + 1)
+                          ~len:(close_link - after_label - 1)
+                      in
                       let special_target =
                         if
                           index = 0
@@ -1472,7 +1485,7 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
                 )
               else
                 let shortcut =
-                  if close_text + 1 < len && text.[close_text + 1] = '[' then
+                  if close_text + 1 < len && (char_at text (close_text + 1)) = '[' then
                     match parse_reference_label text (close_text + 1) with
                     | Some (explicit, close_ref) ->
                         let reference_label =
@@ -1509,12 +1522,12 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
                   | None -> loop (index + 1) (inline_stack_push_text "[" acc)
                 )
         )
-      else if text.[index] = '<' then
+      else if (char_at text (index)) = '<' then
         (
           match find_substring text (index + 1) ">" with
           | None -> loop (index + 1) (inline_stack_push_text "<" acc)
           | Some close ->
-              let inside = String.sub text (index + 1) (close - index - 1) in
+              let inside = substring text (index + 1) (close - index - 1) in
               (
                 match autolink_destination inside with
                 | Some destination -> loop
@@ -1530,18 +1543,18 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
                     match scan_inline_html_end text index with
                     | Some html_end -> loop
                       html_end
-                      (inline_stack_push (Raw_html (String.sub text index (html_end - index))) acc)
+                      (inline_stack_push (Raw_html (substring text index (html_end - index))) acc)
                     | None ->
                         loop (close + 1)
                           (
                             inline_stack_push_text
-                              (String.sub text index (close - index + 1) |> unescape_backslashes |> decode_entities)
+                              (substring text index (close - index + 1) |> unescape_backslashes |> decode_entities)
                               acc
                           )
                   )
               )
         )
-      else if text.[index] = '&' then
+      else if (char_at text (index)) = '&' then
         (
           match decode_entity_at text index with
           | Some (decoded, next) -> loop next (inline_stack_push_text decoded acc)
@@ -1552,7 +1565,7 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
           if current >= len then
             current
           else
-            match text.[current] with
+            match (char_at text (current)) with
             | '\\'
             | '*'
             | '_'
@@ -1562,14 +1575,14 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
             | '&'
             | '\n' -> current
             | '[' when allow_links -> current
-            | '!' when allow_images && current + 1 < len && text.[current + 1] = '[' -> current
+            | '!' when allow_images && current + 1 < len && (char_at text (current + 1)) = '[' -> current
             | _ -> scan (current + 1)
         in
         let next = scan (index + 1) in
         loop next
           (
             inline_stack_push_text
-              (String.sub text index (next - index) |> decode_entities)
+              (substring text index (next - index) |> decode_entities)
               acc
           )
     in
@@ -1584,7 +1597,7 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
             inline_stack_push_text trimmed tail
       | _ -> parsed
     in
-    let parsed = inline_stack_to_nodes (List.rev parsed) in
+    let parsed = inline_stack_to_nodes (List.reverse parsed) in
     if parsed = [] then
       [ Text text ]
     else
@@ -1593,15 +1606,13 @@ let rec parse_inline = fun ?(allow_links = true) ?(allow_images = true) ~flavor 
   | _ -> [ Text text ]
 
 let direct_token_texts = fun node ->
-  Ceibo.Red.SyntaxNode.direct_tokens node |> List.map Ceibo.Red.SyntaxToken.text
+  Ceibo.Red.SyntaxNode.direct_tokens node |> List.map ~fn:Ceibo.Red.SyntaxToken.text
 
 let ordered_list_start = fun node ->
-  Ceibo.Red.SyntaxNode.direct_tokens node |> List.find_map
-    (fun token ->
-      if Ceibo.Red.SyntaxToken.kind token = Markdown_syntax_kind.Text then
-        int_of_string_opt (Ceibo.Red.SyntaxToken.text token)
-      else
-        None) |> Option.unwrap_or ~default:1
+  Ceibo.Red.SyntaxNode.direct_tokens node
+  |> List.find ~fn:(fun token -> Ceibo.Red.SyntaxToken.kind token = Markdown_syntax_kind.Text)
+  |> Option.and_then ~fn:(fun token -> int_of_string_opt (Ceibo.Red.SyntaxToken.text token))
+  |> Option.unwrap_or ~default:1
 
 let first_token_text = fun node ->
   match direct_token_texts node with
@@ -1632,19 +1643,22 @@ let alignment_of_kind = function
 
 let lower_table_row = fun ~flavor ~references row_node ->
   let cells = child_nodes row_node
-  |> List.map (fun cell_node -> parse_inline ~flavor ~references (first_token_text cell_node)) in
+  |> List.map ~fn:(fun cell_node -> parse_inline ~flavor ~references (first_token_text cell_node)) in
   let alignments = child_nodes row_node
-  |> List.map (fun cell_node -> alignment_of_kind (Ceibo.Red.SyntaxNode.kind cell_node)) in
+  |> List.map ~fn:(fun cell_node -> alignment_of_kind (Ceibo.Red.SyntaxNode.kind cell_node)) in
   { cells; alignments }
 
 let rec collect_references = fun references nodes ->
   List.fold_left
-    (fun references node ->
+    nodes
+    ~acc:references
+    ~fn:(fun references node ->
       let references =
         match Ceibo.Red.SyntaxNode.kind node with
         | Markdown_syntax_kind.Paragraph -> (
             match parse_reference_definition (first_token_text node) with
-            | Some (label, reference) when not (List.mem_assoc label references) -> (
+            | Some (label, reference)
+              when not (List.any references ~fn:(fun (current_label, _) -> String.equal current_label label)) -> (
               label,
               reference
             )
@@ -1654,8 +1668,6 @@ let rec collect_references = fun references nodes ->
         | _ -> references
       in
       collect_references references (child_nodes node))
-    references
-    nodes
 
 let is_reference_definition_node = fun node ->
   Ceibo.Red.SyntaxNode.kind node = Markdown_syntax_kind.Paragraph
@@ -1663,7 +1675,7 @@ let is_reference_definition_node = fun node ->
 
 let rec lower_list_item = fun ~flavor ~references node ->
   let span = Ceibo.Red.SyntaxNode.span node in
-  let blocks = child_nodes node |> List.filter_map (lower_block_opt ~flavor ~references) in
+  let blocks = child_nodes node |> List.filter_map ~fn:(lower_block_opt ~flavor ~references) in
   match Ceibo.Red.SyntaxNode.kind node with
   | Markdown_syntax_kind.Task_list_item_checked -> [
     Task_list_item { checked = true; blocks; span }
@@ -1697,7 +1709,7 @@ and lower_block = fun ~flavor ~references node ->
       Paragraph { inlines = parse_inline ~flavor ~references (first_token_text node); span }
   | Markdown_syntax_kind.Block_quote ->
       Block_quote {
-        blocks = child_nodes node |> List.filter_map (lower_block_opt ~flavor ~references);
+        blocks = child_nodes node |> List.filter_map ~fn:(lower_block_opt ~flavor ~references);
         span
       }
   | Markdown_syntax_kind.Ordered_list_tight ->
@@ -1705,7 +1717,7 @@ and lower_block = fun ~flavor ~references node ->
         ordered = true;
         start = ordered_list_start node;
         tight = true;
-        items = child_nodes node |> List.map (lower_list_item ~flavor ~references);
+        items = child_nodes node |> List.map ~fn:(lower_list_item ~flavor ~references);
         span;
       }
   | Markdown_syntax_kind.Ordered_list_loose ->
@@ -1713,7 +1725,7 @@ and lower_block = fun ~flavor ~references node ->
         ordered = true;
         start = ordered_list_start node;
         tight = false;
-        items = child_nodes node |> List.map (lower_list_item ~flavor ~references);
+        items = child_nodes node |> List.map ~fn:(lower_list_item ~flavor ~references);
         span;
       }
   | Markdown_syntax_kind.Unordered_list_tight ->
@@ -1721,7 +1733,7 @@ and lower_block = fun ~flavor ~references node ->
         ordered = false;
         start = 1;
         tight = true;
-        items = child_nodes node |> List.map (lower_list_item ~flavor ~references);
+        items = child_nodes node |> List.map ~fn:(lower_list_item ~flavor ~references);
         span;
       }
   | Markdown_syntax_kind.Unordered_list_loose ->
@@ -1729,38 +1741,28 @@ and lower_block = fun ~flavor ~references node ->
         ordered = false;
         start = 1;
         tight = false;
-        items = child_nodes node |> List.map (lower_list_item ~flavor ~references);
+        items = child_nodes node |> List.map ~fn:(lower_list_item ~flavor ~references);
         span;
       }
   | Markdown_syntax_kind.Task_list_item_checked
   | Markdown_syntax_kind.Task_list_item_unchecked
   | Markdown_syntax_kind.List_item ->
       List_item {
-        blocks = child_nodes node |> List.filter_map (lower_block_opt ~flavor ~references);
+        blocks = child_nodes node |> List.filter_map ~fn:(lower_block_opt ~flavor ~references);
         span
       }
   | Markdown_syntax_kind.Fenced_code_block ->
       let tokens = Ceibo.Red.SyntaxNode.direct_tokens node in
       let info =
-        List.find_map
-          (fun token ->
-            if Ceibo.Red.SyntaxToken.kind token = Markdown_syntax_kind.Info_string then
-              Some (Ceibo.Red.SyntaxToken.text token)
-            else
-              None)
-          tokens
+        List.find tokens ~fn:(fun token -> Ceibo.Red.SyntaxToken.kind token = Markdown_syntax_kind.Info_string)
+        |> Option.map ~fn:Ceibo.Red.SyntaxToken.text
         |> Option.unwrap_or ~default:""
         |> unescape_backslashes
         |> decode_entities
       in
       let code =
-        List.find_map
-          (fun token ->
-            if Ceibo.Red.SyntaxToken.kind token = Markdown_syntax_kind.Text then
-              Some (Ceibo.Red.SyntaxToken.text token)
-            else
-              None)
-          tokens
+        List.find tokens ~fn:(fun token -> Ceibo.Red.SyntaxToken.kind token = Markdown_syntax_kind.Text)
+        |> Option.map ~fn:Ceibo.Red.SyntaxToken.text
         |> Option.unwrap_or ~default:""
       in
       Code_block { info; code; span; fenced = true }
@@ -1772,13 +1774,17 @@ and lower_block = fun ~flavor ~references node ->
       Raw_html { html = first_token_text node; span }
   | Markdown_syntax_kind.Table ->
       let children = child_nodes node in
-      let header_node = List.hd children in
-      let row_nodes = List.tl children in
-      Table {
-        header = lower_table_row ~flavor ~references header_node;
-        rows = List.map (lower_table_row ~flavor ~references) row_nodes;
-        span
-      }
+      (
+        match children with
+        | [] ->
+            Error_block { message = "table missing header row"; span }
+        | header_node :: row_nodes ->
+            Table {
+              header = lower_table_row ~flavor ~references header_node;
+              rows = List.map row_nodes ~fn:(lower_table_row ~flavor ~references);
+              span
+            }
+      )
   | Markdown_syntax_kind.Error ->
       Error_block { message = first_token_text node; span }
   | _ ->
@@ -1788,4 +1794,4 @@ let lower = fun ~flavor tree ->
   let root = Ceibo.Red.new_root tree in
   let children = child_nodes root in
   let references = collect_references [] children in
-  children |> List.filter_map (lower_block_opt ~flavor ~references)
+  children |> List.filter_map ~fn:(lower_block_opt ~flavor ~references)

@@ -33,40 +33,40 @@ let from_workspace = fun workspace ->
           | Error _ ->
               default
           | Ok (Data.Toml.Table items) -> (
-              match List.assoc_opt "toolchain" items with
+              match Fields.get "toolchain" items with
               | Some (Data.Toml.Table toolchain_items) -> (
                   (* Parse targets array *)
                   let targets =
-                    match List.assoc_opt "targets" toolchain_items with
+                    match Fields.get "targets" toolchain_items with
                     | Some (Data.Toml.Array arr) ->
-                        List.filter_map
-                          (
-                            function
-                            | Data.Toml.String s -> Some s
-                            | _ -> None
-                          )
-                          arr
+                        List.filter_map arr ~fn:(function
+                          | Data.Toml.String s -> Some s
+                          | _ -> None)
                     | _ -> []
                   in
-                  match List.assoc_opt "version" toolchain_items with
+                  match Fields.get "version" toolchain_items with
                   | Some (Data.Toml.String v) ->
                       { version = v; source = Version v; targets }
                   | Some (Data.Toml.Table version_items) -> (
-                      match List.assoc_opt "path" version_items with
+                      match Fields.get "path" version_items with
                       | Some (Data.Toml.String path_str) -> (
-                          match Path.of_string path_str with
+                          match Path.from_string path_str with
                           | Ok source_path ->
                               let version_name = Path.basename source_path ^ "-local" in
                               { version = version_name; source = Path source_path; targets }
                           | Error _ -> default
                         )
                       | _ -> (
-                          match List.assoc_opt "url" version_items with
+                          match Fields.get "url" version_items with
                           | Some (Data.Toml.String url_str) -> (
                               let version_name =
                                 if String.contains url_str "/" then
-                                  let parts = String.split_on_char '/' url_str in
-                                  let last = List.hd (List.rev parts) in
+                                  let parts = String.split ~by:"/" url_str in
+                                  let last =
+                                    match List.reverse parts with
+                                    | head :: _ -> head
+                                    | [] -> url_str
+                                  in
                                   if String.contains last "." then
                                     Path.v last |> Path.remove_extension |> Path.to_string
                                   else

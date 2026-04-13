@@ -140,7 +140,7 @@ let message = function
 
 let should_skip_entry = fun path ->
   let name = Path.basename path in
-  is_apple_junk_entry name || List.exists (String.equal name) excluded_entry_names
+  is_apple_junk_entry name || List.any excluded_entry_names ~fn:(String.equal name)
 
 let file_kind_to_string = function
   | `Regular -> "regular file"
@@ -230,7 +230,7 @@ let validate_registry_dependencies = fun ~registry ~publishing_workspace_package
     | dep :: rest -> (
         if Riot_model.Package.is_builtin_dependency dep then
           loop rest
-        else if List.exists (String.equal dep.name) publishing_workspace_packages then
+        else if List.any publishing_workspace_packages ~fn:(String.equal dep.name) then
           loop rest
         else if Option.is_some dep.source.source_locator then
           loop rest
@@ -266,10 +266,9 @@ let published_version_exists = fun ~registry ~package_name ~version ->
   | Ok (Some document) ->
       let version = Std.Version.to_string version in
       Ok (
-        List.exists
-          (fun (release: Pkgs_ml.Sparse_index.release) ->
+        List.any document.releases
+          ~fn:(fun (release: Pkgs_ml.Sparse_index.release) ->
             String.equal release.version version)
-          document.releases
       )
 
 let collect_relative_files = fun ~package_root ->
@@ -285,7 +284,7 @@ let collect_relative_files = fun ~package_root ->
   let rec loop acc iter =
     match Iter.Iterator.next iter with
     | None, _ ->
-        Ok (List.rev acc)
+        Ok (List.reverse acc)
     | Some (Error err), _ ->
         Error (publisher_error_of_walker_error ~package_root err)
     | Some (Ok (entry: Fs.Walker.FileItem.t)), iter' -> (
@@ -327,7 +326,7 @@ let create_archive = fun ~package_root ~artifact_path ~relative_files ->
   | Error err -> Error (ArtifactReadFailed { path = artifact_path; error = IO.error_message err })
   | Ok () ->
       let args = [ "-czf"; Path.to_string artifact_path; "-C"; Path.to_string package_root ]
-      @ List.map Path.to_string relative_files in
+      @ List.map relative_files ~fn:Path.to_string in
       let command = Command.make "tar" ~args in
       match Command.output command with
       | Error (Command.SystemError error) -> Error (TarCommandSpawnFailed {
@@ -347,12 +346,11 @@ let create_artifact = fun ~target_dir_root ~(package:Riot_model.Package.t) ~vers
   | Error _ as err -> err
   | Ok relative_files ->
       let relative_files =
-        List.sort
-          (fun left right ->
+        List.sort relative_files
+          ~compare:(fun left right ->
             String.compare (Path.to_string left) (Path.to_string right))
-          relative_files
       in
-      if not (List.exists (Path.equal (Path.v "riot.toml")) relative_files) then
+      if not (List.any relative_files ~fn:(Path.equal (Path.v "riot.toml"))) then
         Error (MissingManifest { package_root = package.path })
       else
         let artifact_path = publish_artifact_path ~target_dir_root ~package ~version in
@@ -415,10 +413,10 @@ let publish = fun ~registry ~target_dir_root ~publishing_workspace_packages ~(pa
   | Ok prepared -> publish_prepared ~registry ~api_token prepared
 
 let assoc_package = fun packages name ->
-  List.find_opt
-    (fun (pkg_name, _pkg) ->
+  List.find packages
+    ~fn:(fun (pkg_name, _pkg) ->
       String.equal pkg_name name)
-    packages |> Option.map (fun (_, package) -> package)
+  |> Option.map ~fn:(fun (_, package) -> package)
 
 let workspace_runtime_dependency_names = fun ~workspace_packages (pkg: Riot_model.Package.t) ->
   let is_workspace_dependency (dep: Riot_model.Package.dependency) =
@@ -430,18 +428,18 @@ let workspace_runtime_dependency_names = fun ~workspace_packages (pkg: Riot_mode
       | None -> false
   in
   pkg.dependencies
-  |> List.filter is_workspace_dependency
-  |> List.map (fun (dep: Riot_model.Package.dependency) -> dep.name)
+  |> List.filter ~fn:is_workspace_dependency
+  |> List.map ~fn:(fun (dep: Riot_model.Package.dependency) -> dep.name)
 
 let workspace_publish_order = fun ~packages ->
   let workspace_packages = packages
-  |> List.filter Riot_model.Package.is_workspace_member
-  |> List.map (fun (pkg: Riot_model.Package.t) -> (pkg.name, pkg)) in
+  |> List.filter ~fn:Riot_model.Package.is_workspace_member
+  |> List.map ~fn:(fun (pkg: Riot_model.Package.t) -> (pkg.name, pkg)) in
   let rec visit ~visiting ~visited ordered name =
-    if List.exists (String.equal name) visited then
+    if List.any visited ~fn:(String.equal name) then
       Ok (visited, ordered)
-    else if List.exists (String.equal name) visiting then
-      Error (CyclicWorkspacePublishOrder { cycle = List.rev (name :: visiting) })
+    else if List.any visiting ~fn:(String.equal name) then
+      Error (CyclicWorkspacePublishOrder { cycle = List.reverse (name :: visiting) })
     else
       match assoc_package workspace_packages name with
       | None -> Ok (visited, ordered)
@@ -461,11 +459,11 @@ let workspace_publish_order = fun ~packages ->
           visit_dependencies visited ordered dependency_names
   in
   let rec walk_names visited ordered = function
-    | [] -> Ok (List.rev ordered)
+    | [] -> Ok (List.reverse ordered)
     | name :: rest -> (
         match visit ~visiting:[] ~visited ordered name with
         | Error _ as err -> err
         | Ok (visited, ordered) -> walk_names visited ordered rest
       )
   in
-  walk_names [] [] (List.map (fun (package_name, _) -> package_name) workspace_packages)
+  walk_names [] [] (List.map workspace_packages ~fn:(fun (package_name, _) -> package_name))

@@ -30,21 +30,21 @@ let to_snake_case = fun text ->
     pieces := piece :: !pieces
   in
   let prev_was_lower_or_digit = ref false in
-  String.iter
-    (fun ch ->
+  String.for_each
+    text
+    ~fn:(fun ch ->
       if is_upper ch then
         (
           if !prev_was_lower_or_digit then
             push "_";
-          push (String.make 1 (Char.lowercase_ascii ch));
+          push (String.make ~len:1 ~char:(Char.lowercase_ascii ch));
           prev_was_lower_or_digit := false
         )
       else (
-        push (String.make 1 ch);
+        push (String.make ~len:1 ~char:ch);
         prev_was_lower_or_digit := is_lower ch || is_digit ch
-      ))
-    text;
-  String.concat "" (List.rev !pieces)
+      ));
+  String.concat "" (List.reverse !pieces)
 
 let should_flag_type_name = fun text -> not (String.equal text (to_snake_case text))
 
@@ -77,15 +77,13 @@ let diagnostic_for_decl type_declaration =
 let diagnostics_for_items = fun source_file ->
   match source_file with
   | Syn.Cst.Implementation { items; _ } ->
-      items |> List.filter_map
-        (
+      items |> List.filter_map ~fn:(
           function
           | Syn.Cst.StructureItem.TypeDeclaration decl -> diagnostic_for_decl decl
           | _ -> None
         )
   | Syn.Cst.Interface { items; _ } ->
-      items |> List.filter_map
-        (
+      items |> List.filter_map ~fn:(
           function
           | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostic_for_decl decl
           | _ -> None

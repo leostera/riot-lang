@@ -27,7 +27,7 @@ let rec is_unit_pattern = function
 
 let source_slice = fun ~source span ->
   let len = Syn.Ceibo.Span.(span.end_ - span.start) in
-  String.sub source span.start len
+  String.sub source ~offset:span.start ~len
 
 let source_of_node = fun ~source node -> source_slice ~source (Syn.Ceibo.Red.SyntaxNode.span node)
 
@@ -51,7 +51,7 @@ let sequence_separator = fun body ->
   if String.equal body "" then
     "; "
   else
-    match body.[0] with
+    match String.get_unchecked body ~at:0 with
     | ' '
     | '\t'
     | '\n'
@@ -102,7 +102,7 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
           walk.descend_expression diagnostics expression);
     }
     []
-    ctx.cst |> List.rev
+    ctx.cst |> List.reverse
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

@@ -14,7 +14,7 @@ let quoted = fun value -> Std.Data.Toml.to_string (Std.Data.Toml.String value)
 
 let render_dependency_table = fun name fields ->
   let rendered_fields =
-    List.map (fun (field, value) -> field ^ " = " ^ value) fields
+    List.map fields ~fn:(fun (field, value) -> field ^ " = " ^ value)
   in
   name ^ " = { " ^ String.concat ", " rendered_fields ^ " }"
 
@@ -68,23 +68,25 @@ let render_dependency = fun (dep: Riot_model.Package.dependency) ->
         :: fields
         | None -> fields
       in
-      render_dependency_table name (List.rev fields)
+      render_dependency_table name (List.reverse fields)
 
 let render_section_lines = fun ~section dependencies ->
   let header = "[" ^ section_name section ^ "]" in
-  let body = List.map render_dependency dependencies in
+  let body = List.map dependencies ~fn:render_dependency in
   header :: body
 
 let is_section_header = fun line ->
   let trimmed = String.trim line in
   match String.length trimmed with
-  | len when len >= 3 -> Char.equal trimmed.[0] '[' && Char.equal trimmed.[len - 1] ']'
+  | len when len >= 3 ->
+      Char.equal (String.get_unchecked trimmed ~at:0) '['
+      && Char.equal (String.get_unchecked trimmed ~at:(len - 1)) ']'
   | _ -> false
 
 let replace_section_lines = fun ~source ~section dependencies ->
   let header = "[" ^ section_name section ^ "]" in
   let replacement = render_section_lines ~section dependencies in
-  let lines = String.split_on_char '\n' source in
+  let lines = String.split ~by:"\n" source in
   let len = List.length lines in
   let rec line_at index = function
     | [] -> None
@@ -95,9 +97,8 @@ let replace_section_lines = fun ~source ~section dependencies ->
     if index >= len then
       None
     else if Option.is_some_and
-        (fun line ->
-          String.equal (String.trim line) header)
-        (line_at index lines) then
+        (line_at index lines)
+        ~fn:(fun line -> String.equal (String.trim line) header) then
       Some index
     else
       find_header (index + 1)
@@ -121,7 +122,7 @@ let replace_section_lines = fun ~source ~section dependencies ->
       let rec find_end index =
         if index >= len then
           len
-        else if index > start_index && Option.is_some_and is_section_header (line_at index lines) then
+        else if index > start_index && Option.is_some_and (line_at index lines) ~fn:is_section_header then
           index
         else
           find_end (index + 1)
@@ -131,7 +132,7 @@ let replace_section_lines = fun ~source ~section dependencies ->
   | None ->
       let existing = lines in
       let needs_blank =
-        match List.rev existing with
+        match List.reverse existing with
         | [] -> false
         | last :: _ -> not (String.equal (String.trim last) "")
       in

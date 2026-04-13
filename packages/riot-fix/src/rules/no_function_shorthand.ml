@@ -51,9 +51,10 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.let_bindings_of_structure_item
-  |> List.filter Syn.Cst.LetBinding.is_function
-  |> List.filter_map diagnostic_for_binding
+  |> List.map ~fn:Traversal.let_bindings_of_structure_item
+  |> List.concat
+  |> List.filter ~fn:Syn.Cst.LetBinding.is_function
+  |> List.filter_map ~fn:diagnostic_for_binding
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

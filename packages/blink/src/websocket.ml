@@ -18,12 +18,12 @@ type t = {
 }
 
 let generate_websocket_key = fun () ->
-  let random_bytes = Bytes.create 16 in
+  let random_bytes = Bytes.create ~size:16 in
   for i = 0 to 15 do
     yield ();
-    Bytes.set random_bytes i
+    Bytes.set_unchecked random_bytes ~at:i ~char:
       (
-        Char.chr
+        Char.from_int_unchecked
           (Random.int 256 |> Result.expect ~msg:"failed to generate websocket key byte")
       )
   done;
@@ -81,8 +81,8 @@ let connect = fun uri ->
               Error (Error.NetError (Net.System_error s))
           | Ok () -> (
               let reader = Net.TcpStream.to_reader stream in
-              let buf = Bytes.create 4_096 in
-              let response_buffer = Buffer.create 1_024 in
+              let buf = Bytes.create ~size:4_096 in
+              let response_buffer = Buffer.create ~size:1_024 in
               let rec read_response () =
                 match IO.read reader buf with
                 | Error Net.TcpStream.Closed ->
@@ -96,13 +96,13 @@ let connect = fun uri ->
                 | Ok n -> (
                     Buffer.add_subbytes response_buffer buf 0 n;
                     let response = Buffer.contents response_buffer in
-                    match String.index response '\r' with
+                    match String.index_of response ~char:'\r' with
                     | None -> read_response ()
                     | Some _ ->
                         if
                           String.contains response "\r"
                           && String.length response >= 4
-                          && String.sub response (String.length response - 4) 4 = "\r\n\r\n"
+                          && String.sub response ~offset:(String.length response - 4) ~len:4 = "\r\n\r\n"
                         then
                           Ok response
                         else
@@ -112,8 +112,8 @@ let connect = fun uri ->
               match read_response () with
               | Error e -> Error e
               | Ok response ->
-                  let lines = String.split_on_char '\n' response in
-                  let status_line = List.hd lines in
+                  let lines = String.split ~by:"\n" response in
+                  let status_line = List.head lines |> Option.unwrap_or ~default:"" in
                   if
                     not
                       (String.contains status_line "1"
@@ -123,21 +123,20 @@ let connect = fun uri ->
                     Error (Error.HandshakeFailed "Server did not return 101 Switching Protocols")
                   else
                     let has_correct_accept =
-                      List.exists
-                        (fun line ->
+                      List.any lines
+                        ~fn:(fun line ->
                           let trimmed = String.trim line in
                           String.starts_with ~prefix:"Sec-WebSocket-Accept:" trimmed
                           && String.contains trimmed ":"
-                          && let parts = String.split_on_char ':' trimmed in
+                          && let parts = String.split ~by:":" trimmed in
                           match parts with
                           | [_;value] -> String.trim value = expected_accept
                           | _ -> false)
-                        lines
                     in
                     if not has_correct_accept then
                       Error (Error.HandshakeFailed "Invalid Sec-WebSocket-Accept header")
                     else
-                      Ok { stream; uri; buffer = Buffer.create 4_096; closed = false }
+                      Ok { stream; uri; buffer = Buffer.create ~size:4_096; closed = false }
             )
         )
     )
@@ -172,9 +171,9 @@ let send_pong = fun conn ?(payload = "") () ->
 
 let send_close = fun conn ?(code = 1_000) ?(reason = "") () ->
   let payload =
-    let code_bytes = Bytes.create 2 in
-    Bytes.set code_bytes 0 (Char.chr ((code lsr 8) land 0xff));
-    Bytes.set code_bytes 1 (Char.chr (code land 0xff));
+    let code_bytes = Bytes.create ~size:2 in
+    Bytes.set_unchecked code_bytes ~at:0 ~char:(Char.from_int_unchecked ((code lsr 8) land 0xff));
+    Bytes.set_unchecked code_bytes ~at:1 ~char:(Char.from_int_unchecked (code land 0xff));
     Bytes.to_string code_bytes ^ reason
   in
   let frame = Http.Ws.Frame.close ~payload () in
@@ -204,10 +203,13 @@ let receive = fun conn ->
           | Http.Ws.Frame.Close ->
               conn.closed <- true;
               if String.length frame.payload >= 2 then
-                let code = (Char.code frame.payload.[0] lsl 8) lor Char.code frame.payload.[1] in
+                let code =
+                  (Char.code (String.get_unchecked frame.payload ~at:0) lsl 8)
+                  lor Char.code (String.get_unchecked frame.payload ~at:1)
+                in
                 let reason =
                   if String.length frame.payload > 2 then
-                    String.sub frame.payload 2 (String.length frame.payload - 2)
+                    String.sub frame.payload ~offset:2 ~len:(String.length frame.payload - 2)
                   else
                     ""
                 in
@@ -219,7 +221,7 @@ let receive = fun conn ->
         )
       | Http.Ws.Parser.Need_more -> (
           let reader = Net.TcpStream.to_reader conn.stream in
-          let buf = Bytes.create 4_096 in
+          let buf = Bytes.create ~size:4_096 in
           match IO.read reader buf with
           | Error Net.TcpStream.Closed ->
               Error (Error.NetError Net.Closed)

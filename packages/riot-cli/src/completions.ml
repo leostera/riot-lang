@@ -21,7 +21,7 @@ let command =
         ]
 
 let detect_shell = fun () ->
-  match Env.var Env.String ~name:"SHELL" with
+  match Env.get Env.String ~var:"SHELL" with
   | None -> None
   | Some shell_path ->
       if String.ends_with ~suffix:"/zsh" shell_path || shell_path = "zsh" then
@@ -159,16 +159,16 @@ let run = fun matches ->
               Ok ()
           | Ok (workspace, _load_errors) ->
               if has_packages then
-                List.iter (fun pkg -> println pkg) (Shell_completions.list_packages workspace);
+                List.for_each (Shell_completions.list_packages workspace) ~fn:(fun pkg -> println pkg);
               if has_binaries then
-                List.iter (fun bin -> println bin) (Shell_completions.list_binaries workspace);
+                List.for_each (Shell_completions.list_binaries workspace) ~fn:(fun bin -> println bin);
               if has_tests then
-                List.iter (fun test -> println test) (Shell_completions.list_tests workspace);
+                List.for_each (Shell_completions.list_tests workspace) ~fn:(fun test -> println test);
               if has_benchmarks then
-                List.iter (fun bench -> println bench) (Shell_completions.list_benchmarks workspace);
+                List.for_each (Shell_completions.list_benchmarks workspace) ~fn:(fun bench -> println bench);
               if has_commands then
                 (
                   let command_lines = Shell_completions.list_commands workspace in
-                  List.iter println command_lines
+                  List.for_each command_lines ~fn:println
                 );
               Ok ()

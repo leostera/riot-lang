@@ -96,7 +96,7 @@ let static_table_size = Array.length static_table
 
 let static_table_lookup = fun index ->
   if index >= 1 && index <= static_table_size then
-    Some static_table.(index - 1)
+    Some (Array.get_unchecked static_table ~at:(index - 1))
   else
     None
 
@@ -105,7 +105,7 @@ let static_table_find = fun ~name ~value ->
     if i >= static_table_size then
       None
     else
-      let entry = static_table.(i) in
+      let entry = Array.get_unchecked static_table ~at:i in
       if String.equal entry.name name && String.equal entry.value value then
         Some (i + 1)
       else
@@ -117,7 +117,7 @@ let static_table_find_name = fun name ->
   let rec loop i =
     if i >= static_table_size then
       None
-    else if String.equal static_table.(i).name name then
+    else if String.equal (Array.get_unchecked static_table ~at:i).name name then
       Some (i + 1)
     else
       loop (i + 1)
@@ -159,10 +159,10 @@ module DynamicTable = struct
       ()
     else
       (* Remove oldest entry (last in list) *)
-      match List.rev (Cell.get t.entries) with
+      match List.reverse (Cell.get t.entries) with
       | [] -> ()
       | oldest :: rest ->
-          let remaining = List.rev rest in
+          let remaining = List.reverse rest in
           Cell.set t.entries remaining;
           Cell.set t.current_size (current - header_size oldest);
           evict_to_fit t new_entry_size
@@ -185,7 +185,7 @@ module DynamicTable = struct
   let lookup = fun t index ->
     let entries = Cell.get t.entries in
     if index >= 1 && index <= List.length entries then
-      Some (List.nth entries (index - 1))
+      Some (List.get_unchecked entries ~at:(index - 1))
     else
       None
 
@@ -234,23 +234,25 @@ module Integer = struct
   let encode = fun prefix_bits value ->
     let max_prefix = (1 lsl prefix_bits) - 1 in
     if value < max_prefix then
-      Bytes.make 1 (Char.chr value)
+      let result = Bytes.create ~size:1 in
+      Bytes.set_unchecked result ~at:0 ~char:(Char.from_int_unchecked value);
+      result
     else
       (* Doesn't fit, use continuation bytes *)
-      let buf = Buffer.create 8 in
-      Buffer.add_char buf (Char.chr max_prefix);
+      let buf = Buffer.create ~size:8 in
+      Buffer.add_char buf (Char.from_int_unchecked max_prefix);
       let remaining = Cell.create (value - max_prefix) in
       while Cell.get remaining >= 128 do
         let byte = (Cell.get remaining land 0x7f) lor 0x80 in
-        Buffer.add_char buf (Char.chr byte);
+        Buffer.add_char buf (Char.from_int_unchecked byte);
         Cell.set remaining (Cell.get remaining lsr 7)
       done;
-      Buffer.add_char buf (Char.chr (Cell.get remaining));
-      Buffer.to_bytes buf
+      Buffer.add_char buf (Char.from_int_unchecked (Cell.get remaining));
+      Bytes.from_string (Buffer.contents buf)
 
   let decode = fun prefix_bits first_byte data offset ->
     let prefix_mask = (1 lsl prefix_bits) - 1 in
-    let first_value = Char.code first_byte land prefix_mask in
+    let first_value = Char.to_int first_byte land prefix_mask in
     if first_value < prefix_mask then
       Ok (first_value, offset)
     else
@@ -259,7 +261,7 @@ module Integer = struct
         if pos >= Bytes.length data then
           Error "Incomplete integer encoding"
         else
-          let byte = Char.code (Bytes.get data pos) in
+          let byte = Bytes.get_unchecked data ~at:pos |> Char.to_int in
           let value = byte land 0x7f in
           let acc = acc + (value * multiplier) in
           if byte land 0x80 = 0 then
@@ -291,24 +293,24 @@ module String_ = struct
     (* TODO: Implement Huffman encoding *)
     (* For now, always use plain encoding *)
     let len_bytes = Integer.encode 7 len in
-    let buf = Buffer.create (Bytes.length len_bytes + len) in
+    let buf = Buffer.create ~size:(Bytes.length len_bytes + len) in
     Buffer.add_bytes buf len_bytes;
     Buffer.add_string buf str;
-    Buffer.to_bytes buf
+    Bytes.from_string (Buffer.contents buf)
 
   let decode = fun data offset ->
     if offset >= Bytes.length data then
       Error "Incomplete string encoding"
     else
-      let first_byte = Bytes.get data offset in
-      let is_huffman = Char.code first_byte land 0x80 != 0 in
+      let first_byte = Bytes.get_unchecked data ~at:offset in
+      let is_huffman = Char.to_int first_byte land 0x80 != 0 in
       match Integer.decode 7 first_byte data (offset + 1) with
       | Error e -> Error e
       | Ok (length, new_offset) ->
           if new_offset + length > Bytes.length data then
             Error "String data truncated"
           else
-            let str_data = Bytes.sub data new_offset length in
+            let str_data = Bytes.sub_unchecked data ~offset:new_offset ~len:length in
             let str =
               if is_huffman then
                 Bytes.to_string str_data
@@ -335,65 +337,77 @@ let update_max_table_size = fun encoder new_size ->
   DynamicTable.update_max_size encoder.dynamic_table new_size
 
 let is_sensitive_header = fun name ->
-  List.mem name [ "authorization"; "cookie"; "set-cookie"; "proxy-authorization" ]
+  List.contains [ "authorization"; "cookie"; "set-cookie"; "proxy-authorization" ] ~value:name
 
 let encode_indexed_header = fun index ->
   (* Indexed Header Field: 1xxxxxxx *)
   let prefix_byte = 0x80 in
   let index_bytes = Integer.encode 7 index in
-  let result = Bytes.create (Bytes.length index_bytes) in
-  Bytes.set result 0 (Char.chr (prefix_byte lor Char.code (Bytes.get index_bytes 0)));
-  Bytes.blit index_bytes 1 result 1 (Bytes.length index_bytes - 1);
+  let result = Bytes.create ~size:(Bytes.length index_bytes) in
+  Bytes.set_unchecked
+    result
+    ~at:0
+    ~char:(Char.from_int_unchecked (prefix_byte lor Char.to_int (Bytes.get_unchecked index_bytes ~at:0)));
+  Bytes.blit_unchecked
+    index_bytes
+    ~src_offset:1
+    ~dst:result
+    ~dst_offset:1
+    ~len:(Bytes.length index_bytes - 1);
   result
 
 let encode_literal_with_indexing = fun ~name_index ~value ->
   (* Literal Header Field with Incremental Indexing: 01xxxxxx *)
-  let buf = Buffer.create 64 in
+  let buf = Buffer.create ~size:64 in
   match name_index with
   | Some index ->
       (* Name is indexed *)
       let prefix_byte = 0x40 in
       let index_bytes = Integer.encode 6 index in
-      Buffer.add_char buf (Char.chr (prefix_byte lor Char.code (Bytes.get index_bytes 0)));
-      Buffer.add_bytes buf (Bytes.sub index_bytes 1 (Bytes.length index_bytes - 1));
+      Buffer.add_char
+        buf
+        (Char.from_int_unchecked (prefix_byte lor Char.to_int (Bytes.get_unchecked index_bytes ~at:0)));
+      Buffer.add_bytes buf (Bytes.sub_unchecked index_bytes ~offset:1 ~len:(Bytes.length index_bytes - 1));
       Buffer.add_bytes buf (String_.encode value);
-      Buffer.to_bytes buf
+      Bytes.from_string (Buffer.contents buf)
   | None ->
       (* Name is not indexed *)
       Buffer.add_char buf '\x40';
       (* Index 0 means literal name *)
       Buffer.add_bytes buf (String_.encode value);
-      Buffer.to_bytes buf
+      Bytes.from_string (Buffer.contents buf)
 
 let encode_literal_without_indexing = fun ~name_index ~value ->
   (* Literal Header Field without Indexing: 0000xxxx *)
-  let buf = Buffer.create 64 in
+  let buf = Buffer.create ~size:64 in
   match name_index with
   | Some index ->
       let index_bytes = Integer.encode 4 index in
       Buffer.add_bytes buf index_bytes;
       Buffer.add_bytes buf (String_.encode value);
-      Buffer.to_bytes buf
+      Bytes.from_string (Buffer.contents buf)
   | None ->
       Buffer.add_char buf '\x00';
       Buffer.add_bytes buf (String_.encode value);
-      Buffer.to_bytes buf
+      Bytes.from_string (Buffer.contents buf)
 
 let encode_literal_never_indexed = fun ~name_index ~value ->
   (* Literal Header Field Never Indexed: 0001xxxx *)
-  let buf = Buffer.create 64 in
+  let buf = Buffer.create ~size:64 in
   let prefix_byte = 0x10 in
   match name_index with
   | Some index ->
       let index_bytes = Integer.encode 4 index in
-      Buffer.add_char buf (Char.chr (prefix_byte lor Char.code (Bytes.get index_bytes 0)));
-      Buffer.add_bytes buf (Bytes.sub index_bytes 1 (Bytes.length index_bytes - 1));
+      Buffer.add_char
+        buf
+        (Char.from_int_unchecked (prefix_byte lor Char.to_int (Bytes.get_unchecked index_bytes ~at:0)));
+      Buffer.add_bytes buf (Bytes.sub_unchecked index_bytes ~offset:1 ~len:(Bytes.length index_bytes - 1));
       Buffer.add_bytes buf (String_.encode value);
-      Buffer.to_bytes buf
+      Bytes.from_string (Buffer.contents buf)
   | None ->
-      Buffer.add_char buf (Char.chr prefix_byte);
+      Buffer.add_char buf (Char.from_int_unchecked prefix_byte);
       Buffer.add_bytes buf (String_.encode value);
-      Buffer.to_bytes buf
+      Bytes.from_string (Buffer.contents buf)
 
 let encode_header = fun encoder header ~encoding_type ->
   let { name; value } = header in
@@ -436,19 +450,18 @@ let encode_header = fun encoder header ~encoding_type ->
           encode_literal_never_indexed ~name_index ~value
 
 let encode = fun encoder ?(sensitive_headers = []) () ~headers ->
-  let buf = Buffer.create 256 in
-  List.iter
-    (fun header ->
+  let buf = Buffer.create ~size:256 in
+  List.for_each headers
+    ~fn:(fun header ->
       let encoding_type =
-        if is_sensitive_header header.name || List.mem header.name sensitive_headers then
+        if is_sensitive_header header.name || List.contains sensitive_headers ~value:header.name then
           LiteralNeverIndexed
         else
           LiteralWithIndexing
       in
       let encoded = encode_header encoder header ~encoding_type in
-      Buffer.add_bytes buf encoded)
-    headers;
-  Buffer.to_bytes buf
+      Buffer.add_bytes buf encoded);
+  Bytes.from_string (Buffer.contents buf)
 
 (** {1 Decoder} *)
 
@@ -472,8 +485,8 @@ let decode_header_block = fun decoder data offset ->
   if offset >= Bytes.length data then
     Ok ([], offset)
   else
-    let first_byte = Bytes.get data offset in
-    let first_code = Char.code first_byte in
+    let first_byte = Bytes.get_unchecked data ~at:offset in
+    let first_code = Char.to_int first_byte in
     if first_code land 0x80 != 0 then
       match Integer.decode 7 first_byte data (offset + 1) with
       | Error e -> Error e
@@ -555,10 +568,10 @@ let decode_header_block = fun decoder data offset ->
 let decode = fun decoder data ->
   let rec decode_all acc offset =
     if offset >= Bytes.length data then
-      Ok (List.rev acc)
+      Ok (List.reverse acc)
     else
       match decode_header_block decoder data offset with
       | Error e -> Error e
-      | Ok (headers, new_offset) -> decode_all (List.rev_append headers acc) new_offset
+      | Ok (headers, new_offset) -> decode_all (List.reverse_append headers acc) new_offset
   in
   decode_all [] 0

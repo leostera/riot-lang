@@ -42,59 +42,53 @@ let create = fun () ->
 
 let is_in_queue = fun queue node_id ->
   let found = ref false in
-  Queue.iter
-    (fun (node: action_node) ->
+  Queue.for_each queue
+    ~fn:(fun (node: action_node) ->
       if Graph.SimpleGraph.Node_id.eq node.id node_id then
-        found := true)
-    queue;
+        found := true);
   !found
 
 let dependencies_satisfied = fun t (node: action_node) ->
-  List.for_all
-    (fun dep_id ->
-      match HashMap.get t.completed dep_id with
+  List.all node.deps
+    ~fn:(fun dep_id ->
+      match HashMap.get t.completed ~key:dep_id with
       | Some { status=Cached _ | Executed; _ } -> true
       | Some { status=Failed _ | Skipped; _ } -> false
       | None -> false)
-    node.deps
 
 let has_failed_dependencies = fun t (node: action_node) ->
-  List.exists
-    (fun dep_id ->
-      match HashMap.get t.completed dep_id with
+  List.any node.deps
+    ~fn:(fun dep_id ->
+      match HashMap.get t.completed ~key:dep_id with
       | Some { status=Failed _ | Skipped; _ } -> true
       | _ -> false)
-    node.deps
 
 let queue = fun t (node: action_node) ->
-  match HashMap.get t.completed node.id with
+  match HashMap.get t.completed ~key:node.id with
   | Some _ -> ()
   | None ->
-      if Option.is_some (HashMap.get t.busy_tasks node.id) then
+      if Option.is_some (HashMap.get t.busy_tasks ~key:node.id) then
         ()
       else if is_in_queue t.ready_queue node.id then
         ()
       else if is_in_queue t.later_queue node.id then
         ()
       else
-        Queue.push t.ready_queue node
+        Queue.push t.ready_queue ~value:node
 
 let requeue_with_deps = fun t (node: action_node) ~(missing_deps:Graph.SimpleGraph.Node_id.t list) ~(all_nodes:action_node list) ->
-  let _ = HashMap.remove t.busy_tasks node.id in
+  let _ = HashMap.remove t.busy_tasks ~key:node.id in
   if not (is_in_queue t.later_queue node.id) then
-    Queue.push t.later_queue node;
-  List.iter
-    (fun dep_id ->
+    Queue.push t.later_queue ~value:node;
+  List.for_each missing_deps
+    ~fn:(fun dep_id ->
       match
-        List.find_opt
-          (fun (n: action_node) ->
-            Graph.SimpleGraph.Node_id.eq n.id dep_id)
-          all_nodes
+        List.find all_nodes
+          ~fn:(fun (n: action_node) -> Graph.SimpleGraph.Node_id.eq n.id dep_id)
       with
       | Some dep_node -> queue t dep_node
       | None -> Log.warn
         ("Action queue: dependency " ^ Graph.SimpleGraph.Node_id.to_string dep_id ^ " not found in graph"))
-    missing_deps
 
 let next = fun t ->
   if Queue.is_empty t.ready_queue && not (Queue.is_empty t.later_queue) then
@@ -103,7 +97,7 @@ let next = fun t ->
         match Queue.pop t.later_queue with
         | None -> ()
         | Some node ->
-            Queue.push t.ready_queue node;
+            Queue.push t.ready_queue ~value:node;
             transfer ()
       in
       transfer ()
@@ -111,10 +105,8 @@ let next = fun t ->
   let rec find_ready checked =
     match Queue.pop t.ready_queue with
     | None ->
-        List.iter
-          (fun node ->
-            Queue.push t.later_queue node)
-          checked;
+        List.for_each checked
+          ~fn:(fun node -> Queue.push t.later_queue ~value:node);
         None
     | Some node ->
         if has_failed_dependencies t node then
@@ -129,20 +121,16 @@ let next = fun t ->
               completed_at = now;
             }
             in
-            let _ = HashMap.insert t.completed node.id skip_result in
-            List.iter
-              (fun n ->
-                Queue.push t.ready_queue n)
-              checked;
+            let _ = HashMap.insert t.completed ~key:node.id ~value:skip_result in
+            List.for_each checked
+              ~fn:(fun n -> Queue.push t.ready_queue ~value:n);
             find_ready []
           )
         else if dependencies_satisfied t node then
           (
-            List.iter
-              (fun n ->
-                Queue.push t.ready_queue n)
-              checked;
-            let _ = HashMap.insert t.busy_tasks node.id node in
+            List.for_each checked
+              ~fn:(fun n -> Queue.push t.ready_queue ~value:n);
+            let _ = HashMap.insert t.busy_tasks ~key:node.id ~value:node in
             Some node
           )
         else
@@ -151,19 +139,19 @@ let next = fun t ->
   find_ready []
 
 let mark_completed = fun t result ->
-  let _ = HashMap.remove t.busy_tasks result.node_id in
-  let _ = HashMap.insert t.completed result.node_id result in
+  let _ = HashMap.remove t.busy_tasks ~key:result.node_id in
+  let _ = HashMap.insert t.completed ~key:result.node_id ~value:result in
   let rec transfer () =
     match Queue.pop t.later_queue with
     | None -> ()
     | Some node ->
-        Queue.push t.ready_queue node;
+        Queue.push t.ready_queue ~value:node;
         transfer ()
   in
   transfer ()
 
 let mark_failed = fun t ~node_id ~error ->
-  let _ = HashMap.remove t.busy_tasks node_id in
+  let _ = HashMap.remove t.busy_tasks ~key:node_id in
   let now = Instant.now () in
   let failed_result = {
     node_id;
@@ -174,20 +162,20 @@ let mark_failed = fun t ~node_id ~error ->
     completed_at = now;
   }
   in
-  let _ = HashMap.insert t.completed node_id failed_result in
+  let _ = HashMap.insert t.completed ~key:node_id ~value:failed_result in
   ()
 
 let get_result = fun t node_id ->
-  HashMap.get t.completed node_id
+  HashMap.get t.completed ~key:node_id
 
 let stats = fun t ->
-  let ready = Queue.len t.ready_queue in
-  let later = Queue.len t.later_queue in
-  let busy = HashMap.len t.busy_tasks in
-  let completed = HashMap.len t.completed in
+  let ready = Queue.length t.ready_queue in
+  let later = Queue.length t.later_queue in
+  let busy = HashMap.length t.busy_tasks in
+  let completed = HashMap.length t.completed in
   let failed =
     t.completed
-    |> HashMap.into_iter
+    |> HashMap.iter
     |> Iter.Iterator.filter
       ~fn:(fun ((_, result)) ->
         match result.status with
@@ -198,7 +186,7 @@ let stats = fun t ->
   in
   let succeeded =
     t.completed
-    |> HashMap.into_iter
+    |> HashMap.iter
     |> Iter.Iterator.filter
       ~fn:(fun ((_, result)) ->
         match result.status with

@@ -1,25 +1,28 @@
 open Std
 
 let write_uint24_be = fun value ->
-  let b0 = Char.chr ((value lsr 16) land 0xff) in
-  let b1 = Char.chr ((value lsr 8) land 0xff) in
-  let b2 = Char.chr (value land 0xff) in
-  String.make 1 b0 ^ String.make 1 b1 ^ String.make 1 b2
+  let b0 = Char.from_int_unchecked ((value lsr 16) land 0xff) in
+  let b1 = Char.from_int_unchecked ((value lsr 8) land 0xff) in
+  let b2 = Char.from_int_unchecked (value land 0xff) in
+  String.make ~len:1 ~char:b0 ^ String.make ~len:1 ~char:b1 ^ String.make ~len:1 ~char:b2
 
 let write_uint32_be = fun value ->
-  let b0 = Char.chr ((value lsr 24) land 0xff) in
-  let b1 = Char.chr ((value lsr 16) land 0xff) in
-  let b2 = Char.chr ((value lsr 8) land 0xff) in
-  let b3 = Char.chr (value land 0xff) in
-  String.make 1 b0 ^ String.make 1 b1 ^ String.make 1 b2 ^ String.make 1 b3
+  let b0 = Char.from_int_unchecked ((value lsr 24) land 0xff) in
+  let b1 = Char.from_int_unchecked ((value lsr 16) land 0xff) in
+  let b2 = Char.from_int_unchecked ((value lsr 8) land 0xff) in
+  let b3 = Char.from_int_unchecked (value land 0xff) in
+  String.make ~len:1 ~char:b0
+  ^ String.make ~len:1 ~char:b1
+  ^ String.make ~len:1 ~char:b2
+  ^ String.make ~len:1 ~char:b3
 
 let write_uint16_be = fun value ->
-  let b0 = Char.chr ((value lsr 8) land 0xff) in
-  let b1 = Char.chr (value land 0xff) in
-  String.make 1 b0 ^ String.make 1 b1
+  let b0 = Char.from_int_unchecked ((value lsr 8) land 0xff) in
+  let b1 = Char.from_int_unchecked (value land 0xff) in
+  String.make ~len:1 ~char:b0 ^ String.make ~len:1 ~char:b1
 
 let write_uint8 = fun value ->
-  String.make 1 (Char.chr (value land 0xff))
+  String.make ~len:1 ~char:(Char.from_int_unchecked (value land 0xff))
 
 let frame_type_to_int = function
   | Frame.Data -> 0x0
@@ -82,7 +85,7 @@ let serialize_data_payload = fun payload ->
   | Frame.DataPayload { data; pad_length=None } -> data
   | Frame.DataPayload { data; pad_length=Some pad_len } -> write_uint8 pad_len
   ^ data
-  ^ String.make pad_len '\x00'
+  ^ String.make ~len:pad_len ~char:'\x00'
   | _ -> panic "serialize_data_payload: expected DataPayload"
 
 let serialize_headers_payload = fun payload ->
@@ -107,7 +110,7 @@ let serialize_headers_payload = fun payload ->
       in
       let padding =
         match pad_length with
-        | Some pl -> String.make pl '\x00'
+        | Some pl -> String.make ~len:pl ~char:'\x00'
         | None -> ""
       in
       pad_bytes ^ priority_bytes ^ header_block_fragment ^ padding
@@ -143,7 +146,7 @@ let serialize_setting = function
 
 let serialize_settings_payload = fun payload ->
   match payload with
-  | Frame.SettingsPayload settings -> String.concat "" (List.map serialize_setting settings)
+  | Frame.SettingsPayload settings -> String.concat "" (List.map settings ~fn:serialize_setting)
   | _ -> panic "serialize_settings_payload: expected SettingsPayload"
 
 let serialize_push_promise_payload = fun payload ->
@@ -157,7 +160,7 @@ let serialize_push_promise_payload = fun payload ->
       let promised_id_bytes = write_uint32_be (promised_stream_id land 0x7fff_ffff) in
       let padding =
         match pad_length with
-        | Some pl -> String.make pl '\x00'
+        | Some pl -> String.make ~len:pl ~char:'\x00'
         | None -> ""
       in
       pad_bytes ^ promised_id_bytes ^ header_block_fragment ^ padding

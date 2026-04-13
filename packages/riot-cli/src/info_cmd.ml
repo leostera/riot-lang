@@ -20,10 +20,8 @@ let command =
 let rec toml_json = function
   | Data.Toml.String value -> Data.Json.String value
   | Data.Toml.Int value -> Data.Json.Int value
-  | Data.Toml.Array values -> Data.Json.Array (List.map toml_json values)
-  | Data.Toml.Table fields -> Data.Json.Object (List.map
-    (fun ((key, value)) -> (key, toml_json value))
-    fields)
+  | Data.Toml.Array values -> Data.Json.Array (List.map values ~fn:toml_json)
+  | Data.Toml.Table fields -> Data.Json.Object (List.map fields ~fn:(fun (key, value) -> (key, toml_json value)))
   | Data.Toml.Bool value -> Data.Json.Bool value
 
 let workspace_kind = fun ~(workspace_manager:Workspace_manager.t) (workspace: Workspace.t) ->
@@ -31,7 +29,7 @@ let workspace_kind = fun ~(workspace_manager:Workspace_manager.t) (workspace: Wo
   match Workspace_manager.load_riot_toml workspace_manager manifest_path with
   | Ok toml -> (
       match Data.Toml.get_table toml with
-      | Some fields when List.mem_assoc "workspace" fields -> Workspace
+      | Some fields when List.any fields ~fn:(fun (name, _) -> String.equal name "workspace") -> Workspace
       | _ -> Package
     )
   | Error _ -> Workspace
@@ -52,8 +50,9 @@ let relative_or_absolute_path = fun ~root path ->
   | Error _ -> Path.to_string path
 
 let workspace_packages = fun (workspace: Workspace.t) ->
-  workspace.packages |> List.filter Package.is_workspace_member |> List.sort
-    (fun (left: Package.t) (right: Package.t) ->
+  workspace.packages
+  |> List.filter ~fn:Package.is_workspace_member
+  |> List.sort ~compare:(fun (left: Package.t) (right: Package.t) ->
       String.compare left.name right.name)
 
 let manifest_path = fun path -> Path.normalize Path.(path / Path.v "riot.toml")
@@ -97,13 +96,13 @@ let workspace_json = fun ~(workspace_manager:Workspace_manager.t) ~(load_errors:
     (
       "packages",
       Data.Json.Array (workspace_packages workspace
-      |> List.map (package_json ~workspace_manager ~workspace))
+      |> List.map ~fn:(package_json ~workspace_manager ~workspace))
     );
     (
       "load_errors",
       Data.Json.Array (load_errors
-      |> List.map Workspace_manager.load_error_to_string
-      |> List.map Data.Json.string)
+      |> List.map ~fn:Workspace_manager.load_error_to_string
+      |> List.map ~fn:Data.Json.string)
     );
   ]
   @ manifest_json_fields ~workspace_manager workspace_root in
@@ -132,7 +131,7 @@ let print_workspace = fun ~(load_errors:Workspace_manager.load_error list) (work
   println ("Target dir: " ^ Path.to_string workspace.target_dir_root);
   println "";
   println "Packages:";
-  workspace_packages workspace |> List.iter
+  workspace_packages workspace |> List.for_each ~fn:
     (fun (pkg: Package.t) ->
       let package_manifest_path = manifest_path pkg.path in
       println
@@ -144,7 +143,7 @@ let print_workspace = fun ~(load_errors:Workspace_manager.load_error list) (work
       println "";
       println "Load errors:";
       load_errors
-      |> List.iter (fun err -> println ("  - " ^ Workspace_manager.load_error_to_string err))
+      |> List.for_each ~fn:(fun err -> println ("  - " ^ Workspace_manager.load_error_to_string err))
     )
 
 let print_json = fun json ->

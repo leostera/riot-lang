@@ -17,7 +17,7 @@ let int = {
   gen = Generator.int;
   shrink = Some Shrinker.int;
   print = Some Printer.int;
-  small = Some abs
+  small = Some Int.abs
 }
 
 let int32 = {
@@ -50,7 +50,7 @@ let float = {
   gen = Generator.float;
   shrink = Some Shrinker.float;
   print = Some Printer.float;
-  small = Some (fun f -> int_of_float (Float.abs f))
+  small = Some (fun f -> Float.to_int (Float.abs f))
 }
 
 let char = {
@@ -127,7 +127,7 @@ let vector = fun elem_arb ->
         | Some elem_printer -> Some (Printer.vector elem_printer)
         | None -> None
       );
-    small = Some Collections.Vector.len;
+    small = Some Collections.Vector.length;
   }
 
 let hashmap = fun key_arb value_arb ->
@@ -145,7 +145,7 @@ let hashmap = fun key_arb value_arb ->
         | Some key_printer, Some value_printer -> Some (Printer.hashmap key_printer value_printer)
         | _ -> None
       );
-    small = Some Collections.HashMap.len;
+    small = Some Collections.HashMap.length;
   }
 
 let hashset = fun elem_arb ->
@@ -163,7 +163,7 @@ let hashset = fun elem_arb ->
         | Some elem_printer -> Some (Printer.hashset elem_printer)
         | None -> None
       );
-    small = Some Collections.HashSet.len;
+    small = Some Collections.HashSet.length;
   }
 
 let queue = fun elem_arb ->
@@ -181,7 +181,7 @@ let queue = fun elem_arb ->
         | Some elem_printer -> Some (Printer.queue elem_printer)
         | None -> None
       );
-    small = Some Collections.Queue.len;
+    small = Some Collections.Queue.length;
   }
 
 let deque = fun elem_arb ->
@@ -199,7 +199,7 @@ let deque = fun elem_arb ->
         | Some elem_printer -> Some (Printer.deque elem_printer)
         | None -> None
       );
-    small = Some Collections.Deque.len;
+    small = Some Collections.Deque.length;
   }
 
 let heap = fun elem_arb ->
@@ -217,7 +217,7 @@ let heap = fun elem_arb ->
         | Some elem_printer -> Some (Printer.heap elem_printer)
         | None -> None
       );
-    small = Some Collections.Heap.size;
+    small = Some Collections.Heap.length;
   }
 
 (* === TUPLE ARBITRARIES === *)

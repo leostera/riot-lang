@@ -33,9 +33,13 @@ let create_offline = fun () -> { packages = Collections.HashMap.create () }
 
 let add_package = fun provider pkg ver deps ->
   let entry = { version = ver; deps } in
-  match Collections.HashMap.get provider.packages pkg with
-  | None -> ignore (Collections.HashMap.insert provider.packages pkg [ entry ])
-  | Some entries -> ignore (Collections.HashMap.insert provider.packages pkg (entry :: entries))
+  match Collections.HashMap.get provider.packages ~key:pkg with
+  | None ->
+      let _ = Collections.HashMap.insert provider.packages ~key:pkg ~value:[ entry ] in
+      ()
+  | Some entries ->
+      let _ = Collections.HashMap.insert provider.packages ~key:pkg ~value:(entry :: entries) in
+      ()
 
 let version_compare = fun a b ->
   match Version.compare a b with
@@ -45,16 +49,15 @@ let version_compare = fun a b ->
 
 let to_provider: offline -> string t = fun offline ->
   let choose_version pkg ranges =
-    match Collections.HashMap.get offline.packages pkg with
+    match Collections.HashMap.get offline.packages ~key:pkg with
     | None -> Ok None
     | Some entries ->
         let matching =
-          List.filter
-            (fun entry -> Ranges.contains ~compare_v:version_compare ranges entry.version)
-            entries
+          List.filter entries
+            ~fn:(fun entry -> Ranges.contains ~compare_v:version_compare ranges entry.version)
         in
         let sorted =
-          List.sort (fun a b -> version_compare b.version a.version) matching
+          List.sort matching ~compare:(fun a b -> version_compare b.version a.version)
         in
         Ok (
           match sorted with
@@ -63,21 +66,20 @@ let to_provider: offline -> string t = fun offline ->
         )
   in
   let count_versions pkg ranges =
-    match Collections.HashMap.get offline.packages pkg with
+    match Collections.HashMap.get offline.packages ~key:pkg with
     | None -> Ok 0
     | Some entries ->
         let matching =
-          List.filter
-            (fun entry -> Ranges.contains ~compare_v:version_compare ranges entry.version)
-            entries
+          List.filter entries
+            ~fn:(fun entry -> Ranges.contains ~compare_v:version_compare ranges entry.version)
         in
         Ok (List.length matching)
   in
   let get_dependencies pkg ver =
-    match Collections.HashMap.get offline.packages pkg with
+    match Collections.HashMap.get offline.packages ~key:pkg with
     | None -> Ok (Unavailable ("Package '" ^ pkg ^ "' not found"))
     | Some entries -> (
-        match List.find_opt (fun entry -> version_compare entry.version ver = 0) entries with
+        match List.find entries ~fn:(fun entry -> version_compare entry.version ver = 0) with
         | None -> Ok (Unavailable ("Version "
         ^ Version.to_string ver
         ^ " not found for package '"

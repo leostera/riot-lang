@@ -63,11 +63,11 @@ let compare_paths = fun left right ->
 let walk_action = fun ~should_ignore ~seen (entry: Fs.Walker.FileItem.t) on_file ->
   let path = Fs.Walker.FileItem.path entry in
   let path_string = Path.to_string path in
-  if HashSet.contains seen path_string then
+  if HashSet.contains seen ~value:path_string then
     Fs.Walker.Skip_subtree
   else
     (
-      let _ = HashSet.insert seen path_string in
+      let _ = HashSet.insert seen ~value:path_string in
       match Fs.Walker.FileItem.kind entry with
       | Directory ->
           if should_skip_directory path || should_ignore path then
@@ -109,7 +109,7 @@ let collect_ocaml_files = fun ?(should_ignore = fun _ -> false) ~roots () ->
         loop iter'
   in
   loop iter;
-  !files |> List.sort_uniq compare_paths
+  !files |> List.sort ~compare:compare_paths |> List.unique ~compare:compare_paths
 
 let is_trivia_kind = function
   | Syn.SyntaxKind.WHITESPACE -> true
@@ -145,8 +145,8 @@ let is_redundant_paren_inner_kind = function
   | _ -> false
 
 let syntax_hash = fun (result: Syn.Parser.parse_result) ->
-  let buffer = IO.Buffer.create 1_024 in
-  let docstring_buffer = IO.Buffer.create 256 in
+  let buffer = IO.Buffer.create ~size:1_024 in
+  let docstring_buffer = IO.Buffer.create ~size:256 in
   let rec should_skip_token ~parent_kind token =
     let token_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token) in
     let token_text = Syn.Ceibo.Green.text (Syn.Ceibo.Green.Token token) |> Option.expect ~msg:"green token text" in
@@ -169,23 +169,22 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
       | _ -> false
   and redundant_paren_child node =
     let has_comment_like =
-      List.exists
-        (
+      List.any
+        (Syn.Ceibo.Green.children node)
+        ~fn:(
           function
           | Syn.Ceibo.Green.Token token ->
               let token_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token) in
               is_comment_like_kind token_kind
           | Syn.Ceibo.Green.Node _ -> false
         )
-        (Syn.Ceibo.Green.children node)
     in
     if has_comment_like then
       None
     else
       let meaningful_children =
         Syn.Ceibo.Green.children node
-        |> List.filter
-          (
+        |> List.filter ~fn:(
             function
             | Syn.Ceibo.Green.Token token ->
                 let token_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token) in
@@ -228,7 +227,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
     IO.Buffer.add_string buffer "N(";
     IO.Buffer.add_string buffer (Syn.SyntaxKind.to_string node_kind);
     IO.Buffer.add_string buffer "[";
-    List.iter (write_child ~parent_kind:(Some node_kind)) (Syn.Ceibo.Green.children node);
+    List.for_each (Syn.Ceibo.Green.children node) ~fn:(write_child ~parent_kind:(Some node_kind));
     IO.Buffer.add_string buffer "])"
   and write_element = function
     | Syn.Ceibo.Green.Token token ->
@@ -462,7 +461,19 @@ let start_dispatcher = fun ~owner ~run_ref ~concurrency ~roots ~should_ignore ~c
 
 let summarize = fun ~duration files ->
   List.fold_left
-    (fun acc result ->
+    files
+    ~acc:(
+      {
+        total_files = 0;
+        already_formatted = 0;
+        needs_formatting = 0;
+        would_reformat = 0;
+        unsafe_to_format = 0;
+        formatted_files = 0;
+        failed_files = 0;
+        duration;
+      })
+    ~fn:(fun acc result ->
       match result.status with
       | Failed -> { acc with total_files = acc.total_files + 1; failed_files = acc.failed_files + 1 }
       | Needs_formatting -> {
@@ -490,17 +501,6 @@ let summarize = fun ~duration files ->
         with total_files = acc.total_files + 1;
         already_formatted = acc.already_formatted + 1
       })
-    {
-      total_files = 0;
-      already_formatted = 0;
-      needs_formatting = 0;
-      would_reformat = 0;
-      unsafe_to_format = 0;
-      formatted_files = 0;
-      failed_files = 0;
-      duration;
-    }
-    files
 
 let run_streaming = fun ~mode ?(concurrency = Thread.available_parallelism) ?(should_ignore = fun _ ->
   false) ~roots ~on_result () ->
@@ -531,7 +531,7 @@ let run_streaming = fun ~mode ?(concurrency = Thread.available_parallelism) ?(sh
         on_result result;
         collect (result :: results_rev)
     | `Completed ->
-        let files = List.rev results_rev in
+        let files = List.reverse results_rev in
         let duration = Time.Instant.elapsed start in
         { files; summary = summarize ~duration files }
   in
@@ -555,10 +555,15 @@ let run_batch = fun ~mode ?(concurrency = Thread.available_parallelism) ?(should
     | Verify -> verify_file
     | Format -> format_file ~mode:Format
   in
-  let files = files |> List.filter (fun path -> not (should_ignore path)) |> List.sort compare_paths in
+  let files =
+    files
+    |> List.filter ~fn:(fun path -> not (should_ignore path))
+    |> List.sort ~compare:compare_paths
+  in
   let results = WorkerPool.SimpleWorkerPool.run ~concurrency ~tasks:files ~fn:check_fn ()
-  |> List.map (fun (_, result) -> result)
-  |> List.sort (fun left right -> compare_paths left.file right.file) in
+  |> List.map ~fn:(fun (_, result) -> result)
+  |> List.sort ~compare:(fun left right -> compare_paths left.file right.file)
+  in
   let duration = Time.Instant.elapsed start in
   { files = results; summary = summarize ~duration results }
 

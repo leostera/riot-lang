@@ -22,7 +22,7 @@ let build_stats_to_json = fun (stats: Client.build_stats) ->
   ]
 
 let package_results_to_json = fun (results: Riot_executor.Package_builder.build_result list) ->
-  Data.Json.Array (List.map Riot_executor.Package_builder.build_result_to_json results)
+  Data.Json.Array (List.map results ~fn:Riot_executor.Package_builder.build_result_to_json)
 
 let build_failed_event_to_json = fun session_id failed_at errors ->
   Data.Json.Object [
@@ -54,7 +54,7 @@ let cycle_detected_event_to_json = fun session_id detected_at cycle_nodes ->
     ("type", Data.Json.String "CycleDetected");
     ("session_id", Data.Json.String (Riot_model.Session_id.to_string session_id));
     ("detected_at", Data.Json.String (DateTime.to_iso8601 detected_at));
-    ("cycle_nodes", Data.Json.Array (List.map Data.Json.string cycle_nodes));
+    ("cycle_nodes", Data.Json.Array (List.map cycle_nodes ~fn:Data.Json.string));
   ]
 
 let to_json = function

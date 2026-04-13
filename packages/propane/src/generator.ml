@@ -23,7 +23,7 @@ let random_bool = fun rnd -> sample (Random.bool ~rng:rnd ())
 (* Helper: convert char list to string *)
 
 let string_of_char_list = fun chars ->
-  String.concat "" (List.map (String.make 1) chars)
+  String.concat "" (List.map chars ~fn:(fun char -> String.make ~len:1 ~char))
 
 (* === CONSTANTS === *)
 
@@ -90,14 +90,13 @@ let frequency = fun weighted_gens ->
   | _ ->
       (* Validate weights *)
       let () =
-        List.iter
-          (fun ((w, _)) ->
+        List.for_each weighted_gens
+          ~fn:(fun ((w, _)) ->
             if w <= 0 then
               panic "frequency: non-positive weight")
-          weighted_gens
       in
       let total_weight =
-        List.fold_left (fun acc ((w, _)) -> acc + w) 0 weighted_gens
+        List.fold_left weighted_gens ~acc:0 ~fn:(fun acc ((w, _)) -> acc + w)
       in
       {
         run =
@@ -190,14 +189,14 @@ let small_int = int_range 0 100
 
 let big_int = int
 
-let positive_int = { run = fun rnd _size -> random_bits rnd land max_int }
+let positive_int = { run = fun rnd _size -> random_bits rnd land Int.max_int }
 
 let negative_int =
   map (fun n -> -n) positive_int
 
 let non_zero_int =
-  let pos: int t = int_range 1 max_int in
-  let neg: int t = int_range min_int (-1) in
+  let pos: int t = int_range 1 Int.max_int in
+  let neg: int t = int_range Int.min_int (-1) in
   one_of [ pos; neg ]
 
 (* Floats *)
@@ -228,7 +227,7 @@ let weighted_bool = fun weight_true weight_false ->
 
 (* Characters *)
 
-let char = { run = fun rnd _size -> Char.chr (random_int rnd 256) }
+let char = { run = fun rnd _size -> Char.from_int_unchecked (random_int rnd 256) }
 
 let char_range = fun low high ->
   {
@@ -237,7 +236,7 @@ let char_range = fun low high ->
         let low_code = Char.code low in
         let high_code = Char.code high in
         let range = high_code - low_code + 1 in
-        Char.chr (low_code + random_int rnd range);
+        Char.from_int_unchecked (low_code + random_int rnd range);
   }
 
 let char_lowercase = char_range 'a' 'z'
@@ -298,7 +297,7 @@ let string =
         (fun len ->
           let rec build_string acc n =
             if n <= 0 then
-              return (string_of_char_list (List.rev acc))
+              return (string_of_char_list (List.reverse acc))
             else
               and_then char (fun c -> build_string (c :: acc) (n - 1))
           in
@@ -312,7 +311,7 @@ let string_of = fun char_gen ->
         (fun len ->
           let rec build_string acc n =
             if n <= 0 then
-              return (string_of_char_list (List.rev acc))
+              return (string_of_char_list (List.reverse acc))
             else
               and_then char_gen (fun c -> build_string (c :: acc) (n - 1))
           in
@@ -323,7 +322,7 @@ let string_size = fun size_gen char_gen ->
     (fun len ->
       let rec build_string acc n =
         if n <= 0 then
-          return (string_of_char_list (List.rev acc))
+          return (string_of_char_list (List.reverse acc))
         else
           and_then char_gen (fun c -> build_string (c :: acc) (n - 1))
       in
@@ -345,7 +344,7 @@ let list = fun gen ->
         (fun len ->
           let rec build_list acc n =
             if n <= 0 then
-              return (List.rev acc)
+              return (List.reverse acc)
             else
               and_then gen (fun v -> build_list (v :: acc) (n - 1))
           in
@@ -356,7 +355,7 @@ let list_size = fun size_gen gen ->
     (fun len ->
       let rec build_list acc n =
         if n <= 0 then
-          return (List.rev acc)
+          return (List.reverse acc)
         else
           and_then gen (fun v -> build_list (v :: acc) (n - 1))
       in
@@ -366,9 +365,9 @@ let list_repeat = fun n gen -> list_size (return n) gen
 
 let non_empty_list = fun gen -> and_then (int_range 1 10) (fun len -> list_size (return len) gen)
 
-let array = fun gen -> map Collections.Array.of_list (list gen)
+let array = fun gen -> map Collections.Array.from_list (list gen)
 
-let array_size = fun size_gen gen -> map Collections.Array.of_list (list_size size_gen gen)
+let array_size = fun size_gen gen -> map Collections.Array.from_list (list_size size_gen gen)
 
 (* === TUPLE GENERATORS === *)
 
@@ -389,55 +388,55 @@ let quad = fun gen1 gen2 gen3 gen4 ->
 
 (* Std Collections *)
 
-let vector = fun gen -> map Collections.Vector.of_list (list gen)
+let vector = fun gen -> map Collections.Vector.from_list (list gen)
 
-let vector_size = fun size_gen gen -> map Collections.Vector.of_list (list_size size_gen gen)
+let vector_size = fun size_gen gen -> map Collections.Vector.from_list (list_size size_gen gen)
 
 let hashmap = fun key_gen value_gen ->
   let pair_gen = pair key_gen value_gen in
-  map Collections.HashMap.of_list (list pair_gen)
+  map Collections.HashMap.from_list (list pair_gen)
 
 let hashmap_size = fun size_gen key_gen value_gen ->
   let pair_gen = pair key_gen value_gen in
-  map Collections.HashMap.of_list (list_size size_gen pair_gen)
+  map Collections.HashMap.from_list (list_size size_gen pair_gen)
 
-let hashset = fun gen -> map Collections.HashSet.of_list (list gen)
+let hashset = fun gen -> map Collections.HashSet.from_list (list gen)
 
-let hashset_size = fun size_gen gen -> map Collections.HashSet.of_list (list_size size_gen gen)
+let hashset_size = fun size_gen gen -> map Collections.HashSet.from_list (list_size size_gen gen)
 
-let queue = fun gen -> map Collections.Queue.of_list (list gen)
+let queue = fun gen -> map Collections.Queue.from_list (list gen)
 
-let queue_size = fun size_gen gen -> map Collections.Queue.of_list (list_size size_gen gen)
+let queue_size = fun size_gen gen -> map Collections.Queue.from_list (list_size size_gen gen)
 
 let deque = fun gen ->
   map
-    (fun lst ->
-      let d = Collections.Deque.create () in
-      List.iter (Collections.Deque.push_back d) lst;
+      (fun lst ->
+        let d = Collections.Deque.create () in
+      List.for_each lst ~fn:(fun value -> Collections.Deque.push_back d ~value);
       d)
     (list gen)
 
 let deque_size = fun size_gen gen ->
   map
-    (fun lst ->
-      let d = Collections.Deque.create () in
-      List.iter (Collections.Deque.push_back d) lst;
+      (fun lst ->
+        let d = Collections.Deque.create () in
+      List.for_each lst ~fn:(fun value -> Collections.Deque.push_back d ~value);
       d)
     (list_size size_gen gen)
 
 let heap = fun gen ->
   map
-    (fun lst ->
-      let h = Collections.Heap.create () in
-      List.iter (Collections.Heap.push h) lst;
+      (fun lst ->
+        let h = Collections.Heap.create () in
+      List.for_each lst ~fn:(fun value -> Collections.Heap.push h ~value);
       h)
     (list gen)
 
 let heap_size = fun size_gen gen ->
   map
-    (fun lst ->
-      let h = Collections.Heap.create () in
-      List.iter (Collections.Heap.push h) lst;
+      (fun lst ->
+        let h = Collections.Heap.create () in
+      List.for_each lst ~fn:(fun value -> Collections.Heap.push h ~value);
       h)
     (list_size size_gen gen)
 

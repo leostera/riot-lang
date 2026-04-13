@@ -117,14 +117,13 @@ let write_cached_escaped_literal = fun state value ->
 
 let float_to_roundtrip_string = fun value ->
   let text12 = format_float "%.12g" value in
-  if Float.equal value (Float.of_string text12) then
-    text12
-  else
-    let text15 = format_float "%.15g" value in
-    if Float.equal value (Float.of_string text15) then
-      text15
-    else
-      format_float "%.18g" value
+  match Float.parse text12 with
+  | Some roundtrip when Float.equal value roundtrip -> text12
+  | _ ->
+      let text15 = format_float "%.15g" value in
+      match Float.parse text15 with
+      | Some roundtrip when Float.equal value roundtrip -> text15
+      | _ -> format_float "%.18g" value
 
 let float_to_json = fun value ->
   if Float.is_nan value || Float.is_infinite value then

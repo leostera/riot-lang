@@ -33,7 +33,7 @@ type error =
   | GitCommandFailed of { command: string; status: int; stdout: string; stderr: string }
   | GitCommandSpawnFailed of { command: string; error: string }
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 let message = function
   | InvalidSourceSpec { source; error } ->
@@ -56,30 +56,30 @@ let message = function
       "failed to spawn git command '" ^ command ^ "': " ^ error
 
 let split_once = fun ~on text ->
-  match String.index text on with
+  match String.index_of text ~char:on with
   | None -> None
   | Some idx -> Some (
-    String.sub text 0 idx,
-    String.sub text (idx + 1) (String.length text - idx - 1)
+    String.sub text ~offset:0 ~len:idx,
+    String.sub text ~offset:(idx + 1) ~len:(String.length text - idx - 1)
   )
 
 let normalize_source_locator = fun raw ->
   let raw = String.trim raw in
   let raw =
     if String.starts_with ~prefix:"https://" raw then
-      String.sub raw 8 (String.length raw - 8)
+      String.sub raw ~offset:8 ~len:(String.length raw - 8)
     else if String.starts_with ~prefix:"http://" raw then
-      String.sub raw 7 (String.length raw - 7)
+      String.sub raw ~offset:7 ~len:(String.length raw - 7)
     else
       raw
   in
   if String.ends_with ~suffix:".git" raw then
-    String.sub raw 0 (String.length raw - 4)
+    String.sub raw ~offset:0 ~len:(String.length raw - 4)
   else
     raw
 
 let looks_like_github_shorthand = fun raw ->
-  match String.split_on_char '/' raw with
+  match String.split ~by:"/" raw with
   | owner :: repo :: _ when not (String.equal owner "")
   && not (String.equal repo "")
   && not (String.equal owner ".")
@@ -97,7 +97,7 @@ let looks_like_remote_spec = fun raw ->
 
 let parse_spec = fun raw ->
   let trimmed = String.trim raw in
-  match String.split_on_char '#' trimmed with
+  match String.split ~by:"#" trimmed with
   | [ locator ] -> Ok { source_locator = normalize_source_locator locator; ref_ = None }
   | [locator;ref_] ->
       Ok {
@@ -113,7 +113,7 @@ let parse_spec = fun raw ->
 let parse_source_locator = fun source_locator ->
   let normalized = normalize_source_locator source_locator in
   let normalized =
-    match String.split_on_char '/' normalized with
+    match String.split ~by:"/" normalized with
     | owner :: repo :: _ when not (String.equal owner "")
     && not (String.equal repo "")
     && not (String.equal owner ".")
@@ -123,7 +123,7 @@ let parse_source_locator = fun source_locator ->
     && not (String.contains owner ".") -> "github.com/" ^ normalized
     | _ -> normalized
   in
-  match String.split_on_char '/' normalized with
+  match String.split ~by:"/" normalized with
   | host :: owner :: repo :: rest when not (String.equal host "")
   && not (String.equal owner "")
   && not (String.equal repo "") ->
@@ -201,30 +201,30 @@ let sync_checkout = fun ?(update = true) ~repo_dir ~remote_url ~ref_ () ->
     | None -> Path.v "."
   in
   let* has_repo_root = Fs.exists repo_dir
-  |> Result.map_error
-    (fun err -> GitCommandSpawnFailed { command = "fs.exists"; error = IO.error_message err }) in
+  |> Result.map_err
+    ~fn:(fun err -> GitCommandSpawnFailed { command = "fs.exists"; error = IO.error_message err }) in
   if has_repo_root then
     let* has_git_dir = Fs.exists repo_git_dir
-    |> Result.map_error
-      (fun err -> GitCommandSpawnFailed { command = "fs.exists"; error = IO.error_message err }) in
+    |> Result.map_err
+      ~fn:(fun err -> GitCommandSpawnFailed { command = "fs.exists"; error = IO.error_message err }) in
     if not has_git_dir then
       Error (CachedRepositoryInvalid { path = repo_dir })
     else if update then
       let* _ = run_git ~cwd:repo_dir [ "remote"; "set-url"; "origin"; remote_url ] in
       let* _ = run_git ~cwd:repo_dir [ "fetch"; "--quiet"; "--tags"; "origin" ] in
       run_git ~cwd:repo_dir [ "checkout"; "--quiet"; "--force"; checkout_target ~repo_dir ~ref_ ]
-      |> Result.map (fun _ -> Updated)
+      |> Result.map ~fn:(fun _ -> Updated)
     else
       run_git ~cwd:repo_dir [ "checkout"; "--quiet"; "--force"; checkout_target ~repo_dir ~ref_ ]
-      |> Result.map (fun _ -> Reused)
+      |> Result.map ~fn:(fun _ -> Reused)
   else
     let* () = Fs.create_dir_all parent
-    |> Result.map_error
-      (fun err ->
+    |> Result.map_err
+      ~fn:(fun err ->
         GitCommandSpawnFailed { command = "fs.create_dir_all"; error = IO.error_message err }) in
     let* _ = run_git ~cwd:parent [ "clone"; "--quiet"; remote_url; Path.to_string repo_dir ] in
     run_git ~cwd:repo_dir [ "checkout"; "--quiet"; "--force"; checkout_target ~repo_dir ~ref_ ]
-    |> Result.map (fun _ -> Cloned)
+    |> Result.map ~fn:(fun _ -> Cloned)
 
 let materialize = fun ?(update = true) ~source_locator ~ref_ () ->
   let* locator = parse_source_locator source_locator in
@@ -245,8 +245,8 @@ let materialize = fun ?(update = true) ~source_locator ~ref_ () ->
     | None -> repository_root
   in
   let* exists = Fs.exists package_root
-  |> Result.map_error
-    (fun err -> GitCommandSpawnFailed { command = "fs.exists"; error = IO.error_message err }) in
+  |> Result.map_err
+    ~fn:(fun err -> GitCommandSpawnFailed { command = "fs.exists"; error = IO.error_message err }) in
   if not exists then
     Error (PackageRootMissing { path = package_root })
   else

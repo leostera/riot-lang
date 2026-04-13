@@ -23,7 +23,7 @@ let rec is_unit_expression = function
 
 let source_slice = fun ~source span ->
   let len = Syn.Ceibo.Span.(span.end_ - span.start) in
-  String.sub source span.start len
+  String.sub source ~offset:span.start ~len
 
 let expression_source = fun ~source expr ->
   source_slice ~source (Syn.Ceibo.Red.SyntaxNode.span (Syn.Cst.Expression.syntax_node expr))
@@ -62,8 +62,9 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.expressions_of_structure_item
-  |> List.filter_map (diagnostic_for_expression ~source:ctx.source)
+  |> List.map ~fn:Traversal.expressions_of_structure_item
+  |> List.concat
+  |> List.filter_map ~fn:(diagnostic_for_expression ~source:ctx.source)
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

@@ -19,7 +19,7 @@ let to_json = function
   | CyclicDependency { cycle } -> Data.Json.obj
     [
       ("type", Data.Json.string "cyclic_dependency");
-      ("cycle", Data.Json.array (List.map Data.Json.string cycle))
+      ("cycle", Data.Json.array (List.map cycle ~fn:Data.Json.string))
     ]
   | ScanFailed { path; reason } -> Data.Json.obj
     [

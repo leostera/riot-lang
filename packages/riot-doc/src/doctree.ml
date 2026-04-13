@@ -76,18 +76,18 @@ let module_full_name = fun (module_doc: module_doc) ->
 let rec flatten_modules = fun (modules: module_doc list) ->
   modules
   |> List.fold_left
-    (fun acc (module_doc: module_doc) -> acc @ [ module_doc ] @ flatten_modules module_doc.modules)
-    []
+    ~acc:[]
+    ~fn:(fun acc (module_doc: module_doc) -> acc @ [ module_doc ] @ flatten_modules module_doc.modules)
 
 let rec flatten_items = fun (modules: module_doc list) ->
   modules |> List.fold_left
-    (fun acc (module_doc: module_doc) ->
-      let own_items = module_doc.items |> List.map (fun item -> (module_doc, item)) in
+    ~acc:[]
+    ~fn:(fun acc (module_doc: module_doc) ->
+      let own_items = module_doc.items |> List.map ~fn:(fun item -> (module_doc, item)) in
       acc @ own_items @ flatten_items module_doc.modules)
-    []
 
 let items_of_kind = fun kind items ->
-  List.filter (fun item -> item.kind = kind) items
+  List.filter items ~fn:(fun item -> item.kind = kind)
 
 let rec drop_common_prefix = fun left right ->
   match left, right with
@@ -132,12 +132,12 @@ let is_safe_file_char = function
 
 let sanitize_file_component = fun text ->
   String.map
-    (fun ch ->
+    text
+    ~fn:(fun ch ->
       if is_safe_file_char ch then
         ch
       else
         '_')
-    text
 
 let item_file_name = fun item ->
   item_kind_file_prefix item.kind ^ "." ^ sanitize_file_component item.name ^ ".html"
@@ -149,17 +149,17 @@ let relative_item_href = fun ~from_module item -> item_file_name item
 
 let module_output_path = fun ~output_dir module_doc ->
   let module_dir = module_doc.path
-  |> List.fold_left (fun acc segment -> Path.(acc / Path.v segment)) output_dir in
+  |> List.fold_left ~acc:output_dir ~fn:(fun acc segment -> Path.(acc / Path.v segment)) in
   Path.(module_dir / Path.v "index.html")
 
 let module_source_output_path = fun ~output_dir module_doc ->
   let module_dir = module_doc.path
-  |> List.fold_left (fun acc segment -> Path.(acc / Path.v segment)) output_dir in
+  |> List.fold_left ~acc:output_dir ~fn:(fun acc segment -> Path.(acc / Path.v segment)) in
   Path.(module_dir / Path.v "source.html")
 
 let item_output_path = fun ~output_dir ~module_doc item ->
   let module_dir = module_doc.path
-  |> List.fold_left (fun acc segment -> Path.(acc / Path.v segment)) output_dir in
+  |> List.fold_left ~acc:output_dir ~fn:(fun acc segment -> Path.(acc / Path.v segment)) in
   Path.(module_dir / Path.v (item_file_name item))
 
 let module_summary = fun (module_doc: module_doc) ->
@@ -170,6 +170,6 @@ let module_summary = fun (module_doc: module_doc) ->
     (item_kind_title Macro_item, List.length (items_of_kind Macro_item module_doc.items));
   ] in
   counts
-  |> List.filter (fun (_, count) -> count > 0)
-  |> List.map (fun (label, count) -> Int.to_string count ^ " " ^ String.lowercase_ascii label)
+  |> List.filter ~fn:(fun (_, count) -> count > 0)
+  |> List.map ~fn:(fun (label, count) -> Int.to_string count ^ " " ^ String.lowercase_ascii label)
   |> String.concat " · "

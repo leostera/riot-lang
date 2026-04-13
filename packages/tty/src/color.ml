@@ -31,7 +31,7 @@ let rgb = fun str ->
   |> String.into_iter
   |> Iter.Iterator.map ~fn:Unicode.Rune.to_char
   |> Iter.Iterator.to_list
-  |> List.map (String.make 1) with
+  |> List.map ~fn:(fun char -> String.make ~len:1 ~char) with
   | ["#";r1;r2;g1;g2;b1;b2] -> rgb (r1 ^ r2) (g1 ^ g2) (b1 ^ b2)
   | ["#";r1;g1;b1] -> rgb r1 g1 b1
   | _ -> raise (Invalid_color str)

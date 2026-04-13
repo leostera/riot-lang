@@ -23,14 +23,14 @@ let status_string: t -> string = fun cmd ->
     "not built"
 
 let parse_from_toml: Toml.value list -> package_name:string -> package_path:Path.t -> t list = fun toml_entries ~package_name ~package_path ->
-  List.filter_map
-    (fun cmd_toml ->
+  List.filter_map toml_entries
+    ~fn:(fun cmd_toml ->
       match cmd_toml with
       | Toml.Table cmd_items -> (
-          match (List.assoc_opt "name" cmd_items, List.assoc_opt "path" cmd_items) with
+          match (Fields.get "name" cmd_items, Fields.get "path" cmd_items) with
           | (Some (Toml.String name), Some (Toml.String path)) ->
               let description =
-                match List.assoc_opt "help" cmd_items with
+                match Fields.get "help" cmd_items with
                 | Some (Toml.String h) -> h
                 | _ -> ""
               in
@@ -40,8 +40,8 @@ let parse_from_toml: Toml.value list -> package_name:string -> package_path:Path
                 command_source
                 |> Path.basename
                 |> (fun s ->
-                  match String.index s '.' with
-                  | Some idx -> String.sub s 0 idx
+                  match String.index_of s ~char:'.' with
+                  | Some idx -> String.sub s ~offset:0 ~len:idx
                   | None -> s)
                 |> String.capitalize_ascii
               in
@@ -59,7 +59,6 @@ let parse_from_toml: Toml.value list -> package_name:string -> package_path:Path
           | _ -> None
         )
       | _ -> None)
-    toml_entries
 
 (* Note: discover_all and find_by_name moved to Workspace module to avoid circular dependency *)
 

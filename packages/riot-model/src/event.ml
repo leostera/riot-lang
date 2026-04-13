@@ -8,26 +8,26 @@ module Pm_error = Pm_error
 (** Strip ANSI escape codes from a string *)
 let strip_ansi_codes = fun str ->
   let len = String.length str in
-  let out = Kernel.Bytes.create len in
+  let out = Kernel.Bytes.create ~size:len in
   let rec skip_until_m index =
     if index >= len then
       index
-    else if Char.equal (String.get str index) 'm' then
+    else if Char.equal (String.get_unchecked str ~at:index) 'm' then
       index + 1
     else
       skip_until_m (index + 1)
   in
   let rec strip read_index write_index =
     if read_index >= len then
-      Kernel.Bytes.sub_string out 0 write_index
+      Kernel.Bytes.sub_unchecked out ~offset:0 ~len:write_index |> Kernel.Bytes.to_string
     else if
       read_index + 1 < len
-      && Char.equal (String.get str read_index) '\027'
-      && Char.equal (String.get str (read_index + 1)) '['
+      && Char.equal (String.get_unchecked str ~at:read_index) '\027'
+      && Char.equal (String.get_unchecked str ~at:(read_index + 1)) '['
     then
       strip (skip_until_m (read_index + 2)) write_index
     else (
-      Kernel.Bytes.set out write_index (String.get str read_index);
+      Kernel.Bytes.set_unchecked out ~at:write_index ~char:(String.get_unchecked str ~at:read_index);
       strip (read_index + 1) (write_index + 1)
     )
   in
@@ -663,8 +663,8 @@ let kind_to_json = function
   | BuildComplete { duration_ms; results; succeeded; failed } ->
       Json.Object [
         ("duration_ms", Json.Int duration_ms);
-        ("succeeded", Json.Array (List.map (fun s -> Json.String s) succeeded));
-        ("failed", Json.Array (List.map (fun s -> Json.String s) failed));
+        ("succeeded", Json.Array (List.map succeeded ~fn:(fun s -> Json.String s)));
+        ("failed", Json.Array (List.map failed ~fn:(fun s -> Json.String s)));
       ]
   | BuildGraphCreated { nodes; duration_ms } ->
       Json.Object [ ("nodes", Json.Int nodes); ("duration_ms", Json.Int duration_ms) ]
@@ -672,7 +672,7 @@ let kind_to_json = function
       Json.Object []
   | BuildStarted { packages; total_modules; workers } ->
       Json.Object [
-        ("packages", Json.Array (List.map (fun p -> Json.String p) packages));
+        ("packages", Json.Array (List.map packages ~fn:(fun p -> Json.String p)));
         ("total_modules", Json.Int total_modules);
         ("workers", Json.Int workers);
       ]
@@ -705,7 +705,7 @@ let kind_to_json = function
         match reason with
         | DependenciesFailed deps -> Json.Object [
           ("type", Json.String "dependencies_failed");
-          ("dependencies", Json.Array (List.map (fun d -> Json.String d) deps));
+          ("dependencies", Json.Array (List.map deps ~fn:(fun d -> Json.String d)));
         ]
       in
       Json.Object [ ("package", Json.String package); ("reason", reason_json) ]
@@ -733,7 +733,7 @@ let kind_to_json = function
       Json.Object [
         ("package", Json.String package);
         ("hash", Json.String hash);
-        ("artifacts", Json.Array (List.map (fun a -> Json.String a) artifacts));
+        ("artifacts", Json.Array (List.map artifacts ~fn:(fun a -> Json.String a)));
       ]
   | CompilingImplementation { package; file } ->
       Json.Object [ ("package", Json.String package); ("file", Json.String file) ]
@@ -746,11 +746,11 @@ let kind_to_json = function
   | CreatingDirectory { path } ->
       Json.Object [ ("path", Json.String path) ]
   | CycleDetected { packages } ->
-      Json.Object [ ("packages", Json.Array (List.map (fun p -> Json.String p) packages)); ]
+      Json.Object [ ("packages", Json.Array (List.map packages ~fn:(fun p -> Json.String p))); ]
   | DependencyMissing { package; missing } ->
       Json.Object [
         ("package", Json.String package);
-        ("missing", Json.Array (List.map (fun m -> Json.String m) missing));
+        ("missing", Json.Array (List.map missing ~fn:(fun m -> Json.String m)));
       ]
   | DependencySatisfied { package } ->
       Json.Object [ ("package", Json.String package) ]
@@ -840,7 +840,7 @@ let kind_to_json = function
       Json.Object [ ("path", Json.String path); ("error", Pm_error.to_json error) ]
   | DependencyResolutionStarted { packages; mode } ->
       Json.Object [
-        ("packages", Json.Array (List.map (fun package -> Json.String package) packages));
+        ("packages", Json.Array (List.map packages ~fn:(fun package -> Json.String package)));
         ("mode", json_of_resolution_mode mode);
       ]
   | DependencyResolutionUsingExistingLock { path } ->
@@ -861,7 +861,7 @@ let kind_to_json = function
       Json.Object [ ("registry", Json.String registry) ]
   | DependencyUniverseBuilding { packages } ->
       Json.Object [
-        ("packages", Json.Array (List.map (fun package -> Json.String package) packages))
+        ("packages", Json.Array (List.map packages ~fn:(fun package -> Json.String package)))
       ]
   | DependencyUniverseBuilt { runtime_packages; build_packages; dev_packages; duration_ms } ->
       Json.Object [
@@ -1025,23 +1025,22 @@ let to_json = fun event ->
 let kind_from_json = fun json ->
   match json with
   | Json.Object fields -> (
-      match List.assoc_opt "event" fields with
+      match Fields.get "event" fields with
       | Some (Json.String event_name) -> (
-          let data = List.assoc_opt "data" fields |> Option.unwrap_or ~default:(Json.Object []) in
+          let data = Fields.get "data" fields |> Option.unwrap_or ~default:(Json.Object []) in
           match event_name with
           | "riot.build.completed" -> (
               match data with
               | Json.Object data_fields ->
                   let duration_ms =
-                    match List.assoc_opt "duration_ms" data_fields with
+                    match Fields.get "duration_ms" data_fields with
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
                   let succeeded =
-                    match List.assoc_opt "succeeded" data_fields with
+                    match Fields.get "succeeded" data_fields with
                     | Some (Json.Array arr) ->
-                        List.filter_map
-                          (
+                        List.filter_map ~fn:(
                             function
                             | Json.String s -> Some s
                             | _ -> None
@@ -1050,10 +1049,9 @@ let kind_from_json = fun json ->
                     | _ -> []
                   in
                   let failed =
-                    match List.assoc_opt "failed" data_fields with
+                    match Fields.get "failed" data_fields with
                     | Some (Json.Array arr) ->
-                        List.filter_map
-                          (
+                        List.filter_map ~fn:(
                             function
                             | Json.String s -> Some s
                             | _ -> None
@@ -1068,10 +1066,9 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let packages =
-                    match List.assoc_opt "packages" data_fields with
+                    match Fields.get "packages" data_fields with
                     | Some (Json.Array arr) ->
-                        List.filter_map
-                          (
+                        List.filter_map ~fn:(
                             function
                             | Json.String s -> Some s
                             | _ -> None
@@ -1080,12 +1077,12 @@ let kind_from_json = fun json ->
                     | _ -> []
                   in
                   let total_modules =
-                    match List.assoc_opt "total_modules" data_fields with
+                    match Fields.get "total_modules" data_fields with
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
                   let workers =
-                    match List.assoc_opt "workers" data_fields with
+                    match Fields.get "workers" data_fields with
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
@@ -1096,7 +1093,7 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let package =
-                    match List.assoc_opt "package" data_fields with
+                    match Fields.get "package" data_fields with
                     | Some (Json.String p) -> p
                     | _ -> ""
                   in
@@ -1107,32 +1104,32 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let package =
-                    match List.assoc_opt "package" data_fields with
+                    match Fields.get "package" data_fields with
                     | Some (Json.String p) -> p
                     | _ -> ""
                   in
                   let success =
-                    match List.assoc_opt "success" data_fields with
+                    match Fields.get "success" data_fields with
                     | Some (Json.Bool b) -> b
                     | _ -> false
                   in
                   let duration_ms =
-                    match List.assoc_opt "duration_ms" data_fields with
+                    match Fields.get "duration_ms" data_fields with
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
                   let modules_compiled =
-                    match List.assoc_opt "modules_compiled" data_fields with
+                    match Fields.get "modules_compiled" data_fields with
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
                   let cache_hits =
-                    match List.assoc_opt "cache_hits" data_fields with
+                    match Fields.get "cache_hits" data_fields with
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
                   let cache_misses =
-                    match List.assoc_opt "cache_misses" data_fields with
+                    match Fields.get "cache_misses" data_fields with
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
@@ -1153,20 +1150,19 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let package =
-                    match List.assoc_opt "package" data_fields with
+                    match Fields.get "package" data_fields with
                     | Some (Json.String p) -> p
                     | _ -> ""
                   in
                   let reason =
-                    match List.assoc_opt "reason" data_fields with
+                    match Fields.get "reason" data_fields with
                     | Some (Json.Object reason_fields) -> (
-                        match List.assoc_opt "type" reason_fields with
+                        match Fields.get "type" reason_fields with
                         | Some (Json.String "dependencies_failed") -> (
-                            match List.assoc_opt "dependencies" reason_fields with
+                            match Fields.get "dependencies" reason_fields with
                             | Some (Json.Array deps) ->
                                 let dep_names =
-                                  List.filter_map
-                                    (
+                                  List.filter_map ~fn:(
                                       function
                                       | Json.String s -> Some s
                                       | _ -> None
@@ -1187,12 +1183,12 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let package =
-                    match List.assoc_opt "package" data_fields with
+                    match Fields.get "package" data_fields with
                     | Some (Json.String p) -> p
                     | _ -> ""
                   in
                   let hash =
-                    match List.assoc_opt "hash" data_fields with
+                    match Fields.get "hash" data_fields with
                     | Some (Json.String h) -> h
                     | _ -> ""
                   in
@@ -1203,12 +1199,12 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let package =
-                    match List.assoc_opt "package" data_fields with
+                    match Fields.get "package" data_fields with
                     | Some (Json.String p) -> p
                     | _ -> ""
                   in
                   let hash =
-                    match List.assoc_opt "hash" data_fields with
+                    match Fields.get "hash" data_fields with
                     | Some (Json.String h) -> h
                     | _ -> ""
                   in
@@ -1219,20 +1215,19 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let package =
-                    match List.assoc_opt "package" data_fields with
+                    match Fields.get "package" data_fields with
                     | Some (Json.String p) -> p
                     | _ -> ""
                   in
                   let hash =
-                    match List.assoc_opt "hash" data_fields with
+                    match Fields.get "hash" data_fields with
                     | Some (Json.String h) -> h
                     | _ -> ""
                   in
                   let artifacts =
-                    match List.assoc_opt "artifacts" data_fields with
+                    match Fields.get "artifacts" data_fields with
                     | Some (Json.Array arr) ->
-                        List.filter_map
-                          (
+                        List.filter_map ~fn:(
                             function
                             | Json.String s -> Some s
                             | _ -> None
@@ -1247,12 +1242,12 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let package =
-                    match List.assoc_opt "package" data_fields with
+                    match Fields.get "package" data_fields with
                     | Some (Json.String p) -> p
                     | _ -> ""
                   in
                   let file =
-                    match List.assoc_opt "file" data_fields with
+                    match Fields.get "file" data_fields with
                     | Some (Json.String f) -> f
                     | _ -> ""
                   in
@@ -1263,12 +1258,12 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let package =
-                    match List.assoc_opt "package" data_fields with
+                    match Fields.get "package" data_fields with
                     | Some (Json.String p) -> p
                     | _ -> ""
                   in
                   let file =
-                    match List.assoc_opt "file" data_fields with
+                    match Fields.get "file" data_fields with
                     | Some (Json.String f) -> f
                     | _ -> ""
                   in
@@ -1279,37 +1274,37 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let package =
-                    match List.assoc_opt "package" data_fields with
+                    match Fields.get "package" data_fields with
                     | Some (Json.String p) -> p
                     | _ -> ""
                   in
                   let file =
-                    match List.assoc_opt "file" data_fields with
+                    match Fields.get "file" data_fields with
                     | Some (Json.String f) -> f
                     | _ -> ""
                   in
                   let line =
-                    match List.assoc_opt "line" data_fields with
+                    match Fields.get "line" data_fields with
                     | Some (Json.Int l) -> l
                     | _ -> 0
                   in
                   let span =
-                    match List.assoc_opt "span" data_fields with
+                    match Fields.get "span" data_fields with
                     | Some (Json.Array [Json.Int start;Json.Int end_]) -> (start, end_)
                     | _ -> (0, 0)
                   in
                   let message =
-                    match List.assoc_opt "message" data_fields with
+                    match Fields.get "message" data_fields with
                     | Some (Json.String m) -> m
                     | _ -> ""
                   in
                   let hint =
-                    match List.assoc_opt "hint" data_fields with
+                    match Fields.get "hint" data_fields with
                     | Some (Json.String h) -> Some h
                     | _ -> None
                   in
                   let raw =
-                    match List.assoc_opt "raw" data_fields with
+                    match Fields.get "raw" data_fields with
                     | Some (Json.String r) -> r
                     | _ -> message
                   in
@@ -1351,12 +1346,12 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let package =
-                    match List.assoc_opt "package" data_fields with
+                    match Fields.get "package" data_fields with
                     | Some (Json.String p) -> p
                     | _ -> ""
                   in
                   let output =
-                    match List.assoc_opt "output" data_fields with
+                    match Fields.get "output" data_fields with
                     | Some (Json.String o) -> o
                     | _ -> ""
                   in
@@ -1367,7 +1362,7 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let package =
-                    match List.assoc_opt "package" data_fields with
+                    match Fields.get "package" data_fields with
                     | Some (Json.String p) -> p
                     | _ -> ""
                   in
@@ -1378,12 +1373,12 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let package =
-                    match List.assoc_opt "package" data_fields with
+                    match Fields.get "package" data_fields with
                     | Some (Json.String p) -> p
                     | _ -> ""
                   in
                   let hash =
-                    match List.assoc_opt "hash" data_fields with
+                    match Fields.get "hash" data_fields with
                     | Some (Json.String h) -> h
                     | _ -> ""
                   in
@@ -1394,12 +1389,12 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let package =
-                    match List.assoc_opt "package" data_fields with
+                    match Fields.get "package" data_fields with
                     | Some (Json.String p) -> p
                     | _ -> ""
                   in
                   let output =
-                    match List.assoc_opt "output" data_fields with
+                    match Fields.get "output" data_fields with
                     | Some (Json.String o) -> o
                     | _ -> ""
                   in
@@ -1412,12 +1407,12 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let packages =
-                    match List.assoc_opt "packages" data_fields with
+                    match Fields.get "packages" data_fields with
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
                   let duration_ms =
-                    match List.assoc_opt "duration_ms" data_fields with
+                    match Fields.get "duration_ms" data_fields with
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
@@ -1430,12 +1425,12 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let nodes =
-                    match List.assoc_opt "nodes" data_fields with
+                    match Fields.get "nodes" data_fields with
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
                   let duration_ms =
-                    match List.assoc_opt "duration_ms" data_fields with
+                    match Fields.get "duration_ms" data_fields with
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
@@ -1448,7 +1443,7 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let duration_ms =
-                    match List.assoc_opt "duration_ms" data_fields with
+                    match Fields.get "duration_ms" data_fields with
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
@@ -1459,7 +1454,7 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let workers =
-                    match List.assoc_opt "workers" data_fields with
+                    match Fields.get "workers" data_fields with
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
@@ -1470,12 +1465,12 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let workers =
-                    match List.assoc_opt "workers" data_fields with
+                    match Fields.get "workers" data_fields with
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
                   let duration_ms =
-                    match List.assoc_opt "duration_ms" data_fields with
+                    match Fields.get "duration_ms" data_fields with
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
@@ -1485,7 +1480,7 @@ let kind_from_json = fun json ->
           | "riot.pm.lockfile.read.started" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "path" data_fields with
+                  match Fields.get "path" data_fields with
                   | Some (Json.String path) -> Ok (LockfileReadStarted { path })
                   | _ -> Error "Invalid LockfileReadStarted data"
                 )
@@ -1494,7 +1489,7 @@ let kind_from_json = fun json ->
           | "riot.pm.lockfile.read.finished" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "path" data_fields, List.assoc_opt "duration_ms" data_fields with
+                  match Fields.get "path" data_fields, Fields.get "duration_ms" data_fields with
                   | Some (Json.String path), Some (Json.Int duration_ms) -> Ok (LockfileReadFinished {
                     path;
                     duration_ms
@@ -1506,7 +1501,7 @@ let kind_from_json = fun json ->
           | "riot.pm.lockfile.read.failed" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "path" data_fields, List.assoc_opt "error" data_fields with
+                  match Fields.get "path" data_fields, Fields.get "error" data_fields with
                   | Some (Json.String path), Some error_json -> (
                       match Pm_error.of_json error_json with
                       | Ok error -> Ok (LockfileReadFailed { path; error })
@@ -1519,7 +1514,7 @@ let kind_from_json = fun json ->
           | "riot.pm.lockfile.write.started" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "path" data_fields with
+                  match Fields.get "path" data_fields with
                   | Some (Json.String path) -> Ok (LockfileWriteStarted { path })
                   | _ -> Error "Invalid LockfileWriteStarted data"
                 )
@@ -1528,7 +1523,7 @@ let kind_from_json = fun json ->
           | "riot.pm.lockfile.write.finished" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "path" data_fields, List.assoc_opt "duration_ms" data_fields with
+                  match Fields.get "path" data_fields, Fields.get "duration_ms" data_fields with
                   | Some (Json.String path), Some (Json.Int duration_ms) -> Ok (LockfileWriteFinished {
                     path;
                     duration_ms
@@ -1540,7 +1535,7 @@ let kind_from_json = fun json ->
           | "riot.pm.lockfile.write.failed" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "path" data_fields, List.assoc_opt "error" data_fields with
+                  match Fields.get "path" data_fields, Fields.get "error" data_fields with
                   | Some (Json.String path), Some error_json -> (
                       match Pm_error.of_json error_json with
                       | Ok error -> Ok (LockfileWriteFailed { path; error })
@@ -1554,10 +1549,9 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let packages =
-                    match List.assoc_opt "packages" data_fields with
+                    match Fields.get "packages" data_fields with
                     | Some (Json.Array items) ->
-                        List.filter_map
-                          (
+                        List.filter_map ~fn:(
                             function
                             | Json.String package -> Some package
                             | _ -> None
@@ -1566,7 +1560,7 @@ let kind_from_json = fun json ->
                     | _ -> []
                   in
                   let mode =
-                    match List.assoc_opt "mode" data_fields with
+                    match Fields.get "mode" data_fields with
                     | Some json -> (
                         match resolution_mode_of_json json with
                         | Some mode -> mode
@@ -1580,7 +1574,7 @@ let kind_from_json = fun json ->
           | "riot.pm.resolution.using_existing_lock" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "path" data_fields with
+                  match Fields.get "path" data_fields with
                   | Some (Json.String path) -> Ok (DependencyResolutionUsingExistingLock { path })
                   | _ -> Error "Invalid DependencyResolutionUsingExistingLock data"
                 )
@@ -1589,7 +1583,7 @@ let kind_from_json = fun json ->
           | "riot.pm.resolution.refreshing_lock" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "path" data_fields with
+                  match Fields.get "path" data_fields with
                   | Some (Json.String path) -> Ok (DependencyResolutionRefreshingLock { path })
                   | _ -> Error "Invalid DependencyResolutionRefreshingLock data"
                 )
@@ -1599,7 +1593,7 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let path =
-                    match List.assoc_opt "path" data_fields with
+                    match Fields.get "path" data_fields with
                     | Some json -> string_option_of_json json
                     | None -> None
                   in
@@ -1609,9 +1603,9 @@ let kind_from_json = fun json ->
           | "riot.pm.resolution.finished" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "duration_ms" data_fields, List.assoc_opt
+                  match Fields.get "duration_ms" data_fields, Fields.get
                     "resolved_packages"
-                    data_fields, List.assoc_opt "resolved_edges" data_fields with
+                    data_fields, Fields.get "resolved_edges" data_fields with
                   | Some (Json.Int duration_ms), Some (Json.Int resolved_packages), Some (Json.Int resolved_edges) -> Ok (DependencyResolutionFinished {
                     duration_ms;
                     resolved_packages;
@@ -1624,7 +1618,7 @@ let kind_from_json = fun json ->
           | "riot.pm.resolution.failed" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "error" data_fields with
+                  match Fields.get "error" data_fields with
                   | Some error_json -> (
                       match Pm_error.of_json error_json with
                       | Ok error -> Ok (DependencyResolutionFailed { error })
@@ -1637,7 +1631,7 @@ let kind_from_json = fun json ->
           | "riot.pm.registry.index.updating" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "registry" data_fields with
+                  match Fields.get "registry" data_fields with
                   | Some (Json.String registry) -> Ok (RegistryIndexUpdating { registry })
                   | _ -> Error "Invalid RegistryIndexUpdating data"
                 )
@@ -1647,10 +1641,9 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields ->
                   let packages =
-                    match List.assoc_opt "packages" data_fields with
+                    match Fields.get "packages" data_fields with
                     | Some (Json.Array items) ->
-                        List.filter_map
-                          (
+                        List.filter_map ~fn:(
                             function
                             | Json.String package -> Some package
                             | _ -> None
@@ -1664,9 +1657,9 @@ let kind_from_json = fun json ->
           | "riot.pm.universe.built" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "runtime_packages" data_fields, List.assoc_opt
+                  match Fields.get "runtime_packages" data_fields, Fields.get
                     "build_packages"
-                    data_fields, List.assoc_opt "dev_packages" data_fields, List.assoc_opt
+                    data_fields, Fields.get "dev_packages" data_fields, Fields.get
                     "duration_ms"
                     data_fields with
                   | Some (Json.Int runtime_packages), Some (Json.Int build_packages), Some (Json.Int dev_packages), Some (Json.Int duration_ms) -> Ok (DependencyUniverseBuilt {
@@ -1682,7 +1675,7 @@ let kind_from_json = fun json ->
           | "riot.pm.package_metadata.fetch.started" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "registry" data_fields, List.assoc_opt "package" data_fields with
+                  match Fields.get "registry" data_fields, Fields.get "package" data_fields with
                   | Some (Json.String registry), Some (Json.String package) -> Ok (PackageMetadataFetchStarted {
                     registry;
                     package
@@ -1694,12 +1687,12 @@ let kind_from_json = fun json ->
           | "riot.pm.package_metadata.fetch.finished" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "registry" data_fields, List.assoc_opt "package" data_fields, List.assoc_opt
+                  match Fields.get "registry" data_fields, Fields.get "package" data_fields, Fields.get
                     "duration_ms"
                     data_fields with
                   | Some (Json.String registry), Some (Json.String package), Some (Json.Int duration_ms) ->
                       let version =
-                        match List.assoc_opt "version" data_fields with
+                        match Fields.get "version" data_fields with
                         | Some json -> string_option_of_json json
                         | None -> None
                       in
@@ -1711,7 +1704,7 @@ let kind_from_json = fun json ->
           | "riot.pm.package_metadata.fetch.failed" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "registry" data_fields, List.assoc_opt "package" data_fields, List.assoc_opt
+                  match Fields.get "registry" data_fields, Fields.get "package" data_fields, Fields.get
                     "error"
                     data_fields with
                   | Some (Json.String registry), Some (Json.String package), Some error_json -> (
@@ -1726,10 +1719,10 @@ let kind_from_json = fun json ->
           | "riot.pm.source_dependency.materialization.started" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "source_locator" data_fields with
+                  match Fields.get "source_locator" data_fields with
                   | Some (Json.String source_locator) ->
                       let ref_ =
-                        match List.assoc_opt "ref" data_fields with
+                        match Fields.get "ref" data_fields with
                         | Some json -> string_option_of_json json
                         | None -> None
                       in
@@ -1741,15 +1734,15 @@ let kind_from_json = fun json ->
           | "riot.pm.source_dependency.materialization.finished" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "source_locator" data_fields, List.assoc_opt "package" data_fields with
+                  match Fields.get "source_locator" data_fields, Fields.get "package" data_fields with
                   | Some (Json.String source_locator), Some (Json.String package) ->
                       let ref_ =
-                        match List.assoc_opt "ref" data_fields with
+                        match Fields.get "ref" data_fields with
                         | Some json -> string_option_of_json json
                         | None -> None
                       in
                       let version =
-                        match List.assoc_opt "version" data_fields with
+                        match Fields.get "version" data_fields with
                         | Some json -> string_option_of_json json
                         | None -> None
                       in
@@ -1766,9 +1759,9 @@ let kind_from_json = fun json ->
           | "riot.pm.manifest.updated" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "path" data_fields, List.assoc_opt "section" data_fields, List.assoc_opt
+                  match Fields.get "path" data_fields, Fields.get "section" data_fields, Fields.get
                     "operation"
-                    data_fields, List.assoc_opt "dependency" data_fields with
+                    data_fields, Fields.get "dependency" data_fields with
                   | Some (Json.String path), Some (Json.String section), Some operation_json, Some (Json.String dependency) -> (
                       match manifest_operation_of_json operation_json with
                       | Some operation -> Ok (DependencyManifestUpdated {
@@ -1786,7 +1779,7 @@ let kind_from_json = fun json ->
           | "riot.pm.package.locked" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields with
+                  match Fields.get "package" data_fields, Fields.get "version" data_fields with
                   | Some (Json.String package), Some (Json.String version) -> Ok (PackageVersionLocked {
                     package;
                     version
@@ -1798,7 +1791,7 @@ let kind_from_json = fun json ->
           | "riot.pm.package.unchanged" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "packages" data_fields with
+                  match Fields.get "packages" data_fields with
                   | Some (Json.Int packages) -> Ok (PackageVersionsUnchanged { packages })
                   | _ -> Error "Invalid PackageVersionsUnchanged data"
                 )
@@ -1807,7 +1800,7 @@ let kind_from_json = fun json ->
           | "riot.pm.package.updated" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields, List.assoc_opt "from_version" data_fields, List.assoc_opt
+                  match Fields.get "package" data_fields, Fields.get "from_version" data_fields, Fields.get
                     "to_version"
                     data_fields with
                   | Some (Json.String package), Some (Json.String from_version), Some (Json.String to_version) -> Ok (PackageVersionUpdated {
@@ -1822,7 +1815,7 @@ let kind_from_json = fun json ->
           | "riot.pm.package_manifest.fetch.started" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields with
+                  match Fields.get "package" data_fields, Fields.get "version" data_fields with
                   | Some (Json.String package), Some (Json.String version) -> Ok (PackageManifestFetchStarted {
                     package;
                     version
@@ -1834,7 +1827,7 @@ let kind_from_json = fun json ->
           | "riot.pm.package_manifest.fetch.finished" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                  match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "duration_ms"
                     data_fields with
                   | Some (Json.String package), Some (Json.String version), Some (Json.Int duration_ms) -> Ok (PackageManifestFetchFinished {
@@ -1849,10 +1842,10 @@ let kind_from_json = fun json ->
           | "riot.pm.package_manifest.fetch.failed" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields, List.assoc_opt "error" data_fields with
+                  match Fields.get "package" data_fields, Fields.get "error" data_fields with
                   | Some (Json.String package), Some error_json -> (
                       let version =
-                        match List.assoc_opt "version" data_fields with
+                        match Fields.get "version" data_fields with
                         | Some json -> string_option_of_json json
                         | None -> None
                       in
@@ -1867,7 +1860,7 @@ let kind_from_json = fun json ->
           | "riot.pm.package_download.started" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                  match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
                     data_fields with
                   | Some (Json.String package), Some (Json.String version), Some (Json.String path) -> Ok (PackageDownloadStarted {
@@ -1882,9 +1875,9 @@ let kind_from_json = fun json ->
           | "riot.pm.package_download.finished" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                  match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
-                    data_fields, List.assoc_opt "duration_ms" data_fields with
+                    data_fields, Fields.get "duration_ms" data_fields with
                   | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some (Json.Int duration_ms) -> Ok (PackageDownloadFinished {
                     package;
                     version;
@@ -1898,9 +1891,9 @@ let kind_from_json = fun json ->
           | "riot.pm.package_download.failed" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                  match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
-                    data_fields, List.assoc_opt "error" data_fields with
+                    data_fields, Fields.get "error" data_fields with
                   | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some error_json -> (
                       match Pm_error.of_json error_json with
                       | Ok error -> Ok (PackageDownloadFailed { package; version; path; error })
@@ -1913,9 +1906,9 @@ let kind_from_json = fun json ->
           | "riot.pm.package_download.skipped" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                  match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
-                    data_fields, List.assoc_opt "reason" data_fields with
+                    data_fields, Fields.get "reason" data_fields with
                   | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some (Json.String reason) -> Ok (PackageDownloadSkipped {
                     package;
                     version;
@@ -1929,7 +1922,7 @@ let kind_from_json = fun json ->
           | "riot.pm.package_cache.hit" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                  match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
                     data_fields with
                   | Some (Json.String package), Some (Json.String version), Some (Json.String path) -> Ok (PackageCacheHit {
@@ -1944,7 +1937,7 @@ let kind_from_json = fun json ->
           | "riot.pm.package_materialization.started" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                  match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
                     data_fields with
                   | Some (Json.String package), Some (Json.String version), Some (Json.String path) -> Ok (PackageMaterializationStarted {
@@ -1959,9 +1952,9 @@ let kind_from_json = fun json ->
           | "riot.pm.package_materialization.finished" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                  match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
-                    data_fields, List.assoc_opt "duration_ms" data_fields with
+                    data_fields, Fields.get "duration_ms" data_fields with
                   | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some (Json.Int duration_ms) -> Ok (PackageMaterializationFinished {
                     package;
                     version;
@@ -1975,9 +1968,9 @@ let kind_from_json = fun json ->
           | "riot.pm.package_materialization.failed" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                  match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
-                    data_fields, List.assoc_opt "error" data_fields with
+                    data_fields, Fields.get "error" data_fields with
                   | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some error_json -> (
                       match Pm_error.of_json error_json with
                       | Ok error -> Ok (PackageMaterializationFailed {
@@ -1995,12 +1988,12 @@ let kind_from_json = fun json ->
           | "riot.pm.package_resolved_for_build" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields, List.assoc_opt "path" data_fields, List.assoc_opt
+                  match Fields.get "package" data_fields, Fields.get "path" data_fields, Fields.get
                     "workspace"
                     data_fields with
                   | Some (Json.String package), Some (Json.String path), Some (Json.Bool workspace) ->
                       let version =
-                        match List.assoc_opt "version" data_fields with
+                        match Fields.get "version" data_fields with
                         | Some json -> string_option_of_json json
                         | None -> None
                       in
@@ -2012,7 +2005,7 @@ let kind_from_json = fun json ->
           | "riot.pm.package_download.queued" -> (
               match data with
               | Json.Object data_fields -> (
-                  match List.assoc_opt "package" data_fields, List.assoc_opt "version" data_fields, List.assoc_opt
+                  match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
                     data_fields with
                   | Some (Json.String package), Some (Json.String version), Some (Json.String path) -> Ok (PackageDownloadQueued {
@@ -2036,19 +2029,19 @@ let from_json = fun json ->
   match json with
   | Json.Object fields -> (
       let timestamp =
-        match List.assoc_opt "timestamp" fields with
+        match Fields.get "timestamp" fields with
         | Some (Json.String _ts) ->
             (* For now, use current time - proper timestamp parsing can be added later *)
             DateTime.now ()
         | _ -> DateTime.now ()
       in
       let session_id =
-        match List.assoc_opt "session_id" fields with
+        match Fields.get "session_id" fields with
         | Some (Json.String s) -> Session_id.of_string s
         | _ -> Session_id.make ()
       in
       let level =
-        match List.assoc_opt "level" fields with
+        match Fields.get "level" fields with
         | Some (Json.String "error") -> Error
         | Some (Json.String "warn") -> Warn
         | Some (Json.String "info") -> Info

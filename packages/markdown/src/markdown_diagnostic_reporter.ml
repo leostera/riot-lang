@@ -7,10 +7,10 @@ type source_layout = {
 }
 
 let make_source_layout = fun source ->
-  let lines = String.split_on_char '\n' source in
+  let lines = String.split ~by:"\n" source in
   let rec build_starts remaining offset acc =
     match remaining with
-    | [] -> List.rev acc
+    | [] -> List.reverse acc
     | head :: tail -> build_starts tail (offset + String.length head + 1) (offset :: acc)
   in
   let line_starts = build_starts lines 0 [] in
@@ -52,7 +52,7 @@ let extract_code_snippet = fun layout (span: Ceibo.Span.t) ->
     match nth_opt layout.lines line_idx with
     | None -> None
     | Some code_line ->
-        let pointer = String.make start_col ' ' ^ "^" in
+        let pointer = String.make ~len:start_col ~char:' ' ^ "^" in
         Some (code_line, pointer, line_idx + 1)
 
 let format = fun ~file ~source diagnostics ->
@@ -84,6 +84,6 @@ let format = fun ~file ~source diagnostics ->
     in
     main_message ^ "\n" ^ line ^ "  hint: " ^ hint ^ rendered_fix ^ "\n"
   in
-  String.concat "\n" (List.map format_one diagnostics)
+  String.concat "\n" (List.map diagnostics ~fn:format_one)
 
 let print = fun ~file ~source diagnostics -> print (format ~file ~source diagnostics)

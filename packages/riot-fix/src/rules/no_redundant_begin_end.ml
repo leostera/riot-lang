@@ -17,17 +17,18 @@ actually doing.
 |}
 
 let opens_with_begin = fun ({ syntax_node; _ }: Syn.Cst.parenthesized_expression) ->
-  Syn.Ceibo.Red.SyntaxNode.children syntax_node |> List.find_map
-    (
-      function
-      | Syn.Ceibo.Red.Token token ->
-          let text = Syn.Ceibo.Red.SyntaxToken.text token in
-          if String.equal text " " || String.equal text "\n" || String.equal text "\t" then
-            None
-          else
-            Some (String.equal text "begin")
-      | _ -> None
-    ) |> Option.unwrap_or ~default:false
+  Syn.Ceibo.Red.SyntaxNode.children syntax_node
+  |> List.filter_map ~fn:(function
+    | Syn.Ceibo.Red.Token token ->
+        let text = Syn.Ceibo.Red.SyntaxToken.text token in
+        if String.equal text " " || String.equal text "\n" || String.equal text "\t" then
+          None
+        else
+          Some (String.equal text "begin")
+    | _ ->
+        None)
+  |> List.head
+  |> Option.unwrap_or ~default:false
 
 let make_fix = fun ({ syntax_node; inner; _ }: Syn.Cst.parenthesized_expression) ->
   Fix.make
@@ -53,8 +54,9 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.expressions_of_structure_item
-  |> List.filter_map diagnostic_for_expression
+  |> List.map ~fn:Traversal.expressions_of_structure_item
+  |> List.concat
+  |> List.filter_map ~fn:diagnostic_for_expression
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

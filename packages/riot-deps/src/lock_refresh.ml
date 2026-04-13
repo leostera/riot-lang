@@ -1,6 +1,6 @@
 open Std
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 let compare_by_path = fun left right ->
   String.compare (Path.to_string left) (Path.to_string right)
@@ -9,12 +9,12 @@ let rec canonicalize_toml_value = function
   | Std.Data.Toml.String _ as value -> value
   | Std.Data.Toml.Int _ as value -> value
   | Std.Data.Toml.Bool _ as value -> value
-  | Std.Data.Toml.Array items -> Std.Data.Toml.Array (List.map canonicalize_toml_value items)
+  | Std.Data.Toml.Array items -> Std.Data.Toml.Array (List.map items ~fn:canonicalize_toml_value)
   | Std.Data.Toml.Table fields ->
       Std.Data.Toml.Table (
-        fields |> List.map (fun (key, value) -> (key, canonicalize_toml_value value)) |> List.sort
-          (fun (left, _) (right, _) ->
-            String.compare left right)
+        fields
+        |> List.map ~fn:(fun (key, value) -> (key, canonicalize_toml_value value))
+        |> List.sort ~compare:(fun (left, _) (right, _) -> String.compare left right)
       )
 
 let manifest_id = fun ~workspace_root manifest_path ->
@@ -25,7 +25,10 @@ let manifest_id = fun ~workspace_root manifest_path ->
 let dependency_section_value = fun ~manifest_path section_name toml ->
   match toml with
   | Std.Data.Toml.Table fields -> (
-      match List.assoc_opt section_name fields with
+      match
+        List.find fields ~fn:(fun (key, _) -> String.equal key section_name)
+        |> Option.map ~fn:(fun (_, value) -> value)
+      with
       | Some (Std.Data.Toml.Table _ as value) -> Ok (canonicalize_toml_value value)
       | Some _ -> Error (format
         Format.[
@@ -49,8 +52,7 @@ let load_manifest_toml = fun ~workspace_manager manifest_path ->
   | Some workspace_manager -> Riot_model.Workspace_manager.load_riot_toml workspace_manager manifest_path
   | None ->
       let* source = Fs.read_to_string manifest_path
-      |> Result.map_error
-        (fun err ->
+      |> Result.map_err ~fn:(fun err ->
           format
             Format.[
               str "failed to read manifest '";
@@ -59,8 +61,7 @@ let load_manifest_toml = fun ~workspace_manager manifest_path ->
               str (IO.error_message err);
             ]) in
       Std.Data.Toml.parse source
-      |> Result.map_error
-        (fun err ->
+      |> Result.map_err ~fn:(fun err ->
           format
             Format.[
               str "failed to parse manifest '";
@@ -82,10 +83,10 @@ let manifest_dependency_fingerprint = fun ~workspace_manager ~workspace_root man
   ])
 
 let dependency_hash = fun ~workspace_manager ~workspace_root ~manifest_paths ->
-  let manifest_paths = List.sort_uniq compare_by_path manifest_paths in
+  let manifest_paths = List.unique manifest_paths ~compare:compare_by_path in
   let rec loop acc = function
     | [] ->
-        let canonical = Std.Data.Toml.Array (List.rev acc)
+        let canonical = Std.Data.Toml.Array (List.reverse acc)
         |> canonicalize_toml_value
         |> Std.Data.Toml.to_string in
         Ok (Crypto.hash_string canonical |> Crypto.Digest.hex)

@@ -230,24 +230,30 @@ let builtin_rule_factories = fun () ->
   ]
 
 let builtin_rule_category = fun rule_id ->
-  builtin_rule_factories () |> List.find_opt
-    (fun factory ->
-      String.equal factory.id rule_id) |> Option.map (fun factory -> factory.category)
+  builtin_rule_factories ()
+  |> List.find ~fn:(fun factory ->
+    String.equal factory.id rule_id)
+  |> Option.map ~fn:(fun factory -> factory.category)
 
 let package_rules = fun () -> Provider_registry.rules ()
 
 let unqualified_rule_id = fun rule_id ->
   match String.last_index rule_id ':' with
-  | Some idx -> String.sub rule_id (idx + 1) (String.length rule_id - idx - 1)
+  | Some idx -> String.sub rule_id ~offset:(idx + 1) ~len:(String.length rule_id - idx - 1)
   | None -> rule_id
 
 let filtered_builtin_rules = fun package_rules ->
-  let shadowed_ids = package_rules |> List.map Rule.id |> List.map unqualified_rule_id in
+  let shadowed_ids =
+    package_rules
+    |> List.map ~fn:Rule.id
+    |> List.map ~fn:unqualified_rule_id
+  in
   builtin_rule_factories ()
-  |> List.map (fun factory -> factory.make ())
-  |> List.filter (fun rule -> not (List.mem (unqualified_rule_id (Rule.id rule)) shadowed_ids))
+  |> List.map ~fn:(fun factory -> factory.make ())
+  |> List.filter ~fn:(fun rule ->
+    not (List.contains shadowed_ids ~value:(unqualified_rule_id (Rule.id rule))))
 
-let builtin_rules = fun () -> builtin_rule_factories () |> List.map (fun factory -> factory.make ())
+let builtin_rules = fun () -> builtin_rule_factories () |> List.map ~fn:(fun factory -> factory.make ())
 
 let run = fun pipeline ?filename ?on_progress source ->
   Fixme.Source_runner.run ~rules:pipeline.rules ?filename ?on_progress source
@@ -256,31 +262,33 @@ let default_rules = fun () ->
   let package_rules = package_rules () in
   filtered_builtin_rules package_rules @ package_rules
 
-let default_rule_ids = fun () -> default_rules () |> List.map Rule.id
+let default_rule_ids = fun () -> default_rules () |> List.map ~fn:Rule.id
 
 let matching_rule_ids = fun rules requested_id ->
-  let available_ids = List.map Rule.id rules in
-  if List.mem requested_id available_ids then
+  let available_ids = List.map rules ~fn:Rule.id in
+  if List.contains available_ids ~value:requested_id then
     [ requested_id ]
   else if String.contains requested_id ":" then
     []
   else
     let suffix = ":" ^ requested_id in
-    List.filter (String.ends_with ~suffix) available_ids
+    List.filter available_ids ~fn:(String.ends_with ~suffix)
 
 let rules_by_id = fun ids ->
   let available_rules = default_rules () in
-  ids |> List.concat_map
-    (fun id ->
-      match matching_rule_ids available_rules id with
-      | [] ->
-          Log.warn ("Unknown riot-fix rule '" ^ id ^ "', ignoring");
-          []
-      | matches -> matches) |> List.sort_uniq String.compare |> List.filter_map
-    (fun id ->
-      List.find_opt
-        (fun rule ->
-          String.equal (Rule.id rule) id)
-        available_rules)
+  ids
+  |> List.map ~fn:(fun id ->
+    match matching_rule_ids available_rules id with
+    | [] ->
+        Log.warn ("Unknown riot-fix rule '" ^ id ^ "', ignoring");
+        []
+    | matches ->
+        matches)
+  |> List.concat
+  |> List.sort ~compare:String.compare
+  |> List.unique ~compare:String.compare
+  |> List.filter_map ~fn:(fun id ->
+    List.find available_rules ~fn:(fun rule ->
+      String.equal (Rule.id rule) id))
 
 let default = fun () -> make ~rules:(default_rules ()) ()

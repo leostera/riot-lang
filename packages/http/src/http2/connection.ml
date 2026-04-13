@@ -109,7 +109,7 @@ let create = fun ~role ?(config = default_config) () ->
   {
     role;
     state = Cell.create Idle;
-    streams = HashMap.with_capacity 16;
+    streams = HashMap.with_capacity ~size:16;
     next_stream_id =
       Cell.create
         (
@@ -188,11 +188,11 @@ let create_stream = fun conn ->
       data_chunks = Cell.create [];
     }
     in
-    let _ = HashMap.insert conn.streams stream_id stream in
+    let _ = HashMap.insert conn.streams ~key:stream_id ~value:stream in
     Ok stream_id
 
 let get_stream = fun conn stream_id ->
-  HashMap.get conn.streams stream_id
+  HashMap.get conn.streams ~key:stream_id
 
 let send_headers = fun conn ~stream_id ~headers ~end_stream ->
   match get_stream conn stream_id with
@@ -456,8 +456,8 @@ let process_settings_frame = fun conn settings_list flags ->
     Ok [ SettingsAckReceived ]
   else (* Apply received settings *)
   (
-    List.iter
-      (
+    List.for_each settings_list
+      ~fn:(
         function
         | Frame.HeaderTableSize size ->
             Cell.set conn.remote_settings.header_table_size size;
@@ -472,8 +472,7 @@ let process_settings_frame = fun conn settings_list flags ->
             Cell.set conn.remote_settings.max_frame_size size
         | Frame.MaxHeaderListSize size ->
             Cell.set conn.remote_settings.max_header_list_size (Some size)
-      )
-      settings_list;
+      );
     Ok [ SettingsReceived settings_list ]
   )
 
@@ -481,7 +480,7 @@ let process_headers_frame = fun conn stream_id payload flags ->
   match payload with
   | Frame.HeadersPayload { header_block_fragment; _ } -> (
       (* Decode HPACK-encoded headers *)
-      let header_bytes = Bytes.of_string header_block_fragment in
+      let header_bytes = Bytes.from_string header_block_fragment in
       match Hpack.decode conn.hpack_decoder header_bytes with
       | Error e -> Error ("HPACK decode error: " ^ e)
       | Ok headers ->
@@ -499,7 +498,7 @@ let process_headers_frame = fun conn stream_id payload flags ->
                   data_chunks = Cell.create [];
                 }
                 in
-                let _ = HashMap.insert conn.streams stream_id s in
+                let _ = HashMap.insert conn.streams ~key:stream_id ~value:s in
                 s
           in
           Cell.set stream.headers headers;
@@ -512,7 +511,7 @@ let process_headers_frame = fun conn stream_id payload flags ->
 let process_data_frame = fun conn stream_id payload flags ->
   match payload with
   | Frame.DataPayload { data; _ } ->
-      let data_bytes = Bytes.of_string data in
+      let data_bytes = Bytes.from_string data in
       let end_stream = flags.Frame.end_stream in
       (
         match get_stream conn stream_id with
@@ -598,7 +597,7 @@ let process_data = fun conn data ->
         match process_frame conn frame with
         | Error e -> Error e
         | Ok new_events ->
-            let rest_bytes = Bytes.of_string rest in
+            let rest_bytes = Bytes.from_string rest in
             if Bytes.length rest_bytes > 0 then
               process_all (events @ new_events) rest_bytes
             else

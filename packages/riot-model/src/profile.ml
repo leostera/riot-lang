@@ -189,8 +189,8 @@ let apply_overrides = fun base overrides ->
   Log.debug ("[PROFILE] apply_overrides: looking for profile '" ^ base.name ^ "' in overrides");
   Log.debug
     ("[PROFILE] available overrides: "
-    ^ String.concat ", " (List.map (fun (name, _override) -> name) overrides));
-  match List.assoc_opt base.name overrides with
+    ^ String.concat ", " (List.map overrides ~fn:(fun (name, _override) -> name)));
+  match Fields.get base.name overrides with
   | None ->
       Log.debug ("[PROFILE] No override found for '" ^ base.name ^ "'");
       base
@@ -202,11 +202,10 @@ let apply_overrides = fun base overrides ->
 let override_from_toml: (string * Std.Data.Toml.value) list -> profile_override = fun table_items ->
   let open Std.Data.Toml in
     let get_string_list key =
-      match List.assoc_opt key table_items with
+      match Fields.get key table_items with
       | Some (Array arr) ->
           Override (
-            List.filter_map
-              (
+            List.filter_map ~fn:(
                 function
                 | String s -> Some s
                 | _ -> None
@@ -216,7 +215,7 @@ let override_from_toml: (string * Std.Data.Toml.value) list -> profile_override 
       | _ -> Inherit
     in
     let get_int_opt key =
-      match List.assoc_opt key table_items with
+      match Fields.get key table_items with
       | Some (String s) -> (
           match Int.parse s with
           | Some value -> Override (Some value)
@@ -225,12 +224,12 @@ let override_from_toml: (string * Std.Data.Toml.value) list -> profile_override 
       | _ -> Inherit
     in
     let get_bool key =
-      match List.assoc_opt key table_items with
+      match Fields.get key table_items with
       | Some (Bool b) -> Override b
       | _ -> Inherit
     in
     let get_compilation_kind () =
-      match List.assoc_opt "kind" table_items with
+      match Fields.get "kind" table_items with
       | Some (String "bytecode") -> Override Ocaml_compiler.Bytecode
       | Some (String "native") -> Override Ocaml_compiler.Native
       | _ -> Inherit
@@ -254,10 +253,9 @@ let override_from_toml: (string * Std.Data.Toml.value) list -> profile_override 
 let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_items ~base ->
   let open Std.Data.Toml in
     let get_string_list key =
-      match List.assoc_opt key table_items with
+      match Fields.get key table_items with
       | Some (Array arr) ->
-          List.filter_map
-            (
+          List.filter_map ~fn:(
               function
               | String s -> Some s
               | _ -> None
@@ -266,7 +264,7 @@ let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_it
       | _ -> base.open_modules
     in
     let get_int_opt key =
-      match List.assoc_opt key table_items with
+      match Fields.get key table_items with
       | Some (String s) -> (
           match Int.parse s with
           | Some value -> Some value
@@ -275,12 +273,12 @@ let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_it
       | _ -> base.inline
     in
     let get_bool key default =
-      match List.assoc_opt key table_items with
+      match Fields.get key table_items with
       | Some (Bool b) -> b
       | _ -> default
     in
     let get_compilation_kind () =
-      match List.assoc_opt "kind" table_items with
+      match Fields.get "kind" table_items with
       | Some (String "bytecode") -> Ocaml_compiler.Bytecode
       | Some (String "native") -> Ocaml_compiler.Native
       | _ -> base.kind
@@ -298,10 +296,9 @@ let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_it
       errors = base.errors;
       cc_flags =
         (
-          match List.assoc_opt "cc_flags" table_items with
+          match Fields.get "cc_flags" table_items with
           | Some (Array arr) ->
-              List.filter_map
-                (
+              List.filter_map ~fn:(
                   function
                   | String s -> Some s
                   | _ -> None
@@ -311,10 +308,9 @@ let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_it
         );
       ld_flags =
         (
-          match List.assoc_opt "ld_flags" table_items with
+          match Fields.get "ld_flags" table_items with
           | Some (Array arr) ->
-              List.filter_map
-                (
+              List.filter_map ~fn:(
                   function
                   | String s -> Some s
                   | _ -> None
@@ -324,10 +320,9 @@ let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_it
         );
       ocamlc_flags =
         (
-          match List.assoc_opt "ocamlc_flags" table_items with
+          match Fields.get "ocamlc_flags" table_items with
           | Some (Array arr) ->
-              List.filter_map
-                (
+              List.filter_map ~fn:(
                   function
                   | String s -> Some s
                   | _ -> None
@@ -370,7 +365,7 @@ let to_compiler_flags = fun profile ->
       flags
   in
   let flags =
-    List.fold_left (fun acc m -> Ocaml_compiler.Open m :: acc) flags profile.open_modules
+    List.fold_left profile.open_modules ~acc:flags ~fn:(fun acc m -> Ocaml_compiler.Open m :: acc)
   in
   let flags =
     if List.is_empty profile.warnings then
@@ -385,9 +380,9 @@ let to_compiler_flags = fun profile ->
       Ocaml_compiler.WarnError profile.errors :: flags
   in
   let flags =
-    List.rev_append (List.map (fun flag -> Ocaml_compiler.Raw flag) profile.ocamlc_flags) flags
+    List.reverse_append (List.map profile.ocamlc_flags ~fn:(fun flag -> Ocaml_compiler.Raw flag)) flags
   in
-  Ocaml_compiler.flags_to_string (List.rev flags)
+  Ocaml_compiler.flags_to_string (List.reverse flags)
 
 (** Hash profile into a Sha256 hasher state *)
 let hash = fun state profile ->
@@ -408,18 +403,18 @@ let hash = fun state profile ->
   H.write state (Bool.to_string profile.compact);
   H.write state (Bool.to_string profile.unsafe);
   H.write state (Bool.to_string profile.no_alias_deps);
-  List.iter (H.write state) profile.open_modules;
-  List.iter
-    (fun w ->
-      H.write state (Ocaml_compiler.warning_to_string w))
-    profile.warnings;
-  List.iter
-    (fun w ->
-      H.write state (Ocaml_compiler.warning_to_string w))
-    profile.errors;
-  List.iter (H.write state) profile.cc_flags;
-  List.iter (H.write state) profile.ld_flags;
-  List.iter (H.write state) profile.ocamlc_flags
+  List.for_each profile.open_modules ~fn:(H.write state);
+  List.for_each
+    profile.warnings
+    ~fn:(fun w ->
+      H.write state (Ocaml_compiler.warning_to_string w));
+  List.for_each
+    profile.errors
+    ~fn:(fun w ->
+      H.write state (Ocaml_compiler.warning_to_string w));
+  List.for_each profile.cc_flags ~fn:(H.write state);
+  List.for_each profile.ld_flags ~fn:(H.write state);
+  List.for_each profile.ocamlc_flags ~fn:(H.write state)
 
 (** Convert profile to JSON *)
 let to_json = fun profile ->
@@ -446,8 +441,8 @@ let to_json = fun profile ->
         ("compact", bool profile.compact);
         ("unsafe", bool profile.unsafe);
         ("no_alias_deps", bool profile.no_alias_deps);
-        ("open_modules", array (List.map string profile.open_modules));
-        ("cc_flags", array (List.map string profile.cc_flags));
-        ("ld_flags", array (List.map string profile.ld_flags));
-        ("ocamlc_flags", array (List.map string profile.ocamlc_flags));
+        ("open_modules", array (List.map profile.open_modules ~fn:string));
+        ("cc_flags", array (List.map profile.cc_flags ~fn:string));
+        ("ld_flags", array (List.map profile.ld_flags ~fn:string));
+        ("ocamlc_flags", array (List.map profile.ocamlc_flags ~fn:string));
       ]

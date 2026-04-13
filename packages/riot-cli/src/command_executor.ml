@@ -1,16 +1,7 @@
 open Std
 
 let array_of_list = fun lst ->
-  match lst with
-  | [] -> [||]
-  | hd :: _ ->
-      let len = List.length lst in
-      let arr = Kernel.Array.make len hd in
-      List.iteri
-        (fun i x ->
-          Kernel.Array.set arr i x)
-        lst;
-      arr
+  Kernel.Array.from_list lst
 
 let execute = fun ~command_binary ~args ->
   let command_path = Path.to_string command_binary in

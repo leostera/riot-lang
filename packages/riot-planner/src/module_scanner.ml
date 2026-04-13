@@ -68,8 +68,7 @@ let rec scan_directory = fun ~from_dir ~rel_path ->
   | Ok iter ->
       let entries = Std.Iter.MutIterator.to_list iter in
       let scanned =
-        List.concat_map
-          (fun entry ->
+        List.map entries ~fn:(fun entry ->
             let source_path = Path.(from_dir / entry) in
             let entry_rel_path = Path.(rel_path / entry) in
             let name = Path.basename entry in
@@ -88,9 +87,9 @@ let rec scan_directory = fun ~from_dir ~rel_path ->
               )
             | Error _ ->
                 [])
-          entries
+        |> List.concat
       in
-      List.sort compare_entries scanned
+      List.sort scanned ~compare:compare_entries
 
 (** Scan a source directory relative to project root.
 

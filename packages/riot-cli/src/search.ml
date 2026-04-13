@@ -63,13 +63,12 @@ let write_human_results = fun ~query results ->
   match results with
   | [] -> println ("No packages found for '" ^ query ^ "'")
   | results ->
-      List.iter
+      List.for_each results ~fn:
         (fun (result: Riot_deps.suggested_package) ->
           match result.description with
           | Some description -> println
             (result.package ^ "@" ^ result.latest_version ^ " - " ^ description)
           | None -> println (result.package ^ "@" ^ result.latest_version))
-        results
 
 let run = fun matches ->
   let json = ArgParser.get_flag matches "json" in
@@ -81,7 +80,7 @@ let run = fun matches ->
       | Ok results ->
           if json then
             results
-            |> List.map json_of_result
+            |> List.map ~fn:json_of_result
             |> fun items -> Data.Json.Array items |> Data.Json.to_string |> println
           else
             write_human_results ~query:request.query results;

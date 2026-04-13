@@ -53,9 +53,9 @@ let rec dispatch_ready_workers = fun state ->
       | Some file_path ->
           send state.owner (Messages.FileStarted file_path);
           send worker (Messages.RunTask file_path);
-          let _ = HashMap.insert state.busy_workers worker file_path in
+          let _ = HashMap.insert state.busy_workers ~key:worker ~value:file_path in
           dispatch_ready_workers state
-      | None -> Queue.push state.idle_workers worker
+      | None -> Queue.push state.idle_workers ~value:worker
     )
   | None -> ()
 
@@ -70,7 +70,7 @@ let is_complete = fun state ->
   && (state.stop_requested || Queue.is_empty state.file_queue)
 
 let handle_complete = fun state ->
-  let summary = Runner.summarize (List.rev state.results_rev) in
+  let summary = Runner.summarize (List.reverse state.results_rev) in
   send state.owner (Messages.AllComplete summary);
   Ok ()
 
@@ -99,7 +99,7 @@ let rec loop = fun state ->
 and handle_scanner_discovered = fun state file ->
   if not state.stop_requested then
     (
-      Queue.push state.file_queue file;
+      Queue.push state.file_queue ~value:file;
       dispatch_ready_workers state
     );
   loop state
@@ -126,7 +126,7 @@ and handle_worker_ready = fun state worker ->
     | Some file_path ->
         send state.owner (Messages.FileStarted file_path);
         send worker (Messages.RunTask file_path);
-        let _ = HashMap.insert state.busy_workers worker file_path in
+        let _ = HashMap.insert state.busy_workers ~key:worker ~value:file_path in
         loop state
     | None ->
         if state.discovery_complete then
@@ -138,12 +138,12 @@ and handle_worker_ready = fun state worker ->
               loop state
           )
         else (
-          Queue.push state.idle_workers worker;
+          Queue.push state.idle_workers ~value:worker;
           loop state
         )
 
 and handle_file_result = fun state r ->
-  ignore (HashMap.remove state.busy_workers r.worker);
+  let _ = HashMap.remove state.busy_workers ~key:r.worker in
   state.results_rev <- r.result :: state.results_rev;
   state.diagnostics_seen <- state.diagnostics_seen + diagnostic_count r.result;
   (
@@ -177,21 +177,21 @@ let init = fun config () ->
   let discovery_complete =
     match config.input with
     | Files files ->
-        List.iter
-          (fun f ->
-            Queue.push file_queue f)
-          files;
+      List.for_each files ~fn:(fun f ->
+          Queue.push file_queue ~value:f);
         true
     | Roots roots ->
-        ignore
-          (File_scanner.start
+        let _ =
+          File_scanner.start
             ~owner:(self ())
-            (File_scanner.create_many ~roots ~should_ignore:(should_ignore_file config.scope) ()));
+            (File_scanner.create_many ~roots ~should_ignore:(should_ignore_file config.scope) ())
+        in
         false
   in
   for _ = 1 to config.concurrency do
     yield ();
-    ignore (Worker.start { mode = config.mode; scope = config.scope; coordinator = self () })
+    let _ = Worker.start { mode = config.mode; scope = config.scope; coordinator = self () } in
+    ()
   done;
   let state = {
     file_queue;

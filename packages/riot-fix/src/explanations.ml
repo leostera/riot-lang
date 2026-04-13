@@ -1,8 +1,11 @@
 open Std
 
-let builtin_entries = fun () -> Pipeline.builtin_rules () |> List.map Rule.explanation
+let builtin_entries = fun () -> Pipeline.builtin_rules () |> List.map ~fn:Rule.explanation
 
-let package_entries = fun () -> Provider_registry.providers () |> List.concat_map Provider.explanations
+let package_entries = fun () ->
+  Provider_registry.providers ()
+  |> List.map ~fn:Provider.explanations
+  |> List.concat
 
 let all = fun () -> builtin_entries () @ package_entries ()
 
@@ -18,8 +21,8 @@ let normalize_rule_id = fun rule_id ->
 
 let explain = fun rule_id ->
   let normalized = normalize_rule_id rule_id in
-  all () |> List.find_opt
-    (fun entry ->
-      String.equal Explanation.(entry.rule_id) normalized)
+  all ()
+  |> List.find ~fn:(fun entry ->
+    String.equal Explanation.(entry.rule_id) normalized)
 
 let format = Explanation.format

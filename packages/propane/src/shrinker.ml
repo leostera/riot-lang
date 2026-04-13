@@ -31,20 +31,19 @@ let towards = fun target ->
       in
       (* Generate sequence, remove last element (original value) *)
       let steps = halve abs_diff [] in
-      let steps = List.rev steps in
+      let steps = List.reverse steps in
       (* Reverse to get decreasing order *)
       let steps =
         match steps with
         | _ :: rest -> rest
         | [] -> []
       in
-      List.map
-        (fun step ->
+      List.map steps
+        ~fn:(fun step ->
           if diff > 0 then
             target + step
           else
             target - step)
-        steps
 
 (* === PRIMITIVE SHRINKERS === *)
 
@@ -55,7 +54,7 @@ let int_towards = fun target ->
     if value = target then
       []
     else
-      let diff = abs (value - target) in
+      let diff = Int.abs (value - target) in
       let rec halve n acc =
         if n = 0 then
           acc
@@ -63,13 +62,12 @@ let int_towards = fun target ->
           halve (n / 2) (n :: acc)
       in
       let steps = halve diff [] in
-      List.map
-        (fun step ->
+      List.map steps
+        ~fn:(fun step ->
           if value > target then
             value - step
           else
             value + step)
-        steps
 
 let int32 = fun value ->
   if value = 0l then
@@ -82,13 +80,12 @@ let int32 = fun value ->
         halve (Int32.div n 2l) (n :: acc)
     in
     let steps = halve (Int32.abs value) [] in
-    List.map
-      (fun step ->
+    List.map steps
+      ~fn:(fun step ->
         if value > 0l then
           Int32.sub value step
         else
           Int32.add value step)
-      steps
 
 let int64 = fun value ->
   if value = 0L then
@@ -101,13 +98,12 @@ let int64 = fun value ->
         halve (Int64.div n 2L) (n :: acc)
     in
     let steps = halve (Int64.abs value) [] in
-    List.map
-      (fun step ->
+    List.map steps
+      ~fn:(fun step ->
         if value > 0L then
           Int64.sub value step
         else
           Int64.add value step)
-      steps
 
 let float = fun value ->
   if value = 0.0 then
@@ -120,13 +116,12 @@ let float = fun value ->
         halve (n /. 2.0) (n :: acc)
     in
     let steps = halve (Float.abs value) [] in
-    List.map
-      (fun step ->
+    List.map steps
+      ~fn:(fun step ->
         if value > 0.0 then
           value -. step
         else
           value +. step)
-      steps
 
 let bool = fun value ->
   if value then
@@ -151,7 +146,7 @@ let char = fun value ->
           halve (n / 2) (n :: acc)
       in
       let steps = halve diff [] in
-      List.map (fun step -> Char.chr (code - step)) steps
+      List.map steps ~fn:(fun step -> Char.from_int_unchecked (code - step))
 
 let rune = fun value ->
   let code = Unicode.Rune.to_int value in
@@ -165,7 +160,7 @@ let rune = fun value ->
         halve (n / 2) (n :: acc)
     in
     let steps = halve code [] in
-    List.filter_map (fun step -> Unicode.Rune.of_int (code - step)) steps
+    List.filter_map steps ~fn:(fun step -> Unicode.Rune.of_int (code - step))
 
 let string = fun value ->
   let len = String.length value in
@@ -177,8 +172,8 @@ let string = fun value ->
       if n >= len then
         acc
       else
-        let prefix = String.sub value 0 n in
-        let suffix = String.sub value (n + 1) (len - n - 1) in
+        let prefix = String.sub value ~offset:0 ~len:n in
+        let suffix = String.sub value ~offset:(n + 1) ~len:(len - n - 1) in
         remove_positions (n + 1) ((prefix ^ suffix) :: acc)
     in
     let removed = remove_positions 0 [] in
@@ -188,7 +183,7 @@ let string = fun value ->
         acc
       else
         let half = curr / 2 in
-        let shorter = String.sub value 0 half in
+        let shorter = String.sub value ~offset:0 ~len:half in
         shrink_length half (shorter :: acc)
     in
     let shortened = shrink_length len [] in
@@ -243,7 +238,7 @@ let array = fun elem_shrinker ->
         if i < 0 then
           acc
         else
-          build (i - 1) (a.(i) :: acc)
+          build (i - 1) (Array.get_unchecked a ~at:i :: acc)
       in
       build (Array.length a - 1) []
     in
@@ -252,81 +247,79 @@ let array = fun elem_shrinker ->
       | [] -> [||]
       | hd :: _ ->
           let len = List.length lst in
-          let a = Array.make len hd in
+          let a = Array.make ~count:len ~value:hd in
           let rec fill = fun i ->
             function
             | [] -> ()
             | x :: xs ->
-                a.(i) <- x;
+                Array.set_unchecked a ~at:i ~value:x;
                 fill (i + 1) xs
           in
           fill 0 lst;
           a
     in
-    List.map list_to_arr (list elem_shrinker (arr_to_list arr))
+    List.map (list elem_shrinker (arr_to_list arr)) ~fn:list_to_arr
 
 let vector = fun elem_shrinker ->
   fun vec ->
-    let lst = Vector.into_iter vec |> Iter.Iterator.to_list in
-    List.map Vector.of_list (list elem_shrinker lst)
+    let lst = Vector.iter vec |> Iter.Iterator.to_list in
+    List.map (list elem_shrinker lst) ~fn:Vector.from_list
 
 let hashmap = fun key_shrinker value_shrinker ->
   fun hm ->
     let lst = HashMap.to_list hm in
-    List.map HashMap.of_list (list nil lst)
+    List.map (list nil lst) ~fn:HashMap.from_list
 
 let hashset = fun elem_shrinker ->
   fun hs ->
     let lst = HashSet.to_list hs in
-    List.map HashSet.of_list (list elem_shrinker lst)
+    List.map (list elem_shrinker lst) ~fn:HashSet.from_list
 
 let queue = fun elem_shrinker ->
   fun q ->
     let lst = Queue.to_list q in
-    List.map Queue.of_list (list elem_shrinker lst)
+    List.map (list elem_shrinker lst) ~fn:Queue.from_list
 
 let deque = fun elem_shrinker ->
   fun d ->
-    let lst = Deque.into_iter d |> Iter.Iterator.to_list in
-    List.map
-      (fun lst ->
+    let lst = Deque.iter d |> Iter.Iterator.to_list in
+    List.map (list elem_shrinker lst)
+      ~fn:(fun lst ->
         let d' = Deque.create () in
-        List.iter (Deque.push_back d') lst;
+        List.for_each lst ~fn:(fun value -> Deque.push_back d' ~value);
         d')
-      (list elem_shrinker lst)
 
 let heap = fun elem_shrinker ->
   fun h ->
-    let lst = Heap.into_iter h |> Iter.Iterator.to_list in
-    List.map
-      (fun lst ->
+    let lst = Heap.iter h |> Iter.Iterator.to_list in
+    List.map (list elem_shrinker lst)
+      ~fn:(fun lst ->
         let h' = Heap.create () in
-        List.iter (Heap.push h') lst;
+        List.for_each lst ~fn:(fun value -> Heap.push h' ~value);
         h')
-      (list elem_shrinker lst)
 
 (* === TUPLE SHRINKERS === *)
 
 let pair = fun shrinker_a shrinker_b ->
   fun ((a, b)) ->
     let shrunk_a =
-      List.map (fun a' -> (a', b)) (shrinker_a a)
+      List.map (shrinker_a a) ~fn:(fun a' -> (a', b))
     in
     let shrunk_b =
-      List.map (fun b' -> (a, b')) (shrinker_b b)
+      List.map (shrinker_b b) ~fn:(fun b' -> (a, b'))
     in
     shrunk_a @ shrunk_b
 
 let triple = fun shrinker_a shrinker_b shrinker_c ->
   fun ((a, b, c)) ->
     let shrunk_a =
-      List.map (fun a' -> (a', b, c)) (shrinker_a a)
+      List.map (shrinker_a a) ~fn:(fun a' -> (a', b, c))
     in
     let shrunk_b =
-      List.map (fun b' -> (a, b', c)) (shrinker_b b)
+      List.map (shrinker_b b) ~fn:(fun b' -> (a, b', c))
     in
     let shrunk_c =
-      List.map (fun c' -> (a, b, c')) (shrinker_c c)
+      List.map (shrinker_c c) ~fn:(fun c' -> (a, b, c'))
     in
     shrunk_a @ shrunk_b @ shrunk_c
 
@@ -339,26 +332,26 @@ let option = fun elem_shrinker ->
     | Some x ->
         let none_candidate = [ None ] in
         let shrunk_some =
-          List.map (fun x' -> Some x') (elem_shrinker x)
+          List.map (elem_shrinker x) ~fn:(fun x' -> Some x')
         in
         none_candidate @ shrunk_some
 
 let result = fun ok_shrinker err_shrinker ->
   fun res ->
     match res with
-    | Ok x -> List.map (fun x' -> Ok x') (ok_shrinker x)
-    | Error e -> List.map (fun e' -> Error e') (err_shrinker e)
+    | Ok x -> List.map (ok_shrinker x) ~fn:(fun x' -> Ok x')
+    | Error e -> List.map (err_shrinker e) ~fn:(fun e' -> Error e')
 
 (* === COMBINATORS === *)
 
 let map = fun f f_inv shrinker ->
   fun b ->
     let a = f_inv b in
-    List.map f (shrinker a)
+    List.map (shrinker a) ~fn:f
 
 let filter = fun pred shrinker ->
   fun value ->
-    List.filter pred (shrinker value)
+    List.filter (shrinker value) ~fn:pred
 
 (* === LOW-LEVEL INTERFACE === *)
 

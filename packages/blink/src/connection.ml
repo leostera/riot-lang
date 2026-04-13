@@ -36,7 +36,7 @@ let make:
     reader;
     writer;
     uri;
-    buffer = Buffer.create 4_096;
+    buffer = Buffer.create ~size:4_096;
     state = WaitingForHeaders;
     response = None;
     of_io_error;
@@ -70,7 +70,7 @@ let request = fun (Conn conn) req ?body () ->
     | None -> headers
   in
   let headers_str = Net.Http.Header.to_list headers
-  |> List.map (fun ((name, value)) -> name ^ ": " ^ value ^ "\r\n")
+  |> List.map ~fn:(fun (name, value) -> name ^ ": " ^ value ^ "\r\n")
   |> String.concat "" in
   let request = request_line ^ headers_str ^ "\r\n" in
   let full_request =
@@ -87,7 +87,7 @@ let request = fun (Conn conn) req ?body () ->
   | Error e -> Error (conn.of_io_error e)
 
 let read_more = fun (Conn conn) ->
-  let chunk = Bytes.create 4_096 in
+  let chunk = Bytes.create ~size:4_096 in
   match IO.read conn.reader chunk with
   | Ok 0 ->
       Error Error.Eof
@@ -149,8 +149,8 @@ let stream = fun (Conn conn as c) ->
       else if available >= remaining then
         (
           (* We have enough data in buffer to complete the body *)
-          let body_data = String.sub data 0 remaining in
-          let leftover = String.sub data remaining (available - remaining) in
+          let body_data = String.sub data ~offset:0 ~len:remaining in
+          let leftover = String.sub data ~offset:remaining ~len:(available - remaining) in
           Buffer.clear conn.buffer;
           Buffer.add_string conn.buffer leftover;
           conn.state <- Complete;
@@ -178,17 +178,17 @@ let stream = fun (Conn conn as c) ->
             if chunk_data = "" then
               (
                 conn.state <- Complete;
-                Ok (List.rev (Done :: acc))
+                Ok (List.reverse (Done :: acc))
               )
             else
               (* Return the chunk immediately for streaming support *)
-              Ok (List.rev (Data chunk_data :: acc))
+              Ok (List.reverse (Data chunk_data :: acc))
         | Http.Http1.Common.Need_more -> (
             match read_more c with
             | Ok () -> parse_chunks acc
             | Error e ->
                 if not (List.is_empty acc) then
-                  Ok (List.rev acc)
+                  Ok (List.reverse acc)
                 else
                   Error e
           )
@@ -203,9 +203,9 @@ let messages = fun ?(on_message = fun _ -> ()) conn ->
     | Error e -> Error e
     | Ok msgs ->
         on_message msgs;
-        let acc = List.rev_append (List.rev msgs) acc in
-        if List.mem Done msgs then
-          Ok (List.rev acc)
+        let acc = List.reverse_append (List.reverse msgs) acc in
+        if List.contains msgs ~value:Done then
+          Ok (List.reverse acc)
         else
           loop acc
   in
@@ -218,13 +218,12 @@ let await = fun ?(on_message = fun _ -> ()) (Conn conn as c) ->
       let response = conn.response
       |> Option.unwrap_or ~default:(Net.Http.Response.create (Net.Http.Status.of_int 500)) in
       let body_chunks =
-        List.filter_map
-          (
+        List.filter_map msgs
+          ~fn:(
             function
             | Data chunk -> Some chunk
             | _ -> None
           )
-          msgs
       in
       let body = String.concat "" body_chunks in
       Ok (response, body)

@@ -1,7 +1,7 @@
 open Std
 open Riot_model
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 let registry_name = "pkgs.ml"
 
@@ -17,7 +17,7 @@ let config_path = fun () -> Riot_dirs.config_path ()
 
 let ensure_riot_dirs = fun () ->
   Riot_dirs.ensure_created ()
-  |> Result.map_error (fun exn -> Failure (Kernel.Exception.to_string exn))
+  |> Result.map_err ~fn:(fun exn -> Failure (Kernel.Exception.to_string exn))
 
 let load_config = fun path ->
   match Fs.exists path with
@@ -25,10 +25,10 @@ let load_config = fun path ->
     ("failed to read config '" ^ Path.to_string path ^ "': " ^ IO.error_message io_error)
   | Ok false -> Ok User_config.default
   | Ok true -> User_config.load path
-  |> Result.map_error (fun err -> Failure (User_config.message err))
+  |> Result.map_err ~fn:(fun err -> Failure (User_config.message err))
 
 let save_config = fun path config ->
-  User_config.save config path |> Result.map_error (fun err -> Failure (User_config.message err))
+  User_config.save config path |> Result.map_err ~fn:(fun err -> Failure (User_config.message err))
 
 let prompt_for_token = fun () ->
   print "pkgs.ml API token: ";

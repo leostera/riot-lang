@@ -16,7 +16,7 @@ let workspace_operational_config_path = fun ~workspace_root ->
   Path.(workspace_riot_dir ~workspace_root / Path.v "config.toml")
 
 let registry_dir = fun () ->
-  match Env.var Env.String ~name:"RIOT_REGISTRY_DIR" with
+  match Env.get Env.String ~var:"RIOT_REGISTRY_DIR" with
   | Some path -> Path.v path
   | None -> Path.(dot_riot / Path.v "registry")
 

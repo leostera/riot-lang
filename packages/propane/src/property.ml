@@ -188,9 +188,9 @@ let check = fun ?(config = default_config) (Prop prop) ->
 let for_all = fun arbitrary predicate -> Prop { name = "unnamed property"; arbitrary; predicate }
 
 let get_test_count_from_env = fun () ->
-  Env.var Int ~name:"PROPANE_TESTS" |> Option.unwrap_or ~default:default_config.test_count
+  Env.get Env.Int ~var:"PROPANE_TESTS" |> Option.unwrap_or ~default:default_config.test_count
 
-let get_seed_from_env = fun () -> Env.var Int ~name:"PROPANE_SEED"
+let get_seed_from_env = fun () -> Env.get Env.Int ~var:"PROPANE_SEED"
 
 let property = fun name arbitrary predicate ->
   let test_count = get_test_count_from_env () in

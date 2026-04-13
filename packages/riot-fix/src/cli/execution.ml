@@ -1,7 +1,7 @@
 open Std
 
 let fix_trace_enabled = fun () ->
-  match Env.var String ~name:"RIOT_FIX_TRACE" with
+  match Env.get Env.String ~var:"RIOT_FIX_TRACE" with
   | Some ("1" | "true" | "yes") -> true
   | _ -> false
 
@@ -43,7 +43,7 @@ let run_result_with = fun ~on_result ~mode ~scope ~limit ~files ->
     match receive ~selector () with
     | `FileResult { Messages.result; _ } ->
         let remaining_budget =
-          Option.map (fun max_diagnostics -> max_diagnostics - diagnostics_seen) limit
+          Option.map limit ~fn:(fun max_diagnostics -> max_diagnostics - diagnostics_seen)
         in
         let result =
           match remaining_budget with
@@ -59,7 +59,7 @@ let run_result_with = fun ~on_result ~mode ~scope ~limit ~files ->
         on_result result;
         loop (result :: results_rev) diagnostics_seen (limit_reached || limit_reached_now)
     | `AllComplete _summary ->
-        let files = List.rev results_rev in
+        let files = List.reverse results_rev in
         let summary = Runner.summarize files in
         {
           Types.result =
@@ -126,7 +126,7 @@ let run_with_coordinator = fun ?(on_event = Types.no_event) ~output_mode ~mode ~
           loop results_rev diagnostics_seen limit_reached
       | `FileResult { Messages.result; _ } ->
           let remaining_budget =
-            Option.map (fun max_diagnostics -> max_diagnostics - diagnostics_seen) limit
+            Option.map limit ~fn:(fun max_diagnostics -> max_diagnostics - diagnostics_seen)
           in
           let result =
             match remaining_budget with
@@ -149,7 +149,7 @@ let run_with_coordinator = fun ?(on_event = Types.no_event) ~output_mode ~mode ~
           );
           loop (result :: results_rev) diagnostics_seen (limit_reached || limit_reached_now)
       | `AllComplete _summary ->
-          let files = List.rev results_rev in
+          let files = List.reverse results_rev in
           let summary = Runner.summarize files in
           {
             Types.result =
@@ -181,7 +181,7 @@ let run_with_coordinator = fun ?(on_event = Types.no_event) ~output_mode ~mode ~
               println "";
               println
                 ("\027[1;33m!\027[0m Reached diagnostic limit "
-                ^ (limit |> Option.map Int.to_string |> Option.unwrap_or ~default:"0")
+                ^ (limit |> Option.map ~fn:Int.to_string |> Option.unwrap_or ~default:"0")
                 ^ "; stopped early")
             );
           Reporting.print_text_summary mode outcome.result.summary

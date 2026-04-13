@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 type error =
   | MissingDependency
@@ -80,25 +80,25 @@ members = []
 let bootstrap_empty_workspace = fun ~root ->
   let manifest_path = Path.(root / Path.v "riot.toml") in
   let* () = Fs.write empty_workspace_manifest_source manifest_path
-  |> Result.map_error (fun err -> WorkspaceBootstrapFailed (IO.error_message err)) in
+  |> Result.map_err ~fn:(fun err -> WorkspaceBootstrapFailed (IO.error_message err)) in
   let* dependency_hash = Riot_deps.Lock_refresh.dependency_hash
     ~workspace_manager:None
     ~workspace_root:root
     ~manifest_paths:[ manifest_path ]
-  |> Result.map_error (fun err -> WorkspaceBootstrapFailed err) in
+  |> Result.map_err ~fn:(fun err -> WorkspaceBootstrapFailed err) in
   let lockfile = Riot_model.Lockfile.{ format_version = 1; dependency_hash; packages = [] } in
   Riot_deps.Lockfile_store.write ~workspace_root:root lockfile
-  |> Result.map_error (fun err -> WorkspaceBootstrapFailed err)
+  |> Result.map_err ~fn:(fun err -> WorkspaceBootstrapFailed err)
 
 let load_workspace = fun ~root ->
   let workspace_manager = Riot_model.Workspace_manager.create () in
   let* (workspace, load_errors) = Riot_model.Workspace_manager.scan workspace_manager root
-  |> Result.map_error (fun err -> WorkspaceLoadFailed err) in
+  |> Result.map_err ~fn:(fun err -> WorkspaceLoadFailed err) in
   if List.is_empty load_errors then
     Ok workspace
   else
     let error = load_errors
-    |> List.map Riot_model.Workspace_manager.load_error_to_string
+    |> List.map ~fn:Riot_model.Workspace_manager.load_error_to_string
     |> String.concat "; " in
     Error (WorkspaceLoadFailed error)
 

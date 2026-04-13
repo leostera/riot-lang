@@ -98,13 +98,13 @@ let to_colored_string = fun diag ->
   String.concat "\n" lines
 
 let make_source_layout = fun source ->
-  let lines = String.split_on_char '\n' source |> Array.of_list in
-  let line_starts = Array.make (Array.length lines) 0 in
+  let lines = String.split source ~by:"\n" |> Array.from_list in
+  let line_starts = Array.make ~count:(Array.length lines) ~value:0 in
   let offset = ref 0 in
   for index = 0 to Array.length lines - 1 do
     yield ();
-    line_starts.(index) <- !offset;
-    offset := !offset + String.length lines.(index) + 1
+    Array.set line_starts ~at:index ~value:!offset;
+    offset := !offset + String.length (Array.get_unchecked lines ~at:index) + 1
   done;
   { lines; line_starts }
 
@@ -114,7 +114,7 @@ let line_for_pos = fun layout pos ->
       best
     else
       let mid = (low + high) / 2 in
-      if layout.line_starts.(mid) <= pos then
+      if Array.get_unchecked layout.line_starts ~at:mid <= pos then
         search (mid + 1) high mid
       else
         search low (mid - 1) best
@@ -130,7 +130,7 @@ let line_for_pos = fun layout pos ->
     if Array.length layout.line_starts = 0 then
       0
     else
-      layout.line_starts.(line_idx)
+      Array.get_unchecked layout.line_starts ~at:line_idx
   in
   (line_idx, Int.max 0 (pos - start_offset))
 
@@ -150,7 +150,7 @@ let extract_code_snippet_from_layout = fun layout (span: Syn.Ceibo.Span.t) ->
     if start_idx < 0 || start_idx >= Array.length layout.lines then
       None
     else
-      let code_line = layout.lines.(start_idx) in
+      let code_line = Array.get_unchecked layout.lines ~at:start_idx in
       let marker_width =
         if start_idx = end_idx then
           let width = end_col - start_col in
@@ -165,7 +165,12 @@ let extract_code_snippet_from_layout = fun layout (span: Syn.Ceibo.Span.t) ->
           else
             remaining
       in
-      let pointer_line = String.make start_col ' ' ^ "\027[1;33m" ^ String.make marker_width '^' ^ "\027[0m" in
+      let pointer_line =
+        String.make ~len:start_col ~char:' '
+        ^ "\027[1;33m"
+        ^ String.make ~len:marker_width ~char:'^'
+        ^ "\027[0m"
+      in
       Some (code_line, pointer_line, start_idx + 1)
 
 let extract_code_snippet = fun source span ->
@@ -180,7 +185,10 @@ let to_formatted_output = fun ~file ~source diag ->
     @ [
       "";
       "  \027[1;90m" ^ Int.to_string line_num ^ " |\027[0m " ^ code_line;
-      "  \027[1;90m" ^ String.make (String.length (string_of_int line_num)) ' ' ^ " |\027[0m " ^ pointer_line;
+      "  \027[1;90m"
+      ^ String.make ~len:(String.length (Int.to_string line_num)) ~char:' '
+      ^ " |\027[0m "
+      ^ pointer_line;
     ]
     | None -> basic_info @ [ "  at " ^ Syn.Ceibo.Span.to_string (span diag) ]
   in
@@ -233,25 +241,28 @@ type grouped = {
 let group_diagnostics: t list -> grouped list = fun diags ->
   let module DiagMap = Collections.HashMap in
   let map = DiagMap.create () in
-  List.iter
-    (fun (diag: t) ->
-      let fix_title = fix diag |> Option.map Fix.title in
+  List.for_each
+    diags
+    ~fn:(fun (diag: t) ->
+      let fix_title = fix diag |> Option.map ~fn:Fix.title in
       let key = (severity diag, message diag, rule_id diag, suggestion diag, fix_title) in
-      match DiagMap.get map key with
-      | Some existing_spans -> ignore
-        (DiagMap.insert map key ((fix diag, span diag) :: existing_spans))
-      | None -> ignore (DiagMap.insert map key [ (fix diag, span diag) ]))
-    diags;
-  DiagMap.into_iter map |> Iter.Iterator.map
+      match DiagMap.get map ~key:key with
+      | Some existing_spans ->
+          let _ = DiagMap.insert map ~key:key ~value:((fix diag, span diag) :: existing_spans) in
+          ()
+      | None ->
+          let _ = DiagMap.insert map ~key:key ~value:[ (fix diag, span diag) ] in
+          ());
+  DiagMap.iter map |> Iter.Iterator.map
     ~fn:(fun (((severity, message, rule_id, suggestion, _fix_title), spans)) ->
-      let spans = List.rev spans in
+      let spans = List.reverse spans in
       let fix =
         match spans with
         | [] -> None
         | (fix, _) :: _ -> fix
       in
       let spans =
-        List.map (fun (_, span) -> span) spans
+        List.map spans ~fn:(fun (_, span) -> span)
       in
       ({
           severity;
@@ -268,26 +279,26 @@ let grouped_to_formatted_output = fun ~file ~source grouped ->
   let basic_info = [ colored_header_label grouped.severity grouped.rule_id; ""; grouped.message; ] in
   let spans =
     List.sort
-      (fun (left: Syn.Ceibo.Span.t) (right: Syn.Ceibo.Span.t) ->
-        Int.compare left.start right.start)
       grouped.spans
+      ~compare:(fun (left: Syn.Ceibo.Span.t) (right: Syn.Ceibo.Span.t) ->
+        Int.compare left.start right.start)
   in
   let lines_with_snippets =
     List.fold_left
-      (fun acc span ->
+      spans
+      ~acc:basic_info
+      ~fn:(fun acc span ->
         match extract_code_snippet_from_layout layout span with
         | Some (code_line, pointer_line, line_num) -> acc
         @ [
           "";
           "  \027[1;90m" ^ Int.to_string line_num ^ " |\027[0m " ^ code_line;
           "  \027[1;90m"
-          ^ String.make (String.length (string_of_int line_num)) ' '
+          ^ String.make ~len:(String.length (Int.to_string line_num)) ~char:' '
           ^ " |\027[0m "
           ^ pointer_line;
         ]
         | None -> acc @ [ "  at " ^ Syn.Ceibo.Span.to_string span ])
-      basic_info
-      spans
   in
   let lines_with_suggestion =
     match grouped.suggestion, grouped.fix with
@@ -304,26 +315,26 @@ let grouped_to_formatted_output_with_layout = fun ~file ~layout grouped ->
   let basic_info = [ colored_header_label grouped.severity grouped.rule_id; ""; grouped.message; ] in
   let spans =
     List.sort
-      (fun (left: Syn.Ceibo.Span.t) (right: Syn.Ceibo.Span.t) ->
-        Int.compare left.start right.start)
       grouped.spans
+      ~compare:(fun (left: Syn.Ceibo.Span.t) (right: Syn.Ceibo.Span.t) ->
+        Int.compare left.start right.start)
   in
   let lines_with_snippets =
     List.fold_left
-      (fun acc span ->
+      spans
+      ~acc:basic_info
+      ~fn:(fun acc span ->
         match extract_code_snippet_from_layout layout span with
         | Some (code_line, pointer_line, line_num) -> acc
         @ [
           "";
           "  \027[1;90m" ^ Int.to_string line_num ^ " |\027[0m " ^ code_line;
           "  \027[1;90m"
-          ^ String.make (String.length (string_of_int line_num)) ' '
+          ^ String.make ~len:(String.length (Int.to_string line_num)) ~char:' '
           ^ " |\027[0m "
           ^ pointer_line;
         ]
         | None -> acc @ [ "  at " ^ Syn.Ceibo.Span.to_string span ])
-      basic_info
-      spans
   in
   let lines_with_suggestion =
     match grouped.suggestion, grouped.fix with
@@ -337,4 +348,4 @@ let grouped_to_formatted_output_with_layout = fun ~file ~layout grouped ->
 
 let grouped_list_to_formatted_output = fun ~file ~source grouped ->
   let layout = make_source_layout source in
-  grouped |> List.map (grouped_to_formatted_output_with_layout ~file ~layout) |> String.concat ""
+  grouped |> List.map ~fn:(grouped_to_formatted_output_with_layout ~file ~layout) |> String.concat ""

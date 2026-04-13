@@ -28,7 +28,7 @@ let empty_review_summary = {
   quit = false
 }
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 let command =
   let open ArgParser in
@@ -52,7 +52,9 @@ let ensure_trailing_new_removed = fun path ->
   let rendered = Path.to_string path in
   if String.ends_with ~suffix:".new" rendered then
     let len = String.length rendered - 4 in
-    String.sub rendered 0 len |> Path.of_string |> Result.expect ~msg:"pending snapshot path should stay valid UTF-8"
+    String.sub rendered ~offset:0 ~len
+    |> Path.from_string
+    |> Result.expect ~msg:"pending snapshot path should stay valid UTF-8"
   else
     path
 
@@ -95,7 +97,7 @@ let discover_pending_snapshots = fun ~workspace_root ?query () ->
   let rec collect acc iter =
     match Iter.Iterator.next iter with
     | None, _ ->
-        Ok (List.rev acc)
+        Ok (List.reverse acc)
     | Some (Error (err: Fs.Walker.error)), _ ->
         Error err.cause
     | Some (Ok (entry: Fs.Walker.FileItem.t)), iter' -> begin
@@ -113,8 +115,9 @@ let discover_pending_snapshots = fun ~workspace_root ?query () ->
   | Error err -> Error err
   | Ok snapshots ->
       Ok (
-        snapshots |> List.filter (matches_query ?query) |> List.sort
-          (fun left right ->
+        snapshots
+        |> List.filter ~fn:(matches_query ?query)
+        |> List.sort ~compare:(fun left right ->
             String.compare (Path.to_string left.pending) (Path.to_string right.pending))
       )
 
@@ -309,7 +312,7 @@ let review_pending_snapshots_interactively = fun ~workspace_root snapshots ->
   match Tty.make () with
   | Error Tty.NoTtyConnected ->
       review_pending_snapshots ~workspace_root snapshots
-      |> Result.map (fun () -> empty_review_summary)
+      |> Result.map ~fn:(fun () -> empty_review_summary)
   | Error (Tty.SystemError err) ->
       Error err
   | Ok tty ->
@@ -345,14 +348,14 @@ let run_action = fun ~workspace_root ?query action ->
           match approve_pending_snapshots snapshots with
           | Error err -> Error (Failure (IO.error_message err))
           | Ok () ->
-              List.iter (print_approved ~workspace_root) snapshots;
+              List.for_each snapshots ~fn:(print_approved ~workspace_root);
               Ok ()
         )
       | `Reject -> (
           match reject_pending_snapshots snapshots with
           | Error err -> Error (Failure (IO.error_message err))
           | Ok () ->
-              List.iter (print_rejected ~workspace_root) snapshots;
+              List.for_each snapshots ~fn:(print_rejected ~workspace_root);
               Ok ()
         )
     )

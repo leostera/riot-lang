@@ -68,20 +68,22 @@ let plan_node = fun input ->
         (* Check if any package (including our own) needs unix *)
         let needs_unix =
           let check_pkg (pkg: Package.t) =
-            List.exists
-              (fun (d: Package.dependency) -> d.name = "unix")
+            List.any
               (Package.build_graph_dependencies pkg)
+              ~fn:(fun (d: Package.dependency) -> d.name = "unix")
           in
-          check_pkg input.package || List.exists (fun (dep: Dependency.t) -> check_pkg dep.package) transitive_deps
+          check_pkg input.package
+          || List.any transitive_deps ~fn:(fun (dep: Dependency.t) -> check_pkg dep.package)
         in
         (* Check if any package (including our own) needs dynlink *)
         let needs_dynlink =
           let check_pkg (pkg: Package.t) =
-            List.exists
-              (fun (d: Package.dependency) -> d.name = "dynlink")
+            List.any
               (Package.build_graph_dependencies pkg)
+              ~fn:(fun (d: Package.dependency) -> d.name = "dynlink")
           in
-          check_pkg input.package || List.exists (fun (dep: Dependency.t) -> check_pkg dep.package) transitive_deps
+          check_pkg input.package
+          || List.any transitive_deps ~fn:(fun (dep: Dependency.t) -> check_pkg dep.package)
         in
         let binary_libraries =
           (* Binaries and commands need the full transitive runtime library
@@ -101,17 +103,17 @@ let plan_node = fun input ->
             else
               []
           in
-          let dep_libs = List.map Dependency.library_cmxa transitive_deps in
+          let dep_libs = List.map transitive_deps ~fn:Dependency.library_cmxa in
           let own_lib =
             match input.package.library with
             | Some _ -> [ Module_name.(of_string input.package.name |> cmxa) ]
             | None -> []
           in
-          List.unique (unix_lib @ dynlink_lib @ dep_libs @ own_lib)
+          List.unique (unix_lib @ dynlink_lib @ dep_libs @ own_lib) ~compare:Path.compare
         in
         (* Add cache directories from dependencies to includes *)
         let dep_cache_dirs =
-          List.map (fun (dep: Dependency.t) -> dep.artifact_dir) transitive_deps
+          List.map transitive_deps ~fn:(fun (dep: Dependency.t) -> dep.artifact_dir)
         in
         let binary_includes =
           let unix_includes =
@@ -130,28 +132,30 @@ let plan_node = fun input ->
           let own_package_dir = [ Path.v "." ] in
           unix_includes @ dynlink_includes @ own_package_dir @ dep_cache_dirs
         in
-        List.iter
-          (fun (bin: Package.binary) ->
+        List.for_each
+          input.package.binaries
+          ~fn:(fun (bin: Package.binary) ->
             Module_graph.add_binary_node
               graph_builder
               ~name:bin.name
               ~source:bin.path
               ~libraries:binary_libraries
               ~includes:binary_includes)
-          input.package.binaries;
+        ;
         (* Add command nodes for package commands *)
         (* Commands are regular binaries - link all libraries like regular binaries *)
         Log.debug ("[MODULE_PLANNER] Command includes for " ^ input.package.name ^ ":");
-        List.iter (fun inc -> Log.debug ("  " ^ Path.to_string inc)) binary_includes;
-        List.iter
-          (fun (cmd: Package_command.t) ->
+        List.for_each binary_includes ~fn:(fun inc -> Log.debug ("  " ^ Path.to_string inc));
+        List.for_each
+          input.package.commands
+          ~fn:(fun (cmd: Package_command.t) ->
             Module_graph.add_command_node
               graph_builder
               ~name:cmd.name
               ~source:cmd.command_source
               ~libraries:binary_libraries
               ~includes:binary_includes)
-          input.package.commands;
+        ;
         let module_graph = Module_graph.graph graph_builder in
         let analyzed_modules = Module_graph.analyzed_modules graph_builder in
         (
@@ -159,7 +163,8 @@ let plan_node = fun input ->
           | Error cycle_ids ->
               let cycle =
                 List.filter_map
-                  (fun node_id ->
+                  cycle_ids
+                  ~fn:(fun node_id ->
                     match G.get_node module_graph node_id with
                     | None -> None
                     | Some node ->
@@ -175,8 +180,7 @@ let plan_node = fun input ->
                           | Module_node.Root -> "Root"
                           | Module_node.Other s -> "Other(" ^ s ^ ")"
                         ))
-                  cycle_ids
-                |> List.rev
+                |> List.reverse
               in
               Error (Planning_error.CyclicDependency { cycle })
           | Ok sorted_modules -> (
@@ -192,17 +196,16 @@ let plan_node = fun input ->
                 module_graph in
               let sources =
                 sorted_modules
-                |> List.concat_map
-                  (fun (node: Module_node.t G.node) ->
+                |> List.map ~fn:(fun (node: Module_node.t G.node) ->
                     match node.value.kind with
                     | Native { files } ->
                         List.map
-                          (fun path ->
+                          files
+                          ~fn:(fun path ->
                             if Path.is_absolute path then
                               path
                             else
                               Path.(input.package.path / path))
-                          files
                     | _ -> (
                         match node.value.file with
                         | Concrete path when Path.to_string path != "" ->
@@ -215,6 +218,7 @@ let plan_node = fun input ->
                             [ abs_path ]
                         | _ -> []
                       ))
+                |> List.concat
               in
               Ok { sources; module_graph; analyzed_modules; action_graph }
             )

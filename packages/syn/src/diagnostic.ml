@@ -750,27 +750,33 @@ let to_json = fun err ->
 
 let from_json = fun json ->
   let open Data.Json in
+    let field name fields =
+      List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name)
+      |> Option.map ~fn:(fun (_, value) -> value)
+    in
     match json with
     | Object fields -> (
-        let kind_json = List.assoc_opt "kind" fields in
-        let span_json = List.assoc_opt "span" fields in
+        let kind_json = field "kind" fields in
+        let span_json = field "span" fields in
         match (kind_json, span_json) with
         | Some (Object kind_fields), Some (Object span_fields) -> (
             let id_opt =
-              Option.and_then (List.assoc_opt "id" kind_fields)
-                (
+              Option.and_then
+                (field "id" kind_fields)
+                ~fn:(
                   function
                   | String s -> Some s
                   | _ -> None
                 )
             in
-            let found_obj = List.assoc_opt "found" kind_fields in
+            let found_obj = field "found" kind_fields in
             let found =
               match found_obj with
               | Some (Object found_fields) ->
                   let kind =
-                    Option.and_then (List.assoc_opt "kind" found_fields)
-                      (
+                    Option.and_then
+                      (field "kind" found_fields)
+                      ~fn:(
                         function
                         | String s -> Some s
                         | _ -> None
@@ -778,8 +784,9 @@ let from_json = fun json ->
                     |> Option.unwrap_or ~default:""
                   in
                   let text =
-                    Option.and_then (List.assoc_opt "text" found_fields)
-                      (
+                    Option.and_then
+                      (field "text" found_fields)
+                      ~fn:(
                         function
                         | String s -> Some s
                         | _ -> None
@@ -790,8 +797,9 @@ let from_json = fun json ->
               | _ -> { kind = ""; text = "" }
             in
             let start =
-              Option.and_then (List.assoc_opt "start" span_fields)
-                (
+              Option.and_then
+                (field "start" span_fields)
+                ~fn:(
                   function
                   | Int n -> Some n
                   | _ -> None
@@ -799,8 +807,9 @@ let from_json = fun json ->
               |> Option.unwrap_or ~default:0
             in
             let end_ =
-              Option.and_then (List.assoc_opt "end" span_fields)
-                (
+              Option.and_then
+                (field "end" span_fields)
+                ~fn:(
                   function
                   | Int n -> Some n
                   | _ -> None
@@ -811,8 +820,9 @@ let from_json = fun json ->
             match id_opt with
             | Some id ->
                 let expected =
-                  Option.and_then (List.assoc_opt "expected" kind_fields)
-                    (
+                  Option.and_then
+                    (field "expected" kind_fields)
+                    ~fn:(
                       function
                       | String s -> Some s
                       | _ -> None
@@ -820,8 +830,9 @@ let from_json = fun json ->
                   |> Option.unwrap_or ~default:""
                 in
                 let fix =
-                  Option.and_then (List.assoc_opt "fix" kind_fields)
-                    (
+                  Option.and_then
+                    (field "fix" kind_fields)
+                    ~fn:(
                       function
                       | String s -> Some s
                       | _ -> None
@@ -832,7 +843,7 @@ let from_json = fun json ->
                   let prefix_len = String.length prefix in
                   let str_len = String.length str in
                   if str_len >= prefix_len && String.starts_with ~prefix str then
-                    String.sub str prefix_len (str_len - prefix_len)
+                    String.sub str ~offset:prefix_len ~len:(str_len - prefix_len)
                   else
                     ""
                 in
@@ -883,8 +894,8 @@ let from_json = fun json ->
                     ""
                   else
                     let rest = strip_prefix_str expected ~prefix in
-                    match String.index rest '\'' with
-                    | Some idx -> String.sub rest 0 idx
+                    match String.index_of rest ~char:'\'' with
+                    | Some idx -> String.sub rest ~offset:0 ~len:idx
                     | None -> rest
                 in
                 let kind =

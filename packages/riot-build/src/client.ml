@@ -82,7 +82,10 @@ let error_message = function
         | [] -> "build failed"
         | [ result ] -> render_error result
         | results -> format
-          Format.[ str "build failed:\n"; str (String.concat "\n" (List.map render_error results)); ]
+          Format.[
+            str "build failed:\n";
+            str (String.concat "\n" (List.map results ~fn:render_error));
+          ]
       )
   | PlanningFailed { reason } ->
       format Format.[ str "planning failed: "; str reason ]
@@ -200,7 +203,7 @@ end
 
 let convert_build_stats: Protocol.BuildStats.t -> build_stats = fun stats ->
   {
-    duration_ms = int_of_float (Protocol.BuildStats.get_build_duration stats *. 1000.0);
+    duration_ms = Int.from_float (Protocol.BuildStats.get_build_duration stats *. 1000.0);
     packages_built = Protocol.BuildStats.get_packages_built stats;
     packages_failed = Protocol.BuildStats.get_packages_failed stats;
     total_modules = Protocol.BuildStats.get_total_modules stats;
@@ -383,11 +386,7 @@ let find_executable = fun t name ->
   receive_response ~selector
 
 let new_package = fun t ~path ~name ~is_library ->
-  let path =
-    match Path.of_string path with
-    | Ok path -> path
-    | Error _ -> Path.v path
-  in
+  let path = Path.v path in
   send_request t (Protocol.NewPackage { client_pid = self (); path; name; is_library });
   let selector msg =
     match msg with

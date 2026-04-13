@@ -9,26 +9,28 @@ let duration_ms_since = fun started ->
 
 let resolved_edge_count = fun (lockfile: Riot_model.Lockfile.t) ->
   List.fold_left
-    (fun total (pkg: Riot_model.Lockfile.package) ->
-      total + List.length pkg.dependencies + List.length pkg.build_dependencies + List.length pkg.dev_dependencies)
-    0
     lockfile.packages
+    ~acc:0
+    ~fn:(fun total (pkg: Riot_model.Lockfile.package) ->
+      total + List.length pkg.dependencies + List.length pkg.build_dependencies + List.length pkg.dev_dependencies)
 
 let manifest_path_for_package = fun (pkg: Riot_model.Package.t) ->
   Path.(pkg.path / Path.v "riot.toml")
 
 let workspace_manifest_paths = fun (workspace: Riot_model.Workspace.t) ->
-  Path.(workspace.root / Path.v "riot.toml") :: List.map manifest_path_for_package workspace.packages
+  Path.(workspace.root / Path.v "riot.toml") :: List.map workspace.packages ~fn:manifest_path_for_package
 
 let root_packages_for_workspace = fun (workspace: Riot_model.Workspace.t) ->
-  List.filter Riot_model.Package.is_workspace_member workspace.packages
+  List.filter workspace.packages ~fn:Riot_model.Package.is_workspace_member
 
 let lock_package_version_map = fun (lockfile_opt: Riot_model.Lockfile.t option) ->
   match lockfile_opt with
   | None -> []
   | Some (lockfile: Riot_model.Lockfile.t) ->
       List.fold_left
-        (fun acc (pkg: Riot_model.Lockfile.package) ->
+        lockfile.packages
+        ~acc:[]
+        ~fn:(fun acc (pkg: Riot_model.Lockfile.package) ->
           match pkg.id.registry, pkg.id.version with
           | Some registry, Some version ->
               (registry ^ ":" ^ pkg.id.name, version) :: acc
@@ -39,29 +41,35 @@ let lock_package_version_map = fun (lockfile_opt: Riot_model.Lockfile.t option) 
             )
           | _ ->
               acc)
-        []
-        lockfile.packages
 
 let emit_locked_packages = fun ~(emit:event_sink) ~(previous_lock:Riot_model.Lockfile.t option) (
   current_lock: Riot_model.Lockfile.t
 ) ->
   let previous_versions = lock_package_version_map previous_lock in
-  List.iter
-    (fun (pkg: Riot_model.Lockfile.package) ->
+  List.for_each
+    current_lock.packages
+    ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
       match pkg.id.registry, pkg.id.version with
       | Some registry, Some version ->
-          if Option.is_none (List.assoc_opt (registry ^ ":" ^ pkg.id.name) previous_versions) then
+          if Option.is_none
+            (List.find
+              previous_versions
+              ~fn:(fun (key, _) -> String.equal key (registry ^ ":" ^ pkg.id.name)))
+          then
             emit (Riot_model.Event.PackageVersionLocked { package = pkg.id.name; version })
       | None, Some version -> (
           match pkg.provenance with
           | Riot_model.Lockfile.Source _ ->
-              if Option.is_none (List.assoc_opt ("source:" ^ pkg.id.name) previous_versions) then
+              if Option.is_none
+                (List.find
+                  previous_versions
+                  ~fn:(fun (key, _) -> String.equal key ("source:" ^ pkg.id.name)))
+              then
                 emit (Riot_model.Event.PackageVersionLocked { package = pkg.id.name; version })
           | _ -> ()
         )
       | _ ->
           ())
-    current_lock.packages
 
 let lockfile_with_dependency_hash = fun dependency_hash (lockfile: Riot_model.Lockfile.t) ->
   { lockfile with dependency_hash = dependency_hash }
@@ -91,11 +99,11 @@ let ensure_lock = fun ?(emit = no_emit) ?workspace_manager ~mode ~registry ~(wor
             let lock_result =
               match mode with
               | Dep_solver.Unlock ->
-                  emit
-                    (Riot_model.Event.DependencyResolutionStarted {
-                      packages = List.map (fun (pkg: Riot_model.Package.t) -> pkg.name) packages;
-                      mode = `Unlock
-                    });
+	                  emit
+	                    (Riot_model.Event.DependencyResolutionStarted {
+	                      packages = List.map packages ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.name);
+	                      mode = `Unlock
+	                    });
                   emit
                     (
                       Riot_model.Event.DependencyResolutionUnlocking {
@@ -105,9 +113,9 @@ let ensure_lock = fun ?(emit = no_emit) ?workspace_manager ~mode ~registry ~(wor
                           | None -> None;
                       }
                     );
-                  Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock ~workspace ()
-                  |> Result.map (lockfile_with_dependency_hash current_dependency_hash)
-                  |> Result.map (fun lockfile -> (lockfile, false, true, solve_started))
+	                  Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock ~workspace ()
+	                  |> Result.map ~fn:(lockfile_with_dependency_hash current_dependency_hash)
+	                  |> Result.map ~fn:(fun lockfile -> (lockfile, false, true, solve_started))
               | Dep_solver.Refresh -> (
                   let needs_refresh =
                     match existing_lock with
@@ -125,16 +133,16 @@ let ensure_lock = fun ?(emit = no_emit) ?workspace_manager ~mode ~registry ~(wor
                       })
                     )
                   else (
-                    emit
-                      (Riot_model.Event.DependencyResolutionStarted {
-                        packages = List.map (fun (pkg: Riot_model.Package.t) -> pkg.name) packages;
-                        mode = `Refresh
-                      });
+	                    emit
+	                      (Riot_model.Event.DependencyResolutionStarted {
+	                        packages = List.map packages ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.name);
+	                        mode = `Refresh
+	                      });
                     emit
                       (Riot_model.Event.DependencyResolutionRefreshingLock { path = lock_path_str });
-                    Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock ~workspace ()
-                    |> Result.map (lockfile_with_dependency_hash current_dependency_hash)
-                    |> Result.map (fun lockfile -> (lockfile, false, true, solve_started))
+	                    Dep_solver.lock_deps ~emit ~mode ~registry ~existing_lock ~workspace ()
+	                    |> Result.map ~fn:(lockfile_with_dependency_hash current_dependency_hash)
+	                    |> Result.map ~fn:(fun lockfile -> (lockfile, false, true, solve_started))
                   )
                 )
             in
@@ -206,5 +214,5 @@ let ensure_workspace = fun ?(emit = no_emit) ?workspace_manager ~mode ~registry 
   | Error _ as err -> err
   | Ok (_lockfile, resolved_packages) -> Ok {
     workspace
-    with packages = List.map (fun (pkg: Riot_model.Package.resolved) -> pkg.package) resolved_packages
+    with packages = List.map resolved_packages ~fn:(fun (pkg: Riot_model.Package.resolved) -> pkg.package)
   }

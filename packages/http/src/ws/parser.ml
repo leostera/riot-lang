@@ -10,6 +10,9 @@ type 'a parse_result =
   | Need_more
   | Error of string
 
+let byte_at = fun input at ->
+  input |> String.get_unchecked ~at |> Char.to_int
+
 (* Parse a single WebSocket frame *)
 
 let parse = fun input ->
@@ -18,8 +21,8 @@ let parse = fun input ->
   if len < 2 then
     Need_more
   else
-    let byte0 = Char.code input.[0] in
-    let byte1 = Char.code input.[1] in
+    let byte0 = byte_at input 0 in
+    let byte1 = byte_at input 1 in
     (* Parse first byte *)
     let fin = byte0 land 0x80 != 0 in
     let rsv1 = byte0 land 0x40 != 0 in
@@ -42,8 +45,8 @@ let parse = fun input ->
               (0, 0)
               (* Signal need more *)
             else
-              let len_high = Char.code input.[2] in
-              let len_low = Char.code input.[3] in
+              let len_high = byte_at input 2 in
+              let len_low = byte_at input 3 in
               (4, (len_high lsl 8) lor len_low)
           else if len < 10 then
             (0, 0)
@@ -51,13 +54,13 @@ let parse = fun input ->
           else
             (* Read 8 bytes, but only use lower 4 bytes for simplicity *)
             let len_bytes = [
-              Char.code input.[6];
-              Char.code input.[7];
-              Char.code input.[8];
-              Char.code input.[9];
+              byte_at input 6;
+              byte_at input 7;
+              byte_at input 8;
+              byte_at input 9;
             ] in
             let payload_len =
-              List.fold_left (fun acc b -> (acc lsl 8) lor b) 0 len_bytes
+              List.fold_left len_bytes ~acc:0 ~fn:(fun acc b -> (acc lsl 8) lor b)
             in
             (10, payload_len)
         in
@@ -79,10 +82,10 @@ let parse = fun input ->
             (* Extract mask if present *)
             let mask =
               if masked then
-                let m0 = Int32.of_int (Char.code input.[header_size]) in
-                let m1 = Int32.of_int (Char.code input.[header_size + 1]) in
-                let m2 = Int32.of_int (Char.code input.[header_size + 2]) in
-                let m3 = Int32.of_int (Char.code input.[header_size + 3]) in
+                let m0 = Int32.from_int (byte_at input header_size) in
+                let m1 = Int32.from_int (byte_at input (header_size + 1)) in
+                let m2 = Int32.from_int (byte_at input (header_size + 2)) in
+                let m3 = Int32.from_int (byte_at input (header_size + 3)) in
                 Int32.(logor
                   (shift_left m0 24)
                   (logor (shift_left m1 16) (logor (shift_left m2 8) m3)))
@@ -91,7 +94,7 @@ let parse = fun input ->
             in
             (* Extract payload *)
             let payload_start = total_header_size in
-            let raw_payload = String.sub input payload_start payload_length in
+            let raw_payload = String.sub input ~offset:payload_start ~len:payload_length in
             (* Unmask if needed *)
             let payload =
               if masked then
@@ -112,8 +115,7 @@ let parse = fun input ->
               }
             in
             (* Return frame and remaining data *)
-            let remaining = String.sub
-              input
-              (total_header_size + payload_length)
-              (len - total_header_size - payload_length) in
+            let remaining = String.sub input
+              ~offset:(total_header_size + payload_length)
+              ~len:(len - total_header_size - payload_length) in
             Done { value = frame; remaining }

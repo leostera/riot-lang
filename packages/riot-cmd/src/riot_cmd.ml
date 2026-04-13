@@ -20,7 +20,9 @@ module Registry = struct
     Log.debug ("Registering command: " ^ Cmd.name);
     registry.commands <- (Cmd.name, cmd) :: registry.commands
 
-  let get = fun name -> List.find_opt (fun ((n, _)) -> n = name) registry.commands |> Option.map snd
+  let get = fun name ->
+    List.find_opt (fun ((n, _)) -> n = name) registry.commands
+    |> Option.map (fun (_, command) -> command)
 
   let list = fun () -> registry.commands
 end

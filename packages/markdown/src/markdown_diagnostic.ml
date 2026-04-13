@@ -119,6 +119,18 @@ let error_id = fun diag ->
 
 let id = fun diag -> error_id diag
 
+let get_field = fun fields key ->
+  let rec loop fields =
+    match fields with
+    | [] -> None
+    | (field_key, value) :: rest ->
+        if String.equal field_key key then
+          Some value
+        else
+          loop rest
+  in
+  loop fields
+
 let to_json = fun diag ->
   let found = found_token diag in
   let kind_payload =
@@ -196,8 +208,8 @@ let to_json = fun diag ->
 let from_json = fun json ->
   match json with
   | Data.Json.Object fields -> (
-      let kind_field = List.assoc_opt "kind" fields in
-      let span_field = List.assoc_opt "span" fields in
+      let kind_field = get_field fields "kind" in
+      let span_field = get_field fields "span" in
       let kind_obj =
         match kind_field with
         | Some (Object fields) -> Some fields
@@ -207,36 +219,36 @@ let from_json = fun json ->
       match (kind_obj, span_field) with
       | Some kind_fields, Some (Object span_fields) -> (
           let id =
-            match List.assoc_opt "id" kind_fields with
+            match get_field kind_fields "id" with
             | Some (Data.Json.String value) -> Some value
             | Some _
             | None -> None
           in
           let start =
-            match List.assoc_opt "start" span_fields with
+            match get_field span_fields "start" with
             | Some (Data.Json.Int value) -> value
             | Some _
             | None -> 0
           in
           let end_ =
-            match List.assoc_opt "end" span_fields with
+            match get_field span_fields "end" with
             | Some (Data.Json.Int value) -> value
             | Some _
             | None -> start
           in
           let found =
             let found_fields =
-              match List.assoc_opt "found" kind_fields with
+              match get_field kind_fields "found" with
               | Some (Object fields) -> fields
               | _ -> []
             in
             let kind =
-              match List.assoc_opt "kind" found_fields with
+              match get_field found_fields "kind" with
               | Some (Data.Json.String value) -> value
               | _ -> "token"
             in
             let text =
-              match List.assoc_opt "text" found_fields with
+              match get_field found_fields "text" with
               | Some (Data.Json.String value) -> value
               | _ -> ""
             in
@@ -248,7 +260,7 @@ let from_json = fun json ->
               Ok { kind = Invalid_markdown { found }; span }
           | Some "markdown_unsupported_feature" -> (
               let feature =
-                match List.assoc_opt "feature" kind_fields with
+                match get_field kind_fields "feature" with
                 | Some (Data.Json.String value) -> value
                 | _ -> "unsupported"
               in
@@ -256,7 +268,7 @@ let from_json = fun json ->
             )
           | Some "markdown_unclosed_fenced_code_block" -> (
               let opener =
-                match List.assoc_opt "opener" kind_fields with
+                match get_field kind_fields "opener" with
                 | Some (Data.Json.String value) -> value
                 | _ -> "```"
               in
@@ -264,7 +276,7 @@ let from_json = fun json ->
             )
           | Some "markdown_unexpected_control_character" -> (
               let code =
-                match List.assoc_opt "code" kind_fields with
+                match get_field kind_fields "code" with
                 | Some (Data.Json.Int value) -> value
                 | _ -> 0
               in
@@ -272,7 +284,7 @@ let from_json = fun json ->
             )
           | Some "markdown_parser_internal" -> (
               let message =
-                match List.assoc_opt "message" kind_fields with
+                match get_field kind_fields "message" with
                 | Some (Data.Json.String value) -> value
                 | _ -> ""
               in

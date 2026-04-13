@@ -110,7 +110,7 @@ let to_escape_seq = fun t ->
         seq :: codes
     | _ -> codes
   in
-  String.concat ";" (List.rev codes)
+  String.concat ";" (List.reverse codes)
 
 let styled = fun t text ->
   if t = default then

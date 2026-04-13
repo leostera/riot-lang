@@ -105,9 +105,9 @@ let complement = fun ~compare_v ranges ->
         function
         | [] ->
             if start = Unbounded then
-              List.rev acc
+              List.reverse acc
             else
-              List.rev ((start, Unbounded) :: acc)
+              List.reverse ((start, Unbounded) :: acc)
         | (v1, v2) :: rest ->
             let new_segment = (start, negate_bound v1) in
             let new_start = negate_bound v2 in
@@ -142,7 +142,7 @@ let within_bounds = fun ~compare_v version ((start, end_)) ->
   after_start && before_end
 
 let contains = fun ~compare_v ranges version ->
-  List.exists (within_bounds ~compare_v version) ranges
+  List.any ranges ~fn:(within_bounds ~compare_v version)
 
 let max_by = fun cmp a b ->
   if cmp a b >= 0 then

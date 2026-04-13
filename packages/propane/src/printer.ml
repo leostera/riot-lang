@@ -14,7 +14,7 @@ let float = fun ?precision -> Float.to_string ?precision
 
 let bool = Bool.to_string
 
-let char = fun c -> "'" ^ String.make 1 c ^ "'"
+let char = fun c -> "'" ^ String.make ~len:1 ~char:c ^ "'"
 
 let rune = fun r ->
   let code = Unicode.Rune.to_int r in
@@ -25,38 +25,38 @@ let string = fun s -> "\"" ^ s ^ "\""
 (* === COLLECTION PRINTERS === *)
 
 let list = fun elem_printer lst ->
-  let elements = List.map elem_printer lst in
+  let elements = List.map lst ~fn:elem_printer in
   "[" ^ String.concat "; " elements ^ "]"
 
 let array = fun elem_printer arr ->
-  let elements = Collections.Array.into_iter arr |> Iter.Iterator.to_list |> List.map elem_printer in
+  let elements = Collections.Array.iter arr |> Iter.Iterator.to_list |> List.map ~fn:elem_printer in
   "[|" ^ String.concat "; " elements ^ "|]"
 
 let vector = fun elem_printer vec ->
-  let elements = Collections.Vector.into_iter vec |> Iter.Iterator.to_list |> List.map elem_printer in
+  let elements = Collections.Vector.iter vec |> Iter.Iterator.to_list |> List.map ~fn:elem_printer in
   "vec[" ^ String.concat "; " elements ^ "]"
 
 let hashmap = fun key_printer value_printer hm ->
-  let pairs = Collections.HashMap.into_iter hm |> Iter.Iterator.to_list in
+  let pairs = Collections.HashMap.iter hm |> Iter.Iterator.to_list in
   let pair_strs =
-    List.map (fun ((k, v)) -> key_printer k ^ " => " ^ value_printer v) pairs
+    List.map pairs ~fn:(fun ((k, v)) -> key_printer k ^ " => " ^ value_printer v)
   in
   "map{" ^ String.concat "; " pair_strs ^ "}"
 
 let hashset = fun elem_printer hs ->
-  let elements = Collections.HashSet.into_iter hs |> Iter.Iterator.to_list |> List.map elem_printer in
+  let elements = Collections.HashSet.iter hs |> Iter.Iterator.to_list |> List.map ~fn:elem_printer in
   "set{" ^ String.concat "; " elements ^ "}"
 
 let queue = fun elem_printer q ->
-  let elements = Collections.Queue.into_iter q |> Iter.Iterator.to_list |> List.map elem_printer in
+  let elements = Collections.Queue.iter q |> Iter.Iterator.to_list |> List.map ~fn:elem_printer in
   "queue[" ^ String.concat "; " elements ^ "]"
 
 let deque = fun elem_printer d ->
-  let elements = Collections.Deque.into_iter d |> Iter.Iterator.to_list |> List.map elem_printer in
+  let elements = Collections.Deque.iter d |> Iter.Iterator.to_list |> List.map ~fn:elem_printer in
   "deque[" ^ String.concat "; " elements ^ "]"
 
 let heap = fun elem_printer h ->
-  let elements = Collections.Heap.into_iter h |> Iter.Iterator.to_list |> List.map elem_printer in
+  let elements = Collections.Heap.iter h |> Iter.Iterator.to_list |> List.map ~fn:elem_printer in
   "heap[" ^ String.concat "; " elements ^ "]"
 
 (* === TUPLE PRINTERS === *)

@@ -17,13 +17,13 @@ not leave them around as punctuation residue once they stop doing real work.
 let rec child_expressions_of_function_body = function
   | Syn.Cst.Expression expression -> [ expression ]
   | Syn.Cst.Cases { cases; _ } ->
-      cases |> List.concat_map
-        (fun (case: Syn.Cst.match_case) ->
-          (
-            match case.guard with
-            | Some guard -> [ guard ]
-            | None -> []
-          ) @ [ case.body ])
+      cases
+      |> List.map ~fn:(fun (case: Syn.Cst.match_case) ->
+        (match case.guard with
+         | Some guard -> [ guard ]
+         | None -> [])
+        @ [ case.body ])
+      |> List.concat
 
 and child_expressions = function
   | Syn.Cst.Expression.Path _
@@ -48,23 +48,23 @@ and child_expressions = function
       [ expr.bound_value; expr.body ]
   | Syn.Cst.Expression.Match expr ->
       expr.scrutinee :: (
-        expr.cases |> List.concat_map
-          (fun (case: Syn.Cst.match_case) ->
-            (
-              match case.guard with
-              | Some guard -> [ guard ]
-              | None -> []
-            ) @ [ case.body ])
+        expr.cases
+        |> List.map ~fn:(fun (case: Syn.Cst.match_case) ->
+          (match case.guard with
+           | Some guard -> [ guard ]
+           | None -> [])
+          @ [ case.body ])
+        |> List.concat
       )
   | Syn.Cst.Expression.Try expr ->
       expr.body :: (
-        expr.cases |> List.concat_map
-          (fun (case: Syn.Cst.match_case) ->
-            (
-              match case.guard with
-              | Some guard -> [ guard ]
-              | None -> []
-            ) @ [ case.body ])
+        expr.cases
+        |> List.map ~fn:(fun (case: Syn.Cst.match_case) ->
+          (match case.guard with
+           | Some guard -> [ guard ]
+           | None -> [])
+          @ [ case.body ])
+        |> List.concat
       )
   | Syn.Cst.Expression.If expr ->
       let base = [ expr.condition; expr.then_branch ] in
@@ -79,17 +79,18 @@ and child_expressions = function
       []
 
 let opens_with_begin = fun ({ syntax_node; _ }: Syn.Cst.parenthesized_expression) ->
-  Syn.Ceibo.Red.SyntaxNode.children syntax_node |> List.find_map
-    (
-      function
-      | Syn.Ceibo.Red.Token token ->
-          let text = Syn.Ceibo.Red.SyntaxToken.text token in
-          if String.equal text " " || String.equal text "\n" || String.equal text "\t" then
-            None
-          else
-            Some (String.equal text "begin")
-      | _ -> None
-    ) |> Option.unwrap_or ~default:false
+  Syn.Ceibo.Red.SyntaxNode.children syntax_node
+  |> List.filter_map ~fn:(function
+    | Syn.Ceibo.Red.Token token ->
+        let text = Syn.Ceibo.Red.SyntaxToken.text token in
+        if String.equal text " " || String.equal text "\n" || String.equal text "\t" then
+          None
+        else
+          Some (String.equal text "begin")
+    | _ ->
+        None)
+  |> List.head
+  |> Option.unwrap_or ~default:false
 
 let is_obviously_redundant = function
   | Syn.Cst.Expression.Path _
@@ -134,17 +135,20 @@ let rec diagnostics_for_expression = fun ~inside_redundant_chain ->
         make_diagnostic expr :: nested
       else
         nested
-  | expr -> child_expressions expr
-  |> List.concat_map (diagnostics_for_expression ~inside_redundant_chain:false)
+  | expr ->
+      child_expressions expr
+      |> List.map ~fn:(diagnostics_for_expression ~inside_redundant_chain:false)
+      |> List.concat
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
   Syn.Cst.SourceFile.structure_items source_file
   |> Option.unwrap_or ~default:[]
-  |> List.concat_map Traversal.let_bindings_of_structure_item
-  |> List.concat_map
-    (fun binding ->
-      diagnostics_for_expression ~inside_redundant_chain:false (Syn.Cst.LetBinding.value binding))
+  |> List.map ~fn:Traversal.let_bindings_of_structure_item
+  |> List.concat
+  |> List.map ~fn:(fun binding ->
+    diagnostics_for_expression ~inside_redundant_chain:false (Syn.Cst.LetBinding.value binding))
+  |> List.concat
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain ~run:check_tree ()

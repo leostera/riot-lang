@@ -69,7 +69,7 @@ let to_string = fun value ->
 module ANSI = struct
   let to_rgb = fun (`ansi i) ->
     let i = Int.(min (max 0 i) (Array.length Ansi_table.to_rgb - 1)) in
-    Ansi_table.to_rgb.(i)
+    Array.get_unchecked Ansi_table.to_rgb ~at:i
 end
 
 module White_reference = struct
@@ -85,9 +85,9 @@ module Linear_RGB = struct
 
   let linearize = fun (`rgb (r, g, b)) ->
     `lrgb (
-      r |> Float.of_int |> linearize,
-      g |> Float.of_int |> linearize,
-      b |> Float.of_int |> linearize
+      r |> Float.from_int |> linearize,
+      g |> Float.from_int |> linearize,
+      b |> Float.from_int |> linearize
     )
 
   let delinearize = fun v ->

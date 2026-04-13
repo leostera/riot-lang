@@ -28,7 +28,7 @@ let path_key = fun path -> Path.to_string path
 
 let load_riot_toml = fun t manifest_path ->
   let key = path_key manifest_path in
-  match HashMap.get t.manifests key with
+  match HashMap.get t.manifests ~key with
   | Some result -> result
   | None ->
       let result =
@@ -46,12 +46,12 @@ let load_riot_toml = fun t manifest_path ->
             | Ok toml -> Ok toml
           )
       in
-      let _ = HashMap.insert t.manifests key result in
+      let _ = HashMap.insert t.manifests ~key ~value:result in
       result
 
 let rec find_workspace_root: t -> Path.t -> Path.t option = fun t start_dir ->
   let key = path_key start_dir in
-  match HashMap.get t.workspace_roots key with
+  match HashMap.get t.workspace_roots ~key with
   | Some root -> root
   | None ->
       let riot_toml = Path.(start_dir / riot_toml) in
@@ -60,7 +60,7 @@ let rec find_workspace_root: t -> Path.t -> Path.t option = fun t start_dir ->
         | Ok true -> (
             match load_riot_toml t riot_toml with
             | Ok (Data.Toml.Table items) ->
-                let has_workspace = List.assoc_opt "workspace" items != None in
+                let has_workspace = Fields.get "workspace" items != None in
                 if has_workspace then
                   Some start_dir
                 else
@@ -79,7 +79,7 @@ let rec find_workspace_root: t -> Path.t -> Path.t option = fun t start_dir ->
             | _ -> None
           )
       in
-      let _ = HashMap.insert t.workspace_roots key result in
+      let _ = HashMap.insert t.workspace_roots ~key ~value:result in
       result
 
 let rec find_scan_roots: t -> Path.t -> package_root:Path.t option -> (Path.t option * Path.t option) = fun t start_dir ~package_root ->
@@ -94,12 +94,12 @@ let rec find_scan_roots: t -> Path.t -> package_root:Path.t option -> (Path.t op
       match load_riot_toml t manifest_path with
       | Ok (Data.Toml.Table items) ->
           let package_root =
-            if Option.is_none package_root && List.assoc_opt "package" items != None then
+            if Option.is_none package_root && Fields.get "package" items != None then
               Some start_dir
             else
               package_root
           in
-          if List.assoc_opt "workspace" items != None then
+          if Fields.get "workspace" items != None then
             (Some start_dir, package_root)
           else
             next package_root
@@ -190,7 +190,7 @@ let rec load_external_package:
   | { path=None; _ } ->
       ([], [])
   | { path=Some dep_path; _ } ->
-      if List.mem dep.name !seen then
+      if List.contains !seen ~value:dep.name then
         ([], [])
       else
         (
@@ -214,8 +214,8 @@ let rec load_external_package:
                     if String.starts_with ~prefix:root_str abs_str then
                       String.sub
                         abs_str
-                        (String.length root_str + 1)
-                        (String.length abs_str - String.length root_str - 1)
+                        ~offset:(String.length root_str + 1)
+                        ~len:(String.length abs_str - String.length root_str - 1)
                     else
                       abs_str
                   in
@@ -228,22 +228,24 @@ let rec load_external_package:
                     ~path:abs_path
                     ~relative_path with
                   | Ok pkg ->
-                      let transitive_results = List.map
-                        (load_external_package
-                          t
-                          workspace_root
-                          ~declared_from:abs_path
-                          ~seen
-                          ~workspace_deps
-                          ~workspace_dev_deps
-                          ~workspace_build_deps
-                          ~dependant:(Some pkg.name))
-                        (Package.all_dependencies pkg) in
+                      let transitive_results =
+                        List.map
+                          (Package.all_dependencies pkg)
+                          ~fn:(load_external_package
+                            t
+                            workspace_root
+                            ~declared_from:abs_path
+                            ~seen
+                            ~workspace_deps
+                            ~workspace_dev_deps
+                            ~workspace_build_deps
+                            ~dependant:(Some pkg.name))
+                      in
                       let transitive_pkgs =
-                        List.concat_map (fun (packages, _) -> packages) transitive_results
+                        transitive_results |> List.map ~fn:(fun (packages, _) -> packages) |> List.concat
                       in
                       let transitive_errs =
-                        List.concat_map (fun (_, errors) -> errors) transitive_results
+                        transitive_results |> List.map ~fn:(fun (_, errors) -> errors) |> List.concat
                       in
                       (pkg :: transitive_pkgs, transitive_errs)
                   | Error error -> (
@@ -259,8 +261,7 @@ let rec load_external_package:
 
 let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_error list) = fun t workspace_root workspace_manifest ->
   let member_results =
-    List.map
-      (fun member ->
+    List.map workspace_manifest.members ~fn:(fun member ->
         load_member_package
           t
           workspace_root
@@ -268,57 +269,58 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
           ~workspace_deps:workspace_manifest.dependencies
           ~workspace_dev_deps:workspace_manifest.dev_dependencies
           ~workspace_build_deps:workspace_manifest.build_dependencies)
-      workspace_manifest.members
   in
   let member_packages =
-    List.filter_map (fun (pkg, _) -> pkg) member_results
+    List.filter_map member_results ~fn:(fun (pkg, _) -> pkg)
   in
   let member_errors =
-    List.concat_map (fun (_, errors) -> errors) member_results
+    member_results |> List.map ~fn:(fun (_, errors) -> errors) |> List.concat
   in
   let seen =
-    Cell.create (List.map (fun (p: Package.t) -> p.name) member_packages)
+    Cell.create (List.map member_packages ~fn:(fun (p: Package.t) -> p.name))
   in
   (* Load workspace-level dependencies first *)
-  let workspace_results = List.map
-    (load_external_package
-      t
-      workspace_root
-      ~declared_from:workspace_root
-      ~seen
-      ~workspace_deps:workspace_manifest.dependencies
-      ~workspace_dev_deps:workspace_manifest.dev_dependencies
-      ~workspace_build_deps:workspace_manifest.build_dependencies
-      ~dependant:None)
-    (workspace_manifest.dependencies @ workspace_manifest.dev_dependencies @ workspace_manifest.build_dependencies) in
+  let workspace_results =
+    List.map
+      (workspace_manifest.dependencies @ workspace_manifest.dev_dependencies @ workspace_manifest.build_dependencies)
+      ~fn:(load_external_package
+        t
+        workspace_root
+        ~declared_from:workspace_root
+        ~seen
+        ~workspace_deps:workspace_manifest.dependencies
+        ~workspace_dev_deps:workspace_manifest.dev_dependencies
+        ~workspace_build_deps:workspace_manifest.build_dependencies
+        ~dependant:None)
+  in
   let workspace_packages =
-    List.concat_map (fun (packages, _) -> packages) workspace_results
+    workspace_results |> List.map ~fn:(fun (packages, _) -> packages) |> List.concat
   in
   let workspace_errors =
-    List.concat_map (fun (_, errors) -> errors) workspace_results
+    workspace_results |> List.map ~fn:(fun (_, errors) -> errors) |> List.concat
   in
   (* Then load any additional dependencies from member packages *)
   let external_results =
-    List.concat_map
-      (fun (pkg: Package.t) ->
-        List.map
-          (load_external_package
-            t
-            workspace_root
-            ~declared_from:pkg.path
-            ~seen
-            ~workspace_deps:workspace_manifest.dependencies
-            ~workspace_dev_deps:workspace_manifest.dev_dependencies
-            ~workspace_build_deps:workspace_manifest.build_dependencies
-            ~dependant:(Some pkg.name))
-          (Package.all_dependencies pkg))
-      member_packages
+    member_packages
+    |> List.map ~fn:(fun (pkg: Package.t) ->
+      List.map
+        (Package.all_dependencies pkg)
+        ~fn:(load_external_package
+          t
+          workspace_root
+          ~declared_from:pkg.path
+          ~seen
+          ~workspace_deps:workspace_manifest.dependencies
+          ~workspace_dev_deps:workspace_manifest.dev_dependencies
+          ~workspace_build_deps:workspace_manifest.build_dependencies
+          ~dependant:(Some pkg.name)))
+    |> List.concat
   in
   let external_packages =
-    List.concat_map (fun (packages, _) -> packages) external_results
+    external_results |> List.map ~fn:(fun (packages, _) -> packages) |> List.concat
   in
   let external_errors =
-    List.concat_map (fun (_, errors) -> errors) external_results
+    external_results |> List.map ~fn:(fun (_, errors) -> errors) |> List.concat
   in
   let all_packages = member_packages @ workspace_packages @ external_packages in
   let all_errors = member_errors @ workspace_errors @ external_errors in
@@ -354,22 +356,24 @@ let build_single_package_workspace: t -> Path.t -> (Workspace.t * load_error lis
       | Error err -> Error ("Failed to parse package manifest: " ^ err)
       | Ok package ->
           let seen = Cell.create [ package.name ] in
-          let external_results = List.map
-            (load_external_package
-              t
-              package_root
-              ~declared_from:package_root
-              ~seen
-              ~workspace_deps:[]
-              ~workspace_dev_deps:[]
-              ~workspace_build_deps:[]
-              ~dependant:(Some package.name))
-            (Package.all_dependencies package) in
+          let external_results =
+            List.map
+              (Package.all_dependencies package)
+              ~fn:(load_external_package
+                t
+                package_root
+                ~declared_from:package_root
+                ~seen
+                ~workspace_deps:[]
+                ~workspace_dev_deps:[]
+                ~workspace_build_deps:[]
+                ~dependant:(Some package.name))
+          in
           let external_packages =
-            List.concat_map (fun (packages, _) -> packages) external_results
+            external_results |> List.map ~fn:(fun (packages, _) -> packages) |> List.concat
           in
           let external_errors =
-            List.concat_map (fun (_, errors) -> errors) external_results
+            external_results |> List.map ~fn:(fun (_, errors) -> errors) |> List.concat
           in
           Ok (
             Workspace.make ~root:package_root ~packages:(package :: external_packages) (),
@@ -383,7 +387,7 @@ let scan: t -> Path.t -> ((Workspace.t * load_error list), string) result = fun 
     | Some workspace_root, _ ->
         let key = path_key workspace_root in
         (
-          match HashMap.get t.scans key with
+          match HashMap.get t.scans ~key with
           | Some result -> result
           | None ->
               let toml_path = Path.(workspace_root / riot_toml) in
@@ -401,17 +405,17 @@ let scan: t -> Path.t -> ((Workspace.t * load_error list), string) result = fun 
                         Ok (workspace, errors)
                   )
               in
-              let _ = HashMap.insert t.scans key result in
+              let _ = HashMap.insert t.scans ~key ~value:result in
               result
         )
     | None, Some package_root ->
         let key = path_key package_root in
         (
-          match HashMap.get t.scans key with
+          match HashMap.get t.scans ~key with
           | Some result -> result
           | None ->
               let result = build_single_package_workspace t package_root in
-              let _ = HashMap.insert t.scans key result in
+              let _ = HashMap.insert t.scans ~key ~value:result in
               result
         )
     | None, None ->
