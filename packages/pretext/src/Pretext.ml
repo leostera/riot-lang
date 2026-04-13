@@ -52,7 +52,7 @@ let concat = fun docs ->
   in
   let rec flatten acc = function
     | [] ->
-        List.rev acc
+        List.reverse acc
     | Empty :: rest ->
         flatten acc rest
     | Space :: rest ->
@@ -90,8 +90,9 @@ let nest = fun amount docs ->
 let join = fun separator docs ->
   match docs with
   | [] -> Empty
-  | first :: rest -> concat
-    (first :: (rest |> List.map (fun doc -> [ separator; doc ]) |> List.flatten))
+  | first :: rest ->
+      concat
+        (first :: (rest |> List.map ~fn:(fun doc -> [ separator; doc ]) |> List.concat))
 
 type mode =
   | Flat
@@ -102,15 +103,16 @@ type frame = int * mode * t
 let display_width = fun text -> String.width text
 
 let last_line_width = fun text ->
-  match List.rev (String.split_on_char '\n' text) with
+  match List.reverse (String.split ~by:"\n" text) with
   | [] -> 0
   | last :: _ -> display_width last
 
 let solve = fun ~width doc ->
   let rec push_many indent mode docs rest =
-    match List.rev docs with
+    match List.reverse docs with
     | [] -> rest
-    | reversed -> reversed |> List.fold_left (fun acc item -> (indent, mode, item) :: acc) rest
+    | reversed ->
+        reversed |> List.fold_left ~acc:rest ~fn:(fun acc item -> (indent, mode, item) :: acc)
   in
   let rec fits remaining = function
     | _ when remaining < 0 -> false
@@ -178,10 +180,11 @@ let solve = fun ~width doc ->
         in
         solve_doc ~column ~indent ~mode:next_mode child
   in
-  solve_doc ~column:0 ~indent:0 ~mode:Broken doc |> fst
+  let solved_doc, _column = solve_doc ~column:0 ~indent:0 ~mode:Broken doc in
+  solved_doc
 
 let to_string = fun doc ->
-  let buffer = IO.Buffer.create 256 in
+  let buffer = IO.Buffer.create ~size:256 in
   let rec write ~line_start ~indent = function
     | Empty ->
         line_start
@@ -212,9 +215,9 @@ let to_string = fun doc ->
         write ~line_start ~indent child
     | Concat docs ->
         List.fold_left
-          (fun current_line_start child -> write ~line_start:current_line_start ~indent child)
-          line_start
           docs
+          ~acc:line_start
+          ~fn:(fun current_line_start child -> write ~line_start:current_line_start ~indent child)
     | Indent (extra, child) ->
         write ~line_start ~indent:(indent + extra) child
   and write_text ~line_start ~indent value =
@@ -223,19 +226,19 @@ let to_string = fun doc ->
           line_start
       | [ current ] ->
           if is_first && line_start && String.length current > 0 then
-            IO.Buffer.add_string buffer (String.make indent ' ');
+            IO.Buffer.add_string buffer (String.make ~len:indent ~char:' ');
           IO.Buffer.add_string buffer current;
           line_start && String.length current = 0
       | current :: rest ->
           if is_first && line_start && String.length current > 0 then
-            IO.Buffer.add_string buffer (String.make indent ' ');
+            IO.Buffer.add_string buffer (String.make ~len:indent ~char:' ');
           IO.Buffer.add_string buffer current;
           IO.Buffer.add_char buffer '\n';
           write_lines true false rest
     in
-    write_lines line_start true (String.split_on_char '\n' value)
+    write_lines line_start true (String.split ~by:"\n" value)
   in
-  ignore (write ~line_start:true ~indent:0 doc);
+  let _ = write ~line_start:true ~indent:0 doc in
   IO.Buffer.contents buffer
 
 let normalize_width = fun width ->
