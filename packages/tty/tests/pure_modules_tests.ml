@@ -12,6 +12,27 @@ let test_color_make_short_hex = fun _ctx ->
   | Tty.Color.RGB (255, 0, 170) -> Ok ()
   | value -> Error ("Expected RGB(255,0,170), got " ^ Tty.Color.to_string value)
 
+let test_color_make_invalid_length_rejected = fun _ctx ->
+  try
+    let _ = Tty.Color.make "#12345" in
+    Error "Expected invalid hex length to be rejected"
+  with
+  | Tty.Color.Invalid_color "#12345" -> Ok ()
+  | _ -> Error "Expected Invalid_color for invalid hex length"
+
+let test_color_make_invalid_hex_rejected = fun _ctx ->
+  try
+    let _ = Tty.Color.make "#GG0000" in
+    Error "Expected invalid hex digit to be rejected"
+  with
+  | Tty.Color.Invalid_color_param "GG" -> Ok ()
+  | _ -> Error "Expected Invalid_color_param for invalid hex digits"
+
+let test_color_ansi_accepts_bounds = fun _ctx ->
+  match (Tty.Color.ansi 0, Tty.Color.ansi 15) with
+  | Tty.Color.ANSI 0, Tty.Color.ANSI 15 -> Ok ()
+  | _ -> Error "Expected ansi color bounds 0 and 15 to be accepted"
+
 let test_color_ansi_range_validation = fun _ctx ->
   try
     let _ = Tty.Color.ansi 16 in
@@ -28,6 +49,11 @@ let test_color_ansi256_range_validation = fun _ctx ->
   | Tty.Color.Invalid_color_num ("ansi256", 256) -> Ok ()
   | _ -> Error "Expected Invalid_color_num for ansi256 range overflow"
 
+let test_color_ansi256_accepts_bounds = fun _ctx ->
+  match (Tty.Color.ansi256 0, Tty.Color.ansi256 255) with
+  | Tty.Color.ANSI256 0, Tty.Color.ANSI256 255 -> Ok ()
+  | _ -> Error "Expected ansi256 bounds 0 and 255 to be accepted"
+
 let test_color_of_rgb_clamps = fun _ctx ->
   match Tty.Color.of_rgb (300, -10, 128) with
   | Tty.Color.RGB (255, 0, 128) -> Ok ()
@@ -41,6 +67,27 @@ let test_color_to_escape_seq = fun _ctx ->
     Ok ()
   else
     Error ("Unexpected color escape sequences: rgb=" ^ rgb ^ " ansi=" ^ ansi ^ " ansi256=" ^ ansi256)
+
+let test_color_to_escape_seq_bright_ansi = fun _ctx ->
+  let fg = Tty.Color.ansi 9 |> Tty.Color.to_escape_seq ~mode:`fg in
+  let bg = Tty.Color.ansi 12 |> Tty.Color.to_escape_seq ~mode:`bg in
+  if fg = "91" && bg = "104" then
+    Ok ()
+  else
+    Error ("Unexpected bright ANSI escape sequences: fg=" ^ fg ^ " bg=" ^ bg)
+
+let test_color_to_escape_seq_no_color = fun _ctx ->
+  let value = Tty.Color.to_escape_seq ~mode:`fg Tty.Color.no_color in
+  if value = "" then
+    Ok ()
+  else
+    Error ("Expected no_color to emit no sequence, got " ^ value)
+
+let test_style_default_escape_seq_is_empty = fun _ctx ->
+  if String.equal (Tty.Style.to_escape_seq Tty.Style.default) "" then
+    Ok ()
+  else
+    Error "Expected default style escape sequence to be empty"
 
 let test_style_default_is_noop = fun _ctx ->
   let styled = Tty.Style.styled Tty.Style.default "plain" in
@@ -63,6 +110,26 @@ let test_style_styled_wraps_text = fun _ctx ->
     Ok ()
   else
     Error ("Unexpected styled rendering: seq=" ^ seq ^ " styled=" ^ styled)
+
+let test_style_fg_no_color_is_noop = fun _ctx ->
+  let style = Tty.Style.default |> Tty.Style.fg Tty.Color.no_color in
+  if String.equal (Tty.Style.to_escape_seq style) "" && String.equal (Tty.Style.styled style "hello") "hello" then
+    Ok ()
+  else
+    Error "Expected no_color foreground style to be a no-op"
+
+let test_style_preserves_unicode_width = fun _ctx ->
+  let plain = "Cafe\u{0301} 🙂" in
+  let style =
+    Tty.Style.default
+    |> Tty.Style.bold
+    |> Tty.Style.fg (Tty.Color.make "#FF0000")
+  in
+  let styled = Tty.Style.styled style plain in
+  if Int.equal (Tty.Escape_seq.width styled) (String.width plain) then
+    Ok ()
+  else
+    Error "Expected styling to preserve displayed width for unicode text"
 
 let test_input_parse_csi_arrow = fun _ctx ->
   match Tty.Input.parse_escape "\x1b[A" with
@@ -144,12 +211,21 @@ let tests =
   Test.[
     case "color_make_long_hex" test_color_make_long_hex;
     case "color_make_short_hex" test_color_make_short_hex;
+    case "color_make_invalid_length_rejected" test_color_make_invalid_length_rejected;
+    case "color_make_invalid_hex_rejected" test_color_make_invalid_hex_rejected;
+    case "color_ansi_accepts_bounds" test_color_ansi_accepts_bounds;
     case "color_ansi_range_validation" test_color_ansi_range_validation;
     case "color_ansi256_range_validation" test_color_ansi256_range_validation;
+    case "color_ansi256_accepts_bounds" test_color_ansi256_accepts_bounds;
     case "color_of_rgb_clamps" test_color_of_rgb_clamps;
     case "color_to_escape_seq" test_color_to_escape_seq;
+    case "color_to_escape_seq_bright_ansi" test_color_to_escape_seq_bright_ansi;
+    case "color_to_escape_seq_no_color" test_color_to_escape_seq_no_color;
+    case "style_default_escape_seq_is_empty" test_style_default_escape_seq_is_empty;
     case "style_default_is_noop" test_style_default_is_noop;
     case "style_styled_wraps_text" test_style_styled_wraps_text;
+    case "style_fg_no_color_is_noop" test_style_fg_no_color_is_noop;
+    case "style_preserves_unicode_width" test_style_preserves_unicode_width;
     case "input_parse_csi_arrow" test_input_parse_csi_arrow;
     case "input_parse_modified_arrow" test_input_parse_modified_arrow;
     case "input_parse_ss3_function_key" test_input_parse_ss3_function_key;

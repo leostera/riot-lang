@@ -67,9 +67,7 @@
 type t
 val from_env: unit -> t
 
-(** [default] provides a conservative profile for basic terminals.
-
-    Assumes 16-color ANSI support, which is widely compatible. *)
+(** [default] snapshots {!from_env} at module initialization time. *)
 val default: t
 
 (** [convert profile color] adapts [color] to match the [profile]'s capability.
