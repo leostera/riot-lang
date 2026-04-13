@@ -64,6 +64,22 @@ let streaming_event_label = function
   | Client.PlanningFailed _ -> "PlanningFailed"
   | Client.CycleDetected _ -> "CycleDetected"
 
+let streaming_event_result_count = function
+  | Client.BuildCompleted { results; _ } -> Some (List.length results)
+  | Client.BuildFailed { built; errors; _ } -> Some (List.length built + List.length errors)
+  | Client.BuildStarted _
+  | Client.BuildEvent _
+  | Client.PlanningFailed _
+  | Client.CycleDetected _ -> None
+
+let is_terminal_streaming_event = function
+  | Client.BuildCompleted _
+  | Client.BuildFailed _
+  | Client.PlanningFailed _
+  | Client.CycleDetected _ -> true
+  | Client.BuildStarted _
+  | Client.BuildEvent _ -> false
+
 let json_clock_origin = ref None
 
 let reset_json_clock = fun ~started_at -> json_clock_origin := Some started_at
@@ -96,6 +112,11 @@ let write_build_event_json = fun event ->
   match Riot_build.Event.to_json event with
   | Some json -> write_json_event json
   | None -> ()
+
+let write_build_phase_event = fun ~mode phase ->
+  match mode with
+  | Json -> write_build_event_json (Riot_build.Phase phase)
+  | Human -> ()
 
 let command_error_event_to_json = fun kind details ->
   Data.Json.Object (("type", Data.Json.String kind) :: details)
@@ -483,6 +504,9 @@ let run_request = fun (request: request) ->
         | Riot_build.CacheGc event ->
             attempted_build := true;
             write_cache_gc_event ~mode:request.output_mode event
+        | Riot_build.Phase phase ->
+            attempted_build := true;
+            write_build_phase_event ~mode:request.output_mode phase
         | Riot_build.Streaming event ->
             attempted_build := true;
             write_streaming_event ~mode:request.output_mode ~displayed_packages ~progress event;
@@ -494,8 +518,23 @@ let run_request = fun (request: request) ->
                     ("streaming-build-completed results=" ^ Int.to_string (List.length results))
               | _ -> ()
             );
+            if request.output_mode = Json && is_terminal_streaming_event event then
+              write_build_phase_event
+                ~mode:request.output_mode
+                (Riot_build.Event.CliPhase (Riot_build.Event.JsonTerminalEventEncodingStarted {
+                  event = streaming_event_label event;
+                  result_count = streaming_event_result_count event;
+                }));
             if request.output_mode = Json then
               write_build_event_json (Riot_build.Streaming event)
+            ;
+            if request.output_mode = Json && is_terminal_streaming_event event then
+              write_build_phase_event
+                ~mode:request.output_mode
+                (Riot_build.Event.CliPhase (Riot_build.Event.JsonTerminalEventEncoded {
+                  event = streaming_event_label event;
+                  result_count = streaming_event_result_count event;
+                }))
       )
       request.build_request
   in

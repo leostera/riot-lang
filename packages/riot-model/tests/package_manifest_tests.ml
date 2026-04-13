@@ -228,6 +228,44 @@ version = "0.1.0"
       in
       run 25)
 
+let test_manifest_realize_build_skips_source_loading = fun _ctx ->
+  with_tempdir "riot_model_package_manifest_build"
+    (fun tmpdir ->
+      let src_dir = Path.(tmpdir / Path.v "src") in
+      let tests_dir = Path.(tmpdir / Path.v "tests") in
+      let examples_dir = Path.(tmpdir / Path.v "examples") in
+      Result.expect (Fs.create_dir_all src_dir) ~msg:"Failed to create src directory";
+      Result.expect (Fs.create_dir_all tests_dir) ~msg:"Failed to create tests directory";
+      Result.expect (Fs.create_dir_all examples_dir) ~msg:"Failed to create examples directory";
+      Result.expect (Fs.write "let () = ()\n" Path.(src_dir / Path.v "main.ml")) ~msg:"Failed to write runtime source";
+      Result.expect (Fs.write "let () = ()\n" Path.(tests_dir / Path.v "demo_tests.ml")) ~msg:"Failed to write test source";
+      Result.expect (Fs.write "let () = ()\n" Path.(examples_dir / Path.v "example.ml")) ~msg:"Failed to write example source";
+      let manifest = parse_manifest
+        ~path:tmpdir
+        ~relative_path:(Path.v "packages/demo")
+        {|
+[package]
+name = "demo"
+version = "0.1.0"
+
+[[bin]]
+name = "custom"
+path = "src/main.ml"
+|}
+      in
+      let pkg = Riot_model.Package_manifest.realize ~intent:Riot_model.Package_manifest.Build manifest in
+      if
+        pkg.sources.src = []
+        && pkg.sources.native = []
+        && pkg.sources.tests = []
+        && pkg.sources.examples = []
+        && pkg.sources.bench = []
+        && pkg.binaries = []
+      then
+        Ok ()
+      else
+        Error "expected build realization to skip loading sources and binaries")
+
 let test_manifest_realize_test_discovers_test_binaries_without_fixtures = fun _ctx ->
   with_tempdir "riot_model_package_manifest_test"
     (fun tmpdir ->
@@ -319,6 +357,9 @@ let tests = [
   Test.case
     "package manifest: runtime realization stays complete across repeated parallel scans"
     test_manifest_realize_runtime_stays_complete_across_repeated_parallel_scans;
+  Test.case
+    "package manifest: build realization skips source loading"
+    test_manifest_realize_build_skips_source_loading;
   Test.case
     "package manifest: test realization ignores fixture support entries"
     test_manifest_realize_test_discovers_test_binaries_without_fixtures;

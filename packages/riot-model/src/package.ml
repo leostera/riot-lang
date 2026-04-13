@@ -1418,128 +1418,131 @@ let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) 
   let excluded_relpath_strings = excluded_relpaths |> List.map ~fn:Path.to_string in
   let path_components = fun path -> Path.components path |> List.map ~fn:Path.to_string in
   let enabled_buckets = source_buckets_for_intent intent in
-  let scan_roots = scan_roots_for_intent ~intent ~package_path in
-  let should_skip_source_entry filename = String.starts_with ~prefix:"." (Path.basename filename) in
-  let should_skip_test_support_path rel_path =
-    match path_components rel_path with
-    | "tests" :: ("fixtures" | "generated" | "diagnostics" | "deps_fixtures") :: _ -> true
-    | _ -> false
-  in
-  let is_ocaml_module_file rel_path =
-    match Path.extension rel_path with
-    | Some ".ml"
-    | Some ".mli" -> true
-    | _ -> false
-  in
-  if not (Path.exists package_path) || List.is_empty scan_roots then
+  if List.is_empty enabled_buckets then
     empty_sources
   else
-    let src = ref [] in
-    let tests = ref [] in
-    let native = ref [] in
-    let examples = ref [] in
-    let bench = ref [] in
-    let visited_entries = ref 0 in
-    let visited_directories = ref 0 in
-    let visited_files = ref 0 in
-    let walker =
-      match Ignore.Walker.create ~roots:scan_roots () with
-      | Ok walker -> walker
-      | Error _ -> panic "package walker configuration should be valid"
+    let scan_roots = scan_roots_for_intent ~intent ~package_path in
+    let should_skip_source_entry filename = String.starts_with ~prefix:"." (Path.basename filename) in
+    let should_skip_test_support_path rel_path =
+      match path_components rel_path with
+      | "tests" :: ("fixtures" | "generated" | "diagnostics" | "deps_fixtures") :: _ -> true
+      | _ -> false
     in
-    match Ignore.Walker.to_list walker with
-    | Ok entries ->
-        List.for_each entries ~fn:(fun (entry: Fs.Walker.FileItem.t) ->
-          let () = visited_entries := !visited_entries + 1 in
-          let path = Fs.Walker.FileItem.path entry in
-          if not (Int.equal (Fs.Walker.FileItem.depth entry) 0) then
-            match Path.strip_prefix path ~prefix:package_path with
-            | Error _ -> ()
-            | Ok rel_path -> (
-                let rel_path_string = Path.to_string rel_path in
-                let rel_path_components = path_components rel_path in
-                match Fs.Walker.FileItem.kind entry with
-                | Directory ->
-                    let () = visited_directories := !visited_directories + 1 in
-                    ()
-                | File ->
-                    let () = visited_files := !visited_files + 1 in
-                    if
-                      not
-                        (should_skip_source_entry rel_path
-                         || should_skip_test_support_path rel_path
-                         || List.contains excluded_relpath_strings ~value:rel_path_string)
-                    then (
-                      match bucket_of_rel_path rel_path_components with
-                      | Some bucket when not (source_bucket_enabled enabled_buckets bucket) ->
-                          ()
-                      | Some Src
-                      | Some Tests
-                      | Some Examples
-                      | Some Bench
-                        when not (is_ocaml_module_file rel_path) ->
-                          ()
-                      | Some Src ->
-                          src := rel_path :: !src
-                      | Some Tests ->
-                          tests := rel_path :: !tests
-                      | Some Native ->
-                          native := rel_path :: !native
-                      | Some Examples ->
-                          examples := rel_path :: !examples
-                      | Some Bench ->
-                          bench := rel_path :: !bench
-                      | None ->
-                          ()
-                    )
-                | Symlink
-                | Other -> ()
-              ));
-        let sources = {
-          src = List.reverse !src;
-          tests = List.reverse !tests;
-          native = List.reverse !native;
-          examples = List.reverse !examples;
-          bench = List.reverse !bench;
-        }
-        in
-        let () =
-          trace_package
-            ("scan-sources path="
-            ^ Path.to_string package_path
-            ^ " intent="
-            ^ string_of_realization_intent intent
-            ^ " total_us="
-            ^ Int.to_string (elapsed_us_since started_at)
-            ^ " visited_entries="
-            ^ Int.to_string !visited_entries
-            ^ " visited_directories="
-            ^ Int.to_string !visited_directories
-            ^ " visited_files="
-            ^ Int.to_string !visited_files
-            ^ " kept_src="
-            ^ Int.to_string (List.length sources.src)
-            ^ " kept_tests="
-            ^ Int.to_string (List.length sources.tests)
-            ^ " kept_native="
-            ^ Int.to_string (List.length sources.native)
-            ^ " kept_examples="
-            ^ Int.to_string (List.length sources.examples)
-            ^ " kept_bench="
-            ^ Int.to_string (List.length sources.bench))
-        in
-        sources
-    | Error _ ->
-        let () =
-          trace_package
-            ("scan-sources-failed path="
-            ^ Path.to_string package_path
-            ^ " intent="
-            ^ string_of_realization_intent intent
-            ^ " total_us="
-            ^ Int.to_string (elapsed_us_since started_at))
-        in
-        empty_sources
+    let is_ocaml_module_file rel_path =
+      match Path.extension rel_path with
+      | Some ".ml"
+      | Some ".mli" -> true
+      | _ -> false
+    in
+    if not (Path.exists package_path) || List.is_empty scan_roots then
+      empty_sources
+    else
+      let src = ref [] in
+      let tests = ref [] in
+      let native = ref [] in
+      let examples = ref [] in
+      let bench = ref [] in
+      let visited_entries = ref 0 in
+      let visited_directories = ref 0 in
+      let visited_files = ref 0 in
+      let walker =
+        match Ignore.Walker.create ~roots:scan_roots () with
+        | Ok walker -> walker
+        | Error _ -> panic "package walker configuration should be valid"
+      in
+      match Ignore.Walker.to_list walker with
+      | Ok entries ->
+          List.for_each entries ~fn:(fun (entry: Fs.Walker.FileItem.t) ->
+            let () = visited_entries := !visited_entries + 1 in
+            let path = Fs.Walker.FileItem.path entry in
+            if not (Int.equal (Fs.Walker.FileItem.depth entry) 0) then
+              match Path.strip_prefix path ~prefix:package_path with
+              | Error _ -> ()
+              | Ok rel_path -> (
+                  let rel_path_string = Path.to_string rel_path in
+                  let rel_path_components = path_components rel_path in
+                  match Fs.Walker.FileItem.kind entry with
+                  | Directory ->
+                      let () = visited_directories := !visited_directories + 1 in
+                      ()
+                  | File ->
+                      let () = visited_files := !visited_files + 1 in
+                      if
+                        not
+                          (should_skip_source_entry rel_path
+                           || should_skip_test_support_path rel_path
+                           || List.contains excluded_relpath_strings ~value:rel_path_string)
+                      then (
+                        match bucket_of_rel_path rel_path_components with
+                        | Some bucket when not (source_bucket_enabled enabled_buckets bucket) ->
+                            ()
+                        | Some Src
+                        | Some Tests
+                        | Some Examples
+                        | Some Bench
+                          when not (is_ocaml_module_file rel_path) ->
+                            ()
+                        | Some Src ->
+                            src := rel_path :: !src
+                        | Some Tests ->
+                            tests := rel_path :: !tests
+                        | Some Native ->
+                            native := rel_path :: !native
+                        | Some Examples ->
+                            examples := rel_path :: !examples
+                        | Some Bench ->
+                            bench := rel_path :: !bench
+                        | None ->
+                            ()
+                      )
+                  | Symlink
+                  | Other -> ()
+                ));
+          let sources = {
+            src = List.reverse !src;
+            tests = List.reverse !tests;
+            native = List.reverse !native;
+            examples = List.reverse !examples;
+            bench = List.reverse !bench;
+          }
+          in
+          let () =
+            trace_package
+              ("scan-sources path="
+              ^ Path.to_string package_path
+              ^ " intent="
+              ^ string_of_realization_intent intent
+              ^ " total_us="
+              ^ Int.to_string (elapsed_us_since started_at)
+              ^ " visited_entries="
+              ^ Int.to_string !visited_entries
+              ^ " visited_directories="
+              ^ Int.to_string !visited_directories
+              ^ " visited_files="
+              ^ Int.to_string !visited_files
+              ^ " kept_src="
+              ^ Int.to_string (List.length sources.src)
+              ^ " kept_tests="
+              ^ Int.to_string (List.length sources.tests)
+              ^ " kept_native="
+              ^ Int.to_string (List.length sources.native)
+              ^ " kept_examples="
+              ^ Int.to_string (List.length sources.examples)
+              ^ " kept_bench="
+              ^ Int.to_string (List.length sources.bench))
+          in
+          sources
+      | Error _ ->
+          let () =
+            trace_package
+              ("scan-sources-failed path="
+              ^ Path.to_string package_path
+              ^ " intent="
+              ^ string_of_realization_intent intent
+              ^ " total_us="
+              ^ Int.to_string (elapsed_us_since started_at))
+          in
+          empty_sources
 
 let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) (): sources =
   scan_sources_for_intent ~intent:Dev ~package_path ~excluded_relpaths ()

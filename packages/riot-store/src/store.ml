@@ -348,12 +348,6 @@ let load_manifest = fun store ~hash ->
 
 let path_exists = fun path -> Fs.exists path |> Result.unwrap_or ~default:false
 
-let manifest_files_exist = fun store ~hash (manifest: Manifest.t) ->
-  let hash_dir = get_hash_dir store hash in
-  List.all
-    manifest.files
-    ~fn:(fun (entry: Manifest.file_entry) -> path_exists Path.(hash_dir / entry.path))
-
 let manifest_exports_exist = fun store (manifest: Manifest.t) ->
   List.all manifest.exports
     ~fn:(fun (entry: Manifest.export_entry) ->
@@ -365,7 +359,7 @@ let manifest_exports_exist = fun store (manifest: Manifest.t) ->
 let get = fun store hash ->
   match load_manifest store ~hash with
   | Some manifest ->
-      if manifest_files_exist store ~hash manifest && manifest_exports_exist store manifest then
+      if manifest_exports_exist store manifest then
         let files =
           List.map manifest.files ~fn:(fun (entry: Manifest.file_entry) -> entry.path)
         in

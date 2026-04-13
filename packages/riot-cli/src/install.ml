@@ -146,6 +146,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
             ~target
             ~host
           | Riot_build.CacheGc event -> Build.write_cache_gc_event ~mode:Build.Human event
+          | Riot_build.Phase _ -> ()
           | Riot_build.Streaming streaming_event -> Build.write_streaming_event
             ~mode:Build.Human
             ~displayed_packages

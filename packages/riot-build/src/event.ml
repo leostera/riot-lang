@@ -4,7 +4,28 @@ type t =
   | Pm of Riot_model.Event.t
   | BuildingTarget of { target: string; host: bool }
   | CacheGc of Riot_store.Cache_gc.event
+  | Phase of phase
   | Streaming of Client.streaming_event
+
+and runtime_phase =
+  | TargetsResolved of { target_count: int }
+  | ToolchainsEnsured of { target_count: int }
+  | ToolchainsValidated of { target_count: int }
+  | ClientConnecting
+  | ClientConnected
+  | TargetBuildStarted of { target: string; host: bool }
+  | TargetBuildFinished of { target: string; result_count: int; had_partial_failure: bool }
+  | CacheGenerationRecordingStarted of { lane_count: int; new_entry_count: int }
+  | CacheGenerationRecorded of { lane_count: int; new_entry_count: int }
+  | ReturningResults of { result_count: int; had_partial_failure: bool }
+
+and cli_phase =
+  | JsonTerminalEventEncodingStarted of { event: string; result_count: int option }
+  | JsonTerminalEventEncoded of { event: string; result_count: int option }
+
+and phase =
+  | RuntimePhase of runtime_phase
+  | CliPhase of cli_phase
 
 let telemetry_event_to_json = fun event ->
   match Riot_executor.Telemetry_events.to_json event with
@@ -57,6 +78,77 @@ let cycle_detected_event_to_json = fun session_id detected_at cycle_nodes ->
     ("cycle_nodes", Data.Json.Array (List.map cycle_nodes ~fn:Data.Json.string));
   ]
 
+let phase_name_of_runtime_phase = function
+  | TargetsResolved _ -> "targets_resolved"
+  | ToolchainsEnsured _ -> "toolchains_ensured"
+  | ToolchainsValidated _ -> "toolchains_validated"
+  | ClientConnecting -> "client_connecting"
+  | ClientConnected -> "client_connected"
+  | TargetBuildStarted _ -> "target_build_started"
+  | TargetBuildFinished _ -> "target_build_finished"
+  | CacheGenerationRecordingStarted _ -> "cache_generation_recording_started"
+  | CacheGenerationRecorded _ -> "cache_generation_recorded"
+  | ReturningResults _ -> "returning_results"
+
+let runtime_phase_fields = function
+  | TargetsResolved { target_count }
+  | ToolchainsEnsured { target_count }
+  | ToolchainsValidated { target_count } ->
+      [ ("target_count", Data.Json.Int target_count) ]
+  | ClientConnecting
+  | ClientConnected -> []
+  | TargetBuildStarted { target; host } ->
+      [ ("target", Data.Json.String target); ("host", Data.Json.Bool host) ]
+  | TargetBuildFinished { target; result_count; had_partial_failure } ->
+      [
+        ("target", Data.Json.String target);
+        ("result_count", Data.Json.Int result_count);
+        ("had_partial_failure", Data.Json.Bool had_partial_failure);
+      ]
+  | CacheGenerationRecordingStarted { lane_count; new_entry_count }
+  | CacheGenerationRecorded { lane_count; new_entry_count } ->
+      [ ("lane_count", Data.Json.Int lane_count); ("new_entry_count", Data.Json.Int new_entry_count) ]
+  | ReturningResults { result_count; had_partial_failure } ->
+      [
+        ("result_count", Data.Json.Int result_count);
+        ("had_partial_failure", Data.Json.Bool had_partial_failure);
+      ]
+
+let phase_name_of_cli_phase = function
+  | JsonTerminalEventEncodingStarted _ -> "json_terminal_event_encoding_started"
+  | JsonTerminalEventEncoded _ -> "json_terminal_event_encoded"
+
+let cli_phase_fields = function
+  | JsonTerminalEventEncodingStarted { event; result_count }
+  | JsonTerminalEventEncoded { event; result_count } ->
+      let result_count_json =
+        match result_count with
+        | Some count -> Data.Json.Int count
+        | None -> Data.Json.Null
+      in
+      [
+        ("event", Data.Json.String event);
+        ("result_count", result_count_json);
+      ]
+
+let phase_event_to_json = function
+  | RuntimePhase phase ->
+      Data.Json.Object
+        ([
+           ("type", Data.Json.String "BuildPhase");
+           ("subsystem", Data.Json.String "runtime");
+           ("phase", Data.Json.String (phase_name_of_runtime_phase phase));
+         ]
+        @ runtime_phase_fields phase)
+  | CliPhase phase ->
+      Data.Json.Object
+        ([
+           ("type", Data.Json.String "BuildPhase");
+           ("subsystem", Data.Json.String "cli");
+           ("phase", Data.Json.String (phase_name_of_cli_phase phase));
+         ]
+        @ cli_phase_fields phase)
+
 let to_json = function
   | Pm event ->
       Some (Riot_model.Event.to_json event)
@@ -68,6 +160,8 @@ let to_json = function
       ])
   | CacheGc event ->
       Some (Riot_store.Cache_gc.event_to_json event)
+  | Phase phase ->
+      Some (phase_event_to_json phase)
   | Streaming event -> (
       match event with
       | Client.BuildStarted _ -> None

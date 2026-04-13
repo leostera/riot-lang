@@ -17,10 +17,15 @@ type build_request = {
   profile: string;
 }
 
+type build_phase = Event.phase =
+  | RuntimePhase of Event.runtime_phase
+  | CliPhase of Event.cli_phase
+
 type build_event = Event.t =
   | Pm of Riot_model.Event.t
   | BuildingTarget of { target: string; host: bool }
   | CacheGc of Riot_store.Cache_gc.event
+  | Phase of build_phase
   | Streaming of Client.streaming_event
 
 type build_error =
@@ -181,6 +186,12 @@ let record_successful_build_cache_generation = fun request lane_results ->
   | Ok _ -> Ok ()
   | Error _ -> Ok ()
 
+let new_entry_count_of_lane_results = fun request lane_results ->
+  List.map lane_results ~fn:(fun (target, results) ->
+    new_entries_of_results ~profile:request.profile ~target results)
+  |> List.concat
+  |> List.length
+
 let build_with_connect = fun connect ~allow_partial_failures ?(record_cache_generation = true) ?(on_event = no_event) ?workspace_manager request ->
   let started_at = Time.Instant.now () in
   match resolve_targets request with
@@ -191,18 +202,23 @@ let build_with_connect = fun connect ~allow_partial_failures ?(record_cache_gene
           ~started_at
           ("targets-resolved count=" ^ Int.to_string (List.length targets))
       in
+      on_event (Phase (Event.RuntimePhase (Event.TargetsResolved { target_count = List.length targets })));
       match ensure_toolchains_for_targets request.workspace targets with
       | Error _ as err -> err
       | Ok () -> (
           let () = trace_build_runtime ~started_at "toolchains-ensured" in
+          on_event (Phase (Event.RuntimePhase (Event.ToolchainsEnsured { target_count = List.length targets })));
           match validate_target_toolchains request.workspace targets with
           | Error _ as err -> err
           | Ok () -> (
               let () = trace_build_runtime ~started_at "toolchains-validated" in
+              on_event (Phase (Event.RuntimePhase (Event.ToolchainsValidated { target_count = List.length targets })));
+              on_event (Phase (Event.RuntimePhase Event.ClientConnecting));
               match connect ?workspace_manager ~workspace:request.workspace () with
               | Error err -> Error (ClientError err)
               | Ok client ->
                   let () = trace_build_runtime ~started_at "client-connected" in
+                  on_event (Phase (Event.RuntimePhase Event.ClientConnected));
                   try
                     let host = Riot_toolchain.get_host_triple () in
                     let request_target = client_target request.packages in
@@ -210,6 +226,10 @@ let build_with_connect = fun connect ~allow_partial_failures ?(record_cache_gene
                       | [] -> Ok (List.reverse acc, had_partial_failure)
                       | target :: rest ->
                           on_event (BuildingTarget { target; host = String.equal target host });
+                          on_event (Phase (Event.RuntimePhase (Event.TargetBuildStarted {
+                            target;
+                            host = String.equal target host;
+                          })));
                           let target_arch =
                             if String.equal target host then
                               None
@@ -238,18 +258,36 @@ let build_with_connect = fun connect ~allow_partial_failures ?(record_cache_gene
                                 on_event (Streaming event))
                           with
                           | Ok (Client.BuildCompleted { results; _ }) ->
+                              on_event (Phase (Event.RuntimePhase (Event.TargetBuildFinished {
+                                target;
+                                result_count = List.length results;
+                                had_partial_failure;
+                              })));
                               loop ((target, results) :: acc) had_partial_failure rest
                           | Ok _ -> (
                               match !lane_results with
-                              | Some results -> loop
-                                ((target, results) :: acc)
-                                (!lane_failed || had_partial_failure)
-                                rest
+                              | Some results ->
+                                  let next_partial_failure = !lane_failed || had_partial_failure in
+                                  on_event (Phase (Event.RuntimePhase (Event.TargetBuildFinished {
+                                    target;
+                                    result_count = List.length results;
+                                    had_partial_failure = next_partial_failure;
+                                  })));
+                                  loop
+                                    ((target, results) :: acc)
+                                    next_partial_failure
+                                    rest
                               | None -> loop acc had_partial_failure rest
                             )
                           | Error err when allow_partial_failures && !lane_failed -> (
                               match !lane_results with
-                              | Some results -> loop ((target, results) :: acc) true rest
+                              | Some results ->
+                                  on_event (Phase (Event.RuntimePhase (Event.TargetBuildFinished {
+                                    target;
+                                    result_count = List.length results;
+                                    had_partial_failure = true;
+                                  })));
+                                  loop ((target, results) :: acc) true rest
                               | None -> Error (ClientError err)
                             )
                           | Error err ->
@@ -260,14 +298,31 @@ let build_with_connect = fun connect ~allow_partial_failures ?(record_cache_gene
                     (
                       match result with
                       | Ok (lane_results, had_partial_failure) ->
+                          let all_results =
+                            List.map lane_results ~fn:(fun (_, results) -> results) |> List.concat
+                          in
                           let _ =
-                            if record_cache_generation && not had_partial_failure then
-                              record_successful_build_cache_generation request lane_results
-                            else
+                            if record_cache_generation && not had_partial_failure then (
+                              let new_entry_count = new_entry_count_of_lane_results request lane_results in
+                              on_event (Phase (Event.RuntimePhase (Event.CacheGenerationRecordingStarted {
+                                lane_count = List.length lane_results;
+                                new_entry_count;
+                              })));
+                              let recorded = record_successful_build_cache_generation request lane_results in
+                              on_event (Phase (Event.RuntimePhase (Event.CacheGenerationRecorded {
+                                lane_count = List.length lane_results;
+                                new_entry_count;
+                              })));
+                              recorded
+                            ) else
                               Ok ()
                           in
+                          on_event (Phase (Event.RuntimePhase (Event.ReturningResults {
+                            result_count = List.length all_results;
+                            had_partial_failure;
+                          })));
                           let () = trace_build_runtime ~started_at "build-with-connect-return-ok" in
-                          Ok (List.map lane_results ~fn:(fun (_, results) -> results) |> List.concat)
+                          Ok all_results
                       | Error _ as err ->
                           let () = trace_build_runtime ~started_at "build-with-connect-return-error" in
                           err

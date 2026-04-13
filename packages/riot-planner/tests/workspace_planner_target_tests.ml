@@ -169,6 +169,34 @@ let plan_runtime_target_does_not_pull_build_dependency_runtime_cycle = fun _ctx 
         ~actual:(package_keys plan);
       Ok ()
 
+let plan_targeted_runtime_ignores_unrelated_missing_dependencies = fun _ctx ->
+  let workspace = make_workspace
+    [
+      make_package "std";
+      make_package ~dependencies:[ "std" ] "app";
+      make_package ~dependencies:[ "missing-lib" ] "unrelated";
+    ] in
+  match plan_workspace workspace (Package "app") Runtime with
+  | Error err ->
+      Error ("expected targeted runtime plan to ignore unrelated missing dependencies, got " ^ (
+        match err with
+        | PackageNotFound { name; _ } -> "PackageNotFound(" ^ name ^ ")"
+        | PackagesNotFound { names; _ } -> "PackagesNotFound(" ^ String.concat "," names ^ ")"
+        | CycleDetected { cycle } -> "CycleDetected(" ^ String.concat "->" cycle ^ ")"
+        | MissingDependencies { missing } -> "MissingDependencies("
+          ^ String.concat
+              ","
+              (List.map
+                missing
+                ~fn:(fun (item: Riot_planner.Package_graph.missing_dependency) -> item.package ^ "->" ^ item.dependency))
+          ^ ")"
+        | PackageLoadFailed _ -> "PackageLoadFailed"
+      ))
+  | Ok plan ->
+      let names = package_names plan |> List.unique ~compare:String.compare in
+      Test.assert_equal ~expected:[ "app"; "std" ] ~actual:names;
+      Ok ()
+
 let tests =
   Test.[
     case "plan all runtime returns workspace-like order" plan_all_runtime_returns_workspace_like_order;
@@ -180,6 +208,9 @@ let tests =
     case
       "runtime target does not pull build-dependency runtime cycle"
       plan_runtime_target_does_not_pull_build_dependency_runtime_cycle;
+    case
+      "targeted runtime ignores unrelated missing dependencies"
+      plan_targeted_runtime_ignores_unrelated_missing_dependencies;
   ]
 
 let name = "riot-planner:workspace-planner-targets"

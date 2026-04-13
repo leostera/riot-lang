@@ -52,7 +52,19 @@ type missing_dependency = {
     not in the workspace. *)
 type create_error =
   | MissingPackages of { missing: missing_dependency list }
+
+type create_breakdown = {
+  build_node_realization_count: int;
+  build_node_realization_duration: Time.Duration.t;
+  runtime_node_realization_count: int;
+  runtime_node_realization_duration: Time.Duration.t;
+  dev_node_realization_count: int;
+  dev_node_realization_duration: Time.Duration.t;
+  edge_wiring_duration: Time.Duration.t;
+}
+
 val create: scope:build_scope -> Workspace.t -> (t, create_error) result
+val create_with_breakdown: scope:build_scope -> Workspace.t -> ((t * create_breakdown), create_error) result
 
 (** Extract the Package.t from a package_node *)
 val get_package: package_node -> Package.t

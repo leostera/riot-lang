@@ -41,6 +41,15 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
       (* Filter events by session_id to prevent cross-contamination *)
       let event_session_id =
         match event with
+        | Riot_executor.Telemetry_events.WorkspacePlanStarted { session_id; _ } -> Some session_id
+        | Riot_executor.Telemetry_events.WorkspacePlanCompleted { session_id; _ } -> Some session_id
+        | Riot_executor.Telemetry_events.WorkspaceManifestFilterCompleted { session_id; _ } ->
+            Some session_id
+        | Riot_executor.Telemetry_events.WorkspaceGraphCreated { session_id; _ } -> Some session_id
+        | Riot_executor.Telemetry_events.WorkspaceTargetGraphFiltered { session_id; _ } ->
+            Some session_id
+        | Riot_executor.Telemetry_events.WorkspaceTopologicalSortCompleted { session_id; _ } ->
+            Some session_id
         | Riot_executor.Telemetry_events.PlanningWorkspaceStarted { session_id; _ } -> Some session_id
         | Riot_executor.Telemetry_events.BuildStarted { session_id; _ } -> Some session_id
         | Riot_executor.Telemetry_events.CompilationStarted { session_id; _ } -> Some session_id
@@ -50,6 +59,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
         | Riot_executor.Telemetry_events.BuildSkipped { session_id; _ } -> Some session_id
         | Riot_executor.Telemetry_events.PlanningWorkspaceCompleted { session_id; _ } -> Some session_id
         | Riot_executor.Telemetry_events.PackagePlanningResult { session_id; _ } -> Some session_id
+        | Riot_executor.Telemetry_events.PackagePlanningBreakdown { session_id; _ } -> Some session_id
         | Riot_executor.Telemetry_events.WorkspaceStarted { session_id; _ } -> Some session_id
         | Riot_executor.Telemetry_events.WorkspaceCompleted { session_id; _ } -> Some session_id
         | Riot_executor.Telemetry_events.ActionStarted { session_id; _ } -> Some session_id

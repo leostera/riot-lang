@@ -27,10 +27,14 @@ type build_request = {
   scope: build_scope;
   profile: string;
 }
+type build_phase = Event.phase =
+  | RuntimePhase of Event.runtime_phase
+  | CliPhase of Event.cli_phase
 type build_event = Event.t =
   | Pm of Riot_model.Event.t
   | BuildingTarget of { target: string; host: bool }
   | CacheGc of Riot_store.Cache_gc.event
+  | Phase of build_phase
   | Streaming of Client.streaming_event
 type build_error =
   | NoTargetsMatched of { pattern: string; available_targets: string list }

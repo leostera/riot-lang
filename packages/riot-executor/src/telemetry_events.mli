@@ -17,6 +17,28 @@ type package_planning_status =
   | `FailedDependencies
   | `Failed
 ]
+
+type package_planning_breakdown = {
+  dependency_count: int;
+  dependency_check_duration: Time.Duration.t;
+  input_hash_duration: Time.Duration.t;
+  artifact_lookup_duration: Time.Duration.t;
+  artifact_cache_hit: bool;
+  plan_bundle_lookup_duration: Time.Duration.t;
+  plan_bundle_decode_duration: Time.Duration.t;
+  plan_bundle_cache_hit: bool;
+  module_plan_duration: Time.Duration.t;
+}
+
+type workspace_graph_breakdown = {
+  build_node_realization_count: int;
+  build_node_realization_duration: Time.Duration.t;
+  runtime_node_realization_count: int;
+  runtime_node_realization_duration: Time.Duration.t;
+  dev_node_realization_count: int;
+  dev_node_realization_duration: Time.Duration.t;
+  edge_wiring_duration: Time.Duration.t;
+}
 type warning_source =
 [
   | `Fresh
@@ -33,6 +55,43 @@ type Telemetry.event +=
       session_id: Session_id.t;
       package: Package.t;
       target: Workspace_planner.target
+    }
+  | WorkspacePlanStarted of {
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      workspace_package_count: int
+    }
+  | WorkspacePlanCompleted of {
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      workspace_package_count: int;
+      planned_package_count: int;
+      duration: Time.Duration.t
+    }
+  | WorkspaceManifestFilterCompleted of {
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      filtered_workspace_package_count: int;
+      duration: Time.Duration.t
+    }
+  | WorkspaceGraphCreated of {
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      node_count: int;
+      breakdown: workspace_graph_breakdown;
+      duration: Time.Duration.t
+    }
+  | WorkspaceTargetGraphFiltered of {
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      node_count: int;
+      duration: Time.Duration.t
+    }
+  | WorkspaceTopologicalSortCompleted of {
+      session_id: Session_id.t;
+      target: Workspace_planner.target;
+      sorted_package_count: int;
+      duration: Time.Duration.t
     }
   | PlanningWorkspaceStarted of {
       session_id: Session_id.t;
@@ -54,6 +113,12 @@ type Telemetry.event +=
       status: package_planning_status;
       duration: Time.Duration.t;
       reason: string option
+    }
+  | PackagePlanningBreakdown of {
+      session_id: Session_id.t;
+      package: Package.t;
+      target: Workspace_planner.target;
+      breakdown: package_planning_breakdown
     }
   | CompilationStarted of {
       session_id: Session_id.t;

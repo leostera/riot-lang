@@ -22,7 +22,8 @@ type plan_result =
       hash: Std.Crypto.hash;
       artifact: Riot_store.Artifact.t;
       depset: Dependency.t list;
-      exports: Riot_store.Store.export_entry list
+      exports: Riot_store.Store.export_entry list;
+      breakdown: planning_breakdown
     }
   | Planned of {
       package_key: Package.key;
@@ -30,10 +31,23 @@ type plan_result =
       module_graph: Module_node.t Graph.SimpleGraph.t;
       action_graph: Action_graph.t;
       hash: Std.Crypto.hash;
-      depset: Dependency.t list
+      depset: Dependency.t list;
+      breakdown: planning_breakdown
     }
-  | MissingDependencies of { package: Package.t; missing: Package.t list }
-  | FailedDependencies of { package: Package.t; failed: Package.t list }
+  | MissingDependencies of { package: Package.t; missing: Package.t list; breakdown: planning_breakdown }
+  | FailedDependencies of { package: Package.t; failed: Package.t list; breakdown: planning_breakdown }
+
+and planning_breakdown = {
+  dependency_count: int;
+  dependency_check_duration: Time.Duration.t;
+  input_hash_duration: Time.Duration.t;
+  artifact_lookup_duration: Time.Duration.t;
+  artifact_cache_hit: bool;
+  plan_bundle_lookup_duration: Time.Duration.t;
+  plan_bundle_decode_duration: Time.Duration.t;
+  plan_bundle_cache_hit: bool;
+  module_plan_duration: Time.Duration.t;
+}
 val plan_package:
   workspace:Workspace.t ->
   toolchain:Riot_toolchain.t ->

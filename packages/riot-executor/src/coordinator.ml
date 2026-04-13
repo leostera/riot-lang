@@ -371,6 +371,28 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
         }
       )
   in
+  let emit_package_planning_breakdown package breakdown =
+    let breakdown: Telemetry_events.package_planning_breakdown = {
+      dependency_count = breakdown.Riot_planner.Package_planner.dependency_count;
+      dependency_check_duration = breakdown.Riot_planner.Package_planner.dependency_check_duration;
+      input_hash_duration = breakdown.Riot_planner.Package_planner.input_hash_duration;
+      artifact_lookup_duration = breakdown.Riot_planner.Package_planner.artifact_lookup_duration;
+      artifact_cache_hit = breakdown.Riot_planner.Package_planner.artifact_cache_hit;
+      plan_bundle_lookup_duration = breakdown.Riot_planner.Package_planner.plan_bundle_lookup_duration;
+      plan_bundle_decode_duration = breakdown.Riot_planner.Package_planner.plan_bundle_decode_duration;
+      plan_bundle_cache_hit = breakdown.Riot_planner.Package_planner.plan_bundle_cache_hit;
+      module_plan_duration = breakdown.Riot_planner.Package_planner.module_plan_duration;
+    } in
+    Telemetry.emit
+      (
+        PackagePlanningBreakdown {
+          session_id;
+          package;
+          target;
+          breakdown;
+        }
+      )
+  in
   let target_dir_for package_name =
     Path.(Riot_dirs.out_dir_in_workspace
       ~workspace
@@ -514,7 +536,8 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 package
                 (Package_builder.Failed (PlanningFailed err)) in
               ()
-          | Ok (MissingDependencies { missing }) ->
+          | Ok (MissingDependencies { missing; breakdown }) ->
+              emit_package_planning_breakdown package breakdown;
               update_planning_progress
                 package_key
                 `MissingDependencies
@@ -523,7 +546,8 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 ~reason:(Some ("Missing dependencies: "
                 ^ (missing |> List.map ~fn:(fun p -> p.Package.name) |> String.concat ", ")));
               Vector.push still_pending ~value:package_node
-          | Ok (FailedDependencies { failed; _ }) ->
+          | Ok (FailedDependencies { failed; breakdown; _ }) ->
+              emit_package_planning_breakdown package breakdown;
               update_planning_progress
                 package_key
                 `FailedDependencies
@@ -538,9 +562,11 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
             artifact;
             depset;
             exports;
+            breakdown;
             _;
 
           }) ->
+              emit_package_planning_breakdown package breakdown;
               update_planning_progress
                 package_key
                 `Planned
@@ -555,9 +581,11 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
             depset;
             module_graph;
             action_graph;
+            breakdown;
             _;
 
           }) ->
+              emit_package_planning_breakdown package breakdown;
               update_planning_progress
                 package_key
                 `Planned
@@ -659,7 +687,8 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                     (Package_builder.Failed (PlanningFailed err)) in
                   let _ = HashMap.remove pending_planning ~key:package_key in
                   ()
-              | Ok (MissingDependencies { missing }) ->
+              | Ok (MissingDependencies { missing; breakdown }) ->
+                  emit_package_planning_breakdown package breakdown;
                   update_planning_progress
                     package_key
                     `MissingDependencies
@@ -670,7 +699,8 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                     ~reason:(Some ("Missing dependencies: "
                     ^ (missing |> List.map ~fn:(fun p -> p.Package.name) |> String.concat ", ")));
                   ()
-              | Ok (FailedDependencies { failed; _ }) ->
+              | Ok (FailedDependencies { failed; breakdown; _ }) ->
+                  emit_package_planning_breakdown package breakdown;
                   update_planning_progress
                     package_key
                     `FailedDependencies
@@ -700,9 +730,11 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 artifact;
                 depset;
                 exports;
+                breakdown;
                 _;
 
               }) ->
+                  emit_package_planning_breakdown package breakdown;
                   update_planning_progress
                     package_key
                     `Planned
@@ -720,9 +752,11 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 depset;
                 module_graph;
                 action_graph;
+                breakdown;
                 _;
 
               }) ->
+                  emit_package_planning_breakdown package breakdown;
                   update_planning_progress
                     package_key
                     `Planned
@@ -1004,38 +1038,90 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
 
 let build_workspace = fun ~workspace ~toolchain ~store ~target ~scope ~concurrency ~build_ctx ~session_id ->
   let start = Time.Instant.now () in
+  let workspace_package_count = List.length workspace.Riot_model.Workspace.packages in
+  let planning_started_at = Time.Instant.now () in
+  Telemetry.emit (WorkspacePlanStarted {
+    session_id;
+    target;
+    workspace_package_count;
+  });
   match Riot_planner.plan_workspace ~workspace ~target ~scope ~load_errors:[] with
   | Error err -> Error err
-  | Ok { packages; package_graph; _ } -> (
+  | Ok { packages; nodes; package_graph; breakdown; _ } -> (
+      let planning_duration =
+        Time.Instant.duration_since ~earlier:planning_started_at (Time.Instant.now ())
+      in
+      Telemetry.emit (WorkspaceManifestFilterCompleted {
+        session_id;
+        target;
+        filtered_workspace_package_count = breakdown.filtered_workspace_package_count;
+        duration = breakdown.manifest_filter_duration;
+      });
+      Telemetry.emit (WorkspaceGraphCreated {
+        session_id;
+        target;
+        node_count = breakdown.package_graph_node_count;
+        breakdown = {
+          Telemetry_events.build_node_realization_count =
+            breakdown.package_graph_create_breakdown.build_node_realization_count;
+          build_node_realization_duration =
+            breakdown.package_graph_create_breakdown.build_node_realization_duration;
+          runtime_node_realization_count =
+            breakdown.package_graph_create_breakdown.runtime_node_realization_count;
+          runtime_node_realization_duration =
+            breakdown.package_graph_create_breakdown.runtime_node_realization_duration;
+          dev_node_realization_count =
+            breakdown.package_graph_create_breakdown.dev_node_realization_count;
+          dev_node_realization_duration =
+            breakdown.package_graph_create_breakdown.dev_node_realization_duration;
+          edge_wiring_duration =
+            breakdown.package_graph_create_breakdown.edge_wiring_duration;
+        };
+        duration = breakdown.package_graph_duration;
+      });
+      Telemetry.emit (WorkspaceTargetGraphFiltered {
+        session_id;
+        target;
+        node_count = breakdown.target_graph_node_count;
+        duration = breakdown.target_graph_filter_duration;
+      });
+      Telemetry.emit (WorkspaceTopologicalSortCompleted {
+        session_id;
+        target;
+        sorted_package_count = breakdown.sorted_package_count;
+        duration = breakdown.topological_sort_duration;
+      });
+      Telemetry.emit (WorkspacePlanCompleted {
+        session_id;
+        target;
+        workspace_package_count;
+        planned_package_count = List.length packages;
+        duration = planning_duration;
+      });
       Telemetry.emit (WorkspaceStarted { session_id; target; package_count = List.length packages });
       Log.info
         ("Building "
         ^ Int.to_string (List.length packages)
         ^ " packages with action-level concurrency budget "
         ^ Int.to_string concurrency);
-      match Package_graph.topological_sort package_graph with
-      | exception Package_graph.Cycle_detected cycle -> Error (Workspace_planner.CycleDetected {
-        cycle
-      })
-      | nodes ->
-          let results = build_workspace_actions
-            ~workspace
-            ~toolchain
-            ~store
-            ~package_graph
-            ~target
-            ~build_ctx
-            ~session_id
-            ~nodes in
-          let result = summarize_results ~package_graph results in
-          let total_duration = Time.Instant.duration_since ~earlier:start (Time.Instant.now ()) in
-          Telemetry.emit
-            (
-              WorkspaceCompleted {
-                session_id;
-                target;
-                total_duration;
-                cached_count = result.cached_count;
+      let results = build_workspace_actions
+        ~workspace
+        ~toolchain
+        ~store
+        ~package_graph
+        ~target
+        ~build_ctx
+        ~session_id
+        ~nodes in
+      let result = summarize_results ~package_graph results in
+      let total_duration = Time.Instant.duration_since ~earlier:start (Time.Instant.now ()) in
+      Telemetry.emit
+        (
+          WorkspaceCompleted {
+            session_id;
+            target;
+            total_duration;
+            cached_count = result.cached_count;
                 built_count = result.built_count;
                 failed_count = result.failed_count;
               }

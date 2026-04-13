@@ -56,10 +56,12 @@ type receipt_file = {
 
 type cache_state = {
   tracked_size_bytes: int64;
+  receipt_count: int option;
 }
 
 type tracked_size_snapshot = {
   tracked_size_bytes: int64;
+  receipt_count: int;
   rebuilt: bool;
 }
 
@@ -216,10 +218,15 @@ let receipt_to_json = fun receipt ->
   ]
 
 let cache_state_to_json = fun (state: cache_state) ->
-  Data.Json.Object [
-    ("schema_version", Data.Json.Int 1);
-    ("tracked_size_bytes", Data.Json.String (Int64.to_string state.tracked_size_bytes));
-  ]
+  Data.Json.Object
+    ([
+       ("schema_version", Data.Json.Int 1);
+       ("tracked_size_bytes", Data.Json.String (Int64.to_string state.tracked_size_bytes));
+     ]
+    @
+    match state.receipt_count with
+    | Some receipt_count -> [ ("receipt_count", Data.Json.Int receipt_count) ]
+    | None -> [])
 
 let generation_lane_of_json = fun json ->
   let* profile =
@@ -288,7 +295,13 @@ let cache_state_of_json = fun json ->
       match Data.Json.get_string value with
       | Some tracked_size_bytes -> (
           match Int64.parse tracked_size_bytes with
-          | Some tracked_size_bytes -> Ok ({ tracked_size_bytes }: cache_state)
+          | Some tracked_size_bytes ->
+              let receipt_count =
+                match Data.Json.get_field "receipt_count" json with
+                | Some value -> Data.Json.get_int value
+                | None -> None
+              in
+              Ok ({ tracked_size_bytes; receipt_count }: cache_state)
           | None -> Error "cache state field 'tracked_size_bytes' must be an int64 string"
         )
       | None -> Error "cache state is missing string field 'tracked_size_bytes'"
@@ -459,15 +472,23 @@ let total_size = fun entries ->
 
 let load_or_rebuild_tracked_size = fun ~(workspace:Workspace.t) ->
   match read_state ~workspace with
-  | Ok (Some state) -> Ok (
-    { tracked_size_bytes = state.tracked_size_bytes; rebuilt = false }: tracked_size_snapshot
-  )
+  | Ok (Some state) ->
+      let receipt_count =
+        match state.receipt_count with
+        | Some receipt_count -> receipt_count
+        | None ->
+            let receipt_count = count_receipts ~workspace in
+            let _ = write_state ~workspace { tracked_size_bytes = state.tracked_size_bytes; receipt_count = Some receipt_count } in
+            receipt_count
+      in
+      Ok ({ tracked_size_bytes = state.tracked_size_bytes; receipt_count; rebuilt = false }: tracked_size_snapshot)
   | Ok None
   | Error _ ->
       let* entries = collect_cache_entries ~workspace in
       let tracked_size_bytes = total_size entries in
-      let* () = write_state ~workspace (({ tracked_size_bytes }: cache_state)) in
-      Ok ({ tracked_size_bytes; rebuilt = true }: tracked_size_snapshot)
+      let receipt_count = count_receipts ~workspace in
+      let* () = write_state ~workspace { tracked_size_bytes; receipt_count = Some receipt_count } in
+      Ok ({ tracked_size_bytes; receipt_count; rebuilt = true }: tracked_size_snapshot)
 
 let take = fun n list ->
   let rec loop acc remaining count =
@@ -561,7 +582,7 @@ let run_gc = fun ~(workspace:Workspace.t) ~policy ->
         let* () = acc in
         delete_path receipt.path ~kind:"file")
   in
-  let* () = write_state ~workspace (({ tracked_size_bytes = size_after_bytes }: cache_state)) in
+  let* () = write_state ~workspace { tracked_size_bytes = size_after_bytes; receipt_count = Some (List.length kept_receipts) } in
   Ok {
     ran_gc = true;
     kept_generations = List.length kept_receipts;
@@ -597,7 +618,7 @@ let clean_with_events = fun ~(workspace:Workspace.t) ~on_event ->
     | Error error -> report_error error
   in
   let tracked_size_bytes = tracked_size.tracked_size_bytes in
-  let receipt_count = count_receipts ~workspace in
+  let receipt_count = tracked_size.receipt_count in
   if not (should_run_gc ~receipt_count ~policy ~tracked_size_bytes) then
     let summary = {
       ran_gc = false;
@@ -689,8 +710,9 @@ let record_successful_build_with_events = fun ~(workspace:Workspace.t) ~on_event
       | Error error -> report_error error
   in
   let tracked_size_bytes = Int64.add tracked_size.tracked_size_bytes added_size_bytes in
+  let next_receipt_count = tracked_size.receipt_count + 1 in
   let* () =
-    match write_state ~workspace (({ tracked_size_bytes }: cache_state)) with
+    match write_state ~workspace { tracked_size_bytes; receipt_count = Some next_receipt_count } with
     | Ok () -> Ok ()
     | Error error -> report_error error
   in
@@ -699,10 +721,9 @@ let record_successful_build_with_events = fun ~(workspace:Workspace.t) ~on_event
     | Ok () -> Ok ()
     | Error error -> report_error error
   in
-  let receipt_count = count_receipts ~workspace in
   Ok {
     ran_gc = false;
-    kept_generations = receipt_count;
+    kept_generations = next_receipt_count;
     deleted_generations = 0;
     deleted_entries = 0;
     size_before_bytes = tracked_size_bytes;

@@ -48,8 +48,26 @@ let render_build_event = fun (event: Riot_build.build_event) ->
       "BuildingTarget(" ^ target ^ "," ^ Bool.to_string host ^ ")"
   | Riot_build.CacheGc _ ->
       "CacheGc"
+  | Riot_build.Phase _ ->
+      "Phase"
   | Riot_build.Streaming event ->
       "Streaming(" ^ render_streaming_event event ^ ")"
+
+let has_workspace_plan_started = fun events ->
+  List.find events ~fn:(function
+    | Riot_build.Streaming (Riot_build.Client.BuildEvent (Riot_executor.Telemetry_events.WorkspacePlanStarted _)) ->
+        true
+    | _ ->
+        false)
+  |> Option.is_some
+
+let has_workspace_plan_completed = fun events ->
+  List.find events ~fn:(function
+    | Riot_build.Streaming (Riot_build.Client.BuildEvent (Riot_executor.Telemetry_events.WorkspacePlanCompleted _)) ->
+        true
+    | _ ->
+        false)
+  |> Option.is_some
 
 let summarize_build_failure = fun (err: Riot_build.build_error) events ->
   let recent_events =
@@ -120,7 +138,12 @@ let test_build_runtime_builds_repo_kernel = fun _ctx ->
                     match result.status with
                     | Riot_executor.Package_builder.Built _
                     | Riot_executor.Package_builder.Cached _ ->
-                        Ok ()
+                        if not (has_workspace_plan_started !events) then
+                          Error "expected workspace plan started event"
+                        else if not (has_workspace_plan_completed !events) then
+                          Error "expected workspace plan completed event"
+                        else
+                          Ok ()
                     | Riot_executor.Package_builder.Skipped { reason } ->
                         Error ("expected kernel build to run, got skipped: " ^ reason)
                     | Riot_executor.Package_builder.Failed err ->

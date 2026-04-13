@@ -7,10 +7,25 @@ type target =
   | All
   | Package of string
   | Packages of string list
+
+type planning_breakdown = {
+  manifest_filter_duration: Time.Duration.t;
+  filtered_workspace_package_count: int;
+  package_graph_duration: Time.Duration.t;
+  package_graph_node_count: int;
+  package_graph_create_breakdown: Package_graph.create_breakdown;
+  target_graph_filter_duration: Time.Duration.t;
+  target_graph_node_count: int;
+  topological_sort_duration: Time.Duration.t;
+  sorted_package_count: int;
+}
+
 type package_plan = {
   packages: Package.t list;
+  nodes: Package_graph.package_node list;
   package_graph: Package_graph.t;
   workspace: Workspace.t;
+  breakdown: planning_breakdown;
 }
 (** Plan the workspace build:
 
@@ -35,3 +50,6 @@ val plan_workspace:
 
 (** Get the list of packages in the plan (topologically sorted) *)
 val packages_in_plan: package_plan -> Package.t list
+
+(** Get the planning breakdown for the plan. *)
+val planning_breakdown: package_plan -> planning_breakdown

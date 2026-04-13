@@ -15,6 +15,16 @@ type missing_dependency = {
 type create_error =
   | MissingPackages of { missing: missing_dependency list }
 
+type create_breakdown = {
+  build_node_realization_count: int;
+  build_node_realization_duration: Time.Duration.t;
+  runtime_node_realization_count: int;
+  runtime_node_realization_duration: Time.Duration.t;
+  dev_node_realization_count: int;
+  dev_node_realization_duration: Time.Duration.t;
+  edge_wiring_duration: Time.Duration.t;
+}
+
 type build_status =
   Cached
   | Fresh
@@ -164,11 +174,22 @@ let realize_projected_package = fun (workspace: Workspace.t) scope (pkg: Package
   Workspace.realize_package ~intent pkg
   |> projected_package scope
 
-let create ~scope (workspace: Workspace.t): (t, create_error) result =
+let empty_breakdown = {
+  build_node_realization_count = 0;
+  build_node_realization_duration = Time.Duration.zero;
+  runtime_node_realization_count = 0;
+  runtime_node_realization_duration = Time.Duration.zero;
+  dev_node_realization_count = 0;
+  dev_node_realization_duration = Time.Duration.zero;
+  edge_wiring_duration = Time.Duration.zero;
+}
+
+let create_with_breakdown ~scope (workspace: Workspace.t): ((t * create_breakdown), create_error) result =
   let started_at = Time.Instant.now () in
   let graph = G.make () in
   let name_to_node = HashMap.create () in
   let missing = vec [] in
+  let breakdown = ref empty_breakdown in
   let insert_node package scope =
     let node = G.add_node graph (Unplanned { package; scope }) in
     let _ = HashMap.insert
@@ -177,20 +198,58 @@ let create ~scope (workspace: Workspace.t): (t, create_error) result =
       ~value:node in
     ()
   in
+  let realize_and_insert_node scope (pkg: Package_manifest.t) =
+    let realization_started_at = Time.Instant.now () in
+    let package = realize_projected_package workspace scope pkg in
+    let realization_duration =
+      Time.Instant.duration_since ~earlier:realization_started_at (Time.Instant.now ())
+    in
+    breakdown := (
+      match scope with
+      | Build ->
+          {
+            (!breakdown) with
+            build_node_realization_count = (!breakdown).build_node_realization_count + 1;
+            build_node_realization_duration =
+              Time.Duration.add
+                (!breakdown).build_node_realization_duration
+                realization_duration;
+          }
+      | Runtime ->
+          {
+            (!breakdown) with
+            runtime_node_realization_count = (!breakdown).runtime_node_realization_count + 1;
+            runtime_node_realization_duration =
+              Time.Duration.add
+                (!breakdown).runtime_node_realization_duration
+                realization_duration;
+          }
+      | Dev ->
+          {
+            (!breakdown) with
+            dev_node_realization_count = (!breakdown).dev_node_realization_count + 1;
+            dev_node_realization_duration =
+              Time.Duration.add
+                (!breakdown).dev_node_realization_duration
+                realization_duration;
+          }
+    );
+    insert_node package scope
+  in
   (
     match scope with
     | Build ->
         List.for_each
           workspace.packages
           ~fn:(fun (pkg: Package_manifest.t) ->
-            insert_node (realize_projected_package workspace Build pkg) Build)
+            realize_and_insert_node Build pkg)
     | Runtime
     | Dev ->
         List.for_each
           workspace.packages
           ~fn:(fun (pkg: Package_manifest.t) ->
             if needs_build_scope_node pkg then
-              insert_node (realize_projected_package workspace Build pkg) Build)
+              realize_and_insert_node Build pkg)
   );
   (
     match scope with
@@ -200,7 +259,7 @@ let create ~scope (workspace: Workspace.t): (t, create_error) result =
         List.for_each
           workspace.packages
           ~fn:(fun (pkg: Package_manifest.t) ->
-            insert_node (realize_projected_package workspace Runtime pkg) Runtime)
+            realize_and_insert_node Runtime pkg)
   );
   (
     match scope with
@@ -208,10 +267,11 @@ let create ~scope (workspace: Workspace.t): (t, create_error) result =
         List.for_each
           workspace.packages
           ~fn:(fun (pkg: Package_manifest.t) ->
-            insert_node (realize_projected_package workspace Dev pkg) Dev)
+            realize_and_insert_node Dev pkg)
     | Build
     | Runtime -> ()
   );
+  let edge_wiring_started_at = Time.Instant.now () in
   List.for_each
     workspace.packages
     ~fn:(fun (pkg: Package_manifest.t) ->
@@ -280,12 +340,16 @@ let create ~scope (workspace: Workspace.t): (t, create_error) result =
           List.for_each
             pkg.dev_dependencies
             ~fn:(fun (dep: Package.dependency) -> add_dep_edge ~from_scope:Dev dep.name));
+  let edge_wiring_duration =
+    Time.Instant.duration_since ~earlier:edge_wiring_started_at (Time.Instant.now ())
+  in
+  breakdown := { (!breakdown) with edge_wiring_duration };
   let missing = Vector.iter missing |> Iterator.to_list in
   let result =
     if List.length missing > 0 then
       Error (MissingPackages { missing })
     else
-      Ok { graph; name_to_node }
+      Ok ({ graph; name_to_node }, !breakdown)
   in
   let () =
     trace_package_graph
@@ -301,6 +365,10 @@ let create ~scope (workspace: Workspace.t): (t, create_error) result =
       ^ Int.to_string (elapsed_us_since started_at))
   in
   result
+
+let create ~scope workspace =
+  create_with_breakdown ~scope workspace
+  |> Result.map ~fn:(fun (graph, _breakdown) -> graph)
 
 let get_node = fun pg package ->
   HashMap.get pg.name_to_node ~key:(package_key ~package_name:package.Package.name Runtime)

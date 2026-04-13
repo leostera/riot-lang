@@ -721,6 +721,47 @@ let test_cache_gc_drops_unreferenced_entries_after_generation_overflow = fun _ct
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_record_successful_build_tracks_generation_count_in_state = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"store_cache_gc_generation_count_test"
+      (fun tmpdir ->
+        let workspace = make_test_workspace tmpdir in
+        write_workspace_cache_config tmpdir ~keep_generations:4 ~max_size:"10 GiB";
+        let hash_a = make_hash 'a' in
+        let hash_b = make_hash 'b' in
+        let _ = write_cache_entry
+          ~workspace
+          ~profile:"debug"
+          ~target:"host"
+          ~hash:hash_a
+          ~size:16 in
+        let _ = write_cache_entry
+          ~workspace
+          ~profile:"debug"
+          ~target:"host"
+          ~hash:hash_b
+          ~size:16 in
+        let first_summary = Riot_store.Cache_gc.record_successful_build
+          ~workspace
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
+          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_a } ]
+        |> Result.expect ~msg:"first generation should record" in
+        let second_summary = Riot_store.Cache_gc.record_successful_build
+          ~workspace
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_b ] } ]
+          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_b } ]
+        |> Result.expect ~msg:"second generation should record" in
+        if first_summary.kept_generations = 1 && second_summary.kept_generations = 2 then
+          Ok ()
+        else
+          Error ("expected generation counts 1 then 2, got "
+          ^ Int.to_string first_summary.kept_generations
+          ^ " then "
+          ^ Int.to_string second_summary.kept_generations))
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_cache_gc_shrinks_retained_generations_to_meet_max_size = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"store_cache_gc_max_size_test"
@@ -807,6 +848,7 @@ let tests =
     case "save preserves executable permissions in cache" test_save_preserves_executable_permissions_in_cache;
     case "save/promote preserves executable permissions" test_save_and_promote_preserves_executable_permissions;
     case "get returns none when export source missing" test_get_returns_none_when_export_source_missing;
+    case "cache GC records generation count in state" test_record_successful_build_tracks_generation_count_in_state;
     case "cache GC drops unreferenced entries after generation overflow" test_cache_gc_drops_unreferenced_entries_after_generation_overflow;
     case "cache GC shrinks retained generations to meet max_size" test_cache_gc_shrinks_retained_generations_to_meet_max_size;
   ]
