@@ -131,6 +131,81 @@ let require_order = fun items ~before ~after ->
   | _, None ->
       Error ("missing " ^ after ^ " in [" ^ String.concat ", " items ^ "]")
 
+let object_name_of_module_node = fun (node: Riot_planner.Module_node.t G.node) ->
+  match node.value.kind with
+  | Riot_planner.Module_node.ML mod_ ->
+      Some (Path.to_string (Riot_model.Module.cmx mod_))
+  | Riot_planner.Module_node.MLI _
+  | Riot_planner.Module_node.Library _
+  | Riot_planner.Module_node.Binary _
+  | Riot_planner.Module_node.Native _
+  | Riot_planner.Module_node.C
+  | Riot_planner.Module_node.H
+  | Riot_planner.Module_node.Root
+  | Riot_planner.Module_node.Other _ ->
+      None
+
+let validate_create_library_topological_order = fun graph objects ->
+  let object_position = fun needle ->
+    List.find (List.enumerate objects) ~fn:(fun (_, object_) -> String.equal object_ needle)
+    |> Option.map ~fn:(fun (index, _) -> index)
+  in
+  match G.topo_sort graph with
+  | Error cycle_ids ->
+      Error ("module graph unexpectedly contains cycle: "
+      ^ String.concat ", " (List.map cycle_ids ~fn:G.Node_id.to_string))
+  | Ok nodes ->
+      let violations =
+        List.filter_map nodes ~fn:(fun (node: Riot_planner.Module_node.t G.node) ->
+          match object_name_of_module_node node with
+          | None ->
+              None
+          | Some node_object -> (
+              match object_position node_object with
+              | None ->
+                  None
+              | Some node_index ->
+                  let bad_dependencies =
+                    List.filter_map node.deps ~fn:(fun dep_id ->
+                      match G.get_node graph dep_id with
+                      | None ->
+                          None
+                      | Some dep_node -> (
+                          match object_name_of_module_node dep_node with
+                          | None ->
+                              None
+                          | Some dep_object -> (
+                              match object_position dep_object with
+                              | Some dep_index when dep_index < node_index ->
+                                  None
+                              | Some dep_index ->
+                                  Some
+                                    (dep_object
+                                    ^ "@" ^ Int.to_string dep_index
+                                    ^ " after "
+                                    ^ node_object
+                                    ^ "@"
+                                    ^ Int.to_string node_index)
+                              | None ->
+                                  Some (dep_object ^ " missing for " ^ node_object)
+                            )
+                        ))
+                  in
+                  if List.is_empty bad_dependencies then
+                    None
+                  else
+                    Some (node_object, bad_dependencies)
+            ))
+      in
+      match violations with
+      | [] ->
+          Ok ()
+      | (node_object, bad_dependencies) :: _ ->
+          Error ("CreateLibrary object order violates module dependency order for "
+          ^ node_object
+          ^ ": "
+          ^ String.concat "; " bad_dependencies)
+
 let move_item_to_front = fun needle items ->
   let matches, rest =
     List.fold_right
@@ -904,6 +979,13 @@ let test_kernel_plan_bundle_cache_hit_preserves_live_create_library_order = fun 
         ^ String.concat ", " cached_objects
         ^ "]")
 
+let test_kernel_create_library_is_topological = fun _ctx ->
+  match plan_kernel_package_with_fresh_store () with
+  | Error err ->
+      Error err
+  | Ok (module_graph, live_objects, _cached_objects) ->
+      validate_create_library_topological_order module_graph live_objects
+
 let test_kernel_dependency_walk_snapshot = fun ctx ->
   match plan_kernel_package_with_fresh_store () with
   | Error err -> Error err
@@ -1003,6 +1085,7 @@ let tests =
     case "plan bundle cache hit preserves module dependency order" test_plan_bundle_cache_hit_preserves_module_dependency_order;
     case ~size:Large "kernel live CreateLibrary orders dependencies before Error" test_kernel_live_create_library_orders_dependencies_before_error;
     case ~size:Large "kernel plan bundle cache hit preserves live CreateLibrary order" test_kernel_plan_bundle_cache_hit_preserves_live_create_library_order;
+    case ~size:Large "kernel CreateLibrary objects are topological" test_kernel_create_library_is_topological;
     case ~size:Large "kernel dependency walk snapshot" test_kernel_dependency_walk_snapshot;
     case ~size:Large "legacy kernel plan bundle is ignored after version bump" test_legacy_kernel_plan_bundle_is_ignored_after_version_bump;
   ]

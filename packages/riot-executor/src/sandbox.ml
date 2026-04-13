@@ -15,13 +15,23 @@ let sandbox_id = fun ~package_name ->
   let id = package_name ^ "-" ^ truncated_hash in
   Path.v id
 
+let absolute_path = fun path ->
+  if Path.is_absolute path then
+    Path.normalize path
+  else
+    match Env.current_dir () with
+    | Ok cwd -> Path.normalize Path.(cwd / path)
+    | Error _ -> Path.normalize path
+
 let create = fun ~workspace ?(profile = "debug") ?(target = Riot_model.Riot_dirs.host_target ()) () ~package_name ->
   let sandbox_dir =
     Path.(Riot_model.Riot_dirs.sandbox_dir_with_target
       ~workspace_root:workspace.Workspace.root
       ~profile
       ~target
-    / sandbox_id ~package_name) in
+    / sandbox_id ~package_name)
+    |> absolute_path
+  in
   Fs.create_dir_all sandbox_dir
   |> Result.expect ~msg:("Failed to create sandbox dir: " ^ (Path.to_string sandbox_dir));
   { dir = sandbox_dir; workspace }
