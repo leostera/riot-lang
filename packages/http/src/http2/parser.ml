@@ -126,7 +126,7 @@ let parse_frame_header = fun ?(config = default_config) data ->
                             let stream_id = stream_id_raw land 0x7fff_ffff in
                             Done {
                               value = (length, frame_type, flags, stream_id);
-                              remaining = String.sub data 9 (String.length data - 9)
+                              remaining = String.sub data ~offset:9 ~len:(String.length data - 9)
                             }
                       )
                   )
@@ -146,8 +146,8 @@ let parse_data_payload = fun length flags data ->
           Need_more
         else
           let data_length = length - pad_length - 1 in
-          let payload_data = String.sub data 1 data_length in
-          let remaining = String.sub data length (String.length data - length) in
+          let payload_data = String.sub data ~offset:1 ~len:data_length in
+          let remaining = String.sub data ~offset:length ~len:(String.length data - length) in
           Done {
             value = Frame.DataPayload { data = payload_data; pad_length = Some pad_length };
             remaining
@@ -155,8 +155,8 @@ let parse_data_payload = fun length flags data ->
   else if String.length data < length then
     Need_more
   else
-    let payload_data = String.sub data 0 length in
-    let remaining = String.sub data length (String.length data - length) in
+    let payload_data = String.sub data ~offset:0 ~len:length in
+    let remaining = String.sub data ~offset:length ~len:(String.length data - length) in
     Done { value = Frame.DataPayload { data = payload_data; pad_length = None }; remaining }
 
 let parse_priority_fields = fun data offset ->
@@ -200,8 +200,8 @@ let parse_headers_payload = fun length flags data ->
   else if String.length data < length then
     Need_more
   else
-    let header_block_fragment = String.sub data offset header_fragment_length in
-    let remaining = String.sub data length (String.length data - length) in
+    let header_block_fragment = String.sub data ~offset ~len:header_fragment_length in
+    let remaining = String.sub data ~offset:length ~len:(String.length data - length) in
     let stream_dependency, weight, exclusive =
       match priority_info with
       | Some (dep, excl, w) -> (Some dep, Some w, excl)
@@ -228,7 +228,7 @@ let parse_priority_payload = fun length data ->
     match parse_priority_fields data 0 with
     | None -> Error "Failed to parse PRIORITY payload"
     | Some (stream_dependency, exclusive, weight) ->
-        let remaining = String.sub data 5 (String.length data - 5) in
+        let remaining = String.sub data ~offset:5 ~len:(String.length data - 5) in
         Done { value = Frame.PriorityPayload { stream_dependency; exclusive; weight }; remaining }
 
 let parse_rst_stream_payload = fun length data ->
@@ -245,7 +245,7 @@ let parse_rst_stream_payload = fun length data ->
           | Some ec -> ec
           | None -> Frame.ProtocolError
         in
-        let remaining = String.sub data 4 (String.length data - 4) in
+        let remaining = String.sub data ~offset:4 ~len:(String.length data - 4) in
         Done { value = Frame.RstStreamPayload error_code; remaining }
 
 let parse_settings_payload = fun length flags data ->
@@ -284,7 +284,7 @@ let parse_settings_payload = fun length flags data ->
     in
     match parse_settings 0 [] with
     | Ok settings ->
-        let remaining = String.sub data length (String.length data - length) in
+        let remaining = String.sub data ~offset:length ~len:(String.length data - length) in
         Done { value = Frame.SettingsPayload settings; remaining }
     | Result.Error msg -> Error msg
 
@@ -317,8 +317,8 @@ let parse_push_promise_payload = fun length flags data ->
         else if String.length data < length then
           Need_more
         else
-          let header_block_fragment = String.sub data offset header_fragment_length in
-          let remaining = String.sub data length (String.length data - length) in
+          let header_block_fragment = String.sub data ~offset ~len:header_fragment_length in
+          let remaining = String.sub data ~offset:length ~len:(String.length data - length) in
           Done {
             value = Frame.PushPromisePayload {
               pad_length = pad_length_opt;
@@ -334,8 +334,8 @@ let parse_ping_payload = fun length data ->
   else if String.length data < 8 then
     Need_more
   else
-    let opaque_data = String.sub data 0 8 in
-    let remaining = String.sub data 8 (String.length data - 8) in
+    let opaque_data = String.sub data ~offset:0 ~len:8 in
+    let remaining = String.sub data ~offset:8 ~len:(String.length data - 8) in
     Done { value = Frame.PingPayload opaque_data; remaining }
 
 let parse_goaway_payload = fun length data ->
@@ -356,8 +356,8 @@ let parse_goaway_payload = fun length data ->
               | Some ec -> ec
               | None -> Frame.ProtocolError
             in
-            let debug_data = String.sub data 8 (length - 8) in
-            let remaining = String.sub data length (String.length data - length) in
+            let debug_data = String.sub data ~offset:8 ~len:(length - 8) in
+            let remaining = String.sub data ~offset:length ~len:(String.length data - length) in
             Done {
               value = Frame.GoawayPayload { last_stream_id; error_code; debug_data };
               remaining
@@ -377,15 +377,15 @@ let parse_window_update_payload = fun length data ->
         if increment = 0 then
           Error "WINDOW_UPDATE increment must be non-zero"
         else
-          let remaining = String.sub data 4 (String.length data - 4) in
+          let remaining = String.sub data ~offset:4 ~len:(String.length data - 4) in
           Done { value = Frame.WindowUpdatePayload increment; remaining }
 
 let parse_continuation_payload = fun length data ->
   if String.length data < length then
     Need_more
   else
-    let header_block_fragment = String.sub data 0 length in
-    let remaining = String.sub data length (String.length data - length) in
+    let header_block_fragment = String.sub data ~offset:0 ~len:length in
+    let remaining = String.sub data ~offset:length ~len:(String.length data - length) in
     Done { value = Frame.ContinuationPayload header_block_fragment; remaining }
 
 let parse_payload = fun length frame_type flags data ->

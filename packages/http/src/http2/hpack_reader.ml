@@ -135,7 +135,7 @@ let handle_literal_incremental = fun decoder reader first_byte decode_next ->
                 decoder.phase <- ReadingLiteralName {
                   name_length;
                   bytes_read = 0;
-                  buffer = Buffer.create name_length
+                  buffer = Buffer.create ~size:name_length
                 };
                 decode_next ()
           )
@@ -151,15 +151,15 @@ let handle_literal_incremental = fun decoder reader first_byte decode_next ->
                     Need_more
                 | Result.Error e ->
                     Error e
-                | Result.Ok (value_length, _, _) ->
-                    decoder.phase <- ReadingLiteralValue {
-                      name = header.name;
-                      value_length;
-                      bytes_read = 0;
-                      buffer = Buffer.create value_length;
-                      should_index = true;
-                    };
-                    decode_next ()
+                    | Result.Ok (value_length, _, _) ->
+                        decoder.phase <- ReadingLiteralValue {
+                          name = header.name;
+                          value_length;
+                          bytes_read = 0;
+                          buffer = Buffer.create ~size:value_length;
+                          should_index = true;
+                        };
+                        decode_next ()
               )
           )
         | None -> Error (Invalid_name_index name_index)
@@ -201,7 +201,7 @@ let decode = fun decoder reader ->
                           name;
                           value_length;
                           bytes_read = 0;
-                          buffer = Buffer.create value_length;
+                          buffer = Buffer.create ~size:value_length;
                           should_index = true;
                         };
                         decode_next ()

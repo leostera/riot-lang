@@ -419,11 +419,11 @@ let rec dispatch_loop = fun state ->
     in
     match receive ~selector () with
     | `WorkerReady worker ->
-        Queue.push state.idle_workers worker;
+        Queue.push state.idle_workers ~value:worker;
         dispatch_ready_workers state;
         dispatch_loop state
     | `ScannerDiscovered file ->
-        Queue.push state.pending_files file;
+        Queue.push state.pending_files ~value:file;
         dispatch_ready_workers state;
         dispatch_loop state
     | `ScannerComplete ->
