@@ -912,7 +912,7 @@ let create_catalog = fun ~(ctx:context) ->
   }
 
 let register_local_entry = fun (catalog: catalog) (entry: local_entry) ->
-  match HashMap.get catalog.local_by_name entry.package.name with
+  match HashMap.get catalog.local_by_name ~key:entry.package.name with
   | Some existing ->
       if Path.equal existing.package.path entry.package.path then
         Ok ()
@@ -926,7 +926,7 @@ let register_local_entry = fun (catalog: catalog) (entry: local_entry) ->
           ^ Path.to_string entry.package.path
         })
   | None ->
-      let _ = HashMap.insert catalog.local_by_name entry.package.name entry in
+      let _ = HashMap.insert catalog.local_by_name ~key:entry.package.name ~value:entry in
       catalog.local_order <- catalog.local_order @ [ entry.package.name ];
       Ok ()
 
@@ -985,31 +985,35 @@ let record_required_by = fun (catalog: catalog) ~package_name required_by ->
       if String.equal package_name pubgrub_root_package then
         ()
       else
-        match HashMap.get catalog.required_by package_name with
+        match HashMap.get catalog.required_by ~key:package_name with
         | Some _ -> ()
         | None ->
-            let _ = HashMap.insert catalog.required_by package_name (Some required_by) in
+            let _ = HashMap.insert catalog.required_by ~key:package_name ~value:(Some required_by) in
             ()
 
 let required_by_for_package = fun (catalog: catalog) package_name ->
-  match HashMap.get catalog.required_by package_name with
+  match HashMap.get catalog.required_by ~key:package_name with
   | Some required_by -> required_by
   | None -> None
 
 let record_requested_requirement = fun (catalog: catalog) ~package_name requirement ->
   let requirement = Std.Version.requirement_to_string requirement in
-  match HashMap.get catalog.requested_requirements package_name with
+  match HashMap.get catalog.requested_requirements ~key:package_name with
   | Some existing when List.contains existing ~value:requirement ->
       ()
   | Some existing ->
-      let _ = HashMap.insert catalog.requested_requirements package_name (existing @ [ requirement ]) in
+      let _ = HashMap.insert
+        catalog.requested_requirements
+        ~key:package_name
+        ~value:(existing @ [ requirement ])
+      in
       ()
   | None ->
-      let _ = HashMap.insert catalog.requested_requirements package_name [ requirement ] in
+      let _ = HashMap.insert catalog.requested_requirements ~key:package_name ~value:[ requirement ] in
       ()
 
 let requested_requirement_for_package = fun (catalog: catalog) package_name ->
-  match HashMap.get catalog.requested_requirements package_name with
+  match HashMap.get catalog.requested_requirements ~key:package_name with
   | Some [] -> None
   | Some [ requirement ] -> Some requirement
   | Some requirements -> Some (String.concat ", " requirements)
@@ -1136,7 +1140,7 @@ let provider_dependency_of_manifest_dependency = fun (catalog: catalog) ~declare
             | Some FallbackToSource -> true
             | Some FallbackToRegistry
             | None -> (
-                match HashMap.get catalog.local_by_name target_name with
+                match HashMap.get catalog.local_by_name ~key:target_name with
                 | Some _ -> true
                 | None -> false
               )
@@ -1144,7 +1148,7 @@ let provider_dependency_of_manifest_dependency = fun (catalog: catalog) ~declare
         | { builtin=true; _ } ->
             false
         | _ ->
-            match HashMap.get catalog.local_by_name target_name with
+            match HashMap.get catalog.local_by_name ~key:target_name with
             | Some _ -> true
             | None -> false
       in
@@ -1198,7 +1202,7 @@ let find_existing_registry_package_version = fun ~registry_name ~existing_lock ~
       && pkg.id.version = Some version)
 
 let read_registry_document = fun (catalog: catalog) ~package_name ->
-  match HashMap.get catalog.registry_documents package_name with
+  match HashMap.get catalog.registry_documents ~key:package_name with
   | Some document_opt -> Ok document_opt
   | None ->
       let registry_name = Pkgs_ml.Registry.name catalog.ctx.registry in
@@ -1225,7 +1229,7 @@ let read_registry_document = fun (catalog: catalog) ~package_name ->
               });
             Error error
         | Ok document_opt ->
-            let _ = HashMap.insert catalog.registry_documents package_name document_opt in
+            let _ = HashMap.insert catalog.registry_documents ~key:package_name ~value:document_opt in
             (
               match document_opt with
               | Some document ->
@@ -1392,7 +1396,7 @@ let provider_dependencies_of_registry_package = fun (catalog: catalog) ~package_
                             ~package_name:dep.name
                             (Some Riot_model.Pm_error.{ package = package_name; path = None }) in
                           let ranges =
-                            match HashMap.get catalog.local_by_name dep.name with
+                            match HashMap.get catalog.local_by_name ~key:dep.name with
                             | Some _ -> Pubgrub.full
                             | None -> Pubgrub.full
                           in
@@ -1439,7 +1443,7 @@ let provider_of_catalog = fun (catalog: catalog) workspace_packages ->
           if String.equal package pubgrub_root_package then
             Ok (Some pubgrub_root_version)
           else
-            match HashMap.get catalog.local_by_name package with
+            match HashMap.get catalog.local_by_name ~key:package with
             | Some entry ->
                 let version = local_solver_version entry.package in
                 if Pubgrub.Ranges.contains ~compare_v:pubgrub_version_compare ranges version then
@@ -1483,7 +1487,7 @@ let provider_of_catalog = fun (catalog: catalog) workspace_packages ->
           if String.equal package pubgrub_root_package then
             Ok 1
           else
-            match HashMap.get catalog.local_by_name package with
+            match HashMap.get catalog.local_by_name ~key:package with
             | Some entry ->
                 let version = local_solver_version entry.package in
                 if Pubgrub.Ranges.contains ~compare_v:pubgrub_version_compare ranges version then
@@ -1499,7 +1503,7 @@ let provider_of_catalog = fun (catalog: catalog) workspace_packages ->
         if String.equal package pubgrub_root_package then
           provider_dependencies_of_root catalog workspace_packages |> Result.map_err ~fn:Error.message
         else
-          match HashMap.get catalog.local_by_name package with
+          match HashMap.get catalog.local_by_name ~key:package with
           | Some entry ->
               provider_dependencies_of_local_entry catalog entry |> Result.map_err ~fn:Error.message
           | None ->
@@ -1551,10 +1555,10 @@ let registry_package_id_of_solution = fun (catalog: catalog) ~package_name versi
       )
 
 let selected_package_id = fun (catalog: catalog) ~selected_versions ~package_name ->
-  match HashMap.get catalog.local_by_name package_name with
+  match HashMap.get catalog.local_by_name ~key:package_name with
   | Some entry -> Ok (package_id_of_local_entry entry)
   | None -> (
-      match HashMap.get selected_versions package_name with
+      match HashMap.get selected_versions ~key:package_name with
       | Some version -> registry_package_id_of_solution catalog ~package_name version
       | None -> Error (Error.Unexpected {
         error = "dependency solver did not select a package for '" ^ package_name ^ "'"
@@ -1612,7 +1616,7 @@ let pm_error_of_pubgrub_failure = fun (catalog: catalog) incompat ->
     } ->
         if
           String.equal package_name pubgrub_root_package
-          || match HashMap.get catalog.local_by_name package_name with
+          || match HashMap.get catalog.local_by_name ~key:package_name with
           | Some _ -> true
           | None -> false
         then
@@ -1629,7 +1633,7 @@ let pm_error_of_pubgrub_failure = fun (catalog: catalog) incompat ->
   in
   match find_no_versions incompat with
   | Some package_name -> (
-      match HashMap.get catalog.registry_documents package_name with
+      match HashMap.get catalog.registry_documents ~key:package_name with
       | Some None ->
           Error.PackageNotFound {
             package = package_name;
@@ -1738,14 +1742,14 @@ let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace 
                     String.equal pkg.name package_name)
               ) && not (String.equal package_name pubgrub_root_package) && match HashMap.get
               selected_versions
-              package_name with
+              ~key:package_name with
             | Some _ -> true
             | None -> false)
       in
       let rec lock_external_local_packages acc = function
         | [] -> Ok (List.reverse acc)
         | package_name :: rest -> (
-            match HashMap.get catalog.local_by_name package_name with
+            match HashMap.get catalog.local_by_name ~key:package_name with
             | Some entry ->
                 let* lock_package = lock_package_of_local_entry catalog ~selected_versions entry in
                 lock_external_local_packages (lock_package :: acc) rest
@@ -1758,7 +1762,7 @@ let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace 
           ~fn:(fun package_name _version ->
             if
               not (String.equal package_name pubgrub_root_package)
-              && match HashMap.get catalog.local_by_name package_name with
+              && match HashMap.get catalog.local_by_name ~key:package_name with
               | Some _ -> false
               | None -> true
             then
@@ -1768,7 +1772,7 @@ let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace 
       let rec lock_registry_packages acc = function
         | [] -> Ok (List.reverse acc)
         | package_name :: rest -> (
-            match HashMap.get selected_versions package_name with
+            match HashMap.get selected_versions ~key:package_name with
             | Some version ->
                 let* lock_package = lock_registry_package catalog ~selected_versions ~package_name version in
                 lock_registry_packages (lock_package :: acc) rest

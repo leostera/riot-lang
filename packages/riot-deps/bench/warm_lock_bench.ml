@@ -56,7 +56,7 @@ let package_manifest = fun ~name ~dependencies ->
   let body =
     match dependencies with
     | [] -> []
-    | deps -> "" :: "[dependencies]" :: List.map dependency_line deps
+    | deps -> "" :: "[dependencies]" :: List.map deps ~fn:dependency_line
   in
   String.concat "\n" (header @ body @ [ "" ])
 
@@ -80,7 +80,7 @@ let make_release = fun ~name ~dependencies ->
     keywords = [];
     manifest_key = "manifests/" ^ name ^ "/" ^ registry_version ^ ".json";
     source_key = "sources/" ^ name ^ "/" ^ registry_version ^ ".tar.gz";
-    dependencies = List.map registry_dependency dependencies;
+    dependencies = List.map dependencies ~fn:registry_dependency;
     yanked = false;
     yanked_at = None;
     yanked_by_github_login = None;
@@ -106,7 +106,7 @@ let make_registry_names = fun count ->
 
 let registry_documents = fun names ->
   let rec loop acc = function
-    | [] -> List.rev acc
+    | [] -> List.reverse acc
     | [ name ] -> loop (make_document ~name ~dependencies:[] :: acc) []
     | name :: ((next_name :: _) as rest) -> loop
       (make_document ~name ~dependencies:[ next_name ] :: acc)
@@ -122,12 +122,12 @@ let write_registry_package_roots = fun ~cache ~(lockfile:Riot_model.Lockfile.t) 
         let manifest =
           package_manifest
             ~name:pkg.id.name
-            ~dependencies:(List.map (fun (dep: Riot_model.Lockfile.dependency) -> dep.name) pkg.dependencies)
+            ~dependencies:(List.map pkg.dependencies ~fn:(fun (dep: Riot_model.Lockfile.dependency) -> dep.name))
         in
         write_file Path.(package_root / Path.v "riot.toml") manifest
     | _ -> ()
   in
-  List.iter write_package_root lockfile.packages
+  List.for_each lockfile.packages ~fn:write_package_root
 
 let registry_fetch = fun counter ->
   Pkgs_ml.Registry.make_fetch
@@ -216,25 +216,27 @@ let bench_materializer_cache_hit = fun (fixture: fixture) () ->
 
 let bench_projection_warm = fun (fixture: fixture) () ->
   fixture.fetch_counter.count <- 0;
-  Riot_deps.Projection.resolve_packages
-    ~registry:fixture.registry
-    ~workspace_root:fixture.workspace.root
-    ~packages:[ fixture.app_package ]
-    ~lockfile:fixture.lockfile
-    ()
-  |> Result.expect ~msg:"expected warm projection benchmark to succeed"
-  |> ignore;
+  let _ =
+    Riot_deps.Projection.resolve_packages
+      ~registry:fixture.registry
+      ~workspace_root:fixture.workspace.root
+      ~packages:[ fixture.app_package ]
+      ~lockfile:fixture.lockfile
+      ()
+    |> Result.expect ~msg:"expected warm projection benchmark to succeed"
+  in
   assert_no_fetches fixture.fetch_counter
 
 let bench_ensure_lock_warm = fun (fixture: fixture) () ->
   fixture.fetch_counter.count <- 0;
-  Riot_deps.ensure_lock
-    ~mode:Riot_deps.Dep_solver.Refresh
-    ~registry:fixture.registry
-    ~workspace:fixture.workspace
-    ()
-  |> Result.expect ~msg:"expected warm ensure_lock benchmark to succeed"
-  |> ignore;
+  let _ =
+    Riot_deps.ensure_lock
+      ~mode:Riot_deps.Dep_solver.Refresh
+      ~registry:fixture.registry
+      ~workspace:fixture.workspace
+      ()
+    |> Result.expect ~msg:"expected warm ensure_lock benchmark to succeed"
+  in
   assert_no_fetches fixture.fetch_counter
 
 let benchmark_suite = fun fixture ->
