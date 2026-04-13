@@ -109,6 +109,15 @@ let find_create_library_objects = fun action_graph ->
   | None ->
       Error "missing CreateLibrary action"
 
+let find_create_library_node = fun action_graph ->
+  List.find
+    (Riot_planner.Action_graph.nodes action_graph)
+    ~fn:(fun (node: Riot_planner.Action_node.t) ->
+      List.any node.value.actions
+        ~fn:(function
+          | Riot_planner.Action.CreateLibrary _ -> true
+          | _ -> false))
+
 let require_order = fun items ~before ~after ->
   let rec find_index needle index items =
     match items with
@@ -987,6 +996,50 @@ let test_kernel_create_library_is_topological = fun _ctx ->
   | Ok (module_graph, live_objects, _cached_objects) ->
       validate_create_library_topological_order module_graph live_objects
 
+let test_kernel_create_library_dependencies_are_unique = fun _ctx ->
+  let check = fun tempdir ->
+    match load_repo_workspace () with
+    | Error _ as err ->
+        err
+    | Ok repo_workspace ->
+        let workspace =
+          clone_workspace_with_target
+            repo_workspace
+            ~target_dir:Path.(tempdir / Path.v "target")
+        in
+        let store = Riot_store.Store.create ~workspace in
+        let session_id = Riot_model.Session_id.make () in
+        let profile = Riot_model.Profile.debug in
+        let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+        match plan_kernel_runtime_graphs ~workspace ~store ~build_ctx with
+        | Error _ as err ->
+            err
+        | Ok (_, _, action_graph, _, _) ->
+            match find_create_library_node action_graph with
+            | None ->
+                Error "missing kernel CreateLibrary action node"
+            | Some node ->
+                let seen = Collections.HashSet.create () in
+                let duplicates =
+                  List.filter_map node.deps ~fn:(fun dep_id ->
+                    if Collections.HashSet.insert seen ~value:dep_id then
+                      None
+                    else
+                      Some (G.Node_id.to_string dep_id))
+                in
+                if List.is_empty duplicates then
+                  Ok ()
+                else
+                  Error
+                    ("expected unique CreateLibrary deps, found duplicates: "
+                    ^ String.concat ", " duplicates)
+  in
+  match Fs.with_tempdir ~prefix:"planner_kernel_unique_deps" check with
+  | Ok result ->
+      result
+  | Error err ->
+      Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let test_kernel_dependency_walk_snapshot = fun ctx ->
   match plan_kernel_package_with_fresh_store () with
   | Error err -> Error err
@@ -1227,6 +1280,7 @@ let tests =
     case ~size:Large "kernel live CreateLibrary orders dependencies before Error" test_kernel_live_create_library_orders_dependencies_before_error;
     case ~size:Large "kernel plan bundle cache hit preserves live CreateLibrary order" test_kernel_plan_bundle_cache_hit_preserves_live_create_library_order;
     case ~size:Large "kernel CreateLibrary objects are topological" test_kernel_create_library_is_topological;
+    case ~size:Large "kernel CreateLibrary dependencies are unique" test_kernel_create_library_dependencies_are_unique;
     case ~size:Large "kernel dependency walk snapshot" test_kernel_dependency_walk_snapshot;
     case ~size:Large "legacy kernel plan bundle is ignored after version bump" test_legacy_kernel_plan_bundle_is_ignored_after_version_bump;
     case
