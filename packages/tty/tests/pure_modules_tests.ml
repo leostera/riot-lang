@@ -1,0 +1,166 @@
+open Std
+
+module Test = Std.Test
+
+let test_color_make_long_hex = fun _ctx ->
+  match Tty.Color.make "#FF0080" with
+  | Tty.Color.RGB (255, 0, 128) -> Ok ()
+  | value -> Error ("Expected RGB(255,0,128), got " ^ Tty.Color.to_string value)
+
+let test_color_make_short_hex = fun _ctx ->
+  match Tty.Color.make "#F0A" with
+  | Tty.Color.RGB (255, 0, 170) -> Ok ()
+  | value -> Error ("Expected RGB(255,0,170), got " ^ Tty.Color.to_string value)
+
+let test_color_ansi_range_validation = fun _ctx ->
+  try
+    let _ = Tty.Color.ansi 16 in
+    Error "Expected ansi 16 to be rejected"
+  with
+  | Tty.Color.Invalid_color_num ("ansi", 16) -> Ok ()
+  | _ -> Error "Expected Invalid_color_num for ansi range overflow"
+
+let test_color_ansi256_range_validation = fun _ctx ->
+  try
+    let _ = Tty.Color.ansi256 256 in
+    Error "Expected ansi256 256 to be rejected"
+  with
+  | Tty.Color.Invalid_color_num ("ansi256", 256) -> Ok ()
+  | _ -> Error "Expected Invalid_color_num for ansi256 range overflow"
+
+let test_color_of_rgb_clamps = fun _ctx ->
+  match Tty.Color.of_rgb (300, -10, 128) with
+  | Tty.Color.RGB (255, 0, 128) -> Ok ()
+  | value -> Error ("Expected clamped RGB(255,0,128), got " ^ Tty.Color.to_string value)
+
+let test_color_to_escape_seq = fun _ctx ->
+  let rgb = Tty.Color.make "#010203" |> Tty.Color.to_escape_seq ~mode:`fg in
+  let ansi = Tty.Color.ansi 4 |> Tty.Color.to_escape_seq ~mode:`bg in
+  let ansi256 = Tty.Color.ansi256 196 |> Tty.Color.to_escape_seq ~mode:`fg in
+  if rgb = "38;2;1;2;3" && ansi = "44" && ansi256 = "38;5;196" then
+    Ok ()
+  else
+    Error ("Unexpected color escape sequences: rgb=" ^ rgb ^ " ansi=" ^ ansi ^ " ansi256=" ^ ansi256)
+
+let test_style_default_is_noop = fun _ctx ->
+  let styled = Tty.Style.styled Tty.Style.default "plain" in
+  if styled = "plain" then
+    Ok ()
+  else
+    Error ("Expected default style to leave text unchanged, got " ^ styled)
+
+let test_style_styled_wraps_text = fun _ctx ->
+  let style =
+    Tty.Style.default
+    |> Tty.Style.bold
+    |> Tty.Style.underline
+    |> Tty.Style.fg (Tty.Color.make "#FF0000")
+    |> Tty.Style.bg (Tty.Color.ansi 4)
+  in
+  let seq = Tty.Style.to_escape_seq style in
+  let styled = Tty.Style.styled style "hi" in
+  if seq = "1;4;38;2;255;0;0;44" && styled = "\x1b[1;4;38;2;255;0;0;44mhi\x1b[0m" then
+    Ok ()
+  else
+    Error ("Unexpected styled rendering: seq=" ^ seq ^ " styled=" ^ styled)
+
+let test_input_parse_csi_arrow = fun _ctx ->
+  match Tty.Input.parse_escape "\x1b[A" with
+  | Some event when Tty.Input.event_to_string event = "up" -> Ok ()
+  | Some event -> Error ("Expected up, got " ^ Tty.Input.event_to_string event)
+  | None -> Error "Expected parsed up-arrow event"
+
+let test_input_parse_modified_arrow = fun _ctx ->
+  match Tty.Input.parse_escape "\x1b[1;5A" with
+  | Some event when Tty.Input.event_to_string event = "ctrl+up" -> Ok ()
+  | Some event -> Error ("Expected ctrl+up, got " ^ Tty.Input.event_to_string event)
+  | None -> Error "Expected parsed modified up-arrow event"
+
+let test_input_parse_ss3_function_key = fun _ctx ->
+  match Tty.Input.parse_escape "\x1bOP" with
+  | Some event when Tty.Input.event_to_string event = "f1" -> Ok ()
+  | Some event -> Error ("Expected f1, got " ^ Tty.Input.event_to_string event)
+  | None -> Error "Expected parsed SS3 F1 event"
+
+let test_input_parse_focus_events = fun _ctx ->
+  match (Tty.Input.parse_escape "\x1b[I", Tty.Input.parse_escape "\x1b[O") with
+  | Some focus_in, Some focus_out
+    when Tty.Input.event_to_string focus_in = "focus-gained" && Tty.Input.event_to_string focus_out = "focus-lost" ->
+      Ok ()
+  | _ ->
+      Error "Expected focus gained and focus lost events"
+
+let test_input_parse_mouse_press = fun _ctx ->
+  match Tty.Input.parse_escape "\x1b[<0;10;20M" with
+  | Some (`Mouse { button = Tty.Input.Left; action = Tty.Input.Mouse_press; x = 10; y = 20; modifiers = [] }) ->
+      Ok ()
+  | Some event -> Error ("Expected left mouse press, got " ^ Tty.Input.event_to_string event)
+  | None -> Error "Expected parsed mouse press event"
+
+let test_input_parse_mouse_release_with_modifiers = fun _ctx ->
+  match Tty.Input.parse_escape "\x1b[<20;7;9m" with
+  | Some (`Mouse { button = Tty.Input.Left; action = Tty.Input.Mouse_release; x = 7; y = 9; modifiers = [ Tty.Input.Shift; Tty.Input.Ctrl ] }) ->
+      Ok ()
+  | Some event -> Error ("Expected modified mouse release, got " ^ Tty.Input.event_to_string event)
+  | None -> Error "Expected parsed mouse release event"
+
+let test_input_event_to_string_repeat = fun _ctx ->
+  let event = `Key { Tty.Input.code = Tty.Input.Char 'x'; modifiers = [ Tty.Input.Alt ]; kind = Tty.Input.Repeat } in
+  let rendered = Tty.Input.event_to_string event in
+  if rendered = "alt+x:repeat" then
+    Ok ()
+  else
+    Error ("Expected alt+x:repeat, got " ^ rendered)
+
+let test_tty_make_self_equal = fun _ctx ->
+  match Tty.make () with
+  | Ok tty ->
+      if Tty.equal tty tty then
+        Ok ()
+      else
+        Error "Expected a tty value to be equal to itself"
+  | Error _ ->
+      Ok ()
+
+let test_tty_to_string_has_prefix = fun _ctx ->
+  match Tty.make () with
+  | Ok tty ->
+      let rendered = Tty.to_string tty in
+      if String.starts_with ~prefix:"TTY { size=" rendered then
+        Ok ()
+      else
+        Error ("Expected tty string representation, got " ^ rendered)
+  | Error _ ->
+      Ok ()
+
+let test_size_to_string = fun _ctx ->
+  let rendered = Tty.Size.to_string Tty.Size.{ rows = 20; cols = 80 } in
+  if rendered = "{ rows = 20; cols = 80 }" then
+    Ok ()
+  else
+    Error ("Unexpected size rendering: " ^ rendered)
+
+let tests =
+  Test.[
+    case "color_make_long_hex" test_color_make_long_hex;
+    case "color_make_short_hex" test_color_make_short_hex;
+    case "color_ansi_range_validation" test_color_ansi_range_validation;
+    case "color_ansi256_range_validation" test_color_ansi256_range_validation;
+    case "color_of_rgb_clamps" test_color_of_rgb_clamps;
+    case "color_to_escape_seq" test_color_to_escape_seq;
+    case "style_default_is_noop" test_style_default_is_noop;
+    case "style_styled_wraps_text" test_style_styled_wraps_text;
+    case "input_parse_csi_arrow" test_input_parse_csi_arrow;
+    case "input_parse_modified_arrow" test_input_parse_modified_arrow;
+    case "input_parse_ss3_function_key" test_input_parse_ss3_function_key;
+    case "input_parse_focus_events" test_input_parse_focus_events;
+    case "input_parse_mouse_press" test_input_parse_mouse_press;
+    case "input_parse_mouse_release_with_modifiers" test_input_parse_mouse_release_with_modifiers;
+    case "input_event_to_string_repeat" test_input_event_to_string_repeat;
+    case "tty_make_self_equal" test_tty_make_self_equal;
+    case "tty_to_string_has_prefix" test_tty_to_string_has_prefix;
+    case "size_to_string" test_size_to_string;
+  ]
+
+let () =
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"tty_pure_modules" ~tests ~args) ~args:Env.args ()

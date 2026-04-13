@@ -149,7 +149,7 @@ val is_ansi256: t -> bool
 
     Example: ```ocaml Color.is_ansi256 (Color.ansi256 196) (* true *)
     Color.is_ansi256 (Color.ansi 1) (* false *) ``` *)
-val to_escape_seq: mode:[>
+val to_escape_seq: mode:[
     `bg
     | `fg
   ] -> t -> string

@@ -10,4 +10,6 @@
 
 ## Validate
 
-`timeout 30 riot build tty`
+- `./riot-old build tty`
+- `./riot-old test -p tty --json`
+- `./riot-old bench -p tty --json`

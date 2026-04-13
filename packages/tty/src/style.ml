@@ -99,14 +99,14 @@ let to_escape_seq = fun t ->
   let codes =
     match t.fg with
     | Some color when not (Color.is_no_color color) ->
-        let seq = "38;" ^ Color.to_escape_seq ~mode:`fg color in
+        let seq = Color.to_escape_seq ~mode:`fg color in
         seq :: codes
     | _ -> codes
   in
   let codes =
     match t.bg with
     | Some color when not (Color.is_no_color color) ->
-        let seq = "48;" ^ Color.to_escape_seq ~mode:`bg color in
+        let seq = Color.to_escape_seq ~mode:`bg color in
         seq :: codes
     | _ -> codes
   in

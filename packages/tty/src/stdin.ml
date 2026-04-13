@@ -1,44 +1,12 @@
 open Std
 
-let utf8_char_length = fun first_byte ->
-  if first_byte land 0x80 = 0 then
-    1
-  else if first_byte land 0xe0 = 0xc0 then
-    2
-  else if first_byte land 0xf0 = 0xe0 then
-    3
-  else if first_byte land 0xf8 = 0xf0 then
-    4
-  else
-    0
-
 let read_utf8 = fun () ->
-  let bytes = IO.Bytes.create ~size:4 in
-  match IO.Stdin.read ~offset:0 ~len:1 bytes with
-  | Ok 0 ->
-      `End
-  | Ok 1 ->
-      let first_byte = Char.code (IO.Bytes.get_unchecked bytes ~at:0) in
-      let len = utf8_char_length first_byte in
-      if len = 0 then
-        `Malformed "Invalid UTF-8 start byte"
-      else if len = 1 then
-        `Read (IO.Bytes.sub_unchecked bytes ~offset:0 ~len:1 |> IO.Bytes.to_string)
-      else
-        (
-          match IO.Stdin.read ~offset:1 ~len:(len - 1) bytes with
-          | Ok n when n = len - 1 ->
-              `Read (IO.Bytes.sub_unchecked bytes ~offset:0 ~len |> IO.Bytes.to_string)
-          | Ok _ -> `Malformed "Incomplete UTF-8 sequence"
-          | Error IO.Operation_would_block -> `Retry
-          | Error _ -> `Malformed "Read error"
-        )
-  | Ok _ ->
-      `Malformed "Unexpected read length"
-  | Error IO.Operation_would_block ->
-      `Retry
-  | Error _ ->
-      `End
+  Utf8_reader.read
+    ~read:(fun bytes ~offset ~len ->
+      match IO.Stdin.read ~offset ~len bytes with
+      | Ok count -> `Ok count
+      | Error IO.Operation_would_block -> `Would_block
+      | Error _ -> `Error)
 
 let make_raw = fun () ->
   match Platform.open_tty () with
@@ -69,6 +37,7 @@ let make_raw = fun () ->
                 original_attrs;
                 size;
                 mode = Immediate;
+                resume_mode = None;
                 input_buffer = None;
               }
     )

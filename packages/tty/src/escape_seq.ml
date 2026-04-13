@@ -3,6 +3,8 @@ open Std.IO
 
 let csi = "\x1b["
 
+let osc = "\x1b]"
+
 (* Text attributes - these are just the codes without CSI *)
 
 let reset_seq = "0"
@@ -147,13 +149,15 @@ let end_sync_seq = escape "?2026l"
 
 (* Session - all return strings *)
 
-let set_window_title_seq = fun s -> escape ("2;" ^ s)
+let osc_sequence = fun code value -> osc ^ code ^ ";" ^ value ^ "\x07"
 
-let set_foreground_color_seq = fun s -> escape ("10;" ^ s)
+let set_window_title_seq = fun value -> osc_sequence "2" value
 
-let set_background_color_seq = fun s -> escape ("11;" ^ s)
+let set_foreground_color_seq = fun value -> osc_sequence "10" value
 
-let set_cursor_color_seq = fun s -> escape ("12;" ^ s)
+let set_background_color_seq = fun value -> osc_sequence "11" value
+
+let set_cursor_color_seq = fun value -> osc_sequence "12" value
 
 let show_cursor_seq = escape "?25h"
 
@@ -174,12 +178,33 @@ let strip = fun str ->
       else
         skip_csi (j + 1)
   in
+  let rec skip_osc j =
+    if j >= len then
+      len
+    else
+      let c = String.get_unchecked str ~at:j in
+      if Char.equal c '\x07' then
+        j + 1
+      else if Char.equal c '\x1b' then
+        if j + 1 < len && Char.equal (String.get_unchecked str ~at:(j + 1)) '\\' then
+          j + 2
+        else
+          skip_osc (j + 1)
+      else
+        skip_osc (j + 1)
+  in
   let rec scan i =
     if i >= len then
       Buffer.contents buf
     else if String.get_unchecked str ~at:i = '\x1b' then
-      if i + 1 < len && String.get_unchecked str ~at:(i + 1) = '[' then
-        scan (skip_csi (i + 2))
+      if i + 1 < len then
+        match String.get_unchecked str ~at:(i + 1) with
+        | '[' ->
+            scan (skip_csi (i + 2))
+        | ']' ->
+            scan (skip_osc (i + 2))
+        | _ ->
+            scan (i + 1)
       else
         scan (i + 1)
     else begin
@@ -192,5 +217,4 @@ let strip = fun str ->
 (* Calculate display width ignoring ANSI codes *)
 
 let width = fun str ->
-  let stripped = strip str in
-  String.length stripped
+  String.width (strip str)

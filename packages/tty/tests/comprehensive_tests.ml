@@ -214,13 +214,12 @@ let test_mouse_sequences = fun _ctx ->
   ]
   in
   let errors =
-    List.filter_map
-      (fun ((name, actual, expected)) ->
-        if actual = expected then
-          None
-        else
-          Some (name ^ ": expected '" ^ expected ^ "', got '" ^ actual ^ "'"))
-      tests
+    List.filter_map tests ~fn:(fun ((name, actual, expected)) ->
+      if actual = expected then
+        None
+      else
+        Some (name ^ ": expected '" ^ expected ^ "', got '" ^ actual ^ "'")
+    )
   in
   match errors with
   | [] -> Ok ()
@@ -278,7 +277,10 @@ let test_color_sequences = fun _ctx ->
   let cursor = Tty.Escape_seq.set_cursor_color_seq "0;0;255" in
   let title = Tty.Escape_seq.set_window_title_seq "Test Title" in
   if
-    fg = "\x1b[10;255;0;0" && bg = "\x1b[11;0;255;0" && cursor = "\x1b[12;0;0;255" && title = "\x1b[2;Test Title"
+    fg = "\x1b]10;255;0;0\x07"
+    && bg = "\x1b]11;0;255;0\x07"
+    && cursor = "\x1b]12;0;0;255\x07"
+    && title = "\x1b]2;Test Title\x07"
   then
     Ok ()
   else
@@ -302,13 +304,12 @@ let test_text_attributes = fun _ctx ->
   ]
   in
   let errors =
-    List.filter_map
-      (fun ((name, actual, expected)) ->
-        if actual = expected then
-          None
-        else
-          Some (name ^ ": expected '" ^ expected ^ "', got '" ^ actual ^ "'"))
-      tests
+    List.filter_map tests ~fn:(fun ((name, actual, expected)) ->
+      if actual = expected then
+        None
+      else
+        Some (name ^ ": expected '" ^ expected ^ "', got '" ^ actual ^ "'")
+    )
   in
   match errors with
   | [] -> Ok ()
@@ -339,6 +340,14 @@ let test_strip_complex = fun _ctx ->
     Ok ()
   else
     Error ("strip complex: expected 'RGB Red', got '" ^ output ^ "'")
+
+let test_strip_osc = fun _ctx ->
+  let input = "\x1b]2;Title\x07hello\x1b]12;255;0;0\x07" in
+  let output = Tty.Escape_seq.strip input in
+  if output = "hello" then
+    Ok ()
+  else
+    Error ("strip osc: expected 'hello', got '" ^ output ^ "'")
 
 let test_width_simple = fun _ctx ->
   let input = "Hello" in
@@ -430,6 +439,7 @@ let tests =
     case "strip_simple" test_strip_simple;
     case "strip_multiple" test_strip_multiple;
     case "strip_complex" test_strip_complex;
+    case "strip_osc" test_strip_osc;
     case "width_simple" test_width_simple;
     case "width_with_ansi" test_width_with_ansi;
     case "tty_creation" test_tty_creation;

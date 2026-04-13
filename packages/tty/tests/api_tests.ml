@@ -71,6 +71,21 @@ let test_mode_switching = fun _ctx ->
         )
       )
 
+let test_suspend_resume = fun _ctx ->
+  match Tty.make_raw () with
+  | Error _ -> Ok ()
+  | Ok tty ->
+      Tty.suspend tty;
+      if Tty.mode tty != Tty.LineBuffered then
+        Error "Expected suspend to move an immediate tty into line-buffered mode"
+      else (
+        Tty.resume tty;
+        if Tty.mode tty = Tty.Immediate then
+          Ok ()
+        else
+          Error "Expected resume to restore immediate mode after suspend"
+      )
+
 let test_escape_sequences_are_strings = fun _ctx ->
   (* Test that escape sequences are pure strings, not functions *)
   try
@@ -88,12 +103,18 @@ let test_escape_sequences_are_strings = fun _ctx ->
     ]
     in
     (* Verify they're all non-empty strings starting with ESC *)
-    if List.for_all (fun s -> String.length s > 0 && String.get s 0 = '\x1b') sequences then
+    if
+      List.all sequences ~fn:(fun s ->
+        String.length s > 0 && match String.get s ~at:0 with
+        | Some value -> Char.equal value '\x1b'
+        | None -> false
+      )
+    then
       Ok ()
     else
       Error "Some escape sequences are invalid"
   with
-  | e -> Error ("Escape sequence error: " ^ (Exception.to_string e))
+  | e -> Error ("Escape sequence error: " ^ Kernel.Exception.to_string e)
 
 let test_csi_constant = fun _ctx ->
   (* Test the CSI constant *)
@@ -141,6 +162,7 @@ let tests =
     case "size_accessors" test_size_accessors;
     case "refresh_size" test_refresh_size;
     case "mode_switching" test_mode_switching;
+    case "suspend_resume" test_suspend_resume;
     case "escape_sequences_are_strings" test_escape_sequences_are_strings;
     case "csi_constant" test_csi_constant;
     case "strip_ansi" test_strip_ansi;

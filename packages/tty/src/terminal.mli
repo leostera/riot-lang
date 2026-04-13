@@ -24,6 +24,7 @@ type t = {
   original_attrs: Platform.termios;
   mutable size: size;
   mutable mode: mode;
+  mutable resume_mode: mode option;
   mutable input_buffer: input_buffer option;
 }
 val write_to_fd: Platform.fd -> string -> unit

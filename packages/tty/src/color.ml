@@ -33,12 +33,20 @@ let rgb = fun str ->
   |> Iter.Iterator.to_list
   |> List.map ~fn:(fun char -> String.make ~len:1 ~char) with
   | ["#";r1;r2;g1;g2;b1;b2] -> rgb (r1 ^ r2) (g1 ^ g2) (b1 ^ b2)
-  | ["#";r1;g1;b1] -> rgb r1 g1 b1
+  | ["#";r1;g1;b1] -> rgb (r1 ^ r1) (g1 ^ g1) (b1 ^ b1)
   | _ -> raise (Invalid_color str)
 
-let ansi = fun i -> ANSI i
+let ansi = fun value ->
+  if Int.(value < 0 || value > 15) then
+    raise (Invalid_color_num ("ansi", value))
+  else
+    ANSI value
 
-let ansi256 = fun i -> ANSI256 i
+let ansi256 = fun value ->
+  if Int.(value < 0 || value > 255) then
+    raise (Invalid_color_num ("ansi256", value))
+  else
+    ANSI256 value
 
 let no_color = No_color
 
@@ -52,16 +60,23 @@ let make = fun str ->
   else
     match Int.parse str with
     | Some i ->
-        if i < 16 then
+        if Int.(i < 0 || i > 255) then
+          raise (Invalid_color_num ("numeric", i))
+        else if i < 16 then
           ansi i
         else
           ansi256 i
     | None -> raise (Invalid_color str)
 
-let to_escape_seq = fun ~mode t ->
+let to_escape_seq : mode:[> `bg | `fg ] -> t -> string = fun ~mode t ->
   match t with
   | RGB (r, g, b) ->
-      "2;" ^ Int.to_string r ^ ";" ^ Int.to_string g ^ ";" ^ Int.to_string b
+      let prefix =
+        match mode with
+        | `fg -> "38;2;"
+        | `bg -> "48;2;"
+      in
+      prefix ^ Int.to_string r ^ ";" ^ Int.to_string g ^ ";" ^ Int.to_string b
   | ANSI c ->
       let bg_mod x =
         if mode = `bg then
@@ -77,7 +92,12 @@ let to_escape_seq = fun ~mode t ->
       in
       Int.to_string c
   | ANSI256 c ->
-      "5;" ^ Int.to_string c
+      let prefix =
+        match mode with
+        | `fg -> "38;5;"
+        | `bg -> "48;5;"
+      in
+      prefix ^ Int.to_string c
   | No_color ->
       ""
 

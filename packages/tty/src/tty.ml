@@ -69,6 +69,7 @@ let make = fun ?fd ?stdin ?stdout ?stderr ?size ?(mode = LineBuffered) () ->
               original_attrs;
               size = detected_size;
               mode = LineBuffered;
+              resume_mode = None;
               input_buffer = None;
             }
           in
@@ -132,30 +133,24 @@ let restore = fun t ->
 let suspend = fun t ->
   match t.Terminal.mode with
   | LineBuffered -> ()
-  | Immediate -> set_line_buffered t
+  | Immediate ->
+      t.Terminal.resume_mode <- Some Immediate;
+      set_line_buffered t
 
 let resume = fun t ->
-  match t.Terminal.mode with
-  | Immediate -> set_raw t
-  | LineBuffered -> ()
+  match t.Terminal.resume_mode with
+  | Some Immediate ->
+      t.Terminal.resume_mode <- None;
+      set_raw t
+  | Some LineBuffered
+  | None ->
+      t.Terminal.resume_mode <- None
 
 type read =
   | Read of string
   | End
   | Malformed of string
   | Retry
-
-let utf8_char_length = fun first_byte ->
-  if first_byte land 0x80 = 0 then
-    1
-  else if first_byte land 0xe0 = 0xc0 then
-    2
-  else if first_byte land 0xf0 = 0xe0 then
-    3
-  else if first_byte land 0xf8 = 0xf0 then
-    4
-  else
-    0
 
 let read_from_input = fun input_fd bytes ~offset ~len ->
   if Platform.fd_equal input_fd (Platform.stdin_fd ()) then
@@ -166,36 +161,15 @@ let read_from_input = fun input_fd bytes ~offset ~len ->
   else
     match Platform.read input_fd bytes ~offset ~len with
     | Ok count -> `Ok count
-    | Error error when Kernel.SystemError.would_block error -> `Would_block
-    | Error _ -> `Error
+      | Error error when Kernel.SystemError.would_block error -> `Would_block
+      | Error _ -> `Error
 
 let read_utf8 = fun t ->
-  let bytes = IO.Bytes.create ~size:4 in
-  match read_from_input t.Terminal.input_fd bytes ~offset:0 ~len:1 with
-  | `Ok 0 ->
-      End
-  | `Ok 1 ->
-      let first_byte = Char.code (IO.Bytes.get_unchecked bytes ~at:0) in
-      let len = utf8_char_length first_byte in
-      if len = 0 then
-        Malformed "Invalid UTF-8 start byte"
-      else if len = 1 then
-        Read (IO.Bytes.sub_unchecked bytes ~offset:0 ~len:1 |> IO.Bytes.to_string)
-      else
-        (
-          match read_from_input t.Terminal.input_fd bytes ~offset:1 ~len:(len - 1) with
-          | `Ok n when n = len - 1 ->
-              Read (IO.Bytes.sub_unchecked bytes ~offset:0 ~len |> IO.Bytes.to_string)
-          | `Ok _ -> Malformed "Incomplete UTF-8 sequence"
-          | `Would_block -> Retry
-          | `Error -> Malformed "Read error"
-        )
-  | `Ok _ ->
-      Malformed "Unexpected read length"
-  | `Would_block ->
-      Retry
-  | `Error ->
-      End
+  match Utf8_reader.read ~read:(read_from_input t.Terminal.input_fd) with
+  | `Read value -> Read value
+  | `End -> End
+  | `Malformed reason -> Malformed reason
+  | `Retry -> Retry
 
 let read = fun t ->
   match read_utf8 t with
