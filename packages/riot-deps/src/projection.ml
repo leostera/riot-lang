@@ -125,15 +125,15 @@ let load_external_package = fun ~emit ~materialize_emit ~registry ~workspace_roo
           emit_failed err;
           Error err
       | Ok toml ->
-          Riot_model.Package.from_toml toml ~workspace_deps:[] ~workspace_dev_deps:[] ~workspace_build_deps:[] ~path:package_root
+          Riot_model.Package_manifest.from_toml toml ~workspace_deps:[] ~workspace_dev_deps:[] ~workspace_build_deps:[] ~path:package_root
             ~relative_path:(
               match lock_package.root with
               | Some root -> root
               | None -> package_root
             )
-          |> Result.map ~fn:(fun pkg ->
+          |> Result.map ~fn:(fun manifest ->
               emit_finished ();
-              Riot_model.Package.for_scope Riot_model.Package.Normal pkg)
+              Riot_model.Package.of_manifest_spec manifest)
           |> Result.map_err ~fn:(fun err ->
               let err = Error.ProjectionFailed { error = err } in
               emit_failed err;
@@ -143,7 +143,7 @@ let load_package_for_lock_package = fun ~emit ~materialize_emit ~registry ~works
   match lock_package.provenance with
   | Riot_model.Lockfile.Workspace -> (
       match find_workspace_package_by_id ~package_id:lock_package.id ~packages with
-      | Some package -> Ok (Riot_model.Package_manifest.realize ~intent:Riot_model.Package.Runtime package)
+      | Some package -> Ok (Riot_model.Package.of_manifest_spec package)
       | None -> Error (Error.ProjectionFailed {
         error = "workspace package '" ^ lock_package.id.name ^ "' was not provided to projection"
       })

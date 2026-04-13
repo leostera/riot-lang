@@ -5,9 +5,10 @@ module G = Graph.SimpleGraph
 let test_toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
 |> Result.expect ~msg:"Failed to initialize toolchain"
 
-let planner_artifacts_version = "planner-artifacts:v13"
+let planner_artifacts_version = "planner-artifacts:v14"
 let legacy_planner_artifacts_version = "planner-artifacts:v12"
 let explicit_root_library_path_fix_planner_artifacts_version = "planner-artifacts:v12"
+let nested_sibling_dependency_fix_planner_artifacts_version = "planner-artifacts:v13"
 
 let make_test_workspace = fun tmpdir packages ->
   Riot_model.Workspace.make_realized
@@ -77,6 +78,16 @@ let module_node_label = fun (node: Riot_planner.Module_node.t G.node) ->
 let module_dependency_labels = fun graph (node: Riot_planner.Module_node.t G.node) ->
   List.filter_map node.deps ~fn:(fun dep_id ->
     G.get_node graph dep_id |> Option.map ~fn:module_node_label)
+
+let find_module_node_by_label = fun graph label ->
+  match G.topo_sort graph with
+  | Ok nodes ->
+      List.find
+        nodes
+        ~fn:(fun (node: Riot_planner.Module_node.t G.node) ->
+          String.equal (module_node_label node) label)
+  | Error _ ->
+      None
 
 let find_library_node = fun graph ->
   match G.topo_sort graph with
@@ -955,6 +966,264 @@ let test_plan_bundle_cache_hit_preserves_module_dependency_order = fun _ctx ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_underscore_sibling_module_dependency_is_planned = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_underscore_sibling_dep"
+      (fun tmpdir ->
+        let package_root = Path.(tmpdir / Path.v "pkg") in
+        let src_dir = Path.(package_root / Path.v "src") in
+        let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"expected src dir creation to succeed" in
+        let _ =
+          Fs.write "module Udp_socket = Udp_socket\nmodule Udp_server = Udp_server\n" Path.(src_dir / Path.v "pkg.ml")
+          |> Result.expect ~msg:"expected pkg.ml write to succeed"
+        in
+        let _ =
+          Fs.write "type t\nval create : unit -> t\n" Path.(src_dir / Path.v "udp_socket.mli")
+          |> Result.expect ~msg:"expected udp_socket.mli write to succeed"
+        in
+        let _ =
+          Fs.write "type t = unit\nlet create () = ()\n" Path.(src_dir / Path.v "udp_socket.ml")
+          |> Result.expect ~msg:"expected udp_socket.ml write to succeed"
+        in
+        let _ =
+          Fs.write
+            "type handler = socket:Udp_socket.t -> bytes -> unit\nval run : handler -> unit\n"
+            Path.(src_dir / Path.v "udp_server.mli")
+          |> Result.expect ~msg:"expected udp_server.mli write to succeed"
+        in
+        let _ =
+          Fs.write
+            "type handler = socket:Udp_socket.t -> bytes -> unit\nlet run _ = ()\n"
+            Path.(src_dir / Path.v "udp_server.ml")
+          |> Result.expect ~msg:"expected udp_server.ml write to succeed"
+        in
+        let package =
+          Riot_model.Package.make
+            ~name:"pkg"
+            ~path:package_root
+            ~relative_path:(Path.v "pkg")
+            ~library:{ path = Path.v "src/pkg.ml" }
+            ~sources:{
+              src = [
+                Path.v "src/pkg.ml";
+                Path.v "src/udp_server.mli";
+                Path.v "src/udp_socket.mli";
+                Path.v "src/udp_socket.ml";
+                Path.v "src/udp_server.ml";
+              ];
+              native = [];
+              tests = [];
+              examples = [];
+              bench = [];
+            }
+            ()
+        in
+        let workspace = make_test_workspace tmpdir [ package ] in
+        let store = Riot_store.Store.create ~workspace in
+        let package_graph =
+          Riot_planner.Package_graph.create
+            ~scope:Riot_planner.Package_graph.Runtime
+            workspace
+          |> Result.expect ~msg:"package graph should build"
+        in
+        let package_key =
+          Riot_planner.Package_graph.package_key
+            ~package_name:package.name
+            Riot_planner.Package_graph.Runtime
+        in
+        let session_id = Riot_model.Session_id.make () in
+        let profile = Riot_model.Profile.debug in
+        let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+        match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
+        | Error err ->
+            Error ("expected package plan to succeed, got planner error: " ^ err)
+        | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) -> (
+            match find_module_node_by_label module_graph "MLI(Pkg__Udp_server)" with
+            | None ->
+                Error "missing MLI(Pkg__Udp_server) in module graph"
+            | Some node ->
+                let deps = module_dependency_labels module_graph node in
+                if
+                  List.any
+                    deps
+                    ~fn:(fun label ->
+                      String.equal label "ML(Pkg__Udp_socket)"
+                      || String.equal label "MLI(Pkg__Udp_socket)")
+                then
+                  Ok ()
+                else
+                  Error ("expected MLI(Pkg__Udp_server) to depend on Udp_socket, got ["
+                  ^ String.concat ", " deps
+                  ^ "]")
+          )
+        | Ok _ ->
+            Error "expected Planned result")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_nested_sibling_legacy_bundle"
+      (fun tmpdir ->
+        let package_root = Path.(tmpdir / Path.v "demo") in
+        let src_dir = Path.(package_root / Path.v "src") in
+        let net_dir = Path.(src_dir / Path.v "net") in
+        let _ = Fs.create_dir_all net_dir |> Result.expect ~msg:"expected nested src dir creation to succeed" in
+        let _ =
+          Fs.write "module Net = Net\n" Path.(src_dir / Path.v "demo.ml")
+          |> Result.expect ~msg:"expected demo.ml write to succeed"
+        in
+        let _ =
+          Fs.write "module Udp_socket = Udp_socket\nmodule Udp_server = Udp_server\n" Path.(net_dir / Path.v "net.ml")
+          |> Result.expect ~msg:"expected net.ml write to succeed"
+        in
+        let _ =
+          Fs.write "type t\n" Path.(net_dir / Path.v "udp_socket.mli")
+          |> Result.expect ~msg:"expected udp_socket.mli write to succeed"
+        in
+        let _ =
+          Fs.write "type t = unit\n" Path.(net_dir / Path.v "udp_socket.ml")
+          |> Result.expect ~msg:"expected udp_socket.ml write to succeed"
+        in
+        let _ =
+          Fs.write
+            "type handler = socket:Udp_socket.t -> bytes -> unit\nval run : handler -> unit\n"
+            Path.(net_dir / Path.v "udp_server.mli")
+          |> Result.expect ~msg:"expected udp_server.mli write to succeed"
+        in
+        let _ =
+          Fs.write
+            "type handler = socket:Udp_socket.t -> bytes -> unit\nlet run _ = ()\n"
+            Path.(net_dir / Path.v "udp_server.ml")
+          |> Result.expect ~msg:"expected udp_server.ml write to succeed"
+        in
+        let package =
+          Riot_model.Package.make
+            ~name:"demo"
+            ~path:package_root
+            ~relative_path:(Path.v "demo")
+            ~library:{ path = Path.v "src/demo.ml" }
+            ~sources:{
+              src = [
+                Path.v "src/demo.ml";
+                Path.v "src/net/net.ml";
+                Path.v "src/net/udp_socket.mli";
+                Path.v "src/net/udp_socket.ml";
+                Path.v "src/net/udp_server.mli";
+                Path.v "src/net/udp_server.ml";
+              ];
+              native = [];
+              tests = [];
+              examples = [];
+              bench = [];
+            }
+            ()
+        in
+        let workspace = make_test_workspace tmpdir [ package ] in
+        let store = Riot_store.Store.create ~workspace in
+        let session_id = Riot_model.Session_id.make () in
+        let profile = Riot_model.Profile.debug in
+        let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+        let stale_input_hash =
+          compute_input_hash
+            ~planner_version:nested_sibling_dependency_fix_planner_artifacts_version
+            ~package
+            ~workspace
+            ~profile
+            ~build_ctx
+            ()
+        in
+        let stale_action_graph_json =
+          let ag = Riot_planner.Action_graph.create () in
+          let action = Riot_planner.Action.WriteFile {
+            destination = Path.v "out.txt";
+            content = "stale"
+          } in
+          let spec =
+            Riot_planner.Action_node.make
+              ~actions:[ action ]
+              ~outs:[ Path.v "out.txt" ]
+              ~srcs:[]
+              ~package
+              ~toolchain:test_toolchain
+              ~dependency_hashes:(fun _ -> Crypto.hash_string "")
+              ~deps:[]
+          in
+          let _ = Riot_planner.Action_graph.add_node ag spec in
+          Riot_planner.Action_graph.to_json ag
+        in
+        let stale_module_graph_json = Std.Data.Json.Object [
+          (
+            "nodes",
+            Std.Data.Json.Array [
+              Std.Data.Json.Object [
+                ("id", Std.Data.Json.Int 1);
+                (
+                  "file",
+                  Std.Data.Json.Object [
+                    ("kind", Std.Data.Json.String "concrete");
+                    ("path", Std.Data.Json.String "");
+                  ]
+                );
+                ("kind", Std.Data.Json.Object [ ("kind", Std.Data.Json.String "root") ]);
+                ("deps", Std.Data.Json.Array []);
+                ("opens", Std.Data.Json.Array []);
+              ];
+            ]
+          );
+        ] in
+        let stale_bundle = Std.Data.Json.Object [
+          ("version", Std.Data.Json.Int 1);
+          ("package", Std.Data.Json.String package.name);
+          ("module_graph", stale_module_graph_json);
+          ("action_graph", stale_action_graph_json);
+        ] in
+        let _ =
+          Riot_store.Store.save_plan_bundle store ~hash:stale_input_hash ~plan:stale_bundle
+          |> Result.expect ~msg:"expected stale nested plan bundle save to succeed"
+        in
+        let package_graph =
+          Riot_planner.Package_graph.create
+            ~scope:Riot_planner.Package_graph.Runtime
+            workspace
+          |> Result.expect ~msg:"package graph should build"
+        in
+        let package_key =
+          Riot_planner.Package_graph.package_key
+            ~package_name:package.name
+            Riot_planner.Package_graph.Runtime
+        in
+        match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
+        | Error err ->
+            Error ("expected nested sibling plan bundle to be ignored, got planner error: " ^ err)
+        | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) -> (
+            match find_module_node_by_label module_graph "MLI(Demo__Net__Udp_server)" with
+            | None ->
+                Error "expected stale nested plan bundle to be ignored and rebuilt, but udp_server node was missing"
+            | Some node ->
+                let deps = module_dependency_labels module_graph node in
+                if
+                  List.any
+                    deps
+                    ~fn:(fun label ->
+                      String.equal label "ML(Demo__Net__Udp_socket)"
+                      || String.equal label "MLI(Demo__Net__Udp_socket)")
+                then
+                  Ok ()
+                else
+                  Error ("expected rebuilt nested plan graph to restore Udp_socket dependency, got ["
+                  ^ String.concat ", " deps
+                  ^ "]")
+          )
+        | Ok _ ->
+            Error "expected Planned result")
+  with
+  | Ok x ->
+      x
+  | Error _ ->
+      Error "tempdir creation failed"
+
 let test_kernel_live_create_library_orders_dependencies_before_error = fun _ctx ->
   match plan_kernel_package_with_fresh_store () with
   | Error _ as err -> err
@@ -1272,6 +1541,10 @@ let tests =
     case "cached artifact and exports short-circuit without plan bundle" test_cached_artifact_and_exports_short_circuit_without_plan_bundle;
     case "stale plan bundle version rebuilds plan graphs" test_stale_plan_bundle_version_rebuilds_plan_graphs;
     case "plan bundle cache hit preserves module dependency order" test_plan_bundle_cache_hit_preserves_module_dependency_order;
+    case "underscore sibling module dependency is planned" test_underscore_sibling_module_dependency_is_planned;
+    case
+      "legacy nested sibling plan bundle is ignored after version bump"
+      test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump;
     case ~size:Large "kernel live CreateLibrary orders dependencies before Error" test_kernel_live_create_library_orders_dependencies_before_error;
     case ~size:Large "kernel plan bundle cache hit preserves live CreateLibrary order" test_kernel_plan_bundle_cache_hit_preserves_live_create_library_order;
     case ~size:Large "kernel CreateLibrary objects are topological" test_kernel_create_library_is_topological;

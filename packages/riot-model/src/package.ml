@@ -1375,6 +1375,23 @@ let source_buckets_for_intent = function
 let source_bucket_enabled buckets bucket =
   List.contains buckets ~value:bucket
 
+let elapsed_us_since = fun started_at ->
+  Time.Instant.elapsed started_at |> Time.Duration.to_micros
+
+let trace_package = fun message ->
+  let _ = message in
+  ()
+
+let string_of_realization_intent = function
+  | Build -> "build"
+  | Runtime -> "runtime"
+  | Dev -> "dev"
+  | Run -> "run"
+  | Test -> "test"
+  | Bench -> "bench"
+  | Doc -> "doc"
+  | Check -> "check"
+
 let bucket_of_rel_path path_components =
   match path_components with
   | "src" :: _ -> Some Src
@@ -1384,10 +1401,24 @@ let bucket_of_rel_path path_components =
   | "bench" :: _ -> Some Bench
   | _ -> None
 
+let scan_roots_for_intent = fun ~(intent:realization_intent) ~(package_path:Path.t) ->
+  let roots =
+    match intent with
+    | Runtime ->
+        [
+          Path.(package_path / Path.v "src");
+          Path.(package_path / Path.v "native");
+        ]
+    | _ -> [ package_path ]
+  in
+  List.filter roots ~fn:Path.exists
+
 let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) ?(excluded_relpaths = []) (): sources =
+  let started_at = Time.Instant.now () in
   let excluded_relpath_strings = excluded_relpaths |> List.map ~fn:Path.to_string in
   let path_components = fun path -> Path.components path |> List.map ~fn:Path.to_string in
   let enabled_buckets = source_buckets_for_intent intent in
+  let scan_roots = scan_roots_for_intent ~intent ~package_path in
   let should_skip_source_entry filename = String.starts_with ~prefix:"." (Path.basename filename) in
   let should_skip_test_support_path rel_path =
     match path_components rel_path with
@@ -1400,15 +1431,7 @@ let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) 
     | Some ".mli" -> true
     | _ -> false
   in
-  let is_source_bucket = function
-    | "src"
-    | "tests"
-    | "native"
-    | "examples"
-    | "bench" -> true
-    | _ -> false
-  in
-  if not (Path.exists package_path) then
+  if not (Path.exists package_path) || List.is_empty scan_roots then
     empty_sources
   else
     let src = ref [] in
@@ -1416,80 +1439,107 @@ let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) 
     let native = ref [] in
     let examples = ref [] in
     let bench = ref [] in
+    let visited_entries = ref 0 in
+    let visited_directories = ref 0 in
+    let visited_files = ref 0 in
     let walker =
-      match Ignore.Walker.create ~roots:[ package_path ] ~concurrency:1 ~sort:true ~follow_symlinks:true () with
+      match Ignore.Walker.create ~roots:scan_roots () with
       | Ok walker -> walker
       | Error _ -> panic "package walker configuration should be valid"
     in
-    let collect = fun (entry: Fs.Walker.FileItem.t) ->
-      let path = Fs.Walker.FileItem.path entry in
-      if Int.equal (Fs.Walker.FileItem.depth entry) 0 then
-        Fs.Walker.Continue
-      else
-        match Path.strip_prefix path ~prefix:package_path with
-        | Error _ -> Fs.Walker.Continue
-        | Ok rel_path -> (
-            let rel_path_string = Path.to_string rel_path in
-            let rel_path_components = path_components rel_path in
-            match Fs.Walker.FileItem.kind entry with
-            | Directory -> (
-                match rel_path_components with
-                | top_level :: _ when not (is_source_bucket top_level) -> Fs.Walker.Skip_subtree
-                | _ when Option.map ~fn:(source_bucket_enabled enabled_buckets) (bucket_of_rel_path rel_path_components)
-                  = Some false -> Fs.Walker.Skip_subtree
-                | _ when should_skip_source_entry rel_path || should_skip_test_support_path rel_path ->
-                    Fs.Walker.Skip_subtree
-                | _ -> Fs.Walker.Continue
-              )
-            | File ->
-                if
-                  should_skip_source_entry rel_path
-                  || should_skip_test_support_path rel_path
-                  || List.contains excluded_relpath_strings ~value:rel_path_string
-                then
-                  Fs.Walker.Continue
-                else (
-                  match bucket_of_rel_path rel_path_components with
-                  | Some bucket when not (source_bucket_enabled enabled_buckets bucket) ->
-                      Fs.Walker.Continue
-                  | Some Src
-                  | Some Tests
-                  | Some Examples
-                  | Some Bench
-                    when not (is_ocaml_module_file rel_path) ->
-                      Fs.Walker.Continue
-                  | Some Src ->
-                      src := rel_path :: !src;
-                      Fs.Walker.Continue
-                  | Some Tests ->
-                      tests := rel_path :: !tests;
-                      Fs.Walker.Continue
-                  | Some Native ->
-                      native := rel_path :: !native;
-                      Fs.Walker.Continue
-                  | Some Examples ->
-                      examples := rel_path :: !examples;
-                      Fs.Walker.Continue
-                  | Some Bench ->
-                      bench := rel_path :: !bench;
-                      Fs.Walker.Continue
-                  | None ->
-                      Fs.Walker.Continue
-                )
-            | Symlink
-            | Other -> Fs.Walker.Continue
-          )
-    in
-    match Ignore.Walker.walk walker ~f:collect with
-    | Ok () ->
-        {
+    match Ignore.Walker.to_list walker with
+    | Ok entries ->
+        List.for_each entries ~fn:(fun (entry: Fs.Walker.FileItem.t) ->
+          let () = visited_entries := !visited_entries + 1 in
+          let path = Fs.Walker.FileItem.path entry in
+          if not (Int.equal (Fs.Walker.FileItem.depth entry) 0) then
+            match Path.strip_prefix path ~prefix:package_path with
+            | Error _ -> ()
+            | Ok rel_path -> (
+                let rel_path_string = Path.to_string rel_path in
+                let rel_path_components = path_components rel_path in
+                match Fs.Walker.FileItem.kind entry with
+                | Directory ->
+                    let () = visited_directories := !visited_directories + 1 in
+                    ()
+                | File ->
+                    let () = visited_files := !visited_files + 1 in
+                    if
+                      not
+                        (should_skip_source_entry rel_path
+                         || should_skip_test_support_path rel_path
+                         || List.contains excluded_relpath_strings ~value:rel_path_string)
+                    then (
+                      match bucket_of_rel_path rel_path_components with
+                      | Some bucket when not (source_bucket_enabled enabled_buckets bucket) ->
+                          ()
+                      | Some Src
+                      | Some Tests
+                      | Some Examples
+                      | Some Bench
+                        when not (is_ocaml_module_file rel_path) ->
+                          ()
+                      | Some Src ->
+                          src := rel_path :: !src
+                      | Some Tests ->
+                          tests := rel_path :: !tests
+                      | Some Native ->
+                          native := rel_path :: !native
+                      | Some Examples ->
+                          examples := rel_path :: !examples
+                      | Some Bench ->
+                          bench := rel_path :: !bench
+                      | None ->
+                          ()
+                    )
+                | Symlink
+                | Other -> ()
+              ));
+        let sources = {
           src = List.reverse !src;
           tests = List.reverse !tests;
           native = List.reverse !native;
           examples = List.reverse !examples;
           bench = List.reverse !bench;
         }
-    | Error _ -> empty_sources
+        in
+        let () =
+          trace_package
+            ("scan-sources path="
+            ^ Path.to_string package_path
+            ^ " intent="
+            ^ string_of_realization_intent intent
+            ^ " total_us="
+            ^ Int.to_string (elapsed_us_since started_at)
+            ^ " visited_entries="
+            ^ Int.to_string !visited_entries
+            ^ " visited_directories="
+            ^ Int.to_string !visited_directories
+            ^ " visited_files="
+            ^ Int.to_string !visited_files
+            ^ " kept_src="
+            ^ Int.to_string (List.length sources.src)
+            ^ " kept_tests="
+            ^ Int.to_string (List.length sources.tests)
+            ^ " kept_native="
+            ^ Int.to_string (List.length sources.native)
+            ^ " kept_examples="
+            ^ Int.to_string (List.length sources.examples)
+            ^ " kept_bench="
+            ^ Int.to_string (List.length sources.bench))
+        in
+        sources
+    | Error _ ->
+        let () =
+          trace_package
+            ("scan-sources-failed path="
+            ^ Path.to_string package_path
+            ^ " intent="
+            ^ string_of_realization_intent intent
+            ^ " total_us="
+            ^ Int.to_string (elapsed_us_since started_at))
+        in
+        empty_sources
 
 let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) (): sources =
   scan_sources_for_intent ~intent:Dev ~package_path ~excluded_relpaths ()
@@ -1710,6 +1760,23 @@ let realize_manifest_spec = fun ~(intent:realization_intent) (manifest: manifest
     ~binaries
     ?library:manifest.library
     ~sources
+    ~compiler:manifest.compiler
+    ~commands:manifest.commands
+    ~fix_providers:manifest.fix_providers
+    ~publish:manifest.publish
+    ()
+
+let of_manifest_spec = fun (manifest: manifest_spec) ->
+  make
+    ~name:manifest.name
+    ~path:manifest.path
+    ~relative_path:manifest.relative_path
+    ~dependencies:manifest.dependencies
+    ~dev_dependencies:manifest.dev_dependencies
+    ~build_dependencies:manifest.build_dependencies
+    ~foreign_dependencies:manifest.foreign_dependencies
+    ~binaries:manifest.declared_binaries
+    ?library:manifest.library
     ~compiler:manifest.compiler
     ~commands:manifest.commands
     ~fix_providers:manifest.fix_providers

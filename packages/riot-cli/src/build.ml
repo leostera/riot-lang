@@ -34,10 +34,13 @@ let build_trace_enabled = fun () ->
   | _ -> false
 
 let trace_build = fun message ->
-  if build_trace_enabled () then
-    eprintln ("[riot-build] " ^ message)
-  else
-    ()
+  let _ = message in
+  ()
+
+let trace_build_probe = fun ~started_at message ->
+  let _ = started_at in
+  let _ = message in
+  ()
 
 let build_request_label = fun (request: Riot_build.build_request) ->
   let packages =
@@ -483,6 +486,14 @@ let run_request = fun (request: request) ->
         | Riot_build.Streaming event ->
             attempted_build := true;
             write_streaming_event ~mode:request.output_mode ~displayed_packages ~progress event;
+            (
+              match event with
+              | Client.BuildCompleted { results; _ } ->
+                  trace_build_probe
+                    ~started_at:start_time
+                    ("streaming-build-completed results=" ^ Int.to_string (List.length results))
+              | _ -> ()
+            );
             if request.output_mode = Json then
               write_build_event_json (Riot_build.Streaming event)
       )
@@ -524,9 +535,16 @@ let run_request = fun (request: request) ->
               ^ Int.to_string progress.skipped_count
               ^ " skipped)")
     );
+  if request.show_finished_summary && !attempted_build then
+    trace_build_probe ~started_at:start_time "summary-finished";
   match result with
-  | Ok _ -> Ok ()
+  | Ok _ ->
+      trace_build_probe ~started_at:start_time "run-request-return-ok";
+      Ok ()
   | Error err ->
+      trace_build_probe
+        ~started_at:start_time
+        ("run-request-return-error reason=" ^ Riot_build.build_error_message err);
       if not (build_error_already_reported err) then
         write_build_error ~mode:request.output_mode err;
       Error (Failure (Riot_build.build_error_message err))

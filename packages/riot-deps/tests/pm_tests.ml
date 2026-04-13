@@ -2259,6 +2259,85 @@ version = "0.2.0"
                 Error "expected ensure_workspace to return a build-ready workspace with registry packages"
           | None -> Error "expected ensure_workspace to project std into the workspace")
 
+let test_ensure_workspace_preserves_declared_external_binaries = fun _ctx ->
+  with_tempdir "riot_deps_ensure_workspace_bins"
+    (fun workspace_root ->
+      let workspace_manifest = Path.(workspace_root / Path.v "riot.toml") in
+      Fs.write "[workspace]\nmembers = [\"packages/app\"]\n" workspace_manifest
+      |> Result.expect ~msg:"expected workspace manifest to be written";
+      write_file Path.(workspace_root / Path.v "packages/app/riot.toml") "[package]\nname = \"app\"\n";
+      let registry_cache = Pkgs_ml.Registry_cache.create
+        ~riot_home:Path.(workspace_root / Path.v ".riot")
+        ~registry_name:"pkgs.ml"
+        ()
+      |> Result.expect ~msg:"expected registry cache to initialize" in
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[ { name = "std"; source = source ~version:Std.Version.any () } ]
+        () in
+      let app_pkg = Riot_model.Package.make
+        ~name:app_pkg.name
+        ~path:app_pkg.path
+        ~relative_path:(Path.v "packages/app")
+        ~dependencies:app_pkg.dependencies
+        ~dev_dependencies:app_pkg.dev_dependencies
+        ~build_dependencies:app_pkg.build_dependencies
+        ~foreign_dependencies:app_pkg.foreign_dependencies
+        ~binaries:app_pkg.binaries
+        ?library:app_pkg.library
+        ~sources:app_pkg.sources
+        ~compiler:app_pkg.compiler
+        ~commands:app_pkg.commands
+        ~fix_providers:app_pkg.fix_providers
+        ~publish:app_pkg.publish
+        () in
+      let workspace = Riot_model.Workspace.make_realized ~root:workspace_root ~packages:[ app_pkg ] () in
+      let registry = Pkgs_ml.Registry.in_memory ~cache:registry_cache ~packages:[
+        make_registry_document
+          ~name:"std"
+          ~latest:"0.2.0"
+          ~releases:[ make_release ~version:"0.2.0" () ]
+          ();
+      ]
+        ~releases:[ {
+            Pkgs_ml.Registry.package_name = "std";
+            version = "0.2.0";
+            manifest_toml =
+              {|
+[package]
+name = "std"
+version = "0.2.0"
+
+[[bin]]
+name = "std-example"
+path = "examples/std_example.ml"
+
+[[bin]]
+name = "std-tests"
+path = "tests/std_tests.ml"
+|};
+            files = [];
+          } ]
+        ()
+      in
+      match Riot_deps.ensure_workspace ~mode:Riot_deps.Dep_solver.Refresh ~registry ~workspace () with
+      | Error err -> Error ("expected ensure_workspace to succeed: " ^ pm_error_message err)
+      | Ok resolved_workspace -> (
+          match List.find resolved_workspace.packages ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> String.equal pkg.name "std") with
+          | None -> Error "expected ensure_workspace to project std into the workspace"
+          | Some std_pkg ->
+              let binary_names =
+                std_pkg.declared_binaries
+                |> List.map ~fn:(fun (bin: Riot_model.Package.binary) -> bin.name)
+                |> List.sort ~compare:String.compare
+              in
+              if binary_names = [ "std-example"; "std-tests" ] then
+                Ok ()
+              else
+                Error "expected ensure_workspace to preserve declared external binaries across projection"
+        ))
+
 let test_projection_resolves_workspace_packages = fun _ctx ->
   let std_pkg = make_package ~name:"std" ~path:(Path.v "/workspace/packages/std") () in
   let app_pkg = make_package
@@ -2300,10 +2379,13 @@ let test_projection_loads_external_manifests_from_lockfile = fun _ctx ->
         () in
       let std_root = Path.(workspace_root / Path.v ".riot/registry/pkgs.ml/src/std/0.2.0") in
       let kernel_root = Path.(workspace_root / Path.v ".riot/registry/pkgs.ml/src/kernel/1.0.0") in
+      let fixme_root = Path.(workspace_root / Path.v ".riot/registry/pkgs.ml/src/fixme/0.5.0") in
       let std_manifest_path = Path.(std_root / Path.v "riot.toml") in
       let kernel_manifest_path = Path.(kernel_root / Path.v "riot.toml") in
+      let fixme_manifest_path = Path.(fixme_root / Path.v "riot.toml") in
       Fs.create_dir_all std_root |> Result.expect ~msg:"expected std root to be created";
       Fs.create_dir_all kernel_root |> Result.expect ~msg:"expected kernel root to be created";
+      Fs.create_dir_all fixme_root |> Result.expect ~msg:"expected fixme root to be created";
       Fs.write
         {|
 [package]
@@ -2324,6 +2406,13 @@ name = "kernel"
 version = "1.0.0"
 |}
         kernel_manifest_path |> Result.expect ~msg:"expected kernel manifest to be written";
+      Fs.write
+        {|
+[package]
+name = "fixme"
+version = "0.5.0"
+|}
+        fixme_manifest_path |> Result.expect ~msg:"expected fixme manifest to be written";
       let lockfile =
         Riot_model.Lockfile.{
           format_version = 1;
@@ -2366,13 +2455,35 @@ version = "1.0.0"
                     }
                   }
                 ];
-                build_dependencies = [];
+                build_dependencies = [
+                  {
+                    name = "fixme";
+                    package = {
+                      registry = Some "pkgs.ml";
+                      name = "fixme";
+                      version = Some "0.5.0";
+                      sha256 = None
+                    }
+                  }
+                ];
                 dev_dependencies = [];
               }; {
                 id = {
                   registry = Some "pkgs.ml";
                   name = "kernel";
                   version = Some "1.0.0";
+                  sha256 = None
+                };
+                root = None;
+                provenance = Registry { registry = "pkgs.ml" };
+                dependencies = [];
+                build_dependencies = [];
+                dev_dependencies = [];
+              }; {
+                id = {
+                  registry = Some "pkgs.ml";
+                  name = "fixme";
+                  version = Some "0.5.0";
                   sha256 = None
                 };
                 root = None;
@@ -2410,24 +2521,32 @@ version = "1.0.0"
               ~fn:(fun (pkg: Riot_model.Package.resolved) ->
                 pkg.id.name = "kernel" && pkg.id.version = Some "1.0.0")
           in
-          match std_resolved, kernel_resolved with
-          | Some std_resolved, Some kernel_resolved ->
+          let fixme_resolved =
+            List.find resolved
+              ~fn:(fun (pkg: Riot_model.Package.resolved) ->
+                pkg.id.name = "fixme" && pkg.id.version = Some "0.5.0")
+          in
+          match std_resolved, kernel_resolved, fixme_resolved with
+          | Some std_resolved, Some kernel_resolved, Some fixme_resolved ->
               if
-                List.length resolved = 3
+                List.length resolved = 4
                 && List.contains event_names ~value:"riot.pm.package_manifest.fetch.started"
                 && List.contains event_names ~value:"riot.pm.package_manifest.fetch.finished"
                 && List.contains event_names ~value:"riot.pm.package_resolved_for_build"
                 && Path.to_string std_resolved.materialized_root = Path.to_string std_root
                 && List.length std_resolved.runtime_resolved = 1
-                && List.length std_resolved.build_resolved = 0
+                && List.length std_resolved.build_resolved = 1
                 && (List.head std_resolved.runtime_resolved
                     |> Option.expect ~msg:"expected resolved std runtime dependency").resolved_id.name = "kernel"
+                && (List.head std_resolved.build_resolved
+                    |> Option.expect ~msg:"expected resolved std build dependency").resolved_id.name = "fixme"
                 && Path.to_string kernel_resolved.materialized_root = Path.to_string kernel_root
+                && Path.to_string fixme_resolved.materialized_root = Path.to_string fixme_root
               then
                 Ok ()
               else
                 Error "expected projection to include external lockfile packages"
-          | _ -> Error "expected projection to resolve both std and kernel from external manifests")
+          | _ -> Error "expected projection to resolve std, kernel, and fixme from external manifests")
 
 let test_projection_bubbles_external_manifest_errors = fun _ctx ->
   with_tempdir "riot_deps_projection_manifest_error"
@@ -2652,6 +2771,7 @@ let tests =
     case "ensure lock: materializes registry packages during projection" test_ensure_lock_materializes_registry_packages_during_projection;
     case "ensure lock: reuses existing lock and repairs missing registry packages" test_ensure_lock_reuses_existing_lock_and_repairs_missing_registry_packages;
     case "ensure workspace: projects materialized registry packages" test_ensure_workspace_projects_materialized_registry_packages;
+    case "ensure workspace: preserves declared external binaries" test_ensure_workspace_preserves_declared_external_binaries;
     case "package management: load registry workspace materializes release" test_load_registry_workspace_materializes_release;
     case "package management: load registry workspace rejects yanked release" test_load_registry_workspace_rejects_yanked_release;
     case "projection: resolves workspace packages from lockfile" test_projection_resolves_workspace_packages;

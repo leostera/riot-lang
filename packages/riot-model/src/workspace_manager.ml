@@ -26,6 +26,13 @@ let create = fun () ->
 
 let path_key = fun path -> Path.to_string path
 
+let elapsed_us_since = fun started_at ->
+  Time.Instant.elapsed started_at |> Time.Duration.to_micros
+
+let trace_workspace_manager = fun message ->
+  let _ = message in
+  ()
+
 let load_riot_toml = fun t manifest_path ->
   let key = path_key manifest_path in
   match HashMap.get t.manifests ~key with
@@ -260,6 +267,8 @@ let rec load_external_package:
         )
 
 let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_error list) = fun t workspace_root workspace_manifest ->
+  let started_at = Time.Instant.now () in
+  let member_started_at = Time.Instant.now () in
   let member_results =
     List.map workspace_manifest.members ~fn:(fun member ->
       load_member_package
@@ -269,6 +278,10 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
         ~workspace_deps:workspace_manifest.dependencies
         ~workspace_dev_deps:workspace_manifest.dev_dependencies
         ~workspace_build_deps:workspace_manifest.build_dependencies)
+  in
+  let () =
+    trace_workspace_manager
+      ("member-results-us=" ^ Int.to_string (elapsed_us_since member_started_at))
   in
   let member_packages =
     List.filter_map member_results ~fn:(fun (pkg, _) -> pkg)
@@ -280,6 +293,7 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
     Cell.create (List.map member_packages ~fn:(fun (p: Package_manifest.t) -> p.name))
   in
   (* Load workspace-level dependencies first *)
+  let workspace_deps_started_at = Time.Instant.now () in
   let workspace_results =
     List.map
       (workspace_manifest.dependencies @ workspace_manifest.dev_dependencies @ workspace_manifest.build_dependencies)
@@ -293,6 +307,10 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
         ~workspace_build_deps:workspace_manifest.build_dependencies
         ~dependant:None)
   in
+  let () =
+    trace_workspace_manager
+      ("workspace-deps-us=" ^ Int.to_string (elapsed_us_since workspace_deps_started_at))
+  in
   let workspace_packages =
     workspace_results |> List.map ~fn:(fun (packages, _) -> packages) |> List.concat
   in
@@ -300,6 +318,7 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
     workspace_results |> List.map ~fn:(fun (_, errors) -> errors) |> List.concat
   in
   (* Then load any additional dependencies from member packages *)
+  let external_started_at = Time.Instant.now () in
   let external_results =
     member_packages
     |> List.map ~fn:(fun (pkg: Package_manifest.t) ->
@@ -316,6 +335,10 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
           ~dependant:(Some pkg.name)))
     |> List.concat
   in
+  let () =
+    trace_workspace_manager
+      ("member-external-deps-us=" ^ Int.to_string (elapsed_us_since external_started_at))
+  in
   let external_packages =
     external_results |> List.map ~fn:(fun (packages, _) -> packages) |> List.concat
   in
@@ -324,6 +347,17 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
   in
   let all_packages = member_packages @ workspace_packages @ external_packages in
   let all_errors = member_errors @ workspace_errors @ external_errors in
+  let () =
+    trace_workspace_manager
+      ("build-workspace-total-us="
+      ^ Int.to_string (elapsed_us_since started_at)
+      ^ " members="
+      ^ Int.to_string (List.length member_packages)
+      ^ " externals="
+      ^ Int.to_string (List.length workspace_packages + List.length external_packages)
+      ^ " errors="
+      ^ Int.to_string (List.length all_errors))
+  in
   (
     Workspace.make
       ?name:workspace_manifest.name
@@ -383,7 +417,14 @@ let build_single_package_workspace: t -> Path.t -> (Workspace.t * load_error lis
 
 let scan: t -> Path.t -> ((Workspace.t * load_error list), string) result = fun t path ->
   try
-    match find_scan_roots t path ~package_root:None with
+    let started_at = Time.Instant.now () in
+    let find_roots_started_at = Time.Instant.now () in
+    let roots = find_scan_roots t path ~package_root:None in
+    let () =
+      trace_workspace_manager
+        ("find-scan-roots-us=" ^ Int.to_string (elapsed_us_since find_roots_started_at))
+    in
+    match roots with
     | Some workspace_root, _ ->
         let key = path_key workspace_root in
         (
@@ -398,14 +439,24 @@ let scan: t -> Path.t -> ((Workspace.t * load_error list), string) result = fun 
                 | Error err ->
                     Error ("Failed to parse workspace TOML: " ^ err)
                 | Ok toml -> (
+                    let workspace_of_toml_started_at = Time.Instant.now () in
                     match Workspace.of_toml toml with
                     | Error msg -> Error ("Failed to parse workspace manifest: " ^ msg)
                     | Ok workspace_manifest ->
+                        let () =
+                          trace_workspace_manager
+                            ("workspace-of-toml-us="
+                            ^ Int.to_string (elapsed_us_since workspace_of_toml_started_at))
+                        in
                         let (workspace, errors) = build_workspace t workspace_root workspace_manifest in
                         Ok (workspace, errors)
                   )
               in
               let _ = HashMap.insert t.scans ~key ~value:result in
+              let () =
+                trace_workspace_manager
+                  ("scan-total-us=" ^ Int.to_string (elapsed_us_since started_at))
+              in
               result
         )
     | None, Some package_root ->
@@ -416,6 +467,10 @@ let scan: t -> Path.t -> ((Workspace.t * load_error list), string) result = fun 
           | None ->
               let result = build_single_package_workspace t package_root in
               let _ = HashMap.insert t.scans ~key ~value:result in
+              let () =
+                trace_workspace_manager
+                  ("scan-total-us=" ^ Int.to_string (elapsed_us_since started_at))
+              in
               result
         )
     | None, None ->

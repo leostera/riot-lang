@@ -56,6 +56,38 @@ let make_valid_workspace = fun ?target_dir tmpdir ->
   in
   Riot_model.Workspace.make_realized ~root:tmpdir ?target_dir ~packages:[ package ] ()
 
+let write_nested_udp_workspace = fun ~root ~creation_order ->
+  let pkg_dir = Path.(root / Path.v "demo") in
+  let src_dir = Path.(pkg_dir / Path.v "src") in
+  let net_dir = Path.(src_dir / Path.v "net") in
+  let _ = Fs.create_dir_all net_dir |> Result.expect ~msg:"Create nested src failed" in
+  let _ =
+    write_workspace_manifest ~root ~members:[ Path.v "demo" ]
+  in
+  let riot_file = Path.(pkg_dir / Path.v "riot.toml") in
+  let riot_content = "[package]\nname = \"demo\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/demo.ml\"\n" in
+  let _ = Fs.write riot_content riot_file |> Result.expect ~msg:"Write nested riot.toml failed" in
+  let file_for_key = function
+    | "demo_ml" ->
+        (Path.(src_dir / Path.v "demo.ml"), "module Net = Net\n")
+    | "net_ml" ->
+        (Path.(net_dir / Path.v "net.ml"), "module Udp_socket = Udp_socket\nmodule Udp_server = Udp_server\n")
+    | "udp_socket_mli" ->
+        (Path.(net_dir / Path.v "udp_socket.mli"), "type t\n")
+    | "udp_socket_ml" ->
+        (Path.(net_dir / Path.v "udp_socket.ml"), "type t = unit\n")
+    | "udp_server_mli" ->
+        (Path.(net_dir / Path.v "udp_server.mli"), "type handler = socket:Udp_socket.t -> bytes -> unit\nval run : handler -> unit\n")
+    | "udp_server_ml" ->
+        (Path.(net_dir / Path.v "udp_server.ml"), "type handler = socket:Udp_socket.t -> bytes -> unit\nlet run _ = ()\n")
+    | key ->
+        panic ("unknown nested udp workspace file key: " ^ key)
+  in
+  List.for_each creation_order ~fn:(fun key ->
+    let path, contents = file_for_key key in
+    let _ = Fs.write contents path |> Result.expect ~msg:("Write nested source failed: " ^ key) in
+    ())
+
 let test_build_surfaces_failed_builds = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"riot_build_runtime"
@@ -162,9 +194,59 @@ let test_build_uses_custom_target_dir_root = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
+let test_build_succeeds_for_nested_udp_workspace_across_file_creation_orders = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"riot_build_nested_udp_runtime"
+      (fun tmpdir ->
+        let orders = [
+          ("canonical", [ "demo_ml"; "net_ml"; "udp_socket_mli"; "udp_socket_ml"; "udp_server_mli"; "udp_server_ml" ]);
+          ("server_first", [ "udp_server_mli"; "udp_server_ml"; "udp_socket_mli"; "udp_socket_ml"; "net_ml"; "demo_ml" ]);
+          ("socket_impl_first", [ "udp_socket_ml"; "net_ml"; "demo_ml"; "udp_server_ml"; "udp_socket_mli"; "udp_server_mli" ]);
+          ("mixed", [ "net_ml"; "udp_server_mli"; "demo_ml"; "udp_socket_mli"; "udp_server_ml"; "udp_socket_ml" ]);
+        ] in
+        let rec run = function
+          | [] -> Ok ()
+          | (order_name, creation_order) :: rest ->
+              let root = Path.(tmpdir / Path.v order_name) in
+              let _ = Fs.create_dir_all root |> Result.expect ~msg:"Create order root failed" in
+              let _ = write_nested_udp_workspace ~root ~creation_order in
+              let workspace_manager = Riot_model.Workspace_manager.create () in
+              match Riot_model.Workspace_manager.scan workspace_manager root with
+              | Error err ->
+                  Error ("workspace scan failed for creation order " ^ order_name ^ ": " ^ err)
+              | Ok (workspace, load_errors) ->
+                  if not (List.is_empty load_errors) then
+                    Error ("workspace scan had load errors for creation order " ^ order_name)
+                  else
+                    match
+                      Riot_build.build
+                        {
+                          workspace;
+                          packages = [ "demo" ];
+                          targets = Riot_build.Host;
+                          scope = Riot_build.Runtime;
+                          profile = "debug";
+                        }
+                    with
+                    | Ok _ ->
+                        run rest
+                    | Error err ->
+                        Error ("nested udp build failed for creation order "
+                        ^ order_name
+                        ^ ": "
+                        ^ Riot_build.build_error_message err)
+        in
+        run orders)
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
 let tests =
   let open Test in [
     case "build runtime: failed builds surface as errors" test_build_surfaces_failed_builds;
+    case
+      "build runtime: nested udp workspace succeeds across file creation orders"
+      test_build_succeeds_for_nested_udp_workspace_across_file_creation_orders;
     case "build runtime: release builds use the release lane" test_build_release_uses_release_lane;
     case "build runtime: custom target_dir is respected" test_build_uses_custom_target_dir_root;
   ]

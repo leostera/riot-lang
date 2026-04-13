@@ -66,6 +66,17 @@ type workspace_scan =
   | ScanFailed of string
   | Loaded of Riot_model.Workspace.t * Riot_model.Workspace_manager.load_error list
 
+let cli_trace_origin = ref (Time.Instant.now ())
+
+let reset_cli_trace_origin = fun () -> cli_trace_origin := Time.Instant.now ()
+
+let cli_elapsed_us = fun () ->
+  Time.Instant.elapsed !cli_trace_origin |> Time.Duration.to_micros
+
+let trace_cli = fun message ->
+  let _ = message in
+  ()
+
 (** Get workspace scan status *)
 let scan_workspace = fun () ->
   match Env.current_dir () with
@@ -222,6 +233,7 @@ let render_init_event = function
       println ""
 
 let run = fun ~args ->
+  let () = reset_cli_trace_origin () in
   let () = Pkgs_ml.Registry.set_riot_agent (Some (Version_info.agent_string ())) in
   let normalized_args =
     match args with
@@ -234,10 +246,25 @@ let run = fun ~args ->
     match !workspace_scan_cache with
     | Some workspace_scan -> workspace_scan
     | None ->
+        let () = trace_cli "scan-workspace-start" in
         let workspace_scan = scan_workspace () in
+        let () =
+          match workspace_scan with
+          | Loaded (workspace, load_errors) ->
+              trace_cli
+                ("scan-workspace-loaded packages="
+                ^ Int.to_string (List.length workspace.packages)
+                ^ " load_errors="
+                ^ Int.to_string (List.length load_errors))
+          | NoWorkspace ->
+              trace_cli "scan-workspace-no-workspace"
+          | ScanFailed err ->
+              trace_cli ("scan-workspace-failed reason=" ^ err)
+        in
         let _ =
           workspace_scan_cache := Some workspace_scan
         in
+        let () = trace_cli "workspace-scan-cache-store" in
         workspace_scan
   in
   let workspace_opt () =
@@ -279,8 +306,12 @@ let run = fun ~args ->
           | Some ("build", build_matches) -> (
               match require_clean_workspace (get_workspace_scan ()) with
               | Ok workspace -> (
+                  let () = trace_cli "ensure-toolchain-start" in
                   match ensure_toolchain workspace with
-                  | Ok () -> Build.run ~workspace build_matches
+                  | Ok () ->
+                      let () = trace_cli "ensure-toolchain-done" in
+                      let () = trace_cli "build-run-start" in
+                      Build.run ~workspace build_matches
                   | Error _ as e -> e
                 )
               | Error _ as e -> e
@@ -507,4 +538,6 @@ let run = fun ~args ->
 let main = fun ~args ->
   if not (is_lsp_invocation args) then
     initialize_runtime ();
-  run ~args
+  let result = run ~args in
+  let () = trace_cli "main-return" in
+  result

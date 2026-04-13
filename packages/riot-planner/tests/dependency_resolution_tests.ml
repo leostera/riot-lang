@@ -542,6 +542,200 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orders = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"module_graph_nested_udp_order"
+      (fun tmpdir ->
+        let package_root = Path.(tmpdir / Path.v "pkg") in
+        let src_dir = Path.(package_root / Path.v "src") in
+        let net_dir = Path.(src_dir / Path.v "net") in
+        let create_dir path = Fs.create_dir_all path
+        |> Result.expect ~msg:("expected dir creation to succeed: " ^ Path.to_string path) in
+        let write path contents = Fs.write contents path
+        |> Result.expect ~msg:("expected file write to succeed: " ^ Path.to_string path) in
+        let _ = create_dir net_dir in
+        let _ = write Path.(src_dir / Path.v "demo.ml") "module Net = Net\n" in
+        let _ = write Path.(net_dir / Path.v "net.ml") "module Udp_socket = Udp_socket\nmodule Udp_server = Udp_server\n" in
+        let _ = write Path.(net_dir / Path.v "udp_socket.mli") "type t\n" in
+        let _ = write Path.(net_dir / Path.v "udp_socket.ml") "type t = unit\n" in
+        let _ =
+          write
+            Path.(net_dir / Path.v "udp_server.mli")
+            "type handler = socket:Udp_socket.t -> bytes -> unit\nval run : handler -> unit\n"
+        in
+        let _ =
+          write
+            Path.(net_dir / Path.v "udp_server.ml")
+            "type handler = socket:Udp_socket.t -> bytes -> unit\nlet run _ = ()\n"
+        in
+        let source_orders = [
+          [
+            Path.v "src/demo.ml";
+            Path.v "src/net/net.ml";
+            Path.v "src/net/udp_socket.mli";
+            Path.v "src/net/udp_socket.ml";
+            Path.v "src/net/udp_server.mli";
+            Path.v "src/net/udp_server.ml";
+          ];
+          [
+            Path.v "src/net/udp_server.mli";
+            Path.v "src/net/udp_server.ml";
+            Path.v "src/net/udp_socket.mli";
+            Path.v "src/net/udp_socket.ml";
+            Path.v "src/net/net.ml";
+            Path.v "src/demo.ml";
+          ];
+          [
+            Path.v "src/net/udp_socket.ml";
+            Path.v "src/net/net.ml";
+            Path.v "src/demo.ml";
+            Path.v "src/net/udp_server.ml";
+            Path.v "src/net/udp_socket.mli";
+            Path.v "src/net/udp_server.mli";
+          ];
+          [
+            Path.v "src/net/net.ml";
+            Path.v "src/net/udp_server.mli";
+            Path.v "src/demo.ml";
+            Path.v "src/net/udp_socket.mli";
+            Path.v "src/net/udp_server.ml";
+            Path.v "src/net/udp_socket.ml";
+          ];
+        ] in
+        let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
+        |> Result.expect ~msg:"expected toolchain init to succeed" in
+        let source_order_to_string source_order =
+          source_order |> List.map ~fn:Path.to_string |> String.concat ", "
+        in
+        let rec run = function
+          | [] -> Ok ()
+          | source_order :: rest ->
+              let package =
+                Riot_model.Package.make
+                  ~name:"demo"
+                  ~path:package_root
+                  ~relative_path:(Path.v "pkg")
+                  ~library:{ path = Path.v "src/demo.ml" }
+                  ~sources:{
+                    src = source_order;
+                    native = [];
+                    tests = [];
+                    examples = [];
+                    bench = [];
+                  }
+                  ()
+              in
+              let workspace =
+                Riot_model.Workspace.make_realized
+                  ~root:tmpdir
+                  ~packages:[ package ]
+                  ~target_dir:"target"
+                  ()
+              in
+              let graph_builder = Riot_planner.Module_graph.create
+                Riot_planner.Module_graph.{
+                  root = package_root;
+                  source_dir = Path.v "src";
+                  allowed_source_files = package.sources.src;
+                  root_mode = Riot_planner.Module_graph.Library_root { library_name = package.name };
+                  namespace = Riot_model.Module_name.(package.name |> of_string |> to_string);
+                  package;
+                  toolchain;
+                  workspace;
+                }
+              in
+              match Riot_planner.Module_graph.wire_dependencies graph_builder with
+              | Error err ->
+                  Error ("unexpected planner error for allowed source order ["
+                  ^ source_order_to_string source_order
+                  ^ "]: "
+                  ^ Riot_planner.Planning_error.to_string err)
+              | Ok () ->
+                  let graph = Riot_planner.Module_graph.graph graph_builder in
+                  let find_mli qualified_name =
+                    let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+                      match node.value.kind with
+                      | Riot_planner.Module_node.MLI mod_ -> String.equal
+                        (Riot_model.Module.namespaced_name mod_)
+                        qualified_name
+                      | _ -> false
+                    in
+                    match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
+                    | Some (_node_id, node) -> Ok node
+                    | None -> Error ("expected module not found: " ^ qualified_name)
+                  in
+                  let find_modules qualified_name =
+                    let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+                      match node.value.kind with
+                      | Riot_planner.Module_node.ML mod_
+                      | Riot_planner.Module_node.MLI mod_ -> String.equal
+                        (Riot_model.Module.namespaced_name mod_)
+                        qualified_name
+                      | _ -> false
+                    in
+                    let matches = List.filter (G.map graph ~fn:(fun x -> x)) ~fn:matches in
+                    if List.is_empty matches then
+                      Error ("expected module not found: " ^ qualified_name)
+                    else
+                      Ok (List.map matches ~fn:(fun (_node_id, node) -> node))
+                  in
+                  let module_dependency_labels ((node: Riot_planner.Module_node.t G.node)) =
+                    List.filter_map node.deps ~fn:(fun dep_id ->
+                      match G.get_node graph dep_id with
+                      | Some dep_node -> (
+                          match dep_node.value.kind with
+                          | Riot_planner.Module_node.ML mod_ ->
+                              Some ("ML(" ^ Riot_model.Module.namespaced_name mod_ ^ ")")
+                          | Riot_planner.Module_node.MLI mod_ ->
+                              Some ("MLI(" ^ Riot_model.Module.namespaced_name mod_ ^ ")")
+                          | Riot_planner.Module_node.Library _ ->
+                              Some "Library"
+                          | Riot_planner.Module_node.Binary _ ->
+                              Some "Binary"
+                          | Riot_planner.Module_node.C ->
+                              Some "C"
+                          | Riot_planner.Module_node.H ->
+                              Some "H"
+                          | Riot_planner.Module_node.Native _ ->
+                              Some "Native"
+                          | Riot_planner.Module_node.Other label ->
+                              Some ("Other(" ^ label ^ ")")
+                          | Riot_planner.Module_node.Root ->
+                              Some "Root"
+                        )
+                      | None -> None)
+                  in
+                  match (
+                    find_mli "Demo__Net__Udp_server",
+                    find_modules "Demo__Net__Udp_socket",
+                    G.topo_sort graph
+                  ) with
+                  | Ok udp_server_mli, Ok udp_socket_nodes, Ok _ ->
+                      if
+                        List.any
+                          udp_socket_nodes
+                          ~fn:(fun udp_socket_node ->
+                            List.any udp_server_mli.deps ~fn:(G.Node_id.eq udp_socket_node.id))
+                      then
+                        run rest
+                      else
+                        Error ("expected Demo__Net__Udp_server to depend on Demo__Net__Udp_socket for allowed source order ["
+                        ^ source_order_to_string source_order
+                        ^ "], got deps ["
+                        ^ String.concat ", " (module_dependency_labels udp_server_mli)
+                        ^ "]")
+                  | (Error msg, _, _)
+                  | (_, Error msg, _ ) ->
+                      Error msg
+                  | _, _, Error cycle_ids ->
+                      Error ("unexpected cycle: "
+                      ^ String.concat " -> " (List.map cycle_ids ~fn:G.Node_id.to_string))
+        in
+        run source_orders)
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let tests =
   Test.[
     case "transitive closure order and dedup" test_transitive_closure_dependency_first_order;
@@ -551,6 +745,9 @@ let tests =
     case "module graph uses explicit root library path despite case mismatch" test_module_graph_uses_explicit_root_library_path_case_insensitively;
     case "module graph resolves nested local unix backend" test_module_graph_resolves_nested_local_unix_backend;
     case "module graph resolves deeply nested modules namespace-first" test_module_graph_resolves_deeply_nested_modules_namespace_first;
+    case
+      "module graph keeps nested sibling dependency across allowed source orders"
+      test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orders;
   ]
 
 let name = "Planner Dependency Resolution Tests"

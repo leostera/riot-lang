@@ -153,6 +153,8 @@ val parse_manifest_spec:
 
 val realize_manifest_spec: intent:realization_intent -> manifest_spec -> t
 
+val of_manifest_spec: manifest_spec -> t
+
 val to_json: t -> Std.Data.Json.t
 
 val from_json: Std.Data.Json.t -> (t, string) result

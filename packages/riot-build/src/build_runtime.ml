@@ -31,6 +31,14 @@ type build_error =
 
 let no_event: build_event -> unit = fun _ -> ()
 
+let elapsed_us_since = fun started_at ->
+  Time.Instant.elapsed started_at |> Time.Duration.to_micros
+
+let trace_build_runtime = fun ~started_at message ->
+  let _ = started_at in
+  let _ = message in
+  ()
+
 let error_message = function
   | NoTargetsMatched { pattern; available_targets } -> "No targets match pattern '"
   ^ pattern
@@ -174,18 +182,27 @@ let record_successful_build_cache_generation = fun request lane_results ->
   | Error _ -> Ok ()
 
 let build_with_connect = fun connect ~allow_partial_failures ?(record_cache_generation = true) ?(on_event = no_event) ?workspace_manager request ->
+  let started_at = Time.Instant.now () in
   match resolve_targets request with
   | Error _ as err -> err
   | Ok targets -> (
+      let () =
+        trace_build_runtime
+          ~started_at
+          ("targets-resolved count=" ^ Int.to_string (List.length targets))
+      in
       match ensure_toolchains_for_targets request.workspace targets with
       | Error _ as err -> err
       | Ok () -> (
+          let () = trace_build_runtime ~started_at "toolchains-ensured" in
           match validate_target_toolchains request.workspace targets with
           | Error _ as err -> err
           | Ok () -> (
+              let () = trace_build_runtime ~started_at "toolchains-validated" in
               match connect ?workspace_manager ~workspace:request.workspace () with
               | Error err -> Error (ClientError err)
               | Ok client ->
+                  let () = trace_build_runtime ~started_at "client-connected" in
                   try
                     let host = Riot_toolchain.get_host_triple () in
                     let request_target = client_target request.packages in
@@ -249,8 +266,11 @@ let build_with_connect = fun connect ~allow_partial_failures ?(record_cache_gene
                             else
                               Ok ()
                           in
+                          let () = trace_build_runtime ~started_at "build-with-connect-return-ok" in
                           Ok (List.map lane_results ~fn:(fun (_, results) -> results) |> List.concat)
-                      | Error _ as err -> err
+                      | Error _ as err ->
+                          let () = trace_build_runtime ~started_at "build-with-connect-return-error" in
+                          err
                     )
                   with
                   | exn ->

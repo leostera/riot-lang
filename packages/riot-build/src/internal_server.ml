@@ -66,6 +66,24 @@ let prepare_workspace = fun ?(emit = no_emit) ?workspace_manager ~(registry:Pkgs
     ~workspace
     ()
 
+let empty_runtime_package_graph = fun ~(workspace: Workspace.t) ->
+  let empty_workspace = Workspace.make ~root:workspace.root ~packages:[] () in
+  Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime empty_workspace
+  |> Result.expect ~msg:"Failed to create empty package graph"
+
+let ensure_runtime_package_graph = fun state ->
+  if Riot_planner.Package_graph.size state.package_graph > 0 || List.is_empty state.workspace.packages then
+    state
+  else
+    match Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime state.workspace with
+    | Ok package_graph ->
+        { state with package_graph; load_errors = [] }
+    | Error (Riot_planner.Package_graph.MissingPackages { missing }) ->
+        Log.warn "Lazy package graph build found missing dependencies:";
+        List.for_each missing ~fn:(fun { Riot_planner.Package_graph.package; dependency } ->
+          Log.warn ("  " ^ package ^ " requires: " ^ dependency));
+        state
+
 let build_state = fun ~(workspace:Workspace.t) ~workspace_manager ~load_errors ~(registry:Pkgs_ml.Registry.t) ~(config:Server_config.t) ->
   let _ = config in
   if List.length load_errors > 0 then
@@ -85,24 +103,12 @@ let build_state = fun ~(workspace:Workspace.t) ~workspace_manager ~load_errors ~
         println "";
         System.exit 1
   in
-  let package_graph =
-    match Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace with
-    | Ok graph -> graph
-    | Error (Riot_planner.Package_graph.MissingPackages { missing }) ->
-        Log.warn "Package graph has missing dependencies at startup:";
-        List.for_each missing ~fn:(fun { Riot_planner.Package_graph.package; dependency } ->
-          Log.warn ("  " ^ package ^ " requires: " ^ dependency));
-        Log.warn "Build operations will report this error to clients.";
-        let ws = Workspace.make ~root:workspace.root ~packages:[] () in
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime ws
-        |> Result.expect ~msg:"Failed to create empty package graph"
-  in
   {
     workspace;
     workspace_manager;
     toolchain;
     concurrency = Thread.available_parallelism;
-    package_graph;
+    package_graph = empty_runtime_package_graph ~workspace;
     load_errors;
     active_profile = "debug";
     active_target = Riot_model.Riot_dirs.host_target ();
@@ -178,15 +184,7 @@ and handle_scan_workspace = fun state client_pid current_dir ->
   |> Result.expect ~msg:"riot_build: workspace scan failed" in
   let workspace = prepare_workspace ~workspace_manager ~registry:state.registry ~workspace ()
   |> Result.expect ~msg:"riot_build: workspace pm preparation failed" in
-  let package_graph =
-    match Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime workspace with
-    | Ok graph -> graph
-    | Error _ ->
-        (* Create empty graph as fallback *)
-        let ws = Workspace.make ~root:workspace.root ~packages:[] () in
-        Riot_planner.Package_graph.create ~scope:Riot_planner.Package_graph.Runtime ws
-        |> Result.expect ~msg:"Failed to create empty package graph"
-  in
+  let package_graph = empty_runtime_package_graph ~workspace in
   let new_state = { state with workspace; workspace_manager; package_graph; load_errors } in
   trace_server
     ("handle_scan_workspace done packages=" ^ Int.to_string (List.length workspace.packages));
@@ -208,6 +206,7 @@ and handle_get_workspace_config = fun state client_pid ->
 and handle_get_package_info = fun state client_pid package_name ->
   Log.debug
     ("Server: Received GetPackageInfo for " ^ package_name ^ " from " ^ Pid.to_string client_pid);
+  let state = ensure_runtime_package_graph state in
   let package_opt =
     List.find state.workspace.packages ~fn:(fun (pkg: Package_manifest.t) -> pkg.name = package_name)
     |> Option.map ~fn:(Riot_model.Workspace.realize_package ~intent:Riot_model.Package.Dev)
@@ -243,6 +242,7 @@ and handle_get_package_info = fun state client_pid package_name ->
 
 (** Handler for getting the package graph *)
 and handle_get_package_graph = fun state client_pid ->
+  let state = ensure_runtime_package_graph state in
   Log.debug ("Server: Received GetPackageGraph from " ^ Pid.to_string client_pid);
   let sorted_packages = Riot_planner.Package_graph.(topological_sort state.package_graph
   |> List.map ~fn:get_package) in
@@ -390,9 +390,7 @@ and handle_new_package = fun state client_pid path name is_library ->
             ("Server: Workspace rescanned, found "
             ^ Int.to_string (List.length updated_workspace.packages)
             ^ " packages");
-          let updated_package_graph = Riot_planner.Package_graph.create
-            ~scope:Riot_planner.Package_graph.Runtime updated_workspace
-          |> Result.expect ~msg:"Failed to create package graph after rescan" in
+          let updated_package_graph = empty_runtime_package_graph ~workspace:updated_workspace in
           let updated_state = {
             state
             with workspace = updated_workspace;

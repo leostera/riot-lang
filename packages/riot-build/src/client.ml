@@ -275,7 +275,15 @@ let convert_build_stats: Protocol.BuildStats.t -> build_stats = fun stats ->
 
 let same_session = fun left right -> Session_id.to_string left = Session_id.to_string right
 
-let rec handle_streaming_events = fun t session_id callback ->
+let elapsed_us_since = fun started_at ->
+  Time.Instant.elapsed started_at |> Time.Duration.to_micros
+
+let trace_client = fun ~started_at message ->
+  let _ = started_at in
+  let _ = message in
+  ()
+
+let rec handle_streaming_events = fun t ~started_at session_id callback ->
   let selector msg =
     match msg with
     | Protocol.ServerResponse (Protocol.BuildEvent { session_id=event_session_id; event }) -> `select (`BuildEvent (
@@ -321,9 +329,14 @@ let rec handle_streaming_events = fun t session_id callback ->
   | `BuildEvent (event_session_id, event) ->
       if same_session session_id event_session_id then
         callback (BuildEvent event);
-      handle_streaming_events t session_id callback
+      handle_streaming_events t ~started_at session_id callback
   | `BuildCompleted (event_session_id, completed_at, stats, results) ->
       if same_session session_id event_session_id then
+        let () =
+          trace_client
+            ~started_at
+            ("build-completed-received results=" ^ Int.to_string (List.length results))
+        in
         let final_event = BuildCompleted {
           session_id = event_session_id;
           completed_at;
@@ -331,9 +344,10 @@ let rec handle_streaming_events = fun t session_id callback ->
           results
         } in
         callback final_event;
+        let () = trace_client ~started_at "build-completed-callback-done" in
         Ok final_event
       else
-        handle_streaming_events t session_id callback
+        handle_streaming_events t ~started_at session_id callback
   | `BuildFailed (event_session_id, failed_at, stats, built, errors) ->
       if same_session session_id event_session_id then
         let final_event = BuildFailed {
@@ -347,33 +361,34 @@ let rec handle_streaming_events = fun t session_id callback ->
         callback final_event;
         Error ((BuildFailed { errors }): error)
       else
-        handle_streaming_events t session_id callback
+        handle_streaming_events t ~started_at session_id callback
   | `PlanningFailed (event_session_id, failed_at, reason) ->
       if same_session session_id event_session_id then
         let final_event = PlanningFailed { session_id = event_session_id; failed_at; reason } in
         callback final_event;
         Error ((PlanningFailed { reason }): error)
       else
-        handle_streaming_events t session_id callback
+        handle_streaming_events t ~started_at session_id callback
   | `CycleDetected (event_session_id, detected_at, cycle_nodes) ->
       if same_session session_id event_session_id then
         let final_event = CycleDetected { session_id = event_session_id; detected_at; cycle_nodes } in
         callback final_event;
         Error ((CycleDetected { cycle_nodes }): error)
       else
-        handle_streaming_events t session_id callback
+        handle_streaming_events t ~started_at session_id callback
   | `PackageNotFound (event_session_id, package_name, available_packages) ->
       if same_session session_id event_session_id then
         Error (PackageNotFound { package_name; available_packages })
       else
-        handle_streaming_events t session_id callback
+        handle_streaming_events t ~started_at session_id callback
   | `PackagesNotFound (event_session_id, package_names, available_packages) ->
       if same_session session_id event_session_id then
         Error (PackagesNotFound { package_names; available_packages })
       else
-        handle_streaming_events t session_id callback
+        handle_streaming_events t ~started_at session_id callback
 
 let build_streaming = fun t target ?(scope = Runtime) ?(profile = "debug") ?target_arch callback ->
+  let started_at = Time.Instant.now () in
   let lock_target =
     match target_arch with
     | Some target -> target
@@ -431,7 +446,9 @@ let build_streaming = fun t target ?(scope = Runtime) ?(profile = "debug") ?targ
       match receive_response ~selector with
       | Ok started_session_id ->
           callback (BuildStarted started_session_id);
-          handle_streaming_events t started_session_id callback
+          let result = handle_streaming_events t ~started_at started_session_id callback in
+          let () = trace_client ~started_at "handle-streaming-events-returned" in
+          result
       | Error err -> Error err)
 
 let find_executable = fun t name ->

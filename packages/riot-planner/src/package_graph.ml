@@ -86,6 +86,18 @@ let package_key = fun ~package_name scope ->
       | Dev -> "dev"
     )
 
+let elapsed_us_since = fun started_at ->
+  Time.Instant.elapsed started_at |> Time.Duration.to_micros
+
+let trace_package_graph = fun message ->
+  let _ = message in
+  ()
+
+let string_of_build_scope = function
+  | Build -> "build"
+  | Runtime -> "runtime"
+  | Dev -> "dev"
+
 let get_key = fun node ->
   let package = get_package node in
   package_key ~package_name:package.name (get_scope node)
@@ -153,6 +165,7 @@ let realize_projected_package = fun (workspace: Workspace.t) scope (pkg: Package
   |> projected_package scope
 
 let create ~scope (workspace: Workspace.t): (t, create_error) result =
+  let started_at = Time.Instant.now () in
   let graph = G.make () in
   let name_to_node = HashMap.create () in
   let missing = vec [] in
@@ -267,10 +280,27 @@ let create ~scope (workspace: Workspace.t): (t, create_error) result =
           List.for_each
             pkg.dev_dependencies
             ~fn:(fun (dep: Package.dependency) -> add_dep_edge ~from_scope:Dev dep.name));
-  if Vector.length missing > 0 then
-    Error (MissingPackages { missing = Vector.iter missing |> Iterator.to_list })
-  else
-    Ok { graph; name_to_node }
+  let missing = Vector.iter missing |> Iterator.to_list in
+  let result =
+    if List.length missing > 0 then
+      Error (MissingPackages { missing })
+    else
+      Ok { graph; name_to_node }
+  in
+  let () =
+    trace_package_graph
+      ("create scope="
+      ^ string_of_build_scope scope
+      ^ " manifests="
+      ^ Int.to_string (List.length workspace.packages)
+      ^ " nodes="
+      ^ Int.to_string (HashMap.length name_to_node)
+      ^ " missing="
+      ^ Int.to_string (List.length missing)
+      ^ " total_us="
+      ^ Int.to_string (elapsed_us_since started_at))
+  in
+  result
 
 let get_node = fun pg package ->
   HashMap.get pg.name_to_node ~key:(package_key ~package_name:package.Package.name Runtime)
