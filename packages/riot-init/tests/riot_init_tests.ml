@@ -1,7 +1,7 @@
 open Std
 module Test = Std.Test
 
-let ( let* ) = Result.and_then
+let ( let* ) result fn = Result.and_then result ~fn
 
 let with_tempdir_result = fun prefix fn ->
   match Fs.with_tempdir ~prefix fn with
@@ -21,8 +21,8 @@ and run_init_with_events = fun args ->
   let* matches = parse_init args in
   let events = ref [] in
   let* () = Riot_init.run ~on_event:(fun event -> events := event :: !events) matches
-  |> Result.map_error Exception.to_string in
-  Ok (List.rev !events)
+  |> Result.map_err ~fn:Kernel.Exception.to_string in
+  Ok (List.reverse !events)
 
 let assert_exists = fun path ->
   match Fs.exists path with
@@ -31,7 +31,7 @@ let assert_exists = fun path ->
   | Error err -> Error (IO.error_message err)
 
 let assert_contains = fun path needle ->
-  let* source = Fs.read path |> Result.map_error IO.error_message in
+  let* source = Fs.read path |> Result.map_err ~fn:IO.error_message in
   if String.contains source needle then
     Ok ()
   else
@@ -54,8 +54,8 @@ let with_current_dir_result = fun dir fn ->
   | Ok () -> result
 
 let completion_event = fun events ->
-  events |> List.rev |> List.find_opt
-    (
+  events |> List.reverse |> List.find
+    ~fn:(
       function
       | Riot_init.WorkspaceInitializationCompleted _ -> true
       | _ -> false
@@ -120,7 +120,7 @@ let test_init_dot_scaffolds_current_directory = fun _ctx ->
   with_tempdir_result "riot_init_dot"
     (fun tempdir ->
       let workspace_root = Path.(tempdir / Path.v "agents-ml") in
-      let* () = Fs.create_dir_all Path.(workspace_root / Path.v ".git") |> Result.map_error IO.error_message in
+      let* () = Fs.create_dir_all Path.(workspace_root / Path.v ".git") |> Result.map_err ~fn:IO.error_message in
       let* events =
         with_current_dir_result workspace_root (fun () -> run_init_with_events [ "init"; "." ])
       in
@@ -134,7 +134,7 @@ let test_init_dot_scaffolds_current_directory = fun _ctx ->
       match completion_event events with
       | Some (Riot_init.WorkspaceInitializationCompleted { next_steps; package_hints }) ->
           let* () =
-            if List.exists (fun step -> String.starts_with ~prefix:"cd " step) next_steps then
+            if List.any next_steps ~fn:(fun step -> String.starts_with ~prefix:"cd " step) then
               Error "expected init . completion to omit cd guidance"
             else
               Ok ()
@@ -164,7 +164,7 @@ let test_init_without_path_defaults_to_current_directory = fun _ctx ->
   with_tempdir_result "riot_init_default_dot"
     (fun tempdir ->
       let workspace_root = Path.(tempdir / Path.v "default-dot") in
-      let* () = Fs.create_dir_all workspace_root |> Result.map_error IO.error_message in
+      let* () = Fs.create_dir_all workspace_root |> Result.map_err ~fn:IO.error_message in
       let* events =
         with_current_dir_result workspace_root (fun () -> run_init_with_events [ "init" ])
       in
@@ -176,7 +176,7 @@ let test_init_without_path_defaults_to_current_directory = fun _ctx ->
         Path.(workspace_root / Path.v "packages" / Path.v "default-dot" / Path.v "tests" / Path.v test_file) in
       match completion_event events with
       | Some (Riot_init.WorkspaceInitializationCompleted { next_steps; _ }) ->
-          if List.exists (fun step -> String.starts_with ~prefix:"cd " step) next_steps then
+          if List.any next_steps ~fn:(fun step -> String.starts_with ~prefix:"cd " step) then
             Error "expected init without a path to stay in the current directory"
           else if next_steps = [ "riot build"; "riot test" ] then
             Ok ()
