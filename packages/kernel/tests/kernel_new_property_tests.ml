@@ -3,17 +3,6 @@ open Propane
 module Test = Std.Test
 module Kernel = Kernel
 
-let contains_slash = fun value ->
-  let rec loop index =
-    if index >= String.length value then
-      false
-    else if String.get_unchecked value ~at:index = '/' then
-      true
-    else
-      loop (index + 1)
-  in
-  loop 0
-
 let protect = fun ~finally fn ->
   try
     let value = fn () in
@@ -285,6 +274,32 @@ let ipv6_text = fun raw_groups ->
   in
   String.concat ":" (array_to_list groups)
 
+let bounded_string_arb = fun ~min_len ~max_len ->
+  Arbitrary.map_gen
+    (Generator.string_size (Generator.int_range min_len max_len) Generator.char_printable)
+    Arbitrary.string
+
+let bounded_string_array_arb = fun ~min_count ~max_count ~min_len ~max_len ->
+  let element_arb = bounded_string_arb ~min_len ~max_len in
+  Arbitrary.map_gen
+    (Generator.array_size (Generator.int_range min_count max_count) element_arb.gen)
+    (Arbitrary.array element_arb)
+
+let simple_segment_arb =
+  Arbitrary.map_gen
+    (Generator.string_size (Generator.int_range 1 16) Generator.char_lowercase)
+    Arbitrary.string
+
+let simple_segment_array_arb = fun ~min_count ~max_count ->
+  Arbitrary.map_gen
+    (Generator.array_size (Generator.int_range min_count max_count) simple_segment_arb.gen)
+    (Arbitrary.array simple_segment_arb)
+
+let non_empty_int_array_arb = fun ~max_count ->
+  Arbitrary.map_gen
+    (Generator.array_size (Generator.int_range 1 max_count) Generator.int)
+    (Arbitrary.array Arbitrary.int)
+
 let iovec_into_string_roundtrips =
   property "IO.Iovec of_string_array flattens with preserved order" Arbitrary.(array string)
     (fun values ->
@@ -293,12 +308,11 @@ let iovec_into_string_roundtrips =
 
 let iovec_sub_matches_flattened_substring =
   property "IO.Iovec.sub matches the flattened substring" Arbitrary.(pair
-    (array string)
+    (bounded_string_array_arb ~min_count:1 ~max_count:6 ~min_len:1 ~max_len:16)
     (pair int int))
     (fun (values, (raw_pos, raw_len)) ->
       let iov = Kernel.IO.Iovec.from_string_array values in
       let total = Kernel.IO.Iovec.length iov in
-      assume (total > 0);
       let pos = Int.abs raw_pos mod total in
       let remaining = total - pos in
       let len = Int.abs raw_len mod (remaining + 1) in
@@ -350,11 +364,10 @@ let bytes_string_roundtrip =
 
 let bytes_sub_string_matches_string_sub =
   property "Bytes.sub_string matches String.sub on valid slices" Arbitrary.(pair
-    string
+    (bounded_string_arb ~min_len:1 ~max_len:256)
     (pair int int))
     (fun (value, (raw_pos, raw_len)) ->
       let total = String.length value in
-      assume (total > 0);
       let pos = Int.abs raw_pos mod total in
       let remaining = total - pos in
       let len = Int.abs raw_len mod (remaining + 1) in
@@ -369,42 +382,33 @@ let string_bytes_roundtrip =
       Kernel.String.equal (Kernel.String.from_bytes (Kernel.String.to_bytes value)) value)
 
 let path_join_preserves_segment_order =
-  property "Path.join preserves simple segment order" Arbitrary.(pair string string)
+  property "Path.join preserves simple segment order" Arbitrary.(pair simple_segment_arb simple_segment_arb)
     (fun (left, right) ->
-      assume (String.length left > 0);
-      assume (String.length right > 0);
-      assume (not (contains_slash left));
-      assume (not (contains_slash right));
       Kernel.Path.to_string (Kernel.Path.join left right)
       = format Format.[ str left; str "/"; str right ])
 
 let path_fold_join_preserves_many_segment_order =
-  property "Path.join preserves many simple segments in order" Arbitrary.(array string)
+  property "Path.join preserves many simple segments in order" (simple_segment_array_arb
+    ~min_count:1
+    ~max_count:8)
     (fun segments ->
       let values = array_to_list segments in
-      let simple =
-        List.filter values ~fn:(fun value -> String.length value > 0 && not (contains_slash value))
-      in
-      assume (not (List.is_empty simple));
       let actual =
-        List.fold_left simple ~acc:None ~fn:(fun acc part ->
+        List.fold_left values ~acc:None ~fn:(fun acc part ->
           match acc with
           | None -> Some part
           | Some path -> Some (Kernel.Path.join path part))
       in
       match actual with
       | None -> false
-      | Some actual -> Kernel.Path.to_string actual = String.concat "/" simple)
+      | Some actual -> Kernel.Path.to_string actual = String.concat "/" values)
 
 let path_join_is_associative_for_simple_segments =
-  property "Path.join is associative for simple segments" Arbitrary.(triple string string string)
+  property "Path.join is associative for simple segments" Arbitrary.(triple
+    simple_segment_arb
+    simple_segment_arb
+    simple_segment_arb)
     (fun (a, b, c) ->
-      assume (String.length a > 0);
-      assume (String.length b > 0);
-      assume (String.length c > 0);
-      assume (not (contains_slash a));
-      assume (not (contains_slash b));
-      assume (not (contains_slash c));
       let left = Kernel.Path.to_string (Kernel.Path.join (Kernel.Path.join a b) c) in
       let right = Kernel.Path.to_string (Kernel.Path.join a (Kernel.Path.join b c)) in
       left = right)
@@ -444,9 +448,8 @@ let ip_addr_ipv4_parse_render_roundtrips =
       | Kernel.Result.Error _ -> false)
 
 let ip_addr_ipv6_parse_render_roundtrips =
-  property "Net.IpAddr ipv6 parse/render roundtrips" Arbitrary.(array int)
+  property "Net.IpAddr ipv6 parse/render roundtrips" (non_empty_int_array_arb ~max_count:8)
     (fun raw_groups ->
-      assume (Kernel.Array.length raw_groups > 0);
       let text = ipv6_text raw_groups in
       match Kernel.Net.IpAddr.from_string text with
       | Kernel.Result.Error _ -> false
@@ -488,9 +491,10 @@ let socket_addr_ipv4_roundtrips =
               Kernel.Net.IpAddr.equal addr_ip ip && addr_port = port)
 
 let socket_addr_ipv6_roundtrips =
-  property "Net.SocketAddr.make roundtrips arbitrary ipv6 parts" Arbitrary.(pair (array int) int)
+  property "Net.SocketAddr.make roundtrips arbitrary ipv6 parts" Arbitrary.(pair
+    (non_empty_int_array_arb ~max_count:8)
+    int)
     (fun (raw_groups, raw_port) ->
-      assume (Kernel.Array.length raw_groups > 0);
       let text = ipv6_text raw_groups in
       let port = Int.abs raw_port mod 65_536 in
       match Kernel.Net.IpAddr.from_string text with
@@ -512,11 +516,9 @@ let socket_addr_loopback_v6_preserves_parts =
 
 let file_slice_roundtrips =
   property "Fs.File partial write and read preserve the selected slice" Arbitrary.(pair
-    string
+    (bounded_string_arb ~min_len:1 ~max_len:256)
     (pair int int))
     (fun (payload, (raw_pos, raw_len)) ->
-      assume (String.length payload > 0);
-      assume (String.length payload <= 256);
       let bytes = Kernel.Bytes.from_string payload in
       let total = Kernel.Bytes.length bytes in
       let pos = Int.abs raw_pos mod total in
@@ -552,14 +554,16 @@ let file_slice_roundtrips =
                   raise error))
 
 let file_vectored_roundtrips =
-  property "Fs.File vectored writes and scalar reads preserve payload" Arbitrary.(array string)
+  property "Fs.File vectored writes and scalar reads preserve payload" (bounded_string_array_arb
+    ~min_count:1
+    ~max_count:4
+    ~min_len:1
+    ~max_len:32)
     (fun values ->
       let pieces = array_to_list values in
       let total =
         List.fold_left pieces ~acc:0 ~fn:(fun size part -> size + String.length part)
       in
-      assume (total > 0);
-      assume (total <= 256);
       with_temp_path "kernel_new_property" "vectored.bin"
         (fun path ->
           let iov = Kernel.IO.Iovec.from_string_array values in
@@ -591,10 +595,10 @@ let file_vectored_roundtrips =
                   raise error))
 
 let file_scalar_write_vectored_read_roundtrips =
-  property "Fs.File scalar writes and vectored reads preserve payload" Arbitrary.string
+  property "Fs.File scalar writes and vectored reads preserve payload" (bounded_string_arb
+    ~min_len:1
+    ~max_len:256)
     (fun payload ->
-      assume (String.length payload > 0);
-      assume (String.length payload <= 256);
       with_temp_path "kernel_new_property" "vectored-read.bin"
         (fun path ->
           let bytes = Kernel.Bytes.from_string payload in
@@ -612,7 +616,7 @@ let file_scalar_write_vectored_read_roundtrips =
                       match Kernel.Fs.File.open_read path with
                       | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
                       | Kernel.Result.Ok input ->
-                          let iov = Kernel.IO.Iovec.create ~count:4 ~size:64 () in
+                          let iov = Kernel.IO.Iovec.create ~count:4 ~size:(String.length payload) () in
                           match Kernel.Fs.File.read_vectored input iov with
                           | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
                           | Kernel.Result.Ok read ->
@@ -627,14 +631,12 @@ let file_scalar_write_vectored_read_roundtrips =
 
 let file_scalar_and_vectored_partial_writes_agree =
   property "Fs.File scalar and vectored partial writes agree on the selected slice" Arbitrary.(pair
-    (array string)
+    (bounded_string_array_arb ~min_count:1 ~max_count:4 ~min_len:1 ~max_len:32)
     (pair int int))
     (fun (values, (raw_pos, raw_len)) ->
       let iov = Kernel.IO.Iovec.from_string_array values in
       let payload = Kernel.IO.Iovec.to_string iov in
       let total = String.length payload in
-      assume (total > 0);
-      assume (total <= 256);
       let bytes = Kernel.Bytes.from_string payload in
       let pos = Int.abs raw_pos mod total in
       let remaining = total - pos in
@@ -705,11 +707,9 @@ let file_scalar_and_vectored_partial_writes_agree =
 
 let file_scalar_and_vectored_partial_reads_agree =
   property "Fs.File scalar and vectored partial reads agree on the selected prefix" Arbitrary.(pair
-    string
+    (bounded_string_arb ~min_len:1 ~max_len:256)
     int)
     (fun (payload, raw_len) ->
-      assume (String.length payload > 0);
-      assume (String.length payload <= 256);
       let total = String.length payload in
       let len = (Int.abs raw_len mod total) + 1 in
       let expected = String.sub payload ~offset:0 ~len in
@@ -762,10 +762,10 @@ let file_scalar_and_vectored_partial_reads_agree =
                   raise error))
 
 let tcp_loopback_roundtrips_small_payload =
-  property "Net.TcpStream loopback roundtrips small payloads" Arbitrary.string
+  property "Net.TcpStream loopback roundtrips small payloads" (bounded_string_arb
+    ~min_len:1
+    ~max_len:64)
     (fun payload ->
-      assume (String.length payload > 0);
-      assume (String.length payload <= 64);
       with_poll
         (fun poll ->
           match Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0) with
@@ -795,14 +795,15 @@ let tcp_loopback_roundtrips_small_payload =
                               = payload)))))
 
 let tcp_vectored_loopback_roundtrips_small_payload =
-  property "Net.TcpStream loopback roundtrips small vectored payloads" Arbitrary.(array string)
+  property "Net.TcpStream loopback roundtrips small vectored payloads" (bounded_string_array_arb
+    ~min_count:1
+    ~max_count:4
+    ~min_len:1
+    ~max_len:16)
     (fun values ->
       let pieces = array_to_list values in
-      assume (List.all pieces ~fn:(fun value -> String.length value > 0));
       let payload = String.concat "" pieces in
       let total = String.length payload in
-      assume (total > 0);
-      assume (total <= 64);
       with_poll
         (fun poll ->
           match Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0) with
@@ -840,17 +841,15 @@ let tcp_vectored_loopback_roundtrips_small_payload =
                               = payload)))))
 
 let tcp_vectored_loopback_roundtrips_offset_receive_slices =
-  property "Net.TcpStream loopback roundtrips vectored payloads into offset receive slices" Arbitrary.(array
-    string)
+  property "Net.TcpStream loopback roundtrips vectored payloads into offset receive slices" (bounded_string_array_arb
+    ~min_count:1
+    ~max_count:6
+    ~min_len:1
+    ~max_len:16)
     (fun values ->
       let pieces = array_to_list values in
-      assume (List.all pieces ~fn:(fun value -> String.length value > 0));
-      assume (not (List.is_empty pieces));
-      assume (List.length pieces <= 8);
       let payload = String.concat "" pieces in
       let total = String.length payload in
-      assume (total > 0);
-      assume (total <= 96);
       with_poll
         (fun poll ->
           match Kernel.Net.TcpListener.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0) with
@@ -883,10 +882,10 @@ let tcp_vectored_loopback_roundtrips_offset_receive_slices =
                               = payload)))))
 
 let udp_loopback_roundtrips_small_payload =
-  property "Net.UdpSocket loopback preserves small datagrams" Arbitrary.string
+  property "Net.UdpSocket loopback preserves small datagrams" (bounded_string_arb
+    ~min_len:1
+    ~max_len:64)
     (fun payload ->
-      assume (String.length payload > 0);
-      assume (String.length payload <= 64);
       with_poll
         (fun poll ->
           match Kernel.Net.UdpSocket.bind (Kernel.Net.SocketAddr.loopback_v4 ~port:0) with
