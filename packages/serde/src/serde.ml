@@ -61,7 +61,7 @@ module Fields = struct
     if Int.equal prefix_length length then
       ""
     else
-      String.sub value prefix_length (length - prefix_length)
+      String.sub value ~offset:prefix_length ~len:(length - prefix_length)
 
   let common_prefix_length = fun left right ->
     let left_len = String.length left in
@@ -75,7 +75,7 @@ module Fields = struct
     let rec loop index =
       if Int.equal index limit then
         index
-      else if Char.equal left.[index] right.[index] then
+      else if Char.equal (String.get_unchecked left ~at:index) (String.get_unchecked right ~at:index) then
         loop (index + 1)
       else
         index
@@ -86,53 +86,58 @@ module Fields = struct
     | [] -> 0
     | first :: rest ->
         List.fold_left
-          (fun prefix_length entry ->
+          rest
+          ~acc:(String.length first.suffix)
+          ~fn:(fun prefix_length entry ->
             let shared = common_prefix_length first.suffix entry.suffix in
             if shared < prefix_length then
               shared
             else
               prefix_length)
-          (String.length first.suffix)
-          rest
 
   let group_by_first = fun entries ->
     let rec insert entry groups =
-      let first = entry.suffix.[0] in
+      let first = String.get_unchecked entry.suffix ~at:0 in
       match groups with
       | [] -> [ (first, [ entry ]) ]
       | (current, group) :: rest when Char.equal current first -> (current, entry :: group) :: rest
       | head :: rest -> head :: insert entry rest
     in
-    List.fold_left (fun groups entry -> insert entry groups) [] entries
+    List.fold_left entries ~acc:[] ~fn:(fun groups entry -> insert entry groups)
 
   let rec build_node: 'tag. 'tag pending list -> 'tag node = fun entries ->
     let (tag, non_empty_entries) =
       List.fold_left
-        (fun (tag, non_empty_entries) entry ->
+        entries
+        ~acc:(None, [])
+        ~fn:(fun (tag, non_empty_entries) entry ->
           if Int.equal (String.length entry.suffix) 0 then
             match tag with
             | None -> (Some entry.tag, non_empty_entries)
             | Some _ -> panic ("Serde.Fast.Fields.make: duplicate field key " ^ entry.suffix)
           else
             (tag, entry :: non_empty_entries))
-        (None, [])
-        entries
     in
     let edges =
       group_by_first non_empty_entries
       |> List.map
-        (fun (_first, group) ->
-          let group = List.rev group in
+        ~fn:(fun (_first, group) ->
+          let group = List.reverse group in
           let prefix_length = longest_common_prefix_length group in
-          let label = String.sub (List.hd group).suffix 0 prefix_length in
+          let label =
+            String.sub
+              (List.get_unchecked group ~at:0).suffix
+              ~offset:0
+              ~len:prefix_length
+          in
           let next_entries =
             List.map
-              (fun entry -> { suffix = drop_prefix entry.suffix prefix_length; tag = entry.tag })
               group
+              ~fn:(fun entry -> { suffix = drop_prefix entry.suffix prefix_length; tag = entry.tag })
           in
-          { first = label.[0]; label; next = build_node next_entries })
+          { first = String.get_unchecked label ~at:0; label; next = build_node next_entries })
     in
-    { tag; edges = Array.init (List.length edges) (fun index -> list_nth edges index) }
+    { tag; edges = Array.init ~count:(List.length edges) ~fn:(fun index -> list_nth edges index) }
 
   let string_equals_slice = fun source ~offset ~length other ->
     if not (Int.equal length (String.length other)) then
@@ -141,7 +146,9 @@ module Fields = struct
       let rec loop index =
         if Int.equal index length then
           true
-        else if Char.equal source.[offset + index] other.[index] then
+        else if Char.equal
+          (String.get_unchecked source ~at:(offset + index))
+          (String.get_unchecked other ~at:index) then
           loop (index + 1)
         else
           false
@@ -155,7 +162,9 @@ module Fields = struct
       let rec loop index =
         if Int.equal index length then
           true
-        else if Char.equal (IO.Bytes.unsafe_get source (offset + index)) other.[index] then
+        else if Char.equal
+          (IO.Bytes.get_unchecked source ~at:(offset + index))
+          (String.get_unchecked other ~at:index) then
           loop (index + 1)
         else
           false
@@ -169,7 +178,9 @@ module Fields = struct
       let rec loop index =
         if Int.equal index length then
           true
-        else if Char.equal (IO.Buffer.nth buffer (offset + index)) other.[index] then
+        else if Char.equal
+          (IO.Buffer.get_unchecked buffer ~at:(offset + index))
+          (String.get_unchecked other ~at:index) then
           loop (index + 1)
         else
           false
@@ -181,7 +192,7 @@ module Fields = struct
       if Int.equal index (Array.length edges) then
         None
       else
-        let edge = Array.get edges index in
+        let edge = Array.get_unchecked edges ~at:index in
         if Char.equal edge.first first then
           Some edge
         else
@@ -194,7 +205,7 @@ module Fields = struct
       if Int.equal length 0 then
         node.tag
       else
-        let first = source.[offset] in
+        let first = String.get_unchecked source ~at:offset in
         match find_edge node.edges first with
         | None -> None
         | Some edge ->
@@ -213,7 +224,7 @@ module Fields = struct
       if Int.equal length 0 then
         node.tag
       else
-        let first = IO.Bytes.unsafe_get source offset in
+        let first = IO.Bytes.get_unchecked source ~at:offset in
         match find_edge node.edges first with
         | None -> None
         | Some edge ->
@@ -232,7 +243,7 @@ module Fields = struct
       if Int.equal length 0 then
         node.tag
       else
-        let first = IO.Buffer.nth buffer offset in
+        let first = IO.Buffer.get_unchecked buffer ~at:offset in
         match find_edge node.edges first with
         | None -> None
         | Some edge ->
@@ -247,9 +258,9 @@ module Fields = struct
     loop fields.root 0 (IO.Buffer.length buffer)
 
   let make = fun cases ->
-    let root = List.map (fun case -> { suffix = case.key; tag = case.tag }) cases |> build_node in
+    let root = List.map cases ~fn:(fun case -> { suffix = case.key; tag = case.tag }) |> build_node in
     let tags =
-      Array.init (List.length cases) (fun index -> list_nth cases index |> tag)
+      Array.init ~count:(List.length cases) ~fn:(fun index -> list_nth cases index |> tag)
     in
     { root; tags }
 
@@ -259,10 +270,10 @@ module Fields = struct
     if index < 0 || index >= Array.length fields.tags then
       None
     else
-      Some (Array.get fields.tags index)
+      Some (Array.get_unchecked fields.tags ~at:index)
 
   let tag_at_unchecked = fun fields index ->
-    Array.get fields.tags index
+    Array.get_unchecked fields.tags ~at:index
 end
 
 type 'value t = {
@@ -592,7 +603,7 @@ module De = struct
     }
 
   let variant = fun cases ->
-    let compiled_cases = Array.of_list cases in
+    let compiled_cases = Array.from_list cases in
     {
       run =
         fun backend state ->
@@ -734,7 +745,7 @@ module Ser = struct
 
   let field = Field.make
 
-  let fields = Array.of_list
+  let fields = Array.from_list
 
   let record = fun fields ->
     {
@@ -744,7 +755,7 @@ module Ser = struct
     }
 
   let variant = fun cases ->
-    let cases = Array.of_list cases in
+    let cases = Array.from_list cases in
     {
       run =
         fun backend state value ->
