@@ -83,7 +83,7 @@ let rec type_expr_serializer = {
               | Option value -> Some value
               | _ -> None);
           Serde.Ser.Variant.newtype "Tuple" (Serde.Ser.contramap
-            Array.of_list
+            Array.from_list
             (Serde.Ser.array type_expr_serializer))
             (fun value ->
               match value with
@@ -121,7 +121,7 @@ let scheme_serializer = Serde.Ser.record
     [
       Serde.Ser.field
         "forall"
-        (Serde.Ser.contramap Array.of_list (Serde.Ser.array Serde.Ser.int))
+        (Serde.Ser.contramap Array.from_list (Serde.Ser.array Serde.Ser.int))
         (fun value -> value.forall);
       Serde.Ser.field "body" type_expr_serializer (fun value -> value.body);
     ])
@@ -140,6 +140,6 @@ let serializer = Serde.Ser.record
       Serde.Ser.field "next_binding_stamp" Serde.Ser.int (fun value -> value.next_binding_stamp);
       Serde.Ser.field
         "values"
-        (Serde.Ser.contramap Array.of_list (Serde.Ser.array value_binding_serializer))
+        (Serde.Ser.contramap Array.from_list (Serde.Ser.array value_binding_serializer))
         (fun value -> value.values);
     ])

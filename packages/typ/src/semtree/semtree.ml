@@ -25,7 +25,7 @@ let file_kind_serializer = Serde.Ser.variant
         | `Interface -> true
       ); ]
 
-let path_serializer = Serde.Ser.contramap Array.of_list (Serde.Ser.array Serde.Ser.string)
+let path_serializer = Serde.Ser.contramap Array.from_list (Serde.Ser.array Serde.Ser.string)
 
 let binding_id_serializer = Model.Binding_id.serializer
 
@@ -51,7 +51,7 @@ let rec type_expr_serializer = {
               (fun (item: Semantic_tree.type_constr) -> item.path);
             Serde.Ser.field
               "arguments"
-              (Serde.Ser.contramap Array.of_list (Serde.Ser.array type_expr_serializer))
+              (Serde.Ser.contramap Array.from_list (Serde.Ser.array type_expr_serializer))
               (fun (item: Semantic_tree.type_constr) -> item.arguments);
           ]) in
       let type_alias_serializer = Serde.Ser.record
@@ -71,7 +71,7 @@ let rec type_expr_serializer = {
           [
             Serde.Ser.field
               "binders"
-              (Serde.Ser.contramap Array.of_list (Serde.Ser.array Serde.Ser.string))
+              (Serde.Ser.contramap Array.from_list (Serde.Ser.array Serde.Ser.string))
               (fun (item: Semantic_tree.type_poly) -> item.binders);
             Serde.Ser.field
               "body"
@@ -126,7 +126,7 @@ let rec type_expr_serializer = {
               | Semantic_tree.TypeArrow item -> Some item
               | _ -> None
             ); Serde.Ser.Variant.newtype "TypeTuple" (Serde.Ser.contramap
-            Array.of_list
+            Array.from_list
             (Serde.Ser.array type_expr_serializer))
             (
               function
@@ -198,7 +198,7 @@ let type_declaration_serializer =
         field "name" string (fun (value: Semantic_tree.type_declaration) -> value.name);
         field
           "params"
-          (Serde.Ser.contramap Array.of_list (Serde.Ser.array Serde.Ser.string))
+          (Serde.Ser.contramap Array.from_list (Serde.Ser.array Serde.Ser.string))
           (fun (value: Semantic_tree.type_declaration) -> value.params);
         field
           "manifest"
@@ -450,7 +450,7 @@ let item_serializer = Serde.Ser.variant
   ]
 
 let diagnostics_serializer = Serde.Ser.contramap
-  Array.of_list
+  Array.from_list
   (Serde.Ser.array Diagnostics.Diagnostic.serializer)
 
 let serializer = Serde.Ser.record
@@ -459,11 +459,11 @@ let serializer = Serde.Ser.record
       Serde.Ser.field "kind" file_kind_serializer (fun (value: t) -> value.kind);
       Serde.Ser.field
         "items"
-        (Serde.Ser.contramap Array.of_list (Serde.Ser.array item_serializer))
+        (Serde.Ser.contramap Array.from_list (Serde.Ser.array item_serializer))
         (fun (value: t) -> value.items);
       Serde.Ser.field
         "exports"
-        (Serde.Ser.contramap Array.of_list (Serde.Ser.array item_serializer))
+        (Serde.Ser.contramap Array.from_list (Serde.Ser.array item_serializer))
         (fun (value: t) -> value.exports);
       Serde.Ser.field "diagnostics" diagnostics_serializer (fun (value: t) -> value.diagnostics);
     ])

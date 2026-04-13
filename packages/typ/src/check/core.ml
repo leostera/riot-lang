@@ -87,7 +87,7 @@ let rec string_of_ty = fun ty ->
   | TUnit -> "unit"
   | TList element -> string_of_ty element ^ " list"
   | TOption element -> string_of_ty element ^ " option"
-  | TTuple elements -> elements |> List.map string_of_ty |> String.concat " * "
+  | TTuple elements -> elements |> List.map ~fn:string_of_ty |> String.concat " * "
   | TArrow (parameter, result) -> string_of_ty parameter ^ " -> " ^ string_of_ty result
   | TVar { var=Unbound (id, _) } -> "'_" ^ Int.to_string id
   | TVar { var=Generic id } -> "'a" ^ Int.to_string id
@@ -109,7 +109,7 @@ let rec occurs_adjust_levels = fun id level ty ->
   | TOption element ->
       occurs_adjust_levels id level element
   | TTuple elements ->
-      List.iter (occurs_adjust_levels id level) elements
+      List.for_each elements ~fn:(occurs_adjust_levels id level)
   | TArrow (parameter, result) ->
       occurs_adjust_levels id level parameter;
       occurs_adjust_levels id level result
@@ -140,7 +140,7 @@ let rec unify = fun state ~at left right ->
       unify state ~at left right
   | TTuple left, TTuple right ->
       if Int.equal (List.length left) (List.length right) then
-        List.iter2 (unify state ~at) left right
+        List.zip left right |> List.for_each ~fn:(fun (left, right) -> unify state ~at left right)
       else
         add_diagnostic
           state
@@ -179,7 +179,7 @@ let rec generalize = fun level ty ->
   | TOption element ->
       TOption (generalize level element)
   | TTuple elements ->
-      TTuple (List.map (generalize level) elements)
+      TTuple (List.map elements ~fn:(generalize level))
   | TArrow (parameter, result) ->
       TArrow (generalize level parameter, generalize level result)
   | ty ->
@@ -190,12 +190,7 @@ let instantiate = fun state ~level ty ->
   let rec loop ty =
     match prune ty with
     | TVar { var=Generic id } -> (
-        match
-          List.find_opt
-            (fun (other_id, _) ->
-              Int.equal id other_id)
-            !subst
-        with
+        match List.find !subst ~fn:(fun (other_id, _) -> Int.equal id other_id) with
         | Some (_, replacement) -> replacement
         | None ->
             let replacement = fresh_tyvar state ~level in
@@ -207,7 +202,7 @@ let instantiate = fun state ~level ty ->
     | TOption element ->
         TOption (loop element)
     | TTuple elements ->
-        TTuple (List.map loop elements)
+        TTuple (List.map elements ~fn:loop)
     | TArrow (parameter, result) ->
         TArrow (loop parameter, loop result)
     | ty ->
@@ -216,10 +211,10 @@ let instantiate = fun state ~level ty ->
   loop ty
 
 let surface_path_of_ident = fun ident ->
-  ident |> Cst.Ident.segments |> List.map Cst.Token.text |> SurfacePath.of_segments
+  ident |> Cst.Ident.segments |> List.map ~fn:Cst.Token.text |> SurfacePath.of_segments
 
 let surface_path_of_name_tokens = fun tokens ->
-  tokens |> List.map Cst.Token.text |> String.concat "" |> SurfacePath.of_name
+  tokens |> List.map ~fn:Cst.Token.text |> String.concat "" |> SurfacePath.of_name
 
 let path_int = SurfacePath.of_name "int"
 
@@ -295,7 +290,7 @@ let rec public_type_of_ty = fun vars ty ->
   | TUnit -> Typing_context.Unit
   | TList element -> Typing_context.List (public_type_of_ty vars element)
   | TOption element -> Typing_context.Option (public_type_of_ty vars element)
-  | TTuple elements -> Typing_context.Tuple (List.map (public_type_of_ty vars) elements)
+  | TTuple elements -> Typing_context.Tuple (List.map elements ~fn:(public_type_of_ty vars))
   | TArrow (parameter, result) -> Typing_context.Arrow {
     parameter = public_type_of_ty vars parameter;
     result = public_type_of_ty vars result
@@ -305,8 +300,8 @@ let rec public_type_of_ty = fun vars ty ->
   | TVar { var=Link linked_ty } -> public_type_of_ty vars linked_ty
 
 and public_tyvar_id = fun vars id ->
-  match List.assoc_opt id !vars with
-  | Some public_id -> public_id
+  match List.find !vars ~fn:(fun (other_id, _) -> Int.equal id other_id) with
+  | Some (_, public_id) -> public_id
   | None ->
       let public_id = List.length !vars in
       vars := (id, public_id) :: !vars;
@@ -315,7 +310,7 @@ and public_tyvar_id = fun vars id ->
 let public_scheme_of_ty = fun ty ->
   let vars = ref [] in
   let body = public_type_of_ty vars ty in
-  let forall = !vars |> List.map (fun (_, public_id) -> public_id) |> List.rev in
+  let forall = !vars |> List.map ~fn:(fun (_, public_id) -> public_id) |> List.reverse in
   { Typing_context.forall; body }
 
 let public_binding_of_binding = fun binding ->
@@ -336,7 +331,7 @@ let import_scheme = fun scheme ->
     | Typing_context.Unit -> TUnit
     | Typing_context.List element -> TList (loop element)
     | Typing_context.Option element -> TOption (loop element)
-    | Typing_context.Tuple elements -> TTuple (List.map loop elements)
+    | Typing_context.Tuple elements -> TTuple (List.map elements ~fn:loop)
     | Typing_context.Arrow { parameter; result } -> TArrow (loop parameter, loop result)
     | Typing_context.Var id -> TVar { var = Generic id }
   in
@@ -345,15 +340,15 @@ let import_scheme = fun scheme ->
 
 let env_of_typing_context = fun typing_context ->
   List.fold_left
-    (fun env (value_binding: Typing_context.value_binding) ->
+    typing_context.Typing_context.values
+    ~acc:[]
+    ~fn:(fun env (value_binding: Typing_context.value_binding) ->
       {
         binding_id = value_binding.binding_id;
         entity_id = value_binding.entity_id;
         ty = import_scheme value_binding.scheme
       }
       :: env)
-    []
-    typing_context.Typing_context.values
 
 let rec lookup_env_binding = fun env surface_path ->
   match env with
@@ -387,7 +382,7 @@ let literal_type = fun literal ->
   | Cst.Literal.Unit _ -> TUnit
 
 let operator_surface_path = fun tokens ->
-  tokens |> List.map Cst.Token.text |> String.concat "" |> SurfacePath.of_name
+  tokens |> List.map ~fn:Cst.Token.text |> String.concat "" |> SurfacePath.of_name
 
 let rec lookup_type_var = fun vars name ->
   match vars with
@@ -411,7 +406,7 @@ let rec lower_core_type = fun state ~level vars core_type ->
           ty
     )
   | Cst.CoreType.Constr { syntax_node; constructor_path; arguments } -> (
-      let lowered_arguments = List.map (lower_core_type state ~level vars) arguments in
+      let lowered_arguments = List.map arguments ~fn:(lower_core_type state ~level vars) in
       let path = surface_path_of_ident constructor_path in
       match lowered_arguments with
       | [] when SurfacePath.equal path path_int ->
@@ -448,7 +443,7 @@ let rec lower_core_type = fun state ~level vars core_type ->
         lower_core_type state ~level vars result_type
       )
   | Cst.CoreType.Tuple { elements; _ } ->
-      TTuple (List.map (lower_core_type state ~level vars) elements)
+      TTuple (List.map elements ~fn:(lower_core_type state ~level vars))
   | Cst.CoreType.Attribute { syntax_node; type_; _ } ->
       add_diagnostic state (unsupported_type syntax_node "attributed type");
       lower_core_type state ~level vars type_
@@ -475,14 +470,14 @@ let rec lower_core_type = fun state ~level vars core_type ->
       fresh_tyvar state ~level
 
 let extend_mono = fun (env: env) (bindings: binding list) ->
-  List.fold_left (fun (extended_env: env) (binding: binding) -> binding :: extended_env) env bindings
+  List.fold_left bindings ~acc:env ~fn:(fun (extended_env: env) (binding: binding) -> binding :: extended_env)
 
 let extend_generalized = fun (env: env) ~level (bindings: binding list) ->
   List.fold_left
-    (fun (extended_env: env) (binding: binding) ->
-      { binding with ty = generalize level binding.ty } :: extended_env)
-    env
     bindings
+    ~acc:env
+    ~fn:(fun (extended_env: env) (binding: binding) ->
+      { binding with ty = generalize level binding.ty } :: extended_env)
 
 let rec infer_pattern = fun state env ~level pattern ->
   let _ = env in
@@ -499,8 +494,8 @@ let rec infer_pattern = fun state env ~level pattern ->
   | Cst.Pattern.Tuple tuple ->
       let element_types, binding_groups = tuple.elements
       |> List.map
-        (fun (element: Cst.tuple_pattern_element) -> infer_pattern state env ~level element.pattern)
-      |> List.split in
+        ~fn:(fun (element: Cst.tuple_pattern_element) -> infer_pattern state env ~level element.pattern)
+      |> List.unzip in
       (TTuple element_types, List.concat binding_groups)
   | Cst.Pattern.Parenthesized parenthesized ->
       infer_pattern state env ~level parenthesized.inner
@@ -518,8 +513,8 @@ let rec infer_pattern = fun state env ~level pattern ->
       let element_ty = fresh_tyvar state ~level in
       let bindings =
         list_pattern.elements
-        |> List.concat_map
-          (fun element ->
+        |> List.flat_map
+          ~fn:(fun element ->
             let inferred_ty, bindings = infer_pattern state env ~level element in
             unify state ~at:(Cst.Pattern.syntax_node element) element_ty inferred_ty;
             bindings)
@@ -602,14 +597,14 @@ let rec infer_expression = fun state env ~level expression ->
   | Cst.Expression.Parenthesized parenthesized ->
       infer_expression state env ~level parenthesized.inner
   | Cst.Expression.Tuple tuple ->
-      TTuple (List.map (infer_expression state env ~level) tuple.elements)
+      TTuple (List.map tuple.elements ~fn:(infer_expression state env ~level))
   | Cst.Expression.List list_expression ->
       let element_ty = fresh_tyvar state ~level in
-      List.iter
-        (fun element ->
+      List.for_each
+        list_expression.elements
+        ~fn:(fun element ->
           let inferred = infer_expression state env ~level element in
-          unify state ~at:(Cst.Expression.syntax_node element) element_ty inferred)
-        list_expression.elements;
+          unify state ~at:(Cst.Expression.syntax_node element) element_ty inferred);
       TList element_ty
   | Cst.Expression.Constructor constructor -> (
       let path = surface_path_of_ident constructor.constructor_path in
@@ -892,7 +887,7 @@ and infer_let_binding_like = fun state env ~level ~syntax_node ~binding_pattern 
   in
   let pattern_ty, bindings = infer_pattern state env ~level binding_pattern in
   unify state ~at:syntax_node pattern_ty value_ty;
-  let public_bindings = List.map public_binding_of_binding bindings in
+  let public_bindings = List.map bindings ~fn:public_binding_of_binding in
   let extended_env = extend_generalized env ~level bindings in
   match and_binding with
   | Some binding ->
@@ -988,14 +983,14 @@ let check_implementation = fun ~typing_context (implementation: Cst.implementati
   let env = env_of_typing_context typing_context in
   let _, bindings =
     List.fold_left
-      (fun (env, bindings) item ->
+      implementation.items
+      ~acc:(env, [])
+      ~fn:(fun (env, bindings) item ->
         let next_env, item_bindings = infer_structure_item state env ~level:0 item in
         (next_env, List.append bindings item_bindings))
-      (env, [])
-      implementation.items
   in
   {
-    File.diagnostics = List.rev state.diagnostics;
+    File.diagnostics = List.reverse state.diagnostics;
     bindings;
     typing_context = {
       Typing_context.next_binding_stamp = state.next_binding_stamp;
@@ -1060,14 +1055,14 @@ let check_interface = fun ~typing_context (interface: Cst.interface) ->
   let env = env_of_typing_context typing_context in
   let _, bindings =
     List.fold_left
-      (fun (env, bindings) item ->
+      interface.items
+      ~acc:(env, [])
+      ~fn:(fun (env, bindings) item ->
         let next_env, item_bindings = check_signature_item state env ~level:0 item in
         (next_env, List.append bindings item_bindings))
-      (env, [])
-      interface.items
   in
   {
-    File.diagnostics = List.rev state.diagnostics;
+    File.diagnostics = List.reverse state.diagnostics;
     bindings;
     typing_context = {
       Typing_context.next_binding_stamp = state.next_binding_stamp;
@@ -1083,19 +1078,19 @@ let check_source_file = fun ~typing_context source_file ->
 let check_expression = fun expression ->
   let state = make_state ~next_binding_stamp:0 in
   let _ = infer_expression state [] ~level:0 expression in
-  List.rev state.diagnostics
+  List.reverse state.diagnostics
 
 let check_pattern = fun pattern ->
   let state = make_state ~next_binding_stamp:0 in
   let _ = infer_pattern state [] ~level:0 pattern in
-  List.rev state.diagnostics
+  List.reverse state.diagnostics
 
 let check_let_binding = fun binding ->
   let state = make_state ~next_binding_stamp:0 in
   let _ = infer_let_binding_chain state [] ~level:0 binding in
-  List.rev state.diagnostics
+  List.reverse state.diagnostics
 
 let check_core_type = fun core_type ->
   let state = make_state ~next_binding_stamp:0 in
   let _ = lower_core_type state ~level:0 [] core_type in
-  List.rev state.diagnostics
+  List.reverse state.diagnostics

@@ -25,9 +25,9 @@ let fresh_binding_id = fun state ~name ->
   state.next_binding_stamp <- stamp + 1;
   Model.Binding_id.local ~stamp ~name:(Model.Surface_path.of_name name)
 
-let path_of_ident = fun ident -> ident |> Cst.Ident.segments |> List.map Cst.Token.text
+let path_of_ident = fun ident -> ident |> Cst.Ident.segments |> List.map ~fn:Cst.Token.text
 
-let name_of_name_tokens = fun tokens -> tokens |> List.map Cst.Token.text |> String.concat ""
+let name_of_name_tokens = fun tokens -> tokens |> List.map ~fn:Cst.Token.text |> String.concat ""
 
 let lower_arrow_label = fun (label: Cst.arrow_label) ->
   { Semantic_tree.name = Cst.ArrowLabel.name label; optional_ = Cst.ArrowLabel.is_optional label }
@@ -48,7 +48,7 @@ let rec lower_type_expr = fun state (type_: Cst.core_type) ->
   | Cst.CoreType.Constr { constructor_path; arguments; _ } ->
       Semantic_tree.TypeConstr {
         path = path_of_ident constructor_path;
-        arguments = List.map (lower_type_expr state) arguments
+        arguments = List.map arguments ~fn:(lower_type_expr state)
       }
   | Cst.CoreType.Class _ ->
       let syntax_node = Cst.CoreType.syntax_node type_ in
@@ -67,17 +67,17 @@ let rec lower_type_expr = fun state (type_: Cst.core_type) ->
       Semantic_tree.TypeUnsupported "extension"
   | Cst.CoreType.Poly { binders; body; _ } ->
       Semantic_tree.TypePoly {
-        binders = List.map Cst.TypeBinder.name binders;
+        binders = List.map binders ~fn:Cst.TypeBinder.name;
         body = lower_type_expr state body
       }
   | Cst.CoreType.Arrow { label; parameter_type; result_type; _ } ->
       Semantic_tree.TypeArrow {
-        label = Option.map lower_arrow_label label;
+        label = Option.map label ~fn:lower_arrow_label;
         parameter = lower_type_expr state parameter_type;
         result = lower_type_expr state result_type
       }
   | Cst.CoreType.Tuple { elements; _ } ->
-      Semantic_tree.TypeTuple (List.map (lower_type_expr state) elements)
+      Semantic_tree.TypeTuple (List.map elements ~fn:(lower_type_expr state))
   | Cst.CoreType.Parenthesized { inner; _ } ->
       lower_type_expr state inner
   | Cst.CoreType.PolyVariant _ ->
@@ -169,9 +169,10 @@ let lower_type_declaration = fun state (declaration: Cst.TypeDeclaration.t) ->
           span = span_of_syntax_node syntax_node;
           name;
           params =
-            Cst.TypeDeclaration.type_params declaration |> List.filter_map
-              (fun type_parameter ->
-                Option.map Cst.TypeVariable.text (Cst.TypeParameter.type_variable type_parameter));
+            Cst.TypeDeclaration.type_params declaration |> List.filter_map ~fn:(
+              fun type_parameter ->
+                Option.map (Cst.TypeParameter.type_variable type_parameter) ~fn:Cst.TypeVariable.text
+            );
           manifest =
             (
               match Cst.TypeDeclaration.manifest_alias declaration with
@@ -194,8 +195,8 @@ let lower_type_declaration = fun state (declaration: Cst.TypeDeclaration.t) ->
 let lower_let_binding = fun state (binding: Cst.LetBinding.t) ->
   let bindings = binding :: Cst.LetBinding.and_bindings binding in
   let recursive = Cst.LetBinding.is_recursive binding in
-  bindings |> List.iter
-    (fun binding ->
+  bindings |> List.for_each ~fn:(
+    fun binding ->
       let name = Cst.LetBinding.name binding in
       push_item state
         (
@@ -208,7 +209,8 @@ let lower_let_binding = fun state (binding: Cst.LetBinding.t) ->
             declared = false;
             annotation = annotation_of_expression state (Cst.LetBinding.value binding);
           }
-        ))
+        )
+  )
 
 let lower_module_structure = fun state (declaration: Cst.ModuleStructure.t) ->
   let rec loop declaration =
@@ -419,12 +421,12 @@ let lower_source_file = fun ~source:_ source_file ->
   let () =
     match source_file with
     | Cst.Implementation implementation -> implementation.items
-    |> List.iter (lower_structure_item state)
-    | Cst.Interface interface -> interface.items |> List.iter (lower_signature_item state)
+    |> List.for_each ~fn:(lower_structure_item state)
+    | Cst.Interface interface -> interface.items |> List.for_each ~fn:(lower_signature_item state)
   in
   {
     Semantic_tree.kind = state.kind;
-    items = List.rev state.items;
-    exports = List.rev state.exports;
-    diagnostics = List.rev state.diagnostics
+    items = List.reverse state.items;
+    exports = List.reverse state.exports;
+    diagnostics = List.reverse state.diagnostics
   }

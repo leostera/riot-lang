@@ -26,8 +26,8 @@ let of_segments = fun segments ->
 let to_segments =
   let rec loop acc value =
     match value with
-    | Bare "" -> List.rev acc
-    | Bare name -> List.rev (name :: acc)
+    | Bare "" -> List.reverse acc
+    | Bare name -> List.reverse (name :: acc)
     | Qualified (name, tail) -> loop (name :: acc) tail
   in
   loop []
@@ -57,4 +57,4 @@ let rec compare = fun left right ->
 
 let serializer = Serde.Ser.contramap
   to_segments
-  (Serde.Ser.contramap Array.of_list (Serde.Ser.array Serde.Ser.string))
+  (Serde.Ser.contramap Array.from_list (Serde.Ser.array Serde.Ser.string))

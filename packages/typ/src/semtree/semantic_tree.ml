@@ -147,19 +147,18 @@ type t = {
 }
 
 let exports_of_items = fun items ->
-  items |> List.filter
-    (
-      function
-      | TypeDeclaration _ -> true
-      | ValueDeclaration _ -> true
-      | ModuleDeclaration _ -> true
-      | ModuleTypeDeclaration _ -> true
-      | IncludeStatement _ -> true
-      | ExceptionDeclaration _ -> true
-      | ExternalDeclaration _ -> true
-      | OpenStatement _ -> false
-      | Expression _ -> false
-      | Unsupported _ -> false
-    )
+  List.filter items ~fn:(
+    function
+    | TypeDeclaration _ -> true
+    | ValueDeclaration _ -> true
+    | ModuleDeclaration _ -> true
+    | ModuleTypeDeclaration _ -> true
+    | IncludeStatement _ -> true
+    | ExceptionDeclaration _ -> true
+    | ExternalDeclaration _ -> true
+    | OpenStatement _ -> false
+    | Expression _ -> false
+    | Unsupported _ -> false
+  )
 
 let empty = fun ~kind -> { kind; items = []; exports = []; diagnostics = [] }
