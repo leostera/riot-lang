@@ -5,8 +5,9 @@ module G = Graph.SimpleGraph
 let test_toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
 |> Result.expect ~msg:"Failed to initialize toolchain"
 
-let planner_artifacts_version = "planner-artifacts:v12"
-let legacy_planner_artifacts_version = "planner-artifacts:v11"
+let planner_artifacts_version = "planner-artifacts:v13"
+let legacy_planner_artifacts_version = "planner-artifacts:v12"
+let explicit_root_library_path_fix_planner_artifacts_version = "planner-artifacts:v12"
 
 let make_test_workspace = fun tmpdir packages ->
   Riot_model.Workspace.{
@@ -1077,6 +1078,146 @@ let test_legacy_kernel_plan_bundle_is_ignored_after_version_bump = fun _ctx ->
   | Error _ ->
       Error "tempdir creation failed"
 
+let test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version_bump = fun _ctx ->
+  let rewrite_bad_krasny_root = fun objects ->
+    List.map
+      objects
+      ~fn:(fun object_ ->
+        if String.equal object_ "Krasny.cmx" then
+          "Krasny__Krasny.cmx"
+        else
+          object_)
+  in
+  match
+    Fs.with_tempdir ~prefix:"planner_krasny_legacy_bundle"
+      (fun tempdir ->
+        let package_root = Path.(tempdir / Path.v "krasny") in
+        let src_dir = Path.(package_root / Path.v "src") in
+        let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"expected krasny src dir creation to succeed" in
+        let _ =
+          Fs.write "let format value = value\n" Path.(src_dir / Path.v "Krasny.ml")
+          |> Result.expect ~msg:"expected Krasny.ml write to succeed"
+        in
+        let _ =
+          Fs.write "let () = ignore (Krasny.format \"ok\")\n" Path.(src_dir / Path.v "main.ml")
+          |> Result.expect ~msg:"expected main.ml write to succeed"
+        in
+        let package =
+          Riot_model.Package.make
+            ~name:"krasny"
+            ~path:package_root
+            ~relative_path:(Path.v "krasny")
+            ~library:{ path = Path.v "src/krasny.ml" }
+            ~binaries:[ Riot_model.Package.{ name = "krasny"; path = Path.v "src/main.ml" } ]
+            ~sources:{
+              src = [ Path.v "src/Krasny.ml"; Path.v "src/main.ml" ];
+              native = [];
+              tests = [];
+              examples = [];
+              bench = [];
+            }
+            ()
+        in
+        let analysis_workspace = make_test_workspace Path.(tempdir / Path.v "analysis") [ package ] in
+        let test_workspace = make_test_workspace Path.(tempdir / Path.v "test") [ package ] in
+        let analysis_store = Riot_store.Store.create ~workspace:analysis_workspace in
+        let test_store = Riot_store.Store.create ~workspace:test_workspace in
+        let session_id = Riot_model.Session_id.make () in
+        let profile = Riot_model.Profile.debug in
+        let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+        let package_key =
+          Riot_planner.Package_graph.package_key
+            ~package_name:package.name
+            Riot_planner.Package_graph.Runtime
+        in
+        let analysis_package_graph =
+          Riot_planner.Package_graph.create
+            ~scope:Riot_planner.Package_graph.Runtime
+            analysis_workspace
+          |> Result.expect ~msg:"analysis package graph should build"
+        in
+        match
+          plan_graph_package
+            ~workspace:analysis_workspace
+            ~store:analysis_store
+            ~package_graph:analysis_package_graph
+            ~package_key
+            ~build_ctx
+        with
+        | Error _ as err ->
+            err
+        | Ok (Riot_planner.Package_planner.Planned {
+          hash=current_input_hash;
+          depset;
+          _;
+        }) -> (
+            match Riot_store.Store.load_plan_bundle analysis_store ~hash:current_input_hash with
+            | None ->
+                Error "expected current krasny plan bundle to be persisted"
+            | Some bundle ->
+                let stale_bundle =
+                  rewrite_plan_bundle_action_graph
+                    bundle
+                    ~rewrite:rewrite_bad_krasny_root
+                in
+                let stale_input_hash =
+                  compute_input_hash
+                    ~planner_version:explicit_root_library_path_fix_planner_artifacts_version
+                    ~depset
+                    ~package
+                    ~workspace:test_workspace
+                    ~profile
+                    ~build_ctx
+                    ()
+                in
+                let _ =
+                  Riot_store.Store.save_plan_bundle test_store ~hash:stale_input_hash ~plan:stale_bundle
+                  |> Result.expect ~msg:"expected legacy krasny plan bundle save to succeed"
+                in
+                let test_package_graph =
+                  Riot_planner.Package_graph.create
+                    ~scope:Riot_planner.Package_graph.Runtime
+                    test_workspace
+                  |> Result.expect ~msg:"test package graph should build"
+                in
+                match
+                  plan_graph_package
+                    ~workspace:test_workspace
+                    ~store:test_store
+                    ~package_graph:test_package_graph
+                    ~package_key
+                    ~build_ctx
+                with
+                | Error _ as err ->
+                    err
+                | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) -> (
+                    match find_create_library_objects action_graph with
+                    | Error _ as err ->
+                        err
+                    | Ok objects ->
+                        if List.contains objects ~value:"Krasny__Krasny.cmx" then
+                          Error ("expected stale krasny plan bundle to be ignored, got ["
+                          ^ String.concat ", " objects
+                          ^ "]")
+                        else if List.contains objects ~value:"Krasny.cmx" then
+                          Ok ()
+                        else
+                          Error ("expected replanned krasny bundle to include Krasny.cmx, got ["
+                          ^ String.concat ", " objects
+                          ^ "]")
+                  )
+                | Ok _ ->
+                    Error "expected cached krasny plan to return Planned"
+          )
+        | Ok _ ->
+            Error "expected analysis krasny plan to return Planned"
+      )
+  with
+  | Ok x ->
+      x
+  | Error _ ->
+      Error "tempdir creation failed"
+
 let tests =
   Test.[
     case "plan bundle cache hit restores module and action graphs" test_plan_bundle_cache_hit_restores_module_and_action_graphs;
@@ -1088,6 +1229,10 @@ let tests =
     case ~size:Large "kernel CreateLibrary objects are topological" test_kernel_create_library_is_topological;
     case ~size:Large "kernel dependency walk snapshot" test_kernel_dependency_walk_snapshot;
     case ~size:Large "legacy kernel plan bundle is ignored after version bump" test_legacy_kernel_plan_bundle_is_ignored_after_version_bump;
+    case
+      ~size:Large
+      "legacy krasny plan bundle with bad root module is ignored after version bump"
+      test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version_bump;
   ]
 
 let name = "Planner Package Planning Tests"

@@ -104,7 +104,17 @@ let from_entries = fun ~namespace ~library_name ~package_path ~concrete_library_
   in
   let path_matches expected actual =
     match expected with
-    | Some expected -> Path.equal expected actual
+    | Some expected ->
+        let normalize_for_library_match path =
+          path
+          |> Path.normalize
+          |> Path.to_string
+          |> String.lowercase_ascii
+        in
+        Path.equal expected actual
+        || String.equal
+          (normalize_for_library_match expected)
+          (normalize_for_library_match actual)
     | None -> false
   in
   let is_explicit_library_path path =
@@ -157,7 +167,7 @@ let from_entries = fun ~namespace ~library_name ~package_path ~concrete_library_
           |> Module_name.to_string in
           (
             match explicit_concrete_ml_path with
-            | Some explicit_path -> Path.equal p explicit_path
+            | Some explicit_path -> path_matches (Some explicit_path) p
             | None -> file_module_name = library_module_name
           )
       | _ -> false) with
@@ -174,7 +184,7 @@ let from_entries = fun ~namespace ~library_name ~package_path ~concrete_library_
           |> Module_name.to_string in
           (
             match explicit_concrete_mli_path with
-            | Some explicit_path -> Path.equal p explicit_path
+            | Some explicit_path -> path_matches (Some explicit_path) p
             | None -> file_module_name = library_module_name
           )
       | _ -> false) with

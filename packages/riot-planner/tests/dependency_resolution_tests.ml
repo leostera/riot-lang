@@ -352,6 +352,97 @@ let test_module_graph_uses_explicit_root_library_path = fun _ctx ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_module_graph_uses_explicit_root_library_path_case_insensitively = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"module_graph_explicit_root_library_path_case_insensitive"
+      (fun tmpdir ->
+        let package_root = Path.(tmpdir / Path.v "pkg") in
+        let src_dir = Path.(package_root / Path.v "src") in
+        let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"expected src dir creation to succeed" in
+        let _ = Fs.write "let value = Helper.value\n" Path.(src_dir / Path.v "Krasny.ml")
+        |> Result.expect ~msg:"expected Krasny.ml write to succeed" in
+        let _ = Fs.write "let value = 42\n" Path.(src_dir / Path.v "helper.ml")
+        |> Result.expect ~msg:"expected helper.ml write to succeed" in
+        let package = Riot_model.Package.make ~name:"krasny" ~path:package_root ~relative_path:(Path.v
+          "pkg")
+          ~library:{ path = Path.v "src/krasny.ml" }
+          ~sources:{
+            src = [ Path.v "src/Krasny.ml"; Path.v "src/helper.ml" ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+        in
+        let workspace =
+          Riot_model.Workspace.{
+            name = None;
+            root = tmpdir;
+            target_dir_root =
+              Path.(tmpdir / Path.v "target");
+            packages = [ package ];
+            dependencies = [];
+            dev_dependencies = [];
+            build_dependencies = [];
+            profile_overrides = [];
+          }
+        in
+        let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
+        |> Result.expect ~msg:"expected toolchain init to succeed" in
+        let graph_builder = Riot_planner.Module_graph.create
+          Riot_planner.Module_graph.{
+            root = package_root;
+            source_dir = Path.v "src";
+            allowed_source_files = package.sources.src;
+            root_mode = Riot_planner.Module_graph.Library_root { library_name = package.name };
+            namespace = "Krasny";
+            package;
+            toolchain;
+            workspace;
+          }
+        in
+        match Riot_planner.Module_graph.wire_dependencies graph_builder with
+        | Error err -> Error (Riot_planner.Planning_error.to_string err)
+        | Ok () -> (
+            let graph = Riot_planner.Module_graph.graph graph_builder in
+            match G.topo_sort graph with
+            | Error cycle_ids ->
+                Error ("unexpected cycle: "
+                ^ String.concat " -> " (List.map cycle_ids ~fn:G.Node_id.to_string))
+            | Ok _ ->
+                let impl_nodes =
+                  G.map graph ~fn:(fun x -> x)
+                  |> List.filter_map ~fn:(fun (_id, (node: Riot_planner.Module_node.t G.node)) ->
+                    match node.value.kind with
+                    | Riot_planner.Module_node.ML mod_ ->
+                        Some (mod_, node.value.file)
+                    | _ -> None)
+                in
+                let has_pkg_root =
+                  List.any impl_nodes ~fn:(fun (mod_, file) ->
+                    String.equal (Riot_model.Module_name.to_string (Riot_model.Module.module_name mod_)) "Krasny"
+                    && match file with
+                    | Riot_planner.Module_node.Concrete path -> Path.equal path (Path.v "src/Krasny.ml")
+                    | _ -> false)
+                in
+                let has_child_krasny =
+                  List.any impl_nodes ~fn:(fun (mod_, _file) ->
+                    String.equal
+                      (Riot_model.Module.namespaced_name mod_)
+                      "Krasny__Krasny")
+                in
+                if has_pkg_root && not has_child_krasny then
+                  Ok ()
+                else if not has_pkg_root then
+                  Error "expected package root implementation to use src/Krasny.ml despite explicit path case mismatch"
+                else
+                  Error "did not expect src/Krasny.ml to also appear as child module Krasny__Krasny"
+          ))
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"module_graph_deeply_nested_modules"
@@ -487,6 +578,7 @@ let tests =
     case "library cmxa path from artifact_dir" test_library_cmxa_uses_store_location;
     case "module graph prefers implementation when interface exists" test_module_graph_prefers_implementation_when_interface_exists;
     case "module graph uses explicit root library path" test_module_graph_uses_explicit_root_library_path;
+    case "module graph uses explicit root library path despite case mismatch" test_module_graph_uses_explicit_root_library_path_case_insensitively;
     case "module graph resolves nested local unix backend" test_module_graph_resolves_nested_local_unix_backend;
     case "module graph resolves deeply nested modules namespace-first" test_module_graph_resolves_deeply_nested_modules_namespace_first;
   ]
