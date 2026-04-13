@@ -47,6 +47,11 @@ let plan_workspace = fun workspace target scope ->
 let package_names = fun plan ->
   Workspace_planner.packages_in_plan plan |> List.map ~fn:(fun (pkg: Package.t) -> pkg.name)
 
+let package_keys = fun plan ->
+  Riot_planner.Package_graph.topological_sort plan.Workspace_planner.package_graph
+  |> List.map ~fn:Riot_planner.Package_graph.get_key
+  |> List.map ~fn:Riot_model.Package.key_to_string
+
 let plan_all_runtime_returns_workspace_like_order = fun _ctx ->
   let workspace = make_workspace
     [
@@ -150,6 +155,26 @@ let plan_reports_missing_dependencies_before_sorting = fun _ctx ->
   | Error _ ->
       Error "expected MissingDependencies"
 
+let plan_runtime_target_does_not_pull_build_dependency_runtime_cycle = fun _ctx ->
+  let workspace = make_workspace
+    [
+      make_package ~dependencies:[ "core" ] "app";
+      make_package ~build_dependencies:[ "builder" ] "core";
+      make_package ~dependencies:[ "syntax" ] "builder";
+      make_package ~dependencies:[ "core" ] "syntax";
+    ] in
+  match plan_workspace workspace (Package "app") Runtime with
+  | Error (CycleDetected { cycle }) ->
+      Error ("expected runtime target planning to avoid build-dependency cycle, got cycle: "
+      ^ String.concat " -> " cycle)
+  | Error _ ->
+      Error "expected successful package-target plan"
+  | Ok plan ->
+      Test.assert_equal
+        ~expected:[ "core:build"; "core:runtime"; "app:runtime" ]
+        ~actual:(package_keys plan);
+      Ok ()
+
 let tests =
   Test.[
     case "plan all runtime returns workspace-like order" plan_all_runtime_returns_workspace_like_order;
@@ -158,6 +183,9 @@ let tests =
     case "plan unknown package reports available packages" plan_unknown_package_reports_available_packages;
     case "plan multiple unknown packages report all missing names" plan_multiple_unknown_packages_reports_all_missing_names;
     case "plan reports missing dependencies before sorting" plan_reports_missing_dependencies_before_sorting;
+    case
+      "runtime target does not pull build-dependency runtime cycle"
+      plan_runtime_target_does_not_pull_build_dependency_runtime_cycle;
   ]
 
 let name = "riot-planner:workspace-planner-targets"

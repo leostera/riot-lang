@@ -3,7 +3,7 @@ open Riot_model
 
 type t = {
   server_pid: Pid.t;
-  workspace_root: Path.t;
+  workspace: Workspace.t;
 }
 
 type build_stats = {
@@ -108,7 +108,7 @@ let connect_local = fun ?(emit = no_emit) ?workspace_manager ~workspace () ->
     ~workspace
     ~config:Server_config.default
     () with
-  | Ok server_pid -> Ok { server_pid; workspace_root = workspace.root }
+  | Ok server_pid -> Ok { server_pid; workspace }
   | Error err -> Error (StartupFailed { error = err })
 
 let connect_local_prepared = fun ?workspace_manager ~workspace () ->
@@ -117,7 +117,7 @@ let connect_local_prepared = fun ?workspace_manager ~workspace () ->
     ~workspace
     ~config:Server_config.default
     () with
-  | Ok server_pid -> Ok { server_pid; workspace_root = workspace.root }
+  | Ok server_pid -> Ok { server_pid; workspace }
   | Error err -> Error (StartupFailed { error = err })
 
 let close = fun _t -> ()
@@ -141,10 +141,57 @@ module BuildLock = struct
     file: Fs.File.t;
   }
 
+  let reentrant_counts = Collections.HashMap.create ()
+
+  let reentrant_counts_lock = Sync.Mutex.create ()
+
   let retry_interval = Time.Duration.from_millis 500
 
-  let path = fun ~workspace_root ~profile ~target ->
-    Riot_model.Riot_dirs.build_lock_path_with_target ~workspace_root ~profile ~target
+  let path = fun ~(workspace: Workspace.t) ~profile ~target ->
+    Riot_model.Riot_dirs.build_lock_path_in_workspace ~workspace ~profile ~target
+
+  let path_key = fun path -> Path.to_string path
+
+  let increment_reentrant = fun path ->
+    let key = path_key path in
+    Sync.Mutex.lock reentrant_counts_lock;
+    let count =
+        match Collections.HashMap.get reentrant_counts ~key with
+      | Some count ->
+          let next = count + 1 in
+          let _ = Collections.HashMap.insert reentrant_counts ~key ~value:next in
+          next
+      | None ->
+          let _ = Collections.HashMap.insert reentrant_counts ~key ~value:1 in
+          1
+    in
+    Sync.Mutex.unlock reentrant_counts_lock;
+    count
+
+  let decrement_reentrant = fun path ->
+    let key = path_key path in
+    Sync.Mutex.lock reentrant_counts_lock;
+    let remaining =
+        match Collections.HashMap.get reentrant_counts ~key with
+      | Some count when count > 1 ->
+          let next = count - 1 in
+          let _ = Collections.HashMap.insert reentrant_counts ~key ~value:next in
+          next
+      | Some _ ->
+          let _ = Collections.HashMap.remove reentrant_counts ~key in
+          0
+      | None ->
+          0
+    in
+    Sync.Mutex.unlock reentrant_counts_lock;
+    remaining
+
+  let is_reentrant = fun path ->
+    let key = path_key path in
+    Sync.Mutex.lock reentrant_counts_lock;
+    let held = Collections.HashMap.has_key reentrant_counts ~key in
+    Sync.Mutex.unlock reentrant_counts_lock;
+    held
 
   let release = fun t ->
     let _ = Fs.File.unlock t.file in
@@ -168,10 +215,10 @@ module BuildLock = struct
         release t;
         raise (lock_failure "lock" t.path)
 
-  let wait = fun ~workspace_root ~profile ~target ->
-    let build_dir = Riot_model.Riot_dirs.target_dir ~workspace_root ~profile ~target in
+  let wait = fun ~(workspace: Workspace.t) ~profile ~target ->
+    let build_dir = Riot_model.Riot_dirs.target_dir_in_workspace ~workspace ~profile ~target in
     let _ = Fs.create_dir_all build_dir |> Result.expect ~msg:"Failed to create build directory" in
-    let path = path ~workspace_root ~profile ~target in
+    let path = path ~workspace ~profile ~target in
     let file =
       match Fs.File.open_write path with
       | Ok file -> file
@@ -187,18 +234,33 @@ module BuildLock = struct
         release t;
         raise (lock_failure "lock" path)
 
-  let acquire = fun ~workspace_root ~profile ~target fn ->
-    match wait ~workspace_root ~profile ~target with
-    | Error err -> Error err
-    | Ok t ->
-        try
-          let result = fn () in
-          release t;
-          result
-        with
-        | exn ->
+  let acquire = fun ~(workspace: Workspace.t) ~profile ~target fn ->
+    let lock_path = path ~workspace ~profile ~target in
+    if is_reentrant lock_path then (
+      let _ = increment_reentrant lock_path in
+      try
+        let result = fn () in
+        let _ = decrement_reentrant lock_path in
+        result
+      with
+      | exn ->
+          let _ = decrement_reentrant lock_path in
+          raise exn
+    ) else
+      match wait ~workspace ~profile ~target with
+      | Error err -> Error err
+      | Ok t ->
+          let _ = increment_reentrant lock_path in
+          try
+            let result = fn () in
+            let _ = decrement_reentrant lock_path in
             release t;
-            raise exn
+            result
+          with
+          | exn ->
+              let _ = decrement_reentrant lock_path in
+              release t;
+              raise exn
 end
 
 let convert_build_stats: Protocol.BuildStats.t -> build_stats = fun stats ->
@@ -317,7 +379,7 @@ let build_streaming = fun t target ?(scope = Runtime) ?(profile = "debug") ?targ
     | Some target -> target
     | None -> Riot_model.Riot_dirs.host_target ()
   in
-  BuildLock.acquire ~workspace_root:t.workspace_root ~profile ~target:lock_target
+  BuildLock.acquire ~workspace:t.workspace ~profile ~target:lock_target
     (fun () ->
       let request_target =
         match target with

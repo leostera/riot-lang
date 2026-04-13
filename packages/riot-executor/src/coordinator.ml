@@ -372,8 +372,8 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
       )
   in
   let target_dir_for package_name =
-    Path.(Riot_dirs.out_dir_with_target
-      ~workspace_root:workspace.root
+    Path.(Riot_dirs.out_dir_in_workspace
+      ~workspace
       ~profile:profile_name
       ~target:target_triple_str
     / Path.v package_name) in

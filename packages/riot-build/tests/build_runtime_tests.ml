@@ -3,12 +3,12 @@ module Test = Std.Test
 
 let write_workspace_manifest = fun ~root ~members ->
   let members = members
-  |> List.map (fun member -> "  \"" ^ Path.to_string member ^ "\"")
+  |> List.map ~fn:(fun member -> "  \"" ^ Path.to_string member ^ "\"")
   |> String.concat ",\n" in
   let content = "[workspace]\nmembers = [\n" ^ members ^ "\n]\n" in
   Fs.write content Path.(root / Path.v "riot.toml") |> Result.expect ~msg:"Write workspace riot.toml failed"
 
-let make_broken_workspace = fun tmpdir ->
+let make_broken_workspace = fun ?target_dir tmpdir ->
   let pkg_dir = Path.(tmpdir / Path.v "demo") in
   let src_dir = Path.(pkg_dir / Path.v "src") in
   let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"Create src failed" in
@@ -30,9 +30,9 @@ let make_broken_workspace = fun tmpdir ->
     }
     ()
   in
-  Riot_model.Workspace.make ~root:tmpdir ~packages:[ package ] ()
+  Riot_model.Workspace.make ~root:tmpdir ?target_dir ~packages:[ package ] ()
 
-let make_valid_workspace = fun tmpdir ->
+let make_valid_workspace = fun ?target_dir tmpdir ->
   let pkg_dir = Path.(tmpdir / Path.v "demo") in
   let src_dir = Path.(pkg_dir / Path.v "src") in
   let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"Create src failed" in
@@ -54,7 +54,7 @@ let make_valid_workspace = fun tmpdir ->
     }
     ()
   in
-  Riot_model.Workspace.make ~root:tmpdir ~packages:[ package ] ()
+  Riot_model.Workspace.make ~root:tmpdir ?target_dir ~packages:[ package ] ()
 
 let test_build_surfaces_failed_builds = fun _ctx ->
   match
@@ -88,13 +88,13 @@ let test_build_release_uses_release_lane = fun _ctx ->
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
         let host_target = Riot_model.Riot_dirs.host_target () in
-        let release_package_dir = Riot_model.Riot_dirs.out_dir_with_target
-          ~workspace_root:workspace.root
+        let release_package_dir = Riot_model.Riot_dirs.out_dir_in_workspace
+          ~workspace
           ~profile:"release"
           ~target:host_target
         |> fun out_dir -> Path.(out_dir / Path.v "demo") in
-        let debug_package_dir = Riot_model.Riot_dirs.out_dir_with_target
-          ~workspace_root:workspace.root
+        let debug_package_dir = Riot_model.Riot_dirs.out_dir_in_workspace
+          ~workspace
           ~profile:"debug"
           ~target:host_target
         |> fun out_dir -> Path.(out_dir / Path.v "demo") in
@@ -122,10 +122,51 @@ let test_build_release_uses_release_lane = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
+let test_build_uses_custom_target_dir_root = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"riot_build_custom_target_runtime"
+      (fun tmpdir ->
+        let workspace = make_valid_workspace ~target_dir:"build-out" tmpdir in
+        let host_target = Riot_model.Riot_dirs.host_target () in
+        let release_package_dir = Riot_model.Riot_dirs.out_dir_in_workspace
+          ~workspace
+          ~profile:"release"
+          ~target:host_target
+        |> fun out_dir -> Path.(out_dir / Path.v "demo") in
+        let default_release_dir = Riot_model.Riot_dirs.out_dir_with_target
+          ~workspace_root:workspace.root
+          ~profile:"release"
+          ~target:host_target
+        |> fun out_dir -> Path.(out_dir / Path.v "demo") in
+        match
+          Riot_build.build
+            {
+              workspace;
+              packages = [ "demo" ];
+              targets = Riot_build.Host;
+              scope = Riot_build.Runtime;
+              profile = "release";
+            }
+        with
+        | Error err -> Error ("expected custom-target build to succeed, got: "
+        ^ Riot_build.build_error_message err)
+        | Ok _ ->
+            if not
+                (Fs.exists release_package_dir |> Result.unwrap_or ~default:false) then
+              Error ("expected release output under custom target dir " ^ Path.to_string release_package_dir)
+            else if Fs.exists default_release_dir |> Result.unwrap_or ~default:false then
+              Error ("did not expect output under default build dir " ^ Path.to_string default_release_dir)
+            else
+              Ok ())
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
 let tests =
   let open Test in [
     case "build runtime: failed builds surface as errors" test_build_surfaces_failed_builds;
     case "build runtime: release builds use the release lane" test_build_release_uses_release_lane;
+    case "build runtime: custom target_dir is respected" test_build_uses_custom_target_dir_root;
   ]
 
 let name = "Riot Build Runtime Tests"

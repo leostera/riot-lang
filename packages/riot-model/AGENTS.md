@@ -25,6 +25,7 @@
 19. `Workspace_manager.scan` should resolve the build root in one upward pass: prefer the nearest enclosing workspace manifest with `[workspace]`, but if none exists, fall back to the first package manifest with `[package]` and synthesize a one-package workspace so detached package roots still build.
 20. `Package.from_toml` should autodiscover a default runtime binary named after the package when `src/main.ml` exists and no explicit `[[bin]]` entries are declared. Keep that fallback minimal; tests/examples/bench autodiscovery remains separate.
 21. Workspace manifests may carry an optional `[workspace].name`. Preserve it across parse/load/make paths without turning it into execution policy.
+22. Any helper that derives build/cache/sandbox/output paths from a `Workspace.t` must use `workspace.target_dir_root` as the base, not `workspace.root`. Synthetic or cloned workspaces rely on that override being respected end-to-end.
 
 ## Validate
 

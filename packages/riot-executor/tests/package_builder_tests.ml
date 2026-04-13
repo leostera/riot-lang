@@ -5,6 +5,23 @@ module Test = Std.Test
 let test_toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
 |> Result.expect ~msg:"Failed to initialize test toolchain"
 
+let make_test_build_ctx = fun () ->
+  let session_id = Riot_model.Session_id.make () in
+  Riot_model.Build_ctx.make ~session_id ~profile:Riot_model.Profile.debug ()
+
+let workspace_dependency = fun name ->
+  Riot_model.Package.{
+    name;
+    source = {
+      workspace = true;
+      builtin = false;
+      path = None;
+      source_locator = None;
+      ref_ = None;
+      version = None;
+    };
+  }
+
 let test_collect_source_files = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"pkg_test"
@@ -176,12 +193,126 @@ let test_build_writes_hash_manifest_with_exports = fun _ctx ->
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"
 
+let make_library_package = fun ~root ~name ?(dependencies = []) source ->
+  let package_dir = Path.(root / Path.v name) in
+  let src_dir = Path.(package_dir / Path.v "src") in
+  let source_path = Path.(src_dir / Path.v (name ^ ".ml")) in
+  let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"create src dir failed" in
+  let _ = Fs.write source source_path |> Result.expect ~msg:"write source failed" in
+  Riot_model.Package.make
+    ~name
+    ~path:package_dir
+    ~relative_path:(Path.v name)
+    ~dependencies:(List.map dependencies ~fn:workspace_dependency)
+    ~library:{ path = Path.v ("src/" ^ name ^ ".ml") }
+    ~sources:{
+      src = [ Path.v ("src/" ^ name ^ ".ml") ];
+      native = [];
+      tests = [];
+      examples = [];
+      bench = [];
+    }
+    ()
+
+let test_dependency_source_change_rebuilds_dependent_package = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"pkg_builder_dep_rebuild"
+      (fun tmpdir ->
+        let dep = make_library_package ~root:tmpdir ~name:"dep" "let value = 1\n" in
+        let app =
+          make_library_package
+            ~root:tmpdir
+            ~name:"app"
+            ~dependencies:[ "dep" ]
+            "let value = Dep.value\n"
+        in
+        let workspace =
+          Riot_model.Workspace.{
+            name = None;
+            root = tmpdir;
+            target_dir_root = Path.(tmpdir / Path.v "target");
+            packages = [ dep; app ];
+            dependencies = [];
+            dev_dependencies = [];
+            build_dependencies = [];
+            profile_overrides = [];
+          }
+        in
+        let store = Riot_store.Store.create ~workspace in
+        let build_ctx = make_test_build_ctx () in
+        let build_package = fun ~package_graph package ->
+          Riot_executor.Package_builder.build
+            ~workspace
+            ~toolchain:test_toolchain
+            ~store
+            ~package_graph
+            ~package_key:(Riot_planner.Package_graph.package_key
+              ~package_name:package.Riot_model.Package.name
+              Riot_planner.Package_graph.Runtime)
+            ~package
+            ~build_ctx
+        in
+        let first_graph =
+          Riot_planner.Package_graph.create
+            ~scope:Riot_planner.Package_graph.Runtime
+            workspace
+          |> Result.unwrap
+        in
+        let first_dep = build_package ~package_graph:first_graph dep in
+        let first_app = build_package ~package_graph:first_graph app in
+        let dep_source = Path.(dep.path / Path.v "src" / Path.v "dep.ml") in
+        let _ = Fs.write "let value = 2\n" dep_source |> Result.expect ~msg:"rewrite dep source failed" in
+        let second_graph =
+          Riot_planner.Package_graph.create
+            ~scope:Riot_planner.Package_graph.Runtime
+            workspace
+          |> Result.unwrap
+        in
+        let second_dep = build_package ~package_graph:second_graph dep in
+        let second_app = build_package ~package_graph:second_graph app in
+        match
+          (
+            first_dep.status,
+            first_app.status,
+            second_dep.status,
+            second_app.status
+          )
+        with
+        | Riot_executor.Package_builder.Built _,
+          Riot_executor.Package_builder.Built first_app_artifact,
+          Riot_executor.Package_builder.Built _,
+          Riot_executor.Package_builder.Built second_app_artifact ->
+            if Crypto.Hash.equal first_app_artifact.hash second_app_artifact.hash then
+              Error "expected dependent package artifact hash to change after dependency source edit"
+            else
+              Ok ()
+        | Riot_executor.Package_builder.Built _,
+          Riot_executor.Package_builder.Built _,
+          Riot_executor.Package_builder.Built _,
+          Riot_executor.Package_builder.Cached _ ->
+            Error "expected dependent package rebuild after dependency source edit"
+        | _, _, _, Riot_executor.Package_builder.Failed err ->
+            Error ("dependent rebuild failed: " ^ Riot_executor.Package_builder.package_error_to_string err)
+        | _, Riot_executor.Package_builder.Failed err, _, _ ->
+            Error ("initial dependent build failed: " ^ Riot_executor.Package_builder.package_error_to_string err)
+        | Riot_executor.Package_builder.Failed err, _, _, _ ->
+            Error ("initial dependency build failed: " ^ Riot_executor.Package_builder.package_error_to_string err)
+        | _, _, Riot_executor.Package_builder.Failed err, _ ->
+            Error ("dependency rebuild failed: " ^ Riot_executor.Package_builder.package_error_to_string err)
+        | _ ->
+            Error "unexpected build status sequence"
+      )
+  with
+  | Ok r -> r
+  | Error _ -> Error "Tempdir creation failed"
+
 let tests =
   Test.[
     case "collect_source_files: filters by extension" test_collect_source_files;
     case "build_result: status variants" test_build_result_status_variants;
     case "package_error: variants" test_package_error_variants;
     case "build writes hash manifest with exports" test_build_writes_hash_manifest_with_exports;
+    case "dependency source change rebuilds dependent package" test_dependency_source_change_rebuilds_dependent_package;
   ]
 
 let name = "Package Builder Tests"

@@ -23,6 +23,7 @@
 17. `test` and `bench` should execute suite binaries through their machine-readable runners (`run-tests --json` / `run-benchmarks --json`) and aggregate case-level results in `riot-build`. Do not treat suite exit codes as the summary source of truth when structured results are available. The final test summary event should include aggregated failed test cases so downstream JSON consumers can surface failures without rescanning the full suite stream.
 18. Keep per-suite stdout/stderr as structured payload in the runtime events, but leave human filtering decisions to `riot-cli`. `riot-build` should not reintroduce special-case pretty rendering for zero-match suites.
 19. Preserve structured suite metadata in the exported `test_event` / `bench_event` payloads. Test cases should carry `duration_us`, `size`, `reliability`, retry attempts, and timeout-aware status, and suite-completed events should carry `started_at_us`, `completed_at_us`, and `duration_us`.
+20. Build locks and any other runtime-owned workspace paths must respect `workspace.target_dir_root`. Do not derive `_build`-style locations directly from `workspace.root`.
 
 ## Validate
 

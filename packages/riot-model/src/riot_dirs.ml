@@ -91,20 +91,38 @@ let host_target = fun () -> System.Host.to_string System.host_triplet
 let profile_dir = fun ~workspace_root ~profile ->
   Path.(build_dir_root ~workspace_root / Path.v profile)
 
+let profile_dir_in_workspace = fun ~(workspace:Workspace.t) ~profile ->
+  Path.(workspace.target_dir_root / Path.v profile)
+
 let target_dir = fun ~workspace_root ~profile ~target ->
   Path.(profile_dir ~workspace_root ~profile / Path.v target)
+
+let target_dir_in_workspace = fun ~(workspace:Workspace.t) ~profile ~target ->
+  Path.(profile_dir_in_workspace ~workspace ~profile / Path.v target)
 
 let out_dir_with_target = fun ~workspace_root ~profile ~target ->
   Path.(target_dir ~workspace_root ~profile ~target / Path.v "out")
 
+let out_dir_in_workspace = fun ~(workspace:Workspace.t) ~profile ~target ->
+  Path.(target_dir_in_workspace ~workspace ~profile ~target / Path.v "out")
+
 let sandbox_dir_with_target = fun ~workspace_root ~profile ~target ->
   Path.(target_dir ~workspace_root ~profile ~target / Path.v "sandbox")
+
+let sandbox_dir_in_workspace = fun ~(workspace:Workspace.t) ~profile ~target ->
+  Path.(target_dir_in_workspace ~workspace ~profile ~target / Path.v "sandbox")
 
 let cache_dir_with_target = fun ~workspace_root ~profile ~target ->
   Path.(target_dir ~workspace_root ~profile ~target / Path.v "cache")
 
+let cache_dir_in_workspace = fun ~(workspace:Workspace.t) ~profile ~target ->
+  Path.(target_dir_in_workspace ~workspace ~profile ~target / Path.v "cache")
+
 let build_lock_path_with_target = fun ~workspace_root ~profile ~target ->
   Path.(target_dir ~workspace_root ~profile ~target / Path.v "riot.lock")
+
+let build_lock_path_in_workspace = fun ~(workspace:Workspace.t) ~profile ~target ->
+  Path.(target_dir_in_workspace ~workspace ~profile ~target / Path.v "riot.lock")
 
 (** Backward compatible functions - default to debug profile + host target *)
 let debug_dir = fun ~workspace_root -> profile_dir ~workspace_root ~profile:"debug"
@@ -125,4 +143,36 @@ module Tests = struct
       Ok ()
     else
       Error ("expected root riot.lock path, got " ^ actual) [@test]
+
+  let test_workspace_target_dirs_use_custom_target_dir_root (): (unit, string) result =
+    let workspace =
+      Workspace.make
+        ~root:(Path.v "/tmp/workspace")
+        ~target_dir:"build-out"
+        ~packages:[]
+        ()
+    in
+    let target = host_target () in
+    let expected_target_dir = "/tmp/workspace/build-out/release/" ^ target in
+    let target_dir = target_dir_in_workspace ~workspace ~profile:"release" ~target |> Path.to_string in
+    let out_dir = out_dir_in_workspace ~workspace ~profile:"release" ~target |> Path.to_string in
+    let sandbox_dir =
+      sandbox_dir_in_workspace ~workspace ~profile:"release" ~target |> Path.to_string
+    in
+    let cache_dir = cache_dir_in_workspace ~workspace ~profile:"release" ~target |> Path.to_string in
+    let lock_path =
+      build_lock_path_in_workspace ~workspace ~profile:"release" ~target |> Path.to_string
+    in
+    if not (String.equal target_dir expected_target_dir) then
+      Error ("expected custom target dir root, got " ^ target_dir)
+    else if not (String.equal out_dir (expected_target_dir ^ "/out")) then
+      Error ("expected out dir inside custom target dir, got " ^ out_dir)
+    else if not (String.equal sandbox_dir (expected_target_dir ^ "/sandbox")) then
+      Error ("expected sandbox dir inside custom target dir, got " ^ sandbox_dir)
+    else if not (String.equal cache_dir (expected_target_dir ^ "/cache")) then
+      Error ("expected cache dir inside custom target dir, got " ^ cache_dir)
+    else if not (String.equal lock_path (expected_target_dir ^ "/riot.lock")) then
+      Error ("expected build lock path inside custom target dir, got " ^ lock_path)
+    else
+      Ok () [@test]
 end [@test]

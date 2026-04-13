@@ -230,8 +230,8 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
   let profile_name = build_ctx.Build_ctx.profile.name in
   let target_triple_str = Kernel.System.Host.to_string (Build_ctx.target_triplet build_ctx) in
   let target_dir =
-    Path.(Riot_model.Riot_dirs.out_dir_with_target
-      ~workspace_root:workspace.Workspace.root
+    Path.(Riot_model.Riot_dirs.out_dir_in_workspace
+      ~workspace
       ~profile:profile_name
       ~target:target_triple_str
     / Path.v package.Package.name) in

@@ -14,6 +14,7 @@
 8. If executor emits command telemetry, emit it from prepared toolchain invocations and do not bypass `riot-toolchain` by executing raw process commands for compiler actions.
 9. Successful `ocamlc` warnings are part of package build results: preserve them through caching and replay them for cached packages, and surface dependency-blocked packages as skipped rather than duplicated failures.
 10. Rewrite compiler diagnostic paths here, while sandbox/package context is still available; store and replay the rewritten warning text instead of teaching the CLI about sandbox layout.
+11. Sandbox, package output, and cache materialization paths must be rooted at `workspace.target_dir_root`, not `workspace.root`, so prepared or cloned workspaces stay isolated.
 
 ## Validate
 

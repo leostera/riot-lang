@@ -25,8 +25,8 @@ let absolute_path = fun path ->
 
 let create = fun ~workspace ?(profile = "debug") ?(target = Riot_model.Riot_dirs.host_target ()) () ~package_name ->
   let sandbox_dir =
-    Path.(Riot_model.Riot_dirs.sandbox_dir_with_target
-      ~workspace_root:workspace.Workspace.root
+    Path.(Riot_model.Riot_dirs.sandbox_dir_in_workspace
+      ~workspace
       ~profile
       ~target
     / sandbox_id ~package_name)

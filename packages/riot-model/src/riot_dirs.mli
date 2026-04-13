@@ -39,20 +39,38 @@ val host_target: unit -> string
 (** Get profile directory (e.g., /path/to/project/_build/debug) *)
 val profile_dir: workspace_root:Path.t -> profile:string -> Path.t
 
+(** Get profile directory using an already-resolved workspace target root. *)
+val profile_dir_in_workspace: workspace:Workspace.t -> profile:string -> Path.t
+
 (** Get target directory within profile (e.g., /path/to/project/_build/debug/aarch64-apple-darwin) *)
 val target_dir: workspace_root:Path.t -> profile:string -> target:string -> Path.t
+
+(** Get target directory within profile for a workspace. Respects [workspace.target_dir_root]. *)
+val target_dir_in_workspace: workspace:Workspace.t -> profile:string -> target:string -> Path.t
 
 (** Get output directory for specific profile and target *)
 val out_dir_with_target: workspace_root:Path.t -> profile:string -> target:string -> Path.t
 
+(** Get output directory for specific profile and target in a workspace. *)
+val out_dir_in_workspace: workspace:Workspace.t -> profile:string -> target:string -> Path.t
+
 (** Get sandbox directory for specific profile and target *)
 val sandbox_dir_with_target: workspace_root:Path.t -> profile:string -> target:string -> Path.t
+
+(** Get sandbox directory for specific profile and target in a workspace. *)
+val sandbox_dir_in_workspace: workspace:Workspace.t -> profile:string -> target:string -> Path.t
 
 (** Get cache directory for specific profile and target *)
 val cache_dir_with_target: workspace_root:Path.t -> profile:string -> target:string -> Path.t
 
+(** Get cache directory for specific profile and target in a workspace. *)
+val cache_dir_in_workspace: workspace:Workspace.t -> profile:string -> target:string -> Path.t
+
 (** Get build lock path for a specific profile and target lane *)
 val build_lock_path_with_target: workspace_root:Path.t -> profile:string -> target:string -> Path.t
+
+(** Get build lock path for a specific profile and target lane in a workspace. *)
+val build_lock_path_in_workspace: workspace:Workspace.t -> profile:string -> target:string -> Path.t
 
 (** Backward compatible functions - default to debug profile + host target *)
 

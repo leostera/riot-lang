@@ -3,7 +3,7 @@ open Riot_model
 
 type t = {
   server_pid: Pid.t;
-  workspace_root: Path.t;
+  workspace: Workspace.t;
 }
 type build_stats = {
   duration_ms: int;
@@ -73,14 +73,14 @@ module BuildLock: sig
   }
   val retry_interval: Time.Duration.t
 
-  val path: workspace_root:Path.t -> profile:string -> target:string -> Path.t
+  val path: workspace:Workspace.t -> profile:string -> target:string -> Path.t
 
   val release: t -> unit
 
-  val wait: workspace_root:Path.t -> profile:string -> target:string -> (t, 'a) result
+  val wait: workspace:Workspace.t -> profile:string -> target:string -> (t, 'a) result
 
   val acquire:
-    workspace_root:Path.t ->
+    workspace:Workspace.t ->
     profile:string ->
     target:string ->
     (unit -> ('a, 'b) result) ->

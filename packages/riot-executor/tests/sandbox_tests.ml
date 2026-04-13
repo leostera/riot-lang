@@ -87,11 +87,35 @@ let test_sandbox_cleanup_removes_dir = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
+let test_sandbox_uses_workspace_target_dir_root = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"sandbox_custom_target"
+      (fun tmpdir ->
+        let workspace =
+          Riot_model.Workspace.make
+            ~root:tmpdir
+            ~target_dir:"build-out"
+            ~packages:[]
+            ()
+        in
+        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:"pkg" in
+        let dir = Riot_executor.Sandbox.get_dir sandbox |> Path.to_string in
+        let expected_prefix = Path.to_string workspace.target_dir_root in
+        let _ = Riot_executor.Sandbox.cleanup sandbox in
+        if String.starts_with ~prefix:expected_prefix dir then
+          Ok ()
+        else
+          Error ("expected sandbox under " ^ expected_prefix ^ ", got " ^ dir))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let tests =
   Test.[
     case "sandbox create makes a directory" test_sandbox_create_and_get_dir;
     case "sandbox prepare copies package inputs" test_sandbox_prepare_copies_package_inputs;
     case "sandbox cleanup removes directory" test_sandbox_cleanup_removes_dir;
+    case "sandbox create uses workspace target_dir_root" test_sandbox_uses_workspace_target_dir_root;
   ]
 
 let name = "riot-executor:sandbox"
