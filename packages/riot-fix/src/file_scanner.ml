@@ -41,11 +41,11 @@ let init_state = fun ?owner scanner -> { scanner; owner; seen = HashSet.create (
 let handle_entry = fun state (entry: Std.Fs.Walker.FileItem.t) on_file ->
   let path = Std.Fs.Walker.FileItem.path entry in
   let path_string = Path.to_string path in
-  if HashSet.contains state.seen path_string then
+  if HashSet.contains state.seen ~value:path_string then
     Std.Fs.Walker.Skip_subtree
   else
     (
-      let _ = HashSet.insert state.seen path_string in
+      let _ = HashSet.insert state.seen ~value:path_string in
       match Std.Fs.Walker.FileItem.kind entry with
       | Directory ->
           if

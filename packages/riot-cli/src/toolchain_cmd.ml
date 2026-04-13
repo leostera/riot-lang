@@ -107,7 +107,7 @@ let max_int = fun left right ->
 
 let pad_right = fun width value ->
   let padding = max_int 0 (width - String.length value) in
-  value ^ String.make padding ' '
+  value ^ String.make ~len:padding ~char:' '
 
 let available_toolchain_rows = fun toolchains ->
   toolchains
@@ -128,11 +128,11 @@ let table_widths = fun rows ->
 let print_available_toolchain_table = fun toolchains ->
   let rows = available_toolchain_rows toolchains in
   let (version_width, host_width, target_width) = table_widths rows in
-  let separator = String.make version_width '-'
+  let separator = String.make ~len:version_width ~char:'-'
   ^ "  "
-  ^ String.make host_width '-'
+  ^ String.make ~len:host_width ~char:'-'
   ^ "  "
-  ^ String.make target_width '-' in
+  ^ String.make ~len:target_width ~char:'-' in
   println
     (pad_right version_width "version"
     ^ "  "

@@ -215,7 +215,7 @@ let test_run_rejects_trailing_remote_binary_separator = fun _ctx ->
         Ok ()
       else
         Error ("unexpected trailing @ error: " ^ message)
-  | Error err -> Error ("unexpected error kind: " ^ Exception.to_string err)
+  | Error err -> Error ("unexpected error kind: " ^ Kernel.Exception.to_string err)
 
 let make_workspace = fun binaries ->
   let package = Riot_model.Package.make

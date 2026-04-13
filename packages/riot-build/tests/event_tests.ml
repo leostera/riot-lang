@@ -24,7 +24,10 @@ let test_pm_event_to_json_reuses_riot_model_event_shape = fun _ctx ->
     }) in
   match Riot_build.Event.to_json (Riot_build.Pm event) with
   | Some (Data.Json.Object fields) -> (
-      match List.assoc_opt "event" fields with
+      match
+        List.find fields ~fn:(fun (name, _) -> String.equal name "event")
+        |> Option.map ~fn:(fun (_, value) -> value)
+      with
       | Some (Data.Json.String "riot.pm.package_download.started") -> Ok ()
       | Some json -> Error ("expected PM event name in JSON, got " ^ Data.Json.to_string json)
       | None -> Error "expected PM event name in JSON"

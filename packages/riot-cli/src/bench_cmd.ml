@@ -239,12 +239,12 @@ let print_summary = fun ~total ~completed ~skipped ~failed ->
 
 let json_int_field = fun name fields ->
   match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with
-  | Some (Data.Json.Int value) -> Some value
+  | Some (_, Data.Json.Int value) -> Some value
   | _ -> None
 
 let upsert_int_field = fun name value fields ->
   let filtered =
-    List.filter (fun (field_name, _) -> not (String.equal field_name name)) fields
+    List.filter fields ~fn:(fun (field_name, _) -> not (String.equal field_name name))
   in
   filtered @ [ (name, Data.Json.Int value) ]
 

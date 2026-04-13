@@ -126,8 +126,8 @@ let load_scope = fun ~cwd ->
       let workspace_config = load_fix_config workspace_toml in
       let packages =
         workspace.packages
-        |> List.filter ~fn:Package.is_workspace_member
-        |> List.map ~fn:(fun (pkg: Package.t) ->
+        |> List.filter ~fn:Package_manifest.is_workspace_member
+        |> List.map ~fn:(fun (pkg: Package_manifest.t) ->
           let package_toml = Path.(pkg.path / Path.v "riot.toml") in
           { package_root = pkg.path; config = load_fix_config package_toml })
       in

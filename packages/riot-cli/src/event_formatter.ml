@@ -22,10 +22,10 @@ let format = fun ~displayed_packages (event: Telemetry.event) ->
       ""
   | Telemetry_events.CompilationStarted { package; _ } ->
       (* Only show "Compiling" when actual compilation begins (fresh builds) *)
-      if HashSet.contains displayed_packages package.name then
+      if HashSet.contains displayed_packages ~value:package.name then
         ""
       else
-        let _ = HashSet.insert displayed_packages package.name in
+        let _ = HashSet.insert displayed_packages ~value:package.name in
         "   \027[1;32mCompiling\027[0m " ^ package.name
   | Telemetry_events.BuildCompleted { package; status; duration; _ } -> (
       (* Cached packages should stay silent here. Only fresh compilation gets a

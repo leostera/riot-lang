@@ -61,16 +61,16 @@ let test_discover_pending_snapshots =
                           | Ok snapshots ->
                               let actual =
                                 List.map
-                                  (fun snapshot -> Path.to_string snapshot.Riot_cli.Snapshots.pending)
                                   snapshots
+                                  ~fn:(fun snapshot -> Path.to_string snapshot.Riot_cli.Snapshots.pending)
                               in
                               let expected = [
                                 Path.to_string workspace_pending;
                                 Path.to_string fixture_pending;
                                 Path.to_string custom_pending
                               ]
-                              |> List.sort String.compare in
-                              let actual = List.sort String.compare actual in
+                              |> List.sort ~compare:String.compare in
+                              let actual = List.sort actual ~compare:String.compare in
                               Test.assert_equal ~expected ~actual;
                               Ok ()
                         )

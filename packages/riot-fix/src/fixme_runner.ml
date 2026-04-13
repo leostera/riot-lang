@@ -162,15 +162,15 @@ let dependency_entries = fun workspace_root providers ->
   in
   let workspace_package_path name =
     workspace_packages
-    |> List.find ~fn:(fun (pkg: Riot_model.Package.t) -> String.equal pkg.name name)
-    |> Option.map ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.path)
+    |> List.find ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> String.equal pkg.name name)
+    |> Option.map ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.path)
   in
   let provider_build_deps =
     providers
     |> List.map ~fn:(fun ({ provider; _ }: generated_provider) ->
         workspace_packages
-        |> List.find ~fn:(fun (pkg: Riot_model.Package.t) -> String.equal pkg.name provider.package_name)
-        |> Option.map ~fn:(fun (pkg: Riot_model.Package.t) -> (pkg.path, pkg.build_dependencies))
+        |> List.find ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> String.equal pkg.name provider.package_name)
+        |> Option.map ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> (pkg.path, pkg.build_dependencies))
         |> Option.unwrap_or ~default:(provider.package_path, [])
         |> fun (package_path, build_dependencies) ->
           build_dependencies |> List.filter_map ~fn:(fun (dep: Riot_model.Package.dependency) ->
@@ -365,9 +365,9 @@ let copy_provider_source = fun (provider: generated_provider) ->
 
 let attach_to_workspace = fun workspace plan ->
   let other_packages = workspace.Riot_model.Workspace.packages
-  |> List.filter ~fn:(fun (pkg: Riot_model.Package.t) -> not (String.equal pkg.name plan.package_name))
+  |> List.filter ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> not (String.equal pkg.name plan.package_name))
   in
-  { workspace with packages = other_packages @ [ plan.package ] }
+  { workspace with packages = other_packages @ [ Riot_model.Package_manifest.of_package plan.package ] }
 
 let materialize = fun ~workspace_root ~target_dir_root providers ->
   let plan = plan ~workspace_root ~target_dir_root providers in

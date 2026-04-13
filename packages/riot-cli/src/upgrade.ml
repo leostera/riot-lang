@@ -361,7 +361,7 @@ let run = fun matches ->
               metadata
               with issues_url = Option.or_else
                 metadata.issues_url
-                (fun () -> Some default_issues_url)
+                ~fn:(fun () -> Some default_issues_url)
             }))
       |> Result.map_err ~fn:(fun message -> Failure message) in
       match

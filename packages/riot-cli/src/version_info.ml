@@ -90,7 +90,7 @@ let of_version_string = fun version ->
     let rec loop index =
       if index + needle_len > haystack_len then
         None
-      else if String.equal (String.sub haystack index needle_len) needle then
+      else if String.equal (String.sub haystack ~offset:index ~len:needle_len) needle then
         Some index
       else
         loop (index + 1)
@@ -103,20 +103,20 @@ let of_version_string = fun version ->
     None
   else
     let payload_len = String.length version - prefix_len in
-    let payload = String.sub version prefix_len payload_len in
+    let payload = String.sub version ~offset:prefix_len ~len:payload_len in
     match find_marker payload build_marker with
     | None -> None
     | Some marker_pos ->
-        let release_id = String.sub payload 0 marker_pos |> String.trim in
+        let release_id = String.sub payload ~offset:0 ~len:marker_pos |> String.trim in
         let build_section_len = String.length payload - marker_pos in
-        let build_section = String.sub payload marker_pos build_section_len in
+        let build_section = String.sub payload ~offset:marker_pos ~len:build_section_len in
         if not (String.starts_with ~prefix:build_marker build_section) then
           None
         else if not (String.ends_with ~suffix build_section) then
           None
         else
           let build_sha_len = build_section_len - marker_len - suffix_len in
-          let build_sha = String.sub build_section marker_len build_sha_len in
+          let build_sha = String.sub build_section ~offset:marker_len ~len:build_sha_len in
           Some {
             release_id;
             build_sha;

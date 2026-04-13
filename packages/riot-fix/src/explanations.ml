@@ -14,8 +14,8 @@ let normalize_rule_id = fun rule_id ->
   if String.starts_with ~prefix:riot_prefix rule_id then
     String.sub
       rule_id
-      (String.length riot_prefix)
-      (String.length rule_id - String.length riot_prefix)
+      ~offset:(String.length riot_prefix)
+      ~len:(String.length rule_id - String.length riot_prefix)
   else
     rule_id
 
