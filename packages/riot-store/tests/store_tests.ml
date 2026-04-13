@@ -29,14 +29,15 @@ let write_workspace_cache_config = fun tmpdir ~keep_generations ~max_size ->
   |> Result.expect ~msg:"write .riot/config.toml should succeed"
 
 let make_hash = fun ch ->
-  String.make 64 ch
+  String.make ~len:64 ~char:ch
 
 let write_cache_entry = fun ~(workspace:Riot_model.Workspace.t) ~profile ~target ~hash ~size ->
   let entry_dir =
     Path.(workspace.target_dir_root / Path.v profile / Path.v target / Path.v "cache" / Path.v hash) in
   let payload = Path.(entry_dir / Path.v "artifact.bin") in
   let _ = Fs.create_dir_all entry_dir |> Result.expect ~msg:"create cache entry should succeed" in
-  let _ = Fs.write (String.make size 'x') payload |> Result.expect ~msg:"write cache payload should succeed" in
+  let _ = Fs.write (String.make ~len:size ~char:'x') payload
+  |> Result.expect ~msg:"write cache payload should succeed" in
   entry_dir
 
 let test_save_and_promote_nested_outputs = fun _ctx ->
@@ -95,7 +96,7 @@ let test_get_preserves_relative_paths = fun _ctx ->
         match Riot_store.Store.get store hash with
         | None -> Error "expected cached artifact"
         | Some artifact ->
-            if List.mem (Path.v "deep/dir/x.cmxa") artifact.files then
+            if List.any artifact.files ~fn:(fun path -> Path.equal path (Path.v "deep/dir/x.cmxa")) then
               Ok ()
             else
               Error "artifact paths should keep nested relative paths")
@@ -117,13 +118,12 @@ let test_save_and_promote_self_host_style_outputs = fun _ctx ->
           ("Kernel__Time__Monotonic__Unix.cmx", "compiled-module");
         ] in
         let out_paths =
-          List.map
-            (fun (name, content) ->
+          List.map outputs
+            ~fn:(fun (name, content) ->
               let path = Path.(sandbox / Path.v name) in
               let _ = Fs.write content path
               |> Result.expect ~msg:("write " ^ name ^ " should succeed") in
               path)
-            outputs
         in
         let hash = Crypto.hash_string "self-host-style-artifacts" in
         let _ = Riot_store.Store.save store ~package:"kernel" ~hash ~sandbox_dir:sandbox ~outs:out_paths
@@ -131,11 +131,11 @@ let test_save_and_promote_self_host_style_outputs = fun _ctx ->
         let target = Path.(tmpdir / Path.v "out") in
         let _ = Riot_store.Store.promote store hash ~target_dir:target |> Result.expect ~msg:"promote should succeed for self-host-style outputs" in
         let promoted_ok =
-          List.for_all
-            (fun (name, content) ->
+          List.all
+            outputs
+            ~fn:(fun (name, content) ->
               let path = Path.(target / Path.v name) in
               String.equal (read_file path) content)
-            outputs
         in
         if promoted_ok then
           Ok ()
@@ -326,7 +326,7 @@ let test_export_source_path_round_trip = fun _ctx ->
           ~outs:[ Path.(sandbox / rel_path) ]
         |> Result.expect ~msg:"save should succeed" in
         let expected = Path.(Riot_store.Store.hash_dir_of store hash / rel_path) in
-        match Riot_store.Store.export_source_path store (List.hd exports) with
+        match Riot_store.Store.export_source_path store (List.head exports |> Option.expect ~msg:"expected export entry") with
         | None -> Error "expected to resolve package export path"
         | Some resolved ->
             if Path.to_string resolved = Path.to_string expected then
@@ -363,7 +363,7 @@ let test_export_source_path_rejects_absolute_export_paths = fun _ctx ->
           ~sandbox_dir:sandbox
           ~outs:[ output ]
         |> Result.expect ~msg:"save should succeed" in
-        match Riot_store.Store.export_source_path store (List.hd exports) with
+        match Riot_store.Store.export_source_path store (List.head exports |> Option.expect ~msg:"expected export entry") with
         | None -> Ok ()
         | Some _ -> Error "absolute export paths should be rejected when resolving immutable path")
   with
@@ -432,11 +432,12 @@ let test_materialize_package_exports_fails_when_source_missing = fun _ctx ->
       (fun tmpdir ->
         let workspace = make_test_workspace tmpdir in
         let store = Riot_store.Store.create ~workspace in
+        let missing_action_hash = Crypto.hash_string "missing-action-hash" |> Crypto.Digest.hex in
         let exports = [
           Riot_store.Store.{
             name = "tool";
             path = Path.v "bin/tool";
-            action_hash = "missing-action-hash"
+            action_hash = missing_action_hash
           };
         ] in
         let target_dir = Path.(tmpdir / Path.v "out" / Path.v "pkg") in
@@ -475,6 +476,83 @@ let test_promote_overwrites_existing_target_files = fun _ctx ->
           Ok ()
         else
           Error "promote should overwrite stale target files")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_save_and_promote_preserves_executable_permissions = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"store_promote_permissions_test"
+      (fun tmpdir ->
+        let workspace = make_test_workspace tmpdir in
+        let store = Riot_store.Store.create ~workspace in
+        let sandbox = Path.(tmpdir / Path.v "sandbox") in
+        let _ = Fs.create_dir_all sandbox |> Result.expect ~msg:"create sandbox should succeed" in
+        let output = Path.(sandbox / Path.v "kernel_new_addr_tests") in
+        let _ = Fs.write "#!/bin/sh\nexit 0\n" output |> Result.expect ~msg:"write sandbox output should succeed" in
+        let _ = Fs.set_permissions output Fs.Permissions.executable
+        |> Result.expect ~msg:"mark sandbox output executable should succeed" in
+        let hash = Crypto.hash_string "promote-preserves-executable-permissions" in
+        let _ = Riot_store.Store.save
+          store
+          ~package:"kernel"
+          ~hash
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
+        |> Result.expect ~msg:"save should succeed" in
+        let target_dir = Path.(tmpdir / Path.v "sandbox-target") in
+        let _ = Riot_store.Store.promote store hash ~target_dir
+        |> Result.expect ~msg:"promote should preserve executable permissions" in
+        let promoted = Path.(target_dir / Path.v "kernel_new_addr_tests") in
+        let source_mode =
+          Fs.metadata output
+          |> Result.expect ~msg:"read source metadata should succeed"
+          |> Fs.Metadata.mode in
+        let promoted_mode =
+          Fs.metadata promoted
+          |> Result.expect ~msg:"read promoted metadata should succeed"
+          |> Fs.Metadata.mode in
+        if source_mode = promoted_mode then
+          Ok ()
+        else
+          Error "save/promote should preserve executable permissions")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_save_preserves_executable_permissions_in_cache = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"store_cache_permissions_test"
+      (fun tmpdir ->
+        let workspace = make_test_workspace tmpdir in
+        let store = Riot_store.Store.create ~workspace in
+        let sandbox = Path.(tmpdir / Path.v "sandbox") in
+        let _ = Fs.create_dir_all sandbox |> Result.expect ~msg:"create sandbox should succeed" in
+        let output = Path.(sandbox / Path.v "std_archive_tar_tests") in
+        let _ = Fs.write "#!/bin/sh\nexit 0\n" output |> Result.expect ~msg:"write sandbox output should succeed" in
+        let _ = Fs.set_permissions output Fs.Permissions.executable
+        |> Result.expect ~msg:"mark sandbox output executable should succeed" in
+        let hash = Crypto.hash_string "save-preserves-executable-permissions-in-cache" in
+        let _ = Riot_store.Store.save
+          store
+          ~package:"std"
+          ~hash
+          ~sandbox_dir:sandbox
+          ~outs:[ output ]
+        |> Result.expect ~msg:"save should succeed" in
+        let cached = Path.(Riot_store.Store.hash_dir_of store hash / Path.v "std_archive_tar_tests") in
+        let source_mode =
+          Fs.metadata output
+          |> Result.expect ~msg:"read source metadata should succeed"
+          |> Fs.Metadata.mode in
+        let cached_mode =
+          Fs.metadata cached
+          |> Result.expect ~msg:"read cached metadata should succeed"
+          |> Fs.Metadata.mode in
+        if source_mode = cached_mode then
+          Ok ()
+        else
+          Error "save should preserve executable permissions in cache")
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -651,6 +729,8 @@ let tests =
     case "materialize package exports from action artifacts" test_materialize_package_exports_from_action_artifact;
     case "materialize package exports fails when source missing" test_materialize_package_exports_fails_when_source_missing;
     case "promote overwrites existing target files" test_promote_overwrites_existing_target_files;
+    case "save preserves executable permissions in cache" test_save_preserves_executable_permissions_in_cache;
+    case "save/promote preserves executable permissions" test_save_and_promote_preserves_executable_permissions;
     case "get returns none when export source missing" test_get_returns_none_when_export_source_missing;
     case "cache GC drops unreferenced entries after generation overflow" test_cache_gc_drops_unreferenced_entries_after_generation_overflow;
     case "cache GC shrinks retained generations to meet max_size" test_cache_gc_shrinks_retained_generations_to_meet_max_size;
