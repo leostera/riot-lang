@@ -47,12 +47,12 @@ let test_action_graph_json_round_trip_preserves_dependencies = fun _ctx ->
       | Some (Data.Json.Array node_jsons) ->
           let edge_count =
             List.fold_left
-              (fun acc node_json ->
+              node_jsons
+              ~acc:0
+              ~fn:(fun acc node_json ->
                 match Data.Json.get_field "dependencies" node_json with
                 | Some (Data.Json.Array deps) -> acc + List.length deps
                 | _ -> acc)
-              0
-              node_jsons
           in
           if List.length node_jsons = 2 && edge_count = 1 then
             Ok ()
@@ -188,12 +188,12 @@ let test_library_builds_do_not_emit_shared_library_actions = fun _ctx ->
           module_graph in
         let shared_actions =
           List.filter
-            (
+            (Riot_planner.Action_graph.to_action_list action_graph)
+            ~fn:(
               function
               | Riot_planner.Action.CreateSharedLibrary _ -> true
               | _ -> false
             )
-            (Riot_planner.Action_graph.to_action_list action_graph)
         in
         if List.is_empty shared_actions then
           Ok ()
@@ -256,18 +256,18 @@ let test_library_actions_exclude_ml_object_files = fun _ctx ->
           ~needs_dynlink:false
           module_graph in
         match
-          List.find_opt
-            (
+          List.find
+            (Riot_planner.Action_graph.to_action_list action_graph)
+            ~fn:(
               function
               | Riot_planner.Action.CreateLibrary _ -> true
               | _ -> false
             )
-            (Riot_planner.Action_graph.to_action_list action_graph)
         with
         | Some (Riot_planner.Action.CreateLibrary { objects; _ }) ->
-            let has_demo_cmx = List.exists (Path.equal (Path.v "Demo.cmx")) objects in
-            let has_demo_o = List.exists (Path.equal (Path.v "Demo.o")) objects in
-            let has_stub_o = List.exists (Path.equal (Path.v "stub.o")) objects in
+            let has_demo_cmx = List.any objects ~fn:(Path.equal (Path.v "Demo.cmx")) in
+            let has_demo_o = List.any objects ~fn:(Path.equal (Path.v "Demo.o")) in
+            let has_stub_o = List.any objects ~fn:(Path.equal (Path.v "stub.o")) in
             if not has_demo_cmx then
               Error "expected CreateLibrary to include Demo.cmx"
             else if has_demo_o then
@@ -323,16 +323,16 @@ let test_release_profile_flags_flow_into_compile_actions = fun _ctx ->
           ~needs_dynlink:false
           module_graph in
         match
-          List.find_opt
-            (
+          List.find
+            (Riot_planner.Action_graph.to_action_list action_graph)
+            ~fn:(
               function
               | Riot_planner.Action.CompileImplementation _ -> true
               | _ -> false
             )
-            (Riot_planner.Action_graph.to_action_list action_graph)
         with
         | Some (Riot_planner.Action.CompileImplementation { flags; _ }) ->
-            let has_flag expected = List.mem expected flags in
+            let has_flag expected = List.any flags ~fn:(fun flag -> flag = expected) in
             if not (has_flag (Riot_toolchain.Ocamlc.Inline 100)) then
               Error "expected release compile action to include inline threshold"
             else if not (has_flag Riot_toolchain.Ocamlc.NoAssert) then

@@ -28,7 +28,7 @@ let test_transitive_closure_dependency_first_order = fun _ctx ->
       hash = Crypto.hash_string "a"
     } in
   let names = Riot_planner.Dependency.transitive_closure [ dep_a ]
-  |> List.map (fun d -> d.Riot_planner.Dependency.package.name) in
+  |> List.map ~fn:(fun d -> d.Riot_planner.Dependency.package.name) in
   if names = [ "c"; "b"; "a" ] then
     Ok ()
   else
@@ -116,7 +116,7 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
                       expected_name
                 | _ -> false
               in
-              match List.find_opt matches (G.map graph ~fn:(fun x -> x)) with
+              match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
               | Some (node_id, _) -> Ok node_id
               | None -> Error ("expected node not found: " ^ expected_name)
             in
@@ -129,8 +129,8 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
                 match G.get_node graph bar_mli_id with
                 | None -> Error "expected bar.mli node to exist"
                 | Some node ->
-                    let depends_on_impl = List.exists (G.Node_id.eq foo_ml_id) node.deps in
-                    let depends_on_intf = List.exists (G.Node_id.eq foo_mli_id) node.deps in
+                    let depends_on_impl = List.any node.deps ~fn:(G.Node_id.eq foo_ml_id) in
+                    let depends_on_intf = List.any node.deps ~fn:(G.Node_id.eq foo_mli_id) in
                     if depends_on_impl && not depends_on_intf then
                       Ok ()
                     else
@@ -232,7 +232,7 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
                   qualified_name
                 | _ -> false
               in
-              match List.find_opt matches (G.map graph ~fn:(fun x -> x)) with
+              match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
               | Some (_node_id, node) -> Ok node
               | None -> Error ("expected module not found: " ^ qualified_name)
             in
@@ -243,10 +243,10 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
               G.topo_sort graph
             ) with
             | Ok file_node, Ok file_unix_node, Ok process_unix_node, Ok _ ->
-                let depends_on_file_unix = List.exists (G.Node_id.eq file_unix_node.id) file_node.deps in
-                let depends_on_process_unix = List.exists
-                  (G.Node_id.eq process_unix_node.id)
-                  file_node.deps in
+                let depends_on_file_unix = List.any file_node.deps ~fn:(G.Node_id.eq file_unix_node.id) in
+                let depends_on_process_unix = List.any
+                  file_node.deps
+                  ~fn:(G.Node_id.eq process_unix_node.id) in
                 if depends_on_file_unix && not depends_on_process_unix then
                   Ok ()
                 else
@@ -257,7 +257,7 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
                 Error msg
             | _, _, _, Error cycle_ids ->
                 Error ("unexpected cycle: "
-                ^ String.concat " -> " (List.map G.Node_id.to_string cycle_ids)))
+                ^ String.concat " -> " (List.map cycle_ids ~fn:G.Node_id.to_string)))
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -343,13 +343,13 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
                   qualified_name
                 | _ -> false
               in
-              match List.find_opt matches (G.map graph ~fn:(fun x -> x)) with
+              match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
               | Some (_node_id, node) -> Ok node
               | None -> Error ("expected module not found: " ^ qualified_name)
             in
             let depends_on (node: Riot_planner.Module_node.t G.node) (
               dependency: Riot_planner.Module_node.t G.node
-            ) = List.exists (G.Node_id.eq dependency.id) node.deps in
+            ) = List.any node.deps ~fn:(G.Node_id.eq dependency.id) in
             match (
               find_ml "Deep_graph__Domains__Admin__Users__Models__Testing__User",
               find_ml "Deep_graph__Domains__Admin__Users__Models__Testing__Report",
@@ -386,7 +386,7 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
                 Error msg
             | _, _, _, _, _, _, _, Error cycle_ids ->
                 Error ("unexpected cycle: "
-                ^ String.concat " -> " (List.map G.Node_id.to_string cycle_ids)))
+                ^ String.concat " -> " (List.map cycle_ids ~fn:G.Node_id.to_string)))
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"

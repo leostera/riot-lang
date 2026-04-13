@@ -34,17 +34,19 @@ let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ~pac
   Riot_model.Package.hash state package;
   let sorted_deps =
     List.sort
-      (fun (a: Riot_model.Package.dependency) (b: Riot_model.Package.dependency) ->
-        String.compare a.name b.name)
       (Riot_model.Package.build_graph_dependencies package)
+      ~compare:(fun (a: Riot_model.Package.dependency) (b: Riot_model.Package.dependency) ->
+        String.compare a.name b.name)
   in
-  List.iter
-    (fun (dep: Riot_model.Package.dependency) ->
+  List.for_each
+    sorted_deps
+    ~fn:(fun (dep: Riot_model.Package.dependency) ->
       match dep.source with
       | { workspace=true; _ } -> (
-          match List.find_opt
-            (fun (p: Riot_model.Package.t) -> p.name = dep.name)
-            workspace.Riot_model.Workspace.packages with
+          match List.find
+            workspace.Riot_model.Workspace.packages
+            ~fn:(fun (p: Riot_model.Package.t) -> p.name = dep.name)
+          with
           | Some dep_pkg ->
               H.write state (Path.to_string dep_pkg.path);
               H.write state
@@ -60,7 +62,7 @@ let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ~pac
           ()
       | _ ->
           ())
-    sorted_deps;
+  ;
   H.finish state
 
 let test_plan_bundle_cache_hit_restores_module_and_action_graphs = fun _ctx ->
@@ -324,13 +326,14 @@ let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun _ctx ->
             ^ Riot_planner.Planning_error.to_string err)
         | Ok (Riot_planner.Package_planner.Planned { action_graph; _ }) ->
             let actions = Riot_planner.Action_graph.to_action_list action_graph in
-            if List.exists
-                (
+            if List.any
+                actions
+                ~fn:(
                   function
                   | Riot_planner.Action.CreateLibrary _ -> true
                   | _ -> false
                 )
-                actions then
+            then
               Ok ()
             else
               Error "expected stale plan bundle to be ignored and rebuilt"

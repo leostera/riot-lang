@@ -2,8 +2,9 @@ open Std
 module Test = Std.Test
 
 let rec flatten_entries = fun entries ->
-  List.concat_map
-    (
+  List.flat_map
+    entries
+    ~fn:(
       function
       | Riot_planner.Module_scanner.ML _ as entry -> [ entry ]
       | MLI _ as entry -> [ entry ]
@@ -12,7 +13,6 @@ let rec flatten_entries = fun entries ->
       | Other _ as entry -> [ entry ]
       | Dir (_, _, children) as entry -> entry :: flatten_entries children
     )
-    entries
 
 let test_scan_tags_c_and_h_files = fun _ctx ->
   match
@@ -27,24 +27,24 @@ let test_scan_tags_c_and_h_files = fun _ctx ->
         let entries = Riot_planner.Module_scanner.scan ~root:tmpdir ~source_dir:(Path.v "src") in
         let flat = flatten_entries entries in
         let has_c =
-          List.exists
-            (
+          List.any
+            flat
+            ~fn:(
               function
               | Riot_planner.Module_scanner.C (name, path) -> String.equal name "stubs.c"
               && Path.equal path Path.(Path.v "src/stubs.c")
               | _ -> false
             )
-            flat
         in
         let has_h =
-          List.exists
-            (
+          List.any
+            flat
+            ~fn:(
               function
               | Riot_planner.Module_scanner.H (name, path) -> String.equal name "stubs.h"
               && Path.equal path Path.(Path.v "src/stubs.h")
               | _ -> false
             )
-            flat
         in
         if has_c && has_h then
           Ok ()

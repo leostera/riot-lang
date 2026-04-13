@@ -23,9 +23,9 @@ let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dep
     ~name
     ~path:(Path.v ("packages/" ^ name))
     ~relative_path:(Path.v ("packages/" ^ name))
-    ~dependencies:(List.map dependency dependencies)
-    ~dev_dependencies:(List.map dependency dev_dependencies)
-    ~build_dependencies:(List.map dependency build_dependencies)
+    ~dependencies:(List.map dependencies ~fn:dependency)
+    ~dev_dependencies:(List.map dev_dependencies ~fn:dependency)
+    ~build_dependencies:(List.map build_dependencies ~fn:dependency)
     ~library:{ path = Path.v "src/lib.ml" }
     ()
 
@@ -45,7 +45,7 @@ let plan_workspace = fun workspace target scope ->
   Workspace_planner.plan_workspace ~workspace ~target ~scope ~load_errors:[]
 
 let package_names = fun plan ->
-  Workspace_planner.packages_in_plan plan |> List.map (fun (pkg: Package.t) -> pkg.name)
+  Workspace_planner.packages_in_plan plan |> List.map ~fn:(fun (pkg: Package.t) -> pkg.name)
 
 let plan_all_runtime_returns_workspace_like_order = fun _ctx ->
   let workspace = make_workspace
@@ -62,8 +62,12 @@ let plan_all_runtime_returns_workspace_like_order = fun _ctx ->
   | Error _ -> Error "expected successful workspace plan"
   | Ok plan ->
       let names = package_names plan in
-      let position name = List.find_index (String.equal name) names
-      |> Option.expect ~msg:("missing package in plan: " ^ name) in
+      let position name =
+        List.enumerate names
+        |> List.find ~fn:(fun (_, current) -> String.equal name current)
+        |> Option.map ~fn:(fun (index, _) -> index)
+        |> Option.expect ~msg:("missing package in plan: " ^ name)
+      in
       Test.assert_true (position "std" < position "kernel");
       Test.assert_true (position "kernel" < position "actors");
       Test.assert_true (position "actors" < position "riot-model");
@@ -84,7 +88,7 @@ let plan_single_package_includes_only_transitive_closure = fun _ctx ->
   match plan_workspace workspace (Package "app") Runtime with
   | Error _ -> Error "expected successful package-target plan"
   | Ok plan ->
-      let names = package_names plan |> List.sort_uniq String.compare in
+      let names = package_names plan |> List.unique ~compare:String.compare in
       Test.assert_equal ~expected:[ "a"; "app"; "kernel"; "std" ] ~actual:names;
       Ok ()
 
@@ -102,7 +106,7 @@ let plan_multiple_packages_includes_union_of_dependencies = fun _ctx ->
   match plan_workspace workspace (Packages [ "app"; "tool" ]) Runtime with
   | Error _ -> Error "expected successful multi-package plan"
   | Ok plan ->
-      let names = package_names plan |> List.sort_uniq String.compare in
+      let names = package_names plan |> List.unique ~compare:String.compare in
       Test.assert_equal ~expected:[ "a"; "app"; "b"; "kernel"; "std"; "tool" ] ~actual:names;
       Ok ()
 
@@ -113,7 +117,7 @@ let plan_unknown_package_reports_available_packages = fun _ctx ->
       Error "expected PackageNotFound"
   | Error (PackageNotFound { name; available }) ->
       Test.assert_equal ~expected:"missing" ~actual:name;
-      Test.assert_equal ~expected:[ "app"; "std" ] ~actual:(List.sort String.compare available);
+      Test.assert_equal ~expected:[ "app"; "std" ] ~actual:(List.sort available ~compare:String.compare);
       Ok ()
   | Error _ ->
       Error "expected PackageNotFound"
@@ -125,7 +129,7 @@ let plan_multiple_unknown_packages_reports_all_missing_names = fun _ctx ->
       Error "expected PackagesNotFound"
   | Error (PackagesNotFound { names; available }) ->
       Test.assert_equal ~expected:[ "missing-a"; "missing-b" ] ~actual:names;
-      Test.assert_equal ~expected:[ "app"; "std" ] ~actual:(List.sort String.compare available);
+      Test.assert_equal ~expected:[ "app"; "std" ] ~actual:(List.sort available ~compare:String.compare);
       Ok ()
   | Error _ ->
       Error "expected PackagesNotFound"
@@ -138,8 +142,8 @@ let plan_reports_missing_dependencies_before_sorting = fun _ctx ->
   | Error (MissingDependencies { missing }) ->
       let entries =
         List.map
-          (fun (item: Riot_planner.Package_graph.missing_dependency) -> item.package ^ "->" ^ item.dependency)
           missing
+          ~fn:(fun (item: Riot_planner.Package_graph.missing_dependency) -> item.package ^ "->" ^ item.dependency)
       in
       Test.assert_equal ~expected:[ "app->missing-lib" ] ~actual:entries;
       Ok ()
