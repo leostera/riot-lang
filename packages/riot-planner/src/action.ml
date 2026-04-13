@@ -55,12 +55,11 @@ type t =
 
     This hash is used for caching and must be deterministic regardless of:
     - Order of includes in the list
-    - Order of objects in the list
-    - Order of libraries in the list
     - Order of outputs in the list
-    - Order of flags in the list
+    - Order of compile-only flags in the list
 
-    All list fields are sorted before hashing to ensure determinism. *)
+    Link actions preserve object/library flag order because OCaml link order is
+    semantically significant. *)
 let hash = fun action ->
   let open Crypto in
     let hasher = Sha256.create () in
@@ -73,12 +72,20 @@ let hash = fun action ->
       List.for_each sorted ~fn:(fun path ->
         Sha256.write hasher (Path.to_string path))
     in
+    let write_paths_in_order hasher paths =
+      List.for_each paths ~fn:(fun path ->
+        Sha256.write hasher (Path.to_string path))
+    in
     (* Helper to write sorted flags - use flags_to_string which returns string list *)
     let write_sorted_flags hasher flags =
       let flag_strings = Riot_toolchain.Ocamlc.flags_to_string flags in
       let sorted = List.sort flag_strings ~compare:String.compare in
       List.for_each sorted ~fn:(fun s ->
         Sha256.write hasher s)
+    in
+    let write_strings_in_order hasher values =
+      List.for_each values ~fn:(fun value ->
+        Sha256.write hasher value)
     in
     match action with
     | CompileInterface { source; outputs; includes; flags } ->
@@ -111,7 +118,7 @@ let hash = fun action ->
     | CreateLibrary { outputs; objects; includes } ->
         Sha256.write hasher "CreateLibrary";
         write_sorted_paths hasher outputs;
-        write_sorted_paths hasher objects;
+        write_paths_in_order hasher objects;
         write_sorted_paths hasher includes;
         Sha256.finish hasher
     | CreateExecutable {
@@ -125,16 +132,12 @@ let hash = fun action ->
     } ->
         Sha256.write hasher "CreateExecutable";
         write_sorted_paths hasher outputs;
-        write_sorted_paths hasher objects;
-        write_sorted_paths hasher libraries;
+        write_paths_in_order hasher objects;
+        write_paths_in_order hasher libraries;
         write_sorted_paths hasher includes;
-        write_sorted_paths hasher cclibs;
-        let sorted_ccopt = List.sort ccopt_flags ~compare:String.compare in
-        List.for_each sorted_ccopt ~fn:(fun s ->
-          Sha256.write hasher s);
-        let sorted_cclib = List.sort cclib_flags ~compare:String.compare in
-        List.for_each sorted_cclib ~fn:(fun s ->
-          Sha256.write hasher s);
+        write_paths_in_order hasher cclibs;
+        write_strings_in_order hasher ccopt_flags;
+        write_strings_in_order hasher cclib_flags;
         Sha256.finish hasher
     | CreateSharedLibrary {
       outputs;
@@ -147,16 +150,12 @@ let hash = fun action ->
     } ->
         Sha256.write hasher "CreateSharedLibrary";
         write_sorted_paths hasher outputs;
-        write_sorted_paths hasher objects;
-        write_sorted_paths hasher libraries;
+        write_paths_in_order hasher objects;
+        write_paths_in_order hasher libraries;
         write_sorted_paths hasher includes;
-        write_sorted_paths hasher cclibs;
-        let sorted_ccopt = List.sort ccopt_flags ~compare:String.compare in
-        List.for_each sorted_ccopt ~fn:(fun s ->
-          Sha256.write hasher s);
-        let sorted_cclib = List.sort cclib_flags ~compare:String.compare in
-        List.for_each sorted_cclib ~fn:(fun s ->
-          Sha256.write hasher s);
+        write_paths_in_order hasher cclibs;
+        write_strings_in_order hasher ccopt_flags;
+        write_strings_in_order hasher cclib_flags;
         Sha256.finish hasher
     | CopyFile { source; destination } ->
         Sha256.write hasher "CopyFile";

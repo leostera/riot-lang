@@ -293,6 +293,12 @@ and handle_library = fun ~t ~ctx dir name children ->
     ~namespace:ns
     ~library_name:name
     ~package_path:t.config.package.path
+    ~concrete_library_path:(
+      if Namespace.is_empty ctx.ns then
+        Option.map t.config.package.library ~fn:(fun (library: Package.library) -> library.path)
+      else
+        None
+    )
     ~binaries:t.config.package.binaries
     children in
   let child_modules = Library_definition.child_modules lib_def in

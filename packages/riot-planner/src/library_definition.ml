@@ -86,8 +86,33 @@ let is_binary_module = fun ~package_path ~binaries path ->
 
     Edge case: Module names are case-insensitive on some filesystems but
     case-sensitive in OCaml, so we use Module_name.to_string for comparison. *)
-let from_entries = fun ~namespace ~library_name ~package_path ~binaries children ->
+let from_entries = fun ~namespace ~library_name ~package_path ~concrete_library_path ~binaries children ->
   let library_module_name = Module_name.of_string library_name |> Module_name.to_string in
+  let explicit_concrete_ml_path =
+    match concrete_library_path with
+    | Some path when Path.extension path = Some ".ml" ->
+        Some (make_relative ~base:package_path ~path)
+    | _ -> None
+  in
+  let explicit_concrete_mli_path =
+    match concrete_library_path with
+    | Some path when Path.extension path = Some ".mli" ->
+        Some (make_relative ~base:package_path ~path)
+    | Some path when Path.extension path = Some ".ml" ->
+        Some (make_relative ~base:package_path ~path |> Path.replace_extension ~ext:"mli")
+    | _ -> None
+  in
+  let path_matches expected actual =
+    match expected with
+    | Some expected -> Path.equal expected actual
+    | None -> false
+  in
+  let is_explicit_library_path path =
+    path_matches explicit_concrete_ml_path path || path_matches explicit_concrete_mli_path path
+  in
+  let is_library_source_file ~file_module_name ~path =
+    file_module_name = library_module_name || is_explicit_library_path path
+  in
   let child_files =
     List.filter_map children ~fn:(fun e ->
       match e with
@@ -97,7 +122,7 @@ let from_entries = fun ~namespace ~library_name ~package_path ~binaries children
           |> Path.to_string
           |> Module_name.of_string
           |> Module_name.to_string in
-          if file_module_name = library_module_name then
+          if is_library_source_file ~file_module_name ~path:p then
             None
           else if not (is_binary_module ~package_path ~binaries p) then
             Some (Module.make ~namespace ~filename:p)
@@ -125,12 +150,16 @@ let from_entries = fun ~namespace ~library_name ~package_path ~binaries children
   let concrete_ml_path =
     match List.find children ~fn:(fun e ->
       match e with
-      | Module_scanner.ML (n, _) ->
+      | Module_scanner.ML (n, p) ->
           let file_module_name = Path.remove_extension (Path.v n)
           |> Path.to_string
           |> Module_name.of_string
           |> Module_name.to_string in
-          file_module_name = library_module_name
+          (
+            match explicit_concrete_ml_path with
+            | Some explicit_path -> Path.equal p explicit_path
+            | None -> file_module_name = library_module_name
+          )
       | _ -> false) with
     | Some (Module_scanner.ML (_, p)) -> Some p
     | _ -> None
@@ -138,12 +167,16 @@ let from_entries = fun ~namespace ~library_name ~package_path ~binaries children
   let concrete_mli_path =
     match List.find children ~fn:(fun e ->
       match e with
-      | Module_scanner.MLI (n, _) ->
+      | Module_scanner.MLI (n, p) ->
           let file_module_name = Path.remove_extension (Path.v n)
           |> Path.to_string
           |> Module_name.of_string
           |> Module_name.to_string in
-          file_module_name = library_module_name
+          (
+            match explicit_concrete_mli_path with
+            | Some explicit_path -> Path.equal p explicit_path
+            | None -> file_module_name = library_module_name
+          )
       | _ -> false) with
     | Some (Module_scanner.MLI (_, p)) -> Some p
     | _ -> None
@@ -153,13 +186,13 @@ let from_entries = fun ~namespace ~library_name ~package_path ~binaries children
   let children_without_lib =
     List.filter children ~fn:(fun e ->
       match e with
-      | Module_scanner.ML (n, _)
-      | Module_scanner.MLI (n, _) ->
+      | Module_scanner.ML (n, p)
+      | Module_scanner.MLI (n, p) ->
           let file_module_name = Path.remove_extension (Path.v n)
           |> Path.to_string
           |> Module_name.of_string
           |> Module_name.to_string in
-          file_module_name != library_module_name
+          not (is_library_source_file ~file_module_name ~path:p)
       | _ -> true)
   in
   {

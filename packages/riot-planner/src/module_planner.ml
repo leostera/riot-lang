@@ -109,7 +109,12 @@ let plan_node = fun input ->
             | Some _ -> [ Module_name.(of_string input.package.name |> cmxa) ]
             | None -> []
           in
-          List.unique (unix_lib @ dynlink_lib @ dep_libs @ own_lib) ~compare:Path.compare
+          let seen_libraries = HashSet.create () in
+          List.filter_map (unix_lib @ dynlink_lib @ dep_libs @ own_lib) ~fn:(fun library_path ->
+            if HashSet.insert seen_libraries ~value:library_path then
+              Some library_path
+            else
+              None)
         in
         (* Add cache directories from dependencies to includes *)
         let dep_cache_dirs =

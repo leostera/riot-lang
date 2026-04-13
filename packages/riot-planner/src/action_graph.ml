@@ -239,9 +239,16 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
               List.filter dep_outputs ~fn:(fun output -> Path.extension output = Some ".cmx"))
         |> List.concat
       in
-      (* Deduplicate objects to avoid linking the same file multiple times *)
-      (* Use List.unique to preserve topological order required by OCaml linker *)
-      let objects = List.unique objects_with_duplicates ~compare:Path.compare in
+      (* Deduplicate objects without reordering them: OCaml link order must stay
+         topological, with dependencies before dependents. *)
+      let seen_objects = HashSet.create () in
+      let objects =
+        List.filter_map objects_with_duplicates ~fn:(fun object_path ->
+          if HashSet.insert seen_objects ~value:object_path then
+            Some object_path
+          else
+            None)
+      in
       (* Create static library metadata (.cmxa). *)
       let create_lib = Action.CreateLibrary {
         outputs = [ library_name; archive_name ];
