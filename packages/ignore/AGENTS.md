@@ -12,6 +12,7 @@
 6. `Ignore.Walker` is parallel by default. Default concurrency should track `Std.System.available_parallelism`, and callers that need deterministic sibling ordering must opt back down to `~concurrency:1`.
 7. Keep `ignore` parallelism actor-native. Coordinate directory tasks through `Std.WorkerPool.DynamicWorkerPool` instead of spawning raw domains inside the library.
 8. Keep parallel traversal semantics simple: callback order may be nondeterministic when concurrency is above one, pruning decisions must still happen before descending into child directories, and the callback contract is explicitly thread-safe-by-construction from the caller side.
+9. Keep `Ignore.Walker.to_list` as a convenience over the configured traversal, not as a separate sequential mode. If a walker is configured for parallel traversal, `to_list` should still traverse in parallel and collect safely.
 
 ## Validate
 

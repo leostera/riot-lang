@@ -571,9 +571,17 @@ let walk = fun config ~f ->
     parallel_walk config ~f
 
 let to_list = fun config ->
+  let lock = Sync.Mutex.create () in
   let items = ref [] in
-  sequential_walk config
+  walk config
     ~f:(fun entry ->
-      items := entry :: !items;
+      Sync.Mutex.lock lock;
+      begin
+        match items := entry :: !items with
+        | () -> Sync.Mutex.unlock lock
+        | exception exn ->
+            Sync.Mutex.unlock lock;
+            raise exn
+      end;
       Fs.Walker.Continue)
   |> fun result -> Result.map result ~fn:(fun () -> List.reverse !items)

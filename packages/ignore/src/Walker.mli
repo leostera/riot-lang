@@ -56,5 +56,9 @@ val walk: t -> f:(Fs.Walker.FileItem.t -> Fs.Walker.step) -> (unit, error) Resul
 (** Collect all yielded entries into a list.
 
     Use this when the full result set is small enough to materialize in memory.
+
+    This honors the walker's configured concurrency. When [concurrency > 1],
+    traversal still runs in parallel and the resulting list order is not
+    guaranteed to be deterministic.
 *)
 val to_list: t -> (Fs.Walker.FileItem.t list, error) Result.t

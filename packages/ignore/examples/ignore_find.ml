@@ -13,7 +13,7 @@ type parse_result =
 
 let default_config = {
   count_only = false;
-  concurrency = System.available_parallelism;
+  concurrency = Thread.available_parallelism;
   repeat = 1;
   roots = [ Path.v "." ]
 }
@@ -29,18 +29,16 @@ let rec parse_args = fun config ->
   | "--count-only" :: rest ->
       parse_args { config with count_only = true } rest
   | "--concurrency" :: value :: rest -> (
-      try
-        let concurrency = max 1 (int_of_string value) in
-        parse_args { config with concurrency } rest
-      with
-      | Failure _ -> Help
+      match Int.parse value with
+      | Some concurrency ->
+          parse_args { config with concurrency = Int.max 1 concurrency } rest
+      | None -> Help
     )
   | "--repeat" :: value :: rest -> (
-      try
-        let repeat = max 1 (int_of_string value) in
-        parse_args { config with repeat } rest
-      with
-      | Failure _ -> Help
+      match Int.parse value with
+      | Some repeat ->
+          parse_args { config with repeat = Int.max 1 repeat } rest
+      | None -> Help
     )
   | "--help" :: _
   | "-h" :: _ ->
@@ -56,10 +54,10 @@ let rec parse_args = fun config ->
 
 let render_error = fun value ->
   match value with
-  | Ignore.Walker.File_system { cause; _ } -> Kernel.IO.error_message cause
+  | Ignore.Walker.File_system { cause; _ } -> IO.error_message cause
   | Ignore.Walker.Invalid_glob { path; line; message; _ } -> Path.to_string path
   ^ ":"
-  ^ string_of_int line
+  ^ Int.to_string line
   ^ ": "
   ^ message
 
@@ -67,10 +65,11 @@ let run_once = fun config walker ->
   let count = Sync.Atomic.make 0 in
   Ignore.Walker.walk walker
     ~f:(fun entry ->
-      ignore (Sync.Atomic.fetch_and_add count 1);
+      let _ = Sync.Atomic.fetch_and_add count 1 in
       if not config.count_only then
         println (Fs.Walker.FileItem.path_string entry);
-      Fs.Walker.Continue) |> Result.map (fun () -> Sync.Atomic.get count)
+      Fs.Walker.Continue)
+  |> Result.map ~fn:(fun () -> Sync.Atomic.get count)
 
 let rec run_repeated = fun config walker remaining total ->
   if remaining = 0 then
@@ -100,7 +99,7 @@ let main = fun ~args ->
             (
               "ignore_find invalid override glob " ^ input ^ ": " ^ message ^ match offset with
               | None -> ""
-              | Some offset -> " at " ^ string_of_int offset
+              | Some offset -> " at " ^ Int.to_string offset
             );
           Ok ()
       | Error (Glob.Invalid_regex { message; offset }) ->
@@ -108,7 +107,7 @@ let main = fun ~args ->
             (
               "ignore_find invalid override regex: " ^ message ^ match offset with
               | None -> ""
-              | Some offset -> " at " ^ string_of_int offset
+              | Some offset -> " at " ^ Int.to_string offset
             );
           Ok ()
       | Ok walker ->
@@ -118,7 +117,7 @@ let main = fun ~args ->
               Ok ()
           | Ok total ->
               if config.count_only then
-                println (string_of_int total);
+                println (Int.to_string total);
               Ok ()
     )
 
