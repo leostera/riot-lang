@@ -197,19 +197,26 @@ let lower_let_binding = fun state (binding: Cst.LetBinding.t) ->
   let recursive = Cst.LetBinding.is_recursive binding in
   bindings |> List.for_each ~fn:(
     fun binding ->
-      let name = Cst.LetBinding.name binding in
-      push_item state
-        (
-          Semantic_tree.ValueDeclaration {
-            id = fresh_binding_id state ~name;
-            span = span_of_syntax_node (Cst.LetBinding.syntax_node binding);
-            name = Some name;
-            recursive;
-            parameter_count = List.length (Cst.LetBinding.parameters binding);
-            declared = false;
-            annotation = annotation_of_expression state (Cst.LetBinding.value binding);
-          }
-        )
+      match Cst.LetBinding.binding_name_token binding with
+      | Some name_token ->
+          let name = Cst.Token.text name_token in
+          push_item state
+            (
+              Semantic_tree.ValueDeclaration {
+                id = fresh_binding_id state ~name;
+                span = span_of_syntax_node (Cst.LetBinding.syntax_node binding);
+                name = Some name;
+                recursive;
+                parameter_count = List.length (Cst.LetBinding.parameters binding);
+                declared = false;
+                annotation = annotation_of_expression state (Cst.LetBinding.value binding);
+              }
+            )
+      | None ->
+          push_unsupported
+            state
+            (Cst.LetBinding.syntax_node binding)
+            "let_pattern"
   )
 
 let lower_module_structure = fun state (declaration: Cst.ModuleStructure.t) ->
