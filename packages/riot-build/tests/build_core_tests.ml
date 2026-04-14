@@ -112,16 +112,17 @@ let make_prepared_workspace = fun ?workspace_manager workspace ->
   Riot_build.Prepared_workspace.of_workspace ?workspace_manager workspace
 
 let make_request = fun
+  ~workspace
   ?(packages = [ "demo" ])
   ?(targets = Riot_model.Target.Host)
   ?(scope = Riot_build.Request.Runtime)
   ?(profile = Riot_model.Profile.debug)
   ()
   ->
-  Riot_build.Request.make ~packages ~targets ~scope ~profile ()
+  Riot_build.Request.make ~workspace ~packages ~targets ~scope ~profile ()
 
-let build_request = fun ?on_event prepared_workspace request ->
-  Riot_build.build ?on_event prepared_workspace request
+let build_request = fun ?on_event request ->
+  Riot_build.build ?on_event request
 
 let package_names = fun output ->
   Riot_build.Output.packages output
@@ -294,7 +295,7 @@ let test_build_returns_successful_output = fun _ctx ->
         let prepared_workspace =
           make_valid_workspace tmpdir |> make_prepared_workspace
         in
-        match build_request prepared_workspace (make_request ()) with
+        match build_request (make_request ~workspace:prepared_workspace ()) with
         | Error err ->
             Error ("expected build to succeed, got: "
             ^ Riot_build.error_message err)
@@ -326,7 +327,7 @@ let test_build_uses_all_packages_when_none_are_requested = fun _ctx ->
           make_valid_workspace ~package_names:[ "util"; "demo" ] tmpdir
           |> make_prepared_workspace
         in
-        match build_request prepared_workspace (make_request ~packages:[] ()) with
+        match build_request (make_request ~workspace:prepared_workspace ~packages:[] ()) with
         | Error err ->
             Error ("expected build to succeed, got: "
             ^ Riot_build.error_message err)
@@ -349,7 +350,7 @@ let test_build_returns_outputs_for_requested_packages = fun _ctx ->
           |> make_prepared_workspace
         in
         match
-          build_request prepared_workspace (make_request ~packages:[ "util" ] ())
+          build_request (make_request ~workspace:prepared_workspace ~packages:[ "util" ] ())
         with
         | Error err ->
             Error ("expected build to succeed, got: "
@@ -371,7 +372,7 @@ let test_build_reports_missing_single_package = fun _ctx ->
           |> make_prepared_workspace
         in
         match
-          build_request prepared_workspace (make_request ~packages:[ "missing" ] ())
+          build_request (make_request ~workspace:prepared_workspace ~packages:[ "missing" ] ())
         with
         | Error (Riot_build.PackageNotFound { package_name; available_packages }) ->
             Test.assert_equal ~expected:"missing" ~actual:package_name;
@@ -399,8 +400,10 @@ let test_build_reports_missing_multiple_packages = fun _ctx ->
         in
         match
           build_request
-            prepared_workspace
-            (make_request ~packages:[ "demo"; "missing"; "other" ] ())
+            (make_request
+              ~workspace:prepared_workspace
+              ~packages:[ "demo"; "missing"; "other" ]
+              ())
         with
         | Error (Riot_build.PackagesNotFound { package_names; available_packages }) ->
             Test.assert_equal
@@ -430,8 +433,10 @@ let test_build_reports_target_selection_failures_before_execution = fun _ctx ->
         in
         match
           build_request
-            prepared_workspace
-            (make_request ~targets:(Riot_model.Target.parse "linux") ())
+            (make_request
+              ~workspace:prepared_workspace
+              ~targets:(Riot_model.Target.parse "linux")
+              ())
         with
         | Error (Riot_build.TargetSelectionFailed { pattern; _ }) when String.equal pattern "linux" ->
             Ok ()
@@ -452,7 +457,7 @@ let test_build_failure_surfaces_compiler_errors = fun _ctx ->
         let prepared_workspace =
           make_broken_workspace tmpdir |> make_prepared_workspace
         in
-        match build_request prepared_workspace (make_request ()) with
+        match build_request (make_request ~workspace:prepared_workspace ()) with
         | Error (Riot_build.BuildFailed { errors }) ->
             if List.length errors > 0 then
               Ok ()
@@ -475,12 +480,12 @@ let test_build_can_return_cached_outputs_on_repeat_builds = fun _ctx ->
         let prepared_workspace =
           make_valid_workspace tmpdir |> make_prepared_workspace
         in
-        let request = make_request () in
+        let request = make_request ~workspace:prepared_workspace () in
         let _ =
-          build_request prepared_workspace request
+          build_request request
           |> Result.expect ~msg:"expected first build to succeed"
         in
-        match build_request prepared_workspace request with
+        match build_request request with
         | Error err ->
             Error ("expected second build to succeed, got: "
             ^ Riot_build.error_message err)
@@ -511,9 +516,9 @@ let test_cached_build_does_not_emit_generation_recording_events = fun _ctx ->
         let prepared_workspace =
           make_valid_workspace tmpdir |> make_prepared_workspace
         in
-        let request = make_request () in
+        let request = make_request ~workspace:prepared_workspace () in
         let _ =
-          build_request prepared_workspace request
+          build_request request
           |> Result.expect ~msg:"expected first build to succeed"
         in
         let saw_generation_event = ref false in
@@ -526,7 +531,6 @@ let test_cached_build_does_not_emit_generation_recording_events = fun _ctx ->
                   saw_generation_event := true
               | _ ->
                   ())
-            prepared_workspace
             request
         with
         | Error err ->
@@ -555,8 +559,7 @@ let test_build_emits_runtime_phases_in_order = fun _ctx ->
                   seen := !seen @ [ phase_name phase ]
               | _ ->
                   ())
-            prepared_workspace
-            (make_request ())
+            (make_request ~workspace:prepared_workspace ())
         with
         | Error err ->
             Error ("expected build to succeed, got: "
@@ -598,8 +601,8 @@ let test_build_preserves_exact_target_subset = fun _ctx ->
                   target_count := Some count
               | _ ->
                   ())
-            prepared_workspace
             (make_request
+              ~workspace:prepared_workspace
               ~targets:(Riot_model.Target.Exact
                 (target_set_of_strings [ host; "x86_64-unknown-linux-gnu" ]))
               ())

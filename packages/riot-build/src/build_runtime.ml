@@ -98,13 +98,13 @@ let client_target = fun package_names ->
 let make_context = fun ~allow_partial_failures ?(record_cache_generation = true) ?(on_event = no_event) spec ->
   let session_id = Riot_model.Session_id.make () in
   let prepared_workspace = Build_spec.workspace spec in
-  let workspace = Prepared_workspace.workspace prepared_workspace in
+  let workspace = Prepared_workspace.Internal.workspace prepared_workspace in
   let host = Riot_model.Target.current in
   let toolchain_config = Riot_model.Toolchain_config.from_workspace workspace in
   {
     session_id;
     workspace;
-    workspace_manager = Prepared_workspace.workspace_manager prepared_workspace;
+    workspace_manager = Prepared_workspace.Internal.workspace_manager prepared_workspace;
     package_names = Build_spec.package_names spec;
     targets = Build_spec.targets spec;
     scope = Build_spec.scope spec;

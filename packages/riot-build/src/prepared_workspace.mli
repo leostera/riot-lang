@@ -7,8 +7,10 @@ val of_workspace:
   Riot_model.Workspace.t ->
   t
 
-val workspace: t -> Riot_model.Workspace.t
+module Internal: sig
+  val workspace: t -> Riot_model.Workspace.t
 
-val workspace_manager: t -> Riot_model.Workspace_manager.t option
+  val workspace_manager: t -> Riot_model.Workspace_manager.t option
 
-val package_names: t -> string list
+  val package_names: t -> string list
+end

@@ -693,13 +693,14 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
     in
     let build_request =
       Request.make
+        ~workspace:prepared_workspace
         ~packages:(requested_packages suites)
         ~targets:Riot_model.Target.Host
         ~scope:Request.Dev
         ~profile:(profile_of_name request.profile)
         ()
     in
-    match Build_core.resolve prepared_workspace build_request with
+    match Build_core.resolve build_request with
     | Error err -> Error (BuildFailed err)
     | Ok spec -> (
         match
@@ -827,6 +828,7 @@ let bench = fun ?(on_event = no_event) (request: bench_request) ->
     in
     let build_request =
       Request.make
+        ~workspace:prepared_workspace
         ~packages:(requested_packages suites)
         ~targets:Riot_model.Target.Host
         ~scope:Request.Dev
@@ -836,7 +838,6 @@ let bench = fun ?(on_event = no_event) (request: bench_request) ->
     match
       Build_core.build
         ~on_event:(fun event -> on_event (Build event))
-        prepared_workspace
         build_request
     with
     | Error err -> Error (BuildFailed err)

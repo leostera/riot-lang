@@ -533,8 +533,8 @@ let run_request = fun (request: request) ->
     | Ok prepared_workspace ->
         Riot_build.build
           ~on_event:on_build_event
-          prepared_workspace
           (Riot_build.Request.make
+             ~workspace:prepared_workspace
              ~packages:request.packages
              ~targets:request.targets
              ~scope:request.scope

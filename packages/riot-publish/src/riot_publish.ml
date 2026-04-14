@@ -187,8 +187,8 @@ let profile_of_name = function
 let build_package = fun ~emit ~(workspace:Workspace.t) ~package_name ~profile ->
   Riot_build.build
     ~on_event:(fun event -> emit (Build event))
-    (Riot_build.Prepared_workspace.of_workspace workspace)
     (Riot_build.Request.make
+       ~workspace:(Riot_build.Prepared_workspace.of_workspace workspace)
        ~packages:[ package_name ]
        ~targets:Riot_model.Target.Host
        ~scope:Riot_build.Request.Runtime
@@ -306,9 +306,9 @@ module For_test = struct
         | Ok prepared_workspace ->
             Riot_build.build
               ~on_event:(fun event -> emit (Build event))
-              (Riot_build.Prepared_workspace.of_workspace
-                 (transform_workspace prepared_workspace))
               (Riot_build.Request.make
+                 ~workspace:(Riot_build.Prepared_workspace.of_workspace
+                    (transform_workspace prepared_workspace))
                  ~packages:[ package_name ]
                  ~targets:Riot_model.Target.Host
                  ~scope:Riot_build.Request.Runtime

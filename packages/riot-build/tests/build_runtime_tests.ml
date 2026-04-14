@@ -50,16 +50,17 @@ let make_valid_workspace = fun ?target_dir tmpdir ->
 let make_prepared_workspace = fun workspace ->
   Riot_build.Prepared_workspace.of_workspace workspace
 
-let make_request = fun ?(profile = Riot_model.Profile.debug) () ->
+let make_request = fun ~workspace ?(profile = Riot_model.Profile.debug) () ->
   Riot_build.Request.make
+    ~workspace
     ~packages:[ "demo" ]
     ~targets:Riot_model.Target.Host
     ~scope:Riot_build.Request.Runtime
     ~profile
     ()
 
-let build_request = fun prepared_workspace request ->
-  Riot_build.build prepared_workspace request
+let build_request = fun request ->
+  Riot_build.build request
 
 let write_nested_udp_workspace = fun ~root ~creation_order ->
   let pkg_dir = Path.(root / Path.v "demo") in
@@ -114,7 +115,7 @@ let test_release_build_uses_release_lane = fun _ctx ->
             ~target:host_target
           |> fun out_dir -> Path.(out_dir / Path.v "demo")
         in
-        match build_request prepared_workspace (make_request ~profile:Riot_model.Profile.release ()) with
+        match build_request (make_request ~workspace:prepared_workspace ~profile:Riot_model.Profile.release ()) with
         | Error err ->
             Error ("expected release build to succeed, got: "
             ^ Riot_build.error_message err)
@@ -151,7 +152,7 @@ let test_build_respects_custom_target_dir = fun _ctx ->
             ~target:host_target
           |> fun out_dir -> Path.(out_dir / Path.v "demo")
         in
-        match build_request prepared_workspace (make_request ~profile:Riot_model.Profile.release ()) with
+        match build_request (make_request ~workspace:prepared_workspace ~profile:Riot_model.Profile.release ()) with
         | Error err ->
             Error ("expected custom-target build to succeed, got: "
             ^ Riot_build.error_message err)
@@ -197,7 +198,7 @@ let test_nested_udp_workspace_builds_across_file_creation_orders = fun _ctx ->
                           ~workspace_manager
                           workspace
                       in
-                      match build_request prepared_workspace (make_request ()) with
+                      match build_request (make_request ~workspace:prepared_workspace ()) with
                       | Ok _ ->
                           run rest
                       | Error err ->

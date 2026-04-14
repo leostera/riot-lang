@@ -5,19 +5,24 @@ type scope =
   | Dev
 
 type t = {
+  workspace: Prepared_workspace.t;
   packages: string list;
   targets: Riot_model.Target.request;
   scope: scope;
   profile: Riot_model.Profile.t;
 }
 
-let make = fun ~packages ~targets ~scope ~profile () ->
-  { packages; targets; scope; profile }
+let make = fun ~workspace ~packages ~targets ~scope ~profile () ->
+  { workspace; packages; targets; scope; profile }
 
-let packages = fun t -> t.packages
+module Internal = struct
+  let workspace = fun t -> t.workspace
 
-let targets = fun t -> t.targets
+  let packages = fun t -> t.packages
 
-let scope = fun t -> t.scope
+  let targets = fun t -> t.targets
 
-let profile = fun t -> t.profile
+  let scope = fun t -> t.scope
+
+  let profile = fun t -> t.profile
+end

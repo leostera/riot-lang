@@ -7,6 +7,7 @@ type scope =
 type t
 
 val make:
+  workspace:Prepared_workspace.t ->
   packages:string list ->
   targets:Riot_model.Target.request ->
   scope:scope ->
@@ -14,10 +15,14 @@ val make:
   unit ->
   t
 
-val packages: t -> string list
+module Internal: sig
+  val workspace: t -> Prepared_workspace.t
 
-val targets: t -> Riot_model.Target.request
+  val packages: t -> string list
 
-val scope: t -> scope
+  val targets: t -> Riot_model.Target.request
 
-val profile: t -> Riot_model.Profile.t
+  val scope: t -> scope
+
+  val profile: t -> Riot_model.Profile.t
+end

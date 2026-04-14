@@ -217,6 +217,7 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
                 in
                 let build_request =
                   Request.make
+                    ~workspace:prepared_workspace
                     ~packages:[ package_name ]
                     ~targets:Riot_model.Target.Host
                     ~scope:Request.Runtime
@@ -226,7 +227,6 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
                 match
                   Build_core.build
                     ~on_event:(fun event -> on_event (Build event))
-                    prepared_workspace
                     build_request
                 with
                 | Error err ->

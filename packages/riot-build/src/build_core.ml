@@ -50,7 +50,7 @@ let error_message = function
       reason
 
 let available_package_names = fun workspace ->
-  Prepared_workspace.package_names workspace |> List.sort ~compare:String.compare
+  Prepared_workspace.Internal.package_names workspace |> List.sort ~compare:String.compare
 
 let resolve_package_names = fun workspace requested ->
   let available = available_package_names workspace in
@@ -76,24 +76,28 @@ let resolve_target_names = fun workspace request ->
   let configured_targets =
     Riot_model.Target.configured_targets
       ~host
-      (Riot_model.Toolchain_config.from_workspace (Prepared_workspace.workspace workspace))
+      (Riot_model.Toolchain_config.from_workspace
+         (Prepared_workspace.Internal.workspace workspace))
   in
   Riot_model.Target.resolve
     ~host
     ~configured_targets
-    (Request.targets request)
+    (Request.Internal.targets request)
   |> Result.map_err ~fn:(fun err -> TargetSelectionFailed err)
 
-let resolve = fun workspace request ->
+let resolve = fun request ->
   let open Std.Result.Syntax in
-  let* package_names = resolve_package_names workspace (Request.packages request) in
+  let workspace = Request.Internal.workspace request in
+  let* package_names =
+    resolve_package_names workspace (Request.Internal.packages request)
+  in
   let* targets = resolve_target_names workspace request in
   Ok (Build_spec.make
     ~workspace
     ~package_names
     ~targets
-    ~scope:(Request.scope request)
-    ~profile:(Request.profile request))
+    ~scope:(Request.Internal.scope request)
+    ~profile:(Request.Internal.profile request))
 
 let map_runtime_error = function
   | Build_runtime.ToolchainInstallFailed { target; error } ->
@@ -136,7 +140,7 @@ let execute = fun ?on_event spec ->
   execute_raw ?on_event spec
   |> Result.map ~fn:Output.of_build_results
 
-let build = fun ?on_event workspace request ->
+let build = fun ?on_event request ->
   let open Std.Result.Syntax in
-  let* spec = resolve workspace request in
+  let* spec = resolve request in
   execute ?on_event spec

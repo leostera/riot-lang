@@ -112,20 +112,20 @@ let test_build_runtime_builds_repo_kernel = fun _ctx ->
         | Ok prepared_workspace ->
             let workspace =
               clone_workspace_with_target
-                (Riot_build.Prepared_workspace.workspace prepared_workspace)
+                (Riot_build.Prepared_workspace.Internal.workspace prepared_workspace)
                 ~target_dir:Path.(tempdir / Path.v "target")
             in
             let prepared_workspace =
               Riot_build.Prepared_workspace.of_workspace
-                ?workspace_manager:(Riot_build.Prepared_workspace.workspace_manager prepared_workspace)
+                ?workspace_manager:(Riot_build.Prepared_workspace.Internal.workspace_manager prepared_workspace)
                 workspace
             in
             let events = ref [] in
             match
               Riot_build.build
                 ~on_event:(fun event -> events := event :: !events)
-                prepared_workspace
                 (Riot_build.Request.make
+                  ~workspace:prepared_workspace
                   ~packages:[ "kernel" ]
                   ~targets:Riot_model.Target.Host
                   ~scope:Riot_build.Request.Runtime

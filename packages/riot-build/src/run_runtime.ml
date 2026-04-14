@@ -199,6 +199,7 @@ let run = fun ?(on_event = no_event) (request: run_request) ->
                 in
                 let build_request =
                   Request.make
+                    ~workspace:prepared_workspace
                     ~packages:[ package_name ]
                     ~targets:Riot_model.Target.Host
                     ~scope
@@ -212,7 +213,6 @@ let run = fun ?(on_event = no_event) (request: run_request) ->
                 match
                   Build_core.build
                     ~on_event:(fun event -> on_event (Build event))
-                    prepared_workspace
                     build_request
                 with
                 | Error err -> Error (BuildFailed err)

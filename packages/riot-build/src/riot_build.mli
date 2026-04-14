@@ -28,6 +28,5 @@ val error_message: error -> string
 
 val build:
   ?on_event:(Event.t -> unit) ->
-  Prepared_workspace.t ->
   Request.t ->
   (Output.t, error) result

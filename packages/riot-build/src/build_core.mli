@@ -16,7 +16,6 @@ type error =
 val error_message: error -> string
 
 val resolve:
-  Prepared_workspace.t ->
   Request.t ->
   (Build_spec.t, error) result
 
@@ -34,6 +33,5 @@ val execute:
 
 val build:
   ?on_event:(Event.t -> unit) ->
-  Prepared_workspace.t ->
   Request.t ->
   (Output.t, error) result

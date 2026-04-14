@@ -729,13 +729,14 @@ let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_er
     in
     let build_request =
       Request.make
+        ~workspace:prepared_workspace
         ~packages:(requested_packages suites)
         ~targets:Riot_model.Target.Host
         ~scope:Request.Dev
         ~profile:(profile_of_name request.profile)
         ()
     in
-    match Build_core.resolve prepared_workspace build_request with
+    match Build_core.resolve build_request with
     | Error err -> Error (BuildFailed err)
     | Ok spec -> (
         match
@@ -864,6 +865,7 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
     in
     let build_request =
       Request.make
+        ~workspace:prepared_workspace
         ~packages:(requested_packages suites)
         ~targets:Riot_model.Target.Host
         ~scope:Request.Dev
@@ -873,7 +875,6 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
     match
       Build_core.build
         ~on_event:(fun event -> on_event (Build event))
-        prepared_workspace
         build_request
     with
     | Error err -> Error (BuildFailed err)
