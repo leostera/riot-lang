@@ -42,7 +42,7 @@ let print_toolchain_status = fun info ->
       ^ status_text)
 
 let run_list = fun workspace ->
-  let config = Toolchain_config.from_workspace workspace in
+  let config = Toolchain_config.from_root ~root:workspace.Workspace_manifest.root in
   let toolchains = Riot_toolchain.list_toolchains ~config in
   println "";
   println ("OCaml " ^ config.version ^ " toolchains for this project:");
@@ -66,7 +66,7 @@ let run_list = fun workspace ->
   Ok ()
 
 let run_install = fun workspace ->
-  let config = Toolchain_config.from_workspace workspace in
+  let config = Toolchain_config.from_root ~root:workspace.Workspace_manifest.root in
   println "";
   println ("Installing OCaml " ^ config.version ^ " toolchains...");
   println "";

@@ -1,7 +1,6 @@
 open Std
 open Std.Data
-
-let ( let* ) = Result.and_then
+open Std.Result.Syntax
 
 let fixture_root = Path.v "packages/riot-fix/tests/autofix_fixtures"
 
@@ -10,24 +9,28 @@ let keep_ml = fun path ->
   | Some ".ml" -> `keep
   | _ -> `skip
 
+let append_snapshot_suffix = fun path suffix ->
+  Path.to_string path
+  ^ suffix
+  |> Path.from_string
+  |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
+
 let approved_snapshot_path = fun path ->
-  match Path.extension path with
-  | Some ext -> Some (Path.add_extension path ~ext:(ext ^ ".expected"))
-  | None -> Some (Path.add_extension path ~ext:"expected")
+  Some (append_snapshot_suffix path ".expected")
 
 let split_on_double_underscore = fun value ->
   let rec find idx =
     if idx + 1 >= String.length value then
       None
-    else if value.[idx] = '_' && value.[idx + 1] = '_' then
+    else if String.get value ~at:idx = Some '_' && String.get value ~at:(idx + 1) = Some '_' then
       Some idx
     else
       find (idx + 1)
   in
   match find 0 with
   | Some idx -> Some (
-    String.sub value 0 idx,
-    String.sub value (idx + 2) (String.length value - idx - 2)
+    String.sub value ~offset:0 ~len:idx,
+    String.sub value ~offset:(idx + 2) ~len:(String.length value - idx - 2)
   )
   | None -> None
 
@@ -35,7 +38,7 @@ let rule_id_of_fixture = fun path ->
   let basename = Path.basename path in
   let stem =
     match Path.extension path with
-    | Some ext -> String.sub basename 0 (String.length basename - String.length ext)
+    | Some ext -> String.sub basename ~offset:0 ~len:(String.length basename - String.length ext)
     | None -> basename
   in
   match split_on_double_underscore stem with
@@ -43,17 +46,17 @@ let rule_id_of_fixture = fun path ->
   | _ -> Error ("invalid autofix fixture name: " ^ basename)
 
 let find_rule = fun rule_id ->
-  Riot_fix.Pipeline.default_rules () |> List.find_opt
-    (fun rule ->
-      String.equal (Riot_fix.Rule.id rule) rule_id) |> Result.of_option
-    ~error:("unknown rule fixture id: " ^ rule_id)
+  Riot_fix.Pipeline.default_rules ()
+  |> List.find ~fn:(fun rule ->
+    String.equal (Riot_fix.Rule.id rule) rule_id)
+  |> Option.ok_or ~error:("unknown rule fixture id: " ^ rule_id)
 
 let result_to_json = fun result ->
   Json.obj
     [
       (
         "diagnostics",
-        Json.array (List.map Riot_fix.Diagnostic.to_json result.Fixme.Rule_test.initial.diagnostics)
+        Json.array (List.map result.Fixme.Rule_test.initial.diagnostics ~fn:Riot_fix.Diagnostic.to_json)
       );
       (
         "fixed_source",
@@ -61,17 +64,17 @@ let result_to_json = fun result ->
         | Some source -> Json.String source
         | None -> Json.Null
       );
-      ("applied_fixes", Json.array (List.map Riot_fix.Fix.to_json result.applied_fixes));
+      ("applied_fixes", Json.array (List.map result.applied_fixes ~fn:Riot_fix.Fix.to_json));
       (
         "after_diagnostics",
         match result.after with
-        | Some after -> Json.array (List.map Riot_fix.Diagnostic.to_json after.diagnostics)
+        | Some after -> Json.array (List.map after.diagnostics ~fn:Riot_fix.Diagnostic.to_json)
         | None -> Json.array []
       );
       (
         "after_parse_diagnostics",
         match result.after with
-        | Some after -> Json.array (List.map Syn.Diagnostic.to_json after.parse_diagnostics)
+        | Some after -> Json.array (List.map after.parse_diagnostics ~fn:Syn.Diagnostic.to_json)
         | None -> Json.array []
       );
     ]
@@ -79,7 +82,7 @@ let result_to_json = fun result ->
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let* rule_id = rule_id_of_fixture ctx.fixture_path in
   let* rule = find_rule rule_id in
-  let* source = Fs.read ctx.fixture_path |> Result.map_error IO.error_message in
+  let* source = Fs.read ctx.fixture_path |> Result.map_err ~fn:IO.error_message in
   let* result = Fixme.Rule_test.run_rule ~rule ~filename:ctx.fixture_path source in
   let* () =
     match result.fixed_source with

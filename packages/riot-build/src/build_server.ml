@@ -1,4 +1,4 @@
-(** Build server - Handles build execution in a spawned process *)
+(** Build worker - Handles build execution in a spawned process. *)
 open Std
 open Riot_model
 open Riot_executor
@@ -15,7 +15,7 @@ let resolve_profile = fun ~(workspace:Workspace.t) profile_name ->
   in
   Profile.apply_overrides base_profile workspace.profile_overrides
 
-let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~session_id ~client_pid ~server_pid ~target ~scope ~profile_name ~target_arch ->
+let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~session_id ~client_pid ~runtime_pid ~target ~scope ~profile_name ~target_arch ->
   Log.debug
     (
       "Build worker started for session " ^ Session_id.to_string session_id ^ (
@@ -101,7 +101,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
     Log.debug "Build worker calling Coordinator.build_workspace";
     let profile = resolve_profile ~workspace profile_name in
     Log.debug ("Build started with profile " ^ (Data.Json.to_string (Profile.to_json profile)));
-    let config = Riot_model.Toolchain_config.from_workspace workspace in
+    let config = Riot_model.Toolchain_config.from_root ~root:workspace.Workspace.root in
     let toolchain, compilation_mode =
       match target_arch with
       | Some target_triplet ->
@@ -240,7 +240,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
             (
               match scope with
               | Protocol.Runtime -> send
-                server_pid
+                runtime_pid
                 (Protocol.UpdatePackageGraph workspace_result.package_graph)
               | Protocol.Dev -> ()
             )
@@ -257,7 +257,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
           (
             match scope with
             | Protocol.Runtime -> send
-              server_pid
+              runtime_pid
               (Protocol.UpdatePackageGraph workspace_result.package_graph)
             | Protocol.Dev -> ()
           )
@@ -340,7 +340,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
   Ok ()
 
 (** Start a build in a spawned worker process *)
-let start = fun ~workspace ~load_errors ~toolchain ~concurrency ~session_id ~client_pid ~server_pid ~target ~scope ~profile ~target_arch ->
+let start = fun ~workspace ~load_errors ~toolchain ~concurrency ~session_id ~client_pid ~runtime_pid ~target ~scope ~profile ~target_arch ->
   let _ =
     spawn
       (fun () ->
@@ -351,7 +351,7 @@ let start = fun ~workspace ~load_errors ~toolchain ~concurrency ~session_id ~cli
           ~concurrency
           ~session_id
           ~client_pid
-          ~server_pid
+          ~runtime_pid
           ~target
           ~scope
           ~profile_name:profile

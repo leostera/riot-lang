@@ -35,9 +35,9 @@ val execute_raw:
 val execute:
   ?on_event:(Event.t -> unit) ->
   Build_spec.t ->
-  (Output.t, error) result
+  (Build_result.t, error) result
 
 val build:
   ?on_event:(Event.t -> unit) ->
   Request.t ->
-  (Output.t, error) result
+  (Build_result.t, error) result

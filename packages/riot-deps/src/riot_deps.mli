@@ -92,7 +92,7 @@ val package_error_message: package_error -> string
 
 val load_source_workspace:
   ?emit:event_sink ->
-  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  workspace_manager:Riot_model.Workspace_manager.t ->
   ?update:bool ->
   spec:string ->
   unit ->
@@ -100,7 +100,7 @@ val load_source_workspace:
 
 val load_source_workspace_from_spec:
   ?emit:event_sink ->
-  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  workspace_manager:Riot_model.Workspace_manager.t ->
   ?update:bool ->
   spec:Git_dependency.spec ->
   unit ->
@@ -109,7 +109,7 @@ val load_source_workspace_from_spec:
 val load_registry_workspace:
   ?emit:event_sink ->
   ?registry:Pkgs_ml.Registry.t ->
-  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  workspace_manager:Riot_model.Workspace_manager.t ->
   spec:string ->
   unit ->
   (loaded_workspace, package_error) result
@@ -117,32 +117,32 @@ val load_registry_workspace:
 val load_registry_workspace_from_spec:
   ?emit:event_sink ->
   ?registry:Pkgs_ml.Registry.t ->
-  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  workspace_manager:Riot_model.Workspace_manager.t ->
   spec:Registry_package_spec.t ->
   unit ->
   (loaded_workspace, package_error) result
 
 val ensure_lock:
   ?emit:event_sink ->
-  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  workspace_manager:Riot_model.Workspace_manager.t ->
   mode:Dep_solver.mode ->
   registry:Pkgs_ml.Registry.t ->
-  workspace:Riot_model.Workspace.t ->
+  workspace:Riot_model.Workspace_manifest.t ->
   unit ->
   ((Riot_model.Lockfile.t * Riot_model.Package.resolved list), Error.t) result
 
 val ensure_workspace:
   ?emit:event_sink ->
-  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  workspace_manager:Riot_model.Workspace_manager.t ->
   mode:Dep_solver.mode ->
   registry:Pkgs_ml.Registry.t ->
-  workspace:Riot_model.Workspace.t ->
+  workspace:Riot_model.Workspace_manifest.t ->
   unit ->
   (Riot_model.Workspace.t, Error.t) result
 
 val add:
   ?on_event:event_sink ->
-  workspace:Riot_model.Workspace.t ->
+  workspace:Riot_model.Workspace_manifest.t ->
   cwd:Path.t ->
   request:add_request ->
   unit ->
@@ -156,11 +156,11 @@ val search:
 
 val remove:
   ?on_event:event_sink ->
-  workspace:Riot_model.Workspace.t ->
+  workspace:Riot_model.Workspace_manifest.t ->
   cwd:Path.t ->
   request:remove_request ->
   unit ->
   (unit, package_error) result
 
 val update:
-  ?on_event:event_sink -> workspace:Riot_model.Workspace.t -> unit -> (unit, package_error) result
+  ?on_event:event_sink -> workspace:Riot_model.Workspace_manifest.t -> unit -> (unit, package_error) result

@@ -17,12 +17,11 @@ type load_error =
 
 type t = {
   workspace_roots: (string, Path.t option) HashMap.t;
-  manifests: (string, (Data.Toml.value, string) result) HashMap.t;
-  scans: (string, ((Workspace.t * load_error list), string) result) HashMap.t;
+  scans: (string, ((Workspace_manifest.t * load_error list), string) result) HashMap.t;
 }
 
 let create = fun () ->
-  { workspace_roots = HashMap.create (); manifests = HashMap.create (); scans = HashMap.create () }
+  { workspace_roots = HashMap.create (); scans = HashMap.create () }
 
 let path_key = fun path -> Path.to_string path
 
@@ -34,27 +33,20 @@ let trace_workspace_manager = fun message ->
   ()
 
 let load_riot_toml = fun t manifest_path ->
-  let key = path_key manifest_path in
-  match HashMap.get t.manifests ~key with
-  | Some result -> result
-  | None ->
-      let result =
-        match Fs.read_to_string manifest_path with
-        | Error err -> Error ("failed to read manifest '"
-        ^ Path.to_string manifest_path
-        ^ "': "
-        ^ IO.error_message err)
-        | Ok content -> (
-            match Data.Toml.parse content with
-            | Error err -> Error ("failed to parse manifest '"
-            ^ Path.to_string manifest_path
-            ^ "': "
-            ^ Data.Toml.error_to_string err)
-            | Ok toml -> Ok toml
-          )
-      in
-      let _ = HashMap.insert t.manifests ~key ~value:result in
-      result
+  let _ = t in
+  match Fs.read_to_string manifest_path with
+  | Error err -> Error ("failed to read manifest '"
+  ^ Path.to_string manifest_path
+  ^ "': "
+  ^ IO.error_message err)
+  | Ok content -> (
+      match Data.Toml.parse content with
+      | Error err -> Error ("failed to parse manifest '"
+      ^ Path.to_string manifest_path
+      ^ "': "
+      ^ Data.Toml.error_to_string err)
+      | Ok toml -> Ok toml
+    )
 
 let rec find_workspace_root: t -> Path.t -> Path.t option = fun t start_dir ->
   let key = path_key start_dir in
@@ -273,7 +265,7 @@ let rec load_external_package:
               ([], [ PackageNotFound { dependant; package = Package_name.to_string dep.name; path = path_str } ])
         )
 
-let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_error list) = fun t workspace_root workspace_manifest ->
+let build_workspace: t -> Path.t -> Workspace_manifest.manifest -> (Workspace_manifest.t * load_error list) = fun t workspace_root workspace_manifest ->
   let started_at = Time.Instant.now () in
   let member_started_at = Time.Instant.now () in
   let member_results =
@@ -365,7 +357,7 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
       ^ Int.to_string (List.length all_errors))
   in
   (
-    Workspace.make
+    Workspace_manifest.make
       ?name:workspace_manifest.name
       ~root:workspace_root
       ~packages:all_packages
@@ -378,7 +370,7 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
     all_errors
   )
 
-let build_single_package_workspace: t -> Path.t -> (Workspace.t * load_error list, string) result = fun t package_root ->
+let build_single_package_workspace: t -> Path.t -> (Workspace_manifest.t * load_error list, string) result = fun t package_root ->
   let manifest_path = Path.(package_root / riot_toml) in
   match load_riot_toml t manifest_path with
   | Error err when String.starts_with ~prefix:"failed to read" err ->
@@ -417,12 +409,12 @@ let build_single_package_workspace: t -> Path.t -> (Workspace.t * load_error lis
             external_results |> List.map ~fn:(fun (_, errors) -> errors) |> List.concat
           in
           Ok (
-            Workspace.make ~root:package_root ~packages:(package :: external_packages) (),
+            Workspace_manifest.make ~root:package_root ~packages:(package :: external_packages) (),
             external_errors
           )
     )
 
-let scan: t -> Path.t -> ((Workspace.t * load_error list), string) result = fun t path ->
+let scan: t -> Path.t -> ((Workspace_manifest.t * load_error list), string) result = fun t path ->
   try
     let started_at = Time.Instant.now () in
     let find_roots_started_at = Time.Instant.now () in
@@ -447,7 +439,7 @@ let scan: t -> Path.t -> ((Workspace.t * load_error list), string) result = fun 
                     Error ("Failed to parse workspace TOML: " ^ err)
                 | Ok toml -> (
                     let workspace_of_toml_started_at = Time.Instant.now () in
-                    match Workspace.of_toml toml with
+                    match Workspace_manifest.of_toml toml with
                     | Error msg -> Error ("Failed to parse workspace manifest: " ^ msg)
                     | Ok workspace_manifest ->
                         let () =

@@ -154,7 +154,7 @@ let dependency_entries = fun workspace_root providers ->
   let workspace_packages =
     let workspace_manager = Riot_model.Workspace_manager.create () in
     match Riot_model.Workspace_manager.scan workspace_manager workspace_root with
-    | Ok (workspace, _errors) -> Riot_model.Workspace.(workspace.packages)
+    | Ok (workspace, _errors) -> Riot_model.Workspace_manifest.(workspace.packages)
     | Error _ -> []
   in
   let resolve_dependency_path ~package_path path =

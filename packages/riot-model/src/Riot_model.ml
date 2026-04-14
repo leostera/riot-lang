@@ -18,6 +18,7 @@ module Platform = Platform
 module Profile = Profile
 module Target = Target
 module Workspace = Workspace
+module Workspace_manifest = Workspace_manifest
 module Workspace_manager = Workspace_manager
 module Node_id = Node_id
 module Session_id = Session_id

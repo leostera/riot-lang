@@ -1,6 +1,5 @@
 open Std
-
-let ( let* ) value fn = Result.and_then value ~fn
+open Std.Result.Syntax
 
 let compare_by_path = fun left right ->
   String.compare (Path.to_string left) (Path.to_string right)
@@ -48,27 +47,7 @@ let dependency_section_value = fun ~manifest_path section_name toml ->
     ])
 
 let load_manifest_toml = fun ~workspace_manager manifest_path ->
-  match workspace_manager with
-  | Some workspace_manager -> Riot_model.Workspace_manager.load_riot_toml workspace_manager manifest_path
-  | None ->
-      let* source = Fs.read_to_string manifest_path
-      |> Result.map_err ~fn:(fun err ->
-          format
-            Format.[
-              str "failed to read manifest '";
-              str (Path.to_string manifest_path);
-              str "': ";
-              str (IO.error_message err);
-            ]) in
-      Std.Data.Toml.parse source
-      |> Result.map_err ~fn:(fun err ->
-          format
-            Format.[
-              str "failed to parse manifest '";
-              str (Path.to_string manifest_path);
-              str "': ";
-              str (Std.Data.Toml.error_to_string err);
-            ])
+  Riot_model.Workspace_manager.load_riot_toml workspace_manager manifest_path
 
 let manifest_dependency_fingerprint = fun ~workspace_manager ~workspace_root manifest_path ->
   let* toml = load_manifest_toml ~workspace_manager manifest_path in

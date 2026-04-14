@@ -1,14 +1,15 @@
 open Std
 open Std.Result.Syntax
+open Riot_model
 
 type suite_binary = {
-  package_name: Riot_model.Package_name.t;
+  package_name: Package_name.t;
   suite_name: string;
 }
 
 type test_request = {
-  workspace: Riot_model.Workspace.t;
-  package_filter: Riot_model.Package_name.t option;
+  workspace: Workspace.t;
+  package_filter: Package_name.t option;
   suite_filter: string option;
   profile: string;
   extra_args: string list;
@@ -75,9 +76,9 @@ type test_suite_summary = {
 }
 
 type test_event =
-  | Build of Event.t
+  | Build of Riot_build.Event.t
   | NoSuitesFound of {
-      package_name: Riot_model.Package_name.t option;
+      package_name: Package_name.t option;
       suite_name: string option
     }
   | RunningSuite of suite_binary
@@ -94,8 +95,7 @@ type test_event =
   | Summary of { total: int; passed: int; failed: int; skipped: int; failed_tests: failed_test list }
 
 type test_error =
-  | BuildFailed of Build_core.error
-  | ClientError of Client.error
+  | BuildFailed of Riot_build.error
   | SuiteArtifactNotFound of { suite: suite_binary; reason: string }
   | SuiteExecutionError of { suite: suite_binary; reason: string }
   | SuitesFailed of int
@@ -113,31 +113,31 @@ let is_test_binary_name = fun name ->
   String.ends_with ~suffix:"_tests" name || String.ends_with ~suffix:"-tests" name
 
 let compare_suite_binary = fun left right ->
-  match Riot_model.Package_name.compare left.package_name right.package_name with
+  match Package_name.compare left.package_name right.package_name with
   | 0 -> String.compare left.suite_name right.suite_name
   | cmp -> cmp
 
 let requested_packages = fun suites ->
   suites
   |> List.map ~fn:(fun (suite: suite_binary) -> suite.package_name)
-  |> List.unique ~compare:Riot_model.Package_name.compare
+  |> List.unique ~compare:Package_name.compare
 
 let profile_of_name = function
   | "release" -> Riot_model.Profile.release
   | _ -> Riot_model.Profile.debug
 
-let realized_test_packages = fun ?package_filter (workspace: Riot_model.Workspace.t) ->
-  Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Test workspace
-  |> List.filter ~fn:Riot_model.Package.is_workspace_member
-  |> List.filter ~fn:(fun (pkg: Riot_model.Package.t) ->
+let realized_test_packages = fun ?package_filter (workspace: Workspace.t) ->
+  Workspace.realize_packages ~intent:Package.Test workspace
+  |> List.filter ~fn:Package.is_workspace_member
+  |> List.filter ~fn:(fun (pkg: Package.t) ->
       match package_filter with
       | None -> true
-      | Some package_name -> Riot_model.Package_name.equal pkg.name package_name)
+      | Some package_name -> Package_name.equal pkg.name package_name)
 
-let collect_suite_binaries = fun (workspace: Riot_model.Workspace.t) ?package_filter ?suite_filter () ->
+let collect_suite_binaries = fun (workspace: Workspace.t) ?package_filter ?suite_filter () ->
   realized_test_packages ?package_filter workspace
-  |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
-      List.filter_map pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
+  |> List.flat_map ~fn:(fun (pkg: Package.t) ->
+      List.filter_map pkg.binaries ~fn:(fun (bin: Package.binary) ->
           if is_test_binary_name bin.name && (
               match suite_filter with
               | None -> true
@@ -151,18 +151,17 @@ let collect_suite_binaries = fun (workspace: Riot_model.Workspace.t) ?package_fi
             None))
   |> List.sort ~compare:compare_suite_binary
 
-let find_suite_source_path = fun ~(workspace:Riot_model.Workspace.t) (suite: suite_binary) ->
-  match List.find (realized_test_packages workspace) ~fn:(fun (pkg: Riot_model.Package.t) ->
-    Riot_model.Package_name.equal pkg.name suite.package_name) with
+let find_suite_source_path = fun ~(workspace:Workspace.t) (suite: suite_binary) ->
+  match List.find (realized_test_packages workspace) ~fn:(fun (pkg: Package.t) ->
+    Package_name.equal pkg.name suite.package_name) with
   | None -> None
   | Some pkg ->
-      List.find pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
+      List.find pkg.binaries ~fn:(fun (bin: Package.binary) ->
         String.equal bin.name suite.suite_name)
-      |> Option.map ~fn:(fun (bin: Riot_model.Package.binary) -> Path.(pkg.path / bin.path))
+      |> Option.map ~fn:(fun (bin: Package.binary) -> Path.(pkg.path / bin.path))
 
 let test_error_message = function
-  | BuildFailed err -> Build_core.error_message err
-  | ClientError err -> Client.error_message err
+  | BuildFailed err -> Riot_build.error_message err
   | SuiteArtifactNotFound { reason; _ } -> reason
   | SuiteExecutionError { reason; _ } -> reason
   | SuitesFailed count -> Int.to_string count ^ " test suite(s) failed"
@@ -461,7 +460,7 @@ let parse_failure_reason = fun ~suite ~(output:Command.output) reason ->
 
 let test_event_to_json = function
   | Build event ->
-      Event.to_json event
+      Riot_build.Event.to_json event
   | NoSuitesFound { package_name; suite_name } ->
       Some (
         Data.Json.Object [ ("type", Data.Json.String "NoSuitesFound"); (
@@ -543,7 +542,7 @@ let test_event_to_json = function
       Some (
         Data.Json.Object [
           ("type", Data.Json.String "SuiteCompleted");
-          ("package", Data.Json.String (Riot_model.Package_name.to_string suite.package_name));
+          ("package", Data.Json.String (Package_name.to_string suite.package_name));
           ("suite", Data.Json.String suite.suite_name);
           ("status", Data.Json.Int status);
           ("stdout", Data.Json.String stdout);
@@ -589,7 +588,7 @@ let test_event_to_json = function
       let failed_tests = failed_tests
       |> List.map ~fn:(fun (failed_test: failed_test) ->
           Data.Json.Object [
-            ("package", Data.Json.String (Riot_model.Package_name.to_string failed_test.suite.package_name));
+            ("package", Data.Json.String (Package_name.to_string failed_test.suite.package_name));
             ("suite", Data.Json.String failed_test.suite.suite_name);
             ("name", Data.Json.String failed_test.name);
             ("message", Data.Json.String failed_test.message);
@@ -604,70 +603,25 @@ let test_event_to_json = function
         ("failed_tests", Data.Json.Array failed_tests);
       ])
 
-let find_suite_binary_path = fun ~(store:Riot_store.Store.t) ~(suite:suite_binary) results ->
-  let ensure_executable_binary_path = fun path ->
-    let binary_path = Path.v path in
-    match Fs.metadata binary_path with
-    | Error err ->
-        Error ("failed to read suite binary metadata: " ^ IO.error_message err)
-    | Ok metadata ->
-        let mode = Fs.Metadata.mode metadata in
-        if mode land 0o111 != 0 then
-          Ok path
-        else
-          Fs.set_permissions binary_path (Fs.Permissions.of_mode (mode lor 0o111))
-          |> Result.map ~fn:(fun () -> path)
-          |> Result.map_err ~fn:(fun err ->
-              "failed to mark suite binary executable: " ^ IO.error_message err)
-  in
-  let find_suite_export (result: Riot_executor.Package_builder.build_result) =
-    if Riot_model.Package_name.equal result.package.name suite.package_name then
-      match result.status with
-      | Riot_executor.Package_builder.Built artifact
-      | Riot_executor.Package_builder.Cached artifact ->
-          List.find artifact.exports ~fn:(fun (entry: Riot_store.Manifest.export_entry) ->
-            String.equal entry.name suite.suite_name)
-      | Riot_executor.Package_builder.Skipped _
-      | Riot_executor.Package_builder.Failed _ -> None
-    else
-      None
-  in
-  match List.find results ~fn:(fun result -> Option.is_some (find_suite_export result))
-    |> Option.and_then ~fn:find_suite_export with
-  | None -> Error (SuiteArtifactNotFound {
-    suite;
-    reason = "suite '" ^ suite.suite_name ^ "' was not produced by build results"
-  })
-  | Some export_entry -> (
-      match Riot_store.Store.export_source_path store export_entry with
-      | Some path -> ensure_executable_binary_path (Path.to_string path)
-      |> Result.map_err ~fn:(fun reason -> SuiteArtifactNotFound { suite; reason })
-      | None -> Error (SuiteArtifactNotFound {
-        suite;
-        reason = "suite '" ^ suite.suite_name ^ "' resolved to an invalid absolute export path"
-      })
-    )
+let ensure_executable_binary_path = fun ~kind path ->
+  match Fs.metadata path with
+  | Error err ->
+      Error ("failed to read " ^ kind ^ " metadata: " ^ IO.error_message err)
+  | Ok metadata ->
+      let mode = Fs.Metadata.mode metadata in
+      if mode land 0o111 != 0 then
+        Ok path
+      else
+        Fs.set_permissions path (Fs.Permissions.of_mode (mode lor 0o111))
+        |> Result.map ~fn:(fun () -> path)
+        |> Result.map_err ~fn:(fun err ->
+            "failed to mark " ^ kind ^ " executable: " ^ IO.error_message err)
 
-let find_suite_binary_path_in_output = fun ~(store:Riot_store.Store.t) ~(suite:suite_binary) (output: Output.t) ->
-  let ensure_executable_binary_path = fun path ->
-    let binary_path = Path.v path in
-    match Fs.metadata binary_path with
-    | Error err ->
-        Error ("failed to read suite binary metadata: " ^ IO.error_message err)
-    | Ok metadata ->
-        let mode = Fs.Metadata.mode metadata in
-        if mode land 0o111 != 0 then
-          Ok path
-        else
-          Fs.set_permissions binary_path (Fs.Permissions.of_mode (mode lor 0o111))
-          |> Result.map ~fn:(fun () -> path)
-          |> Result.map_err ~fn:(fun err ->
-              "failed to mark suite binary executable: " ^ IO.error_message err)
-  in
+let find_suite_binary_path_in_output = fun ~(store:Riot_store.Store.t) ~(suite:suite_binary) (output: Riot_build.Build_result.t) ->
   match
-    Output.find_package output suite.package_name
+    Riot_build.Build_result.find_package output suite.package_name
     |> Option.and_then ~fn:(fun package_output ->
-        Output.find_export package_output suite.suite_name)
+        Riot_build.Build_result.find_export package_output suite.suite_name)
   with
   | None -> Error (SuiteArtifactNotFound {
     suite;
@@ -675,8 +629,9 @@ let find_suite_binary_path_in_output = fun ~(store:Riot_store.Store.t) ~(suite:s
   })
   | Some export_entry -> (
       match Riot_store.Store.export_source_path store export_entry with
-      | Some path -> ensure_executable_binary_path (Path.to_string path)
-      |> Result.map_err ~fn:(fun reason -> SuiteArtifactNotFound { suite; reason })
+      | Some path ->
+          ensure_executable_binary_path ~kind:"suite binary" path
+          |> Result.map_err ~fn:(fun reason -> SuiteArtifactNotFound { suite; reason })
       | None -> Error (SuiteArtifactNotFound {
         suite;
         reason = "suite '" ^ suite.suite_name ^ "' resolved to an invalid absolute export path"
@@ -686,9 +641,9 @@ let find_suite_binary_path_in_output = fun ~(store:Riot_store.Store.t) ~(suite:s
 let run_suite_binary_capture = fun ~workspace_root ~(suite:suite_binary) ~extra_args binary_path ->
   let extra_args = remove_json_args extra_args @ [ "--json" ] in
   let cmd = Command.make
-    binary_path
+    (Path.to_string binary_path)
     ~env:[
-      ("RIOT_PACKAGE_NAME", Riot_model.Package_name.to_string suite.package_name);
+      ("RIOT_PACKAGE_NAME", Package_name.to_string suite.package_name);
       ("RIOT_WORKSPACE_ROOT", Path.to_string workspace_root);
     ]
     ~args:("run-tests" :: extra_args) in
@@ -697,15 +652,15 @@ let run_suite_binary_capture = fun ~workspace_root ~(suite:suite_binary) ~extra_
 let list_suite_binary_capture = fun ~workspace_root ~(suite:suite_binary) ~extra_args binary_path ->
   let extra_args = remove_list_args extra_args @ [ "--json" ] in
   let cmd = Command.make
-    binary_path
+    (Path.to_string binary_path)
     ~env:[
-      ("RIOT_PACKAGE_NAME", Riot_model.Package_name.to_string suite.package_name);
+      ("RIOT_PACKAGE_NAME", Package_name.to_string suite.package_name);
       ("RIOT_WORKSPACE_ROOT", Path.to_string workspace_root);
     ]
     ~args:("list-tests" :: extra_args) in
   Command.output cmd
 
-let list_suite = fun ~(workspace:Riot_model.Workspace.t) ~suite ~extra_args binary_path ->
+let list_suite = fun ~(workspace:Workspace.t) ~suite ~extra_args binary_path ->
   match list_suite_binary_capture ~workspace_root:workspace.root ~suite ~extra_args binary_path with
   | Error (Command.SystemError reason) -> Error (SuiteExecutionError { suite; reason })
   | Ok output -> (
@@ -716,6 +671,35 @@ let list_suite = fun ~(workspace:Riot_model.Workspace.t) ~suite ~extra_args bina
       })
       | Ok tests -> Ok { suite; source_path = find_suite_source_path ~workspace suite; tests }
     )
+
+let build_output = fun ~(workspace:Workspace.t) ~packages ~profile ?on_event () ->
+  Riot_build.Request.make
+    ~workspace
+    ~packages
+    ~targets:Target.Host
+    ~scope:Riot_build.Request.Dev
+    ~profile:(profile_of_name profile)
+    ()
+  |> Riot_build.build ?on_event
+
+let store_for_request = fun (request: test_request) ->
+  Riot_store.Store.create_for_lane
+    ~workspace:request.workspace
+    ~profile:request.profile
+    ~target:(Riot_dirs.host_target ())
+
+let resolve_suite_binaries = fun ~store ~suites output ->
+  let rec loop resolved missing = function
+    | [] -> (List.reverse resolved, List.reverse missing)
+    | suite :: rest -> (
+        match find_suite_binary_path_in_output ~store ~suite output with
+        | Ok binary_path ->
+            loop ((suite, binary_path) :: resolved) missing rest
+        | Error err ->
+            loop resolved ((suite, err) :: missing) rest
+      )
+  in
+  loop [] [] suites
 
 let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_error) (
   request: test_request
@@ -728,46 +712,11 @@ let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_er
   if suites = [] then
     Ok []
   else
-    let prepared_workspace =
-      Prepared_workspace.of_workspace request.workspace
-    in
-    let build_request =
-      Request.make
-        ~workspace:prepared_workspace
-        ~packages:(requested_packages suites)
-        ~targets:Riot_model.Target.Host
-        ~scope:Request.Dev
-        ~profile:(profile_of_name request.profile)
-        ()
-    in
-    match Build_core.resolve build_request with
+    match build_output ~workspace:request.workspace ~packages:(requested_packages suites) ~profile:request.profile () with
     | Error err -> Error (BuildFailed err)
-    | Ok spec -> (
-        match
-          Build_core.execute_raw
-            ~allow_partial_failures:true
-            ~record_cache_generation:false
-            spec
-        with
-        | Error err -> Error (BuildFailed err)
-        | Ok results ->
-        let store = Riot_store.Store.create_for_lane
-          ~workspace:request.workspace
-          ~profile:request.profile
-          ~target:(Riot_model.Riot_dirs.host_target ()) in
-        let rec resolve_binaries acc = function
-          | [] -> (List.reverse acc, [])
-          | suite :: rest -> (
-              match find_suite_binary_path ~store ~suite results with
-              | Ok binary_path ->
-                  let resolved, missing = resolve_binaries ((suite, binary_path) :: acc) rest in
-                  (resolved, missing)
-              | Error err ->
-                  let resolved, missing = resolve_binaries acc rest in
-                  (resolved, (suite, err) :: missing)
-            )
-        in
-        let suite_binaries, missing_suites = resolve_binaries [] suites in
+    | Ok output ->
+        let store = store_for_request request in
+        let suite_binaries, missing_suites = resolve_suite_binaries ~store ~suites output in
         List.for_each missing_suites ~fn:(fun (suite, err) -> on_suite_error suite err);
         if suite_binaries = [] then
           Ok []
@@ -849,7 +798,6 @@ let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_er
               collected
               |> List.sort ~compare:(fun (left, _) (right, _) -> compare_suite_binary left right)
               |> List.map ~fn:(fun (_, value) -> value))
-      )
 
 let test = fun ?(on_event = no_event) (request: test_request) ->
   let suites = collect_suite_binaries
@@ -864,29 +812,17 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
       Ok ()
     )
   else
-    let prepared_workspace =
-      Prepared_workspace.of_workspace request.workspace
-    in
-    let build_request =
-      Request.make
-        ~workspace:prepared_workspace
-        ~packages:(requested_packages suites)
-        ~targets:Riot_model.Target.Host
-        ~scope:Request.Dev
-        ~profile:(profile_of_name request.profile)
-        ()
-    in
     match
-      Build_core.build
+      build_output
+        ~workspace:request.workspace
+        ~packages:(requested_packages suites)
+        ~profile:request.profile
         ~on_event:(fun event -> on_event (Build event))
-        build_request
+        ()
     with
     | Error err -> Error (BuildFailed err)
     | Ok output ->
-        let store = Riot_store.Store.create_for_lane
-          ~workspace:request.workspace
-          ~profile:request.profile
-          ~target:(Riot_model.Riot_dirs.host_target ()) in
+        let store = store_for_request request in
         let total = ref 0 in
         let passed = ref 0 in
         let failed = ref 0 in

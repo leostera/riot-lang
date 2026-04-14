@@ -5,7 +5,7 @@ type scope = Request.scope =
   | Dev
 
 type t = {
-  workspace: Prepared_workspace.t;
+  workspace: Riot_model.Workspace.t;
   package_names: Riot_model.Package_name.t list;
   targets: Riot_model.Target.Set.t;
   scope: scope;

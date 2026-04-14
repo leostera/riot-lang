@@ -52,6 +52,7 @@ type publish_error =
   | MissingApiToken of { registry_name: string; path: Path.t }
   | RegistryInitializationFailed of { registry_name: string; error: string }
   | WorkspaceScanFailed of { workspace_root: Path.t; error: string }
+  | WorkspacePrepareFailed of { workspace_root: Path.t; error: string }
   | FmtCheckFailed of { package: Riot_model.Package_name.t; error: string }
   | FixCheckFailed of { package: Riot_model.Package_name.t; error: string }
   | BuildCheckFailed of { package: Riot_model.Package_name.t; error: string }

@@ -90,7 +90,7 @@ Replace direct `Pervasives` references with `Std`.
   let make_diagnostic = fun token ->
     let text = Syn.Ceibo.Red.SyntaxToken.text token in
     let suggestion = make_suggestion text in
-    let fix = replacement_for text |> Option.map (make_fix token) in
+    let fix = replacement_for text |> Option.map ~fn:(make_fix token) in
     let kind = Api.Diagnostic.Known { rule_id = package_rule_id; message = make_message text } in
     Api.Diagnostic.make
       ~severity:Warning
@@ -102,20 +102,19 @@ Replace direct `Pervasives` references with `Std`.
 
   let dedupe_diagnostics = fun diagnostics ->
     let seen = HashMap.create () in
-    List.filter
-      (fun diag ->
+    List.filter diagnostics
+      ~fn:(fun diag ->
         let span = Api.Diagnostic.span diag in
         let key = Api.Diagnostic.rule_id diag
         ^ ":"
         ^ Int.to_string span.start
         ^ ":"
         ^ Int.to_string span.end_ in
-        match HashMap.get seen key with
+        match HashMap.get seen ~key with
         | Some _ -> false
         | None ->
-            ignore (HashMap.insert seen key true);
+            let _ = HashMap.insert seen ~key ~value:true in
             true)
-      diagnostics
 
   let check_tree = fun (_ctx: Api.Rule.context) red_root ->
     let open Syn.Ceibo.Red in
@@ -130,7 +129,7 @@ Replace direct `Pervasives` references with `Std`.
           match Api.Traversal.first_non_trivia_token node with
           | Some token ->
               let text = SyntaxToken.text token in
-              if List.mem text forbidden_modules then
+              if List.contains forbidden_modules ~value:text then
                 Some (make_diagnostic token)
               else
                 None
@@ -139,19 +138,16 @@ Replace direct `Pervasives` references with `Std`.
         let diagnostic_for_open_stmt node =
           let non_trivia_children =
             SyntaxNode.children node
-            |> List.filter
-              (
-                function
-                | Token token -> not (Api.Traversal.is_trivia (SyntaxToken.kind token))
-                | Node _ -> true
-              )
+            |> List.filter ~fn:(function
+                 | Token token -> not (Api.Traversal.is_trivia (SyntaxToken.kind token))
+                 | Node _ -> true)
           in
           match non_trivia_children with
           | _open_kw :: Node module_path :: _ ->
               diagnostic_for_first_token module_path
           | _open_kw :: Token token :: _ ->
               let text = SyntaxToken.text token in
-              if List.mem text forbidden_modules then
+              if List.contains forbidden_modules ~value:text then
                 Some (make_diagnostic token)
               else
                 None
@@ -164,7 +160,7 @@ Replace direct `Pervasives` references with `Std`.
               diagnostic_for_first_token receiver
           | Some (Token token) ->
               let text = SyntaxToken.text token in
-              if List.mem text forbidden_modules then
+              if List.contains forbidden_modules ~value:text then
                 Some (make_diagnostic token)
               else
                 None
@@ -174,12 +170,12 @@ Replace direct `Pervasives` references with `Std`.
         dedupe_diagnostics
           (List.concat
             [
-              List.filter_map diagnostic_for_open_stmt open_stmts;
-              List.filter_map diagnostic_for_first_token path_exprs;
-              List.filter_map diagnostic_for_field_access field_access_exprs;
-              List.filter_map diagnostic_for_first_token module_paths;
-              List.filter_map diagnostic_for_first_token module_type_paths;
-              List.filter_map diagnostic_for_first_token type_constructors;
+              List.filter_map open_stmts ~fn:diagnostic_for_open_stmt;
+              List.filter_map path_exprs ~fn:diagnostic_for_first_token;
+              List.filter_map field_access_exprs ~fn:diagnostic_for_field_access;
+              List.filter_map module_paths ~fn:diagnostic_for_first_token;
+              List.filter_map module_type_paths ~fn:diagnostic_for_first_token;
+              List.filter_map type_constructors ~fn:diagnostic_for_first_token;
             ])
 
   let rule = fun () ->
@@ -211,20 +207,24 @@ let fixture_filter = fun path ->
       let name = Path.basename path in
       if
         String.length name >= 4
-        && is_digit name.[0]
-        && is_digit name.[1]
-        && is_digit name.[2]
-        && is_digit name.[3]
+        && String.get name ~at:0 |> Option.is_some_and ~fn:is_digit
+        && String.get name ~at:1 |> Option.is_some_and ~fn:is_digit
+        && String.get name ~at:2 |> Option.is_some_and ~fn:is_digit
+        && String.get name ~at:3 |> Option.is_some_and ~fn:is_digit
       then
         `keep
       else
         `skip
   | _ -> `skip
 
+let append_snapshot_suffix = fun path suffix ->
+  Path.to_string path
+  ^ suffix
+  |> Path.from_string
+  |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
+
 let approved_snapshot_path = fun path ->
-  match Path.extension path with
-  | Some ext -> Path.add_extension path ~ext:(ext ^ ".expected")
-  | None -> Path.add_extension path ~ext:"expected"
+  append_snapshot_suffix path ".expected"
 
 let relativize_path = fun ~workspace_root path ->
   match Path.strip_prefix path ~prefix:workspace_root with
@@ -245,14 +245,14 @@ let file_result_to_json = fun ~workspace_root result ->
         | Some err -> String err
         | None -> Null
       );
-      ("applied_fixes", Array (List.map Riot_fix.Fix.to_json Riot_fix.Runner.(result.applied_fixes)));
+      ("applied_fixes", Array (List.map Riot_fix.Runner.(result.applied_fixes) ~fn:Riot_fix.Fix.to_json));
       (
         "parse_diagnostics",
-        Array (List.map Syn.Diagnostic.to_json Riot_fix.Runner.(result.parse_diagnostics))
+        Array (List.map Riot_fix.Runner.(result.parse_diagnostics) ~fn:Syn.Diagnostic.to_json)
       );
       (
         "diagnostics",
-        Array (List.map Riot_fix.Diagnostic.to_json Riot_fix.Runner.(result.diagnostics))
+        Array (List.map Riot_fix.Runner.(result.diagnostics) ~fn:Riot_fix.Diagnostic.to_json)
       );
     ]
 
@@ -261,7 +261,7 @@ let run_result_to_json = fun ~workspace_root result ->
     ("summary", Riot_fix.Runner.summary_to_json Riot_fix.Runner.(result.summary));
     (
       "files",
-      Json.Array (List.map (file_result_to_json ~workspace_root) Riot_fix.Runner.(result.files))
+      Json.Array (List.map Riot_fix.Runner.(result.files) ~fn:(file_result_to_json ~workspace_root))
     );
   ]
 

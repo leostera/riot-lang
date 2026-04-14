@@ -695,7 +695,10 @@ std = ">= 1.2.3"
 |}
     |> Result.expect ~msg:"expected workspace TOML to parse"
   in
-  let workspace_manifest = Riot_model.Workspace.of_toml manifest |> Result.expect ~msg:"expected workspace manifest to parse" in
+  let workspace_manifest =
+    Riot_model.Workspace_manifest.of_toml manifest
+    |> Result.expect ~msg:"expected workspace manifest to parse"
+  in
   match workspace_manifest.dependencies with
   | [
     {
@@ -724,7 +727,10 @@ std = "*"
 |}
     |> Result.expect ~msg:"expected workspace TOML to parse"
   in
-  let workspace_manifest = Riot_model.Workspace.of_toml manifest |> Result.expect ~msg:"expected workspace manifest to parse" in
+  let workspace_manifest =
+    Riot_model.Workspace_manifest.of_toml manifest
+    |> Result.expect ~msg:"expected workspace manifest to parse"
+  in
   match workspace_manifest.dependencies with
   | [
     {
@@ -788,7 +794,7 @@ version = "0.1.0"
             Error ("expected no workspace loading errors, got: "
             ^ String.concat "; " (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
           else
-            let names = workspace.Riot_model.Workspace.packages
+            let names = workspace.Riot_model.Workspace_manifest.packages
             |> List.map ~fn:(fun (p: Riot_model.Package_manifest.t) -> p.name)
             |> List.sort ~compare:Riot_model.Package_name.compare
             |> List.map ~fn:Riot_model.Package_name.to_string in
@@ -862,7 +868,7 @@ std = { path = "../std", version = "*" }
           Error ("expected missing path+version dependency to defer to later resolution, got: "
             ^ String.concat "; " (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
         else
-          let names = workspace.Riot_model.Workspace.packages
+          let names = workspace.Riot_model.Workspace_manifest.packages
             |> List.map ~fn:(fun (p: Riot_model.Package_manifest.t) -> p.name)
             |> List.sort ~compare:Riot_model.Package_name.compare
             |> List.map ~fn:Riot_model.Package_name.to_string in
@@ -903,7 +909,7 @@ path = "src/demo.ml"
               Error ("expected no standalone package load errors, got: "
               ^ String.concat "; " (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
             else
-              match workspace.Riot_model.Workspace.packages with
+              match workspace.Riot_model.Workspace_manifest.packages with
               | [ package ] ->
                   if
                     Riot_model.Package_name.equal package.name (package_name "demo")

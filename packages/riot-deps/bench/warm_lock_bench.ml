@@ -8,7 +8,7 @@ let registry_version = "0.0.1"
 let bench_config: Bench.bench_config = { iterations = 20; warmup = 3 }
 
 type fixture = {
-  workspace: Riot_model.Workspace.t;
+  workspace: Riot_model.Workspace_manifest.t;
   registry: Pkgs_ml.Registry.t;
   lockfile: Riot_model.Lockfile.t;
   app_package: Riot_model.Package.t;
@@ -169,7 +169,7 @@ let prepare_fixture = fun root ->
     ~path:app_root
     ~relative_path:app_relative
     ~dependencies:[ Package.{ name = package_name root_dependency; source = dependency_source Std.Version.any } ] in
-  let workspace = Riot_model.Workspace.make_realized
+  let workspace = Riot_model.Workspace_manifest.make_realized
     ~root:workspace_root
     ~packages:[ app_package ]
     ~dependencies:[]
@@ -190,8 +190,9 @@ let prepare_fixture = fun root ->
     ~workspace
     ()
   |> Result.expect ~msg:"expected lockfile to solve for warm benchmark" in
+  let workspace_manager = Riot_model.Workspace_manager.create () in
   let dependency_hash = Riot_deps.Lock_refresh.dependency_hash
-    ~workspace_manager:None
+    ~workspace_manager
     ~workspace_root
     ~manifest_paths:[
       Path.(workspace_root / Path.v "riot.toml");
@@ -243,8 +244,10 @@ let bench_projection_warm = fun (fixture: fixture) () ->
 
 let bench_ensure_lock_warm = fun (fixture: fixture) () ->
   fixture.fetch_counter.count <- 0;
+  let workspace_manager = Riot_model.Workspace_manager.create () in
   let _ =
     Riot_deps.ensure_lock
+      ~workspace_manager
       ~mode:Riot_deps.Dep_solver.Refresh
       ~registry:fixture.registry
       ~workspace:fixture.workspace

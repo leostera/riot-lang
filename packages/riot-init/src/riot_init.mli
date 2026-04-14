@@ -12,7 +12,7 @@ type event =
     }
 
 val new_package:
-  workspace:Riot_model.Workspace.t ->
+  workspace:Riot_model.Workspace_manifest.t ->
   path:Path.t ->
   name:string ->
   is_library:bool ->

@@ -426,7 +426,7 @@ let resolve_typ_profile = fun ~(workspace:Workspace.t) ~(pkg:Package.t) ->
   | None -> profile
 
 let workspace_typ_toolchain = fun (workspace: Workspace.t) ->
-  Riot_toolchain.init ~config:(Toolchain_config.from_workspace workspace)
+  Riot_toolchain.init ~config:(Toolchain_config.from_root ~root:workspace.Workspace.root)
 
 let local_module_segments_of_module = fun (pkg: Package.t) (mod_: Riot_model.Module.t) ->
   let package_namespace = Package.root_module_name pkg in

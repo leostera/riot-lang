@@ -1,6 +1,7 @@
 (** Internal server - Main server loop for handling requests *)
 open Std
 open Riot_model
+open Std.Result.Syntax
 
 type error =
   | RegistryInitializationFailed of { registry_name: string; error: string }
@@ -52,14 +53,14 @@ let resolve_registry = fun ?registry ?(registry_name = default_registry_name) ()
       trace_server "resolve_registry creating filesystem registry";
       Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name ()
 
-let prepare_workspace = fun ?(emit = no_emit) ?workspace_manager ~(registry:Pkgs_ml.Registry.t) ~(workspace:Workspace.t) () ->
+let prepare_workspace = fun ?(emit = no_emit) ~workspace_manager ~(registry:Pkgs_ml.Registry.t) ~(workspace:Workspace_manifest.t) () ->
   trace_server
     ("prepare_workspace root="
     ^ Path.to_string workspace.root
     ^ " packages="
     ^ Int.to_string (List.length workspace.packages));
   Riot_deps.ensure_workspace
-    ?workspace_manager
+    ~workspace_manager
     ~emit
     ~mode:Riot_deps.Dep_solver.Refresh
     ~registry
@@ -93,7 +94,7 @@ let build_state = fun ~(workspace:Workspace.t) ~workspace_manager ~load_errors ~
       List.for_each load_errors ~fn:(fun err ->
         Log.warn ("  " ^ Workspace_manager.load_error_to_string err))
     );
-  let toolchain_config = Toolchain_config.from_workspace workspace in
+  let toolchain_config = Toolchain_config.from_root ~root:workspace.Workspace.root in
   let toolchain =
     match Riot_toolchain.init ~config:toolchain_config with
     | Ok t -> t
@@ -464,7 +465,7 @@ and handle_build = fun state client_pid target scope profile target_arch session
     ^ active_profile
     ^ " active_target="
     ^ Riot_model.Target.to_string active_target);
-  let server_pid = self () in
+  let runtime_pid = self () in
   Build_server.start
     ~workspace:updated_state.workspace
     ~load_errors:updated_state.load_errors
@@ -472,7 +473,7 @@ and handle_build = fun state client_pid target scope profile target_arch session
     ~concurrency:updated_state.concurrency
     ~session_id
     ~client_pid
-    ~server_pid
+    ~runtime_pid
     ~target
     ~scope
     ~profile:active_profile
@@ -481,73 +482,33 @@ and handle_build = fun state client_pid target scope profile target_arch session
   Log.info "[INTERNAL_SERVER] Build worker spawned, continuing server loop";
   loop updated_state
 
-let start_server = fun ?(emit = no_emit) ?workspace_manager ?registry ?(registry_name = default_registry_name) ~prepare_workspace_first ~(workspace:Workspace.t) ~(config:Server_config.t) () ->
+let start = fun ?registry ?(registry_name = default_registry_name) ~(workspace:Workspace.t) ~(config:Server_config.t) () ->
   try
     trace_server
-      ("start_local workspace_root="
+      ("start workspace_root="
       ^ Path.to_string workspace.root
       ^ " packages="
       ^ Int.to_string (List.length workspace.packages)
       ^ " load_errors=0");
-    match resolve_registry ?registry ~registry_name () with
-    | Error err ->
-        trace_server ("start_local resolve_registry failed: " ^ err);
-        Error (RegistryInitializationFailed { registry_name; error = err })
-    | Ok registry ->
-        trace_server "start_local resolved registry";
-        let workspace_manager =
-          match workspace_manager with
-          | Some workspace_manager -> workspace_manager
-          | None -> Workspace_manager.create ()
-        in
-        let workspace_result =
-          if prepare_workspace_first then
-            prepare_workspace ~emit ~workspace_manager ~registry ~workspace ()
-            |> Result.map_err ~fn:(fun err ->
-                trace_server
-                  ("start_local prepare_workspace failed: " ^ Riot_model.Pm_error.message err);
-                WorkspacePreparationFailed { error = err })
-          else
-            Ok workspace
-        in
-        match workspace_result with
-        | Error err -> Error err
-        | Ok workspace ->
-            trace_server
-              ("start_local prepared workspace packages="
-              ^ Int.to_string (List.length workspace.packages));
-            let state = build_state ~workspace ~workspace_manager ~load_errors:[] ~registry ~config in
-            let server_pid =
-              spawn
-                (fun () ->
-                  trace_server "server loop spawned";
-                  let _ = loop state in
-                  Ok ())
-            in
-            trace_server ("start_local returning server pid=" ^ Pid.to_string server_pid);
-            Ok server_pid
+    let workspace_manager = Workspace_manager.create () in
+    let* registry =
+      resolve_registry ?registry ~registry_name ()
+      |> Result.map_err ~fn:(fun error ->
+          trace_server ("start resolve_registry failed: " ^ error);
+          RegistryInitializationFailed { registry_name; error })
+    in
+    trace_server "start resolved registry";
+    let state = build_state ~workspace ~workspace_manager ~load_errors:[] ~registry ~config in
+    let runtime_pid =
+      spawn
+        (fun () ->
+          trace_server "runtime loop spawned";
+          let _ = loop state in
+          Ok ())
+    in
+    trace_server ("start returning runtime pid=" ^ Pid.to_string runtime_pid);
+    Ok runtime_pid
   with
   | exn ->
-      trace_server ("start_local exception: " ^ Kernel.Exception.to_string exn);
+      trace_server ("start exception: " ^ Kernel.Exception.to_string exn);
       Error (UnexpectedException { error = Kernel.Exception.to_string exn })
-
-let start_local = fun ?(emit = no_emit) ?workspace_manager ?registry ?(registry_name = default_registry_name) ~workspace ~config () ->
-  start_server
-    ~emit
-    ?workspace_manager
-    ?registry
-    ~registry_name
-    ~prepare_workspace_first:true
-    ~workspace
-    ~config
-    ()
-
-let start_local_prepared = fun ?workspace_manager ?registry ?(registry_name = default_registry_name) ~workspace ~config () ->
-  start_server
-    ?workspace_manager
-    ?registry
-    ~registry_name
-    ~prepare_workspace_first:false
-    ~workspace
-    ~config
-    ()

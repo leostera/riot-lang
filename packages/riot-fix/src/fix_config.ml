@@ -22,7 +22,7 @@ type package_scope = {
 }
 
 type scope = {
-  workspace: Riot_model.Workspace.t;
+  workspace: Riot_model.Workspace_manifest.t;
   workspace_root: Path.t;
   target_dir_root: Path.t;
   workspace_config: fix_config;
@@ -137,7 +137,7 @@ let load_scope = fun ~cwd ->
         target_dir_root = workspace.target_dir_root;
         workspace_config;
         packages;
-        providers = Workspace.discover_fix_providers workspace;
+        providers = Workspace_manifest.discover_fix_providers workspace;
       }
 
 let workspace_root = fun scope -> scope.workspace_root

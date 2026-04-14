@@ -24,7 +24,18 @@ let load_repo_workspace = fun () ->
       Error ("workspace scan failed: " ^ err)
   | Ok (workspace, errors) ->
       if List.is_empty errors then
-        Ok (Riot_build.Prepared_workspace.of_workspace ~workspace_manager:manager workspace)
+        let open Std.Result.Syntax in
+        let* registry =
+          Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" ()
+          |> Result.map_err ~fn:(fun err -> "registry init failed: " ^ err)
+        in
+        Riot_deps.ensure_workspace
+          ~workspace_manager:manager
+          ~mode:Riot_deps.Dep_solver.Refresh
+          ~registry
+          ~workspace
+          ()
+        |> Result.map_err ~fn:Riot_model.Pm_error.message
       else
         Error ("workspace scan produced load errors: "
         ^ String.concat "; " (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
@@ -44,8 +55,8 @@ let phase_name = function
   | Riot_build.Event.TargetsResolved _ -> "targets_resolved"
   | Riot_build.Event.ToolchainsEnsured _ -> "toolchains_ensured"
   | Riot_build.Event.ToolchainsValidated _ -> "toolchains_validated"
-  | Riot_build.Event.ClientConnecting -> "client_connecting"
-  | Riot_build.Event.ClientConnected -> "client_connected"
+  | Riot_build.Event.RuntimeStarting -> "runtime_starting"
+  | Riot_build.Event.RuntimeStarted -> "runtime_started"
   | Riot_build.Event.TargetBuildStarted _ -> "target_build_started"
   | Riot_build.Event.TargetBuildFinished _ -> "target_build_finished"
   | Riot_build.Event.CacheGenerationRecordingStarted _ -> "cache_generation_recording_started"
@@ -66,8 +77,8 @@ let expect_public_phase_subsequence = fun events ->
     "targets_resolved";
     "toolchains_ensured";
     "toolchains_validated";
-    "client_connecting";
-    "client_connected";
+    "runtime_starting";
+    "runtime_started";
     "target_build_started";
     "target_build_finished";
     "returning_results";
@@ -113,23 +124,18 @@ let test_build_runtime_builds_repo_kernel = fun _ctx ->
         match load_repo_workspace () with
         | Error _ as err ->
             err
-        | Ok prepared_workspace ->
+        | Ok workspace ->
             let workspace =
               clone_workspace_with_target
-                (Riot_build.Prepared_workspace.Internal.workspace prepared_workspace)
-                ~target_dir:Path.(tempdir / Path.v "target")
-            in
-            let prepared_workspace =
-              Riot_build.Prepared_workspace.of_workspace
-                ?workspace_manager:(Riot_build.Prepared_workspace.Internal.workspace_manager prepared_workspace)
                 workspace
+                ~target_dir:Path.(tempdir / Path.v "target")
             in
             let events = ref [] in
             match
               Riot_build.build
                 ~on_event:(fun event -> events := event :: !events)
                 (Riot_build.Request.make
-                  ~workspace:prepared_workspace
+                  ~workspace
                   ~packages:[ package_name "kernel" ]
                   ~targets:Riot_model.Target.Host
                   ~scope:Riot_build.Request.Runtime
@@ -139,20 +145,20 @@ let test_build_runtime_builds_repo_kernel = fun _ctx ->
             | Error err ->
                 Error (summarize_build_failure err !events)
             | Ok output -> (
-                match Riot_build.Output.find_package output (package_name "kernel") with
+                match Riot_build.Build_result.find_package output (package_name "kernel") with
                 | None ->
                     Error "expected kernel build output"
                 | Some result -> (
-                    match Riot_build.Output.package_status result with
-                    | Riot_build.Output.Built _
-                    | Riot_build.Output.Cached _ ->
+                    match Riot_build.Build_result.package_status result with
+                    | Riot_build.Build_result.Built _
+                    | Riot_build.Build_result.Cached _ ->
                         Result.map_err
                           (expect_public_phase_subsequence !events)
                           ~fn:(fun err ->
                             err ^ "\nrecent events: " ^ summarize_recent_events !events)
-                    | Riot_build.Output.Skipped reason ->
+                    | Riot_build.Build_result.Skipped reason ->
                         Error ("expected kernel build to run, got skipped: " ^ reason)
-                    | Riot_build.Output.Failed message ->
+                    | Riot_build.Build_result.Failed message ->
                         Error ("kernel build failed: " ^ message)
                   )
               ))

@@ -4,6 +4,9 @@ let write_file = fun path content -> Fs.write content path |> Result.expect ~msg
 
 let read_file = fun path -> Fs.read path |> Result.expect ~msg:"failed to read test fixture"
 
+let package_name = fun value ->
+  Riot_model.Package_name.from_string value |> Result.expect ~msg:("invalid package name: " ^ value)
+
 let run_cli = fun argv ->
   match ArgParser.get_matches Riot_fix.Cli.command ("fix" :: argv) with
   | Error err -> Error (Failure (ArgParser.error_message err))
@@ -27,7 +30,9 @@ let with_tempdir = fun prefix fn ->
   | Error err -> Error (IO.error_message err)
 
 let diagnostic_rule_ids = fun diagnostics ->
-  diagnostics |> List.map Riot_fix.Diagnostic.rule_id |> List.sort String.compare
+  diagnostics
+  |> List.map ~fn:Riot_fix.Diagnostic.rule_id
+  |> List.sort ~compare:String.compare
 
 let assert_explanation_contains = fun ~rule_id ~snippet ->
   match Riot_fix.Explanations.explain rule_id with
@@ -40,12 +45,12 @@ let assert_explanation_contains = fun ~rule_id ~snippet ->
       Test.assert_true (not (String.contains body "Better:"));
       Test.assert_true (not (String.contains body "Why this rule exists"));
       Test.assert_true (not (String.contains body "What to do instead"));
-      ignore snippet;
+      let _ = snippet in
       Ok ()
 
 let assert_single_fix_rewrite = fun ~pipeline ~source ~expected ->
   let result = Riot_fix.Pipeline.run pipeline source in
-  let fixes = List.filter_map Riot_fix.Diagnostic.fix result.diagnostics in
+  let fixes = List.filter_map result.diagnostics ~fn:Riot_fix.Diagnostic.fix in
   Test.assert_equal ~expected:1 ~actual:(List.length fixes);
   match fixes with
   | [ fix ] ->
@@ -59,7 +64,7 @@ let tests = [
     (fun _ctx ->
       let source = "type userProfile = { name : string }\n" in
       let result = Riot_fix.Pipeline.run (Riot_fix.Pipeline.default ()) source in
-      let fixes = List.filter_map Riot_fix.Diagnostic.fix result.diagnostics in
+      let fixes = List.filter_map result.diagnostics ~fn:Riot_fix.Diagnostic.fix in
       Test.assert_equal ~expected:1 ~actual:(List.length fixes);
       Ok ());
   Test.case "snake-case-type-names keeps compliant type names clean"
@@ -979,7 +984,12 @@ let solve total feedback_ref =
       let source = "let render = function | x -> x + 1\n" in
       let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_function_shorthand.make () ] () in
       let result = Riot_fix.Pipeline.run pipeline source in
-      let fix = result.diagnostics |> List.filter_map Riot_fix.Diagnostic.fix |> List.hd in
+      let fix =
+        result.diagnostics
+        |> List.filter_map ~fn:Riot_fix.Diagnostic.fix
+        |> List.head
+        |> Option.expect ~msg:"expected no-function-shorthand fix"
+      in
       let rewritten = Riot_fix.Fix.apply_fix ~source fix |> Result.expect ~msg:"expected no-function-shorthand fix to apply" in
       Test.assert_equal
         ~expected:"let render = fun value -> match value with | x -> x + 1\n"
@@ -2005,8 +2015,8 @@ let render x y z =
           write_file Path.(generated_dir / Path.v "generated.ml") "let y = 2\n";
           write_file Path.(src_dir / Path.v "real.ml") "let z = 3\n";
           let files = Riot_fix.File_scanner.(scan (create ~root:tmpdir ()))
-          |> List.map Path.to_string
-          |> List.sort String.compare in
+          |> List.map ~fn:Path.to_string
+          |> List.sort ~compare:String.compare in
           Test.assert_equal ~expected:[ Path.to_string Path.(src_dir / Path.v "real.ml") ] ~actual:files;
           Ok ()));
   Test.case "scanner prunes ignored subtrees eagerly"
@@ -2027,8 +2037,8 @@ let render x y z =
                     String.contains (Path.to_string path) "/ignored")
                   ()
               ))
-            |> List.map Path.to_string
-            |> List.sort String.compare
+            |> List.map ~fn:Path.to_string
+            |> List.sort ~compare:String.compare
           in
           Test.assert_equal ~expected:[ Path.to_string Path.(kept_dir / Path.v "real.ml") ] ~actual:files;
           Ok ()));
@@ -2110,7 +2120,7 @@ let render x y z =
           write_file Path.(fix_dir / Path.v "riot_fix_rules.ml") "let name = \"demo\"\nlet rules () = []\nlet explanations () = []\n";
           let providers = [ Riot_model.Fix_provider.{
               name = "demo";
-              package_name = "demo";
+              package_name = package_name "demo";
               package_path = provider_dir;
               source_path =
                 Path.(fix_dir / Path.v "riot_fix_rules.ml");
@@ -2122,20 +2132,20 @@ let render x y z =
             ~target_dir_root:Path.(tmpdir / Path.v "_build")
             providers in
           let dependency_names = plan.package.Riot_model.Package.dependencies
-          |> List.map (fun (dep: Riot_model.Package.dependency) -> dep.name) in
-          Test.assert_true (List.mem "helper" dependency_names);
+          |> List.map ~fn:(fun (dep: Riot_model.Package.dependency) -> dep.name) in
+          Test.assert_true (List.contains dependency_names ~value:(package_name "helper"));
           Ok ()));
   Test.case "fixme runner registry source lists discovered providers"
     (fun _ctx ->
       let providers = [ Riot_model.Fix_provider.{
           name = "std";
-          package_name = "std";
+          package_name = package_name "std";
           package_path = Path.v "packages/std";
           source_path = Path.v "/workspace/packages/std/fix/no_stdlib_provider.ml";
           rules = [ "std:no-stdlib" ];
         }; Riot_model.Fix_provider.{
           name = "suri";
-          package_name = "suri";
+          package_name = package_name "suri";
           package_path = Path.v "packages/suri";
           source_path = Path.v "/workspace/packages/suri/fix/route_style_provider.ml";
           rules = [ "suri:route-style" ];
@@ -2159,7 +2169,7 @@ let render x y z =
           let provider =
             Riot_model.Fix_provider.{
               name = "std";
-              package_name = "std";
+              package_name = package_name "std";
               package_path;
               source_path = provider_source;
               rules = [ "std:no-stdlib" ];
@@ -2184,7 +2194,7 @@ let render x y z =
           let provider =
             Riot_model.Fix_provider.{
               name = "std";
-              package_name = "std";
+              package_name = package_name "std";
               package_path;
               source_path = provider_source;
               rules = [ "std:no-stdlib" ];
@@ -2199,7 +2209,7 @@ let render x y z =
       let provider =
         Riot_model.Fix_provider.{
           name = "std";
-          package_name = "std";
+          package_name = package_name "std";
           package_path = Path.v "packages/std";
           source_path = Path.v "/workspace/packages/std/fix/riot_fix_rules.ml";
           rules = [ "std:no-stdlib" ];
@@ -2229,7 +2239,7 @@ let render x y z =
           let provider =
             Riot_model.Fix_provider.{
               name = "std";
-              package_name = "std";
+              package_name = package_name "std";
               package_path;
               source_path = provider_source;
               rules = [ "std:no-stdlib" ];
@@ -2264,7 +2274,7 @@ let render x y z =
         } in
       Test.assert_equal
         ~expected:[ "render"; "other" ]
-        ~actual:(bindings |> List.map Syn.Cst.LetBinding.name);
+        ~actual:(bindings |> List.map ~fn:Syn.Cst.LetBinding.name);
       Ok ());
   Test.case "rule query collects type declarations from implementations and interfaces"
     (fun _ctx ->
@@ -2279,7 +2289,7 @@ let render x y z =
           cst = implementation_cst
         }
       |> List.map
-        (fun declaration -> Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration)) in
+        ~fn:(fun declaration -> Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration)) in
       let interface_types = Riot_fix.Rule_query.type_declarations
         Riot_fix.Rule.{
           file_path = "sample.mli";
@@ -2287,7 +2297,7 @@ let render x y z =
           cst = interface_cst
         }
       |> List.map
-        (fun declaration -> Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration)) in
+        ~fn:(fun declaration -> Syn.Cst.Token.text (Syn.Cst.TypeDeclaration.name_token declaration)) in
       Test.assert_equal ~expected:[ "user" ] ~actual:implementation_types;
       Test.assert_equal ~expected:[ "service" ] ~actual:interface_types;
       Ok ());
@@ -2344,9 +2354,8 @@ let render x y z =
       let source = "let map_result value = match value with | Ok x -> Ok (x + 1) | Error e -> Error (wrap e)\n" in
       let rules =
         Riot_fix.Pipeline.default_rules ()
-        |> List.filter
-          (fun rule ->
-            String.equal (Riot_fix.Rule.id rule) "std:prefer-result-map-over-manual-match")
+        |> List.filter ~fn:(fun rule ->
+             String.equal (Riot_fix.Rule.id rule) "std:prefer-result-map-over-manual-match")
       in
       let pipeline = Riot_fix.Pipeline.make ~rules () in
       let result = Riot_fix.Pipeline.run pipeline source in
@@ -2366,18 +2375,27 @@ let render x y z =
       Ok ());
   Test.case "rule explanations explain record-destructuring parameters"
     (fun _ctx ->
-      ignore
-        (assert_explanation_contains ~rule_id:"prefer-record-destructuring-parameters" ~snippet:"let { ... } = value in ...");
+      let _ =
+        assert_explanation_contains
+          ~rule_id:"prefer-record-destructuring-parameters"
+          ~snippet:"let { ... } = value in ..."
+      in
       Ok ());
   Test.case "rule explanations explain ignored map traversal"
     (fun _ctx ->
-      ignore
-        (assert_explanation_contains ~rule_id:"std:prefer-iter-over-ignored-map" ~snippet:"List.iter");
+      let _ =
+        assert_explanation_contains
+          ~rule_id:"std:prefer-iter-over-ignored-map"
+          ~snippet:"List.iter"
+      in
       Ok ());
   Test.case "rule explanations explain List.is_empty preference"
     (fun _ctx ->
-      ignore
-        (assert_explanation_contains ~rule_id:"std:prefer-list-is-empty" ~snippet:"List.is_empty");
+      let _ =
+        assert_explanation_contains
+          ~rule_id:"std:prefer-list-is-empty"
+          ~snippet:"List.is_empty"
+      in
       Ok ());
 ]
 

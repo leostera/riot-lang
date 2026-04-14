@@ -10,8 +10,8 @@ and runtime_phase =
   | TargetsResolved of { target_count: int }
   | ToolchainsEnsured of { target_count: int }
   | ToolchainsValidated of { target_count: int }
-  | ClientConnecting
-  | ClientConnected
+  | RuntimeStarting
+  | RuntimeStarted
   | TargetBuildStarted of { target: Riot_model.Target.t; host: bool }
   | TargetBuildFinished of { target: Riot_model.Target.t; result_count: int; had_partial_failure: bool }
   | CacheGenerationRecordingStarted of { lane_count: int; new_entry_count: int }
@@ -22,8 +22,8 @@ let phase_name_of_runtime_phase = function
   | TargetsResolved _ -> "targets_resolved"
   | ToolchainsEnsured _ -> "toolchains_ensured"
   | ToolchainsValidated _ -> "toolchains_validated"
-  | ClientConnecting -> "client_connecting"
-  | ClientConnected -> "client_connected"
+  | RuntimeStarting -> "runtime_starting"
+  | RuntimeStarted -> "runtime_started"
   | TargetBuildStarted _ -> "target_build_started"
   | TargetBuildFinished _ -> "target_build_finished"
   | CacheGenerationRecordingStarted _ -> "cache_generation_recording_started"
@@ -35,8 +35,8 @@ let runtime_phase_fields = function
   | ToolchainsEnsured { target_count }
   | ToolchainsValidated { target_count } ->
       [ ("target_count", Data.Json.Int target_count) ]
-  | ClientConnecting
-  | ClientConnected -> []
+  | RuntimeStarting
+  | RuntimeStarted -> []
   | TargetBuildStarted { target; host } ->
       [
         ("target", Data.Json.String (Riot_model.Target.to_string target));

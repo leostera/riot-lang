@@ -40,8 +40,8 @@ let normalize_targets = fun targets ->
   |> List.sort ~compare:sort_compare_target
   |> dedupe []
 
-let from_workspace = fun workspace ->
-  let toolchain_file = Path.(workspace.Workspace.root / Path.v "ocaml-toolchain.toml") in
+let from_root = fun ~root ->
+  let toolchain_file = Path.(root / Path.v "ocaml-toolchain.toml") in
   match Fs.exists toolchain_file with
   | Ok false -> default
   | _ -> (

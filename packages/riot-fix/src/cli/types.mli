@@ -1,7 +1,7 @@
 open Std
 
 type build_package =
-  workspace:Riot_model.Workspace.t ->
+  workspace:Riot_model.Workspace_manifest.t ->
   package_name:Riot_model.Package_name.t ->
   profile:string ->
   ?transform_workspace:(Riot_model.Workspace.t -> Riot_model.Workspace.t) ->

@@ -145,7 +145,9 @@ let emit_pm_build_event = fun ~session_id ~on_event kind ->
 
 let load_source_workspace = fun ~on_event ~source_spec ~update ->
   let session_id = Riot_model.Session_id.make () in
+  let workspace_manager = Riot_model.Workspace_manager.create () in
   Riot_deps.load_source_workspace
+    ~workspace_manager
     ~emit:(emit_pm_build_event ~session_id ~on_event)
     ~update
     ~spec:source_spec
@@ -158,7 +160,7 @@ let load_source_workspace = fun ~on_event ~source_spec ~update ->
 
 let find_built_binary_path = fun
   ~(store: Riot_store.Store.t)
-  ~(output: Riot_build.Output.t)
+  ~(output: Riot_build.Build_result.t)
   ~package_name
   ~binary_name
   ->
@@ -177,9 +179,9 @@ let find_built_binary_path = fun
               "failed to mark binary executable: " ^ IO.error_message err)
   in
   match
-    Riot_build.Output.find_package output package_name
+    Riot_build.Build_result.find_package output package_name
     |> Option.and_then ~fn:(fun package_output ->
-        Riot_build.Output.find_export package_output binary_name)
+        Riot_build.Build_result.find_export package_output binary_name)
   with
   | None ->
       Error (ArtifactNotFound {
@@ -219,12 +221,9 @@ let run = fun ?(on_event = no_event) (request: run_request) ->
       ~package_name
       ~binary_name:request.binary_name
   in
-  let prepared_workspace =
-    Riot_build.Prepared_workspace.of_workspace request.workspace
-  in
   let build_request =
     Riot_build.Request.make
-      ~workspace:prepared_workspace
+      ~workspace:request.workspace
       ~packages:[ package_name ]
       ~targets:Riot_model.Target.Host
       ~scope

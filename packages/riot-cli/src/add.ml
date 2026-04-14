@@ -84,10 +84,11 @@ members = []
 
 let bootstrap_empty_workspace = fun ~root ->
   let manifest_path = Path.(root / Path.v "riot.toml") in
+  let workspace_manager = Riot_model.Workspace_manager.create () in
   let* () = Fs.write empty_workspace_manifest_source manifest_path
   |> Result.map_err ~fn:(fun err -> WorkspaceBootstrapFailed (IO.error_message err)) in
   let* dependency_hash = Riot_deps.Lock_refresh.dependency_hash
-    ~workspace_manager:None
+    ~workspace_manager
     ~workspace_root:root
     ~manifest_paths:[ manifest_path ]
   |> Result.map_err ~fn:(fun err -> WorkspaceBootstrapFailed err) in

@@ -4,7 +4,13 @@
 
 # Before Announcing
 
+* Remove option.for_each or at least include in the docs that people should preefr a `match` expression
+
+* riot-deps make workspace_manager a required param instead of an optinoal one
+
 * everywhere we're using Cell + list maybe we just need to use Vector 
+
+* riot fix rule id != string
 
 * turn every `error: string` into a structured error
 
@@ -20,11 +26,10 @@
 
 * riot clean should take a build lock to ensure noone is using _build while it tries to clean it
 
-* suri depends on riot-model? how come? <- this was for the debugger!
-
 * when installing sources in ~/.riot/registry we should make them read-only! 
 
 * lint: if a function uses raise, it should be called _unchecked
+
 * lint: externals should be called unsafe_* 
 
 * riot init should initialize:
@@ -36,7 +41,7 @@
 
 * riot help == riot --help
 
-* bug: riot init arewedown.dev fails silently -- workspaces can contain dots in names, that's fine
+* bug: riot init arewedown.dev fails silently -- workspaces can contain dots in names, that's fine, but the package name becomes arewdown-dev
 
 * bug: changing riot.toml dep paths didn't break the cache :( 
 

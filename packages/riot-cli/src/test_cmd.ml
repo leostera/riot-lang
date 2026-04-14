@@ -4,8 +4,6 @@ open Riot_model
 open Riot_build
 open ArgParser
 
-module Test_runtime = Riot_build.Commands.Test
-
 let command =
   let open ArgParser in
     let open Arg in

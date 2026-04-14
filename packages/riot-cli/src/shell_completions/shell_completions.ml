@@ -16,18 +16,18 @@ let shell_from_string = function
   | "fish" -> Some Fish
   | _ -> None
 
-let list_packages = fun (workspace: Riot_model.Workspace.t) ->
+let list_packages = fun (workspace: Riot_model.Workspace_manifest.t) ->
   workspace.packages
   |> List.map ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.name)
   |> List.sort ~compare:Riot_model.Package_name.compare
   |> List.map ~fn:Riot_model.Package_name.to_string
 
-let realized_workspace_packages = fun ~intent (workspace: Riot_model.Workspace.t) ->
-  Riot_model.Workspace.realize_packages ~intent workspace
+let realized_workspace_packages = fun ~intent (workspace: Riot_model.Workspace_manifest.t) ->
+  Riot_model.Workspace_manifest.realize_packages ~intent workspace
   |> List.filter ~fn:Riot_model.Package.is_workspace_member
 
 (** List binaries as "package:binary" for display in completions, excluding tests *)
-let list_binaries = fun (workspace: Riot_model.Workspace.t) ->
+let list_binaries = fun (workspace: Riot_model.Workspace_manifest.t) ->
   realized_workspace_packages ~intent:Riot_model.Package.Run workspace
   |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
       List.filter_map pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
@@ -41,7 +41,7 @@ let list_binaries = fun (workspace: Riot_model.Workspace.t) ->
   |> List.unique ~compare:String.compare
 
 (** List package names, package wildcards, and test binaries for completions *)
-let list_tests = fun (workspace: Riot_model.Workspace.t) ->
+let list_tests = fun (workspace: Riot_model.Workspace_manifest.t) ->
   let test_packages =
     realized_workspace_packages ~intent:Riot_model.Package.Test workspace
     |> List.filter_map ~fn:(fun (pkg: Riot_model.Package.t) ->
@@ -72,7 +72,7 @@ let list_tests = fun (workspace: Riot_model.Workspace.t) ->
   (test_packages @ package_wildcards @ individual_tests) |> List.unique ~compare:String.compare
 
 (** List benchmark binaries as "package:bench" for display in completions *)
-let list_benchmarks = fun (workspace: Riot_model.Workspace.t) ->
+let list_benchmarks = fun (workspace: Riot_model.Workspace_manifest.t) ->
   let individual_benches =
     realized_workspace_packages ~intent:Riot_model.Package.Bench workspace
     |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
@@ -98,8 +98,8 @@ let list_benchmarks = fun (workspace: Riot_model.Workspace.t) ->
   (package_wildcards @ individual_benches) |> List.unique ~compare:String.compare
 
 (** List package commands as "package:command\tdescription" (tab-separated) for display in completions *)
-let list_commands = fun (workspace: Riot_model.Workspace.t) ->
-  Riot_model.Workspace.discover_commands workspace |> List.map ~fn:(fun (cmd: Riot_model.Package_command.t) ->
+let list_commands = fun (workspace: Riot_model.Workspace_manifest.t) ->
+  Riot_model.Workspace_manifest.discover_commands workspace |> List.map ~fn:(fun (cmd: Riot_model.Package_command.t) ->
       let name = Riot_model.Package_name.to_string cmd.package_name ^ ":" ^ cmd.name in
       (* Use help text from TOML, or provide fallback *)
       let desc =
@@ -113,7 +113,7 @@ let list_commands = fun (workspace: Riot_model.Workspace.t) ->
       name ^ String.make ~len:1 ~char:tab ^ desc) |> List.unique ~compare:String.compare
 
 (** List package command descriptions matching the order of list_commands *)
-let list_command_descriptions = fun (workspace: Riot_model.Workspace.t) ->
+let list_command_descriptions = fun (workspace: Riot_model.Workspace_manifest.t) ->
   list_commands workspace |> List.map ~fn:(fun line ->
       (* Extract description after tab *)
       let rec find_tab at =

@@ -91,7 +91,7 @@ let interface_source_of_node = fun ~(package:Riot_model.Package.t) (
 let collect_interfaces = fun ~workspace ~store ~release (package: Riot_model.Package.t) ->
   let profile = profile_for release in
   let ctx = Build_ctx.make ~session_id:(Session_id.make ()) ~profile () in
-  let toolchain_config = Toolchain_config.from_workspace workspace in
+  let toolchain_config = Toolchain_config.from_root ~root:workspace.Riot_model.Workspace.root in
   let* toolchain = Riot_toolchain.init ~config:toolchain_config
   |> Result.map_err ~fn:(fun err -> "failed to initialize toolchain for documentation planning: " ^ err) in
   let plan_input: Riot_planner.Module_planner.plan_input = {

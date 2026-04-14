@@ -2,8 +2,8 @@ open Std
 open Riot_model
 
 type t = {
-  server_pid: Pid.t;
-  workspace: Workspace.t;
+  runtime_pid: Pid.t;
+  target_dir_root: Path.t;
 }
 
 type build_stats = {
@@ -116,28 +116,17 @@ let error_message = function
   | UnexpectedEvent { reason } ->
       reason
 
-let connect_local = fun ?(emit = no_emit) ?workspace_manager ~workspace () ->
-  match Internal_server.start_local
-    ?workspace_manager
-    ~emit
+let start = fun ~workspace () ->
+  match Internal_server.start
     ~workspace
     ~config:Server_config.default
     () with
-  | Ok server_pid -> Ok { server_pid; workspace }
-  | Error err -> Error (StartupFailed { error = err })
-
-let connect_local_prepared = fun ?workspace_manager ~workspace () ->
-  match Internal_server.start_local_prepared
-    ?workspace_manager
-    ~workspace
-    ~config:Server_config.default
-    () with
-  | Ok server_pid -> Ok { server_pid; workspace }
+  | Ok runtime_pid -> Ok { runtime_pid; target_dir_root = workspace.target_dir_root }
   | Error err -> Error (StartupFailed { error = err })
 
 let close = fun _t -> ()
 
-let send_request = fun t request -> send t.server_pid (Protocol.ServerRequest request)
+let send_request = fun t request -> send t.runtime_pid (Protocol.ServerRequest request)
 
 let receive_response = fun ~selector -> receive ~selector ()
 
@@ -162,11 +151,8 @@ module BuildLock = struct
 
   let retry_interval = Time.Duration.from_millis 500
 
-  let path = fun ~(workspace: Workspace.t) ~profile ~target ->
-    Riot_model.Riot_dirs.build_lock_path_in_workspace
-      ~workspace
-      ~profile
-      ~target
+  let path = fun ~target_dir_root ~profile ~target ->
+    Path.(target_dir_root / Path.v profile / Path.v (Riot_model.Target.to_string target) / Path.v "riot.lock")
 
   let path_key = fun path -> Path.to_string path
 
@@ -233,15 +219,10 @@ module BuildLock = struct
         release t;
         raise (lock_failure "lock" t.path)
 
-  let wait = fun ~(workspace: Workspace.t) ~profile ~target ->
-    let build_dir =
-      Riot_model.Riot_dirs.target_dir_in_workspace
-        ~workspace
-        ~profile
-        ~target
-    in
+  let wait = fun ~target_dir_root ~profile ~target ->
+    let build_dir = Path.(target_dir_root / Path.v profile / Path.v (Riot_model.Target.to_string target)) in
     let _ = Fs.create_dir_all build_dir |> Result.expect ~msg:"Failed to create build directory" in
-    let path = path ~workspace ~profile ~target in
+    let path = path ~target_dir_root ~profile ~target in
     let file =
       match Fs.File.open_write path with
       | Ok file -> file
@@ -257,8 +238,8 @@ module BuildLock = struct
         release t;
         raise (lock_failure "lock" path)
 
-  let acquire = fun ~(workspace: Workspace.t) ~profile ~target fn ->
-    let lock_path = path ~workspace ~profile ~target in
+  let acquire = fun ~target_dir_root ~profile ~target fn ->
+    let lock_path = path ~target_dir_root ~profile ~target in
     if is_reentrant lock_path then (
       let _ = increment_reentrant lock_path in
       try
@@ -270,7 +251,7 @@ module BuildLock = struct
           let _ = decrement_reentrant lock_path in
           raise exn
     ) else
-      match wait ~workspace ~profile ~target with
+      match wait ~target_dir_root ~profile ~target with
       | Error err -> Error err
       | Ok t ->
           let _ = increment_reentrant lock_path in
@@ -417,7 +398,7 @@ let build_streaming = fun t target ?(scope = Runtime) ?(profile = "debug") ?targ
     | Some target -> target
     | None -> Riot_model.Target.host ()
   in
-  BuildLock.acquire ~workspace:t.workspace ~profile ~target:lock_target
+  BuildLock.acquire ~target_dir_root:t.target_dir_root ~profile ~target:lock_target
     (fun () ->
       let request_target =
         match target with

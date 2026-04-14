@@ -1,18 +1,9 @@
 open Std
 
 module Event = Event
-module Prepared_workspace = Prepared_workspace
 module Request = Request
-module Output = Output
-
-module Commands: sig
-  module Test = Test_runtime
-  module Bench = Bench_runtime
-end
-
-module Internal: sig
-  module Build_lock = Build_lock
-end
+module Build_result = Build_result
+module BuildLock = Build_lock
 
 type error = Build_core.error =
   | TargetSelectionFailed of Riot_model.Target.resolve_error
@@ -38,4 +29,4 @@ val error_message: error -> string
 val build:
   ?on_event:(Event.t -> unit) ->
   Request.t ->
-  (Output.t, error) result
+  (Build_result.t, error) result

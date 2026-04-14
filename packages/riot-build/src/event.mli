@@ -15,8 +15,8 @@ and runtime_phase =
   | TargetsResolved of { target_count: int }
   | ToolchainsEnsured of { target_count: int }
   | ToolchainsValidated of { target_count: int }
-  | ClientConnecting
-  | ClientConnected
+  | RuntimeStarting
+  | RuntimeStarted
   | TargetBuildStarted of { target: Riot_model.Target.t; host: bool }
   | TargetBuildFinished of { target: Riot_model.Target.t; result_count: int; had_partial_failure: bool }
   | CacheGenerationRecordingStarted of { lane_count: int; new_entry_count: int }

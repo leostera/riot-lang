@@ -143,7 +143,9 @@ let emit_pm_build_event = fun ~session_id ~on_event kind ->
 
 let load_source_workspace = fun ~on_event ~source_spec ~update ->
   let session_id = Riot_model.Session_id.make () in
+  let workspace_manager = Riot_model.Workspace_manager.create () in
   Riot_deps.load_source_workspace_from_spec
+    ~workspace_manager
     ~emit:(emit_pm_build_event ~session_id ~on_event)
     ~update
     ~spec:source_spec
@@ -156,7 +158,9 @@ let load_source_workspace = fun ~on_event ~source_spec ~update ->
 
 let load_registry_workspace = fun ~on_event ~package_spec ->
   let session_id = Riot_model.Session_id.make () in
+  let workspace_manager = Riot_model.Workspace_manager.create () in
   Riot_deps.load_registry_workspace_from_spec
+    ~workspace_manager
     ~emit:(emit_pm_build_event ~session_id ~on_event)
     ~spec:package_spec
     ()
@@ -168,14 +172,14 @@ let load_registry_workspace = fun ~on_event ~package_spec ->
 
 let find_built_binary_path = fun
   ~(store: Riot_store.Store.t)
-  ~(output: Riot_build.Output.t)
+  ~(output: Riot_build.Build_result.t)
   ~package_name
   ~binary_name
   ->
   match
-    Riot_build.Output.find_package output package_name
+    Riot_build.Build_result.find_package output package_name
     |> Option.and_then ~fn:(fun package_output ->
-        Riot_build.Output.find_export package_output binary_name)
+        Riot_build.Build_result.find_export package_output binary_name)
   with
   | None ->
       Error (ArtifactNotFound {
@@ -239,7 +243,7 @@ let promote_binary = fun ~on_event ~src ~dst ~binary ~mode ->
 
 let build_request = fun ~workspace ~package_name ->
   Riot_build.Request.make
-    ~workspace:(Riot_build.Prepared_workspace.of_workspace workspace)
+    ~workspace
     ~packages:[ package_name ]
     ~targets:Riot_model.Target.Host
     ~scope:Riot_build.Request.Runtime

@@ -52,15 +52,15 @@ val write_building_target_event: mode:output_mode -> target:Riot_model.Target.t 
 val write_cache_gc_event: mode:output_mode -> Riot_store.Cache_gc.event -> unit
 
 (** Run [riot build] in a resolved workspace. *)
-val run: prepared_workspace:Riot_build.Prepared_workspace.t -> Std.ArgParser.matches -> (unit, exn) result
+val run: workspace:Riot_model.Workspace.t -> Std.ArgParser.matches -> (unit, exn) result
 
 (** Execute a build command programmatically.
 
     Use this entry point when another CLI command wants the same build surface
-    with explicit control over scope, profile, output mode, or prepared state.
+    with explicit control over scope, profile, output mode, or package/target selection.
 *)
 val build_command:
-  prepared_workspace:Riot_build.Prepared_workspace.t ->
+  workspace:Riot_model.Workspace.t ->
   ?scope:build_scope ->
   ?profile:string ->
   ?mode:output_mode ->

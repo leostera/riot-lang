@@ -41,3 +41,7 @@ path = "tests/build_runtime_kernel_tests.ml"
 [[bin]]
 name = "event_tests"
 path = "tests/event_tests.ml"
+
+[[bin]]
+name = "build_lock_tests"
+path = "tests/build_lock_tests.ml"

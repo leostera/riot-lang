@@ -58,7 +58,8 @@ let error_message = function
       reason
 
 let available_package_names = fun workspace ->
-  Prepared_workspace.Internal.package_names workspace
+  workspace.Riot_model.Workspace.packages
+  |> List.map ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.name)
   |> List.sort ~compare:Riot_model.Package_name.compare
 
 let resolve_package_names = fun workspace requested ->
@@ -100,8 +101,7 @@ let resolve_target_names = fun workspace request ->
   let configured_targets =
     Riot_model.Target.configured_targets
       ~host
-      (Riot_model.Toolchain_config.from_workspace
-         (Prepared_workspace.Internal.workspace workspace))
+      (Riot_model.Toolchain_config.from_root ~root:workspace.Riot_model.Workspace.root)
   in
   Riot_model.Target.resolve
     ~host
@@ -162,7 +162,7 @@ let execute_raw = fun ?(allow_partial_failures = false) ?(record_cache_generatio
 
 let execute = fun ?on_event spec ->
   execute_raw ?on_event spec
-  |> Result.map ~fn:Output.of_build_results
+  |> Result.map ~fn:Build_result.of_build_results
 
 let build = fun ?on_event request ->
   let open Std.Result.Syntax in

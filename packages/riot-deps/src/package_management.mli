@@ -70,7 +70,7 @@ val error_message: error -> string
 
 val load_source_workspace:
   ?emit:event_sink ->
-  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  workspace_manager:Riot_model.Workspace_manager.t ->
   ?update:bool ->
   spec:string ->
   unit ->
@@ -78,7 +78,7 @@ val load_source_workspace:
 
 val load_source_workspace_from_spec:
   ?emit:event_sink ->
-  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  workspace_manager:Riot_model.Workspace_manager.t ->
   ?update:bool ->
   spec:Git_dependency.spec ->
   unit ->
@@ -87,7 +87,7 @@ val load_source_workspace_from_spec:
 val load_registry_workspace:
   ?emit:event_sink ->
   ?registry:Pkgs_ml.Registry.t ->
-  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  workspace_manager:Riot_model.Workspace_manager.t ->
   spec:string ->
   unit ->
   (loaded_workspace, error) result
@@ -95,14 +95,14 @@ val load_registry_workspace:
 val load_registry_workspace_from_spec:
   ?emit:event_sink ->
   ?registry:Pkgs_ml.Registry.t ->
-  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  workspace_manager:Riot_model.Workspace_manager.t ->
   spec:Registry_package_spec.t ->
   unit ->
   (loaded_workspace, error) result
 
 val add:
   ?on_event:event_sink ->
-  workspace:Riot_model.Workspace.t ->
+  workspace:Riot_model.Workspace_manifest.t ->
   cwd:Path.t ->
   request:add_request ->
   unit ->
@@ -110,7 +110,7 @@ val add:
 
 val remove:
   ?on_event:event_sink ->
-  workspace:Riot_model.Workspace.t ->
+  workspace:Riot_model.Workspace_manifest.t ->
   cwd:Path.t ->
   request:remove_request ->
   unit ->
@@ -119,4 +119,4 @@ val remove:
 val search:
   ?registry:Pkgs_ml.Registry.t -> request:search_request -> unit -> (suggested_package list, error) result
 
-val update: ?on_event:event_sink -> workspace:Riot_model.Workspace.t -> unit -> (unit, error) result
+val update: ?on_event:event_sink -> workspace:Riot_model.Workspace_manifest.t -> unit -> (unit, error) result

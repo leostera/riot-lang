@@ -20,7 +20,7 @@ val load_scope: cwd:Path.t -> scope option
 
 val workspace_root: scope -> Path.t
 
-val workspace: scope -> Riot_model.Workspace.t
+val workspace: scope -> Riot_model.Workspace_manifest.t
 
 val target_dir_root: scope -> Path.t
 

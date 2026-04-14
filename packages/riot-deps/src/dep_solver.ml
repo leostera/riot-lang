@@ -16,7 +16,7 @@ type context = {
   mode: mode;
   registry: Pkgs_ml.Registry.t;
   existing_lock: Riot_model.Lockfile.t option;
-  workspace: Riot_model.Workspace.t;
+  workspace: Riot_model.Workspace_manifest.t;
 }
 
 let duration_ms_since = fun started ->

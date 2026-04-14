@@ -16,7 +16,6 @@ type build_error =
 type build_context = {
   session_id: Riot_model.Session_id.t;
   workspace: Riot_model.Workspace.t;
-  workspace_manager: Riot_model.Workspace_manager.t option;
   package_names: Riot_model.Package_name.t list;
   targets: Riot_model.Target.Set.t;
   scope: Build_spec.scope;
@@ -44,11 +43,11 @@ let emit_toolchains_ensured = fun context targets ->
 let emit_toolchains_validated = fun context targets ->
   emit_runtime_phase context (Event.ToolchainsValidated { target_count = List.length targets })
 
-let emit_client_connecting = fun context ->
-  emit_runtime_phase context Event.ClientConnecting
+let emit_runtime_starting = fun context ->
+  emit_runtime_phase context Event.RuntimeStarting
 
-let emit_client_connected = fun context ->
-  emit_runtime_phase context Event.ClientConnected
+let emit_runtime_started = fun context ->
+  emit_runtime_phase context Event.RuntimeStarted
 
 let emit_target_build_started = fun context target ->
   let host = Riot_model.Target.equal target context.host in
@@ -97,14 +96,12 @@ let client_target = fun package_names ->
 
 let make_context = fun ~allow_partial_failures ?(record_cache_generation = true) ?(on_event = no_event) spec ->
   let session_id = Riot_model.Session_id.make () in
-  let prepared_workspace = Build_spec.workspace spec in
-  let workspace = Prepared_workspace.Internal.workspace prepared_workspace in
+  let workspace = Build_spec.workspace spec in
   let host = Riot_model.Target.current in
-  let toolchain_config = Riot_model.Toolchain_config.from_workspace workspace in
+  let toolchain_config = Riot_model.Toolchain_config.from_root ~root:workspace.Riot_model.Workspace.root in
   {
     session_id;
     workspace;
-    workspace_manager = Prepared_workspace.Internal.workspace_manager prepared_workspace;
     package_names = Build_spec.package_names spec;
     targets = Build_spec.targets spec;
     scope = Build_spec.scope spec;
@@ -166,16 +163,13 @@ let validate_target_toolchains = fun context targets ->
   emit_toolchains_validated context targets;
   Ok ()
 
-let connect_client = fun context ->
-  emit_client_connecting context;
+let start_runtime = fun context ->
+  emit_runtime_starting context;
   let* client =
-    Client.connect_local_prepared
-      ?workspace_manager:context.workspace_manager
-      ~workspace:context.workspace
-      ()
+    Client.start ~workspace:context.workspace ()
     |> Result.map_err ~fn:(fun err -> ClientError err)
   in
-  emit_client_connected context;
+  emit_runtime_started context;
   Ok client
 
 let sort_uniq_strings = fun values ->
@@ -347,7 +341,7 @@ let do_build = fun context ->
   emit_targets_resolved context targets;
   let* () = ensure_toolchains_for_targets context context.targets in
   let* () = validate_target_toolchains context context.targets in
-  let* client = connect_client context in
+  let* client = start_runtime context in
   let result =
     let* (lane_results, had_partial_failure) = build_loop context client in
     let all_results =

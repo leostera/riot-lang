@@ -193,7 +193,7 @@ let test_init_without_path_defaults_to_current_directory = fun _ctx ->
 let test_new_package_uses_typed_paths = fun _ctx ->
   with_tempdir_result "riot_init_new_package"
     (fun tempdir ->
-      let workspace = Riot_model.Workspace.make_realized ~root:tempdir ~packages:[] () in
+      let workspace = Riot_model.Workspace_manifest.make ~root:tempdir ~packages:[] () in
       let package_dir = Path.(tempdir / Path.v "packages" / Path.v "demo-lib") in
       let* (_created_path, created_name) =
         Riot_init.new_package

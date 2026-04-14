@@ -2,8 +2,8 @@ open Std
 open Riot_model
 
 type t = {
-  server_pid: Pid.t;
-  workspace: Workspace.t;
+  runtime_pid: Pid.t;
+  target_dir_root: Path.t;
 }
 type build_stats = {
   duration_ms: int;
@@ -55,15 +55,7 @@ type build_scope =
   | Dev
 val error_message: error -> string
 
-val connect_local:
-  ?emit:(Riot_model.Event.kind -> unit) ->
-  ?workspace_manager:Riot_model.Workspace_manager.t ->
-  workspace:Riot_model.Workspace.t ->
-  unit ->
-  (t, error) result
-
-val connect_local_prepared:
-  ?workspace_manager:Riot_model.Workspace_manager.t ->
+val start:
   workspace:Riot_model.Workspace.t ->
   unit ->
   (t, error) result
@@ -79,14 +71,14 @@ module BuildLock: sig
   }
   val retry_interval: Time.Duration.t
 
-  val path: workspace:Workspace.t -> profile:string -> target:Riot_model.Target.t -> Path.t
+  val path: target_dir_root:Path.t -> profile:string -> target:Riot_model.Target.t -> Path.t
 
   val release: t -> unit
 
-  val wait: workspace:Workspace.t -> profile:string -> target:Riot_model.Target.t -> (t, 'a) result
+  val wait: target_dir_root:Path.t -> profile:string -> target:Riot_model.Target.t -> (t, 'a) result
 
   val acquire:
-    workspace:Workspace.t ->
+    target_dir_root:Path.t ->
     profile:string ->
     target:Riot_model.Target.t ->
     (unit -> ('a, 'b) result) ->

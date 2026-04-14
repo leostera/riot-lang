@@ -6,13 +6,13 @@ type package_status =
   | Skipped of string
   | Failed of string
 
-type package_output = {
+type package_result = {
   package_name: Riot_model.Package_name.t;
   status: package_status;
 }
 
 type t = {
-  packages: package_output list;
+  packages: package_result list;
 }
 
 let package_status_of_build_status = function

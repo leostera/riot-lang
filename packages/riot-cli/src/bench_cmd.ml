@@ -4,8 +4,6 @@ open Riot_model
 open Riot_build
 open ArgParser
 
-module Bench_runtime = Riot_build.Commands.Bench
-
 let command =
   let open ArgParser in
     let open Arg in

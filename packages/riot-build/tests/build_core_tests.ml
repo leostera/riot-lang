@@ -113,9 +113,6 @@ let make_broken_workspace = fun ?target_dir tmpdir ->
   in
   Riot_model.Workspace.make_realized ~root:tmpdir ?target_dir ~packages:[ package ] ()
 
-let make_prepared_workspace = fun ?workspace_manager workspace ->
-  Riot_build.Prepared_workspace.of_workspace ?workspace_manager workspace
-
 let make_request = fun
   ~workspace
   ?(packages = [ package_name "demo" ])
@@ -130,8 +127,8 @@ let build_request = fun ?on_event request ->
   Riot_build.build ?on_event request
 
 let package_names = fun output ->
-  Riot_build.Output.packages output
-  |> List.map ~fn:Riot_build.Output.package_name
+  Riot_build.Build_result.packages output
+  |> List.map ~fn:Riot_build.Build_result.package_name
 
 let sort_package_names = fun package_names ->
   List.sort package_names ~compare:Riot_model.Package_name.compare
@@ -140,8 +137,8 @@ let phase_name = function
   | Riot_build.Event.TargetsResolved _ -> "targets_resolved"
   | Riot_build.Event.ToolchainsEnsured _ -> "toolchains_ensured"
   | Riot_build.Event.ToolchainsValidated _ -> "toolchains_validated"
-  | Riot_build.Event.ClientConnecting -> "client_connecting"
-  | Riot_build.Event.ClientConnected -> "client_connected"
+  | Riot_build.Event.RuntimeStarting -> "runtime_starting"
+  | Riot_build.Event.RuntimeStarted -> "runtime_started"
   | Riot_build.Event.TargetBuildStarted _ -> "target_build_started"
   | Riot_build.Event.TargetBuildFinished _ -> "target_build_finished"
   | Riot_build.Event.CacheGenerationRecordingStarted _ -> "cache_generation_recording_started"
@@ -194,7 +191,7 @@ let test_output_maps_build_result_statuses = fun _ctx ->
         let skipped_pkg = make_package ~root:tmpdir ~name:"skipped" ~value:"3" in
         let failed_pkg = make_package ~root:tmpdir ~name:"failed" ~value:"4" in
         let output =
-          Riot_build.Output.of_build_results
+          Riot_build.Build_result.of_build_results
             [
               make_build_result
                 ~package:built_pkg
@@ -213,7 +210,7 @@ let test_output_maps_build_result_statuses = fun _ctx ->
         in
         let open Std.Result.Syntax in
         let expect_package name =
-          match Riot_build.Output.find_package output (package_name name) with
+          match Riot_build.Build_result.find_package output (package_name name) with
           | Some package_output -> Ok package_output
           | None -> Error ("missing package output: " ^ name)
         in
@@ -222,22 +219,22 @@ let test_output_maps_build_result_statuses = fun _ctx ->
         let* skipped = expect_package "skipped" in
         let* failed = expect_package "failed" in
         let* () =
-          match Riot_build.Output.package_status built with
-          | Riot_build.Output.Built _ -> Ok ()
+          match Riot_build.Build_result.package_status built with
+          | Riot_build.Build_result.Built _ -> Ok ()
           | _ -> Error "expected built package output"
         in
         let* () =
-          match Riot_build.Output.package_status cached with
-          | Riot_build.Output.Cached _ -> Ok ()
+          match Riot_build.Build_result.package_status cached with
+          | Riot_build.Build_result.Cached _ -> Ok ()
           | _ -> Error "expected cached package output"
         in
         let* () =
-          match Riot_build.Output.package_status skipped with
-          | Riot_build.Output.Skipped "not requested" -> Ok ()
+          match Riot_build.Build_result.package_status skipped with
+          | Riot_build.Build_result.Skipped "not requested" -> Ok ()
           | _ -> Error "expected skipped package reason to be preserved"
         in
-        match Riot_build.Output.package_status failed with
-        | Riot_build.Output.Failed message when String.contains message "boom" ->
+        match Riot_build.Build_result.package_status failed with
+        | Riot_build.Build_result.Failed message when String.contains message "boom" ->
             Ok ()
         | _ ->
             Error "expected failed package message to be preserved")
@@ -264,18 +261,18 @@ let test_output_exposes_artifacts_and_exports = fun _ctx ->
           ];
         } in
         let output =
-          Riot_build.Output.of_build_results
+          Riot_build.Build_result.of_build_results
             [
               make_build_result
                 ~package
                 ~status:(Riot_executor.Package_builder.Built artifact);
             ]
         in
-        match Riot_build.Output.find_package output (package_name "demo") with
+        match Riot_build.Build_result.find_package output (package_name "demo") with
         | None ->
             Error "missing package output: demo"
         | Some package_output -> (
-            match Riot_build.Output.package_artifact package_output with
+            match Riot_build.Build_result.package_artifact package_output with
             | None ->
                 Error "expected built package artifact to be preserved"
             | Some found_artifact ->
@@ -284,7 +281,7 @@ let test_output_exposes_artifacts_and_exports = fun _ctx ->
                   (Crypto.Digest.hex artifact.hash)) then
                   Error "expected built package artifact hash to be preserved"
                 else
-                  match Riot_build.Output.find_export package_output "demo" with
+                  match Riot_build.Build_result.find_export package_output "demo" with
                   | None ->
                       Error "expected built package export to be preserved"
                   | Some export_entry when String.equal export_entry.path "demo.exe" ->
@@ -302,22 +299,22 @@ let test_build_returns_successful_output = fun _ctx ->
       ~prefix:"riot_build_success"
       (fun tmpdir ->
         let prepared_workspace =
-          make_valid_workspace tmpdir |> make_prepared_workspace
+          make_valid_workspace tmpdir
         in
         match build_request (make_request ~workspace:prepared_workspace ()) with
         | Error err ->
             Error ("expected build to succeed, got: "
             ^ Riot_build.error_message err)
         | Ok output -> (
-            match Riot_build.Output.find_package output (package_name "demo") with
+            match Riot_build.Build_result.find_package output (package_name "demo") with
             | Some package_output -> (
-                match Riot_build.Output.package_status package_output with
-                | Riot_build.Output.Built _
-                | Riot_build.Output.Cached _ ->
+                match Riot_build.Build_result.package_status package_output with
+                | Riot_build.Build_result.Built _
+                | Riot_build.Build_result.Cached _ ->
                     Ok ()
-                | Riot_build.Output.Skipped reason ->
+                | Riot_build.Build_result.Skipped reason ->
                     Error ("expected successful package output, got skipped: " ^ reason)
-                | Riot_build.Output.Failed message ->
+                | Riot_build.Build_result.Failed message ->
                     Error ("expected successful package output, got failure: " ^ message)
               )
             | None ->
@@ -334,7 +331,7 @@ let test_build_uses_all_packages_when_none_are_requested = fun _ctx ->
       (fun tmpdir ->
         let prepared_workspace =
           make_valid_workspace ~package_names:[ "util"; "demo" ] tmpdir
-          |> make_prepared_workspace
+
         in
         match build_request (make_request ~workspace:prepared_workspace ~packages:[] ()) with
         | Error err ->
@@ -356,7 +353,7 @@ let test_build_returns_outputs_for_requested_packages = fun _ctx ->
       (fun tmpdir ->
         let prepared_workspace =
           make_valid_workspace ~package_names:[ "demo"; "util" ] tmpdir
-          |> make_prepared_workspace
+
         in
         match
           build_request (make_request ~workspace:prepared_workspace ~packages:[ package_name "util" ] ())
@@ -378,7 +375,7 @@ let test_build_reports_missing_single_package = fun _ctx ->
       (fun tmpdir ->
         let prepared_workspace =
           make_valid_workspace ~package_names:[ "demo"; "util" ] tmpdir
-          |> make_prepared_workspace
+
         in
         match
           build_request (make_request ~workspace:prepared_workspace ~packages:[ package_name "missing" ] ())
@@ -405,7 +402,7 @@ let test_build_reports_missing_multiple_packages = fun _ctx ->
       (fun tmpdir ->
         let prepared_workspace =
           make_valid_workspace ~package_names:[ "demo"; "util" ] tmpdir
-          |> make_prepared_workspace
+
         in
         match
           build_request
@@ -438,7 +435,7 @@ let test_build_reports_target_selection_failures_before_execution = fun _ctx ->
       (fun tmpdir ->
         let prepared_workspace =
           make_valid_workspace ~toolchain_targets:[ "aarch64-apple-darwin" ] tmpdir
-          |> make_prepared_workspace
+
         in
         match
           build_request
@@ -464,7 +461,7 @@ let test_build_failure_surfaces_compiler_errors = fun _ctx ->
       ~prefix:"riot_build_failure"
       (fun tmpdir ->
         let prepared_workspace =
-          make_broken_workspace tmpdir |> make_prepared_workspace
+          make_broken_workspace tmpdir
         in
         match build_request (make_request ~workspace:prepared_workspace ()) with
         | Error (Riot_build.BuildFailed { errors }) ->
@@ -487,7 +484,7 @@ let test_build_can_return_cached_outputs_on_repeat_builds = fun _ctx ->
       ~prefix:"riot_build_cached_output"
       (fun tmpdir ->
         let prepared_workspace =
-          make_valid_workspace tmpdir |> make_prepared_workspace
+          make_valid_workspace tmpdir
         in
         let request = make_request ~workspace:prepared_workspace () in
         let _ =
@@ -499,15 +496,15 @@ let test_build_can_return_cached_outputs_on_repeat_builds = fun _ctx ->
             Error ("expected second build to succeed, got: "
             ^ Riot_build.error_message err)
         | Ok output -> (
-            match Riot_build.Output.find_package output (package_name "demo") with
+            match Riot_build.Build_result.find_package output (package_name "demo") with
             | Some package_output -> (
-                match Riot_build.Output.package_status package_output with
-                | Riot_build.Output.Cached _ -> Ok ()
-                | Riot_build.Output.Built _ ->
+                match Riot_build.Build_result.package_status package_output with
+                | Riot_build.Build_result.Cached _ -> Ok ()
+                | Riot_build.Build_result.Built _ ->
                     Error "expected repeated build to be cached"
-                | Riot_build.Output.Skipped reason ->
+                | Riot_build.Build_result.Skipped reason ->
                     Error ("expected cached package output, got skipped: " ^ reason)
-                | Riot_build.Output.Failed message ->
+                | Riot_build.Build_result.Failed message ->
                     Error ("expected cached package output, got failure: " ^ message)
               )
             | None ->
@@ -523,7 +520,7 @@ let test_cached_build_does_not_emit_generation_recording_events = fun _ctx ->
       ~prefix:"riot_build_cached_generation"
       (fun tmpdir ->
         let prepared_workspace =
-          make_valid_workspace tmpdir |> make_prepared_workspace
+          make_valid_workspace tmpdir
         in
         let request = make_request ~workspace:prepared_workspace () in
         let _ =
@@ -558,7 +555,7 @@ let test_build_emits_runtime_phases_in_order = fun _ctx ->
       ~prefix:"riot_build_phase_order"
       (fun tmpdir ->
         let prepared_workspace =
-          make_valid_workspace tmpdir |> make_prepared_workspace
+          make_valid_workspace tmpdir
         in
         let seen = ref [] in
         match
@@ -580,8 +577,8 @@ let test_build_emits_runtime_phases_in_order = fun _ctx ->
                 "targets_resolved";
                 "toolchains_ensured";
                 "toolchains_validated";
-                "client_connecting";
-                "client_connected";
+                "runtime_starting";
+                "runtime_started";
                 "target_build_started";
                 "target_build_finished";
                 "returning_results";
@@ -600,7 +597,7 @@ let test_build_preserves_exact_target_subset = fun _ctx ->
           make_valid_workspace
             ~toolchain_targets:[ host; "x86_64-unknown-linux-gnu"; "wasm32-unknown-wasi" ]
             tmpdir
-          |> make_prepared_workspace
+
         in
         let target_count = ref None in
         match

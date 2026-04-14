@@ -48,6 +48,7 @@ type publish_error =
   | MissingApiToken of { registry_name: string; path: Path.t }
   | RegistryInitializationFailed of { registry_name: string; error: string }
   | WorkspaceScanFailed of { workspace_root: Path.t; error: string }
+  | WorkspacePrepareFailed of { workspace_root: Path.t; error: string }
   | FmtCheckFailed of { package: Package_name.t; error: string }
   | FixCheckFailed of { package: Package_name.t; error: string }
   | BuildCheckFailed of { package: Package_name.t; error: string }
@@ -81,6 +82,10 @@ let publish_error_message = fun error ->
   ^ "': "
   ^ error
   | WorkspaceScanFailed { workspace_root; error } -> "failed to scan workspace '"
+  ^ Path.to_string workspace_root
+  ^ "': "
+  ^ error
+  | WorkspacePrepareFailed { workspace_root; error } -> "failed to prepare workspace '"
   ^ Path.to_string workspace_root
   ^ "': "
   ^ error
@@ -169,13 +174,24 @@ let run_check = fun ~emit ~package_name ~version ~stage check_fn ->
   emit (CheckFinished { package = package_name; version; stage });
   Ok value
 
-let scan_workspace_strict = fun workspace_root ->
+let load_workspace_strict = fun workspace_root ->
   let workspace_manager = Workspace_manager.create () in
+  let* registry = resolve_registry () in
   match Workspace_manager.scan workspace_manager workspace_root with
   | Error error -> Error (WorkspaceScanFailed { workspace_root; error })
   | Ok (workspace, load_errors) ->
       if List.is_empty load_errors then
-        Ok workspace
+        Riot_deps.ensure_workspace
+          ~workspace_manager
+          ~mode:Riot_deps.Dep_solver.Refresh
+          ~registry
+          ~workspace
+          ()
+        |> Result.map_err ~fn:(fun error ->
+          WorkspacePrepareFailed {
+            workspace_root;
+            error = Riot_model.Pm_error.message error
+          })
       else
         Error (WorkspaceScanFailed {
           workspace_root;
@@ -190,7 +206,7 @@ let build_package = fun ~emit ~(workspace:Workspace.t) ~package_name ~profile ->
   Riot_build.build
     ~on_event:(fun event -> emit (Build event))
     (Riot_build.Request.make
-       ~workspace:(Riot_build.Prepared_workspace.of_workspace workspace)
+       ~workspace
        ~packages:[ package_name ]
        ~targets:Riot_model.Target.Host
        ~scope:Riot_build.Request.Runtime
@@ -203,7 +219,7 @@ let build_package = fun ~emit ~(workspace:Workspace.t) ~package_name ~profile ->
          })
 
 let build_package_in_workspace_root = fun ~emit ~workspace_root ~package_name ~profile ->
-  let* workspace = scan_workspace_strict workspace_root in
+  let* workspace = load_workspace_strict workspace_root in
   build_package ~emit ~workspace ~package_name ~profile
 
 let fix_request_for_publish = fun ~cwd ~target ->
@@ -298,26 +314,27 @@ module For_test = struct
     Riot_fix.fix
       ~on_event:(fun event -> emit (Fix event))
       ~build_package:(fun
-        ~(workspace: Workspace.t)
+        ~(workspace: Workspace_manifest.t)
         ~package_name
         ~profile
         ?(transform_workspace = fun workspace -> workspace)
         () ->
+        let workspace_manager = Workspace_manager.create () in
         match
-          Riot_deps.ensure_workspace
-            ~mode:Riot_deps.Dep_solver.Refresh
-            ~registry
-            ~workspace
+        Riot_deps.ensure_workspace
+          ~workspace_manager
+          ~mode:Riot_deps.Dep_solver.Refresh
+          ~registry
+          ~workspace
             ()
         with
         | Error err ->
             Error (Failure (Riot_model.Pm_error.message err))
-        | Ok prepared_workspace ->
+        | Ok workspace ->
             Riot_build.build
               ~on_event:(fun event -> emit (Build event))
               (Riot_build.Request.make
-                 ~workspace:(Riot_build.Prepared_workspace.of_workspace
-                    (transform_workspace prepared_workspace))
+                 ~workspace:(transform_workspace workspace)
                  ~packages:[ package_name ]
                  ~targets:Riot_model.Target.Host
                  ~scope:Riot_build.Request.Runtime

@@ -52,9 +52,6 @@ let make_valid_workspace = fun ?target_dir tmpdir ->
   let package = make_package ~root:tmpdir ~name:"demo" ~source:"let value = 42\n" in
   make_workspace ?target_dir ~root:tmpdir ~packages:[ package ] ()
 
-let make_prepared_workspace = fun workspace ->
-  Riot_build.Prepared_workspace.of_workspace workspace
-
 let make_request = fun ~workspace ?(profile = Riot_model.Profile.debug) () ->
   Riot_build.Request.make
     ~workspace
@@ -104,7 +101,6 @@ let test_release_build_uses_release_lane = fun _ctx ->
       ~prefix:"riot_build_release_runtime"
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        let prepared_workspace = make_prepared_workspace workspace in
         let host_target = Riot_model.Riot_dirs.host_target () in
         let release_package_dir =
           Riot_model.Riot_dirs.out_dir_in_workspace
@@ -120,7 +116,7 @@ let test_release_build_uses_release_lane = fun _ctx ->
             ~target:host_target
           |> fun out_dir -> Path.(out_dir / Path.v "demo")
         in
-        match build_request (make_request ~workspace:prepared_workspace ~profile:Riot_model.Profile.release ()) with
+        match build_request (make_request ~workspace ~profile:Riot_model.Profile.release ()) with
         | Error err ->
             Error ("expected release build to succeed, got: "
             ^ Riot_build.error_message err)
@@ -141,7 +137,6 @@ let test_build_respects_custom_target_dir = fun _ctx ->
       ~prefix:"riot_build_custom_target_runtime"
       (fun tmpdir ->
         let workspace = make_valid_workspace ~target_dir:"build-out" tmpdir in
-        let prepared_workspace = make_prepared_workspace workspace in
         let host_target = Riot_model.Riot_dirs.host_target () in
         let release_package_dir =
           Riot_model.Riot_dirs.out_dir_in_workspace
@@ -157,7 +152,7 @@ let test_build_respects_custom_target_dir = fun _ctx ->
             ~target:host_target
           |> fun out_dir -> Path.(out_dir / Path.v "demo")
         in
-        match build_request (make_request ~workspace:prepared_workspace ~profile:Riot_model.Profile.release ()) with
+        match build_request (make_request ~workspace ~profile:Riot_model.Profile.release ()) with
         | Error err ->
             Error ("expected custom-target build to succeed, got: "
             ^ Riot_build.error_message err)
@@ -198,10 +193,18 @@ let test_nested_udp_workspace_builds_across_file_creation_orders = fun _ctx ->
                     if not (List.is_empty load_errors) then
                       Error ("workspace scan had load errors for creation order " ^ order_name)
                     else
+                      let registry =
+                        Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" ()
+                        |> Result.expect ~msg:"registry init failed"
+                      in
                       let prepared_workspace =
-                        Riot_build.Prepared_workspace.of_workspace
+                        Riot_deps.ensure_workspace
                           ~workspace_manager
-                          workspace
+                          ~mode:Riot_deps.Dep_solver.Refresh
+                          ~registry
+                          ~workspace
+                          ()
+                        |> Result.expect ~msg:"workspace prepare failed"
                       in
                       match build_request (make_request ~workspace:prepared_workspace ()) with
                       | Ok _ ->

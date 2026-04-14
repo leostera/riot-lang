@@ -1,5 +1,6 @@
 open Std
 open Std.Collections
+open Std.Result.Syntax
 open Riot_model
 open Riot_build
 
@@ -20,15 +21,8 @@ type build_progress = {
   mutable skipped_count: int;
 }
 
-type workspace_input =
-  | Unprepared of {
-      workspace: Workspace.t;
-      workspace_manager: Workspace_manager.t option;
-    }
-  | Prepared of Riot_build.Prepared_workspace.t
-
 type request = {
-  workspace_input: workspace_input;
+  workspace: Workspace.t;
   packages: Riot_model.Package_name.t list;
   targets: Riot_model.Target.request;
   scope: build_scope;
@@ -263,20 +257,9 @@ let parse_package_names = fun package_names ->
   in
   loop [] package_names
 
-let make_request = fun ~workspace ?workspace_manager ?(scope = Runtime) ?(profile = Riot_model.Profile.debug) ?(mode = Human) ?(show_finished_summary = true) ~packages ~targets () ->
+let make_request = fun ~workspace ?(scope = Runtime) ?(profile = Riot_model.Profile.debug) ?(mode = Human) ?(show_finished_summary = true) ~packages ~targets () ->
   {
-    workspace_input = Unprepared { workspace; workspace_manager };
-    packages;
-    targets;
-    scope;
-    profile;
-    output_mode = mode;
-    show_finished_summary;
-  }
-
-let make_prepared_request = fun ~prepared_workspace ?(scope = Runtime) ?(profile = Riot_model.Profile.debug) ?(mode = Human) ?(show_finished_summary = true) ~packages ~targets () ->
-  {
-    workspace_input = Prepared prepared_workspace;
+    workspace;
     packages;
     targets;
     scope;
@@ -292,19 +275,6 @@ let request_of_matches = fun ~workspace matches ->
       Ok
         (make_request
            ~workspace
-           ~profile:(profile_of_matches matches)
-           ~mode:(output_mode_of_matches matches)
-           ~packages
-           ~targets:(target_request_of_matches matches)
-           ())
-
-let prepared_request_of_matches = fun ~prepared_workspace matches ->
-  match parse_package_names (ArgParser.get_many matches "package") with
-  | Error _ as err -> err
-  | Ok packages ->
-      Ok
-        (make_prepared_request
-           ~prepared_workspace
            ~profile:(profile_of_matches matches)
            ~mode:(output_mode_of_matches matches)
            ~packages
@@ -510,39 +480,13 @@ let write_build_error = fun ~mode err ->
         reason
 
 let record_output_progress = fun progress output ->
-  Riot_build.Output.packages output
+  Riot_build.Build_result.packages output
   |> List.for_each ~fn:(fun package_output ->
-         match Riot_build.Output.package_status package_output with
-         | Riot_build.Output.Built _ -> progress.built_count <- progress.built_count + 1
-         | Riot_build.Output.Cached _ -> progress.cached_count <- progress.cached_count + 1
-         | Riot_build.Output.Skipped _ -> progress.skipped_count <- progress.skipped_count + 1
-         | Riot_build.Output.Failed _ -> progress.failed_count <- progress.failed_count + 1)
-
-let prepare_workspace = fun ?workspace_manager ~emit workspace ->
-  let open Std.Result.Syntax in
-  let* registry =
-    Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" ()
-    |> Result.map_err ~fn:(fun err -> Failure err)
-  in
-  let* prepared_workspace =
-    Riot_deps.ensure_workspace
-      ?workspace_manager
-      ~emit
-      ~mode:Riot_deps.Dep_solver.Refresh
-      ~registry
-      ~workspace
-      ()
-    |> Result.map_err ~fn:(fun err -> Failure (Riot_model.Pm_error.message err))
-  in
-  Ok prepared_workspace
-
-let ensure_prepared_workspace = fun ~emit request ->
-  match request.workspace_input with
-  | Prepared prepared_workspace -> Ok prepared_workspace
-  | Unprepared { workspace; workspace_manager } ->
-      prepare_workspace ?workspace_manager ~emit workspace
-      |> Result.map ~fn:(fun workspace ->
-             Riot_build.Prepared_workspace.of_workspace ?workspace_manager workspace)
+         match Riot_build.Build_result.package_status package_output with
+         | Riot_build.Build_result.Built _ -> progress.built_count <- progress.built_count + 1
+         | Riot_build.Build_result.Cached _ -> progress.cached_count <- progress.cached_count + 1
+         | Riot_build.Build_result.Skipped _ -> progress.skipped_count <- progress.skipped_count + 1
+         | Riot_build.Build_result.Failed _ -> progress.failed_count <- progress.failed_count + 1)
 
 let run_request = fun (request: request) ->
   trace_build
@@ -586,24 +530,21 @@ let run_request = fun (request: request) ->
         write_build_phase_event ~mode:request.output_mode phase
   in
   let result =
-    match ensure_prepared_workspace ~emit:emit_pm_kind request with
-    | Error _ as err -> err
-    | Ok prepared_workspace ->
-        Riot_build.build
-          ~on_event:on_build_event
-          (Riot_build.Request.make
-             ~workspace:prepared_workspace
-             ~packages:request.packages
-             ~targets:request.targets
-             ~scope:request.scope
-             ~profile:request.profile
-             ())
-        |> Result.map ~fn:(fun output ->
-               record_output_progress progress output;
-               ())
-        |> Result.map_err ~fn:(fun err ->
-               write_build_error ~mode:request.output_mode err;
-               Failure (Riot_build.error_message err))
+    Riot_build.build
+      ~on_event:on_build_event
+      (Riot_build.Request.make
+         ~workspace:request.workspace
+         ~packages:request.packages
+         ~targets:request.targets
+         ~scope:request.scope
+         ~profile:request.profile
+         ())
+    |> Result.map ~fn:(fun output ->
+           record_output_progress progress output;
+           ())
+    |> Result.map_err ~fn:(fun err ->
+           write_build_error ~mode:request.output_mode err;
+           Failure (Riot_build.error_message err))
   in
   if request.show_finished_summary && !attempted_build then
     (
@@ -659,24 +600,32 @@ let print_workspace_load_errors = fun errors ->
 
 type loaded_workspace = {
   workspace: Workspace.t;
-  workspace_manager: Workspace_manager.t;
 }
 
 let load_workspace_strict = fun cwd ->
   let workspace_manager = Workspace_manager.create () in
+  let* registry =
+    Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" ()
+    |> Result.map_err ~fn:(fun err -> Failure err)
+  in
   match Workspace_manager.scan workspace_manager cwd with
-  | Error err -> Error (Failure err)
+  | Error err ->
+      Error (Failure err)
   | Ok (_workspace, load_errors) when List.length load_errors > 0 ->
       print_workspace_load_errors load_errors;
       Error (Failure "Workspace load failed")
   | Ok (workspace, _) ->
-      Ok { workspace; workspace_manager }
+      let* workspace =
+        Riot_deps.ensure_workspace ~workspace_manager ~mode:Riot_deps.Dep_solver.Refresh ~registry ~workspace ()
+        |> Result.map_err ~fn:(fun err -> Failure (Riot_model.Pm_error.message err))
+      in
+      Ok { workspace }
 
-let build_command = fun ~prepared_workspace ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) package_opt target_arch ->
+let build_command = fun ~workspace ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) package_opt target_arch ->
   let packages = package_opt |> Option.to_list in
   run_request
-    (make_prepared_request
-       ~prepared_workspace
+    (make_request
+       ~workspace
        ~scope
        ~profile:(
          match profile with
@@ -711,7 +660,7 @@ let build_packages_command = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?
            )
            ())
 
-let run = fun ~prepared_workspace matches ->
-  match prepared_request_of_matches ~prepared_workspace matches with
+let run = fun ~workspace matches ->
+  match request_of_matches ~workspace matches with
   | Error _ as err -> err
   | Ok request -> run_request request

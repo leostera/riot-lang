@@ -1,6 +1,6 @@
 open Std
 module Test = Std.Test
-module BuildLock = Riot_build.Internal.Build_lock
+module BuildLock = Riot_build.BuildLock
 
 type Message.t +=
   | BuildLockAcquired of Time.Duration.t
@@ -8,6 +8,9 @@ type Message.t +=
 
 let make_workspace = fun root ->
   Riot_model.Workspace.make_realized ~root ~packages:[] ()
+
+let target_dir_root = fun workspace ->
+  workspace.Riot_model.Workspace.target_dir_root
 
 let target = fun triple ->
   Riot_model.Target.from_string triple
@@ -23,7 +26,7 @@ let test_reentrant_acquire_in_same_process = fun _ctx ->
     (fun tmpdir ->
       let workspace = make_workspace tmpdir in
       let host_target = target "aarch64-apple-darwin" in
-      BuildLock.acquire ~workspace ~profile:"debug" ~target:host_target
+      BuildLock.acquire ~target_dir_root:(target_dir_root workspace) ~profile:"debug" ~target:host_target
         (fun () ->
           let parent = self () in
           let _worker =
@@ -31,7 +34,10 @@ let test_reentrant_acquire_in_same_process = fun _ctx ->
               (fun () ->
                 let start = Time.Instant.now () in
                 match
-                  BuildLock.acquire ~workspace ~profile:"debug" ~target:host_target
+                  BuildLock.acquire
+                    ~target_dir_root:(target_dir_root workspace)
+                    ~profile:"debug"
+                    ~target:host_target
                     (fun () ->
                       let waited = Time.Instant.elapsed start in
                       send parent (BuildLockAcquired waited);
@@ -70,7 +76,7 @@ let test_releases_lock_on_exception = fun _ctx ->
       try
         let _ =
           BuildLock.acquire
-            ~workspace
+            ~target_dir_root:(target_dir_root workspace)
             ~profile:"debug"
             ~target:host_target
             (fun () -> raise Synthetic_failure)
@@ -79,7 +85,7 @@ let test_releases_lock_on_exception = fun _ctx ->
       with
       | Synthetic_failure -> (
           match BuildLock.acquire
-            ~workspace
+            ~target_dir_root:(target_dir_root workspace)
             ~profile:"debug"
             ~target:host_target
             (fun () -> Ok ()) with
@@ -93,7 +99,7 @@ let test_different_targets_do_not_block_each_other = fun _ctx ->
       let workspace = make_workspace tmpdir in
       let host_target = target "aarch64-apple-darwin" in
       let linux_target = target "aarch64-unknown-linux-gnu" in
-      BuildLock.acquire ~workspace ~profile:"debug" ~target:host_target
+      BuildLock.acquire ~target_dir_root:(target_dir_root workspace) ~profile:"debug" ~target:host_target
         (fun () ->
           let parent = self () in
           let _worker =
@@ -101,7 +107,10 @@ let test_different_targets_do_not_block_each_other = fun _ctx ->
               (fun () ->
                 let start = Time.Instant.now () in
                 match
-                  BuildLock.acquire ~workspace ~profile:"debug" ~target:linux_target
+                  BuildLock.acquire
+                    ~target_dir_root:(target_dir_root workspace)
+                    ~profile:"debug"
+                    ~target:linux_target
                     (fun () ->
                       let waited = Time.Instant.elapsed start in
                       send parent (BuildLockAcquired waited);

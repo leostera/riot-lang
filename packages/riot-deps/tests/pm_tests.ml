@@ -7,6 +7,9 @@ let package_name = fun name ->
   Package_name.from_string name
   |> Result.expect ~msg:("Expected valid package name: " ^ name)
 
+let workspace_manager = fun () ->
+  Workspace_manager.create ()
+
 let dependency = fun name source: Package.dependency ->
   { name = package_name name; source }
 
@@ -137,6 +140,16 @@ let workspace_package = fun ~workspace_root (pkg: Package.t) ->
 let manifests_of_packages = fun packages ->
   List.map packages ~fn:Package_manifest.of_package
 
+let make_workspace_manifest = fun ?(workspace_root = Path.v "/workspace") ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) packages ->
+  let packages = List.map packages ~fn:(workspace_package ~workspace_root) in
+  Riot_model.Workspace_manifest.make_realized
+    ~root:workspace_root
+    ~packages
+    ~dependencies
+    ~dev_dependencies
+    ~build_dependencies
+    ()
+
 let make_workspace = fun ?(workspace_root = Path.v "/workspace") ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) packages ->
   let packages = List.map packages ~fn:(workspace_package ~workspace_root) in
   Riot_model.Workspace.make_realized
@@ -148,12 +161,18 @@ let make_workspace = fun ?(workspace_root = Path.v "/workspace") ?(dependencies 
     ()
 
 let run_lock_deps = fun ?emit ?(registry = make_registry []) ?(workspace_root = Path.v "/workspace") ~mode ~existing_lock packages ->
-  let workspace = make_workspace ~workspace_root packages in
+  let workspace = make_workspace_manifest ~workspace_root packages in
   Riot_deps.Dep_solver.lock_deps ?emit ~mode ~registry ~existing_lock ~workspace ()
 
 let ensure_lock = fun ?emit ?(registry = make_registry []) ?(workspace_root = Path.v "/workspace") packages ->
-  let workspace = make_workspace ~workspace_root packages in
-  Riot_deps.ensure_lock ?emit ~mode:Riot_deps.Dep_solver.Refresh ~registry ~workspace ()
+  let workspace = make_workspace_manifest ~workspace_root packages in
+  Riot_deps.ensure_lock
+    ?emit
+    ~workspace_manager:(workspace_manager ())
+    ~mode:Riot_deps.Dep_solver.Refresh
+    ~registry
+    ~workspace
+    ()
 
 let collect_event_names = fun fn ->
   let names = ref [] in
@@ -1629,8 +1648,9 @@ let test_lock_refresh_requires_lock_when_missing = fun _ctx ->
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "riot.toml") in
       Fs.write "[workspace]\nmembers = []\n" manifest_path |> Result.expect ~msg:"expected manifest write to succeed";
+      let workspace_manager = workspace_manager () in
       match Riot_deps.Lock_refresh.needs_refresh
-        ~workspace_manager:None
+        ~workspace_manager
         ~workspace_root
         ~manifest_paths:[ manifest_path ]
         ~lockfile:None with
@@ -1643,14 +1663,15 @@ let test_lock_refresh_false_when_dependency_hash_matches = fun _ctx ->
     (fun workspace_root ->
       let manifest_path = Path.(workspace_root / Path.v "riot.toml") in
       Fs.write "[workspace]\nmembers = []\n" manifest_path |> Result.expect ~msg:"expected manifest write to succeed";
+      let workspace_manager = workspace_manager () in
       let dependency_hash = Riot_deps.Lock_refresh.dependency_hash
-        ~workspace_manager:None
+        ~workspace_manager
         ~workspace_root
         ~manifest_paths:[ manifest_path ]
       |> Result.expect ~msg:"expected dependency hash to compute" in
       let lockfile = Riot_model.Lockfile.{ format_version = 1; dependency_hash; packages = [] } in
       match Riot_deps.Lock_refresh.needs_refresh
-        ~workspace_manager:None
+        ~workspace_manager
         ~workspace_root
         ~manifest_paths:[ manifest_path ]
         ~lockfile:(Some lockfile) with
@@ -1664,8 +1685,9 @@ let test_lock_refresh_true_when_dependency_hash_changes = fun _ctx ->
       let manifest_path = Path.(workspace_root / Path.v "riot.toml") in
       Fs.write "[workspace]\nmembers = []\n[dependencies]\nstd = \"*\"\n" manifest_path
       |> Result.expect ~msg:"expected manifest write to succeed";
+      let workspace_manager = workspace_manager () in
       let dependency_hash = Riot_deps.Lock_refresh.dependency_hash
-        ~workspace_manager:None
+        ~workspace_manager
         ~workspace_root
         ~manifest_paths:[ manifest_path ]
       |> Result.expect ~msg:"expected dependency hash to compute" in
@@ -1673,7 +1695,7 @@ let test_lock_refresh_true_when_dependency_hash_changes = fun _ctx ->
       Fs.write "[workspace]\nmembers = []\n[dependencies]\nstd = \"0.1.0\"\n" manifest_path
       |> Result.expect ~msg:"expected manifest rewrite to succeed";
       match Riot_deps.Lock_refresh.needs_refresh
-        ~workspace_manager:None
+        ~workspace_manager
         ~workspace_root
         ~manifest_paths:[ manifest_path ]
         ~lockfile:(Some lockfile) with
@@ -1760,7 +1782,7 @@ std = "*"
 name = "app"
 version = "0.0.1"
 |};
-      let workspace = make_workspace
+      let workspace = make_workspace_manifest
         ~workspace_root
         ~dependencies:[ dependency "std" (source ~version:Std.Version.any ()) ]
         [ make_package ~name:"app" ~path:app_root () ] in
@@ -2060,8 +2082,9 @@ let test_ensure_lock_uses_existing_fresh_lock = fun _ctx ->
         ~mode:Refresh
         ~existing_lock:None [ app_pkg; std_pkg ]
       |> Result.expect ~msg:"expected workspace lock projection to succeed" in
+      let workspace_manager = workspace_manager () in
       let dependency_hash = Riot_deps.Lock_refresh.dependency_hash
-        ~workspace_manager:None
+        ~workspace_manager
         ~workspace_root
         ~manifest_paths:[
           manifest_path;
@@ -2188,13 +2211,13 @@ let test_ensure_lock_reuses_existing_lock_and_repairs_missing_registry_packages 
         ~mode:Riot_deps.Dep_solver.Refresh
         ~registry
         ~existing_lock:None
-        ~workspace:(make_workspace ~workspace_root [ app_pkg ])
+        ~workspace:(make_workspace_manifest ~workspace_root [ app_pkg ])
         ()
       |> Result.expect ~msg:"expected initial lock solve to succeed" in
       let existing_lock = {
         existing_lock
         with dependency_hash = Riot_deps.Lock_refresh.dependency_hash
-          ~workspace_manager:None
+          ~workspace_manager:(workspace_manager ())
           ~workspace_root
           ~manifest_paths:[ manifest_path; Path.(workspace_root / Path.v "packages/app/riot.toml") ]
         |> Result.expect ~msg:"expected dependency hash to compute"
@@ -2246,7 +2269,7 @@ let test_ensure_workspace_projects_materialized_registry_packages = fun _ctx ->
         ~fix_providers:app_pkg.fix_providers
         ~publish:app_pkg.publish
         () in
-      let workspace = Riot_model.Workspace.make_realized ~root:workspace_root ~packages:[ app_pkg ] () in
+      let workspace = Riot_model.Workspace_manifest.make_realized ~root:workspace_root ~packages:[ app_pkg ] () in
       let registry = Pkgs_ml.Registry.in_memory ~cache:registry_cache ~packages:[
         make_registry_document
           ~name:"std"
@@ -2267,7 +2290,8 @@ version = "0.2.0"
           } ]
         ()
       in
-      match Riot_deps.ensure_workspace ~mode:Riot_deps.Dep_solver.Refresh ~registry ~workspace () with
+      let workspace_manager = workspace_manager () in
+      match Riot_deps.ensure_workspace ~workspace_manager ~mode:Riot_deps.Dep_solver.Refresh ~registry ~workspace () with
       | Error err -> Error ("expected ensure_workspace to succeed: " ^ pm_error_message err)
       | Ok resolved_workspace ->
           let std_pkg =
@@ -2324,7 +2348,7 @@ let test_ensure_workspace_preserves_declared_external_binaries = fun _ctx ->
         ~fix_providers:app_pkg.fix_providers
         ~publish:app_pkg.publish
         () in
-      let workspace = Riot_model.Workspace.make_realized ~root:workspace_root ~packages:[ app_pkg ] () in
+      let workspace = Riot_model.Workspace_manifest.make_realized ~root:workspace_root ~packages:[ app_pkg ] () in
       let registry = Pkgs_ml.Registry.in_memory ~cache:registry_cache ~packages:[
         make_registry_document
           ~name:"std"
@@ -2353,7 +2377,8 @@ path = "tests/std_tests.ml"
           } ]
         ()
       in
-      match Riot_deps.ensure_workspace ~mode:Riot_deps.Dep_solver.Refresh ~registry ~workspace () with
+      let workspace_manager = workspace_manager () in
+      match Riot_deps.ensure_workspace ~workspace_manager ~mode:Riot_deps.Dep_solver.Refresh ~registry ~workspace () with
       | Error err -> Error ("expected ensure_workspace to succeed: " ^ pm_error_message err)
       | Ok resolved_workspace -> (
           match List.find resolved_workspace.packages ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> has_name "std" pkg.name) with
@@ -2719,7 +2744,7 @@ public = true
           } ]
         ()
       in
-      match Riot_deps.load_registry_workspace ~registry ~spec:"demo" () with
+      match Riot_deps.load_registry_workspace ~registry ~workspace_manager:(workspace_manager ()) ~spec:"demo" () with
       | Ok loaded ->
           if
             has_name "demo" loaded.package_name
@@ -2753,7 +2778,7 @@ let test_load_registry_workspace_rejects_yanked_release = fun _ctx ->
             ()
         ]
         () in
-      match Riot_deps.load_registry_workspace ~registry ~spec:"demo@0.1.0" () with
+      match Riot_deps.load_registry_workspace ~registry ~workspace_manager:(workspace_manager ()) ~spec:"demo@0.1.0" () with
       | Error (Riot_deps.RegistryReleaseYanked { package; version; registry }) ->
           if
             String.equal package "demo" && String.equal version "0.1.0" && String.equal registry "pkgs.ml"

@@ -7,14 +7,14 @@ type scope = Request.scope =
 type t
 
 val make:
-  workspace:Prepared_workspace.t ->
+  workspace:Riot_model.Workspace.t ->
   package_names:Riot_model.Package_name.t list ->
   targets:Riot_model.Target.Set.t ->
   scope:scope ->
   profile:Riot_model.Profile.t ->
   t
 
-val workspace: t -> Prepared_workspace.t
+val workspace: t -> Riot_model.Workspace.t
 
 val package_names: t -> Riot_model.Package_name.t list
 

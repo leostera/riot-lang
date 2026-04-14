@@ -108,14 +108,13 @@ let test_build_accepts_release_flag = fun _ctx ->
       else
         Error "expected --release flag to be parsed"
 
-let test_build_command_accepts_prepared_workspace = fun _ctx ->
+let test_build_command_accepts_workspace = fun _ctx ->
   match
-    Fs.with_tempdir ~prefix:"riot_cli_build_prepared_command"
+    Fs.with_tempdir ~prefix:"riot_cli_build_command"
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        let prepared_workspace = Riot_build.Prepared_workspace.of_workspace workspace in
         Riot_cli.Build.build_command
-          ~prepared_workspace
+          ~workspace
           ~show_finished_summary:false
           ~mode:Riot_cli.Build.Human
           (Some (package_name "demo"))
@@ -123,27 +122,26 @@ let test_build_command_accepts_prepared_workspace = fun _ctx ->
   with
   | Ok (Ok ()) -> Ok ()
   | Ok (Error err) ->
-      Error ("expected prepared workspace build command to succeed: " ^ Kernel.Exception.to_string err)
+      Error ("expected workspace build command to succeed: " ^ Kernel.Exception.to_string err)
   | Error err ->
       Error ("tempdir failed: " ^ IO.error_message err)
 
-let test_build_run_accepts_prepared_workspace = fun _ctx ->
+let test_build_run_accepts_workspace = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"riot_cli_build_command"
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        let prepared_workspace = Riot_build.Prepared_workspace.of_workspace workspace in
         let matches =
           parse_build [ "build"; "demo" ]
           |> Result.expect ~msg:"expected build args to parse"
         in
         Riot_cli.Build.run
-          ~prepared_workspace
+          ~workspace
           matches)
   with
   | Ok (Ok ()) -> Ok ()
   | Ok (Error err) ->
-      Error ("expected prepared workspace build run to succeed: " ^ Kernel.Exception.to_string err)
+      Error ("expected workspace build run to succeed: " ^ Kernel.Exception.to_string err)
   | Error err ->
       Error ("tempdir failed: " ^ IO.error_message err)
 
@@ -493,8 +491,8 @@ let tests =
     case "build: usage shows variadic packages" test_build_usage_shows_variadic_packages;
     case "build: parse --json flag" test_build_accepts_json_flag;
     case "build: parse --release flag" test_build_accepts_release_flag;
-    case "build: command accepts prepared workspace" test_build_command_accepts_prepared_workspace;
-    case "build: run accepts prepared workspace" test_build_run_accepts_prepared_workspace;
+    case "build: command accepts workspace" test_build_command_accepts_workspace;
+    case "build: run accepts workspace" test_build_run_accepts_workspace;
     case "test: parse --json flag" test_test_accepts_json_flag;
     case "test: parse --release flag" test_test_accepts_release_flag;
     case "test: parse --list flag" test_test_accepts_list_flag;
