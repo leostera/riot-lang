@@ -2,8 +2,13 @@ open Std
 module Test = Std.Test
 
 let test_building_target_event_to_json = fun _ctx ->
+  let target =
+    Result.expect
+      (Riot_model.Target.from_string "aarch64-linux")
+      ~msg:"target"
+  in
   let actual = Riot_build.Event.to_json
-    (Riot_build.BuildingTarget { target = "aarch64-linux"; host = false }) in
+    (Riot_build.BuildingTarget { target; host = false }) in
   Test.assert_equal
     ~expected:(Some (Data.Json.Object [
       ("type", Data.Json.String "BuildingTarget");

@@ -134,7 +134,13 @@ let error_message = function
 
 (** Create a store rooted at a specific build lane *)
 let create_for_lane = fun ~(workspace:Workspace.t) ~profile ~target ->
-  let store_dir = Path.(workspace.target_dir_root / Path.v profile / Path.v target / Path.v "cache") in
+  let store_dir =
+    Path.(
+      workspace.target_dir_root
+      / Path.v profile
+      / Path.v (Riot_model.Target.to_string target)
+      / Path.v "cache")
+  in
   {
     content_store = ContentStore.create ~root:store_dir ~ns:artifacts_namespace ~policy:Contentstore.Policy.default;
     plan_store = ContentStore.create ~root:store_dir ~ns:plans_namespace ~policy:Contentstore.Policy.default;
@@ -142,7 +148,10 @@ let create_for_lane = fun ~(workspace:Workspace.t) ~profile ~target ->
 
 (** Create a new store for the given workspace *)
 let create = fun ~(workspace:Workspace.t) ->
-  create_for_lane ~workspace ~profile:"debug" ~target:(Riot_dirs.host_target ())
+  create_for_lane
+    ~workspace
+    ~profile:"debug"
+    ~target:(Riot_dirs.host_target ())
 
 (** Get the path for a given hash in the store *)
 let get_hash_dir = fun store hash ->

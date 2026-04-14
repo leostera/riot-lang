@@ -6,7 +6,11 @@ module Event = Event
 module Internal_server = Internal_server
 module Protocol = Protocol
 module Server_config = Server_config
-module Target_selector = Target_selector
+module Prepared_workspace = Prepared_workspace
+module Request = Request
+module Build_spec = Build_spec
+module Output = Output
+module Build_core = Build_core
 
 type error = Internal_server.error
 
@@ -14,10 +18,11 @@ type build_scope = Build_runtime.build_scope =
   | Runtime
   | Dev
 
-type target_request = Build_runtime.target_request =
+type target_request = Riot_model.Target.request =
   | Host
   | All
   | Pattern of string
+  | Exact of Riot_model.Target.Set.t
 
 type build_request = Build_runtime.build_request = {
   workspace: Riot_model.Workspace.t;
@@ -33,15 +38,15 @@ type build_phase = Event.phase =
 
 type build_event = Build_runtime.build_event =
   | Pm of Riot_model.Event.t
-  | BuildingTarget of { target: string; host: bool }
+  | BuildingTarget of { target: Riot_model.Target.t; host: bool }
   | CacheGc of Riot_store.Cache_gc.event
   | Phase of build_phase
   | Streaming of Client.streaming_event
 
 type build_error = Build_runtime.build_error =
-  | NoTargetsMatched of Target_selector.error
-  | ToolchainInstallFailed of { target: string; error: string }
-  | ToolchainInitializationFailed of { target: string; error: string }
+  | NoTargetsMatched of Riot_model.Target.resolve_error
+  | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
+  | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
   | ClientError of Client.error
 
 type run_request = Run_runtime.run_request = {
@@ -99,6 +104,10 @@ let build = fun ?on_event ?workspace_manager request ->
 
 let build_prepared = fun ?on_event ?workspace_manager request ->
   Build_runtime.build_prepared ?on_event ?workspace_manager request
+
+let resolve = Build_core.resolve
+
+let resolve_error_message = Build_core.resolve_error_message
 
 let run = Run_runtime.run
 

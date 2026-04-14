@@ -45,7 +45,7 @@ type export_entry = Manifest.export_entry = {
 val create: workspace:Workspace.t -> t
 
 (** Create a new store for the given workspace *)
-val create_for_lane: workspace:Workspace.t -> profile:string -> target:string -> t
+val create_for_lane: workspace:Workspace.t -> profile:string -> target:Riot_model.Target.t -> t
 
 (** Create a store rooted at a specific build lane. *)
 (** {1 Simple Interface} *)

@@ -19,7 +19,7 @@ module CrossCompilingToolchain = Cross_compiling_toolchain
 type t = {
   version: string;
   source: source;
-  target: string;  (* Target triple this toolchain compiles for *)
+  target: Riot_model.Target.t;  (* Target triple this toolchain compiles for *)
   ocamlc: Ocamlc.t;
   ocamlopt: Path.t;
   ocamldep: Ocamldep.t;
@@ -29,19 +29,22 @@ let default_ocaml_version = "5.5.0-riot.2"
 
 let toolchain_base_dir = Path.(Riot_model.Riot_dirs.dot_riot / Path.v "toolchains")
 
+let target_to_string = Riot_model.Target.to_string
+
 let get_host_triple = fun () ->
   match System.os_type with
   | "Unix" ->
-      (* Use the host triplet from System module *)
-      System.Host.to_string System.host_triplet
-  | _ -> "x86_64-unknown-linux"
+      System.host_triple
+  | _ ->
+      Riot_model.Target.from_string "x86_64-unknown-linux"
+      |> Result.expect ~msg:"invalid default host triple"
 
 let get_toolchain_path = fun version ->
   let host_triple = get_host_triple () in
-  Path.(toolchain_base_dir / Path.v version / Path.v host_triple)
+  Path.(toolchain_base_dir / Path.v version / Path.v (target_to_string host_triple))
 
 let get_toolchain_path_for_target = fun version target ->
-  Path.(toolchain_base_dir / Path.v version / Path.v target)
+  Path.(toolchain_base_dir / Path.v version / Path.v (target_to_string target))
 
 let local_compiler_path = fun () -> Path.v "./vendor/ocaml/compiler"
 
@@ -141,6 +144,7 @@ let read_manifest_fingerprint = fun toolchain_path ->
   | Error _ -> None
 
 let manifest_error = fun target manifest_path ->
+  let target = target_to_string target in
   "Missing or invalid manifest.json at "
   ^ manifest_path
   ^ " for "
@@ -179,6 +183,7 @@ let ensure_manifest_present = fun toolchain_path target source ->
     )
 
 let sysroot_candidates = fun ~toolchain_path ~target ->
+  let target = target_to_string target in
   [
     Path.(toolchain_path / Path.v "sysroot");
     Path.(toolchain_path / Path.v ("sysroot-" ^ target));
@@ -206,27 +211,24 @@ let explicit_sysroot_override = fun () ->
   present "CROSS_SYSROOT" || present "SYSROOT"
 
 let missing_cross_components = fun ~toolchain_path ~target ->
-  match Kernel.System.Host.from_string target with
-  | Error _ -> []
-  | Ok target_triplet ->
-      let bin_prefix = CrossCompilingToolchain.bin_prefix_of_triplet target_triplet in
-      let compiler_candidates = [
-        Path.(toolchain_path / Path.v "bin" / Path.v (bin_prefix ^ "gcc"));
-        Path.(toolchain_path / Path.v "gcc" / Path.v "bin" / Path.v (bin_prefix ^ "gcc"));
-      ] in
-      let sysroot_candidates = sysroot_candidates ~toolchain_path ~target in
-      let compiler_missing =
-        if List.any compiler_candidates ~fn:path_exists then
-          []
-        else
-          [ "cross-compiler" ]
-      in
-      let sysroot_missing =
-        match first_existing sysroot_candidates with
-        | Some sysroot when List.all (bundled_sysroot_marker_paths sysroot) ~fn:path_exists -> []
-        | _ -> [ "sysroot" ]
-      in
-      compiler_missing @ sysroot_missing
+  let bin_prefix = CrossCompilingToolchain.bin_prefix_of_triplet target in
+  let compiler_candidates = [
+    Path.(toolchain_path / Path.v "bin" / Path.v (bin_prefix ^ "gcc"));
+    Path.(toolchain_path / Path.v "gcc" / Path.v "bin" / Path.v (bin_prefix ^ "gcc"));
+  ] in
+  let sysroot_candidates = sysroot_candidates ~toolchain_path ~target in
+  let compiler_missing =
+    if List.any compiler_candidates ~fn:path_exists then
+      []
+    else
+      [ "cross-compiler" ]
+  in
+  let sysroot_missing =
+    match first_existing sysroot_candidates with
+    | Some sysroot when List.all (bundled_sysroot_marker_paths sysroot) ~fn:path_exists -> []
+    | _ -> [ "sysroot" ]
+  in
+  compiler_missing @ sysroot_missing
 
 let validate_toolchain_install = fun ~version ~target ~source ->
   let toolchain_path = get_toolchain_path_for_target version target in
@@ -235,7 +237,7 @@ let validate_toolchain_install = fun ~version ~target ~source ->
   | Error _ -> Error [ "binaries" ]
   | Ok () ->
       let missing =
-        if target = get_host_triple () || explicit_sysroot_override () then
+        if Riot_model.Target.equal target (get_host_triple ()) || explicit_sysroot_override () then
           []
         else
           missing_cross_components ~toolchain_path ~target
@@ -268,19 +270,25 @@ let reset_toolchain_install = fun path ->
 let download_and_install_toolchain = fun version ~host ~target ->
   let toolchain_path = get_toolchain_path_for_target version target in
   let base_url = ocaml_download_base_url () in
+  let host_name = target_to_string host in
+  let target_name = target_to_string target in
   (* Determine URL pattern based on host vs cross-compilation *)
   let (binary_url, tar_filename, description) =
-    if host = target then
-      let url = base_url ^ "/ocaml-" ^ version ^ "-" ^ host ^ ".tar.gz" in
-      let filename = "ocaml-" ^ version ^ "-" ^ host ^ ".tar.gz" in
+    if String.equal host_name target_name then
+      let url = base_url ^ "/ocaml-" ^ version ^ "-" ^ host_name ^ ".tar.gz" in
+      let filename = "ocaml-" ^ version ^ "-" ^ host_name ^ ".tar.gz" in
       (url, filename, "native")
     else
       (* Cross-compilation toolchain *)
-      let url = base_url ^ "/ocaml-" ^ version ^ "-" ^ host ^ "-x-" ^ target ^ ".tar.gz" in
-      let filename = "ocaml-" ^ version ^ "-" ^ host ^ "-x-" ^ target ^ ".tar.gz" in
-      (url, filename, "cross-compilation from " ^ host ^ " to " ^ target)
+      let url =
+        base_url ^ "/ocaml-" ^ version ^ "-" ^ host_name ^ "-x-" ^ target_name ^ ".tar.gz"
+      in
+      let filename =
+        "ocaml-" ^ version ^ "-" ^ host_name ^ "-x-" ^ target_name ^ ".tar.gz"
+      in
+      (url, filename, "cross-compilation from " ^ host_name ^ " to " ^ target_name)
   in
-  println ("📥 Downloading OCaml " ^ version ^ " for " ^ target ^ " (" ^ description ^ ")...");
+  println ("📥 Downloading OCaml " ^ version ^ " for " ^ target_name ^ " (" ^ description ^ ")...");
   (* Create parent directories *)
   (
     match Path.parent toolchain_path with
@@ -323,7 +331,8 @@ let download_and_install_toolchain = fun version ~host ~target ->
                 | Ok () ->
                     (* Clean up tarball *)
                     let _ = Fs.remove_file tar_path in
-                    println ("✓ OCaml " ^ version ^ " (" ^ target ^ ") installed successfully");
+                    println
+                      ("✓ OCaml " ^ version ^ " (" ^ target_name ^ ") installed successfully");
                     Ok ()
               )
       )
@@ -404,9 +413,16 @@ let init = fun ~config ->
                 let host_triple = get_host_triple () in
                 Error (
                   "Toolchain not found!\n\n\
-                  Looking for: OCaml " ^ version ^ " for " ^ host_triple ^ "\n\
-                  Expected location: " ^ Path.to_string toolchain_path ^ "\n\n\
-                  Download failed: " ^ msg
+                  Looking for: OCaml "
+                  ^ version
+                  ^ " for "
+                  ^ target_to_string host_triple
+                  ^ "\n\
+                  Expected location: "
+                  ^ Path.to_string toolchain_path
+                  ^ "\n\n\
+                  Download failed: "
+                  ^ msg
                 )
           )
     )
@@ -439,7 +455,7 @@ let hash = fun t ->
   let toolchain_path = get_toolchain_path_for_target t.version t.target in
   let write_legacy_path_fingerprint paths = List.for_each paths ~fn:(write_path_fingerprint hasher) in
   Crypto.Sha256.write hasher t.version;
-  Crypto.Sha256.write hasher t.target;
+  Crypto.Sha256.write hasher (target_to_string t.target);
   let () =
     match t.source with
     | Path _ ->
@@ -452,7 +468,7 @@ let hash = fun t ->
             Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "unix" / Path.v "unix.cmi");
             Path.(toolchain_path / Path.v "lib" / Path.v "ocaml" / Path.v "unix" / Path.v "unix.cmxa");
           ];
-        if not (String.equal t.target (get_host_triple ())) then
+        if not (Riot_model.Target.equal t.target (get_host_triple ())) then
           (
             match first_existing (sysroot_candidates ~toolchain_path ~target:t.target) with
             | Some sysroot -> write_legacy_path_fingerprint (bundled_sysroot_marker_paths sysroot)
@@ -482,7 +498,7 @@ let init_for_target = fun ~config ~target ->
   let host = get_host_triple () in
   let local_compiler = local_compiler_path () in
   let source =
-    if String.equal target host then
+    if Riot_model.Target.equal target host then
       match Fs.is_dir local_compiler with
       | Ok true -> Path local_compiler
       | _ -> source
@@ -498,11 +514,12 @@ let init_for_target = fun ~config ~target ->
         match validate () with
         | Ok toolchain -> Ok toolchain
         | Error missing -> Error ("Downloaded toolchain for "
-        ^ target
+        ^ target_to_string target
         ^ " but it is still incomplete: "
         ^ String.concat ", " missing)
       )
-    | Error msg -> Error ("Failed to download toolchain for " ^ target ^ ": " ^ msg)
+    | Error msg ->
+        Error ("Failed to download toolchain for " ^ target_to_string target ^ ": " ^ msg)
   in
   (* Check if already installed *)
   match Fs.is_dir bin_dir with
@@ -510,10 +527,10 @@ let init_for_target = fun ~config ~target ->
       match validate () with
       | Ok toolchain ->
           Ok toolchain
-      | Error missing when not (String.equal target host) ->
+      | Error missing when not (Riot_model.Target.equal target host) ->
           Log.info
             ("Refreshing cross toolchain for "
-            ^ target
+            ^ target_to_string target
             ^ " because it is missing: "
             ^ String.concat ", " missing);
           refresh ()
@@ -522,7 +539,7 @@ let init_for_target = fun ~config ~target ->
     )
   | _ ->
       (* Try local compiler if native build *)
-      if host = target then
+      if Riot_model.Target.equal host target then
         (
           match Fs.is_dir local_compiler with
           | Ok true ->
@@ -565,7 +582,8 @@ let init_for_target = fun ~config ~target ->
                     | Ok () -> Ok toolchain
                     | Error msg -> Error ("Downloaded but incomplete: " ^ msg)
                   )
-              | Error msg -> Error ("Failed to download toolchain for " ^ target ^ ": " ^ msg)
+              | Error msg ->
+                  Error ("Failed to download toolchain for " ^ target_to_string target ^ ": " ^ msg)
             )
         )
       else
@@ -583,7 +601,7 @@ type toolchain_status =
 
 type toolchain_info = {
   version: string;
-  target: string;
+  target: Riot_model.Target.t;
   is_host: bool;
   status: toolchain_status;
 }
@@ -594,8 +612,8 @@ type available_toolchain_kind =
 
 type available_toolchain = {
   version: string;
-  host: string;
-  target: string;
+  host: Riot_model.Target.t;
+  target: Riot_model.Target.t;
   artifact_target: string;
   kind: available_toolchain_kind;
   artifact: string;
@@ -608,7 +626,7 @@ type available_toolchain = {
 let check_toolchain_status = fun ~version ~target ->
   let toolchain_path = get_toolchain_path_for_target version target in
   let source =
-    if String.equal target (get_host_triple ()) then
+    if Riot_model.Target.equal target (get_host_triple ()) then
       match Fs.is_dir (local_compiler_path ()) with
       | Ok true -> Path (local_compiler_path ())
       | _ -> Version version
@@ -634,7 +652,7 @@ let list_toolchains = fun ~config ->
   in
   List.map targets
     ~fn:(fun target ->
-      let is_host = target = host in
+      let is_host = Riot_model.Target.equal target host in
       let status = check_toolchain_status ~version ~target in
       { version; target; is_host; status })
 
@@ -649,7 +667,7 @@ let install_all_toolchains = fun ~config ->
         | Installed _ ->
             println
               (
-                "  ✓ " ^ info.target ^ (
+                "  ✓ " ^ target_to_string info.target ^ (
                   if info.is_host then
                     " (host)"
                   else
@@ -661,7 +679,7 @@ let install_all_toolchains = fun ~config ->
         | Incomplete _ ->
             println
               (
-                "  📥 " ^ info.target ^ (
+                "  📥 " ^ target_to_string info.target ^ (
                   if info.is_host then
                     " (host)"
                   else
@@ -673,7 +691,7 @@ let install_all_toolchains = fun ~config ->
               | Ok () -> Ok `Installed
               | Error msg ->
                   println ("     ✗ Failed: " ^ msg);
-                  Error (info.target, msg)
+                  Error (target_to_string info.target, msg)
             ))
   in
   let successes = List.filter results ~fn:(function Ok _ -> true | Error _ -> false) in
@@ -740,6 +758,16 @@ let require_json_string_field = fun name json ->
       | None -> Error ("Toolchain manifest field '" ^ name ^ "' must be a string")
     )
 
+let require_json_target_field = fun name json ->
+  match require_json_string_field name json with
+  | Error _ as err -> err
+  | Ok raw -> (
+      match Riot_model.Target.from_string raw with
+      | Ok target -> Ok target
+      | Error msg ->
+          Error ("Toolchain manifest field '" ^ name ^ "' must be a valid target triple: " ^ msg)
+    )
+
 let optional_json_string_field = fun name json ->
   match Data.Json.get_field name json with
   | None
@@ -769,10 +797,10 @@ let parse_available_toolchain = fun json ->
   match require_json_string_field "version" json with
   | Error _ as err -> err
   | Ok version -> (
-      match require_json_string_field "host" json with
+      match require_json_target_field "host" json with
       | Error _ as err -> err
       | Ok host -> (
-          match require_json_string_field "target" json with
+          match require_json_target_field "target" json with
           | Error _ as err -> err
           | Ok target -> (
               match require_json_string_field "artifact_target" json with
@@ -841,11 +869,19 @@ let parse_available_toolchains_manifest = fun raw ->
                           if not (Int.equal by_version 0) then
                             by_version
                           else
-                            let by_host = String.compare left.host right.host in
+                            let by_host =
+                              String.compare
+                                (Riot_model.Target.to_string left.host)
+                                (Riot_model.Target.to_string right.host)
+                            in
                             if not (Int.equal by_host 0) then
                               by_host
                             else
-                              let by_target = String.compare left.target right.target in
+                              let by_target =
+                                String.compare
+                                  (Riot_model.Target.to_string left.target)
+                                  (Riot_model.Target.to_string right.target)
+                              in
                               if not (Int.equal by_target 0) then
                                 by_target
                               else

@@ -4,13 +4,13 @@ open Riot_model
 
 type generation_lane = {
   profile: string;
-  target: string;
+  target: Riot_model.Target.t;
   hashes: string list;
 }
 
 type new_cache_entry = {
   profile: string;
-  target: string;
+  target: Riot_model.Target.t;
   hash: string;
 }
 
@@ -202,12 +202,15 @@ let normalize_lanes: generation_lane list -> generation_lane list = fun lanes ->
   |> List.sort
     ~compare:(fun (left: generation_lane) (right: generation_lane) ->
       match String.compare left.profile right.profile with
-      | 0 -> String.compare left.target right.target
+      | 0 ->
+          String.compare
+            (Riot_model.Target.to_string left.target)
+            (Riot_model.Target.to_string right.target)
       | order -> order)
 
 let lane_to_json = fun (lane: generation_lane) -> Data.Json.Object [
   ("profile", Data.Json.String lane.profile);
-  ("target", Data.Json.String lane.target);
+  ("target", Data.Json.String (Riot_model.Target.to_string lane.target));
   ("hashes", Data.Json.Array (List.map lane.hashes ~fn:Data.Json.string));
 ]
 
@@ -254,7 +257,7 @@ let generation_lane_of_json = fun json ->
     match Data.Json.get_field "target" json with
     | Some value -> (
         match Data.Json.get_string value with
-        | Some target -> Ok target
+        | Some target -> Riot_model.Target.from_string target
         | None -> Error "generation lane is missing string field 'target'"
       )
     | None -> Error "generation lane is missing string field 'target'"
@@ -749,7 +752,7 @@ let force_clean = fun ~(workspace:Workspace.t) -> force_clean_with_events ~works
 let new_entry_dir = fun ~(workspace:Workspace.t) (entry: new_cache_entry) ->
   Path.(workspace.target_dir_root
   / Path.v entry.profile
-  / Path.v entry.target
+  / Path.v (Riot_model.Target.to_string entry.target)
   / Path.v "cache"
   / Path.v entry.hash)
 

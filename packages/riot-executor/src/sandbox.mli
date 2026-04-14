@@ -7,7 +7,7 @@ type t
 
 (** Create a sandbox directory for a package build. *)
 val create:
-  workspace:Workspace.t -> ?profile:string -> ?target:string -> unit -> package_name:string -> t
+  workspace:Workspace.t -> ?profile:string -> ?target:Target.t -> unit -> package_name:string -> t
 
 (** Prepare an existing sandbox by copying package inputs and dependency object
     files required by the current execution model. *)
@@ -41,7 +41,7 @@ val cleanup: t -> unit
 val with_sandbox:
   workspace:Workspace.t ->
   ?profile:string ->
-  ?target:string ->
+  ?target:Target.t ->
   package:Package.t ->
   inputs:Path.t list ->
   depset:Dependency.t list ->

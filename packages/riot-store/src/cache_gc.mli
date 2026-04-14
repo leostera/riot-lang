@@ -3,12 +3,12 @@ open Riot_model
 
 type generation_lane = {
   profile: string;
-  target: string;
+  target: Riot_model.Target.t;
   hashes: string list;
 }
 type new_cache_entry = {
   profile: string;
-  target: string;
+  target: Riot_model.Target.t;
   hash: string;
 }
 type summary = {

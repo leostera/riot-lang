@@ -2,7 +2,7 @@ open Std
 
 type t =
   | Pm of Riot_model.Event.t
-  | BuildingTarget of { target: string; host: bool }
+  | BuildingTarget of { target: Riot_model.Target.t; host: bool }
   | CacheGc of Riot_store.Cache_gc.event
   | Phase of phase
   | Streaming of Client.streaming_event
@@ -13,8 +13,8 @@ and runtime_phase =
   | ToolchainsValidated of { target_count: int }
   | ClientConnecting
   | ClientConnected
-  | TargetBuildStarted of { target: string; host: bool }
-  | TargetBuildFinished of { target: string; result_count: int; had_partial_failure: bool }
+  | TargetBuildStarted of { target: Riot_model.Target.t; host: bool }
+  | TargetBuildFinished of { target: Riot_model.Target.t; result_count: int; had_partial_failure: bool }
   | CacheGenerationRecordingStarted of { lane_count: int; new_entry_count: int }
   | CacheGenerationRecorded of { lane_count: int; new_entry_count: int }
   | ReturningResults of { result_count: int; had_partial_failure: bool }
@@ -98,10 +98,13 @@ let runtime_phase_fields = function
   | ClientConnecting
   | ClientConnected -> []
   | TargetBuildStarted { target; host } ->
-      [ ("target", Data.Json.String target); ("host", Data.Json.Bool host) ]
+      [
+        ("target", Data.Json.String (Riot_model.Target.to_string target));
+        ("host", Data.Json.Bool host);
+      ]
   | TargetBuildFinished { target; result_count; had_partial_failure } ->
       [
-        ("target", Data.Json.String target);
+        ("target", Data.Json.String (Riot_model.Target.to_string target));
         ("result_count", Data.Json.Int result_count);
         ("had_partial_failure", Data.Json.Bool had_partial_failure);
       ]
@@ -155,7 +158,7 @@ let to_json = function
   | BuildingTarget { target; host } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "BuildingTarget");
-        ("target", Data.Json.String target);
+        ("target", Data.Json.String (Riot_model.Target.to_string target));
         ("host", Data.Json.Bool host);
       ])
   | CacheGc event ->

@@ -11,7 +11,7 @@ type detection_result = {
 
 (** Derive binary prefix from target triplet *)
 let bin_prefix_of_triplet = fun triplet ->
-  let open System.Host in
+  let open System.TargetTriple in
     match (triplet.architecture, triplet.os, triplet.vendor) with
     | ("aarch64", "linux", _) -> "aarch64-linux-gnu-"
     | ("x86_64", "linux", _) -> "x86_64-linux-gnu-"
@@ -76,7 +76,7 @@ let bundled_c_compiler = fun ~toolchain_root ~bin_prefix ->
     ]
 
 let bundled_sysroot = fun ~toolchain_root ~target_triplet ->
-  let target = System.Host.to_string target_triplet in
+  let target = System.TargetTriple.to_string target_triplet in
   first_existing
     [
       Path.(toolchain_root / v "sysroot");
@@ -106,7 +106,7 @@ let detect = fun ?toolchain_root () ~target_triplet ->
   match cc_path with
   | None ->
       (* No cross-compiler found - return minimal config *)
-      Log.warn ("Cross-compiler not found for " ^ System.Host.to_string target_triplet);
+      Log.warn ("Cross-compiler not found for " ^ System.TargetTriple.to_string target_triplet);
       Log.warn ("Expected: " ^ bin_prefix ^ "gcc in PATH");
       {
         sysroot =

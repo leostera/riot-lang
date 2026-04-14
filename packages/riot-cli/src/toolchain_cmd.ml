@@ -32,7 +32,14 @@ let print_toolchain_status = fun info ->
       else
         ""
     in
-    println ("  " ^ status_icon ^ " " ^ info.target ^ host_label ^ " - " ^ status_text)
+    println
+      ("  "
+      ^ status_icon
+      ^ " "
+      ^ Riot_model.Target.to_string info.target
+      ^ host_label
+      ^ " - "
+      ^ status_text)
 
 let run_list = fun workspace ->
   let config = Toolchain_config.from_workspace workspace in
@@ -83,8 +90,8 @@ let run_install = fun workspace ->
 
 type available_toolchain_row = {
   version: string;
-  host: string;
-  target: string;
+  host: Riot_model.Target.t;
+  target: Riot_model.Target.t;
 }
 
 let sort_available_toolchain_rows = fun rows ->
@@ -93,11 +100,17 @@ let sort_available_toolchain_rows = fun rows ->
       if not (Int.equal by_version 0) then
         by_version
       else
-        let by_host = String.compare left.host right.host in
+        let by_host =
+          String.compare
+            (Riot_model.Target.to_string left.host)
+            (Riot_model.Target.to_string right.host)
+        in
         if not (Int.equal by_host 0) then
           by_host
         else
-          String.compare left.target right.target)
+          String.compare
+            (Riot_model.Target.to_string left.target)
+            (Riot_model.Target.to_string right.target))
 
 let max_int = fun left right ->
   if left > right then
@@ -119,10 +132,12 @@ let table_widths = fun rows ->
   List.fold_left rows
     ~acc:(String.length "version", String.length "host", String.length "target")
     ~fn:(fun (version_width, host_width, target_width) row ->
+      let host = Riot_model.Target.to_string row.host in
+      let target = Riot_model.Target.to_string row.target in
       (
         max_int version_width (String.length row.version),
-        max_int host_width (String.length row.host),
-        max_int target_width (String.length row.target)
+        max_int host_width (String.length host),
+        max_int target_width (String.length target)
       ))
 
 let print_available_toolchain_table = fun toolchains ->
@@ -141,8 +156,10 @@ let print_available_toolchain_table = fun toolchains ->
     ^ pad_right target_width "target");
   println separator;
   List.for_each rows ~fn:(fun row ->
+      let host = Riot_model.Target.to_string row.host in
+      let target = Riot_model.Target.to_string row.target in
       println
-        (pad_right version_width row.version ^ "  " ^ pad_right host_width row.host ^ "  " ^ row.target))
+        (pad_right version_width row.version ^ "  " ^ pad_right host_width host ^ "  " ^ target))
 
 let run_list_available = fun () ->
   match Riot_toolchain.list_available_toolchains () with

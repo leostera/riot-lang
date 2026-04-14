@@ -654,7 +654,7 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
         {
           workspace = request.workspace;
           packages = requested_packages suites;
-          targets = Build_runtime.Host;
+          targets = Riot_model.Target.Host;
           scope = Build_runtime.Dev;
           profile = request.profile;
         }
@@ -778,7 +778,7 @@ let bench = fun ?(on_event = no_event) (request: bench_request) ->
         {
           workspace = request.workspace;
           packages = requested_packages suites;
-          targets = Build_runtime.Host;
+          targets = Riot_model.Target.Host;
           scope = Build_runtime.Dev;
           profile = request.profile;
         }

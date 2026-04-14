@@ -15,6 +15,7 @@
 9. The first cache-GC rollout is workspace-wide, not lane-local. Receipt retention and size accounting span all lanes under the workspace build root together.
 10. Keep `riot-store` Riot-specific. Generic content-addressable directory and bundle primitives belong in `contentstore`; `riot-store` should layer package artifacts, manifests, and lane policy on top.
 11. Post-build generation recording must stay cheap on repeated warm builds. `state.json` is the authoritative generation-recency index; do not make the build path discover recency by scanning or parsing generation payload files.
+12. Inside `riot-store`, lane targets should stay typed as `Riot_model.Target.t`. Only stringify them when encoding JSON receipts/state or deriving on-disk lane paths.
 
 ## Validate
 

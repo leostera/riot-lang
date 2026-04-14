@@ -81,7 +81,7 @@ type request =
       target: target;
       scope: build_scope;
       profile: string;
-      target_arch: string option;
+      target_arch: Riot_model.Target.t option;
       session_id: Session_id.t
     }
   | Ping of { client_pid: Pid.t }

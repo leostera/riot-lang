@@ -85,7 +85,9 @@ let build_dir_root = fun ~workspace_root ->
   resolve_build_dir_root ~workspace_root (workspace_build_dir_name ~workspace_root)
 
 (** Get current host triple *)
-let host_target = fun () -> System.Host.to_string System.host_triplet
+let host_target = fun () -> Target.current
+
+let target_dir_name = fun target -> Target.to_string target
 
 (** New target-aware path functions *)
 let profile_dir = fun ~workspace_root ~profile ->
@@ -95,10 +97,10 @@ let profile_dir_in_workspace = fun ~(workspace:Workspace.t) ~profile ->
   Path.(workspace.target_dir_root / Path.v profile)
 
 let target_dir = fun ~workspace_root ~profile ~target ->
-  Path.(profile_dir ~workspace_root ~profile / Path.v target)
+  Path.(profile_dir ~workspace_root ~profile / Path.v (target_dir_name target))
 
 let target_dir_in_workspace = fun ~(workspace:Workspace.t) ~profile ~target ->
-  Path.(profile_dir_in_workspace ~workspace ~profile / Path.v target)
+  Path.(profile_dir_in_workspace ~workspace ~profile / Path.v (target_dir_name target))
 
 let out_dir_with_target = fun ~workspace_root ~profile ~target ->
   Path.(target_dir ~workspace_root ~profile ~target / Path.v "out")
@@ -144,7 +146,7 @@ module Tests = struct
     else
       Error ("expected root riot.lock path, got " ^ actual) [@test]
 
-  let test_workspace_target_dirs_use_custom_target_dir_root (): (unit, string) result =
+let test_workspace_target_dirs_use_custom_target_dir_root (): (unit, string) result =
     let workspace =
       Workspace.make
         ~root:(Path.v "/tmp/workspace")
@@ -153,7 +155,9 @@ module Tests = struct
         ()
     in
     let target = host_target () in
-    let expected_target_dir = "/tmp/workspace/build-out/release/" ^ target in
+    let expected_target_dir =
+      "/tmp/workspace/build-out/release/" ^ Target.to_string target
+    in
     let target_dir = target_dir_in_workspace ~workspace ~profile:"release" ~target |> Path.to_string in
     let out_dir = out_dir_in_workspace ~workspace ~profile:"release" ~target |> Path.to_string in
     let sandbox_dir =

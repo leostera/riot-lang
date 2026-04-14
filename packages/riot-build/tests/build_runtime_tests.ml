@@ -1,6 +1,25 @@
 open Std
 module Test = Std.Test
 
+let target = fun value ->
+  Riot_model.Target.from_string value
+  |> Result.expect ~msg:("invalid target triple: " ^ value)
+
+let target_set_of_strings = fun values ->
+  values |> List.map ~fn:target |> Riot_model.Target.Set.of_list
+
+let target_strings = fun targets ->
+  Riot_model.Target.Set.to_list targets
+  |> List.map ~fn:Riot_model.Target.to_string
+
+let target_request_of_cli_options = fun ~all_targets ~target ->
+  if all_targets then
+    Riot_model.Target.All
+  else
+    match target with
+    | Some value -> Riot_model.Target.parse value
+    | None -> Riot_model.Target.Host
+
 let write_workspace_manifest = fun ~root ~members ->
   let members = members
   |> List.map ~fn:(fun member -> "  \"" ^ Path.to_string member ^ "\"")
@@ -284,10 +303,10 @@ let test_fully_cached_build_skips_cache_generation_recording = fun _ctx ->
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
 let test_target_selector_resolves_host_all_exact_and_pattern = fun _ctx ->
-  let selector =
-    Riot_build.Target_selector.create
-      ~host:"aarch64-apple-darwin"
-      ~configured_targets:[
+  let host = target "aarch64-apple-darwin" in
+  let configured_targets =
+    target_set_of_strings
+      [
         "aarch64-apple-darwin";
         "aarch64-unknown-linux-gnu";
         "x86_64-unknown-linux-gnu";
@@ -296,65 +315,76 @@ let test_target_selector_resolves_host_all_exact_and_pattern = fun _ctx ->
   let expect_resolved request expected =
     Test.assert_equal
       ~expected:(Ok expected)
-      ~actual:(Riot_build.Target_selector.resolve selector request)
+      ~actual:(
+        Riot_model.Target.resolve ~host ~configured_targets request
+        |> Result.map ~fn:target_strings
+      )
   in
-  expect_resolved Riot_build.Host [ "aarch64-apple-darwin" ];
-  expect_resolved Riot_build.All [
+  expect_resolved Riot_model.Target.Host [ "aarch64-apple-darwin" ];
+  expect_resolved Riot_model.Target.All [
     "aarch64-apple-darwin";
     "aarch64-unknown-linux-gnu";
     "x86_64-unknown-linux-gnu";
   ];
   expect_resolved
-    (Riot_build.Target_selector.of_string "native")
+    (Riot_model.Target.parse "native")
     [ "aarch64-apple-darwin" ];
   expect_resolved
-    (Riot_build.Target_selector.of_string "linux")
+    (Riot_model.Target.parse "linux")
     [ "aarch64-unknown-linux-gnu"; "x86_64-unknown-linux-gnu" ];
   expect_resolved
-    (Riot_build.Target_selector.of_string "x86_64-unknown-linux-gnu")
+    (Riot_model.Target.parse "x86_64-unknown-linux-gnu")
     [ "x86_64-unknown-linux-gnu" ];
   Ok ()
 
 let test_target_selector_cli_options_prioritize_all_targets = fun _ctx ->
   Test.assert_equal
-    ~expected:Riot_build.All
-    ~actual:(Riot_build.Target_selector.of_cli_options
+    ~expected:Riot_model.Target.All
+    ~actual:(target_request_of_cli_options
       ~all_targets:true
       ~target:(Some "linux"));
   Test.assert_equal
-    ~expected:Riot_build.Host
-    ~actual:(Riot_build.Target_selector.of_cli_options
+    ~expected:Riot_model.Target.Host
+    ~actual:(target_request_of_cli_options
       ~all_targets:false
       ~target:None);
   Test.assert_equal
-    ~expected:(Riot_build.Pattern "linux")
-    ~actual:(Riot_build.Target_selector.of_cli_options
+    ~expected:(Riot_model.Target.Pattern "linux")
+    ~actual:(target_request_of_cli_options
       ~all_targets:false
       ~target:(Some "linux"));
   Ok ()
 
 let test_target_selector_returns_available_targets_on_miss = fun _ctx ->
-  let selector =
-    Riot_build.Target_selector.create
-      ~host:"aarch64-apple-darwin"
-      ~configured_targets:[
+  let host = target "aarch64-apple-darwin" in
+  let configured_targets =
+    target_set_of_strings
+      [
         "aarch64-apple-darwin";
         "aarch64-unknown-linux-gnu";
       ]
   in
-  match Riot_build.Target_selector.resolve selector (Riot_build.Pattern "windows") with
+  match
+    Riot_model.Target.resolve
+      ~host
+      ~configured_targets
+      (Riot_model.Target.Pattern "windows")
+  with
   | Error {
       pattern = "windows";
-      available_targets = [ "aarch64-apple-darwin"; "aarch64-unknown-linux-gnu" ];
+      available_targets;
     } ->
+      Test.assert_equal
+        ~expected:[ "aarch64-apple-darwin"; "aarch64-unknown-linux-gnu" ]
+        ~actual:(List.map available_targets ~fn:Riot_model.Target.to_string);
       Ok ()
   | Error err ->
       Error ("expected available target error, got pattern="
       ^ err.pattern
       ^ " targets="
-      ^ String.concat "," err.available_targets)
+      ^ String.concat "," (List.map err.available_targets ~fn:Riot_model.Target.to_string))
   | Ok targets ->
-      Error ("expected target miss, got " ^ String.concat "," targets)
+      Error ("expected target miss, got " ^ String.concat "," (target_strings targets))
 
 let tests =
   let open Test in [

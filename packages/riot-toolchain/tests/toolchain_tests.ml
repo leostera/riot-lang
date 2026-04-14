@@ -57,6 +57,25 @@ let with_env_var = fun name value_opt f ->
       restore ();
       raise exn
 
+let target = fun value ->
+  Riot_model.Target.from_string value
+  |> Result.expect ~msg:("invalid target triple: " ^ value)
+
+let target_strings = fun targets ->
+  List.map targets ~fn:Riot_model.Target.to_string |> List.sort ~compare:String.compare
+
+let first_distinct_target = fun host ->
+  let candidates = [
+    "aarch64-apple-darwin";
+    "x86_64-unknown-linux-gnu";
+    "aarch64-unknown-linux-gnu";
+  ] in
+  candidates
+  |> List.find ~fn:(fun candidate ->
+         not (Riot_model.Target.equal host (target candidate)))
+  |> Option.map ~fn:target
+  |> Option.expect ~msg:"expected at least one distinct target fixture"
+
 let test_compile_impl_disables_no_cmi_file_by_default = fun _ctx ->
   let ocamlc = Riot_toolchain.Ocamlc.make (Path.v "/tmp/ocamlopt.opt") in
   let invocation = Riot_toolchain.Ocamlc.compile_impl
@@ -275,15 +294,19 @@ let test_list_available_toolchains_reads_manifest = fun _ctx ->
                     List.find
                       toolchains
                       ~fn:(fun (toolchain: Riot_toolchain.available_toolchain) ->
-                        String.equal toolchain.host host && String.equal toolchain.target target)
+                        Riot_model.Target.equal toolchain.host host
+                        && Riot_model.Target.equal toolchain.target target)
                   in
+                  let native_host = target "aarch64-apple-darwin" in
+                  let native_target = target "aarch64-apple-darwin" in
+                  let cross_target = target "x86_64-unknown-linux-gnu" in
                   if not (Int.equal (List.length toolchains) 2) then
                     Error ("expected 2 available toolchains, got "
                     ^ Int.to_string (List.length toolchains))
                   else
                     match (
-                      find_toolchain ~host:"aarch64-apple-darwin" ~target:"aarch64-apple-darwin",
-                      find_toolchain ~host:"aarch64-apple-darwin" ~target:"x86_64-unknown-linux-gnu"
+                      find_toolchain ~host:native_host ~target:native_target,
+                      find_toolchain ~host:native_host ~target:cross_target
                     ) with
                     | Some native, Some cross -> (
                         match (native.kind, cross.kind) with
@@ -301,6 +324,44 @@ let test_list_available_toolchains_reads_manifest = fun _ctx ->
                       )
                     | _ -> Error "expected both native and cross toolchains to be present"))
 
+let test_get_host_triple_matches_std_host_triple = fun _ctx ->
+  if Riot_model.Target.equal (Riot_toolchain.get_host_triple ()) Std.System.host_triple then
+    Ok ()
+  else
+    Error "expected Riot_toolchain.get_host_triple to use Std.System.host_triple"
+
+let test_list_toolchains_returns_typed_targets = fun _ctx ->
+  let host = Riot_toolchain.get_host_triple () in
+  let cross = first_distinct_target host in
+  let config = Riot_model.Toolchain_config.{
+    version = "5.5.0-riot.2";
+    source = Version "5.5.0-riot.2";
+    targets = [ host; cross ];
+  } in
+  let toolchains = Riot_toolchain.list_toolchains ~config in
+  let targets = List.map toolchains ~fn:(fun info -> info.Riot_toolchain.target) in
+  let rendered = target_strings targets in
+  let expected = target_strings [ host; cross ] in
+  let host_info =
+    List.find toolchains ~fn:(fun info -> Riot_model.Target.equal info.target host)
+  in
+  let cross_info =
+    List.find toolchains ~fn:(fun info -> Riot_model.Target.equal info.target cross)
+  in
+  if not (String.equal (String.concat "," rendered) (String.concat "," expected)) then
+    Error "expected list_toolchains to preserve typed target triples"
+  else
+    match (host_info, cross_info) with
+    | Some host_info, Some cross_info ->
+        if not host_info.is_host then
+          Error "expected host target to be marked as host"
+        else if cross_info.is_host then
+          Error "expected non-host target to not be marked as host"
+        else
+          Ok ()
+    | _ ->
+        Error "expected host and cross targets to both be present"
+
 let tests =
   Test.[
     case "compile impl disables no-cmi-file by default" test_compile_impl_disables_no_cmi_file_by_default;
@@ -312,6 +373,8 @@ let tests =
     case "parse c error diagnostic" test_parse_c_error_diagnostic;
     case "unparseable c-like line falls back to raw" test_unparseable_c_like_line_falls_back_to_raw;
     case "parse colored ocaml warning diagnostic" test_parse_colored_ocaml_warning_diagnostic;
+    case "get_host_triple matches Std.System.host_triple" test_get_host_triple_matches_std_host_triple;
+    case "list_toolchains returns typed targets" test_list_toolchains_returns_typed_targets;
     case "list available toolchains reads manifest" test_list_available_toolchains_reads_manifest;
   ]
 

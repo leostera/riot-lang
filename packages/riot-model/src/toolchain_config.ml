@@ -10,7 +10,7 @@ type source =
 type t = {
   version: string;
   source: source;
-  targets: string list;  (* Target architectures for cross-compilation *)
+  targets: System.TargetTriple.t list;  (* Target architectures for cross-compilation *)
 }
 
 let default_ocaml_version = "5.5.0-riot.2"
@@ -20,6 +20,25 @@ let default = {
   source = Version default_ocaml_version;
   targets = []
 }
+
+let sort_compare_target = fun left right ->
+  String.compare
+    (System.TargetTriple.to_string left)
+    (System.TargetTriple.to_string right)
+
+let normalize_targets = fun targets ->
+  let rec dedupe acc = function
+    | [] -> List.reverse acc
+    | [ target ] -> List.reverse (target :: acc)
+    | left :: ((right :: _) as rest) ->
+        if System.TargetTriple.equal left right then
+          dedupe acc rest
+        else
+          dedupe (left :: acc) rest
+  in
+  targets
+  |> List.sort ~compare:sort_compare_target
+  |> dedupe []
 
 let from_workspace = fun workspace ->
   let toolchain_file = Path.(workspace.Workspace.root / Path.v "ocaml-toolchain.toml") in
@@ -37,12 +56,19 @@ let from_workspace = fun workspace ->
               | Some (Data.Toml.Table toolchain_items) -> (
                   (* Parse targets array *)
                   let targets =
-                    match Fields.get "targets" toolchain_items with
-                    | Some (Data.Toml.Array arr) ->
-                        List.filter_map arr ~fn:(function
-                          | Data.Toml.String s -> Some s
-                          | _ -> None)
-                    | _ -> []
+                    (
+                      match Fields.get "targets" toolchain_items with
+                      | Some (Data.Toml.Array arr) ->
+                          List.filter_map arr ~fn:(function
+                            | Data.Toml.String s -> (
+                                match System.TargetTriple.from_string s with
+                                | Ok target -> Some target
+                                | Error _ -> None
+                              )
+                            | _ -> None)
+                      | _ -> []
+                    )
+                    |> normalize_targets
                   in
                   match Fields.get "version" toolchain_items with
                   | Some (Data.Toml.String v) ->

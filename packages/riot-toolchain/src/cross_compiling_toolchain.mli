@@ -15,7 +15,7 @@ type detection_result = {
     - x86_64-unknown-linux-gnu → "x86_64-linux-gnu-"
     - arm-unknown-linux-gnueabihf → "arm-linux-gnueabihf-"
 *)
-val bin_prefix_of_triplet: System.Host.t -> string
+val bin_prefix_of_triplet: System.TargetTriple.t -> string
 
 (** Find C compiler in PATH using binary prefix *)
 val find_c_compiler: string -> Path.t option
@@ -37,7 +37,7 @@ val bin_dir_of_compiler: Path.t -> Path.t option
     If no compiler is found, returns a minimal config with [`bin_prefix`] set
     but the other fields left as [`None`].
 *)
-val detect: ?toolchain_root:Path.t -> unit -> target_triplet:System.Host.t -> detection_result
+val detect: ?toolchain_root:Path.t -> unit -> target_triplet:System.TargetTriple.t -> detection_result
 
 (** Get full path to a cross-compilation binary
     

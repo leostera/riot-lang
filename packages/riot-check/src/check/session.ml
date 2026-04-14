@@ -468,7 +468,7 @@ let package_typ_sources_from_planner = fun ~on_event ~include_dev ~(workspace:Wo
       let store = workspace_build_store
         workspace
         ~profile:profile.name
-        ~target:(Riot_dirs.host_target ()) in
+        ~target:(Riot_model.Target.to_string (Riot_dirs.host_target ())) in
       let next_source_id = ref 0 in
       let sources =
         let effective_sources =

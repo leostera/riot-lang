@@ -238,7 +238,7 @@ let plan = fun ~workspace_root ~target_dir_root providers ->
   let binary_path =
     Path.(target_dir_root
     / Path.v "release"
-    / Path.v (Riot_model.Riot_dirs.host_target ())
+    / Path.v (Riot_model.Target.to_string (Riot_model.Riot_dirs.host_target ()))
     / Path.v "out"
     / Path.v package_name
     / Path.v binary_name) in

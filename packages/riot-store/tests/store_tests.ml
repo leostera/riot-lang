@@ -42,6 +42,8 @@ let write_workspace_cache_config = fun tmpdir ~keep_generations ~max_size ->
 let make_hash = fun ch ->
   String.make ~len:64 ~char:ch
 
+let host_target = Riot_model.Riot_dirs.host_target ()
+
 let count_generation_receipts = fun ~(workspace:Riot_model.Workspace.t) ->
   let generations_dir = Path.(workspace.target_dir_root / Path.v "cache" / Path.v "generations") in
   match Fs.read_dir generations_dir with
@@ -84,7 +86,13 @@ let read_generation_lane_hashes = fun ~(workspace:Riot_model.Workspace.t) genera
 
 let write_cache_entry = fun ~(workspace:Riot_model.Workspace.t) ~profile ~target ~hash ~size ->
   let entry_dir =
-    Path.(workspace.target_dir_root / Path.v profile / Path.v target / Path.v "cache" / Path.v hash) in
+    Path.(
+      workspace.target_dir_root
+      / Path.v profile
+      / Path.v (Riot_model.Target.to_string target)
+      / Path.v "cache"
+      / Path.v hash)
+  in
   let payload = Path.(entry_dir / Path.v "artifact.bin") in
   let _ = Fs.create_dir_all entry_dir |> Result.expect ~msg:"create cache entry should succeed" in
   let _ = Fs.write (String.make ~len:size ~char:'x') payload
@@ -725,28 +733,28 @@ let test_cache_gc_drops_unreferenced_entries_after_generation_overflow = fun _ct
         let entry_a = write_cache_entry
           ~workspace
           ~profile:"debug"
-          ~target:"host"
+          ~target:host_target
           ~hash:hash_a
           ~size:16 in
         let entry_b = write_cache_entry
           ~workspace
           ~profile:"debug"
-          ~target:"host"
+          ~target:host_target
           ~hash:hash_b
           ~size:16 in
         let _ = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
-          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_a } ]
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] } ]
+          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a } ]
         |> Result.expect ~msg:"first generation should record" in
         let summary =
           let _ = Riot_store.Cache_gc.record_successful_build
             ~workspace
             ~lanes:[
-              Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_b ] }
+              Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] }
             ]
             ~new_entries:[
-              Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_b }
+              Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_b }
             ]
           |> Result.expect ~msg:"second generation should record" in
           Riot_store.Cache_gc.clean ~workspace |> Result.expect ~msg:"clean should enforce generation retention"
@@ -772,24 +780,24 @@ let test_record_successful_build_tracks_generation_count_in_state = fun _ctx ->
         let _ = write_cache_entry
           ~workspace
           ~profile:"debug"
-          ~target:"host"
+          ~target:host_target
           ~hash:hash_a
           ~size:16 in
         let _ = write_cache_entry
           ~workspace
           ~profile:"debug"
-          ~target:"host"
+          ~target:host_target
           ~hash:hash_b
           ~size:16 in
         let first_summary = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
-          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_a } ]
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] } ]
+          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a } ]
         |> Result.expect ~msg:"first generation should record" in
         let second_summary = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_b ] } ]
-          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_b } ]
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] } ]
+          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_b } ]
         |> Result.expect ~msg:"second generation should record" in
         if first_summary.kept_generations = 1 && second_summary.kept_generations = 2 then
           Ok ()
@@ -812,17 +820,17 @@ let test_record_successful_build_dedupes_identical_warm_generation = fun _ctx ->
         let _ = write_cache_entry
           ~workspace
           ~profile:"debug"
-          ~target:"host"
+          ~target:host_target
           ~hash:hash_a
           ~size:16 in
         let first_summary = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
-          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_a } ]
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] } ]
+          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a } ]
         |> Result.expect ~msg:"first generation should record" in
         let second_summary = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] } ]
           ~new_entries:[]
         |> Result.expect ~msg:"identical warm generation should be accepted" in
         let receipt_count = count_generation_receipts ~workspace in
@@ -858,23 +866,23 @@ let test_record_successful_build_keeps_new_warm_generation_when_closure_changes 
         let _ = write_cache_entry
           ~workspace
           ~profile:"debug"
-          ~target:"host"
+          ~target:host_target
           ~hash:hash_a
           ~size:16 in
         let _ = write_cache_entry
           ~workspace
           ~profile:"debug"
-          ~target:"host"
+          ~target:host_target
           ~hash:hash_b
           ~size:16 in
         let _ = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
-          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_a } ]
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] } ]
+          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a } ]
         |> Result.expect ~msg:"first generation should record" in
         let second_summary = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_b ] } ]
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] } ]
           ~new_entries:[]
         |> Result.expect ~msg:"distinct warm generation should record" in
         let receipt_count = count_generation_receipts ~workspace in
@@ -912,28 +920,28 @@ let test_record_successful_build_reorders_existing_cached_generation_to_front = 
         let _ = write_cache_entry
           ~workspace
           ~profile:"debug"
-          ~target:"host"
+          ~target:host_target
           ~hash:hash_a
           ~size:16 in
         let _ = write_cache_entry
           ~workspace
           ~profile:"debug"
-          ~target:"host"
+          ~target:host_target
           ~hash:hash_b
           ~size:16 in
         let _ = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
-          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_a } ]
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] } ]
+          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a } ]
         |> Result.expect ~msg:"generation A should record" in
         let _ = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_b ] } ]
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] } ]
           ~new_entries:[]
         |> Result.expect ~msg:"generation B should record without new entries" in
         let third_summary = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] } ]
           ~new_entries:[]
         |> Result.expect ~msg:"generation A should move back to the front" in
         let receipt_count = count_generation_receipts ~workspace in
@@ -967,39 +975,39 @@ let test_cache_gc_shrinks_retained_generations_to_meet_max_size = fun _ctx ->
         let entry_a = write_cache_entry
           ~workspace
           ~profile:"debug"
-          ~target:"host"
+          ~target:host_target
           ~hash:hash_a
           ~size:64 in
         let _ = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
-          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_a } ]
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] } ]
+          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a } ]
         |> Result.expect ~msg:"generation A should record" in
         let entry_b = write_cache_entry
           ~workspace
           ~profile:"debug"
-          ~target:"host"
+          ~target:host_target
           ~hash:hash_b
           ~size:64 in
         let _ = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_b ] } ]
-          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_b } ]
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] } ]
+          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_b } ]
         |> Result.expect ~msg:"generation B should record" in
         let entry_c = write_cache_entry
           ~workspace
           ~profile:"debug"
-          ~target:"host"
+          ~target:host_target
           ~hash:hash_c
           ~size:64 in
         let summary =
           let _ = Riot_store.Cache_gc.record_successful_build
             ~workspace
             ~lanes:[
-              Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_c ] }
+              Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_c ] }
             ]
             ~new_entries:[
-              Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_c }
+              Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_c }
             ]
           |> Result.expect ~msg:"generation C should record" in
           Riot_store.Cache_gc.clean ~workspace |> Result.expect ~msg:"clean should enforce max_size policy"

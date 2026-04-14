@@ -224,7 +224,7 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
                     {
                       workspace = request.workspace;
                       packages = [ package_name ];
-                      targets = Build_runtime.Host;
+                      targets = Riot_model.Target.Host;
                       scope = Build_runtime.Runtime;
                       profile = "debug";
                     }

@@ -690,7 +690,7 @@ let list_tests = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_list_er
         {
           workspace = request.workspace;
           packages = requested_packages suites;
-          targets = Build_runtime.Host;
+          targets = Riot_model.Target.Host;
           scope = Build_runtime.Dev;
           profile = request.profile;
         }
@@ -815,7 +815,7 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
         {
           workspace = request.workspace;
           packages = requested_packages suites;
-          targets = Build_runtime.Host;
+          targets = Riot_model.Target.Host;
           scope = Build_runtime.Dev;
           profile = request.profile;
         }

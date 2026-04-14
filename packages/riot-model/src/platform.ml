@@ -19,9 +19,9 @@ let of_string = function
   | "windows" -> Windows
   | s -> Unknown s
 
-(** Detect the current platform using Kernel's System.Host *)
+(** Detect the current platform using Std.System.TargetTriple *)
 let detect = fun () ->
-  let host = Kernel.System.host_triplet in
+  let host = System.host_triple in
   match host.os with
   | "darwin" -> MacOS
   | "linux" -> Linux

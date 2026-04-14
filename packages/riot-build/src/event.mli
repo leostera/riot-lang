@@ -7,7 +7,7 @@ open Std
 *)
 type t =
   | Pm of Riot_model.Event.t
-  | BuildingTarget of { target: string; host: bool }
+  | BuildingTarget of { target: Riot_model.Target.t; host: bool }
   | CacheGc of Riot_store.Cache_gc.event
   | Phase of phase
   | Streaming of Client.streaming_event
@@ -18,8 +18,8 @@ and runtime_phase =
   | ToolchainsValidated of { target_count: int }
   | ClientConnecting
   | ClientConnected
-  | TargetBuildStarted of { target: string; host: bool }
-  | TargetBuildFinished of { target: string; result_count: int; had_partial_failure: bool }
+  | TargetBuildStarted of { target: Riot_model.Target.t; host: bool }
+  | TargetBuildFinished of { target: Riot_model.Target.t; result_count: int; had_partial_failure: bool }
   | CacheGenerationRecordingStarted of { lane_count: int; new_entry_count: int }
   | CacheGenerationRecorded of { lane_count: int; new_entry_count: int }
   | ReturningResults of { result_count: int; had_partial_failure: bool }

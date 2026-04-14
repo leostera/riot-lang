@@ -24,7 +24,7 @@ let test_cache_store_creation_is_lazy_until_first_save = fun _ctx ->
           Path.(tmpdir
           / Path.v "target"
           / Path.v "debug"
-          / Path.v (Riot_model.Riot_dirs.host_target ())
+          / Path.v (Riot_model.Target.to_string (Riot_model.Riot_dirs.host_target ()))
           / Path.v "cache") in
         match Fs.exists cache_dir with
         | Ok true -> Error "cache directory should stay lazy before first save"

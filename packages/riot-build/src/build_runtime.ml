@@ -5,15 +5,10 @@ type build_scope =
   | Runtime
   | Dev
 
-type target_request = Target_selector.t =
-  | Host
-  | All
-  | Pattern of string
-
 type build_request = {
   workspace: Riot_model.Workspace.t;
   packages: string list;
-  targets: target_request;
+  targets: Riot_model.Target.request;
   scope: build_scope;
   profile: string;
 }
@@ -24,15 +19,15 @@ type build_phase = Event.phase =
 
 type build_event = Event.t =
   | Pm of Riot_model.Event.t
-  | BuildingTarget of { target: string; host: bool }
+  | BuildingTarget of { target: Riot_model.Target.t; host: bool }
   | CacheGc of Riot_store.Cache_gc.event
   | Phase of build_phase
   | Streaming of Client.streaming_event
 
 type build_error =
-  | NoTargetsMatched of Target_selector.error
-  | ToolchainInstallFailed of { target: string; error: string }
-  | ToolchainInitializationFailed of { target: string; error: string }
+  | NoTargetsMatched of Riot_model.Target.resolve_error
+  | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
+  | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
   | ClientError of Client.error
 
 type build_mode =
@@ -42,9 +37,9 @@ type build_mode =
 type build_context = {
   session_id: Riot_model.Session_id.t;
   request: build_request;
-  host: string;
+  host: Riot_model.Target.t;
   toolchain_config: Riot_model.Toolchain_config.t;
-  target_selector: Target_selector.context;
+  configured_targets: Riot_model.Target.Set.t;
   request_target: Client.build_target;
   client_scope: Client.build_scope;
   allow_partial_failures: bool;
@@ -83,7 +78,7 @@ let emit_client_connected = fun context ->
   emit_runtime_phase context Event.ClientConnected
 
 let emit_target_build_started = fun context target ->
-  let host = String.equal target context.host in
+  let host = Riot_model.Target.equal target context.host in
   context.on_event (BuildingTarget { target; host });
   emit_runtime_phase context (Event.TargetBuildStarted { target; host })
 
@@ -107,13 +102,17 @@ let error_message = function
   | NoTargetsMatched { pattern; available_targets } -> "No targets match pattern '"
   ^ pattern
   ^ "'. Available targets: "
-  ^ String.concat ", " available_targets
+  ^ (
+      available_targets
+      |> List.map ~fn:Riot_model.Target.to_string
+      |> String.concat ", "
+    )
   | ToolchainInstallFailed { target; error } -> "Failed to install toolchain for "
-  ^ target
+  ^ Riot_model.Target.to_string target
   ^ ": "
   ^ error
   | ToolchainInitializationFailed { target; error } -> "Failed to initialize toolchain for "
-  ^ target
+  ^ Riot_model.Target.to_string target
   ^ ": "
   ^ error
   | ClientError err -> Client.error_message err
@@ -130,17 +129,17 @@ let client_target = fun packages ->
 
 let make_context = fun ~mode ~allow_partial_failures ?workspace_manager ?(record_cache_generation = true) ?(on_event = no_event) request ->
   let session_id = Riot_model.Session_id.make () in
-  let host = Riot_toolchain.get_host_triple () in
+  let host = Riot_model.Target.current in
   let toolchain_config = Riot_model.Toolchain_config.from_workspace request.workspace in
   let configured_targets =
-    Target_selector.configured_targets ~host toolchain_config
+    Riot_model.Target.configured_targets ~host toolchain_config
   in
   {
     session_id;
     request;
     host;
     toolchain_config;
-    target_selector = Target_selector.create ~host ~configured_targets;
+    configured_targets;
     request_target = client_target request.packages;
     client_scope = client_scope request.scope;
     allow_partial_failures;
@@ -152,13 +151,17 @@ let make_context = fun ~mode ~allow_partial_failures ?workspace_manager ?(record
 
 let resolve_targets = fun context ->
   let* targets =
-    Target_selector.resolve context.target_selector context.request.targets
+    Riot_model.Target.resolve
+      ~host:context.host
+      ~configured_targets:context.configured_targets
+      context.request.targets
     |> Result.map_err ~fn:(fun err -> NoTargetsMatched err)
   in
-  emit_targets_resolved context targets;
+  emit_targets_resolved context (Riot_model.Target.Set.to_list targets);
   Ok targets
 
 let ensure_toolchains_for_targets = fun context targets ->
+  let targets = Riot_model.Target.Set.to_list targets in
   let missing =
     List.filter targets ~fn:(fun target ->
         match
@@ -180,19 +183,26 @@ let ensure_toolchains_for_targets = fun context targets ->
             ~target
         with
         | Ok () -> loop rest
-        | Error error -> Error (ToolchainInstallFailed { target; error }))
+        | Error error ->
+            Error (ToolchainInstallFailed { target; error }))
   in
   let* () = loop missing in
   emit_toolchains_ensured context targets;
   Ok ()
 
 let validate_target_toolchains = fun context targets ->
+  let targets = Riot_model.Target.Set.to_list targets in
   let rec loop = function
     | [] -> Ok ()
     | target :: rest -> (
-        match Riot_toolchain.init_for_target ~config:context.toolchain_config ~target with
+        match
+          Riot_toolchain.init_for_target
+            ~config:context.toolchain_config
+            ~target
+        with
         | Ok _ -> loop rest
-        | Error error -> Error (ToolchainInitializationFailed { target; error }))
+        | Error error ->
+            Error (ToolchainInitializationFailed { target; error }))
   in
   let* () = loop targets in
   emit_toolchains_validated context targets;
@@ -317,12 +327,13 @@ let record_cache_generation_if_needed = fun context lane_results had_partial_fai
     Ok ()
 
 let build_loop = fun context client targets ->
+  let targets = Riot_model.Target.Set.to_list targets in
   let rec loop acc had_partial_failure = function
     | [] -> Ok (List.reverse acc, had_partial_failure)
     | target :: rest ->
         emit_target_build_started context target;
         let target_arch =
-          if String.equal target context.host then
+          if Riot_model.Target.equal target context.host then
             None
           else
             Some target
@@ -366,7 +377,10 @@ let build_loop = fun context client targets ->
                   ~target
                   ~result_count:(List.length results)
                   ~had_partial_failure:next_partial_failure;
-                loop ((target, results) :: acc) next_partial_failure rest
+                loop
+                  ((target, results) :: acc)
+                  next_partial_failure
+                  rest
             | None -> loop acc had_partial_failure rest)
         | Error err when context.allow_partial_failures && !lane_failed -> (
             match !lane_results with

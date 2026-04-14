@@ -29,3 +29,7 @@ path = "tests/concurrent_tests.ml"
 [[bin]]
 name = "server_tests"
 path = "tests/server_tests.ml"
+
+[[bin]]
+name = "build_core_tests"
+path = "tests/build_core_tests.ml"

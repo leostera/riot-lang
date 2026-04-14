@@ -73,16 +73,16 @@ module BuildLock: sig
   }
   val retry_interval: Time.Duration.t
 
-  val path: workspace:Workspace.t -> profile:string -> target:string -> Path.t
+  val path: workspace:Workspace.t -> profile:string -> target:Riot_model.Target.t -> Path.t
 
   val release: t -> unit
 
-  val wait: workspace:Workspace.t -> profile:string -> target:string -> (t, 'a) result
+  val wait: workspace:Workspace.t -> profile:string -> target:Riot_model.Target.t -> (t, 'a) result
 
   val acquire:
     workspace:Workspace.t ->
     profile:string ->
-    target:string ->
+    target:Riot_model.Target.t ->
     (unit -> ('a, 'b) result) ->
     ('a, 'b) result
 end
@@ -92,7 +92,7 @@ val build_streaming:
   build_target ->
   ?scope:build_scope ->
   ?profile:string ->
-  ?target_arch:string ->
+  ?target_arch:Riot_model.Target.t ->
   (streaming_event -> unit) ->
   (streaming_event, error) result
 

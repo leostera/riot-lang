@@ -1,76 +1,140 @@
 open Std
 
-(** Build target - either native (Host) or cross-compilation (Cross) *)
-type t =
-  | Host
-  (** Native compilation - build for the current machine *)
-  | Cross of cross_config
-
-(** Cross-compilation - build for a different architecture *)
-and cross_config = {
-  target_triplet: System.Host.t;
-  sysroot: Path.t option;  (** Detected sysroot for cross-compiler *)
-  bin_dir: Path.t option;  (** Directory containing cross-compiler binaries *)
-  bin_prefix: string;  (** Binary prefix (e.g., "aarch64-linux-gnu-") *)
+type t = System.TargetTriple.t = {
+  architecture: string;
+  vendor: string;
+  os: string;
+  abi: string option;
 }
 
-(** Smart constructor that auto-detects sysroot and toolchain *)
-let make_cross = fun ~target_triplet ->
-  (* Note: We can't call Riot_toolchain here due to circular dependency.
-     Detection will be done at Build_ctx creation time. *)
-  Cross { target_triplet; sysroot = None; bin_dir = None; bin_prefix = "" }
+module Set = struct
+  type elt = t
 
-(** Create Cross target with explicit configuration *)
-let make_cross_with_config = fun ~target_triplet ~sysroot ~bin_dir ~bin_prefix ->
-  Cross { target_triplet; sysroot; bin_dir; bin_prefix }
+  type t = elt Collections.HashSet.t
 
-(** Get target triplet (works for both Host and Cross) *)
-let triplet = function
-  | Host -> System.Host.current
-  | Cross cfg -> cfg.target_triplet
+  let empty = fun () -> Collections.HashSet.create ()
 
-(** Check if this is cross-compilation *)
-let is_cross = function
-  | Host -> false
-  | Cross _ -> true
+  let singleton = fun target ->
+    let set = empty () in
+    let _ = Collections.HashSet.insert set ~value:target in
+    set
 
-(** Get sysroot (None for native builds) *)
-let sysroot = function
-  | Host -> None
-  | Cross cfg -> cfg.sysroot
+  let of_list = Collections.HashSet.from_list
 
-(** Get binary directory *)
-let bin_dir = function
-  | Host -> None
-  | Cross cfg -> cfg.bin_dir
+  let insert = fun set target ->
+    let _ = Collections.HashSet.insert set ~value:target in
+    ()
 
-(** Get binary prefix *)
-let bin_prefix = function
-  | Host -> ""
-  | Cross cfg -> cfg.bin_prefix
+  let contains = fun set target -> Collections.HashSet.contains set ~value:target
 
-(** Platform name for target-specific config lookups *)
-let platform_name = fun t ->
-  let triplet = triplet t in
-  match triplet.System.Host.os with
+  let length = Collections.HashSet.length
+
+  let is_empty = Collections.HashSet.is_empty
+
+  let to_list = fun set ->
+    Collections.HashSet.to_list set |> List.sort
+      ~compare:(fun left right ->
+        String.compare (System.TargetTriple.to_string left) (System.TargetTriple.to_string right))
+end
+
+type request =
+  | Host
+  | All
+  | Pattern of string
+  | Exact of Set.t
+
+type resolve_error = {
+  pattern: string;
+  available_targets: t list;
+}
+
+let current = System.TargetTriple.current
+
+let from_string = System.TargetTriple.from_string
+
+let to_string = System.TargetTriple.to_string
+
+let equal = System.TargetTriple.equal
+
+let compare = fun left right ->
+  String.compare (to_string left) (to_string right)
+
+let host = fun () -> current
+
+let make_set = Set.of_list
+
+let normalize_pattern = fun value -> String.trim value |> String.lowercase_ascii
+
+let parse = fun value ->
+  match normalize_pattern value with
+  | "host"
+  | "native" ->
+      Host
+  | "all" ->
+      All
+  | normalized -> (
+      match from_string normalized with
+      | Ok target -> Exact (Set.singleton target)
+      | Error _ -> Pattern normalized
+    )
+
+let configured_targets = fun ~host (config: Toolchain_config.t) ->
+  match config.targets with
+  | [] -> Set.singleton host
+  | targets ->
+      let set = Set.of_list targets in
+      if Set.is_empty set then
+        Set.singleton host
+      else
+        set
+
+let resolve = fun ~host ~configured_targets request ->
+  match request with
+  | Host ->
+      Ok (Set.singleton host)
+  | All ->
+      Ok configured_targets
+  | Exact targets ->
+      Ok targets
+  | Pattern pattern -> (
+      match normalize_pattern pattern with
+      | "host"
+      | "native" ->
+          Ok (Set.singleton host)
+      | "all" ->
+          Ok configured_targets
+      | normalized -> (
+          match from_string normalized with
+          | Ok exact_target when Set.contains configured_targets exact_target -> Ok (Set.singleton exact_target)
+          | Ok _
+          | Error _ ->
+              let matches =
+                Set.to_list configured_targets
+                |> List.filter
+                  ~fn:(fun target ->
+                    String.contains (to_string target) normalized)
+              in
+              if List.is_empty matches then
+                Error { pattern = normalized; available_targets = Set.to_list configured_targets }
+              else
+                Ok (Set.of_list matches)
+        )
+    )
+
+let request_to_string = function
+  | Host -> "host"
+  | All -> "all"
+  | Pattern pattern -> pattern
+  | Exact targets -> Set.to_list targets |> List.map ~fn:to_string |> String.concat ","
+
+let is_cross = fun target -> not (equal target current)
+
+let platform_name = fun target ->
+  match target.os with
   | "darwin" -> "macos"
   | "linux" -> "linux"
   | "windows" -> "windows"
   | other -> other
 
-(** Hash target into a Sha256 hasher state *)
-let hash = fun state t ->
-  let module H = Crypto.Sha256 in
-  match t with
-  | Host ->
-      H.write state "Host";
-      H.write state (System.Host.to_string System.Host.current)
-  | Cross cfg ->
-      H.write state "Cross";
-      H.write state (System.Host.to_string cfg.target_triplet);
-      (
-        match cfg.sysroot with
-        | Some sr -> H.write state (Path.to_string sr)
-        | None -> ()
-      );
-      H.write state cfg.bin_prefix
+let hash = fun state target ->
+  Crypto.Sha256.write state (to_string target)

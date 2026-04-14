@@ -18,6 +18,7 @@
 12. Parse OCaml compiler stderr into structured diagnostics here; higher layers may rewrite diagnostic paths, but coarse compiler-output parsing belongs in `Ocamlc`.
 13. Reuse `Riot_model.Ocaml_compiler` for shared warning/flag vocabulary and string parsing/rendering. Do not shadow OCaml flag codecs locally in `riot-toolchain`.
 14. Published toolchain discovery should come from the shared CDN `ocaml/manifest.json`; keep availability parsing in `riot-toolchain`, not in CLI code.
+15. Inside riot packages, target identities should stay typed as `Riot_model.Target.t` / `Std.System.TargetTriple.t`. Only stringify targets at external boundaries such as URLs, filesystem layout, shell commands, or published manifest rows.
 
 ## Validate
 

@@ -12,7 +12,7 @@ val start:
   target:Protocol.target ->
   scope:Protocol.build_scope ->
   profile:string ->
-  target_arch:string option ->
+  target_arch:Riot_model.Target.t option ->
   unit
 
 (** Start a build in a spawned worker process. This function returns immediately

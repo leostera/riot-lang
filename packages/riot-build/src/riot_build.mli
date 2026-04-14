@@ -10,7 +10,15 @@ module Protocol = Protocol
 
 module Server_config = Server_config
 
-module Target_selector = Target_selector
+module Prepared_workspace = Prepared_workspace
+
+module Request = Request
+
+module Build_spec = Build_spec
+
+module Output = Output
+
+module Build_core = Build_core
 
 type error = Internal_server.error
 val error_message: error -> string
@@ -18,10 +26,11 @@ val error_message: error -> string
 type build_scope =
   | Runtime
   | Dev
-type target_request = Target_selector.t =
+type target_request = Riot_model.Target.request =
   | Host
   | All
   | Pattern of string
+  | Exact of Riot_model.Target.Set.t
 type build_request = {
   workspace: Riot_model.Workspace.t;
   packages: string list;
@@ -34,14 +43,14 @@ type build_phase = Event.phase =
   | CliPhase of Event.cli_phase
 type build_event = Event.t =
   | Pm of Riot_model.Event.t
-  | BuildingTarget of { target: string; host: bool }
+  | BuildingTarget of { target: Riot_model.Target.t; host: bool }
   | CacheGc of Riot_store.Cache_gc.event
   | Phase of build_phase
   | Streaming of Client.streaming_event
 type build_error =
-  | NoTargetsMatched of Target_selector.error
-  | ToolchainInstallFailed of { target: string; error: string }
-  | ToolchainInitializationFailed of { target: string; error: string }
+  | NoTargetsMatched of Riot_model.Target.resolve_error
+  | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
+  | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
   | ClientError of Client.error
 val build_error_message: build_error -> string
 
@@ -105,6 +114,13 @@ val build_prepared:
   ?workspace_manager:Riot_model.Workspace_manager.t ->
   build_request ->
   (Riot_executor.Package_builder.build_result list, build_error) result
+
+val resolve:
+  Prepared_workspace.t ->
+  Request.t ->
+  (Build_spec.t, Build_core.resolve_error) result
+
+val resolve_error_message: Build_core.resolve_error -> string
 
 val run: ?on_event:(run_event -> unit) -> run_request -> (unit, run_error) result
 

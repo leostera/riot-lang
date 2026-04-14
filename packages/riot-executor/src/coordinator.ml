@@ -26,7 +26,7 @@ type package_runtime = {
   export_entries: Riot_store.Store.export_entry list;
   target_dir: Path.t;
   profile_name: string;
-  target_name: string;
+  target: Target.t;
   total_actions: int;
   mutable active: bool;
   mutable compilation_started: bool;
@@ -303,7 +303,6 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
 
 let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~package_graph ~target ~build_ctx ~session_id ~nodes ->
   let profile_name = build_ctx.Build_ctx.profile.name in
-  let target_triple_str = Kernel.System.Host.to_string (Build_ctx.target_triplet build_ctx) in
   let planning_duration = ref Time.Duration.zero in
   let planning_results: (Package.key, package_planning_status) HashMap.t = HashMap.create () in
   let runtimes: (Package.key, package_runtime) HashMap.t = HashMap.create () in
@@ -393,11 +392,12 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
         }
       )
   in
+  let target_triplet = Build_ctx.target_triplet build_ctx in
   let target_dir_for package_name =
     Path.(Riot_dirs.out_dir_in_workspace
       ~workspace
       ~profile:profile_name
-      ~target:target_triple_str
+      ~target:target_triplet
     / Path.v package_name) in
   let finalize_cached_package ~package_key ~(package:Package.t) ~hash ~artifact ~depset ~exports =
     let materialized = Ok () in
@@ -456,7 +456,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
     let sandbox = Sandbox.create
       ~workspace
       ~profile:profile_name
-      ~target:target_triple_str
+      ~target:target_triplet
       ()
       ~package_name:package.name in
     Sandbox.prepare ~sandbox ~package ~inputs ~depset ~store;
@@ -477,7 +477,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
       export_entries = compute_export_entries action_graph;
       target_dir;
       profile_name;
-      target_name = target_triple_str;
+      target = target_triplet;
       total_actions = List.length action_nodes;
       active = false;
       compilation_started = false;

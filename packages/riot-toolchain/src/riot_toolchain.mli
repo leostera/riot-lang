@@ -51,10 +51,10 @@ val hash: t -> Crypto.hash
 (** Compute a hash of the toolchain for cache invalidation *)
 
 (** Multi-target toolchain support *)
-val get_host_triple: unit -> string
+val get_host_triple: unit -> Riot_model.Target.t
 
 (** Get the current host architecture triple *)
-val init_for_target: config:Riot_model.Toolchain_config.t -> target:string -> (t, string) result
+val init_for_target: config:Riot_model.Toolchain_config.t -> target:Riot_model.Target.t -> (t, string) result
 
 (** Initialize toolchain for a specific target architecture.
     
@@ -63,11 +63,12 @@ val init_for_target: config:Riot_model.Toolchain_config.t -> target:string -> (t
     - If target != host: Downloads and uses cross-compilation toolchain
     
     Returns Ok toolchain if ready, Error msg otherwise. *)
-val get_for_target: config:Riot_model.Toolchain_config.t -> target:string -> (t, string) result
+val get_for_target: config:Riot_model.Toolchain_config.t -> target:Riot_model.Target.t -> (t, string) result
 
 (** Get toolchain for specific target (lazy initialization).
     Equivalent to init_for_target but more explicit about intent. *)
-val download_and_install_toolchain: string -> host:string -> target:string -> (unit, string) result
+val download_and_install_toolchain:
+  string -> host:Riot_model.Target.t -> target:Riot_model.Target.t -> (unit, string) result
 
 (** Download and install a toolchain for the given version and target.
     Returns Ok () on success, Error msg on failure. *)
@@ -78,7 +79,7 @@ type toolchain_status =
   | Incomplete of { path: Path.t; missing: string list }
 type toolchain_info = {
   version: string;
-  target: string;
+  target: Riot_model.Target.t;
   is_host: bool;
   status: toolchain_status;
 }
@@ -87,8 +88,8 @@ type available_toolchain_kind =
   | Cross
 type available_toolchain = {
   version: string;
-  host: string;
-  target: string;
+  host: Riot_model.Target.t;
+  target: Riot_model.Target.t;
   artifact_target: string;
   kind: available_toolchain_kind;
   artifact: string;
@@ -100,7 +101,7 @@ type available_toolchain = {
 val list_toolchains: config:Riot_model.Toolchain_config.t -> toolchain_info list
 
 (** List all toolchains configured for this project with their status *)
-val check_toolchain_status: version:string -> target:string -> toolchain_status
+val check_toolchain_status: version:string -> target:Riot_model.Target.t -> toolchain_status
 
 (** Check the installation status of a specific toolchain *)
 val install_all_toolchains: config:Riot_model.Toolchain_config.t -> (int * int, string) result

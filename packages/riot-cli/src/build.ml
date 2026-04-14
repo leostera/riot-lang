@@ -53,6 +53,10 @@ let build_request_label = fun (request: Riot_build.build_request) ->
     | Riot_build.Host -> "host"
     | Riot_build.All -> "all"
     | Riot_build.Pattern pattern -> pattern
+    | Riot_build.Exact targets ->
+        Riot_model.Target.Set.to_list targets
+        |> List.map ~fn:Riot_model.Target.to_string
+        |> String.concat ","
   in
   "Build(" ^ packages ^ "; targets=" ^ targets ^ ")"
 
@@ -215,9 +219,12 @@ let command =
       ]
 
 let target_request_of_matches = fun matches ->
-  Riot_build.Target_selector.of_cli_options
-    ~all_targets:(ArgParser.get_flag matches "all-targets")
-    ~target:(ArgParser.get_one matches "target")
+  if ArgParser.get_flag matches "all-targets" then
+    Riot_build.All
+  else
+    match ArgParser.get_one matches "target" with
+    | Some value -> Riot_model.Target.parse value
+    | None -> Riot_build.Host
 
 let output_mode_of_matches = fun matches ->
   if ArgParser.get_flag matches "json" then
@@ -257,11 +264,12 @@ let request_of_matches = fun ~workspace matches ->
     ()
 
 let write_building_target_event = fun ~mode ~target ~host ->
+  let target_name = Riot_model.Target.to_string target in
   match mode with
   | Json -> write_build_event_json (Riot_build.BuildingTarget { target; host })
   | Human ->
       if not host then
-        out ("🔨 Cross-compiling for " ^ target)
+        out ("🔨 Cross-compiling for " ^ target_name)
 
 let scaled_size_string = fun bytes divisor suffix ->
   let whole = Int64.div bytes divisor in
@@ -365,7 +373,10 @@ let write_build_error = fun ~mode err ->
           ("pattern", Data.Json.String pattern);
                   (
                     "available_targets",
-                    Data.Json.Array (List.map available_targets ~fn:(fun target -> Data.Json.String target))
+                    Data.Json.Array
+                      (List.map available_targets
+                        ~fn:(fun target ->
+                          Data.Json.String (Riot_model.Target.to_string target)))
                   );
                 ]
         (Riot_build.build_error_message err)
@@ -373,13 +384,19 @@ let write_build_error = fun ~mode err ->
       write_command_error
         ~mode
         "ToolchainInstallFailed"
-        [ ("target", Data.Json.String target); ("reason", Data.Json.String error) ]
+        [
+          ("target", Data.Json.String (Riot_model.Target.to_string target));
+          ("reason", Data.Json.String error);
+        ]
         (Riot_build.build_error_message err)
   | Riot_build.ToolchainInitializationFailed { target; error } ->
       write_command_error
         ~mode
         "ToolchainInitializationFailed"
-        [ ("target", Data.Json.String target); ("reason", Data.Json.String error) ]
+        [
+          ("target", Data.Json.String (Riot_model.Target.to_string target));
+          ("reason", Data.Json.String error);
+        ]
         (Riot_build.build_error_message err)
   | Riot_build.ClientError client_error -> (
       match client_error with
@@ -621,7 +638,7 @@ let build_command = fun ?workspace ?(prepared = false) ?(scope = Runtime) ?(prof
               |> Option.to_list)
                 ~targets:(
                   match target_arch with
-                  | Some target -> Riot_build.Target_selector.of_string target
+                  | Some target -> Riot_model.Target.parse target
                   | None -> Riot_build.Host
                 )
                 ()
@@ -633,7 +650,7 @@ let build_packages_command = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?
       make_request ~workspace ~scope ~mode ~show_finished_summary ~packages:package_names
         ~targets:(
           match target_arch with
-          | Some target -> Riot_build.Target_selector.of_string target
+          | Some target -> Riot_model.Target.parse target
           | None -> Riot_build.Host
         )
         ()

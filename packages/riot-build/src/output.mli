@@ -1,0 +1,21 @@
+open Std
+
+type package_status =
+  | Built of Riot_store.Artifact.t
+  | Cached of Riot_store.Artifact.t
+  | Skipped of string
+  | Failed of string
+
+type package_output
+
+type t
+
+val of_build_results: Riot_executor.Package_builder.build_result list -> t
+
+val packages: t -> package_output list
+
+val find_package: t -> string -> package_output option
+
+val package_name: package_output -> string
+
+val package_status: package_output -> package_status

@@ -20,7 +20,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
     (
       "Build worker started for session " ^ Session_id.to_string session_id ^ (
         match target_arch with
-        | Some arch -> ", target_arch: " ^ arch
+        | Some arch -> ", target_arch: " ^ Riot_model.Target.to_string arch
         | None -> ""
       )
     );
@@ -102,59 +102,72 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
     let profile = resolve_profile ~workspace profile_name in
     Log.debug ("Build started with profile " ^ (Data.Json.to_string (Profile.to_json profile)));
     let config = Riot_model.Toolchain_config.from_workspace workspace in
-    let toolchain, target =
+    let toolchain, compilation_mode =
       match target_arch with
-      | Some arch_str -> (
-          match Kernel.System.Host.from_string arch_str with
-          | Ok target_triplet ->
-              Log.info
-                ("✓ Parsed target architecture: " ^ arch_str ^ " -> os=" ^ target_triplet.os);
-              let host_triplet = Kernel.System.Host.current in
-              if Kernel.System.Host.equal target_triplet host_triplet then
-                (
-                  Log.info "Target matches host - native compilation";
-                  (toolchain, Some Riot_model.Target.Host)
-                )
-              else (
-                Log.info
-                  ("Cross-compiling from "
-                  ^ Kernel.System.Host.to_string host_triplet
-                  ^ " to "
-                  ^ Kernel.System.Host.to_string target_triplet);
-                let resolved_toolchain =
-                  match Riot_toolchain.init_for_target ~config ~target:arch_str with
-                  | Ok tc ->
-                      Log.debug ("Using cross-compilation toolchain for " ^ arch_str);
-                      tc
-                  | Error msg ->
-                      Log.error
-                        ("Failed to init toolchain for " ^ arch_str ^ ": " ^ msg ^ ", using host toolchain");
-                      toolchain
-                in
-                let toolchain_root =
-                  Path.(Riot_model.Riot_dirs.dot_riot
-                  / Path.v "toolchains"
-                  / Path.v config.version
-                  / Path.v arch_str) in
-                let detection = Riot_toolchain.CrossCompilingToolchain.detect ~toolchain_root () ~target_triplet in
-                (
-                  resolved_toolchain,
-                  Some (Riot_model.Target.make_cross_with_config
-                    ~target_triplet
-                    ~sysroot:detection.sysroot
-                    ~bin_dir:detection.bin_dir
-                    ~bin_prefix:detection.bin_prefix)
-                )
-              )
-          | Error msg ->
-              Log.warn ("Invalid target architecture '" ^ arch_str ^ "': " ^ msg ^ ", using host");
-              (toolchain, None)
-        )
-      | None -> (toolchain, None)
+      | Some target_triplet ->
+          Log.info
+            ("✓ Using target architecture: "
+            ^ Riot_model.Target.to_string target_triplet
+            ^ " -> os="
+            ^ target_triplet.os);
+          let host_triplet = System.host_triple in
+          if System.TargetTriple.equal target_triplet host_triplet then
+            (
+              Log.info "Target matches host - native compilation";
+              (toolchain, Riot_model.Build_ctx.HostOnly)
+            )
+          else (
+            Log.info
+              ("Cross-compiling from "
+              ^ System.TargetTriple.to_string host_triplet
+              ^ " to "
+              ^ System.TargetTriple.to_string target_triplet);
+            let resolved_toolchain =
+              match Riot_toolchain.init_for_target ~config ~target:target_triplet with
+              | Ok tc ->
+                  Log.debug
+                    ("Using cross-compilation toolchain for "
+                    ^ Riot_model.Target.to_string target_triplet);
+                  tc
+              | Error msg ->
+                  Log.error
+                    ("Failed to init toolchain for "
+                    ^ Riot_model.Target.to_string target_triplet
+                    ^ ": "
+                    ^ msg
+                    ^ ", using host toolchain");
+                  toolchain
+            in
+            let toolchain_root =
+              Path.(Riot_model.Riot_dirs.dot_riot
+              / Path.v "toolchains"
+              / Path.v config.version
+              / Path.v (Riot_model.Target.to_string target_triplet)) in
+            let detection =
+              Riot_toolchain.CrossCompilingToolchain.detect ~toolchain_root () ~target_triplet
+            in
+            (
+              resolved_toolchain,
+              Riot_model.Build_ctx.Cross {
+                target = target_triplet;
+                sysroot = detection.sysroot;
+                bin_dir = detection.bin_dir;
+                bin_prefix = detection.bin_prefix;
+              }
+            )
+          )
+      | None -> (toolchain, Riot_model.Build_ctx.HostOnly)
     in
-    let build_ctx = Build_ctx.make ~session_id ~profile ?target ~available_parallelism:concurrency () in
-    let target_triple_str = Kernel.System.Host.to_string (Build_ctx.target_triplet build_ctx) in
-    let store = Riot_store.Store.create_for_lane ~workspace ~profile:profile.name ~target:target_triple_str in
+    let build_ctx =
+      Build_ctx.make
+        ~session_id
+        ~profile
+        ~compilation_mode
+        ~available_parallelism:concurrency
+        ()
+    in
+    let target_triplet = Build_ctx.target_triplet build_ctx in
+    let store = Riot_store.Store.create_for_lane ~workspace ~profile:profile.name ~target:target_triplet in
     Log.info
       ("Build context created: target_platform="
       ^ (Build_ctx.target_platform_name build_ctx)

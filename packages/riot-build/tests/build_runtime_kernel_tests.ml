@@ -45,7 +45,7 @@ let render_build_event = fun (event: Riot_build.build_event) ->
   | Riot_build.Pm event ->
       "Pm(" ^ Riot_model.Event.name event.kind ^ ")"
   | Riot_build.BuildingTarget { target; host } ->
-      "BuildingTarget(" ^ target ^ "," ^ Bool.to_string host ^ ")"
+      "BuildingTarget(" ^ Riot_model.Target.to_string target ^ "," ^ Bool.to_string host ^ ")"
   | Riot_build.CacheGc _ ->
       "CacheGc"
   | Riot_build.Phase _ ->

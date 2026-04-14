@@ -1,53 +1,64 @@
 open Std
 
-(** Build target - either native (Host) or cross-compilation (Cross) *)
-type t =
-  | Host
-  (** Native compilation - build for the current machine *)
-  | Cross of cross_config
-
-(** Cross-compilation - build for a different architecture *)
-and cross_config = {
-  target_triplet: System.Host.t;
-  sysroot: Path.t option;  (** Detected sysroot for cross-compiler *)
-  bin_dir: Path.t option;  (** Directory containing cross-compiler binaries *)
-  bin_prefix: string;  (** Binary prefix (e.g., "aarch64-linux-gnu-") *)
+type t = System.TargetTriple.t = {
+  architecture: string;
+  vendor: string;
+  os: string;
+  abi: string option;
 }
+module Set: sig
+  type elt = t
+  type t
+  val empty: unit -> t
 
-(** Create a Cross target (sysroot will be None, should be populated by caller) *)
-val make_cross: target_triplet:System.Host.t -> t
+  val singleton: elt -> t
 
-(** Create Cross target with explicit configuration *)
-val make_cross_with_config:
-  target_triplet:System.Host.t ->
-  sysroot:Path.t option ->
-  bin_dir:Path.t option ->
-  bin_prefix:string ->
-  t
+  val of_list: elt list -> t
 
-(** Get target triplet (works for both Host and Cross) *)
-val triplet: t -> System.Host.t
+  val insert: t -> elt -> unit
 
-(** Check if this is cross-compilation *)
+  val contains: t -> elt -> bool
+
+  val length: t -> int
+
+  val is_empty: t -> bool
+
+  val to_list: t -> elt list
+end
+
+type request =
+  | Host
+  | All
+  | Pattern of string
+  | Exact of Set.t
+type resolve_error = {
+  pattern: string;
+  available_targets: t list;
+}
+val current: t
+
+val from_string: string -> (t, string) result
+
+val to_string: t -> string
+
+val equal: t -> t -> bool
+
+val compare: t -> t -> int
+
+val host: unit -> t
+
+val make_set: t list -> Set.t
+
+val parse: string -> request
+
+val configured_targets: host:t -> Toolchain_config.t -> Set.t
+
+val resolve: host:t -> configured_targets:Set.t -> request -> (Set.t, resolve_error) result
+
+val request_to_string: request -> string
+
 val is_cross: t -> bool
 
-(** Get sysroot (None for native builds) *)
-val sysroot: t -> Path.t option
-
-(** Get binary directory *)
-val bin_dir: t -> Path.t option
-
-(** Get binary prefix *)
-val bin_prefix: t -> string
-
-(** Platform name for target-specific config lookups 
-    
-    Examples:
-    - darwin → "macos"
-    - linux → "linux"
-    - windows → "windows"
-*)
 val platform_name: t -> string
 
-(** Hash target into a Sha256 hasher state *)
 val hash: Crypto.Sha256.state -> t -> unit

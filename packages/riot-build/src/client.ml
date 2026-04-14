@@ -148,7 +148,10 @@ module BuildLock = struct
   let retry_interval = Time.Duration.from_millis 500
 
   let path = fun ~(workspace: Workspace.t) ~profile ~target ->
-    Riot_model.Riot_dirs.build_lock_path_in_workspace ~workspace ~profile ~target
+    Riot_model.Riot_dirs.build_lock_path_in_workspace
+      ~workspace
+      ~profile
+      ~target
 
   let path_key = fun path -> Path.to_string path
 
@@ -216,7 +219,12 @@ module BuildLock = struct
         raise (lock_failure "lock" t.path)
 
   let wait = fun ~(workspace: Workspace.t) ~profile ~target ->
-    let build_dir = Riot_model.Riot_dirs.target_dir_in_workspace ~workspace ~profile ~target in
+    let build_dir =
+      Riot_model.Riot_dirs.target_dir_in_workspace
+        ~workspace
+        ~profile
+        ~target
+    in
     let _ = Fs.create_dir_all build_dir |> Result.expect ~msg:"Failed to create build directory" in
     let path = path ~workspace ~profile ~target in
     let file =
@@ -392,7 +400,7 @@ let build_streaming = fun t target ?(scope = Runtime) ?(profile = "debug") ?targ
   let lock_target =
     match target_arch with
     | Some target -> target
-    | None -> Riot_model.Riot_dirs.host_target ()
+    | None -> Riot_model.Target.host ()
   in
   BuildLock.acquire ~workspace:t.workspace ~profile ~target:lock_target
     (fun () ->

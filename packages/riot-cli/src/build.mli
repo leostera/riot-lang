@@ -46,7 +46,7 @@ val write_pm_event:
   unit
 
 (** Render a "building target" status event. *)
-val write_building_target_event: mode:output_mode -> target:string -> host:bool -> unit
+val write_building_target_event: mode:output_mode -> target:Riot_model.Target.t -> host:bool -> unit
 
 (** Render a cache-GC event produced during the build flow. *)
 val write_cache_gc_event: mode:output_mode -> Riot_store.Cache_gc.event -> unit

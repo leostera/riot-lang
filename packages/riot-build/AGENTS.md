@@ -24,6 +24,7 @@
 18. Keep per-suite stdout/stderr as structured payload in the runtime events, but leave human filtering decisions to `riot-cli`. `riot-build` should not reintroduce special-case pretty rendering for zero-match suites.
 19. Preserve structured suite metadata in the exported `test_event` / `bench_event` payloads. Test cases should carry `duration_us`, `size`, `reliability`, retry attempts, and timeout-aware status, and suite-completed events should carry `started_at_us`, `completed_at_us`, and `duration_us`.
 20. Build locks and any other runtime-owned workspace paths must respect `workspace.target_dir_root`. Do not derive `_build`-style locations directly from `workspace.root`.
+21. Internal build-session payloads should carry typed target triples, not reparsed target strings. If a worker/runtime boundary needs a target, pass `Riot_model.Target.t` through and stringify only where the filesystem or toolchain process actually needs it.
 
 ## Validate
 

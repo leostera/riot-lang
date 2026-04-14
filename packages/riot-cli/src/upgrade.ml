@@ -332,7 +332,7 @@ let write_upgraded_message = fun ~duration_ms ~metadata ->
 let run = fun matches ->
   let started_at = Time.Instant.now () in
   let version = ArgParser.get_one matches "version" in
-  let target = Riot_model.Riot_dirs.host_target () in
+  let target = Riot_model.Target.to_string (Riot_model.Riot_dirs.host_target ()) in
   let current_metadata = Version_info.read_installed () in
   match ensure_install_dir () with
   | Error message ->

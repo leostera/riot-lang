@@ -23,7 +23,7 @@ type server_state = {
   package_graph: Riot_planner.Package_graph.t;
   load_errors: Workspace_manager.load_error list;
   active_profile: string;
-  active_target: string;
+  active_target: Riot_model.Target.t;
   registry: Pkgs_ml.Registry.t;
 }
 
@@ -432,22 +432,22 @@ and handle_build = fun state client_pid target scope profile target_arch session
         | Protocol.Packages names -> "Packages(" ^ String.concat "," names ^ ")"
       ) ^ (
         match target_arch with
-        | Some arch -> ", arch: " ^ arch
+        | Some arch -> ", arch: " ^ Riot_model.Target.to_string arch
         | None -> ""
       )
     );
   let active_profile = profile in
   let active_target =
     match target_arch with
-    | Some arch -> (
-        match Kernel.System.Host.from_string arch with
-        | Ok target_triplet -> Kernel.System.Host.to_string target_triplet
-        | Error _ -> Riot_model.Riot_dirs.host_target ()
-      )
+    | Some target_triplet -> target_triplet
     | None -> Riot_model.Riot_dirs.host_target ()
   in
   let updated_state = { state with active_profile; active_target } in
-  trace_server ("handle_build active_profile=" ^ active_profile ^ " active_target=" ^ active_target);
+  trace_server
+    ("handle_build active_profile="
+    ^ active_profile
+    ^ " active_target="
+    ^ Riot_model.Target.to_string active_target);
   let server_pid = self () in
   Build_server.start
     ~workspace:updated_state.workspace

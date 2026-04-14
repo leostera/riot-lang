@@ -3,14 +3,10 @@ open Std
 type build_scope =
   | Runtime
   | Dev
-type target_request = Target_selector.t =
-  | Host
-  | All
-  | Pattern of string
 type build_request = {
   workspace: Riot_model.Workspace.t;
   packages: string list;
-  targets: target_request;
+  targets: Riot_model.Target.request;
   scope: build_scope;
   profile: string;
 }
@@ -19,14 +15,14 @@ type build_phase = Event.phase =
   | CliPhase of Event.cli_phase
 type build_event = Event.t =
   | Pm of Riot_model.Event.t
-  | BuildingTarget of { target: string; host: bool }
+  | BuildingTarget of { target: Riot_model.Target.t; host: bool }
   | CacheGc of Riot_store.Cache_gc.event
   | Phase of build_phase
   | Streaming of Client.streaming_event
 type build_error =
-  | NoTargetsMatched of Target_selector.error
-  | ToolchainInstallFailed of { target: string; error: string }
-  | ToolchainInitializationFailed of { target: string; error: string }
+  | NoTargetsMatched of Riot_model.Target.resolve_error
+  | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
+  | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
   | ClientError of Client.error
 val error_message: build_error -> string
 
