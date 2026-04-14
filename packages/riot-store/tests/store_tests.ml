@@ -54,6 +54,34 @@ let count_generation_receipts = fun ~(workspace:Riot_model.Workspace.t) ->
           String.ends_with ~suffix:".json" basename)
       |> List.length
 
+let read_cache_state_generation_hashes = fun ~(workspace:Riot_model.Workspace.t) ->
+  let path = Path.(workspace.target_dir_root / Path.v "cache" / Path.v "state.json") in
+  let content = Fs.read_to_string path |> Result.expect ~msg:"failed to read cache state" in
+  let json = Data.Json.of_string content |> Result.expect ~msg:"failed to parse cache state json" in
+  match Data.Json.get_field "generation_hashes" json with
+  | Some (Data.Json.Array hashes) ->
+      List.map hashes
+        ~fn:(fun value ->
+          Data.Json.get_string value |> Option.expect ~msg:"generation hash should be a string")
+  | _ -> []
+
+let read_generation_lane_hashes = fun ~(workspace:Riot_model.Workspace.t) generation_hash ->
+  let path =
+    Path.(workspace.target_dir_root / Path.v "cache" / Path.v "generations" / Path.v (generation_hash ^ ".json")) in
+  let content = Fs.read_to_string path |> Result.expect ~msg:"failed to read generation payload" in
+  let json = Data.Json.of_string content |> Result.expect ~msg:"failed to parse generation payload" in
+  match Data.Json.get_field "lanes" json with
+  | Some (Data.Json.Array lanes) ->
+      List.map lanes
+        ~fn:(fun lane ->
+          match Data.Json.get_field "hashes" lane with
+          | Some (Data.Json.Array hashes) ->
+              List.map hashes
+                ~fn:(fun value ->
+                  Data.Json.get_string value |> Option.expect ~msg:"generation lane hash should be a string")
+          | _ -> panic "generation lane payload is missing hashes")
+  | _ -> panic "generation payload is missing lanes"
+
 let write_cache_entry = fun ~(workspace:Riot_model.Workspace.t) ~profile ~target ~hash ~size ->
   let entry_dir =
     Path.(workspace.target_dir_root / Path.v profile / Path.v target / Path.v "cache" / Path.v hash) in
@@ -798,10 +826,12 @@ let test_record_successful_build_dedupes_identical_warm_generation = fun _ctx ->
           ~new_entries:[]
         |> Result.expect ~msg:"identical warm generation should be accepted" in
         let receipt_count = count_generation_receipts ~workspace in
+        let generation_hashes = read_cache_state_generation_hashes ~workspace in
         if
           first_summary.kept_generations = 1
           && second_summary.kept_generations = 1
           && receipt_count = 1
+          && generation_hashes |> List.length |> Int.equal 1
         then
           Ok ()
         else
@@ -848,15 +878,79 @@ let test_record_successful_build_keeps_new_warm_generation_when_closure_changes 
           ~new_entries:[]
         |> Result.expect ~msg:"distinct warm generation should record" in
         let receipt_count = count_generation_receipts ~workspace in
-        if second_summary.kept_generations = 2 && receipt_count = 2 then
-          Ok ()
-        else
-          Error
-            ("expected changed warm generation to keep two receipts, got summary "
-            ^ Int.to_string second_summary.kept_generations
-            ^ " with "
-            ^ Int.to_string receipt_count
-            ^ " receipts"))
+        let generation_hashes = read_cache_state_generation_hashes ~workspace in
+        match generation_hashes with
+        | newest_hash :: older_hash :: [] ->
+            if
+              second_summary.kept_generations = 2
+              && receipt_count = 2
+              && read_generation_lane_hashes ~workspace newest_hash = [ [ hash_b ] ]
+              && read_generation_lane_hashes ~workspace older_hash = [ [ hash_a ] ]
+            then
+              Ok ()
+            else
+              Error
+                ("expected changed warm generation to keep two receipts, got summary "
+                ^ Int.to_string second_summary.kept_generations
+                ^ " with "
+                ^ Int.to_string receipt_count
+                ^ " receipts")
+        | _ ->
+            Error "expected state.json to keep exactly two generation hashes in recency order")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_record_successful_build_reorders_existing_cached_generation_to_front = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"store_cache_gc_generation_reorder_test"
+      (fun tmpdir ->
+        let workspace = make_test_workspace tmpdir in
+        write_workspace_cache_config tmpdir ~keep_generations:4 ~max_size:"10 GiB";
+        let hash_a = make_hash 'a' in
+        let hash_b = make_hash 'b' in
+        let _ = write_cache_entry
+          ~workspace
+          ~profile:"debug"
+          ~target:"host"
+          ~hash:hash_a
+          ~size:16 in
+        let _ = write_cache_entry
+          ~workspace
+          ~profile:"debug"
+          ~target:"host"
+          ~hash:hash_b
+          ~size:16 in
+        let _ = Riot_store.Cache_gc.record_successful_build
+          ~workspace
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
+          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_a } ]
+        |> Result.expect ~msg:"generation A should record" in
+        let _ = Riot_store.Cache_gc.record_successful_build
+          ~workspace
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_b ] } ]
+          ~new_entries:[]
+        |> Result.expect ~msg:"generation B should record without new entries" in
+        let third_summary = Riot_store.Cache_gc.record_successful_build
+          ~workspace
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
+          ~new_entries:[]
+        |> Result.expect ~msg:"generation A should move back to the front" in
+        let receipt_count = count_generation_receipts ~workspace in
+        let generation_hashes = read_cache_state_generation_hashes ~workspace in
+        match generation_hashes with
+        | newest_hash :: older_hash :: [] ->
+            if
+              third_summary.kept_generations = 2
+              && receipt_count = 2
+              && read_generation_lane_hashes ~workspace newest_hash = [ [ hash_a ] ]
+              && read_generation_lane_hashes ~workspace older_hash = [ [ hash_b ] ]
+            then
+              Ok ()
+            else
+              Error "expected cached rollback generation to reorder state without writing a third payload"
+        | _ ->
+            Error "expected state.json to keep exactly two generation hashes after rollback reorder")
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -950,6 +1044,7 @@ let tests =
     case "cache GC records generation count in state" test_record_successful_build_tracks_generation_count_in_state;
     case "cache GC dedupes identical warm generations" test_record_successful_build_dedupes_identical_warm_generation;
     case "cache GC records changed warm generations without new entries" test_record_successful_build_keeps_new_warm_generation_when_closure_changes;
+    case "cache GC reorders an existing cached generation to the front" test_record_successful_build_reorders_existing_cached_generation_to_front;
     case "cache GC drops unreferenced entries after generation overflow" test_cache_gc_drops_unreferenced_entries_after_generation_overflow;
     case "cache GC shrinks retained generations to meet max_size" test_cache_gc_shrinks_retained_generations_to_meet_max_size;
   ]

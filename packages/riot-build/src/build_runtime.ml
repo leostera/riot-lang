@@ -303,19 +303,23 @@ let build_with_connect = fun connect ~allow_partial_failures ?(record_cache_gene
                           in
                           let _ =
                             let new_entry_count = new_entry_count_of_lane_results request lane_results in
-                            if record_cache_generation
-                            && not had_partial_failure
-                            && new_entry_count > 0
-                            then (
-                              on_event (Phase (Event.RuntimePhase (Event.CacheGenerationRecordingStarted {
-                                lane_count = List.length lane_results;
-                                new_entry_count;
-                              })));
+                            if record_cache_generation && not had_partial_failure then (
+                              let emit_cache_generation_events = new_entry_count > 0 in
+                              let () =
+                                if emit_cache_generation_events then
+                                  on_event (Phase (Event.RuntimePhase (Event.CacheGenerationRecordingStarted {
+                                    lane_count = List.length lane_results;
+                                    new_entry_count;
+                                  })))
+                              in
                               let recorded = record_successful_build_cache_generation request lane_results in
-                              on_event (Phase (Event.RuntimePhase (Event.CacheGenerationRecorded {
-                                lane_count = List.length lane_results;
-                                new_entry_count;
-                              })));
+                              let () =
+                                if emit_cache_generation_events then
+                                  on_event (Phase (Event.RuntimePhase (Event.CacheGenerationRecorded {
+                                    lane_count = List.length lane_results;
+                                    new_entry_count;
+                                  })))
+                              in
                               recorded
                             ) else
                               Ok ()

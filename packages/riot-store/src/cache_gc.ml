@@ -45,7 +45,7 @@ type cache_entry = {
 }
 
 type receipt = {
-  created_at_ns: string;
+  hash: string;
   lanes: generation_lane list;
 }
 
@@ -56,12 +56,13 @@ type receipt_file = {
 
 type cache_state = {
   tracked_size_bytes: int64;
+  generation_hashes: string list option;
   receipt_count: int option;
 }
 
 type tracked_size_snapshot = {
   tracked_size_bytes: int64;
-  receipt_count: int;
+  generation_hashes: string list;
   rebuilt: bool;
 }
 
@@ -76,23 +77,13 @@ let generations_root = fun ~(workspace:Workspace.t) ->
 
 let state_path = fun ~(workspace:Workspace.t) -> Path.(cache_root ~workspace / Path.v "state.json")
 
-let created_at_now = fun () -> Time.SystemTime.duration_since_epoch () |> Time.Duration.to_nanos
+let receipt_filename = fun hash -> hash ^ ".json"
 
-let left_pad_zeros = fun ~width value ->
-  let padding = width - String.length value in
-  if padding <= 0 then
-    value
-  else
-    String.make ~len:padding ~char:'0' ^ value
+let receipt_path = fun ~(workspace:Workspace.t) hash ->
+  Path.(generations_root ~workspace / Path.v (receipt_filename hash))
 
-let receipt_filename = fun created_at_ns ->
-  left_pad_zeros ~width:20 (Int64.to_string created_at_ns) ^ ".json"
-
-let receipt_path = fun ~(workspace:Workspace.t) created_at_ns ->
-  Path.(generations_root ~workspace / Path.v (receipt_filename created_at_ns))
-
-let temp_receipt_path = fun ~(workspace:Workspace.t) created_at_ns ->
-  Path.(generations_root ~workspace / Path.v (receipt_filename created_at_ns ^ ".tmp"))
+let temp_receipt_path = fun ~(workspace:Workspace.t) hash ->
+  Path.(generations_root ~workspace / Path.v (receipt_filename hash ^ ".tmp"))
 
 let scaled_size_string = fun bytes divisor suffix ->
   let whole = Int64.div bytes divisor in
@@ -214,24 +205,36 @@ let normalize_lanes: generation_lane list -> generation_lane list = fun lanes ->
       | 0 -> String.compare left.target right.target
       | order -> order)
 
+let lane_to_json = fun (lane: generation_lane) -> Data.Json.Object [
+  ("profile", Data.Json.String lane.profile);
+  ("target", Data.Json.String lane.target);
+  ("hashes", Data.Json.Array (List.map lane.hashes ~fn:Data.Json.string));
+]
+
+let generation_hash_of_lanes = fun lanes ->
+  Data.Json.Array (List.map lanes ~fn:lane_to_json)
+  |> Data.Json.to_string
+  |> Crypto.hash_string
+  |> Crypto.Digest.hex
+
 let receipt_to_json = fun receipt ->
-  let lane_to_json (lane: generation_lane) = Data.Json.Object [
-    ("profile", Data.Json.String lane.profile);
-    ("target", Data.Json.String lane.target);
-    ("hashes", Data.Json.Array (List.map lane.hashes ~fn:Data.Json.string));
-  ] in
   Data.Json.Object [
-    ("schema_version", Data.Json.Int 1);
-    ("created_at_ns", Data.Json.String receipt.created_at_ns);
+    ("schema_version", Data.Json.Int 2);
+    ("hash", Data.Json.String receipt.hash);
     ("lanes", Data.Json.Array (List.map receipt.lanes ~fn:lane_to_json));
   ]
 
 let cache_state_to_json = fun (state: cache_state) ->
   Data.Json.Object
     ([
-       ("schema_version", Data.Json.Int 1);
+       ("schema_version", Data.Json.Int 2);
        ("tracked_size_bytes", Data.Json.String (Int64.to_string state.tracked_size_bytes));
      ]
+    @
+    match state.generation_hashes with
+    | Some generation_hashes ->
+        [ ("generation_hashes", Data.Json.Array (List.map generation_hashes ~fn:Data.Json.string)) ]
+    | None -> []
     @
     match state.receipt_count with
     | Some receipt_count -> [ ("receipt_count", Data.Json.Int receipt_count) ]
@@ -273,15 +276,6 @@ let generation_lane_of_json = fun json ->
   Ok (normalize_lane { profile; target; hashes })
 
 let receipt_of_json = fun json ->
-  let* created_at_ns =
-    match Data.Json.get_field "created_at_ns" json with
-    | Some value -> (
-        match Data.Json.get_string value with
-        | Some created_at_ns -> Ok created_at_ns
-        | None -> Error "generation receipt is missing string field 'created_at_ns'"
-      )
-    | None -> Error "generation receipt is missing string field 'created_at_ns'"
-  in
   let* lanes =
     match Data.Json.get_field "lanes" json with
     | Some (Data.Json.Array lanes) ->
@@ -296,7 +290,16 @@ let receipt_of_json = fun json ->
         loop [] lanes
     | _ -> Error "generation receipt is missing array field 'lanes'"
   in
-  Ok { created_at_ns; lanes }
+  let hash =
+    match Data.Json.get_field "hash" json with
+    | Some value -> (
+        match Data.Json.get_string value with
+        | Some hash -> hash
+        | None -> generation_hash_of_lanes lanes
+      )
+    | None -> generation_hash_of_lanes lanes
+  in
+  Ok { hash; lanes }
 
 let cache_state_of_json = fun json ->
   match Data.Json.get_field "tracked_size_bytes" json with
@@ -305,12 +308,26 @@ let cache_state_of_json = fun json ->
       | Some tracked_size_bytes -> (
           match Int64.parse tracked_size_bytes with
           | Some tracked_size_bytes ->
+              let generation_hashes =
+                match Data.Json.get_field "generation_hashes" json with
+                | Some (Data.Json.Array hashes) ->
+                    let rec loop acc = function
+                      | [] -> Some (List.reverse acc)
+                      | value :: rest -> (
+                          match Data.Json.get_string value with
+                          | Some hash -> loop (hash :: acc) rest
+                          | None -> None
+                        )
+                    in
+                    loop [] hashes
+                | _ -> None
+              in
               let receipt_count =
                 match Data.Json.get_field "receipt_count" json with
                 | Some value -> Data.Json.get_int value
                 | None -> None
               in
-              Ok ({ tracked_size_bytes; receipt_count }: cache_state)
+              Ok ({ tracked_size_bytes; generation_hashes; receipt_count }: cache_state)
           | None -> Error "cache state field 'tracked_size_bytes' must be an int64 string"
         )
       | None -> Error "cache state is missing string field 'tracked_size_bytes'"
@@ -392,20 +409,18 @@ let read_state = fun ~(workspace:Workspace.t) ->
 
 let write_receipt = fun ~(workspace:Workspace.t) receipt ->
   let* () = ensure_generations_root ~workspace in
-  let* created_at_ns =
-    match Int64.parse receipt.created_at_ns with
-    | Some created_at_ns -> Ok created_at_ns
-    | None -> Error "generation receipt field 'created_at_ns' must be an int64 string"
-  in
-  let temp_path = temp_receipt_path ~workspace created_at_ns in
-  let final_path = receipt_path ~workspace created_at_ns in
-  let* () = Fs.write (Data.Json.to_string_pretty (receipt_to_json receipt)) temp_path
-  |> Result.map_err ~fn:(fun err -> "failed to write generation receipt: " ^ IO.error_message err) in
-  match Fs.rename ~src:temp_path ~dst:final_path with
-  | Ok () -> Ok ()
-  | Error err ->
-      let _ = Fs.remove_file temp_path in
-      Error ("failed to commit generation receipt: " ^ IO.error_message err)
+  let final_path = receipt_path ~workspace receipt.hash in
+  if path_exists final_path then
+    Ok ()
+  else
+    let temp_path = temp_receipt_path ~workspace receipt.hash in
+    let* () = Fs.write (Data.Json.to_string_pretty (receipt_to_json receipt)) temp_path
+    |> Result.map_err ~fn:(fun err -> "failed to write generation receipt: " ^ IO.error_message err) in
+    match Fs.rename ~src:temp_path ~dst:final_path with
+    | Ok () -> Ok ()
+    | Error err ->
+        let _ = Fs.remove_file temp_path in
+        Error ("failed to commit generation receipt: " ^ IO.error_message err)
 
 let read_receipt_file = fun path ->
   let* content = Fs.read_to_string path
@@ -432,6 +447,31 @@ let load_receipts = fun ~(workspace:Workspace.t) ->
       )
   in
   loop [] paths
+
+let write_canonical_receipts = fun ~(workspace:Workspace.t) receipts ->
+  List.fold_left receipts
+    ~acc:(Ok ())
+    ~fn:(fun acc_result (receipt_file: receipt_file) ->
+      let* () = acc_result in
+      write_receipt ~workspace receipt_file.receipt)
+
+let generation_hashes_of_receipts = fun receipts ->
+  let seen = HashSet.create () in
+  List.fold_left receipts
+    ~acc:[]
+    ~fn:(fun acc (receipt_file: receipt_file) ->
+      if HashSet.contains seen ~value:receipt_file.receipt.hash then
+        acc
+      else (
+        let _ = HashSet.insert seen ~value:receipt_file.receipt.hash in
+        receipt_file.receipt.hash :: acc
+      ))
+  |> List.reverse
+
+let rebuild_generation_hashes = fun ~(workspace:Workspace.t) ->
+  let* receipts = load_receipts ~workspace in
+  let* () = write_canonical_receipts ~workspace receipts in
+  Ok (generation_hashes_of_receipts receipts)
 
 let path_size_bytes = fun root ->
   if not (path_exists root) then
@@ -487,22 +527,30 @@ let total_size = fun entries ->
 let load_or_rebuild_tracked_size = fun ~(workspace:Workspace.t) ->
   match read_state ~workspace with
   | Ok (Some state) ->
-      let receipt_count =
-        match state.receipt_count with
-        | Some receipt_count -> receipt_count
+      let* generation_hashes =
+        match state.generation_hashes with
+        | Some generation_hashes -> Ok generation_hashes
         | None ->
-            let receipt_count = count_receipts ~workspace in
-            let _ = write_state ~workspace { tracked_size_bytes = state.tracked_size_bytes; receipt_count = Some receipt_count } in
-            receipt_count
+            let* generation_hashes = rebuild_generation_hashes ~workspace in
+            let* () = write_state ~workspace {
+              tracked_size_bytes = state.tracked_size_bytes;
+              generation_hashes = Some generation_hashes;
+              receipt_count = Some (List.length generation_hashes);
+            } in
+            Ok generation_hashes
       in
-      Ok ({ tracked_size_bytes = state.tracked_size_bytes; receipt_count; rebuilt = false }: tracked_size_snapshot)
+      Ok ({ tracked_size_bytes = state.tracked_size_bytes; generation_hashes; rebuilt = false }: tracked_size_snapshot)
   | Ok None
   | Error _ ->
       let* entries = collect_cache_entries ~workspace in
       let tracked_size_bytes = total_size entries in
-      let receipt_count = count_receipts ~workspace in
-      let* () = write_state ~workspace { tracked_size_bytes; receipt_count = Some receipt_count } in
-      Ok ({ tracked_size_bytes; receipt_count; rebuilt = true }: tracked_size_snapshot)
+      let* generation_hashes = rebuild_generation_hashes ~workspace in
+      let* () = write_state ~workspace {
+        tracked_size_bytes;
+        generation_hashes = Some generation_hashes;
+        receipt_count = Some (List.length generation_hashes);
+      } in
+      Ok ({ tracked_size_bytes; generation_hashes; rebuilt = true }: tracked_size_snapshot)
 
 let take = fun n list ->
   let rec loop acc remaining count =
@@ -564,23 +612,36 @@ let delete_path = fun path ~kind ->
     |> Result.map_err
       ~fn:(fun err -> "failed to remove " ^ kind ^ " " ^ Path.to_string path ^ ": " ^ IO.error_message err)
 
-let run_gc = fun ~(workspace:Workspace.t) ~policy ->
-  let* receipts = load_receipts ~workspace in
+let load_receipts_for_hashes = fun ~(workspace:Workspace.t) hashes ->
+  let rec loop acc = function
+    | [] -> Ok (List.reverse acc)
+    | hash :: rest -> (
+        match read_receipt_file (receipt_path ~workspace hash) with
+        | Ok receipt -> loop (receipt :: acc) rest
+        | Error _ as err -> err
+      )
+  in
+  loop [] hashes
+
+let run_gc = fun ~(workspace:Workspace.t) ~policy ~generation_hashes ->
+  let candidate_hashes = take policy.Riot_model.Workspace_operational_config.keep_generations generation_hashes in
+  let* receipts = load_receipts_for_hashes ~workspace candidate_hashes in
   let* entries = collect_cache_entries ~workspace in
   let size_before_bytes = total_size entries in
   let kept_receipts, live, size_after_bytes = evaluate_retention ~policy receipts entries in
+  let kept_hashes = List.map kept_receipts ~fn:(fun (receipt: receipt_file) -> receipt.receipt.hash) in
   let kept_paths = HashSet.create () in
-  List.for_each kept_receipts
-    ~fn:(fun (receipt: receipt_file) ->
-      let _ = HashSet.insert kept_paths ~value:(Path.to_string receipt.path) in
+  List.for_each kept_hashes
+    ~fn:(fun hash ->
+      let _ = HashSet.insert kept_paths ~value:(Path.to_string (receipt_path ~workspace hash)) in
       ());
   let deleted_entries =
     List.filter entries ~fn:(fun (entry: cache_entry) -> not (HashSet.contains live ~value:entry.hash))
   in
   let deleted_receipts =
-    List.filter receipts
-      ~fn:(fun (receipt: receipt_file) ->
-        not (HashSet.contains kept_paths ~value:(Path.to_string receipt.path)))
+    List.filter (receipt_paths_desc ~workspace)
+      ~fn:(fun path ->
+        not (HashSet.contains kept_paths ~value:(Path.to_string path)))
   in
   let* () =
     List.fold_left deleted_entries
@@ -592,14 +653,18 @@ let run_gc = fun ~(workspace:Workspace.t) ~policy ->
   let* () =
     List.fold_left deleted_receipts
       ~acc:(Ok ())
-      ~fn:(fun acc (receipt: receipt_file) ->
+      ~fn:(fun acc receipt_path ->
         let* () = acc in
-        delete_path receipt.path ~kind:"file")
+        delete_path receipt_path ~kind:"file")
   in
-  let* () = write_state ~workspace { tracked_size_bytes = size_after_bytes; receipt_count = Some (List.length kept_receipts) } in
+  let* () = write_state ~workspace {
+    tracked_size_bytes = size_after_bytes;
+    generation_hashes = Some kept_hashes;
+    receipt_count = Some (List.length kept_hashes);
+  } in
   Ok {
     ran_gc = true;
-    kept_generations = List.length kept_receipts;
+    kept_generations = List.length kept_hashes;
     deleted_generations = List.length deleted_receipts;
     deleted_entries = List.length deleted_entries;
     size_before_bytes;
@@ -611,8 +676,8 @@ let load_policy = fun ~(workspace:Workspace.t) ->
   |> Result.map ~fn:(fun config -> config.Riot_model.Workspace_operational_config.cache)
   |> Result.map_err ~fn:Riot_model.Workspace_operational_config.message
 
-let should_run_gc = fun ~receipt_count ~policy ~tracked_size_bytes ->
-  receipt_count > policy.Riot_model.Workspace_operational_config.keep_generations
+let should_run_gc = fun ~generation_count ~policy ~tracked_size_bytes ->
+  generation_count > policy.Riot_model.Workspace_operational_config.keep_generations
   || Int64.compare tracked_size_bytes policy.max_size_bytes > 0
 
 let clean_with_events = fun ~(workspace:Workspace.t) ~on_event ->
@@ -632,11 +697,11 @@ let clean_with_events = fun ~(workspace:Workspace.t) ~on_event ->
     | Error error -> report_error error
   in
   let tracked_size_bytes = tracked_size.tracked_size_bytes in
-  let receipt_count = tracked_size.receipt_count in
-  if not (should_run_gc ~receipt_count ~policy ~tracked_size_bytes) then
+  let generation_count = List.length tracked_size.generation_hashes in
+  if not (should_run_gc ~generation_count ~policy ~tracked_size_bytes) then
     let summary = {
       ran_gc = false;
-      kept_generations = receipt_count;
+      kept_generations = generation_count;
       deleted_generations = 0;
       deleted_entries = 0;
       size_before_bytes = tracked_size_bytes;
@@ -647,7 +712,7 @@ let clean_with_events = fun ~(workspace:Workspace.t) ~on_event ->
     Ok summary
   else (
     on_event (GcStarted { trigger });
-    match run_gc ~workspace ~policy with
+    match run_gc ~workspace ~policy ~generation_hashes:tracked_size.generation_hashes with
     | Ok summary ->
         on_event (GcCompleted { trigger; summary });
         Ok summary
@@ -705,7 +770,8 @@ let added_size_for_new_entries = fun ~(workspace:Workspace.t) new_entries ->
 
 let record_successful_build_with_events = fun ~(workspace:Workspace.t) ~on_event ~lanes ~new_entries ->
   let lanes = normalize_lanes lanes in
-  let receipt = { created_at_ns = Int64.to_string (created_at_now ()); lanes } in
+  let generation_hash = generation_hash_of_lanes lanes in
+  let receipt = { hash = generation_hash; lanes } in
   let report_error error =
     on_event (GcFailed { trigger = Post_build; error });
     Error error
@@ -715,25 +781,6 @@ let record_successful_build_with_events = fun ~(workspace:Workspace.t) ~on_event
     | Ok tracked_size -> Ok tracked_size
     | Error error -> report_error error
   in
-  let* duplicate_latest_receipt =
-    if List.is_empty new_entries && tracked_size.receipt_count > 0 then
-      match load_latest_receipt ~workspace with
-      | Ok (Some latest_receipt) -> Ok (latest_receipt.receipt.lanes = lanes)
-      | Ok None -> Ok false
-      | Error error -> report_error error
-    else
-      Ok false
-  in
-  if duplicate_latest_receipt then
-    Ok {
-      ran_gc = false;
-      kept_generations = tracked_size.receipt_count;
-      deleted_generations = 0;
-      deleted_entries = 0;
-      size_before_bytes = tracked_size.tracked_size_bytes;
-      size_after_bytes = tracked_size.tracked_size_bytes;
-    }
-  else
   let* added_size_bytes =
     if tracked_size.rebuilt then
       Ok 0L
@@ -743,25 +790,54 @@ let record_successful_build_with_events = fun ~(workspace:Workspace.t) ~on_event
       | Error error -> report_error error
   in
   let tracked_size_bytes = Int64.add tracked_size.tracked_size_bytes added_size_bytes in
-  let next_receipt_count = tracked_size.receipt_count + 1 in
-  let* () =
-    match write_state ~workspace { tracked_size_bytes; receipt_count = Some next_receipt_count } with
-    | Ok () -> Ok ()
-    | Error error -> report_error error
-  in
-  let* () =
-    match write_receipt ~workspace receipt with
-    | Ok () -> Ok ()
-    | Error error -> report_error error
-  in
-  Ok {
-    ran_gc = false;
-    kept_generations = next_receipt_count;
-    deleted_generations = 0;
-    deleted_entries = 0;
-    size_before_bytes = tracked_size_bytes;
-    size_after_bytes = tracked_size_bytes;
-  }
+  let current_hashes = tracked_size.generation_hashes in
+  match current_hashes with
+  | latest_hash :: _ when String.equal latest_hash generation_hash ->
+      let* () =
+        if Int64.equal tracked_size_bytes tracked_size.tracked_size_bytes then
+          Ok ()
+        else
+          write_state ~workspace {
+            tracked_size_bytes;
+            generation_hashes = Some current_hashes;
+            receipt_count = Some (List.length current_hashes);
+          }
+      in
+      Ok {
+        ran_gc = false;
+        kept_generations = List.length current_hashes;
+        deleted_generations = 0;
+        deleted_entries = 0;
+        size_before_bytes = tracked_size_bytes;
+        size_after_bytes = tracked_size_bytes;
+      }
+  | _ ->
+      let next_hashes =
+        generation_hash
+        :: List.filter current_hashes ~fn:(fun hash -> not (String.equal hash generation_hash))
+      in
+      let* () =
+        match write_state ~workspace {
+          tracked_size_bytes;
+          generation_hashes = Some next_hashes;
+          receipt_count = Some (List.length next_hashes);
+        } with
+        | Ok () -> Ok ()
+        | Error error -> report_error error
+      in
+      let* () =
+        match write_receipt ~workspace receipt with
+        | Ok () -> Ok ()
+        | Error error -> report_error error
+      in
+      Ok {
+        ran_gc = false;
+        kept_generations = List.length next_hashes;
+        deleted_generations = 0;
+        deleted_entries = 0;
+        size_before_bytes = tracked_size_bytes;
+        size_after_bytes = tracked_size_bytes;
+      }
 
 let record_successful_build = fun ~(workspace:Workspace.t) ~lanes ~new_entries ->
   record_successful_build_with_events ~workspace ~on_event:no_event ~lanes ~new_entries
