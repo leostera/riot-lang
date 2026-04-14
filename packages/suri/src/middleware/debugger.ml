@@ -363,12 +363,24 @@ let string_index = fun line pattern ->
   let rec search pos =
     if pos + pattern_len > line_len then
       None
-    else if String.sub line pos pattern_len = pattern then
+    else if String.sub line ~offset:pos ~len:pattern_len = pattern then
       Some pos
     else
       search (pos + 1)
   in
   search 0
+
+let string_index_from = fun line start char ->
+  let len = String.length line in
+  let rec search pos =
+    if pos >= len then
+      None
+    else if Char.equal (String.get_unchecked line ~at:pos) char then
+      Some pos
+    else
+      search (pos + 1)
+  in
+  search start
 
 (** Parse sandbox path to extract package and relative path
     
@@ -383,21 +395,21 @@ let parse_sandbox_path = fun path ->
       if after_sandbox >= String.length path then
         None
       else
-        let rest = String.sub path after_sandbox (String.length path - after_sandbox) in
+        let rest = String.sub path ~offset:after_sandbox ~len:(String.length path - after_sandbox) in
         (* Find first slash to separate package-hash from path *)
         (
-          match String.index rest '/' with
+          match String.index_of rest ~char:'/' with
           | None -> None
           | Some slash_pos ->
-              let pkg_with_hash = String.sub rest 0 slash_pos in
+              let pkg_with_hash = String.sub rest ~offset:0 ~len:slash_pos in
               (* Remove hash suffix: "suri-abc123" -> "suri" *)
               let package_name =
                 match String.last_index pkg_with_hash '-' with
                 | None -> pkg_with_hash
-                | Some dash_pos -> String.sub pkg_with_hash 0 dash_pos
+                | Some dash_pos -> String.sub pkg_with_hash ~offset:0 ~len:dash_pos
               in
               let after_slash = slash_pos + 1 in
-              let relative_path = String.sub rest after_slash (String.length rest - after_slash) in
+              let relative_path = String.sub rest ~offset:after_slash ~len:(String.length rest - after_slash) in
               Some { package_name; relative_path }
         )
 
@@ -408,16 +420,21 @@ let get_package_sources = fun package_name ->
   match Riot_model.Workspace_manager.scan workspace_manager cwd with
   | Error _ -> None
   | Ok (workspace, _load_errors) -> (
-      match List.find_opt (fun (pkg: Riot_model.Package.t) -> pkg.name = package_name) workspace.packages with
-      | None -> None
-      | Some pkg ->
-          let sources = pkg.sources.src
-          @ pkg.sources.tests
-          @ pkg.sources.examples
-          @ pkg.sources.bench
-          @ pkg.sources.native
-          |> List.map Path.to_string in
-          Some sources
+      match Riot_model.Package_name.from_string package_name with
+      | Result.Error _ -> None
+      | Result.Ok package_name_t -> (
+          match List.find_opt (fun (manifest: Riot_model.Package_manifest.t) -> Riot_model.Package_name.equal manifest.name package_name_t) workspace.packages with
+          | None -> None
+          | Some manifest ->
+              let package = Riot_model.Workspace_manifest.realize_package ~intent:Riot_model.Package.Build manifest in
+              let sources = package.sources.src
+              @ package.sources.tests
+              @ package.sources.examples
+              @ package.sources.bench
+              @ package.sources.native
+              |> List.map ~fn:Path.to_string in
+              Some sources
+        )
     )
 
 (** Find actual source file path from sandbox path using riot server *)
@@ -447,9 +464,9 @@ let make_workspace_relative = fun path ->
       let workspace_root_str = Path.to_string workspace_root in
       if String.starts_with ~prefix:workspace_root_str path then
         let prefix_len = String.length workspace_root_str in
-        let relative = String.sub path prefix_len (String.length path - prefix_len) in
+        let relative = String.sub path ~offset:prefix_len ~len:(String.length path - prefix_len) in
         (* Remove leading slash if present *)
-        if String.length relative > 0 && String.get relative 0 = '/' then
+        if String.length relative > 0 && String.get_unchecked relative ~at:0 = '/' then
           "." ^ relative
         else
           "./" ^ relative
@@ -478,14 +495,14 @@ let resolve_source_path = fun path ->
 
 (** Extract quoted string after a pattern *)
 let extract_quoted = fun line pattern ->
-  match String.index line '"' with
+  match String.index_of line ~char:'"' with
   | None -> None
   | Some start_quote ->
       let after_quote = start_quote + 1 in
       (
-        match String.index_from_opt line after_quote '"' with
+        match string_index_from line after_quote '"' with
         | None -> None
-        | Some end_quote -> Some (String.sub line after_quote (end_quote - after_quote))
+        | Some end_quote -> Some (String.sub line ~offset:after_quote ~len:(end_quote - after_quote))
       )
 
 (** Extract number after a pattern *)
@@ -498,8 +515,8 @@ let extract_number = fun line pattern ->
         if pos >= String.length line then
           acc
         else
-          match line.[pos] with
-          | '0' .. '9' as c -> find_digits (acc ^ String.make 1 c) (pos + 1)
+          match String.get_unchecked line ~at:pos with
+          | '0' .. '9' as c -> find_digits (acc ^ String.make ~len:1 ~char:c) (pos + 1)
           | _ -> acc
       in
       let num_str = find_digits "" after in
@@ -533,9 +550,9 @@ let parse_frame_line = fun line ->
         | None -> None
         | Some idx ->
             let after = idx + String.length "characters " in
-            let rest = String.sub line after (String.length line - after) in
+            let rest = String.sub line ~offset:after ~len:(String.length line - after) in
             (
-              match String.index rest '-' with
+              match String.index_of rest ~char:'-' with
               | None -> None
               | Some dash_pos ->
                   let after_dash = dash_pos + 1 in
@@ -543,8 +560,8 @@ let parse_frame_line = fun line ->
                     if pos >= String.length rest then
                       acc
                     else
-                      match rest.[pos] with
-                      | '0' .. '9' as c -> find_digits (acc ^ String.make 1 c) (pos + 1)
+                      match String.get_unchecked rest ~at:pos with
+                      | '0' .. '9' as c -> find_digits (acc ^ String.make ~len:1 ~char:c) (pos + 1)
                       | _ -> acc
                   in
                   let end_str = find_digits "" after_dash in
@@ -560,19 +577,19 @@ let parse_frame_line = fun line ->
     if String.starts_with ~prefix:"Raised at " line then
       let after = 10 in
       (* length of "Raised at " *)
-      let rest = String.sub line after (String.length line - after) in
+      let rest = String.sub line ~offset:after ~len:(String.length line - after) in
       (
-        match String.index rest ' ' with
-        | Some space_pos -> Some (String.sub rest 0 space_pos |> String.trim)
+        match String.index_of rest ~char:' ' with
+        | Some space_pos -> Some (String.sub rest ~offset:0 ~len:space_pos |> String.trim)
         | None -> Some (String.trim rest)
       )
     else if String.starts_with ~prefix:"Called from " line then
       let after = 12 in
       (* length of "Called from " *)
-      let rest = String.sub line after (String.length line - after) in
+      let rest = String.sub line ~offset:after ~len:(String.length line - after) in
       (
-        match String.index rest ' ' with
-        | Some space_pos -> Some (String.sub rest 0 space_pos |> String.trim)
+        match String.index_of rest ~char:' ' with
+        | Some space_pos -> Some (String.sub rest ~offset:0 ~len:space_pos |> String.trim)
         | None -> Some (String.trim rest)
       )
     else if String.starts_with ~prefix:"Re-raised at " line then
@@ -608,9 +625,9 @@ let should_hide_frame = fun frame ->
 (** Parse full backtrace into list of stack frames *)
 let parse_backtrace = fun backtrace ->
   String.split_on_char '\n' backtrace
-  |> List.filter (fun line -> String.trim line != "")
-  |> List.map parse_frame_line
-  |> List.filter (fun frame -> not (should_hide_frame frame))
+  |> List.filter ~fn:(fun line -> String.trim line != "")
+  |> List.map ~fn:parse_frame_line
+  |> List.filter ~fn:(fun frame -> not (should_hide_frame frame))
 
 (** Try to find and read a source file using riot server resolution *)
 let try_read_file = fun file ->
@@ -635,10 +652,10 @@ let extract_source = fun ~file ~line ~context ->
         let end_line = min total_lines (line + context) in
         (* Extract the relevant lines with line numbers *)
         let lines =
-          List.init (end_line - start_line + 1)
-            (fun i ->
+          List.init ~count:(end_line - start_line + 1)
+            ~fn:(fun i ->
               let line_num = start_line + i in
-              let line_content = List.nth all_lines (line_num - 1) in
+              let line_content = List.get_unchecked all_lines ~at:(line_num - 1) in
               (line_num, line_content))
         in
         Some {
@@ -654,7 +671,7 @@ let render_snippet = fun snippet ->
   let open Component in
     let line_number_divs =
       List.map
-        (fun ((line_num, _)) ->
+        ~fn:(fun ((line_num, _)) ->
           let is_error = line_num = snippet.error_line in
           let classes =
             if is_error then
@@ -670,7 +687,7 @@ let render_snippet = fun snippet ->
     (* Each line gets its own code block for syntax highlighting *)
     let code_line_divs =
       List.map
-        (fun ((line_num, content)) ->
+        ~fn:(fun ((line_num, content)) ->
           let is_error = line_num = snippet.error_line in
           let classes =
             if is_error then
@@ -702,19 +719,19 @@ let render_snippet = fun snippet ->
 *)
 let extract_module_from_function = fun func_name ->
   (* Split by dot to get module part *)
-  match String.index func_name '.' with
+  match String.index_of func_name ~char:'.' with
   | None -> None
   | Some dot_pos ->
-      let module_part = String.sub func_name 0 dot_pos in
+      let module_part = String.sub func_name ~offset:0 ~len:dot_pos in
       (* Check if it's in canonical form (Foo__Bar__Baz) or simple form (Foo_bar) *)
       if String.contains module_part "_" then
         let components = String.split_on_char '_' module_part in
         let non_empty =
-          List.filter (fun s -> s != "") components
+          List.filter ~fn:(fun s -> s != "") components
         in
         (* If all components start with uppercase, it's canonical form *)
         let all_capitalized =
-          List.for_all (fun s -> String.length s > 0 && s.[0] >= 'A' && s.[0] <= 'Z') non_empty
+          List.for_all (fun s -> String.length s > 0 && String.get_unchecked s ~at:0 >= 'A' && String.get_unchecked s ~at:0 <= 'Z') non_empty
         in
         if all_capitalized then
           Some (String.concat "." non_empty)
@@ -858,7 +875,7 @@ let render_request = fun conn ->
             Fragment [ h3 [ text "Headers" ]; table ~attrs:[ class_ "headers-table" ]
                 (Net.Http.Header.to_list headers
                 |> List.map
-                  (fun ((name, value)) ->
+                  ~fn:(fun ((name, value)) ->
                     tr
                       [
                         td ~attrs:[ class_ "header-name" ] [ code [ text name ] ];
@@ -874,7 +891,7 @@ let render_request = fun conn ->
               table
                 ~attrs:[ class_ "params-table" ]
                 (List.map
-                  (fun ((name, value)) ->
+                  ~fn:(fun ((name, value)) ->
                     tr
                       [
                         td ~attrs:[ class_ "param-name" ] [ code [ text name ] ];
@@ -917,7 +934,7 @@ let render_response = fun conn ->
               table
                 ~attrs:[ class_ "headers-table" ]
                 (List.map
-                  (fun ((name, value)) ->
+                  ~fn:(fun ((name, value)) ->
                     tr
                       [
                         td ~attrs:[ class_ "header-name" ] [ code [ text name ] ];
@@ -1372,7 +1389,7 @@ details[open] summary {
 (** Main error page component *)
 let render_error_page = fun ~conn ~exn ~backtrace ->
   let open Component in
-    let exception_str = Exception.to_string exn in
+    let exception_str = Kernel.Exception.to_string exn in
     let frames = parse_backtrace backtrace in
     let method_str = Conn.method_ conn |> Net.Http.Method.to_string in
     let path = Conn.path conn in
@@ -1427,7 +1444,7 @@ let render_error_page = fun ~conn ~exn ~backtrace ->
                           ~attrs:[ class_ "section" ]
                           [
                             h2 [ text "📚 Stack Trace" ];
-                            Fragment (List.map render_stack_frame frames);
+                            Fragment (List.map ~fn:render_stack_frame frames);
                             details
                               [
                                 summary [ text "🔍 Show Raw Backtrace" ];
@@ -1448,8 +1465,8 @@ let debugger = fun ~conn ~next ->
   try next conn with
   | exn ->
       (* Capture backtrace immediately *)
-      let backtrace = Exception.get_backtrace () in
-      let exception_str = Exception.to_string exn in
+      let backtrace = Kernel.Exception.raw_backtrace_to_string (Kernel.Exception.get_raw_backtrace ()) in
+      let exception_str = Kernel.Exception.to_string exn in
       let method_str = Conn.method_ conn |> Net.Http.Method.to_string in
       let path = Conn.path conn in
       (* Log the error *)

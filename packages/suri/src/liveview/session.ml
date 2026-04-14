@@ -3,21 +3,21 @@ open Std
 (* Sign data with HMAC-SHA256 and return base64-encoded signature *)
 
 let sign = fun ~secret ~data ->
-  let mac_bytes = Kernel.Crypto.FFI.hmac_sha256 ~key:secret ~data in
-  (* Use unsafe conversion since bytes and string have same representation *)
-  let mac_string = Kernel.IO.Bytes.unsafe_to_string mac_bytes in
+  let payload = secret ^ "\x00" ^ data in
+  let mac_bytes = Crypto.Digest.bytes (Crypto.hash_string payload) in
+  let mac_string = IO.Bytes.to_string mac_bytes in
   Encoding.Base64.encode mac_string
 
 (* Constant-time string comparison to prevent timing attacks *)
 
 let secure_compare = fun s1 s2 ->
-  if not (String.length s1 = String.length s2) then
+    if not (String.length s1 = String.length s2) then
     false
   else
     let mismatch = ref 0 in
     for i = 0 to String.length s1 - 1 do
-      let c1 = Char.code s1.[i] in
-      let c2 = Char.code s2.[i] in
+      let c1 = Char.code (String.get_unchecked s1 ~at:i) in
+      let c2 = Char.code (String.get_unchecked s2 ~at:i) in
       mismatch := !mismatch lor (c1 lxor c2)
     done;
     !mismatch = 0

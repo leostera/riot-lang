@@ -67,7 +67,7 @@ let make_handler = fun ~config ~handler ?(sniffed_data = "") () ->
 let verify_preface = fun data ->
   let preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n" in
   if String.length data >= String.length preface then
-    String.sub data 0 (String.length preface) = preface
+    String.sub data ~offset:0 ~len:(String.length preface) = preface
   else
     false
 
@@ -95,7 +95,9 @@ let send_settings_ack = fun conn ->
 (** Send HTTP/2 HEADERS frame *)
 let send_headers = fun conn hpack_encoder stream_id headers end_stream ->
   let headers =
-    List.map (fun ((name, value)) -> { Http.Http2.Hpack.name; value }) headers
+    List.map
+      ~fn:(fun ((name, value)) -> { Http.Http2.Hpack.name = name; value })
+      headers
   in
   let header_block = Http.Http2.Hpack.encode hpack_encoder ~sensitive_headers:[] () ~headers
   |> Bytes.to_string in
@@ -116,11 +118,11 @@ let send_data = fun conn stream_id data end_stream ->
 (** Convert HTTP/2 headers to Request.t *)
 let headers_to_request = fun conn headers body ->
   let method_ = List.assoc_opt ":method" headers
-  |> Option.map Net.Http.Method.of_string
+  |> Option.map ~fn:Net.Http.Method.of_string
   |> Option.unwrap_or ~default:Net.Http.Method.Get in
   let uri = List.assoc_opt ":path" headers |> Option.unwrap_or ~default:"/" in
   let headers =
-    List.filter (fun ((k, _)) -> not (String.starts_with ~prefix:":" k)) headers
+    List.filter ~fn:(fun ((k, _)) -> not (String.starts_with ~prefix:":" k)) headers
   in
   let uri = Net.Uri.of_string uri |> Result.expect ~msg:"HTTP/2 request path must be a valid URI" in
   let http_request =
@@ -137,7 +139,7 @@ let handle_stream = fun conn state stream_id stream ->
     (* Stream not complete yet *)
   else
     let headers = List.rev (Cell.get stream.headers)
-    |> List.map (fun header -> (header.Http.Http2.Hpack.name, header.value)) in
+    |> List.map ~fn:(fun header -> (header.Http.Http2.Hpack.name, header.value)) in
     let body = String.concat "" (List.rev (Cell.get stream.data_chunks)) in
     (* Convert to Request and call handler *)
     let request = headers_to_request conn headers body in
@@ -154,7 +156,7 @@ let handle_stream = fun conn state stream_id stream ->
               match send_data conn stream_id body true with
               | Error e -> Error e
               | Ok () ->
-                  let _ = HashMap.remove state.streams stream_id in
+                  let _ = HashMap.remove state.streams ~key:stream_id in
                   Ok ()
         )
     | Http_handler.Upgrade _ -> Error (`Protocol_error "HTTP/2 upgrades are not supported")
@@ -172,11 +174,11 @@ let process_frame = fun conn state frame ->
       let end_stream = frame.Http.Http2.Frame.flags.end_stream in
       (* Decode headers *)
       (
-        match Http.Http2.Hpack.decode state.hpack_decoder (Bytes.of_string header_block_fragment) with
+        match Http.Http2.Hpack.decode state.hpack_decoder (Bytes.from_string header_block_fragment) with
         | Ok headers ->
             (* Get or create stream *)
             let stream =
-              match HashMap.get state.streams stream_id with
+              match HashMap.get state.streams ~key:stream_id with
               | Some s -> s
               | None ->
                   let s = {
@@ -185,11 +187,11 @@ let process_frame = fun conn state frame ->
                     data_chunks = Cell.create [];
                     end_stream = Cell.create false
                   } in
-                  let _ = HashMap.insert state.streams stream_id s in
+                  let _ = HashMap.insert state.streams ~key:stream_id ~value:s in
                   s
             in
             (* Add headers *)
-            Cell.set stream.headers (List.rev_append headers (Cell.get stream.headers));
+            Cell.set stream.headers (List.rev headers |> List.append (Cell.get stream.headers));
             (* Mark if stream ended *)
             if end_stream then
               begin
@@ -205,7 +207,7 @@ let process_frame = fun conn state frame ->
       let end_stream = frame.Http.Http2.Frame.flags.end_stream in
       (* Find stream *)
       (
-        match HashMap.get state.streams stream_id with
+        match HashMap.get state.streams ~key:stream_id with
         | None -> Error (`Protocol_error ("DATA for unknown stream " ^ Int.to_string stream_id))
         | Some stream ->
             (* Add data *)

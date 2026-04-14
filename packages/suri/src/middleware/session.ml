@@ -22,22 +22,22 @@ type Conn.assign_value +=
 
 (** Create empty session *)
 let create = fun ~cookie_name ~secret () ->
-  let now = Unix.gettimeofday () |> Int64.of_float in
+  let now = Time.SystemTime.secs (Time.SystemTime.now ()) |> Int64.of_int in
   let data = { values = HashMap.create (); created_at = now; expires_at = Option.none } in
   { data; cookie_name; secret; modified = false }
 
 (** Get value from session *)
 let get_value = fun key session ->
-  HashMap.get session.data.values key
+  HashMap.get session.data.values ~key
 
 (** Put value in session *)
 let put = fun key value session ->
-  let _ = HashMap.insert session.data.values key value in
+  let _ = HashMap.insert session.data.values ~key ~value in
   session.modified <- true
 
 (** Delete value from session *)
 let delete = fun key session ->
-  let _ = HashMap.remove session.data.values key in
+  let _ = HashMap.remove session.data.values ~key in
   session.modified <- true
 
 (** Clear all session data *)
@@ -49,7 +49,7 @@ let clear = fun session ->
 let is_expired = fun session ->
   match session.data.expires_at with
   | Option.Some exp ->
-      let now = Unix.gettimeofday () |> Int64.of_float in
+      let now = Time.SystemTime.secs (Time.SystemTime.now ()) |> Int64.of_int in
       Int64.compare now exp > 0
   | Option.None -> false
 
@@ -61,9 +61,8 @@ let is_modified = fun session -> session.modified
 (** Serialize session data to JSON *)
 let to_json = fun data ->
   let open Data.Json in
-    let values_iter = HashMap.into_iter data.values in
-    let values_list = Iter.Iterator.map values_iter ~fn:(fun ((k, v)) -> (k, string v))
-    |> Iter.Iterator.to_list in
+    let values_list = HashMap.to_list data.values
+    |> List.map ~fn:(fun ((k, v)) -> (k, string v)) in
     obj
       [ ("values", obj values_list); ("created_at", int (Int64.to_int data.created_at)); (
           "expires_at",
@@ -85,7 +84,7 @@ let from_json = fun json ->
                 (fun ((k, v)) ->
                   match get_string v with
                   | Option.Some s ->
-                      let _ = HashMap.insert hm k s in
+                      let _ = HashMap.insert hm ~key:k ~value:s in
                       ()
                   | Option.None -> ())
                 pairs;
@@ -97,9 +96,9 @@ let from_json = fun json ->
           | Option.Some v -> (
               match get_int v with
               | Option.Some n -> Int64.of_int n
-              | Option.None -> Unix.gettimeofday () |> Int64.of_float
+              | Option.None -> Time.SystemTime.secs (Time.SystemTime.now ()) |> Int64.of_int
             )
-          | Option.None -> Unix.gettimeofday () |> Int64.of_float
+          | Option.None -> Time.SystemTime.secs (Time.SystemTime.now ()) |> Int64.of_int
         in
         let expires_at =
           match get_field "expires_at" json with
@@ -122,14 +121,14 @@ let from_json = fun json ->
 let encrypt = fun ~secret data ->
   let secret_len = String.length secret in
   let data_len = String.length data in
-  let chars = ref [] in
+  let bytes = IO.Bytes.create ~size:data_len in
   for i = data_len - 1 downto 0 do
-    let secret_byte = String.get secret (i mod secret_len) in
-    let data_byte = String.get data i in
+    let secret_byte = String.get_unchecked secret ~at:(i mod secret_len) in
+    let data_byte = String.get_unchecked data ~at:i in
     let encrypted_byte = Char.chr (Char.code secret_byte lxor Char.code data_byte) in
-    chars := encrypted_byte :: !chars
+    IO.Bytes.set_unchecked bytes ~at:i ~char:encrypted_byte
   done;
-  String.of_seq (List.to_seq !chars)
+  String.from_bytes bytes
 
 (** Simple XOR decryption - same as encryption for XOR *)
 let decrypt = fun ~secret encrypted -> encrypt ~secret encrypted
@@ -140,7 +139,7 @@ let sign = fun ~secret data ->
   (* Simple hash: sum of all byte values *)
   let sum = ref 0 in
   for i = 0 to String.length combined - 1 do
-    sum := !sum + Char.code (String.get combined i)
+    sum := !sum + Char.code (String.get_unchecked combined ~at:i)
   done;
   (* Convert to hex string *)
   String.concat "" [ "0x"; Int.to_string !sum ]

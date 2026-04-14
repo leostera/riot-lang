@@ -75,7 +75,7 @@ module Mime = struct
     (* Remove leading dot if present *)
     let ext =
       if String.starts_with ~prefix:"." ext then
-        String.sub ext 1 (String.length ext - 1)
+        String.sub ext ~offset:1 ~len:(String.length ext - 1)
       else
         ext
     in
@@ -86,7 +86,7 @@ end
 module Security = struct
   let is_dotfile = fun path ->
     let filename = Path.basename path in
-    String.length filename > 0 && String.get filename 0 = '.'
+    String.length filename > 0 && String.get_unchecked filename ~at:0 = '.'
 
   let check_dotfile = fun config path ->
     if not (is_dotfile path) then
@@ -165,7 +165,7 @@ module Cache = struct
           else
             Char.chr (Char.code 'a' + (digit - 10))
         in
-        loop (String.make 1 char ^ acc) (n lsr 4)
+        loop (String.make ~len:1 ~char ^ acc) (n lsr 4)
     in
     loop "" n
 
@@ -187,14 +187,14 @@ module Cache = struct
     if len >= 4 then
       s
     else
-      String.make (4 - len) '0' ^ s
+      String.make ~len:(4 - len) ~char:'0' ^ s
 
   let last_modified = fun timestamp ->
     (* Format as HTTP date: Sun, 06 Nov 1994 08:49:37 GMT *)
-    let tm = Unix.gmtime timestamp in
+    let tm = Kernel.Time.gmtime timestamp in
     String.concat ""
       [
-        weekday tm.Unix.tm_wday;
+        weekday tm.tm_wday;
         ", ";
         pad2 tm.tm_mday;
         " ";
@@ -216,7 +216,7 @@ module Cache = struct
       let parts = String.split_on_char ' ' date_str in
       match parts with
       | [_day;day_str;month_str;year_str;time_str;"GMT"] ->
-          let day = int_of_string day_str in
+          let day = Int.of_string day_str in
           let month =
             match month_str with
             | "Jan" -> 0
@@ -233,15 +233,15 @@ module Cache = struct
             | "Dec" -> 11
             | _ -> 0
           in
-          let year = int_of_string year_str in
+          let year = Int.of_string year_str in
           let time_parts = String.split_on_char ':' time_str in
           let hour, min, sec =
             match time_parts with
-            | [h;m;s] -> (int_of_string h, int_of_string m, int_of_string s)
+            | [h;m;s] -> (Int.of_string h, Int.of_string m, Int.of_string s)
             | _ -> (0, 0, 0)
           in
-          let tm = {
-            Unix.tm_sec = sec;
+          let tm : Kernel.Time.tm = {
+            tm_sec = sec;
             tm_min = min;
             tm_hour = hour;
             tm_mday = day;
@@ -252,7 +252,8 @@ module Cache = struct
             tm_isdst = false;
           }
           in
-          Some (fst (Unix.mktime tm))
+          let unix_time, _ = Kernel.Time.mktime tm in
+          Some unix_time
       | _ -> None
     with
     | _ -> None
@@ -261,7 +262,7 @@ module Cache = struct
     let headers = Conn.headers conn in
     (* Check If-None-Match (ETag) *)
     let etag_match = Net.Http.Header.get headers "if-none-match"
-    |> Option.map (fun client_etag -> client_etag = etag meta)
+    |> Option.map ~fn:(fun client_etag -> client_etag = etag meta)
     |> Option.unwrap_or ~default:false in
     (* Check If-Modified-Since *)
     let modified_match =
@@ -301,7 +302,7 @@ module Directory = struct
       format_float_1dp (float size /. (1024.0 *. 1024.0 *. 1024.0)) ^ " GB"
 
   let format_date = fun timestamp ->
-    let tm = Unix.localtime timestamp in
+    let tm = Kernel.Time.localtime timestamp in
     let pad2 n =
       if n < 10 then
         "0" ^ string_of_int n
@@ -314,12 +315,12 @@ module Directory = struct
       if len >= 4 then
         s
       else
-        String.make (4 - len) '0' ^ s
+        String.make ~len:(4 - len) ~char:'0' ^ s
     in
     String.concat
       ""
       [
-        pad4 (tm.Unix.tm_year + 1_900);
+        pad4 (tm.tm_year + 1_900);
         "-";
         pad2 (tm.tm_mon + 1);
         "-";
@@ -342,7 +343,7 @@ module Directory = struct
             let full_path = Path.join path entry_path in
             (* Check dotfile policy *)
             let include_entry =
-              if String.length name > 0 && String.get name 0 = '.' then
+              if String.length name > 0 && String.get_unchecked name ~at:0 = '.' then
                 match config.dotfiles with
                 | `Allow -> true
                 | `Deny -> false
@@ -361,10 +362,7 @@ module Directory = struct
                   } in
                   entries := entry :: !entries
               | Error _ -> ());
-        List.sort
-          (fun a b ->
-            String.compare a.name b.name)
-          !entries
+        List.sort ~compare:(fun a b -> String.compare a.name b.name) !entries
 
   let entry_row = fun request_path entry ->
     (* Build absolute path by appending entry name to request path *)
@@ -410,16 +408,16 @@ module Directory = struct
     (* Build parent path by removing last segment *)
     let parent_href =
       if String.ends_with ~suffix:"/" request_path then
-        String.sub request_path 0 (String.length request_path - 1)
+        String.sub request_path ~offset:0 ~len:(String.length request_path - 1)
       else
         request_path
     in
     let parent_href =
       match String.last_index parent_href '/' with
-      | Some idx -> String.sub parent_href 0 (idx + 1)
+      | Some idx -> String.sub parent_href ~offset:0 ~len:(idx + 1)
       | None -> "/"
     in
-    let entries_html = String.concat "\n" (List.map (entry_row request_path) entries) in
+    let entries_html = String.concat "\n" (List.map ~fn:(entry_row request_path) entries) in
     String.concat ""
       [ {|<!DOCTYPE html>
 <html>
@@ -460,8 +458,9 @@ end
 
 (** Core file serving logic *)
 let find_index_file = fun config path ->
-  List.find_map
-    (fun index_name ->
+  config.index_files
+  |> List.filter_map
+    ~fn:(fun index_name ->
       let index_path = Path.join path (Path.v index_name) in
       match Fs.exists index_path with
       | Ok true -> (
@@ -470,7 +469,7 @@ let find_index_file = fun config path ->
           | _ -> None
         )
       | _ -> None)
-    config.index_files
+  |> List.head
 
 let rec serve_file = fun config root requested_path conn ->
   (* Normalize and validate path *)
@@ -534,7 +533,7 @@ and serve_regular_file = fun config path meta conn ->
     | Ok content ->
         (* Determine MIME type *)
         let mime_type = Path.extension path
-        |> Option.map Mime.from_extension
+        |> Option.map ~fn:Mime.from_extension
         |> Option.unwrap_or ~default:"application/octet-stream" in
         (* Build headers *)
         let headers = [
@@ -553,10 +552,10 @@ and serve_regular_file = fun config path meta conn ->
         let conn = Conn.respond conn ~status:Net.Http.Status.Ok ~body:content in
         let conn =
           List.fold_left
-            (fun c ((name, value)) ->
-              Conn.with_header name value c)
-            conn
             headers
+            ~acc:conn
+            ~fn:(fun c ((name, value)) ->
+              Conn.with_header name value c)
         in
         Conn.send conn
 
@@ -584,7 +583,7 @@ let middleware = fun ?(config = default_config) ~at root () ->
         else
           (* Remove leading slash if present *)
           let relative =
-            if String.length relative > 0 && String.get relative 0 = '/' then
+            if String.length relative > 0 && String.get_unchecked relative ~at:0 = '/' then
               String.sub relative 1 (String.length relative - 1)
             else
               relative

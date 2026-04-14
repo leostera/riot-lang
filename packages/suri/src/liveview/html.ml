@@ -18,6 +18,11 @@ let attr_type = fun v -> attr "type" v
 
 let attr_src = fun v -> attr "src" v
 
+let optional_attr = fun maybe fn ->
+  match maybe with
+  | Option.Some value -> [ fn value ]
+  | Option.None -> []
+
 type 'msg t =
   | El of { tag: string; attrs: 'msg attr list; children: 'msg t list }
   | Text of string
@@ -35,8 +40,9 @@ let body = fun ?(children = []) () -> El { tag = "body"; attrs = []; children }
 let div = fun ?(attrs = []) ?id ?(children = []) () ->
   El {
     tag = "div";
-    attrs = List.filter_map (fun x -> x) [ Option.map attr_id id ]
-    @ List.map (fun ((k, v)) -> `attr (k, v)) attrs;
+    attrs =
+      optional_attr id attr_id
+    @ List.map ~fn:(fun ((k, v)) -> `attr (k, v)) attrs;
     children
   }
 
@@ -59,8 +65,10 @@ let p = fun ?(children = []) () -> El { tag = "p"; attrs = []; children }
 let script = fun ?src ?id ?type_ ?(children = []) () ->
   El {
     tag = "script";
-    attrs = [ Option.map attr_id id; Option.map attr_type type_; Option.map attr_src src; ]
-    |> List.filter_map (fun x -> x);
+    attrs =
+      optional_attr id attr_id
+      @ optional_attr type_ attr_type
+      @ optional_attr src attr_src;
     children
   }
 
@@ -71,29 +79,28 @@ let int = fun (x: int) -> Text (Int.to_string x)
 let rec to_string = fun (t: 'msg t) ->
   match t with
   | Text str -> str
-  | Splat els -> String.concat "\n" (List.map to_string els)
+  | Splat els -> String.concat "\n" (List.map ~fn:to_string els)
   | El { tag; children; attrs } -> "<"
   ^ tag
   ^ " "
   ^ attrs_to_string attrs
   ^ ">"
-  ^ (List.map to_string children |> String.concat "\n")
+  ^ (List.map ~fn:to_string children |> String.concat "\n")
   ^ "</"
   ^ tag
   ^ ">"
 
 and attrs_to_string = fun attrs ->
   List.map
-    (
-      function
+    ~fn:(function
       | `attr (k, v) -> k ^ "=" ^ "\"" ^ v ^ "\""
-      | _ -> ""
-    )
-    attrs |> String.concat " "
+      | _ -> "")
+    attrs
+  |> String.concat " "
 
 let event_handlers = fun attrs ->
   List.filter_map
-    (fun attr ->
+    ~fn:(fun attr ->
       match attr with
       | `event (name, fn) -> Some (name, fn)
       | _ -> None)
@@ -104,12 +111,12 @@ let rec map_action = fun fn t ->
   | Text string ->
       Text string
   | Splat els ->
-      Splat (List.map (map_action fn) els)
+      Splat (List.map ~fn:(map_action fn) els)
   | El { tag; children; attrs } ->
-      let children = List.map (map_action fn) children in
+  let children = List.map ~fn:(map_action fn) children in
       let attrs =
         List.map
-          (fun attr ->
+          ~fn:(fun attr ->
             match attr with
             | `event (name, handler) -> `event (name, fun ev -> fn (handler ev))
             | `attr (k, v) -> `attr (k, v))

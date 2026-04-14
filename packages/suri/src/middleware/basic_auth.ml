@@ -14,13 +14,13 @@ let secure_equal = fun s1 s2 ->
   for i = 0 to max len1 len2 - 1 do
     let c1 =
       if i < len1 then
-        Char.code (String.get s1 i)
+        Char.code (String.get_unchecked s1 ~at:i)
       else
         0
     in
     let c2 =
       if i < len2 then
-        Char.code (String.get s2 i)
+        Char.code (String.get_unchecked s2 ~at:i)
       else
         0
     in
@@ -43,7 +43,14 @@ let sanitize_realm = fun realm ->
       if c != '\r' && c != '\n' && c != '"' then
         chars := c :: !chars)
     realm;
-  !chars |> List.rev |> List.to_seq |> String.of_seq
+  let chars = List.rev !chars in
+  let bytes = IO.Bytes.create ~size:(List.length chars) in
+  List.iteri
+    (fun index char ->
+      let _ = IO.Bytes.set_unchecked bytes ~at:index ~char in
+      ())
+    chars;
+  String.from_bytes bytes
 
 (** {1 Credential Parsing} *)
 
@@ -61,10 +68,10 @@ let decode_credentials = fun auth_header ->
       match Encoding.Base64.decode encoded with
       | Result.Ok decoded -> (
           (* Split on first colon only - password can contain colons *)
-          match String.index decoded ':' with
+          match String.index_of decoded ~char:':' with
           | Option.Some idx ->
-              let username = String.sub decoded 0 idx in
-              let password = String.sub decoded (idx + 1) (String.length decoded - idx - 1) in
+              let username = String.sub decoded ~offset:0 ~len:idx in
+              let password = String.sub decoded ~offset:(idx + 1) ~len:(String.length decoded - idx - 1) in
               Option.some (username, password)
           | Option.None -> Option.none
         )

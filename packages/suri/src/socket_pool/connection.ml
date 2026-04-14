@@ -32,10 +32,10 @@ let receive = fun ?(limit = 1_024) ?read_size ?timeout (Conn { default_read_size
     ^ string_of_int limit
     ^ ")");
   let capacity = Int.min limit read_size in
-  let buf = Bytes.create capacity in
+  let buf = Bytes.create ~size:capacity in
   match Net.TcpStream.read stream buf ?timeout () with
   | Ok 0 -> Error `Closed
-  | Ok n -> Ok (Bytes.sub_string buf 0 n)
+  | Ok n -> Ok (Bytes.sub_unchecked buf ~offset:0 ~len:n |> Bytes.to_string)
   | Error _ -> Error `Closed
 
 let rec send = fun conn data ->
@@ -47,7 +47,7 @@ let rec send = fun conn data ->
   | Error e -> Error e
 
 and do_send = fun (Conn { stream; _ }) data ->
-  let buf = Bytes.of_string data in
+  let buf = Bytes.from_string data in
   match Net.TcpStream.write stream buf () with
   | Ok _n -> Ok ()
   | Error _ -> Error `Closed

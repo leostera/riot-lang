@@ -4,9 +4,10 @@ open Std
 
 (** Generate random bytes *)
 let random_bytes = fun length ->
-  let bytes = IO.Bytes.create length in
+  let bytes = IO.Bytes.create ~size:length in
   for i = 0 to length - 1 do
-    IO.Bytes.set bytes i (Char.chr (Random.int 256))
+    let byte = Random.int 256 |> Result.expect ~msg:"Failed to generate random byte" in
+    IO.Bytes.set_unchecked bytes ~at:i ~char:(Char.chr byte)
   done;
   IO.Bytes.to_string bytes
 
@@ -14,11 +15,11 @@ let random_bytes = fun length ->
 let bytes_to_hex = fun bytes ->
   let hex_chars = "0123456789abcdef" in
   let len = String.length bytes in
-  let hex = IO.Bytes.create (len * 2) in
+  let hex = IO.Bytes.create ~size:(len * 2) in
   for i = 0 to len - 1 do
-    let byte = Char.code (String.get bytes i) in
-    IO.Bytes.set hex (i * 2) (String.get hex_chars (byte lsr 4));
-    IO.Bytes.set hex (i * 2 + 1) (String.get hex_chars (byte land 0x0f))
+    let byte = Char.code (String.get_unchecked bytes ~at:i) in
+    IO.Bytes.set_unchecked hex ~at:(i * 2) ~char:(String.get_unchecked hex_chars ~at:(byte lsr 4));
+    IO.Bytes.set_unchecked hex ~at:(i * 2 + 1) ~char:(String.get_unchecked hex_chars ~at:(byte land 0x0f))
   done;
   IO.Bytes.to_string hex
 
@@ -35,16 +36,18 @@ let hex_to_bytes = fun hex ->
       | 'A' .. 'F' -> Option.some (Char.code c - Char.code 'A' + 10)
       | _ -> Option.none
     in
-    try
-      let bytes = IO.Bytes.create (len / 2) in
-      for i = 0 to (len / 2) - 1 do
-        match (hex_value (String.get hex (i * 2)), hex_value (String.get hex (i * 2 + 1))) with
-        | (Option.Some hi, Option.Some lo) -> IO.Bytes.set bytes i (Char.chr ((hi lsl 4) lor lo))
-        | _ -> raise Exit
-      done;
+    let bytes = IO.Bytes.create ~size:(len / 2) in
+    let valid = ref true in
+    for i = 0 to (len / 2) - 1 do
+      if !valid then
+        match (hex_value (String.get_unchecked hex ~at:(i * 2)), hex_value (String.get_unchecked hex ~at:(i * 2 + 1))) with
+        | (Option.Some hi, Option.Some lo) -> IO.Bytes.set_unchecked bytes ~at:i ~char:(Char.chr ((hi lsl 4) lor lo))
+        | _ -> valid := false
+    done;
+    if !valid then
       Option.some (IO.Bytes.to_string bytes)
-    with
-    | Exit -> Option.none
+    else
+      Option.none
 
 (** Generate a cryptographically random CSRF token (32 bytes as 64 hex chars) *)
 let generate_token = fun () -> bytes_to_hex (random_bytes 32)
@@ -59,11 +62,11 @@ let mask_token = fun raw_token_hex ->
       (* Generate 32-byte one-time pad *)
       let pad = random_bytes 32 in
       (* XOR pad with raw token bytes *)
-      let masked = IO.Bytes.create 32 in
+      let masked = IO.Bytes.create ~size:32 in
       for i = 0 to 31 do
-        let pad_byte = Char.code (String.get pad i) in
-        let raw_byte = Char.code (String.get raw_bytes i) in
-        IO.Bytes.set masked i (Char.chr (pad_byte lxor raw_byte))
+        let pad_byte = Char.code (String.get_unchecked pad ~at:i) in
+        let raw_byte = Char.code (String.get_unchecked raw_bytes ~at:i) in
+        IO.Bytes.set_unchecked masked ~at:i ~char:(Char.chr (pad_byte lxor raw_byte))
       done;
       (* Combine pad + masked (64 bytes total) and base64 encode *)
       let combined = pad ^ IO.Bytes.to_string masked in
@@ -84,11 +87,11 @@ let unmask_token = fun masked_b64 ->
         let pad = String.sub decoded 0 32 in
         let masked = String.sub decoded 32 32 in
         (* XOR to recover original bytes *)
-        let raw_bytes = IO.Bytes.create 32 in
+        let raw_bytes = IO.Bytes.create ~size:32 in
         for i = 0 to 31 do
-          let pad_byte = Char.code (String.get pad i) in
-          let masked_byte = Char.code (String.get masked i) in
-          IO.Bytes.set raw_bytes i (Char.chr (pad_byte lxor masked_byte))
+          let pad_byte = Char.code (String.get_unchecked pad ~at:i) in
+          let masked_byte = Char.code (String.get_unchecked masked ~at:i) in
+          IO.Bytes.set_unchecked raw_bytes ~at:i ~char:(Char.chr (pad_byte lxor masked_byte))
         done;
         (* Convert back to hex *)
         let unmasked_hex = bytes_to_hex (IO.Bytes.to_string raw_bytes) in

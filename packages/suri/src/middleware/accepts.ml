@@ -43,7 +43,13 @@ let parse_accept_entry = fun entry ->
   match String.split_on_char ';' entry with
   | [] -> { media_type = "*/*"; quality = 1.0 }
   | media_type :: params ->
-      let quality = List.find_map parse_quality params |> Option.unwrap_or ~default:1.0 in
+      let quality =
+        List.filter_map
+          ~fn:parse_quality
+          params
+        |> List.head
+        |> Option.unwrap_or ~default:1.0
+      in
       { media_type = String.trim media_type; quality }
 
 (** Parse full Accept header.
@@ -51,12 +57,10 @@ let parse_accept_entry = fun entry ->
     Returns list sorted by quality (highest first). *)
 let parse_accept = fun header ->
   String.split_on_char ',' header
-  |> List.map String.trim
-  |> List.filter (fun s -> String.length s > 0)
-  |> List.map parse_accept_entry
-  |> List.sort
-    (fun a b ->
-      Float.compare b.quality a.quality)
+  |> List.map ~fn:String.trim
+  |> List.filter ~fn:(fun s -> String.length s > 0)
+  |> List.map ~fn:parse_accept_entry
+  |> List.sort ~compare:(fun a b -> Float.compare b.quality a.quality)
 
 (** {1 Content-Type Parsing} *)
 

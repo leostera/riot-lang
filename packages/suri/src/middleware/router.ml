@@ -47,7 +47,7 @@ let normalize_path = fun path ->
   in
   let path =
     if String.ends_with ~suffix:"/" path && String.length path > 1 then
-      String.sub path 0 (String.length path - 1)
+      String.sub path ~offset:0 ~len:(String.length path - 1)
     else
       path
   in
@@ -61,11 +61,11 @@ module Matcher = struct
   let parse_path = fun path ->
     let parts = String.split_on_char '/' path in
     List.filter_map
-      (fun part ->
-        if part = "" then
+      ~fn:(fun part ->
+      if part = "" then
           None
         else if String.starts_with ~prefix:":" part then
-          Some (Param (String.sub part 1 (String.length part - 1)))
+          Some (Param (String.sub part ~offset:1 ~len:(String.length part - 1)))
         else
           Some (Literal part))
       parts
@@ -82,13 +82,13 @@ module Matcher = struct
 
   let match_path = fun pattern path ->
     let pattern_segs = parse_path pattern in
-    let path_parts = String.split_on_char '/' path |> List.filter (fun s -> s != "") in
+    let path_parts = String.split_on_char '/' path |> List.filter ~fn:(fun s -> s != "") in
     match_segments pattern_segs path_parts
 end
 
 let rec flatten_routes = fun prefix routes ->
-  List.concat_map
-    (fun route ->
+  List.flat_map
+    ~fn:(fun route ->
       match route with
       | Route { meth; path; handler } ->
           let full_path = normalize_path (prefix ^ path) in

@@ -310,7 +310,7 @@ module Config: sig
   (** Default configuration:
       - host: "0.0.0.0" (all interfaces)
       - port: 4000
-      - acceptors: System.available_parallelism
+      - acceptors: Thread.available_parallelism
       - max_request_line_length: 8192
       - max_header_count: 100
       - max_header_length: 8192

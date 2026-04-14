@@ -48,34 +48,41 @@ let rec attach_handler_ids registry (component: 'msg Component.t): 'msg Componen
   | Component.Text _ ->
       component
   | Component.Fragment children ->
-      Component.Fragment (List.map (attach_handler_ids registry) children)
+      Component.Fragment (List.map ~fn:(attach_handler_ids registry) children)
   | Component.El { tag; attrs; children } ->
       (* Process attributes and extract event handlers *)
-      let (regular_attrs, event_handlers) =
-        List.partition
-          (fun attr ->
+      let regular_attrs =
+        List.filter_map
+          ~fn:(fun attr ->
             match attr with
-            | Component.Attr _ -> true
-            | Component.Event _ -> false)
+            | Component.Attr _ -> Some attr
+            | Component.Event _ -> None)
+          attrs
+      in
+      let event_handlers =
+        List.filter_map
+          ~fn:(fun attr ->
+            match attr with
+            | Component.Event (event_name, handler) -> Some (event_name, handler)
+            | Component.Attr _ -> None)
           attrs
       in
       (* Register event handlers and create data attributes *)
       let handler_attrs =
-        List.map
-          (fun attr ->
-            match attr with
-            | Component.Event (event_name, handler) ->
-                let handler_id = HandlerRegistry.register registry handler in
-                [
-                  Component.Attr ("data-lv-handler", handler_id);
-                  Component.Attr ("data-lv-event", event_name);
-                ]
-            | _ -> [])
-          event_handlers
-        |> List.flatten
+          List.map
+            ~fn:(fun attr ->
+              match attr with
+              | event_name, handler ->
+                  let handler_id = HandlerRegistry.register registry handler in
+                  [
+                    Component.Attr ("data-lv-handler", handler_id);
+                    Component.Attr ("data-lv-event", event_name);
+                  ])
+            event_handlers
+          |> List.concat
       in
       (* Process children recursively *)
-      let new_children = List.map (attach_handler_ids registry) children in
+      let new_children = List.map ~fn:(attach_handler_ids registry) children in
       Component.El { tag; attrs = regular_attrs @ handler_attrs; children = new_children }
 
 (** Render component with handler IDs attached *)

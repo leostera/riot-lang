@@ -2,7 +2,7 @@ open Std
 open Std.Collections
 
 type peer = {
-  ip: Net.Addr.tcp_addr;
+  ip: string;
   port: int;
 }
 
@@ -60,8 +60,8 @@ let uri = fun t -> Web_server.Request.uri t.req
 
 let path = fun t ->
   let uri_str = Web_server.Request.uri t.req in
-  match String.index uri_str '?' with
-  | Some idx -> String.sub uri_str 0 idx
+  match String.index_of uri_str ~char:'?' with
+  | Some idx -> String.sub uri_str ~offset:0 ~len:idx
   | None -> uri_str
 
 let headers = fun t -> Web_server.Request.headers t.req
@@ -72,19 +72,19 @@ let params = fun t -> t.params
 
 let query_params = fun t ->
   let uri_str = Web_server.Request.uri t.req in
-  match String.index uri_str '?' with
+  match String.index_of uri_str ~char:'?' with
   | None -> []
   | Some idx ->
-      let query_string = String.sub uri_str (idx + 1) (String.length uri_str - idx - 1) in
+      let query_string = String.sub uri_str ~offset:(idx + 1) ~len:(String.length uri_str - idx - 1) in
       (* Parse query string into key=value pairs *)
       let pairs = String.split_on_char '&' query_string in
       List.filter_map
-        (fun pair ->
-          match String.index pair '=' with
+        ~fn:(fun pair ->
+          match String.index_of pair ~char:'=' with
           | None -> None
           | Some eq_idx ->
-              let key = String.sub pair 0 eq_idx in
-              let value = String.sub pair (eq_idx + 1) (String.length pair - eq_idx - 1) in
+              let key = String.sub pair ~offset:0 ~len:eq_idx in
+              let value = String.sub pair ~offset:(eq_idx + 1) ~len:(String.length pair - eq_idx - 1) in
               (* URL decode the key and value *)
               Some (Net.Uri.percent_decode key, Net.Uri.percent_decode value))
         pairs
@@ -117,7 +117,7 @@ let sent = fun t -> t.sent
 
 let render_component = fun ?(headers = []) status component t ->
   let t =
-    List.fold_left (fun acc ((name, value)) -> with_header name value acc) t headers
+    List.fold_left headers ~acc:t ~fn:(fun acc ((name, value)) -> with_header name value acc)
   in
   t
   |> with_status status
@@ -127,7 +127,7 @@ let render_component = fun ?(headers = []) status component t ->
 
 let render_json = fun ?(headers = []) status json t ->
   let t =
-    List.fold_left (fun acc ((name, value)) -> with_header name value acc) t headers
+    List.fold_left headers ~acc:t ~fn:(fun acc ((name, value)) -> with_header name value acc)
   in
   t
   |> with_status status
@@ -137,7 +137,7 @@ let render_json = fun ?(headers = []) status json t ->
 
 let render_text = fun ?(headers = []) status text t ->
   let t =
-    List.fold_left (fun acc ((name, value)) -> with_header name value acc) t headers
+    List.fold_left headers ~acc:t ~fn:(fun acc ((name, value)) -> with_header name value acc)
   in
   t
   |> with_status status
@@ -147,7 +147,7 @@ let render_text = fun ?(headers = []) status text t ->
 
 let redirect = fun ?(headers = []) path t ->
   let t =
-    List.fold_left (fun acc ((name, value)) -> with_header name value acc) t headers
+    List.fold_left headers ~acc:t ~fn:(fun acc ((name, value)) -> with_header name value acc)
   in
   t |> with_status Found |> with_header "Location" path |> with_body "" |> send
 
@@ -170,8 +170,8 @@ let to_response = fun t ->
   Web_server.Response.make t.resp_status ~headers:t.resp_headers ~body:t.resp_body ()
 
 let assign = fun key value t ->
-  let _ = HashMap.insert t.assigns key value in
+  let _ = HashMap.insert t.assigns ~key ~value in
   ()
 
 let get_assign = fun key t ->
-  HashMap.get t.assigns key
+  HashMap.get t.assigns ~key

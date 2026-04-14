@@ -60,8 +60,8 @@ let middleware = fun ~origins ?(methods = [ Net.Http.Method.Put; Patch; Delete ]
             let origin_val = get_response_origin origins req_origin credentials in
             (* Build allowed methods list *)
             let all_methods = [ Net.Http.Method.Get; Head; Post ] @ methods
-            |> List.sort_uniq compare
-            |> List.map Net.Http.Method.to_string
+            |> List.unique ~compare
+            |> List.map ~fn:Net.Http.Method.to_string
             |> String.concat ", " in
             Log.debug
               (String.concat "" [ "[CORS] Preflight from origin: "; req_origin; " -> "; origin_val ]);

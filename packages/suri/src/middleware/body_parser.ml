@@ -21,12 +21,12 @@ let parse_json = fun body ->
   | Ok (Data.Json.Object fields) ->
       (* Convert JSON object to string pairs *)
       List.filter_map
-        (fun ((k, v)) ->
+        ~fn:(fun ((k, v)) ->
           match v with
           | Data.Json.String s -> Some (k, s)
-          | Data.Json.Int i -> Some (k, string_of_int i)
-          | Data.Json.Float f -> Some (k, string_of_float f)
-          | Data.Json.Bool b -> Some (k, string_of_bool b)
+          | Data.Json.Int i -> Some (k, Int.to_string i)
+          | Data.Json.Float f -> Some (k, Float.to_string f)
+          | Data.Json.Bool b -> Some (k, Bool.to_string b)
           | Data.Json.Null -> Some (k, "")
           | _ -> None)
         fields
@@ -64,15 +64,16 @@ let handle = fun config conn ->
             && List.mem Multipart config.parsers
           then
             let parts = String.split_on_char ';' content_type in
-            let boundary_opt =
-              List.find_map
-                (fun part ->
-                  let trimmed = String.trim part in
-                  if String.starts_with ~prefix:"boundary=" trimmed then
-                    Some (String.sub trimmed 9 (String.length trimmed - 9))
-                  else
-                    None)
+                let boundary_opt =
+                  List.filter_map
+                    ~fn:(fun part ->
+                      let trimmed = String.trim part in
+                      if String.starts_with ~prefix:"boundary=" trimmed then
+                    Some (String.sub trimmed ~offset:9 ~len:(String.length trimmed - 9))
+                    else
+                      None)
                 parts
+              |> List.head
             in
             (
               match boundary_opt with

@@ -15,7 +15,7 @@ type t = {
 let default = {
   host = "0.0.0.0";
   port = 4_000;
-  acceptors = System.available_parallelism;
+  acceptors = Std.Thread.available_parallelism;
   max_request_line_length = 8_192;
   max_header_count = 100;
   max_header_length = 8_192;
@@ -29,7 +29,7 @@ let spec = StdConfig.Spec.for_app
   [
     StdConfig.Spec.string "host" ~default:"0.0.0.0" ~help:"Server bind address";
     StdConfig.Spec.int "port" ~default:4_000 ~help:"Server port number";
-    StdConfig.Spec.int "acceptors" ~default:System.available_parallelism ~help:"Number of acceptor processes";
+    StdConfig.Spec.int "acceptors" ~default:Std.Thread.available_parallelism ~help:"Number of acceptor processes";
     StdConfig.Spec.int "max_request_line_length" ~default:8_192 ~help:"Maximum HTTP request line length in bytes";
     StdConfig.Spec.int "max_header_count" ~default:100 ~help:"Maximum number of HTTP headers";
     StdConfig.Spec.int "max_header_length" ~default:8_192 ~help:"Maximum HTTP header length in bytes";

@@ -71,7 +71,7 @@ let send_response = fun conn (res: Response.t) ->
   ^ (Net.Http.Status.to_string res.status)
   ^ "\r\n" in
   let header_lines = Net.Http.Header.to_list headers
-  |> List.map (fun ((k, v)) -> k ^ ": " ^ v ^ "\r\n")
+  |> List.map ~fn:(fun ((k, v)) -> k ^ ": " ^ v ^ "\r\n")
   |> String.concat "" in
   let response_bytes = status_line ^ header_lines ^ "\r\n" ^ res.body in
   match Socket_pool.Connection.send conn response_bytes with
@@ -82,7 +82,7 @@ let compute_websocket_accept = fun key ->
   let magic = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11" in
   let concat = key ^ magic in
   let hash = Crypto.Sha1.hash_string concat in
-  let hash_bytes = Kernel.Crypto.Hash.to_bytes hash in
+  let hash_bytes = Crypto.Hash.to_bytes hash in
   Encoding.Base64.encode_bytes hash_bytes
 
 (* Bridge Channel.Handler.t to Socket_pool.Handler.t for WebSocket connections *)
@@ -116,7 +116,7 @@ let websocket_to_socket_pool_handler: Channel.Handler.t -> Socket_pool.Handler.t
             | `push (out_frames, new_handler) ->
                 (* Serialize and send response frames *)
                 let frame_data = out_frames
-                |> List.map Http.Ws.Serializer.serialize
+                |> List.map ~fn:Http.Ws.Serializer.serialize
                 |> String.concat "" in
                 (
                   match Socket_pool.Connection.send conn frame_data with
@@ -143,7 +143,7 @@ let websocket_to_socket_pool_handler: Channel.Handler.t -> Socket_pool.Handler.t
             Socket_pool.Handler.Continue new_handler
         | `push (frames, new_handler) ->
             (* Serialize and send frames *)
-            let frame_data = frames |> List.map Http.Ws.Serializer.serialize |> String.concat "" in
+            let frame_data = frames |> List.map ~fn:Http.Ws.Serializer.serialize |> String.concat "" in
             (
               match Socket_pool.Connection.send conn frame_data with
               | Ok () -> Socket_pool.Handler.Continue new_handler
@@ -178,7 +178,7 @@ let handle_websocket_upgrade = fun state socket_conn req ws_handler ->
       in
       let status_line = "HTTP/1.1 101 Switching Protocols\r\n" in
       let header_lines = Net.Http.Header.to_list response_headers
-      |> List.map (fun ((k, v)) -> k ^ ": " ^ v ^ "\r\n")
+      |> List.map ~fn:(fun ((k, v)) -> k ^ ": " ^ v ^ "\r\n")
       |> String.concat "" in
       let response_bytes = status_line ^ header_lines ^ "\r\n" in
       Log.info
@@ -221,7 +221,7 @@ let handle_request = fun state socket_conn (req: Request.t) ->
 let get_content_length = fun http_req ->
   match Net.Http.Request.get_header http_req "content-length" with
   | Some len_str -> (
-      match int_of_string_opt len_str with
+      match Int.of_string_opt len_str with
       | Some len when len >= 0 -> len
       | _ -> 0
     )

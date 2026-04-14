@@ -7,8 +7,8 @@ let is_trusted_proxy = fun proxies ip_str ->
 (** Extract IPs from X-Forwarded-For header *)
 let parse_forwarded_for = fun header_value ->
   String.split_on_char ',' header_value
-  |> List.map String.trim
-  |> List.filter (fun s -> String.length s > 0)
+  |> List.map ~fn:String.trim
+  |> List.filter ~fn:(fun s -> String.length s > 0)
 
 (** Find real client IP by walking X-Forwarded-For chain from right to left *)
 let find_real_ip = fun proxies forwarded_ips ->

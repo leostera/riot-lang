@@ -25,9 +25,14 @@ let parse_http_date = fun date_str ->
           | _ -> raise (Invalid_argument "Invalid month")
         in
         let time_parts = String.split_on_char ':' time in
-        let hours = List.nth time_parts 0 |> Int.of_string in
-        let minutes = List.nth time_parts 1 |> Int.of_string in
-        let seconds = List.nth time_parts 2 |> Int.of_string in
+        let get_time_part = fun index ->
+          match List.get time_parts ~at:index with
+          | Option.Some v -> Int.of_string v
+          | Option.None -> raise (Invalid_argument "Invalid time format")
+        in
+        let hours = get_time_part 0 in
+        let minutes = get_time_part 1 in
+        let seconds = get_time_part 2 in
         (* Simplified Unix timestamp calculation *)
         (* This is approximate - proper implementation would use Time module *)
         let days_since_epoch =
@@ -56,8 +61,8 @@ let parse_http_date = fun date_str ->
             31
           ]
           in
-          let days_from_months = List.take month days_in_month
-          |> List.fold_left (fun acc days -> acc + days) 0 in
+          let days_from_months = List.take days_in_month ~len:month
+          |> List.fold_left ~fn:(fun acc days -> acc + days) ~acc:0 in
           days_from_years + days_from_months + day - 1
         in
         let total_seconds = (days_since_epoch * 86_400) + (hours * 3_600) + (minutes * 60) + seconds in
@@ -73,7 +78,7 @@ let check_etag_match = fun conn resp_headers ->
   match (Net.Http.Header.get req_headers "if-none-match", resp_etag) with
   | Some client_etag, Some server_etag ->
       (* Handle multiple ETags in If-None-Match (comma-separated) *)
-      let client_etags = String.split_on_char ',' client_etag |> List.map String.trim in
+      let client_etags = String.split_on_char ',' client_etag |> List.map ~fn:String.trim in
       (* Check for wildcard match *)
       if List.mem "*" client_etags then
         true
@@ -114,12 +119,12 @@ let not_modified_response = fun conn resp_headers ->
   let conn' = Conn.with_body "" conn' in
   (* Preserve cacheable headers from response *)
   List.fold_left
-    (fun acc_conn header_name ->
+    cacheable_headers
+    ~acc:conn'
+    ~fn:(fun acc_conn header_name ->
       match Net.Http.Header.get resp_headers header_name with
       | Some value -> Conn.with_header header_name value acc_conn
       | None -> acc_conn)
-    conn'
-    cacheable_headers
 
 (** Conditional GET middleware *)
 let middleware = fun ~conn ~next ->
@@ -133,10 +138,10 @@ let middleware = fun ~conn ~next ->
       (* Get response headers *)
       let resp_headers =
         List.fold_left
-          (fun headers ((name, value)) ->
-            Net.Http.Header.add headers name value)
-          Net.Http.Header.empty
           (Conn.resp_headers conn')
+          ~acc:Net.Http.Header.empty
+          ~fn:(fun headers ((name, value)) ->
+            Net.Http.Header.add headers name value)
       in
       (* Check if we should return 304 *)
       let etag_matches = check_etag_match conn resp_headers in

@@ -424,16 +424,16 @@ let rec to_html = fun t ->
         "<" ^ tag ^ attrs_part ^ ">" ^ children_html ^ "</" ^ tag ^ ">"
 
 and attrs_to_string = fun attrs ->
-  attrs |> List.filter_map
-    (
-      function
+  attrs
+  |> List.filter_map
+    ~fn:(function
       | Attr (k, v) -> Some (k ^ "=\"" ^ escape_attr v ^ "\"")
-      | Event _ -> None
-    ) |> String.concat " "
+      | Event _ -> None)
+  |> String.concat " "
 
 and escape_attr = fun str ->
   (* HTML attribute escaping *)
-  let buf = IO.Buffer.create (String.length str) in
+  let buf = IO.Buffer.create ~size:(String.length str) in
   String.iter
     (
       function
@@ -469,17 +469,15 @@ let extract_handlers = fun t ->
     | Text _ ->
         acc
     | Fragment children ->
-        List.fold_left go acc children
+        List.fold_left children ~acc:acc ~fn:go
     | El { attrs; children; _ } ->
         let attr_handlers =
           List.filter_map
-            (
-              function
+            ~fn:(function
               | Event (name, handler) -> Some (name, handler)
-              | Attr _ -> None
-            )
+              | Attr _ -> None)
             attrs
         in
-        List.fold_left go (attr_handlers @ acc) children
+        List.fold_left children ~acc:(attr_handlers @ acc) ~fn:go
   in
   go [] t

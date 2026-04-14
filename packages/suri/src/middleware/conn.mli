@@ -13,7 +13,7 @@ open Std
     "Hello, World!" |> Conn.send ``` *)
 
 type peer = {
-  ip: Net.Addr.tcp_addr;
+  ip: string;
   port: int;
 }
 (** Peer connection information *)
