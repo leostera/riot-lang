@@ -27,6 +27,7 @@
 21. External workspace loading for `riot install` / `riot run` belongs here. Keep GitHub shorthand parsing, source materialization, registry release materialization, and package-selection policy in `riot-deps`, then return a normal `Workspace.t + package_name` pair to `riot-build`.
 22. Bare `owner/repo[/subdir]` source specs are only remote-looking shorthand for the workspace-free install/run path. Do not let that shorthand change `riot add` path-dependency parsing.
 23. Remote source materialization is cache-first by default for `riot run` / `riot install`. Reuse the cached checkout when it already exists, and only fetch/refresh it when the caller explicitly passes `~update:true`.
+24. Public external-install/run boundaries should prefer typed parsed specs (`Git_dependency.spec`, registry package spec values) over raw strings. Keep string parsing at the CLI edge or inside compatibility wrappers.
 
 ## Validate
 

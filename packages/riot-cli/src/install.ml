@@ -16,8 +16,12 @@ let command =
       ]
 
 type target =
-  | Local of { package_name: string option; binary_name: string; registry_fallback: string option }
-  | Remote_source of { source_spec: string; binary_name: string }
+  | Local of {
+      package_name: string option;
+      binary_name: string;
+      registry_fallback: Riot_deps.Registry_package_spec.t option;
+    }
+  | External of Install_runtime.external_spec * string
 
 let display_path = fun ~workspace_root path ->
   match Path.strip_prefix path ~prefix:workspace_root with
@@ -46,8 +50,8 @@ let split_remote_binary = fun raw ->
   )
   | _ -> Ok (raw, None)
 
-let default_remote_binary_name = fun source_spec ->
-  match Riot_deps.Git_dependency.parse_source_locator source_spec with
+let default_remote_binary_name = fun (source_spec: Riot_deps.Git_dependency.spec) ->
+  match Riot_deps.Git_dependency.parse_source_locator source_spec.source_locator with
   | Ok locator -> locator.repo
   | Error _ -> "main"
 
@@ -69,7 +73,7 @@ let parse_local_target = fun ?package_filter name ->
           registry_fallback =
             match package_filter with
             | Some _ -> None
-            | None -> Some name;
+            | None -> Riot_deps.Registry_package_spec.from_string name |> Result.to_option;
         }
       )
 
@@ -79,10 +83,18 @@ let parse_target = fun ?package_filter raw ->
     | Some _ -> Error (Failure "--package cannot be used with remote source targets")
     | None -> (
         match split_remote_binary raw with
-        | Ok (source_spec, binary_name) -> Ok (Remote_source {
-          source_spec;
-          binary_name = Option.unwrap_or ~default:(default_remote_binary_name source_spec) binary_name
-        })
+        | Ok (source_spec, binary_name) -> (
+            match Riot_deps.Git_dependency.parse_spec source_spec with
+            | Ok source_spec ->
+                Ok (External (
+                  Install_runtime.Source {
+                    spec = source_spec;
+                    update = false;
+                  },
+                  Option.unwrap_or ~default:(default_remote_binary_name source_spec) binary_name
+                ))
+            | Error err -> Error (Failure (Riot_deps.Git_dependency.message err))
+          )
         | Error _ as err -> err
       )
   else
@@ -97,14 +109,14 @@ let write_install_event = fun ~workspace_root (event: Install_runtime.install_ev
   | Install_runtime.PromotedBinary { binary; destination; _ } ->
       out
         ("    \027[1;32mPromoted\027[0m " ^ binary ^ " to " ^ display_path ~workspace_root destination)
-  | Install_runtime.InstalledBinary { binary; duration_ms; global_destination } ->
+  | Install_runtime.InstalledBinary { binary; duration_ms; mode; _ } ->
       let duration = Time.Duration.from_millis duration_ms
       |> Time.Duration.to_secs_string ~precision:2 in
       out ("   \027[1;32mInstalled\027[0m " ^ binary ^ " in " ^ duration ^ "s");
       (
-        match global_destination with
-        | Some _ -> print_path_hint ()
-        | None -> ()
+        match mode with
+        | Install_runtime.Global -> print_path_hint ()
+        | Install_runtime.Local -> ()
       )
 
 let write_install_error = fun err ->
@@ -114,13 +126,16 @@ let write_workspace_error = fun message -> out ("\027[1;31mError\027[0m: " ^ mes
 
 let local_install = fun ~on_event ~workspace ~package_name ~binary_name ~local_only ->
   Install_runtime.install ~on_event
-    {
+    (Install_runtime.Workspace {
       workspace;
       package_name;
       binary_name;
-      local_only;
-      promote_to_workspace_root = true;
-    }
+      destination =
+        if local_only then
+          Install_runtime.Local
+        else
+          Install_runtime.Global;
+    })
 
 let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
   let open ArgParser in
@@ -165,13 +180,22 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
           Error (`Cli message)
       | Error err ->
           Error (`Cli (Kernel.Exception.to_string err))
-      | Ok (Remote_source { source_spec; binary_name }) ->
+      | Ok (External (spec, binary_name)) ->
           if local_only then
             Error (`Cli "--local is only supported when installing a workspace binary")
           else
-            Install_runtime.install_source
+            let spec =
+              match spec with
+              | Install_runtime.Source { spec; update = _ } ->
+                  Install_runtime.Source { spec; update }
+              | Install_runtime.Registry _ as spec -> spec
+            in
+            Install_runtime.install
               ~on_event
-              { source_spec; binary_name; update; local_only = false }
+              (Install_runtime.External {
+                spec;
+                binary_name;
+              })
             |> Result.map_err ~fn:(fun err -> `Install err)
       | Ok (Local { package_name; binary_name; registry_fallback }) -> (
           match workspace with
@@ -181,9 +205,12 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
                   ok
               | Error (Install_runtime.BinaryNotFound _) when not local_only -> (
                   match registry_fallback with
-                  | Some package_spec -> Install_runtime.install_registry
+                  | Some package_spec -> Install_runtime.install
                     ~on_event
-                    { package_spec; binary_name = "main"; local_only = false }
+                    (Install_runtime.External {
+                      spec = Install_runtime.Registry package_spec;
+                      binary_name = "main";
+                    })
                   |> Result.map_err ~fn:(fun err -> `Install err)
                   | None -> Error (`Install (Install_runtime.BinaryNotFound { binary_name }))
                 )
@@ -196,11 +223,15 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
               else
                 (
                   match registry_fallback with
-                  | Some package_spec -> Install_runtime.install_registry
+                  | Some package_spec -> Install_runtime.install
                     ~on_event
-                    { package_spec; binary_name = "main"; local_only = false }
+                    (Install_runtime.External {
+                      spec = Install_runtime.Registry package_spec;
+                      binary_name = "main";
+                    })
                   |> Result.map_err ~fn:(fun err -> `Install err)
-                  | None -> Error (`Cli (Option.unwrap_or ~default:"Not in a riot workspace" workspace_error))
+                  | None ->
+                      Error (`Cli ("'" ^ binary_name ^ "' is not a valid registry package spec outside a riot workspace"))
                 )
         )
     in

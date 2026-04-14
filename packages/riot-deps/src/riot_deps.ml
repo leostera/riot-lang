@@ -6,6 +6,7 @@ module Lock_refresh = Lock_refresh
 module Projection = Projection
 module Materializer = Materializer
 module Git_dependency = Git_dependency
+module Registry_package_spec = Registry_package_spec
 module Git_provenance = Git_provenance
 module Publisher = Publisher
 module Workspace_resolution = Workspace_resolution
@@ -94,7 +95,11 @@ let package_error_message = Package_management.error_message
 
 let load_source_workspace = Package_management.load_source_workspace
 
+let load_source_workspace_from_spec = Package_management.load_source_workspace_from_spec
+
 let load_registry_workspace = Package_management.load_registry_workspace
+
+let load_registry_workspace_from_spec = Package_management.load_registry_workspace_from_spec
 
 let add = Package_management.add
 

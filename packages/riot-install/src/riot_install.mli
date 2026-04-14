@@ -1,48 +1,44 @@
 open Std
 
-type install_request = {
-  workspace: Riot_model.Workspace.t;
-  package_name: string option;
-  binary_name: string;
-  local_only: bool;
-  promote_to_workspace_root: bool;
-}
+type destination =
+  | Local
+  | Global
 
-type source_install_request = {
-  source_spec: string;
-  binary_name: string;
-  update: bool;
-  local_only: bool;
-}
+type external_spec =
+  | Source of {
+      spec: Riot_deps.Git_dependency.spec;
+      update: bool;
+    }
+  | Registry of Riot_deps.Registry_package_spec.t
 
-type registry_install_request = {
-  package_spec: string;
-  binary_name: string;
-  local_only: bool;
-}
+type request =
+  | Workspace of {
+      workspace: Riot_model.Workspace.t;
+      package_name: string option;
+      binary_name: string;
+      destination: destination;
+    }
+  | External of {
+      spec: external_spec;
+      binary_name: string;
+    }
 
 type install_event =
   | Build of Riot_build.Event.t
   | InstallingBinary of { package: string; binary: string }
-  | PromotedBinary of { binary: string; destination: Path.t; global: bool }
-  | InstalledBinary of { binary: string; duration_ms: int; global_destination: Path.t option }
+  | PromotedBinary of { binary: string; destination: Path.t; mode: destination }
+  | InstalledBinary of { binary: string; duration_ms: int; destination: Path.t; mode: destination }
 
 type install_error =
   | BinaryNotFound of { binary_name: string }
   | BinaryNotFoundInPackage of { package_name: string; binary_name: string }
   | BuildFailed of Riot_build.error
   | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
-  | PromotionFailed of { binary_name: string; destination: Path.t; global: bool; reason: string }
+  | PromotionFailed of { binary_name: string; destination: Path.t; mode: destination; reason: string }
   | ExternalTargetLoadFailed of { target: string; reason: string }
 
 val install_error_message: install_error -> string
 
 val install_event_to_json: install_event -> Data.Json.t option
 
-val install: ?on_event:(install_event -> unit) -> install_request -> (unit, install_error) result
-
-val install_source:
-  ?on_event:(install_event -> unit) -> source_install_request -> (unit, install_error) result
-
-val install_registry:
-  ?on_event:(install_event -> unit) -> registry_install_request -> (unit, install_error) result
+val install: ?on_event:(install_event -> unit) -> request -> (unit, install_error) result

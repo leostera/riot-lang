@@ -27,6 +27,7 @@
 21. Workspace manifests may carry an optional `[workspace].name`. Preserve it across parse/load/make paths without turning it into execution policy.
 22. Any helper that derives build/cache/sandbox/output paths from a `Workspace.t` must use `workspace.target_dir_root` as the base, not `workspace.root`. Synthetic or cloned workspaces rely on that override being respected end-to-end.
 23. `Target.t` is the shared target-triple identity and should stay an alias of `Std.System.TargetTriple.t`. Raw triple parsing belongs in `std`; `riot-model.Target` should only add build-level request parsing, set operations, and configured-target resolution.
+24. Package-name validation belongs in `Package_name`. New typed boundaries should prefer `Package_name.t` over raw strings for parsed package identities, and `Package.validate_name` is only a compatibility wrapper.
 
 ## Validate
 

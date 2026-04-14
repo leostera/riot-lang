@@ -85,8 +85,8 @@ type target_manifest = {
   dependencies: Riot_model.Package.dependency list;
 }
 
-type registry_dependency = {
-  name: string;
+type registry_dependency = Registry_package_spec.t = {
+  name: Riot_model.Package_name.t;
   requirement: Std.Version.requirement option;
 }
 
@@ -109,6 +109,9 @@ type parsed_dependency =
 let no_emit: event_sink = fun _ -> ()
 
 let registry_name = "pkgs.ml"
+
+let registry_dependency_name = fun (dep: registry_dependency) ->
+  Riot_model.Package_name.to_string dep.name
 
 let should_emit_source_materialization_started = fun ~source_locator ~update ->
   if update then
@@ -220,33 +223,10 @@ let scope_to_section = function
   | Dev -> Manifest_edit.Dev
 
 let parse_registry_dependency_spec = fun raw ->
-  match String.split ~by:"@" raw with
-  | [ name ] ->
-      let* name = Riot_model.Package.validate_name (String.trim name)
-      |> Result.map_err ~fn:(fun error -> DependencySpecInvalid { dependency = raw; error }) in
-      Ok { name; requirement = Some Std.Version.any }
-  | [name;requirement] ->
-      let* name = Riot_model.Package.validate_name (String.trim name)
-      |> Result.map_err ~fn:(fun error -> DependencySpecInvalid { dependency = raw; error }) in
-      let requirement = String.trim requirement in
-      let* requirement =
-        Std.Version.parse_requirement requirement |> Result.map_err ~fn:(fun error ->
-            DependencySpecInvalid {
-              dependency = raw;
-              error =
-                match error with
-                | Std.Version.Invalid_format msg -> msg
-                | Std.Version.Invalid_version_segment segment -> "invalid version segment: " ^ segment
-                | Std.Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: "
-                ^ segment;
-            })
-      in
-      Ok { name; requirement = Some requirement }
-  | _ ->
-      Error (DependencySpecInvalid {
-        dependency = raw;
-        error = "expected <name> or <name>@<version>"
-      })
+  Registry_package_spec.from_string raw
+  |> Result.map_err ~fn:(function
+      | Registry_package_spec.Invalid_spec { error; _ } ->
+          DependencySpecInvalid { dependency = raw; error })
 
 let is_source_dependency_spec = fun raw ->
   String.starts_with ~prefix:"http://" raw
@@ -635,40 +615,41 @@ let search = fun ?registry ~(request:search_request) () ->
   Ok (List.map results ~fn:suggested_package_of_search_result)
 
 let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_dependency) ->
+  let package_name = registry_dependency_name parsed in
   let registry_name = Pkgs_ml.Registry.name registry in
   let started = Time.Instant.now () in
   emit
-    (Riot_model.Event.PackageMetadataFetchStarted { registry = registry_name; package = parsed.name });
+    (Riot_model.Event.PackageMetadataFetchStarted { registry = registry_name; package = package_name });
   let* document =
-    Pkgs_ml.Registry.read_package_document registry ~package_name:parsed.name |> Result.map_err ~fn:(fun error ->
+    Pkgs_ml.Registry.read_package_document registry ~package_name:package_name |> Result.map_err ~fn:(fun error ->
         emit
           (Riot_model.Event.PackageMetadataFetchFailed {
             registry = registry_name;
-            package = parsed.name;
+            package = package_name;
             error = Riot_model.Pm_error.PackageMetadataReadFailed {
-              package = parsed.name;
+              package = package_name;
               registry = registry_name;
               error
             }
           });
-        RegistryLookupFailed { package = parsed.name; registry = registry_name; error })
+        RegistryLookupFailed { package = package_name; registry = registry_name; error })
   in
   match document with
   | None ->
       emit
         (Riot_model.Event.PackageMetadataFetchFailed {
           registry = registry_name;
-          package = parsed.name;
+          package = package_name;
           error = Riot_model.Pm_error.PackageNotFound {
-            package = parsed.name;
+            package = package_name;
             registry = registry_name;
             required_by = None
           }
         });
       Error (RegistryPackageNotFound {
-        package = parsed.name;
+        package = package_name;
         registry = registry_name;
-        suggestions = lookup_package_suggestions ~registry ~package_name:parsed.name
+        suggestions = lookup_package_suggestions ~registry ~package_name
       })
   | Some document ->
       emit
@@ -679,30 +660,29 @@ let lookup_named_package = fun ~(emit:event_sink) ~registry (parsed: registry_de
           duration_ms = duration_ms_since started
         });
       let requirement = Option.unwrap_or ~default:Std.Version.any parsed.requirement in
-      if dependency_exists ~package_name:parsed.name document requirement then
+      if dependency_exists ~package_name document requirement then
         Ok parsed
       else
         (
           match yanked_release_of_document document requirement with
           | Some release -> Error (RegistryReleaseYanked {
-            package = parsed.name;
+            package = package_name;
             version = release.version;
             registry = registry_name
           })
           | None -> Error (RegistryVersionNotFound {
-            package = parsed.name;
+            package = package_name;
             requirement = Std.Version.requirement_to_string requirement;
             registry = registry_name
           })
         )
 
-let load_source_workspace = fun ?(emit = no_emit) ?workspace_manager ?(update = true) ~spec () ->
-  let* parsed = Git_dependency.parse_spec spec
-  |> Result.map_err ~fn:(fun error ->
-    DependencySpecInvalid { dependency = spec; error = Git_dependency.message error }) in
+let load_source_workspace_from_spec = fun ?(emit = no_emit) ?workspace_manager ?(update = true) ~spec () ->
+  let parsed = spec in
+  let source_spec = Git_dependency.to_string spec in
   let* () = Git_dependency.parse_source_locator parsed.source_locator
   |> Result.map_err ~fn:(fun error ->
-    DependencySpecInvalid { dependency = spec; error = Git_dependency.message error })
+    DependencySpecInvalid { dependency = source_spec; error = Git_dependency.message error })
   |> Result.map ~fn:(fun _ -> ()) in
   let emit_materialization_events = should_emit_source_materialization_started
     ~source_locator:parsed.source_locator
@@ -720,7 +700,7 @@ let load_source_workspace = fun ?(emit = no_emit) ?workspace_manager ?(update = 
     ()
   |> Result.map_err ~fn:(fun error ->
       SourceDependencyLoadFailed {
-        dependency = spec;
+        dependency = source_spec;
         source_locator = parsed.source_locator;
         ref_ = parsed.ref_;
         error = Git_dependency.message error
@@ -778,8 +758,20 @@ let load_source_workspace = fun ?(emit = no_emit) ?workspace_manager ?(update = 
     );
   Ok loaded
 
-let load_registry_workspace = fun ?(emit = no_emit) ?registry ?workspace_manager ~spec () ->
-  let* parsed = parse_registry_dependency_spec spec in
+let load_source_workspace = fun ?(emit = no_emit) ?workspace_manager ?(update = true) ~spec () ->
+  let* parsed = Git_dependency.parse_spec spec
+  |> Result.map_err ~fn:(fun error ->
+    DependencySpecInvalid { dependency = spec; error = Git_dependency.message error }) in
+  load_source_workspace_from_spec
+    ~emit
+    ?workspace_manager
+    ~update
+    ~spec:parsed
+    ()
+
+let load_registry_workspace_from_spec = fun ?(emit = no_emit) ?registry ?workspace_manager ~spec () ->
+  let parsed = spec in
+  let package_name = registry_dependency_name parsed in
   let* registry =
     match registry with
     | Some registry -> Ok registry
@@ -788,16 +780,16 @@ let load_registry_workspace = fun ?(emit = no_emit) ?registry ?workspace_manager
   let* parsed = lookup_named_package ~emit ~registry parsed in
   let registry_name = Pkgs_ml.Registry.name registry in
   let requirement = Option.unwrap_or ~default:Std.Version.any parsed.requirement in
-  let* document = Pkgs_ml.Registry.read_package_document registry ~package_name:parsed.name
+  let* document = Pkgs_ml.Registry.read_package_document registry ~package_name
   |> Result.map_err ~fn:(fun error ->
-    RegistryLookupFailed { package = parsed.name; registry = registry_name; error }) in
+    RegistryLookupFailed { package = package_name; registry = registry_name; error }) in
   let* document =
     match document with
     | Some document -> Ok document
     | None -> Error (RegistryPackageNotFound {
-      package = parsed.name;
+      package = package_name;
       registry = registry_name;
-      suggestions = lookup_package_suggestions ~registry ~package_name:parsed.name
+      suggestions = lookup_package_suggestions ~registry ~package_name
     })
   in
   let* release =
@@ -806,12 +798,12 @@ let load_registry_workspace = fun ?(emit = no_emit) ?registry ?workspace_manager
     | None -> (
         match yanked_release_of_document document requirement with
         | Some release -> Error (RegistryReleaseYanked {
-          package = parsed.name;
+          package = package_name;
           version = release.version;
           registry = registry_name
         })
         | None -> Error (RegistryVersionNotFound {
-          package = parsed.name;
+          package = package_name;
           requirement = Std.Version.requirement_to_string requirement;
           registry = registry_name
         })
@@ -882,6 +874,15 @@ let load_registry_workspace = fun ?(emit = no_emit) ?registry ?workspace_manager
     });
   Ok loaded
 
+let load_registry_workspace = fun ?(emit = no_emit) ?registry ?workspace_manager ~spec () ->
+  let* parsed = parse_registry_dependency_spec spec in
+  load_registry_workspace_from_spec
+    ~emit
+    ?registry
+    ?workspace_manager
+    ~spec:parsed
+    ()
+
 let upsert_dependency = fun (dependencies: Riot_model.Package.dependency list) ((
   dependency: Riot_model.Package.dependency
 ) as replacement) ->
@@ -906,12 +907,13 @@ let remove_dependency = fun dependencies ~name ->
 
 let dependency_of_parsed = function
   | Registry parsed ->
+      let name = registry_dependency_name parsed in
       Riot_model.Package.{
-        name = parsed.name;
+        name;
         source =
           {
             workspace = false;
-            builtin = Riot_model.Package.is_builtin_dependency_name parsed.name;
+            builtin = Riot_model.Package.is_builtin_dependency_name name;
             path = None;
             source_locator = None;
             ref_ = None;
@@ -1038,7 +1040,7 @@ let add = fun ?(on_event = no_emit) ~(workspace:Riot_model.Workspace.t) ~cwd ~(r
     update_manifest ~emit ~target ~scope:request.scope ~dependencies ~operation:`Add
       ~dependency:(
         match parsed with
-        | Registry parsed -> parsed.name
+        | Registry parsed -> registry_dependency_name parsed
         | Path parsed -> parsed.name
         | Source parsed -> parsed.name
       )

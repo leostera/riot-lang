@@ -1,43 +1,49 @@
 open Std
 
-type install_request = {
-  workspace: Riot_model.Workspace.t;
-  package_name: string option;
-  binary_name: string;
-  local_only: bool;
-  promote_to_workspace_root: bool;
-}
+type destination =
+  | Local
+  | Global
 
-type source_install_request = {
-  source_spec: string;
-  binary_name: string;
-  update: bool;
-  local_only: bool;
-}
+type external_spec =
+  | Source of {
+      spec: Riot_deps.Git_dependency.spec;
+      update: bool;
+    }
+  | Registry of Riot_deps.Registry_package_spec.t
 
-type registry_install_request = {
-  package_spec: string;
-  binary_name: string;
-  local_only: bool;
-}
+type request =
+  | Workspace of {
+      workspace: Riot_model.Workspace.t;
+      package_name: string option;
+      binary_name: string;
+      destination: destination;
+    }
+  | External of {
+      spec: external_spec;
+      binary_name: string;
+    }
 
 type install_event =
   | Build of Riot_build.Event.t
   | InstallingBinary of { package: string; binary: string }
-  | PromotedBinary of { binary: string; destination: Path.t; global: bool }
-  | InstalledBinary of { binary: string; duration_ms: int; global_destination: Path.t option }
+  | PromotedBinary of { binary: string; destination: Path.t; mode: destination }
+  | InstalledBinary of { binary: string; duration_ms: int; destination: Path.t; mode: destination }
 
 type install_error =
   | BinaryNotFound of { binary_name: string }
   | BinaryNotFoundInPackage of { package_name: string; binary_name: string }
   | BuildFailed of Riot_build.error
   | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
-  | PromotionFailed of { binary_name: string; destination: Path.t; global: bool; reason: string }
+  | PromotionFailed of { binary_name: string; destination: Path.t; mode: destination; reason: string }
   | ExternalTargetLoadFailed of { target: string; reason: string }
 
 let ( let* ) value fn = Result.and_then value ~fn
 
 let no_event: install_event -> unit = fun _ -> ()
+
+let destination_name = function
+  | Local -> "local"
+  | Global -> "global"
 
 let install_error_message = function
   | BinaryNotFound { binary_name } ->
@@ -47,11 +53,14 @@ let install_error_message = function
   | BuildFailed err -> Riot_build.error_message err
   | ArtifactNotFound { package_name; binary_name; reason } ->
       "binary '" ^ binary_name ^ "' was not produced by package '" ^ package_name ^ "': " ^ reason
-  | PromotionFailed { binary_name; destination; reason; _ } ->
+  | PromotionFailed { binary_name; destination; mode; reason } ->
       "failed to promote "
       ^ binary_name
       ^ " to "
       ^ Path.to_string destination
+      ^ " ("
+      ^ destination_name mode
+      ^ ")"
       ^ ": "
       ^ reason
   | ExternalTargetLoadFailed { target; reason } ->
@@ -67,22 +76,20 @@ let install_event_to_json = function
         ("package", Data.Json.String package);
         ("binary", Data.Json.String binary);
       ])
-  | PromotedBinary { binary; destination; global } ->
+  | PromotedBinary { binary; destination; mode } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "PromotedBinary");
         ("binary", Data.Json.String binary);
         ("destination", path_json destination);
-        ("global", Data.Json.Bool global);
+        ("mode", Data.Json.String (destination_name mode));
       ])
-  | InstalledBinary { binary; duration_ms; global_destination } ->
+  | InstalledBinary { binary; duration_ms; destination; mode } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "InstalledBinary");
         ("binary", Data.Json.String binary);
         ("duration_ms", Data.Json.Int duration_ms);
-        ("global_destination",
-         match global_destination with
-         | Some path -> path_json path
-         | None -> Data.Json.Null);
+        ("destination", path_json destination);
+        ("mode", Data.Json.String (destination_name mode));
       ])
 
 let realized_runnable_packages = fun ?package_filter (workspace: Riot_model.Workspace.t) ->
@@ -124,26 +131,26 @@ let emit_pm_build_event = fun ~session_id ~on_event kind ->
 
 let load_source_workspace = fun ~on_event ~source_spec ~update ->
   let session_id = Riot_model.Session_id.make () in
-  Riot_deps.load_source_workspace
+  Riot_deps.load_source_workspace_from_spec
     ~emit:(emit_pm_build_event ~session_id ~on_event)
     ~update
     ~spec:source_spec
     ()
   |> Result.map_err ~fn:(fun err ->
       ExternalTargetLoadFailed {
-        target = source_spec;
+        target = Riot_deps.Git_dependency.to_string source_spec;
         reason = Riot_deps.package_error_message err;
       })
 
 let load_registry_workspace = fun ~on_event ~package_spec ->
   let session_id = Riot_model.Session_id.make () in
-  Riot_deps.load_registry_workspace
+  Riot_deps.load_registry_workspace_from_spec
     ~emit:(emit_pm_build_event ~session_id ~on_event)
     ~spec:package_spec
     ()
   |> Result.map_err ~fn:(fun err ->
       ExternalTargetLoadFailed {
-        target = package_spec;
+        target = Riot_deps.Registry_package_spec.to_string package_spec;
         reason = Riot_deps.package_error_message err;
       })
 
@@ -205,16 +212,16 @@ let install_binary_atomically = fun ~src ~dst ~permissions ->
         )
     )
 
-let promote_binary = fun ~on_event ~src ~dst ~binary ~global ->
+let promote_binary = fun ~on_event ~src ~dst ~binary ~mode ->
   match install_binary_atomically ~src ~dst ~permissions:Fs.Permissions.executable with
   | Ok () ->
-      on_event (PromotedBinary { binary; destination = dst; global });
+      on_event (PromotedBinary { binary; destination = dst; mode });
       Ok ()
   | Error reason ->
       Error (PromotionFailed {
         binary_name = binary;
         destination = dst;
-        global;
+        mode;
         reason = IO.error_message reason;
       })
 
@@ -227,24 +234,34 @@ let build_request = fun ~workspace ~package_name ->
     ~profile:Riot_model.Profile.debug
     ()
 
-let install = fun ?(on_event = no_event) (request: install_request) ->
+let destination_path = fun ~(workspace:Riot_model.Workspace.t) ~binary_name mode ->
+  match mode with
+  | Local -> Path.(workspace.root / Path.v binary_name)
+  | Global -> Path.(Riot_model.Riot_dirs.dot_riot / Path.v "bin" / Path.v binary_name)
+
+let ensure_destination_parent = fun path ->
+  match Path.parent path with
+  | Some parent -> Fs.create_dir_all parent
+  | None -> Ok ()
+
+let install_workspace = fun ~on_event ~workspace ~package_name ~binary_name ~destination ->
   let started_at = Time.Instant.now () in
   let* package_name =
     resolve_binary
-      ~workspace:request.workspace
-      ~package_name:request.package_name
-      ~binary_name:request.binary_name
+      ~workspace
+      ~package_name
+      ~binary_name
   in
-  on_event (InstallingBinary { package = package_name; binary = request.binary_name });
+  on_event (InstallingBinary { package = package_name; binary = binary_name });
   let* output =
     Riot_build.build
       ~on_event:(fun event -> on_event (Build event))
-      (build_request ~workspace:request.workspace ~package_name)
+      (build_request ~workspace ~package_name)
     |> Result.map_err ~fn:(fun err -> BuildFailed err)
   in
   let store =
     Riot_store.Store.create_for_lane
-      ~workspace:request.workspace
+      ~workspace
       ~profile:"debug"
       ~target:(Riot_model.Riot_dirs.host_target ())
   in
@@ -253,46 +270,26 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
       ~store
       ~output
       ~package_name
-      ~binary_name:request.binary_name
+      ~binary_name
+  in
+  let destination_path = destination_path ~workspace ~binary_name destination in
+  let* () =
+    ensure_destination_parent destination_path
+    |> Result.map_err ~fn:(fun reason ->
+        PromotionFailed {
+          binary_name;
+          destination = destination_path;
+          mode = destination;
+          reason = IO.error_message reason;
+        })
   in
   let* () =
-    if request.promote_to_workspace_root then
-      let workspace_root = request.workspace.root in
-      let project_binary = Path.(workspace_root / Path.v request.binary_name) in
-      promote_binary
-        ~on_event
-        ~src:binary_path
-        ~dst:project_binary
-        ~binary:request.binary_name
-        ~global:false
-    else
-      Ok ()
-  in
-  let* global_destination =
-    if request.local_only then
-      Ok None
-    else
-      let riot_bin_dir = Path.(Riot_model.Riot_dirs.dot_riot / Path.v "bin") in
-      let global_path = Path.(riot_bin_dir / Path.v request.binary_name) in
-      match Fs.create_dir_all riot_bin_dir with
-      | Ok () -> (
-          match promote_binary
-            ~on_event
-            ~src:binary_path
-            ~dst:global_path
-            ~binary:request.binary_name
-            ~global:true
-          with
-          | Ok () -> Ok (Some global_path)
-          | Error _ as err -> err
-        )
-      | Error reason ->
-          Error (PromotionFailed {
-            binary_name = request.binary_name;
-            destination = riot_bin_dir;
-            global = true;
-            reason = IO.error_message reason;
-          })
+    promote_binary
+      ~on_event
+      ~src:binary_path
+      ~dst:destination_path
+      ~binary:binary_name
+      ~mode:destination
   in
   let duration =
     Time.Instant.duration_since
@@ -300,37 +297,44 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
       (Time.Instant.now ())
   in
   on_event (InstalledBinary {
-    binary = request.binary_name;
+    binary = binary_name;
     duration_ms = Time.Duration.to_millis duration;
-    global_destination;
+    destination = destination_path;
+    mode = destination;
   });
   Ok ()
 
-let install_source = fun ?(on_event = no_event) (request: source_install_request) ->
+let install_external = fun ~on_event ~spec ~binary_name ->
   let* loaded =
-    load_source_workspace
-      ~on_event
-      ~source_spec:request.source_spec
-      ~update:request.update
+    match spec with
+    | Source { spec; update } ->
+        load_source_workspace
+          ~on_event
+          ~source_spec:spec
+          ~update
+    | Registry spec ->
+        load_registry_workspace
+          ~on_event
+          ~package_spec:spec
   in
-  install ~on_event {
-    workspace = loaded.workspace;
-    package_name = Some loaded.package_name;
-    binary_name = request.binary_name;
-    local_only = request.local_only;
-    promote_to_workspace_root = false;
-  }
+  install_workspace
+    ~on_event
+    ~workspace:loaded.workspace
+    ~package_name:(Some loaded.package_name)
+    ~binary_name
+    ~destination:Global
 
-let install_registry = fun ?(on_event = no_event) (request: registry_install_request) ->
-  let* loaded =
-    load_registry_workspace
-      ~on_event
-      ~package_spec:request.package_spec
-  in
-  install ~on_event {
-    workspace = loaded.workspace;
-    package_name = Some loaded.package_name;
-    binary_name = request.binary_name;
-    local_only = request.local_only;
-    promote_to_workspace_root = false;
-  }
+let install = fun ?(on_event = no_event) (request: request) ->
+  match request with
+  | Workspace { workspace; package_name; binary_name; destination } ->
+      install_workspace
+        ~on_event
+        ~workspace
+        ~package_name
+        ~binary_name
+        ~destination
+  | External { spec; binary_name } ->
+      install_external
+        ~on_event
+        ~spec
+        ~binary_name

@@ -34,6 +34,8 @@ val looks_like_remote_spec: string -> bool
 
 val parse_spec: string -> (spec, error) result
 
+val to_string: spec -> string
+
 val parse_source_locator: string -> (locator, error) result
 
 val sync_checkout:

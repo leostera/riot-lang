@@ -2733,6 +2733,28 @@ let test_load_registry_workspace_rejects_yanked_release = fun _ctx ->
       ^ Riot_deps.package_error_message err)
       | Ok _ -> Error "expected yanked registry workspace load to fail")
 
+let test_registry_package_spec_roundtrips_bare_name = fun _ctx ->
+  match Riot_deps.Registry_package_spec.from_string "demo" with
+  | Ok spec ->
+      if String.equal (Riot_deps.Registry_package_spec.to_string spec) "demo" then
+        Ok ()
+      else
+        Error "expected bare registry package spec to render without @*"
+  | Error err ->
+      Error ("expected bare registry package spec to parse: "
+      ^ Riot_deps.Registry_package_spec.error_message err)
+
+let test_registry_package_spec_preserves_explicit_requirement = fun _ctx ->
+  match Riot_deps.Registry_package_spec.from_string "demo@>= 1.2.3" with
+  | Ok spec ->
+      if String.equal (Riot_deps.Registry_package_spec.to_string spec) "demo@>= 1.2.3" then
+        Ok ()
+      else
+        Error "expected explicit registry requirement to roundtrip"
+  | Error err ->
+      Error ("expected explicit registry package spec to parse: "
+      ^ Riot_deps.Registry_package_spec.error_message err)
+
 let tests =
   Test.[
     case "dep solver: projects workspace packages into lockfile" test_lock_deps_projects_workspace_packages;
@@ -2774,6 +2796,8 @@ let tests =
     case "ensure workspace: preserves declared external binaries" test_ensure_workspace_preserves_declared_external_binaries;
     case "package management: load registry workspace materializes release" test_load_registry_workspace_materializes_release;
     case "package management: load registry workspace rejects yanked release" test_load_registry_workspace_rejects_yanked_release;
+    case "registry package spec: bare names roundtrip without synthetic any markers" test_registry_package_spec_roundtrips_bare_name;
+    case "registry package spec: explicit requirements roundtrip" test_registry_package_spec_preserves_explicit_requirement;
     case "projection: resolves workspace packages from lockfile" test_projection_resolves_workspace_packages;
     case "projection: loads external manifests from lockfile" test_projection_loads_external_manifests_from_lockfile;
     case "projection: bubbles external manifest errors" test_projection_bubbles_external_manifest_errors;

@@ -14,6 +14,8 @@ module Materializer = Materializer
 
 module Git_dependency = Git_dependency
 
+module Registry_package_spec = Registry_package_spec
+
 module Git_provenance = Git_provenance
 
 module Publisher = Publisher
@@ -96,11 +98,27 @@ val load_source_workspace:
   unit ->
   (loaded_workspace, package_error) result
 
+val load_source_workspace_from_spec:
+  ?emit:event_sink ->
+  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  ?update:bool ->
+  spec:Git_dependency.spec ->
+  unit ->
+  (loaded_workspace, package_error) result
+
 val load_registry_workspace:
   ?emit:event_sink ->
   ?registry:Pkgs_ml.Registry.t ->
   ?workspace_manager:Riot_model.Workspace_manager.t ->
   spec:string ->
+  unit ->
+  (loaded_workspace, package_error) result
+
+val load_registry_workspace_from_spec:
+  ?emit:event_sink ->
+  ?registry:Pkgs_ml.Registry.t ->
+  ?workspace_manager:Riot_model.Workspace_manager.t ->
+  spec:Registry_package_spec.t ->
   unit ->
   (loaded_workspace, package_error) result
 
