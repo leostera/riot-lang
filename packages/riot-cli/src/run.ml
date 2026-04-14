@@ -1,9 +1,10 @@
 open Std
 open Riot_model
 open Riot_build
+open Riot_run
 open ArgParser
 
-module Run_runtime = Riot_build.Commands.Run
+module Run_runtime = Riot_run
 
 let command =
   let open ArgParser in
@@ -161,10 +162,6 @@ let run_error_to_json = fun (err: Run_runtime.run_error) ->
       ("kind", Data.Json.String "external_target_load_failed");
       ("target", Data.Json.String target);
       ("reason", Data.Json.String reason);
-    ]
-    | Run_runtime.ClientError _ -> [
-      ("kind", Data.Json.String "client_error");
-      ("message", Data.Json.String (Run_runtime.run_error_message err));
     ]
   in
   Data.Json.Object (("type", Data.Json.String "run.error")

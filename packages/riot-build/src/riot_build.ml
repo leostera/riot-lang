@@ -7,7 +7,6 @@ module Request = Request
 module Output = Output
 
 module Commands = struct
-  module Run = Run_runtime
   module Install = Install_runtime
   module Test = Test_runtime
   module Bench = Bench_runtime
