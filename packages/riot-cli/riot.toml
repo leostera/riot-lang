@@ -16,6 +16,7 @@ path = "src/main.ml"
 std = { path = "../std", version = "*" }
 riot-init = { path = "../riot-init", version = "*" }
 riot-run = { path = "../riot-run", version = "*" }
+riot-install = { path = "../riot-install", version = "*" }
 riot-executor = { path = "../riot-executor", version = "*" }
 riot-model = { path = "../riot-model", version = "*" }
 riot-planner = { path = "../riot-planner", version = "*" }

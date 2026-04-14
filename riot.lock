@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "6bee00dd196d37cc"
+dependency_hash = "9c54d952c7354299"
 
 [[packages]]
 name = "raml"
@@ -374,7 +374,7 @@ dev_dependencies = [{ name = "serde-json", package = { name = "serde-json" } }]
 name = "riot-cli"
 root = "packages/riot-cli"
 provenance = { kind = "workspace" }
-dependencies = [{ name = "contentstore", package = { name = "contentstore" } }, { name = "pkgs-ml", package = { name = "pkgs-ml" } }, { name = "riot-build", package = { name = "riot-build" } }, { name = "riot-deps", package = { name = "riot-deps" } }, { name = "riot-doc", package = { name = "riot-doc" } }, { name = "riot-executor", package = { name = "riot-executor" } }, { name = "riot-fix", package = { name = "riot-fix" } }, { name = "riot-fmt", package = { name = "riot-fmt" } }, { name = "riot-init", package = { name = "riot-init" } }, { name = "riot-model", package = { name = "riot-model" } }, { name = "riot-planner", package = { name = "riot-planner" } }, { name = "riot-publish", package = { name = "riot-publish" } }, { name = "riot-run", package = { name = "riot-run" } }, { name = "riot-store", package = { name = "riot-store" } }, { name = "riot-toolchain", package = { name = "riot-toolchain" } }, { name = "std", package = { name = "std" } }, { name = "tty", package = { name = "tty" } }]
+dependencies = [{ name = "contentstore", package = { name = "contentstore" } }, { name = "pkgs-ml", package = { name = "pkgs-ml" } }, { name = "riot-build", package = { name = "riot-build" } }, { name = "riot-deps", package = { name = "riot-deps" } }, { name = "riot-doc", package = { name = "riot-doc" } }, { name = "riot-executor", package = { name = "riot-executor" } }, { name = "riot-fix", package = { name = "riot-fix" } }, { name = "riot-fmt", package = { name = "riot-fmt" } }, { name = "riot-init", package = { name = "riot-init" } }, { name = "riot-install", package = { name = "riot-install" } }, { name = "riot-model", package = { name = "riot-model" } }, { name = "riot-planner", package = { name = "riot-planner" } }, { name = "riot-publish", package = { name = "riot-publish" } }, { name = "riot-run", package = { name = "riot-run" } }, { name = "riot-store", package = { name = "riot-store" } }, { name = "riot-toolchain", package = { name = "riot-toolchain" } }, { name = "std", package = { name = "std" } }, { name = "tty", package = { name = "tty" } }]
 build_dependencies = []
 dev_dependencies = []
 
@@ -511,6 +511,14 @@ name = "asm"
 root = "compiler/asm"
 provenance = { kind = "workspace" }
 dependencies = [{ name = "std", package = { name = "std" } }]
+build_dependencies = []
+dev_dependencies = []
+
+[[packages]]
+name = "riot-install"
+root = "packages/riot-install"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "riot-build", package = { name = "riot-build" } }, { name = "riot-deps", package = { name = "riot-deps" } }, { name = "riot-model", package = { name = "riot-model" } }, { name = "riot-store", package = { name = "riot-store" } }, { name = "std", package = { name = "std" } }]
 build_dependencies = []
 dev_dependencies = []
 

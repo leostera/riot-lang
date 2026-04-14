@@ -1,6 +1,6 @@
 open Std
 
-module Install_runtime = Riot_build.Commands.Install
+module Install_runtime = Riot_install
 let out = eprintln
 
 let command =

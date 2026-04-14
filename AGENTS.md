@@ -38,6 +38,7 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/riot-fmt/AGENTS.md`: `riot fmt` wrapper around krasny-based formatting checks
 - `packages/riot-init/AGENTS.md`: workspace/package scaffolding
 - `packages/riot-run/AGENTS.md`: binary selection and execution on top of `riot-build`
+- `packages/riot-install/AGENTS.md`: binary promotion/install orchestration on top of `riot-build`
 - `packages/riot-eval/AGENTS.md`: OCaml evaluation tooling
 - `packages/riot-fix/AGENTS.md`: linting and auto-fix pipeline
 - `packages/fixme/AGENTS.md`: shared rule-authoring types used by riot-fix and generated `fixme-runner` providers
