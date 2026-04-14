@@ -18,7 +18,7 @@ module Directive = struct
     Json.obj
       [
         ("name", Json.string directive.name);
-        ("args", Json.array (List.map Json.string directive.args));
+        ("args", Json.array (List.map directive.args ~fn:Json.string));
       ]
 end
 
@@ -76,8 +76,8 @@ module Document = struct
   let extend = fun document items -> document @ items
 
   let to_string = fun ~instruction_to_string document ->
-    document |> List.map (Item.to_string ~instruction_to_string) |> String.concat "\n"
+    document |> List.map ~fn:(Item.to_string ~instruction_to_string) |> String.concat "\n"
 
   let to_json = fun ~instruction_to_json document ->
-    Json.array (List.map (Item.to_json ~instruction_to_json) document)
+    Json.array (List.map document ~fn:(Item.to_json ~instruction_to_json))
 end

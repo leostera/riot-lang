@@ -1,4 +1,5 @@
 open Std
+open Riot_model
 module Test = Std.Test
 module G = Std.Graph.SimpleGraph
 
@@ -6,10 +7,18 @@ let test_toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.def
 |> Result.expect ~msg:"Failed to initialize toolchain"
 
 let make_package = fun name ->
-  Riot_model.Package.make ~name ~path:(Path.v ".") ~relative_path:(Path.v ".") ()
+  Riot_model.Package.make
+    ~name:(Package_name.from_string name |> Result.expect ~msg:("expected valid package name: " ^ name))
+    ~path:(Path.v ".")
+    ~relative_path:(Path.v ".")
+    ()
 
 let make_package_with_paths = fun ~name ~path ~relative_path ->
-  Riot_model.Package.make ~name ~path ~relative_path ()
+  Riot_model.Package.make
+    ~name:(Package_name.from_string name |> Result.expect ~msg:("expected valid package name: " ^ name))
+    ~path
+    ~relative_path
+    ()
 
 let make_write_spec = fun ~package ~path ~content ~deps ~dependency_hashes ->
   Riot_planner.Action_node.make
@@ -253,7 +262,7 @@ let test_library_builds_do_not_emit_shared_library_actions = fun _ctx ->
         let workspace = Riot_model.Workspace.make ~root:tmpdir ~packages:[] () in
         let store = Riot_store.Store.create ~workspace in
         let package = Riot_model.Package.make
-          ~name:"minttea"
+          ~name:(Package_name.from_string "minttea" |> Result.expect ~msg:"expected valid package name")
           ~path:Path.(tmpdir / Path.v "packages" / Path.v "minttea")
           ~relative_path:(Path.v "packages/minttea")
           ~library:{ path = Path.v "src/minttea.ml" }
@@ -265,7 +274,9 @@ let test_library_builds_do_not_emit_shared_library_actions = fun _ctx ->
         let module_graph = G.make () in
         let _ = G.add_node
           module_graph
-          (Riot_planner.Module_node.make_library ~name:package.name ~includes:[ Path.v "." ]) in
+          (Riot_planner.Module_node.make_library
+            ~name:(Package_name.to_string package.name)
+            ~includes:[ Path.v "." ]) in
         let action_graph, _ = Riot_planner.Action_graph.from_module_graph
           ~package
           ~profile:Riot_model.Profile.release
@@ -309,7 +320,7 @@ let test_library_actions_exclude_ml_object_files = fun _ctx ->
         let workspace = Riot_model.Workspace.make ~root:tmpdir ~packages:[] () in
         let store = Riot_store.Store.create ~workspace in
         let package = Riot_model.Package.make
-          ~name:"demo"
+          ~name:(Package_name.from_string "demo" |> Result.expect ~msg:"expected valid package name")
           ~path:package_root
           ~relative_path:(Path.v "packages/demo")
           ~library:{ path = Path.v "src/demo.ml" }
@@ -332,7 +343,9 @@ let test_library_actions_exclude_ml_object_files = fun _ctx ->
           (Riot_planner.Module_node.make_native ~files:[ Path.v "native/stub.c" ]) in
         let library_node = G.add_node
           module_graph
-          (Riot_planner.Module_node.make_library ~name:package.name ~includes:[ Path.v "." ]) in
+          (Riot_planner.Module_node.make_library
+            ~name:(Package_name.to_string package.name)
+            ~includes:[ Path.v "." ]) in
         let _ = G.add_edge library_node ~depends_on:demo_node in
         let _ = G.add_edge library_node ~depends_on:native_node in
         let action_graph, _ = Riot_planner.Action_graph.from_module_graph
@@ -451,7 +464,7 @@ let test_create_library_preserves_module_dependency_order = fun _ctx ->
         let workspace = Riot_model.Workspace.make ~root:tmpdir ~packages:[] () in
         let store = Riot_store.Store.create ~workspace in
         let package = Riot_model.Package.make
-          ~name:"demo"
+          ~name:(Package_name.from_string "demo" |> Result.expect ~msg:"expected valid package name")
           ~path:package_root
           ~relative_path:(Path.v "packages/demo")
           ~library:{ path = Path.v "src/demo.ml" }
@@ -478,7 +491,9 @@ let test_create_library_preserves_module_dependency_order = fun _ctx ->
         let node_c = make_ml_node "c" in
         let library_node = G.add_node
           module_graph
-          (Riot_planner.Module_node.make_library ~name:package.name ~includes:[ Path.v "." ]) in
+          (Riot_planner.Module_node.make_library
+            ~name:(Package_name.to_string package.name)
+            ~includes:[ Path.v "." ]) in
         let _ = G.add_edge library_node ~depends_on:node_c in
         let _ = G.add_edge library_node ~depends_on:node_b in
         let _ = G.add_edge library_node ~depends_on:node_a in

@@ -1,9 +1,10 @@
 open Std
 open Std.Bench
 open Std.Collections
+open Riot_model
 
-module Package = Riot_model.Package
-module Workspace = Riot_model.Workspace
+module Package = Package
+module Workspace = Workspace
 module Package_graph = Riot_planner.Package_graph
 module Workspace_planner = Riot_planner.Workspace_planner
 
@@ -13,7 +14,8 @@ let test_toolchain =
 
 let workspace_dependency = fun name ->
   Package.{
-    name;
+    name =
+      Package_name.from_string name |> Result.expect ~msg:("expected valid package name: " ^ name);
     source = {
       workspace = true;
       builtin = false;
@@ -38,7 +40,7 @@ let make_workspace = fun ~root ~packages ->
 
 let make_workspace_package = fun ~root ~name ~dependencies ~dev_dependencies ~build_dependencies ->
   Package.make
-    ~name
+    ~name:(Package_name.from_string name |> Result.expect ~msg:("expected valid package name: " ^ name))
     ~path:Path.(root / Path.v "packages" / Path.v name)
     ~relative_path:(Path.v ("packages/" ^ name))
     ~dependencies:(List.map dependencies ~fn:workspace_dependency)
@@ -115,7 +117,10 @@ let make_plan_workspace_target_bench = fun root ~count ->
     let _ =
       Riot_planner.plan_workspace
         ~workspace
-        ~target:(Workspace_planner.Package target_package)
+        ~target:(Workspace_planner.Package (
+          Package_name.from_string target_package
+          |> Result.expect ~msg:("expected valid package name: " ^ target_package)
+        ))
         ~scope:Package_graph.Runtime
         ~load_errors:[]
       |> Result.expect ~msg:"plan workspace target bench should succeed"
@@ -180,7 +185,9 @@ let make_package_fixture = fun root label ->
   let _ = write_package_fixture_files package_root package_name in
   let package =
     Package.make
-      ~name:package_name
+      ~name:
+        (Package_name.from_string package_name
+         |> Result.expect ~msg:("expected valid package name: " ^ package_name))
       ~path:package_root
       ~relative_path:(Path.v ("packages/" ^ package_name))
       ~library:{ path = Path.v ("src/" ^ package_name ^ ".ml") }

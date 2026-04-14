@@ -40,7 +40,8 @@ let swisstable = fun key_arb value_arb ->
         String.concat ", "
           (
             List.map
-              (fun ((k, v)) ->
+              entries
+              ~fn:(fun ((k, v)) ->
                 let k_str =
                   match key_arb.Arbitrary.print with
                   | Some p -> p k
@@ -52,7 +53,6 @@ let swisstable = fun key_arb value_arb ->
                   | None -> "?"
                 in
                 k_str ^ " -> " ^ v_str)
-              entries
           )
       in
       "{" ^ pairs_str ^ "}")
@@ -262,18 +262,18 @@ let many_insertions_prop =
         pairs;
       (* Build reference map using HashMap to deduplicate *)
       let ref_map = Collections.HashMap.create () in
-      List.iter (fun ((k, v)) -> Collections.HashMap.insert ref_map k v |> ignore) pairs;
+      List.iter (fun ((k, v)) -> Collections.HashMap.insert ref_map ~key:k ~value:v |> ignore) pairs;
       (* Verify all unique keys are accessible and match reference *)
-      Collections.HashMap.iter
-        (fun k expected_v ->
+      Collections.HashMap.for_each
+        ref_map
+        ~fn:(fun k expected_v ->
           match Swisstable.get map k with
           | Some actual_v ->
               if not (actual_v = expected_v) then
                 fail "Value mismatch after many insertions"
-          | None -> fail "Key missing after many insertions")
-        ref_map;
+          | None -> fail "Key missing after many insertions");
       (* Also check lengths match *)
-      Swisstable.len map = Collections.HashMap.len ref_map)
+      Swisstable.len map = Collections.HashMap.length ref_map)
 
 (* Property 19: Length is correct after many operations *)
 
@@ -285,7 +285,7 @@ let length_invariant_prop =
       let map = Swisstable.create () in
       (* Count unique keys using reference HashMap *)
       let ref_map = Collections.HashMap.create () in
-      List.iter (fun ((k, v)) -> Collections.HashMap.insert ref_map k v |> ignore) pairs;
+      List.iter (fun ((k, v)) -> Collections.HashMap.insert ref_map ~key:k ~value:v |> ignore) pairs;
       (* Insert all into swisstable *)
       List.iter
         (fun ((k, v)) ->
@@ -293,7 +293,7 @@ let length_invariant_prop =
           ())
         pairs;
       (* Length should equal unique keys *)
-      Swisstable.len map = Collections.HashMap.len ref_map)
+      Swisstable.len map = Collections.HashMap.length ref_map)
 
 (** {1 Overwrite Properties} *)
 

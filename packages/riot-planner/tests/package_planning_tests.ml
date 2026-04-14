@@ -1,4 +1,5 @@
 open Std
+open Riot_model
 module Test = Std.Test
 module G = Graph.SimpleGraph
 
@@ -20,7 +21,11 @@ let make_test_workspace = fun tmpdir packages ->
 let make_package = fun tmpdir name ->
   let pkg_dir = Path.(tmpdir / Path.v name) in
   let _ = Fs.create_dir_all pkg_dir in
-  Riot_model.Package.make ~name ~path:pkg_dir ~relative_path:(Path.v name) ()
+  Riot_model.Package.make
+    ~name:(Package_name.from_string name |> Result.expect ~msg:("expected valid package name: " ^ name))
+    ~path:pkg_dir
+    ~relative_path:(Path.v name)
+    ()
 
 let clone_workspace_with_target = fun (workspace: Riot_model.Workspace.t) ~target_dir ->
   Riot_model.Workspace.make
@@ -36,7 +41,11 @@ let clone_workspace_with_target = fun (workspace: Riot_model.Workspace.t) ~targe
 
 let find_package_by_name = fun (workspace: Riot_model.Workspace.t) name ->
   Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Dev workspace
-  |> List.find ~fn:(fun (pkg: Riot_model.Package.t) -> String.equal pkg.name name)
+  |> List.find
+    ~fn:(fun (pkg: Riot_model.Package.t) ->
+      Package_name.equal
+        pkg.name
+        (Package_name.from_string name |> Result.expect ~msg:("expected valid package name: " ^ name)))
 
 let plan_graph_package = fun ~workspace ~store ~package_graph ~package_key ~build_ctx ->
   match Riot_planner.Package_graph.get_node_by_key package_graph package_key with
@@ -349,9 +358,18 @@ let load_repo_workspace = fun () ->
   let manager = Riot_model.Workspace_manager.create () in
   match Riot_model.Workspace_manager.scan manager (Path.v ".") with
   | Error err -> Error ("workspace scan failed: " ^ err)
-  | Ok (workspace, errors) ->
+  | Ok (workspace_manifest, errors) ->
       if List.is_empty errors then
-        Ok workspace
+        Ok (Riot_model.Workspace.make_realized
+          ?name:workspace_manifest.name
+          ~root:workspace_manifest.root
+          ~packages:(Riot_model.Workspace_manifest.realize_packages ~intent:Riot_model.Package.Dev workspace_manifest)
+          ~dependencies:workspace_manifest.dependencies
+          ~dev_dependencies:workspace_manifest.dev_dependencies
+          ~build_dependencies:workspace_manifest.build_dependencies
+          ~profile_overrides:workspace_manifest.profile_overrides
+          ~target_dir:(Path.to_string workspace_manifest.target_dir_root)
+          ())
       else
         Error ("workspace scan produced load errors: "
         ^ String.concat "; " (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
@@ -376,12 +394,12 @@ let plan_kernel_package_with_fresh_store = fun () ->
                 in
                 let build_key =
                   Riot_planner.Package_graph.package_key
-                    ~package_name:package.name
+                    ~package_name:(Package_name.to_string package.name)
                     Riot_planner.Package_graph.Build
                 in
                 let runtime_key =
                   Riot_planner.Package_graph.package_key
-                    ~package_name:package.name
+                    ~package_name:(Package_name.to_string package.name)
                     Riot_planner.Package_graph.Runtime
                 in
                 let session_id = Riot_model.Session_id.make () in
@@ -455,12 +473,12 @@ let plan_kernel_runtime_graphs = fun ~workspace ~store ~build_ctx ->
       in
       let build_key =
         Riot_planner.Package_graph.package_key
-          ~package_name:package.name
+          ~package_name:(Package_name.to_string package.name)
           Riot_planner.Package_graph.Build
       in
       let runtime_key =
         Riot_planner.Package_graph.package_key
-          ~package_name:package.name
+          ~package_name:(Package_name.to_string package.name)
           Riot_planner.Package_graph.Runtime
       in
       match plan_graph_package ~workspace ~store ~package_graph ~package_key:build_key ~build_ctx with
@@ -498,7 +516,7 @@ let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ?(de
     List.sort
       (Riot_model.Package.build_graph_dependencies package)
       ~compare:(fun (a: Riot_model.Package.dependency) (b: Riot_model.Package.dependency) ->
-        String.compare a.name b.name)
+        Package_name.compare a.name b.name)
   in
   List.for_each
     sorted_deps
@@ -507,7 +525,7 @@ let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ?(de
       | { workspace=true; _ } -> (
           match List.find
             workspace.Riot_model.Workspace.packages
-            ~fn:(fun (p: Riot_model.Package_manifest.t) -> p.name = dep.name)
+            ~fn:(fun (p: Riot_model.Package_manifest.t) -> Package_name.equal p.name dep.name)
           with
           | Some dep_pkg ->
               H.write state (Path.to_string dep_pkg.path);
@@ -583,7 +601,7 @@ let test_plan_bundle_cache_hit_restores_module_and_action_graphs = fun _ctx ->
         ] in
         let bundle = Std.Data.Json.Object [
           ("version", Std.Data.Json.Int 1);
-          ("package", Std.Data.Json.String package.name);
+          ("package", Std.Data.Json.String (Package_name.to_string package.name));
           ("module_graph", module_graph_json);
           ("action_graph", action_graph_json);
         ] in
@@ -593,7 +611,7 @@ let test_plan_bundle_cache_hit_restores_module_and_action_graphs = fun _ctx ->
           ~scope:Riot_planner.Package_graph.Runtime workspace
         |> Result.expect ~msg:"package graph should build" in
         let package_key = Riot_planner.Package_graph.package_key
-          ~package_name:package.name
+          ~package_name:(Package_name.to_string package.name)
           Riot_planner.Package_graph.Runtime in
         match Riot_planner.Package_planner.plan_package
           ~workspace
@@ -651,7 +669,7 @@ let test_cached_artifact_and_exports_short_circuit_without_plan_bundle = fun _ct
         ] in
         let _artifact = Riot_store.Store.save
           store
-          ~package:package.name
+          ~package:(Package_name.to_string package.name)
           ~exports
           ~hash:input_hash
           ~sandbox_dir
@@ -664,7 +682,7 @@ let test_cached_artifact_and_exports_short_circuit_without_plan_bundle = fun _ct
             ~scope:Riot_planner.Package_graph.Runtime workspace
           |> Result.expect ~msg:"package graph should build" in
           let package_key = Riot_planner.Package_graph.package_key
-            ~package_name:package.name
+            ~package_name:(Package_name.to_string package.name)
             Riot_planner.Package_graph.Runtime in
           match Riot_planner.Package_planner.plan_package
             ~workspace
@@ -699,8 +717,12 @@ let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"planner_bundle_stale_version_test"
       (fun tmpdir ->
-        let package = Riot_model.Package.make ~name:"pkg" ~path:Path.(tmpdir / Path.v "pkg") ~relative_path:(Path.v
-          "pkg") ~library:{ path = Path.v "src/pkg.ml" }
+        let package =
+          Riot_model.Package.make
+            ~name:(Package_name.from_string "pkg" |> Result.expect ~msg:"expected valid package name")
+            ~path:Path.(tmpdir / Path.v "pkg")
+            ~relative_path:(Path.v "pkg")
+            ~library:{ path = Path.v "src/pkg.ml" }
           ~sources:{
             src = [ Path.v "src/pkg.ml" ];
             native = [];
@@ -767,7 +789,7 @@ let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun _ctx ->
         ] in
         let stale_bundle = Std.Data.Json.Object [
           ("version", Std.Data.Json.Int 1);
-          ("package", Std.Data.Json.String package.name);
+          ("package", Std.Data.Json.String (Package_name.to_string package.name));
           ("module_graph", stale_module_graph_json);
           ("action_graph", stale_action_graph_json);
         ] in
@@ -777,7 +799,7 @@ let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun _ctx ->
           ~scope:Riot_planner.Package_graph.Runtime workspace
         |> Result.expect ~msg:"package graph should build" in
         let package_key = Riot_planner.Package_graph.package_key
-          ~package_name:package.name
+          ~package_name:(Package_name.to_string package.name)
           Riot_planner.Package_graph.Runtime in
         match Riot_planner.Package_planner.plan_package
           ~workspace
@@ -814,7 +836,7 @@ let test_plan_bundle_cache_hit_preserves_module_dependency_order = fun _ctx ->
     Fs.with_tempdir ~prefix:"planner_bundle_order_test"
       (fun tmpdir ->
         let package = Riot_model.Package.make
-          ~name:"pkg"
+          ~name:(Package_name.from_string "pkg" |> Result.expect ~msg:"expected valid package name")
           ~path:Path.(tmpdir / Path.v "pkg")
           ~relative_path:(Path.v "pkg")
           ~library:{ path = Path.v "src/pkg.ml" }
@@ -888,7 +910,7 @@ let test_plan_bundle_cache_hit_preserves_module_dependency_order = fun _ctx ->
                   ]);
                   ("kind", Std.Data.Json.Object [
                     ("kind", Std.Data.Json.String "library");
-                    ("name", Std.Data.Json.String package.name);
+                    ("name", Std.Data.Json.String (Package_name.to_string package.name));
                     ("includes", Std.Data.Json.Array []);
                   ]);
                   ("deps", Std.Data.Json.Array [
@@ -922,7 +944,7 @@ let test_plan_bundle_cache_hit_preserves_module_dependency_order = fun _ctx ->
         in
         let bundle = Std.Data.Json.Object [
           ("version", Std.Data.Json.Int 1);
-          ("package", Std.Data.Json.String package.name);
+          ("package", Std.Data.Json.String (Package_name.to_string package.name));
           ("module_graph", module_graph_json);
           ("action_graph", action_graph_json);
         ] in
@@ -932,7 +954,7 @@ let test_plan_bundle_cache_hit_preserves_module_dependency_order = fun _ctx ->
           ~scope:Riot_planner.Package_graph.Runtime workspace
           |> Result.expect ~msg:"package graph should build" in
         let package_key = Riot_planner.Package_graph.package_key
-          ~package_name:package.name
+          ~package_name:(Package_name.to_string package.name)
           Riot_planner.Package_graph.Runtime in
         match Riot_planner.Package_planner.plan_package
           ~workspace
@@ -999,7 +1021,7 @@ let test_underscore_sibling_module_dependency_is_planned = fun _ctx ->
         in
         let package =
           Riot_model.Package.make
-            ~name:"pkg"
+            ~name:(Package_name.from_string "pkg" |> Result.expect ~msg:"expected valid package name")
             ~path:package_root
             ~relative_path:(Path.v "pkg")
             ~library:{ path = Path.v "src/pkg.ml" }
@@ -1028,7 +1050,7 @@ let test_underscore_sibling_module_dependency_is_planned = fun _ctx ->
         in
         let package_key =
           Riot_planner.Package_graph.package_key
-            ~package_name:package.name
+            ~package_name:(Package_name.to_string package.name)
             Riot_planner.Package_graph.Runtime
         in
         let session_id = Riot_model.Session_id.make () in
@@ -1100,7 +1122,7 @@ let test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump = fun _
         in
         let package =
           Riot_model.Package.make
-            ~name:"demo"
+            ~name:(Package_name.from_string "demo" |> Result.expect ~msg:"expected valid package name")
             ~path:package_root
             ~relative_path:(Path.v "demo")
             ~library:{ path = Path.v "src/demo.ml" }
@@ -1175,7 +1197,7 @@ let test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump = fun _
         ] in
         let stale_bundle = Std.Data.Json.Object [
           ("version", Std.Data.Json.Int 1);
-          ("package", Std.Data.Json.String package.name);
+          ("package", Std.Data.Json.String (Package_name.to_string package.name));
           ("module_graph", stale_module_graph_json);
           ("action_graph", stale_action_graph_json);
         ] in
@@ -1191,7 +1213,7 @@ let test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump = fun _
         in
         let package_key =
           Riot_planner.Package_graph.package_key
-            ~package_name:package.name
+            ~package_name:(Package_name.to_string package.name)
             Riot_planner.Package_graph.Runtime
         in
         match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
@@ -1421,7 +1443,7 @@ let test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version
         in
         let package =
           Riot_model.Package.make
-            ~name:"krasny"
+            ~name:(Package_name.from_string "krasny" |> Result.expect ~msg:"expected valid package name")
             ~path:package_root
             ~relative_path:(Path.v "krasny")
             ~library:{ path = Path.v "src/krasny.ml" }
@@ -1444,7 +1466,7 @@ let test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version
         let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
         let package_key =
           Riot_planner.Package_graph.package_key
-            ~package_name:package.name
+            ~package_name:(Package_name.to_string package.name)
             Riot_planner.Package_graph.Runtime
         in
         let analysis_package_graph =

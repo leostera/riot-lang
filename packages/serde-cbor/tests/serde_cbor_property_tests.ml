@@ -12,7 +12,7 @@ let composite_examples = 50_000
 
 let io_chunk_size = 5
 
-let finite_float_limit = 1.0e 12
+let finite_float_limit = 1.0e12
 
 let finite_float_gen = Generator.float_range (-.finite_float_limit) finite_float_limit
 
@@ -30,10 +30,9 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.iter bufs
-        (fun { ba; off; len } ->
-          IO.Buffer.add_string buffer (IO.Bytes.sub_string ba off len);
-          written := !written + len);
+      IO.Iovec.for_each ~fn:(fun { buffer = chunk; offset; length } ->
+          IO.Buffer.add_subbytes buffer chunk offset length;
+          written := !written + length) bufs;
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -260,7 +259,7 @@ let print_berth = fun (value: berth) ->
 
 let vec_to_list = fun values ->
   let items = ref [] in
-  Vector.iter (fun value -> items := value :: !items) values;
+  Vector.for_each values ~fn:(fun value -> items := value :: !items);
   List.rev !items
 
 let equal_string_vec = fun left right -> vec_to_list left = vec_to_list right
@@ -306,7 +305,7 @@ let print_sample = fun (value: sample) ->
       "; tags = ";
       quote (String.concat "," (vec_to_list value.tags));
       "; scores = [|";
-      String.concat "," (List.map Int.to_string (Array.to_list value.scores));
+      String.concat "," (List.map (Array.to_list value.scores) ~fn:Int.to_string);
       "|] }";
     ]
 
@@ -368,7 +367,7 @@ let run_property = fun ?(examples = primitive_examples) name arb predicate ->
         ])
       | Property.Error { exception_; backtrace } -> Error (String.concat
         "\n"
-        [ "Exception raised:"; Exception.to_string exception_; backtrace; ])
+        [ "Exception raised:"; Kernel.Exception.to_string exception_; backtrace; ])
       | Property.Assumption_violated -> Error "Too many test cases violated assumptions (>10x test count)")
 
 let roundtrip_in_memory = fun encode decode equal value ->
@@ -381,7 +380,7 @@ let roundtrip_in_memory = fun encode decode equal value ->
   | Error err -> fail ("encode failed: " ^ Serde.Error.to_string err)
 
 let roundtrip_io = fun encode decode equal value ->
-  let buffer = IO.Buffer.create 64 in
+  let buffer = IO.Buffer.create ~size:64 in
   match Serde_cbor.to_writer encode (io_writer_of_buffer buffer) value with
   | Ok () -> (
       match Serde_cbor.from_reader

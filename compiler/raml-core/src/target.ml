@@ -40,7 +40,7 @@ let backend_to_json = fun backend -> Json.string (backend_to_string backend)
 
 let to_string = fun target ->
   let parts = [ Some target.architecture; Some target.vendor; Some target.system; target.abi ] in
-  parts |> List.filter_map (fun value -> value) |> String.concat "-"
+  parts |> List.filter_map ~fn:(fun value -> value) |> String.concat "-"
 
 let to_json = fun target -> Json.string (to_string target)
 

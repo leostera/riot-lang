@@ -26,9 +26,9 @@ end
 module Result_type = struct
   type t = Value_type.t list
 
-  let to_string = fun result_type -> result_type |> List.map Value_type.to_string |> String.concat " "
+  let to_string = fun result_type -> result_type |> List.map ~fn:Value_type.to_string |> String.concat " "
 
-  let to_json = fun result_type -> Json.array (List.map Value_type.to_json result_type)
+  let to_json = fun result_type -> Json.array (List.map result_type ~fn:Value_type.to_json)
 end
 
 module Memarg = struct
@@ -57,7 +57,7 @@ module Memarg = struct
     Json.obj
       [
         ("offset", Json.int memarg.offset);
-        ("align", Option.map Json.int memarg.align |> Option.unwrap_or ~default:Json.null);
+        ("align", Option.map memarg.align ~fn:Json.int |> Option.unwrap_or ~default:Json.null);
       ]
 end
 

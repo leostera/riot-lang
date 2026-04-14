@@ -14,14 +14,14 @@ let parse_file = fun path ->
 let tracked_fixtures = fun () ->
   let manifest = Fs.read manifest_path |> Result.expect ~msg:"failed to read krasny fixture manifest" in
   let tracked = HashSet.create () in
-  let lines = manifest |> String.split_on_char '\n' |> List.map String.trim in
+  let lines = manifest |> String.split_on_char '\n' |> List.map ~fn:String.trim in
   let rec loop = function
     | [] -> tracked
     | line :: rest ->
         if String.equal line "" || String.starts_with ~prefix:"#" line then
           loop rest
         else
-          let relpath = Path.of_string line |> Result.expect ~msg:"fixture manifest entry should be valid UTF-8" in
+          let relpath = Path.from_string line |> Result.expect ~msg:"fixture manifest entry should be valid UTF-8" in
           let name = Path.basename relpath in
           let () = ignore (HashSet.insert tracked name) in
           loop rest

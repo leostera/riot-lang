@@ -1,6 +1,10 @@
 open Std
 open Std.Collections
+open Riot_model
 module Test = Std.Test
+
+let package_name = fun value ->
+  Package_name.from_string value |> Result.expect ~msg:("expected valid package name: " ^ value)
 
 let test_toolchain = fun () ->
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default |> Result.expect ~msg:"failed to initialize toolchain"
@@ -23,7 +27,7 @@ let read_file = fun path -> Fs.read_to_string path |> Result.expect ~msg:"failed
 let make_package = fun ~root ~name ->
   let path = Path.(root / Path.v "packages" / Path.v name) in
   Riot_model.Package.make
-    ~name
+    ~name:(package_name name)
     ~path
     ~relative_path:(Path.v ("packages/" ^ name))
     ~library:{ path = Path.v "src/lib.ml" }

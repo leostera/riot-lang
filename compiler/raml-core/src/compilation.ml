@@ -167,7 +167,7 @@ let render_codegen_error = fun error ->
   | Some "unsupported_integer" ->
       let context = json_field_string "context" error |> Option.unwrap_or ~default:"unknown" in
       let value = json_field "value" error
-      |> Option.map Json.to_string
+      |> Option.map ~fn:Json.to_string
       |> Option.unwrap_or ~default:"<unknown>" in
       "unsupported integer in " ^ context ^ ": " ^ value
   | Some "unsupported_char" ->
@@ -181,7 +181,7 @@ let render_codegen_error = fun error ->
 let render_codegen_errors = fun errors ->
   match errors with
   | [] -> "codegen failed"
-  | _ -> String.concat "\n" (List.map (fun error -> "- " ^ render_codegen_error error) errors)
+  | _ -> String.concat "\n" (List.map errors ~fn:(fun error -> "- " ^ render_codegen_error error))
 
 let emitted_output = fun compilation ->
   let stage = json_field "stage" compilation.codegen in

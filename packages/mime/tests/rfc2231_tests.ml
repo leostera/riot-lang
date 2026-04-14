@@ -95,7 +95,7 @@ let test_nested_multipart = fun _ctx ->
       if List.length parts != 2 then
         Error ("Expected 2 top-level parts, got " ^ string_of_int (List.length parts))
       else
-        match List.nth_opt parts 0 with
+        match List.get parts ~at:0 with
         | Some (MultiPart { parts=inner_parts; _ }) ->
             if List.length inner_parts = 2 then
               Ok ()

@@ -1,5 +1,6 @@
 open Std
 open Std.Data
+open Std.Result.Syntax
 
 type json = Json.t
 
@@ -11,13 +12,11 @@ type response_error = {
   data: json option;
 }
 
-let ( let* ) = Result.and_then
-
 let ignore_context = fun decode -> fun _ -> decode
 
 let string_contains_char = fun s ->
   fun ch ->
-    match String.index s ch with
+    match String.index_of s ~char:ch with
     | Some _ -> true
     | None -> false
 
@@ -135,7 +134,7 @@ module Uri = struct
   let encode_path = fun path ->
     Path.to_string path
     |> String.split_on_char '/'
-    |> List.map Net.Uri.percent_encode
+    |> List.map ~fn:Net.Uri.percent_encode
     |> String.concat "/"
 
   let of_path = fun path -> "file://" ^ encode_path path
@@ -151,7 +150,7 @@ module Uri = struct
             | Some ""
             | Some "localhost" ->
                 let path = Net.Uri.path uri |> Net.Uri.percent_decode in
-                Path.of_string path |> Result.map_error path_error_message
+                Path.from_string path |> Result.map_err ~fn:path_error_message
             | Some authority -> Error ("unsupported file URI authority: " ^ authority)
           )
         | Some scheme ->
@@ -389,7 +388,7 @@ module Document_symbol_item = struct
     ] in
     let fields = Encode.field_opt "detail" Json.string detail fields in
     let fields =
-      Encode.field_opt "children" (fun children -> Json.array (List.map to_json children)) children fields
+      Encode.field_opt "children" (fun children -> Json.array (List.map children ~fn:to_json)) children fields
     in
     Json.obj (List.rev fields)
 
@@ -481,7 +480,7 @@ module Diagnostic = struct
     let fields =
       Encode.field_opt
         "tags"
-        (fun tags -> Json.array (List.map (fun tag -> Json.int (tag_to_int tag)) tags))
+        (fun tags -> Json.array (List.map tags ~fn:(fun tag -> Json.int (tag_to_int tag))))
         tags
         fields
     in
@@ -555,7 +554,8 @@ module Workspace_edit = struct
   let to_json = fun { changes } ->
     let changes = changes
     |> List.map
-      (fun (uri, edits) -> (Uri.to_string uri, Json.array (List.map Text_edit.to_json edits))) in
+      ~fn:(fun (uri, edits) -> (Uri.to_string uri, Json.array (List.map edits ~fn:Text_edit.to_json)))
+    in
     Json.obj [ ("changes", Json.obj changes) ]
 
   let of_json = fun value ->
@@ -665,7 +665,7 @@ module Code_action = struct
     let fields =
       Encode.field_opt
         "diagnostics"
-        (fun diagnostics -> Json.array (List.map Diagnostic.to_json diagnostics))
+        (fun diagnostics -> Json.array (List.map diagnostics ~fn:Diagnostic.to_json))
         diagnostics
         fields
     in
@@ -721,9 +721,9 @@ module Code_action_or_command = struct
       && Decode.field "data" fields = None
     in
     if is_command_only then
-      Command.of_json value |> Result.map (fun command -> Command command)
+      Command.of_json value |> Result.map ~fn:(fun command -> Command command)
     else
-      Code_action.of_json value |> Result.map (fun action -> Action action)
+      Code_action.of_json value |> Result.map ~fn:(fun action -> Action action)
 end
 
 module Client_info = struct
@@ -953,7 +953,7 @@ module Text_document = struct
       | _ -> false
     in
     let extra =
-      List.filter (fun (name, _) -> not (is_known name)) fields
+      List.filter fields ~fn:(fun (name, _) -> not (is_known name))
     in
     Ok {
       tab_size;
@@ -1052,7 +1052,7 @@ module Initialize = struct
       let fields =
         Encode.field_opt
           "codeActionKinds"
-          (fun kinds -> Json.array (List.map Action_kind.to_json kinds))
+        (fun kinds -> Json.array (List.map kinds ~fn:Action_kind.to_json))
           code_action_kinds
           fields
       in
@@ -1204,7 +1204,7 @@ module Initialize = struct
     let fields =
       Encode.field_opt
         "workspaceFolders"
-        (fun folders -> Json.array (List.map Workspace_folder.to_json folders))
+        (fun folders -> Json.array (List.map folders ~fn:Workspace_folder.to_json))
         params.workspace_folders
         fields
     in
@@ -1336,7 +1336,7 @@ module Text_document_requests = struct
           ("textDocument", Text_document.Versioned_identifier.to_json text_document);
           (
             "contentChanges",
-            Json.array (List.map Text_document.content_change_event_to_json content_changes)
+            Json.array (List.map content_changes ~fn:Text_document.content_change_event_to_json)
           );
         ]
 
@@ -1390,7 +1390,7 @@ module Text_document_requests = struct
     let params_to_jsonrpc = fun { uri; version; diagnostics } ->
       let fields = [
         ("uri", Uri.to_json uri);
-        ("diagnostics", Json.array (List.map Diagnostic.to_json diagnostics));
+        ("diagnostics", Json.array (List.map diagnostics ~fn:Diagnostic.to_json));
       ] in
       let fields = Encode.field_opt "version" Json.int version fields in
       Params.named (List.rev fields)
@@ -1501,7 +1501,7 @@ module Text_document_requests = struct
 
     let result_to_json = function
       | None -> Json.Null
-      | Some locations -> Json.array (List.map Location.to_json locations)
+      | Some locations -> Json.array (List.map locations ~fn:Location.to_json)
 
     let result_of_json = function
       | Json.Null ->
@@ -1545,7 +1545,7 @@ module Text_document_requests = struct
 
     let result_to_json = function
       | None -> Json.Null
-      | Some symbols -> Json.array (List.map Document_symbol_item.to_json symbols)
+      | Some symbols -> Json.array (List.map symbols ~fn:Document_symbol_item.to_json)
 
     let result_of_json = function
       | Json.Null ->
@@ -1599,7 +1599,7 @@ module Text_document_requests = struct
 
     let result_to_json = function
       | None -> Json.Null
-      | Some edits -> Json.array (List.map Text_edit.to_json edits)
+      | Some edits -> Json.array (List.map edits ~fn:Text_edit.to_json)
 
     let result_of_json = function
       | Json.Null ->
@@ -1634,9 +1634,9 @@ module Text_document_requests = struct
     type result = Code_action_or_command.t list option
 
     let context_to_json = fun { diagnostics; only; trigger_kind } ->
-      let fields = [ ("diagnostics", Json.array (List.map Diagnostic.to_json diagnostics)) ] in
+      let fields = [ ("diagnostics", Json.array (List.map diagnostics ~fn:Diagnostic.to_json)) ] in
       let fields =
-        Encode.field_opt "only" (fun kinds -> Json.array (List.map Action_kind.to_json kinds)) only fields
+        Encode.field_opt "only" (fun kinds -> Json.array (List.map kinds ~fn:Action_kind.to_json)) only fields
       in
       let fields = Encode.field_opt "triggerKind" Json.int trigger_kind fields in
       Json.obj (List.rev fields)
@@ -1686,7 +1686,7 @@ module Text_document_requests = struct
 
     let result_to_json = function
       | None -> Json.Null
-      | Some actions -> Json.array (List.map Code_action_or_command.to_json actions)
+      | Some actions -> Json.array (List.map actions ~fn:Code_action_or_command.to_json)
 
     let result_of_json = function
       | Json.Null ->

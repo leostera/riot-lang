@@ -1,7 +1,6 @@
 open Std
 open Std.Data
-
-let ( let* ) = Result.and_then
+open Std.Result.Syntax
 
 let fixture_root = Path.v "packages/lsp/tests/protocol_fixtures"
 
@@ -11,8 +10,8 @@ let keep_json = fun path ->
   | _ -> `skip
 
 let decode_fixture_json = fun path ->
-  let* source = Fs.read path |> Result.map_error IO.error_message in
-  Json.of_string source |> Result.map_error Json.error_to_string
+  let* source = Fs.read path |> Result.map_err ~fn:IO.error_message in
+  Json.of_string source |> Result.map_err ~fn:Json.error_to_string
 
 let render_json = fun json -> Json.to_string_pretty json ^ "\n"
 

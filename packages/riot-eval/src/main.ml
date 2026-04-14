@@ -25,7 +25,7 @@ let parse_code = fun code ->
   let result = Syn.Parser.parse_implementation ~source:code tokens in
   (* Check for diagnostics *)
   if result.diagnostics != [] then
-    let msg = String.concat "\n" (List.map Syn.Diagnostic.to_string result.diagnostics) in
+    let msg = String.concat "\n" (List.map ~fn:Syn.Diagnostic.to_string result.diagnostics) in
     ParseError msg
   else
     (* Successfully parsed - for now just indicate success *)

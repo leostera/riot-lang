@@ -29,6 +29,12 @@ val fold_right: 'value t -> acc:'acc -> fn:('value -> 'acc -> 'acc) -> 'acc
 
 val from_list: 'value list -> 'value t
 
+(** Use `of_list values` as the conventional alias for `from_list values`. *)
+val of_list: 'value list -> 'value t
+
+(** Use `to_list values` to copy the array contents into a list in the same order. *)
+val to_list: 'value t -> 'value list
+
 (** Converts this array into an immutable iterator.
 
     ## Examples

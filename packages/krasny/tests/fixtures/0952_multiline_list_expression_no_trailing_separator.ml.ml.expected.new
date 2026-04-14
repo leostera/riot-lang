@@ -1,0 +1,14 @@
+let stdlib_modules = [
+  "Array";
+  "Buffer";
+  "Bytes";
+  "Digest";
+  "Effect";
+  "Filename";
+  "Format";
+  "Fun";
+  "Obj";
+  "Int";
+  "Printf";
+  "Queue";
+]

@@ -57,7 +57,7 @@ let hpack_deterministic_prop =
       let encoder2 = Http2.Hpack.create_encoder () in
       let encoded1 = Http2.Hpack.encode encoder1 ~sensitive_headers:[] () ~headers in
       let encoded2 = Http2.Hpack.encode encoder2 ~sensitive_headers:[] () ~headers in
-      IO.Bytes.equal encoded1 encoded2)
+      String.equal (IO.Bytes.to_string encoded1) (IO.Bytes.to_string encoded2))
 
 (* ===== HTTP/2 Frame Property Tests ===== *)
 

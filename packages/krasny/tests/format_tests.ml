@@ -24,7 +24,7 @@ let with_tempdir = fun prefix fn ->
   | Error err -> Error (IO.error_message err)
 
 let capture_json_event = fun ~root event ->
-  let buffer = IO.Buffer.create 128 in
+  let buffer = IO.Buffer.create ~size:128 in
   let writer =
     let module Write = struct
       type t = IO.Buffer.t
@@ -1171,10 +1171,15 @@ module M = struct end
           Fs.write "val x : int\n" nested_mli |> Result.expect ~msg:"write nested";
           Fs.write "let hidden = 1\n" Path.(hidden_dir / Path.v "hidden.ml") |> Result.expect ~msg:"write hidden";
           Fs.write "let built = 1\n" Path.(build_dir / Path.v "built.ml") |> Result.expect ~msg:"write build";
-          let files = Krasny.Runner.collect_ocaml_files ~roots:[ tmpdir ] () |> List.map Path.to_string in
-          let expected = [ Path.to_string visible_ml; Path.to_string nested_mli ]
-          |> List.sort String.compare in
-          let actual = List.sort String.compare files in
+          let files =
+            Krasny.Runner.collect_ocaml_files ~roots:[ tmpdir ] ()
+            |> List.map ~fn:Path.to_string
+          in
+          let expected =
+            [ Path.to_string visible_ml; Path.to_string nested_mli ]
+            |> List.sort ~compare:String.compare
+          in
+          let actual = List.sort files ~compare:String.compare in
           Test.assert_equal ~expected ~actual;
           Ok ()));
   Test.case "runner skips ignored subtrees during collection"
@@ -1192,7 +1197,7 @@ module M = struct end
               ~should_ignore:(fun path ->
                 String.contains (Path.to_string path) "fixtures")
               ()
-            |> List.map Path.to_string
+            |> List.map ~fn:Path.to_string
           in
           Test.assert_equal ~expected:[ Path.to_string keep ] ~actual:files;
           Ok ()));
@@ -1312,7 +1317,9 @@ module M = struct end
                 let json = capture_json_event ~root:tmpdir (Krasny.Report.File file_result)
                 |> Data.Json.of_string
                 |> Result.expect ~msg:"parse event json" in
-                let expected = Some (Data.Json.Array (List.map Syn.Diagnostic.to_json diagnostics)) in
+                let expected =
+                  Some (Data.Json.Array (List.map diagnostics ~fn:Syn.Diagnostic.to_json))
+                in
                 Test.assert_equal ~expected ~actual:(Data.Json.get_field "diagnostics" json);
                 Ok ()
           | None -> Error "expected broken source to carry diagnostics"));
@@ -1355,8 +1362,11 @@ module M = struct end
               ~on_result:(fun file_result -> seen := Path.to_string file_result.file :: !seen)
               ()
           in
-          let actual = List.sort String.compare !seen in
-          let expected = [ Path.to_string formatted; Path.to_string needs ] |> List.sort String.compare in
+          let actual = List.sort !seen ~compare:String.compare in
+          let expected =
+            [ Path.to_string formatted; Path.to_string needs ]
+            |> List.sort ~compare:String.compare
+          in
           Test.assert_equal ~expected ~actual;
           Test.assert_equal ~expected:2 ~actual:result.summary.total_files;
           Test.assert_equal ~expected:2 ~actual:result.summary.already_formatted;

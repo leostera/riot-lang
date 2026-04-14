@@ -15,6 +15,8 @@ let with_capacity = fun ~size ->
 
 let length = fun vector -> vector.length
 
+let len = length
+
 let is_empty = fun vector ->
   Int.equal vector.length 0
 

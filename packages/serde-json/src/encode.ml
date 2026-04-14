@@ -1,7 +1,7 @@
 open Std
+module Array = Collections.Array
 module Vector = Collections.Vector
-
-let ( let* ) = Result.and_then
+open Std.Result.Syntax
 
 type encode_target =
   | Buffer_target
@@ -138,31 +138,29 @@ let float_to_json = fun value ->
 let rec list_backend: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
   write_char state '[';
   let first = ref true in
-  Vector.iter
-    (fun value ->
+  Vector.for_each values ~fn:(fun value ->
       if !first then
         first := false
       else
         write_char state ',';
-      encode.run backend state value)
-    values;
+      encode.run backend state value);
   write_char state ']'
 
 and array_backend: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit = fun state encode values ->
   write_char state '[';
-  for index = 0 to array__length values - 1 do
+  for index = 0 to Array.length values - 1 do
     if not (Int.equal index 0) then
       write_char state ',';
-    encode.run backend state (array__get values index)
+    encode.run backend state (Array.get_unchecked values ~at:index)
   done;
   write_char state ']'
 
 and record_backend: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit = fun state fields value ->
   write_char state '{';
-  for index = 0 to array__length fields - 1 do
+  for index = 0 to Array.length fields - 1 do
     if not (Int.equal index 0) then
       write_char state ',';
-    match array__get fields index with
+    match Array.get_unchecked fields ~at:index with
     | Serde.Ser.Field (name, encode, get) ->
         write_cached_escaped_literal state name;
         write_char state ':';
@@ -172,10 +170,10 @@ and record_backend: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit =
 
 and variant_backend: 'value. state -> 'value Serde.Ser.variant_cases -> 'value -> unit = fun state cases value ->
   let rec loop index =
-    if Int.equal index (array__length cases) then
+    if Int.equal index (Array.length cases) then
       raise (Serde.Encode_error `invalid_tag)
     else
-      match array__get cases index with
+      match Array.get_unchecked cases ~at:index with
       | Serde.Ser.Unit (tag, matches) ->
           if matches value then
             write_cached_escaped_literal state tag
@@ -221,8 +219,8 @@ and backend: state Serde.Ser.backend = {
 let to_string = fun encode value ->
   let state = {
     target = Buffer_target;
-    output = IO.Buffer.create 256;
-    scratch = IO.Buffer.create 64;
+    output = IO.Buffer.create ~size:256;
+    scratch = IO.Buffer.create ~size:64;
     escaped_literals = []
   } in
   let* () = Serde.Ser.run encode backend state value in
@@ -231,8 +229,8 @@ let to_string = fun encode value ->
 let to_writer = fun encode writer value ->
   let state = {
     target = Writer_target writer;
-    output = IO.Buffer.create 4_096;
-    scratch = IO.Buffer.create 64;
+    output = IO.Buffer.create ~size:4_096;
+    scratch = IO.Buffer.create ~size:64;
     escaped_literals = []
   } in
   match Serde.Ser.run encode backend state value with

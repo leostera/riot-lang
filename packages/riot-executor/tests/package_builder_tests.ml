@@ -1,6 +1,10 @@
 open Std
 open Std.Collections
+open Riot_model
 module Test = Std.Test
+
+let package_name = fun value ->
+  Package_name.from_string value |> Result.expect ~msg:("expected valid package name: " ^ value)
 
 let test_toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
 |> Result.expect ~msg:"Failed to initialize test toolchain"
@@ -11,7 +15,7 @@ let make_test_build_ctx = fun () ->
 
 let workspace_dependency = fun name ->
   Riot_model.Package.{
-    name;
+    name = package_name name;
     source = {
       workspace = true;
       builtin = false;
@@ -36,7 +40,9 @@ let test_collect_source_files = fun _ctx ->
         let _ = Fs.write "val x : int" mli_file |> Result.expect ~msg:"Write failed" in
         let _ = Fs.write "int main() {}" c_file |> Result.expect ~msg:"Write failed" in
         let _ = Fs.write "readme" txt_file |> Result.expect ~msg:"Write failed" in
-        let package = Riot_model.Package.make ~name:"test" ~path:tmpdir ~relative_path:(Path.v ".") () in
+        let package =
+          Riot_model.Package.make ~name:(package_name "test") ~path:tmpdir ~relative_path:(Path.v ".") ()
+        in
         let files = Riot_executor.Package_builder.collect_source_files package in
         let has_ml =
           List.any files ~fn:(fun p -> Path.to_string p = Path.to_string ml_file)
@@ -71,7 +77,9 @@ let test_collect_source_files = fun _ctx ->
   | Error _ -> Error "Tempdir creation failed"
 
 let test_build_result_status_variants = fun _ctx ->
-  let package = Riot_model.Package.make ~name:"test" ~path:(Path.v ".") ~relative_path:(Path.v ".") () in
+  let package =
+    Riot_model.Package.make ~name:(package_name "test") ~path:(Path.v ".") ~relative_path:(Path.v ".") ()
+  in
   let artifact =
     Riot_store.Artifact.{
       hash = Crypto.hash_string "test";
@@ -82,7 +90,7 @@ let test_build_result_status_variants = fun _ctx ->
   let result_cached =
     Riot_executor.Package_builder.{
       package_key = Riot_planner.Package_graph.package_key
-        ~package_name:package.name
+        ~package_name:(Package_name.to_string package.name)
         Riot_planner.Package_graph.Runtime;
       package;
       status = Cached artifact;
@@ -93,7 +101,7 @@ let test_build_result_status_variants = fun _ctx ->
   let result_built =
     Riot_executor.Package_builder.{
       package_key = Riot_planner.Package_graph.package_key
-        ~package_name:package.name
+        ~package_name:(Package_name.to_string package.name)
         Riot_planner.Package_graph.Runtime;
       package;
       status = Built artifact;
@@ -104,7 +112,7 @@ let test_build_result_status_variants = fun _ctx ->
   let result_failed =
     Riot_executor.Package_builder.{
       package_key = Riot_planner.Package_graph.package_key
-        ~package_name:package.name
+        ~package_name:(Package_name.to_string package.name)
         Riot_planner.Package_graph.Runtime;
       package;
       status = Failed (ExecutionFailed { message = "compilation error" });
@@ -132,9 +140,12 @@ let test_build_writes_hash_manifest_with_exports = fun _ctx ->
         let src_dir = Path.(package_dir / Path.v "src") in
         let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"create src dir failed" in
         let _ = Fs.write "let answer = 42\n" Path.(src_dir / Path.v "lib.ml") |> Result.expect ~msg:"write source failed" in
-        let package = Riot_model.Package.make ~name:"pkg" ~path:package_dir ~relative_path:(Path.v "pkg") ~library:{
-          path = Path.v "src/lib.ml"
-        }
+        let package =
+          Riot_model.Package.make
+            ~name:(package_name "pkg")
+            ~path:package_dir
+            ~relative_path:(Path.v "pkg")
+            ~library:{ path = Path.v "src/lib.ml" }
           ~sources:{
             src = [ Path.v "src/lib.ml" ];
             native = [];
@@ -145,17 +156,11 @@ let test_build_writes_hash_manifest_with_exports = fun _ctx ->
           ()
         in
         let workspace =
-          Riot_model.Workspace.{
-            name = None;
-            root = tmpdir;
-            target_dir_root =
-              Path.(tmpdir / Path.v "target");
-            packages = [ package ];
-            dependencies = [];
-            dev_dependencies = [];
-            build_dependencies = [];
-            profile_overrides = [];
-          }
+          Riot_model.Workspace.make_realized
+            ~root:tmpdir
+            ~packages:[ package ]
+            ~target_dir:"target"
+            ()
         in
         let store = Riot_store.Store.create ~workspace in
         let package_graph = Riot_planner.Package_graph.create
@@ -171,7 +176,7 @@ let test_build_writes_hash_manifest_with_exports = fun _ctx ->
           ~store
           ~package_graph
           ~package_key:(Riot_planner.Package_graph.package_key
-            ~package_name:package.name
+            ~package_name:(Package_name.to_string package.name)
             Riot_planner.Package_graph.Runtime)
           ~package
           ~build_ctx in
@@ -200,7 +205,7 @@ let make_library_package = fun ~root ~name ?(dependencies = []) source ->
   let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"create src dir failed" in
   let _ = Fs.write source source_path |> Result.expect ~msg:"write source failed" in
   Riot_model.Package.make
-    ~name
+    ~name:(package_name name)
     ~path:package_dir
     ~relative_path:(Path.v name)
     ~dependencies:(List.map dependencies ~fn:workspace_dependency)
@@ -227,16 +232,11 @@ let test_dependency_source_change_rebuilds_dependent_package = fun _ctx ->
             "let value = Dep.value\n"
         in
         let workspace =
-          Riot_model.Workspace.{
-            name = None;
-            root = tmpdir;
-            target_dir_root = Path.(tmpdir / Path.v "target");
-            packages = [ dep; app ];
-            dependencies = [];
-            dev_dependencies = [];
-            build_dependencies = [];
-            profile_overrides = [];
-          }
+          Riot_model.Workspace.make_realized
+            ~root:tmpdir
+            ~packages:[ dep; app ]
+            ~target_dir:"target"
+            ()
         in
         let store = Riot_store.Store.create ~workspace in
         let build_ctx = make_test_build_ctx () in
@@ -247,7 +247,7 @@ let test_dependency_source_change_rebuilds_dependent_package = fun _ctx ->
             ~store
             ~package_graph
             ~package_key:(Riot_planner.Package_graph.package_key
-              ~package_name:package.Riot_model.Package.name
+              ~package_name:(Package_name.to_string package.Riot_model.Package.name)
               Riot_planner.Package_graph.Runtime)
             ~package
             ~build_ctx

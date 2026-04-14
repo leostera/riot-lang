@@ -382,7 +382,7 @@ let prompt_to_json = fun (p: prompt) ->
     ("description", option_to_json (fun s -> Json.String s) p.description);
     (
       "arguments",
-      option_to_json (fun args -> Json.Array (List.map prompt_argument_to_json args)) p.arguments
+      option_to_json (fun args -> Json.Array (List.map ~fn:prompt_argument_to_json args)) p.arguments
     );
   ]
 
@@ -412,11 +412,11 @@ let request_params_to_json = function
     ("name", Json.String name);
     (
       "arguments",
-      option_to_json (fun args -> Json.Object (List.map (fun ((k, v)) -> (k, Json.String v)) args)) arguments
+      option_to_json (fun args -> Json.Object (List.map ~fn:(fun ((k, v)) -> (k, Json.String v)) args)) arguments
     );
   ]
   | CompleteSamplingParams params -> Json.Object [
-    ("messages", Json.Array (List.map message_to_json params.messages));
+    ("messages", Json.Array (List.map ~fn:message_to_json params.messages));
     ("modelPreferences", option_to_json (fun j -> j) params.model_preferences);
     ("systemPrompt", option_to_json (fun s -> Json.String s) params.system_prompt);
     ("includeContext", option_to_json (fun s -> Json.String s) params.include_context);
@@ -424,7 +424,7 @@ let request_params_to_json = function
     ("maxTokens", option_to_json (fun n -> Json.Int n) params.max_tokens);
     (
       "stopSequences",
-      option_to_json (fun ss -> Json.Array (List.map (fun s -> Json.String s) ss)) params.stop_sequences
+      option_to_json (fun ss -> Json.Array (List.map ~fn:(fun s -> Json.String s) ss)) params.stop_sequences
     );
     ("metadata", option_to_json (fun j -> j) params.metadata);
   ]
@@ -450,7 +450,7 @@ let response_result_to_json = function
   | ShutdownResult ->
       Json.Object []
   | ListToolsResult { tools; next_cursor } ->
-      let fields = [ ("tools", Json.Array (List.map tool_to_json tools)) ] in
+      let fields = [ ("tools", Json.Array (List.map ~fn:tool_to_json tools)) ] in
       let fields =
         match next_cursor with
         | None -> fields
@@ -458,7 +458,7 @@ let response_result_to_json = function
       in
       Json.Object fields
   | CallToolResult { content; is_error } ->
-      let fields = [ ("content", Json.Array (List.map message_content_to_json content)) ] in
+      let fields = [ ("content", Json.Array (List.map ~fn:message_content_to_json content)) ] in
       let fields =
         match is_error with
         | None -> fields
@@ -466,7 +466,7 @@ let response_result_to_json = function
       in
       Json.Object fields
   | ListResourcesResult { resources; next_cursor } ->
-      let fields = [ ("resources", Json.Array (List.map resource_to_json resources)) ] in
+      let fields = [ ("resources", Json.Array (List.map ~fn:resource_to_json resources)) ] in
       let fields =
         match next_cursor with
         | None -> fields
@@ -474,9 +474,9 @@ let response_result_to_json = function
       in
       Json.Object fields
   | ReadResourceResult { contents } ->
-      Json.Object [ ("contents", Json.Array (List.map resource_contents_to_json contents)); ]
+      Json.Object [ ("contents", Json.Array (List.map ~fn:resource_contents_to_json contents)); ]
   | ListPromptsResult { prompts; next_cursor } ->
-      let fields = [ ("prompts", Json.Array (List.map prompt_to_json prompts)) ] in
+      let fields = [ ("prompts", Json.Array (List.map ~fn:prompt_to_json prompts)) ] in
       let fields =
         match next_cursor with
         | None -> fields
@@ -486,11 +486,11 @@ let response_result_to_json = function
   | GetPromptResult { description; messages } ->
       Json.Object [
         ("description", option_to_json (fun s -> Json.String s) description);
-        ("messages", Json.Array (List.map message_to_json messages));
+        ("messages", Json.Array (List.map ~fn:message_to_json messages));
       ]
   | CompleteSamplingResult { messages; model; stop_reason } ->
       Json.Object [
-        ("messages", Json.Array (List.map message_to_json messages));
+        ("messages", Json.Array (List.map ~fn:message_to_json messages));
         ("model", option_to_json (fun s -> Json.String s) model);
         ("stopReason", option_to_json (fun s -> Json.String s) stop_reason);
       ]
@@ -787,8 +787,7 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
         Json.Object [ (
             "tools",
             Json.Array (
-              List.map
-                (fun (t: tool) ->
+              List.map ~fn:(fun (t: tool) ->
                   Json.Object [ ("name", Json.String t.name); (
                       "description",
                       match t.description with
@@ -801,15 +800,14 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
     | CallToolResult resp ->
         let content, is_error = T.tool_response_to_content resp in
         Json.Object [
-          ("content", Json.Array (List.map message_content_to_json content));
+          ("content", Json.Array (List.map ~fn:message_content_to_json content));
           ("isError", Json.Bool is_error);
         ]
     | ListResourcesResult { resources } ->
         Json.Object [ (
             "resources",
             Json.Array (
-              List.map
-                (fun r ->
+              List.map ~fn:(fun r ->
                   Json.Object [ ("uri", Json.String r.uri); (
                       "name",
                       match r.name with
@@ -825,7 +823,7 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
             )
           ); ]
     | ReadResourceResult { contents } ->
-        Json.Object [ ("contents", Json.Array (List.map resource_contents_to_json contents)); ]
+        Json.Object [ ("contents", Json.Array (List.map ~fn:resource_contents_to_json contents)); ]
     | PingResult ->
         Json.Object []
     | ShutdownResult ->

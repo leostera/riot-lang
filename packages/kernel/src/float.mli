@@ -3,6 +3,10 @@ val max_float: t
 
 val min_float: t
 
+val infinity: t
+
+val nan: t
+
 (** Use `equal left right` for the raw runtime float equality semantics. *)
 val equal: t -> t -> bool
 
@@ -11,11 +15,17 @@ val compare: t -> t -> int
 
 val from_int: int -> t
 
+val of_int: int -> t
+
 val to_int: t -> int
 
 val parse: string -> t option
 
 val parse_unchecked: string -> t
+
+val of_string: string -> t
+
+val of_string_opt: string -> t option
 
 val to_string: ?precision:int -> t -> string
 

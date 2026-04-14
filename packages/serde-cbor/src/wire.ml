@@ -1,7 +1,6 @@
 open Std
 open Cbor_value
-
-let ( let* ) = Result.and_then
+open Std.Result.Syntax
 
 let major_positive = 0
 
@@ -104,7 +103,7 @@ let rec encode_value = fun buffer value ->
         items
 
 let to_string = fun value ->
-  let buffer = IO.Buffer.create 128 in
+  let buffer = IO.Buffer.create ~size:128 in
   encode_value buffer value;
   Ok (IO.Buffer.contents buffer)
 
@@ -193,8 +192,8 @@ let decode_half = fun bits ->
 let read_argument = fun input minor ->
   match minor with
   | n when n < 24 -> Ok (Int64.of_int n)
-  | 24 -> read_byte input |> Result.map Int64.of_int
-  | 25 -> read_uint16_be input |> Result.map Int64.of_int
+  | 24 -> read_byte input |> Result.map ~fn:Int64.of_int
+  | 25 -> read_uint16_be input |> Result.map ~fn:Int64.of_int
   | 26 -> read_uint32_be input
   | 27 -> read_uint64_be input
   | 31 -> error "serde-cbor does not support indefinite-length items"
@@ -210,7 +209,7 @@ let read_count = fun input minor kind ->
 let read_text = fun input minor ->
   let* length = read_count input minor "text" in
   let* () = ensure input length in
-  let value = String.sub input.source input.pos length in
+  let value = String.sub input.source ~offset:input.pos ~len:length in
   input.pos <- input.pos + length;
   Ok value
 
@@ -240,7 +239,7 @@ let rec read_value = fun input ->
       let* value = int_of_negative raw in
       Ok (Int value)
   | 3 ->
-      read_text input minor |> Result.map (fun value -> Text value)
+      read_text input minor |> Result.map ~fn:(fun value -> Text value)
   | 4 ->
       let* length = read_count input minor "array" in
       let rec loop remaining acc =
@@ -279,7 +278,7 @@ let rec read_value = fun input ->
       | 22 ->
           Ok Null
       | 25 ->
-          read_uint16_be input |> Result.map (fun bits -> Float (decode_half bits))
+          read_uint16_be input |> Result.map ~fn:(fun bits -> Float (decode_half bits))
       | 26 ->
           let* bits = read_uint32_be input in
           Ok (Float (Int32.float_of_bits (Int64.to_int32 bits)))
@@ -301,7 +300,7 @@ let from_string = fun input ->
     error "serde-cbor input has trailing bytes after the top-level value"
 
 let from_reader = fun reader ->
-  let buffer = IO.Buffer.create 256 in
+  let buffer = IO.Buffer.create ~size:256 in
   match IO.read_to_end reader ~buf:buffer with
   | Ok _ -> from_string (IO.Buffer.contents buffer)
   | Error err -> Error (`Io_error err)

@@ -10,6 +10,9 @@ val get: t -> at:int -> char option
 
 val get_unchecked: t -> at:int -> char
 
+(** Use `unsafe_get value index` as the conventional alias for `get_unchecked value ~at:index`. *)
+val unsafe_get: t -> int -> char
+
 val sub: t -> offset:int -> len:int -> t
 
 (** Use `init length builder` to construct a fresh string by calling `builder` for each index from

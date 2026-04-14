@@ -113,7 +113,7 @@ let event_arb =
     ~print:(
       function
       | Click (x, y) -> "Click(" ^ Int.to_string x ^ "," ^ Int.to_string y ^ ")"
-      | KeyPress c -> "KeyPress('" ^ String.make 1 c ^ "')"
+      | KeyPress c -> "KeyPress('" ^ String.make ~len:1 ~char:c ^ "')"
       | Scroll n -> "Scroll(" ^ Int.to_string n ^ ")"
       | Resize (w, h) -> "Resize(" ^ Int.to_string w ^ "," ^ Int.to_string h ^ ")"
     )
@@ -188,16 +188,18 @@ let user_key_multiple_prop =
         pairs;
       (* Build reference to handle duplicates *)
       let ref_map = Collections.HashMap.create () in
-      List.iter (fun ((user, value)) -> Collections.HashMap.insert ref_map user value |> ignore) pairs;
+      List.iter
+        (fun ((user, value)) -> Collections.HashMap.insert ref_map ~key:user ~value |> ignore)
+        pairs;
       (* Verify all accessible *)
-      Collections.HashMap.iter
-        (fun user expected_value ->
+      Collections.HashMap.for_each
+        ref_map
+        ~fn:(fun user expected_value ->
           match Swisstable.get map user with
           | Some actual_value ->
               if not (actual_value = expected_value) then
                 fail "User value mismatch"
-          | None -> fail "User key not found")
-        ref_map;
+          | None -> fail "User key not found");
       true)
 
 (* Property 3: Point record keys *)
@@ -253,18 +255,18 @@ let event_key_multiple_prop =
       List.iter
         (fun ((event, value)) ->
           let _ = Swisstable.insert map event value in
-          let _ = Collections.HashMap.insert ref_map event value in
+          let _ = Collections.HashMap.insert ref_map ~key:event ~value in
           ())
         pairs;
       (* Verify lengths match *)
-      if not (Swisstable.len map = Collections.HashMap.len ref_map) then
+      if not (Swisstable.len map = Collections.HashMap.length ref_map) then
         fail "Event map lengths differ";
-      Collections.HashMap.iter
-        (fun event expected ->
+      Collections.HashMap.for_each
+        ref_map
+        ~fn:(fun event expected ->
           match Swisstable.get map event with
           | Some actual when actual = expected -> ()
-          | _ -> fail "Event value mismatch")
-        ref_map;
+          | _ -> fail "Event value mismatch");
       true)
 
 (* Property 7: Status variant keys *)
@@ -341,18 +343,18 @@ let customer_key_multiple_prop =
       List.iter
         (fun ((customer, value)) ->
           let _ = Swisstable.insert map customer value in
-          let _ = Collections.HashMap.insert ref_map customer value in
+          let _ = Collections.HashMap.insert ref_map ~key:customer ~value in
           ())
         pairs;
       (* Verify equivalence *)
-      if not (Swisstable.len map = Collections.HashMap.len ref_map) then
+      if not (Swisstable.len map = Collections.HashMap.length ref_map) then
         fail "Customer map lengths differ";
-      Collections.HashMap.iter
-        (fun customer expected ->
+      Collections.HashMap.for_each
+        ref_map
+        ~fn:(fun customer expected ->
           match Swisstable.get map customer with
           | Some actual when actual = expected -> ()
-          | _ -> fail "Customer value mismatch")
-        ref_map;
+          | _ -> fail "Customer value mismatch");
       true)
 
 (** {1 Hash Collision Properties} *)
@@ -367,7 +369,8 @@ let collision_point_prop =
       (* Use small point range (0-9) to force collisions *)
       let small_pairs =
         List.map
-          (fun ((k, v)) ->
+          pairs
+          ~fn:(fun ((k, v)) ->
             let x =
               if k < 0 then
                 (-k) mod 10
@@ -375,7 +378,6 @@ let collision_point_prop =
                 k mod 10
             in
             ({ x; y = x }, v))
-          pairs
       in
       let map = Swisstable.create () in
       let ref_map = Collections.HashMap.create () in
@@ -383,18 +385,18 @@ let collision_point_prop =
       List.iter
         (fun ((p, v)) ->
           let _ = Swisstable.insert map p v in
-          let _ = Collections.HashMap.insert ref_map p v in
+          let _ = Collections.HashMap.insert ref_map ~key:p ~value:v in
           ())
         small_pairs;
       (* Verify lengths match *)
-      if not (Swisstable.len map = Collections.HashMap.len ref_map) then
+      if not (Swisstable.len map = Collections.HashMap.length ref_map) then
         fail "Lengths differ after collision test";
-      Collections.HashMap.iter
-        (fun p v ->
+      Collections.HashMap.for_each
+        ref_map
+        ~fn:(fun p v ->
           match Swisstable.get map p with
           | Some v' when v' = v -> ()
-          | _ -> fail "Point not found or value mismatch in collision test")
-        ref_map;
+          | _ -> fail "Point not found or value mismatch in collision test");
       true)
 
 (** {1 Mixed Operations with Complex Keys} *)

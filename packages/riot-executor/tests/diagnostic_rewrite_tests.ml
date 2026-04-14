@@ -1,5 +1,9 @@
 open Std
+open Riot_model
 module Test = Std.Test
+
+let package_name = fun value ->
+  Package_name.from_string value |> Result.expect ~msg:("expected valid package name: " ^ value)
 
 let make_warning = fun path ->
   String.concat
@@ -14,7 +18,7 @@ let make_warning = fun path ->
 let make_package = fun ~root ~name ->
   let path = Path.(root / Path.v "packages" / Path.v name) in
   Riot_model.Package.make
-    ~name
+    ~name:(package_name name)
     ~path
     ~relative_path:(Path.v ("packages/" ^ name))
     ~library:{ path = Path.v "src/lib.ml" }

@@ -10,7 +10,11 @@ val with_capacity: int -> t
 
 val from_bytes: bytes -> t
 
+val of_bytes: bytes -> t
+
 val from_string: string -> t
+
+val of_string: string -> t
 
 val from_bytes_array: bytes array -> t
 

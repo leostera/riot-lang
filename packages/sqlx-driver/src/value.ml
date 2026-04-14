@@ -122,7 +122,7 @@ let to_string = function
   | String s ->
       "\"" ^ s ^ "\""
   | Bool b ->
-      string_of_bool b
+      Bool.to_string b
   | Bytes b ->
       "<bytes:" ^ string_of_int (Bytes.length b) ^ ">"
   | Timestamp dt ->

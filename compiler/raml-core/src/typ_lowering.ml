@@ -287,19 +287,20 @@ let rec reclassify_expr = fun env expr ->
         | Core.Expr.Direct entity_id -> reclassify_direct_callee env entity_id
         | Core.Expr.Indirect callee -> Core.Expr.Indirect (reclassify_expr env callee)
       in
-      let arguments = List.map (reclassify_expr env) apply.arguments in
+      let arguments = List.map apply.arguments ~fn:(reclassify_expr env) in
       Core.Expr.Apply Core.Expr.{ callee; arguments }
   | Core.Expr.Lambda lambda ->
       let env =
         bind_direct_calls
           env
           (List.map
-            (fun (param: Core.Expr.param) -> value_bound_binding ~name:param.name ~entity_id:param.entity_id)
-            lambda.params)
+            lambda.params
+            ~fn:(fun (param: Core.Expr.param) ->
+              value_bound_binding ~name:param.name ~entity_id:param.entity_id))
       in
       Core.Expr.Lambda Core.Expr.{ lambda with body = reclassify_expr env lambda.body }
   | Core.Expr.Let let_ ->
-      let bindings = List.map direct_call_binding_of_core_binding let_.bindings in
+      let bindings = List.map let_.bindings ~fn:direct_call_binding_of_core_binding in
       let env_for_bindings =
         match let_.rec_flag with
         | Core.Rec_flag.Recursive -> bind_direct_calls env bindings
@@ -307,9 +308,9 @@ let rec reclassify_expr = fun env expr ->
       in
       let rewritten_bindings =
         List.map
-          (fun (binding: Core.Expr.binding) ->
-            { binding with expr = reclassify_expr env_for_bindings binding.expr })
           let_.bindings
+          ~fn:(fun (binding: Core.Expr.binding) ->
+            { binding with expr = reclassify_expr env_for_bindings binding.expr })
       in
       let env_for_body = bind_direct_calls env bindings in
       let body = reclassify_expr env_for_body let_.body in
@@ -320,14 +321,15 @@ let rec reclassify_expr = fun env expr ->
         second = reclassify_expr env sequence.second
       }
   | Core.Expr.Tuple tuple ->
-      Core.Expr.Tuple (List.map (reclassify_expr env) tuple)
+      Core.Expr.Tuple (List.map tuple ~fn:(reclassify_expr env))
   | Core.Expr.Tuple_get tuple_get ->
       Core.Expr.Tuple_get Core.Expr.{ tuple_get with tuple = reclassify_expr env tuple_get.tuple }
   | Core.Expr.Record record ->
       Core.Expr.Record (List.map
-        (fun (field: Core.Expr.record_field) ->
+        record
+        ~fn:(fun (field: Core.Expr.record_field) ->
           Core.Expr.{ field with value = reclassify_expr env field.value })
-        record)
+      )
   | Core.Expr.Record_get record_get ->
       Core.Expr.Record_get Core.Expr.{
         record_get
@@ -342,7 +344,7 @@ let rec reclassify_expr = fun env expr ->
   | Core.Expr.Primitive primitive ->
       Core.Expr.Primitive Core.Expr.{
         primitive
-        with arguments = List.map (reclassify_expr env) primitive.arguments
+        with arguments = List.map primitive.arguments ~fn:(reclassify_expr env)
       }
 
 let reclassify_binding_group = fun env (group: Core.Binding_group.t) ->
@@ -382,7 +384,7 @@ let record_layouts = fun (semantic_tree: SemanticTree.file) ->
       match item with
       | ItemTree.Type type_item when not (List.is_empty type_item.declaration.labels) -> {
         type_name = type_item.declaration.type_name;
-        labels = List.map (fun (label: TypeDecl.label) -> label.name) type_item.declaration.labels
+        labels = List.map type_item.declaration.labels ~fn:(fun (label: TypeDecl.label) -> label.name)
       }
       :: acc
       | _ -> acc)
@@ -515,13 +517,13 @@ let resolve_record_layout = fun semantic_tree ~expr_id ~matches ~description ->
           str description;
           str " is ambiguous across visible immutable record declarations: ";
           str
-            (String.concat ", " (List.map (fun (layout: record_layout) -> layout.type_name) layouts));
+            (String.concat ", " (List.map layouts ~fn:(fun (layout: record_layout) -> layout.type_name)));
         ]
     })
 
 let resolve_record_construction_layout = fun semantic_tree ~expr_id fields ->
   let labels =
-    List.map (fun (field: BodyArena.record_expr_field) -> field.label) fields
+    List.map fields ~fn:(fun (field: BodyArena.record_expr_field) -> field.label)
   in
   resolve_record_layout
     semantic_tree
@@ -531,7 +533,7 @@ let resolve_record_construction_layout = fun semantic_tree ~expr_id fields ->
 
 let resolve_record_update_layout = fun semantic_tree ~expr_id fields ->
   let labels =
-    List.map (fun (field: BodyArena.record_expr_field) -> field.label) fields
+    List.map fields ~fn:(fun (field: BodyArena.record_expr_field) -> field.label)
   in
   resolve_record_layout
     semantic_tree
@@ -609,7 +611,7 @@ let lowered_record_field = fun fields label ->
   List.find_opt
     (fun (field_label, _) ->
       String.equal field_label label)
-    fields |> Option.map snd
+    fields |> Option.map ~fn:snd
 
 let keep_runtime_item = fun item ->
   match item with
@@ -1550,7 +1552,7 @@ let lower_value_item = fun semantic_tree (value_item: ItemTree.value_item) ->
           bindings
           []
       in
-      let items = bindings |> List.map (fun (binding: lowered_binding) -> binding.item) in
+      let items = bindings |> List.map ~fn:(fun (binding: lowered_binding) -> binding.item) in
       Core.Binding_group.{
         rec_flag =
           if value_item.recursive then

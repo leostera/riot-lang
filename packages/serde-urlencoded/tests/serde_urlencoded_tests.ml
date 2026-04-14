@@ -1,10 +1,9 @@
 open Std
+open Std.Result.Syntax
 module Vector = Collections.Vector
 module Test = Std.Test
 module De = Serde.De
 module Ser = Serde.Ser
-
-let ( let* ) = Result.and_then
 
 let io_writer_of_buffer =
   let module Write = struct
@@ -18,10 +17,9 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.iter bufs
-        (fun { ba; off; len } ->
-          IO.Buffer.add_string buffer (IO.Bytes.sub_string ba off len);
-          written := !written + len);
+      IO.Iovec.for_each bufs ~fn:(fun { buffer = chunk; offset; length } ->
+        IO.Buffer.add_subbytes buffer chunk offset length;
+        written := !written + length);
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -226,7 +224,7 @@ let pet_encode = Ser.variant
 
 let vec_to_list = fun values ->
   let items = ref [] in
-  Vector.iter (fun value -> items := value :: !items) values;
+  Vector.for_each values ~fn:(fun value -> items := value :: !items);
   List.rev !items
 
 let equal_sample = fun (left: sample) (right: sample) ->
@@ -254,7 +252,7 @@ let sample_value: sample = ({
     small = 12l;
     big = 345L;
     ratio = 1.25;
-    tags = Vector.of_list [ "riot"; "serde ml" ];
+    tags = Vector.from_list [ "riot"; "serde ml" ];
     scores = [|1; 2|];
     nickname = None;
     status = Draft;
@@ -267,7 +265,7 @@ let sample_value_with_nickname: sample = ({
     small = 12l;
     big = 345L;
     ratio = 1.25;
-    tags = Vector.of_list [ "riot"; "serde ml" ];
+    tags = Vector.from_list [ "riot"; "serde ml" ];
     scores = [|1; 2|];
     nickname = Some "strawhat";
     status = Draft;
@@ -318,7 +316,7 @@ let test_decodes_from_reader = fun _ctx ->
   | Error err -> Error ("reader decode failed: " ^ Serde.Error.to_string err)
 
 let test_writes_to_writer = fun _ctx ->
-  let buffer = IO.Buffer.create 128 in
+  let buffer = IO.Buffer.create ~size:128 in
   match Serde_urlencoded.to_writer sample_encode (io_writer_of_buffer buffer) sample_value_with_nickname with
   | Ok () -> expect_equal
     ~expected:encoded_sample_with_nickname

@@ -69,7 +69,7 @@ module Surface_path = struct
   let of_string = fun value ->
     value
     |> String.split_on_char '.'
-    |> List.filter (fun segment -> not (String.equal segment ""))
+    |> List.filter ~fn:(fun segment -> not (String.equal segment ""))
     |> of_segments
 
   let to_segments = Typ.Model.Surface_path.to_segments
@@ -402,7 +402,7 @@ module Expr = struct
     Json.obj
       [
         ("callee", apply_callee_to_json apply.callee);
-        ("arguments", Json.array (List.map to_json apply.arguments));
+        ("arguments", Json.array (List.map apply.arguments ~fn:to_json));
       ]
 
   and param_to_json = fun (param: param) ->
@@ -411,7 +411,7 @@ module Expr = struct
   and lambda_to_json = fun (lambda: lambda) ->
     Json.obj
       [
-        ("params", Json.array (List.map param_to_json lambda.params));
+        ("params", Json.array (List.map lambda.params ~fn:param_to_json));
         ("body", to_json lambda.body);
       ]
 
@@ -427,7 +427,7 @@ module Expr = struct
     Json.obj
       [
         ("rec_flag", Rec_flag.to_json let_.rec_flag);
-        ("bindings", Json.array (List.map binding_to_json let_.bindings));
+        ("bindings", Json.array (List.map let_.bindings ~fn:binding_to_json));
         ("body", to_json let_.body);
       ]
 
@@ -435,7 +435,7 @@ module Expr = struct
     Json.obj [ ("first", to_json sequence.first); ("second", to_json sequence.second); ]
 
   and tuple_to_json = fun (tuple: tuple) ->
-    Json.obj [ ("elements", Json.array (List.map to_json tuple)); ]
+    Json.obj [ ("elements", Json.array (List.map tuple ~fn:to_json)); ]
 
   and tuple_get_to_json = fun (tuple_get: tuple_get) ->
     Json.obj [ ("tuple", to_json tuple_get.tuple); ("index", Json.int tuple_get.index); ]
@@ -444,7 +444,7 @@ module Expr = struct
     Json.obj [ ("label", Json.string field.label); ("value", to_json field.value) ]
 
   and record_to_json = fun (record: record) ->
-    Json.obj [ ("fields", Json.array (List.map record_field_to_json record)); ]
+    Json.obj [ ("fields", Json.array (List.map record ~fn:record_field_to_json)); ]
 
   and record_get_to_json = fun (record_get: record_get) ->
     Json.obj
@@ -466,7 +466,7 @@ module Expr = struct
     Json.obj
       [
         ("name", Primitive.to_json primitive.primitive);
-        ("arguments", Json.array (List.map to_json primitive.arguments));
+        ("arguments", Json.array (List.map primitive.arguments ~fn:to_json));
       ]
 
   and to_json = fun expr ->
@@ -542,8 +542,8 @@ module Binding_group = struct
     Json.obj
       [
         ("rec_flag", Rec_flag.to_json group.rec_flag);
-        ("items", Json.array (List.map Init_item.to_json group.items));
-        ("exports", Json.array (List.map Export.to_json group.exports));
+        ("items", Json.array (List.map group.items ~fn:Init_item.to_json));
+        ("exports", Json.array (List.map group.exports ~fn:Export.to_json));
       ]
 end
 
@@ -560,7 +560,7 @@ module Compilation_unit = struct
     Json.obj
       [
         ("unit_id", Unit_id.to_json compilation_unit.unit_id);
-        ("exports", Json.array (List.map Export.to_json compilation_unit.exports));
-        ("init", Json.array (List.map Binding_group.to_json compilation_unit.init));
+        ("exports", Json.array (List.map compilation_unit.exports ~fn:Export.to_json));
+        ("init", Json.array (List.map compilation_unit.init ~fn:Binding_group.to_json));
       ]
 end

@@ -48,6 +48,9 @@ val get: t -> at:int -> char option
 
 val get_unchecked: t -> at:int -> char
 
+(** Use `unsafe_get value index` as the conventional alias for `get_unchecked value ~at:index`. *)
+val unsafe_get: t -> int -> char
+
 val sub: t -> offset:int -> len:int -> t
 
 (** Use `init length builder` to construct a fresh string by calling `builder` for each index from
@@ -83,6 +86,10 @@ val trim: t -> t
 
 val split: by:t -> t -> t list
 
+(** Use `split_on_char separator value` as the conventional alias for splitting on a
+    one-character separator. *)
+val split_on_char: char -> t -> t list
+
 val lowercase_ascii: t -> t
 
 val capitalize_ascii: t -> t
@@ -92,6 +99,9 @@ val uppercase_ascii: t -> t
 val map: fn:(char -> char) -> t -> t
 
 val for_each: fn:(char -> unit) -> t -> unit
+
+(** Use `iter fn value` as the conventional alias for `for_each ~fn value`. *)
+val iter: (char -> unit) -> t -> unit
 
 val exists: fn:(char -> bool) -> t -> bool
 

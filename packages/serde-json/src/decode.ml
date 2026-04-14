@@ -1,7 +1,7 @@
 open Std
+module Array = Collections.Array
 module Vector = Collections.Vector
-
-let ( let* ) = Result.and_then
+open Std.Result.Syntax
 
 module De = Serde.De
 module Input = Buffered_input
@@ -20,7 +20,7 @@ let unexpected_end = fun state expected ->
 let unexpected_character = fun state actual expected ->
   error_at
     (Input.position state.input)
-    ("unexpected character '" ^ String.make 1 actual ^ "' (expected " ^ expected ^ ")")
+    ("unexpected character '" ^ String.make ~len:1 ~char:actual ^ "' (expected " ^ expected ^ ")")
 
 let is_digit = function
   | '0' .. '9' -> true
@@ -61,7 +61,7 @@ let expect_literal = fun state literal ->
     else
       match Input.peek_char state.input ~offset:index with
       | None -> unexpected_end state literal
-      | Some actual when Char.equal actual literal.[index] -> loop (index + 1)
+      | Some actual when Char.equal actual (String.get_unchecked literal ~at:index) -> loop (index + 1)
       | Some _ -> error_at start ("expected '" ^ literal ^ "'")
   in
   loop 0
@@ -113,7 +113,9 @@ let rec read_unicode_scalar = fun state ->
 
 let append_unicode_escape = fun state ->
   let code = read_unicode_scalar state in
-  IO.Buffer.add_utf_8_uchar state.scratch (Kernel.Uchar.of_int code)
+  match Kernel.Unicode.Rune.from_int code with
+  | Ok rune -> IO.Buffer.add_utf_8_uchar state.scratch rune
+  | Error _ -> error_at (Input.position state.input) "invalid unicode scalar value"
 
 let skip_unicode_escape = fun state -> ignore (read_unicode_scalar state)
 
@@ -188,7 +190,7 @@ let reader_skip_whitespace: type src. src Input.reader_state -> unit = fun reade
           if pos >= reader.Input.limit then
             pos
           else
-            match IO.Bytes.unsafe_get reader.Input.buf pos with
+            match IO.Bytes.get_unchecked reader.Input.buf ~at:pos with
             | ' '
             | '\t'
             | '\n'
@@ -213,7 +215,7 @@ let reader_expect_literal: type src. state -> src Input.reader_state -> string -
       match reader_current_char reader with
       | None ->
           unexpected_end state literal
-      | Some actual when Char.equal actual literal.[index] ->
+      | Some actual when Char.equal actual (String.get_unchecked literal ~at:index) ->
           reader_advance reader;
           loop (index + 1)
       | Some _ ->
@@ -228,7 +230,7 @@ let parse_string_reader = fun state reader ->
   let rec fast start =
     match reader_scan_while reader ~continue:string_fast_continue with
     | `Stop (stop, '"') ->
-        let value = String.sub reader.Input.view start (stop - start) in
+        let value = String.sub reader.Input.view ~offset:start ~len:(stop - start) in
         reader.Input.pos <- stop;
         reader_advance reader;
         value
@@ -240,7 +242,7 @@ let parse_string_reader = fun state reader ->
     | `Stop (_, actual) ->
         error_at
           (Input.position state.input)
-          ("unescaped control character '" ^ String.make 1 actual ^ "' in string")
+          ("unescaped control character '" ^ String.make ~len:1 ~char:actual ^ "' in string")
     | `Boundary stop ->
         IO.Buffer.clear state.scratch;
         reader_append_range state.scratch reader start stop;
@@ -302,7 +304,7 @@ let parse_string_reader = fun state reader ->
     | Some actual when Char.code actual < 0x20 ->
         error_at
           (Input.position state.input)
-          ("unescaped control character '" ^ String.make 1 actual ^ "' in string")
+          ("unescaped control character '" ^ String.make ~len:1 ~char:actual ^ "' in string")
     | Some _ ->
         let start = reader_token_start reader in
         match reader_scan_while reader ~continue:string_fast_continue with
@@ -318,7 +320,7 @@ let parse_string_reader = fun state reader ->
         | `Stop (_, actual) ->
             error_at
               (Input.position state.input)
-              ("unescaped control character '" ^ String.make 1 actual ^ "' in string")
+              ("unescaped control character '" ^ String.make ~len:1 ~char:actual ^ "' in string")
         | `Boundary stop ->
             reader_append_range state.scratch reader start stop;
             reader.Input.pos <- stop;
@@ -347,7 +349,7 @@ let parse_string_generic = fun state ->
     | `Stop (_, actual) ->
         error_at
           (Input.position state.input)
-          ("unescaped control character '" ^ String.make 1 actual ^ "' in string")
+          ("unescaped control character '" ^ String.make ~len:1 ~char:actual ^ "' in string")
     | `Boundary stop ->
         IO.Buffer.clear state.scratch;
         append_current_range state start stop;
@@ -409,7 +411,7 @@ let parse_string_generic = fun state ->
     | Some actual when Char.code actual < 0x20 ->
         error_at
           (Input.position state.input)
-          ("unescaped control character '" ^ String.make 1 actual ^ "' in string")
+          ("unescaped control character '" ^ String.make ~len:1 ~char:actual ^ "' in string")
     | Some _ ->
         let start = Input.position state.input in
         match Input.scan_while state.input ~continue:string_fast_continue with
@@ -425,7 +427,7 @@ let parse_string_generic = fun state ->
         | `Stop (_, actual) ->
             error_at
               (Input.position state.input)
-              ("unescaped control character '" ^ String.make 1 actual ^ "' in string")
+              ("unescaped control character '" ^ String.make ~len:1 ~char:actual ^ "' in string")
         | `Boundary stop ->
             append_current_range state start stop;
             Input.set_position state.input stop;
@@ -466,7 +468,7 @@ let skip_string_reader = fun state reader ->
     | `Stop (_, actual) ->
         error_at
           (Input.position state.input)
-          ("unescaped control character '" ^ String.make 1 actual ^ "' in string")
+          ("unescaped control character '" ^ String.make ~len:1 ~char:actual ^ "' in string")
     | `Boundary stop ->
         reader.Input.pos <- stop;
         loop ()
@@ -501,7 +503,7 @@ let skip_string_generic = fun state ->
     | `Stop (_, actual) ->
         error_at
           (Input.position state.input)
-          ("unescaped control character '" ^ String.make 1 actual ^ "' in string")
+          ("unescaped control character '" ^ String.make ~len:1 ~char:actual ^ "' in string")
     | `Boundary stop ->
         Input.set_position state.input stop;
         loop ()
@@ -534,7 +536,7 @@ let read_field_tag_reader = fun state reader fields ->
     | `Stop (_, actual) ->
         error_at
           (Input.position state.input)
-          ("unescaped control character '" ^ String.make 1 actual ^ "' in object key")
+          ("unescaped control character '" ^ String.make ~len:1 ~char:actual ^ "' in object key")
     | `Boundary stop ->
         IO.Buffer.clear state.scratch;
         reader_append_range state.scratch reader start stop;
@@ -596,7 +598,7 @@ let read_field_tag_reader = fun state reader fields ->
     | Some actual when Char.code actual < 0x20 ->
         error_at
           (Input.position state.input)
-          ("unescaped control character '" ^ String.make 1 actual ^ "' in object key")
+          ("unescaped control character '" ^ String.make ~len:1 ~char:actual ^ "' in object key")
     | Some _ ->
         let start = reader_token_start reader in
         match reader_scan_while reader ~continue:string_fast_continue with
@@ -612,7 +614,7 @@ let read_field_tag_reader = fun state reader fields ->
         | `Stop (_, actual) ->
             error_at
               (Input.position state.input)
-              ("unescaped control character '" ^ String.make 1 actual ^ "' in object key")
+              ("unescaped control character '" ^ String.make ~len:1 ~char:actual ^ "' in object key")
         | `Boundary stop ->
             reader_append_range state.scratch reader start stop;
             reader.Input.pos <- stop;
@@ -641,7 +643,7 @@ let read_field_tag_generic = fun state fields ->
     | `Stop (_, actual) ->
         error_at
           (Input.position state.input)
-          ("unescaped control character '" ^ String.make 1 actual ^ "' in object key")
+          ("unescaped control character '" ^ String.make ~len:1 ~char:actual ^ "' in object key")
     | `Boundary stop ->
         IO.Buffer.clear state.scratch;
         append_current_range state start stop;
@@ -703,7 +705,7 @@ let read_field_tag_generic = fun state fields ->
     | Some actual when Char.code actual < 0x20 ->
         error_at
           (Input.position state.input)
-          ("unescaped control character '" ^ String.make 1 actual ^ "' in object key")
+          ("unescaped control character '" ^ String.make ~len:1 ~char:actual ^ "' in object key")
     | Some _ ->
         let start = Input.position state.input in
         match Input.scan_while state.input ~continue:string_fast_continue with
@@ -719,7 +721,7 @@ let read_field_tag_generic = fun state fields ->
         | `Stop (_, actual) ->
             error_at
               (Input.position state.input)
-              ("unescaped control character '" ^ String.make 1 actual ^ "' in object key")
+              ("unescaped control character '" ^ String.make ~len:1 ~char:actual ^ "' in object key")
         | `Boundary stop ->
             append_current_range state start stop;
             Input.set_position state.input stop;
@@ -827,7 +829,7 @@ let parse_number_text_reader_slow = fun state reader ->
     | Some actual ->
         error_at
           (Input.position state.input)
-          ("unexpected '" ^ String.make 1 actual ^ "' while parsing number")
+          ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' while parsing number")
     | None ->
         unexpected_end state "number"
   );
@@ -842,7 +844,7 @@ let parse_number_text_reader_slow = fun state reader ->
           | Some digit when is_digit digit -> reader_append_digits state reader
           | Some actual -> error_at
             (Input.position state.input)
-            ("unexpected '" ^ String.make 1 actual ^ "' after decimal point")
+            ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' after decimal point")
           | None -> unexpected_end state "digit after decimal point"
         )
     | _ -> ()
@@ -862,7 +864,7 @@ let parse_number_text_reader_slow = fun state reader ->
           | Some digit when is_digit digit -> reader_append_digits state reader
           | Some actual -> error_at
             (Input.position state.input)
-            ("unexpected '" ^ String.make 1 actual ^ "' after exponent")
+            ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' after exponent")
           | None -> unexpected_end state "digit after exponent"
         )
     | _ -> ()
@@ -901,7 +903,10 @@ let parse_number_text_reader = fun state reader ->
     in
     (
       match current () with
-      | Some '-' -> advance ()
+      | Some '-' ->
+          advance ();
+          if need_more () then
+            raise Use_slow_number_path
       | _ -> ()
     );
     (
@@ -923,7 +928,7 @@ let parse_number_text_reader = fun state reader ->
       | Some actual ->
           error_at
             (Input.position state.input)
-            ("unexpected '" ^ String.make 1 actual ^ "' while parsing number")
+            ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' while parsing number")
       | None ->
           unexpected_end state "number"
     );
@@ -945,7 +950,7 @@ let parse_number_text_reader = fun state reader ->
             | Some actual ->
                 error_at
                   (Input.position state.input)
-                  ("unexpected '" ^ String.make 1 actual ^ "' after decimal point")
+                  ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' after decimal point")
             | None ->
                 unexpected_end state "digit after decimal point"
           )
@@ -976,7 +981,7 @@ let parse_number_text_reader = fun state reader ->
             | Some actual ->
                 error_at
                   (Input.position state.input)
-                  ("unexpected '" ^ String.make 1 actual ^ "' after exponent")
+                  ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' after exponent")
             | None ->
                 unexpected_end state "digit after exponent"
           )
@@ -986,7 +991,7 @@ let parse_number_text_reader = fun state reader ->
       if reader.Input.eof then
         (
           reader.Input.pos <- !pos;
-          { text = String.sub reader.Input.view !start (!pos - !start); is_float = !is_float }
+          { text = String.sub reader.Input.view ~offset:!start ~len:(!pos - !start); is_float = !is_float }
         )
       else
         raise Use_slow_number_path
@@ -994,12 +999,12 @@ let parse_number_text_reader = fun state reader ->
       match current () with
       | Some actual when is_value_delimiter (Some actual) ->
           reader.Input.pos <- !pos;
-          { text = String.sub reader.Input.view !start (!pos - !start); is_float = !is_float }
+          { text = String.sub reader.Input.view ~offset:!start ~len:(!pos - !start); is_float = !is_float }
       | Some actual ->
           unexpected_character state actual "number delimiter"
       | None ->
           reader.Input.pos <- !pos;
-          { text = String.sub reader.Input.view !start (!pos - !start); is_float = !is_float }
+          { text = String.sub reader.Input.view ~offset:!start ~len:(!pos - !start); is_float = !is_float }
   with
   | Use_slow_number_path ->
       reader.Input.pos <- !start;
@@ -1051,7 +1056,7 @@ let parse_number_text_generic = fun state ->
     | Some actual ->
         error_at
           (Input.position state.input)
-          ("unexpected '" ^ String.make 1 actual ^ "' while parsing number")
+          ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' while parsing number")
     | None ->
         unexpected_end state "number"
   );
@@ -1069,7 +1074,7 @@ let parse_number_text_generic = fun state ->
           | Some actual ->
               error_at
                 (Input.position state.input)
-                ("unexpected '" ^ String.make 1 actual ^ "' after decimal point")
+                ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' after decimal point")
           | None ->
               unexpected_end state "digit after decimal point"
         )
@@ -1093,7 +1098,7 @@ let parse_number_text_generic = fun state ->
           | Some actual ->
               error_at
                 (Input.position state.input)
-                ("unexpected '" ^ String.make 1 actual ^ "' after exponent")
+                ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' after exponent")
           | None ->
               unexpected_end state "digit after exponent"
         )
@@ -1106,7 +1111,7 @@ let parse_number_text_generic = fun state ->
       | None -> ()
     );
   Input.set_position state.input !pos;
-  { text = String.sub input start (!pos - start); is_float = !is_float }
+  { text = String.sub input ~offset:start ~len:(!pos - start); is_float = !is_float }
 
 let parse_number_text = fun state ->
   match state.input with
@@ -1144,7 +1149,7 @@ let parse_int_generic = fun state ->
     if negative then
       Int.min_int
     else
-      Int.neg Int.max_int
+      -Int.max_int
   in
   let cutoff = limit / 10 in
   let acc = ref 0 in
@@ -1188,7 +1193,7 @@ let parse_int_generic = fun state ->
     | Some actual ->
         error_at
           (Input.position state.input)
-          ("unexpected '" ^ String.make 1 actual ^ "' while parsing number")
+          ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' while parsing number")
     | None ->
         unexpected_end state "number"
   );
@@ -1202,7 +1207,7 @@ let parse_int_generic = fun state ->
   if negative then
     !acc
   else
-    Int.neg !acc
+    - !acc
 
 let parse_int_reader = fun state reader ->
   let fallback () =
@@ -1242,7 +1247,7 @@ let parse_int_reader = fun state reader ->
       if negative then
         Int.min_int
       else
-        Int.neg Int.max_int
+        -Int.max_int
     in
     let cutoff = limit / 10 in
     let acc = ref 0 in
@@ -1290,7 +1295,7 @@ let parse_int_reader = fun state reader ->
       | Some actual ->
           error_at
             (Input.position state.input)
-            ("unexpected '" ^ String.make 1 actual ^ "' while parsing number")
+            ("unexpected '" ^ String.make ~len:1 ~char:actual ^ "' while parsing number")
       | None ->
           unexpected_end state "number"
     );
@@ -1304,7 +1309,7 @@ let parse_int_reader = fun state reader ->
     if negative then
       !acc
     else
-      Int.neg !acc
+      - !acc
   with
   | Use_slow_number_path ->
       reader.Input.pos <- !start;
@@ -1511,11 +1516,11 @@ and list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode 
             reader_advance reader;
             Vector.create ()
         | _ ->
-            let acc = Vector.with_capacity 8 in
+            let acc = Vector.with_capacity ~size:8 in
             let finished = ref false in
             while not !finished do
               let value = decode.run backend state in
-              Vector.push acc value;
+              Vector.push acc ~value;
               reader_skip_whitespace reader;
               match reader_current_char reader with
               | Some ',' ->
@@ -1538,11 +1543,11 @@ and list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode 
           Input.advance state.input;
           Vector.create ()
       | _ ->
-          let acc = Vector.with_capacity 8 in
+          let acc = Vector.with_capacity ~size:8 in
           let finished = ref false in
           while not !finished do
             let value = decode.run backend state in
-            Vector.push acc value;
+            Vector.push acc ~value;
             Input.skip_whitespace state.input;
             match Input.current_char state.input with
             | Some ',' ->
@@ -1718,10 +1723,10 @@ and record_mut_backend:
 and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value = fun state cases ->
   let find_unit tag =
     let rec loop index =
-      if Int.equal index (array__length cases) then
+      if Int.equal index (Array.length cases) then
         raise (Serde.Decode_error `invalid_tag)
       else
-        match array__get cases index with
+        match Array.get_unchecked cases ~at:index with
         | De.Unit (expected, value) when String.equal expected tag -> value
         | _ -> loop (index + 1)
     in
@@ -1729,10 +1734,10 @@ and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value
   in
   let find_object tag =
     let rec loop index =
-      if Int.equal index (array__length cases) then
+      if Int.equal index (Array.length cases) then
         raise (Serde.Decode_error `invalid_tag)
       else
-        match array__get cases index with
+        match Array.get_unchecked cases ~at:index with
         | De.Unit (expected, value) when String.equal expected tag ->
             parse_null state;
             value
@@ -1807,7 +1812,7 @@ let finish = fun state value ->
   ^ Int.to_string (Input.position state.input)))
 
 let of_input = fun decode input ->
-  let state = { input; scratch = IO.Buffer.create 64 } in
+  let state = { input; scratch = IO.Buffer.create ~size:64 } in
   let* value = De.run decode backend state in
   finish state value
 

@@ -1,11 +1,8 @@
 open Std
 open Std.Data
+open Std.Result.Syntax
 open Typ.Model
 open Typ.Session
-
-let ( let* ) = Result.and_then
-
-module LoadedModules = Typ.Model.LoadedModules
 
 let lint_rules = Riot_fix.Pipeline.default_rules ()
 
@@ -177,253 +174,6 @@ let package_library_typ_source_files = fun (pkg: Riot_model.Package.t) ->
       in
       files |> dedupe_paths
 
-let default_registry_name = "pkgs.ml"
-
-let workspace_manifest_path = fun (workspace: Riot_model.Workspace.t) ->
-  Path.(workspace.root / Path.v "riot.toml")
-
-let workspace_can_be_prepared = fun (workspace: Riot_model.Workspace.t) ->
-  match Fs.exists (workspace_manifest_path workspace) with
-  | Ok true -> true
-  | Ok false
-  | Error _ -> false
-
-let prepare_workspace = fun state (workspace: Riot_model.Workspace.t) ->
-  if not (workspace_can_be_prepared workspace) then
-    Some workspace
-  else
-    match Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:default_registry_name () with
-    | Error _ -> None
-    | Ok registry -> Riot_deps.ensure_workspace
-      ~mode:Riot_deps.Dep_solver.Refresh
-      ~registry
-      ~workspace
-      ~workspace_manager:state.workspace_manager
-      ()
-    |> Result.to_option
-
-let workspace_typ_store_root = fun (workspace: Riot_model.Workspace.t) ->
-  Path.(workspace.target_dir_root / Path.v "typ-cache")
-
-let workspace_typ_store = fun (workspace: Riot_model.Workspace.t) ->
-  let contentstore = Contentstore.create
-    ~root:(workspace_typ_store_root workspace)
-    ~policy:Contentstore.Policy.default
-    () in
-  Typ.Store.create contentstore ()
-
-let sanitize_module_name = fun name ->
-  String.map
-    (fun ch ->
-      if ch = '-' then
-        '_'
-      else
-        ch)
-    name
-
-let module_name_for_path = fun path ->
-  path |> Path.remove_extension |> Path.basename |> sanitize_module_name |> String.capitalize_ascii
-
-let load_package_module_typings_from_store = fun store (pkg: Riot_model.Package.t) ->
-  Typ.Store.load_package_module_typings store ~package_name:pkg.name
-
-let persist_module_typings = fun store ?package_name typings ->
-  typings |> List.iter (fun typings -> ignore (Typ.Store.save_module_typings store typings));
-  match package_name with
-  | Some package_name -> ignore (Typ.Store.save_package_module_typings store ~package_name typings)
-  | None -> ()
-
-let persist_module_typings_for_source = fun store snapshot source_id ->
-  match Typ.Query.module_typings_of snapshot source_id with
-  | None -> ()
-  | Some typings -> ignore (Typ.Store.save_module_typings store typings)
-
-let workspace_package_by_name = fun (workspace: Riot_model.Workspace.t) package_name ->
-  workspace.packages |> List.find_opt
-    (fun (pkg: Riot_model.Package.t) ->
-      String.equal pkg.name package_name)
-
-let merge_module_exports = fun preferred fallback ->
-  let rec loop seen acc remaining =
-    match remaining with
-    | [] -> List.rev acc
-    | ((name, _) as export) :: tail ->
-        if List.exists (Typ.Model.SurfacePath.equal name) seen then
-          loop seen acc tail
-        else
-          loop (name :: seen) (export :: acc) tail
-  in
-  loop [] [] (preferred @ fallback)
-
-let type_decl_key = fun (type_decl: FileSummary.type_decl) ->
-  if Typ.Model.SurfacePath.is_empty type_decl.scope_path then
-    type_decl.declaration.type_name
-  else
-    Typ.Model.SurfacePath.append_name type_decl.scope_path type_decl.declaration.type_name
-    |> Typ.Model.SurfacePath.to_string
-
-let merge_module_type_decls = fun preferred fallback ->
-  let rec loop seen acc remaining =
-    match remaining with
-    | [] -> List.rev acc
-    | ((type_decl: FileSummary.type_decl) as candidate) :: tail ->
-        let key = type_decl_key candidate in
-        if List.mem key seen then
-          loop seen acc tail
-        else
-          loop (key :: seen) (candidate :: acc) tail
-  in
-  loop [] [] (preferred @ fallback)
-
-let typings_with_payload = fun template ~source_hash ~exports ~type_decls ->
-  let module_name = ModuleTypings.module_name template in
-  match ModuleTypings.export_result template, exports with
-  | FileSummary.TrustedExport _, _ -> ModuleTypings.trusted ~module_name ~source_hash ~type_decls exports
-  | FileSummary.ErroredExport _, _ -> ModuleTypings.errored ~module_name ~source_hash ~type_decls exports
-  | FileSummary.NoExport, [] -> ModuleTypings.missing ~module_name ~source_hash ~type_decls ()
-  | FileSummary.NoExport, _ -> ModuleTypings.errored ~module_name ~source_hash ~type_decls exports
-
-let merge_module_typings = fun preferred fallback ->
-  let module_name = ModuleTypings.module_name preferred in
-  let exports = merge_module_exports
-    (ModuleTypings.exports preferred)
-    (ModuleTypings.exports fallback) in
-  let type_decls = merge_module_type_decls
-    (ModuleTypings.type_decls preferred)
-    (ModuleTypings.type_decls fallback) in
-  let template =
-    match ModuleTypings.export_result preferred, exports with
-    | FileSummary.NoExport, _ :: _ -> fallback
-    | _ -> preferred
-  in
-  let source_hash = ModuleTypings.synthetic_source_hash
-    ~module_name
-    ~export_result:(ModuleTypings.export_result template)
-    ~type_decls
-    () in
-  typings_with_payload template ~source_hash ~exports ~type_decls
-
-let merge_loaded_module_typings = fun preferred fallback ->
-  LoadedModules.merge
-    ~preferred:(LoadedModules.of_list preferred)
-    ~fallback:(LoadedModules.of_list fallback)
-    ~combine:merge_module_typings
-
-let typ_session_with_paths = fun ~config paths ->
-  paths |> List.fold_left
-    (fun (session, source_ids, sources) path ->
-      match Fs.read path with
-      | Error _ -> (session, source_ids, sources)
-      | Ok text ->
-          match prepared_parse_artifacts ~filename:path text with
-          | None -> (session, source_ids, sources)
-          | Some (parse_result, cst) ->
-              let (session, source_id, source) = add_prepared_typ_source
-                session
-                ~kind:Source.File
-                ~origin:(Source.Path path)
-                ~revision:0
-                ~text
-                ~parse_result
-                ~cst in
-              (session, source_ids @ [ source_id ], sources @ [ source ]))
-    (Typ.Session.empty ~config, [], [])
-
-let module_typings_for_roots = fun session roots ->
-  let summaries_for_snapshot snapshot roots = roots
-  |> List.filter_map (Typ.Query.module_typings_of snapshot) in
-  match Typ.Session.prepare_snapshot session ~roots with
-  | Ok snapshot -> summaries_for_snapshot snapshot roots
-  | Error _ ->
-      roots |> List.filter_map
-        (fun source_id ->
-          match Typ.Session.prepare_snapshot session ~roots:[ source_id ] with
-          | Ok snapshot -> Typ.Query.module_typings_of snapshot source_id
-          | Error _ -> None) |> fun typings ->
-        LoadedModules.values (merge_loaded_module_typings typings [])
-
-let workspace_dependency_packages = fun ~include_dev (workspace: Riot_model.Workspace.t) (
-  pkg: Riot_model.Package.t
-) ->
-  let dependencies =
-    if include_dev then
-      Riot_model.Package.build_graph_dependencies pkg
-    else
-      pkg.dependencies
-  in
-  dependencies
-  |> List.filter_map
-    (fun (dependency: Riot_model.Package.dependency) ->
-      workspace_package_by_name workspace dependency.name)
-  |> List.sort_uniq
-    (fun (left: Riot_model.Package.t) (right: Riot_model.Package.t) ->
-      String.compare left.name right.name)
-
-let workspace_module_typings_for_package =
-  let rec load cache typ_store (workspace: Riot_model.Workspace.t) ?(visiting = []) (
-    pkg: Riot_model.Package.t
-  ) =
-    match List.assoc_opt pkg.name !cache with
-    | Some typings ->
-        typings
-    | None when List.mem pkg.name visiting ->
-        LoadedModules.empty
-    | None ->
-        let dependency_typings = workspace_dependency_packages ~include_dev:false workspace pkg
-        |> List.fold_left
-          (fun loaded_modules dependency_pkg ->
-            LoadedModules.merge
-              ~preferred:loaded_modules
-              ~fallback:(load cache typ_store workspace ~visiting:(pkg.name :: visiting) dependency_pkg)
-              ~combine:merge_module_typings)
-          LoadedModules.empty in
-        let package_typings =
-          match load_package_module_typings_from_store typ_store pkg with
-          | Some typings -> LoadedModules.of_list typings
-          | None ->
-              let loaded_modules = LoadedModules.merge
-                ~preferred:dependency_typings
-                ~fallback:Typ.Config.default.loaded_modules
-                ~combine:merge_module_typings in
-              let config = Typ.Config.default
-              |> Typ.Config.with_loaded_module_index ~loaded_modules
-              |> Typ.Config.with_store ~store:(Some typ_store) in
-              let root_paths = package_library_typ_source_files pkg in
-              let (session, source_ids, sources) = typ_session_with_paths
-                ~config
-                (package_typ_summary_source_files pkg) in
-              let typings =
-                let roots =
-                  List.fold_left2
-                    (fun roots source_id (source: Source.t) ->
-                      match source.origin with
-                      | Source.Path path when List.exists
-                        (fun root_path ->
-                          Path.equal root_path path)
-                        root_paths -> roots @ [ source_id ]
-                      | _ -> roots)
-                    []
-                    source_ids
-                    sources
-                in
-                match roots with
-                | [] -> []
-                | _ -> module_typings_for_roots session roots
-              in
-              let () = persist_module_typings typ_store ~package_name:pkg.name typings in
-              LoadedModules.of_list typings
-        in
-        let typings = LoadedModules.merge
-          ~preferred:package_typings
-          ~fallback:dependency_typings
-          ~combine:merge_module_typings in
-        let () =
-          cache := (pkg.name, typings) :: !cache
-        in
-        typings
-  in
-  load
-
 let typ_target_files = fun state ->
   fun (document: document) ->
     match document.path with
@@ -455,48 +205,9 @@ let text_for_path = fun state path ->
       | Error _ -> None
     )
 
-let typ_config_for_document = fun state ->
-  fun (document: document) ->
-    match document.path with
-    | None -> Typ.Config.default
-    | Some path -> (
-        match package_scope_for_file state path with
-        | None -> Typ.Config.default
-        | Some pkg -> (
-            match Riot_model.Workspace_manager.scan state.workspace_manager pkg.path with
-            | Error _ -> Typ.Config.default
-            | Ok (workspace, _errors) ->
-                let workspace =
-                  match prepare_workspace state workspace with
-                  | Some prepared_workspace -> prepared_workspace
-                  | None -> workspace
-                in
-                let typ_store = workspace_typ_store workspace in
-                let summary_cache = ref [] in
-                let dependency_summaries = workspace_dependency_packages
-                  ~include_dev:true
-                  workspace
-                  pkg
-                |> List.fold_left
-                  (fun loaded_modules dependency_pkg ->
-                    LoadedModules.merge
-                      ~preferred:loaded_modules
-                      ~fallback:(workspace_module_typings_for_package
-                        summary_cache
-                        typ_store
-                        workspace
-                        dependency_pkg)
-                      ~combine:merge_module_typings)
-                  LoadedModules.empty in
-                let loaded_modules = LoadedModules.merge
-                  ~preferred:dependency_summaries
-                  ~fallback:Typ.Config.default.loaded_modules
-                  ~combine:merge_module_typings in
-                Typ.Config.default
-                |> Typ.Config.with_loaded_module_index ~loaded_modules
-                |> Typ.Config.with_store ~store:(Some typ_store)
-          )
-      )
+let typ_config_for_document = fun _state ->
+  fun (_document: document) ->
+    Typ.Config.default
 
 let typ_snapshot_for_document = fun state ->
   fun (document: document) ->
@@ -544,13 +255,7 @@ let typ_snapshot_for_document = fun state ->
     match from_paths with
     | (session, Some source_id, sources) -> (
         match Typ.Session.prepare_snapshot session ~roots:[ source_id ] with
-        | Ok snapshot ->
-            let () =
-              match config.Typ.Config.store with
-              | None -> ()
-              | Some store -> persist_module_typings_for_source store snapshot source_id
-            in
-            Some (snapshot, source_id)
+        | Ok snapshot -> Some (snapshot, source_id)
         | Error _ -> Snapshot.make ~revision:document.version ~roots:[ source_id ] ~config ~sources
         |> fun snapshot -> Some (snapshot, source_id)
       )
@@ -568,13 +273,7 @@ let typ_snapshot_for_document = fun state ->
               ~parse_result
               ~cst in
             match Typ.Session.prepare_snapshot session ~roots:[ source_id ] with
-            | Ok snapshot ->
-                let () =
-                  match config.Typ.Config.store with
-                  | None -> ()
-                  | Some store -> persist_module_typings_for_source store snapshot source_id
-                in
-                Some (snapshot, source_id)
+            | Ok snapshot -> Some (snapshot, source_id)
             | Error _ -> Snapshot.make
               ~revision:document.version
               ~roots:[ source_id ]

@@ -861,7 +861,7 @@ let test_ref_depend_on_self_impossible =
           Ok ()
       | Ok (Pubgrub.Solver.Success sol) ->
           let packages =
-            List.map (fun ((name, _)) -> name) sol
+            List.map sol ~fn:(fun (name, _) -> name)
           in
           Error ("Expected failure but got success: " ^ (String.concat ", " packages))
       | Error err ->
@@ -964,7 +964,7 @@ let test_conflict_partial_satisfier_variant =
       match Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
       | Ok (Pubgrub.Solver.Success solution) ->
           let packages =
-            List.map (fun ((name, ver)) -> name ^ "@" ^ (Pubgrub.version_to_string ver)) solution
+            List.map solution ~fn:(fun (name, ver) -> name ^ "@" ^ (Pubgrub.version_to_string ver))
           in
           if List.length solution = 3 then
             Ok ()
@@ -985,7 +985,7 @@ let test_ref_conflict_partial_satisfier =
       match Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0) with
       | Ok (Pubgrub.Solver.Success solution) ->
           let packages =
-            List.map (fun ((name, ver)) -> name ^ "@" ^ (Pubgrub.version_to_string ver)) solution
+            List.map solution ~fn:(fun (name, ver) -> name ^ "@" ^ (Pubgrub.version_to_string ver))
           in
           if List.length solution = 3 then
             Ok ()
@@ -1025,7 +1025,7 @@ let test_ref_double_choices =
       match Pubgrub.solve (Pubgrub.to_provider provider) "a" (v 0 0 0) with
       | Ok (Pubgrub.Solver.Success solution) ->
           let packages =
-            List.map (fun ((name, ver)) -> name ^ "@" ^ (Pubgrub.version_to_string ver)) solution
+            List.map solution ~fn:(fun (name, ver) -> name ^ "@" ^ (Pubgrub.version_to_string ver))
           in
           if List.length solution = 4 then
             Ok ()

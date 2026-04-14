@@ -174,10 +174,10 @@ let tests = [
       let map = Swisstable.create () in
       (* Pre-create keys to ensure consistent hashing *)
       let keys =
-        Collections.Array.init 100 (fun i -> "key" ^ string_of_int i)
+        Collections.Array.init ~count:100 ~fn:(fun i -> "key" ^ string_of_int i)
       in
       for i = 0 to 99 do
-        let key = Collections.Array.get keys i in
+        let key = Collections.Array.get_unchecked keys ~at:i in
         let _ = Swisstable.insert map key i in
         ()
       done;
@@ -187,7 +187,7 @@ let tests = [
         if i > 99 then
           Ok ()
         else
-          let key = Collections.Array.get keys i in
+          let key = Collections.Array.get_unchecked keys ~at:i in
           match Swisstable.get map key with
           | Some v when v = i -> verify (i + 1)
           | _ -> Error ("Failed at key " ^ key)

@@ -1,10 +1,9 @@
 open Std
+open Std.Result.Syntax
 module Vector = Collections.Vector
 module Test = Std.Test
 module De = Serde.De
 module Ser = Serde.Ser
-
-let ( let* ) = Result.and_then
 
 let io_writer_of_buffer =
   let module Write = struct
@@ -18,10 +17,9 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.iter bufs
-        (fun { ba; off; len } ->
-          IO.Buffer.add_string buffer (IO.Bytes.sub_string ba off len);
-          written := !written + len);
+      IO.Iovec.for_each ~fn:(fun { buffer = chunk; offset; length } ->
+          IO.Buffer.add_subbytes buffer chunk offset length;
+          written := !written + length) bufs;
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -175,7 +173,7 @@ let expect_equal = fun ~expected ~actual ~message ->
 
 let vec_to_list = fun values ->
   let items = ref [] in
-  Vector.iter (fun value -> items := value :: !items) values;
+  Vector.for_each values ~fn:(fun value -> items := value :: !items);
   List.rev !items
 
 let equal_person = fun (left: person) (right: person) ->
@@ -201,7 +199,7 @@ let test_decodes_record_and_skips_unknown_fields = fun _ctx ->
     name = "Luffy";
     age = 19;
     active = true;
-    tags = Vector.of_list [ "riot"; "serde" ];
+    tags = Vector.from_list [ "riot"; "serde" ];
     nickname = None;
     pet = Dog "Chouchou";
   }
@@ -220,7 +218,7 @@ let test_decodes_unit_variant = fun _ctx ->
     name = "Luffy";
     age = 19;
     active = true;
-    tags = Vector.of_list [ "riot" ];
+    tags = Vector.from_list [ "riot" ];
     nickname = Some "strawhat";
     pet = Cat;
   }
@@ -239,7 +237,7 @@ let test_decodes_from_reader = fun _ctx ->
     name = "Luffy";
     age = 19;
     active = true;
-    tags = Vector.of_list [ "riot" ];
+    tags = Vector.from_list [ "riot" ];
     nickname = Some "strawhat";
     pet = Cat;
   }
@@ -279,7 +277,7 @@ let test_encodes_record = fun _ctx ->
     name = "Luffy";
     age = 19;
     active = true;
-    tags = Vector.of_list [ "riot"; "serde" ];
+    tags = Vector.from_list [ "riot"; "serde" ];
     nickname = None;
     pet = Dog "Chouchou";
   }
@@ -294,7 +292,7 @@ let test_encodes_escaped_strings = fun _ctx ->
     name = "Luf\"fy\n";
     age = 19;
     active = true;
-    tags = Vector.of_list [ "ri\\ot" ];
+    tags = Vector.from_list [ "ri\\ot" ];
     nickname = Some "strawhat\t";
     pet = Cat;
   }
@@ -309,13 +307,13 @@ let test_writes_to_writer = fun _ctx ->
     name = "Luffy";
     age = 19;
     active = true;
-    tags = Vector.of_list [ "riot"; "serde" ];
+    tags = Vector.from_list [ "riot"; "serde" ];
     nickname = None;
     pet = Dog "Chouchou";
   }
   in
   let expected = {|{"name":"Luffy","age":19,"active":true,"tags":["riot","serde"],"nickname":null,"pet":{"Dog":"Chouchou"}}|} in
-  let buffer = IO.Buffer.create 128 in
+  let buffer = IO.Buffer.create ~size:128 in
   match Serde_json.to_writer person_encode (io_writer_of_buffer buffer) person with
   | Ok () -> expect_equal ~expected ~actual:(IO.Buffer.contents buffer) ~message:"expected serde-json encoder to write JSON to an IO.Writer"
   | Error err -> Error ("writer encode failed: " ^ Serde.Error.to_string err)
@@ -325,7 +323,7 @@ let test_roundtrips_record = fun _ctx ->
     name = "Luffy";
     age = 19;
     active = true;
-    tags = Vector.of_list [ "riot"; "serde" ];
+    tags = Vector.from_list [ "riot"; "serde" ];
     nickname = Some "strawhat";
     pet = Cat;
   }
@@ -370,6 +368,15 @@ let test_roundtrips_large_float = fun _ctx ->
   ^ encoded)
   | Error err -> Error ("float decode failed: " ^ Serde.Error.to_string err)
 
+let test_decodes_negative_int64_across_reader_chunk_boundary = fun _ctx ->
+  match Serde_json.of_reader De.int64 (String.to_reader ~chunk_size:1 "-1689690667") with
+  | Ok actual ->
+      expect_equal
+        ~expected:(-1689690667L)
+        ~actual
+        ~message:"expected serde-json to decode a negative int64 when the sign and digits are split across reader chunks"
+  | Error err -> Error ("reader decode failed: " ^ Serde.Error.to_string err)
+
 let tests =
   Test.[
     case "serde-json parses records and skips unknown fields" test_decodes_record_and_skips_unknown_fields;
@@ -383,6 +390,9 @@ let tests =
     case "serde-json roundtrips records" test_roundtrips_record;
     case "serde-json roundtrips arrays" test_roundtrips_arrays;
     case "serde-json roundtrips large floats" test_roundtrips_large_float;
+    case
+      "serde-json decodes negative int64 across reader chunk boundary"
+      test_decodes_negative_int64_across_reader_chunk_boundary;
   ]
 
 let () =

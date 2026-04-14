@@ -19,12 +19,12 @@ let test_complex_nested_layout = fun _ctx ->
   let commands = layout ~config:(make_config ()) elem in
   let text_count =
     List.fold_left
-      (fun acc cmd ->
+      commands
+      ~acc:0
+      ~fn:(fun acc cmd ->
         match cmd.Render.command_type with
         | Text _ -> acc + 1
         | _ -> acc)
-      0
-      commands
   in
   if text_count = 4 then
     Ok ()
@@ -36,11 +36,11 @@ let test_flexbox_style_layout = fun _ctx ->
   let commands = layout ~config:(make_config ()) elem in
   let text_positions =
     List.filter_map
-      (fun cmd ->
+      commands
+      ~fn:(fun cmd ->
         match cmd.Render.command_type with
         | Text { content; _ } -> Some (content, cmd.bounding_box.x)
         | _ -> None)
-      commands
   in
   match text_positions with
   | [("Left", x1);("Right", x2)] when x1 = 0.0 && x2 > 10.0 -> Ok ()
@@ -55,17 +55,17 @@ let test_responsive_percent_sizing = fun _ctx ->
   let commands = layout ~config:(make_config ()) elem in
   let widths =
     List.filter_map
-      (fun cmd ->
+      commands
+      ~fn:(fun cmd ->
         match cmd.Render.command_type with
         | Rectangle _ -> Some cmd.bounding_box.width
         | _ -> None)
-      commands
   in
   if widths = [ 24.0; 56.0 ] then
     Ok ()
   else
     Error ("Expected widths [24.0; 56.0] (30% and 70% of 80.0), got ["
-    ^ String.concat "; " (List.map Float.to_string widths)
+    ^ String.concat "; " (List.map widths ~fn:Float.to_string)
     ^ "]")
 
 let test_card_ui_pattern = fun _ctx ->
@@ -83,21 +83,21 @@ let test_card_ui_pattern = fun _ctx ->
   let commands = layout ~config:(make_config ()) card in
   let rect_count =
     List.fold_left
-      (fun acc cmd ->
+      commands
+      ~acc:0
+      ~fn:(fun acc cmd ->
         match cmd.Render.command_type with
         | Rectangle _ -> acc + 1
         | _ -> acc)
-      0
-      commands
   in
   let text_count =
     List.fold_left
-      (fun acc cmd ->
+      commands
+      ~acc:0
+      ~fn:(fun acc cmd ->
         match cmd.Render.command_type with
         | Text _ -> acc + 1
         | _ -> acc)
-      0
-      commands
   in
   if rect_count >= 2 && text_count = 2 then
     Ok ()
@@ -125,11 +125,11 @@ let test_grid_like_layout = fun _ctx ->
   let commands = layout ~config:(make_config ()) grid in
   let colors =
     List.filter_map
-      (fun cmd ->
+      commands
+      ~fn:(fun cmd ->
         match cmd.Render.command_type with
         | Rectangle { color; _ } -> Some color
         | _ -> None)
-      commands
   in
   if colors = [ `rgb (255, 0, 0); `rgb (0, 255, 0); `rgb (0, 0, 255); `rgb (255, 255, 0); ] then
     Ok ()
@@ -149,7 +149,8 @@ let test_alignment_with_fixed_sizes = fun _ctx ->
   let commands = layout ~config:(make_config ()) elem in
   let boxes =
     List.filter_map
-      (fun cmd ->
+      commands
+      ~fn:(fun cmd ->
         match cmd.Render.command_type with
         | Rectangle _ -> Some (
           cmd.bounding_box.x,
@@ -158,7 +159,6 @@ let test_alignment_with_fixed_sizes = fun _ctx ->
           cmd.bounding_box.height
         )
         | _ -> None)
-      commands
   in
   if boxes = [ (0.0, 0.0, 30.0, 10.0); (0.0, 10.0, 40.0, 15.0); ] then
     Ok ()

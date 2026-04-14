@@ -127,10 +127,9 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.iter bufs
-        (fun { ba; off; len } ->
-          IO.Buffer.add_string buffer (IO.Bytes.sub_string ba off len);
-          written := !written + len);
+      IO.Iovec.for_each ~fn:(fun { buffer = chunk; offset; length } ->
+          IO.Buffer.add_subbytes buffer chunk offset length;
+          written := !written + length) bufs;
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -323,37 +322,37 @@ let manifest_encode = Ser.record
   )
 
 let repeat = fun text count ->
-  let buffer = IO.Buffer.create (String.length text * count) in
+  let buffer = IO.Buffer.create ~size:(String.length text * count) in
   for _ = 1 to count do
     IO.Buffer.add_string buffer text
   done;
   IO.Buffer.contents buffer
 
 let tags_of_count = fun count ->
-  let tags = Vector.with_capacity count in
+  let tags = Vector.with_capacity ~size:count in
   for index = 0 to count - 1 do
-    Vector.push tags ("log-pose-" ^ Int.to_string index)
+    Vector.push tags ~value:("log-pose-" ^ Int.to_string index)
   done;
   tags
 
-let scores_of_count = fun count -> array__init count (fun index -> (index * 97) mod 1_000_000)
+let scores_of_count = fun count -> Array.init ~count ~fn:(fun index -> (index * 97) mod 1_000_000)
 
 let stop_of_index = fun index prefix ->
   ({ island = prefix ^ "-island-" ^ Int.to_string index; supplies = (index * 17) mod 10_000 }: stop)
 
 let stops_vec_of_count = fun count prefix ->
-  let stops = Vector.with_capacity count in
+  let stops = Vector.with_capacity ~size:count in
   for index = 0 to count - 1 do
-    Vector.push stops (stop_of_index index prefix)
+    Vector.push stops ~value:(stop_of_index index prefix)
   done;
   stops
 
 let stops_array_of_count = fun count prefix ->
-  array__init count (fun index -> stop_of_index index prefix)
+  Array.init ~count ~fn:(fun index -> stop_of_index index prefix)
 
 let vec_to_list = fun values ->
   let items = ref [] in
-  Vector.iter (fun value -> items := value :: !items) values;
+  Vector.for_each values ~fn:(fun value -> items := value :: !items);
   List.rev !items
 
 let equal_manifest = fun (left: manifest) (right: manifest) ->
@@ -368,8 +367,8 @@ let equal_manifest = fun (left: manifest) (right: manifest) ->
   && left.home = right.home
   && vec_to_list left.tags = vec_to_list right.tags
   && left.scores = right.scores
-  && List.for_all2 ( = ) (vec_to_list left.stops) (vec_to_list right.stops)
-  && List.for_all2 ( = ) (Array.to_list left.mirrors) (Array.to_list right.mirrors)
+  && vec_to_list left.stops = vec_to_list right.stops
+  && Array.to_list left.mirrors = Array.to_list right.mirrors
 
 let build_fixture = fun
   ({
@@ -424,7 +423,7 @@ let bench_encode_in_memory = fun fixture () ->
   ignore (Serde_cbor.to_string manifest_encode fixture.value)
 
 let bench_encode_writer = fun fixture () ->
-  let buffer = IO.Buffer.create (String.length fixture.encoded) in
+  let buffer = IO.Buffer.create ~size:(String.length fixture.encoded) in
   ignore (Serde_cbor.to_writer manifest_encode (io_writer_of_buffer buffer) fixture.value)
 
 let bench_decode_in_memory = fun fixture () ->

@@ -115,10 +115,9 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.iter bufs
-        (fun { ba; off; len } ->
-          IO.Buffer.add_string buffer (IO.Bytes.sub_string ba off len);
-          written := !written + len);
+      IO.Iovec.for_each bufs ~fn:(fun { buffer = chunk; offset; length } ->
+        IO.Buffer.add_subbytes buffer chunk offset length;
+        written := !written + length);
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -275,7 +274,7 @@ let manifest_encode = Ser.record
     ])
 
 let repeat = fun text count ->
-  let buffer = IO.Buffer.create (String.length text * count) in
+  let buffer = IO.Buffer.create ~size:(String.length text * count) in
   for _index = 1 to count do
     IO.Buffer.add_string buffer text
   done;
@@ -287,31 +286,32 @@ let status_to_string = function
   | Archived -> "Archived"
 
 let tags_of_count = fun count ->
-  let tags = Vector.with_capacity count in
+  let tags = Vector.with_capacity ~size:count in
   for index = 0 to count - 1 do
-    Vector.push tags ("grand-line-marker-" ^ Int.to_string index)
+    Vector.push tags ~value:("grand-line-marker-" ^ Int.to_string index)
   done;
   tags
 
-let scores_of_count = fun count -> array__init count (fun index -> (index * 97) mod 1_000_000)
+let scores_of_count = fun count ->
+  Array.init ~count ~fn:(fun index -> (index * 97) mod 1_000_000)
 
 let vec_to_list = fun values ->
   let items = ref [] in
-  Vector.iter (fun value -> items := value :: !items) values;
+  Vector.for_each values ~fn:(fun value -> items := value :: !items);
   List.rev !items
 
 let stop_of_index = fun index prefix ->
   ({ island = prefix ^ "-island-" ^ Int.to_string index; supplies = (index * 17) mod 10_000 }: stop)
 
 let stops_vec_of_count = fun count prefix ->
-  let stops = Vector.with_capacity count in
+  let stops = Vector.with_capacity ~size:count in
   for index = 0 to count - 1 do
-    Vector.push stops (stop_of_index index prefix)
+    Vector.push stops ~value:(stop_of_index index prefix)
   done;
   stops
 
 let stops_array_of_count = fun count prefix ->
-  array__init count (fun index -> stop_of_index index prefix)
+  Array.init ~count ~fn:(fun index -> stop_of_index index prefix)
 
 let stop_to_toml = fun (value: stop) ->
   Toml.Table [ ("island", Toml.String value.island); ("supplies", Toml.Int value.supplies) ]
@@ -326,10 +326,10 @@ let manifest_to_toml = fun (value: manifest) ->
     ("crew_count", Toml.Int value.crew_count);
     ("status", Toml.String (status_to_string value.status));
     ("home", berth_to_toml value.home);
-    ("tags", Toml.Array (vec_to_list value.tags |> List.map (fun item -> Toml.String item)));
-    ("scores", Toml.Array (Array.to_list value.scores |> List.map (fun item -> Toml.Int item)));
-    ("stops", Toml.Array (vec_to_list value.stops |> List.map stop_to_toml));
-    ("mirrors", Toml.Array (Array.to_list value.mirrors |> List.map stop_to_toml));
+    ("tags", Toml.Array (vec_to_list value.tags |> List.map ~fn:(fun item -> Toml.String item)));
+    ("scores", Toml.Array (Array.to_list value.scores |> List.map ~fn:(fun item -> Toml.Int item)));
+    ("stops", Toml.Array (vec_to_list value.stops |> List.map ~fn:stop_to_toml));
+    ("mirrors", Toml.Array (Array.to_list value.mirrors |> List.map ~fn:stop_to_toml));
   ]
 
 let bool_of_toml = function
@@ -380,10 +380,10 @@ let berth_of_toml = fun value ->
   )
 
 let vec_of_list = fun values ->
-  let vec = Vector.with_capacity (List.length values) in
+  let vec = Vector.with_capacity ~size:(List.length values) in
   List.iter
     (fun value ->
-      Vector.push vec value)
+      Vector.push vec ~value)
     values;
   vec
 
@@ -395,10 +395,10 @@ let manifest_of_toml = fun value ->
       crew_count = int_of_toml (field table "crew_count");
       status = status_of_string (string_of_toml (field table "status"));
       home = berth_of_toml (field table "home");
-      tags = field table "tags" |> array_of_toml |> List.map string_of_toml |> vec_of_list;
-      scores = field table "scores" |> array_of_toml |> List.map int_of_toml |> Array.of_list;
-      stops = field table "stops" |> array_of_toml |> List.map stop_of_toml |> vec_of_list;
-      mirrors = field table "mirrors" |> array_of_toml |> List.map stop_of_toml |> Array.of_list;
+      tags = field table "tags" |> array_of_toml |> List.map ~fn:string_of_toml |> vec_of_list;
+      scores = field table "scores" |> array_of_toml |> List.map ~fn:int_of_toml |> Array.of_list;
+      stops = field table "stops" |> array_of_toml |> List.map ~fn:stop_of_toml |> vec_of_list;
+      mirrors = field table "mirrors" |> array_of_toml |> List.map ~fn:stop_of_toml |> Array.of_list;
     }: manifest)
 
 let equal_stop = fun (left: stop) (right: stop) ->
@@ -408,6 +408,11 @@ let equal_berth = fun (left: berth) (right: berth) ->
   String.equal left.island right.island && Int.equal left.berth right.berth
 
 let equal_manifest = fun (left: manifest) (right: manifest) ->
+  let equal_lists equal left right =
+    match List.compare_lengths ~left ~right with
+    | 0 -> List.zip left right |> List.all ~fn:(fun (left, right) -> equal left right)
+    | _ -> false
+  in
   String.equal left.ship right.ship
   && Bool.equal left.emergency right.emergency
   && Int.equal left.crew_count right.crew_count
@@ -415,8 +420,8 @@ let equal_manifest = fun (left: manifest) (right: manifest) ->
   && equal_berth left.home right.home
   && vec_to_list left.tags = vec_to_list right.tags
   && Array.to_list left.scores = Array.to_list right.scores
-  && List.for_all2 equal_stop (vec_to_list left.stops) (vec_to_list right.stops)
-  && List.for_all2 equal_stop (Array.to_list left.mirrors) (Array.to_list right.mirrors)
+  && equal_lists equal_stop (vec_to_list left.stops) (vec_to_list right.stops)
+  && equal_lists equal_stop (Array.to_list left.mirrors) (Array.to_list right.mirrors)
 
 let build_fixture = fun
   ({
@@ -475,7 +480,7 @@ let bench_serde_encode_in_memory = fun fixture () ->
   ignore (Serde_toml.to_string manifest_encode fixture.value)
 
 let bench_serde_encode_writer = fun fixture () ->
-  let buffer = IO.Buffer.create (String.length fixture.encoded) in
+  let buffer = IO.Buffer.create ~size:(String.length fixture.encoded) in
   ignore (Serde_toml.to_writer manifest_encode (io_writer_of_buffer buffer) fixture.value)
 
 let bench_serde_decode_in_memory = fun fixture () ->

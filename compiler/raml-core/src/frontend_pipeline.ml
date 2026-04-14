@@ -34,7 +34,7 @@ let env_to_json = fun env ->
   Json.array
     (env
     |> List.map
-      (fun (name, scheme) ->
+      ~fn:(fun (name, scheme) ->
         Json.obj
           [
             ("name", Json.string name);
@@ -61,20 +61,22 @@ let typing_state_of_parse_failure = fun parse_result error ->
       Typ.Model.Diagnostic.CstBuilderError { builder_error }
     ]
   in
-  let errors = (parse_diagnostics |> List.map Syn.Diagnostic.to_json |> List.map (wrap_issue "parse"))
+  let errors =
+    (parse_diagnostics |> List.map ~fn:Syn.Diagnostic.to_json |> List.map ~fn:(wrap_issue "parse"))
   @ (lowering_diagnostics
-  |> List.map Typ.Model.Diagnostic.to_json
-  |> List.map (wrap_issue "lowering")) in
+  |> List.map ~fn:Typ.Model.Diagnostic.to_json
+  |> List.map ~fn:(wrap_issue "lowering"))
+  in
   {
     json = Json.obj
       [
         ("status", Json.string "error");
         ("completeness", Json.string "partial");
         ("file_summary", Json.null);
-        ("parse_diagnostics", Json.array (List.map Syn.Diagnostic.to_json parse_diagnostics));
+        ("parse_diagnostics", Json.array (List.map parse_diagnostics ~fn:Syn.Diagnostic.to_json));
         (
           "lowering_diagnostics",
-          Json.array (List.map Typ.Model.Diagnostic.to_json lowering_diagnostics)
+          Json.array (List.map lowering_diagnostics ~fn:Typ.Model.Diagnostic.to_json)
         );
         ("typing_diagnostics", Json.array []);
         ("exports", Json.array []);
@@ -90,14 +92,17 @@ let typing_state_of_parse_failure = fun parse_result error ->
 let typing_state_of_report = fun (report: Typ.Analysis.Check_result.t) ->
   let completeness = Typ.Model.FileSummary.completeness report.file_summary in
   let parse_issues = report.parse_diagnostics
-  |> List.map Syn.Diagnostic.to_json
-  |> List.map (wrap_issue "parse") in
+  |> List.map ~fn:Syn.Diagnostic.to_json
+  |> List.map ~fn:(wrap_issue "parse")
+  in
   let lowering_issues = report.lowering_diagnostics
-  |> List.map Typ.Model.Diagnostic.to_json
-  |> List.map (wrap_issue "lowering") in
+  |> List.map ~fn:Typ.Model.Diagnostic.to_json
+  |> List.map ~fn:(wrap_issue "lowering")
+  in
   let typing_issues = report.typing_diagnostics
-  |> List.map Typ.Model.Diagnostic.to_json
-  |> List.map (wrap_issue "typing") in
+  |> List.map ~fn:Typ.Model.Diagnostic.to_json
+  |> List.map ~fn:(wrap_issue "typing")
+  in
   let has_errors =
     report.parse_diagnostics <> []
     || report.lowering_diagnostics <> []
@@ -127,13 +132,13 @@ let typing_state_of_report = fun (report: Typ.Analysis.Check_result.t) ->
             Typ.Model.FileSummary.to_json report.file_summary
           ); (
             "parse_diagnostics",
-            Json.array (List.map Syn.Diagnostic.to_json report.parse_diagnostics)
+            Json.array (List.map report.parse_diagnostics ~fn:Syn.Diagnostic.to_json)
           ); (
             "lowering_diagnostics",
-            Json.array (List.map Typ.Model.Diagnostic.to_json report.lowering_diagnostics)
+            Json.array (List.map report.lowering_diagnostics ~fn:Typ.Model.Diagnostic.to_json)
           ); (
             "typing_diagnostics",
-            Json.array (List.map Typ.Model.Diagnostic.to_json report.typing_diagnostics)
+            Json.array (List.map report.typing_diagnostics ~fn:Typ.Model.Diagnostic.to_json)
           ); ("exports", env_to_json report.exports); ];
     semantic_tree =
       if is_complete then
@@ -181,7 +186,7 @@ let compile_source = fun ~config ~relpath ~source ->
               compilation_unit
             | Error errors -> Pipeline_stage.error
               ~stage:"core_ir"
-              (List.map Typ_lowering.error_to_json errors)
+              (List.map errors ~fn:Typ_lowering.error_to_json)
           )
       in
       {

@@ -22,7 +22,7 @@ let main = fun ~args ->
 let should_autorun =
   match Std.Env.args with
   | argv0 :: _ -> (
-      match Path.of_string argv0 with
+      match Path.from_string argv0 with
       | Ok path -> Path.basename path = name
       | Error _ -> argv0 = name
     )

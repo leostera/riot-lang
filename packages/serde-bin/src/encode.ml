@@ -1,4 +1,5 @@
 open Std
+module Array = Collections.Array
 module Vector = Collections.Vector
 
 type encode_target =
@@ -64,7 +65,7 @@ let write_subbytes = fun state source ~off ~len ->
     | Bytes_target target ->
         if int_gt (target.pos + len) (IO.Bytes.length target.dst) then
           raise_no_space ();
-        IO.Bytes.blit source off target.dst target.pos len;
+        IO.Bytes.blit_unchecked source ~src_offset:off ~dst:target.dst ~dst_offset:target.pos ~len;
         target.pos <- target.pos + len
 
 let write_char = fun state value ->
@@ -72,11 +73,11 @@ let write_char = fun state value ->
   | Bytes_target target ->
       if int_gt (target.pos + 1) (IO.Bytes.length target.dst) then
         raise_no_space ();
-      IO.Bytes.set target.dst target.pos value;
+      IO.Bytes.set_unchecked target.dst ~at:target.pos ~char:value;
       target.pos <- target.pos + 1
   | Buffer_target
   | Writer_target _ ->
-      IO.Bytes.set state.scratch 0 value;
+      IO.Bytes.set_unchecked state.scratch ~at:0 ~char:value;
       write_subbytes state state.scratch ~off:0 ~len:1
 
 let write_string = fun state value ->
@@ -90,7 +91,7 @@ let write_string = fun state value ->
     | Bytes_target target ->
         if int_gt (target.pos + len) (IO.Bytes.length target.dst) then
           raise_no_space ();
-        IO.Bytes.blit_string value 0 target.dst target.pos len;
+        IO.Bytes.blit_string value ~src_offset:0 ~dst:target.dst ~dst_offset:target.pos ~len;
         target.pos <- target.pos + len
 
 let write_uint32_le = fun state value ->
@@ -146,40 +147,37 @@ let encode_u32 = fun kind value ->
     raise_length_out_of_range kind value
   else
     let value64 = Int64.of_int value in
-    if int_gt (Int64.unsigned_compare value64 0xffff_ffffL) 0 then
+    if Int64.compare value64 0xffff_ffffL > 0 then
       raise_length_out_of_range kind value
     else
       Int64.to_int value64
 
-let variant_uses_u8 = fun cases -> int_le (array__length cases) 0x100
+let variant_uses_u8 = fun cases -> int_le (Array.length cases) 0x100
 
 let rec list_backend: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
   write_uint32_le state (encode_u32 "list" (Vector.len values));
-  Vector.iter
-    (fun value ->
-      encode.run backend state value)
-    values
+  Vector.for_each values ~fn:(fun value -> encode.run backend state value)
 
 and array_backend: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit = fun state encode values ->
-  let len = array__length values in
+  let len = Array.length values in
   write_uint32_le state (encode_u32 "array" len);
   for index = 0 to len - 1 do
-    encode.run backend state (array__get values index)
+    encode.run backend state (Array.get_unchecked values ~at:index)
   done
 
 and record_backend: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit = fun state fields value ->
-  for index = 0 to array__length fields - 1 do
-    match array__get fields index with
+  for index = 0 to Array.length fields - 1 do
+    match Array.get_unchecked fields ~at:index with
     | Serde.Ser.Field (_name, encode, get) -> encode.run backend state (get value)
   done
 
 and variant_backend: 'value. state -> 'value Serde.Ser.variant_cases -> 'value -> unit = fun state cases value ->
   let compact_tag = variant_uses_u8 cases in
   let rec loop index =
-    if Int.equal index (array__length cases) then
+    if Int.equal index (Array.length cases) then
       raise (Serde.Encode_error `invalid_tag)
     else
-      match array__get cases index with
+      match Array.get_unchecked cases ~at:index with
       | Serde.Ser.Unit (_tag, matches) ->
           if matches value then
             if compact_tag then
@@ -232,20 +230,17 @@ and backend: state Serde.Ser.backend = {
 
 let rec size_list_backend: 'value. size_state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
   state.bytes_written <- state.bytes_written + 4;
-  Vector.iter
-    (fun value ->
-      encode.run size_backend state value)
-    values
+  Vector.for_each values ~fn:(fun value -> encode.run size_backend state value)
 
 and size_array_backend: 'value. size_state -> 'value Serde.Ser.t -> 'value array -> unit = fun state encode values ->
   state.bytes_written <- state.bytes_written + 4;
-  for index = 0 to array__length values - 1 do
-    encode.run size_backend state (array__get values index)
+  for index = 0 to Array.length values - 1 do
+    encode.run size_backend state (Array.get_unchecked values ~at:index)
   done
 
 and size_record_backend: 'value. size_state -> 'value Serde.Ser.fields -> 'value -> unit = fun state fields value ->
-  for index = 0 to array__length fields - 1 do
-    match array__get fields index with
+  for index = 0 to Array.length fields - 1 do
+    match Array.get_unchecked fields ~at:index with
     | Serde.Ser.Field (_name, encode, get) -> encode.run size_backend state (get value)
   done
 
@@ -257,10 +252,10 @@ and size_variant_backend: 'value. size_state -> 'value Serde.Ser.variant_cases -
       4
   in
   let rec loop index =
-    if Int.equal index (array__length cases) then
+    if Int.equal index (Array.length cases) then
       raise (Serde.Encode_error `invalid_tag)
     else
-      match array__get cases index with
+      match Array.get_unchecked cases ~at:index with
       | Serde.Ser.Unit (_tag, matches) ->
           if matches value then
             state.bytes_written <- state.bytes_written + tag_size
@@ -305,8 +300,8 @@ let size_of = fun encode value ->
 let encode_into_bytes = fun encode dst value ->
   let state = {
     target = Bytes_target { dst; pos = 0 };
-    output = IO.Buffer.create 0;
-    scratch = IO.Bytes.create 8
+    output = IO.Buffer.create ~size:0;
+    scratch = IO.Bytes.create ~size:8
   } in
   match Serde.Ser.run encode backend state value with
   | Error err -> Error err
@@ -321,7 +316,7 @@ let to_string = fun encode value ->
   match size_of encode value with
   | Error err -> Error err
   | Ok len ->
-      let dst = IO.Bytes.create len in
+      let dst = IO.Bytes.create ~size:len in
       match encode_into_bytes encode dst value with
       | Ok written when Int.equal written len -> Ok (IO.Bytes.unsafe_to_string dst)
       | Ok written -> Error (`Msg ("serde-bin wrote "
@@ -333,8 +328,8 @@ let to_string = fun encode value ->
 let to_writer = fun encode writer value ->
   let state = {
     target = Writer_target writer;
-    output = IO.Buffer.create 4_096;
-    scratch = IO.Bytes.create 8
+    output = IO.Buffer.create ~size:4_096;
+    scratch = IO.Bytes.create ~size:8
   } in
   match Serde.Ser.run encode backend state value with
   | Error err -> Error err

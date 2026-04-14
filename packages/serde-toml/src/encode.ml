@@ -1,8 +1,8 @@
 open Std
+open Std.Result.Syntax
+module Array = Collections.Array
 module Vector = Collections.Vector
 module Ser = Serde.Ser
-
-let ( let* ) = Result.and_then
 
 type state = {
   mutable value: Toml_value.t option;
@@ -22,27 +22,25 @@ let set = fun state value -> state.value <- Some value
 
 let rec encode_list: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
   let items = ref [] in
-  Vector.iter
-    (fun value ->
+  Vector.for_each values ~fn:(fun value ->
       let child = child_state () in
       encode.run backend child value;
-      items := expect_value child "array element" :: !items)
-    values;
+      items := expect_value child "array element" :: !items);
   set state (Toml_value.Array (List.rev !items))
 
 and encode_array: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit = fun state encode values ->
   let items = ref [] in
-  for index = 0 to array__length values - 1 do
+  for index = 0 to Array.length values - 1 do
     let child = child_state () in
-    encode.run backend child (array__get values index);
+    encode.run backend child (Array.get_unchecked values ~at:index);
     items := expect_value child "array element" :: !items
   done;
   set state (Toml_value.Array (List.rev !items))
 
 and encode_record: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit = fun state fields value ->
   let items = ref [] in
-  for index = 0 to array__length fields - 1 do
-    match array__get fields index with
+  for index = 0 to Array.length fields - 1 do
+    match Array.get_unchecked fields ~at:index with
     | Ser.Field (name, encode, get) ->
         let child = child_state ~allow_omit:true () in
         encode.run backend child (get value);
@@ -54,10 +52,10 @@ and encode_record: 'value. state -> 'value Serde.Ser.fields -> 'value -> unit = 
 
 and encode_variant: 'value. state -> 'value Serde.Ser.variant_cases -> 'value -> unit = fun state cases value ->
   let rec loop index =
-    if Int.equal index (array__length cases) then
+    if Int.equal index (Array.length cases) then
       raise (Serde.Encode_error `invalid_tag)
     else
-      match array__get cases index with
+      match Array.get_unchecked cases ~at:index with
       | Ser.Unit (tag, matches) ->
           if matches value then
             set state (Toml_value.String tag)

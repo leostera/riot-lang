@@ -186,6 +186,6 @@ let rec render_value = fun buffer indent value ->
         fields
 
 let to_string = fun value ->
-  let buffer = IO.Buffer.create 256 in
+  let buffer = IO.Buffer.create ~size:256 in
   render_value buffer 0 value;
   Ok (IO.Buffer.contents buffer)

@@ -1,6 +1,10 @@
 open Std
 open Std.Collections
+open Riot_model
 module Test = Std.Test
+
+let package_name = fun value ->
+  Package_name.from_string value |> Result.expect ~msg:("expected valid package name: " ^ value)
 
 let test_toolchain = fun () ->
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
@@ -20,9 +24,10 @@ let make_workspace = fun root ->
   }
 
 let make_package = fun ~root ~name ->
+  let package_name = package_name name in
   let path = Path.(root / Path.v "packages" / Path.v name) in
   Riot_model.Package.make
-    ~name
+    ~name:package_name
     ~path
     ~relative_path:(Path.v ("packages/" ^ name))
     ~library:{ path = Path.v "src/lib.ml" }
@@ -51,7 +56,7 @@ let test_execute_empty_graph_returns_no_results = fun _ctx ->
     Fs.with_tempdir ~prefix:"executor_empty_graph"
       (fun tmpdir ->
         let workspace = make_workspace tmpdir in
-        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:"pkg" in
+        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:(package_name "pkg") in
         let result = Riot_executor.Action_executor.execute
           ~action_graph:(Riot_planner.Action_graph.create ())
           ~sandbox

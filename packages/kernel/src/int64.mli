@@ -8,6 +8,9 @@ val max_int: t
 (** Use `from_int value` for explicit widening into `Int64`. *)
 val from_int: int -> t
 
+(** Use `of_int value` as the conventional alias for `from_int value`. *)
+val of_int: int -> t
+
 (** Use `to_int value` for explicit narrowing back into `Int`. *)
 val to_int: t -> int
 
@@ -47,11 +50,21 @@ val from_float: float -> t
 
 val to_float: t -> float
 
+val bits_of_float: float -> t
+
+val float_of_bits: t -> float
+
 val from_int32: int32 -> t
+
+val of_int32: int32 -> t
 
 val to_int32: t -> int32
 
 val parse_unchecked: string -> t
+
+val of_string: string -> t
+
+val of_string_opt: string -> t option
 
 val parse: string -> t option
 

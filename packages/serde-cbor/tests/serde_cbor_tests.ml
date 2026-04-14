@@ -1,10 +1,9 @@
 open Std
+open Std.Result.Syntax
 module Vector = Collections.Vector
 module Test = Std.Test
 module De = Serde.De
 module Ser = Serde.Ser
-
-let ( let* ) = Result.and_then
 
 let io_writer_of_buffer =
   let module Write = struct
@@ -18,10 +17,9 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.iter bufs
-        (fun { ba; off; len } ->
-          IO.Buffer.add_string buffer (IO.Bytes.sub_string ba off len);
-          written := !written + len);
+      IO.Iovec.for_each ~fn:(fun { buffer = chunk; offset; length } ->
+          IO.Buffer.add_subbytes buffer chunk offset length;
+          written := !written + length) bufs;
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -240,7 +238,7 @@ let sample_encode = Ser.record
 
 let vec_to_list = fun values ->
   let items = ref [] in
-  Vector.iter (fun value -> items := value :: !items) values;
+  Vector.for_each values ~fn:(fun value -> items := value :: !items);
   List.rev !items
 
 let equal_sample = fun (left: sample) (right: sample) ->
@@ -267,18 +265,18 @@ let sample_value: sample = {
   mode = Navigator "Nami";
   marker = ();
   home = ({ island = "Water 7"; berth = 7 }: berth);
-  tags = Vector.of_list [ "log-pose"; "cola"; "coup-de-burst" ];
+  tags = Vector.from_list [ "log-pose"; "cola"; "coup-de-burst" ];
   scores = [|98; 87; 77; 101|];
 }
 
 let byte_values = fun value ->
-  List.init (String.length value) (fun index -> Char.code value.[index])
+  List.init ~count:(String.length value) ~fn:(fun index -> Char.code (String.get_unchecked value ~at:index))
 
 let test_small_positive_int_uses_single_byte = fun _ctx ->
   match Serde_cbor.to_string Ser.int 10 with
   | Ok encoded when byte_values encoded = [ 0x0a ] -> Ok ()
   | Ok encoded -> Error ("expected CBOR encoding for 10 to be [0x0a], got "
-  ^ String.concat "," (List.map Int.to_string (byte_values encoded)))
+  ^ String.concat "," (List.map (byte_values encoded) ~fn:Int.to_string))
   | Error err -> Error ("encode failed: " ^ Serde.Error.to_string err)
 
 let test_negative_one_uses_single_byte = fun _ctx ->
@@ -309,7 +307,7 @@ let test_decodes_from_reader = fun _ctx ->
   | Error err -> Error ("encode failed: " ^ Serde.Error.to_string err)
 
 let test_writes_to_writer = fun _ctx ->
-  let buffer = IO.Buffer.create 128 in
+  let buffer = IO.Buffer.create ~size:128 in
   let* () =
     match Serde_cbor.to_writer sample_encode (io_writer_of_buffer buffer) sample_value with
     | Ok () -> Ok ()

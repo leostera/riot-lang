@@ -246,19 +246,21 @@ module RawTable = struct
       ((bucket_mask + 1) / 8) * 7
 
   let set_ctrl = fun table idx tag ->
-    Bytes.unsafe_set table.ctrl idx (Kernel.Char.chr tag);
+    Kernel.Bytes.unsafe_set table.ctrl idx (Kernel.Char.chr tag);
     (* Mirror the first Group.width bytes at the end for wrap-around *)
     if idx < Group.width then
-      Bytes.unsafe_set table.ctrl ((table.bucket_mask + 1) + idx) (Kernel.Char.chr tag)
+      Kernel.Bytes.unsafe_set table.ctrl ((table.bucket_mask + 1) + idx) (Kernel.Char.chr tag)
 
   (* Create empty table with given capacity *)
 
   let create = fun capacity ->
     let buckets = capacity_to_buckets capacity in
     let bucket_mask = buckets - 1 in
+    let ctrl = Kernel.Bytes.create ~size:(buckets + Group.width) in
+    Kernel.Bytes.fill ctrl ~offset:0 ~len:(buckets + Group.width) ~char:(Kernel.Char.chr Tag.empty);
     {
-      buckets = Array.make buckets None;
-      ctrl = Bytes.make (buckets + Group.width) (Kernel.Char.chr Tag.empty);
+      buckets = Array.make ~count:buckets ~value:None;
+      ctrl;
       len = 0;
       bucket_mask
     }
@@ -276,7 +278,7 @@ module RawTable = struct
         match cands with
         | [] -> None
         | idx :: rest ->
-            match table.buckets.(idx) with
+            match Array.get_unchecked table.buckets ~at:idx with
             | Some (k, _) when k = key -> Some idx
             | _ -> check_candidates rest
       in
@@ -311,24 +313,25 @@ module RawTable = struct
     let new_buckets = capacity_to_buckets new_capacity in
     let new_bucket_mask = new_buckets - 1 in
     let old_buckets = table.buckets in
+    let ctrl = Kernel.Bytes.create ~size:(new_buckets + Group.width) in
+    Kernel.Bytes.fill ctrl ~offset:0 ~len:(new_buckets + Group.width) ~char:(Kernel.Char.chr Tag.empty);
     (* Replace table contents *)
-    table.buckets <- Array.make new_buckets None;
-    table.ctrl <- Bytes.make (new_buckets + Group.width) (Kernel.Char.chr Tag.empty);
+    table.buckets <- Array.make ~count:new_buckets ~value:None;
+    table.ctrl <- ctrl;
     table.len <- 0;
     table.bucket_mask <- new_bucket_mask;
     (* Rehash all entries *)
-    Array.iteri
-      (fun idx bucket ->
-        match bucket with
-        | None -> ()
-        | Some (k, v) ->
-            let hash = hash_native k in
-            let h2 = hash_h2 hash in
-            let (new_idx, _) = find_insert_slot table k in
-            table.buckets.(new_idx) <- Some (k, v);
-            set_ctrl table new_idx (Tag.full h2);
-            table.len <- table.len + 1)
-      old_buckets
+    for idx = 0 to Array.length old_buckets - 1 do
+      match Array.get_unchecked old_buckets ~at:idx with
+      | None -> ()
+      | Some (k, v) ->
+          let hash = hash_native k in
+          let h2 = hash_h2 hash in
+          let (new_idx, _) = find_insert_slot table k in
+          Array.set_unchecked table.buckets ~at:new_idx ~value:(Some (k, v));
+          set_ctrl table new_idx (Tag.full h2);
+          table.len <- table.len + 1
+    done
 
   (* Insert a key-value pair, returns previous_value - mutates table *)
 
@@ -344,13 +347,13 @@ module RawTable = struct
     (* Try to find existing key *)
     match find_with_hash table key hash h2 with
     | Some idx ->
-        let previous = table.buckets.(idx) in
-        table.buckets.(idx) <- Some (key, value);
-        Option.map (fun (_, value) -> value) previous
+        let previous = Array.get_unchecked table.buckets ~at:idx in
+        Array.set_unchecked table.buckets ~at:idx ~value:(Some (key, value));
+        Option.map previous ~fn:(fun (_, value) -> value)
     | None ->
         (* Insert new entry - reuse hash *)
         let (idx, _) = find_insert_slot_with_hash table hash in
-        table.buckets.(idx) <- Some (key, value);
+        Array.set_unchecked table.buckets ~at:idx ~value:(Some (key, value));
         set_ctrl table idx (Tag.full h2);
         table.len <- table.len + 1;
         None
@@ -363,11 +366,11 @@ module RawTable = struct
     match find_with_hash table key hash h2 with
     | None -> None
     | Some idx ->
-        let previous = table.buckets.(idx) in
-        table.buckets.(idx) <- None;
+        let previous = Array.get_unchecked table.buckets ~at:idx in
+        Array.set_unchecked table.buckets ~at:idx ~value:None;
         set_ctrl table idx Tag.deleted;
         table.len <- table.len - 1;
-        Option.map (fun (_, value) -> value) previous
+        Option.map previous ~fn:(fun (_, value) -> value)
 
   (* Get value for key *)
 
@@ -376,7 +379,7 @@ module RawTable = struct
     let h2 = hash_h2 hash in
     match find_with_hash table key hash h2 with
     | None -> None
-    | Some idx -> Option.map (fun (_, value) -> value) table.buckets.(idx)
+    | Some idx -> Option.map (Array.get_unchecked table.buckets ~at:idx) ~fn:(fun (_, value) -> value)
 
   (* Check if key exists *)
 
@@ -388,42 +391,42 @@ module RawTable = struct
   (* Clear all entries *)
 
   let clear = fun table ->
-    Array.fill table.buckets 0 (Array.length table.buckets) None;
-    Bytes.fill table.ctrl 0 (Bytes.length table.ctrl) (Kernel.Char.chr Tag.empty);
+    for idx = 0 to Array.length table.buckets - 1 do
+      Array.set_unchecked table.buckets ~at:idx ~value:None
+    done;
+    Kernel.Bytes.fill
+      table.ctrl
+      ~offset:0
+      ~len:(Kernel.Bytes.length table.ctrl)
+      ~char:(Kernel.Char.chr Tag.empty);
     table.len <- 0
 
   (* Iterate over all key-value pairs *)
 
   let iter = fun f table ->
-    Array.iter
-      (
-        function
-        | Some (k, v) -> f k v
-        | None -> ()
-      )
-      table.buckets
+    Array.for_each table.buckets ~fn:(function
+      | Some (k, v) -> f k v
+      | None -> ())
 
   (* Fold over all key-value pairs *)
 
   let fold = fun f table acc ->
-    Array.fold_left
-      (fun acc bucket ->
+    Array.fold_left table.buckets
+      ~acc
+      ~fn:(fun acc bucket ->
         match bucket with
         | Some (k, v) -> f k v acc
         | None -> acc)
-      acc
-      table.buckets
 
   (* Convert to list *)
 
   let to_list = fun table ->
-    Array.fold_left
-      (fun acc bucket ->
+    Array.fold_left table.buckets
+      ~acc:[]
+      ~fn:(fun acc bucket ->
         match bucket with
         | Some (k, v) -> (k, v) :: acc
         | None -> acc)
-      []
-      table.buckets
 end
 
 (* === Public API === *)
@@ -533,7 +536,7 @@ let into_iter: type k v. (k, v) t -> (k * v) Iter.Iterator.t = fun map ->
       if state.pos >= List.length state.items then
         (None, state)
       else
-        let item = List.nth state.items state.pos in
+        let item = List.get_unchecked state.items ~at:state.pos in
         (Some item, { state with pos = state.pos + 1 })
 
     let size = fun state -> max 0 (List.length state.items - state.pos)
@@ -554,7 +557,7 @@ let to_mut_iter: type k v. (k, v) t -> (k * v) Iter.MutIterator.t = fun map ->
       if state.pos >= List.length state.items then
         None
       else
-        let item = List.nth state.items state.pos in
+        let item = List.get_unchecked state.items ~at:state.pos in
         state.pos <- state.pos + 1;
         Some item
 

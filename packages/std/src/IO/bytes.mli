@@ -29,6 +29,10 @@ val from_string: string -> t
 (** Use `to_string value` to copy `value` into a fresh immutable string. *)
 val to_string: t -> string
 
+(** Use `unsafe_to_string value` only when the caller already owns `value` and will not mutate it
+    afterward. *)
+val unsafe_to_string: t -> string
+
 (** Use `sub value offset len` to copy the selected byte slice into fresh mutable bytes. *)
 val sub: t -> offset:int -> len:int -> (t, error) result
 

@@ -106,6 +106,8 @@ let has_key = fun map ~key ->
   | Some _ -> true
   | None -> false
 
+let contains_key = fun map key -> has_key map ~key
+
 let clear = fun map ->
   map.buckets <- Array.make ~count:(Array.length map.buckets) ~value:[];
   map.size <- 0

@@ -7,6 +7,9 @@ val compare: t -> t -> int
     range `0` to `255`. *)
 val from_int: int -> t option
 
+(** Use `chr value` as the conventional alias for `from_int value` that panics on out-of-range input. *)
+val chr: int -> t
+
 (** Use `unsafe_of_int value` only when the caller already knows `value` is in the inclusive
     range `0` to `255`. *)
 val from_int_unchecked: int -> t

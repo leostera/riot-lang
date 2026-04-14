@@ -3,7 +3,7 @@ open Std
 (* Helper to create pre-allocated keys to avoid hash instability *)
 
 let make_keys = fun n ->
-  Collections.Array.init n (fun i -> "key" ^ string_of_int i)
+  Collections.Array.init ~count:n ~fn:(fun i -> "key" ^ string_of_int i)
 
 let tests = [
   Test.case "zero capacity"
@@ -60,7 +60,7 @@ let tests = [
       let map = Swisstable.create () in
       let keys = make_keys 250 in
       for i = 0 to 249 do
-        let key = Collections.Array.get keys i in
+        let key = Collections.Array.get_unchecked keys ~at:i in
         let _ = Swisstable.insert map key i in
         ()
       done;
@@ -70,7 +70,7 @@ let tests = [
         if i > 249 then
           Ok ()
         else
-          let key = Collections.Array.get keys i in
+          let key = Collections.Array.get_unchecked keys ~at:i in
           match Swisstable.get map key with
           | Some v when v = i -> verify (i + 1)
           | _ -> Error ("key" ^ string_of_int i ^ " missing or wrong value")
@@ -144,14 +144,14 @@ let tests = [
       let keys = make_keys 100 in
       (* Insert 100 elements causing multiple resizes *)
       for i = 0 to 99 do
-        let key = Collections.Array.get keys i in
+        let key = Collections.Array.get_unchecked keys ~at:i in
         let _ = Swisstable.insert map key i in
         ()
       done;
       Test.assert_equal ~expected:100 ~actual:(Swisstable.len map);
       (* Verify all present after multiple resizes *)
       for i = 0 to 99 do
-        let key = Collections.Array.get keys i in
+        let key = Collections.Array.get_unchecked keys ~at:i in
         Test.assert_equal ~expected:(Some i) ~actual:(Swisstable.get map key)
       done;
       Ok ());
@@ -160,20 +160,20 @@ let tests = [
       let map = Swisstable.create () in
       let keys = make_keys 10 in
       for i = 0 to 9 do
-        let key = Collections.Array.get keys i in
+        let key = Collections.Array.get_unchecked keys ~at:i in
         let _ = Swisstable.insert map key i in
         ()
       done;
       (* Remove some entries *)
       for i = 0 to 4 do
-        let key = Collections.Array.get keys i in
+        let key = Collections.Array.get_unchecked keys ~at:i in
         let _ = Swisstable.remove map key in
         ()
       done;
       Test.assert_equal ~expected:5 ~actual:(Swisstable.len map);
       (* Verify remaining *)
       for i = 5 to 9 do
-        let key = Collections.Array.get keys i in
+        let key = Collections.Array.get_unchecked keys ~at:i in
         Test.assert_equal ~expected:(Some i) ~actual:(Swisstable.get map key)
       done;
       Ok ());
@@ -307,14 +307,14 @@ let tests = [
       let keys = make_keys 500 in
       (* Insert 500 elements *)
       for i = 0 to 499 do
-        let key = Collections.Array.get keys i in
+        let key = Collections.Array.get_unchecked keys ~at:i in
         let _ = Swisstable.insert map key i in
         ()
       done;
       Test.assert_equal ~expected:500 ~actual:(Swisstable.len map);
       (* Remove every other element *)
       for i = 0 to 249 do
-        let key = Collections.Array.get keys (i * 2) in
+        let key = Collections.Array.get_unchecked keys ~at:(i * 2) in
         let _ = Swisstable.remove map key in
         ()
       done;
@@ -322,7 +322,7 @@ let tests = [
       (* Insert new elements *)
       let new_keys = make_keys 250 in
       for i = 0 to 249 do
-        let key = "new" ^ Collections.Array.get new_keys i in
+        let key = "new" ^ Collections.Array.get_unchecked new_keys ~at:i in
         let _ = Swisstable.insert map key (i + 1_000) in
         ()
       done;
@@ -335,14 +335,14 @@ let tests = [
       for round = 0 to 9 do
         for i = 0 to 9 do
           let idx = round * 10 + i in
-          let key = Collections.Array.get keys idx in
+          let key = Collections.Array.get_unchecked keys ~at:idx in
           let _ = Swisstable.insert map key idx in
           ()
         done;
         (* Remove first 5 from this round *)
         for i = 0 to 4 do
           let idx = round * 10 + i in
-          let key = Collections.Array.get keys idx in
+          let key = Collections.Array.get_unchecked keys ~at:idx in
           let _ = Swisstable.remove map key in
           ()
         done
@@ -356,14 +356,14 @@ let tests = [
       let keys = make_keys 20 in
       (* Insert enough to trigger multiple resizes *)
       for i = 0 to 19 do
-        let key = Collections.Array.get keys i in
+        let key = Collections.Array.get_unchecked keys ~at:i in
         let _ = Swisstable.insert map key i in
         ()
       done;
       Test.assert_equal ~expected:20 ~actual:(Swisstable.len map);
       (* All elements should still be accessible *)
       for i = 0 to 19 do
-        let key = Collections.Array.get keys i in
+        let key = Collections.Array.get_unchecked keys ~at:i in
         Test.assert_equal ~expected:(Some i) ~actual:(Swisstable.get map key)
       done;
       Ok ());

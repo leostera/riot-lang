@@ -16,6 +16,9 @@ val remove: ('key, 'value) t -> key:'key -> 'value option
 
 val has_key: ('key, 'value) t -> key:'key -> bool
 
+(** Use `contains_key map key` as the conventional alias for `has_key map ~key`. *)
+val contains_key: ('key, 'value) t -> 'key -> bool
+
 val length: ('key, 'value) t -> int
 
 val is_empty: ('key, 'value) t -> bool

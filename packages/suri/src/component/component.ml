@@ -408,7 +408,7 @@ let rec to_html = fun t ->
   | Text str ->
       str
   | Fragment children ->
-      String.concat "" (List.map to_html children)
+      String.concat "" (List.map ~fn:to_html children)
   | El { tag; attrs; children } ->
       let attrs_str = attrs_to_string attrs in
       let attrs_part =
@@ -420,7 +420,7 @@ let rec to_html = fun t ->
       if is_self_closing tag then
         "<" ^ tag ^ attrs_part ^ " />"
       else
-        let children_html = String.concat "" (List.map to_html children) in
+        let children_html = String.concat "" (List.map ~fn:to_html children) in
         "<" ^ tag ^ attrs_part ^ ">" ^ children_html ^ "</" ^ tag ^ ">"
 
 and attrs_to_string = fun attrs ->
@@ -452,10 +452,10 @@ let rec map = fun f t ->
   | Text str ->
       Text str
   | Fragment children ->
-      Fragment (List.map (map f) children)
+      Fragment (List.map ~fn:(map f) children)
   | El { tag; attrs; children } ->
-      let attrs' = List.map (map_attr f) attrs in
-      let children' = List.map (map f) children in
+      let attrs' = List.map ~fn:(map_attr f) attrs in
+      let children' = List.map ~fn:(map f) children in
       El { tag; attrs = attrs'; children = children' }
 
 and map_attr = fun f attr ->

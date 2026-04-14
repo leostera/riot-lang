@@ -1,8 +1,8 @@
 open Std
+module Array = Collections.Array
 module Vector = Collections.Vector
 module Ser = Serde.Ser
-
-let ( let* ) = Result.and_then
+open Std.Result.Syntax
 
 type context =
   | Top_level
@@ -84,25 +84,23 @@ let rec backend: state Ser.backend = {
     (fun state encode values ->
       match current_key state.context with
       | Some _ ->
-          Vector.iter
-            (fun value ->
-              encode.run backend state value)
-            values
+          Vector.for_each values ~fn:(fun value ->
+            encode.run backend state value)
       | None -> unsupported_top_level "sequence");
   array =
     (fun state encode values ->
       match current_key state.context with
       | Some _ ->
-          for index = 0 to array__length values - 1 do
-            encode.run backend state (array__get values index)
+          for index = 0 to Array.length values - 1 do
+            encode.run backend state (Array.get_unchecked values ~at:index)
           done
       | None -> unsupported_top_level "array");
   record =
     (fun state fields value ->
       match state.context with
       | Top_level ->
-          for index = 0 to array__length fields - 1 do
-            match array__get fields index with
+          for index = 0 to Array.length fields - 1 do
+            match Array.get_unchecked fields ~at:index with
             | Ser.Field (name, encode, get) ->
                 with_field state name
                   (fun () ->
@@ -115,10 +113,10 @@ let rec backend: state Ser.backend = {
       | None -> unsupported_top_level "variant"
       | Some key ->
           let rec loop index =
-            if Int.equal index (array__length cases) then
+            if Int.equal index (Array.length cases) then
               raise (Serde.Encode_error `invalid_tag)
             else
-              match array__get cases index with
+              match Array.get_unchecked cases ~at:index with
               | Ser.Unit (tag, matches) ->
                   if matches value then
                     write_pair state key tag
@@ -134,7 +132,7 @@ let rec backend: state Ser.backend = {
 }
 
 let to_string = fun encode value ->
-  let state = { output = IO.Buffer.create 128; first = true; context = Top_level } in
+  let state = { output = IO.Buffer.create ~size:128; first = true; context = Top_level } in
   let* () = Ser.run encode backend state value in
   Ok (IO.Buffer.contents state.output)
 

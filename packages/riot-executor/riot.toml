@@ -14,3 +14,7 @@ riot-model = { path = "../riot-model", version = "*" }
 riot-planner = { path = "../riot-planner", version = "*" }
 riot-toolchain = { path = "../riot-toolchain", version = "*" }
 riot-store = { path = "../riot-store", version = "*" }
+
+[dev-dependencies]
+pkgs-ml = { path = "../pkgs-ml", version = "*" }
+riot-deps = { path = "../riot-deps", version = "*" }

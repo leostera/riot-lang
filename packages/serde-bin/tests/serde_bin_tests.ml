@@ -1,10 +1,9 @@
 open Std
+open Std.Result.Syntax
 module Vector = Collections.Vector
 module Test = Std.Test
 module De = Serde.De
 module Ser = Serde.Ser
-
-let ( let* ) = Result.and_then
 
 let io_writer_of_buffer =
   let module Write = struct
@@ -18,10 +17,9 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.iter bufs
-        (fun { ba; off; len } ->
-          IO.Buffer.add_string buffer (IO.Bytes.sub_string ba off len);
-          written := !written + len);
+      IO.Iovec.for_each ~fn:(fun { buffer = chunk; offset; length } ->
+          IO.Buffer.add_subbytes buffer chunk offset length;
+          written := !written + length) bufs;
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -147,7 +145,7 @@ let person_encode = Ser.record
 
 let vec_to_list = fun values ->
   let items = ref [] in
-  Vector.iter (fun value -> items := value :: !items) values;
+  Vector.for_each values ~fn:(fun value -> items := value :: !items);
   List.rev !items
 
 let equal_person = fun (left: person) (right: person) ->
@@ -160,7 +158,7 @@ let equal_person = fun (left: person) (right: person) ->
   && Int64.equal left.score right.score
 
 let byte_values = fun value ->
-  List.init (String.length value) (fun index -> Char.code value.[index])
+  List.init ~count:(String.length value) ~fn:(fun index -> Char.code (String.get_unchecked value ~at:index))
 
 let expect_equal = fun ~expected ~actual ~message ->
   if expected = actual then
@@ -173,7 +171,7 @@ let test_roundtrips_record = fun _ctx ->
     name = "Luffy";
     age = 19;
     active = true;
-    tags = Vector.of_list [ "riot"; "serde"; "bin" ];
+    tags = Vector.from_list [ "riot"; "serde"; "bin" ];
     nickname = Some "strawhat";
     pet = Dog "Chouchou";
     score = 42L;
@@ -232,7 +230,7 @@ let test_float_uses_raw_ieee754_bytes = fun _ctx ->
   | Error err -> Error ("float encode failed: " ^ Serde.Error.to_string err)
 
 let test_writes_to_writer = fun _ctx ->
-  let buffer = IO.Buffer.create 32 in
+  let buffer = IO.Buffer.create ~size:32 in
   match Serde_bin.to_writer pet_encode (io_writer_of_buffer buffer) (Dog "Chouchou") with
   | Ok () ->
       expect_equal
@@ -260,7 +258,7 @@ let test_size_matches_encoded_length = fun _ctx ->
     name = "Luffy";
     age = 19;
     active = false;
-    tags = Vector.of_list [ "a"; "b" ];
+    tags = Vector.from_list [ "a"; "b" ];
     nickname = None;
     pet = Cat;
     score = 99L;
@@ -279,10 +277,10 @@ let test_size_matches_encoded_length = fun _ctx ->
   expect_equal ~expected:expected_len ~actual:(String.length encoded) ~message:"expected size_of to match encoded string length"
 
 let test_encode_into_bytes = fun _ctx ->
-  let dst = IO.Bytes.create 16 in
+  let dst = IO.Bytes.create ~size:16 in
   match Serde_bin.encode_into_bytes pet_encode dst (Dog "Chouchou") with
   | Ok written ->
-      let actual = IO.Bytes.sub_string dst 0 written |> byte_values in
+      let actual = Kernel.Bytes.sub_string dst ~offset:0 ~len:written |> byte_values in
       expect_equal
         ~expected:[
           1;
@@ -304,7 +302,7 @@ let test_encode_into_bytes = fun _ctx ->
   | Error err -> Error ("encode_into_bytes failed: " ^ Serde.Error.to_string err)
 
 let test_short_destination_errors = fun _ctx ->
-  let dst = IO.Bytes.create 2 in
+  let dst = IO.Bytes.create ~size:2 in
   match Serde_bin.encode_into_bytes pet_encode dst (Dog "Chouchou") with
   | Error (`Msg msg) when String.starts_with ~prefix:"serde-bin destination buffer is too small" msg -> Ok ()
   | Error err -> Error ("expected short destination error, got " ^ Serde.Error.to_string err)

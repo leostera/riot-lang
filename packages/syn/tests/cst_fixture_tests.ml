@@ -23,7 +23,7 @@ let cst_result_json = fun ~fixture_path ~source parse_result ->
   if parse_result.Parser.diagnostics != [] then
     Json.Object [
       ("status", Json.String "parse_error");
-      ("diagnostics", Json.Array (List.map Diagnostic.to_json parse_result.Parser.diagnostics))
+      ("diagnostics", Json.Array (List.map parse_result.Parser.diagnostics ~fn:Diagnostic.to_json))
     ]
   else
     let kind =

@@ -9,7 +9,7 @@ let bench_hashmap_insert_100 = fun () ->
   let map = HashMap.create () in
   for i = 1 to 100 do
     let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
+    let _ = HashMap.insert map ~key ~value:i in
     ()
   done
 
@@ -25,7 +25,7 @@ let bench_hashmap_insert_10k = fun () ->
   let map = HashMap.create () in
   for i = 1 to 10_000 do
     let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
+    let _ = HashMap.insert map ~key ~value:i in
     ()
   done
 
@@ -41,7 +41,7 @@ let bench_hashmap_insert_100k = fun () ->
   let map = HashMap.create () in
   for i = 1 to 100_000 do
     let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
+    let _ = HashMap.insert map ~key ~value:i in
     ()
   done
 
@@ -59,10 +59,10 @@ let bench_hashmap_get_from_10k = fun () ->
   let map = HashMap.create () in
   for i = 1 to 10_000 do
     let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
+    let _ = HashMap.insert map ~key ~value:i in
     ()
   done;
-  let _ = HashMap.get map "key_5000" in
+  let _ = HashMap.get map ~key:"key_5000" in
   ()
 
 let bench_swisstable_get_from_10k = fun () ->
@@ -79,10 +79,10 @@ let bench_hashmap_get_from_100k = fun () ->
   let map = HashMap.create () in
   for i = 1 to 100_000 do
     let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
+    let _ = HashMap.insert map ~key ~value:i in
     ()
   done;
-  let _ = HashMap.get map "key_50000" in
+  let _ = HashMap.get map ~key:"key_50000" in
   ()
 
 let bench_swisstable_get_from_100k = fun () ->
@@ -101,10 +101,10 @@ let bench_hashmap_get_missing = fun () ->
   let map = HashMap.create () in
   for i = 1 to 10_000 do
     let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
+    let _ = HashMap.insert map ~key ~value:i in
     ()
   done;
-  let _ = HashMap.get map "missing_key" in
+  let _ = HashMap.get map ~key:"missing_key" in
   ()
 
 let bench_swisstable_get_missing = fun () ->
@@ -123,10 +123,10 @@ let bench_hashmap_iter_10k = fun () ->
   let map = HashMap.create () in
   for i = 1 to 10_000 do
     let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
+    let _ = HashMap.insert map ~key ~value:i in
     ()
   done;
-  HashMap.iter (fun _k _v -> ()) map
+  HashMap.for_each map ~fn:(fun _k _v -> ())
 
 let bench_swisstable_iter_10k = fun () ->
   let map = Swisstable.create () in
@@ -141,10 +141,10 @@ let bench_hashmap_iter_100k = fun () ->
   let map = HashMap.create () in
   for i = 1 to 100_000 do
     let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
+    let _ = HashMap.insert map ~key ~value:i in
     ()
   done;
-  HashMap.iter (fun _k _v -> ()) map
+  HashMap.for_each map ~fn:(fun _k _v -> ())
 
 let bench_swisstable_iter_100k = fun () ->
   let map = Swisstable.create () in
@@ -161,10 +161,10 @@ let bench_hashmap_remove_from_10k = fun () ->
   let map = HashMap.create () in
   for i = 1 to 10_000 do
     let key = "key_" ^ string_of_int i in
-    let _ = HashMap.insert map key i in
+    let _ = HashMap.insert map ~key ~value:i in
     ()
   done;
-  let _ = HashMap.remove map "key_5000" in
+  let _ = HashMap.remove map ~key:"key_5000" in
   ()
 
 let bench_swisstable_remove_from_10k = fun () ->

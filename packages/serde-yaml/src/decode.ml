@@ -1,9 +1,8 @@
 open Std
+open Std.Result.Syntax
 module Array = Collections.Array
 module Vector = Collections.Vector
 module De = Serde.De
-
-let ( let* ) = Result.and_then
 
 type state = {
   mutable current: Yaml_value.t;
@@ -66,15 +65,11 @@ let rec option_backend: 'value. state -> 'value De.t -> 'value option = fun stat
 
 and list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode ->
   let values = expect_seq state.current in
-  let result = Vector.with_capacity (List.length values) in
+  let result = Vector.with_capacity ~size:(List.length values) in
   List.iter
     (fun value ->
       Vector.push result
-        (
-          with_current state value
-            (fun () ->
-              decode.run backend state)
-        ))
+        ~value:(with_current state value (fun () -> decode.run backend state)))
     values;
   result
 
@@ -121,10 +116,10 @@ and record_mut_backend:
 
 and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value = fun state cases ->
   let rec find_unit tag payload index =
-    if Int.equal index (array__length cases) then
+    if Int.equal index (Array.length cases) then
       raise (Serde.Decode_error `invalid_tag)
     else
-      match array__get cases index with
+      match Array.get_unchecked cases ~at:index with
       | De.Unit (case_tag, result) ->
           if String.equal tag case_tag then
             match payload with
@@ -136,10 +131,10 @@ and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value
       | De.Newtype _ -> find_unit tag payload (index + 1)
   in
   let rec find_newtype tag payload index =
-    if Int.equal index (array__length cases) then
+    if Int.equal index (Array.length cases) then
       raise (Serde.Decode_error `invalid_tag)
     else
-      match array__get cases index with
+      match Array.get_unchecked cases ~at:index with
       | De.Unit (case_tag, result) ->
           if String.equal tag case_tag then
             match payload with
@@ -206,7 +201,7 @@ let from_string = fun decode input ->
   De.run decode backend { current = document }
 
 let from_reader = fun decode reader ->
-  let buffer = IO.Buffer.create 256 in
+  let buffer = IO.Buffer.create ~size:256 in
   match IO.read_to_end reader ~buf:buffer with
   | Ok _ -> from_string decode (IO.Buffer.contents buffer)
   | Error err -> Error (`Io_error err)

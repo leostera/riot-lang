@@ -1,7 +1,8 @@
 open Std
+
 module Vector = Collections.Vector
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 module Json = Data.Json
 module De = Serde.De
@@ -159,26 +160,26 @@ let expect_field_as = fun name json decode ->
 
 let vec_to_list = fun values ->
   let items = ref [] in
-  Vector.iter (fun value -> items := value :: !items) values;
+  Vector.for_each values ~fn:(fun value -> items := value :: !items);
   List.rev !items
 
 let vec_map_to_list = fun map values ->
   let items = ref [] in
-  Vector.iter (fun value -> items := map value :: !items) values;
+  Vector.for_each values ~fn:(fun value -> items := map value :: !items);
   List.rev !items
 
 let vec_get_exn = fun values index ->
-  match Vector.get values index with
+  match Vector.get values ~at:index with
   | Some value -> value
   | None -> panic "large_json_bench.vec_get_exn: index out of bounds"
 
 let decode_vec = fun values decode ->
-  let decoded = Vector.with_capacity (List.length values) in
+  let decoded = Vector.with_capacity ~size:(List.length values) in
   let rec loop = function
     | [] -> Ok decoded
     | value :: rest ->
         let* value = decode value in
-        Vector.push decoded value;
+        Vector.push decoded ~value;
         loop rest
   in
   loop values
@@ -405,7 +406,7 @@ let repeat_items = fun (items: item vec) ~count ->
   if Int.equal base_count 0 then
     Vector.create ()
   else
-    let repeated = Vector.with_capacity count in
+    let repeated = Vector.with_capacity ~size:count in
     for index = 0 to count - 1 do
       let template: item = vec_get_exn items (index mod base_count) in
       let item: item = {
@@ -418,7 +419,7 @@ let repeat_items = fun (items: item vec) ~count ->
           | Some note -> Some (note ^ "-" ^ Int.to_string index);
       }
       in
-      Vector.push repeated item
+      Vector.push repeated ~value:item
     done;
     repeated
 

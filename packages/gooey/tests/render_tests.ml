@@ -10,15 +10,15 @@ let make_config = fun () ->
 let test_render_text_command = fun _ctx ->
   let elem = Element.text ~style:Style.(empty |> fg (`rgb (255, 0, 0))) "Test" in
   let commands = layout ~config:(make_config ()) elem in
-  match List.hd commands with
-  | { Render.command_type=Text { color=`rgb (255, 0, 0); _ }; _ } -> Ok ()
+  match List.head commands with
+  | Some { Render.command_type=Text { color=`rgb (255, 0, 0); _ }; _ } -> Ok ()
   | _ -> Error "Expected Text command with rgb(255, 0, 0) color"
 
 let test_render_background = fun _ctx ->
   let elem = Element.container ~style:Style.(empty |> bg (`rgb (100, 150, 200))) [] in
   let commands = layout ~config:(make_config ()) elem in
-  match List.hd commands with
-  | { Render.command_type=Rectangle { color=`rgb (100, 150, 200); _ }; _ } -> Ok ()
+  match List.head commands with
+  | Some { Render.command_type=Rectangle { color=`rgb (100, 150, 200); _ }; _ } -> Ok ()
   | _ -> Error "Expected Rectangle command with rgb(100, 150, 200) color"
 
 let test_render_border = fun _ctx ->
@@ -76,13 +76,13 @@ let test_render_z_index_sorting = fun _ctx ->
     ] in
   let commands = layout ~config:(make_config ()) elem in
   let z_indices =
-    List.map (fun cmd -> cmd.Render.z_index) commands
+    List.map commands ~fn:(fun cmd -> cmd.Render.z_index)
   in
   if z_indices = [ 0; 1; 2 ] then
     Ok ()
   else
     Error ("Expected z_indices [0; 1; 2], got ["
-    ^ String.concat "; " (List.map Int.to_string z_indices)
+    ^ String.concat "; " (List.map z_indices ~fn:Int.to_string)
     ^ "]")
 
 let test_render_corner_radius = fun _ctx ->

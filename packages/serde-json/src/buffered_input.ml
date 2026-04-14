@@ -26,7 +26,7 @@ let default_capacity = 131_072
 let of_string = fun input -> String_input { input; pos = 0 }
 
 let of_reader = fun reader ->
-  let buf = IO.Bytes.create default_capacity in
+  let buf = IO.Bytes.create ~size:default_capacity in
   Reader_input {
     reader;
     buf;
@@ -48,7 +48,7 @@ let compact = fun state ->
     (
       let unread = state.limit - state.pos in
       if unread > 0 then
-        IO.Bytes.blit state.buf state.pos state.buf 0 unread;
+        IO.Bytes.blit_unchecked state.buf ~src_offset:state.pos ~dst:state.buf ~dst_offset:0 ~len:unread;
       state.base <- state.base + state.pos;
       state.limit <- unread;
       state.pos <- 0
@@ -62,7 +62,7 @@ let refill = fun state ->
     if Int.equal state.limit (IO.Bytes.length state.buf) then
       false
     else
-      let bufs = IO.Iovec.of_bytes state.buf
+      let bufs = IO.Iovec.from_bytes state.buf
       |> IO.Iovec.sub ~pos:state.limit ~len:(IO.Bytes.length state.buf - state.limit) in
       match IO.Reader.read_vectored state.reader bufs with
       | Ok 0 ->
@@ -121,10 +121,10 @@ let remaining = function
 
 let slice_to_string = fun input ~start ~stop ->
   match input with
-  | String_input state -> String.sub state.input start (stop - start)
+  | String_input state -> String.sub state.input ~offset:start ~len:(stop - start)
   | Reader_input state ->
       let local_start = local_index state start in
-      String.sub state.view local_start (stop - start)
+      String.sub state.view ~offset:local_start ~len:(stop - start)
 
 let copy_range_to_buffer = fun buffer input ~start ~stop ->
   let length = stop - start in
@@ -159,7 +159,7 @@ let skip_whitespace = function
           | _ -> pos
       in
       state.pos <- loop state.pos
-  | Reader_input state as input ->
+  | Reader_input state ->
       let rec loop () =
         let rec advance_local pos =
           if pos >= state.limit then
@@ -176,7 +176,6 @@ let skip_whitespace = function
         if state.pos >= state.limit && not state.eof && refill state then
           loop ()
       in
-      ignore input;
       loop ()
 
 let scan_while = fun input ~continue ->
@@ -194,7 +193,7 @@ let scan_while = fun input ~continue ->
             `Stop (pos, current)
       in
       loop state.pos
-  | Reader_input state as input ->
+  | Reader_input state ->
       let rec loop () =
         if state.pos >= state.limit then
           if refill state then
@@ -214,5 +213,4 @@ let scan_while = fun input ~continue ->
           in
           scan state.pos
       in
-      ignore input;
       loop ()

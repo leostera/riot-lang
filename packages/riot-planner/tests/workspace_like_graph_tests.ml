@@ -1,12 +1,16 @@
 open Std
+open Riot_model
 module Test = Std.Test
 module Package_graph = Riot_planner.Package_graph
-module Package = Riot_model.Package
-module Workspace = Riot_model.Workspace
+module Package = Package
+module Workspace = Workspace
+
+let package_name = fun value ->
+  Package_name.from_string value |> Result.expect ~msg:("expected valid package name: " ^ value)
 
 let dependency = fun name ->
   Package.{
-    name;
+    name = package_name name;
     source =
       {
         workspace = true;
@@ -20,7 +24,7 @@ let dependency = fun name ->
 
 let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) name ->
   Package.make
-    ~name
+    ~name:(package_name name)
     ~path:(Path.v ("packages/" ^ name))
     ~relative_path:(Path.v ("packages/" ^ name))
     ~dependencies:(List.map dependencies ~fn:dependency)
@@ -127,11 +131,13 @@ let filter_for_package_keeps_only_transitive_dependencies = fun _ctx ->
   ] in
   let workspace = make_workspace packages in
   let graph = Package_graph.create ~scope:Runtime workspace |> Result.expect ~msg:"expected runtime graph" in
-  let filtered = Package_graph.filter_for_package graph "app" in
+  let filtered = Package_graph.filter_for_package graph (package_name "app") in
   let package_names = Package_graph.packages filtered
   |> List.map ~fn:(fun (pkg: Package.t) -> pkg.name)
-  |> List.unique ~compare:String.compare in
-  Test.assert_equal ~expected:[ "a"; "app"; "kernel"; "std" ] ~actual:package_names;
+  |> List.unique ~compare:Package_name.compare in
+  Test.assert_equal
+    ~expected:(List.map [ "a"; "app"; "kernel"; "std" ] ~fn:package_name)
+    ~actual:package_names;
   Ok ()
 
 let topological_sort_places_dependencies_before_dependents = fun _ctx ->
@@ -192,7 +198,7 @@ let filter_for_unknown_package_returns_empty_graph = fun _ctx ->
   let packages = [ make_package "std"; make_package ~dependencies:[ "std" ] "app" ] in
   let workspace = make_workspace packages in
   let graph = Package_graph.create ~scope:Runtime workspace |> Result.expect ~msg:"expected runtime graph" in
-  let filtered = Package_graph.filter_for_package graph "does-not-exist" in
+  let filtered = Package_graph.filter_for_package graph (package_name "does-not-exist") in
   Test.assert_equal ~expected:0 ~actual:(Package_graph.size filtered);
   Ok ()
 
@@ -211,7 +217,7 @@ let get_unplanned_dependencies_only_reports_unplanned_runtime_dependencies = fun
     ~hash:(Crypto.hash_string "std-runtime");
   let unplanned = Package_graph.get_unplanned_dependencies graph app in
   Test.assert_equal
-    ~expected:[ "kernel" ]
+    ~expected:(List.map [ "kernel" ] ~fn:package_name)
     ~actual:(List.map unplanned ~fn:(fun (pkg: Package.t) -> pkg.name));
   Ok ()
 

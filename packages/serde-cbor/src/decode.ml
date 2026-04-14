@@ -2,8 +2,7 @@ open Std
 module Array = Collections.Array
 module Vector = Collections.Vector
 module De = Serde.De
-
-let ( let* ) = Result.and_then
+open Std.Result.Syntax
 
 type state = {
   mutable current: Cbor_value.t;
@@ -66,10 +65,10 @@ let rec option_backend: 'value. state -> 'value De.t -> 'value option = fun stat
 
 and list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode ->
   let values = expect_array state.current in
-  let result = Vector.with_capacity (List.length values) in
+  let result = Vector.with_capacity ~size:(List.length values) in
   List.iter
     (fun value ->
-      Vector.push result
+      Vector.push result ~value:
         (
           with_current state value
             (fun () ->
@@ -87,7 +86,7 @@ and array_backend: 'value. state -> 'value De.t -> 'value array = fun state deco
         (fun () ->
           decode.run backend state) :: !items)
     values;
-  Array.of_list (List.rev !items)
+  Array.from_list (List.rev !items)
 
 and record_backend:
   'field 'acc 'value. state ->
@@ -121,10 +120,10 @@ and record_mut_backend:
 
 and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value = fun state cases ->
   let rec find_unit tag index =
-    if Int.equal index (array__length cases) then
+    if Int.equal index (Array.length cases) then
       raise (Serde.Decode_error `invalid_tag)
     else
-      match array__get cases index with
+      match Array.get_unchecked cases ~at:index with
       | De.Unit (case_tag, result) ->
           if String.equal tag case_tag then
             result
@@ -133,10 +132,10 @@ and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value
       | De.Newtype _ -> find_unit tag (index + 1)
   in
   let rec find_newtype tag payload index =
-    if Int.equal index (array__length cases) then
+    if Int.equal index (Array.length cases) then
       raise (Serde.Decode_error `invalid_tag)
     else
-      match array__get cases index with
+      match Array.get_unchecked cases ~at:index with
       | De.Unit (case_tag, result) ->
           if String.equal tag case_tag && payload = Cbor_value.Null then
             result

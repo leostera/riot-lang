@@ -1,11 +1,10 @@
 open Std
+open Std.Result.Syntax
 module Array = Collections.Array
 module Vector = Collections.Vector
 module Test = Std.Test
 module De = Serde.De
 module Ser = Serde.Ser
-
-let ( let* ) = Result.and_then
 
 let io_writer_of_buffer =
   let module Write = struct
@@ -19,10 +18,9 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.iter bufs
-        (fun { ba; off; len } ->
-          IO.Buffer.add_string buffer (IO.Bytes.sub_string ba off len);
-          written := !written + len);
+      IO.Iovec.for_each bufs ~fn:(fun { buffer = chunk; offset; length } ->
+        IO.Buffer.add_subbytes buffer chunk offset length;
+        written := !written + length);
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -176,7 +174,7 @@ let expect_equal = fun ~expected ~actual ~message ->
 
 let vec_to_list = fun values ->
   let items = ref [] in
-  Vector.iter (fun value -> items := value :: !items) values;
+  Vector.for_each values ~fn:(fun value -> items := value :: !items);
   List.rev !items
 
 let equal_pose = fun (left: pose) (right: pose) ->
@@ -523,7 +521,7 @@ let roster_encode = Ser.record
 let voyage_value: voyage = {
   ship = "Going Merry";
   destination = ({ island = "Alabasta"; bearing = 90.0 }: pose);
-  stops = Vector.of_list
+  stops = Vector.from_list
     [
       ({ island = "Whisky Peak"; supplies = 3 }: stop);
       ({ island = "Little Garden"; supplies = 5 }: stop);
@@ -538,7 +536,7 @@ let chopper: crew_member = {
   small = 7l;
   ratio = 1.25;
   nickname = Some "Cotton Candy Lover";
-  skills = Vector.of_list [ "medicine"; "rumble-ball" ];
+  skills = Vector.from_list [ "medicine"; "rumble-ball" ];
   checkpoints = [|1; 3; 5|];
   role = Doctor;
   pet = Reindeer "Chopper";
@@ -554,7 +552,7 @@ let nami: crew_member = {
   small = 18l;
   ratio = 3.5;
   nickname = None;
-  skills = Vector.of_list [ "navigation"; "weatheria" ];
+  skills = Vector.from_list [ "navigation"; "weatheria" ];
   checkpoints = [|8; 13|];
   role = Navigator;
   pet = NewsCoo;
@@ -566,12 +564,12 @@ let manifest_value: manifest = {
   ship = "Thousand Sunny";
   emergency = false;
   featured = chopper;
-  crew = Vector.of_list [ chopper; nami ];
+  crew = Vector.from_list [ chopper; nami ];
   reserves = [|nami|];
   scout = NewsCoo;
 }
 
-let roster_value: roster = { crew = Vector.of_list [ chopper; nami ] }
+let roster_value: roster = { crew = Vector.from_list [ chopper; nami ] }
 
 let expected_voyage_toml = String.concat "\n"
   [
@@ -654,8 +652,8 @@ let test_parser_rebuilds_nested_tables_inside_array_items = fun _ctx ->
           if Option.is_some (List.assoc_opt "pose" first) then
             Ok ()
           else
-            let root_keys = items |> List.map fst |> String.concat ", " in
-            let first_keys = first |> List.map fst |> String.concat ", " in
+            let root_keys = items |> List.map ~fn:(fun (key, _) -> key) |> String.concat ", " in
+            let first_keys = first |> List.map ~fn:(fun (key, _) -> key) |> String.concat ", " in
             Error ("expected parser to attach [crew.pose] to the current crew array item"
             ^ "; root keys: "
             ^ root_keys
@@ -694,10 +692,10 @@ let test_roundtrips_rosters = fun _ctx ->
               Ok ()
             else
               let missing = [ "name"; "pet"; "flag"; "pose" ]
-              |> List.filter (fun key -> not (has key))
+              |> List.filter ~fn:(fun key -> not (has key))
               |> String.concat ", " in
-              let root_keys = items |> List.map fst |> String.concat ", " in
-              let first_keys = first |> List.map fst |> String.concat ", " in
+              let root_keys = items |> List.map ~fn:(fun (key, _) -> key) |> String.concat ", " in
+              let first_keys = first |> List.map ~fn:(fun (key, _) -> key) |> String.concat ", " in
               Error ("expected parser to preserve nested tables inside crew array items, missing: "
               ^ missing
               ^ "; root keys: "
@@ -748,7 +746,7 @@ let test_decodes_nested_document = fun _ctx ->
             small = 12l;
             ratio = 2.5;
             nickname = None;
-            skills = Vector.of_list [ "archaeology"; "espionage" ];
+            skills = Vector.from_list [ "archaeology"; "espionage" ];
             checkpoints = [|7; 11|];
             role = Navigator;
             pet = NewsCoo;
@@ -770,7 +768,7 @@ let test_omits_none_fields = fun _ctx ->
   | Error err -> Error ("optional-field encode failed: " ^ Serde.Error.to_string err)
 
 let test_roundtrips_over_io = fun _ctx ->
-  let buffer = IO.Buffer.create 512 in
+  let buffer = IO.Buffer.create ~size:512 in
   let* () =
     match Serde_toml.to_writer manifest_encode (io_writer_of_buffer buffer) manifest_value with
     | Ok () -> Ok ()

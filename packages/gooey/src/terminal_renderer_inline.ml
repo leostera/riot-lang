@@ -27,6 +27,10 @@ type cell = {
 
 let make_cell = fun () -> { char = " "; fg_color = None; bg_color = None }
 
+let get_cell = fun grid ~row ~col ->
+  let line = Array.get_unchecked grid ~at:row in
+  Array.get_unchecked line ~at:col
+
 let render_to_string = fun commands ->
   if commands = [] then
     ""
@@ -50,9 +54,9 @@ let render_to_string = fun commands ->
     else
       (* Create grid *)
       let grid =
-        Array.init height
-          (fun _ ->
-            Array.init width (fun _ -> make_cell ()))
+        Array.init ~count:height
+          ~fn:(fun _ ->
+            Array.init ~count:width ~fn:(fun _ -> make_cell ()))
       in
       (* Fill grid from commands *)
       List.iter
@@ -66,8 +70,9 @@ let render_to_string = fun commands ->
               let tty_color = rgb_to_color color in
               for row = row_start to Int.min (row_end - 1) (height - 1) do
                 for col = col_start to Int.min (col_end - 1) (width - 1) do
-                  grid.(row).(col).char <- " ";
-                  grid.(row).(col).bg_color <- Some tty_color;
+                  let cell = get_cell grid ~row ~col in
+                  cell.char <- " ";
+                  cell.bg_color <- Some tty_color;
                 done
               done
           | Render.Text { content; color; _ } ->
@@ -86,9 +91,9 @@ let render_to_string = fun commands ->
                           let current_col = col + char_idx in
                           if current_col < width then
                             begin
-                              grid.(current_row).(current_col).char <- Std.Unicode.Grapheme.to_string
-                                grapheme;
-                              grid.(current_row).(current_col).fg_color <- Some tty_color;
+                              let cell = get_cell grid ~row:current_row ~col:current_col in
+                              cell.char <- Std.Unicode.Grapheme.to_string grapheme;
+                              cell.fg_color <- Some tty_color;
                             end)
                         graphemes
                     end)
@@ -111,8 +116,9 @@ let render_to_string = fun commands ->
                       else
                         "─"
                     in
-                    grid.(row_start).(col).char <- ch;
-                    grid.(row_start).(col).fg_color <- Some tty_color;
+                    let cell = get_cell grid ~row:row_start ~col in
+                    cell.char <- ch;
+                    cell.fg_color <- Some tty_color;
                   done
                 end;
               if border_width.bottom > 0 && row_end - 1 < height then
@@ -126,20 +132,23 @@ let render_to_string = fun commands ->
                       else
                         "─"
                     in
-                    grid.(row_end - 1).(col).char <- ch;
-                    grid.(row_end - 1).(col).fg_color <- Some tty_color;
+                    let cell = get_cell grid ~row:(row_end - 1) ~col in
+                    cell.char <- ch;
+                    cell.fg_color <- Some tty_color;
                   done
                 end;
               for row = row_start + 1 to Int.min (row_end - 2) (height - 1) do
                 if border_width.left > 0 && col_start < width then
                   begin
-                    grid.(row).(col_start).char <- "│";
-                    grid.(row).(col_start).fg_color <- Some tty_color;
+                    let cell = get_cell grid ~row ~col:col_start in
+                    cell.char <- "│";
+                    cell.fg_color <- Some tty_color;
                   end;
                 if border_width.right > 0 && col_end - 1 < width then
                   begin
-                    grid.(row).(col_end - 1).char <- "│";
-                    grid.(row).(col_end - 1).fg_color <- Some tty_color;
+                    let cell = get_cell grid ~row ~col:(col_end - 1) in
+                    cell.char <- "│";
+                    cell.fg_color <- Some tty_color;
                   end;
               done
           | Render.Custom _ ->
@@ -150,14 +159,12 @@ let render_to_string = fun commands ->
         commands;
       (* Collect Custom commands for post-processing *)
       let custom_commands =
-        List.filter_map
-          (fun cmd ->
-            match cmd.Render.command_type with
-            | Render.Custom { data } ->
-                let col, row = coords_to_cell cmd.bounding_box.x cmd.bounding_box.y in
-                Some (row, col, data)
-            | _ -> None)
-          commands
+        List.filter_map commands ~fn:(fun cmd ->
+          match cmd.Render.command_type with
+          | Render.Custom { data } ->
+              let col, row = coords_to_cell cmd.bounding_box.x cmd.bounding_box.y in
+              Some (row, col, data)
+          | _ -> None)
       in
       (* Convert grid to string line-by-line *)
       let buf = Buffer.create (height * width * 2) in
@@ -173,7 +180,7 @@ let render_to_string = fun commands ->
             for c = 0 to col - 1 do
               if c < width then
                 begin
-                  let cell = grid.(row).(c) in
+                  let cell = get_cell grid ~row ~col:c in
                   let styled_char =
                     match cell.fg_color, cell.bg_color with
                     | Some fg, Some bg -> Ansi_formatter.format_string
@@ -193,7 +200,7 @@ let render_to_string = fun commands ->
         | None ->
             (* Normal row - output cells in this row *)
             for col = 0 to width - 1 do
-              let cell = grid.(row).(col) in
+              let cell = get_cell grid ~row ~col in
               let styled_char =
                 match cell.fg_color, cell.bg_color with
                 | Some fg, Some bg -> Ansi_formatter.format_string

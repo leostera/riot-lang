@@ -1,4 +1,5 @@
 open Std
+open Riot_model
 module Test = Std.Test
 
 let make_build_ctx = fun ?(parallelism = 2) () ->
@@ -35,11 +36,32 @@ let write_workspace = fun ~root members ->
   let _ = Fs.write riot_toml Path.(root / Path.v "riot.toml") |> Result.expect ~msg:"write workspace riot.toml failed" in
   ()
 
-let with_scanned_workspace = fun tmpdir f ->
+let make_registry = fun tmpdir ->
+  let cache =
+    Pkgs_ml.Registry_cache.create
+      ~riot_home:Path.(tmpdir / Path.v ".riot")
+      ~registry_name:"pkgs.ml"
+      ()
+    |> Result.expect ~msg:"registry cache init failed"
+  in
+  Pkgs_ml.Registry.in_memory ~cache ~packages:[] ()
+
+let with_workspace = fun tmpdir f ->
   let workspace_manager = Riot_model.Workspace_manager.create () in
   match Riot_model.Workspace_manager.scan workspace_manager tmpdir with
   | Error _ -> Error "workspace scan failed"
-  | Ok (workspace, _load_errors) -> f workspace
+  | Ok (workspace_manifest, _load_errors) -> (
+      match
+        Riot_deps.ensure_workspace
+          ~workspace_manager
+          ~mode:Riot_deps.Dep_solver.Refresh
+          ~registry:(make_registry tmpdir)
+          ~workspace:workspace_manifest
+          ()
+      with
+      | Ok workspace -> f workspace
+      | Error err -> Error ("workspace ensure failed: " ^ Riot_model.Pm_error.message err)
+    )
 
 let result_status_to_string = fun (result: Riot_executor.Package_builder.build_result) ->
   let status =
@@ -49,7 +71,7 @@ let result_status_to_string = fun (result: Riot_executor.Package_builder.build_r
     | Skipped { reason } -> "skipped(" ^ reason ^ ")"
     | Failed err -> "failed(" ^ Riot_executor.Package_builder.package_error_to_string err ^ ")"
   in
-  result.package.Riot_model.Package.name ^ ":" ^ status
+  Package_name.to_string result.package.Riot_model.Package.name ^ ":" ^ status
 
 let test_build_workspace_two_packages_success = fun _ctx ->
   match
@@ -58,7 +80,7 @@ let test_build_workspace_two_packages_success = fun _ctx ->
         write_package ~root:tmpdir ~name:"a" ~lib_body:"let a = 1" ~deps:[];
         write_package ~root:tmpdir ~name:"b" ~lib_body:"let b = 1" ~deps:[ "a" ];
         write_workspace ~root:tmpdir [ "a"; "b" ];
-        with_scanned_workspace tmpdir
+        with_workspace tmpdir
           (fun workspace ->
             let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
             |> Result.expect ~msg:"toolchain init failed" in
@@ -96,7 +118,7 @@ let test_build_workspace_respects_serial_package_orchestration = fun _ctx ->
         write_package ~root:tmpdir ~name:"left" ~lib_body:"let x = 1" ~deps:[];
         write_package ~root:tmpdir ~name:"right" ~lib_body:"let y = 2" ~deps:[];
         write_workspace ~root:tmpdir [ "left"; "right" ];
-        with_scanned_workspace tmpdir
+        with_workspace tmpdir
           (fun workspace ->
             let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
             |> Result.expect ~msg:"toolchain init failed" in
@@ -134,7 +156,7 @@ let test_failed_dependency_updates_package_graph = fun _ctx ->
         write_package ~root:tmpdir ~name:"a" ~lib_body:"let broken =" ~deps:[];
         write_package ~root:tmpdir ~name:"b" ~lib_body:"let b = 1" ~deps:[ "a" ];
         write_workspace ~root:tmpdir [ "a"; "b" ];
-        with_scanned_workspace tmpdir
+        with_workspace tmpdir
           (fun workspace ->
             let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
             |> Result.expect ~msg:"toolchain init failed" in

@@ -114,10 +114,9 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.iter bufs
-        (fun { ba; off; len } ->
-          IO.Buffer.add_string buffer (IO.Bytes.sub_string ba off len);
-          written := !written + len);
+      IO.Iovec.for_each ~fn:(fun { buffer = chunk; offset; length } ->
+          IO.Buffer.add_subbytes buffer chunk offset length;
+          written := !written + length) bufs;
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -399,12 +398,12 @@ let build_primitive_record = fun batch_index item_index ->
     }: primitive_record)
 
 let build_batch = fun batch_index ->
-  let items = Vector.with_capacity 12 in
+  let items = Vector.with_capacity ~size:12 in
   for item_index = 0 to 11 do
-    Vector.push items (build_primitive_record batch_index item_index)
+    Vector.push items ~value:(build_primitive_record batch_index item_index)
   done;
   let mirrors =
-    Array.init 6 (fun mirror_index -> build_primitive_record batch_index (mirror_index + 32))
+    Array.init ~count:6 ~fn:(fun mirror_index -> build_primitive_record batch_index (mirror_index + 32))
   in
   ({
       batch_id = batch_index;
@@ -437,16 +436,16 @@ let large_fixture_spec = {
 }
 
 let build_dataset = fun spec ->
-  let batches = Vector.with_capacity spec.batch_count in
+  let batches = Vector.with_capacity ~size:spec.batch_count in
   for batch_index = 0 to spec.batch_count - 1 do
-    Vector.push batches (build_batch batch_index)
+    Vector.push batches ~value:(build_batch batch_index)
   done;
   let mirrors =
-    Array.init spec.mirror_count (fun index -> build_batch (index + 512))
+    Array.init ~count:spec.mirror_count ~fn:(fun index -> build_batch (index + 512))
   in
-  let flags = Vector.with_capacity 64 in
+  let flags = Vector.with_capacity ~size:64 in
   for index = 0 to 63 do
-    Vector.push flags (build_mode (index + 2_000))
+    Vector.push flags ~value:(build_mode (index + 2_000))
   done;
   ({
       version = 2;
@@ -473,7 +472,7 @@ let build_fixture = fun spec ->
   let decoded: dataset = Serde_bin.of_string dataset_decode serde_bytes |> Result.expect ~msg:"expected serde-bin fixture decoding to succeed" in
   let _marshal_roundtrip: dataset = Marshal.from_string marshal_bytes 0 in
   ignore decoded;
-  let writer_buffer = IO.Buffer.create (String.length serde_bytes) in
+  let writer_buffer = IO.Buffer.create ~size:(String.length serde_bytes) in
   let writer = io_writer_of_buffer writer_buffer in
   {
     label = spec.label;

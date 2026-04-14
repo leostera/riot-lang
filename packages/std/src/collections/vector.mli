@@ -25,6 +25,8 @@ val set_unchecked: 'value t -> at:int -> value:'value -> unit
 
 val length: 'value t -> int
 
+val len: 'value t -> int
+
 val is_empty: 'value t -> bool
 
 val capacity: 'value t -> int

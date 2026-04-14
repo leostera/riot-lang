@@ -33,6 +33,17 @@ let fold_right = fun values ~acc ~fn -> Kernel.Array.fold_right values ~fn ~acc
 
 let from_list = Kernel.Array.from_list
 
+let of_list = from_list
+
+let to_list = fun values ->
+  let rec loop index acc =
+    if index < 0 then
+      acc
+    else
+      loop (index - 1) (get_unchecked values ~at:index :: acc)
+  in
+  loop (length values - 1) []
+
 let iter: type item. item array -> item Iter.Iterator.t = fun arr ->
   let module ArrayIter = struct
     type state = {

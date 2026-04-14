@@ -33,11 +33,11 @@ let test_three_column_with_grow = fun _ctx ->
   (* Find the bounding boxes for each container *)
   let rectangles =
     List.filter_map
-      (fun cmd ->
+      commands
+      ~fn:(fun cmd ->
         match cmd.Render.command_type with
         | Render.Rectangle _ -> Some cmd.bounding_box
         | _ -> None)
-      commands
   in
   (* Should have 3 rectangles for the 3 containers *)
   let rect_count = List.length rectangles in
@@ -47,7 +47,7 @@ let test_three_column_with_grow = fun _ctx ->
     begin
       (* Get the widths *)
       let widths =
-        List.map (fun (bbox: Geometry.Rect.t) -> bbox.width) rectangles
+        List.map rectangles ~fn:(fun (bbox: Geometry.Rect.t) -> bbox.width)
       in
       (* Check widths *)
       match widths with
@@ -64,7 +64,7 @@ let test_three_column_with_grow = fun _ctx ->
       | _ -> Error ("Expected 3 widths, got "
       ^ Int.to_string (List.length widths)
       ^ ": "
-      ^ String.concat ", " (List.map Float.to_string widths))
+      ^ String.concat ", " (List.map widths ~fn:Float.to_string))
     end
 
 let tests = Test.[ case "Three columns with Grow in middle" test_three_column_with_grow; ]

@@ -17,10 +17,9 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.iter bufs
-        (fun { ba; off; len } ->
-          IO.Buffer.add_string buffer (IO.Bytes.sub_string ba off len);
-          written := !written + len);
+      IO.Iovec.for_each bufs ~fn:(fun { buffer = chunk; offset; length } ->
+        IO.Buffer.add_subbytes buffer chunk offset length;
+        written := !written + length);
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -329,7 +328,7 @@ let manifest_encode = Ser.record
 
 let vec_to_list = fun values ->
   let items = ref [] in
-  Vector.iter (fun value -> items := value :: !items) values;
+  Vector.for_each values ~fn:(fun value -> items := value :: !items);
   List.rev !items
 
 let equal_companion = fun left right ->
@@ -344,6 +343,11 @@ let equal_stop = fun (left: stop) (right: stop) ->
 let equal_berth = fun (left: berth) (right: berth) ->
   String.equal left.island right.island && Int.equal left.berth right.berth
 
+let equal_stop_lists = fun left right ->
+  match List.compare_lengths ~left ~right with
+  | 0 -> List.zip left right |> List.all ~fn:(fun (left, right) -> equal_stop left right)
+  | _ -> false
+
 let equal_manifest = fun (left: manifest) (right: manifest) ->
   String.equal left.ship right.ship
   && Bool.equal left.emergency right.emergency
@@ -357,8 +361,8 @@ let equal_manifest = fun (left: manifest) (right: manifest) ->
   && equal_berth left.home right.home
   && vec_to_list left.tags = vec_to_list right.tags
   && left.scores = right.scores
-  && List.for_all2 equal_stop (vec_to_list left.stops) (vec_to_list right.stops)
-  && List.for_all2 equal_stop (Array.to_list left.mirrors) (Array.to_list right.mirrors)
+  && equal_stop_lists (vec_to_list left.stops) (vec_to_list right.stops)
+  && equal_stop_lists (Array.to_list left.mirrors) (Array.to_list right.mirrors)
 
 let fixture: manifest = {
   ship = "Thousand Sunny";
@@ -372,9 +376,9 @@ let fixture: manifest = {
   companion = Reindeer "Chopper";
   marker = ();
   home = ({ island = "Water 7"; berth = 3 }: berth);
-  tags = Vector.of_list [ "straw-hat"; "shipwright" ];
+  tags = Vector.from_list [ "straw-hat"; "shipwright" ];
   scores = [|7; 9|];
-  stops = Vector.of_list
+  stops = Vector.from_list
     [
       ({ island = "Water 7"; supplies = 25 }: stop);
       ({ island = "Fish-Man Island"; supplies = 40 }: stop);
@@ -458,7 +462,7 @@ let scalar_roundtrip_test =
                 if not (String.equal decoded "Road Poneglyph") then
                   Error "string roundtrip failed"
                 else
-                  let numbers = Vector.of_list [ 1; 2; 3 ] in
+                  let numbers = Vector.from_list [ 1; 2; 3 ] in
                   match Serde_yaml.to_string (Ser.list Ser.int) numbers with
                   | Error err -> Error (Serde.Error.to_string err)
                   | Ok seq_encoded -> (
@@ -515,7 +519,7 @@ let tagged_variant_decode_test =
 let reader_writer_test =
   Test.case "serde-yaml writes to writers and reads from readers"
     (fun _ctx ->
-      let buffer = IO.Buffer.create 128 in
+      let buffer = IO.Buffer.create ~size:128 in
       match Serde_yaml.to_writer manifest_encode (io_writer_of_buffer buffer) fixture with
       | Ok () -> (
           match Serde_yaml.from_reader

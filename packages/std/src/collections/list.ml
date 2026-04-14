@@ -20,6 +20,8 @@ let append = Kernel.List.append
 
 let reverse = Kernel.List.reverse
 
+let rev = reverse
+
 let rec reverse_append = fun left right ->
   match left with
   | [] -> right
@@ -61,6 +63,17 @@ let flat_map = fun values ~fn ->
 
 let for_each = fun values ~fn -> Kernel.List.for_each values ~fn
 
+let iter = fun fn values -> for_each values ~fn
+
+let iteri = fun fn values ->
+  let rec loop index = function
+    | [] -> ()
+    | value :: rest ->
+        fn index value;
+        loop (index + 1) rest
+  in
+  loop 0 values
+
 let fold_left = fun values ~acc ~fn -> Kernel.List.fold_left values ~acc ~fn
 
 let fold_right = fun values ~acc ~fn -> Kernel.List.fold_right values ~acc ~fn
@@ -73,6 +86,8 @@ let all = fun values ~fn ->
   in
   loop values
 
+let for_all = fun fn values -> all values ~fn
+
 let any = fun values ~fn ->
   let rec loop values =
     match values with
@@ -81,9 +96,26 @@ let any = fun values ~fn ->
   in
   loop values
 
+let exists = fun fn values -> any values ~fn
+
 let contains = fun values ~value -> Kernel.List.contains values ~value
 
+let mem = fun value values -> contains values ~value
+
 let find = fun values ~fn -> Kernel.List.find values ~fn
+
+let find_opt = fun fn values -> find values ~fn
+
+let assoc_opt = fun key values ->
+  let rec loop = function
+    | [] -> None
+    | (current_key, value) :: rest ->
+        if compare current_key key = 0 then
+          Some value
+        else
+          loop rest
+  in
+  loop values
 
 let filter = fun values ~fn -> Kernel.List.filter values ~fn
 

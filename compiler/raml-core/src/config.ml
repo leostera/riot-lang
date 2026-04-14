@@ -1,4 +1,5 @@
 open Std
+open Std.Result.Syntax
 
 type t = {
   on_event: (Event.t -> unit) option;
@@ -27,9 +28,8 @@ let validate_target = fun ~name (target: Target.t) ->
     Ok ()
 
 let validate = fun config ->
-  match validate_target ~name:"host" config.host with
-  | Error _ as error -> error
-  | Ok () -> validate_target ~name:"target" config.target
+  let* () = validate_target ~name:"host" config.host in
+  validate_target ~name:"target" config.target
 
 let make = fun ?on_event ?(host = default.host) ?(target = default.target) ?content_store ?(typing_config = default.typing_config) () ->
   {
@@ -67,7 +67,10 @@ let typing_config = fun config -> config.typing_config
 
 let select_backend = fun config -> Target.select_backend ~host:config.host ~target:config.target
 
-let monotonic_now_us = fun () -> Int64.(to_int (div (Kernel.Time.monotonic_time_nanos ()) 1_000L))
+let monotonic_now_us = fun () ->
+  let instant = Kernel.Time.Monotonic.now () |> Result.expect ~msg:"failed to read monotonic clock" in
+  let secs, nanos = Kernel.Time.Monotonic.to_parts instant in
+  Int64.(to_int (add (mul (from_int secs) 1_000_000L) (div (from_int nanos) 1_000L)))
 
 let emit_event = fun config build_event ->
   match config.on_event with

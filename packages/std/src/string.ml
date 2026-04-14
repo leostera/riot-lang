@@ -66,6 +66,10 @@ end
 let into_iter = fun source ->
   Iterator.make (module Iter) { source; current_pos = 0 }
 
+let iter = fun fn value -> for_each ~fn value
+
+let split_on_char = fun separator value -> split ~by:(from_char separator) value
+
 (* Unicode-aware operations *)
 
 let width = fun s ->

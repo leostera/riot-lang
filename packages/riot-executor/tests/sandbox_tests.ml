@@ -1,5 +1,9 @@
 open Std
+open Riot_model
 module Test = Std.Test
+
+let package_name = fun value ->
+  Package_name.from_string value |> Result.expect ~msg:("expected valid package name: " ^ value)
 
 let make_workspace = fun root ->
   Riot_model.Workspace.{
@@ -15,9 +19,10 @@ let make_workspace = fun root ->
   }
 
 let make_package = fun ~root ~name ->
+  let package_name = package_name name in
   let path = Path.(root / Path.v "packages" / Path.v name) in
   Riot_model.Package.make
-    ~name
+    ~name:package_name
     ~path
     ~relative_path:(Path.v ("packages/" ^ name))
     ~library:{ path = Path.v "src/lib.ml" }
@@ -28,7 +33,7 @@ let test_sandbox_create_and_get_dir = fun _ctx ->
     Fs.with_tempdir ~prefix:"sandbox_create"
       (fun tmpdir ->
         let workspace = make_workspace tmpdir in
-        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:"pkg" in
+        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:(package_name "pkg") in
         let dir = Riot_executor.Sandbox.get_dir sandbox in
         let exists = Fs.exists dir |> Result.unwrap_or ~default:false in
         let _ = Riot_executor.Sandbox.cleanup sandbox in
@@ -75,7 +80,7 @@ let test_sandbox_cleanup_removes_dir = fun _ctx ->
     Fs.with_tempdir ~prefix:"sandbox_cleanup"
       (fun tmpdir ->
         let workspace = make_workspace tmpdir in
-        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:"pkg" in
+        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:(package_name "pkg") in
         let dir = Riot_executor.Sandbox.get_dir sandbox in
         let _ = Riot_executor.Sandbox.cleanup sandbox in
         let exists = Fs.exists dir |> Result.unwrap_or ~default:true in
@@ -98,7 +103,7 @@ let test_sandbox_uses_workspace_target_dir_root = fun _ctx ->
             ~packages:[]
             ()
         in
-        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:"pkg" in
+        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:(package_name "pkg") in
         let dir = Riot_executor.Sandbox.get_dir sandbox |> Path.to_string in
         let expected_prefix = Path.to_string workspace.target_dir_root in
         let _ = Riot_executor.Sandbox.cleanup sandbox in

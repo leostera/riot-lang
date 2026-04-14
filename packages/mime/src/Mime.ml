@@ -52,27 +52,42 @@ let find_header = fun name headers ->
 
 let percent_decode = fun s ->
   let len = String.length s in
-  let buf = Buffer.create len in
+  let buf = Buffer.create ~size:len in
   let rec decode i =
     if i >= len then
       Buffer.contents buf
-    else if s.[i] = '%' && i + 2 < len then
+    else if String.get_unchecked s ~at:i = '%' && i + 2 < len then
       (
-        let hex = String.sub s (i + 1) 2 in
-        match int_of_string_opt ("0x" ^ hex) with
+        let hex = String.sub s ~offset:(i + 1) ~len:2 in
+        match Int.of_string_opt ("0x" ^ hex) with
         | Some code ->
             Buffer.add_char buf (Char.chr code);
             decode (i + 3)
         | None ->
-            Buffer.add_char buf s.[i];
+            Buffer.add_char buf (String.get_unchecked s ~at:i);
             decode (i + 1)
       )
     else (
-      Buffer.add_char buf s.[i];
+      Buffer.add_char buf (String.get_unchecked s ~at:i);
       decode (i + 1)
     )
   in
   decode 0
+
+let find_char_from = fun value ~start ~char ->
+  let len = String.length value in
+  let rec loop index =
+    if index >= len then
+      None
+    else if String.get_unchecked value ~at:index = char then
+      Some index
+    else
+      loop (index + 1)
+  in
+  if start < 0 then
+    None
+  else
+    loop start
 
 let parse_rfc2231_value = fun value ->
   match String.split_on_char '\'' value with
@@ -93,46 +108,47 @@ let rec parse_content_type_string = fun value ->
   let rec parse_params str acc =
     let str = String.trim str in
     let str =
-      if String.starts_with ~prefix:";" str then
-        String.trim (String.sub str 1 (String.length str - 1))
+        if String.starts_with ~prefix:";" str then
+        String.trim (String.sub str ~offset:1 ~len:(String.length str - 1))
       else
         str
     in
-    match String.index str '=' with
+    match String.index_of str ~char:'=' with
     | None -> List.rev acc
     | Some eq_idx ->
-        let key = String.trim (String.sub str 0 eq_idx) |> String.lowercase_ascii in
-        let rest = String.sub str (eq_idx + 1) (String.length str - eq_idx - 1) in
+        let key = String.trim (String.sub str ~offset:0 ~len:eq_idx) |> String.lowercase_ascii in
+        let rest = String.sub str ~offset:(eq_idx + 1) ~len:(String.length str - eq_idx - 1) in
         let value_end =
-          if String.length rest > 0 && rest.[0] = '"' then
-            match String.index_from_opt rest 1 '"' with
+          if String.length rest > 0 && String.get_unchecked rest ~at:0 = '"' then
+            match find_char_from rest ~start:1 ~char:'"' with
             | Some close_idx ->
-                let value = String.sub rest 1 (close_idx - 1) in
+                let value = String.sub rest ~offset:1 ~len:(close_idx - 1) in
                 let remaining =
                   if close_idx + 1 < String.length rest then
-                    String.sub rest (close_idx + 1) (String.length rest - close_idx - 1)
+                    String.sub rest ~offset:(close_idx + 1) ~len:(String.length rest - close_idx - 1)
                   else
                     ""
                 in
                 (value, remaining)
             | None -> (String.trim rest, "")
           else
-            match String.index rest ';' with
+            match String.index_of rest ~char:';' with
             | Some semi_idx ->
-                let value = String.trim (String.sub rest 0 semi_idx) in
+                let value = String.trim (String.sub rest ~offset:0 ~len:semi_idx) in
                 let remaining = String.trim
-                  (String.sub rest (semi_idx + 1) (String.length rest - semi_idx - 1)) in
+                  (String.sub rest ~offset:(semi_idx + 1) ~len:(String.length rest - semi_idx - 1)) in
                 (value, remaining)
             | None -> (String.trim rest, "")
         in
         let value, remaining = value_end in
         parse_params remaining ((key, value) :: acc)
   in
-  match String.index value ';' with
+  match String.index_of value ~char:';' with
   | None -> (String.trim value, [])
   | Some idx ->
-      let main_type = String.trim (String.sub value 0 idx) in
-      let params_str = String.trim (String.sub value (idx + 1) (String.length value - idx - 1)) in
+      let main_type = String.trim (String.sub value ~offset:0 ~len:idx) in
+      let params_str = String.trim
+        (String.sub value ~offset:(idx + 1) ~len:(String.length value - idx - 1)) in
       let raw_params = parse_params params_str [] in
       let params = combine_rfc2231_params raw_params in
       (main_type, params)
@@ -142,11 +158,11 @@ and combine_rfc2231_params = fun raw_params ->
   let regular = Cell.create [] in
   let add_continuation ~name ~num ~decoded =
     let parts =
-      match Collections.HashMap.get continuations name with
+      match Collections.HashMap.get continuations ~key:name with
       | Some p -> p
       | None ->
           let p = Cell.create [] in
-          let _ = Collections.HashMap.insert continuations name p in
+          let _ = Collections.HashMap.insert continuations ~key:name ~value:p in
           p
     in
     Cell.set parts ((num, decoded) :: Cell.get parts)
@@ -155,24 +171,24 @@ and combine_rfc2231_params = fun raw_params ->
     match String.last_index key '*' with
     | None -> `Regular (key, value)
     | Some idx ->
-        let name = String.sub key 0 idx in
-        let suffix = String.sub key (idx + 1) (String.length key - idx - 1) in
+        let name = String.sub key ~offset:0 ~len:idx in
+        let suffix = String.sub key ~offset:(idx + 1) ~len:(String.length key - idx - 1) in
         if suffix = "" then
           `Encoded (name, value)
         else
           let is_encoded = String.ends_with ~suffix:"*" suffix in
           let num_str =
             if is_encoded then
-              String.sub suffix 0 (String.length suffix - 1)
+              String.sub suffix ~offset:0 ~len:(String.length suffix - 1)
             else
               suffix
           in
-          match int_of_string_opt num_str with
+          match Int.of_string_opt num_str with
           | Some num -> `Continuation (name, num, is_encoded, value)
           | None -> `Regular (key, value)
   in
-  List.iter
-    (fun ((key, value)) ->
+  List.for_each
+    ~fn:(fun ((key, value)) ->
       match parse_key key value with
       | `Regular (name, value) ->
           Cell.set regular ((name, value) :: Cell.get regular)
@@ -190,37 +206,37 @@ and combine_rfc2231_params = fun raw_params ->
           add_continuation ~name ~num ~decoded)
     raw_params;
   let combined = Cell.create (Cell.get regular) in
-  Collections.HashMap.iter
-    (fun name parts_cell ->
+  Collections.HashMap.for_each continuations
+    ~fn:(fun name parts_cell ->
       let parts =
         Cell.get parts_cell
         |> List.sort
-          (fun ((a, _)) ((b, _)) ->
+          ~compare:(fun ((a, _)) ((b, _)) ->
             Int.compare a b)
       in
-      let value = String.concat "" (List.map snd parts) in
-      Cell.set combined ((name, value) :: Cell.get combined))
-    continuations;
+      let value = String.concat "" (List.map ~fn:(fun (_, value) -> value) parts) in
+      Cell.set combined ((name, value) :: Cell.get combined));
   Cell.get combined
 
 let parse_content_type = fun value ->
   let main_type, params = parse_content_type_string value in
-  match String.index main_type '/' with
+  match String.index_of main_type ~char:'/' with
   | None -> { media_type = main_type; subtype = ""; parameters = params }
   | Some slash ->
-      let media = String.sub main_type 0 slash in
-      let sub = String.sub main_type (slash + 1) (String.length main_type - slash - 1) in
+      let media = String.sub main_type ~offset:0 ~len:slash in
+      let sub = String.sub main_type ~offset:(slash + 1) ~len:(String.length main_type - slash - 1) in
       { media_type = media; subtype = sub; parameters = params }
 
 let parse_content_disposition = fun value ->
   let value = String.trim value in
-  let disp_type, params =
-    match String.index value ';' with
-    | None -> (value, [])
-    | Some idx ->
-        let dtype = String.trim (String.sub value 0 idx) in
-        let rest = String.sub value (idx + 1) (String.length value - idx - 1) in
-        (dtype, snd (parse_content_type_string ("x;" ^ rest)))
+    let disp_type, params =
+    match String.index_of value ~char:';' with
+      | None -> (value, [])
+      | Some idx ->
+          let dtype = String.trim (String.sub value ~offset:0 ~len:idx) in
+          let rest = String.sub value ~offset:(idx + 1) ~len:(String.length value - idx - 1) in
+          let (_, parameters) = parse_content_type_string ("x;" ^ rest) in
+          (dtype, parameters)
   in
   let filename = List.assoc_opt "filename" params in
   match String.lowercase_ascii disp_type with
@@ -239,7 +255,7 @@ let parse_header = fun ((name, value)) ->
   | _ -> Other (name, value)
 
 let parse_headers = fun raw_headers ->
-  List.map parse_header raw_headers
+  List.map ~fn:parse_header raw_headers
 
 let parse_part_headers_and_body = fun content ->
   let lines = String.split_on_char '\n' content in
@@ -251,14 +267,14 @@ let parse_part_headers_and_body = fun content ->
         if trimmed = "" then
           (List.rev acc, String.concat "\n" rest)
         else
-          match String.index line ':' with
+          match String.index_of line ~char:':' with
           | None -> collect_headers acc rest
           | Some idx ->
-              let name = String.sub line 0 idx in
+              let name = String.sub line ~offset:0 ~len:idx in
               let value_start = idx + 1 in
               let value =
                 if value_start < String.length line then
-                  String.trim (String.sub line value_start (String.length line - value_start))
+                  String.trim (String.sub line ~offset:value_start ~len:(String.length line - value_start))
                 else
                   ""
               in
@@ -322,7 +338,7 @@ and parse_multipart = fun boundary body ->
   in
   let part_contents = find_parts [] None lines in
   List.filter_map
-    (fun part_lines ->
+    ~fn:(fun part_lines ->
       if List.length part_lines = 0 then
         None
       else
@@ -361,38 +377,42 @@ let rec attachments = fun mime ->
         [ part ]
       else
         []
-  | MultiPart { parts; _ } -> List.concat_map attachments parts
+  | MultiPart { parts; _ } -> List.flat_map parts ~fn:attachments
 
 let quoted_printable_decode = fun s ->
   let len = String.length s in
-  let buf = Buffer.create len in
+  let buf = Buffer.create ~size:len in
   let rec decode i =
     if i >= len then
       Ok (Buffer.contents buf)
-    else if s.[i] = '=' then
+    else if String.get_unchecked s ~at:i = '=' then
       if i + 1 >= len then
         Ok (Buffer.contents buf)
-      else if s.[i + 1] = '\n' then
+      else if String.get_unchecked s ~at:(i + 1) = '\n' then
         decode (i + 2)
-      else if s.[i + 1] = '\r' && i + 2 < len && s.[i + 2] = '\n' then
+      else if
+        String.get_unchecked s ~at:(i + 1) = '\r'
+        && i + 2 < len
+        && String.get_unchecked s ~at:(i + 2) = '\n'
+      then
         decode (i + 3)
       else if i + 2 < len then
         (
-          let hex = String.sub s (i + 1) 2 in
-          match int_of_string_opt ("0x" ^ hex) with
+          let hex = String.sub s ~offset:(i + 1) ~len:2 in
+          match Int.of_string_opt ("0x" ^ hex) with
           | Some code ->
               Buffer.add_char buf (Char.chr code);
               decode (i + 3)
           | None ->
-              Buffer.add_char buf s.[i];
+              Buffer.add_char buf (String.get_unchecked s ~at:i);
               decode (i + 1)
         )
       else (
-        Buffer.add_char buf s.[i];
+        Buffer.add_char buf (String.get_unchecked s ~at:i);
         decode (i + 1)
       )
     else (
-      Buffer.add_char buf s.[i];
+      Buffer.add_char buf (String.get_unchecked s ~at:i);
       decode (i + 1)
     )
   in
@@ -401,7 +421,7 @@ let quoted_printable_decode = fun s ->
 let base64_decode = fun s ->
   let s = String.trim s in
   let len = String.length s in
-  let buf = Buffer.create ((len * 3 / 4) + 3) in
+  let buf = Buffer.create ~size:((len * 3 / 4) + 3) in
   let char_to_value c =
     match c with
     | 'A' .. 'Z' -> Char.code c - Char.code 'A'
@@ -420,13 +440,13 @@ let base64_decode = fun s ->
     if i >= len then
       Ok ()
     else
-      let v1 = char_to_value (String.get s i) in
+      let v1 = char_to_value (String.get_unchecked s ~at:i) in
       if v1 = (-3) then
         decode_chunk (i + 1)
       else if i + 3 < len then
-        let v2 = char_to_value (String.get s (i + 1)) in
-        let v3 = char_to_value (String.get s (i + 2)) in
-        let v4 = char_to_value (String.get s (i + 3)) in
+        let v2 = char_to_value (String.get_unchecked s ~at:(i + 1)) in
+        let v3 = char_to_value (String.get_unchecked s ~at:(i + 2)) in
+        let v4 = char_to_value (String.get_unchecked s ~at:(i + 3)) in
         if v1 = (-2) || v2 = (-2) || v3 = (-2) || v4 = (-2) then
           Error "Invalid base64 character"
         else (

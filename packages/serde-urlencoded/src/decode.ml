@@ -1,4 +1,5 @@
 open Std
+module Array = Collections.Array
 module HashMap = Collections.HashMap
 module Vector = Collections.Vector
 module De = Serde.De
@@ -33,25 +34,24 @@ let unsupported_nested = fun kind -> raise_error ("unsupported nested form value
 
 let parse_fields = fun input ->
   let pairs = Net.Uri.Query.parse input
-  |> List.filter (fun ((key, value)) -> not (String.equal key "" && String.equal value "")) in
+  |> List.filter ~fn:(fun ((key, value)) -> not (String.equal key "" && String.equal value "")) in
   let groups = Vector.create () in
   let indices = HashMap.create () in
   List.iter
     (fun ((key, value)) ->
-      match HashMap.get indices key with
+      match HashMap.get indices ~key with
       | Some index ->
-          let group = Vector.get_unchecked groups index in
-          Vector.push group.values value
+          let group = Vector.get_unchecked groups ~at:index in
+          Vector.push group.values ~value
       | None ->
           let index = Vector.len groups in
-          let values = Vector.with_capacity 4 in
-          Vector.push values value;
-          Vector.push groups (({ key; values }: grouped_field_acc));
-          ignore (HashMap.insert indices key index))
+          let values = Vector.with_capacity ~size:4 in
+          Vector.push values ~value;
+          Vector.push groups ~value:({ key; values }: grouped_field_acc);
+          ignore (HashMap.insert indices ~key ~value:index))
     pairs;
-  array__init (Vector.len groups)
-    (fun index ->
-      let group = Vector.get_unchecked groups index in
+  Array.init ~count:(Vector.len groups) ~fn:(fun index ->
+      let group = Vector.get_unchecked groups ~at:index in
       ({ key = group.key; values = Vector.to_array group.values }: grouped_field))
 
 let with_values = fun state values fn ->
@@ -70,9 +70,9 @@ let expect_single_value = fun state kind ->
   match state.context with
   | Top_level -> unsupported_top_level kind
   | Field_values values ->
-      if not (Int.equal (array__length values) 1) then
+      if not (Int.equal (Array.length values) 1) then
         invalid_field_type ();
-      array__get values 0
+      Array.get_unchecked values ~at:0
 
 let state_of_value = fun value ->
   { fields = [||]; root_consumed = true; context = Field_values [|value|] }
@@ -115,7 +115,7 @@ let rec backend: state De.backend = {
       match state.context with
       | Top_level ->
           state.root_consumed <- true;
-          if Int.equal (array__length state.fields) 0 then
+          if Int.equal (Array.length state.fields) 0 then
             None
           else
             Some (decode.run backend state)
@@ -125,10 +125,10 @@ let rec backend: state De.backend = {
       match state.context with
       | Top_level -> unsupported_top_level "sequence"
       | Field_values values ->
-          let result = Vector.with_capacity (array__length values) in
-          for index = 0 to array__length values - 1 do
-            let value = array__get values index in
-            Vector.push result (decode.run backend (state_of_value value))
+          let result = Vector.with_capacity ~size:(Array.length values) in
+          for index = 0 to Array.length values - 1 do
+            let value = Array.get_unchecked values ~at:index in
+            Vector.push result ~value:(decode.run backend (state_of_value value))
           done;
           result);
   array =
@@ -136,9 +136,8 @@ let rec backend: state De.backend = {
       match state.context with
       | Top_level -> unsupported_top_level "array"
       | Field_values values ->
-          array__init (array__length values)
-            (fun index ->
-              let value = array__get values index in
+          Array.init ~count:(Array.length values) ~fn:(fun index ->
+              let value = Array.get_unchecked values ~at:index in
               decode.run backend (state_of_value value)));
   record =
     (fun state ~fields ~init ~step ~finish ->
@@ -147,8 +146,8 @@ let rec backend: state De.backend = {
       | Top_level ->
           state.root_consumed <- true;
           let acc = ref init in
-          for index = 0 to array__length state.fields - 1 do
-            let field = array__get state.fields index in
+          for index = 0 to Array.length state.fields - 1 do
+            let field = Array.get_unchecked state.fields ~at:index in
             let tag = De.Fields.match_slice
               fields
               field.key
@@ -164,8 +163,8 @@ let rec backend: state De.backend = {
       | Top_level ->
           state.root_consumed <- true;
           let builder = create () in
-          for index = 0 to array__length state.fields - 1 do
-            let field = array__get state.fields index in
+          for index = 0 to Array.length state.fields - 1 do
+            let field = Array.get_unchecked state.fields ~at:index in
             let tag = De.Fields.match_slice
               fields
               field.key
@@ -178,13 +177,13 @@ let rec backend: state De.backend = {
     (fun state cases ->
       let value = expect_single_value state "variant" in
       let rec loop index saw_payload_case =
-        if Int.equal index (array__length cases) then
+        if Int.equal index (Array.length cases) then
           if saw_payload_case then
             unsupported_nested "payload variant"
           else
             raise (Serde.Decode_error `invalid_tag)
         else
-          match array__get cases index with
+          match Array.get_unchecked cases ~at:index with
           | De.Unit (tag, result) ->
               if String.equal value tag then
                 result
@@ -199,7 +198,7 @@ let finish_decode = fun state result ->
   match result with
   | Error _ -> result
   | Ok value ->
-      if state.root_consumed || Int.equal (array__length state.fields) 0 then
+      if state.root_consumed || Int.equal (Array.length state.fields) 0 then
         Ok value
       else
         Error (`Msg "unsupported top-level value for application/x-www-form-urlencoded input")
@@ -209,7 +208,7 @@ let of_string = fun decode input ->
   De.run decode backend state |> finish_decode state
 
 let of_reader = fun decode reader ->
-  let buffer = IO.Buffer.create 128 in
+  let buffer = IO.Buffer.create ~size:128 in
   match IO.read_to_end reader ~buf:buffer with
   | Ok _ -> of_string decode (IO.Buffer.contents buffer)
   | Error err -> Error (`Io_error err)

@@ -165,7 +165,7 @@ let rec render_table_body = fun buffer path items ->
 
 let to_string = function
   | Table items ->
-      let buffer = IO.Buffer.create 256 in
+      let buffer = IO.Buffer.create ~size:256 in
       render_table_body buffer [] items;
       Ok (IO.Buffer.contents buffer)
   | _ -> Error (`Msg "TOML documents must be table-shaped at the top level")

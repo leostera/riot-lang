@@ -45,7 +45,7 @@ let of_source = fun ~relpath ~source ->
       let nonempty_lines =
         lines
         |> List.filter
-          (fun line ->
+          ~fn:(fun line ->
             if String.equal (String.trim line) "" then
               false
             else

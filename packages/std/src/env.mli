@@ -158,6 +158,9 @@ type 't var_type =
 *)
 val get: 't var_type -> var:string -> 't option
 
+(** Use `var kind ~name` as the conventional alias for `get kind ~var:name`. *)
+val var: 't var_type -> name:string -> 't option
+
 (** Sets an environment variable.
 
     Returns the previous value if it existed.

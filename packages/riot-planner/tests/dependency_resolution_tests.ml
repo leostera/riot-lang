@@ -1,9 +1,14 @@
 open Std
+open Riot_model
 module Test = Std.Test
 module G = Std.Graph.SimpleGraph
 
 let make_package = fun name ->
-  Riot_model.Package.make ~name ~path:(Path.v ".") ~relative_path:(Path.v ".") ()
+  Riot_model.Package.make
+    ~name:(Package_name.from_string name |> Result.expect ~msg:("expected valid package name: " ^ name))
+    ~path:(Path.v ".")
+    ~relative_path:(Path.v ".")
+    ()
 
 let test_transitive_closure_dependency_first_order = fun _ctx ->
   let dep_c =
@@ -29,10 +34,14 @@ let test_transitive_closure_dependency_first_order = fun _ctx ->
     } in
   let names = Riot_planner.Dependency.transitive_closure [ dep_a ]
   |> List.map ~fn:(fun d -> d.Riot_planner.Dependency.package.name) in
-  if names = [ "c"; "b"; "a" ] then
+  if
+    names
+    = List.map [ "c"; "b"; "a" ] ~fn:(fun value ->
+      Package_name.from_string value |> Result.expect ~msg:("expected valid package name: " ^ value))
+  then
     Ok ()
   else
-    Error ("unexpected order: " ^ String.concat "," names)
+    Error ("unexpected order: " ^ String.concat "," (List.map names ~fn:Package_name.to_string))
 
 let test_library_cmxa_uses_store_location = fun _ctx ->
   let dep =
@@ -43,7 +52,11 @@ let test_library_cmxa_uses_store_location = fun _ctx ->
       hash = Crypto.hash_string "std"
     } in
   let expected =
-    Path.(dep.artifact_dir / Riot_model.Module_name.(of_string dep.package.name |> cmxa)) in
+    Path.(
+      dep.artifact_dir
+      / Riot_model.Module_name.(of_string (Package_name.to_string dep.package.name) |> cmxa)
+    )
+  in
   let got = Riot_planner.Dependency.library_cmxa dep in
   if Path.equal expected got then
     Ok ()
@@ -62,7 +75,11 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
         let _ = Fs.write "type t = int\nlet x = 1\n" Path.(src_dir / Path.v "foo.ml")
         |> Result.expect ~msg:"expected foo.ml write to succeed" in
         let _ = Fs.write "val y : Foo.t\n" Path.(src_dir / Path.v "bar.mli") |> Result.expect ~msg:"expected bar.mli write to succeed" in
-        let package = Riot_model.Package.make ~name:"pkg" ~path:package_root ~relative_path:(Path.v "pkg")
+        let package =
+          Riot_model.Package.make
+            ~name:(Package_name.from_string "pkg" |> Result.expect ~msg:"expected valid package name")
+            ~path:package_root
+            ~relative_path:(Path.v "pkg")
           ~sources:{
             src = [ Path.v "src/foo.mli"; Path.v "src/foo.ml"; Path.v "src/bar.mli" ];
             native = [];
@@ -86,7 +103,9 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
             root = package_root;
             source_dir = Path.v "src";
             allowed_source_files = package.sources.src;
-            root_mode = Riot_planner.Module_graph.Library_root { library_name = package.name };
+            root_mode = Riot_planner.Module_graph.Library_root {
+              library_name = Package_name.to_string package.name
+            };
             namespace = "Pkg";
             package;
             toolchain;
@@ -164,8 +183,11 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
         let _ = write Path.(process_dir / Path.v "unix.ml") "let inherited : Fs.File.t option = None\n" in
         let _ = write Path.(env_dir / Path.v "env.ml") "include Unix\n" in
         let _ = write Path.(env_dir / Path.v "unix.ml") "let cwd = \".\"\n" in
-        let package = Riot_model.Package.make ~name:"kernel-new" ~path:package_root ~relative_path:(Path.v
-          "pkg")
+        let package =
+          Riot_model.Package.make
+            ~name:(Package_name.from_string "kernel-new" |> Result.expect ~msg:"expected valid package name")
+            ~path:package_root
+            ~relative_path:(Path.v "pkg")
           ~sources:{
             src =
               [
@@ -201,8 +223,13 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
             root = package_root;
             source_dir = Path.v "src";
             allowed_source_files = package.sources.src;
-            root_mode = Riot_planner.Module_graph.Library_root { library_name = package.name };
-            namespace = Riot_model.Module_name.(package.name |> of_string |> to_string);
+            root_mode = Riot_planner.Module_graph.Library_root {
+              library_name = Package_name.to_string package.name
+            };
+            namespace =
+              Riot_model.Module_name.(
+                Package_name.to_string package.name |> of_string |> to_string
+              );
             package;
             toolchain;
             workspace;
@@ -261,7 +288,11 @@ let test_module_graph_uses_explicit_root_library_path = fun _ctx ->
         |> Result.expect ~msg:"expected lib.ml write to succeed" in
         let _ = Fs.write "let value = 42\n" Path.(src_dir / Path.v "helper.ml")
         |> Result.expect ~msg:"expected helper.ml write to succeed" in
-        let package = Riot_model.Package.make ~name:"pkg" ~path:package_root ~relative_path:(Path.v "pkg")
+        let package =
+          Riot_model.Package.make
+            ~name:(Package_name.from_string "pkg" |> Result.expect ~msg:"expected valid package name")
+            ~path:package_root
+            ~relative_path:(Path.v "pkg")
           ~library:{ path = Path.v "src/lib.ml" }
           ~sources:{
             src = [ Path.v "src/lib.ml"; Path.v "src/helper.ml" ];
@@ -286,7 +317,9 @@ let test_module_graph_uses_explicit_root_library_path = fun _ctx ->
             root = package_root;
             source_dir = Path.v "src";
             allowed_source_files = package.sources.src;
-            root_mode = Riot_planner.Module_graph.Library_root { library_name = package.name };
+            root_mode = Riot_planner.Module_graph.Library_root {
+              library_name = Package_name.to_string package.name
+            };
             namespace = "Pkg";
             package;
             toolchain;
@@ -345,8 +378,11 @@ let test_module_graph_uses_explicit_root_library_path_case_insensitively = fun _
         |> Result.expect ~msg:"expected Krasny.ml write to succeed" in
         let _ = Fs.write "let value = 42\n" Path.(src_dir / Path.v "helper.ml")
         |> Result.expect ~msg:"expected helper.ml write to succeed" in
-        let package = Riot_model.Package.make ~name:"krasny" ~path:package_root ~relative_path:(Path.v
-          "pkg")
+        let package =
+          Riot_model.Package.make
+            ~name:(Package_name.from_string "krasny" |> Result.expect ~msg:"expected valid package name")
+            ~path:package_root
+            ~relative_path:(Path.v "pkg")
           ~library:{ path = Path.v "src/krasny.ml" }
           ~sources:{
             src = [ Path.v "src/Krasny.ml"; Path.v "src/helper.ml" ];
@@ -371,7 +407,9 @@ let test_module_graph_uses_explicit_root_library_path_case_insensitively = fun _
             root = package_root;
             source_dir = Path.v "src";
             allowed_source_files = package.sources.src;
-            root_mode = Riot_planner.Module_graph.Library_root { library_name = package.name };
+            root_mode = Riot_planner.Module_graph.Library_root {
+              library_name = Package_name.to_string package.name
+            };
             namespace = "Krasny";
             package;
             toolchain;
@@ -442,8 +480,11 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
         let _ = write Path.(testing_dir / Path.v "shared.ml") "let level = \"testing\"\n" in
         let _ = write Path.(testing_dir / Path.v "user.ml") "include Shared\n" in
         let _ = write Path.(testing_dir / Path.v "report.ml") "include Helpers\n" in
-        let package = Riot_model.Package.make ~name:"deep-graph" ~path:package_root ~relative_path:(Path.v
-          "pkg")
+        let package =
+          Riot_model.Package.make
+            ~name:(Package_name.from_string "deep-graph" |> Result.expect ~msg:"expected valid package name")
+            ~path:package_root
+            ~relative_path:(Path.v "pkg")
           ~sources:{
             src = [
               Path.v "src/shared.ml";
@@ -475,8 +516,13 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
             root = package_root;
             source_dir = Path.v "src";
             allowed_source_files = package.sources.src;
-            root_mode = Riot_planner.Module_graph.Library_root { library_name = package.name };
-            namespace = Riot_model.Module_name.(package.name |> of_string |> to_string);
+            root_mode = Riot_planner.Module_graph.Library_root {
+              library_name = Package_name.to_string package.name
+            };
+            namespace =
+              Riot_model.Module_name.(
+                Package_name.to_string package.name |> of_string |> to_string
+              );
             package;
             toolchain;
             workspace;
@@ -612,7 +658,7 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
           | source_order :: rest ->
               let package =
                 Riot_model.Package.make
-                  ~name:"demo"
+                  ~name:(Package_name.from_string "demo" |> Result.expect ~msg:"expected valid package name")
                   ~path:package_root
                   ~relative_path:(Path.v "pkg")
                   ~library:{ path = Path.v "src/demo.ml" }
@@ -637,8 +683,13 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
                   root = package_root;
                   source_dir = Path.v "src";
                   allowed_source_files = package.sources.src;
-                  root_mode = Riot_planner.Module_graph.Library_root { library_name = package.name };
-                  namespace = Riot_model.Module_name.(package.name |> of_string |> to_string);
+                  root_mode = Riot_planner.Module_graph.Library_root {
+                    library_name = Package_name.to_string package.name
+                  };
+                  namespace =
+                    Riot_model.Module_name.(
+                      Package_name.to_string package.name |> of_string |> to_string
+                    );
                   package;
                   toolchain;
                   workspace;

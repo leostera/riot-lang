@@ -4,19 +4,29 @@ let max_float = 1.797_693_134_862_315_71e+308
 
 let min_float = 2.225_073_858_507_201_38e-308
 
+let infinity = Caml_runtime.div_float 1.0 0.0
+
+let nan = Caml_runtime.div_float 0.0 0.0
+
 let equal = Caml_runtime.equal
 
 let compare = Caml_runtime.compare
 
 let from_int = Caml_runtime.float_of_int
 
+let of_int = from_int
+
 let to_int = Caml_runtime.int_of_float
 
 let parse_unchecked = Caml_runtime.float_of_string
 
+let of_string = parse_unchecked
+
 let parse = fun value ->
   try Some (parse_unchecked value) with
   | _ -> None
+
+let of_string_opt = parse
 
 let is_finite = fun value -> equal (Caml_runtime.sub_float value value) 0.0
 

@@ -16,7 +16,7 @@ let render_actual = fun ~fixture_path ->
   match Syn.Deps.of_parse_result parse_result with
   | Ok deps -> Json.to_string_pretty (Syn.Deps.to_json deps) ^ "\n"
   | Error (Syn.Deps.Parse_diagnostics diagnostics) -> "parse diagnostics:\n"
-  ^ String.concat "\n" (List.map Diagnostic.to_string diagnostics)
+  ^ String.concat "\n" (List.map diagnostics ~fn:Diagnostic.to_string)
   ^ "\n"
   | Error (Syn.Deps.Cst_builder_error err) -> "cst builder error: "
   ^ err.Syn.CstBuilder.message

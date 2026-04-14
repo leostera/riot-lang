@@ -1,11 +1,25 @@
 open Std
 open Std.Collections
+open Riot_model
 module Test = Std.Test
 module G = Std.Graph.SimpleGraph
 
 let test_toolchain =
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
   |> Result.expect ~msg:"failed to initialize toolchain"
+
+let package_name = fun value ->
+  Package_name.from_string value |> Result.expect ~msg:("expected valid package name: " ^ value)
+
+let make_registry = fun root ->
+  let cache =
+    Pkgs_ml.Registry_cache.create
+      ~riot_home:Path.(root / Path.v ".riot")
+      ~registry_name:"pkgs.ml"
+      ()
+    |> Result.expect ~msg:"registry cache init failed"
+  in
+  Pkgs_ml.Registry.in_memory ~cache ~packages:[] ()
 
 let clone_workspace_with_target = fun (workspace: Riot_model.Workspace.t) ~target_dir ->
   Riot_model.Workspace.make
@@ -24,9 +38,15 @@ let load_repo_workspace = fun () ->
   match Riot_model.Workspace_manager.scan manager (Path.v ".") with
   | Error err ->
       Error ("workspace scan failed: " ^ err)
-  | Ok (workspace, errors) ->
+  | Ok (workspace_manifest, errors) ->
       if List.is_empty errors then
-        Ok workspace
+        Riot_deps.ensure_workspace
+          ~workspace_manager:manager
+          ~mode:Riot_deps.Dep_solver.Refresh
+          ~registry:(make_registry (Path.v "."))
+          ~workspace:workspace_manifest
+          ()
+        |> Result.map_err ~fn:Riot_model.Pm_error.message
       else
         Error
           ("workspace scan produced load errors: "
@@ -35,7 +55,8 @@ let load_repo_workspace = fun () ->
               (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
 
 let find_package_by_name = fun (workspace: Riot_model.Workspace.t) name ->
-  List.find workspace.packages ~fn:(fun (pkg: Riot_model.Package.t) -> String.equal pkg.name name)
+  Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Dev workspace
+  |> List.find ~fn:(fun (pkg: Riot_model.Package.t) -> Package_name.equal pkg.name (package_name name))
 
 let plan_graph_package = fun ~workspace ~store ~package_graph ~package_key ~build_ctx ->
   match Riot_planner.Package_graph.get_node_by_key package_graph package_key with
@@ -66,12 +87,12 @@ let plan_kernel_runtime_graphs = fun ~workspace ~store ~build_ctx ->
       in
       let build_key =
         Riot_planner.Package_graph.package_key
-          ~package_name:package.name
+          ~package_name:(Package_name.to_string package.name)
           Riot_planner.Package_graph.Build
       in
       let runtime_key =
         Riot_planner.Package_graph.package_key
-          ~package_name:package.name
+          ~package_name:(Package_name.to_string package.name)
           Riot_planner.Package_graph.Runtime
       in
       match plan_graph_package ~workspace ~store ~package_graph ~package_key:build_key ~build_ctx with

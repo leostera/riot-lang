@@ -1,7 +1,6 @@
 open Std
 open Bson_value
-
-let ( let* ) = Result.and_then
+open Std.Result.Syntax
 
 let type_double = Char.chr 0x01
 
@@ -26,8 +25,7 @@ let hex_char = function
   | value -> Char.chr (Char.code 'A' + value - 10)
 
 let hex_byte = fun value ->
-  String.init 2
-    (fun index ->
+  String.init ~len:2 ~fn:(fun index ->
       if Int.equal index 0 then
         hex_char ((value lsr 4) land 0x0f)
       else
@@ -108,20 +106,20 @@ let rec encode_value = function
           "\x00"
       )
   | Int32 value ->
-      let buffer = IO.Buffer.create 4 in
+      let buffer = IO.Buffer.create ~size:4 in
       add_int32_le buffer value;
       Ok (type_int32, IO.Buffer.contents buffer)
   | Int64 value ->
-      let buffer = IO.Buffer.create 8 in
+      let buffer = IO.Buffer.create ~size:8 in
       add_int64_le buffer value;
       Ok (type_int64, IO.Buffer.contents buffer)
   | Double value ->
-      let buffer = IO.Buffer.create 8 in
+      let buffer = IO.Buffer.create ~size:8 in
       add_double_le buffer value;
       Ok (type_double, IO.Buffer.contents buffer)
   | String value ->
       let* encoded_length = int32_of_length "string" (String.length value + 1) in
-      let buffer = IO.Buffer.create (String.length value + 5) in
+      let buffer = IO.Buffer.create ~size:(String.length value + 5) in
       add_int32_le buffer encoded_length;
       IO.Buffer.add_string buffer value;
       IO.Buffer.add_char buffer '\x00';
@@ -140,7 +138,7 @@ let rec encode_value = function
 
 and encode_element = fun (key, value) ->
   let* (kind, payload) = encode_value value in
-  let buffer = IO.Buffer.create (String.length key + String.length payload + 8) in
+  let buffer = IO.Buffer.create ~size:(String.length key + String.length payload + 8) in
   IO.Buffer.add_char buffer kind;
   let* () = add_cstring buffer key in
   IO.Buffer.add_string buffer payload;
@@ -148,20 +146,17 @@ and encode_element = fun (key, value) ->
 
 and encode_document = fun fields ->
   let* encoded_fields =
-    List.fold_left
-      (fun acc field ->
+    List.fold_left fields ~acc:(Ok []) ~fn:(fun acc field ->
         let* acc = acc in
         let* encoded = encode_element field in
         Ok (encoded :: acc))
-      (Ok [])
-      fields
   in
   let encoded_fields = List.rev encoded_fields in
   let payload_len =
-    List.fold_left (fun total field -> total + String.length field) 0 encoded_fields
+    List.fold_left encoded_fields ~acc:0 ~fn:(fun total field -> total + String.length field)
   in
   let* encoded_length = int32_of_length "document" (payload_len + 5) in
-  let buffer = IO.Buffer.create (payload_len + 5) in
+  let buffer = IO.Buffer.create ~size:(payload_len + 5) in
   add_int32_le buffer encoded_length;
   List.iter (IO.Buffer.add_string buffer) encoded_fields;
   IO.Buffer.add_char buffer '\x00';
@@ -229,7 +224,7 @@ let read_cstring = fun input ->
       Error `no_more_data
     else if Char.equal (String.unsafe_get input.source index) '\x00' then
       (
-        let value = String.sub input.source start (index - start) in
+        let value = String.sub input.source ~offset:start ~len:(index - start) in
         input.pos <- index + 1;
         Ok value
       )
@@ -247,7 +242,7 @@ let read_length_prefixed_string = fun input ->
   if not (Char.equal (String.unsafe_get input.source terminator_index) '\x00') then
     error "serde-bson string payload is missing its terminating NUL"
   else
-    let value = String.sub input.source input.pos text_len in
+    let value = String.sub input.source ~offset:input.pos ~len:text_len in
     input.pos <- input.pos + length;
     Ok value
 
@@ -266,11 +261,11 @@ let array_of_document = fun fields ->
 let rec read_value = fun input kind end_pos ->
   match kind with
   | 0x01 ->
-      read_double_le input |> Result.map (fun value -> Double value)
+      read_double_le input |> Result.map ~fn:(fun value -> Double value)
   | 0x02 ->
-      read_length_prefixed_string input |> Result.map (fun value -> String value)
+      read_length_prefixed_string input |> Result.map ~fn:(fun value -> String value)
   | 0x03 ->
-      read_document_body input end_pos |> Result.map (fun value -> Document value)
+      read_document_body input end_pos |> Result.map ~fn:(fun value -> Document value)
   | 0x04 ->
       let* fields = read_document_body input end_pos in
       let* values = array_of_document fields in
@@ -286,9 +281,9 @@ let rec read_value = fun input kind end_pos ->
   | 0x0a ->
       Ok Null
   | 0x10 ->
-      read_int32_le input |> Result.map (fun value -> Int32 value)
+      read_int32_le input |> Result.map ~fn:(fun value -> Int32 value)
   | 0x12 ->
-      read_int64_le input |> Result.map (fun value -> Int64 value)
+      read_int64_le input |> Result.map ~fn:(fun value -> Int64 value)
   | _ ->
       error ("serde-bson encountered unsupported BSON element type 0x" ^ hex_byte kind)
 
@@ -339,7 +334,7 @@ let from_string = fun input ->
     error "serde-bson input has trailing bytes after the top-level document"
 
 let from_reader = fun reader ->
-  let buffer = IO.Buffer.create 256 in
+  let buffer = IO.Buffer.create ~size:256 in
   match IO.read_to_end reader ~buf:buffer with
   | Ok _ -> from_string (IO.Buffer.contents buffer)
   | Error err -> Error (`Io_error err)

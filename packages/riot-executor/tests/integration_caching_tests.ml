@@ -1,6 +1,10 @@
 open Std
 open Std.Collections
+open Riot_model
 module Test = Std.Test
+
+let package_name = fun value ->
+  Package_name.from_string value |> Result.expect ~msg:("expected valid package name: " ^ value)
 
 let test_toolchain = fun () ->
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
@@ -10,22 +14,16 @@ let make_test_build_ctx = fun () ->
   let session_id = Riot_model.Session_id.make () in
   Riot_model.Build_ctx.make ~session_id ~profile:Riot_model.Profile.debug ()
 
-let make_workspace = fun root ->
-  Riot_model.Workspace.{
-    name = None;
-    root;
-    target_dir_root =
-      Path.(root / Path.v "target");
-    packages = [];
-    dependencies = [];
-    dev_dependencies = [];
-    build_dependencies = [];
-    profile_overrides = [];
-  }
+let make_workspace = fun ?(packages = []) root ->
+  Riot_model.Workspace.make_realized
+    ~root
+    ~packages
+    ~target_dir:"target"
+    ()
 
 let workspace_dependency = fun name ->
   Riot_model.Package.{
-    name;
+    name = package_name name;
     source = {
       workspace = true;
       builtin = false;
@@ -37,15 +35,17 @@ let workspace_dependency = fun name ->
   }
 
 let make_package = fun ~root ~name ->
+  let package_name = package_name name in
   let path = Path.(root / Path.v "packages" / Path.v name) in
   Riot_model.Package.make
-    ~name
+    ~name:package_name
     ~path
     ~relative_path:(Path.v ("packages/" ^ name))
     ~library:{ path = Path.v "src/lib.ml" }
     ()
 
 let make_library_package = fun ~root ~name ?interface ?(dependencies = []) implementation ->
+  let package_name = package_name name in
   let path = Path.(root / Path.v "packages" / Path.v name) in
   let src_dir = Path.(path / Path.v "src") in
   let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"failed to create src dir" in
@@ -63,7 +63,7 @@ let make_library_package = fun ~root ~name ?interface ?(dependencies = []) imple
         [ intf_rel; impl_rel ]
   in
   Riot_model.Package.make
-    ~name
+    ~name:package_name
     ~path
     ~relative_path:(Path.v ("packages/" ^ name))
     ~dependencies:(List.map dependencies ~fn:workspace_dependency)
@@ -122,7 +122,7 @@ let build_package = fun ~workspace ~store ~package ~package_graph ->
     ~build_ctx:(make_test_build_ctx ())
     ~package_graph
     ~package_key:(Riot_planner.Package_graph.package_key
-      ~package_name:package.Riot_model.Package.name
+      ~package_name:(Package_name.to_string package.Riot_model.Package.name)
       Riot_planner.Package_graph.Runtime)
     ~package
 
@@ -133,7 +133,7 @@ let execute_planned_package = fun ~workspace ~store ~package ~package_graph ->
     ~store
     ~package_graph
     ~package_key:(Riot_planner.Package_graph.package_key
-      ~package_name:package.Riot_model.Package.name
+      ~package_name:(Package_name.to_string package.Riot_model.Package.name)
       Riot_planner.Package_graph.Runtime)
     ~package
     ~build_ctx:(make_test_build_ctx ()) with
@@ -239,7 +239,7 @@ let test_dependency_change_invalidates_cached_compile_actions = fun _ctx ->
             ~dependencies:[ "dep" ]
             "let value = Dep.value\n"
         in
-        let workspace = make_workspace tmpdir |> fun ws -> { ws with packages = [ dep; app ] } in
+        let workspace = make_workspace ~packages:[ dep; app ] tmpdir in
         let store = Riot_store.Store.create ~workspace in
         let first_graph =
           Riot_planner.Package_graph.create

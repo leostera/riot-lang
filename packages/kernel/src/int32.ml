@@ -8,6 +8,8 @@ let max_int = 0x7fff_ffffl
 
 external from_int: int -> int32 = "%int32_of_int"
 
+let of_int = from_int
+
 external to_int: int32 -> int = "%int32_to_int"
 
 let neg = Caml_runtime.int32_neg
@@ -44,13 +46,21 @@ let from_float = Caml_runtime.int32_of_float
 
 let to_float = Caml_runtime.int32_to_float
 
+external bits_of_float: float -> int32 = "caml_int32_bits_of_float"
+
+external float_of_bits: int32 -> float = "caml_int32_float_of_bits"
+
 external format: string -> int32 -> string = "caml_int32_format"
 
 external parse_unchecked: string -> int32 = "caml_int32_of_string"
 
+let of_string = parse_unchecked
+
 let parse = fun value ->
   try Some (parse_unchecked value) with
   | _ -> None
+
+let of_string_opt = parse
 
 let to_string = fun value -> format "%d" value
 

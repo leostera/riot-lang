@@ -1,13 +1,17 @@
 open Std
+open Riot_model
 module Test = Std.Test
 module G = Graph.SimpleGraph
+
+let package_name = fun value ->
+  Package_name.from_string value |> Result.expect ~msg:("expected valid package name: " ^ value)
 
 let test_toolchain = fun () ->
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default |> Result.expect ~msg:"failed to initialize toolchain"
 
 let make_test_package = fun name ->
   Riot_model.Package.make
-    ~name
+    ~name:(package_name name)
     ~path:(Path.v ("packages/" ^ name))
     ~relative_path:(Path.v ("packages/" ^ name))
     ~library:{ path = Path.v "src/lib.ml" }

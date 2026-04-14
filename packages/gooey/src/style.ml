@@ -228,28 +228,28 @@ let color = fun hex_str ->
   let hex = String.trim hex_str in
   let hex =
     if String.starts_with ~prefix:"#" hex then
-      String.sub hex 1 (String.length hex - 1)
+      String.sub hex ~offset:1 ~len:(String.length hex - 1)
     else
       hex
   in
   match String.length hex with
   | 3 ->
       (* Short form like "F00" -> "FF0000" *)
-      let r = String.make 2 hex.[0] in
-      let g = String.make 2 hex.[1] in
-      let b = String.make 2 hex.[2] in
-      let r_val = int_of_string ("0x" ^ r) in
-      let g_val = int_of_string ("0x" ^ g) in
-      let b_val = int_of_string ("0x" ^ b) in
+      let r = String.make ~len:2 ~char:(String.unsafe_get hex 0) in
+      let g = String.make ~len:2 ~char:(String.unsafe_get hex 1) in
+      let b = String.make ~len:2 ~char:(String.unsafe_get hex 2) in
+      let r_val = Int.of_string ("0x" ^ r) in
+      let g_val = Int.of_string ("0x" ^ g) in
+      let b_val = Int.of_string ("0x" ^ b) in
       Tty.Color.of_rgb (r_val, g_val, b_val)
   | 6 ->
       (* Full form like "FF0000" *)
-      let r = String.sub hex 0 2 in
-      let g = String.sub hex 2 2 in
-      let b = String.sub hex 4 2 in
-      let r_val = int_of_string ("0x" ^ r) in
-      let g_val = int_of_string ("0x" ^ g) in
-      let b_val = int_of_string ("0x" ^ b) in
+      let r = String.sub hex ~offset:0 ~len:2 in
+      let g = String.sub hex ~offset:2 ~len:2 in
+      let b = String.sub hex ~offset:4 ~len:2 in
+      let r_val = Int.of_string ("0x" ^ r) in
+      let g_val = Int.of_string ("0x" ^ g) in
+      let b_val = Int.of_string ("0x" ^ b) in
       Tty.Color.of_rgb (r_val, g_val, b_val)
   | _ ->
       raise (Invalid_argument ("Invalid hex color: " ^ hex_str ^ " (expected #RGB or #RRGGBB)"))

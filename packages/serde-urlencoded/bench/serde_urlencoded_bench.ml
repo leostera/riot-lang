@@ -1,4 +1,5 @@
 open Std
+module Array = Collections.Array
 module Vector = Collections.Vector
 module De = Serde.De
 module Ser = Serde.Ser
@@ -80,20 +81,21 @@ let human_size = fun bytes ->
     Int.to_string bytes ^ "B"
 
 let repeat = fun text count ->
-  let buffer = IO.Buffer.create (String.length text * count) in
+  let buffer = IO.Buffer.create ~size:(String.length text * count) in
   for _index = 1 to count do
     IO.Buffer.add_string buffer text
   done;
   IO.Buffer.contents buffer
 
 let tags_of_count = fun count ->
-  let tags = Vector.with_capacity count in
+  let tags = Vector.with_capacity ~size:count in
   for index = 0 to count - 1 do
-    Vector.push tags ("grand-line-log-" ^ Int.to_string index)
+    Vector.push tags ~value:("grand-line-log-" ^ Int.to_string index)
   done;
   tags
 
-let scores_of_count = fun count -> array__init count (fun index -> (index * 97) mod 1_000_000)
+let scores_of_count = fun count ->
+  Array.init ~count ~fn:(fun index -> (index * 97) mod 1_000_000)
 
 let status_decode = De.variant
   [
@@ -264,10 +266,9 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.iter bufs
-        (fun { ba; off; len } ->
-          IO.Buffer.add_string buffer (IO.Bytes.sub_string ba off len);
-          written := !written + len);
+      IO.Iovec.for_each bufs ~fn:(fun { buffer = chunk; offset; length } ->
+        IO.Buffer.add_subbytes buffer chunk offset length;
+        written := !written + length);
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -279,7 +280,7 @@ let bench_encode_in_memory = fun fixture () ->
   ignore (Serde_urlencoded.to_string payload_encode fixture.value)
 
 let bench_encode_writer = fun fixture () ->
-  let buffer = IO.Buffer.create (String.length fixture.encoded) in
+  let buffer = IO.Buffer.create ~size:(String.length fixture.encoded) in
   ignore (Serde_urlencoded.to_writer payload_encode (io_writer_of_buffer buffer) fixture.value)
 
 let bench_decode_in_memory = fun fixture () ->

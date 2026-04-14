@@ -24,7 +24,7 @@ let rec build_layout_tree: Element.t -> layout_node = fun element ->
   let style = get_element_style element in
   let children =
     match element with
-    | Element.Container { children; _ } -> List.map build_layout_tree children
+    | Element.Container { children; _ } -> List.map children ~fn:build_layout_tree
     | Element.Text _
     | Element.Empty
     | Element.Custom _ -> []
@@ -44,16 +44,28 @@ let padding_horizontal = fun (p: Style.padding) -> Float.of_int (p.left + p.righ
 
 let padding_vertical = fun (p: Style.padding) -> Float.of_int (p.top + p.bottom)
 
+let float_max = fun left right ->
+  if Float.compare left right >= 0 then
+    left
+  else
+    right
+
+let float_min = fun left right ->
+  if Float.compare left right <= 0 then
+    left
+  else
+    right
+
 (* Helper: Clamp value between min and max *)
 
 let clamp_option = fun value min_opt max_opt ->
   let v =
     match min_opt with
-    | Some min -> Float.max value min
+    | Some min -> float_max value min
     | None -> value
   in
   match max_opt with
-  | Some max -> Float.min v max
+  | Some max -> float_min v max
   | None -> v
 
 (* Phase 2: Calculate sizes (ported from Clay) *)
@@ -102,19 +114,18 @@ and calculate_container_fit_size: layout_node -> Viewport.t -> Super.Config.t ->
   List.iter (fun child -> calculate_sizes child available config) node.children;
   (* Sum up children based on direction *)
   let total_width, total_height =
-    List.fold_left
-      (fun ((w, h)) child ->
+    List.fold_left node.children
+      ~acc:(0.0, 0.0)
+      ~fn:(fun (w, h) child ->
         match style.direction with
         | Style.LeftToRight -> (
           w +. child.computed_size.width,
-          Float.max h child.computed_size.height
+          float_max h child.computed_size.height
         )
         | Style.TopToBottom -> (
-          Float.max w child.computed_size.width,
+          float_max w child.computed_size.width,
           h +. child.computed_size.height
         ))
-      (0.0, 0.0)
-      node.children
   in
   (* Add gaps between children *)
   let child_count = List.length node.children in
@@ -137,8 +148,9 @@ and layout_children: layout_node -> Super.Config.t -> unit = fun node config ->
   let available_height = node.computed_size.height -. padding_vertical style.padding in
   (* Partition children by sizing type *)
   let fit_children, grow_children, fixed_children, percent_children =
-    List.fold_left
-      (fun ((fit, grow, fixed, percent)) child ->
+    List.fold_left node.children
+      ~acc:([], [], [], [])
+      ~fn:(fun (fit, grow, fixed, percent) child ->
         let child_style = child.style in
         match style.direction with
         | Style.LeftToRight -> (
@@ -155,24 +167,22 @@ and layout_children: layout_node -> Super.Config.t -> unit = fun node config ->
             | Style.Fixed _ -> (fit, grow, child :: fixed, percent)
             | Style.Percent _ -> (fit, grow, fixed, child :: percent)
           ))
-      ([], [], [], [])
-      node.children
   in
   (* Calculate space used by FIT and FIXED children *)
   let fit_space =
-    List.fold_left
-      (fun acc child ->
+    List.fold_left fit_children
+      ~acc:0.0
+      ~fn:(fun acc child ->
         acc +. (
           match style.direction with
           | Style.LeftToRight -> child.computed_size.width
           | Style.TopToBottom -> child.computed_size.height
         ))
-      0.0
-      fit_children
   in
   let fixed_space =
-    List.fold_left
-      (fun acc child ->
+    List.fold_left fixed_children
+      ~acc:0.0
+      ~fn:(fun acc child ->
         let size =
           match style.direction with
           | Style.LeftToRight -> (
@@ -187,12 +197,11 @@ and layout_children: layout_node -> Super.Config.t -> unit = fun node config ->
             )
         in
         acc +. size)
-      0.0
-      fixed_children
   in
   let percent_space =
-    List.fold_left
-      (fun acc child ->
+    List.fold_left percent_children
+      ~acc:0.0
+      ~fn:(fun acc child ->
         let size =
           match style.direction with
           | Style.LeftToRight -> (
@@ -207,8 +216,6 @@ and layout_children: layout_node -> Super.Config.t -> unit = fun node config ->
             )
         in
         acc +. size)
-      0.0
-      percent_children
   in
   (* Calculate gap space *)
   let child_count = List.length node.children in
@@ -219,7 +226,7 @@ and layout_children: layout_node -> Super.Config.t -> unit = fun node config ->
     | Style.LeftToRight -> available_width
     | Style.TopToBottom -> available_height
   in
-  let remaining_space = Float.max
+  let remaining_space = float_max
     0.0
     (total_available -. fit_space -. fixed_space -. percent_space -. gap_space) in
   (* Distribute to GROW children *)
@@ -279,7 +286,7 @@ let rec generate_commands: layout_node -> Render.command Vector.t -> unit = fun 
           command_type = Render.Rectangle { color; corner_radius = style.corner_radius };
           z_index = style.z_index
         } in
-        Vector.push commands cmd
+        Vector.push commands ~value:cmd
     | None -> ()
   );
   (* Generate border *)
@@ -301,7 +308,7 @@ let rec generate_commands: layout_node -> Render.command Vector.t -> unit = fun 
             };
             z_index = style.z_index
           } in
-          Vector.push commands cmd
+          Vector.push commands ~value:cmd
       | None -> ()
   );
   (* Generate element-specific commands *)
@@ -319,13 +326,13 @@ let rec generate_commands: layout_node -> Render.command Vector.t -> unit = fun 
           };
           z_index = style.z_index
         } in
-        Vector.push commands cmd
+        Vector.push commands ~value:cmd
     | Element.Container _ ->
         (* Recurse into children *)
         List.iter (fun child -> generate_commands child commands) node.children
     | Element.Custom { render; _ } ->
         let custom_commands = render node.final_box in
-        List.iter (Vector.push commands) custom_commands
+        List.iter (fun command -> Vector.push commands ~value:command) custom_commands
     | Element.Empty ->
         ()
   );
@@ -344,8 +351,7 @@ let compute = fun ~config element ->
   let commands = Vector.create () in
   generate_commands layout_tree commands;
   (* Sort by z-index and convert to list *)
-  let cmd_list = commands |> Vector.into_iter |> Iter.Iterator.to_list in
-  List.sort
-    (fun a b ->
+  let cmd_list = commands |> Vector.iter |> Iter.Iterator.to_list in
+  List.sort cmd_list
+    ~compare:(fun a b ->
       Int.compare a.Render.z_index b.Render.z_index)
-    cmd_list

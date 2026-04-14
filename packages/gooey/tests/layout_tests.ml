@@ -13,8 +13,8 @@ let test_layout_single_text = fun _ctx ->
   if List.length commands != 1 then
     Error ("Expected 1 command, got " ^ Int.to_string (List.length commands))
   else
-    match List.hd commands with
-    | { Render.command_type=Text { content; _ }; bounding_box; _ } ->
+    match List.head commands with
+    | Some { Render.command_type=Text { content; _ }; bounding_box; _ } ->
         if content != "Hello" then
           Error "Text content should be 'Hello'"
         else if bounding_box.width <= 0.0 then
@@ -33,11 +33,11 @@ let test_layout_row = fun _ctx ->
   else
     let texts =
       List.map
-        (fun cmd ->
+        commands
+        ~fn:(fun cmd ->
           match cmd.Render.command_type with
           | Text { content; _ } -> content
           | _ -> "")
-        commands
     in
     if texts = [ "A"; "B"; "C" ] then
       Ok ()
@@ -49,11 +49,11 @@ let test_layout_column = fun _ctx ->
   let commands = layout ~config:(make_config ()) elem in
   let texts =
     List.map
-      (fun cmd ->
+      commands
+      ~fn:(fun cmd ->
         match cmd.Render.command_type with
         | Text { content; _ } -> content
         | _ -> "")
-      commands
   in
   if texts = [ "A"; "B" ] then
     Ok ()
@@ -66,8 +66,8 @@ let test_layout_with_padding = fun _ctx ->
   if List.length commands != 1 then
     Error ("Expected 1 command, got " ^ Int.to_string (List.length commands))
   else
-    match List.hd commands with
-    | { Render.command_type=Text _; bounding_box; _ } ->
+    match List.head commands with
+    | Some { Render.command_type=Text _; bounding_box; _ } ->
         (* Text should be offset by padding *)
         if bounding_box.x = 10.0 && bounding_box.y = 10.0 then
           Ok ()
@@ -84,18 +84,26 @@ let test_layout_with_child_gap = fun _ctx ->
   let commands = layout ~config:(make_config ()) elem in
   let positions =
     List.filter_map
-      (fun cmd ->
+      commands
+      ~fn:(fun cmd ->
         match cmd.Render.command_type with
         | Text _ -> Some cmd.bounding_box.x
         | _ -> None)
-      commands
   in
   (* First at 0.0, second at width(A)=40.0 + gap=5.0 = 45.0 *)
-  if List.length positions = 2 && List.hd positions = 0.0 && List.nth positions 1 > 5.0 then
+  if
+    List.length positions = 2
+    && List.head positions = Some 0.0
+    && (
+      match List.get positions ~at:1 with
+      | Some value -> value > 5.0
+      | None -> false
+    )
+  then
     Ok ()
   else
     Error ("Expected positions starting at 0.0 with gap, got ["
-    ^ String.concat "; " (List.map Float.to_string positions)
+    ^ String.concat "; " (List.map positions ~fn:Float.to_string)
     ^ "]")
 
 let test_layout_grow_sizing = fun _ctx ->
@@ -115,8 +123,8 @@ let test_layout_fixed_sizing = fun _ctx ->
   if List.length commands != 1 then
     Error ("Expected 1 command, got " ^ Int.to_string (List.length commands))
   else
-    match List.hd commands with
-    | { Render.command_type=Rectangle _; bounding_box; _ } ->
+    match List.head commands with
+    | Some { Render.command_type=Rectangle _; bounding_box; _ } ->
         if bounding_box.width = 50.0 && bounding_box.height = 30.0 then
           Ok ()
         else
@@ -136,11 +144,11 @@ let test_nested_layout = fun _ctx ->
   let commands = layout ~config:(make_config ()) elem in
   let texts =
     List.filter_map
-      (fun cmd ->
+      commands
+      ~fn:(fun cmd ->
         match cmd.Render.command_type with
         | Text { content; _ } -> Some content
         | _ -> None)
-      commands
   in
   if texts = [ "Title"; "A"; "B"; "Footer" ] then
     Ok ()

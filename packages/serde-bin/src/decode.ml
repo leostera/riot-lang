@@ -1,4 +1,5 @@
 open Std
+module Array = Collections.Array
 module Vector = Collections.Vector
 module De = Serde.De
 
@@ -38,7 +39,7 @@ let compact = fun state ->
   if Int.compare state.pos 0 > 0 then
     let unread = state.limit - state.pos in
     if Int.compare unread 0 > 0 then
-      IO.Bytes.blit state.buf state.pos state.buf 0 unread;
+      IO.Bytes.blit_unchecked state.buf ~src_offset:state.pos ~dst:state.buf ~dst_offset:0 ~len:unread;
     state.base <- state.base + state.pos;
     state.limit <- unread;
     state.pos <- 0
@@ -51,9 +52,8 @@ let refill = fun state ->
     if Int.equal state.limit (IO.Bytes.length state.buf) then
       false
     else
-      let bufs = [|
-        { IO.Iovec.ba = state.buf; off = state.limit; len = IO.Bytes.length state.buf - state.limit }
-      |] in
+      let bufs = IO.Iovec.from_bytes state.buf
+      |> IO.Iovec.sub ~pos:state.limit ~len:(IO.Bytes.length state.buf - state.limit) in
       match IO.Reader.read_vectored state.reader bufs with
       | Ok 0 ->
           state.eof <- true;
@@ -96,7 +96,7 @@ let read_exact_into = fun state dst ~off ~len expected ->
       if Int.compare (input.pos + len) (String.length input.input) > 0 then
         unexpected_end state expected
       else (
-        IO.Bytes.blit_string input.input input.pos dst off len;
+        IO.Bytes.blit_string input.input ~src_offset:input.pos ~dst ~dst_offset:off ~len;
         input.pos <- input.pos + len
       )
   | Reader_input reader ->
@@ -112,7 +112,7 @@ let read_exact_into = fun state dst ~off ~len expected ->
               unexpected_end state expected
           else
             let chunk = min remaining available in
-            IO.Bytes.blit reader.buf reader.pos dst dst_off chunk;
+            IO.Bytes.blit_unchecked reader.buf ~src_offset:reader.pos ~dst ~dst_offset:dst_off ~len:chunk;
             reader.pos <- reader.pos + chunk;
             loop (dst_off + chunk) (remaining - chunk)
       in
@@ -169,7 +169,7 @@ let decode_length = fun state kind ->
 
 let raise_int_out_of_range = fun pos -> error_at pos "decoded int does not fit in an OCaml int"
 
-let variant_uses_u8 = fun cases -> Int.compare (array__length cases) 0x100 <= 0
+let variant_uses_u8 = fun cases -> Int.compare (Array.length cases) 0x100 <= 0
 
 let read_string = fun state ->
   let len = decode_length state "string" in
@@ -178,13 +178,13 @@ let read_string = fun state ->
       if Int.compare (input.pos + len) (String.length input.input) > 0 then
         unexpected_end state "string"
       else
-        let value = String.sub input.input input.pos len in
+        let value = String.sub input.input ~offset:input.pos ~len in
         input.pos <- input.pos + len;
         value
   | Reader_input reader ->
       let available = reader.limit - reader.pos in
       if Int.compare len available <= 0 then
-        let value = String.sub reader.view reader.pos len in
+        let value = String.sub reader.view ~offset:reader.pos ~len in
         reader.pos <- reader.pos + len;
         value
       else (
@@ -235,16 +235,15 @@ let read_int = fun state ->
 
 let rec list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode ->
   let len = decode_length state "list" in
-  let values = Vector.with_capacity len in
+  let values = Vector.with_capacity ~size:len in
   for _index = 0 to len - 1 do
-    Vector.push values (decode.run backend state)
+    Vector.push values ~value:(decode.run backend state)
   done;
   values
 
 and array_backend: 'value. state -> 'value De.t -> 'value array = fun state decode ->
   let len = decode_length state "array" in
-  array__init len
-    (fun _index ->
+  Array.init ~count:len ~fn:(fun _index ->
       decode.run backend state)
 
 and record_backend:
@@ -283,10 +282,10 @@ and variant_backend: 'value. state -> 'value De.compiled_variant_cases -> 'value
     else
       decode_length state "variant"
   in
-  if Int.compare index 0 < 0 || Int.compare index (array__length cases) >= 0 then
+  if Int.compare index 0 < 0 || Int.compare index (Array.length cases) >= 0 then
     raise (Serde.Decode_error `invalid_tag)
   else
-    match array__get cases index with
+    match Array.get_unchecked cases ~at:index with
     | De.Unit (_tag, value) -> value
     | De.Newtype (_tag, decode, wrap) -> wrap (decode.run backend state)
 
@@ -323,7 +322,7 @@ let finish = fun state value ->
   ^ Int.to_string (position state.input)))
 
 let of_input = fun decode input ->
-  let state = { input; scratch = IO.Buffer.create 64; bytes = IO.Bytes.create 8 } in
+  let state = { input; scratch = IO.Buffer.create ~size:64; bytes = IO.Bytes.create ~size:8 } in
   match De.run decode backend state with
   | Error err -> Error err
   | Ok value -> finish state value
@@ -331,8 +330,8 @@ let of_input = fun decode input ->
 let decode_prefix = fun decode input ->
   let state = {
     input = String_input { input; pos = 0 };
-    scratch = IO.Buffer.create 64;
-    bytes = IO.Bytes.create 8
+    scratch = IO.Buffer.create ~size:64;
+    bytes = IO.Bytes.create ~size:8
   } in
   match De.run decode backend state with
   | Error err -> Error err
@@ -341,7 +340,7 @@ let decode_prefix = fun decode input ->
 let of_string = fun decode input -> of_input decode (String_input { input; pos = 0 })
 
 let of_reader = fun decode reader ->
-  let buf = IO.Bytes.create buffer_capacity in
+  let buf = IO.Bytes.create ~size:buffer_capacity in
   let input = Reader_input {
     reader;
     buf;

@@ -13,7 +13,7 @@ let parse_result_to_json = fun result ->
     if width <= 0 then
       ""
     else
-      String.sub result.Parser.source span.Ceibo.Span.start width
+      String.sub result.Parser.source ~offset:span.Ceibo.Span.start ~len:width
   in
   let trivia_kind_to_json = function
     | Token.CommentTrivia { terminated; _ } -> Json.Object [
@@ -39,7 +39,7 @@ let parse_result_to_json = fun result ->
     ("kind", Json.String (Token.show_kind token.kind));
     ("span", span_to_json token.span);
     ("text", Json.String (span_text token.span));
-    ("leading_trivia", Json.Array (List.map trivia_to_json token.leading_trivia))
+    ("leading_trivia", Json.Array (List.map token.leading_trivia ~fn:trivia_to_json))
   ] in
   let kind_to_json kind = Json.String (SyntaxKind.to_string kind) in
   let text_to_json text = Json.String text in
@@ -48,13 +48,13 @@ let parse_result_to_json = fun result ->
     ~text_to_json
     (Ceibo.Green.Node result.Parser.tree) in
   Json.Object [
-    ("tokens", Json.Array (List.map token_to_json result.Parser.tokens));
+    ("tokens", Json.Array (List.map result.Parser.tokens ~fn:token_to_json));
     ("tree", tree_json);
-    ("diagnostics", Json.Array (List.map Diagnostic.to_json result.Parser.diagnostics))
+    ("diagnostics", Json.Array (List.map result.Parser.diagnostics ~fn:Diagnostic.to_json))
   ]
 
 let append_path_suffix = fun path suffix ->
-  Path.to_string path ^ suffix |> Path.of_string |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
+  Path.to_string path ^ suffix |> Path.from_string |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
 
 let fixture_root = Path.v "packages/syn/tests/fixtures"
 
@@ -68,7 +68,7 @@ let load_modified_fixture_paths = fun () ->
       HashSet.create ()
   | Ok { status; stdout; _ } when status = 0 ->
       let modified = HashSet.create () in
-      let lines = stdout |> String.split_on_char '\n' |> List.map String.trim in
+      let lines = stdout |> String.split_on_char '\n' |> List.map ~fn:String.trim in
       let rec loop = function
         | [] ->
             modified
@@ -76,7 +76,7 @@ let load_modified_fixture_paths = fun () ->
             loop rest
         | relpath :: rest ->
             let () =
-              match Path.of_string relpath with
+              match Path.from_string relpath with
               | Ok relpath ->
                   let _ = HashSet.insert modified (Path.join cwd relpath) in
                   ()
@@ -120,7 +120,7 @@ let test_tagged_quoted_string_cst = fun _ctx ->
   let parse_result = Syn.parse ~filename:(Path.v "tagged_quoted_string.ml") source in
   if List.length parse_result.Parser.diagnostics > 0 then
     let diagnostics = parse_result.Parser.diagnostics
-    |> List.map Diagnostic.to_string
+    |> List.map ~fn:Diagnostic.to_string
     |> String.concat "\n" in
     Error ("unexpected parse diagnostics:\n" ^ diagnostics)
   else
@@ -158,7 +158,7 @@ let test_tagged_quoted_string_cst = fun _ctx ->
         ^ " in "
         ^ String.concat " > " err.Syn.CstBuilder.context)
     | Error (Syn.Parse_diagnostics diagnostics) ->
-        let diagnostics = diagnostics |> List.map Diagnostic.to_string |> String.concat "\n" in
+        let diagnostics = diagnostics |> List.map ~fn:Diagnostic.to_string |> String.concat "\n" in
         Error ("unexpected build_cst parse diagnostics:\n" ^ diagnostics)
 
 let () =

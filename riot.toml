@@ -22,7 +22,7 @@ members = [
   "packages/lsp",
   "packages/mcp",
   "packages/mime",
-  "packages/actors",
+  #"packages/actors",
   "packages/miniriot",
   "packages/minttea",
   "packages/postgres",

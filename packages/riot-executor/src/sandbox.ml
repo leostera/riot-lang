@@ -12,7 +12,7 @@ let sandbox_id = fun ~package_name ->
   let hash = Crypto.hash_int64 nanos in
   let hex = Crypto.Digest.hex hash in
   let truncated_hash = String.sub hex ~offset:0 ~len:8 in
-  let id = package_name ^ "-" ^ truncated_hash in
+  let id = Package_name.to_string package_name ^ "-" ^ truncated_hash in
   Path.v id
 
 let absolute_path = fun path ->
@@ -94,7 +94,7 @@ let with_sandbox = fun ~workspace ?(profile = "debug") ?(target = Riot_model.Rio
       ~profile
       ~target
       ()
-      ~package_name:(Package_name.to_string package.Package.name)
+      ~package_name:package.Package.name
   in
   let _ = expected_outputs in
   prepare ~sandbox ~package ~inputs ~depset ~store;

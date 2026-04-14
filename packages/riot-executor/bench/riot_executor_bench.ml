@@ -1,6 +1,7 @@
 open Std
 open Std.Bench
 open Std.Collections
+open Riot_model
 
 module Action_executor = Riot_executor.Action_executor
 module Action_queue = Riot_executor.Action_queue
@@ -43,10 +44,13 @@ let make_workspace = fun root ->
     profile_overrides = [];
   }
 
+let package_name = fun value ->
+  Package_name.from_string value |> Result.expect ~msg:("expected valid package name: " ^ value)
+
 let make_package = fun ~root ~name ->
   let path = Path.(root / Path.v "packages" / Path.v name) in
   Package.make
-    ~name
+    ~name:(package_name name)
     ~path
     ~relative_path:(Path.v ("packages/" ^ name))
     ~library:{ path = Path.v "src/lib.ml" }

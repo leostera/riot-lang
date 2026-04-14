@@ -162,24 +162,27 @@ let expect_subsequence = fun ~haystack ~needle ->
   in
   loop haystack needle
 
-let make_artifact = fun name ->
+let make_artifact = fun ?(exports = []) name ->
   {
     Riot_store.Artifact.hash = Crypto.hash_string name;
     files = [ Path.v (name ^ ".cmx") ];
     ocamlc_warnings = [];
-    exports = [];
+    exports;
   }
 
-let make_build_result = fun ~(package: Riot_model.Package.t) ~status ->
+let make_build_result = fun ~scope ~(package: Riot_model.Package.t) ~status ->
   {
     Riot_executor.Package_builder.package_key =
       Riot_model.Package.key_of_string
-        (Riot_model.Package_name.to_string package.name ^ ":runtime");
+        (Riot_model.Package_name.to_string package.name ^ ":" ^ scope);
     package;
     status;
     ocamlc_warnings = [];
     duration = Time.Duration.zero;
   }
+
+let make_runtime_build_result = fun ~package ~status ->
+  make_build_result ~scope:"runtime" ~package ~status
 
 let test_output_maps_build_result_statuses = fun _ctx ->
   match
@@ -194,15 +197,19 @@ let test_output_maps_build_result_statuses = fun _ctx ->
           Riot_build.Build_result.of_build_results
             [
               make_build_result
+                ~scope:"runtime"
                 ~package:built_pkg
                 ~status:(Riot_executor.Package_builder.Built (make_artifact "built"));
               make_build_result
+                ~scope:"runtime"
                 ~package:cached_pkg
                 ~status:(Riot_executor.Package_builder.Cached (make_artifact "cached"));
               make_build_result
+                ~scope:"runtime"
                 ~package:skipped_pkg
                 ~status:(Riot_executor.Package_builder.Skipped { reason = "not requested" });
               make_build_result
+                ~scope:"runtime"
                 ~package:failed_pkg
                 ~status:(Riot_executor.Package_builder.Failed
                   (Riot_executor.Package_builder.ExecutionFailed { message = "boom" }));
@@ -263,7 +270,7 @@ let test_output_exposes_artifacts_and_exports = fun _ctx ->
         let output =
           Riot_build.Build_result.of_build_results
             [
-              make_build_result
+              make_runtime_build_result
                 ~package
                 ~status:(Riot_executor.Package_builder.Built artifact);
             ]
@@ -289,6 +296,67 @@ let test_output_exposes_artifacts_and_exports = fun _ctx ->
                   | Some _ ->
                       Error "expected built package export path to be preserved"
           ))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
+let test_output_prefers_dev_scope_and_merges_exports = fun _ctx ->
+  match
+    Fs.with_tempdir
+      ~prefix:"riot_build_output_scope_merge"
+      (fun tmpdir ->
+        let package = make_package ~root:tmpdir ~name:"demo" ~value:"1" in
+        let build_artifact = make_artifact "demo_build" in
+        let runtime_artifact = make_artifact "demo_runtime" in
+        let dev_artifact =
+          make_artifact
+            ~exports:[
+              {
+                Riot_store.Manifest.name = "build_core_tests";
+                path = "build_core_tests";
+                action_hash = "dev-export";
+              };
+            ]
+            "demo_dev"
+        in
+        let output =
+          Riot_build.Build_result.of_build_results
+            [
+              make_build_result
+                ~scope:"build"
+                ~package
+                ~status:(Riot_executor.Package_builder.Built build_artifact);
+              make_build_result
+                ~scope:"runtime"
+                ~package
+                ~status:(Riot_executor.Package_builder.Cached runtime_artifact);
+              make_build_result
+                ~scope:"dev"
+                ~package
+                ~status:(Riot_executor.Package_builder.Built dev_artifact);
+            ]
+        in
+        let package_outputs = Riot_build.Build_result.packages output in
+        Test.assert_equal ~expected:1 ~actual:(List.length package_outputs);
+        match Riot_build.Build_result.find_package output (package_name "demo") with
+        | None ->
+            Error "missing merged package output: demo"
+        | Some package_output ->
+            let open Std.Result.Syntax in
+            let* () =
+              match Riot_build.Build_result.package_status package_output with
+              | Riot_build.Build_result.Built artifact when Crypto.Hash.equal artifact.hash dev_artifact.hash ->
+                  Ok ()
+              | _ ->
+                  Error "expected dev-scoped artifact to win merged package status"
+            in
+            match Riot_build.Build_result.find_export package_output "build_core_tests" with
+            | Some export_entry when String.equal export_entry.path "build_core_tests" ->
+                Ok ()
+            | Some _ ->
+                Error "expected merged package exports to preserve dev suite binary"
+            | None ->
+                Error "expected merged package exports to include dev suite binary")
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -637,6 +705,9 @@ let tests =
     case
       "build core: output preserves artifacts and exports"
       test_output_exposes_artifacts_and_exports;
+    case
+      "build core: output prefers dev scope and merges exports"
+      test_output_prefers_dev_scope_and_merges_exports;
     case
       "build core: build returns successful output"
       test_build_returns_successful_output;

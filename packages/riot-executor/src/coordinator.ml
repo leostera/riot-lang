@@ -459,7 +459,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
       ~profile:profile_name
       ~target:target_triplet
       ()
-      ~package_name:(Package_name.to_string package.name)
+      ~package_name:package.name
     in
     Sandbox.prepare ~sandbox ~package ~inputs ~depset ~store;
     let action_queue = Action_queue.create () in

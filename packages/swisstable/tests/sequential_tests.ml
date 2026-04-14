@@ -59,23 +59,23 @@ let apply_operation = fun op swiss hash ->
   match op with
   | Insert (k, v) ->
       let r1 = Swisstable.insert swiss k v in
-      let r2 = Collections.HashMap.insert hash k v in
+      let r2 = Collections.HashMap.insert hash ~key:k ~value:v in
       if not (r1 = r2) then
         fail ("Insert(" ^ Int.to_string k ^ "," ^ Int.to_string v ^ "): results differ")
   | Get k ->
       let r1 = Swisstable.get swiss k in
-      let r2 = Collections.HashMap.get hash k in
+      let r2 = Collections.HashMap.get hash ~key:k in
       if not (r1 = r2) then
         fail ("Get(" ^ Int.to_string k ^ "): results differ")
   | Remove k ->
       let r1 = Swisstable.remove swiss k in
-      let r2 = Collections.HashMap.remove hash k in
+      let r2 = Collections.HashMap.remove hash ~key:k in
       if not (r1 = r2) then
         fail ("Remove(" ^ Int.to_string k ^ "): results differ")
   | Clear ->
       Swisstable.clear swiss;
       Collections.HashMap.clear hash;
-      if not (Swisstable.len swiss = 0) || not (Collections.HashMap.len hash = 0) then
+      if not (Swisstable.len swiss = 0) || not (Collections.HashMap.length hash = 0) then
         fail "Clear: maps not empty after clear"
   | ContainsKey k ->
       let r1 = Swisstable.contains_key swiss k in
@@ -84,7 +84,7 @@ let apply_operation = fun op swiss hash ->
         fail ("ContainsKey(" ^ Int.to_string k ^ "): results differ")
   | Len ->
       let l1 = Swisstable.len swiss in
-      let l2 = Collections.HashMap.len hash in
+      let l2 = Collections.HashMap.length hash in
       if not (l1 = l2) then
         fail ("Len: lengths differ (swiss=" ^ Int.to_string l1 ^ ", hash=" ^ Int.to_string l2 ^ ")")
   | IsEmpty ->
@@ -107,10 +107,10 @@ let random_sequence_prop =
       (* Apply all operations *)
       List.iter (fun op -> apply_operation op swiss hash) ops;
       (* Final state verification *)
-      if not (Swisstable.len swiss = Collections.HashMap.len hash) then
+      if not (Swisstable.len swiss = Collections.HashMap.length hash) then
         fail "Final lengths differ";
       let swiss_list = Swisstable.to_list swiss in
-      List.for_all (fun ((k, v)) -> Collections.HashMap.get hash k = Some v) swiss_list)
+      List.for_all (fun ((k, v)) -> Collections.HashMap.get hash ~key:k = Some v) swiss_list)
 
 (* Property 2: Insert-heavy sequence *)
 
@@ -164,7 +164,7 @@ let interleaved_ops_prop =
       (* Verify final values *)
       List.for_all
         (fun k ->
-          Swisstable.get swiss k = Some (k * 3) && Collections.HashMap.get hash k = Some (k * 3))
+          Swisstable.get swiss k = Some (k * 3) && Collections.HashMap.get hash ~key:k = Some (k * 3))
         keys)
 
 (* Property 5: Clear in the middle of operations *)
@@ -185,7 +185,7 @@ let clear_interleaved_prop =
       (* Insert after clear *)
       List.iter (fun ((k, v)) -> apply_operation (Insert (k, v)) swiss hash) after_clear;
       (* Verify only after_clear entries present *)
-      Swisstable.len swiss = Collections.HashMap.len hash && List.for_all
+      Swisstable.len swiss = Collections.HashMap.length hash && List.for_all
         (fun ((k, _)) ->
           let in_swiss = Swisstable.contains_key swiss k in
           let in_hash = Collections.HashMap.contains_key hash k in
@@ -225,7 +225,7 @@ let length_invariant_prop =
         (fun op ->
           apply_operation op swiss hash;
           let l1 = Swisstable.len swiss in
-          let l2 = Collections.HashMap.len hash in
+          let l2 = Collections.HashMap.length hash in
           if not (l1 = l2) then
             fail
               (
@@ -274,8 +274,8 @@ let overwrite_sequence_prop =
       (* Insert same key with different values *)
       List.iter (fun v -> apply_operation (Insert (key, v)) swiss hash) values;
       (* Latest value should be present *)
-      let latest = List.nth values (List.length values - 1) in
-      Swisstable.get swiss key = Some latest && Collections.HashMap.get hash key = Some latest)
+      let latest = List.get_unchecked values ~at:(List.length values - 1) in
+      Swisstable.get swiss key = Some latest && Collections.HashMap.get hash ~key:key = Some latest)
 
 (* Property 10: Empty checks throughout *)
 
@@ -328,7 +328,7 @@ let long_sequence_prop =
         apply_operation op swiss hash
       done;
       (* Final verification *)
-      Swisstable.len swiss = Collections.HashMap.len hash)
+      Swisstable.len swiss = Collections.HashMap.length hash)
 
 (** {1 Test Suite} *)
 

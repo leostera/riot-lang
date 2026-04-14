@@ -58,6 +58,8 @@ let get: type t. t var_type -> var:string -> t option = fun var_type ~var ->
           else
             None
 
+let var = fun kind ~name -> get kind ~var:name
+
 let set = fun ~var ~value ->
   let previous = get_raw var in
   let _ = Kernel.Env.set ~var ~value in
