@@ -42,6 +42,18 @@ let write_workspace_cache_config = fun tmpdir ~keep_generations ~max_size ->
 let make_hash = fun ch ->
   String.make ~len:64 ~char:ch
 
+let count_generation_receipts = fun ~(workspace:Riot_model.Workspace.t) ->
+  let generations_dir = Path.(workspace.target_dir_root / Path.v "cache" / Path.v "generations") in
+  match Fs.read_dir generations_dir with
+  | Error _ -> 0
+  | Ok reader ->
+      Std.Iter.MutIterator.to_list reader
+      |> List.filter
+        ~fn:(fun path ->
+          let basename = Path.basename path in
+          String.ends_with ~suffix:".json" basename)
+      |> List.length
+
 let write_cache_entry = fun ~(workspace:Riot_model.Workspace.t) ~profile ~target ~hash ~size ->
   let entry_dir =
     Path.(workspace.target_dir_root / Path.v profile / Path.v target / Path.v "cache" / Path.v hash) in
@@ -762,6 +774,93 @@ let test_record_successful_build_tracks_generation_count_in_state = fun _ctx ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_record_successful_build_dedupes_identical_warm_generation = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"store_cache_gc_dedupe_generation_test"
+      (fun tmpdir ->
+        let workspace = make_test_workspace tmpdir in
+        write_workspace_cache_config tmpdir ~keep_generations:4 ~max_size:"10 GiB";
+        let hash_a = make_hash 'a' in
+        let _ = write_cache_entry
+          ~workspace
+          ~profile:"debug"
+          ~target:"host"
+          ~hash:hash_a
+          ~size:16 in
+        let first_summary = Riot_store.Cache_gc.record_successful_build
+          ~workspace
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
+          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_a } ]
+        |> Result.expect ~msg:"first generation should record" in
+        let second_summary = Riot_store.Cache_gc.record_successful_build
+          ~workspace
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
+          ~new_entries:[]
+        |> Result.expect ~msg:"identical warm generation should be accepted" in
+        let receipt_count = count_generation_receipts ~workspace in
+        if
+          first_summary.kept_generations = 1
+          && second_summary.kept_generations = 1
+          && receipt_count = 1
+        then
+          Ok ()
+        else
+          Error
+            ("expected identical warm generation to keep one receipt, got summaries "
+            ^ Int.to_string first_summary.kept_generations
+            ^ " and "
+            ^ Int.to_string second_summary.kept_generations
+            ^ " with "
+            ^ Int.to_string receipt_count
+            ^ " receipts"))
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
+let test_record_successful_build_keeps_new_warm_generation_when_closure_changes = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"store_cache_gc_distinct_generation_test"
+      (fun tmpdir ->
+        let workspace = make_test_workspace tmpdir in
+        write_workspace_cache_config tmpdir ~keep_generations:4 ~max_size:"10 GiB";
+        let hash_a = make_hash 'a' in
+        let hash_b = make_hash 'b' in
+        let _ = write_cache_entry
+          ~workspace
+          ~profile:"debug"
+          ~target:"host"
+          ~hash:hash_a
+          ~size:16 in
+        let _ = write_cache_entry
+          ~workspace
+          ~profile:"debug"
+          ~target:"host"
+          ~hash:hash_b
+          ~size:16 in
+        let _ = Riot_store.Cache_gc.record_successful_build
+          ~workspace
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_a ] } ]
+          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hash = hash_a } ]
+        |> Result.expect ~msg:"first generation should record" in
+        let second_summary = Riot_store.Cache_gc.record_successful_build
+          ~workspace
+          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = "host"; hashes = [ hash_b ] } ]
+          ~new_entries:[]
+        |> Result.expect ~msg:"distinct warm generation should record" in
+        let receipt_count = count_generation_receipts ~workspace in
+        if second_summary.kept_generations = 2 && receipt_count = 2 then
+          Ok ()
+        else
+          Error
+            ("expected changed warm generation to keep two receipts, got summary "
+            ^ Int.to_string second_summary.kept_generations
+            ^ " with "
+            ^ Int.to_string receipt_count
+            ^ " receipts"))
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_cache_gc_shrinks_retained_generations_to_meet_max_size = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"store_cache_gc_max_size_test"
@@ -849,6 +948,8 @@ let tests =
     case "save/promote preserves executable permissions" test_save_and_promote_preserves_executable_permissions;
     case "get returns none when export source missing" test_get_returns_none_when_export_source_missing;
     case "cache GC records generation count in state" test_record_successful_build_tracks_generation_count_in_state;
+    case "cache GC dedupes identical warm generations" test_record_successful_build_dedupes_identical_warm_generation;
+    case "cache GC records changed warm generations without new entries" test_record_successful_build_keeps_new_warm_generation_when_closure_changes;
     case "cache GC drops unreferenced entries after generation overflow" test_cache_gc_drops_unreferenced_entries_after_generation_overflow;
     case "cache GC shrinks retained generations to meet max_size" test_cache_gc_shrinks_retained_generations_to_meet_max_size;
   ]

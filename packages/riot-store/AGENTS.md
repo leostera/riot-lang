@@ -14,6 +14,7 @@
 8. Cache GC and generation receipts live here. Keep the fast path cheap: deciding whether GC runs should rely on small workspace-level metadata first, and only read generation receipt bodies when a GC pass is actually needed.
 9. The first cache-GC rollout is workspace-wide, not lane-local. Receipt retention and size accounting span all lanes under the workspace build root together.
 10. Keep `riot-store` Riot-specific. Generic content-addressable directory and bundle primitives belong in `contentstore`; `riot-store` should layer package artifacts, manifests, and lane policy on top.
+11. Post-build generation recording must stay cheap on repeated warm builds. If a successful build produces the same normalized lane closure as the newest recorded generation and adds no new cache entries, dedupe that receipt instead of writing another identical newest generation file.
 
 ## Validate
 

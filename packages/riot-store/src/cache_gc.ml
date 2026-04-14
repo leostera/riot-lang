@@ -205,6 +205,15 @@ let sort_uniq_strings = fun values ->
 let normalize_lane = fun (lane: generation_lane) ->
   { lane with hashes = sort_uniq_strings lane.hashes }
 
+let normalize_lanes: generation_lane list -> generation_lane list = fun lanes ->
+  lanes
+  |> List.map ~fn:normalize_lane
+  |> List.sort
+    ~compare:(fun (left: generation_lane) (right: generation_lane) ->
+      match String.compare left.profile right.profile with
+      | 0 -> String.compare left.target right.target
+      | order -> order)
+
 let receipt_to_json = fun receipt ->
   let lane_to_json (lane: generation_lane) = Data.Json.Object [
     ("profile", Data.Json.String lane.profile);
@@ -406,6 +415,11 @@ let read_receipt_file = fun path ->
     ~fn:(fun err -> "failed to parse generation receipt JSON: " ^ Data.Json.error_to_string err) in
   let* receipt = receipt_of_json json in
   Ok { path; receipt }
+
+let load_latest_receipt = fun ~(workspace:Workspace.t) ->
+  match receipt_paths_desc ~workspace with
+  | [] -> Ok None
+  | path :: _ -> read_receipt_file path |> Result.map ~fn:Option.some
 
 let load_receipts = fun ~(workspace:Workspace.t) ->
   let paths = receipt_paths_desc ~workspace in
@@ -690,7 +704,7 @@ let added_size_for_new_entries = fun ~(workspace:Workspace.t) new_entries ->
         Ok (Int64.add acc size_bytes))
 
 let record_successful_build_with_events = fun ~(workspace:Workspace.t) ~on_event ~lanes ~new_entries ->
-  let lanes = List.map lanes ~fn:normalize_lane in
+  let lanes = normalize_lanes lanes in
   let receipt = { created_at_ns = Int64.to_string (created_at_now ()); lanes } in
   let report_error error =
     on_event (GcFailed { trigger = Post_build; error });
@@ -701,6 +715,25 @@ let record_successful_build_with_events = fun ~(workspace:Workspace.t) ~on_event
     | Ok tracked_size -> Ok tracked_size
     | Error error -> report_error error
   in
+  let* duplicate_latest_receipt =
+    if List.is_empty new_entries && tracked_size.receipt_count > 0 then
+      match load_latest_receipt ~workspace with
+      | Ok (Some latest_receipt) -> Ok (latest_receipt.receipt.lanes = lanes)
+      | Ok None -> Ok false
+      | Error error -> report_error error
+    else
+      Ok false
+  in
+  if duplicate_latest_receipt then
+    Ok {
+      ran_gc = false;
+      kept_generations = tracked_size.receipt_count;
+      deleted_generations = 0;
+      deleted_entries = 0;
+      size_before_bytes = tracked_size.tracked_size_bytes;
+      size_after_bytes = tracked_size.tracked_size_bytes;
+    }
+  else
   let* added_size_bytes =
     if tracked_size.rebuilt then
       Ok 0L
