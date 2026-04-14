@@ -19,14 +19,14 @@ type registry_install_request = {
   local_only: bool;
 }
 type install_event =
-  | Build of Build_runtime.build_event
+  | Build of Event.t
   | InstallingBinary of { package: string; binary: string }
   | PromotedBinary of { binary: string; destination: Path.t; global: bool }
   | InstalledBinary of { binary: string; duration_ms: int; global_destination: Path.t option }
 type install_error =
   | BinaryNotFound of { binary_name: string }
   | BinaryNotFoundInPackage of { package_name: string; binary_name: string }
-  | BuildFailed of Build_runtime.build_error
+  | BuildFailed of Build_core.error
   | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
   | PromotionFailed of { binary_name: string; destination: Path.t; global: bool; reason: string }
   | ExternalTargetLoadFailed of { target: string; reason: string }

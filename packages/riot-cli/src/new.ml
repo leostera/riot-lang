@@ -55,28 +55,23 @@ let run = fun matches ->
               run_without_workspace matches
           | Error err ->
               fail ("Failed to scan workspace: " ^ err)
-          | Ok (workspace, _load_errors) -> (
-              match Client.connect_local ~workspace () with
-              | Ok client -> (
-                  let package_kind =
-                    if is_library then
-                      "library"
-                    else
-                      "binary"
-                  in
-                  println ("Creating new " ^ package_kind ^ " '" ^ name ^ "' in '" ^ path ^ "'");
-                  match Client.new_package client ~path ~name ~is_library with
-                  | Ok (created_path, created_name) ->
-                      println
-                        (String.capitalize_ascii package_kind
-                        ^ " '"
-                        ^ created_name
-                        ^ "' created at '"
-                        ^ created_path
-                        ^ "'");
-                      Ok ()
-                  | Error e -> fail ("Package creation failed: " ^ e)
-                )
-              | Error _e -> fail "Failed to start local riot session"
-            )
+          | Ok (workspace, _load_errors) ->
+              let package_kind =
+                if is_library then
+                  "library"
+                else
+                  "binary"
+              in
+              println ("Creating new " ^ package_kind ^ " '" ^ name ^ "' in '" ^ path ^ "'");
+              match Riot_build.Workspace_edit.new_package ~workspace ~path ~name ~is_library with
+              | Ok (created_path, created_name) ->
+                  println
+                    (String.capitalize_ascii package_kind
+                    ^ " '"
+                    ^ created_name
+                    ^ "' created at '"
+                    ^ created_path
+                    ^ "'");
+                  Ok ()
+              | Error e -> fail ("Package creation failed: " ^ e)
         )

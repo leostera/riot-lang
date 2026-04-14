@@ -20,56 +20,71 @@ let load_repo_workspace = fun () ->
       Error ("workspace scan failed: " ^ err)
   | Ok (workspace, errors) ->
       if List.is_empty errors then
-        Ok workspace
+        Ok (Riot_build.Prepared_workspace.of_workspace ~workspace_manager:manager workspace)
       else
         Error ("workspace scan produced load errors: "
         ^ String.concat "; " (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
 
-let render_streaming_event = fun (event: Riot_build.Client.streaming_event) ->
+let render_build_event = fun (event: Riot_build.Event.t) ->
   match event with
-  | Riot_build.Client.BuildStarted _ ->
-      "BuildStarted"
-  | Riot_build.Client.BuildEvent _ ->
-      "BuildEvent"
-  | Riot_build.Client.BuildCompleted _ ->
-      "BuildCompleted"
-  | Riot_build.Client.BuildFailed _ ->
-      "BuildFailed"
-  | Riot_build.Client.PlanningFailed _ ->
-      "PlanningFailed"
-  | Riot_build.Client.CycleDetected _ ->
-      "CycleDetected"
-
-let render_build_event = fun (event: Riot_build.build_event) ->
-  match event with
-  | Riot_build.Pm event ->
+  | Riot_build.Event.Pm event ->
       "Pm(" ^ Riot_model.Event.name event.kind ^ ")"
-  | Riot_build.BuildingTarget { target; host } ->
+  | Riot_build.Event.BuildingTarget { target; host } ->
       "BuildingTarget(" ^ Riot_model.Target.to_string target ^ "," ^ Bool.to_string host ^ ")"
-  | Riot_build.CacheGc _ ->
+  | Riot_build.Event.CacheGc _ ->
       "CacheGc"
-  | Riot_build.Phase _ ->
+  | Riot_build.Event.Phase _ ->
       "Phase"
-  | Riot_build.Streaming event ->
-      "Streaming(" ^ render_streaming_event event ^ ")"
 
-let has_workspace_plan_started = fun events ->
-  List.find events ~fn:(function
-    | Riot_build.Streaming (Riot_build.Client.BuildEvent (Riot_executor.Telemetry_events.WorkspacePlanStarted _)) ->
-        true
-    | _ ->
-        false)
-  |> Option.is_some
+let phase_name = function
+  | Riot_build.Event.TargetsResolved _ -> "targets_resolved"
+  | Riot_build.Event.ToolchainsEnsured _ -> "toolchains_ensured"
+  | Riot_build.Event.ToolchainsValidated _ -> "toolchains_validated"
+  | Riot_build.Event.ClientConnecting -> "client_connecting"
+  | Riot_build.Event.ClientConnected -> "client_connected"
+  | Riot_build.Event.TargetBuildStarted _ -> "target_build_started"
+  | Riot_build.Event.TargetBuildFinished _ -> "target_build_finished"
+  | Riot_build.Event.CacheGenerationRecordingStarted _ -> "cache_generation_recording_started"
+  | Riot_build.Event.CacheGenerationRecorded _ -> "cache_generation_recorded"
+  | Riot_build.Event.ReturningResults _ -> "returning_results"
 
-let has_workspace_plan_completed = fun events ->
-  List.find events ~fn:(function
-    | Riot_build.Streaming (Riot_build.Client.BuildEvent (Riot_executor.Telemetry_events.WorkspacePlanCompleted _)) ->
-        true
-    | _ ->
-        false)
-  |> Option.is_some
+let public_phase_names = fun events ->
+  List.reverse events
+  |> List.filter_map ~fn:(function
+    | Riot_build.Event.Phase phase -> Some (phase_name phase)
+    | Riot_build.Event.Pm _
+    | Riot_build.Event.BuildingTarget _
+    | Riot_build.Event.CacheGc _ -> None)
 
-let summarize_build_failure = fun (err: Riot_build.build_error) events ->
+let expect_public_phase_subsequence = fun events ->
+  let haystack = public_phase_names events in
+  let needle = [
+    "targets_resolved";
+    "toolchains_ensured";
+    "toolchains_validated";
+    "client_connecting";
+    "client_connected";
+    "target_build_started";
+    "target_build_finished";
+    "returning_results";
+  ] in
+  let rec loop haystack needle =
+    match haystack, needle with
+    | _, [] -> Ok ()
+    | [], _ ->
+        Error ("expected public phase subsequence "
+        ^ String.concat " -> " needle
+        ^ "\nactual phases: "
+        ^ String.concat " -> " haystack)
+    | actual :: haystack_rest, expected :: needle_rest ->
+        if String.equal actual expected then
+          loop haystack_rest needle_rest
+        else
+          loop haystack_rest needle
+  in
+  loop haystack needle
+
+let summarize_build_failure = fun (err: Riot_build.error) events ->
   let recent_events =
     List.reverse events
     |> List.take ~len:12
@@ -77,78 +92,64 @@ let summarize_build_failure = fun (err: Riot_build.build_error) events ->
     |> List.map ~fn:render_build_event
     |> String.concat " -> "
   in
-  match err with
-  | Riot_build.ClientError (Riot_build.Client.BuildFailed { errors }) ->
-      let rendered_errors =
-        List.map errors ~fn:(fun (result: Riot_executor.Package_builder.build_result) ->
-          match result.status with
-          | Riot_executor.Package_builder.Failed err ->
-              Riot_model.Package.key_to_string result.package_key
-              ^ ": "
-              ^ Riot_executor.Package_builder.package_error_to_string err
-          | Riot_executor.Package_builder.Skipped { reason } ->
-              Riot_model.Package.key_to_string result.package_key ^ ": skipped(" ^ reason ^ ")"
-          | Riot_executor.Package_builder.Cached _
-          | Riot_executor.Package_builder.Built _ ->
-              Riot_model.Package.key_to_string result.package_key ^ ": unexpected-success")
-        |> String.concat "\n"
-      in
-      "kernel build failed through Riot_build.build\n"
-      ^ rendered_errors
-      ^ "\nrecent events: "
-      ^ recent_events
-  | _ ->
-      Riot_build.build_error_message err ^ "\nrecent events: " ^ recent_events
+  Riot_build.error_message err ^ "\nrecent events: " ^ recent_events
+
+let summarize_recent_events = fun events ->
+  List.reverse events
+  |> List.take ~len:20
+  |> List.reverse
+  |> List.map ~fn:render_build_event
+  |> String.concat " -> "
 
 let test_build_runtime_builds_repo_kernel = fun _ctx ->
   match
-    Fs.with_tempdir ~prefix:"riot_build_kernel_runtime"
+    Fs.with_tempdir
+      ~prefix:"riot_build_kernel_runtime"
       (fun tempdir ->
         match load_repo_workspace () with
         | Error _ as err ->
             err
-        | Ok repo_workspace ->
+        | Ok prepared_workspace ->
             let workspace =
               clone_workspace_with_target
-                repo_workspace
+                (Riot_build.Prepared_workspace.workspace prepared_workspace)
                 ~target_dir:Path.(tempdir / Path.v "target")
+            in
+            let prepared_workspace =
+              Riot_build.Prepared_workspace.of_workspace
+                ?workspace_manager:(Riot_build.Prepared_workspace.workspace_manager prepared_workspace)
+                workspace
             in
             let events = ref [] in
             match
               Riot_build.build
                 ~on_event:(fun event -> events := event :: !events)
-                {
-                  workspace;
-                  packages = [ "kernel" ];
-                  targets = Riot_build.Host;
-                  scope = Riot_build.Runtime;
-                  profile = "debug";
-                }
+                prepared_workspace
+                (Riot_build.Request.make
+                  ~packages:[ "kernel" ]
+                  ~targets:Riot_model.Target.Host
+                  ~scope:Riot_build.Request.Runtime
+                  ~profile:Riot_model.Profile.debug
+                  ())
             with
             | Error err ->
                 Error (summarize_build_failure err !events)
-            | Ok results -> (
-                match
-                  List.find results ~fn:(fun (result: Riot_executor.Package_builder.build_result) ->
-                    String.equal result.package.name "kernel")
-                with
+            | Ok output -> (
+                match Riot_build.Output.find_package output "kernel" with
                 | None ->
-                    Error "expected kernel build result"
+                    Error "expected kernel build output"
                 | Some result -> (
-                    match result.status with
-                    | Riot_executor.Package_builder.Built _
-                    | Riot_executor.Package_builder.Cached _ ->
-                        if not (has_workspace_plan_started !events) then
-                          Error "expected workspace plan started event"
-                        else if not (has_workspace_plan_completed !events) then
-                          Error "expected workspace plan completed event"
-                        else
-                          Ok ()
-                    | Riot_executor.Package_builder.Skipped { reason } ->
+                    match Riot_build.Output.package_status result with
+                    | Riot_build.Output.Built _
+                    | Riot_build.Output.Cached _ ->
+                        Result.map_err
+                          (expect_public_phase_subsequence !events)
+                          ~fn:(fun err ->
+                            err ^ "\nrecent events: " ^ summarize_recent_events !events)
+                    | Riot_build.Output.Skipped reason ->
                         Error ("expected kernel build to run, got skipped: " ^ reason)
-                    | Riot_executor.Package_builder.Failed err ->
-                        Error ("kernel build failed: "
-                        ^ Riot_executor.Package_builder.package_error_to_string err)
+                    | Riot_build.Output.Failed message ->
+                        Error ("kernel build failed: " ^ message)
                   )
               ))
   with

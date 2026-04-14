@@ -19,3 +19,10 @@ val find_package: t -> string -> package_output option
 val package_name: package_output -> string
 
 val package_status: package_output -> package_status
+
+val package_artifact: package_output -> Riot_store.Artifact.t option
+
+val find_export:
+  package_output ->
+  string ->
+  Riot_store.Manifest.export_entry option

@@ -1,66 +1,39 @@
 open Std
 open Std.Result.Syntax
 
-type build_scope =
-  | Runtime
-  | Dev
-
-type build_request = {
-  workspace: Riot_model.Workspace.t;
-  packages: string list;
-  targets: Riot_model.Target.request;
-  scope: build_scope;
-  profile: string;
-}
-
-type build_phase = Event.phase =
-  | RuntimePhase of Event.runtime_phase
-  | CliPhase of Event.cli_phase
-
-type build_event = Event.t =
+type build_event =
   | Pm of Riot_model.Event.t
   | BuildingTarget of { target: Riot_model.Target.t; host: bool }
   | CacheGc of Riot_store.Cache_gc.event
-  | Phase of build_phase
+  | Phase of Event.runtime_phase
   | Streaming of Client.streaming_event
 
 type build_error =
-  | NoTargetsMatched of Riot_model.Target.resolve_error
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
   | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
   | ClientError of Client.error
 
-type build_mode =
-  | Local
-  | Prepared
-
 type build_context = {
   session_id: Riot_model.Session_id.t;
-  request: build_request;
+  workspace: Riot_model.Workspace.t;
+  workspace_manager: Riot_model.Workspace_manager.t option;
+  package_names: string list;
+  targets: Riot_model.Target.Set.t;
+  scope: Build_spec.scope;
+  profile: Riot_model.Profile.t;
   host: Riot_model.Target.t;
   toolchain_config: Riot_model.Toolchain_config.t;
-  configured_targets: Riot_model.Target.Set.t;
   request_target: Client.build_target;
   client_scope: Client.build_scope;
   allow_partial_failures: bool;
   record_cache_generation: bool;
-  workspace_manager: Riot_model.Workspace_manager.t option;
   on_event: build_event -> unit;
-  mode: build_mode;
 }
 
 let no_event: build_event -> unit = fun _ -> ()
 
 let emit_runtime_phase = fun context phase ->
-  context.on_event (Phase (Event.RuntimePhase phase))
-
-let emit_pm = fun context kind ->
-  context.on_event
-    (Pm
-       (Riot_model.Event.create
-          ~session_id:context.session_id
-          ~level:Riot_model.Event.Info
-          kind))
+  context.on_event (Phase phase)
 
 let emit_targets_resolved = fun context targets ->
   emit_runtime_phase context (Event.TargetsResolved { target_count = List.length targets })
@@ -99,66 +72,51 @@ let emit_returning_results = fun context ~result_count ~had_partial_failure ->
   emit_runtime_phase context (Event.ReturningResults { result_count; had_partial_failure })
 
 let error_message = function
-  | NoTargetsMatched { pattern; available_targets } -> "No targets match pattern '"
-  ^ pattern
-  ^ "'. Available targets: "
-  ^ (
-      available_targets
-      |> List.map ~fn:Riot_model.Target.to_string
-      |> String.concat ", "
-    )
-  | ToolchainInstallFailed { target; error } -> "Failed to install toolchain for "
-  ^ Riot_model.Target.to_string target
-  ^ ": "
-  ^ error
-  | ToolchainInitializationFailed { target; error } -> "Failed to initialize toolchain for "
-  ^ Riot_model.Target.to_string target
-  ^ ": "
-  ^ error
-  | ClientError err -> Client.error_message err
+  | ToolchainInstallFailed { target; error } ->
+      "Failed to install toolchain for "
+      ^ Riot_model.Target.to_string target
+      ^ ": "
+      ^ error
+  | ToolchainInitializationFailed { target; error } ->
+      "Failed to initialize toolchain for "
+      ^ Riot_model.Target.to_string target
+      ^ ": "
+      ^ error
+  | ClientError err ->
+      Client.error_message err
 
 let client_scope = function
-  | Runtime -> Client.Runtime
-  | Dev -> Client.Dev
+  | Build_spec.Runtime -> Client.Runtime
+  | Build_spec.Dev -> Client.Dev
 
-let client_target = fun packages ->
-  match packages with
+let client_target = fun package_names ->
+  match package_names with
   | [] -> Client.BuildAll
-  | [ package ] -> Client.BuildPackage package
+  | [ package_name ] -> Client.BuildPackage package_name
   | packages -> Client.BuildPackages packages
 
-let make_context = fun ~mode ~allow_partial_failures ?workspace_manager ?(record_cache_generation = true) ?(on_event = no_event) request ->
+let make_context = fun ~allow_partial_failures ?(record_cache_generation = true) ?(on_event = no_event) spec ->
   let session_id = Riot_model.Session_id.make () in
+  let prepared_workspace = Build_spec.workspace spec in
+  let workspace = Prepared_workspace.workspace prepared_workspace in
   let host = Riot_model.Target.current in
-  let toolchain_config = Riot_model.Toolchain_config.from_workspace request.workspace in
-  let configured_targets =
-    Riot_model.Target.configured_targets ~host toolchain_config
-  in
+  let toolchain_config = Riot_model.Toolchain_config.from_workspace workspace in
   {
     session_id;
-    request;
+    workspace;
+    workspace_manager = Prepared_workspace.workspace_manager prepared_workspace;
+    package_names = Build_spec.package_names spec;
+    targets = Build_spec.targets spec;
+    scope = Build_spec.scope spec;
+    profile = Build_spec.profile spec;
     host;
     toolchain_config;
-    configured_targets;
-    request_target = client_target request.packages;
-    client_scope = client_scope request.scope;
+    request_target = client_target (Build_spec.package_names spec);
+    client_scope = client_scope (Build_spec.scope spec);
     allow_partial_failures;
     record_cache_generation;
-    workspace_manager;
     on_event;
-    mode;
   }
-
-let resolve_targets = fun context ->
-  let* targets =
-    Riot_model.Target.resolve
-      ~host:context.host
-      ~configured_targets:context.configured_targets
-      context.request.targets
-    |> Result.map_err ~fn:(fun err -> NoTargetsMatched err)
-  in
-  emit_targets_resolved context (Riot_model.Target.Set.to_list targets);
-  Ok targets
 
 let ensure_toolchains_for_targets = fun context targets ->
   let targets = Riot_model.Target.Set.to_list targets in
@@ -211,18 +169,10 @@ let validate_target_toolchains = fun context targets ->
 let connect_client = fun context ->
   emit_client_connecting context;
   let* client =
-    (match context.mode with
-    | Local ->
-        Client.connect_local
-          ?workspace_manager:context.workspace_manager
-          ~emit:(emit_pm context)
-          ~workspace:context.request.workspace
-          ()
-    | Prepared ->
-        Client.connect_local_prepared
-          ?workspace_manager:context.workspace_manager
-          ~workspace:context.request.workspace
-          ())
+    Client.connect_local_prepared
+      ?workspace_manager:context.workspace_manager
+      ~workspace:context.workspace
+      ()
     |> Result.map_err ~fn:(fun err -> ClientError err)
   in
   emit_client_connected context;
@@ -275,21 +225,21 @@ let record_successful_build_cache_generation = fun context lane_results ->
   let lanes =
     List.map lane_results ~fn:(fun (target, results) ->
         generation_lane_of_results
-          ~profile:context.request.profile
+          ~profile:context.profile.name
           ~target
           results)
   in
   let new_entries =
     List.map lane_results ~fn:(fun (target, results) ->
         new_entries_of_results
-          ~profile:context.request.profile
+          ~profile:context.profile.name
           ~target
           results)
     |> List.concat
   in
   match
     Riot_store.Cache_gc.record_successful_build
-      ~workspace:context.request.workspace
+      ~workspace:context.workspace
       ~lanes
       ~new_entries
   with
@@ -299,7 +249,7 @@ let record_successful_build_cache_generation = fun context lane_results ->
 let new_entry_count_of_lane_results = fun context lane_results ->
   List.map lane_results ~fn:(fun (target, results) ->
       new_entries_of_results
-        ~profile:context.request.profile
+        ~profile:context.profile.name
         ~target
         results)
   |> List.concat
@@ -310,24 +260,20 @@ let record_cache_generation_if_needed = fun context lane_results had_partial_fai
   if context.record_cache_generation && not had_partial_failure then (
     let lane_count = List.length lane_results in
     let emit_cache_generation_events = new_entry_count > 0 in
-    let () =
-      if emit_cache_generation_events then
-        emit_cache_generation_recording_started
-          context
-          ~lane_count
-          ~new_entry_count
-    in
+    if emit_cache_generation_events then
+      emit_cache_generation_recording_started
+        context
+        ~lane_count
+        ~new_entry_count;
     let* () = record_successful_build_cache_generation context lane_results in
-    let () =
-      if emit_cache_generation_events then
-        emit_cache_generation_recorded context ~lane_count ~new_entry_count
-    in
+    if emit_cache_generation_events then
+      emit_cache_generation_recorded context ~lane_count ~new_entry_count;
     Ok ()
   ) else
     Ok ()
 
-let build_loop = fun context client targets ->
-  let targets = Riot_model.Target.Set.to_list targets in
+let build_loop = fun context client ->
+  let targets = Riot_model.Target.Set.to_list context.targets in
   let rec loop acc had_partial_failure = function
     | [] -> Ok (List.reverse acc, had_partial_failure)
     | target :: rest ->
@@ -345,7 +291,7 @@ let build_loop = fun context client targets ->
             client
             context.request_target
             ~scope:context.client_scope
-            ~profile:context.request.profile
+            ~profile:context.profile.name
             ?target_arch
             (fun event ->
               (match event with
@@ -377,11 +323,9 @@ let build_loop = fun context client targets ->
                   ~target
                   ~result_count:(List.length results)
                   ~had_partial_failure:next_partial_failure;
-                loop
-                  ((target, results) :: acc)
-                  next_partial_failure
-                  rest
-            | None -> loop acc had_partial_failure rest)
+                loop ((target, results) :: acc) next_partial_failure rest
+            | None ->
+                loop acc had_partial_failure rest)
         | Error err when context.allow_partial_failures && !lane_failed -> (
             match !lane_results with
             | Some results ->
@@ -391,19 +335,21 @@ let build_loop = fun context client targets ->
                   ~result_count:(List.length results)
                   ~had_partial_failure:true;
                 loop ((target, results) :: acc) true rest
-            | None -> Error (ClientError err))
+            | None ->
+                Error (ClientError err))
         | Error err ->
             Error (ClientError err)
   in
   loop [] false targets
 
 let do_build = fun context ->
-  let* targets = resolve_targets context in
-  let* () = ensure_toolchains_for_targets context targets in
-  let* () = validate_target_toolchains context targets in
+  let targets = Riot_model.Target.Set.to_list context.targets in
+  emit_targets_resolved context targets;
+  let* () = ensure_toolchains_for_targets context context.targets in
+  let* () = validate_target_toolchains context context.targets in
   let* client = connect_client context in
   let result =
-    let* (lane_results, had_partial_failure) = build_loop context client targets in
+    let* (lane_results, had_partial_failure) = build_loop context client in
     let all_results =
       List.map lane_results ~fn:(fun (_, results) -> results) |> List.concat
     in
@@ -422,38 +368,12 @@ let do_build = fun context ->
   Client.close client;
   result
 
-let build = fun ?(record_cache_generation = true) ?(on_event = no_event) ?workspace_manager request ->
+let execute = fun ?(allow_partial_failures = false) ?(record_cache_generation = true) ?(on_event = no_event) spec ->
   let context =
     make_context
-      ~mode:Local
-      ~allow_partial_failures:false
-      ?workspace_manager
+      ~allow_partial_failures
       ~record_cache_generation
       ~on_event
-      request
-  in
-  do_build context
-
-let build_best_effort = fun ?(record_cache_generation = true) ?(on_event = no_event) ?workspace_manager request ->
-  let context =
-    make_context
-      ~mode:Local
-      ~allow_partial_failures:true
-      ?workspace_manager
-      ~record_cache_generation
-      ~on_event
-      request
-  in
-  do_build context
-
-let build_prepared = fun ?(record_cache_generation = true) ?(on_event = no_event) ?workspace_manager request ->
-  let context =
-    make_context
-      ~mode:Prepared
-      ~allow_partial_failures:false
-      ?workspace_manager
-      ~record_cache_generation
-      ~on_event
-      request
+      spec
   in
   do_build context

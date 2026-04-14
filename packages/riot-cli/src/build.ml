@@ -3,7 +3,7 @@ open Std.Collections
 open Riot_model
 open Riot_build
 
-type build_scope = Riot_build.build_scope =
+type build_scope = Riot_build.Request.scope =
   Runtime
   | Dev
 
@@ -20,12 +20,21 @@ type build_progress = {
   mutable skipped_count: int;
 }
 
+type workspace_input =
+  | Unprepared of {
+      workspace: Workspace.t;
+      workspace_manager: Workspace_manager.t option;
+    }
+  | Prepared of Riot_build.Prepared_workspace.t
+
 type request = {
-  build_request: Riot_build.build_request;
-  workspace_manager: Workspace_manager.t option;
+  workspace_input: workspace_input;
+  packages: string list;
+  targets: Riot_model.Target.request;
+  scope: build_scope;
+  profile: Riot_model.Profile.t;
   output_mode: output_mode;
   show_finished_summary: bool;
-  prepared: bool;
 }
 
 let build_trace_enabled = fun () ->
@@ -42,7 +51,7 @@ let trace_build_probe = fun ~started_at message ->
   let _ = message in
   ()
 
-let build_request_label = fun (request: Riot_build.build_request) ->
+let build_request_label = fun (request: request) ->
   let packages =
     match request.packages with
     | [] -> "all"
@@ -50,39 +59,15 @@ let build_request_label = fun (request: Riot_build.build_request) ->
   in
   let targets =
     match request.targets with
-    | Riot_build.Host -> "host"
-    | Riot_build.All -> "all"
-    | Riot_build.Pattern pattern -> pattern
-    | Riot_build.Exact targets ->
+    | Riot_model.Target.Host -> "host"
+    | Riot_model.Target.All -> "all"
+    | Riot_model.Target.Pattern pattern -> pattern
+    | Riot_model.Target.Exact targets ->
         Riot_model.Target.Set.to_list targets
         |> List.map ~fn:Riot_model.Target.to_string
         |> String.concat ","
   in
-  "Build(" ^ packages ^ "; targets=" ^ targets ^ ")"
-
-let streaming_event_label = function
-  | Client.BuildStarted _ -> "BuildStarted"
-  | Client.BuildEvent _ -> "BuildEvent"
-  | Client.BuildCompleted _ -> "BuildCompleted"
-  | Client.BuildFailed _ -> "BuildFailed"
-  | Client.PlanningFailed _ -> "PlanningFailed"
-  | Client.CycleDetected _ -> "CycleDetected"
-
-let streaming_event_result_count = function
-  | Client.BuildCompleted { results; _ } -> Some (List.length results)
-  | Client.BuildFailed { built; errors; _ } -> Some (List.length built + List.length errors)
-  | Client.BuildStarted _
-  | Client.BuildEvent _
-  | Client.PlanningFailed _
-  | Client.CycleDetected _ -> None
-
-let is_terminal_streaming_event = function
-  | Client.BuildCompleted _
-  | Client.BuildFailed _
-  | Client.PlanningFailed _
-  | Client.CycleDetected _ -> true
-  | Client.BuildStarted _
-  | Client.BuildEvent _ -> false
+  "Build(" ^ packages ^ "; targets=" ^ targets ^ "; profile=" ^ request.profile.name ^ ")"
 
 let json_clock_origin = ref None
 
@@ -119,7 +104,7 @@ let write_build_event_json = fun event ->
 
 let write_build_phase_event = fun ~mode phase ->
   match mode with
-  | Json -> write_build_event_json (Riot_build.Phase phase)
+  | Json -> write_build_event_json (Riot_build.Event.Phase phase)
   | Human -> ()
 
 let command_error_event_to_json = fun kind details ->
@@ -193,7 +178,7 @@ let format_pm_event = fun ~seen_registry_updates kind ->
 
 let write_pm_event = fun ~mode ~seen_registry_updates event ->
   match mode with
-  | Json -> write_build_event_json (Riot_build.Pm event)
+  | Json -> write_build_event_json (Riot_build.Event.Pm event)
   | Human -> (
       match format_pm_event ~seen_registry_updates event.kind with
       | Some message -> out message
@@ -220,11 +205,11 @@ let command =
 
 let target_request_of_matches = fun matches ->
   if ArgParser.get_flag matches "all-targets" then
-    Riot_build.All
+    Riot_model.Target.All
   else
     match ArgParser.get_one matches "target" with
     | Some value -> Riot_model.Target.parse value
-    | None -> Riot_build.Host
+    | None -> Riot_model.Target.Host
 
 let output_mode_of_matches = fun matches ->
   if ArgParser.get_flag matches "json" then
@@ -234,24 +219,30 @@ let output_mode_of_matches = fun matches ->
 
 let profile_of_matches = fun matches ->
   if ArgParser.get_flag matches "release" then
-    "release"
+    Riot_model.Profile.release
   else
-    "debug"
+    Riot_model.Profile.debug
 
-let make_request = fun ~workspace ?workspace_manager ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) ?(prepared = false) ~packages ~targets () ->
+let make_request = fun ~workspace ?workspace_manager ?(scope = Runtime) ?(profile = Riot_model.Profile.debug) ?(mode = Human) ?(show_finished_summary = true) ~packages ~targets () ->
   {
-    build_request =
-      Riot_build.{
-        workspace;
-        packages;
-        targets;
-        scope;
-        profile;
-      };
-    workspace_manager;
+    workspace_input = Unprepared { workspace; workspace_manager };
+    packages;
+    targets;
+    scope;
+    profile;
     output_mode = mode;
     show_finished_summary;
-    prepared;
+  }
+
+let make_prepared_request = fun ~prepared_workspace ?(scope = Runtime) ?(profile = Riot_model.Profile.debug) ?(mode = Human) ?(show_finished_summary = true) ~packages ~targets () ->
+  {
+    workspace_input = Prepared prepared_workspace;
+    packages;
+    targets;
+    scope;
+    profile;
+    output_mode = mode;
+    show_finished_summary;
   }
 
 let request_of_matches = fun ~workspace matches ->
@@ -263,10 +254,19 @@ let request_of_matches = fun ~workspace matches ->
     ~targets:(target_request_of_matches matches)
     ()
 
+let prepared_request_of_matches = fun ~prepared_workspace matches ->
+  make_prepared_request
+    ~prepared_workspace
+    ~profile:(profile_of_matches matches)
+    ~mode:(output_mode_of_matches matches)
+    ~packages:(ArgParser.get_many matches "package")
+    ~targets:(target_request_of_matches matches)
+    ()
+
 let write_building_target_event = fun ~mode ~target ~host ->
   let target_name = Riot_model.Target.to_string target in
   match mode with
-  | Json -> write_build_event_json (Riot_build.BuildingTarget { target; host })
+  | Json -> write_build_event_json (Riot_build.Event.BuildingTarget { target; host })
   | Human ->
       if not host then
         out ("🔨 Cross-compiling for " ^ target_name)
@@ -326,46 +326,53 @@ let write_cache_gc_event = fun ~mode event ->
         ^ error)
     )
 
-let write_streaming_event = fun ~mode ~displayed_packages ~progress event ->
-  trace_build ("streaming event: " ^ streaming_event_label event);
-  match mode with
-  | Json -> ()
-  | Human -> (
-      match event with
-      | Client.BuildStarted _ ->
-          ()
-      | Client.BuildEvent event ->
-          (
-            match event with
-            | Riot_executor.Telemetry_events.BuildCompleted { status=`Fresh; _ } -> progress.built_count <- progress.built_count
-            + 1
-            | Riot_executor.Telemetry_events.BuildCompleted { status=`Cached; _ } -> progress.cached_count <- progress.cached_count
-            + 1
-            | Riot_executor.Telemetry_events.BuildFailed _ -> progress.failed_count <- progress.failed_count
-            + 1
-            | Riot_executor.Telemetry_events.BuildSkipped _ -> progress.skipped_count <- progress.skipped_count
-            + 1
-            | _ -> ()
-          );
-          let msg = Event_formatter.format ~displayed_packages event in
-          if msg != "" then
-            out msg
-      | Client.BuildCompleted _ ->
-          ()
-      | Client.BuildFailed _ ->
-          ()
-      | Client.PlanningFailed { reason; _ } ->
-          out "";
-          out ("\027[1;31mPlanning Failed\027[0m: " ^ reason);
-          progress.failed_count <- progress.failed_count + 1
-      | Client.CycleDetected { cycle_nodes; _ } ->
-          out "      \027[1;31mError\027[0m: Cyclic dependency detected:";
-          out ("         " ^ String.concat " ->\n         " cycle_nodes)
-    )
+let write_package_not_found_error = fun ~mode ~package_name ~available_packages ->
+  if mode = Json then
+    write_json_event
+      (command_error_event_to_json
+         "PackageNotFound"
+         [
+           ("package_name", Data.Json.String package_name);
+           (
+             "available_packages",
+             Data.Json.Array
+               (List.map available_packages ~fn:(fun pkg -> Data.Json.String pkg))
+           );
+         ])
+  else (
+    out ("\027[1;31mError\027[0m: Package '" ^ package_name ^ "' not found");
+    out "";
+    out "Available packages:";
+    List.for_each available_packages ~fn:(fun pkg -> out ("  • " ^ pkg))
+  )
+
+let write_packages_not_found_error = fun ~mode ~package_names ~available_packages ->
+  if mode = Json then
+    write_json_event
+      (command_error_event_to_json
+         "PackagesNotFound"
+         [
+           (
+             "package_names",
+             Data.Json.Array
+               (List.map package_names ~fn:(fun pkg -> Data.Json.String pkg))
+           );
+           (
+             "available_packages",
+             Data.Json.Array
+               (List.map available_packages ~fn:(fun pkg -> Data.Json.String pkg))
+           );
+         ])
+  else (
+    out ("\027[1;31mError\027[0m: Packages not found: " ^ String.concat ", " package_names);
+    out "";
+    out "Available packages:";
+    List.for_each available_packages ~fn:(fun pkg -> out ("  • " ^ pkg))
+  )
 
 let write_build_error = fun ~mode err ->
   match err with
-  | Riot_build.NoTargetsMatched { pattern; available_targets } ->
+  | Riot_build.TargetSelectionFailed { pattern; available_targets } ->
       write_command_error
         ~mode
         "NoTargetsMatched"
@@ -379,7 +386,11 @@ let write_build_error = fun ~mode err ->
                           Data.Json.String (Riot_model.Target.to_string target)))
                   );
                 ]
-        (Riot_build.build_error_message err)
+        (Riot_build.error_message err)
+  | Riot_build.PackageNotFound { package_name; available_packages } ->
+      write_package_not_found_error ~mode ~package_name ~available_packages
+  | Riot_build.PackagesNotFound { package_names; available_packages } ->
+      write_packages_not_found_error ~mode ~package_names ~available_packages
   | Riot_build.ToolchainInstallFailed { target; error } ->
       write_command_error
         ~mode
@@ -388,7 +399,7 @@ let write_build_error = fun ~mode err ->
           ("target", Data.Json.String (Riot_model.Target.to_string target));
           ("reason", Data.Json.String error);
         ]
-        (Riot_build.build_error_message err)
+        (Riot_build.error_message err)
   | Riot_build.ToolchainInitializationFailed { target; error } ->
       write_command_error
         ~mode
@@ -397,98 +408,91 @@ let write_build_error = fun ~mode err ->
           ("target", Data.Json.String (Riot_model.Target.to_string target));
           ("reason", Data.Json.String error);
         ]
-        (Riot_build.build_error_message err)
-  | Riot_build.ClientError client_error -> (
-      match client_error with
-      | Client.PackageNotFound { package_name; available_packages } ->
-          if mode = Json then
-            write_json_event
-              (command_error_event_to_json
-                "PackageNotFound"
-                [
-                  ("package_name", Data.Json.String package_name);
-                  (
-                    "available_packages",
-                    Data.Json.Array (List.map available_packages ~fn:(fun pkg -> Data.Json.String pkg))
-                  );
-                ])
-          else (
-            out ("\027[1;31mError\027[0m: Package '" ^ package_name ^ "' not found");
-            out "";
-            out "Available packages:";
-            List.for_each available_packages ~fn:(fun pkg -> out ("  • " ^ pkg))
-          )
-      | Client.PackagesNotFound { package_names; available_packages } ->
-          if mode = Json then
-            write_json_event
-              (command_error_event_to_json
-                "PackagesNotFound"
-                [
-                  (
-                    "package_names",
-                    Data.Json.Array (List.map package_names ~fn:(fun pkg -> Data.Json.String pkg))
-                  );
-                  (
-                    "available_packages",
-                    Data.Json.Array (List.map available_packages ~fn:(fun pkg -> Data.Json.String pkg))
-                  );
-                ])
-          else (
-            out ("\027[1;31mError\027[0m: Packages not found: " ^ String.concat ", " package_names);
-            out "";
-            out "Available packages:";
-            List.for_each available_packages ~fn:(fun pkg -> out ("  • " ^ pkg))
-          )
-      | Client.BuildAlreadyRunning { lock_path } ->
-          write_command_error
-            ~mode
-            "BuildAlreadyRunning"
-            [ ("lock_path", Data.Json.String (Path.to_string lock_path)) ]
-            ("another riot build is already running\nLock file: " ^ Path.to_string lock_path ^ "\nWait for the current build to finish and try again.")
-      | Client.BuildFailed { errors } ->
-          write_command_error
-            ~mode
-            "BuildFailed"
-            [
-              (
-                "errors",
-                Data.Json.Array (List.map errors ~fn:Riot_executor.Package_builder.build_result_to_json)
-              );
-            ]
-            (Client.error_message client_error)
-      | Client.PlanningFailed { reason } ->
-          write_command_error
-            ~mode
-            "PlanningFailed"
-            [ ("reason", Data.Json.String reason) ]
-            (Client.error_message client_error)
-      | Client.CycleDetected { cycle_nodes } ->
-          write_command_error
-            ~mode
-            "CycleDetected"
-            [ ("cycle_nodes", Data.Json.Array (List.map cycle_nodes ~fn:Data.Json.string)) ]
-            (Client.error_message client_error)
-      | Client.UnexpectedEvent { reason } ->
-          write_command_error ~mode "UnexpectedEvent" [ ("reason", Data.Json.String reason) ] reason
-      | Client.StartupFailed { error } ->
-          let reason = Riot_build.error_message error in
-          write_command_error ~mode "SessionStartFailed" [ ("reason", Data.Json.String reason) ] reason
-    )
+        (Riot_build.error_message err)
+  | Riot_build.BuildFailed { errors } ->
+      write_command_error
+        ~mode
+        "BuildFailed"
+        [
+          (
+            "errors",
+            Data.Json.Array (List.map errors ~fn:Riot_executor.Package_builder.build_result_to_json)
+          );
+        ]
+        (Riot_build.error_message err)
+  | Riot_build.PlanningFailed { reason } ->
+      write_command_error
+        ~mode
+        "PlanningFailed"
+        [ ("reason", Data.Json.String reason) ]
+        (Riot_build.error_message err)
+  | Riot_build.CycleDetected { cycle_nodes } ->
+      write_command_error
+        ~mode
+        "CycleDetected"
+        [ ("cycle_nodes", Data.Json.Array (List.map cycle_nodes ~fn:Data.Json.string)) ]
+        (Riot_build.error_message err)
+  | Riot_build.BuildAlreadyRunning { lock_path } ->
+      write_command_error
+        ~mode
+        "BuildAlreadyRunning"
+        [ ("lock_path", Data.Json.String (Path.to_string lock_path)) ]
+        (Riot_build.error_message err)
+  | Riot_build.SessionStartFailed { reason } ->
+      write_command_error
+        ~mode
+        "SessionStartFailed"
+        [ ("reason", Data.Json.String reason) ]
+        reason
+  | Riot_build.UnexpectedError { reason } ->
+      write_command_error
+        ~mode
+        "UnexpectedError"
+        [ ("reason", Data.Json.String reason) ]
+        reason
 
-let build_error_already_reported = fun (err: Riot_build.build_error) ->
-  match err with
-  | Riot_build.ClientError (Client.BuildFailed _)
-  | Riot_build.ClientError (Client.PlanningFailed _)
-  | Riot_build.ClientError (Client.CycleDetected _) -> true
-  | _ -> false
+let record_output_progress = fun progress output ->
+  Riot_build.Output.packages output
+  |> List.for_each ~fn:(fun package_output ->
+         match Riot_build.Output.package_status package_output with
+         | Riot_build.Output.Built _ -> progress.built_count <- progress.built_count + 1
+         | Riot_build.Output.Cached _ -> progress.cached_count <- progress.cached_count + 1
+         | Riot_build.Output.Skipped _ -> progress.skipped_count <- progress.skipped_count + 1
+         | Riot_build.Output.Failed _ -> progress.failed_count <- progress.failed_count + 1)
+
+let prepare_workspace = fun ?workspace_manager ~emit workspace ->
+  let open Std.Result.Syntax in
+  let* registry =
+    Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" ()
+    |> Result.map_err ~fn:(fun err -> Failure err)
+  in
+  let* prepared_workspace =
+    Riot_deps.ensure_workspace
+      ?workspace_manager
+      ~emit
+      ~mode:Riot_deps.Dep_solver.Refresh
+      ~registry
+      ~workspace
+      ()
+    |> Result.map_err ~fn:(fun err -> Failure (Riot_model.Pm_error.message err))
+  in
+  Ok prepared_workspace
+
+let ensure_prepared_workspace = fun ~emit request ->
+  match request.workspace_input with
+  | Prepared prepared_workspace -> Ok prepared_workspace
+  | Unprepared { workspace; workspace_manager } ->
+      prepare_workspace ?workspace_manager ~emit workspace
+      |> Result.map ~fn:(fun workspace ->
+             Riot_build.Prepared_workspace.of_workspace ?workspace_manager workspace)
 
 let run_request = fun (request: request) ->
   trace_build
     (
       "run_request request="
-      ^ build_request_label request.build_request
+      ^ build_request_label request
       ^ " scope="
-      ^ match request.build_request.scope with
+      ^ match request.scope with
       | Runtime -> "runtime"
       | Dev ->
           "dev" ^ " mode=" ^ match request.output_mode with
@@ -496,61 +500,52 @@ let run_request = fun (request: request) ->
           | Json -> "json"
     );
   let seen_registry_updates = HashSet.create () in
-  let displayed_packages = HashSet.create () in
   let start_time = Time.Instant.now () in
   reset_json_clock ~started_at:start_time;
   let progress = { built_count = 0; cached_count = 0; failed_count = 0; skipped_count = 0 } in
   let attempted_build = ref false in
+  let pm_session_id = Riot_model.Session_id.make () in
+  let emit_pm_kind = fun kind ->
+    write_pm_event
+      ~mode:request.output_mode
+      ~seen_registry_updates
+      (Riot_model.Event.create
+         ~session_id:pm_session_id
+         ~level:Riot_model.Event.Info
+         kind)
+  in
+  let on_build_event = function
+    | Riot_build.Event.Pm kind ->
+        emit_pm_kind kind.kind
+    | Riot_build.Event.BuildingTarget { target; host } ->
+        attempted_build := true;
+        write_building_target_event ~mode:request.output_mode ~target ~host
+    | Riot_build.Event.CacheGc event ->
+        attempted_build := true;
+        write_cache_gc_event ~mode:request.output_mode event
+    | Riot_build.Event.Phase phase ->
+        attempted_build := true;
+        write_build_phase_event ~mode:request.output_mode phase
+  in
   let result =
-    (
-      if request.prepared then
-        Riot_build.build_prepared
-      else
+    match ensure_prepared_workspace ~emit:emit_pm_kind request with
+    | Error _ as err -> err
+    | Ok prepared_workspace ->
         Riot_build.build
-    ) ?workspace_manager:request.workspace_manager
-      ~on_event:(
-        function
-        | Riot_build.Pm kind ->
-            write_pm_event ~mode:request.output_mode ~seen_registry_updates kind
-        | Riot_build.BuildingTarget { target; host } ->
-            attempted_build := true;
-            write_building_target_event ~mode:request.output_mode ~target ~host
-        | Riot_build.CacheGc event ->
-            attempted_build := true;
-            write_cache_gc_event ~mode:request.output_mode event
-        | Riot_build.Phase phase ->
-            attempted_build := true;
-            write_build_phase_event ~mode:request.output_mode phase
-        | Riot_build.Streaming event ->
-            attempted_build := true;
-            write_streaming_event ~mode:request.output_mode ~displayed_packages ~progress event;
-            (
-              match event with
-              | Client.BuildCompleted { results; _ } ->
-                  trace_build_probe
-                    ~started_at:start_time
-                    ("streaming-build-completed results=" ^ Int.to_string (List.length results))
-              | _ -> ()
-            );
-            if request.output_mode = Json && is_terminal_streaming_event event then
-              write_build_phase_event
-                ~mode:request.output_mode
-                (Riot_build.Event.CliPhase (Riot_build.Event.JsonTerminalEventEncodingStarted {
-                  event = streaming_event_label event;
-                  result_count = streaming_event_result_count event;
-                }));
-            if request.output_mode = Json then
-              write_build_event_json (Riot_build.Streaming event)
-            ;
-            if request.output_mode = Json && is_terminal_streaming_event event then
-              write_build_phase_event
-                ~mode:request.output_mode
-                (Riot_build.Event.CliPhase (Riot_build.Event.JsonTerminalEventEncoded {
-                  event = streaming_event_label event;
-                  result_count = streaming_event_result_count event;
-                }))
-      )
-      request.build_request
+          ~on_event:on_build_event
+          prepared_workspace
+          (Riot_build.Request.make
+             ~packages:request.packages
+             ~targets:request.targets
+             ~scope:request.scope
+             ~profile:request.profile
+             ())
+        |> Result.map ~fn:(fun output ->
+               record_output_progress progress output;
+               ())
+        |> Result.map_err ~fn:(fun err ->
+               write_build_error ~mode:request.output_mode err;
+               Failure (Riot_build.error_message err))
   in
   if request.show_finished_summary && !attempted_build then
     (
@@ -597,10 +592,8 @@ let run_request = fun (request: request) ->
   | Error err ->
       trace_build_probe
         ~started_at:start_time
-        ("run-request-return-error reason=" ^ Riot_build.build_error_message err);
-      if not (build_error_already_reported err) then
-        write_build_error ~mode:request.output_mode err;
-      Error (Failure (Riot_build.build_error_message err))
+        ("run-request-return-error reason=" ^ Kernel.Exception.to_string err);
+      Error err
 
 let print_workspace_load_errors = fun errors ->
   List.for_each errors ~fn:
@@ -621,39 +614,40 @@ let load_workspace_strict = fun cwd ->
   | Ok (workspace, _) ->
       Ok { workspace; workspace_manager }
 
-let build_command = fun ?workspace ?(prepared = false) ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) package_opt target_arch ->
-  let loaded_workspace =
-    match workspace with
-    | Some workspace -> Ok { workspace; workspace_manager = Workspace_manager.create () }
-    | None ->
-        let cwd = Env.current_dir () |> Result.expect ~msg:"Failed to get current directory" in
-        load_workspace_strict cwd
-  in
-  match loaded_workspace with
-  | Error _ as err -> err
-  | Ok { workspace; workspace_manager } ->
-      run_request
-        (
-              make_request ~workspace ~workspace_manager ~scope ~profile ~mode ~show_finished_summary ~prepared ~packages:(package_opt
-              |> Option.to_list)
-                ~targets:(
-                  match target_arch with
-                  | Some target -> Riot_model.Target.parse target
-                  | None -> Riot_build.Host
-                )
-                ()
-            )
+let build_command = fun ~prepared_workspace ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) package_opt target_arch ->
+  run_request
+    (make_prepared_request
+       ~prepared_workspace
+       ~scope
+       ~profile:(
+         match profile with
+         | "release" -> Riot_model.Profile.release
+         | _ -> Riot_model.Profile.debug
+       )
+       ~mode
+       ~show_finished_summary
+       ~packages:(package_opt |> Option.to_list)
+       ~targets:(
+         match target_arch with
+         | Some target -> Riot_model.Target.parse target
+         | None -> Riot_model.Target.Host
+       )
+       ())
 
 let build_packages_command = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) package_names target_arch ->
   run_request
-    (
-      make_request ~workspace ~scope ~mode ~show_finished_summary ~packages:package_names
-        ~targets:(
-          match target_arch with
-          | Some target -> Riot_model.Target.parse target
-          | None -> Riot_build.Host
-        )
-        ()
-    )
+    (make_request
+       ~workspace
+       ~scope
+       ~mode
+       ~show_finished_summary
+       ~packages:package_names
+       ~targets:(
+         match target_arch with
+         | Some target -> Riot_model.Target.parse target
+         | None -> Riot_model.Target.Host
+       )
+       ())
 
-let run = fun ~workspace matches -> run_request (request_of_matches ~workspace matches)
+let run = fun ~prepared_workspace matches ->
+  run_request (prepared_request_of_matches ~prepared_workspace matches)

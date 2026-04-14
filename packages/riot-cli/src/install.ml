@@ -1,6 +1,4 @@
 open Std
-open Riot_build
-
 let out = eprintln
 
 let command =
@@ -88,16 +86,16 @@ let parse_target = fun ?package_filter raw ->
   else
     parse_local_target ?package_filter raw
 
-let write_install_event = fun ~workspace_root (event: Riot_build.install_event) ->
+let write_install_event = fun ~workspace_root (event: Riot_build.Install.install_event) ->
   match event with
-  | Riot_build.Build _ ->
+  | Riot_build.Install.Build _ ->
       ()
-  | Riot_build.InstallingBinary { binary; _ } ->
+  | Riot_build.Install.InstallingBinary { binary; _ } ->
       out ("  \027[1;34mInstalling\027[0m " ^ binary)
-  | Riot_build.PromotedBinary { binary; destination; _ } ->
+  | Riot_build.Install.PromotedBinary { binary; destination; _ } ->
       out
         ("    \027[1;32mPromoted\027[0m " ^ binary ^ " to " ^ display_path ~workspace_root destination)
-  | Riot_build.InstalledBinary { binary; duration_ms; global_destination } ->
+  | Riot_build.Install.InstalledBinary { binary; duration_ms; global_destination } ->
       let duration = Time.Duration.from_millis duration_ms
       |> Time.Duration.to_secs_string ~precision:2 in
       out ("   \027[1;32mInstalled\027[0m " ^ binary ^ " in " ^ duration ^ "s");
@@ -108,12 +106,12 @@ let write_install_event = fun ~workspace_root (event: Riot_build.install_event) 
       )
 
 let write_install_error = fun err ->
-  out ("\027[1;31mError\027[0m: " ^ Riot_build.install_error_message err)
+  out ("\027[1;31mError\027[0m: " ^ Riot_build.Install.install_error_message err)
 
 let write_workspace_error = fun message -> out ("\027[1;31mError\027[0m: " ^ message)
 
 let local_install = fun ~on_event ~workspace ~package_name ~binary_name ~local_only ->
-  Riot_build.install ~on_event
+  Riot_build.Install.install ~on_event
     {
       workspace;
       package_name;
@@ -125,8 +123,6 @@ let local_install = fun ~on_event ~workspace ~package_name ~binary_name ~local_o
 let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
   let open ArgParser in
     let seen_registry_updates = Collections.HashSet.create () in
-    let displayed_packages = Collections.HashSet.create () in
-    let progress = Build.{ built_count = 0; cached_count = 0; failed_count = 0; skipped_count = 0 } in
     let raw_target = get_one matches "name" in
     let package_filter = get_one matches "package" in
     let local_only = get_flag matches "local" in
@@ -136,22 +132,17 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
       | Some (workspace: Riot_model.Workspace.t) -> workspace.root
       | None -> Path.v "."
     in
-    let on_event (event: Riot_build.install_event) =
+    let on_event (event: Riot_build.Install.install_event) =
       match event with
-      | Riot_build.Build build_event -> (
+      | Riot_build.Install.Build build_event -> (
           match build_event with
-          | Riot_build.Pm kind -> Build.write_pm_event ~mode:Build.Human ~seen_registry_updates kind
-          | Riot_build.BuildingTarget { target; host } -> Build.write_building_target_event
+          | Riot_build.Event.Pm kind -> Build.write_pm_event ~mode:Build.Human ~seen_registry_updates kind
+          | Riot_build.Event.BuildingTarget { target; host } -> Build.write_building_target_event
             ~mode:Build.Human
             ~target
             ~host
-          | Riot_build.CacheGc event -> Build.write_cache_gc_event ~mode:Build.Human event
-          | Riot_build.Phase _ -> ()
-          | Riot_build.Streaming streaming_event -> Build.write_streaming_event
-            ~mode:Build.Human
-            ~displayed_packages
-            ~progress
-            streaming_event
+          | Riot_build.Event.CacheGc event -> Build.write_cache_gc_event ~mode:Build.Human event
+          | Riot_build.Event.Phase _ -> ()
         )
       | _ -> write_install_event ~workspace_root:workspace_root_for_output event
     in
@@ -176,7 +167,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
           if local_only then
             Error (`Cli "--local is only supported when installing a workspace binary")
           else
-            Riot_build.install_source
+            Riot_build.Install.install_source
               ~on_event
               { source_spec; binary_name; update; local_only = false }
             |> Result.map_err ~fn:(fun err -> `Install err)
@@ -186,13 +177,13 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
               match local_install ~on_event ~workspace ~package_name ~binary_name ~local_only with
               | Ok () as ok ->
                   ok
-              | Error (Riot_build.BinaryNotFound _) when not local_only -> (
+              | Error (Riot_build.Install.BinaryNotFound _) when not local_only -> (
                   match registry_fallback with
-                  | Some package_spec -> Riot_build.install_registry
+                  | Some package_spec -> Riot_build.Install.install_registry
                     ~on_event
                     { package_spec; binary_name = "main"; local_only = false }
                   |> Result.map_err ~fn:(fun err -> `Install err)
-                  | None -> Error (`Install (Riot_build.BinaryNotFound { binary_name }))
+                  | None -> Error (`Install (Riot_build.Install.BinaryNotFound { binary_name }))
                 )
               | Error err ->
                   Error (`Install err)
@@ -203,7 +194,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
               else
                 (
                   match registry_fallback with
-                  | Some package_spec -> Riot_build.install_registry
+                  | Some package_spec -> Riot_build.Install.install_registry
                     ~on_event
                     { package_spec; binary_name = "main"; local_only = false }
                   |> Result.map_err ~fn:(fun err -> `Install err)
@@ -219,7 +210,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
         Error (Failure message)
     | Error (`Install err) ->
         write_install_error err;
-        Error (Failure (Riot_build.install_error_message err))
+        Error (Failure (Riot_build.Install.install_error_message err))
 
 let run = fun ~workspace matches ->
   run_with_workspace_info ~workspace:(Some workspace) ~workspace_error:None matches

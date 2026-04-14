@@ -1,17 +1,19 @@
 open Std
 
-type resolve_error =
+type error =
   | TargetSelectionFailed of Riot_model.Target.resolve_error
   | PackageNotFound of { package_name: string; available_packages: string list }
   | PackagesNotFound of { package_names: string list; available_packages: string list }
-
-type build_error = Build_runtime.build_error =
-  | NoTargetsMatched of Riot_model.Target.resolve_error
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
   | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
-  | ClientError of Client.error
+  | BuildFailed of { errors: Riot_executor.Package_builder.build_result list }
+  | PlanningFailed of { reason: string }
+  | CycleDetected of { cycle_nodes: string list }
+  | BuildAlreadyRunning of { lock_path: Path.t }
+  | SessionStartFailed of { reason: string }
+  | UnexpectedError of { reason: string }
 
-let resolve_error_message = function
+let error_message = function
   | TargetSelectionFailed { pattern; available_targets } ->
       "No targets match pattern '" ^ pattern ^ "'. Available targets: "
       ^ (
@@ -25,8 +27,27 @@ let resolve_error_message = function
   | PackagesNotFound { package_names; available_packages } ->
       "Packages not found: " ^ String.concat ", " package_names
       ^ ". Available packages: " ^ String.concat ", " available_packages
-
-let build_error_message = Build_runtime.error_message
+  | ToolchainInstallFailed { target; error } ->
+      "Failed to install toolchain for "
+      ^ Riot_model.Target.to_string target
+      ^ ": "
+      ^ error
+  | ToolchainInitializationFailed { target; error } ->
+      "Failed to initialize toolchain for "
+      ^ Riot_model.Target.to_string target
+      ^ ": "
+      ^ error
+  | BuildFailed { errors } ->
+      Client.error_message (Client.BuildFailed { errors })
+  | PlanningFailed { reason } ->
+      Client.error_message (Client.PlanningFailed { reason })
+  | CycleDetected { cycle_nodes } ->
+      Client.error_message (Client.CycleDetected { cycle_nodes })
+  | BuildAlreadyRunning { lock_path } ->
+      Client.error_message (Client.BuildAlreadyRunning { lock_path })
+  | SessionStartFailed { reason }
+  | UnexpectedError { reason } ->
+      reason
 
 let available_package_names = fun workspace ->
   Prepared_workspace.package_names workspace |> List.sort ~compare:String.compare
@@ -74,24 +95,48 @@ let resolve = fun workspace request ->
     ~scope:(Request.scope request)
     ~profile:(Request.profile request))
 
-let build = fun ?on_event spec ->
-  let workspace = Prepared_workspace.workspace (Build_spec.workspace spec) in
-  let workspace_manager =
-    Prepared_workspace.workspace_manager (Build_spec.workspace spec)
+let map_runtime_error = function
+  | Build_runtime.ToolchainInstallFailed { target; error } ->
+      ToolchainInstallFailed { target; error }
+  | Build_runtime.ToolchainInitializationFailed { target; error } ->
+      ToolchainInitializationFailed { target; error }
+  | Build_runtime.ClientError (Client.PackageNotFound { package_name; available_packages }) ->
+      PackageNotFound { package_name; available_packages }
+  | Build_runtime.ClientError (Client.PackagesNotFound { package_names; available_packages }) ->
+      PackagesNotFound { package_names; available_packages }
+  | Build_runtime.ClientError (Client.BuildFailed { errors }) ->
+      BuildFailed { errors }
+  | Build_runtime.ClientError (Client.PlanningFailed { reason }) ->
+      PlanningFailed { reason }
+  | Build_runtime.ClientError (Client.CycleDetected { cycle_nodes }) ->
+      CycleDetected { cycle_nodes }
+  | Build_runtime.ClientError (Client.BuildAlreadyRunning { lock_path }) ->
+      BuildAlreadyRunning { lock_path }
+  | Build_runtime.ClientError (Client.StartupFailed { error }) ->
+      SessionStartFailed { reason = Internal_server.error_message error }
+  | Build_runtime.ClientError (Client.UnexpectedEvent { reason }) ->
+      UnexpectedError { reason }
+
+let execute_raw = fun ?(allow_partial_failures = false) ?(record_cache_generation = true) ?on_event spec ->
+  let on_runtime_event =
+    Option.map on_event ~fn:(fun emit ->
+        fun (event: Build_runtime.build_event) ->
+          match Event_bridge.of_build_runtime_event event with
+          | Some event -> emit event
+          | None -> ())
   in
-  Build_runtime.build
-    ?on_event
-    ?workspace_manager
-    {
-      workspace;
-      packages = Build_spec.package_names spec;
-      targets = (
-        if Riot_model.Target.Set.is_empty (Build_spec.targets spec) then
-          Riot_model.Target.Host
-        else
-          Riot_model.Target.Exact (Build_spec.targets spec)
-      );
-      scope = Build_spec.scope spec;
-      profile = (Build_spec.profile spec).name;
-    }
+  Build_runtime.execute
+    ~allow_partial_failures
+    ~record_cache_generation
+    ?on_event:on_runtime_event
+    spec
+  |> Result.map_err ~fn:map_runtime_error
+
+let execute = fun ?on_event spec ->
+  execute_raw ?on_event spec
   |> Result.map ~fn:Output.of_build_results
+
+let build = fun ?on_event workspace request ->
+  let open Std.Result.Syntax in
+  let* spec = resolve workspace request in
+  execute ?on_event spec

@@ -27,9 +27,17 @@ name = "concurrent_tests"
 path = "tests/concurrent_tests.ml"
 
 [[bin]]
-name = "server_tests"
-path = "tests/server_tests.ml"
-
-[[bin]]
 name = "build_core_tests"
 path = "tests/build_core_tests.ml"
+
+[[bin]]
+name = "build_runtime_tests"
+path = "tests/build_runtime_tests.ml"
+
+[[bin]]
+name = "build_runtime_kernel_tests"
+path = "tests/build_runtime_kernel_tests.ml"
+
+[[bin]]
+name = "event_tests"
+path = "tests/event_tests.ml"

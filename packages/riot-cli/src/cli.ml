@@ -128,6 +128,17 @@ let current_manifest_status = fun () ->
         | Error err -> Error ("failed to read riot.toml status: " ^ IO.error_message err)
       )
 
+let prepare_workspace_for_build = fun workspace ->
+  match Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" () with
+  | Error err -> Error (Failure err)
+  | Ok registry -> (
+      match Riot_deps.ensure_workspace ~mode:Riot_deps.Dep_solver.Refresh ~registry ~workspace () with
+      | Ok prepared_workspace ->
+          Ok (Riot_build.Prepared_workspace.of_workspace prepared_workspace)
+      | Error err ->
+          Error (Failure (Riot_model.Pm_error.message err))
+    )
+
 (** Try to execute a package command if it exists *)
 let try_command = fun ?workspace_scan cmd_name remaining_args ->
   let workspace_scan =
@@ -153,17 +164,23 @@ let try_command = fun ?workspace_scan cmd_name remaining_args ->
               (* Build the package first to ensure command is up to date *)
               Log.info ("Building package: " ^ cmd.package_name);
               (
-                match Build.build_command ~workspace (Some cmd.package_name) None with
+                match prepare_workspace_for_build workspace with
                 | Error err ->
-                    Log.error ("Failed to build package: " ^ Kernel.Exception.to_string err);
+                    Log.error ("Failed to prepare workspace for build: " ^ Kernel.Exception.to_string err);
                     Some (Error err)
-                | Ok () ->
-                    (* Execute the command binary *)
-                    match Command_executor.execute ~command_binary:cmd.command_binary ~args:remaining_args with
-                    | Ok () -> Some (Ok ())
+                | Ok prepared_workspace -> (
+                    match Build.build_command ~prepared_workspace (Some cmd.package_name) None with
                     | Error err ->
-                        Log.error ("Command execution failed: " ^ Kernel.Exception.to_string err);
+                        Log.error ("Failed to build package: " ^ Kernel.Exception.to_string err);
                         Some (Error err)
+                    | Ok () ->
+                        (* Execute the command binary *)
+                        match Command_executor.execute ~command_binary:cmd.command_binary ~args:remaining_args with
+                        | Ok () -> Some (Ok ())
+                        | Error err ->
+                            Log.error ("Command execution failed: " ^ Kernel.Exception.to_string err);
+                            Some (Error err)
+                  )
               )
         )
       | _ -> None
@@ -310,8 +327,15 @@ let run = fun ~args ->
                   match ensure_toolchain workspace with
                   | Ok () ->
                       let () = trace_cli "ensure-toolchain-done" in
-                      let () = trace_cli "build-run-start" in
-                      Build.run ~workspace build_matches
+                      let () = trace_cli "build-prepare-start" in
+                      (
+                        match prepare_workspace_for_build workspace with
+                        | Error _ as e -> e
+                        | Ok prepared_workspace ->
+                            let () = trace_cli "build-prepare-done" in
+                            let () = trace_cli "build-run-start" in
+                            Build.run ~prepared_workspace build_matches
+                      )
                   | Error _ as e -> e
                 )
               | Error _ as e -> e

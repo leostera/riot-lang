@@ -1,6 +1,6 @@
 open Std
 
-type scope = Build_runtime.build_scope =
+type scope =
   | Runtime
   | Dev
 

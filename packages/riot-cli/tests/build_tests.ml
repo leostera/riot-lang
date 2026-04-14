@@ -32,6 +32,45 @@ let parse_info = fun args ->
   | Ok matches -> Ok matches
   | Error err -> Error (ArgParser.error_message err)
 
+let write_workspace_manifest = fun ~root ~members ->
+  let members =
+    members
+    |> List.map ~fn:(fun member -> "  \"" ^ Path.to_string member ^ "\"")
+    |> String.concat ",\n"
+  in
+  let content = "[workspace]\nmembers = [\n" ^ members ^ "\n]\n" in
+  Fs.write content Path.(root / Path.v "riot.toml")
+  |> Result.expect ~msg:"Write workspace riot.toml failed"
+
+let make_valid_workspace = fun ?target_dir tmpdir ->
+  let pkg_dir = Path.(tmpdir / Path.v "demo") in
+  let src_dir = Path.(pkg_dir / Path.v "src") in
+  let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"Create src failed" in
+  let ml_file = Path.(src_dir / Path.v "lib.ml") in
+  let _ = Fs.write "let value = 42\n" ml_file |> Result.expect ~msg:"Write ml failed" in
+  let riot_file = Path.(pkg_dir / Path.v "riot.toml") in
+  let riot_content =
+    "[package]\nname = \"demo\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n"
+  in
+  let _ = Fs.write riot_content riot_file |> Result.expect ~msg:"Write riot.toml failed" in
+  let _ = write_workspace_manifest ~root:tmpdir ~members:[ Path.v "demo" ] in
+  let package =
+    Riot_model.Package.make
+      ~name:"demo"
+      ~path:pkg_dir
+      ~relative_path:(Path.v "demo")
+      ~library:{ path = Path.v "src/lib.ml" }
+      ~sources:{
+        src = [ Path.v "src/lib.ml" ];
+        native = [];
+        tests = [];
+        examples = [];
+        bench = [];
+      }
+      ()
+  in
+  Riot_model.Workspace.make_realized ~root:tmpdir ?target_dir ~packages:[ package ] ()
+
 let test_build_accepts_multiple_packages = fun _ctx ->
   match parse_build [ "build"; "syn"; "krasny"; "riot-cli" ] with
   | Error err -> Error ("expected build args to parse: " ^ err)
@@ -64,6 +103,45 @@ let test_build_accepts_release_flag = fun _ctx ->
         Ok ()
       else
         Error "expected --release flag to be parsed"
+
+let test_build_command_accepts_prepared_workspace = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"riot_cli_build_prepared_command"
+      (fun tmpdir ->
+        let workspace = make_valid_workspace tmpdir in
+        let prepared_workspace = Riot_build.Prepared_workspace.of_workspace workspace in
+        Riot_cli.Build.build_command
+          ~prepared_workspace
+          ~show_finished_summary:false
+          ~mode:Riot_cli.Build.Human
+          (Some "demo")
+          None)
+  with
+  | Ok (Ok ()) -> Ok ()
+  | Ok (Error err) ->
+      Error ("expected prepared workspace build command to succeed: " ^ Kernel.Exception.to_string err)
+  | Error err ->
+      Error ("tempdir failed: " ^ IO.error_message err)
+
+let test_build_run_accepts_prepared_workspace = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"riot_cli_build_command"
+      (fun tmpdir ->
+        let workspace = make_valid_workspace tmpdir in
+        let prepared_workspace = Riot_build.Prepared_workspace.of_workspace workspace in
+        let matches =
+          parse_build [ "build"; "demo" ]
+          |> Result.expect ~msg:"expected build args to parse"
+        in
+        Riot_cli.Build.run
+          ~prepared_workspace
+          matches)
+  with
+  | Ok (Ok ()) -> Ok ()
+  | Ok (Error err) ->
+      Error ("expected prepared workspace build run to succeed: " ^ Kernel.Exception.to_string err)
+  | Error err ->
+      Error ("tempdir failed: " ^ IO.error_message err)
 
 let test_test_accepts_json_flag = fun _ctx ->
   match parse_test [ "test"; "--json"; "-p"; "riot-build" ] with
@@ -224,10 +302,10 @@ let make_workspace = fun binaries ->
     ~relative_path:(Path.v "packages/demo")
     ~binaries
     () in
-  Riot_model.Workspace.make ~root:(Path.v "/workspace") ~packages:[ package ] ()
+  Riot_model.Workspace.make_realized ~root:(Path.v "/workspace") ~packages:[ package ] ()
 
 let make_workspace_with_packages = fun packages ->
-  Riot_model.Workspace.make ~root:(Path.v "/workspace") ~packages ()
+  Riot_model.Workspace.make_realized ~root:(Path.v "/workspace") ~packages ()
 
 let test_run_build_scope_uses_runtime_for_runtime_binaries = fun _ctx ->
   let workspace = make_workspace
@@ -408,6 +486,8 @@ let tests =
     case "build: usage shows variadic packages" test_build_usage_shows_variadic_packages;
     case "build: parse --json flag" test_build_accepts_json_flag;
     case "build: parse --release flag" test_build_accepts_release_flag;
+    case "build: command accepts prepared workspace" test_build_command_accepts_prepared_workspace;
+    case "build: run accepts prepared workspace" test_build_run_accepts_prepared_workspace;
     case "test: parse --json flag" test_test_accepts_json_flag;
     case "test: parse --release flag" test_test_accepts_release_flag;
     case "test: parse --list flag" test_test_accepts_list_flag;

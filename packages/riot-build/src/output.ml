@@ -40,3 +40,17 @@ let find_package = fun t name ->
 let package_name = fun t -> t.package_name
 
 let package_status = fun t -> t.status
+
+let package_artifact = fun t ->
+  match t.status with
+  | Built artifact
+  | Cached artifact -> Some artifact
+  | Skipped _
+  | Failed _ -> None
+
+let find_export = fun t export_name ->
+  package_artifact t
+  |> Option.and_then ~fn:(fun artifact ->
+      let artifact: Riot_store.Artifact.t = artifact in
+      List.find artifact.exports ~fn:(fun (entry: Riot_store.Manifest.export_entry) ->
+          String.equal entry.name export_name))

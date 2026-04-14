@@ -1,10 +1,17 @@
 open Std
 module Test = Std.Test
-module BuildLock = Riot_build.Client.BuildLock
+module BuildLock = Riot_build.Build_lock
 
 type Message.t +=
   | BuildLockAcquired of Time.Duration.t
   | BuildLockAcquireFailed of string
+
+let make_workspace = fun root ->
+  Riot_model.Workspace.make_realized ~root ~packages:[] ()
+
+let target = fun triple ->
+  Riot_model.Target.from_string triple
+  |> Result.expect ~msg:("expected valid target triple: " ^ triple)
 
 let with_tempdir = fun prefix fn ->
   match Fs.with_tempdir ~prefix fn with
@@ -14,7 +21,9 @@ let with_tempdir = fun prefix fn ->
 let test_reentrant_acquire_in_same_process = fun _ctx ->
   with_tempdir "riot_build_lock"
     (fun tmpdir ->
-      BuildLock.acquire ~workspace_root:tmpdir ~profile:"debug" ~target:"aarch64-apple-darwin"
+      let workspace = make_workspace tmpdir in
+      let host_target = target "aarch64-apple-darwin" in
+      BuildLock.acquire ~workspace ~profile:"debug" ~target:host_target
         (fun () ->
           let parent = self () in
           let _worker =
@@ -22,7 +31,7 @@ let test_reentrant_acquire_in_same_process = fun _ctx ->
               (fun () ->
                 let start = Time.Instant.now () in
                 match
-                  BuildLock.acquire ~workspace_root:tmpdir ~profile:"debug" ~target:"aarch64-apple-darwin"
+                  BuildLock.acquire ~workspace ~profile:"debug" ~target:host_target
                     (fun () ->
                       let waited = Time.Instant.elapsed start in
                       send parent (BuildLockAcquired waited);
@@ -55,22 +64,24 @@ let test_reentrant_acquire_in_same_process = fun _ctx ->
 let test_releases_lock_on_exception = fun _ctx ->
   with_tempdir "riot_build_lock"
     (fun tmpdir ->
+      let workspace = make_workspace tmpdir in
+      let host_target = target "aarch64-apple-darwin" in
       let exception Synthetic_failure in
       try
         let _ =
           BuildLock.acquire
-            ~workspace_root:tmpdir
+            ~workspace
             ~profile:"debug"
-            ~target:"aarch64-apple-darwin"
+            ~target:host_target
             (fun () -> raise Synthetic_failure)
         in
         Error "Expected build lock callback to raise"
       with
       | Synthetic_failure -> (
           match BuildLock.acquire
-            ~workspace_root:tmpdir
+            ~workspace
             ~profile:"debug"
-            ~target:"aarch64-apple-darwin"
+            ~target:host_target
             (fun () -> Ok ()) with
           | Ok () -> Ok ()
           | Error _ -> Error "Build lock was not released after exception"
@@ -79,7 +90,10 @@ let test_releases_lock_on_exception = fun _ctx ->
 let test_different_targets_do_not_block_each_other = fun _ctx ->
   with_tempdir "riot_build_lock"
     (fun tmpdir ->
-      BuildLock.acquire ~workspace_root:tmpdir ~profile:"debug" ~target:"aarch64-apple-darwin"
+      let workspace = make_workspace tmpdir in
+      let host_target = target "aarch64-apple-darwin" in
+      let linux_target = target "aarch64-unknown-linux-gnu" in
+      BuildLock.acquire ~workspace ~profile:"debug" ~target:host_target
         (fun () ->
           let parent = self () in
           let _worker =
@@ -87,7 +101,7 @@ let test_different_targets_do_not_block_each_other = fun _ctx ->
               (fun () ->
                 let start = Time.Instant.now () in
                 match
-                  BuildLock.acquire ~workspace_root:tmpdir ~profile:"debug" ~target:"aarch64-unknown-linux-gnu"
+                  BuildLock.acquire ~workspace ~profile:"debug" ~target:linux_target
                     (fun () ->
                       let waited = Time.Instant.elapsed start in
                       send parent (BuildLockAcquired waited);

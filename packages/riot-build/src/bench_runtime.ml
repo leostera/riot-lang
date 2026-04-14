@@ -74,7 +74,7 @@ type bench_suite_summary = {
 }
 
 type bench_event =
-  | Build of Build_runtime.build_event
+  | Build of Event.t
   | NoSuitesFound of { package_name: string option }
   | RunningSuite of suite_binary
   | SuiteCompleted of {
@@ -92,7 +92,7 @@ type bench_event =
   | Summary of { total: int; completed: int; skipped: int; failed: int }
 
 type bench_error =
-  | BuildFailed of Build_runtime.build_error
+  | BuildFailed of Build_core.error
   | ClientError of Client.error
   | SuiteArtifactNotFound of { suite: suite_binary; reason: string }
   | SuiteExecutionError of { suite: suite_binary; reason: string }
@@ -117,6 +117,10 @@ let compare_suite_binary = fun left right ->
 
 let requested_packages = fun suites ->
   suites |> List.map ~fn:(fun (suite: suite_binary) -> suite.package_name) |> List.unique ~compare:String.compare
+
+let profile_of_name = function
+  | "release" -> Riot_model.Profile.release
+  | _ -> Riot_model.Profile.debug
 
 let realized_bench_packages = fun ?package_filter (workspace: Riot_model.Workspace.t) ->
   Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Bench workspace
@@ -150,7 +154,7 @@ let find_suite_source_path = fun ~(workspace:Riot_model.Workspace.t) (suite: sui
       |> Option.map ~fn:(fun (bin: Riot_model.Package.binary) -> Path.(pkg.path / bin.path))
 
 let bench_error_message = function
-  | BuildFailed err -> Build_runtime.error_message err
+  | BuildFailed err -> Build_core.error_message err
   | ClientError err -> Client.error_message err
   | SuiteArtifactNotFound { reason; _ } -> reason
   | SuiteExecutionError { reason; _ } -> reason
@@ -598,6 +602,41 @@ let find_suite_binary_path = fun ~(store:Riot_store.Store.t) ~(suite:suite_binar
       })
     )
 
+let find_suite_binary_path_in_output = fun ~(store:Riot_store.Store.t) ~(suite:suite_binary) (output: Output.t) ->
+  let ensure_executable_binary_path = fun path ->
+    let binary_path = Path.v path in
+    match Fs.metadata binary_path with
+    | Error err ->
+        Error ("failed to read benchmark binary metadata: " ^ IO.error_message err)
+    | Ok metadata ->
+        let mode = Fs.Metadata.mode metadata in
+        if mode land 0o111 != 0 then
+          Ok path
+        else
+          Fs.set_permissions binary_path (Fs.Permissions.of_mode (mode lor 0o111))
+          |> Result.map ~fn:(fun () -> path)
+          |> Result.map_err ~fn:(fun err ->
+              "failed to mark benchmark binary executable: " ^ IO.error_message err)
+  in
+  match
+    Output.find_package output suite.package_name
+    |> Option.and_then ~fn:(fun package_output ->
+        Output.find_export package_output suite.suite_name)
+  with
+  | None -> Error (SuiteArtifactNotFound {
+    suite;
+    reason = "suite '" ^ suite.suite_name ^ "' was not produced by build output"
+  })
+  | Some export_entry -> (
+      match Riot_store.Store.export_source_path store export_entry with
+      | Some path -> ensure_executable_binary_path (Path.to_string path)
+      |> Result.map_err ~fn:(fun reason -> SuiteArtifactNotFound { suite; reason })
+      | None -> Error (SuiteArtifactNotFound {
+        suite;
+        reason = "suite '" ^ suite.suite_name ^ "' resolved to an invalid absolute export path"
+      })
+    )
+
 let run_suite_binary_capture = fun ~extra_args binary_path ->
   let extra_args = remove_json_args extra_args @ [ "--json" ] in
   let cmd = Command.make binary_path ~args:("run-benchmarks" :: extra_args) in
@@ -649,18 +688,28 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
   if suites = [] then
     Ok []
   else
-    match
-      Build_runtime.build_best_effort ~record_cache_generation:false
-        {
-          workspace = request.workspace;
-          packages = requested_packages suites;
-          targets = Riot_model.Target.Host;
-          scope = Build_runtime.Dev;
-          profile = request.profile;
-        }
-    with
+    let prepared_workspace =
+      Prepared_workspace.of_workspace request.workspace
+    in
+    let build_request =
+      Request.make
+        ~packages:(requested_packages suites)
+        ~targets:Riot_model.Target.Host
+        ~scope:Request.Dev
+        ~profile:(profile_of_name request.profile)
+        ()
+    in
+    match Build_core.resolve prepared_workspace build_request with
     | Error err -> Error (BuildFailed err)
-    | Ok results ->
+    | Ok spec -> (
+        match
+          Build_core.execute_raw
+            ~allow_partial_failures:true
+            ~record_cache_generation:false
+            spec
+        with
+        | Error err -> Error (BuildFailed err)
+        | Ok results ->
         let store = Riot_store.Store.create_for_lane
           ~workspace:request.workspace
           ~profile:request.profile
@@ -759,6 +808,7 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
               collected
               |> List.sort ~compare:(fun (left, _) (right, _) -> compare_suite_binary left right)
               |> List.map ~fn:(fun (_, value) -> value))
+      )
 
 let bench = fun ?(on_event = no_event) (request: bench_request) ->
   let suites = collect_suite_binaries
@@ -772,19 +822,25 @@ let bench = fun ?(on_event = no_event) (request: bench_request) ->
       Ok ()
     )
   else
+    let prepared_workspace =
+      Prepared_workspace.of_workspace request.workspace
+    in
+    let build_request =
+      Request.make
+        ~packages:(requested_packages suites)
+        ~targets:Riot_model.Target.Host
+        ~scope:Request.Dev
+        ~profile:(profile_of_name request.profile)
+        ()
+    in
     match
-      Build_runtime.build ~record_cache_generation:false ~on_event:(fun event ->
-        on_event (Build event))
-        {
-          workspace = request.workspace;
-          packages = requested_packages suites;
-          targets = Riot_model.Target.Host;
-          scope = Build_runtime.Dev;
-          profile = request.profile;
-        }
+      Build_core.build
+        ~on_event:(fun event -> on_event (Build event))
+        prepared_workspace
+        build_request
     with
     | Error err -> Error (BuildFailed err)
-    | Ok results ->
+    | Ok output ->
         let store = Riot_store.Store.create_for_lane
           ~workspace:request.workspace
           ~profile:request.profile
@@ -807,7 +863,7 @@ let bench = fun ?(on_event = no_event) (request: bench_request) ->
               else
                 Ok ()
           | suite :: rest -> (
-              match find_suite_binary_path ~store ~suite results with
+              match find_suite_binary_path_in_output ~store ~suite output with
               | Error _ as err -> err
               | Ok binary_path ->
                   on_event (RunningSuite suite);

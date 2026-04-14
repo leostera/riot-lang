@@ -95,7 +95,7 @@ type bench_suite_summary = {
   failed: int;
 }
 type bench_event =
-  | Build of Build_runtime.build_event
+  | Build of Event.t
   | NoSuitesFound of { package_name: string option }
   | RunningSuite of suite_binary
   | SuiteCompleted of {
@@ -112,7 +112,7 @@ type bench_event =
     }
   | Summary of { total: int; completed: int; skipped: int; failed: int }
 type bench_error =
-  | BuildFailed of Build_runtime.build_error
+  | BuildFailed of Build_core.error
   | ClientError of Client.error
   | SuiteArtifactNotFound of { suite: suite_binary; reason: string }
   | SuiteExecutionError of { suite: suite_binary; reason: string }

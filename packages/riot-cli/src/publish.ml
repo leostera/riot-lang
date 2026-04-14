@@ -208,22 +208,16 @@ let write_publish_event = fun ~workspace_root ~seen_registry_updates ~displayed_
   | Riot_publish.Fix (Riot_fix.Event.FileProgress _) -> ()
   | Riot_publish.Fix (Riot_fix.Event.FileResult _) -> ()
   | Riot_publish.Fix (Riot_fix.Event.Summary _) -> ()
-  | Riot_publish.Build (Riot_build.Pm event) -> Build.write_pm_event
+  | Riot_publish.Build (Riot_build.Event.Pm event) -> Build.write_pm_event
     ~mode:Build.Human
     ~seen_registry_updates
     event
-  | Riot_publish.Build (Riot_build.BuildingTarget { target; host }) -> Build.write_building_target_event
+  | Riot_publish.Build (Riot_build.Event.BuildingTarget { target; host }) -> Build.write_building_target_event
     ~mode:Build.Human
     ~target
     ~host
-  | Riot_publish.Build (Riot_build.CacheGc event) -> Build.write_cache_gc_event ~mode:Build.Human event
-  | Riot_publish.Build (Riot_build.Phase _) -> ()
-  | Riot_publish.Build (Riot_build.Streaming (Riot_build.Client.BuildEvent (Riot_executor.Telemetry_events.CompilationStarted _))) -> ()
-  | Riot_publish.Build (Riot_build.Streaming event) -> Build.write_streaming_event
-    ~mode:Build.Human
-    ~displayed_packages
-    ~progress
-    event
+  | Riot_publish.Build (Riot_build.Event.CacheGc event) -> Build.write_cache_gc_event ~mode:Build.Human event
+  | Riot_publish.Build (Riot_build.Event.Phase _) -> ()
   | Riot_publish.CheckStarted { package; version; stage=`fmt } -> out
     (render_formatting ~package ~version:(version_label version))
   | Riot_publish.CheckStarted { package; version; stage=`fix } -> out

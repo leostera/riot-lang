@@ -22,7 +22,7 @@ type registry_install_request = {
 }
 
 type install_event =
-  | Build of Build_runtime.build_event
+  | Build of Event.t
   | InstallingBinary of { package: string; binary: string }
   | PromotedBinary of { binary: string; destination: Path.t; global: bool }
   | InstalledBinary of { binary: string; duration_ms: int; global_destination: Path.t option }
@@ -30,7 +30,7 @@ type install_event =
 type install_error =
   | BinaryNotFound of { binary_name: string }
   | BinaryNotFoundInPackage of { package_name: string; binary_name: string }
-  | BuildFailed of Build_runtime.build_error
+  | BuildFailed of Build_core.error
   | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
   | PromotionFailed of { binary_name: string; destination: Path.t; global: bool; reason: string }
   | ExternalTargetLoadFailed of { target: string; reason: string }
@@ -50,7 +50,7 @@ let install_error_message = function
   ^ "' not found in package '"
   ^ package_name
   ^ "'"
-  | BuildFailed err -> Build_runtime.error_message err
+  | BuildFailed err -> Build_core.error_message err
   | ArtifactNotFound { package_name; binary_name; reason } -> "binary '"
   ^ binary_name
   ^ "' was not produced by package '"
@@ -71,8 +71,11 @@ let install_error_message = function
 
 let path_json = fun path -> Data.Json.String (Path.to_string path)
 
+let build_event_to_json = fun event ->
+  Event.to_json event
+
 let install_event_to_json = function
-  | Build event -> Event.to_json event
+  | Build event -> build_event_to_json event
   | InstallingBinary { package; binary } -> Some (Data.Json.Object [
     ("type", Data.Json.String "InstallingBinary");
     ("package", Data.Json.String package);
@@ -103,7 +106,7 @@ let make_pm_event = fun session_id kind ->
   Riot_model.Event.create ~session_id ~level:Riot_model.Event.Info kind
 
 let emit_pm_build_event = fun ~session_id ~on_event kind ->
-  on_event (Build (Build_runtime.Pm (make_pm_event session_id kind)))
+  on_event (Build (Event.Pm (make_pm_event session_id kind)))
 
 let load_source_workspace = fun ~on_event ~source_spec ~update ->
   let session_id = Riot_model.Session_id.make () in
@@ -127,25 +130,16 @@ let load_registry_workspace = fun ~on_event ~package_spec ->
         reason = Riot_deps.package_error_message err
       })
 
-let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~package_name ~binary_name results ->
-  let find_binary_export (result: Riot_executor.Package_builder.build_result) =
-    if String.equal result.package.name package_name then
-      match result.status with
-      | Riot_executor.Package_builder.Built artifact
-      | Riot_executor.Package_builder.Cached artifact ->
-          List.find artifact.exports ~fn:(fun (entry: Riot_store.Manifest.export_entry) ->
-            String.equal entry.name binary_name)
-      | Riot_executor.Package_builder.Skipped _
-      | Riot_executor.Package_builder.Failed _ -> None
-    else
-      None
-  in
-  match List.find results ~fn:(fun result -> Option.is_some (find_binary_export result))
-    |> Option.and_then ~fn:find_binary_export with
+let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~(output: Output.t) ~package_name ~binary_name ->
+  match
+    Output.find_package output package_name
+    |> Option.and_then ~fn:(fun package_output ->
+        Output.find_export package_output binary_name)
+  with
   | None -> Error (ArtifactNotFound {
     package_name;
     binary_name;
-    reason = "binary '" ^ binary_name ^ "' was not produced by build results"
+    reason = "binary '" ^ binary_name ^ "' was not produced by build output"
   })
   | Some export_entry -> (
       match Riot_store.Store.export_source_path store export_entry with
@@ -218,79 +212,95 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
             })
             | _ ->
                 on_event (InstallingBinary { package = package_name; binary = request.binary_name });
+                let prepared_workspace =
+                  Prepared_workspace.of_workspace request.workspace
+                in
+                let build_request =
+                  Request.make
+                    ~packages:[ package_name ]
+                    ~targets:Riot_model.Target.Host
+                    ~scope:Request.Runtime
+                    ~profile:Riot_model.Profile.debug
+                    ()
+                in
                 match
-                  Build_runtime.build ~record_cache_generation:false ~on_event:(fun event ->
-                    on_event (Build event))
-                    {
-                      workspace = request.workspace;
-                      packages = [ package_name ];
-                      targets = Riot_model.Target.Host;
-                      scope = Build_runtime.Runtime;
-                      profile = "debug";
-                    }
+                  Build_core.build
+                    ~on_event:(fun event -> on_event (Build event))
+                    prepared_workspace
+                    build_request
                 with
-                | Error err -> Error (BuildFailed err)
-                | Ok results -> (
-                    let store = Riot_store.Store.create_for_lane
-                      ~workspace:request.workspace
-                      ~profile:"debug"
-                      ~target:(Riot_model.Riot_dirs.host_target ()) in
-                    match find_built_binary_path
-                      ~store
-                      ~package_name
-                      ~binary_name:request.binary_name
-                      results with
-                    | Error _ as err -> err
-                    | Ok binary_path ->
-                        let* () =
-                          if request.promote_to_workspace_root then
-                            let workspace_root = request.workspace.root in
-                            let project_binary = Path.(workspace_root / Path.v request.binary_name) in
-                            promote_binary
-                              ~on_event
-                              ~src:binary_path
-                              ~dst:project_binary
-                              ~binary:request.binary_name
-                              ~global:false
-                          else
-                            Ok ()
+                | Error err ->
+                    Error (BuildFailed err)
+                | Ok output -> (
+                        let store = Riot_store.Store.create_for_lane
+                          ~workspace:request.workspace
+                          ~profile:"debug"
+                          ~target:(Riot_model.Riot_dirs.host_target ())
                         in
-                        let global_destination =
-                          if request.local_only then
-                            Ok None
-                          else
-                            let riot_bin_dir = Path.(Riot_model.Riot_dirs.dot_riot / Path.v "bin") in
-                            let global_path = Path.(riot_bin_dir / Path.v request.binary_name) in
-                            match Fs.create_dir_all riot_bin_dir with
-                            | Ok () -> (
-                                match promote_binary
+                        match find_built_binary_path
+                          ~store
+                          ~output
+                          ~package_name
+                          ~binary_name:request.binary_name
+                        with
+                        | Error _ as err ->
+                            err
+                        | Ok binary_path ->
+                            let* () =
+                              if request.promote_to_workspace_root then
+                                let workspace_root = request.workspace.root in
+                                let project_binary = Path.(workspace_root / Path.v request.binary_name) in
+                                promote_binary
                                   ~on_event
                                   ~src:binary_path
-                                  ~dst:global_path
+                                  ~dst:project_binary
                                   ~binary:request.binary_name
-                                  ~global:true with
-                                | Ok () -> Ok (Some global_path)
-                                | Error _ as err -> err
-                              )
-                            | Error reason -> Error (PromotionFailed {
-                              binary_name = request.binary_name;
-                              destination = riot_bin_dir;
-                              global = true;
-                              reason = IO.error_message reason
-                            })
-                        in
-                        let* global_destination = global_destination in
-                        let duration = Time.Instant.duration_since
-                          ~earlier:started_at
-                          (Time.Instant.now ()) in
-                        on_event
-                          (InstalledBinary {
-                            binary = request.binary_name;
-                            duration_ms = Time.Duration.to_millis duration;
-                            global_destination
-                          });
-                        Ok ()
-                  )
+                                  ~global:false
+                              else
+                                Ok ()
+                            in
+                            let global_destination =
+                              if request.local_only then
+                                Ok None
+                              else
+                                let riot_bin_dir = Path.(Riot_model.Riot_dirs.dot_riot / Path.v "bin") in
+                                let global_path = Path.(riot_bin_dir / Path.v request.binary_name) in
+                                match Fs.create_dir_all riot_bin_dir with
+                                | Ok () -> (
+                                    match promote_binary
+                                      ~on_event
+                                      ~src:binary_path
+                                      ~dst:global_path
+                                      ~binary:request.binary_name
+                                      ~global:true
+                                    with
+                                    | Ok () ->
+                                        Ok (Some global_path)
+                                    | Error _ as err ->
+                                        err
+                                  )
+                                | Error reason ->
+                                    Error (PromotionFailed {
+                                      binary_name = request.binary_name;
+                                      destination = riot_bin_dir;
+                                      global = true;
+                                      reason = IO.error_message reason;
+                                    })
+                            in
+                            let* global_destination = global_destination in
+                            let duration =
+                              Time.Instant.duration_since
+                                ~earlier:started_at
+                                (Time.Instant.now ())
+                            in
+                            on_event
+                              (InstalledBinary {
+                                binary = request.binary_name;
+                                duration_ms = Time.Duration.to_millis duration;
+                                global_destination;
+                              });
+                            Ok ()
+                      )
           )
       in
       Client.close client;

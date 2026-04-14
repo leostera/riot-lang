@@ -5,8 +5,8 @@ open Std
     This module owns user-facing build output and delegates the actual build
     execution to [riot-build].
 *)
-type build_scope = Riot_build.build_scope =
-  | Runtime
+type build_scope = Riot_build.Request.scope =
+  Runtime
   | Dev
 type output_mode =
   | Human
@@ -36,7 +36,7 @@ val format_pm_event:
 val reset_json_clock: started_at:Std.Time.Instant.t -> unit
 
 (** Emit a build event as JSON. *)
-val write_build_event_json: Riot_build.build_event -> unit
+val write_build_event_json: Riot_build.Event.t -> unit
 
 (** Render a package-manager event in the selected output mode. *)
 val write_pm_event:
@@ -51,16 +51,8 @@ val write_building_target_event: mode:output_mode -> target:Riot_model.Target.t 
 (** Render a cache-GC event produced during the build flow. *)
 val write_cache_gc_event: mode:output_mode -> Riot_store.Cache_gc.event -> unit
 
-(** Render a streamed build-runtime event and update progress counters. *)
-val write_streaming_event:
-  mode:output_mode ->
-  displayed_packages:string Std.Collections.HashSet.t ->
-  progress:build_progress ->
-  Riot_build.Client.streaming_event ->
-  unit
-
 (** Run [riot build] in a resolved workspace. *)
-val run: workspace:Riot_model.Workspace.t -> Std.ArgParser.matches -> (unit, exn) result
+val run: prepared_workspace:Riot_build.Prepared_workspace.t -> Std.ArgParser.matches -> (unit, exn) result
 
 (** Execute a build command programmatically.
 
@@ -68,8 +60,7 @@ val run: workspace:Riot_model.Workspace.t -> Std.ArgParser.matches -> (unit, exn
     with explicit control over scope, profile, output mode, or prepared state.
 *)
 val build_command:
-  ?workspace:Riot_model.Workspace.t ->
-  ?prepared:bool ->
+  prepared_workspace:Riot_build.Prepared_workspace.t ->
   ?scope:build_scope ->
   ?profile:string ->
   ?mode:output_mode ->

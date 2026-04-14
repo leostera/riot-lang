@@ -20,19 +20,19 @@ type runnable_binary = {
   source_path: Path.t;
 }
 type run_event =
-  | Build of Build_runtime.build_event
+  | Build of Event.t
   | RunningBinary of { package: string; binary: string; args: string list }
 type run_error =
   | BinaryNotFound of { binary_name: string }
   | BinaryNotFoundInPackage of { package_name: string; binary_name: string }
-  | BuildFailed of Build_runtime.build_error
+  | BuildFailed of Build_core.error
   | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
   | ProcessExited of int
   | SystemError of string
   | ExternalTargetLoadFailed of { target: string; reason: string }
   | ClientError of Client.error
 val build_scope_for_binary:
-  Riot_model.Workspace.t -> package_name:string -> binary_name:string -> Build_runtime.build_scope
+  Riot_model.Workspace.t -> package_name:string -> binary_name:string -> Request.scope
 
 val list_binaries: Riot_model.Workspace.t -> ?package_filter:string -> unit -> runnable_binary list
 

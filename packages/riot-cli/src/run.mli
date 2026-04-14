@@ -9,7 +9,7 @@ val command: Std.ArgParser.command
 
 (** Decide which build scope should be used for a workspace binary. *)
 val build_scope_for_binary:
-  Riot_model.Workspace.t -> package_name:string -> binary_name:string -> Riot_build.build_scope
+  Riot_model.Workspace.t -> package_name:string -> binary_name:string -> Riot_build.Request.scope
 
 (** Derive the default binary name for a remote source target.
 

@@ -23,13 +23,13 @@ type runnable_binary = {
 }
 
 type run_event =
-  | Build of Build_runtime.build_event
+  | Build of Event.t
   | RunningBinary of { package: string; binary: string; args: string list }
 
 type run_error =
   | BinaryNotFound of { binary_name: string }
   | BinaryNotFoundInPackage of { package_name: string; binary_name: string }
-  | BuildFailed of Build_runtime.build_error
+  | BuildFailed of Build_core.error
   | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
   | ProcessExited of int
   | SystemError of string
@@ -50,16 +50,18 @@ let realized_runnable_packages = fun ?package_filter (workspace: Riot_model.Work
 
 let build_scope_for_binary = fun (workspace: Riot_model.Workspace.t) ~package_name ~binary_name ->
   match
-    List.find (realized_runnable_packages workspace) ~fn:(fun (pkg: Riot_model.Package.t) ->
+    List.find
+      (Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Dev workspace)
+      ~fn:(fun (pkg: Riot_model.Package.t) ->
       String.equal pkg.name package_name)
   with
-  | None -> Build_runtime.Runtime
+  | None -> Request.Runtime
   | Some pkg -> (
       match Riot_model.Package.scope_of_binary_name pkg ~binary_name with
-      | Some Riot_model.Package.Dev -> Build_runtime.Dev
+      | Some Riot_model.Package.Dev -> Request.Dev
       | Some Riot_model.Package.Normal
       | Some Riot_model.Package.Build
-      | None -> Build_runtime.Runtime
+      | None -> Request.Runtime
     )
 
 let is_listed_runnable = fun (bin: Riot_model.Package.binary) ->
@@ -93,7 +95,7 @@ let run_error_message = function
   ^ "' not found in package '"
   ^ package_name
   ^ "'"
-  | BuildFailed err -> Build_runtime.error_message err
+  | BuildFailed err -> Build_core.error_message err
   | ArtifactNotFound { reason; _ } -> reason
   | ProcessExited code -> "process exited with " ^ Int.to_string code
   | SystemError msg -> msg
@@ -103,8 +105,11 @@ let run_error_message = function
   ^ reason
   | ClientError err -> Client.error_message err
 
+let build_event_to_json = fun event ->
+  Event.to_json event
+
 let run_event_to_json = function
-  | Build event -> Event.to_json event
+  | Build event -> build_event_to_json event
   | RunningBinary { package; binary; args } -> Some (Data.Json.Object [
     ("type", Data.Json.String "RunningBinary");
     ("package", Data.Json.String package);
@@ -119,7 +124,7 @@ let make_pm_event = fun session_id kind ->
   Riot_model.Event.create ~session_id ~level:Riot_model.Event.Info kind
 
 let emit_pm_build_event = fun ~session_id ~on_event kind ->
-  on_event (Build (Build_runtime.Pm (make_pm_event session_id kind)))
+  on_event (Build (Event.Pm (make_pm_event session_id kind)))
 
 let load_source_workspace = fun ~on_event ~source_spec ~update ->
   let session_id = Riot_model.Session_id.make () in
@@ -131,7 +136,7 @@ let load_source_workspace = fun ~on_event ~source_spec ~update ->
   |> Result.map_err ~fn:(fun err ->
       ExternalTargetLoadFailed { target = source_spec; reason = Riot_deps.package_error_message err })
 
-let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~package_name ~binary_name results ->
+let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~(output: Output.t) ~package_name ~binary_name ->
   let ensure_executable_binary_path = fun path ->
     let binary_path = Path.v path in
     match Fs.metadata binary_path with
@@ -147,24 +152,15 @@ let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~package_name ~bina
           |> Result.map_err ~fn:(fun err ->
               "failed to mark binary executable: " ^ IO.error_message err)
   in
-  let find_binary_export (result: Riot_executor.Package_builder.build_result) =
-    if String.equal result.package.name package_name then
-      match result.status with
-      | Riot_executor.Package_builder.Built artifact
-      | Riot_executor.Package_builder.Cached artifact ->
-          List.find artifact.exports ~fn:(fun (entry: Riot_store.Manifest.export_entry) ->
-            String.equal entry.name binary_name)
-      | Riot_executor.Package_builder.Skipped _
-      | Riot_executor.Package_builder.Failed _ -> None
-    else
-      None
-  in
-  match List.find results ~fn:(fun result -> Option.is_some (find_binary_export result))
-    |> Option.and_then ~fn:find_binary_export with
+  match
+    Output.find_package output package_name
+    |> Option.and_then ~fn:(fun package_output ->
+        Output.find_export package_output binary_name)
+  with
   | None -> Error (ArtifactNotFound {
     package_name;
     binary_name;
-    reason = "binary '" ^ binary_name ^ "' was not produced by build results"
+    reason = "binary '" ^ binary_name ^ "' was not produced by build output"
   })
   | Some export_entry -> (
       match Riot_store.Store.export_source_path store export_entry with
@@ -198,28 +194,39 @@ let run = fun ?(on_event = no_event) (request: run_request) ->
                   request.workspace
                   ~package_name
                   ~binary_name:request.binary_name in
+                let prepared_workspace =
+                  Prepared_workspace.of_workspace request.workspace
+                in
+                let build_request =
+                  Request.make
+                    ~packages:[ package_name ]
+                    ~targets:Riot_model.Target.Host
+                    ~scope
+                    ~profile:(
+                      match request.profile with
+                      | "release" -> Riot_model.Profile.release
+                      | _ -> Riot_model.Profile.debug
+                    )
+                    ()
+                in
                 match
-                  Build_runtime.build ~record_cache_generation:false ~on_event:(fun event ->
-                    on_event (Build event))
-                    {
-                      workspace = request.workspace;
-                      packages = [ package_name ];
-                      targets = Riot_model.Target.Host;
-                      scope;
-                      profile = request.profile;
-                    }
+                  Build_core.build
+                    ~on_event:(fun event -> on_event (Build event))
+                    prepared_workspace
+                    build_request
                 with
                 | Error err -> Error (BuildFailed err)
-                | Ok results -> (
+                | Ok output -> (
                     let store = Riot_store.Store.create_for_lane
                       ~workspace:request.workspace
                       ~profile:request.profile
                       ~target:(Riot_model.Riot_dirs.host_target ()) in
                     match find_built_binary_path
                       ~store
+                      ~output
                       ~package_name
                       ~binary_name:request.binary_name
-                      results with
+                      with
                     | Error _ as err -> err
                     | Ok path ->
                         on_event

@@ -63,7 +63,7 @@ type test_suite_summary = {
   results: test_case_result list;
 }
 type test_event =
-  | Build of Build_runtime.build_event
+  | Build of Event.t
   | NoSuitesFound of { package_name: string option; suite_name: string option }
   | RunningSuite of suite_binary
   | SuiteCompleted of {
@@ -78,7 +78,7 @@ type test_event =
     }
   | Summary of { total: int; passed: int; failed: int; skipped: int; failed_tests: failed_test list }
 type test_error =
-  | BuildFailed of Build_runtime.build_error
+  | BuildFailed of Build_core.error
   | ClientError of Client.error
   | SuiteArtifactNotFound of { suite: suite_binary; reason: string }
   | SuiteExecutionError of { suite: suite_binary; reason: string }

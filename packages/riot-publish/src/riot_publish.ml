@@ -25,7 +25,7 @@ type publish_check_stage =
 type publish_event =
   | Fmt of Krasny.Report.event
   | Fix of Riot_fix.Event.t
-  | Build of Riot_build.build_event
+  | Build of Riot_build.Event.t
   | CheckStarted of { package: string; version: Std.Version.t option; stage: publish_check_stage }
   | CheckFinished of { package: string; version: Std.Version.t option; stage: publish_check_stage }
   | Packing of { package: string; version: Std.Version.t; artifact_path: Path.t }
@@ -180,16 +180,22 @@ let scan_workspace_strict = fun workspace_root ->
           error = load_errors |> List.map ~fn:Workspace_manager.load_error_to_string |> String.concat "\n"
         })
 
+let profile_of_name = function
+  | "release" -> Riot_model.Profile.release
+  | _ -> Riot_model.Profile.debug
+
 let build_package = fun ~emit ~(workspace:Workspace.t) ~package_name ~profile ->
-  Riot_build.build ~on_event:(fun event -> emit (Build event))
-    Riot_build.{
-      workspace;
-      packages = [ package_name ];
-      targets = Riot_build.Host;
-      scope = Riot_build.Runtime;
-      profile;
-    } |> Result.map_err ~fn:(fun err ->
-      BuildCheckFailed { package = package_name; error = Riot_build.build_error_message err })
+  Riot_build.build
+    ~on_event:(fun event -> emit (Build event))
+    (Riot_build.Prepared_workspace.of_workspace workspace)
+    (Riot_build.Request.make
+       ~packages:[ package_name ]
+       ~targets:Riot_model.Target.Host
+       ~scope:Riot_build.Request.Runtime
+       ~profile:(profile_of_name profile)
+       ())
+  |> Result.map_err ~fn:(fun err ->
+         BuildCheckFailed { package = package_name; error = Riot_build.error_message err })
 
 let build_package_in_workspace_root = fun ~emit ~workspace_root ~package_name ~profile ->
   let* workspace = scan_workspace_strict workspace_root in
@@ -280,27 +286,41 @@ module For_test = struct
     let workspace: Workspace.t = workspace in
     let package: Package.t = package in
     let fix_request = fix_request_for_publish ~cwd:workspace.root ~target:package.path in
-    Riot_fix.fix ~on_event:(fun event -> emit (Fix event))
-      ~build_package:(fun ~(workspace:Workspace.t) ~package_name ~profile ?(transform_workspace = fun workspace ->
-        workspace) () ->
-        match Riot_deps.ensure_workspace
-          ~mode:Riot_deps.Dep_solver.Refresh
-          ~registry
-          ~workspace
-          () with
-        | Error err -> Error (Failure (Riot_model.Pm_error.message err))
+    Riot_fix.fix
+      ~on_event:(fun event -> emit (Fix event))
+      ~build_package:(fun
+        ~(workspace: Workspace.t)
+        ~package_name
+        ~profile
+        ?(transform_workspace = fun workspace -> workspace)
+        () ->
+        match
+          Riot_deps.ensure_workspace
+            ~mode:Riot_deps.Dep_solver.Refresh
+            ~registry
+            ~workspace
+            ()
+        with
+        | Error err ->
+            Error (Failure (Riot_model.Pm_error.message err))
         | Ok prepared_workspace ->
-            Riot_build.build_prepared ~on_event:(fun event -> emit (Build event))
-              Riot_build.{
-                workspace = transform_workspace prepared_workspace;
-                packages = [ package_name ];
-                targets = Riot_build.Host;
-                scope = Riot_build.Runtime;
-                profile;
-              } |> Result.map ~fn:(fun _ -> ()) |> Result.map_err ~fn:(fun err ->
-                Failure (Riot_build.build_error_message err)))
-      fix_request |> Result.map ~fn:(fun _ -> ()) |> Result.map_err ~fn:(fun exn ->
-      FixCheckFailed { package = package.name; error = exn_message exn })
+            Riot_build.build
+              ~on_event:(fun event -> emit (Build event))
+              (Riot_build.Prepared_workspace.of_workspace
+                 (transform_workspace prepared_workspace))
+              (Riot_build.Request.make
+                 ~packages:[ package_name ]
+                 ~targets:Riot_model.Target.Host
+                 ~scope:Riot_build.Request.Runtime
+                 ~profile:(profile_of_name profile)
+                 ())
+            |> Result.map ~fn:(fun _ -> ())
+            |> Result.map_err ~fn:(fun err ->
+                   Failure (Riot_build.error_message err)))
+      fix_request
+    |> Result.map ~fn:(fun _ -> ())
+    |> Result.map_err ~fn:(fun exn ->
+           FixCheckFailed { package = package.name; error = exn_message exn })
 
   let run_build_check_default = fun ~emit ~(workspace: Workspace.t) ~package_name ~profile ->
     build_package ~emit ~workspace ~package_name ~profile

@@ -20,7 +20,7 @@ type publish_check_stage =
 type publish_event =
   | Fmt of Krasny.Report.event
   | Fix of Riot_fix.Event.t
-  | Build of Riot_build.build_event
+  | Build of Riot_build.Event.t
   | CheckStarted of { package: string; version: Std.Version.t option; stage: publish_check_stage }
   | CheckFinished of { package: string; version: Std.Version.t option; stage: publish_check_stage }
   | Packing of { package: string; version: Std.Version.t; artifact_path: Path.t }

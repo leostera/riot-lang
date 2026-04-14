@@ -32,7 +32,7 @@ let trailing_args = fun matches ->
   | "--" :: rest -> rest
   | _ -> args
 
-let build_scope_for_binary = Riot_build.build_scope_for_binary
+let build_scope_for_binary = Riot_build.Run.build_scope_for_binary
 
 type target =
   | Local of { package_name: string option; binary_name: string }
@@ -125,68 +125,68 @@ let write_json_event = fun (json: Data.Json.t) ->
   print (Data.Json.to_string json);
   print "\n"
 
-let run_error_to_json = fun (err: Riot_build.run_error) ->
+let run_error_to_json = fun (err: Riot_build.Run.run_error) ->
   let details =
     match err with
-    | Riot_build.BinaryNotFound { binary_name } -> [
+    | Riot_build.Run.BinaryNotFound { binary_name } -> [
       ("kind", Data.Json.String "binary_not_found");
       ("binary_name", Data.Json.String binary_name)
     ]
-    | Riot_build.BinaryNotFoundInPackage { package_name; binary_name } -> [
+    | Riot_build.Run.BinaryNotFoundInPackage { package_name; binary_name } -> [
       ("kind", Data.Json.String "binary_not_found_in_package");
       ("package_name", Data.Json.String package_name);
       ("binary_name", Data.Json.String binary_name);
     ]
-    | Riot_build.BuildFailed build_error -> [
+    | Riot_build.Run.BuildFailed build_error -> [
       ("kind", Data.Json.String "build_failed");
-      ("message", Data.Json.String (Riot_build.build_error_message build_error));
+      ("message", Data.Json.String (Riot_build.error_message build_error));
     ]
-    | Riot_build.ArtifactNotFound { package_name; binary_name; reason } -> [
+    | Riot_build.Run.ArtifactNotFound { package_name; binary_name; reason } -> [
       ("kind", Data.Json.String "artifact_not_found");
       ("package_name", Data.Json.String package_name);
       ("binary_name", Data.Json.String binary_name);
       ("reason", Data.Json.String reason);
     ]
-    | Riot_build.ProcessExited status -> [
+    | Riot_build.Run.ProcessExited status -> [
       ("kind", Data.Json.String "process_exited");
       ("status", Data.Json.String (Int.to_string status))
     ]
-    | Riot_build.SystemError reason -> [
+    | Riot_build.Run.SystemError reason -> [
       ("kind", Data.Json.String "system_error");
       ("reason", Data.Json.String reason)
     ]
-    | Riot_build.ExternalTargetLoadFailed { target; reason } -> [
+    | Riot_build.Run.ExternalTargetLoadFailed { target; reason } -> [
       ("kind", Data.Json.String "external_target_load_failed");
       ("target", Data.Json.String target);
       ("reason", Data.Json.String reason);
     ]
-    | Riot_build.ClientError client_error -> [
+    | Riot_build.Run.ClientError _ -> [
       ("kind", Data.Json.String "client_error");
-      ("message", Data.Json.String (Riot_build.Client.error_message client_error));
+      ("message", Data.Json.String (Riot_build.Run.run_error_message err));
     ]
   in
   Data.Json.Object (("type", Data.Json.String "run.error")
-  :: ("message", Data.Json.String (Riot_build.run_error_message err))
+  :: ("message", Data.Json.String (Riot_build.Run.run_error_message err))
   :: details)
 
-let write_run_event = fun ~mode (event: Riot_build.run_event) ->
+let write_run_event = fun ~mode (event: Riot_build.Run.run_event) ->
   match mode with
-  | Build.Json -> Riot_build.run_event_to_json event |> Option.for_each ~fn:write_json_event
+  | Build.Json -> Riot_build.Run.run_event_to_json event |> Option.for_each ~fn:write_json_event
   | Build.Human -> (
       match event with
-      | Riot_build.Build _ -> ()
-      | Riot_build.RunningBinary { package; binary; _ } -> println
+      | Riot_build.Run.Build _ -> ()
+      | Riot_build.Run.RunningBinary { package; binary; _ } -> println
         ("    \027[1;32mBuilding\027[0m " ^ package ^ ":" ^ binary)
     )
 
-let write_run_error = fun ~mode (err: Riot_build.run_error) ->
+let write_run_error = fun ~mode (err: Riot_build.Run.run_error) ->
   match mode with
   | Build.Json -> write_json_event (run_error_to_json err)
   | Build.Human -> (
       match err with
-      | Riot_build.BinaryNotFound { binary_name } -> println
+      | Riot_build.Run.BinaryNotFound { binary_name } -> println
         ("error: binary '" ^ binary_name ^ "' not found")
-      | err -> println ("error: " ^ Riot_build.run_error_message err)
+      | err -> println ("error: " ^ Riot_build.Run.run_error_message err)
     )
 
 let write_workspace_error = fun ~mode message ->
@@ -200,7 +200,7 @@ let write_workspace_error = fun ~mode message ->
   | Build.Human -> println ("error: " ^ message)
 
 let binary_source_label = fun ~(workspace:Riot_model.Workspace.t) (
-  binary: Riot_build.runnable_binary
+  binary: Riot_build.Run.runnable_binary
 ) ->
   match Path.strip_prefix binary.source_path ~prefix:workspace.root with
   | Ok relative_path -> Path.to_string relative_path
@@ -208,7 +208,7 @@ let binary_source_label = fun ~(workspace:Riot_model.Workspace.t) (
 
 let write_binary_list = fun ~(workspace:Riot_model.Workspace.t) binaries ->
   binaries
-  |> List.for_each ~fn:(fun (binary: Riot_build.runnable_binary) ->
+  |> List.for_each ~fn:(fun (binary: Riot_build.Run.runnable_binary) ->
       println
         (binary.package_name
         ^ ":"
@@ -218,14 +218,14 @@ let write_binary_list = fun ~(workspace:Riot_model.Workspace.t) binaries ->
         ^ ")"))
 
 let write_binary_list_json = fun ~(workspace:Riot_model.Workspace.t) binaries ->
-  let binary_kind (binary: Riot_build.runnable_binary) =
+  let binary_kind (binary: Riot_build.Run.runnable_binary) =
     let path = binary_source_label ~workspace binary in
     if List.contains (String.split path ~by:"/") ~value:"examples" then
       "example"
     else
       "binary"
   in
-  let binary_json (binary: Riot_build.runnable_binary) = Data.Json.Object [
+  let binary_json (binary: Riot_build.Run.runnable_binary) = Data.Json.Object [
     ("kind", Data.Json.String (binary_kind binary));
     ("package", Data.Json.String binary.package_name);
     ("binary", Data.Json.String binary.binary_name);
@@ -240,8 +240,6 @@ let write_binary_list_json = fun ~(workspace:Riot_model.Workspace.t) binaries ->
 
 let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
   let seen_registry_updates = Collections.HashSet.create () in
-  let displayed_packages = Collections.HashSet.create () in
-  let progress = Build.{ built_count = 0; cached_count = 0; failed_count = 0; skipped_count = 0 } in
   let extra = trailing_args matches in
   let _verbose = ArgParser.get_count matches "verbose" in
   let list_mode = ArgParser.get_flag matches "list" in
@@ -277,7 +275,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
           write_workspace_error ~mode:output_mode message;
           Error (Failure message)
         else
-          let binaries = Riot_build.list_binaries workspace ?package_filter:pkg_filter () in
+          let binaries = Riot_build.Run.list_binaries workspace ?package_filter:pkg_filter () in
           (
             match output_mode with
             | Build.Json -> write_binary_list_json ~workspace binaries
@@ -285,22 +283,17 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
           );
           Ok ()
   else
-    let on_event (event: Riot_build.run_event) =
+    let on_event (event: Riot_build.Run.run_event) =
       match event with
-      | Riot_build.Build build_event -> (
+      | Riot_build.Run.Build build_event -> (
           match build_event with
-          | Riot_build.Pm kind -> Build.write_pm_event ~mode:output_mode ~seen_registry_updates kind
-          | Riot_build.BuildingTarget { target; host } -> Build.write_building_target_event
+          | Riot_build.Event.Pm kind -> Build.write_pm_event ~mode:output_mode ~seen_registry_updates kind
+          | Riot_build.Event.BuildingTarget { target; host } -> Build.write_building_target_event
             ~mode:output_mode
             ~target
             ~host
-          | Riot_build.CacheGc event -> Build.write_cache_gc_event ~mode:output_mode event
-          | Riot_build.Phase _ -> ()
-          | Riot_build.Streaming streaming_event -> Build.write_streaming_event
-            ~mode:output_mode
-            ~displayed_packages
-            ~progress
-            streaming_event
+          | Riot_build.Event.CacheGc event -> Build.write_cache_gc_event ~mode:output_mode event
+          | Riot_build.Event.Phase _ -> ()
         )
       | _ -> write_run_event ~mode:output_mode event
     in
@@ -326,7 +319,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
         let result =
           match target with
           | Remote_source { source_spec; binary_name } ->
-              Riot_build.run_source ~on_event
+              Riot_build.Run.run_source ~on_event
                 {
                   source_spec;
                   binary_name;
@@ -337,7 +330,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
           | Local { package_name; binary_name } -> (
               match workspace with
               | Some workspace ->
-                  Riot_build.run ~on_event
+                  Riot_build.Run.run ~on_event
                     {
                       workspace;
                       package_name;
@@ -356,7 +349,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
             Error (Failure message)
         | Error (`Run err) ->
             write_run_error ~mode:output_mode err;
-            Error (Failure (Riot_build.run_error_message err))
+            Error (Failure (Riot_build.Run.run_error_message err))
 
 let run = fun ~workspace matches ->
   run_with_workspace_info ~workspace:(Some workspace) ~workspace_error:None matches
