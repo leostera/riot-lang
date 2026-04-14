@@ -283,6 +283,79 @@ let test_fully_cached_build_skips_cache_generation_recording = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
+let test_target_selector_resolves_host_all_exact_and_pattern = fun _ctx ->
+  let selector =
+    Riot_build.Target_selector.create
+      ~host:"aarch64-apple-darwin"
+      ~configured_targets:[
+        "aarch64-apple-darwin";
+        "aarch64-unknown-linux-gnu";
+        "x86_64-unknown-linux-gnu";
+      ]
+  in
+  let expect_resolved request expected =
+    Test.assert_equal
+      ~expected:(Ok expected)
+      ~actual:(Riot_build.Target_selector.resolve selector request)
+  in
+  expect_resolved Riot_build.Host [ "aarch64-apple-darwin" ];
+  expect_resolved Riot_build.All [
+    "aarch64-apple-darwin";
+    "aarch64-unknown-linux-gnu";
+    "x86_64-unknown-linux-gnu";
+  ];
+  expect_resolved
+    (Riot_build.Target_selector.of_string "native")
+    [ "aarch64-apple-darwin" ];
+  expect_resolved
+    (Riot_build.Target_selector.of_string "linux")
+    [ "aarch64-unknown-linux-gnu"; "x86_64-unknown-linux-gnu" ];
+  expect_resolved
+    (Riot_build.Target_selector.of_string "x86_64-unknown-linux-gnu")
+    [ "x86_64-unknown-linux-gnu" ];
+  Ok ()
+
+let test_target_selector_cli_options_prioritize_all_targets = fun _ctx ->
+  Test.assert_equal
+    ~expected:Riot_build.All
+    ~actual:(Riot_build.Target_selector.of_cli_options
+      ~all_targets:true
+      ~target:(Some "linux"));
+  Test.assert_equal
+    ~expected:Riot_build.Host
+    ~actual:(Riot_build.Target_selector.of_cli_options
+      ~all_targets:false
+      ~target:None);
+  Test.assert_equal
+    ~expected:(Riot_build.Pattern "linux")
+    ~actual:(Riot_build.Target_selector.of_cli_options
+      ~all_targets:false
+      ~target:(Some "linux"));
+  Ok ()
+
+let test_target_selector_returns_available_targets_on_miss = fun _ctx ->
+  let selector =
+    Riot_build.Target_selector.create
+      ~host:"aarch64-apple-darwin"
+      ~configured_targets:[
+        "aarch64-apple-darwin";
+        "aarch64-unknown-linux-gnu";
+      ]
+  in
+  match Riot_build.Target_selector.resolve selector (Riot_build.Pattern "windows") with
+  | Error {
+      pattern = "windows";
+      available_targets = [ "aarch64-apple-darwin"; "aarch64-unknown-linux-gnu" ];
+    } ->
+      Ok ()
+  | Error err ->
+      Error ("expected available target error, got pattern="
+      ^ err.pattern
+      ^ " targets="
+      ^ String.concat "," err.available_targets)
+  | Ok targets ->
+      Error ("expected target miss, got " ^ String.concat "," targets)
+
 let tests =
   let open Test in [
     case "build runtime: failed builds surface as errors" test_build_surfaces_failed_builds;
@@ -292,6 +365,15 @@ let tests =
     case
       "build runtime: fully cached builds skip cache generation recording"
       test_fully_cached_build_skips_cache_generation_recording;
+    case
+      "build runtime: target selector resolves host all exact and pattern"
+      test_target_selector_resolves_host_all_exact_and_pattern;
+    case
+      "build runtime: target selector cli options prioritize all-targets"
+      test_target_selector_cli_options_prioritize_all_targets;
+    case
+      "build runtime: target selector returns available targets on miss"
+      test_target_selector_returns_available_targets_on_miss;
     case "build runtime: release builds use the release lane" test_build_release_uses_release_lane;
     case "build runtime: custom target_dir is respected" test_build_uses_custom_target_dir_root;
   ]

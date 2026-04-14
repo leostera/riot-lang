@@ -10,13 +10,15 @@ module Protocol = Protocol
 
 module Server_config = Server_config
 
+module Target_selector = Target_selector
+
 type error = Internal_server.error
 val error_message: error -> string
 
 type build_scope =
   | Runtime
   | Dev
-type target_request =
+type target_request = Target_selector.t =
   | Host
   | All
   | Pattern of string
@@ -37,7 +39,7 @@ type build_event = Event.t =
   | Phase of build_phase
   | Streaming of Client.streaming_event
 type build_error =
-  | NoTargetsMatched of { pattern: string; available_targets: string list }
+  | NoTargetsMatched of Target_selector.error
   | ToolchainInstallFailed of { target: string; error: string }
   | ToolchainInitializationFailed of { target: string; error: string }
   | ClientError of Client.error

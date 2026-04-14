@@ -215,12 +215,9 @@ let command =
       ]
 
 let target_request_of_matches = fun matches ->
-  if ArgParser.get_flag matches "all-targets" then
-    Riot_build.All
-  else
-    match ArgParser.get_one matches "target" with
-    | Some pattern -> Riot_build.Pattern pattern
-    | None -> Riot_build.Host
+  Riot_build.Target_selector.of_cli_options
+    ~all_targets:(ArgParser.get_flag matches "all-targets")
+    ~target:(ArgParser.get_one matches "target")
 
 let output_mode_of_matches = fun matches ->
   if ArgParser.get_flag matches "json" then
@@ -620,15 +617,15 @@ let build_command = fun ?workspace ?(prepared = false) ?(scope = Runtime) ?(prof
   | Ok { workspace; workspace_manager } ->
       run_request
         (
-          make_request ~workspace ~workspace_manager ~scope ~profile ~mode ~show_finished_summary ~prepared ~packages:(package_opt
-          |> Option.to_list)
-            ~targets:(
-              match target_arch with
-              | Some target -> Riot_build.Pattern target
-              | None -> Riot_build.Host
+              make_request ~workspace ~workspace_manager ~scope ~profile ~mode ~show_finished_summary ~prepared ~packages:(package_opt
+              |> Option.to_list)
+                ~targets:(
+                  match target_arch with
+                  | Some target -> Riot_build.Target_selector.of_string target
+                  | None -> Riot_build.Host
+                )
+                ()
             )
-            ()
-        )
 
 let build_packages_command = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) package_names target_arch ->
   run_request
@@ -636,7 +633,7 @@ let build_packages_command = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?
       make_request ~workspace ~scope ~mode ~show_finished_summary ~packages:package_names
         ~targets:(
           match target_arch with
-          | Some target -> Riot_build.Pattern target
+          | Some target -> Riot_build.Target_selector.of_string target
           | None -> Riot_build.Host
         )
         ()

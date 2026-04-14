@@ -6,6 +6,7 @@ module Event = Event
 module Internal_server = Internal_server
 module Protocol = Protocol
 module Server_config = Server_config
+module Target_selector = Target_selector
 
 type error = Internal_server.error
 
@@ -38,7 +39,7 @@ type build_event = Build_runtime.build_event =
   | Streaming of Client.streaming_event
 
 type build_error = Build_runtime.build_error =
-  | NoTargetsMatched of { pattern: string; available_targets: string list }
+  | NoTargetsMatched of Target_selector.error
   | ToolchainInstallFailed of { target: string; error: string }
   | ToolchainInitializationFailed of { target: string; error: string }
   | ClientError of Client.error
