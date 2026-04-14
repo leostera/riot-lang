@@ -1,6 +1,6 @@
 open Std
 module Test = Std.Test
-module BuildLock = Riot_build.Build_lock
+module BuildLock = Riot_build.Internal.Build_lock
 
 type Message.t +=
   | BuildLockAcquired of Time.Duration.t

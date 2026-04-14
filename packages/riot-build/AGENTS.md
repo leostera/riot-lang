@@ -25,6 +25,8 @@
 19. Preserve structured suite metadata in the exported `test_event` / `bench_event` payloads. Test cases should carry `duration_us`, `size`, `reliability`, retry attempts, and timeout-aware status, and suite-completed events should carry `started_at_us`, `completed_at_us`, and `duration_us`.
 20. Build locks and any other runtime-owned workspace paths must respect `workspace.target_dir_root`. Do not derive `_build`-style locations directly from `workspace.root`.
 21. Internal build-session payloads should carry typed target triples, not reparsed target strings. If a worker/runtime boundary needs a target, pass `Riot_model.Target.t` through and stringify only where the filesystem or toolchain process actually needs it.
+22. Keep the root `Riot_build` facade build-focused. Build entrypoints, typed build requests, build outputs, and build events belong at the top level; command-specific runtimes should stay under nested namespaces or move to their owning packages.
+23. Package/workspace scaffolding does not belong here. `riot-build` must not expose package creation helpers; `riot-init` owns that API.
 
 ## Validate
 

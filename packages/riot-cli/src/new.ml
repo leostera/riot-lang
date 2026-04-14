@@ -1,5 +1,5 @@
 open Std
-open Riot_build
+open Riot_init
 
 let out = eprintln
 
@@ -63,7 +63,7 @@ let run = fun matches ->
                   "binary"
               in
               println ("Creating new " ^ package_kind ^ " '" ^ name ^ "' in '" ^ path ^ "'");
-              match Riot_build.Workspace_edit.new_package ~workspace ~path ~name ~is_library with
+              match Riot_init.new_package ~workspace ~path:path_obj ~name ~is_library with
               | Ok (created_path, created_name) ->
                   println
                     (String.capitalize_ascii package_kind

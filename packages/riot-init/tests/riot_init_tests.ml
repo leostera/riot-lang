@@ -42,6 +42,11 @@ let path_error_to_string = function
   | Path.SystemInvalidUtf8 { syscall; path } -> syscall ^ ": invalid UTF-8 path: " ^ path
   | Path.SystemError message -> message
 
+let package_module_name = fun name ->
+  String.split ~by:"-" name
+  |> List.map ~fn:String.capitalize_ascii
+  |> String.concat ""
+
 let with_current_dir_result = fun dir fn ->
   let original = Env.current_dir () |> Result.expect ~msg:"expected current directory" in
   let result =
@@ -185,12 +190,34 @@ let test_init_without_path_defaults_to_current_directory = fun _ctx ->
       | Some _ -> Error "expected final init event to be completion"
       | None -> Error "expected init completion event")
 
+let test_new_package_uses_typed_paths = fun _ctx ->
+  with_tempdir_result "riot_init_new_package"
+    (fun tempdir ->
+      let workspace = Riot_model.Workspace.make_realized ~root:tempdir ~packages:[] () in
+      let package_dir = Path.(tempdir / Path.v "packages" / Path.v "demo-lib") in
+      let* (_created_path, created_name) =
+        Riot_init.new_package
+          ~workspace
+          ~path:package_dir
+          ~name:"demo-lib"
+          ~is_library:true
+      in
+      let module_name = package_module_name "demo-lib" in
+      let* () = assert_exists Path.(package_dir / Path.v "riot.toml") in
+      let* () = assert_exists Path.(package_dir / Path.v "src" / Path.v (module_name ^ ".ml")) in
+      let* () = assert_exists Path.(package_dir / Path.v "src" / Path.v (module_name ^ ".mli")) in
+      if String.equal created_name "demo-lib" then
+        Ok ()
+      else
+        Error "expected new_package to preserve the package name")
+
 let tests =
   Test.[
     case "init scaffolds Docker, CI, and a starter test for libraries" test_init_scaffolds_library_workspace;
     case "init scaffolds Docker, CI, and a starter test for binaries" test_init_scaffolds_binary_workspace;
     case "init . scaffolds the current directory and records the workspace name" test_init_dot_scaffolds_current_directory;
     case "init defaults to the current directory when no path is passed" test_init_without_path_defaults_to_current_directory;
+    case "new_package scaffolds a package from a typed path" test_new_package_uses_typed_paths;
   ]
 
 let () =

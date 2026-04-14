@@ -5,12 +5,17 @@ module Event = Event
 module Prepared_workspace = Prepared_workspace
 module Request = Request
 module Output = Output
-module Run = Run_runtime
-module Install = Install_runtime
-module Test = Test_runtime
-module Bench = Bench_runtime
-module Workspace_edit = Workspace_edit
-module Build_lock = Build_lock
+
+module Commands = struct
+  module Run = Run_runtime
+  module Install = Install_runtime
+  module Test = Test_runtime
+  module Bench = Bench_runtime
+end
+
+module Internal = struct
+  module Build_lock = Build_lock
+end
 
 type error = Build_core.error =
   | TargetSelectionFailed of Riot_model.Target.resolve_error

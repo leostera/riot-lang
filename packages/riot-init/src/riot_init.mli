@@ -11,6 +11,13 @@ type event =
       package_hints: (package_kind * string) list
     }
 
+val new_package:
+  workspace:Riot_model.Workspace.t ->
+  path:Path.t ->
+  name:string ->
+  is_library:bool ->
+  ((string * string), string) result
+
 (** ArgParser command definition for `riot init`. *)
 val command: Std.ArgParser.command
 
