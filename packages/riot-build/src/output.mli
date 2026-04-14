@@ -14,9 +14,9 @@ val of_build_results: Riot_executor.Package_builder.build_result list -> t
 
 val packages: t -> package_output list
 
-val find_package: t -> string -> package_output option
+val find_package: t -> Riot_model.Package_name.t -> package_output option
 
-val package_name: package_output -> string
+val package_name: package_output -> Riot_model.Package_name.t
 
 val package_status: package_output -> package_status
 

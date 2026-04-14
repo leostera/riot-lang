@@ -19,7 +19,8 @@ let shell_from_string = function
 let list_packages = fun (workspace: Riot_model.Workspace.t) ->
   workspace.packages
   |> List.map ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.name)
-  |> List.sort ~compare:String.compare
+  |> List.sort ~compare:Riot_model.Package_name.compare
+  |> List.map ~fn:Riot_model.Package_name.to_string
 
 let realized_workspace_packages = fun ~intent (workspace: Riot_model.Workspace.t) ->
   Riot_model.Workspace.realize_packages ~intent workspace
@@ -36,7 +37,7 @@ let list_binaries = fun (workspace: Riot_model.Workspace.t) ->
           then
             None
           else
-            Some (pkg.name ^ ":" ^ bin.name)))
+            Some (Riot_model.Package_name.to_string pkg.name ^ ":" ^ bin.name)))
   |> List.unique ~compare:String.compare
 
 (** List package names, package wildcards, and test binaries for completions *)
@@ -49,7 +50,7 @@ let list_tests = fun (workspace: Riot_model.Workspace.t) ->
             String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name)
         in
         if has_tests then
-          Some pkg.name
+          Some (Riot_model.Package_name.to_string pkg.name)
         else
           None)
   in
@@ -60,7 +61,7 @@ let list_tests = fun (workspace: Riot_model.Workspace.t) ->
             if
               String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name
             then
-              Some (pkg.name ^ ":" ^ bin.name)
+              Some (Riot_model.Package_name.to_string pkg.name ^ ":" ^ bin.name)
             else
               None))
   in
@@ -77,7 +78,7 @@ let list_benchmarks = fun (workspace: Riot_model.Workspace.t) ->
     |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
         List.filter_map pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
             if String.ends_with ~suffix:"_bench" bin.name then
-              Some (pkg.name ^ ":" ^ bin.name)
+              Some (Riot_model.Package_name.to_string pkg.name ^ ":" ^ bin.name)
             else
               None))
   in
@@ -90,7 +91,7 @@ let list_benchmarks = fun (workspace: Riot_model.Workspace.t) ->
             String.ends_with ~suffix:"_bench" bin.name)
         in
         if has_benches then
-          Some (pkg.name ^ ":...")
+          Some (Riot_model.Package_name.to_string pkg.name ^ ":...")
         else
           None)
   in
@@ -99,7 +100,7 @@ let list_benchmarks = fun (workspace: Riot_model.Workspace.t) ->
 (** List package commands as "package:command\tdescription" (tab-separated) for display in completions *)
 let list_commands = fun (workspace: Riot_model.Workspace.t) ->
   Riot_model.Workspace.discover_commands workspace |> List.map ~fn:(fun (cmd: Riot_model.Package_command.t) ->
-      let name = cmd.package_name ^ ":" ^ cmd.name in
+      let name = Riot_model.Package_name.to_string cmd.package_name ^ ":" ^ cmd.name in
       (* Use help text from TOML, or provide fallback *)
       let desc =
         if String.length cmd.description = 0 then

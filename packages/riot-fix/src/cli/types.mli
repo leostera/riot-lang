@@ -2,7 +2,7 @@ open Std
 
 type build_package =
   workspace:Riot_model.Workspace.t ->
-  package_name:string ->
+  package_name:Riot_model.Package_name.t ->
   profile:string ->
   ?transform_workspace:(Riot_model.Workspace.t -> Riot_model.Workspace.t) ->
   unit ->

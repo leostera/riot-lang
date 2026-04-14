@@ -26,7 +26,7 @@ let format = fun ~displayed_packages (event: Telemetry.event) ->
         ""
       else
         let _ = HashSet.insert displayed_packages ~value:package.name in
-        "   \027[1;32mCompiling\027[0m " ^ package.name
+        "   \027[1;32mCompiling\027[0m " ^ Riot_model.Package_name.to_string package.name
   | Telemetry_events.BuildCompleted { package; status; duration; _ } -> (
       (* Cached packages should stay silent here. Only fresh compilation gets a
          "Compiling" line through CompilationStarted. *)
@@ -38,7 +38,11 @@ let format = fun ~displayed_packages (event: Telemetry.event) ->
       String.concat
         "\n"
         (List.map messages ~fn:(fun message ->
-           format_prefixed_block ~prefix:("      \027[1;33mWarning\027[0m " ^ package.name ^ ": ") message))
+           format_prefixed_block
+             ~prefix:("      \027[1;33mWarning\027[0m "
+             ^ Riot_model.Package_name.to_string package.name
+             ^ ": ")
+             message))
   | Telemetry_events.BuildFailed { package; error; _ } ->
       let error_msg =
         match error with
@@ -59,11 +63,19 @@ let format = fun ~displayed_packages (event: Telemetry.event) ->
             "Dependencies failed: " ^ Int.to_string (List.length failed) ^ " actions"
       in
       "      \027[1;31mFailed\027[0m "
-      ^ package.name
+      ^ Riot_model.Package_name.to_string package.name
       ^ "\n"
-      ^ format_prefixed_block ~prefix:("      \027[1;31mError\027[0m " ^ package.name ^ ": ") error_msg
+      ^ format_prefixed_block
+          ~prefix:("      \027[1;31mError\027[0m "
+          ^ Riot_model.Package_name.to_string package.name
+          ^ ": ")
+          error_msg
   | Telemetry_events.BuildSkipped { package; reason; _ } ->
-      "     \027[1;33mSkipped\027[0m " ^ package.name ^ " (" ^ reason ^ ")"
+      "     \027[1;33mSkipped\027[0m "
+      ^ Riot_model.Package_name.to_string package.name
+      ^ " ("
+      ^ reason
+      ^ ")"
   | Telemetry_events.CacheHit { package; _ } ->
       ""
   | Telemetry_events.CacheMiss { package; _ } ->

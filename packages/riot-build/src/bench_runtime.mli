@@ -7,7 +7,7 @@ open Std
 *)
 type suite_binary = Test_runtime.suite_binary = {
   (** Package that owns the benchmark suite binary. *)
-  package_name: string;
+  package_name: Riot_model.Package_name.t;
   (** Suite name reported by the benchmark binary. *)
   suite_name: string;
 }
@@ -15,7 +15,7 @@ type bench_request = {
   (** Workspace providing the packages and build configuration. *)
   workspace: Riot_model.Workspace.t;
   (** Optional package filter narrowing which suites should run. *)
-  package_filter: string option;
+  package_filter: Riot_model.Package_name.t option;
   (** Optional suite filter narrowing which benchmark binary should run. *)
   suite_filter: string option;
   (** Build profile used for the benchmark run. *)
@@ -96,7 +96,7 @@ type bench_suite_summary = {
 }
 type bench_event =
   | Build of Event.t
-  | NoSuitesFound of { package_name: string option }
+  | NoSuitesFound of { package_name: Riot_model.Package_name.t option }
   | RunningSuite of suite_binary
   | SuiteCompleted of {
       suite: suite_binary;
@@ -123,7 +123,11 @@ type bench_error =
     Use [package_filter] to restrict discovery to one package.
 *)
 val collect_suite_binaries:
-  Riot_model.Workspace.t -> ?package_filter:string -> ?suite_filter:string -> unit -> suite_binary list
+  Riot_model.Workspace.t ->
+  ?package_filter:Riot_model.Package_name.t ->
+  ?suite_filter:string ->
+  unit ->
+  suite_binary list
 
 (** Render a user-facing error message for a benchmark failure. *)
 val bench_error_message: bench_error -> string

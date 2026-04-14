@@ -2,6 +2,7 @@
 open Std
 open Std.Data
 open Std.Collections
+open Std.Result.Syntax
 
 (** Types *)
 type dependency_source = {
@@ -22,7 +23,7 @@ type key =
   Key of string
 
 type dependency = {
-  name: string;
+  name: Package_name.t;
   source: dependency_source;
 }
 
@@ -96,7 +97,7 @@ type foreign_dependency = {
 }
 
 type manifest_spec = {
-  name: string;
+  name: Package_name.t;
   path: Path.t;
   relative_path: Path.t;
   dependencies: dependency list;
@@ -112,7 +113,7 @@ type manifest_spec = {
 }
 
 type t = {
-  name: string;
+  name: Package_name.t;
   path: Path.t;
   relative_path: Path.t;
   dependencies: dependency list;
@@ -163,6 +164,8 @@ let compare_option compare_value left right =
   | None, Some _ -> (-1)
   | Some _, None -> 1
   | Some left, Some right -> compare_value left right
+  
+let compare_package_name = Package_name.compare
 
 let compare_dependency_source = fun left right ->
   let by_workspace = Bool.compare left.workspace right.workspace in
@@ -194,7 +197,7 @@ let compare_dependency_source = fun left right ->
               right.version
 
 let compare_dependency = fun (left: dependency) (right: dependency) ->
-  let by_name = String.compare left.name right.name in
+  let by_name = compare_package_name left.name right.name in
   if not (Int.equal by_name 0) then
     by_name
   else
@@ -305,9 +308,9 @@ let make = fun ~name ~path ~relative_path ?(dependencies = []) ?(dev_dependencie
 
 let synthetic = fun ~name ~path ~relative_path -> make ~name ~path ~relative_path ()
 
-let equal = fun a b -> a.name = b.name && a.path = b.path
+let equal = fun a b -> Package_name.equal a.name b.name && a.path = b.path
 
-let root_module_name = fun (pkg: t) -> Module_name.(of_string pkg.name |> to_string)
+let root_module_name = fun (pkg: t) -> Module_name.(of_string (Package_name.to_string pkg.name) |> to_string)
 
 let key_of_string = fun value -> Key value
 
@@ -429,12 +432,14 @@ let resolve_scope = fun ~scope_name ~manifest_dependencies ~lock_dependencies ->
           loop acc rest
         else
           (
-            match List.find lock_dependencies ~fn:(fun (dep: Lockfile.dependency) -> dep.name = requirement.name) with
+            match List.find
+              lock_dependencies
+              ~fn:(fun (dep: Lockfile.dependency) -> Package_name.equal dep.name requirement.name) with
             | Some resolved -> loop ({ requirement; resolved_id = resolved.package } :: acc) rest
             | None -> Error ("lockfile is missing resolved "
             ^ scope_name
             ^ " dependency '"
-            ^ requirement.name
+            ^ Package_name.to_string requirement.name
             ^ "'")
           )
   in
@@ -482,7 +487,6 @@ let is_workspace_member: t -> bool = fun pkg ->
 (** Validate package name according to Riot naming conventions *)
 let validate_name = fun name ->
   Package_name.from_string name
-  |> Result.map ~fn:Package_name.to_string
 
 let version_parse_error_to_string = fun err ->
   match err with
@@ -491,14 +495,18 @@ let version_parse_error_to_string = fun err ->
   | Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: " ^ segment
 
 (** Package TOML parsing *)
-let parse_name: (string * Toml.value) list -> string -> string = fun items fallback ->
-  match Fields.get "package" items with
-  | Some (Toml.Table pkg_items) -> (
-      match Fields.get "name" pkg_items with
-      | Some (Toml.String n) -> n
-      | _ -> fallback
-    )
-  | _ -> fallback
+let parse_name:
+  (string * Toml.value) list -> string -> (Package_name.t, string) result = fun items fallback ->
+  let raw_name =
+    match Fields.get "package" items with
+    | Some (Toml.Table pkg_items) -> (
+        match Fields.get "name" pkg_items with
+        | Some (Toml.String n) -> n
+        | _ -> fallback
+      )
+    | _ -> fallback
+  in
+  validate_name raw_name
 
 let parse_publish_metadata: (string * Toml.value) list -> (publish_metadata, string) result = fun items ->
   let parse_version = fun ~package_name ->
@@ -527,7 +535,8 @@ let parse_publish_metadata: (string * Toml.value) list -> (publish_metadata, str
   in
   match Fields.get "package" items with
   | Some (Toml.Table pkg_items) ->
-      let package_name = parse_name items "<package>" in
+      let* package_name = parse_name items "<package>" in
+      let package_name = Package_name.to_string package_name in
       let version =
         match Fields.get "version" pkg_items with
         | Some value -> parse_version ~package_name value
@@ -566,11 +575,14 @@ let parse_publish_metadata: (string * Toml.value) list -> (publish_metadata, str
   | None ->
       Ok default_publish_metadata
 
-let resolve_workspace_dependency: string -> dependency list -> dependency = fun name workspace_deps ->
-  match List.find workspace_deps ~fn:(fun (d: dependency) -> d.name = name) with
+let resolve_workspace_dependency: Package_name.t -> dependency list -> dependency = fun name workspace_deps ->
+  match List.find workspace_deps ~fn:(fun (d: dependency) -> Package_name.equal d.name name) with
   | Some dep -> dep
-  | None -> panic
-    ("Dependency '" ^ name ^ "' with { workspace = true } not found in workspace dependencies")
+  | None ->
+      panic
+        ("Dependency '"
+        ^ Package_name.to_string name
+        ^ "' with { workspace = true } not found in workspace dependencies")
 
 let validate_requirement = fun ~dependency_name requirement ->
   let trimmed = String.trim requirement in
@@ -650,7 +662,10 @@ let validate_dependency_source = fun ~dependency_name source ->
     Ok { source with version = Some Version.any }
 
 let parse_dependency:
-  string -> Toml.value -> workspace_deps:dependency list -> (dependency, string) result = fun name value ~workspace_deps ->
+  string -> Toml.value -> workspace_deps:dependency list -> (dependency, string) result =
+ fun raw_name value ~workspace_deps ->
+  let* name = Package_name.from_string raw_name in
+  let dependency_name = Package_name.to_string name in
   match value with
   | Toml.Table attrs -> (
       match Fields.get "workspace" attrs with
@@ -659,38 +674,40 @@ let parse_dependency:
             (resolve_workspace_dependency name workspace_deps).source
             with workspace = true
           } in
-          validate_dependency_source ~dependency_name:name source
+          validate_dependency_source ~dependency_name source
           |> Result.map ~fn:(fun source -> { name; source })
         )
       | Some _ ->
-          Error ("dependency '" ^ name ^ "' has non-boolean workspace flag")
+          Error ("dependency '" ^ dependency_name ^ "' has non-boolean workspace flag")
       | _ -> (
           let path =
             match Fields.get "path" attrs with
             | Some (Toml.String path_str) -> Ok (Some (Path.v path_str))
-            | Some _ -> Error ("dependency '" ^ name ^ "' has non-string path")
+            | Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string path")
             | None -> Ok None
           in
           let source_locator =
             match Fields.get "source" attrs, Fields.get "github" attrs with
-            | Some _, Some _ -> Error ("dependency '" ^ name ^ "' cannot specify both source and github")
+            | Some _, Some _ ->
+                Error ("dependency '" ^ dependency_name ^ "' cannot specify both source and github")
             | Some (Toml.String locator), None -> Ok (Some (normalize_source_locator locator))
-            | Some _, None -> Error ("dependency '" ^ name ^ "' has non-string source locator")
+            | Some _, None -> Error ("dependency '" ^ dependency_name ^ "' has non-string source locator")
             | None, Some (Toml.String github) -> Ok (Some (github_locator_of_value github))
-            | None, Some _ -> Error ("dependency '" ^ name ^ "' has non-string github shorthand")
+            | None, Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string github shorthand")
             | None, None -> Ok None
           in
           let ref_ =
             match Fields.get "ref" attrs with
             | Some (Toml.String ref_) -> Ok (Some (String.trim ref_))
-            | Some _ -> Error ("dependency '" ^ name ^ "' has non-string ref")
+            | Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string ref")
             | None -> Ok None
           in
           let version =
             match Fields.get "version" attrs with
-            | Some (Toml.String requirement) -> validate_requirement ~dependency_name:name requirement
+            | Some (Toml.String requirement) ->
+                validate_requirement ~dependency_name requirement
             |> Result.map ~fn:(fun version -> Some version)
-            | Some _ -> Error ("dependency '" ^ name ^ "' has non-string version requirement")
+            | Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string version requirement")
             | None -> Ok None
           in
           match path, source_locator, ref_, version with
@@ -698,28 +715,30 @@ let parse_dependency:
           | _, (Error _ as err), _, _ -> err
           | _, _, (Error _ as err), _ -> err
           | _, _, _, (Error _ as err) -> err
-          | Ok path, Ok source_locator, Ok ref_, Ok version -> validate_dependency_source
-            ~dependency_name:name
-            (make_source
-              ~builtin:(is_builtin_dependency_name name)
-              ?path
-              ?source_locator
-              ?ref_
-              ?version
-              ())
-          |> Result.map ~fn:(fun source -> { name; source })
+          | Ok path, Ok source_locator, Ok ref_, Ok version ->
+              validate_dependency_source
+                ~dependency_name
+                (make_source
+                  ~builtin:(is_builtin_dependency_name dependency_name)
+                  ?path
+                  ?source_locator
+                  ?ref_
+                  ?version
+                  ())
+              |> Result.map ~fn:(fun source -> { name; source })
         )
     )
   | Toml.String requirement -> (
-      match validate_requirement ~dependency_name:name requirement with
+      match validate_requirement ~dependency_name requirement with
       | Error _ as err -> err
-      | Ok version -> validate_dependency_source
-        ~dependency_name:name
-        (make_source ~builtin:(is_builtin_dependency_name name) ~version ())
-      |> Result.map ~fn:(fun source -> { name; source })
+      | Ok version ->
+          validate_dependency_source
+            ~dependency_name
+            (make_source ~builtin:(is_builtin_dependency_name dependency_name) ~version ())
+          |> Result.map ~fn:(fun source -> { name; source })
     )
   | _ ->
-      Error ("dependency '" ^ name ^ "' must be a string or table")
+      Error ("dependency '" ^ dependency_name ^ "' must be a string or table")
 
 let parse_dependencies:
   (string * Toml.value) list -> workspace_deps:dependency list -> (dependency list, string) result = fun items ~workspace_deps ->
@@ -1211,8 +1230,9 @@ let parse_binaries: (string * Toml.value) list -> package_path:Path.t -> (binary
 let parse_library:
   (string * Toml.value) list ->
   package_path:Path.t ->
-  package_name:string ->
+  package_name:Package_name.t ->
   (library option, string) result = fun items ~package_path ~package_name ->
+  let package_name = Package_name.to_string package_name in
   match Fields.get "lib" items with
   | None ->
       (* Autodiscover: if src/<package_name>.ml exists, use it as library *)
@@ -1543,10 +1563,10 @@ let autodiscover_test_binaries: sources -> package_path:Path.t -> binary list = 
     sources.tests
 
 (** Autodiscover a default runtime binary from src/main.ml when no explicit [[bin]] exists. *)
-let autodiscover_main_binary: sources -> package_name:string -> binary list = fun sources ~package_name ->
+let autodiscover_main_binary: sources -> package_name:Package_name.t -> binary list = fun sources ~package_name ->
   if List.any sources.src ~fn:(fun path ->
       Path.equal path (Path.v "src/main.ml")) then
-    [ { name = package_name; path = Path.v "src/main.ml" } ]
+    [ { name = Package_name.to_string package_name; path = Path.v "src/main.ml" } ]
   else
     []
 
@@ -1650,7 +1670,7 @@ let parse_manifest_spec:
   match toml with
   | Toml.Table items -> (
       let fallback_name = Path.basename path in
-      let name = parse_name items fallback_name in
+      let* name = parse_name items fallback_name in
       match parse_publish_metadata items with
       | Error _ as err -> err
       | Ok publish ->
@@ -1667,14 +1687,22 @@ let parse_manifest_spec:
                         match parse_binaries items ~package_path:path with
                         | Ok bins -> bins
                         | Error msg ->
-                            Log.warn ("[PACKAGE] Failed to parse binaries for " ^ name ^ ": " ^ msg);
+                            Log.warn
+                              ("[PACKAGE] Failed to parse binaries for "
+                              ^ Package_name.to_string name
+                              ^ ": "
+                              ^ msg);
                             []
                       in
                       let library =
                         match parse_library items ~package_path:path ~package_name:name with
                         | Ok lib -> lib
                         | Error msg ->
-                            Log.warn ("[PACKAGE] Failed to parse library for " ^ name ^ ": " ^ msg);
+                            Log.warn
+                              ("[PACKAGE] Failed to parse library for "
+                              ^ Package_name.to_string name
+                              ^ ": "
+                              ^ msg);
                             None
                       in
                       let foreign_dependencies =
@@ -1683,7 +1711,7 @@ let parse_manifest_spec:
                         | Error msg ->
                             Log.warn
                               ("[PACKAGE] Failed to parse foreign dependencies for "
-                              ^ name
+                              ^ Package_name.to_string name
                               ^ ": "
                               ^ msg);
                             []
@@ -1788,21 +1816,21 @@ let to_json: t -> Json.t = fun pkg ->
     pkg.dependencies
     ~fn:(fun (dep: dependency) ->
       Json.Object [
-        ("name", Json.String dep.name);
+        ("name", Json.String (Package_name.to_string dep.name));
         ("source", dependency_source_to_json dep.source);
       ])) in
   let dev_dependencies_json = Json.Array (List.map
     pkg.dev_dependencies
     ~fn:(fun (dep: dependency) ->
       Json.Object [
-        ("name", Json.String dep.name);
+        ("name", Json.String (Package_name.to_string dep.name));
         ("source", dependency_source_to_json dep.source);
       ])) in
   let build_dependencies_json = Json.Array (List.map
     pkg.build_dependencies
     ~fn:(fun (dep: dependency) ->
       Json.Object [
-        ("name", Json.String dep.name);
+        ("name", Json.String (Package_name.to_string dep.name));
         ("source", dependency_source_to_json dep.source);
       ])) in
   let binaries_json = Json.Array (List.map
@@ -1819,7 +1847,7 @@ let to_json: t -> Json.t = fun pkg ->
   in
   let fix_providers_json = Json.Array (List.map pkg.fix_providers ~fn:Fix_provider.to_json) in
   Json.Object [
-    ("name", Json.String pkg.name);
+    ("name", Json.String (Package_name.to_string pkg.name));
     ("path", Json.String (Path.to_string pkg.path));
     ("relative_path", Json.String (Path.to_string pkg.relative_path));
     ("dependencies", dependencies_json);
@@ -1857,6 +1885,7 @@ let from_json: Json.t -> (t, string) result = fun json ->
         Fields.get "relative_path" fields
       ) with
       | (Some (Json.String name), Some (Json.String path_str), Some (Json.String rel_path_str)) -> (
+          let* name = Package_name.from_string name in
           let parse_dependencies_field field_name =
             match Fields.get field_name fields with
             | Some (Json.Array deps) ->
@@ -1871,9 +1900,9 @@ let from_json: Json.t -> (t, string) result = fun json ->
                             Fields.get "source" dep_fields
                           ) with
                           | Some (Json.String dep_name), Some source_json -> (
-                              match dependency_source_of_json source_json with
-                              | Ok source -> loop ({ name = dep_name; source } :: acc) rest
-                              | Error _ as err -> err
+                              let* dep_name = Package_name.from_string dep_name in
+                              let* source = dependency_source_of_json source_json in
+                              loop ({ name = dep_name; source } :: acc) rest
                             )
                           | _ -> Error ("Invalid dependency entry in '" ^ field_name ^ "'")
                         )
@@ -2137,10 +2166,10 @@ let hash_with = fun (type s) ((module H : Hash_writer with type state = s)) stat
         H.write_int state 1;
         H.write_list H.write state values
   in
-  H.write state pkg.name;
+  H.write state (Package_name.to_string pkg.name);
   (* Dependencies metadata *)
   let hash_dependency (dep: dependency) =
-    H.write state dep.name;
+    H.write state (Package_name.to_string dep.name);
     H.write_bool state dep.source.workspace;
     H.write_bool state dep.source.builtin;
     hash_path_option dep.source.path;
@@ -2280,6 +2309,9 @@ let hash_with = fun (type s) ((module H : Hash_writer with type state = s)) stat
 let hash = fun state pkg -> hash_with (module Crypto.Sha256) state pkg
 
 module Tests = struct
+  let package_name value =
+    Package_name.from_string value |> Result.expect ~msg:"expected valid package name"
+
   let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
     {
       workspace;
@@ -2311,7 +2343,7 @@ fixme = { path = "../fixme" }
 |}
       |> Result.expect ~msg:"expected package toml to parse"
     in
-    let workspace_dep name = { name; source = source ~workspace:true () } in
+    let workspace_dep name = { name = package_name name; source = source ~workspace:true () } in
     let pkg = from_toml
       toml
       ~workspace_deps:[ workspace_dep "std" ]
@@ -2321,9 +2353,9 @@ fixme = { path = "../fixme" }
       ~relative_path:(Path.v "packages/example")
     |> Result.expect ~msg:"expected package manifest" in
     if
-      List.map pkg.dependencies ~fn:(fun (dep: dependency) -> dep.name) = [ "std" ]
-      && List.map pkg.dev_dependencies ~fn:(fun (dep: dependency) -> dep.name) = [ "propane" ]
-      && List.map pkg.build_dependencies ~fn:(fun (dep: dependency) -> dep.name) = [ "fixme" ]
+      List.map pkg.dependencies ~fn:(fun (dep: dependency) -> dep.name) = [ package_name "std" ]
+      && List.map pkg.dev_dependencies ~fn:(fun (dep: dependency) -> dep.name) = [ package_name "propane" ]
+      && List.map pkg.build_dependencies ~fn:(fun (dep: dependency) -> dep.name) = [ package_name "fixme" ]
     then
       Ok ()
     else
@@ -2388,7 +2420,8 @@ stdlib = "*"
       ~relative_path:(Path.v "packages/example")
     |> Result.expect ~msg:"expected package manifest" in
     match pkg.dependencies with
-    | [ { name="stdlib"; source={ builtin=true; version=Some requirement; _ } } ] when requirement_is_any
+    | [ { name; source={ builtin=true; version=Some requirement; _ } } ]
+      when Package_name.equal name (package_name "stdlib") && requirement_is_any
       requirement -> Ok ()
     | _ -> Error "expected stdlib '*' to parse as a builtin dependency" [@test]
 
@@ -2416,10 +2449,10 @@ widgets = { github = "riot-tests/widgets" }
     match pkg.dependencies with
     | [
       {
-        name="widgets";
+        name;
         source={ source_locator=Some "github.com/riot-tests/widgets"; ref_=None; _ }
       }
-    ] -> Ok ()
+    ] when Package_name.equal name (package_name "widgets") -> Ok ()
     | _ -> Error "expected github shorthand to normalize into a source locator" [@test]
 
   let test_parse_source_dependency_with_ref_and_path (): (unit, string) result =
@@ -2446,7 +2479,7 @@ widgets = { source = "https://github.com/riot-tests/monorepo/packages/widgets", 
     match pkg.dependencies with
     | [
       {
-        name="widgets";
+        name;
         source={
           source_locator=Some "github.com/riot-tests/monorepo/packages/widgets";
           ref_=Some "main";
@@ -2455,7 +2488,7 @@ widgets = { source = "https://github.com/riot-tests/monorepo/packages/widgets", 
         };
 
       }
-    ] -> Ok ()
+    ] when Package_name.equal name (package_name "widgets") -> Ok ()
     | _ -> Error "expected source dependency to preserve locator and ref" [@test]
 
   let test_builtin_dependency_rejects_version_constraints (): (unit, string) result =
@@ -2507,10 +2540,10 @@ std = "definitely-not-semver"
   let test_package_json_round_trips_registry_requirement (): (unit, string) result =
     let requirement = Version.parse_requirement ">= 1.2.3" |> Result.expect ~msg:"expected requirement to parse" in
     let package = {
-      name = "example";
+      name = package_name "example";
       path = Path.v "/tmp/example";
       relative_path = Path.v "packages/example";
-      dependencies = [ { name = "std"; source = source ~version:requirement () } ];
+      dependencies = [ { name = package_name "std"; source = source ~version:requirement () } ];
       dev_dependencies = [];
       build_dependencies = [];
       foreign_dependencies = [];
@@ -2552,12 +2585,12 @@ std = "definitely-not-semver"
 
   let test_package_json_round_trips_source_dependency (): (unit, string) result =
     let package = {
-      name = "example";
+      name = package_name "example";
       path = Path.v "/tmp/example";
       relative_path = Path.v "packages/example";
       dependencies = [
         {
-          name = "widgets";
+          name = package_name "widgets";
           source = source ~source_locator:"github.com/riot-tests/widgets" ~ref_:"main" ()
         }
       ];
@@ -2584,14 +2617,14 @@ std = "definitely-not-semver"
     | Ok {
       dependencies=[
         {
-          name="widgets";
+          name;
           source={ source_locator=Some "github.com/riot-tests/widgets"; ref_=Some "main"; _;  };
 
         }
       ];
       _;
 
-    } -> Ok ()
+    } when Package_name.equal name (package_name "widgets") -> Ok ()
     | Ok _ -> Error "expected source dependency to survive package json roundtrip"
     | Error err -> Error err [@test]
 
@@ -2620,15 +2653,15 @@ ppx = {}
       ~relative_path:(Path.v "packages/app")
     |> Result.expect ~msg:"expected package manifest" in
     let lock_package: Lockfile.package = {
-      id = { registry = None; name = "app"; version = None; sha256 = None };
+      id = { registry = None; name = package_name "app"; version = None; sha256 = None };
       root = Some (Path.v "packages/app");
       provenance = Lockfile.Workspace;
       dependencies = [
         {
-          name = "std";
+          name = package_name "std";
           package = {
             registry = Some "pkgs.ml";
-            name = "std";
+            name = package_name "std";
             version = Some "0.1.0";
             sha256 = Some "deadbeef"
           }
@@ -2636,10 +2669,10 @@ ppx = {}
       ];
       build_dependencies = [
         {
-          name = "ppx";
+          name = package_name "ppx";
           package = {
             registry = Some "pkgs.ml";
-            name = "ppx";
+            name = package_name "ppx";
             version = Some "1.2.3";
             sha256 = Some "cafebabe"
           }
@@ -2658,7 +2691,7 @@ ppx = {}
           List.length resolved.runtime_resolved = 1
           && List.length resolved.build_resolved = 1
           && (match List.get resolved.runtime_resolved ~at:0 with
-             | Some resolved_package -> resolved_package.resolved_id.name = "std"
+             | Some resolved_package -> Package_name.equal resolved_package.resolved_id.name (package_name "std")
              | None -> false)
           && (match List.get resolved.build_resolved ~at:0 with
              | Some resolved_package -> resolved_package.resolved_id.version = Some "1.2.3"
@@ -2691,7 +2724,7 @@ std = {}
       ~relative_path:(Path.v "packages/app")
     |> Result.expect ~msg:"expected package manifest" in
     let lock_package: Lockfile.package = {
-      id = { registry = None; name = "app"; version = None; sha256 = None };
+      id = { registry = None; name = package_name "app"; version = None; sha256 = None };
       root = Some (Path.v "packages/app");
       provenance = Lockfile.Workspace;
       dependencies = [];
@@ -2709,10 +2742,10 @@ std = {}
 
   let test_resolve_ignores_builtin_dependencies (): (unit, string) result =
     let package = {
-      name = "app";
+      name = package_name "app";
       path = Path.v "/workspace/packages/app";
       relative_path = Path.v "packages/app";
-      dependencies = [ { name = "stdlib"; source = source ~builtin:true ~version:Version.any () } ];
+      dependencies = [ { name = package_name "stdlib"; source = source ~builtin:true ~version:Version.any () } ];
       dev_dependencies = [];
       build_dependencies = [];
       foreign_dependencies = [];
@@ -2733,7 +2766,7 @@ std = {}
     }
     in
     let lock_package: Lockfile.package = {
-      id = { registry = None; name = "app"; version = None; sha256 = None };
+      id = { registry = None; name = package_name "app"; version = None; sha256 = None };
       root = Some (Path.v "packages/app");
       provenance = Lockfile.Workspace;
       dependencies = [];
@@ -2752,12 +2785,12 @@ std = {}
 
   let test_build_graph_dependencies_exclude_build_only_deps (): (unit, string) result =
     let pkg = {
-      name = "example";
+      name = package_name "example";
       path = Path.v "/tmp/example";
       relative_path = Path.v "packages/example";
-      dependencies = [ { name = "std"; source = source ~workspace:true () } ];
-      dev_dependencies = [ { name = "propane"; source = source ~workspace:true () } ];
-      build_dependencies = [ { name = "fixme"; source = source ~workspace:true () } ];
+      dependencies = [ { name = package_name "std"; source = source ~workspace:true () } ];
+      dev_dependencies = [ { name = package_name "propane"; source = source ~workspace:true () } ];
+      build_dependencies = [ { name = package_name "fixme"; source = source ~workspace:true () } ];
       foreign_dependencies = [];
       binaries = [];
       library = None;
@@ -2777,14 +2810,17 @@ std = {}
     in
     let build_graph = build_graph_dependencies pkg |> List.map ~fn:(fun (dep: dependency) -> dep.name) in
     let all = all_dependencies pkg |> List.map ~fn:(fun (dep: dependency) -> dep.name) in
-    if build_graph = [ "std"; "propane" ] && all = [ "std"; "propane"; "fixme" ] then
+    if
+      build_graph = [ package_name "std"; package_name "propane" ]
+      && all = [ package_name "std"; package_name "propane"; package_name "fixme" ]
+    then
       Ok ()
     else
       Error "expected build graph dependencies to exclude build-only deps" [@test]
 
   let test_root_module_name_sanitizes_hyphenated_package_names (): (unit, string) result =
     let pkg = synthetic
-      ~name:"kernel-new"
+      ~name:(package_name "kernel-new")
       ~path:(Path.v "/tmp/kernel-new")
       ~relative_path:(Path.v "packages/kernel-new") in
     if String.equal (root_module_name pkg) "Kernel_new" then

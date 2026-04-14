@@ -4,6 +4,12 @@
 
 # Before Announcing
 
+* everywhere we're using Cell + list maybe we just need to use Vector 
+
+* turn every `error: string` into a structured error
+
+* clean up the riot-test selector filter flag code
+
 * Bug: riot build doesn't promote binaries with the right permissions?
 
 * Std.Log should be set up by default on the generated template code

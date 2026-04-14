@@ -1,12 +1,12 @@
 open Std
 
 type suite_binary = {
-  package_name: string;
+  package_name: Riot_model.Package_name.t;
   suite_name: string;
 }
 type test_request = {
   workspace: Riot_model.Workspace.t;
-  package_filter: string option;
+  package_filter: Riot_model.Package_name.t option;
   suite_filter: string option;
   profile: string;
   extra_args: string list;
@@ -64,7 +64,10 @@ type test_suite_summary = {
 }
 type test_event =
   | Build of Event.t
-  | NoSuitesFound of { package_name: string option; suite_name: string option }
+  | NoSuitesFound of {
+      package_name: Riot_model.Package_name.t option;
+      suite_name: string option
+    }
   | RunningSuite of suite_binary
   | SuiteCompleted of {
       suite: suite_binary;
@@ -84,7 +87,11 @@ type test_error =
   | SuiteExecutionError of { suite: suite_binary; reason: string }
   | SuitesFailed of int
 val collect_suite_binaries:
-  Riot_model.Workspace.t -> ?package_filter:string -> ?suite_filter:string -> unit -> suite_binary list
+  Riot_model.Workspace.t ->
+  ?package_filter:Riot_model.Package_name.t ->
+  ?suite_filter:string ->
+  unit ->
+  suite_binary list
 
 val test_error_message: test_error -> string
 

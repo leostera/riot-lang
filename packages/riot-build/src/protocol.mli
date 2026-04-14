@@ -12,8 +12,8 @@ type build_scope =
   | Dev
 type target =
   | All
-  | Package of string
-  | Packages of string list
+  | Package of Package_name.t
+  | Packages of Package_name.t list
 
 (** Mutable build statistics recorded during a build session. *)
 module BuildStats: sig
@@ -87,7 +87,7 @@ type request =
   | Ping of { client_pid: Pid.t }
   | ScanWorkspace of { client_pid: Pid.t; current_dir: Path.t }
   | GetWorkspaceConfig of { client_pid: Pid.t }
-  | GetPackageInfo of { client_pid: Pid.t; package_name: string }
+  | GetPackageInfo of { client_pid: Pid.t; package_name: Package_name.t }
   | GetPackageGraph of { client_pid: Pid.t }
   | FindExecutable of { client_pid: Pid.t; name: string }
   | FormatFile of { client_pid: Pid.t; file_path: Path.t; check_only: bool }
@@ -97,7 +97,7 @@ type request =
           | `check
           | `write
         ] }
-  | NewPackage of { client_pid: Pid.t; path: Path.t; name: string; is_library: bool }
+  | NewPackage of { client_pid: Pid.t; path: Path.t; name: Package_name.t; is_library: bool }
 (** Responses emitted by the internal build runtime. *)
 type response =
   | Pong
@@ -122,22 +122,22 @@ type response =
   | WorkspaceConfig of { workspace: Workspace.t; toolchain: Riot_toolchain.t }
   | PackageInfo of { package: Package.t; sources: Path.t list; dependencies: Package.t list }
   | PackageGraph of { nodes: Package.t list }
-  | ExecutableFound of { package: string; binary: string }
+  | ExecutableFound of { package: Package_name.t; binary: string }
   | ExecutableNotFound
   | FormatResult of { formatted_code: string; changed: bool }
   | FormatError of { error: string }
   | FormatAllResult of { files_formatted: int; files_failed: int; errors: (string * string) list }
-  | PackageCreated of { path: string; name: string }
+  | PackageCreated of { path: Path.t; name: Package_name.t }
   | PackageCreationError of { error: string }
   | PackageNotFound of {
       session_id: Session_id.t;
-      package_name: string;
-      available_packages: string list
+      package_name: Package_name.t;
+      available_packages: Package_name.t list
     }
   | PackagesNotFound of {
       session_id: Session_id.t;
-      package_names: string list;
-      available_packages: string list
+      package_names: Package_name.t list;
+      available_packages: Package_name.t list
     }
 
 (** Message constructors used for internal server communication. *)

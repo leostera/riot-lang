@@ -1,8 +1,9 @@
 open Std
+open Std.Result.Syntax
 
 type run_request = {
   workspace: Riot_model.Workspace.t;
-  package_name: string option;
+  package_name: Riot_model.Package_name.t option;
   binary_name: string;
   profile: string;
   args: string list;
@@ -17,26 +18,24 @@ type source_run_request = {
 }
 
 type runnable_binary = {
-  package_name: string;
+  package_name: Riot_model.Package_name.t;
   binary_name: string;
   source_path: Path.t;
 }
 
 type run_event =
   | Build of Event.t
-  | RunningBinary of { package: string; binary: string; args: string list }
+  | RunningBinary of { package: Riot_model.Package_name.t; binary: string; args: string list }
 
 type run_error =
   | BinaryNotFound of { binary_name: string }
-  | BinaryNotFoundInPackage of { package_name: string; binary_name: string }
+  | BinaryNotFoundInPackage of { package_name: Riot_model.Package_name.t; binary_name: string }
   | BuildFailed of Build_core.error
-  | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
+  | ArtifactNotFound of { package_name: Riot_model.Package_name.t; binary_name: string; reason: string }
   | ProcessExited of int
   | SystemError of string
   | ExternalTargetLoadFailed of { target: string; reason: string }
   | ClientError of Client.error
-
-let ( let* ) value fn = Result.and_then value ~fn
 
 let no_event: run_event -> unit = fun _ -> ()
 
@@ -46,14 +45,14 @@ let realized_runnable_packages = fun ?package_filter (workspace: Riot_model.Work
   |> List.filter ~fn:(fun (pkg: Riot_model.Package.t) ->
       match package_filter with
       | None -> true
-      | Some package_name -> String.equal package_name pkg.name)
+      | Some package_name -> Riot_model.Package_name.equal package_name pkg.name)
 
 let build_scope_for_binary = fun (workspace: Riot_model.Workspace.t) ~package_name ~binary_name ->
   match
     List.find
       (Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Dev workspace)
       ~fn:(fun (pkg: Riot_model.Package.t) ->
-      String.equal pkg.name package_name)
+        Riot_model.Package_name.equal pkg.name package_name)
   with
   | None -> Request.Runtime
   | Some pkg -> (
@@ -85,15 +84,15 @@ let list_binaries = fun (workspace: Riot_model.Workspace.t) ?package_filter () -
           }))
   |> List.sort ~compare:(fun left right ->
       String.compare
-        (left.package_name ^ ":" ^ left.binary_name)
-        (right.package_name ^ ":" ^ right.binary_name))
+        (Riot_model.Package_name.to_string left.package_name ^ ":" ^ left.binary_name)
+        (Riot_model.Package_name.to_string right.package_name ^ ":" ^ right.binary_name))
 
 let run_error_message = function
   | BinaryNotFound { binary_name } -> "binary '" ^ binary_name ^ "' not found"
   | BinaryNotFoundInPackage { package_name; binary_name } -> "binary '"
   ^ binary_name
   ^ "' not found in package '"
-  ^ package_name
+  ^ Riot_model.Package_name.to_string package_name
   ^ "'"
   | BuildFailed err -> Build_core.error_message err
   | ArtifactNotFound { reason; _ } -> reason
@@ -112,7 +111,7 @@ let run_event_to_json = function
   | Build event -> build_event_to_json event
   | RunningBinary { package; binary; args } -> Some (Data.Json.Object [
     ("type", Data.Json.String "RunningBinary");
-    ("package", Data.Json.String package);
+    ("package", Data.Json.String (Riot_model.Package_name.to_string package));
     ("binary", Data.Json.String binary);
     ("args", Data.Json.Array (List.map args ~fn:Data.Json.string));
   ])
@@ -165,7 +164,8 @@ let find_built_binary_path = fun ~(store:Riot_store.Store.t) ~(output: Output.t)
   | Some export_entry -> (
       match Riot_store.Store.export_source_path store export_entry with
       | Some path -> ensure_executable_binary_path (Path.to_string path)
-      |> Result.map_err ~fn:(fun reason -> ArtifactNotFound { package_name; binary_name; reason })
+      |> Result.map_err ~fn:(fun reason ->
+        ArtifactNotFound { package_name; binary_name; reason })
       | None -> Error (ArtifactNotFound {
         package_name;
         binary_name;
@@ -185,7 +185,9 @@ let run = fun ?(on_event = no_event) (request: run_request) ->
             Error (BinaryNotFound { binary_name = request.binary_name })
         | Ok (Some (package_name, _binary)) -> (
             match request.package_name with
-            | Some expected_package when not (String.equal expected_package package_name) -> Error (BinaryNotFoundInPackage {
+            | Some expected_package
+              when not (Riot_model.Package_name.equal expected_package package_name) ->
+                Error (BinaryNotFoundInPackage {
               package_name = expected_package;
               binary_name = request.binary_name
             })

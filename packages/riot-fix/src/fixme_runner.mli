@@ -15,7 +15,7 @@ type plan = {
   library_path: Path.t;
   main_path: Path.t;
   binary_path: Path.t;
-  package_name: string;
+  package_name: Riot_model.Package_name.t;
   binary_name: string;
   package: Riot_model.Package.t;
   providers: generated_provider list;

@@ -205,16 +205,22 @@ and handle_get_workspace_config = fun state client_pid ->
 (** Handler for getting package information *)
 and handle_get_package_info = fun state client_pid package_name ->
   Log.debug
-    ("Server: Received GetPackageInfo for " ^ package_name ^ " from " ^ Pid.to_string client_pid);
+    ("Server: Received GetPackageInfo for "
+    ^ Riot_model.Package_name.to_string package_name
+    ^ " from "
+    ^ Pid.to_string client_pid);
   let state = ensure_runtime_package_graph state in
   let package_opt =
-    List.find state.workspace.packages ~fn:(fun (pkg: Package_manifest.t) -> pkg.name = package_name)
+    List.find
+      state.workspace.packages
+      ~fn:(fun (pkg: Package_manifest.t) ->
+        Riot_model.Package_name.equal pkg.name package_name)
     |> Option.map ~fn:(Riot_model.Workspace.realize_package ~intent:Riot_model.Package.Dev)
   in
   (
     match package_opt with
     | None ->
-        Log.debug ("Server: Package " ^ package_name ^ " not found");
+        Log.debug ("Server: Package " ^ Riot_model.Package_name.to_string package_name ^ " not found");
         send
           client_pid
           (Protocol.ServerResponse (Protocol.PackageInfo {
@@ -264,8 +270,11 @@ and handle_find_executable = fun state client_pid name ->
   (
     match found with
     | Some pkg -> send
-      client_pid
-      (Protocol.ServerResponse (Protocol.ExecutableFound { package = pkg.name; binary = name }))
+        client_pid
+        (Protocol.ServerResponse (Protocol.ExecutableFound {
+          package = pkg.name;
+          binary = name
+        }))
     | None -> send client_pid (Protocol.ServerResponse Protocol.ExecutableNotFound)
   );
   loop state
@@ -320,11 +329,12 @@ and handle_format_all = fun state client_pid mode ->
   loop state
 
 and handle_new_package = fun state client_pid path name is_library ->
+  let name_string = Riot_model.Package_name.to_string name in
   Log.debug
     ("Server: Received NewPackage from "
     ^ Pid.to_string client_pid
     ^ " for "
-    ^ name
+    ^ name_string
     ^ " at "
     ^ Path.to_string path);
   let src_dir = Path.(path / Path.v "src") in
@@ -337,7 +347,7 @@ and handle_new_package = fun state client_pid path name is_library ->
         }));
       loop state
   | Ok () -> (
-      let module_name = String.split ~by:"-" name
+      let module_name = String.split ~by:"-" name_string
       |> List.map ~fn:String.capitalize_ascii
       |> String.concat "" in
       let main_ml =
@@ -349,22 +359,22 @@ and handle_new_package = fun state client_pid path name is_library ->
       let main_mli = Path.(src_dir / Path.v (module_name ^ ".mli")) in
       let ml_content =
         if is_library then
-          "open Std\n\n(** Main module for " ^ name ^ " library *)\n"
+          "open Std\n\n(** Main module for " ^ name_string ^ " library *)\n"
         else
           "open Std\n\nlet () = println \"Hello, World!\"\n"
       in
       let mli_content =
         if is_library then
-          Some ("(** " ^ name ^ " library interface *)\n")
+          Some ("(** " ^ name_string ^ " library interface *)\n")
         else
           None
       in
       let package_toml = Path.(path / Path.v "riot.toml") in
-      let toml_content = "[package]\nname = \"" ^ name ^ "\"\nversion = \"0.1.0\"\n\n" ^ (
+      let toml_content = "[package]\nname = \"" ^ name_string ^ "\"\nversion = \"0.1.0\"\n\n" ^ (
         if is_library then
           "[lib]\npath = \"src/" ^ module_name ^ ".ml\"\n\n"
         else
-          "[[bin]]\nname = \"" ^ name ^ "\"\npath = \"src/main.ml\"\n\n"
+          "[[bin]]\nname = \"" ^ name_string ^ "\"\npath = \"src/main.ml\"\n\n"
       ) ^ "[dependencies]\nstd = \"*\"\n# Add dependencies here\n" ^ "\n"
       in
       let write_mli =
@@ -400,7 +410,7 @@ and handle_new_package = fun state client_pid path name is_library ->
           } in
           send
             client_pid
-            (Protocol.ServerResponse (Protocol.PackageCreated { path = Path.to_string path; name }));
+            (Protocol.ServerResponse (Protocol.PackageCreated { path; name }));
           loop updated_state
       | _ ->
           send
@@ -414,22 +424,28 @@ and handle_new_package = fun state client_pid path name is_library ->
 (** Handler for build message - spawns worker and continues loop immediately *)
 and handle_build = fun state client_pid target scope profile target_arch session_id ->
   trace_server
-    (
-      "handle_build session=" ^ Session_id.to_string session_id ^ " target=" ^ match target with
+    ("handle_build session=" ^ Session_id.to_string session_id ^ " target=" ^ (
+      match target with
       | Protocol.All -> "all"
-      | Protocol.Package p -> "package:" ^ p
+      | Protocol.Package p -> "package:" ^ Riot_model.Package_name.to_string p
       | Protocol.Packages names ->
-          "packages:" ^ String.concat "," names ^ " scope=" ^ match scope with
+          "packages:"
+          ^ String.concat "," (List.map names ~fn:Riot_model.Package_name.to_string)
+    ) ^ " scope=" ^ (
+      match scope with
           | Protocol.Runtime -> "runtime"
           | Protocol.Dev -> "dev"
-    );
+    ));
   Log.debug
     (
       "Server: handle_build called for target: " ^ (
         match target with
         | Protocol.All -> "All"
-        | Protocol.Package p -> "Package(" ^ p ^ ")"
-        | Protocol.Packages names -> "Packages(" ^ String.concat "," names ^ ")"
+        | Protocol.Package p -> "Package(" ^ Riot_model.Package_name.to_string p ^ ")"
+        | Protocol.Packages names ->
+            "Packages("
+            ^ String.concat "," (List.map names ~fn:Riot_model.Package_name.to_string)
+            ^ ")"
       ) ^ (
         match target_arch with
         | Some arch -> ", arch: " ^ Riot_model.Target.to_string arch

@@ -29,7 +29,7 @@ type workspace_input =
 
 type request = {
   workspace_input: workspace_input;
-  packages: string list;
+  packages: Riot_model.Package_name.t list;
   targets: Riot_model.Target.request;
   scope: build_scope;
   profile: Riot_model.Profile.t;
@@ -55,7 +55,9 @@ let build_request_label = fun (request: request) ->
   let packages =
     match request.packages with
     | [] -> "all"
-    | packages -> String.concat "," packages
+    | packages -> packages
+      |> List.map ~fn:Riot_model.Package_name.to_string
+      |> String.concat ","
   in
   let targets =
     match request.targets with
@@ -123,9 +125,20 @@ let format_pm_event = fun ~seen_registry_updates kind ->
   | Riot_model.Event.PackageResolvedForBuild _ ->
       None
   | Riot_model.Event.PackageDownloadStarted { package; version; _ } ->
-      Some ("    \027[1;32mFetching\027[0m " ^ package ^ " " ^ version)
+      Some (
+        "    \027[1;32mFetching\027[0m "
+        ^ Riot_model.Package_name.to_string package
+        ^ " "
+        ^ version
+      )
   | Riot_model.Event.PackageDownloadQueued { package; version; _ } ->
-      Some ("      \027[1;33mQueued\027[0m " ^ package ^ " (" ^ version ^ ")")
+      Some (
+        "      \027[1;33mQueued\027[0m "
+        ^ Riot_model.Package_name.to_string package
+        ^ " ("
+        ^ version
+        ^ ")"
+      )
   | Riot_model.Event.DependencyResolutionStarted _
   | Riot_model.Event.DependencyResolutionRefreshingLock _
   | Riot_model.Event.DependencyResolutionFailed _
@@ -168,11 +181,25 @@ let format_pm_event = fun ~seen_registry_updates kind ->
       in
       Some ("    \027[1;32m" ^ verb ^ "\027[0m " ^ dependency ^ " (" ^ section ^ ") in " ^ path)
   | Riot_model.Event.PackageVersionLocked { package; version } ->
-      Some ("      \027[1;32mLocked\027[0m " ^ package ^ " (" ^ version ^ ")")
+      Some (
+        "      \027[1;32mLocked\027[0m "
+        ^ Riot_model.Package_name.to_string package
+        ^ " ("
+        ^ version
+        ^ ")"
+      )
   | Riot_model.Event.PackageVersionsUnchanged _ ->
       Some "    Dependencies are already up to date"
   | Riot_model.Event.PackageVersionUpdated { package; from_version; to_version } ->
-      Some ("    \027[1;32mUpdated\027[0m " ^ package ^ " (" ^ from_version ^ " -> " ^ to_version ^ ")")
+      Some (
+        "    \027[1;32mUpdated\027[0m "
+        ^ Riot_model.Package_name.to_string package
+        ^ " ("
+        ^ from_version
+        ^ " -> "
+        ^ to_version
+        ^ ")"
+      )
   | kind ->
       Some (Riot_model.Event.display kind)
 
@@ -223,6 +250,19 @@ let profile_of_matches = fun matches ->
   else
     Riot_model.Profile.debug
 
+let parse_package_names = fun package_names ->
+  let rec loop acc = function
+    | [] -> Ok (List.reverse acc)
+    | package_name :: rest -> (
+        match Riot_model.Package_name.from_string package_name with
+        | Ok package_name -> loop (package_name :: acc) rest
+        | Error error ->
+            Error
+              (Failure ("invalid package name '" ^ package_name ^ "': " ^ error))
+      )
+  in
+  loop [] package_names
+
 let make_request = fun ~workspace ?workspace_manager ?(scope = Runtime) ?(profile = Riot_model.Profile.debug) ?(mode = Human) ?(show_finished_summary = true) ~packages ~targets () ->
   {
     workspace_input = Unprepared { workspace; workspace_manager };
@@ -246,22 +286,30 @@ let make_prepared_request = fun ~prepared_workspace ?(scope = Runtime) ?(profile
   }
 
 let request_of_matches = fun ~workspace matches ->
-  make_request
-    ~workspace
-    ~profile:(profile_of_matches matches)
-    ~mode:(output_mode_of_matches matches)
-    ~packages:(ArgParser.get_many matches "package")
-    ~targets:(target_request_of_matches matches)
-    ()
+  match parse_package_names (ArgParser.get_many matches "package") with
+  | Error _ as err -> err
+  | Ok packages ->
+      Ok
+        (make_request
+           ~workspace
+           ~profile:(profile_of_matches matches)
+           ~mode:(output_mode_of_matches matches)
+           ~packages
+           ~targets:(target_request_of_matches matches)
+           ())
 
 let prepared_request_of_matches = fun ~prepared_workspace matches ->
-  make_prepared_request
-    ~prepared_workspace
-    ~profile:(profile_of_matches matches)
-    ~mode:(output_mode_of_matches matches)
-    ~packages:(ArgParser.get_many matches "package")
-    ~targets:(target_request_of_matches matches)
-    ()
+  match parse_package_names (ArgParser.get_many matches "package") with
+  | Error _ as err -> err
+  | Ok packages ->
+      Ok
+        (make_prepared_request
+           ~prepared_workspace
+           ~profile:(profile_of_matches matches)
+           ~mode:(output_mode_of_matches matches)
+           ~packages
+           ~targets:(target_request_of_matches matches)
+           ())
 
 let write_building_target_event = fun ~mode ~target ~host ->
   let target_name = Riot_model.Target.to_string target in
@@ -327,6 +375,10 @@ let write_cache_gc_event = fun ~mode event ->
     )
 
 let write_package_not_found_error = fun ~mode ~package_name ~available_packages ->
+  let package_name = Riot_model.Package_name.to_string package_name in
+  let available_packages =
+    List.map available_packages ~fn:Riot_model.Package_name.to_string
+  in
   if mode = Json then
     write_json_event
       (command_error_event_to_json
@@ -347,6 +399,12 @@ let write_package_not_found_error = fun ~mode ~package_name ~available_packages 
   )
 
 let write_packages_not_found_error = fun ~mode ~package_names ~available_packages ->
+  let package_names =
+    List.map package_names ~fn:Riot_model.Package_name.to_string
+  in
+  let available_packages =
+    List.map available_packages ~fn:Riot_model.Package_name.to_string
+  in
   if mode = Json then
     write_json_event
       (command_error_event_to_json
@@ -615,6 +673,7 @@ let load_workspace_strict = fun cwd ->
       Ok { workspace; workspace_manager }
 
 let build_command = fun ~prepared_workspace ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) package_opt target_arch ->
+  let packages = package_opt |> Option.to_list in
   run_request
     (make_prepared_request
        ~prepared_workspace
@@ -626,7 +685,7 @@ let build_command = fun ~prepared_workspace ?(scope = Runtime) ?(profile = "debu
        )
        ~mode
        ~show_finished_summary
-       ~packages:(package_opt |> Option.to_list)
+       ~packages
        ~targets:(
          match target_arch with
          | Some target -> Riot_model.Target.parse target
@@ -635,19 +694,24 @@ let build_command = fun ~prepared_workspace ?(scope = Runtime) ?(profile = "debu
        ())
 
 let build_packages_command = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) package_names target_arch ->
-  run_request
-    (make_request
-       ~workspace
-       ~scope
-       ~mode
-       ~show_finished_summary
-       ~packages:package_names
-       ~targets:(
-         match target_arch with
-         | Some target -> Riot_model.Target.parse target
-         | None -> Riot_model.Target.Host
-       )
-       ())
+  match parse_package_names package_names with
+  | Error _ as err -> err
+  | Ok packages ->
+      run_request
+        (make_request
+           ~workspace
+           ~scope
+           ~mode
+           ~show_finished_summary
+           ~packages
+           ~targets:(
+             match target_arch with
+             | Some target -> Riot_model.Target.parse target
+             | None -> Riot_model.Target.Host
+           )
+           ())
 
 let run = fun ~prepared_workspace matches ->
-  run_request (prepared_request_of_matches ~prepared_workspace matches)
+  match prepared_request_of_matches ~prepared_workspace matches with
+  | Error _ as err -> err
+  | Ok request -> run_request request

@@ -3,6 +3,10 @@ module Test = Std.Test
 
 let version = Std.Version.make ~major:0 ~minor:1 ~patch:0 ()
 
+let package_name = fun name ->
+  Riot_model.Package_name.from_string name
+  |> Result.expect ~msg:("invalid package name: " ^ name)
+
 let make_registry = fun () ->
   let cache =
     Pkgs_ml.Registry_cache.create
@@ -33,7 +37,7 @@ let make_package = fun ~workspace_root name ->
     }
   in
   Riot_model.Package.make
-    ~name
+    ~name:(package_name name)
     ~path:package_root
     ~relative_path:(Path.v name)
     ~sources:(make_sources ())
@@ -42,13 +46,13 @@ let make_package = fun ~workspace_root name ->
 
 let make_workspace = fun packages ->
   let root = Path.v "/workspace" in
-  Riot_model.Workspace.make ~root ~packages ()
+  Riot_model.Workspace.make_realized ~root ~packages ()
 
 let make_plan = fun package ->
   Riot_deps.Publisher.{
     package;
     version;
-    locator = "github.com/example/" ^ package.name;
+    locator = "github.com/example/" ^ Riot_model.Package_name.to_string package.name;
     selector = "deadbeef";
   }
 
@@ -56,9 +60,9 @@ let make_prepared = fun package ->
   Riot_deps.Publisher.{
     package;
     version;
-    locator = "github.com/example/" ^ package.name;
+    locator = "github.com/example/" ^ Riot_model.Package_name.to_string package.name;
     selector = "deadbeef";
-    artifact_path = Path.(Path.v "/tmp" / Path.v (package.name ^ ".tar.gz"));
+    artifact_path = Path.(Path.v "/tmp" / Path.v (Riot_model.Package_name.to_string package.name ^ ".tar.gz"));
   }
 
 let make_published_release = fun package_name ->
@@ -82,13 +86,19 @@ let stage_name = fun stage ->
 
 let event_name = fun event ->
   match event with
-  | Riot_publish.CheckStarted { package; stage; _ } -> "started:" ^ package ^ ":" ^ stage_name stage
-  | Riot_publish.CheckFinished { package; stage; _ } -> "finished:" ^ package ^ ":" ^ stage_name stage
-  | Riot_publish.Packing { package; _ } -> "packing:" ^ package
-  | Riot_publish.DryRunPlanned prepared -> "dry-run:" ^ prepared.package.name
+  | Riot_publish.CheckStarted { package; stage; _ } ->
+      "started:" ^ Riot_model.Package_name.to_string package ^ ":" ^ stage_name stage
+  | Riot_publish.CheckFinished { package; stage; _ } ->
+      "finished:" ^ Riot_model.Package_name.to_string package ^ ":" ^ stage_name stage
+  | Riot_publish.Packing { package; _ } ->
+      "packing:" ^ Riot_model.Package_name.to_string package
+  | Riot_publish.DryRunPlanned prepared ->
+      "dry-run:" ^ Riot_model.Package_name.to_string prepared.package.name
   | Riot_publish.PackagePublished published -> "published:" ^ published.package_name
-  | Riot_publish.SkippedAlreadyPublished { package; _ } -> "skipped-already-published:" ^ package
-  | Riot_publish.SkippedNotPublic { package; _ } -> "skipped-not-public:" ^ package
+  | Riot_publish.SkippedAlreadyPublished { package; _ } ->
+      "skipped-already-published:" ^ Riot_model.Package_name.to_string package
+  | Riot_publish.SkippedNotPublic { package; _ } ->
+      "skipped-not-public:" ^ Riot_model.Package_name.to_string package
   | Riot_publish.Fmt _ -> "fmt-event"
   | Riot_publish.Fix _ -> "fix-event"
   | Riot_publish.Build _ -> "build-event"
@@ -97,7 +107,7 @@ let make_deps = fun
   ~call_log
   ?(published_version_exists = fun ~registry:_ ~package_name:_ ~version:_ -> Ok false)
   ?(publish_prepared = fun ~registry:_ ~api_token:_ (prepared: Riot_deps.Publisher.prepared_publish) ->
-    Ok (make_published_release prepared.package.name))
+    Ok (make_published_release (Riot_model.Package_name.to_string prepared.package.name)))
   () ->
   Riot_publish.For_test.{
     resolve_registry = (fun () -> Ok (make_registry ()));
@@ -137,7 +147,7 @@ let test_dry_run_emits_preflight_events_in_order = fun _ctx ->
       ~on_event:(fun event -> events := event_name event :: !events)
       ~deps:(make_deps ~call_log ())
       ~workspace
-      ~request:Riot_publish.{ selection = Package "demo"; skip_check = false }
+      ~request:Riot_publish.{ selection = Package (package_name "demo"); skip_check = false }
       ~mode:DryRun
       ()
   with
@@ -164,7 +174,8 @@ let test_dry_run_emits_preflight_events_in_order = fun _ctx ->
         Error ("unexpected event order: " ^ String.concat ", " actual_events)
       else
         match outcomes with
-        | [ Riot_publish.Planned prepared ] when String.equal prepared.package.name "demo" -> Ok ()
+        | [ Riot_publish.Planned prepared ]
+          when Riot_model.Package_name.equal prepared.package.name (package_name "demo") -> Ok ()
         | _ -> Error "expected a single planned publish outcome"
 
 let test_skip_check_skips_fix_stage = fun _ctx ->
@@ -178,7 +189,7 @@ let test_skip_check_skips_fix_stage = fun _ctx ->
       ~on_event:(fun event -> events := event_name event :: !events)
       ~deps:(make_deps ~call_log ())
       ~workspace
-      ~request:Riot_publish.{ selection = Package "demo"; skip_check = true }
+      ~request:Riot_publish.{ selection = Package (package_name "demo"); skip_check = true }
       ~mode:DryRun
       ()
   with
@@ -209,7 +220,7 @@ let test_publish_mode_uses_token_and_emits_published = fun _ctx ->
       ~on_event:(fun event -> events := event_name event :: !events)
       ~deps:(make_deps ~call_log ())
       ~workspace
-      ~request:Riot_publish.{ selection = Package "demo"; skip_check = false }
+      ~request:Riot_publish.{ selection = Package (package_name "demo"); skip_check = false }
       ~mode:Publish
       ()
   with
@@ -244,7 +255,7 @@ let test_already_published_package_is_skipped_before_checks = fun _ctx ->
       ~on_event:(fun event -> events := event_name event :: !events)
       ~deps
       ~workspace
-      ~request:Riot_publish.{ selection = Package "demo"; skip_check = false }
+      ~request:Riot_publish.{ selection = Package (package_name "demo"); skip_check = false }
       ~mode:DryRun
       ()
   with
@@ -259,7 +270,8 @@ let test_already_published_package_is_skipped_before_checks = fun _ctx ->
         Error ("unexpected events: " ^ String.concat ", " actual_events)
       else
         match outcomes with
-        | [ Riot_publish.Skipped { package; _ } ] when String.equal package "demo" -> Ok ()
+        | [ Riot_publish.Skipped { package; _ } ]
+          when Riot_model.Package_name.equal package (package_name "demo") -> Ok ()
         | _ -> Error "expected a skipped outcome"
 
 let tests = Test.[

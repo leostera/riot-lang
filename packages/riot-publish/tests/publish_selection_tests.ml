@@ -3,6 +3,10 @@ module Test = Std.Test
 
 let version = Std.Version.make ~major:0 ~minor:1 ~patch:0 ()
 
+let package_name = fun name ->
+  Riot_model.Package_name.from_string name
+  |> Result.expect ~msg:("invalid package name: " ^ name)
+
 let make_registry = fun () ->
   let cache =
     Pkgs_ml.Registry_cache.create
@@ -33,7 +37,7 @@ let make_package = fun ~workspace_root ?(public = true) name ->
     }
   in
   Riot_model.Package.make
-    ~name
+    ~name:(package_name name)
     ~path:package_root
     ~relative_path:(Path.v name)
     ~sources:(make_sources ())
@@ -42,7 +46,7 @@ let make_package = fun ~workspace_root ?(public = true) name ->
 
 let make_workspace = fun packages ->
   let root = Path.v "/workspace" in
-  Riot_model.Workspace.make ~root ~packages ()
+  Riot_model.Workspace.make_realized ~root ~packages ()
 
 let panic_unexpected = fun label ->
   panic ("unexpected publish dependency call: " ^ label)
@@ -63,24 +67,29 @@ let make_deps = fun ?(workspace_publish_order = fun ~packages -> Ok packages) ?(
 
 let event_name = fun event ->
   match event with
-  | Riot_publish.SkippedNotPublic { package; _ } -> "skipped-not-public:" ^ package
-  | Riot_publish.SkippedAlreadyPublished { package; _ } -> "skipped-already-published:" ^ package
-  | Riot_publish.CheckStarted { package; stage; _ } -> "started:" ^ package ^ ":" ^ (
+  | Riot_publish.SkippedNotPublic { package; _ } ->
+      "skipped-not-public:" ^ Riot_model.Package_name.to_string package
+  | Riot_publish.SkippedAlreadyPublished { package; _ } ->
+      "skipped-already-published:" ^ Riot_model.Package_name.to_string package
+  | Riot_publish.CheckStarted { package; stage; _ } ->
+      "started:" ^ Riot_model.Package_name.to_string package ^ ":" ^ (
       match stage with
       | `fmt -> "fmt"
       | `fix -> "fix"
       | `build -> "build"
       | `metadata -> "metadata"
     )
-  | Riot_publish.CheckFinished { package; stage; _ } -> "finished:" ^ package ^ ":" ^ (
+  | Riot_publish.CheckFinished { package; stage; _ } ->
+      "finished:" ^ Riot_model.Package_name.to_string package ^ ":" ^ (
       match stage with
       | `fmt -> "fmt"
       | `fix -> "fix"
       | `build -> "build"
       | `metadata -> "metadata"
     )
-  | Riot_publish.Packing { package; _ } -> "packing:" ^ package
-  | Riot_publish.DryRunPlanned prepared -> "dry-run:" ^ prepared.package.name
+  | Riot_publish.Packing { package; _ } -> "packing:" ^ Riot_model.Package_name.to_string package
+  | Riot_publish.DryRunPlanned prepared ->
+      "dry-run:" ^ Riot_model.Package_name.to_string prepared.package.name
   | Riot_publish.PackagePublished published -> "published:" ^ published.package_name
   | Riot_publish.Fmt _ -> "fmt-event"
   | Riot_publish.Fix _ -> "fix-event"
@@ -106,11 +115,12 @@ let test_missing_package_errors = fun _ctx ->
     Riot_publish.For_test.publish_with
       ~deps:(make_deps ())
       ~workspace
-      ~request:Riot_publish.{ selection = Package "missing"; skip_check = false }
+      ~request:Riot_publish.{ selection = Package (package_name "missing"); skip_check = false }
       ~mode:DryRun
       ()
   with
-  | Error (Riot_publish.PackageNotFound { package }) when String.equal package "missing" -> Ok ()
+  | Error (Riot_publish.PackageNotFound { package })
+    when Riot_model.Package_name.equal package (package_name "missing") -> Ok ()
   | Ok _ -> Error "expected missing package selection to fail"
   | Error err -> Error ("unexpected publish error: " ^ Riot_publish.publish_error_message err)
 
@@ -124,7 +134,7 @@ let test_private_package_is_skipped = fun _ctx ->
       ~on_event:(fun event -> events := event_name event :: !events)
       ~deps:(make_deps ())
       ~workspace
-      ~request:Riot_publish.{ selection = Package "private-lib"; skip_check = false }
+      ~request:Riot_publish.{ selection = Package (package_name "private-lib"); skip_check = false }
       ~mode:DryRun
       ()
   with
@@ -171,10 +181,12 @@ let test_workspace_selection_orders_public_packages_only = fun _ctx ->
           | Riot_publish.Skipped { package; _ } -> Some package
           | _ -> None)
       in
-      if not (ordered_names = [ "public-a"; "public-b" ]) then
-        Error ("unexpected ordered package set: " ^ String.concat ", " ordered_names)
-      else if not (outcome_names = [ "public-b"; "public-a" ]) then
-        Error ("unexpected publish outcomes: " ^ String.concat ", " outcome_names)
+      if not (ordered_names = [ package_name "public-a"; package_name "public-b" ]) then
+        Error ("unexpected ordered package set: "
+        ^ String.concat ", " (List.map ordered_names ~fn:Riot_model.Package_name.to_string))
+      else if not (outcome_names = [ package_name "public-b"; package_name "public-a" ]) then
+        Error ("unexpected publish outcomes: "
+        ^ String.concat ", " (List.map outcome_names ~fn:Riot_model.Package_name.to_string))
       else
         Ok ()
 

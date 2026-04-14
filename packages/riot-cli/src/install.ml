@@ -1,4 +1,5 @@
 open Std
+open Std.Result.Syntax
 
 module Install_runtime = Riot_install
 let out = eprintln
@@ -17,11 +18,16 @@ let command =
 
 type target =
   | Local of {
-      package_name: string option;
+      package_name: Riot_model.Package_name.t option;
       binary_name: string;
       registry_fallback: Riot_deps.Registry_package_spec.t option;
     }
   | External of Install_runtime.external_spec * string
+
+let parse_package_name = fun package_name ->
+  Riot_model.Package_name.from_string package_name
+  |> Result.map_err ~fn:(fun error ->
+      Failure ("invalid package name '" ^ package_name ^ "': " ^ error))
 
 let display_path = fun ~workspace_root path ->
   match Path.strip_prefix path ~prefix:workspace_root with
@@ -57,14 +63,20 @@ let default_remote_binary_name = fun (source_spec: Riot_deps.Git_dependency.spec
 
 let parse_local_target = fun ?package_filter name ->
   match String.split name ~by:":" with
-  | [package_name;binary_name] -> (
-      match package_filter with
-      | Some expected_package when not (String.equal expected_package package_name) -> Error (Failure ("conflicting package filters: got --package "
-      ^ expected_package
-      ^ " and binary target "
-      ^ name))
-      | _ -> Ok (Local { package_name = Some package_name; binary_name; registry_fallback = None })
-    )
+  | [package_name;binary_name] ->
+      let* package_name = parse_package_name package_name in
+      let* () =
+        match package_filter with
+        | Some expected_package when not (Riot_model.Package_name.equal expected_package package_name) ->
+            Error
+              (Failure
+                 ( "conflicting package filters: got --package "
+                 ^ Riot_model.Package_name.to_string expected_package
+                 ^ " and binary target "
+                 ^ name ))
+        | _ -> Ok ()
+      in
+      Ok (Local { package_name = Some package_name; binary_name; registry_fallback = None })
   | _ ->
       Ok (
         Local {
@@ -141,7 +153,11 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
   let open ArgParser in
     let seen_registry_updates = Collections.HashSet.create () in
     let raw_target = get_one matches "name" in
-    let package_filter = get_one matches "package" in
+    let* package_filter =
+      match get_one matches "package" with
+      | None -> Ok None
+      | Some package_name -> parse_package_name package_name |> Result.map ~fn:Option.some
+    in
     let local_only = get_flag matches "local" in
     let update = get_flag matches "update" in
     let workspace_root_for_output =

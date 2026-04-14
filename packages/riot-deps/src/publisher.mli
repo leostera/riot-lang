@@ -50,12 +50,15 @@ val validate_runtime_dependencies: package:Riot_model.Package.t -> (unit, error)
 
 val validate_registry_dependencies:
   registry:Pkgs_ml.Registry.t ->
-  publishing_workspace_packages:string list ->
+  publishing_workspace_packages:Riot_model.Package_name.t list ->
   package:Riot_model.Package.t ->
   (unit, error) result
 
 val published_version_exists:
-  registry:Pkgs_ml.Registry.t -> package_name:string -> version:Std.Version.t -> (bool, error) result
+  registry:Pkgs_ml.Registry.t ->
+  package_name:Riot_model.Package_name.t ->
+  version:Std.Version.t ->
+  (bool, error) result
 
 val create_artifact:
   target_dir_root:Path.t ->
@@ -65,7 +68,7 @@ val create_artifact:
 
 val plan_publish:
   registry:Pkgs_ml.Registry.t ->
-  publishing_workspace_packages:string list ->
+  publishing_workspace_packages:Riot_model.Package_name.t list ->
   package:Riot_model.Package.t ->
   (publish_plan, error) result
 
@@ -74,7 +77,7 @@ val prepare_publish_artifact: target_dir_root:Path.t -> publish_plan -> (prepare
 val prepare_publish:
   registry:Pkgs_ml.Registry.t ->
   target_dir_root:Path.t ->
-  publishing_workspace_packages:string list ->
+  publishing_workspace_packages:Riot_model.Package_name.t list ->
   package:Riot_model.Package.t ->
   (prepared_publish, error) result
 
@@ -87,7 +90,7 @@ val publish_prepared:
 val publish:
   registry:Pkgs_ml.Registry.t ->
   target_dir_root:Path.t ->
-  publishing_workspace_packages:string list ->
+  publishing_workspace_packages:Riot_model.Package_name.t list ->
   package:Riot_model.Package.t ->
   api_token:string ->
   (Pkgs_ml.Registry.published_release, error) result

@@ -3,6 +3,7 @@ open Std
 open Std.Collections
 open Std.Data
 open Std.IO
+open Std.Result.Syntax
 
 (** Types *)
 type t = {
@@ -89,37 +90,40 @@ let normalize_source_locator = fun raw ->
 
 let github_locator_of_value = fun value -> "github.com/" ^ String.trim value
 
-let parse_dependency: string -> Toml.value -> (Package.dependency, string) result = fun name value ->
+let parse_dependency: string -> Toml.value -> (Package.dependency, string) result = fun raw_name value ->
+  let* name = Package_name.from_string raw_name in
+  let dependency_name = Package_name.to_string name in
   let make_dependency source: Package.dependency = { name; source } in
   match value with
   | Toml.Table attrs -> (
       let path =
         match Fields.get "path" attrs with
         | Some (Toml.String path_str) -> Ok (Some (Path.v path_str))
-        | Some _ -> Error ("dependency '" ^ name ^ "' has non-string path")
+        | Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string path")
         | None -> Ok None
       in
       let source_locator =
         match Fields.get "source" attrs, Fields.get "github" attrs with
-        | Some _, Some _ -> Error ("dependency '" ^ name ^ "' cannot specify both source and github")
+        | Some _, Some _ ->
+            Error ("dependency '" ^ dependency_name ^ "' cannot specify both source and github")
         | Some (Toml.String locator), None -> Ok (Some (normalize_source_locator locator))
-        | Some _, None -> Error ("dependency '" ^ name ^ "' has non-string source locator")
+        | Some _, None -> Error ("dependency '" ^ dependency_name ^ "' has non-string source locator")
         | None, Some (Toml.String github) -> Ok (Some (github_locator_of_value github))
-        | None, Some _ -> Error ("dependency '" ^ name ^ "' has non-string github shorthand")
+        | None, Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string github shorthand")
         | None, None -> Ok None
       in
       let ref_ =
         match Fields.get "ref" attrs with
         | Some (Toml.String ref_) -> Ok (Some (String.trim ref_))
-        | Some _ -> Error ("dependency '" ^ name ^ "' has non-string ref")
+        | Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string ref")
         | None -> Ok None
       in
       let version =
         match Fields.get "version" attrs with
         | Some (Toml.String requirement) ->
-            validate_requirement ~dependency_name:name requirement
+            validate_requirement ~dependency_name requirement
             |> Result.map ~fn:(fun version -> Some version)
-        | Some _ -> Error ("dependency '" ^ name ^ "' has non-string version requirement")
+        | Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string version requirement")
         | None -> Ok None
       in
       match path, source_locator, ref_, version with
@@ -128,10 +132,10 @@ let parse_dependency: string -> Toml.value -> (Package.dependency, string) resul
       | _, _, (Error _ as err), _ -> err
       | _, _, _, (Error _ as err) -> err
       | Ok path, Ok source_locator, Ok ref_, Ok version ->
-          validate_dependency_source ~dependency_name:name
+          validate_dependency_source ~dependency_name
             {
               workspace = false;
-              builtin = Package.is_builtin_dependency_name name;
+              builtin = Package.is_builtin_dependency_name dependency_name;
               path;
               source_locator;
               ref_;
@@ -140,13 +144,13 @@ let parse_dependency: string -> Toml.value -> (Package.dependency, string) resul
           |> Result.map ~fn:make_dependency
     )
   | Toml.String requirement -> (
-      match validate_requirement ~dependency_name:name requirement with
+      match validate_requirement ~dependency_name requirement with
       | Error _ as err -> err
       | Ok version ->
-          validate_dependency_source ~dependency_name:name
+          validate_dependency_source ~dependency_name
             {
               workspace = false;
-              builtin = Package.is_builtin_dependency_name name;
+              builtin = Package.is_builtin_dependency_name dependency_name;
               path = None;
               source_locator = None;
               ref_ = None;
@@ -155,7 +159,7 @@ let parse_dependency: string -> Toml.value -> (Package.dependency, string) resul
           |> Result.map ~fn:make_dependency
     )
   | _ ->
-      Error ("dependency '" ^ name ^ "' must be a string or table")
+      Error ("dependency '" ^ dependency_name ^ "' must be a string or table")
 
 let parse_dependencies: (string * Toml.value) list -> (Package.dependency list, string) result = fun items ->
   let rec loop acc entries =
@@ -401,6 +405,9 @@ let discover_fix_providers: t -> Fix_provider.t list = fun workspace ->
   List.map workspace.packages ~fn:(fun (pkg: Package_manifest.t) -> pkg.fix_providers) |> List.concat
 
 module Tests = struct
+  let package_name value =
+    Package_name.from_string value |> Result.expect ~msg:"expected valid package name"
+
   let test_parse_workspace_toml (): (unit, string) result = Ok () [@test]
 
   let test_parse_target_dir (): (unit, string) result =
@@ -502,7 +509,9 @@ rules = ["no-stdlib"]
     match discover_fix_providers workspace with
     | [ provider ] ->
         if
-          String.equal provider.package_name "std"
+          Package_name.equal
+            provider.package_name
+            (Package_name.from_string "std" |> Result.expect ~msg:"expected valid package name")
           && String.equal (Path.to_string provider.source_path) "/tmp/example/packages/std/fix/no_stdlib_provider.ml"
           && String.equal provider.name "std"
           && provider.rules = [ "std:no-stdlib" ]
@@ -532,11 +541,12 @@ fixme = { path = "packages/fixme" }
     in
     let manifest = of_toml toml |> Result.expect ~msg:"expected workspace manifest" in
     if
-      List.map manifest.dependencies ~fn:(fun (dep: Package.dependency) -> dep.Package.name) = [ "std" ]
+      List.map manifest.dependencies ~fn:(fun (dep: Package.dependency) -> dep.Package.name)
+      = [ package_name "std" ]
       && List.map manifest.dev_dependencies ~fn:(fun (dep: Package.dependency) -> dep.Package.name)
-      = [ "propane" ]
+      = [ package_name "propane" ]
       && List.map manifest.build_dependencies ~fn:(fun (dep: Package.dependency) -> dep.Package.name)
-      = [ "fixme" ]
+      = [ package_name "fixme" ]
     then
       Ok ()
     else

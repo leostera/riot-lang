@@ -1,12 +1,17 @@
 open Std
 module Test = Std.Test
 
+let package_name = fun name ->
+  Riot_model.Package_name.from_string name
+  |> Result.expect ~msg:("invalid package name: " ^ name)
+
 let make_test_build_ctx = fun () ->
   let session_id = Riot_model.Session_id.make () in
   Riot_model.Build_ctx.make ~session_id ~profile:Riot_model.Profile.debug ()
 
 let make_package = fun tmpdir name content ->
   let pkg_dir = Path.(tmpdir / Path.v name) in
+  let package_name = package_name name in
   let src_dir = Path.(pkg_dir / Path.v "src") in
   let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"Create src failed" in
   let ml_file = Path.(src_dir / Path.v "lib.ml") in
@@ -14,7 +19,7 @@ let make_package = fun tmpdir name content ->
   let riot_file = Path.(pkg_dir / Path.v "riot.toml") in
   let riot_content = "[package]\nname = \"" ^ name ^ "\"\nversion = \"0.0.1\"\n\n[lib]\npath = \"src/lib.ml\"\n" in
   let _ = Fs.write riot_content riot_file |> Result.expect ~msg:"Write riot.toml" in
-  Riot_model.Package.make ~name ~path:pkg_dir ~relative_path:(Path.v name) ~library:{
+  Riot_model.Package.make ~name:package_name ~path:pkg_dir ~relative_path:(Path.v name) ~library:{
     path = Path.v "src/lib.ml"
   }
     ~sources:{
@@ -62,7 +67,7 @@ let test_concurrent_builds_different_packages = fun _ctx ->
                 ~build_ctx:(make_test_build_ctx ())
                 ~package_graph
                 ~package_key:(Riot_planner.Package_graph.package_key
-                  ~package_name:pkg1.name
+                  ~package_name:(Riot_model.Package_name.to_string pkg1.name)
                   Riot_planner.Package_graph.Runtime)
                 ~package:pkg1 in
               let status =
@@ -93,7 +98,7 @@ let test_concurrent_builds_different_packages = fun _ctx ->
                 ~build_ctx:(make_test_build_ctx ())
                 ~package_graph
                 ~package_key:(Riot_planner.Package_graph.package_key
-                  ~package_name:pkg2.name
+                  ~package_name:(Riot_model.Package_name.to_string pkg2.name)
                   Riot_planner.Package_graph.Runtime)
                 ~package:pkg2 in
               let status =
@@ -163,7 +168,7 @@ let test_concurrent_builds_same_package = fun _ctx ->
                 ~build_ctx:(make_test_build_ctx ())
                 ~package_graph
                 ~package_key:(Riot_planner.Package_graph.package_key
-                  ~package_name:package.name
+                  ~package_name:(Riot_model.Package_name.to_string package.name)
                   Riot_planner.Package_graph.Runtime)
                 ~package in
               let status =
@@ -194,7 +199,7 @@ let test_concurrent_builds_same_package = fun _ctx ->
                 ~build_ctx:(make_test_build_ctx ())
                 ~package_graph
                 ~package_key:(Riot_planner.Package_graph.package_key
-                  ~package_name:package.name
+                  ~package_name:(Riot_model.Package_name.to_string package.name)
                   Riot_planner.Package_graph.Runtime)
                 ~package in
               let status =
@@ -256,7 +261,7 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
           ~build_ctx:(make_test_build_ctx ())
           ~package_graph
           ~package_key:(Riot_planner.Package_graph.package_key
-            ~package_name:package.name
+            ~package_name:(Riot_model.Package_name.to_string package.name)
             Riot_planner.Package_graph.Runtime)
           ~package in
         match first_build.status with
@@ -272,7 +277,7 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
                     ~build_ctx:(make_test_build_ctx ())
                     ~package_graph
                     ~package_key:(Riot_planner.Package_graph.package_key
-                      ~package_name:package.name
+                      ~package_name:(Riot_model.Package_name.to_string package.name)
                       Riot_planner.Package_graph.Runtime)
                     ~package in
                   let cached =
@@ -310,7 +315,7 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
                     ~build_ctx:(make_test_build_ctx ())
                     ~package_graph
                     ~package_key:(Riot_planner.Package_graph.package_key
-                      ~package_name:package.name
+                      ~package_name:(Riot_model.Package_name.to_string package.name)
                       Riot_planner.Package_graph.Runtime)
                     ~package in
                   let cached =

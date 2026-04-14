@@ -1,6 +1,10 @@
 open Std
 module Test = Std.Test
 
+let package_name = fun name ->
+  Riot_model.Package_name.from_string name
+  |> Result.expect ~msg:("invalid package name: " ^ name)
+
 let write_workspace_manifest = fun ~root ~members ->
   let members =
     members
@@ -13,6 +17,7 @@ let write_workspace_manifest = fun ~root ~members ->
 
 let make_package = fun ~root ~name ~source ->
   let pkg_dir = Path.(root / Path.v name) in
+  let package_name = package_name name in
   let src_dir = Path.(pkg_dir / Path.v "src") in
   Fs.create_dir_all src_dir |> Result.expect ~msg:"Create src failed";
   Fs.write source Path.(src_dir / Path.v "lib.ml")
@@ -24,7 +29,7 @@ let make_package = fun ~root ~name ~source ->
     Path.(pkg_dir / Path.v "riot.toml")
   |> Result.expect ~msg:"Write riot.toml failed";
   Riot_model.Package.make
-    ~name
+    ~name:package_name
     ~path:pkg_dir
     ~relative_path:(Path.v name)
     ~library:{ path = Path.v "src/lib.ml" }
@@ -53,7 +58,7 @@ let make_prepared_workspace = fun workspace ->
 let make_request = fun ~workspace ?(profile = Riot_model.Profile.debug) () ->
   Riot_build.Request.make
     ~workspace
-    ~packages:[ "demo" ]
+    ~packages:[ package_name "demo" ]
     ~targets:Riot_model.Target.Host
     ~scope:Riot_build.Request.Runtime
     ~profile

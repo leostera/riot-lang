@@ -88,7 +88,14 @@ let cleanup = fun sandbox ->
   ()
 
 let with_sandbox = fun ~workspace ?(profile = "debug") ?(target = Riot_model.Riot_dirs.host_target ()) ~package ~inputs ~depset ~store ~expected_outputs f ->
-  let sandbox = create ~workspace ~profile ~target () ~package_name:package.Package.name in
+  let sandbox =
+    create
+      ~workspace
+      ~profile
+      ~target
+      ()
+      ~package_name:(Package_name.to_string package.Package.name)
+  in
   let _ = expected_outputs in
   prepare ~sandbox ~package ~inputs ~depset ~store;
   let result = f sandbox in

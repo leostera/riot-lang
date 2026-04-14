@@ -1,4 +1,5 @@
 open Std
+open Std.Result.Syntax
 open Riot_model
 open Riot_build
 open Riot_run
@@ -38,30 +39,42 @@ let trailing_args = fun matches ->
 let build_scope_for_binary = Run_runtime.build_scope_for_binary
 
 type target =
-  | Local of { package_name: string option; binary_name: string }
+  | Local of { package_name: Riot_model.Package_name.t option; binary_name: string }
   | Remote_source of { source_spec: string; binary_name: string }
 
 type implicit_local_target = {
-  package_name: string;
+  package_name: Riot_model.Package_name.t;
   binary_name: string;
 }
 
 let no_runnable_binaries_message = fun ?package_name () ->
   let hint = "create one with `riot new --bin ./packages/my-binary`" in
   match package_name with
-  | Some package_name -> "package '" ^ package_name ^ "' has no runnable binaries; " ^ hint
+  | Some package_name ->
+      "package '" ^ Riot_model.Package_name.to_string package_name ^ "' has no runnable binaries; " ^ hint
   | None -> "no runnable binaries found; pass a binary name or " ^ hint
+
+let parse_package_name = fun package_name ->
+  Riot_model.Package_name.from_string package_name
+  |> Result.map_err ~fn:(fun error ->
+      Failure ("invalid package name '" ^ package_name ^ "': " ^ error))
 
 let parse_local_target = fun ?package_filter name ->
   match String.split name ~by:":" with
-  | [package_name;binary_name] -> (
-      match package_filter with
-      | Some expected_package when not (String.equal expected_package package_name) -> Error (Failure ("conflicting package filters: got --package "
-      ^ expected_package
-      ^ " and binary target "
-      ^ name))
-      | _ -> Ok (Local { package_name = Some package_name; binary_name })
-    )
+  | [package_name;binary_name] ->
+      let* package_name = parse_package_name package_name in
+      let* () =
+        match package_filter with
+        | Some expected_package when not (Riot_model.Package_name.equal expected_package package_name) ->
+            Error
+              (Failure
+                 ( "conflicting package filters: got --package "
+                 ^ Riot_model.Package_name.to_string expected_package
+                 ^ " and binary target "
+                 ^ name ))
+        | _ -> Ok ()
+      in
+      Ok (Local { package_name = Some package_name; binary_name })
   | _ -> Ok (Local { package_name = package_filter; binary_name = name })
 
 let split_remote_binary = fun raw ->
@@ -96,7 +109,7 @@ let parse_target = fun ?package_filter name ->
 let implicit_local_targets = fun ?package_filter (workspace: Riot_model.Workspace.t) ->
   let package_matches_filter (pkg: Riot_model.Package.t) =
     match package_filter with
-    | Some expected_package -> String.equal expected_package pkg.name
+    | Some expected_package -> Riot_model.Package_name.equal expected_package pkg.name
     | None -> true
   in
   Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Run workspace
@@ -104,7 +117,10 @@ let implicit_local_targets = fun ?package_filter (workspace: Riot_model.Workspac
   |> List.filter ~fn:package_matches_filter
   |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
       Riot_model.Package.binaries_for_scope Riot_model.Package.Normal pkg
-      |> List.map ~fn:(fun (bin: Riot_model.Package.binary) -> { package_name = pkg.name; binary_name = bin.name }))
+      |> List.map ~fn:(fun (bin: Riot_model.Package.binary) -> {
+        package_name = pkg.name;
+        binary_name = bin.name
+      }))
 
 let resolve_implicit_local_target = fun ?package_filter (workspace: Riot_model.Workspace.t) ->
   match implicit_local_targets ?package_filter workspace with
@@ -117,7 +133,8 @@ let resolve_implicit_local_target = fun ?package_filter (workspace: Riot_model.W
     )
   | targets ->
       let rendered = targets
-      |> List.map ~fn:(fun { package_name; binary_name } -> package_name ^ ":" ^ binary_name)
+      |> List.map ~fn:(fun { package_name; binary_name } ->
+          Riot_model.Package_name.to_string package_name ^ ":" ^ binary_name)
       |> String.concat ", " in
       Error ("multiple runnable binaries found; pass a binary name or --package (" ^ rendered ^ ")")
 
@@ -137,7 +154,7 @@ let run_error_to_json = fun (err: Run_runtime.run_error) ->
     ]
     | Run_runtime.BinaryNotFoundInPackage { package_name; binary_name } -> [
       ("kind", Data.Json.String "binary_not_found_in_package");
-      ("package_name", Data.Json.String package_name);
+      ("package_name", Data.Json.String (Riot_model.Package_name.to_string package_name));
       ("binary_name", Data.Json.String binary_name);
     ]
     | Run_runtime.BuildFailed build_error -> [
@@ -146,7 +163,7 @@ let run_error_to_json = fun (err: Run_runtime.run_error) ->
     ]
     | Run_runtime.ArtifactNotFound { package_name; binary_name; reason } -> [
       ("kind", Data.Json.String "artifact_not_found");
-      ("package_name", Data.Json.String package_name);
+      ("package_name", Data.Json.String (Riot_model.Package_name.to_string package_name));
       ("binary_name", Data.Json.String binary_name);
       ("reason", Data.Json.String reason);
     ]
@@ -175,7 +192,7 @@ let write_run_event = fun ~mode (event: Run_runtime.run_event) ->
       match event with
       | Run_runtime.Build _ -> ()
       | Run_runtime.RunningBinary { package; binary; _ } -> println
-        ("    \027[1;32mBuilding\027[0m " ^ package ^ ":" ^ binary)
+        ("    \027[1;32mBuilding\027[0m " ^ Riot_model.Package_name.to_string package ^ ":" ^ binary)
     )
 
 let write_run_error = fun ~mode (err: Run_runtime.run_error) ->
@@ -209,7 +226,7 @@ let write_binary_list = fun ~(workspace:Riot_model.Workspace.t) binaries ->
   binaries
   |> List.for_each ~fn:(fun (binary: Run_runtime.runnable_binary) ->
       println
-        (binary.package_name
+        (Riot_model.Package_name.to_string binary.package_name
         ^ ":"
         ^ binary.binary_name
         ^ " ("
@@ -226,10 +243,12 @@ let write_binary_list_json = fun ~(workspace:Riot_model.Workspace.t) binaries ->
   in
   let binary_json (binary: Run_runtime.runnable_binary) = Data.Json.Object [
     ("kind", Data.Json.String (binary_kind binary));
-    ("package", Data.Json.String binary.package_name);
+    ("package", Data.Json.String (Riot_model.Package_name.to_string binary.package_name));
     ("binary", Data.Json.String binary.binary_name);
     ("path", Data.Json.String (binary_source_label ~workspace binary));
-    ("selector", Data.Json.String (binary.package_name ^ ":" ^ binary.binary_name));
+    ( "selector",
+      Data.Json.String
+        (Riot_model.Package_name.to_string binary.package_name ^ ":" ^ binary.binary_name) );
   ] in
   write_json_event
     (Data.Json.Object [
@@ -243,7 +262,11 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
   let _verbose = ArgParser.get_count matches "verbose" in
   let list_mode = ArgParser.get_flag matches "list" in
   let json_mode = ArgParser.get_flag matches "json" in
-  let pkg_filter = ArgParser.get_one matches "package" in
+  let* pkg_filter =
+    match ArgParser.get_one matches "package" with
+    | None -> Ok None
+    | Some package_name -> parse_package_name package_name |> Result.map ~fn:Option.some
+  in
   let update = ArgParser.get_flag matches "update" in
   let profile = profile_of_matches matches in
   let output_mode =

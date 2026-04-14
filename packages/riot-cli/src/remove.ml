@@ -1,10 +1,13 @@
 open Std
 open Std.Collections
+open Std.Result.Syntax
+open Riot_model
 
 type error =
   | MissingDependency
   | ConflictingTarget
   | ConflictingScope
+  | InvalidPackageName of string
   | CurrentDirUnavailable of string
   | RemoveFailed of Riot_deps.package_error
 
@@ -30,6 +33,7 @@ let message = function
   | MissingDependency -> "missing dependency name"
   | ConflictingTarget -> "cannot combine --workspace with --package"
   | ConflictingScope -> "cannot combine --build with --dev"
+  | InvalidPackageName error -> error
   | CurrentDirUnavailable error -> "failed to determine current directory: " ^ error
   | RemoveFailed error -> Riot_deps.package_error_message error
 
@@ -50,7 +54,10 @@ let selection_of_matches = fun matches ->
   let workspace = ArgParser.get_flag matches "workspace" in
   match package, workspace with
   | Some _, true -> Error ConflictingTarget
-  | Some package, false -> Ok (Riot_deps.Package package)
+  | Some package, false ->
+      let* package_name = Package_name.from_string package
+      |> Result.map_err ~fn:(fun error -> InvalidPackageName error) in
+      Ok (Riot_deps.Package package_name)
   | None, true -> Ok Riot_deps.Workspace
   | None, false -> Ok Riot_deps.Current
 
@@ -76,7 +83,9 @@ let run = fun ~workspace matches ->
   in
   let dependency =
     match ArgParser.get_one matches "dependency" with
-    | Some dependency -> Ok dependency
+    | Some dependency ->
+        Package_name.from_string dependency
+        |> Result.map_err ~fn:(fun error -> InvalidPackageName error)
     | None -> Error MissingDependency
   in
   match dependency, selection_of_matches matches, scope_of_matches matches, Env.current_dir () with

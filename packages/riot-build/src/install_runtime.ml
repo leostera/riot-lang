@@ -1,8 +1,9 @@
 open Std
+open Std.Result.Syntax
 
 type install_request = {
   workspace: Riot_model.Workspace.t;
-  package_name: string option;
+  package_name: Riot_model.Package_name.t option;
   binary_name: string;
   local_only: bool;
   promote_to_workspace_root: bool;
@@ -23,20 +24,22 @@ type registry_install_request = {
 
 type install_event =
   | Build of Event.t
-  | InstallingBinary of { package: string; binary: string }
+  | InstallingBinary of { package: Riot_model.Package_name.t; binary: string }
   | PromotedBinary of { binary: string; destination: Path.t; global: bool }
   | InstalledBinary of { binary: string; duration_ms: int; global_destination: Path.t option }
 
 type install_error =
   | BinaryNotFound of { binary_name: string }
-  | BinaryNotFoundInPackage of { package_name: string; binary_name: string }
+  | BinaryNotFoundInPackage of { package_name: Riot_model.Package_name.t; binary_name: string }
   | BuildFailed of Build_core.error
-  | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
+  | ArtifactNotFound of {
+      package_name: Riot_model.Package_name.t;
+      binary_name: string;
+      reason: string
+    }
   | PromotionFailed of { binary_name: string; destination: Path.t; global: bool; reason: string }
   | ExternalTargetLoadFailed of { target: string; reason: string }
   | ClientError of Client.error
-
-let ( let* ) value fn = Result.and_then value ~fn
 
 let no_event: install_event -> unit = fun _ -> ()
 
@@ -48,13 +51,13 @@ let install_error_message = function
   | BinaryNotFoundInPackage { package_name; binary_name } -> "binary '"
   ^ binary_name
   ^ "' not found in package '"
-  ^ package_name
+  ^ Riot_model.Package_name.to_string package_name
   ^ "'"
   | BuildFailed err -> Build_core.error_message err
   | ArtifactNotFound { package_name; binary_name; reason } -> "binary '"
   ^ binary_name
   ^ "' was not produced by package '"
-  ^ package_name
+  ^ Riot_model.Package_name.to_string package_name
   ^ "': "
   ^ reason
   | PromotionFailed { binary_name; destination; reason; _ } -> "failed to promote "
@@ -78,7 +81,7 @@ let install_event_to_json = function
   | Build event -> build_event_to_json event
   | InstallingBinary { package; binary } -> Some (Data.Json.Object [
     ("type", Data.Json.String "InstallingBinary");
-    ("package", Data.Json.String package);
+    ("package", Data.Json.String (Riot_model.Package_name.to_string package));
     ("binary", Data.Json.String binary);
   ])
   | PromotedBinary { binary; destination; global } -> Some (Data.Json.Object [
@@ -206,7 +209,9 @@ let install = fun ?(on_event = no_event) (request: install_request) ->
             Error (BinaryNotFound { binary_name = request.binary_name })
         | Ok (Some (package_name, _binary)) -> (
             match request.package_name with
-            | Some expected_package when not (String.equal expected_package package_name) -> Error (BinaryNotFoundInPackage {
+            | Some expected_package
+              when not (Riot_model.Package_name.equal expected_package package_name) ->
+                Error (BinaryNotFoundInPackage {
               package_name = expected_package;
               binary_name = request.binary_name
             })

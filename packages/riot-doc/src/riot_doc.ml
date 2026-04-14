@@ -1,7 +1,6 @@
 open Std
 open Riot_model
-
-let ( let* ) value fn = Result.and_then value ~fn
+open Std.Result.Syntax
 
 let generator_signature = "riot-doc:v23"
 
@@ -16,7 +15,7 @@ type request = {
 }
 
 type generation = {
-  package: string;
+  package: Package_name.t;
   version: string;
   output_dir: Path.t;
   cache_hit: bool;
@@ -24,9 +23,9 @@ type generation = {
 }
 
 type event =
-  | PackageGenerationStarted of { package: string; version: string; output_dir: Path.t }
+  | PackageGenerationStarted of { package: Package_name.t; version: string; output_dir: Path.t }
   | PackageGenerationFailed of {
-      package: string;
+      package: Package_name.t;
       version: string;
       output_dir: Path.t;
       error: string
@@ -35,7 +34,7 @@ type event =
 
 let generation_to_json = fun (summary: generation) ->
   Data.Json.Object [
-    ("package", Data.Json.String summary.package);
+    ("package", Data.Json.String (Package_name.to_string summary.package));
     ("version", Data.Json.String summary.version);
     ("output_dir", Data.Json.String (Path.to_string summary.output_dir));
     ("cache_hit", Data.Json.Bool summary.cache_hit);
@@ -45,13 +44,13 @@ let generation_to_json = fun (summary: generation) ->
 let event_to_json = function
   | PackageGenerationStarted { package; version; output_dir } -> Some (Data.Json.Object [
     ("type", Data.Json.String "doc.package_generation_started");
-    ("package", Data.Json.String package);
+    ("package", Data.Json.String (Package_name.to_string package));
     ("version", Data.Json.String version);
     ("output_dir", Data.Json.String (Path.to_string output_dir));
   ])
   | PackageGenerationFailed { package; version; output_dir; error } -> Some (Data.Json.Object [
     ("type", Data.Json.String "doc.package_generation_failed");
-    ("package", Data.Json.String package);
+    ("package", Data.Json.String (Package_name.to_string package));
     ("version", Data.Json.String version);
     ("output_dir", Data.Json.String (Path.to_string output_dir));
     ("error", Data.Json.String error);
@@ -71,7 +70,10 @@ let output_version = fun ~release (package: Riot_model.Package.t) ->
   if release then
     match package.publish.version with
     | Some version -> Ok (Version.to_string version)
-    | None -> Error ("--release requires [package.publish.version] in " ^ package.name)
+    | None ->
+        Error
+          ("--release requires [package.publish.version] in "
+          ^ Package_name.to_string package.name)
   else
     Ok "dev"
 
@@ -104,7 +106,7 @@ let find_lock_package = fun ~(package:Riot_model.Package.t) (lockfile: Riot_mode
   let matching_name =
     lockfile.packages
     |> List.filter ~fn:(fun (lock_package: Riot_model.Lockfile.package) ->
-      String.equal lock_package.id.name package.name)
+      Package_name.equal lock_package.id.name package.name)
   in
   match release_version with
   | Some version ->
@@ -131,11 +133,16 @@ let locked_dependency_versions = fun ~(workspace:Riot_model.Workspace.t) ~(packa
   else
     let workspace_versions = workspace_release_versions workspace in
     match lockfile_opt with
-    | None -> Error ("--release requires a lockfile to resolve documentation dependency versions for "
-    ^ package.name)
+    | None ->
+        Error
+          ("--release requires a lockfile to resolve documentation dependency versions for "
+          ^ Package_name.to_string package.name)
     | Some lockfile -> (
         match find_lock_package ~package lockfile with
-        | None -> Error ("--release could not find a lockfile entry for package " ^ package.name)
+        | None ->
+            Error
+              ("--release could not find a lockfile entry for package "
+              ^ Package_name.to_string package.name)
         | Some lock_package ->
             let resolved =
               lock_package.dependencies
@@ -143,53 +150,64 @@ let locked_dependency_versions = fun ~(workspace:Riot_model.Workspace.t) ~(packa
                   match dependency.package.version with
                   | Some version -> Some (dependency.name, version)
                   | None ->
-                      List.find workspace_versions ~fn:(fun (name, _) -> String.equal name dependency.name)
+                      List.find
+                        workspace_versions
+                        ~fn:(fun (name, _) -> Package_name.equal name dependency.name)
                       |> Option.map ~fn:(fun (_, version) -> (dependency.name, version)))
             in
             let resolved =
               resolved
               |> List.unique ~compare:(fun (left_name, _) (right_name, _) ->
-                String.compare left_name right_name)
+                Package_name.compare left_name right_name)
             in
             let missing =
               package.dependencies
               |> List.filter ~fn:(fun (dependency: Riot_model.Package.dependency) ->
                 not (Package.is_builtin_dependency dependency))
               |> List.filter_map ~fn:(fun (dependency: Riot_model.Package.dependency) ->
-                match List.find resolved ~fn:(fun (name, _) -> String.equal name dependency.name) with
+                match List.find resolved ~fn:(fun (name, _) -> Package_name.equal name dependency.name) with
                 | Some _ -> None
                 | None -> Some dependency.name)
             in
             match missing with
             | [] -> Ok resolved
-            | names -> Error ("--release could not resolve locked versions for dependencies of "
-            ^ package.name
-            ^ ": "
-            ^ String.concat ", " names)
+            | names ->
+                Error
+                  ("--release could not resolve locked versions for dependencies of "
+                  ^ Package_name.to_string package.name
+                  ^ ": "
+                  ^ String.concat ", " (List.map names ~fn:Package_name.to_string))
       )
 
 let dependency_link_for = fun ~release dependency_map dependency ->
   if release then
-    match List.find dependency_map ~fn:(fun (name, _) -> String.equal name dependency) with
+    match List.find dependency_map ~fn:(fun (name, _) -> Package_name.equal name dependency) with
     | Some (_, version) -> Ok {
-      Doctree.name = dependency;
+      Doctree.name = Package_name.to_string dependency;
       version = Some version;
-      url = "../../" ^ dependency ^ "/" ^ version ^ "/index.html"
+      url = "../../" ^ Package_name.to_string dependency ^ "/" ^ version ^ "/index.html"
     }
-    | None -> Error ("--release could not resolve a versioned documentation link for dependency " ^ dependency)
+    | None ->
+        Error
+          ("--release could not resolve a versioned documentation link for dependency "
+          ^ Package_name.to_string dependency)
   else
-    Ok { Doctree.name = dependency; version = None; url = "../../" ^ dependency ^ "/dev/index.html" }
+    Ok {
+      Doctree.name = Package_name.to_string dependency;
+      version = None;
+      url = "../../" ^ Package_name.to_string dependency ^ "/dev/index.html";
+    }
 
 let documentation_dependencies = fun (package: Riot_model.Package.t) ->
   package.dependencies
   |> List.filter ~fn:(fun (dependency: Riot_model.Package.dependency) ->
     not (Package.is_builtin_dependency dependency))
 
-let map_dependencies = fun ~release ~(dependency_map:(string * string) list) (
+let map_dependencies = fun ~release ~(dependency_map:(Package_name.t * string) list) (
   package: Riot_model.Package.t
 ) ->
   documentation_dependencies package |> List.unique ~compare:(fun (left: Riot_model.Package.dependency) (right: Riot_model.Package.dependency) ->
-      String.compare left.name right.name) |> List.fold_left
+      Package_name.compare left.name right.name) |> List.fold_left
     ~acc:(Ok []) ~fn:(fun acc (dependency: Riot_model.Package.dependency) ->
       let* links = acc in
       let* link = dependency_link_for ~release dependency_map dependency.name in
@@ -199,9 +217,9 @@ let map_dependencies = fun ~release ~(dependency_map:(string * string) list) (
 let dependency_signature = fun dependency_map ->
   let state = Crypto.Sha256.create () in
   List.sort dependency_map ~compare:(fun (left_name, _) (right_name, _) ->
-    String.compare left_name right_name)
+    Package_name.compare left_name right_name)
   |> List.for_each ~fn:(fun (name, version) ->
-    Crypto.Sha256.write state name;
+    Crypto.Sha256.write state (Package_name.to_string name);
     Crypto.Sha256.write state version);
   Crypto.Digest.hex (Crypto.Sha256.finish state)
 
@@ -233,7 +251,7 @@ let cache_key = fun ~request ~(package:Riot_model.Package.t) ~package_version ~s
   Crypto.Sha256.write state generator_signature;
   Crypto.Sha256.write state (resolve_profile request.release);
   Crypto.Sha256.write state (Path.to_string request.workspace.root);
-  Crypto.Sha256.write state package.name;
+  Crypto.Sha256.write state (Package_name.to_string package.name);
   Crypto.Sha256.write state package_version;
   Crypto.Sha256.write state source_signature;
   Crypto.Sha256.write state dependency_signature;
@@ -277,15 +295,28 @@ let selected_packages = fun (request: request) ->
   in
   match request.package_name, request.all with
   | Some name, _ -> (
-      match List.find workspace_members ~fn:(fun (pkg: Riot_model.Package.t) ->
-        pkg.name = name && Package.is_workspace_member pkg) with
-      | Some pkg -> Ok [ pkg ]
-      | None -> Error ("package not found: "
-      ^ name
-      ^ ". available packages: "
-      ^ (workspace_members
-      |> List.map ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.name)
-      |> String.concat ", "))
+      match Package_name.from_string name with
+      | Error _ ->
+          Error
+            ("package not found: "
+            ^ name
+            ^ ". available packages: "
+            ^ (workspace_members
+              |> List.map ~fn:(fun (pkg: Riot_model.Package.t) -> Package_name.to_string pkg.name)
+              |> String.concat ", "))
+      | Ok package_name -> (
+          match List.find workspace_members ~fn:(fun (pkg: Riot_model.Package.t) ->
+            Package_name.equal pkg.name package_name && Package.is_workspace_member pkg) with
+          | Some pkg -> Ok [ pkg ]
+          | None ->
+              Error
+                ("package not found: "
+                ^ name
+                ^ ". available packages: "
+                ^ (workspace_members
+                  |> List.map ~fn:(fun (pkg: Riot_model.Package.t) -> Package_name.to_string pkg.name)
+                  |> String.concat ", "))
+        )
     )
   | None, true ->
       Ok workspace_members
@@ -348,7 +379,7 @@ let run_for_package = fun ~on_event ~store ~cache_allowed ~request ~(package:Rio
   let* version = output_version ~release:request.release package in
   let output_dir = package_output_dir
     ~workspace:request.workspace
-    ~package_name:package.name
+    ~package_name:(Package_name.to_string package.name)
     ~version
     ~release:request.release
     ~output_root_opt:request.output_root in
@@ -360,7 +391,7 @@ let run_for_package = fun ~on_event ~store ~cache_allowed ~request ~(package:Rio
       ~release:request.release
       package in
     if sources = [] then
-      Error ("no interface files found for package " ^ package.name)
+      Error ("no interface files found for package " ^ Package_name.to_string package.name)
     else
       let* dependency_map =
         if request.release then
@@ -372,7 +403,11 @@ let run_for_package = fun ~on_event ~store ~cache_allowed ~request ~(package:Rio
       let dependency_signature = dependency_signature dependency_map in
       let cache_key = cache_key ~request ~package ~package_version:version ~source_signature ~dependency_signature in
       let* dependencies = map_dependencies ~release:request.release ~dependency_map package in
-      let* package_doc = package_doc_of_sources ~package:package.name ~version ~dependencies sources in
+      let* package_doc = package_doc_of_sources
+        ~package:(Package_name.to_string package.name)
+        ~version
+        ~dependencies
+        sources in
       let cache_hit_ref = ref false in
       let* () =
         if cache_allowed && not request.force then
@@ -409,7 +444,7 @@ let run_for_package = fun ~on_event ~store ~cache_allowed ~request ~(package:Rio
             @ page_paths
             @ [ Path.(output_dir / Path.v "assets" / Path.v "doc.css"); ] in
             Riot_store.Store.save
-              ~package:package.name
+              ~package:(Package_name.to_string package.name)
               ~hash:(Crypto.hash_string cache_key)
               store
               ~sandbox_dir:output_dir

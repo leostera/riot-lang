@@ -1,6 +1,10 @@
 open Std
 module Test = Std.Test
 
+let package_name = fun name ->
+  Riot_model.Package_name.from_string name
+  |> Result.expect ~msg:("invalid package name: " ^ name)
+
 let parse_publish = fun args ->
   match ArgParser.get_matches Riot_cli.Publish.command args with
   | Ok matches -> Ok matches
@@ -41,7 +45,7 @@ let test_publish_accepts_skip_check_flag = fun _ctx ->
         Error "expected --skip-check flag to be parsed"
 
 let test_publish_conflicting_selection_fails = fun _ctx ->
-  match Riot_cli.Publish.resolve_request ~package_name:(Some "demo") ~workspace_mode:true with
+  match Riot_cli.Publish.resolve_request ~package_name:(Some (package_name "demo")) ~workspace_mode:true with
   | Error Riot_cli.Publish.ConflictingSelection -> Ok ()
   | Ok _ -> Error "expected conflicting publish selection to fail"
   | Error err -> Error ("unexpected publish selection error: " ^ Riot_cli.Publish.message err)

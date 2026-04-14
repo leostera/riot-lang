@@ -1,6 +1,10 @@
 open Std
 module Test = Std.Test
 
+let package_name = fun name ->
+  Riot_model.Package_name.from_string name
+  |> Result.expect ~msg:("Expected valid package name: " ^ name)
+
 let with_tempdir = fun prefix fn ->
   match Fs.with_tempdir ~prefix fn with
   | Ok result -> result
@@ -47,7 +51,7 @@ path = "examples/custom.ml"
 |}
       in
       if
-        manifest.name = "demo"
+        Riot_model.Package_name.equal manifest.name (package_name "demo")
         && manifest.declared_binaries = [ Riot_model.Package.{ name = "custom"; path = Path.v "examples/custom.ml" } ]
       then
         Ok ()

@@ -7,7 +7,7 @@ type package_status =
   | Failed of string
 
 type package_output = {
-  package_name: string;
+  package_name: Riot_model.Package_name.t;
   status: package_status;
 }
 
@@ -35,7 +35,7 @@ let of_build_results = fun results ->
 let packages = fun t -> t.packages
 
 let find_package = fun t name ->
-  List.find t.packages ~fn:(fun pkg -> String.equal pkg.package_name name)
+  List.find t.packages ~fn:(fun pkg -> Riot_model.Package_name.equal pkg.package_name name)
 
 let package_name = fun t -> t.package_name
 

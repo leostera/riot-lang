@@ -5,8 +5,8 @@ open Riot_model
     packages for execution *)
 type target =
   | All
-  | Package of string
-  | Packages of string list
+  | Package of Package_name.t
+  | Packages of Package_name.t list
 
 type planning_breakdown = {
   manifest_filter_duration: Time.Duration.t;
@@ -36,8 +36,8 @@ type package_plan = {
     Returns the ordered list of packages to build. Does NOT plan module/action
     graphs - that's done lazily per-package by the executor. *)
 type plan_error =
-  | PackageNotFound of { name: string; available: string list }
-  | PackagesNotFound of { names: string list; available: string list }
+  | PackageNotFound of { name: Package_name.t; available: Package_name.t list }
+  | PackagesNotFound of { names: Package_name.t list; available: Package_name.t list }
   | CycleDetected of { cycle: string list }
   | MissingDependencies of { missing: Package_graph.missing_dependency list }
   | PackageLoadFailed of { errors: Workspace_manager.load_error list }

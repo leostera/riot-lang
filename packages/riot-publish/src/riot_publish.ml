@@ -1,9 +1,10 @@
 open Std
 open Riot_model
+open Std.Result.Syntax
 
 type publish_selection =
   | Workspace
-  | Package of string
+  | Package of Package_name.t
 
 type publish_request = {
   selection: publish_selection;
@@ -26,38 +27,36 @@ type publish_event =
   | Fmt of Krasny.Report.event
   | Fix of Riot_fix.Event.t
   | Build of Riot_build.Event.t
-  | CheckStarted of { package: string; version: Std.Version.t option; stage: publish_check_stage }
-  | CheckFinished of { package: string; version: Std.Version.t option; stage: publish_check_stage }
-  | Packing of { package: string; version: Std.Version.t; artifact_path: Path.t }
-  | SkippedNotPublic of { package: string; version: Std.Version.t option }
-  | SkippedAlreadyPublished of { package: string; version: Std.Version.t }
+  | CheckStarted of { package: Package_name.t; version: Std.Version.t option; stage: publish_check_stage }
+  | CheckFinished of { package: Package_name.t; version: Std.Version.t option; stage: publish_check_stage }
+  | Packing of { package: Package_name.t; version: Std.Version.t; artifact_path: Path.t }
+  | SkippedNotPublic of { package: Package_name.t; version: Std.Version.t option }
+  | SkippedAlreadyPublished of { package: Package_name.t; version: Std.Version.t }
   | DryRunPlanned of Riot_deps.Publisher.prepared_publish
   | PackagePublished of Pkgs_ml.Registry.published_release
 
 type publish_outcome =
-  | SkippedNotPublicPackage of { package: string; version: Std.Version.t option }
-  | Skipped of { package: string; version: Std.Version.t }
+  | SkippedNotPublicPackage of { package: Package_name.t; version: Std.Version.t option }
+  | Skipped of { package: Package_name.t; version: Std.Version.t }
   | Planned of Riot_deps.Publisher.prepared_publish
   | Published of Pkgs_ml.Registry.published_release
 
 type publish_error =
-  | PackageNotFound of { package: string }
+  | PackageNotFound of { package: Package_name.t }
   | NoWorkspacePackages
   | PublishConfigLoadFailed of Riot_model.User_config.error
   | MissingApiToken of { registry_name: string; path: Path.t }
   | RegistryInitializationFailed of { registry_name: string; error: string }
   | WorkspaceScanFailed of { workspace_root: Path.t; error: string }
-  | FmtCheckFailed of { package: string; error: string }
-  | FixCheckFailed of { package: string; error: string }
-  | BuildCheckFailed of { package: string; error: string }
+  | FmtCheckFailed of { package: Package_name.t; error: string }
+  | FixCheckFailed of { package: Package_name.t; error: string }
+  | BuildCheckFailed of { package: Package_name.t; error: string }
   | PublishPlanFailed of Riot_deps.Publisher.error
-  | PublishFailed of { package: string; error: Riot_deps.Publisher.error }
+  | PublishFailed of { package: Package_name.t; error: Riot_deps.Publisher.error }
 
 let default_registry_name = "pkgs.ml"
 
 let no_event: publish_event -> unit = fun _ -> ()
-
-let ( let* ) value fn = Result.and_then value ~fn
 
 let exn_message = fun exn ->
   match exn with
@@ -66,7 +65,8 @@ let exn_message = fun exn ->
 
 let publish_error_message = fun error ->
   match error with
-  | PackageNotFound { package } -> "package '" ^ package ^ "' was not found in this workspace"
+  | PackageNotFound { package } ->
+      "package '" ^ Package_name.to_string package ^ "' was not found in this workspace"
   | NoWorkspacePackages -> "no workspace packages were found to publish"
   | PublishConfigLoadFailed err -> Riot_model.User_config.message err
   | MissingApiToken { registry_name; path } -> "missing API token for registry '"
@@ -85,14 +85,15 @@ let publish_error_message = fun error ->
   ^ "': "
   ^ error
   | FmtCheckFailed { package; error } -> "'riot fmt --check' failed for package '"
-  ^ package
+  ^ Package_name.to_string package
   ^ "': "
   ^ error
   | FixCheckFailed { package; error } -> "'riot fix --check' failed for package '"
-  ^ package
+  ^ Package_name.to_string package
   ^ "': "
   ^ error
-  | BuildCheckFailed { package; error } -> "'riot build' failed for package '" ^ package ^ "': " ^ error
+  | BuildCheckFailed { package; error } ->
+      "'riot build' failed for package '" ^ Package_name.to_string package ^ "': " ^ error
   | PublishPlanFailed err -> Riot_deps.Publisher.message err
   | PublishFailed { error; _ } -> Riot_deps.Publisher.message error
 
@@ -117,12 +118,13 @@ let select_packages = fun ~(workspace_publish_order:packages:Package.t list -> (
   let public_packages = List.filter packages ~fn:is_public_package in
   match request.selection with
   | Package package_name -> (
-      match
-        List.find packages ~fn:(fun (pkg: Package.t) ->
-          String.equal pkg.name package_name)
-      with
+      match List.find packages ~fn:(fun (pkg: Package.t) -> Package_name.equal pkg.name package_name) with
       | Some pkg when not (is_public_package pkg) ->
-          emit (SkippedNotPublic { package = pkg.name; version = pkg.publish.version });
+          emit
+            (SkippedNotPublic {
+              package = pkg.name;
+              version = pkg.publish.version
+            });
           Ok []
       | Some pkg ->
           Ok [ pkg ]
@@ -195,7 +197,10 @@ let build_package = fun ~emit ~(workspace:Workspace.t) ~package_name ~profile ->
        ~profile:(profile_of_name profile)
        ())
   |> Result.map_err ~fn:(fun err ->
-         BuildCheckFailed { package = package_name; error = Riot_build.error_message err })
+         BuildCheckFailed {
+           package = package_name;
+           error = Riot_build.error_message err
+         })
 
 let build_package_in_workspace_root = fun ~emit ~workspace_root ~package_name ~profile ->
   let* workspace = scan_workspace_strict workspace_root in
@@ -240,7 +245,7 @@ module For_test = struct
       (Riot_model.Package.t list, publish_error) result;
     published_version_exists:
       registry:Pkgs_ml.Registry.t ->
-      package_name:string ->
+      package_name:Riot_model.Package_name.t ->
       version:Std.Version.t ->
       (bool, publish_error) result;
     run_fmt_check:
@@ -258,12 +263,12 @@ module For_test = struct
     run_build_check:
       emit:(publish_event -> unit) ->
       workspace:Riot_model.Workspace.t ->
-      package_name:string ->
+      package_name:Riot_model.Package_name.t ->
       profile:string ->
       (unit, publish_error) result;
     plan_publish:
       registry:Pkgs_ml.Registry.t ->
-      publishing_workspace_packages:string list ->
+      publishing_workspace_packages:Riot_model.Package_name.t list ->
       package:Riot_model.Package.t ->
       (Riot_deps.Publisher.publish_plan, publish_error) result;
     prepare_publish_artifact:
@@ -280,7 +285,11 @@ module For_test = struct
   let run_fmt_check_default = fun ~emit ~workspace ~package ->
     let package: Package.t = package in
     Riot_fmt.run_check_paths ~workspace ~on_event:(fun event -> emit (Fmt event)) [ package.path ]
-    |> Result.map_err ~fn:(fun exn -> FmtCheckFailed { package = package.name; error = exn_message exn })
+    |> Result.map_err ~fn:(fun exn ->
+      FmtCheckFailed {
+        package = package.name;
+        error = exn_message exn
+      })
 
   let run_fix_check_default = fun ~emit ~registry ~workspace ~request:_ ~package ->
     let workspace: Workspace.t = workspace in
@@ -316,11 +325,14 @@ module For_test = struct
                  ())
             |> Result.map ~fn:(fun _ -> ())
             |> Result.map_err ~fn:(fun err ->
-                   Failure (Riot_build.error_message err)))
+              Failure (Riot_build.error_message err)))
       fix_request
     |> Result.map ~fn:(fun _ -> ())
     |> Result.map_err ~fn:(fun exn ->
-           FixCheckFailed { package = package.name; error = exn_message exn })
+           FixCheckFailed {
+             package = package.name;
+             error = exn_message exn
+           })
 
   let run_build_check_default = fun ~emit ~(workspace: Workspace.t) ~package_name ~profile ->
     build_package ~emit ~workspace ~package_name ~profile
@@ -340,7 +352,11 @@ module For_test = struct
 
   let publish_prepared_default = fun ~registry ~api_token prepared ->
     Riot_deps.Publisher.publish_prepared ~registry ~api_token prepared
-    |> Result.map_err ~fn:(fun err -> PublishFailed { package = prepared.package.name; error = err })
+    |> Result.map_err ~fn:(fun err ->
+      PublishFailed {
+        package = prepared.package.name;
+        error = err
+      })
 
   let default_deps = {
     resolve_registry;
@@ -384,7 +400,12 @@ module For_test = struct
         ~package_name:package.name
         ~version:package.publish.version
         ~stage:`build
-        (fun () -> deps.run_build_check ~emit ~workspace ~package_name:package.name ~profile:"release")
+        (fun () ->
+          deps.run_build_check
+            ~emit
+            ~workspace
+            ~package_name:package.name
+            ~profile:"release")
     in
     run_check
       ~emit

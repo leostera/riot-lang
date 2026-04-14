@@ -6,7 +6,7 @@ type scope =
 
 type t = {
   workspace: Prepared_workspace.t;
-  packages: string list;
+  packages: Riot_model.Package_name.t list;
   targets: Riot_model.Target.request;
   scope: scope;
   profile: Riot_model.Profile.t;

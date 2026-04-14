@@ -12,5 +12,5 @@ module Internal: sig
 
   val workspace_manager: t -> Riot_model.Workspace_manager.t option
 
-  val package_names: t -> string list
+  val package_names: t -> Riot_model.Package_name.t list
 end

@@ -174,19 +174,20 @@ let publisher_error_of_walker_error = fun ~package_root (err: Fs.Walker.error) -
   | None -> DirectoryReadFailed { path = package_root; error }
 
 let validate_publish_metadata = fun ~(package:Riot_model.Package.t) ->
+  let package_name = Riot_model.Package_name.to_string package.name in
   match package.publish.version with
-  | None -> Error (MissingPublishVersion { package = package.name })
+  | None -> Error (MissingPublishVersion { package = package_name })
   | Some version -> (
       match package.publish.description with
-      | None -> Error (MissingPublishDescription { package = package.name })
+      | None -> Error (MissingPublishDescription { package = package_name })
       | Some _ -> (
           match package.publish.license with
-          | None -> Error (MissingPublishLicense { package = package.name })
+          | None -> Error (MissingPublishLicense { package = package_name })
           | Some _ -> (
               match package.publish.is_public with
               | Some true -> Ok version
               | Some false
-              | None -> Error (PackageNotPublic { package = package.name })
+              | None -> Error (PackageNotPublic { package = package_name })
             )
         )
     )
@@ -194,21 +195,23 @@ let validate_publish_metadata = fun ~(package:Riot_model.Package.t) ->
 let validate_runtime_dependency = fun ~(package:Riot_model.Package.t) (
   dep: Riot_model.Package.dependency
 ) ->
+  let package_name = Riot_model.Package_name.to_string package.name in
+  let dependency_name = Riot_model.Package_name.to_string dep.name in
   match dep.source with
   | { builtin=true; _ } -> Ok ()
   | { workspace=true; _ } -> Error (RuntimeDependencyNotPublishable {
-    package = package.name;
-    dependency = dep.name;
+    package = package_name;
+    dependency = dependency_name;
     reason = `WorkspaceOnly
   })
   | { path=Some path; source_locator=None; version=None; _ } -> Error (RuntimeDependencyNotPublishable {
-    package = package.name;
-    dependency = dep.name;
+    package = package_name;
+    dependency = dependency_name;
     reason = `PathOnly path
   })
   | { path=None; source_locator=None; version=None; _ } -> Error (RuntimeDependencyNotPublishable {
-    package = package.name;
-    dependency = dep.name;
+    package = package_name;
+    dependency = dependency_name;
     reason = `MissingVersionOrPath
   })
   | _ -> Ok ()
@@ -225,26 +228,30 @@ let validate_runtime_dependencies = fun ~(package:Riot_model.Package.t) ->
   loop package.dependencies
 
 let validate_registry_dependencies = fun ~registry ~publishing_workspace_packages ~(package:Riot_model.Package.t) ->
+  let package_name = Riot_model.Package_name.to_string package.name in
   let rec loop = function
     | [] -> Ok ()
     | dep :: rest -> (
         if Riot_model.Package.is_builtin_dependency dep then
           loop rest
-        else if List.any publishing_workspace_packages ~fn:(String.equal dep.name) then
+        else if List.any publishing_workspace_packages
+          ~fn:(fun package_name -> Riot_model.Package_name.equal dep.name package_name)
+        then
           loop rest
         else if Option.is_some dep.source.source_locator then
           loop rest
         else
-          match Pkgs_ml.Registry.read_package_document registry ~package_name:dep.name with
+          let dependency_name = Riot_model.Package_name.to_string dep.name in
+          match Pkgs_ml.Registry.read_package_document registry ~package_name:dependency_name with
           | Error error -> Error (RuntimeDependencyRegistryLookupFailed {
-            package = package.name;
-            dependency = dep.name;
+            package = package_name;
+            dependency = dependency_name;
             registry = Pkgs_ml.Registry.name registry;
             error
           })
           | Ok None -> Error (RuntimeDependencyNotFoundInRegistry {
-            package = package.name;
-            dependency = dep.name;
+            package = package_name;
+            dependency = dependency_name;
             registry = Pkgs_ml.Registry.name registry
           })
           | Ok (Some _) -> loop rest
@@ -253,11 +260,12 @@ let validate_registry_dependencies = fun ~registry ~publishing_workspace_package
   loop package.dependencies
 
 let published_version_exists = fun ~registry ~package_name ~version ->
-  match Pkgs_ml.Registry.read_package_document registry ~package_name with
+  let package_name_string = Riot_model.Package_name.to_string package_name in
+  match Pkgs_ml.Registry.read_package_document registry ~package_name:package_name_string with
   | Error error ->
       Error (RuntimeDependencyRegistryLookupFailed {
-        package = package_name;
-        dependency = package_name;
+        package = package_name_string;
+        dependency = package_name_string;
         registry = Pkgs_ml.Registry.name registry;
         error
       })
@@ -309,10 +317,11 @@ let collect_relative_files = fun ~package_root ->
   loop [] iter
 
 let publish_artifact_path = fun ~target_dir_root ~(package:Riot_model.Package.t) ~version ->
+  let package_name = Riot_model.Package_name.to_string package.name in
   Path.(target_dir_root
   / Path.v "release"
   / Path.v "publish"
-  / Path.v package.name
+  / Path.v package_name
   / Path.v (Std.Version.to_string version)
   / Path.v "package.tar.gz")
 
@@ -415,7 +424,7 @@ let publish = fun ~registry ~target_dir_root ~publishing_workspace_packages ~(pa
 let assoc_package = fun packages name ->
   List.find packages
     ~fn:(fun (pkg_name, _pkg) ->
-      String.equal pkg_name name)
+      Riot_model.Package_name.equal pkg_name name)
   |> Option.map ~fn:(fun (_, package) -> package)
 
 let workspace_runtime_dependency_names = fun ~workspace_packages (pkg: Riot_model.Package.t) ->
@@ -436,10 +445,14 @@ let workspace_publish_order = fun ~packages ->
   |> List.filter ~fn:Riot_model.Package.is_workspace_member
   |> List.map ~fn:(fun (pkg: Riot_model.Package.t) -> (pkg.name, pkg)) in
   let rec visit ~visiting ~visited ordered name =
-    if List.any visited ~fn:(String.equal name) then
+    if List.any visited ~fn:(Riot_model.Package_name.equal name) then
       Ok (visited, ordered)
-    else if List.any visiting ~fn:(String.equal name) then
-      Error (CyclicWorkspacePublishOrder { cycle = List.reverse (name :: visiting) })
+    else if List.any visiting ~fn:(Riot_model.Package_name.equal name) then
+      Error (CyclicWorkspacePublishOrder {
+        cycle =
+          List.reverse (name :: visiting)
+          |> List.map ~fn:Riot_model.Package_name.to_string
+      })
     else
       match assoc_package workspace_packages name with
       | None -> Ok (visited, ordered)

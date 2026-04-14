@@ -101,12 +101,12 @@ val size: t -> int
 
 (** Filter the graph to only include the specified package and its transitive
     dependencies. Returns an empty graph if package not found. *)
-val filter_for_package: t -> string -> t
+val filter_for_package: t -> Riot_model.Package_name.t -> t
 
 (** Filter the graph to include the specified packages and all of their
     transitive dependencies. Returns an empty graph if none of the packages
     are found. *)
-val filter_for_packages: t -> string list -> t
+val filter_for_packages: t -> Riot_model.Package_name.t list -> t
 
 (** Return packages in topological order (dependencies before dependents).
     Raises Cycle_detected if there are circular dependencies. *)
@@ -116,7 +116,7 @@ val topological_sort: t -> package_node list
 val packages: t -> Package.t list
 
 (** Find a package by name *)
-val find_package: t -> string -> Package.t option
+val find_package: t -> Riot_model.Package_name.t -> Package.t option
 
 (** Get the graph node for a package *)
 val get_node: t -> Package.t -> package_node Graph.SimpleGraph.node option

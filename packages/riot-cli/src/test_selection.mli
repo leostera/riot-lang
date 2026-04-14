@@ -5,7 +5,7 @@ type size_filter =
   | Small
   | Large
 type request = {
-  package_filter: string option;
+  package_filter: Riot_model.Package_name.t option;
   suite_filter: string option;
   query: string option;
   size_filter: size_filter;
@@ -13,10 +13,10 @@ type request = {
 }
 val parse_request:
   pattern:string option ->
-  legacy_package:string option ->
+  legacy_package:Riot_model.Package_name.t option ->
   size_filter:size_filter ->
   flaky_only:bool ->
-  request
+  (request, string) result
 
 val extra_args:
   ?small_test_timeout:Time.Duration.t option ->

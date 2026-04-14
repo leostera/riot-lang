@@ -64,9 +64,9 @@ let hash_file = fun ~(package:Package.t) path ->
   | Error _ -> Crypto.hash_string (Path.to_string path)
 
 let make = fun ~actions ~outs ~srcs ~(package:Package.t) ~toolchain ~dependency_hashes ~deps ->
-  let open Crypto in
+    let open Crypto in
     let hasher = Sha256.create () in
-    Sha256.write hasher package.Package.name;
+    Sha256.write hasher (Package_name.to_string package.Package.name);
     let toolchain_hash = Riot_toolchain.hash toolchain in
     Sha256.write_hash hasher toolchain_hash;
     let sorted_actions =
@@ -132,7 +132,7 @@ let to_json = fun (node: t) ->
         ("actions", array (List.map spec.actions ~fn:Action.to_json));
         ("outputs", array (List.map spec.outs ~fn:(fun p -> string (Path.to_string p))));
         ("sources", array (List.map spec.srcs ~fn:(fun p -> string (Path.to_string p))));
-        ("package", string spec.package.Package.name);
+        ("package", string (Package_name.to_string spec.package.Package.name));
         ("package_path", string (Path.to_string spec.package.Package.path));
         ("package_relative_path", string (Path.to_string spec.package.Package.relative_path));
         ("hash", string (Crypto.Digest.hex spec.hash));
@@ -143,7 +143,7 @@ let equal = fun (n1: t) (n2: t) ->
   let s1 = n1.value in
   let s2 = n2.value in
   Crypto.Digest.hex s1.hash = Crypto.Digest.hex s2.hash
-  && s1.package.Package.name = s2.package.Package.name
+  && Package_name.equal s1.package.Package.name s2.package.Package.name
   && List.compare_lengths ~left:s1.actions ~right:s2.actions = 0
   && List.compare_lengths ~left:s1.outs ~right:s2.outs = 0
   && List.compare_lengths ~left:s1.srcs ~right:s2.srcs = 0

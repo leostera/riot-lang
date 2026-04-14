@@ -1,7 +1,6 @@
 open Std
+open Std.Result.Syntax
 module Error = Error
-
-let ( let* ) value fn = Result.and_then value ~fn
 
 type event_sink = Riot_model.Event.kind -> unit
 
@@ -19,9 +18,10 @@ let materialization_state = fun ~registry ~(pkg:Riot_model.Lockfile.package) ->
   match pkg.id.version with
   | None -> Ok Already_materialized
   | Some version ->
+      let package_name = Riot_model.Package_name.to_string pkg.id.name in
       let manifest_path = Pkgs_ml.Registry_cache.package_src_dir
         (Pkgs_ml.Registry.cache registry)
-        ~package_name:pkg.id.name
+        ~package_name
         ~version
       |> fun root -> Path.(root / Path.v "riot.toml") in
       match Fs.exists manifest_path with
@@ -35,9 +35,10 @@ let materialization_state = fun ~registry ~(pkg:Riot_model.Lockfile.package) ->
       | Ok true ->
           Ok Already_materialized
       | Ok false ->
+          let package_name = Riot_model.Package_name.to_string pkg.id.name in
           let archive_path = Pkgs_ml.Registry_cache.archive_path
             (Pkgs_ml.Registry.cache registry)
-            ~package_name:pkg.id.name
+            ~package_name
             ~version in
           match Fs.exists archive_path with
           | Error err -> Error (Error.MaterializationFailed {
@@ -55,7 +56,8 @@ let materialization_state = fun ~registry ~(pkg:Riot_model.Lockfile.package) ->
               )
 
 let ensure_registry_package = fun ?(emit = no_emit) ~registry ~(pkg:Riot_model.Lockfile.package) () ->
-  let package = pkg.id.name in
+  let event_package = pkg.id.name in
+  let package = Riot_model.Package_name.to_string event_package in
   match pkg.id.version with
   | None -> Error (Error.MaterializationFailed {
     error = "registry lock package '" ^ package ^ "' is missing an exact version"
@@ -71,7 +73,7 @@ let ensure_registry_package = fun ?(emit = no_emit) ~registry ~(pkg:Riot_model.L
       | Already_materialized ->
           emit
             (Riot_model.Event.PackageDownloadSkipped {
-              package;
+              package = event_package;
               version;
               path;
               reason = "package source tree already exists in the registry cache"
@@ -80,14 +82,14 @@ let ensure_registry_package = fun ?(emit = no_emit) ~registry ~(pkg:Riot_model.L
       | Needs_materialization_from_cache
       | Needs_download ->
           let started = Time.Instant.now () in
-          emit (Riot_model.Event.PackageMaterializationStarted { package; version; path });
+          emit (Riot_model.Event.PackageMaterializationStarted { package = event_package; version; path });
           if state = Needs_download then
-            emit (Riot_model.Event.PackageDownloadStarted { package; version; path });
+            emit (Riot_model.Event.PackageDownloadStarted { package = event_package; version; path });
           match Pkgs_ml.Registry.materialize_release registry ~package_name:package ~version with
           | Ok `Materialized ->
               emit
                 (Riot_model.Event.PackageMaterializationFinished {
-                  package;
+                  package = event_package;
                   version;
                   path;
                   duration_ms = duration_ms_since started
@@ -96,7 +98,7 @@ let ensure_registry_package = fun ?(emit = no_emit) ~registry ~(pkg:Riot_model.L
           | Ok `Already_present ->
               emit
                 (Riot_model.Event.PackageDownloadSkipped {
-                  package;
+                  package = event_package;
                   version;
                   path;
                   reason = "package source tree already exists in the registry cache"
@@ -104,7 +106,13 @@ let ensure_registry_package = fun ?(emit = no_emit) ~registry ~(pkg:Riot_model.L
               Ok root
           | Error err ->
               let error = Error.MaterializationFailed { error = err } in
-              emit (Riot_model.Event.PackageMaterializationFailed { package; version; path; error });
+              emit
+                (Riot_model.Event.PackageMaterializationFailed {
+                  package = event_package;
+                  version;
+                  path;
+                  error
+                });
               Error error
     )
 

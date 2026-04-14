@@ -550,7 +550,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                   if not needs_output_verification then
                     match save_action_artifact
                       ~store
-                      ~package:node.value.package.name
+                      ~package:(Riot_model.Package_name.to_string node.value.package.name)
                       ~action_hash
                       ~ocamlc_warnings
                       ~sandbox_dir
@@ -599,7 +599,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                     | Ok () ->
                         match save_action_artifact
                           ~store
-                          ~package:node.value.package.name
+                          ~package:(Riot_model.Package_name.to_string node.value.package.name)
                           ~action_hash
                           ~ocamlc_warnings
                           ~sandbox_dir

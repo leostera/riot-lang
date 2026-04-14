@@ -1,7 +1,11 @@
 open Std
+open Std.Result.Syntax
+open Riot_model
 module Test = Std.Test
 
-let ( let* ) result fn = Result.and_then result ~fn
+let package_name = fun name ->
+  Package_name.from_string name
+  |> Result.expect ~msg:("Expected valid package name: " ^ name)
 
 let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
   Riot_model.Package.{
@@ -14,10 +18,10 @@ let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?
   }
 
 let make_command = fun () ->
-  Riot_model.Package_command.{
+  Package_command.{
     name = "demo";
     description = "Run the demo";
-    package_name = "minttea";
+    package_name = package_name "minttea";
     package_path = Path.v "packages/minttea";
     command_module = "Demo_cmd";
     command_source = Path.v "src/demo_cmd.ml";
@@ -27,16 +31,16 @@ let make_command = fun () ->
 let make_package = fun () ->
   let command = make_command () in
   let publish =
-    Riot_model.Package.{
+    Package.{
       version = Some (Std.Version.make ~major:0 ~minor:1 ~patch:0 ());
       description = Some "minttea";
       license = Some "Apache-2.0";
       is_public = Some true
     } in
-  Riot_model.Package.make ~name:"minttea" ~path:(Path.v "packages/minttea") ~relative_path:(Path.v "packages/minttea") ~dependencies:[
-    { name = "std"; source = source ~workspace:true () }
-  ] ~dev_dependencies:[ { name = "propane"; source = source ~workspace:true () } ] ~build_dependencies:[
-    { name = "std"; source = source ~workspace:true () }
+  Package.make ~name:(package_name "minttea") ~path:(Path.v "packages/minttea") ~relative_path:(Path.v "packages/minttea") ~dependencies:[
+    { name = package_name "std"; source = source ~workspace:true () }
+  ] ~dev_dependencies:[ { name = package_name "propane"; source = source ~workspace:true () } ] ~build_dependencies:[
+    { name = package_name "std"; source = source ~workspace:true () }
   ] ~binaries:[ { name = "demo-bin"; path = Path.v "src/demo_bin.ml" } ] ~library:{
     path = Path.v "src/minttea.ml"
   }
@@ -66,7 +70,7 @@ let path_error_message = function
 
 let test_build_scope_drops_commands_and_runtime_outputs = fun _ctx ->
   let pkg = make_package () in
-  let projected = Riot_model.Package.for_scope Riot_model.Package.Build pkg in
+  let projected = Package.for_scope Package.Build pkg in
   let no_commands = projected.commands = [] in
   let no_binaries = projected.binaries = [] in
   let no_library = projected.library = None in
@@ -79,7 +83,7 @@ let test_build_scope_drops_commands_and_runtime_outputs = fun _ctx ->
 
 let test_runtime_scope_keeps_commands = fun _ctx ->
   let pkg = make_package () in
-  let projected = Riot_model.Package.for_scope Riot_model.Package.Normal pkg in
+  let projected = Package.for_scope Package.Normal pkg in
   if List.length projected.commands = 1 && List.length projected.binaries = 1 then
     Ok ()
   else
@@ -87,19 +91,19 @@ let test_runtime_scope_keeps_commands = fun _ctx ->
 
 let test_dev_scope_keeps_only_dev_outputs = fun _ctx ->
   let pkg = make_package () in
-  let projected = Riot_model.Package.for_scope Riot_model.Package.Dev pkg in
+  let projected = Package.for_scope Package.Dev pkg in
   let no_library = projected.library = None in
   let no_commands = projected.commands = [] in
   let no_runtime_sources = projected.sources.src = [] && projected.sources.native = [] in
   let kept_dev_deps =
     projected.dev_dependencies
-    |> List.map ~fn:(fun (dep: Riot_model.Package.dependency) -> dep.name)
-    = [ "propane" ]
+    |> List.map ~fn:(fun (dep: Package.dependency) -> dep.name)
+    = [ package_name "propane" ]
   in
   let kept_runtime_deps =
     projected.dependencies
-    |> List.map ~fn:(fun (dep: Riot_model.Package.dependency) -> dep.name)
-    = [ "std" ]
+    |> List.map ~fn:(fun (dep: Package.dependency) -> dep.name)
+    = [ package_name "std" ]
   in
   let no_normal_binaries =
     projected.binaries
@@ -553,7 +557,7 @@ std = "not-a-semver-range"
 |}
     |> Result.expect ~msg:"expected package TOML to parse"
   in
-  match Riot_model.Package.from_toml
+  match Package.from_toml
     manifest
     ~workspace_deps:[]
     ~workspace_dev_deps:[]
@@ -622,9 +626,11 @@ stdlib = "*"
     ~relative_path:(Path.v "packages/demo")
   |> Result.expect ~msg:"expected package manifest to parse" in
   match pkg.dependencies with
-  | [ { Riot_model.Package.name="stdlib"; source={ builtin=true; version=Some requirement; _ } } ] when String.equal
-    (Std.Version.requirement_to_string requirement)
-    "*" -> Ok ()
+  | [ { Riot_model.Package.name; source={ builtin=true; version=Some requirement; _ } } ]
+    when Package_name.equal name (package_name "stdlib")
+         && String.equal
+           (Std.Version.requirement_to_string requirement)
+           "*" -> Ok ()
   | _ -> Error "expected stdlib '*' to parse as a builtin dependency"
 
 let test_package_builtin_dependency_rejects_version_constraints = fun _ctx ->
@@ -652,14 +658,14 @@ stdlib = ">= 1.0.0"
 
 let test_package_json_roundtrips_registry_requirement = fun _ctx ->
   let requirement = Std.Version.parse_requirement ">= 1.2.3" |> Result.expect ~msg:"expected requirement to parse" in
-  let package = Riot_model.Package.make
-    ~name:"demo"
+  let package = Package.make
+    ~name:(package_name "demo")
     ~path:(Path.v "/tmp/demo")
     ~relative_path:(Path.v "packages/demo")
-    ~dependencies:[ { name = "std"; source = source ~version:requirement () } ]
+    ~dependencies:[ { name = package_name "std"; source = source ~version:requirement () } ]
     () in
-  let decoded = Riot_model.Package.to_json package
-  |> Riot_model.Package.from_json
+  let decoded = Package.to_json package
+  |> Package.from_json
   |> Result.expect ~msg:"expected package JSON to roundtrip" in
   match decoded.dependencies with
   | [
@@ -784,7 +790,8 @@ version = "0.1.0"
           else
             let names = workspace.Riot_model.Workspace.packages
             |> List.map ~fn:(fun (p: Riot_model.Package_manifest.t) -> p.name)
-            |> List.sort ~compare:String.compare in
+            |> List.sort ~compare:Riot_model.Package_name.compare
+            |> List.map ~fn:Riot_model.Package_name.to_string in
             Test.assert_equal ~expected:[ "app"; "kernel"; "vendor" ] ~actual:names;
             Ok ())
 
@@ -857,7 +864,8 @@ std = { path = "../std", version = "*" }
         else
           let names = workspace.Riot_model.Workspace.packages
             |> List.map ~fn:(fun (p: Riot_model.Package_manifest.t) -> p.name)
-            |> List.sort ~compare:String.compare in
+            |> List.sort ~compare:Riot_model.Package_name.compare
+            |> List.map ~fn:Riot_model.Package_name.to_string in
             Test.assert_equal ~expected:[ "app" ] ~actual:names;
             Ok ())
 
@@ -898,7 +906,7 @@ path = "src/demo.ml"
               match workspace.Riot_model.Workspace.packages with
               | [ package ] ->
                   if
-                    String.equal package.name "demo"
+                    Riot_model.Package_name.equal package.name (package_name "demo")
                     && Path.equal package.relative_path (Path.v ".")
                   then
                     Ok ()
@@ -906,7 +914,7 @@ path = "src/demo.ml"
                     Error ("expected detached package scan to synthesize a one-package workspace, got root="
                     ^ Path.to_string workspace.root
                     ^ " package="
-                    ^ package.name
+                    ^ Riot_model.Package_name.to_string package.name
                     ^ " relative="
                     ^ Path.to_string package.relative_path)
               | packages -> Error ("expected one package, got "
@@ -914,7 +922,10 @@ path = "src/demo.ml"
               ^ " root="
               ^ Path.to_string workspace.root
               ^ " names="
-              ^ String.concat ", " (List.map packages ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.name)))
+              ^ String.concat ", "
+                  (List.map packages
+                    ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
+                      Riot_model.Package_name.to_string pkg.name)))
       in
       let _ =
         match original_dir with

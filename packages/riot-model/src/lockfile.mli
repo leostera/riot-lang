@@ -7,12 +7,12 @@ type provenance =
   | Registry of { registry: string }
 type package_id = {
   registry: string option;
-  name: string;
+  name: Package_name.t;
   version: string option;
   sha256: string option;
 }
 type dependency = {
-  name: string;
+  name: Package_name.t;
   package: package_id;
 }
 type package = {

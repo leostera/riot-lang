@@ -1,10 +1,11 @@
 open Std
+open Std.Result.Syntax
 open Std.Collections
 open Riot_model
 
 type request =
   | Workspace
-  | Package of string
+  | Package of Package_name.t
 
 type error =
   | ConflictingSelection
@@ -219,32 +220,43 @@ let write_publish_event = fun ~workspace_root ~seen_registry_updates ~displayed_
   | Riot_publish.Build (Riot_build.Event.CacheGc event) -> Build.write_cache_gc_event ~mode:Build.Human event
   | Riot_publish.Build (Riot_build.Event.Phase _) -> ()
   | Riot_publish.CheckStarted { package; version; stage=`fmt } -> out
-    (render_formatting ~package ~version:(version_label version))
+    (render_formatting ~package:(Package_name.to_string package) ~version:(version_label version))
   | Riot_publish.CheckStarted { package; version; stage=`fix } -> out
-    (render_checking ~package ~version:(version_label version))
+    (render_checking ~package:(Package_name.to_string package) ~version:(version_label version))
   | Riot_publish.CheckStarted { package; version; stage=`build } -> out
-    (render_compiling ~package ~version:(version_label version))
+    (render_compiling ~package:(Package_name.to_string package) ~version:(version_label version))
   | Riot_publish.CheckStarted _ -> ()
   | Riot_publish.CheckFinished _ -> ()
   | Riot_publish.Packing { package; version; artifact_path } -> out
     (render_packing
-      ~package
+      ~package:(Package_name.to_string package)
       ~version:(Std.Version.to_string version)
       ~artifact_path:(relative_or_absolute ~root:workspace_root artifact_path))
   | Riot_publish.SkippedNotPublic { package; version } -> out
-    (render_skipping_not_public ~package ~version:(version_label version))
+    (render_skipping_not_public
+      ~package:(Package_name.to_string package)
+      ~version:(version_label version))
   | Riot_publish.SkippedAlreadyPublished { package; version } -> out
-    (render_skipping ~package ~version:(Std.Version.to_string version))
+    (render_skipping ~package:(Package_name.to_string package) ~version:(Std.Version.to_string version))
   | Riot_publish.DryRunPlanned prepared -> out
     (render_publishing
-      ~package:prepared.package.name
+      ~package:(Riot_model.Package_name.to_string prepared.package.name)
       ~version:(Std.Version.to_string prepared.version))
   | Riot_publish.PackagePublished published -> out
     (render_publishing ~package:published.package_name ~version:published.package_version)
 
 let run = fun (workspace: Workspace.t) matches ->
+  let package_name =
+    match ArgParser.get_one matches "package" with
+    | None -> Ok None
+    | Some package_name ->
+        Package_name.from_string package_name
+        |> Result.map ~fn:Option.some
+        |> Result.map_err ~fn:(fun error -> Failure error)
+  in
+  let* package_name = package_name in
   match resolve_request
-    ~package_name:(ArgParser.get_one matches "package")
+    ~package_name
     ~workspace_mode:(ArgParser.get_flag matches "workspace") with
   | Error err -> fail err
   | Ok request ->

@@ -325,7 +325,7 @@ let module_graph_of_json = fun json ->
 let plan_bundle_to_json = fun ~(package:Package.t) ~(module_graph:Module_node.t G.t) ~(action_graph:Action_graph.t) ->
   Std.Data.Json.Object [
     ("version", Std.Data.Json.Int 1);
-    ("package", Std.Data.Json.String package.name);
+    ("package", Std.Data.Json.String (Package_name.to_string package.name));
     ("module_graph", module_graph_to_json module_graph);
     ("action_graph", Action_graph.to_json action_graph);
   ]
@@ -340,9 +340,8 @@ let plan_bundle_of_json = fun ~(package:Package.t) json ->
           get_field "module_graph" json,
           get_field "action_graph" json
         ) with
-        | Some (Int 1), Some (String pkg_name), Some module_graph_json, Some action_graph_json when String.equal
-          pkg_name
-          package.name -> (
+        | Some (Int 1), Some (String pkg_name), Some module_graph_json, Some action_graph_json when
+          String.equal pkg_name (Package_name.to_string package.name) -> (
             match (module_graph_of_json module_graph_json, Action_graph.from_json action_graph_json) with
             | Ok module_graph, Ok action_graph -> Ok (module_graph, action_graph)
             | (Error e, _)
@@ -386,7 +385,7 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
     List.sort
       (Package.build_graph_dependencies package)
       ~compare:(fun (a: Package.dependency) (b: Package.dependency) ->
-        String.compare a.name b.name)
+        Package_name.compare a.name b.name)
   in
   List.for_each
     sorted_deps
@@ -394,7 +393,12 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
       (* Package.hash already includes dep name and source, we just add workspace-specific details *)
       match dep.source with
       | { Package.workspace=true; _ } -> (
-          match List.find workspace.Workspace.packages ~fn:(fun (p: Package_manifest.t) -> p.name = dep.name) with
+          match
+            List.find
+              workspace.Workspace.packages
+              ~fn:(fun (p: Package_manifest.t) ->
+                Package_name.equal p.name dep.name)
+          with
           | Some dep_pkg -> (
               H.write state (Path.to_string dep_pkg.path);
               match dep_pkg.library with
@@ -418,7 +422,7 @@ let check_dependencies_built = fun ~store ~package_graph ~package_key ->
   let current_package_name, current_scope =
     match Package_graph.get_node_by_key package_graph package_key with
     | Some node -> (
-      (Package_graph.get_package node.value).Package.name,
+      Package_name.to_string (Package_graph.get_package node.value).Package.name,
       Package_graph.get_scope node.value
     )
     | None -> ("", Package_graph.Runtime)
@@ -433,7 +437,7 @@ let check_dependencies_built = fun ~store ~package_graph ~package_key ->
   let rec summarize_dependency: Package_graph.package_node -> Dependency.t option = fun node_value ->
     let pkg = Package_graph.get_package node_value in
     let is_ordering_only_self_dependency =
-      String.equal pkg.Package.name current_package_name
+      String.equal (Package_name.to_string pkg.Package.name) current_package_name
       && match (current_scope, Package_graph.get_scope node_value) with
       | Package_graph.Runtime, Package_graph.Build -> true
       | _ -> false
@@ -548,11 +552,15 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
       let base_profile = build_ctx.Build_ctx.profile in
       (* Apply package-level profile overrides based on current profile name *)
       (* Then apply target-specific overrides *)
-      let profile =
-        let profile = Profile.apply_overrides base_profile package.compiler.profile_overrides in
-        let target_platform = Build_ctx.target_platform_name build_ctx in
-        Log.info
-          ("Package " ^ package.name ^ ": looking for target." ^ target_platform ^ " overrides");
+        let profile =
+          let profile = Profile.apply_overrides base_profile package.compiler.profile_overrides in
+          let target_platform = Build_ctx.target_platform_name build_ctx in
+          Log.info
+          ("Package "
+          ^ Package_name.to_string package.name
+          ^ ": looking for target."
+          ^ target_platform
+          ^ " overrides");
         Log.info
           ("Available targets: ["
           ^ (String.concat
@@ -578,7 +586,11 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
             | None -> profile
           )
         | None ->
-            Log.warn ("No target." ^ target_platform ^ " override found for package " ^ package.name);
+            Log.warn
+              ("No target."
+              ^ target_platform
+              ^ " override found for package "
+              ^ Package_name.to_string package.name);
             profile
       in
       let input_hash_started_at = Time.Instant.now () in
@@ -597,7 +609,10 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
       in
       match cached_artifact with
       | Some (artifact, exports) ->
-          Log.info ("Package " ^ package.name ^ ": cache hit via artifact + export metadata");
+          Log.info
+            ("Package "
+            ^ Package_name.to_string package.name
+            ^ ": cache hit via artifact + export metadata");
           Ok (
             Cached {
               package_key;
@@ -629,7 +644,7 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                 | exn ->
                     Log.warn
                       ("Package "
-                      ^ package.name
+                      ^ Package_name.to_string package.name
                       ^ ": plan bundle decode raised exception, rebuilding plan graph ("
                       ^ Kernel.Exception.to_string exn
                       ^ ")");
@@ -641,7 +656,10 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
               (
                 match parsed_bundle with
                 | Ok (module_graph, action_graph) ->
-                    Log.info ("Package " ^ package.name ^ ": plan bundle cache hit");
+                    Log.info
+                      ("Package "
+                      ^ Package_name.to_string package.name
+                      ^ ": plan bundle cache hit");
                     Ok (
                       Planned {
                         package_key;
@@ -664,7 +682,9 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                     )
                 | Error _ ->
                     Log.warn
-                      ("Package " ^ package.name ^ ": plan bundle parse failed, rebuilding plan graph");
+                      ("Package "
+                      ^ Package_name.to_string package.name
+                      ^ ": plan bundle parse failed, rebuilding plan graph");
                     let module_plan_started_at = Time.Instant.now () in
                     let plan_input =
                       Module_planner.{
@@ -675,7 +695,10 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                         workspace;
                         planning_root = Path.v "src";
                         allowed_source_files = package.sources.src;
-                        root_mode = Module_graph.Library_root { library_name = package.name };
+                        root_mode =
+                          Module_graph.Library_root {
+                            library_name = Package_name.to_string package.name;
+                          };
                         depset;
                         store;
                       }
@@ -778,7 +801,10 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
               (* Always produce a concrete plan graph. The old fast path returned dummy
          empty graphs keyed off package-level artifact existence, which made
          planning correctness depend on execution-time cache state. *)
-              Log.info ("Package " ^ package.name ^ ": computing plan graph");
+              Log.info
+                ("Package "
+                ^ Package_name.to_string package.name
+                ^ ": computing plan graph");
               let module_plan_started_at = Time.Instant.now () in
               let plan_input =
                 Module_planner.{
@@ -789,7 +815,10 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                   workspace;
                   planning_root = Path.v "src";
                   allowed_source_files = package.sources.src;
-                  root_mode = Module_graph.Library_root { library_name = package.name };
+                  root_mode =
+                    Module_graph.Library_root {
+                      library_name = Package_name.to_string package.name;
+                    };
                   depset;
                   store;
                 }

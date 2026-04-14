@@ -17,8 +17,14 @@ type build_stats = {
 
 type error =
   | StartupFailed of { error: Internal_server.error }
-  | PackageNotFound of { package_name: string; available_packages: string list }
-  | PackagesNotFound of { package_names: string list; available_packages: string list }
+  | PackageNotFound of {
+      package_name: Package_name.t;
+      available_packages: Package_name.t list
+    }
+  | PackagesNotFound of {
+      package_names: Package_name.t list;
+      available_packages: Package_name.t list
+    }
   | BuildFailed of { errors: Riot_executor.Package_builder.build_result list }
   | PlanningFailed of { reason: string }
   | CycleDetected of { cycle_nodes: string list }
@@ -45,8 +51,8 @@ type streaming_event =
   | CycleDetected of { session_id: Session_id.t; detected_at: DateTime.t; cycle_nodes: string list }
 
 type build_target =
-  BuildPackage of string
-  | BuildPackages of string list
+  BuildPackage of Package_name.t
+  | BuildPackages of Package_name.t list
   | BuildAll
 
 type build_scope =
@@ -59,23 +65,32 @@ let error_message = function
   | StartupFailed { error } ->
       Internal_server.error_message error
   | PackageNotFound { package_name; _ } ->
-      format Format.[ str "Package '"; str package_name; str "' not found" ]
+      format Format.[ str "Package '"; str (Package_name.to_string package_name); str "' not found" ]
   | PackagesNotFound { package_names; _ } ->
-      format Format.[ str "Packages not found: "; str (String.concat ", " package_names) ]
+      format
+        Format.[
+          str "Packages not found: ";
+          str (String.concat ", " (List.map package_names ~fn:Package_name.to_string))
+        ]
   | BuildFailed { errors } ->
       let render_error (result: Riot_executor.Package_builder.build_result) =
         match result.status with
         | Riot_executor.Package_builder.Failed err -> format
           Format.[
-            str result.package.name;
+            str (Package_name.to_string result.package.name);
             str ": ";
             str (Riot_executor.Package_builder.package_error_to_string err);
           ]
         | Riot_executor.Package_builder.Skipped { reason } -> format
-          Format.[ str result.package.name; str ": skipped ("; str reason; char ')'; ]
+          Format.[
+            str (Package_name.to_string result.package.name);
+            str ": skipped (";
+            str reason;
+            char ')';
+          ]
         | Riot_executor.Package_builder.Built _
         | Riot_executor.Package_builder.Cached _ -> format
-          Format.[ str result.package.name; str ": build failed" ]
+          Format.[ str (Package_name.to_string result.package.name); str ": build failed" ]
       in
       (
         match errors with
@@ -473,7 +488,6 @@ let find_executable = fun t name ->
   receive_response ~selector
 
 let new_package = fun t ~path ~name ~is_library ->
-  let path = Path.v path in
   send_request t (Protocol.NewPackage { client_pid = self (); path; name; is_library });
   let selector msg =
     match msg with

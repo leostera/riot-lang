@@ -5,7 +5,7 @@ open Std.Data
 type t = {
   name: string;  (* demo *)
   description: string;  (* "Run a minttea TUI demo" *)
-  package_name: string;  (* minttea *)
+  package_name: Package_name.t;  (* minttea *)
   package_path: Path.t;  (* packages/minttea *)
   command_module: string;  (* Demo_cmd *)
   command_source: Path.t;  (* packages/minttea/src/demo_cmd.ml *)
@@ -17,7 +17,11 @@ val is_built: t -> bool
 val status_string: t -> string
 
 (** Human-readable status: "ready" or "not built" *)
-val parse_from_toml: Toml.value list -> package_name:string -> package_path:Path.t -> t list
+val parse_from_toml:
+  Toml.value list ->
+  package_name:Package_name.t ->
+  package_path:Path.t ->
+  t list
 
 (** Parse [[command]] declarations from TOML.
     

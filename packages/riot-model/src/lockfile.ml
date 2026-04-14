@@ -1,5 +1,6 @@
 open Std
 open Std.Data
+open Std.Result.Syntax
 
 type provenance =
   | Workspace
@@ -9,13 +10,13 @@ type provenance =
 
 type package_id = {
   registry: string option;
-  name: string;
+  name: Package_name.t;
   version: string option;
   sha256: string option;
 }
 
 type dependency = {
-  name: string;
+  name: Package_name.t;
   package: package_id;
 }
 
@@ -35,7 +36,7 @@ type t = {
 }
 
 let package_id_to_toml = fun (id: package_id) ->
-  let fields = [ ("name", Toml.String id.name) ] in
+  let fields = [ ("name", Toml.String (Package_name.to_string id.name)) ] in
   let fields =
     match id.registry with
     | Some registry -> ("registry", Toml.String registry) :: fields
@@ -58,6 +59,7 @@ let package_id_of_toml = fun value ->
   | Toml.Table fields -> (
       match Fields.get "name" fields with
       | Some (Toml.String name) ->
+          let* name = Package_name.from_string name in
           let registry =
             match Fields.get "registry" fields with
             | Some (Toml.String registry) -> Some registry
@@ -81,6 +83,7 @@ let package_id_of_toml = fun value ->
 let package_id_of_fields = fun fields ->
   match Fields.get "name" fields with
   | Some (Toml.String name) ->
+      let* name = Package_name.from_string name in
       let registry =
         match Fields.get "registry" fields with
         | Some (Toml.String registry) -> Some registry
@@ -158,12 +161,12 @@ let dependency_to_toml = fun (dep: dependency) ->
     | None -> false
   in
   if should_use_flat_registry_shape then
-    let fields = [ ("name", Toml.String dep.name) ] in
+    let fields = [ ("name", Toml.String (Package_name.to_string dep.name)) ] in
     let fields =
-      if String.equal dep.package.name dep.name then
+      if Package_name.equal dep.package.name dep.name then
         fields
       else
-        ("package_name", Toml.String dep.package.name) :: fields
+        ("package_name", Toml.String (Package_name.to_string dep.package.name)) :: fields
     in
     let fields =
       match dep.package.version with
@@ -177,30 +180,38 @@ let dependency_to_toml = fun (dep: dependency) ->
     in
     Toml.Table (List.reverse fields)
   else
-    Toml.Table [ ("name", Toml.String dep.name); ("package", package_id_to_toml dep.package) ]
+    Toml.Table [
+      ("name", Toml.String (Package_name.to_string dep.name));
+      ("package", package_id_to_toml dep.package);
+    ]
 
 let dependency_of_toml = fun value ->
   match value with
   | Toml.Table fields -> (
       match Fields.get "name" fields with
       | Some (Toml.String name) -> (
+          let* name = Package_name.from_string name in
           match Fields.get "package" fields with
           | Some package_value -> package_id_of_toml package_value
           |> Result.map ~fn:(fun package -> { name; package })
           | None ->
               let package_name =
                 match Fields.get "package_name" fields with
-                | Some (Toml.String package_name) -> package_name
-                | _ -> name
+                | Some (Toml.String package_name) ->
+                    let* package_name = Package_name.from_string package_name in
+                    Ok package_name
+                | _ -> Ok name
               in
+              let* package_name = package_name in
               let registry =
                 match Fields.get "registry" fields with
                 | Some (Toml.String registry) -> Some registry
                 | _ ->
-                    if
-                      List.any fields ~fn:(fun (field_name, _value) -> String.equal field_name "version")
-                      || List.any fields ~fn:(fun (field_name, _value) -> String.equal field_name "sha256")
-                    then
+                    if List.any fields
+                        ~fn:(fun (field_name, _value) ->
+                          String.equal field_name "version") || List.any fields
+                        ~fn:(fun (field_name, _value) ->
+                          String.equal field_name "sha256") then
                       Some "pkgs.ml"
                     else
                       None
@@ -239,7 +250,7 @@ let dependency_list_of_toml = fun value ->
 
 let package_to_toml = fun (pkg: package) ->
   let fields = [
-    ("name", Toml.String pkg.id.name);
+    ("name", Toml.String (Package_name.to_string pkg.id.name));
     ("provenance", provenance_to_toml pkg.provenance);
     ("dependencies", dependency_list_to_toml pkg.dependencies);
     ("build_dependencies", dependency_list_to_toml pkg.build_dependencies);
@@ -351,7 +362,7 @@ let of_toml = fun value ->
 let render_string = fun value -> Toml.to_string (Toml.String value)
 
 let render_package_id = fun (id: package_id) ->
-  let fields = [ ("name", render_string id.name) ] in
+  let fields = [ ("name", render_string (Package_name.to_string id.name)) ] in
   let fields =
     match id.registry with
     | Some registry -> ("registry", render_string registry) :: fields
@@ -367,9 +378,8 @@ let render_package_id = fun (id: package_id) ->
     | Some sha256 -> ("sha256", render_string sha256) :: fields
     | None -> fields
   in
-  "{ "
-  ^ String.concat ", " (fields |> List.reverse |> List.map ~fn:(fun (key, value) -> key ^ " = " ^ value))
-  ^ " }"
+  "{ " ^ String.concat ", "
+    (fields |> List.reverse |> List.map ~fn:(fun (key, value) -> key ^ " = " ^ value)) ^ " }"
 
 let render_provenance = fun provenance ->
   match provenance with
@@ -384,9 +394,8 @@ let render_provenance = fun provenance ->
         | Some ref_ -> ("ref", render_string ref_) :: fields
         | None -> fields
       in
-      "{ "
-      ^ String.concat ", " (fields |> List.reverse |> List.map ~fn:(fun (key, value) -> key ^ " = " ^ value))
-      ^ " }"
+      "{ " ^ String.concat ", "
+        (fields |> List.reverse |> List.map ~fn:(fun (key, value) -> key ^ " = " ^ value)) ^ " }"
   | Registry { registry } ->
       "{ kind = " ^ render_string "registry" ^ ", registry = " ^ render_string registry ^ " }"
 
@@ -398,12 +407,12 @@ let render_dependency = fun (dep: dependency) ->
     | None -> false
   in
   if is_flat_registry_dependency then
-    let fields = [ ("name", render_string dep.name) ] in
+    let fields = [ ("name", render_string (Package_name.to_string dep.name)) ] in
     let fields =
-      if String.equal dep.package.name dep.name then
+      if Package_name.equal dep.package.name dep.name then
         fields
       else
-        ("package_name", render_string dep.package.name) :: fields
+        ("package_name", render_string (Package_name.to_string dep.package.name)) :: fields
     in
     let fields =
       match dep.package.version with
@@ -415,18 +424,21 @@ let render_dependency = fun (dep: dependency) ->
       | Some sha256 -> ("sha256", render_string sha256) :: fields
       | None -> fields
     in
-    "{ "
-    ^ String.concat ", " (fields |> List.reverse |> List.map ~fn:(fun (key, value) -> key ^ " = " ^ value))
-    ^ " }"
+    "{ " ^ String.concat ", "
+      (fields |> List.reverse |> List.map ~fn:(fun (key, value) -> key ^ " = " ^ value)) ^ " }"
   else
-    "{ name = " ^ render_string dep.name ^ ", package = " ^ render_package_id dep.package ^ " }"
+    "{ name = "
+    ^ render_string (Package_name.to_string dep.name)
+    ^ ", package = "
+    ^ render_package_id dep.package
+    ^ " }"
 
 let render_dependency_list = fun deps ->
   "[" ^ String.concat ", " (List.map deps ~fn:render_dependency) ^ "]"
 
 let render_package = fun (pkg: package) ->
   let header_lines =
-    [ Some ("name = " ^ render_string pkg.id.name); (
+    [ Some ("name = " ^ render_string (Package_name.to_string pkg.id.name)); (
         match pkg.id.registry with
         | Some registry -> Some ("registry = " ^ render_string registry)
         | None -> None
@@ -463,134 +475,3 @@ let to_string = fun lockfile ->
   )
   in
   String.concat "\n\n" parts ^ "\n"
-
-module Tests = struct
-  let test_lockfile_roundtrip_toml (): (unit, string) result =
-    let lockfile = {
-      format_version = 1;
-      dependency_hash = "deadbeefcafebabe";
-      packages =
-        [ {
-            id = { registry = None; name = "app"; version = None; sha256 = None };
-            root = Some (Path.v "packages/app");
-            provenance = Workspace;
-            dependencies = [
-              {
-                name = "std";
-                package = {
-                  registry = Some "pkgs.ml";
-                  name = "std";
-                  version = Some "0.1.0";
-                  sha256 = Some "deadbeef"
-                }
-              };
-            ];
-            build_dependencies = [];
-            dev_dependencies = [];
-          }; {
-            id = {
-              registry = Some "pkgs.ml";
-              name = "std";
-              version = Some "0.1.0";
-              sha256 = Some "deadbeef"
-            };
-            root = None;
-            provenance = Registry { registry = "pkgs.ml" };
-            dependencies = [];
-            build_dependencies = [];
-            dev_dependencies = [];
-          }; ];
-    }
-    in
-    let rendered = to_string lockfile in
-    let parsed =
-      match rendered |> Toml.parse with
-      | Ok toml -> Ok toml
-      | Error err -> Error ("expected generated lockfile TOML to parse: " ^ Toml.error_to_string err)
-    in
-    match parsed with
-    | Ok toml -> (
-        match of_toml toml with
-        | Ok parsed ->
-            let first_package = List.get parsed.packages ~at:0 in
-            let second_package = List.get parsed.packages ~at:1 in
-            if
-              parsed.format_version = 1
-              && String.equal parsed.dependency_hash "deadbeefcafebabe"
-              && List.length parsed.packages = 2
-              && (
-                match first_package with
-                | Some package -> String.equal package.id.name "app"
-                | None -> false
-              )
-              && (
-                match second_package with
-                | Some package -> package.id.version = Some "0.1.0"
-                | None -> false
-              )
-              && (
-                match second_package with
-                | Some package -> package.id.sha256 = Some "deadbeef"
-                | None -> false
-              )
-              && String.contains rendered {|dependency_hash = "deadbeefcafebabe"|}
-              && String.contains rendered {|dependencies = [{ name = "std", version = "0.1.0", sha256 = "deadbeef" }]|}
-              && not (String.contains rendered "package = {")
-            then
-              Ok ()
-            else
-              Error "expected lockfile to round-trip through TOML"
-        | Error err -> Error err
-      )
-    | Error err -> Error err [@test]
-
-  let test_lockfile_parses_path_provenance (): (unit, string) result =
-    let toml =
-      Toml.parse
-        {|
-format_version = 1
-
-[[packages]]
-root = "../vendor/foo"
-dependencies = []
-build_dependencies = []
-dev_dependencies = []
-
-[packages.id]
-name = "foo"
-version = "1.2.3"
-
-[packages.provenance]
-kind = "path"
-path = "../vendor/foo"
-|}
-      |> Result.expect ~msg:"expected test lockfile TOML to parse"
-    in
-    match of_toml toml with
-    | Ok { packages=[ pkg ]; _ } -> (
-        match pkg.provenance, pkg.root with
-        | Path path, Some root when String.equal (Path.to_string path) "../vendor/foo"
-        && String.equal (Path.to_string root) "../vendor/foo" -> Ok ()
-        | _ -> Error "expected path provenance to parse"
-      )
-    | Ok _ ->
-        Error "expected one package in parsed lockfile"
-    | Error err ->
-        Error err [@test]
-
-  let test_lockfile_roundtrips_empty_packages (): (unit, string) result =
-    let lockfile = { format_version = 1; dependency_hash = "empty-lock"; packages = [] } in
-    let rendered = to_string lockfile in
-    match Toml.parse rendered with
-    | Error err -> Error ("expected generated empty lockfile TOML to parse: "
-    ^ Toml.error_to_string err)
-    | Ok toml -> (
-        match of_toml toml with
-        | Ok parsed when Int.equal parsed.format_version 1
-        && String.equal parsed.dependency_hash "empty-lock"
-        && List.is_empty parsed.packages
-        && String.contains rendered "packages = []" -> Ok ()
-        | Ok _ -> Error "expected empty lockfile to round-trip through TOML"
-        | Error err -> Error err
-      ) [@test]
-end [@test]

@@ -2,8 +2,14 @@ open Std
 
 type error =
   | TargetSelectionFailed of Riot_model.Target.resolve_error
-  | PackageNotFound of { package_name: string; available_packages: string list }
-  | PackagesNotFound of { package_names: string list; available_packages: string list }
+  | PackageNotFound of {
+      package_name: Riot_model.Package_name.t;
+      available_packages: Riot_model.Package_name.t list
+    }
+  | PackagesNotFound of {
+      package_names: Riot_model.Package_name.t list;
+      available_packages: Riot_model.Package_name.t list
+    }
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
   | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
   | BuildFailed of { errors: Riot_executor.Package_builder.build_result list }
@@ -22,11 +28,13 @@ let error_message = function
           |> String.concat ", "
         )
   | PackageNotFound { package_name; available_packages } ->
-      "Package '" ^ package_name ^ "' not found. Available packages: "
-      ^ String.concat ", " available_packages
+      "Package '" ^ Riot_model.Package_name.to_string package_name ^ "' not found. Available packages: "
+      ^ String.concat ", " (List.map available_packages ~fn:Riot_model.Package_name.to_string)
   | PackagesNotFound { package_names; available_packages } ->
-      "Packages not found: " ^ String.concat ", " package_names
-      ^ ". Available packages: " ^ String.concat ", " available_packages
+      "Packages not found: "
+      ^ String.concat ", " (List.map package_names ~fn:Riot_model.Package_name.to_string)
+      ^ ". Available packages: "
+      ^ String.concat ", " (List.map available_packages ~fn:Riot_model.Package_name.to_string)
   | ToolchainInstallFailed { target; error } ->
       "Failed to install toolchain for "
       ^ Riot_model.Target.to_string target
@@ -50,26 +58,42 @@ let error_message = function
       reason
 
 let available_package_names = fun workspace ->
-  Prepared_workspace.Internal.package_names workspace |> List.sort ~compare:String.compare
+  Prepared_workspace.Internal.package_names workspace
+  |> List.sort ~compare:Riot_model.Package_name.compare
 
 let resolve_package_names = fun workspace requested ->
   let available = available_package_names workspace in
   match requested with
   | [] -> Ok available
   | [ package_name ] ->
-      if List.contains available ~value:package_name then
+      if
+        List.any
+          available
+          ~fn:(fun available_package_name ->
+            Riot_model.Package_name.equal available_package_name package_name)
+      then
         Ok [ package_name ]
       else
-        Error (PackageNotFound { package_name; available_packages = available })
+        Error (PackageNotFound {
+          package_name;
+          available_packages = available
+        })
   | package_names ->
       let missing =
         List.filter package_names ~fn:(fun package_name ->
-            not (List.contains available ~value:package_name))
+            not
+              (List.any
+                 available
+                 ~fn:(fun available_package_name ->
+                   Riot_model.Package_name.equal available_package_name package_name)))
       in
       if List.is_empty missing then
         Ok package_names
       else
-        Error (PackagesNotFound { package_names = missing; available_packages = available })
+        Error (PackagesNotFound {
+          package_names = missing;
+          available_packages = available
+        })
 
 let resolve_target_names = fun workspace request ->
   let host = Riot_model.Target.current in

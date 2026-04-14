@@ -2,7 +2,7 @@ open Std
 
 type install_request = {
   workspace: Riot_model.Workspace.t;
-  package_name: string option;
+  package_name: Riot_model.Package_name.t option;
   binary_name: string;
   local_only: bool;
   promote_to_workspace_root: bool;
@@ -20,14 +20,18 @@ type registry_install_request = {
 }
 type install_event =
   | Build of Event.t
-  | InstallingBinary of { package: string; binary: string }
+  | InstallingBinary of { package: Riot_model.Package_name.t; binary: string }
   | PromotedBinary of { binary: string; destination: Path.t; global: bool }
   | InstalledBinary of { binary: string; duration_ms: int; global_destination: Path.t option }
 type install_error =
   | BinaryNotFound of { binary_name: string }
-  | BinaryNotFoundInPackage of { package_name: string; binary_name: string }
+  | BinaryNotFoundInPackage of { package_name: Riot_model.Package_name.t; binary_name: string }
   | BuildFailed of Build_core.error
-  | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
+  | ArtifactNotFound of {
+      package_name: Riot_model.Package_name.t;
+      binary_name: string;
+      reason: string
+    }
   | PromotionFailed of { binary_name: string; destination: Path.t; global: bool; reason: string }
   | ExternalTargetLoadFailed of { target: string; reason: string }
   | ClientError of Client.error

@@ -183,7 +183,7 @@ let rec load_external_package:
   Path.t ->
   declared_from:Path.t ->
   Package.dependency ->
-  seen:string list Cell.t ->
+  seen:Package_name.t list Cell.t ->
   workspace_deps:Package.dependency list ->
   workspace_dev_deps:Package.dependency list ->
   workspace_build_deps:Package.dependency list ->
@@ -211,9 +211,9 @@ let rec load_external_package:
               seen := dep.name :: !seen;
               match load_riot_toml t toml_path with
               | Error err when String.starts_with ~prefix:"failed to read" err ->
-                  ([], [ PackageTomlReadFailed { package = dep.name; path = path_str } ])
+                  ([], [ PackageTomlReadFailed { package = Package_name.to_string dep.name; path = path_str } ])
               | Error _ ->
-                  ([], [ PackageTomlParseFailed { package = dep.name; path = path_str } ])
+                  ([], [ PackageTomlParseFailed { package = Package_name.to_string dep.name; path = path_str } ])
               | Ok toml -> (
                   let rel_path =
                     let abs_str = Path.to_string abs_path in
@@ -235,6 +235,7 @@ let rec load_external_package:
                     ~path:abs_path
                     ~relative_path with
                   | Ok pkg ->
+                      let pkg_name = Package_name.to_string pkg.name in
                       let transitive_results =
                         List.map
                           (Package_manifest.all_dependencies pkg)
@@ -246,7 +247,7 @@ let rec load_external_package:
                             ~workspace_deps
                             ~workspace_dev_deps
                             ~workspace_build_deps
-                            ~dependant:(Some pkg.name))
+                            ~dependant:(Some pkg_name))
                       in
                       let transitive_pkgs =
                         transitive_results |> List.map ~fn:(fun (packages, _) -> packages) |> List.concat
@@ -257,13 +258,19 @@ let rec load_external_package:
                       (pkg :: transitive_pkgs, transitive_errs)
                   | Error error -> (
                     [],
-                    [ PackageFromTomlFailed { package = dep.name; path = path_str; error } ]
+                    [
+                      PackageFromTomlFailed {
+                        package = Package_name.to_string dep.name;
+                        path = path_str;
+                        error;
+                      }
+                    ]
                   )
                 )
             )
           | _ ->
               seen := dep.name :: !seen;
-              ([], [ PackageNotFound { dependant; package = dep.name; path = path_str } ])
+              ([], [ PackageNotFound { dependant; package = Package_name.to_string dep.name; path = path_str } ])
         )
 
 let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_error list) = fun t workspace_root workspace_manifest ->
@@ -289,9 +296,7 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
   let member_errors =
     member_results |> List.map ~fn:(fun (_, errors) -> errors) |> List.concat
   in
-  let seen =
-    Cell.create (List.map member_packages ~fn:(fun (p: Package_manifest.t) -> p.name))
-  in
+  let seen = Cell.create (List.map member_packages ~fn:(fun (p: Package_manifest.t) -> p.name)) in
   (* Load workspace-level dependencies first *)
   let workspace_deps_started_at = Time.Instant.now () in
   let workspace_results =
@@ -322,6 +327,7 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
   let external_results =
     member_packages
     |> List.map ~fn:(fun (pkg: Package_manifest.t) ->
+      let pkg_name = Package_name.to_string pkg.name in
       List.map
         (Package_manifest.all_dependencies pkg)
         ~fn:(load_external_package
@@ -332,7 +338,7 @@ let build_workspace: t -> Path.t -> Workspace.manifest -> (Workspace.t * load_er
           ~workspace_deps:workspace_manifest.dependencies
           ~workspace_dev_deps:workspace_manifest.dev_dependencies
           ~workspace_build_deps:workspace_manifest.build_dependencies
-          ~dependant:(Some pkg.name)))
+          ~dependant:(Some pkg_name)))
     |> List.concat
   in
   let () =
@@ -389,6 +395,7 @@ let build_single_package_workspace: t -> Path.t -> (Workspace.t * load_error lis
         ~relative_path:(Path.v ".") with
       | Error err -> Error ("Failed to parse package manifest: " ^ err)
       | Ok package ->
+          let package_name = Package_name.to_string package.name in
           let seen = Cell.create [ package.name ] in
           let external_results =
             List.map
@@ -401,7 +408,7 @@ let build_single_package_workspace: t -> Path.t -> (Workspace.t * load_error lis
                 ~workspace_deps:[]
                 ~workspace_dev_deps:[]
                 ~workspace_build_deps:[]
-                ~dependant:(Some package.name))
+                ~dependant:(Some package_name))
           in
           let external_packages =
             external_results |> List.map ~fn:(fun (packages, _) -> packages) |> List.concat

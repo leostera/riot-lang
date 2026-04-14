@@ -14,7 +14,7 @@ type dependency_scope =
   | Build
 type key
 type dependency = {
-  name: string;
+  name: Package_name.t;
   source: dependency_source;
 }
 type resolved_dependency = {
@@ -75,7 +75,7 @@ type foreign_dependency = {
   env: (string * string) list;
 }
 type manifest_spec = {
-  name: string;
+  name: Package_name.t;
   path: Path.t;
   relative_path: Path.t;
   dependencies: dependency list;
@@ -90,7 +90,7 @@ type manifest_spec = {
   publish: publish_metadata;
 }
 type t = private {
-  name: string;
+  name: Package_name.t;
   path: Path.t;
   relative_path: Path.t;
   dependencies: dependency list;
@@ -122,7 +122,7 @@ val is_workspace_member: t -> bool
 (** Check if this package is a workspace member (not an external dependency).
     External dependencies have relative_path that escapes the workspace (starts with "../")
     or uses absolute paths. *)
-val validate_name: string -> (string, string) result
+val validate_name: string -> (Package_name.t, string) result
 
 (** Validate a package name according to Riot naming conventions:
     - Must start with a lowercase letter
@@ -160,7 +160,7 @@ val to_json: t -> Std.Data.Json.t
 val from_json: Std.Data.Json.t -> (t, string) result
 
 val make:
-  name:string ->
+  name:Package_name.t ->
   path:Path.t ->
   relative_path:Path.t ->
   ?dependencies:dependency list ->
@@ -179,7 +179,7 @@ val make:
 
 val scan_sources: package_path:Path.t -> ?excluded_relpaths:Path.t list -> unit -> sources
 
-val synthetic: name:string -> path:Path.t -> relative_path:Path.t -> t
+val synthetic: name:Package_name.t -> path:Path.t -> relative_path:Path.t -> t
 
 val root_module_name: t -> string
 

@@ -1,12 +1,13 @@
 open Std
 open Std.Collections
-
-let ( let* ) value fn = Result.and_then value ~fn
+open Std.Result.Syntax
+open Riot_model
 
 type error =
   | MissingDependency
   | ConflictingTarget
   | ConflictingScope
+  | InvalidPackageName of string
   | CurrentDirUnavailable of string
   | WorkspaceBootstrapFailed of string
   | WorkspaceLoadFailed of string
@@ -32,6 +33,7 @@ let message = function
   | MissingDependency -> "missing dependency name"
   | ConflictingTarget -> "cannot combine --workspace with --package"
   | ConflictingScope -> "cannot combine --build with --dev"
+  | InvalidPackageName error -> error
   | CurrentDirUnavailable error -> "failed to determine current directory: " ^ error
   | WorkspaceBootstrapFailed error -> "failed to initialize riot workspace: " ^ error
   | WorkspaceLoadFailed error -> "failed to load initialized riot workspace: " ^ error
@@ -54,7 +56,10 @@ let selection_of_matches = fun ?(default_selection = Riot_deps.Current) matches 
   let workspace = ArgParser.get_flag matches "workspace" in
   match package, workspace with
   | Some _, true -> Error ConflictingTarget
-  | Some package, false -> Ok (Riot_deps.Package package)
+  | Some package, false ->
+      let* package_name = Package_name.from_string package
+      |> Result.map_err ~fn:(fun error -> InvalidPackageName error) in
+      Ok (Riot_deps.Package package_name)
   | None, true -> Ok Riot_deps.Workspace
   | None, false -> Ok default_selection
 

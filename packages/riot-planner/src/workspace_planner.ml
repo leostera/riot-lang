@@ -4,8 +4,8 @@ open Riot_model
 
 type target =
   All
-  | Package of string
-  | Packages of string list
+  | Package of Package_name.t
+  | Packages of Package_name.t list
 
 type planning_breakdown = {
   manifest_filter_duration: Time.Duration.t;
@@ -28,22 +28,23 @@ type package_plan = {
 }
 
 type plan_error =
-  | PackageNotFound of { name: string; available: string list }
-  | PackagesNotFound of { names: string list; available: string list }
+  | PackageNotFound of { name: Package_name.t; available: Package_name.t list }
+  | PackagesNotFound of { names: Package_name.t list; available: Package_name.t list }
   | CycleDetected of { cycle: string list }
   | MissingDependencies of { missing: Package_graph.missing_dependency list }
   | PackageLoadFailed of { errors: Workspace_manager.load_error list }
 
 let manifest_dependency_names_for_scope = fun (scope: Package_graph.build_scope) (pkg: Package_manifest.t) ->
+  let dependency_name = fun (dep: Package.dependency) -> dep.name in
   match scope with
   | Package_graph.Build ->
-      List.map pkg.build_dependencies ~fn:(fun (dep: Package.dependency) -> dep.name)
+      List.map pkg.build_dependencies ~fn:dependency_name
   | Package_graph.Runtime ->
-      List.map pkg.dependencies ~fn:(fun (dep: Package.dependency) -> dep.name)
+      List.map pkg.dependencies ~fn:dependency_name
   | Package_graph.Dev ->
       List.concat [
-        List.map pkg.dependencies ~fn:(fun (dep: Package.dependency) -> dep.name);
-        List.map pkg.dev_dependencies ~fn:(fun (dep: Package.dependency) -> dep.name);
+        List.map pkg.dependencies ~fn:dependency_name;
+        List.map pkg.dev_dependencies ~fn:dependency_name;
       ]
 
 let package_manifest_table = fun (workspace: Workspace.t) ->
@@ -67,8 +68,8 @@ let target_missing_package_names = fun ~(workspace: Workspace.t) target ->
     ());
   target_package_names target
   |> List.filter ~fn:(fun pkg_name -> not (HashSet.contains available_set ~value:pkg_name))
-  |> List.sort ~compare:String.compare
-  |> List.unique ~compare:String.compare
+  |> List.sort ~compare:Package_name.compare
+  |> List.unique ~compare:Package_name.compare
 
 let filter_workspace_for_target = fun ~(workspace: Workspace.t) ~target ~(scope: Package_graph.build_scope) ->
   match target with
@@ -91,14 +92,15 @@ let filter_workspace_for_target = fun ~(workspace: Workspace.t) ~target ~(scope:
             in
             visit (deps @ rest)
       in
-      let initial_targets = target_package_names target |> List.unique ~compare:String.compare in
+      let initial_targets = target_package_names target |> List.unique ~compare:Package_name.compare in
       let () = visit initial_targets in
       {
         workspace with
         packages =
           List.filter
             workspace.packages
-            ~fn:(fun (pkg: Package_manifest.t) -> HashSet.contains seen ~value:pkg.name)
+            ~fn:(fun (pkg: Package_manifest.t) ->
+              HashSet.contains seen ~value:pkg.name)
       }
 
 let plan_workspace = fun ~(workspace: Workspace.t) ~target ~(scope:Package_graph.build_scope) ~load_errors ->
@@ -106,7 +108,9 @@ let plan_workspace = fun ~(workspace: Workspace.t) ~target ~(scope:Package_graph
   if List.length load_errors > 0 then
     Error (PackageLoadFailed { errors = load_errors })
   else
-    let available = List.map workspace.packages ~fn:(fun (p: Package_manifest.t) -> p.name) in
+    let available =
+      List.map workspace.packages ~fn:(fun (p: Package_manifest.t) -> p.name)
+    in
     let missing_targets = target_missing_package_names ~workspace target in
     if not (List.is_empty missing_targets) then
       match missing_targets with
@@ -135,8 +139,8 @@ let plan_workspace = fun ~(workspace: Workspace.t) ~target ~(scope:Package_graph
                     List.filter
                       pkg_names
                       ~fn:(fun pkg_name -> Option.is_none (Package_graph.find_package package_graph pkg_name))
-                    |> List.sort ~compare:String.compare
-                    |> List.unique ~compare:String.compare
+                    |> List.sort ~compare:Package_name.compare
+                    |> List.unique ~compare:Package_name.compare
                   in
                   match missing with
                   | [] -> Ok (Package_graph.filter_for_packages package_graph pkg_names)

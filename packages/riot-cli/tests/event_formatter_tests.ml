@@ -2,6 +2,10 @@ open Std
 open Std.Collections
 module Test = Std.Test
 
+let package_name = fun name ->
+  Riot_model.Package_name.from_string name
+  |> Result.expect ~msg:("invalid package name: " ^ name)
+
 let test_workspace_completed_is_silent = fun _ctx ->
   let displayed_packages = HashSet.create () in
   let event = Riot_executor.Telemetry_events.WorkspaceCompleted {
@@ -21,7 +25,9 @@ let test_workspace_completed_is_silent = fun _ctx ->
 
 let test_build_failed_prefixes_package_name = fun _ctx ->
   let displayed_packages = HashSet.create () in
-  let package = Riot_model.Package.make ~name:"syn" ~path:(Path.v ".") ~relative_path:(Path.v ".") () in
+  let package =
+    Riot_model.Package.make ~name:(package_name "syn") ~path:(Path.v ".") ~relative_path:(Path.v ".") ()
+  in
   let event = Riot_executor.Telemetry_events.BuildFailed {
     session_id = Riot_model.Session_id.make ();
     package;
@@ -37,7 +43,7 @@ let test_build_failed_prefixes_package_name = fun _ctx ->
 let test_package_ocamlc_warnings_prefix_package_name = fun _ctx ->
   let displayed_packages = HashSet.create () in
   let package = Riot_model.Package.make
-    ~name:"riot-eval"
+    ~name:(package_name "riot-eval")
     ~path:(Path.v ".")
     ~relative_path:(Path.v ".")
     () in

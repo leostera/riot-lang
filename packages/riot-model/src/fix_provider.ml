@@ -3,13 +3,14 @@ open Std.Data
 
 type t = {
   name: string;
-  package_name: string;
+  package_name: Package_name.t;
   package_path: Path.t;
   source_path: Path.t;
   rules: string list;
 }
 
 let normalize_rule_id = fun package_name rule_id ->
+  let package_name = Package_name.to_string package_name in
   if String.contains rule_id ":" then
     rule_id
   else
@@ -41,7 +42,7 @@ let parse_provider = fun provider_toml ~package_name ~package_path ->
         | _ -> []
       in
       Some {
-        name = package_name;
+        name = Package_name.to_string package_name;
         package_name;
         package_path;
         source_path =
@@ -67,7 +68,7 @@ let parse_from_toml = fun items ~package_name ~package_path ->
 let to_json = fun provider ->
   Json.Object [
     ("name", Json.String provider.name);
-    ("package_name", Json.String provider.package_name);
+    ("package_name", Json.String (Package_name.to_string provider.package_name));
     ("package_path", Json.String (Path.to_string provider.package_path));
     ("source_path", Json.String (Path.to_string provider.source_path));
     ("rules", Json.Array (List.map provider.rules ~fn:(fun rule -> Json.String rule)));

@@ -229,13 +229,15 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
   let session_id = build_ctx.Build_ctx.session_id in
   let profile_name = build_ctx.Build_ctx.profile.name in
   let target_triplet = Build_ctx.target_triplet build_ctx in
+  let package_name = package.Package.name in
+  let package_name_string = Package_name.to_string package_name in
   let target_dir =
     Path.(Riot_model.Riot_dirs.out_dir_in_workspace
       ~workspace
       ~profile:profile_name
       ~target:target_triplet
-    / Path.v package.Package.name) in
-  Log.info ("Package " ^ package.Package.name ^ ": computing content hash with dependencies");
+    / Path.v package_name_string) in
+  Log.info ("Package " ^ package_name_string ^ ": computing content hash with dependencies");
   let package_scope =
     match Riot_planner.Package_graph.get_node_by_key package_graph package_key with
     | Some node -> Riot_planner.Package_graph.get_scope node.value
@@ -262,7 +264,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
         (BuildFailed {
           session_id;
           package;
-          target = Workspace_planner.Package package.name;
+          target = Workspace_planner.Package package_name;
           error = PlanningFailed err
         });
       {
@@ -274,7 +276,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
       }
   | Ok (MissingDependencies { missing; _ }) ->
       let missing_names =
-        List.map missing ~fn:(fun p -> p.Package.name)
+        List.map missing ~fn:(fun p -> Package_name.to_string p.Package.name)
       in
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       let error = "Missing dependencies: " ^ String.concat ", " missing_names in
@@ -284,7 +286,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
         (BuildFailed {
           session_id;
           package;
-          target = Workspace_planner.Package package.name;
+          target = Workspace_planner.Package package_name;
           error = error_variant
         });
       {
@@ -296,11 +298,11 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
       }
   | Ok (FailedDependencies { failed; _ }) ->
       let failed_names =
-        List.map failed ~fn:(fun p -> p.Package.name)
+        List.map failed ~fn:(fun p -> Package_name.to_string p.Package.name)
       in
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       let reason = "needs " ^ summarize_package_names failed_names in
-      Log.info ("Package " ^ package.name ^ ": SKIPPED (" ^ reason ^ ")");
+      Log.info ("Package " ^ package_name_string ^ ": SKIPPED (" ^ reason ^ ")");
       (* Mark as Skipped in graph so dependents see it as failed *)
       (
         match Riot_planner.Package_graph.get_node_by_key package_graph package_key with
@@ -315,7 +317,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
         (BuildSkipped {
           session_id;
           package;
-          target = Workspace_planner.Package package.name;
+          target = Workspace_planner.Package package_name;
           reason
         });
       {
@@ -353,12 +355,12 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
             if emit_visible_progress && List.length artifact.ocamlc_warnings > 0 then
               Telemetry.emit
                 (
-                  PackageOcamlcWarnings {
-                    session_id;
-                    package;
-                    target = Workspace_planner.Package package.name;
-                    source = `Cached;
-                    messages = artifact.ocamlc_warnings;
+                    PackageOcamlcWarnings {
+                      session_id;
+                      package;
+                      target = Workspace_planner.Package package_name;
+                      source = `Cached;
+                      messages = artifact.ocamlc_warnings;
                   }
                 );
             if emit_visible_progress then
@@ -367,7 +369,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
                   BuildCompleted {
                     session_id;
                     package;
-                    target = Workspace_planner.Package package.name;
+                    target = Workspace_planner.Package package_name;
                     status = `Cached;
                     duration;
                   }
@@ -395,7 +397,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
               (BuildFailed {
                 session_id;
                 package;
-                target = Workspace_planner.Package package.name;
+                target = Workspace_planner.Package package_name;
                 error
               });
             {
@@ -413,14 +415,14 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
     module_graph;
     action_graph
   }) -> (
-      Log.info ("Package " ^ package.Package.name ^ ": hash=" ^ Std.Crypto.Digest.hex package_hash);
+      Log.info ("Package " ^ package_name_string ^ ": hash=" ^ Std.Crypto.Digest.hex package_hash);
       if emit_visible_progress then
         Telemetry.emit
-          (BuildStarted { session_id; package; target = Workspace_planner.Package package.name });
-      Log.info ("Package " ^ package.name ^ ": executing action graph");
+          (BuildStarted { session_id; package; target = Workspace_planner.Package package_name });
+      Log.info ("Package " ^ package_name_string ^ ": executing action graph");
       Log.info
         ("Package "
-        ^ package.name
+        ^ package_name_string
         ^ ": executing action graph with "
         ^ Int.to_string (List.length (Action_graph.nodes action_graph))
         ^ " nodes");
@@ -429,7 +431,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
           (CompilationStarted {
             session_id;
             package;
-            target = Workspace_planner.Package package.name
+            target = Workspace_planner.Package package_name
           });
       (
         match Riot_planner.Package_graph.get_node_by_key package_graph planned_key with
@@ -504,7 +506,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
             (BuildFailed {
               session_id;
               package;
-              target = Workspace_planner.Package package.name;
+              target = Workspace_planner.Package package_name;
               error
             });
           {
@@ -516,23 +518,23 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
           }
       | Ok (sandbox_dir, package_outputs, export_entries, ocamlc_warnings) ->
           Riot_store.Store.materialize_package_exports store ~exports:export_entries ~target_dir
-          |> Result.expect ~msg:("Failed to materialize package exports for " ^ package.name);
+          |> Result.expect ~msg:("Failed to materialize package exports for " ^ package_name_string);
           let artifact = Riot_store.Store.save
             store
-            ~package:package.name
+            ~package:package_name_string
             ~ocamlc_warnings
             ~exports:export_entries
             ~hash:package_hash
             ~sandbox_dir
             ~outs:package_outputs
-          |> Result.expect ~msg:("Failed to save package hash artifact for " ^ package.name) in
+          |> Result.expect ~msg:("Failed to save package hash artifact for " ^ package_name_string) in
           if emit_visible_progress && List.length ocamlc_warnings > 0 then
             Telemetry.emit
               (
                 PackageOcamlcWarnings {
                   session_id;
                   package;
-                  target = Workspace_planner.Package package.name;
+                  target = Workspace_planner.Package package_name;
                   source = `Fresh;
                   messages = ocamlc_warnings;
                 }
@@ -559,7 +561,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
                 BuildCompleted {
                   session_id;
                   package;
-                  target = Workspace_planner.Package package.name;
+                  target = Workspace_planner.Package package_name;
                   status = `Fresh;
                   duration;
                 }
@@ -589,7 +591,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
             (BuildFailed {
               session_id;
               package;
-              target = Workspace_planner.Package package.name;
+              target = Workspace_planner.Package package_name;
               error = err
             });
           {

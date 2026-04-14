@@ -2,6 +2,10 @@ open Std
 module Test = Std.Test
 module HashSet = Std.Collections.HashSet
 
+let package_name = fun name ->
+  Riot_model.Package_name.from_string name
+  |> Result.expect ~msg:("invalid package name: " ^ name)
+
 let parse_build = fun args ->
   match ArgParser.get_matches Riot_cli.Build.command args with
   | Ok matches -> Ok matches
@@ -56,7 +60,7 @@ let make_valid_workspace = fun ?target_dir tmpdir ->
   let _ = write_workspace_manifest ~root:tmpdir ~members:[ Path.v "demo" ] in
   let package =
     Riot_model.Package.make
-      ~name:"demo"
+      ~name:(package_name "demo")
       ~path:pkg_dir
       ~relative_path:(Path.v "demo")
       ~library:{ path = Path.v "src/lib.ml" }
@@ -114,7 +118,7 @@ let test_build_command_accepts_prepared_workspace = fun _ctx ->
           ~prepared_workspace
           ~show_finished_summary:false
           ~mode:Riot_cli.Build.Human
-          (Some "demo")
+          (Some (package_name "demo"))
           None)
   with
   | Ok (Ok ()) -> Ok ()
@@ -297,7 +301,7 @@ let test_run_rejects_trailing_remote_binary_separator = fun _ctx ->
 
 let make_workspace = fun binaries ->
   let package = Riot_model.Package.make
-    ~name:"demo"
+    ~name:(package_name "demo")
     ~path:(Path.v "/workspace/packages/demo")
     ~relative_path:(Path.v "packages/demo")
     ~binaries
@@ -312,7 +316,7 @@ let test_run_build_scope_uses_runtime_for_runtime_binaries = fun _ctx ->
     [ Riot_model.Package.{ name = "demo"; path = Path.v "src/demo.ml" } ] in
   Test.assert_equal
     ~expected:Riot_cli.Build.Runtime
-    ~actual:(Riot_cli.Run.build_scope_for_binary workspace ~package_name:"demo" ~binary_name:"demo");
+    ~actual:(Riot_cli.Run.build_scope_for_binary workspace ~package_name:(package_name "demo") ~binary_name:"demo");
   Ok ()
 
 let test_run_build_scope_uses_dev_for_test_binaries = fun _ctx ->
@@ -320,56 +324,56 @@ let test_run_build_scope_uses_dev_for_test_binaries = fun _ctx ->
     [ Riot_model.Package.{ name = "pm_tests"; path = Path.v "tests/pm_tests.ml" } ] in
   Test.assert_equal
     ~expected:Riot_cli.Build.Dev
-    ~actual:(Riot_cli.Run.build_scope_for_binary workspace ~package_name:"demo" ~binary_name:"pm_tests");
+    ~actual:(Riot_cli.Run.build_scope_for_binary workspace ~package_name:(package_name "demo") ~binary_name:"pm_tests");
   Ok ()
 
 let test_run_build_scope_defaults_to_runtime_when_binary_is_missing = fun _ctx ->
   let workspace = make_workspace [] in
   Test.assert_equal
     ~expected:Riot_cli.Build.Runtime
-    ~actual:(Riot_cli.Run.build_scope_for_binary workspace ~package_name:"demo" ~binary_name:"missing");
+    ~actual:(Riot_cli.Run.build_scope_for_binary workspace ~package_name:(package_name "demo") ~binary_name:"missing");
   Ok ()
 
 let test_run_resolves_single_implicit_binary = fun _ctx ->
   let workspace = make_workspace
     [ Riot_model.Package.{ name = "hello-world"; path = Path.v "src/hello_world.ml" } ] in
   match Riot_cli.Run.resolve_implicit_local_target workspace with
-  | Ok { package_name; binary_name } ->
-      Test.assert_equal ~expected:"demo" ~actual:package_name;
+  | Ok { package_name = resolved_package_name; binary_name } ->
+      Test.assert_equal ~expected:(package_name "demo") ~actual:resolved_package_name;
       Test.assert_equal ~expected:"hello-world" ~actual:binary_name;
       Ok ()
   | Error err -> Error ("expected single implicit binary to resolve: " ^ err)
 
 let test_run_resolves_single_implicit_binary_in_package = fun _ctx ->
   let demo = Riot_model.Package.make
-    ~name:"demo"
+    ~name:(package_name "demo")
     ~path:(Path.v "/workspace/packages/demo")
     ~relative_path:(Path.v "packages/demo")
     ~binaries:[ Riot_model.Package.{ name = "demo"; path = Path.v "src/demo.ml" } ]
     () in
   let util = Riot_model.Package.make
-    ~name:"util"
+    ~name:(package_name "util")
     ~path:(Path.v "/workspace/packages/util")
     ~relative_path:(Path.v "packages/util")
     ~binaries:[ Riot_model.Package.{ name = "util"; path = Path.v "src/util.ml" } ]
     () in
   let workspace = make_workspace_with_packages [ demo; util ] in
-  match Riot_cli.Run.resolve_implicit_local_target ~package_filter:"util" workspace with
-  | Ok { package_name; binary_name } ->
-      Test.assert_equal ~expected:"util" ~actual:package_name;
+  match Riot_cli.Run.resolve_implicit_local_target ~package_filter:(package_name "util") workspace with
+  | Ok { package_name = resolved_package_name; binary_name } ->
+      Test.assert_equal ~expected:(package_name "util") ~actual:resolved_package_name;
       Test.assert_equal ~expected:"util" ~actual:binary_name;
       Ok ()
   | Error err -> Error ("expected package-filtered implicit binary to resolve: " ^ err)
 
 let test_run_rejects_ambiguous_implicit_binary = fun _ctx ->
   let demo = Riot_model.Package.make
-    ~name:"demo"
+    ~name:(package_name "demo")
     ~path:(Path.v "/workspace/packages/demo")
     ~relative_path:(Path.v "packages/demo")
     ~binaries:[ Riot_model.Package.{ name = "demo"; path = Path.v "src/demo.ml" } ]
     () in
   let util = Riot_model.Package.make
-    ~name:"util"
+    ~name:(package_name "util")
     ~path:(Path.v "/workspace/packages/util")
     ~relative_path:(Path.v "packages/util")
     ~binaries:[ Riot_model.Package.{ name = "util"; path = Path.v "src/util.ml" } ]
@@ -397,7 +401,7 @@ let test_run_reports_no_binaries_with_creation_hint = fun _ctx ->
 
 let test_run_reports_package_without_binaries_with_creation_hint = fun _ctx ->
   let workspace = make_workspace [] in
-  match Riot_cli.Run.resolve_implicit_local_target ~package_filter:"demo" workspace with
+  match Riot_cli.Run.resolve_implicit_local_target ~package_filter:(package_name "demo") workspace with
   | Ok _ -> Error "expected package-filtered implicit run target resolution to reject missing binaries"
   | Error err ->
       if
@@ -412,7 +416,7 @@ let test_pm_event_hides_workspace_resolved_packages = fun _ctx ->
   let actual = Riot_cli.Build.format_pm_event
     ~seen_registry_updates
     (Riot_model.Event.PackageResolvedForBuild {
-      package = "create-riot-app";
+      package = package_name "create-riot-app";
       version = None;
       path = "/workspace";
       workspace = true
@@ -425,7 +429,7 @@ let test_pm_event_hides_materialization_started = fun _ctx ->
   let actual = Riot_cli.Build.format_pm_event
     ~seen_registry_updates
     (Riot_model.Event.PackageMaterializationStarted {
-      package = "std";
+      package = package_name "std";
       version = "0.1.0";
       path = "/cache/std"
     }) in
@@ -436,7 +440,10 @@ let test_pm_event_hides_manifest_fetch_chatter = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
   let actual = Riot_cli.Build.format_pm_event
     ~seen_registry_updates
-    (Riot_model.Event.PackageManifestFetchStarted { package = "std"; version = "0.1.0" }) in
+    (Riot_model.Event.PackageManifestFetchStarted {
+      package = package_name "std";
+      version = "0.1.0"
+    }) in
   Test.assert_equal ~expected:None ~actual;
   Ok ()
 
@@ -445,7 +452,7 @@ let test_pm_event_hides_download_skipped = fun _ctx ->
   let actual = Riot_cli.Build.format_pm_event
     ~seen_registry_updates
     (Riot_model.Event.PackageDownloadSkipped {
-      package = "std";
+      package = package_name "std";
       version = "0.1.0";
       path = "/cache/std";
       reason = "already materialized"
@@ -468,7 +475,7 @@ let test_pm_event_shows_locked_package = fun _ctx ->
   let seen_registry_updates = HashSet.create () in
   let actual = Riot_cli.Build.format_pm_event
     ~seen_registry_updates
-    (Riot_model.Event.PackageVersionLocked { package = "std"; version = "0.2.0" }) in
+    (Riot_model.Event.PackageVersionLocked { package = package_name "std"; version = "0.2.0" }) in
   Test.assert_equal ~expected:(Some "      \027[1;32mLocked\027[0m std (0.2.0)") ~actual;
   Ok ()
 

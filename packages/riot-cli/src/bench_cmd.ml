@@ -1,4 +1,5 @@
 open Std
+open Std.Result.Syntax
 open Riot_model
 open Riot_build
 open ArgParser
@@ -47,12 +48,13 @@ let print_command_output = fun (output: Command.output) ->
 
 let print_run_label = fun (suite: Bench_runtime.suite_binary) ->
   println "";
-  println ("Running " ^ suite.package_name ^ "/" ^ suite.suite_name ^ "...");
+  println ("Running " ^ Package_name.to_string suite.package_name ^ "/" ^ suite.suite_name ^ "...");
   println ""
 
 let print_empty_hint = fun package_filter ->
   match package_filter with
-  | Some package_name -> println ("No benchmark suites found in package '" ^ package_name ^ "'")
+  | Some package_name ->
+      println ("No benchmark suites found in package '" ^ Package_name.to_string package_name ^ "'")
   | None -> println "No benchmark binaries found"
 
 let print_empty_list_hint = fun package_filter query ->
@@ -74,10 +76,10 @@ let listed_suite_source_label = fun ~(workspace:Riot_model.Workspace.t) (
       | Ok relative_path -> Path.to_string relative_path
       | Error _ -> Path.to_string path
     )
-  | None -> suite.suite.package_name ^ "/" ^ suite.suite.suite_name
+  | None -> Package_name.to_string suite.suite.package_name ^ "/" ^ suite.suite.suite_name
 
 let listed_bench_selector = fun (suite: Bench_runtime.suite_binary) (item: Bench_runtime.listed_bench_item) ->
-  suite.package_name ^ ":" ^ suite.suite_name ^ ":" ^ item.name
+  Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name ^ ":" ^ item.name
 
 let listed_bench_item_json = fun (suite: Bench_runtime.suite_binary) (
   item: Bench_runtime.listed_bench_item
@@ -110,7 +112,7 @@ let listed_suite_path_json = fun ~(workspace:Riot_model.Workspace.t) (
   | None -> Data.Json.Null
 
 let listed_suite_selector = fun (suite: Bench_runtime.suite_binary) ->
-  suite.package_name ^ ":" ^ suite.suite_name
+  Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name
 
 let write_json_line = fun json ->
   print (Data.Json.to_string json);
@@ -122,7 +124,7 @@ let write_bench_suite_listed_json = fun ~command_started_at ~(workspace:Riot_mod
   write_json_line
     (Data.Json.Object [
       ("type", Data.Json.String "BenchSuiteListed");
-      ("package", Data.Json.String suite.suite.package_name);
+      ("package", Data.Json.String (Package_name.to_string suite.suite.package_name));
       ("suite", Data.Json.String suite.suite.suite_name);
       ("path", listed_suite_path_json ~workspace suite);
       ("selector", Data.Json.String (listed_suite_selector suite.suite));
@@ -135,7 +137,7 @@ let write_bench_item_listed_json = fun ~command_started_at (suite: Bench_runtime
   write_json_line
     (Data.Json.Object [
       ("type", Data.Json.String "BenchItemListed");
-      ("package", Data.Json.String suite.package_name);
+      ("package", Data.Json.String (Package_name.to_string suite.package_name));
       ("suite", Data.Json.String suite.suite_name);
       ("name", Data.Json.String item.name);
       ("selector", Data.Json.String (listed_bench_selector suite item));
@@ -147,7 +149,7 @@ let write_bench_suite_list_failed_json = fun ~command_started_at (suite: Bench_r
   write_json_line
     (Data.Json.Object [
       ("type", Data.Json.String "BenchSuiteListFailed");
-      ("package", Data.Json.String suite.package_name);
+      ("package", Data.Json.String (Package_name.to_string suite.package_name));
       ("suite", Data.Json.String suite.suite_name);
       ("selector", Data.Json.String (listed_suite_selector suite));
       ("message", Data.Json.String (Bench_runtime.bench_error_message err));
@@ -351,13 +353,24 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   in
   let list_mode = ArgParser.get_flag matches "list" in
   let pattern = ArgParser.get_one matches "pattern" in
-  let legacy_package = ArgParser.get_one matches "package" in
+  let legacy_package =
+    match ArgParser.get_one matches "package" with
+    | None -> Ok None
+    | Some package_name ->
+        Package_name.from_string package_name
+        |> Result.map ~fn:Option.some
+        |> Result.map_err ~fn:(fun error -> Failure error)
+  in
   let profile = profile_of_matches matches in
-  let request = Test_selection.parse_request
-    ~pattern
-    ~legacy_package
-    ~size_filter:Test_selection.All
-    ~flaky_only:false in
+  let* legacy_package = legacy_package in
+  let* request =
+    Test_selection.parse_request
+      ~pattern
+      ~legacy_package
+      ~size_filter:Test_selection.All
+      ~flaky_only:false
+    |> Result.map_err ~fn:(fun error -> Failure error)
+  in
   let extra_args = Test_selection.extra_args request extra_args in
   let command_started_at = Time.Instant.now () in
   if output_mode = Build.Json then

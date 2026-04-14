@@ -17,8 +17,14 @@ end
 
 type error = Build_core.error =
   | TargetSelectionFailed of Riot_model.Target.resolve_error
-  | PackageNotFound of { package_name: string; available_packages: string list }
-  | PackagesNotFound of { package_names: string list; available_packages: string list }
+  | PackageNotFound of {
+      package_name: Riot_model.Package_name.t;
+      available_packages: Riot_model.Package_name.t list
+    }
+  | PackagesNotFound of {
+      package_names: Riot_model.Package_name.t list;
+      available_packages: Riot_model.Package_name.t list
+    }
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
   | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
   | BuildFailed of { errors: Riot_executor.Package_builder.build_result list }

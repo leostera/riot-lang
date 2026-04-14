@@ -15,8 +15,14 @@ type build_stats = {
 }
 type error =
   | StartupFailed of { error: Internal_server.error }
-  | PackageNotFound of { package_name: string; available_packages: string list }
-  | PackagesNotFound of { package_names: string list; available_packages: string list }
+  | PackageNotFound of {
+      package_name: Riot_model.Package_name.t;
+      available_packages: Riot_model.Package_name.t list
+    }
+  | PackagesNotFound of {
+      package_names: Riot_model.Package_name.t list;
+      available_packages: Riot_model.Package_name.t list
+    }
   | BuildFailed of { errors: Riot_executor.Package_builder.build_result list }
   | PlanningFailed of { reason: string }
   | CycleDetected of { cycle_nodes: string list }
@@ -41,8 +47,8 @@ type streaming_event =
   | PlanningFailed of { session_id: Session_id.t; failed_at: DateTime.t; reason: string }
   | CycleDetected of { session_id: Session_id.t; detected_at: DateTime.t; cycle_nodes: string list }
 type build_target =
-  | BuildPackage of string
-  | BuildPackages of string list
+  | BuildPackage of Riot_model.Package_name.t
+  | BuildPackages of Riot_model.Package_name.t list
   | BuildAll
 type build_scope =
   | Runtime
@@ -96,6 +102,12 @@ val build_streaming:
   (streaming_event -> unit) ->
   (streaming_event, error) result
 
-val find_executable: t -> string -> ((string * string) option, 'a) result
+val find_executable:
+  t -> string -> ((Riot_model.Package_name.t * string) option, 'a) result
 
-val new_package: t -> path:string -> name:string -> is_library:bool -> ((string * string), string) result
+val new_package:
+  t ->
+  path:Path.t ->
+  name:Riot_model.Package_name.t ->
+  is_library:bool ->
+  ((Path.t * Riot_model.Package_name.t), string) result

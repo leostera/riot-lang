@@ -8,7 +8,7 @@ type t
 
 val make:
   workspace:Prepared_workspace.t ->
-  packages:string list ->
+  packages:Riot_model.Package_name.t list ->
   targets:Riot_model.Target.request ->
   scope:scope ->
   profile:Riot_model.Profile.t ->
@@ -18,7 +18,7 @@ val make:
 module Internal: sig
   val workspace: t -> Prepared_workspace.t
 
-  val packages: t -> string list
+  val packages: t -> Riot_model.Package_name.t list
 
   val targets: t -> Riot_model.Target.request
 

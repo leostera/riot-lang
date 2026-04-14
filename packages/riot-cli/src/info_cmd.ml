@@ -53,7 +53,7 @@ let workspace_packages = fun (workspace: Workspace.t) ->
   workspace.packages
   |> List.filter ~fn:Package_manifest.is_workspace_member
   |> List.sort ~compare:(fun (left: Package_manifest.t) (right: Package_manifest.t) ->
-      String.compare left.name right.name)
+      Package_name.compare left.name right.name)
 
 let manifest_path = fun path -> Path.normalize Path.(path / Path.v "riot.toml")
 
@@ -75,7 +75,7 @@ let package_json = fun ~(workspace_manager:Workspace_manager.t) ~(workspace:Work
 ) ->
   let package_root = Path.normalize pkg.path in
   let fields = [
-    ("name", Data.Json.String pkg.name);
+    ("name", Data.Json.String (Package_name.to_string pkg.name));
     ("root", Data.Json.String (Path.to_string package_root));
     ("relative_path", Data.Json.String (relative_or_absolute_path ~root:workspace.root package_root));
   ]
@@ -135,7 +135,11 @@ let print_workspace = fun ~(load_errors:Workspace_manager.load_error list) (work
     (fun (pkg: Package_manifest.t) ->
       let package_manifest_path = manifest_path pkg.path in
       println
-        ("  - " ^ pkg.name ^ " (" ^ relative_or_absolute_path ~root:workspace.root pkg.path ^ ")");
+        ("  - "
+        ^ Package_name.to_string pkg.name
+        ^ " ("
+        ^ relative_or_absolute_path ~root:workspace.root pkg.path
+        ^ ")");
       println
         ("      manifest: " ^ relative_or_absolute_path ~root:workspace.root package_manifest_path));
   if not (List.is_empty load_errors) then

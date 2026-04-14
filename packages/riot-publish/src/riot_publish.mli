@@ -2,7 +2,7 @@ open Std
 
 type publish_selection =
   | Workspace
-  | Package of string
+  | Package of Riot_model.Package_name.t
 type publish_request = {
   selection: publish_selection;
   skip_check: bool;
@@ -21,30 +21,42 @@ type publish_event =
   | Fmt of Krasny.Report.event
   | Fix of Riot_fix.Event.t
   | Build of Riot_build.Event.t
-  | CheckStarted of { package: string; version: Std.Version.t option; stage: publish_check_stage }
-  | CheckFinished of { package: string; version: Std.Version.t option; stage: publish_check_stage }
-  | Packing of { package: string; version: Std.Version.t; artifact_path: Path.t }
-  | SkippedNotPublic of { package: string; version: Std.Version.t option }
-  | SkippedAlreadyPublished of { package: string; version: Std.Version.t }
+  | CheckStarted of {
+      package: Riot_model.Package_name.t;
+      version: Std.Version.t option;
+      stage: publish_check_stage
+    }
+  | CheckFinished of {
+      package: Riot_model.Package_name.t;
+      version: Std.Version.t option;
+      stage: publish_check_stage
+    }
+  | Packing of {
+      package: Riot_model.Package_name.t;
+      version: Std.Version.t;
+      artifact_path: Path.t
+    }
+  | SkippedNotPublic of { package: Riot_model.Package_name.t; version: Std.Version.t option }
+  | SkippedAlreadyPublished of { package: Riot_model.Package_name.t; version: Std.Version.t }
   | DryRunPlanned of Riot_deps.Publisher.prepared_publish
   | PackagePublished of Pkgs_ml.Registry.published_release
 type publish_outcome =
-  | SkippedNotPublicPackage of { package: string; version: Std.Version.t option }
-  | Skipped of { package: string; version: Std.Version.t }
+  | SkippedNotPublicPackage of { package: Riot_model.Package_name.t; version: Std.Version.t option }
+  | Skipped of { package: Riot_model.Package_name.t; version: Std.Version.t }
   | Planned of Riot_deps.Publisher.prepared_publish
   | Published of Pkgs_ml.Registry.published_release
 type publish_error =
-  | PackageNotFound of { package: string }
+  | PackageNotFound of { package: Riot_model.Package_name.t }
   | NoWorkspacePackages
   | PublishConfigLoadFailed of Riot_model.User_config.error
   | MissingApiToken of { registry_name: string; path: Path.t }
   | RegistryInitializationFailed of { registry_name: string; error: string }
   | WorkspaceScanFailed of { workspace_root: Path.t; error: string }
-  | FmtCheckFailed of { package: string; error: string }
-  | FixCheckFailed of { package: string; error: string }
-  | BuildCheckFailed of { package: string; error: string }
+  | FmtCheckFailed of { package: Riot_model.Package_name.t; error: string }
+  | FixCheckFailed of { package: Riot_model.Package_name.t; error: string }
+  | BuildCheckFailed of { package: Riot_model.Package_name.t; error: string }
   | PublishPlanFailed of Riot_deps.Publisher.error
-  | PublishFailed of { package: string; error: Riot_deps.Publisher.error }
+  | PublishFailed of { package: Riot_model.Package_name.t; error: Riot_deps.Publisher.error }
 val publish_error_message: publish_error -> string
 
 module For_test : sig
@@ -56,7 +68,7 @@ module For_test : sig
       (Riot_model.Package.t list, publish_error) result;
     published_version_exists:
       registry:Pkgs_ml.Registry.t ->
-      package_name:string ->
+      package_name:Riot_model.Package_name.t ->
       version:Std.Version.t ->
       (bool, publish_error) result;
     run_fmt_check:
@@ -74,12 +86,12 @@ module For_test : sig
     run_build_check:
       emit:(publish_event -> unit) ->
       workspace:Riot_model.Workspace.t ->
-      package_name:string ->
+      package_name:Riot_model.Package_name.t ->
       profile:string ->
       (unit, publish_error) result;
     plan_publish:
       registry:Pkgs_ml.Registry.t ->
-      publishing_workspace_packages:string list ->
+      publishing_workspace_packages:Riot_model.Package_name.t list ->
       package:Riot_model.Package.t ->
       (Riot_deps.Publisher.publish_plan, publish_error) result;
     prepare_publish_artifact:

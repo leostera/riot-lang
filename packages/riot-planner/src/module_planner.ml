@@ -26,7 +26,9 @@ type plan_result = {
 }
 
 let plan_node = fun input ->
-  let namespace = Module_name.(input.package.name |> of_string |> to_string) in
+  let namespace =
+    Module_name.(input.package.name |> Package_name.to_string |> of_string |> to_string)
+  in
   let config =
     Module_graph.{
       root = input.package.path;
@@ -56,7 +58,7 @@ let plan_node = fun input ->
           match input.package.library with
           | Some _lib -> Module_graph.add_library_node
             graph_builder
-            ~name:input.package.name
+            ~name:(Package_name.to_string input.package.name)
             ~includes:[]
           | None -> ()
         );
@@ -70,7 +72,9 @@ let plan_node = fun input ->
           let check_pkg (pkg: Package.t) =
             List.any
               (Package.build_graph_dependencies pkg)
-              ~fn:(fun (d: Package.dependency) -> d.name = "unix")
+              ~fn:(fun (d: Package.dependency) ->
+                Package_name.equal d.name
+                  (Package_name.from_string "unix" |> Result.expect ~msg:"expected valid package name"))
           in
           check_pkg input.package
           || List.any transitive_deps ~fn:(fun (dep: Dependency.t) -> check_pkg dep.package)
@@ -80,7 +84,9 @@ let plan_node = fun input ->
           let check_pkg (pkg: Package.t) =
             List.any
               (Package.build_graph_dependencies pkg)
-              ~fn:(fun (d: Package.dependency) -> d.name = "dynlink")
+              ~fn:(fun (d: Package.dependency) ->
+                Package_name.equal d.name
+                  (Package_name.from_string "dynlink" |> Result.expect ~msg:"expected valid package name"))
           in
           check_pkg input.package
           || List.any transitive_deps ~fn:(fun (dep: Dependency.t) -> check_pkg dep.package)
@@ -106,7 +112,8 @@ let plan_node = fun input ->
           let dep_libs = List.map transitive_deps ~fn:Dependency.library_cmxa in
           let own_lib =
             match input.package.library with
-            | Some _ -> [ Module_name.(of_string input.package.name |> cmxa) ]
+            | Some _ ->
+                [ Module_name.(of_string (Package_name.to_string input.package.name) |> cmxa) ]
             | None -> []
           in
           let seen_libraries = HashSet.create () in
@@ -149,7 +156,10 @@ let plan_node = fun input ->
         ;
         (* Add command nodes for package commands *)
         (* Commands are regular binaries - link all libraries like regular binaries *)
-        Log.debug ("[MODULE_PLANNER] Command includes for " ^ input.package.name ^ ":");
+        Log.debug
+          ("[MODULE_PLANNER] Command includes for "
+          ^ Package_name.to_string input.package.name
+          ^ ":");
         List.for_each binary_includes ~fn:(fun inc -> Log.debug ("  " ^ Path.to_string inc));
         List.for_each
           input.package.commands

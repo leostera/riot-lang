@@ -1,4 +1,5 @@
 open Std
+open Std.Result.Syntax
 open Riot_model
 open Riot_build
 open ArgParser
@@ -53,8 +54,9 @@ let print_command_output = fun (output: Command.output) ->
 let print_empty_hint = fun package_filter suite_filter ->
   match (package_filter, suite_filter) with
   | (Some package_name, Some suite_name) -> println
-    ("No test suite '" ^ suite_name ^ "' found in package '" ^ package_name ^ "'")
-  | (Some package_name, None) -> println ("No test suites found in package '" ^ package_name ^ "'")
+    ("No test suite '" ^ suite_name ^ "' found in package '" ^ Riot_model.Package_name.to_string package_name ^ "'")
+  | (Some package_name, None) ->
+      println ("No test suites found in package '" ^ Riot_model.Package_name.to_string package_name ^ "'")
   | (None, Some suite_name) -> println ("No test suites named '" ^ suite_name ^ "' found")
   | (None, None) -> println "No test binaries found"
 
@@ -307,7 +309,8 @@ let write_test_event_json = fun ~command_started_at ?(pending_suite = None) (
 
 let find_suite_source_path = fun ~(workspace:Riot_model.Workspace.t) (suite: Test_runtime.suite_binary) ->
   Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Test workspace
-  |> List.find ~fn:(fun (pkg: Riot_model.Package.t) -> String.equal pkg.name suite.package_name)
+  |> List.find ~fn:(fun (pkg: Riot_model.Package.t) ->
+    Riot_model.Package_name.equal pkg.name suite.package_name)
   |> Option.and_then ~fn:(fun (pkg: Riot_model.Package.t) ->
     pkg.binaries
     |> List.find ~fn:(fun (bin: Riot_model.Package.binary) -> String.equal bin.name suite.suite_name)
@@ -320,7 +323,7 @@ let suite_source_label = fun ~(workspace:Riot_model.Workspace.t) (suite: Test_ru
       | Ok relative_path -> Path.to_string relative_path
       | Error _ -> Path.to_string path
     )
-  | None -> suite.package_name ^ "/" ^ suite.suite_name
+  | None -> Riot_model.Package_name.to_string suite.package_name ^ "/" ^ suite.suite_name
 
 let listed_suite_source_label = fun ~(workspace:Riot_model.Workspace.t) (
   suite: Test_runtime.listed_test_suite
@@ -334,7 +337,7 @@ let listed_suite_source_label = fun ~(workspace:Riot_model.Workspace.t) (
   | None -> suite_source_label ~workspace suite.suite
 
 let listed_test_selector = fun (suite: Test_runtime.suite_binary) (test: Test_runtime.listed_test_case) ->
-  suite.package_name ^ ":" ^ suite.suite_name ^ ":" ^ test.name
+  Riot_model.Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name ^ ":" ^ test.name
 
 let listed_test_json = fun (suite: Test_runtime.suite_binary) (test: Test_runtime.listed_test_case) ->
   let type_fields =
@@ -380,7 +383,7 @@ let listed_suite_path_json = fun ~(workspace:Riot_model.Workspace.t) (
   | None -> Data.Json.Null
 
 let listed_suite_selector = fun (suite: Test_runtime.suite_binary) ->
-  suite.package_name ^ ":" ^ suite.suite_name
+  Riot_model.Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name
 
 let write_json_line = fun json ->
   print (Data.Json.to_string json);
@@ -392,7 +395,7 @@ let write_test_suite_listed_json = fun ~command_started_at ~(workspace:Riot_mode
   write_json_line
     (Data.Json.Object [
       ("type", Data.Json.String "TestSuiteListed");
-      ("package", Data.Json.String suite.suite.package_name);
+      ("package", Data.Json.String (Riot_model.Package_name.to_string suite.suite.package_name));
       ("suite", Data.Json.String suite.suite.suite_name);
       ("path", listed_suite_path_json ~workspace suite);
       ("selector", Data.Json.String (listed_suite_selector suite.suite));
@@ -405,7 +408,7 @@ let write_test_case_listed_json = fun ~command_started_at (suite: Test_runtime.s
   write_json_line
     (Data.Json.Object [
       ("type", Data.Json.String "TestCaseListed");
-      ("package", Data.Json.String suite.package_name);
+      ("package", Data.Json.String (Riot_model.Package_name.to_string suite.package_name));
       ("suite", Data.Json.String suite.suite_name);
       ("index", Data.Json.Int test.index);
       ("name", Data.Json.String test.name);
@@ -418,7 +421,7 @@ let write_test_suite_list_failed_json = fun ~command_started_at (suite: Test_run
   write_json_line
     (Data.Json.Object [
       ("type", Data.Json.String "TestSuiteListFailed");
-      ("package", Data.Json.String suite.package_name);
+      ("package", Data.Json.String (Riot_model.Package_name.to_string suite.package_name));
       ("suite", Data.Json.String suite.suite_name);
       ("selector", Data.Json.String (listed_suite_selector suite));
       ("message", Data.Json.String (Test_runtime.test_error_message err));
@@ -592,7 +595,14 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let large_only = ArgParser.get_flag matches "large" in
   let flaky_only = ArgParser.get_flag matches "flaky" in
   let pattern = ArgParser.get_one matches "pattern" in
-  let legacy_package = ArgParser.get_one matches "package" in
+  let legacy_package =
+    match ArgParser.get_one matches "package" with
+    | None -> Ok None
+    | Some package_name ->
+        Package_name.from_string package_name
+        |> Result.map ~fn:Option.some
+        |> Result.map_err ~fn:(fun error -> Failure error)
+  in
   let list_mode = ArgParser.get_flag matches "list" in
   let profile = profile_of_matches matches in
   let command_started_at = Time.Instant.now () in
@@ -627,7 +637,11 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           else
             Test_selection.All
         in
-        let request = Test_selection.parse_request ~pattern ~legacy_package ~size_filter ~flaky_only in
+        let* legacy_package = legacy_package in
+        let* request =
+          Test_selection.parse_request ~pattern ~legacy_package ~size_filter ~flaky_only
+          |> Result.map_err ~fn:(fun error -> Failure error)
+        in
         let extra_args = Test_selection.extra_args
           ~small_test_timeout:operational_config.test.small_test_timeout
           ~flaky_max_retries:operational_config.test.flaky_max_retries

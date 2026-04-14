@@ -48,7 +48,9 @@ let stdlib_flags = fun (package: Package.t) ->
   let has_stdlib_dep =
     List.any
       (Package.build_graph_dependencies package)
-      ~fn:(fun (dep: Package.dependency) -> dep.name = "stdlib")
+      ~fn:(fun (dep: Package.dependency) ->
+        Package_name.equal dep.name
+          (Package_name.from_string "stdlib" |> Result.expect ~msg:"expected valid package name"))
   in
   (* Always add -nopervasives to prevent automatic opening of Stdlib *)
   (* Add -nostdlib only if package doesn't depend on stdlib *)
@@ -206,7 +208,10 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
         | None -> base_ccflags
       in
       Log.debug
-        ("[ACTION_GRAPH] C compilation cc_flags for " ^ package.name ^ ": " ^ String.concat " " ccflags);
+        ("[ACTION_GRAPH] C compilation cc_flags for "
+        ^ Package_name.to_string package.name
+        ^ ": "
+        ^ String.concat " " ccflags);
       let actions =
         List.map c_files ~fn:(fun c_file ->
           let obj_file = Path.remove_extension c_file |> Path.add_extension ~ext:"o" in
@@ -307,19 +312,19 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
       let merged_ldflags = base_ldflags @ dep_ldflags in
       Log.debug
         ("[ACTION_GRAPH] Package "
-        ^ package.name
+        ^ Package_name.to_string package.name
         ^ ": base ld_flags = ["
         ^ String.concat ", " base_ldflags
         ^ "]");
       Log.debug
         ("[ACTION_GRAPH] Package "
-        ^ package.name
+        ^ Package_name.to_string package.name
         ^ ": dependency ld_flags = ["
         ^ String.concat ", " dep_ldflags
         ^ "]");
       Log.debug
         ("[ACTION_GRAPH] Package "
-        ^ package.name
+        ^ Package_name.to_string package.name
         ^ ": merged ld_flags = ["
         ^ String.concat ", " merged_ldflags
         ^ "]");
@@ -591,26 +596,31 @@ let from_json = fun json ->
                                 | Some (String p) -> Path.v p
                                 | _ -> package_path
                               in
-                              let package = Package.synthetic
-                                ~name:pkg_name
-                                ~path:package_path
-                                ~relative_path:package_relative_path in
-                              let toolchain = Riot_toolchain.init
-                                ~config:Riot_model.Toolchain_config.default
-                              |> Result.expect ~msg:"Failed to initialize toolchain" in
-                              let action_spec: Action_node.action_spec = {
-                                actions;
-                                outs = outputs;
-                                srcs = sources;
-                                package;
-                                toolchain;
-                                hash;
-                              }
-                              in
-                              let node = add_node graph action_spec in
-                              let _ = HashMap.insert id_to_node ~key:legacy_id ~value:node in
-                              Vector.push dependencies_to_wire ~value:(node, dependency_ids);
-                              Ok ()
+                              (
+                                match Package_name.from_string pkg_name with
+                                | Error err -> Error err
+                                | Ok package_name ->
+                                    let package = Package.synthetic
+                                      ~name:package_name
+                                      ~path:package_path
+                                      ~relative_path:package_relative_path in
+                                    let toolchain = Riot_toolchain.init
+                                      ~config:Riot_model.Toolchain_config.default
+                                    |> Result.expect ~msg:"Failed to initialize toolchain" in
+                                    let action_spec: Action_node.action_spec = {
+                                      actions;
+                                      outs = outputs;
+                                      srcs = sources;
+                                      package;
+                                      toolchain;
+                                      hash;
+                                    }
+                                    in
+                                    let node = add_node graph action_spec in
+                                    let _ = HashMap.insert id_to_node ~key:legacy_id ~value:node in
+                                    Vector.push dependencies_to_wire ~value:(node, dependency_ids);
+                                    Ok ()
+                              )
                           | (Error err, _, _, _)
                           | (_, Error err, _, _)
                           | (_, _, Error err, _)

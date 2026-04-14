@@ -20,7 +20,7 @@ type compiler_config = Package.compiler_config
 type foreign_dependency = Package.foreign_dependency
 
 type t = Package.manifest_spec = {
-  name: string;
+  name: Package_name.t;
   path: Path.t;
   relative_path: Path.t;
   dependencies: dependency list;

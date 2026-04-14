@@ -1,4 +1,5 @@
 open Std
+open Std.Result.Syntax
 
 type destination =
   | Local
@@ -14,7 +15,7 @@ type external_spec =
 type request =
   | Workspace of {
       workspace: Riot_model.Workspace.t;
-      package_name: string option;
+      package_name: Riot_model.Package_name.t option;
       binary_name: string;
       destination: destination;
     }
@@ -25,19 +26,21 @@ type request =
 
 type install_event =
   | Build of Riot_build.Event.t
-  | InstallingBinary of { package: string; binary: string }
+  | InstallingBinary of { package: Riot_model.Package_name.t; binary: string }
   | PromotedBinary of { binary: string; destination: Path.t; mode: destination }
   | InstalledBinary of { binary: string; duration_ms: int; destination: Path.t; mode: destination }
 
 type install_error =
   | BinaryNotFound of { binary_name: string }
-  | BinaryNotFoundInPackage of { package_name: string; binary_name: string }
+  | BinaryNotFoundInPackage of { package_name: Riot_model.Package_name.t; binary_name: string }
   | BuildFailed of Riot_build.error
-  | ArtifactNotFound of { package_name: string; binary_name: string; reason: string }
+  | ArtifactNotFound of {
+      package_name: Riot_model.Package_name.t;
+      binary_name: string;
+      reason: string
+    }
   | PromotionFailed of { binary_name: string; destination: Path.t; mode: destination; reason: string }
   | ExternalTargetLoadFailed of { target: string; reason: string }
-
-let ( let* ) value fn = Result.and_then value ~fn
 
 let no_event: install_event -> unit = fun _ -> ()
 
@@ -49,10 +52,19 @@ let install_error_message = function
   | BinaryNotFound { binary_name } ->
       "binary '" ^ binary_name ^ "' not found in workspace"
   | BinaryNotFoundInPackage { package_name; binary_name } ->
-      "binary '" ^ binary_name ^ "' not found in package '" ^ package_name ^ "'"
+      "binary '"
+      ^ binary_name
+      ^ "' not found in package '"
+      ^ Riot_model.Package_name.to_string package_name
+      ^ "'"
   | BuildFailed err -> Riot_build.error_message err
   | ArtifactNotFound { package_name; binary_name; reason } ->
-      "binary '" ^ binary_name ^ "' was not produced by package '" ^ package_name ^ "': " ^ reason
+      "binary '"
+      ^ binary_name
+      ^ "' was not produced by package '"
+      ^ Riot_model.Package_name.to_string package_name
+      ^ "': "
+      ^ reason
   | PromotionFailed { binary_name; destination; mode; reason } ->
       "failed to promote "
       ^ binary_name
@@ -73,7 +85,7 @@ let install_event_to_json = function
   | InstallingBinary { package; binary } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "InstallingBinary");
-        ("package", Data.Json.String package);
+        ("package", Data.Json.String (Riot_model.Package_name.to_string package));
         ("binary", Data.Json.String binary);
       ])
   | PromotedBinary { binary; destination; mode } ->
@@ -98,7 +110,7 @@ let realized_runnable_packages = fun ?package_filter (workspace: Riot_model.Work
   |> List.filter ~fn:(fun (pkg: Riot_model.Package.t) ->
       match package_filter with
       | None -> true
-      | Some package_name -> String.equal package_name pkg.name)
+      | Some package_name -> Riot_model.Package_name.equal package_name pkg.name)
 
 let resolve_binary = fun ~(workspace: Riot_model.Workspace.t) ~package_name ~binary_name ->
   let packages = realized_runnable_packages ?package_filter:package_name workspace in
@@ -106,7 +118,7 @@ let resolve_binary = fun ~(workspace: Riot_model.Workspace.t) ~package_name ~bin
   | Some expected_package -> (
       match
         List.find packages ~fn:(fun (pkg: Riot_model.Package.t) ->
-          String.equal pkg.name expected_package
+          Riot_model.Package_name.equal pkg.name expected_package
           && List.any pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
               String.equal bin.name binary_name))
       with
@@ -252,7 +264,11 @@ let install_workspace = fun ~on_event ~workspace ~package_name ~binary_name ~des
       ~package_name
       ~binary_name
   in
-  on_event (InstallingBinary { package = package_name; binary = binary_name });
+  on_event
+    (InstallingBinary {
+      package = package_name;
+      binary = binary_name
+    });
   let* output =
     Riot_build.build
       ~on_event:(fun event -> on_event (Build event))

@@ -153,16 +153,24 @@ let try_command = fun ?workspace_scan cmd_name remaining_args ->
       (* Parse package:command format *)
       match String.split cmd_name ~by:":" with
       | [package_name;command_name] -> (
+          match Riot_model.Package_name.from_string package_name with
+          | Error _ -> None
+          | Ok package_name -> (
           (* Find the command in the specified package *)
           let commands = Riot_model.Workspace.discover_commands workspace in
           match List.find commands ~fn:(fun (cmd: Riot_model.Package_command.t) ->
-              cmd.package_name = package_name && cmd.name = command_name) with
+              Riot_model.Package_name.equal cmd.package_name package_name && cmd.name = command_name) with
           | None -> None
           | Some cmd ->
-              Log.info ("Found command: " ^ cmd.package_name ^ ":" ^ cmd.name);
+              Log.info
+                ("Found command: "
+                ^ Riot_model.Package_name.to_string cmd.package_name
+                ^ ":"
+                ^ cmd.name);
               Log.info ("Command binary path: " ^ Path.to_string cmd.command_binary);
               (* Build the package first to ensure command is up to date *)
-              Log.info ("Building package: " ^ cmd.package_name);
+              Log.info
+                ("Building package: " ^ Riot_model.Package_name.to_string cmd.package_name);
               (
                 match prepare_workspace_for_build workspace with
                 | Error err ->
@@ -182,6 +190,7 @@ let try_command = fun ?workspace_scan cmd_name remaining_args ->
                             Some (Error err)
                   )
               )
+          )
         )
       | _ -> None
     )

@@ -19,7 +19,7 @@ let render_dependency_table = fun name fields ->
   name ^ " = { " ^ String.concat ", " rendered_fields ^ " }"
 
 let render_dependency = fun (dep: Riot_model.Package.dependency) ->
-  let name = dep.name in
+  let name = Riot_model.Package_name.to_string dep.name in
   match dep.source with
   | { workspace=true; _ } ->
       name ^ " = { workspace = true }"

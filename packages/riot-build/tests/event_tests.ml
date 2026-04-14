@@ -1,6 +1,9 @@
 open Std
 module Test = Std.Test
 
+let package_name = fun name ->
+  Result.expect (Riot_model.Package_name.from_string name) ~msg:("package name " ^ name)
+
 let test_building_target_event_to_json = fun _ctx ->
   let target =
     Result.expect
@@ -23,7 +26,7 @@ let test_pm_event_to_json_reuses_riot_model_event_shape = fun _ctx ->
   let event = Riot_model.Event.create
     ~session_id
     ~level:Riot_model.Event.Info (Riot_model.Event.PackageDownloadStarted {
-      package = "std";
+      package = package_name "std";
       version = "0.1.0";
       path = "/tmp/std"
     }) in

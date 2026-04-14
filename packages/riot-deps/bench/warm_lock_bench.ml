@@ -1,6 +1,7 @@
 open Std
+open Riot_model
 
-module Package_manifest = Riot_model.Package_manifest
+module Package_manifest = Package_manifest
 
 let registry_version = "0.0.1"
 
@@ -19,7 +20,7 @@ and fetch_counter = {
 }
 
 let dependency_source = fun requirement ->
-  Riot_model.Package.{
+  Package.{
     workspace = false;
     builtin = false;
     path = None;
@@ -28,15 +29,20 @@ let dependency_source = fun requirement ->
     version = Some requirement;
   }
 
+let package_name = fun name ->
+  Package_name.from_string name
+  |> Result.expect ~msg:"expected valid package name"
+
 let make_package = fun ~name ~path ~relative_path ~dependencies ->
-  Riot_model.Package.make
+  let name = package_name name in
+  Package.make
     ~name
     ~path
     ~relative_path
     ~dependencies
     ~publish:{
       version = Some (Std.Version.make ~major:0 ~minor:0 ~patch:1 ());
-      description = Some ("Package " ^ name);
+      description = Some ("Package " ^ Package_name.to_string name);
       license = Some "Apache-2.0";
       is_public = Some true
     }
@@ -120,11 +126,17 @@ let write_registry_package_roots = fun ~cache ~(lockfile:Riot_model.Lockfile.t) 
   let write_package_root (pkg: Riot_model.Lockfile.package) =
     match pkg.provenance, pkg.id.version with
     | Riot_model.Lockfile.Registry _, Some version ->
-        let package_root = Pkgs_ml.Registry_cache.package_src_dir cache ~package_name:pkg.id.name ~version in
+        let package_root =
+          Pkgs_ml.Registry_cache.package_src_dir
+            cache
+            ~package_name:(Package_name.to_string pkg.id.name)
+            ~version
+        in
         let manifest =
           package_manifest
-            ~name:pkg.id.name
-            ~dependencies:(List.map pkg.dependencies ~fn:(fun (dep: Riot_model.Lockfile.dependency) -> dep.name))
+            ~name:(Package_name.to_string pkg.id.name)
+            ~dependencies:(List.map pkg.dependencies ~fn:(fun (dep: Riot_model.Lockfile.dependency) ->
+              Package_name.to_string dep.name))
         in
         write_file Path.(package_root / Path.v "riot.toml") manifest
     | _ -> ()
@@ -156,7 +168,7 @@ let prepare_fixture = fun root ->
     ~name:"app"
     ~path:app_root
     ~relative_path:app_relative
-    ~dependencies:[ { name = root_dependency; source = dependency_source Std.Version.any } ] in
+    ~dependencies:[ Package.{ name = package_name root_dependency; source = dependency_source Std.Version.any } ] in
   let workspace = Riot_model.Workspace.make_realized
     ~root:workspace_root
     ~packages:[ app_package ]

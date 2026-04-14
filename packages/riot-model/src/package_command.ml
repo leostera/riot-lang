@@ -4,7 +4,7 @@ open Std.Data
 type t = {
   name: string;
   description: string;
-  package_name: string;
+  package_name: Package_name.t;
   package_path: Path.t;
   command_module: string;
   command_source: Path.t;
@@ -22,7 +22,12 @@ let status_string: t -> string = fun cmd ->
   else
     "not built"
 
-let parse_from_toml: Toml.value list -> package_name:string -> package_path:Path.t -> t list = fun toml_entries ~package_name ~package_path ->
+let parse_from_toml:
+  Toml.value list ->
+  package_name:Package_name.t ->
+  package_path:Path.t ->
+  t list =
+fun toml_entries ~package_name ~package_path ->
   List.filter_map toml_entries
     ~fn:(fun cmd_toml ->
       match cmd_toml with
@@ -46,7 +51,14 @@ let parse_from_toml: Toml.value list -> package_name:string -> package_path:Path
                 |> String.capitalize_ascii
               in
               (* Command binary name is the command name from TOML *)
-              let command_binary = Path.(v "_build" / v "debug" / v "out" / v package_name / v name) in
+              let command_binary =
+                Path.(
+                  v "_build"
+                  / v "debug"
+                  / v "out"
+                  / v (Package_name.to_string package_name)
+                  / v name)
+              in
               Some {
                 name;
                 description;
@@ -66,7 +78,7 @@ let to_json: t -> Json.t = fun cmd ->
   Json.Object [
     ("name", Json.String cmd.name);
     ("description", Json.String cmd.description);
-    ("package", Json.String cmd.package_name);
+    ("package", Json.String (Package_name.to_string cmd.package_name));
     ("command_binary", Json.String (Path.to_string cmd.command_binary));
     ("is_built", Json.Bool (is_built cmd));
   ]

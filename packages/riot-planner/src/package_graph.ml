@@ -110,7 +110,7 @@ let string_of_build_scope = function
 
 let get_key = fun node ->
   let package = get_package node in
-  package_key ~package_name:package.name (get_scope node)
+  package_key ~package_name:(Package_name.to_string package.name) (get_scope node)
 
 let is_planned = function
   | Unplanned _ -> false
@@ -148,7 +148,8 @@ let get_planned_data = function
   | Failed _ -> None
   | Skipped _ -> None
 
-let is_well_known_package = fun name -> Riot_model.Package.is_builtin_dependency_name name
+let is_well_known_package = fun name ->
+  Riot_model.Package.is_builtin_dependency_name (Package_name.to_string name)
 
 let dependencies_for_scope = fun scope (pkg: Package.t) ->
   match scope with
@@ -194,7 +195,7 @@ let create_with_breakdown ~scope (workspace: Workspace.t): ((t * create_breakdow
     let node = G.add_node graph (Unplanned { package; scope }) in
     let _ = HashMap.insert
       name_to_node
-      ~key:(package_key ~package_name:package.name scope)
+      ~key:(package_key ~package_name:(Package_name.to_string package.name) scope)
       ~value:node in
     ()
   in
@@ -276,7 +277,8 @@ let create_with_breakdown ~scope (workspace: Workspace.t): ((t * create_breakdow
     workspace.packages
     ~fn:(fun (pkg: Package_manifest.t) ->
       let add_dep_edge ~from_scope dep_name =
-        match HashMap.get name_to_node ~key:(package_key ~package_name:pkg.name from_scope) with
+        let dep_name_string = Package_name.to_string dep_name in
+        match HashMap.get name_to_node ~key:(package_key ~package_name:(Package_name.to_string pkg.name) from_scope) with
         | None -> ()
         | Some from_node -> (
             let dep_scope =
@@ -285,25 +287,27 @@ let create_with_breakdown ~scope (workspace: Workspace.t): ((t * create_breakdow
               | Runtime -> Runtime
               | Dev -> Runtime
             in
-            match HashMap.get name_to_node ~key:(package_key ~package_name:dep_name dep_scope) with
+            match HashMap.get name_to_node ~key:(package_key ~package_name:dep_name_string dep_scope) with
             | Some dep_node -> G.add_edge from_node ~depends_on:dep_node
             | None ->
                 if not (is_well_known_package dep_name) then
-                  Vector.push missing ~value:{ package = pkg.name; dependency = dep_name }
+                  Vector.push
+                    missing
+                    ~value:{ package = Package_name.to_string pkg.name; dependency = dep_name_string }
           )
       in
       (
         match (
-          HashMap.get name_to_node ~key:(package_key ~package_name:pkg.name Runtime),
-          HashMap.get name_to_node ~key:(package_key ~package_name:pkg.name Build)
+          HashMap.get name_to_node ~key:(package_key ~package_name:(Package_name.to_string pkg.name) Runtime),
+          HashMap.get name_to_node ~key:(package_key ~package_name:(Package_name.to_string pkg.name) Build)
         ) with
         | Some runtime_node, Some build_node -> G.add_edge runtime_node ~depends_on:build_node
         | _ -> ()
       );
       (
         match (
-          HashMap.get name_to_node ~key:(package_key ~package_name:pkg.name Dev),
-          HashMap.get name_to_node ~key:(package_key ~package_name:pkg.name Runtime)
+          HashMap.get name_to_node ~key:(package_key ~package_name:(Package_name.to_string pkg.name) Dev),
+          HashMap.get name_to_node ~key:(package_key ~package_name:(Package_name.to_string pkg.name) Runtime)
         ) with
         | Some dev_node, Some runtime_node -> G.add_edge dev_node ~depends_on:runtime_node
         | _ -> ()
@@ -371,7 +375,7 @@ let create ~scope workspace =
   |> Result.map ~fn:(fun (graph, _breakdown) -> graph)
 
 let get_node = fun pg package ->
-  HashMap.get pg.name_to_node ~key:(package_key ~package_name:package.Package.name Runtime)
+  HashMap.get pg.name_to_node ~key:(package_key ~package_name:(Package_name.to_string package.Package.name) Runtime)
 
 let get_node_by_key = fun pg key ->
   HashMap.get pg.name_to_node ~key
@@ -395,7 +399,11 @@ let size = fun pg -> HashMap.length pg.name_to_node
 let packages = fun pg -> G.map pg.graph ~fn:(fun ((_id, node)) -> get_package node.value)
 
 let find_package = fun pg name ->
-  match HashMap.get pg.name_to_node ~key:(package_key ~package_name:name Runtime) with
+  match
+    HashMap.get
+      pg.name_to_node
+      ~key:(package_key ~package_name:(Package_name.to_string name) Runtime)
+  with
   | Some node -> Some (get_package node.value)
   | None -> None
 
@@ -405,7 +413,8 @@ let get_package_node = fun pg package ->
   | None -> None
 
 let target_node_for_package = fun pg pkg_name ->
-  let key_for scope = package_key ~package_name:pkg_name scope in
+  let package_name = Package_name.to_string pkg_name in
+  let key_for scope = package_key ~package_name scope in
   match HashMap.get pg.name_to_node ~key:(key_for Dev) with
   | Some node -> Some node
   | None -> HashMap.get pg.name_to_node ~key:(key_for Runtime)
@@ -471,7 +480,7 @@ let get_dependencies_for_node = fun pg (node: package_node G.node) ->
 
 let get_dependencies = fun graph (package: Package.t) ->
   let filtered_graph = filter_for_package graph package.name in
-  match HashMap.get filtered_graph.name_to_node ~key:(package_key ~package_name:package.name Runtime) with
+  match HashMap.get filtered_graph.name_to_node ~key:(package_key ~package_name:(Package_name.to_string package.name) Runtime) with
   | None -> []
   | Some runtime_node -> get_dependencies_for_node filtered_graph runtime_node
 
@@ -496,7 +505,7 @@ let topological_sort = fun pg ->
           node_ids
           ~fn:(fun id ->
             match G.get_node pg.graph id with
-            | Some node -> Some (get_package node.value).name
+            | Some node -> Some (Package_name.to_string (get_package node.value).name)
             | None -> None)
       in
       raise (Cycle_detected names)

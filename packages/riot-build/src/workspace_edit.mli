@@ -2,7 +2,7 @@ open Std
 
 val new_package:
   workspace:Riot_model.Workspace.t ->
-  path:string ->
-  name:string ->
+  path:Path.t ->
+  name:Riot_model.Package_name.t ->
   is_library:bool ->
-  ((string * string), string) result
+  ((Path.t * Riot_model.Package_name.t), string) result

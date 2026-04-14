@@ -17,7 +17,7 @@ type build_context = {
   session_id: Riot_model.Session_id.t;
   workspace: Riot_model.Workspace.t;
   workspace_manager: Riot_model.Workspace_manager.t option;
-  package_names: string list;
+  package_names: Riot_model.Package_name.t list;
   targets: Riot_model.Target.Set.t;
   scope: Build_spec.scope;
   profile: Riot_model.Profile.t;

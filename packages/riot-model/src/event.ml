@@ -1,6 +1,7 @@
 open Std
 open Std.Data
 open Std.Collections
+open Std.Result.Syntax
 module Pm_error = Pm_error
 
 (** Event system for riot - pure data types for events *)
@@ -53,7 +54,7 @@ let level_to_string = function
   | Trace -> "trace"
 
 type skip_reason =
-  DependenciesFailed of string list
+  DependenciesFailed of Package_name.t list
 
 type error_kind =
   | SyntaxError
@@ -73,7 +74,7 @@ type build_error = {
 }
 
 type build_result = {
-  package: string;
+  package: Package_name.t;
   success: bool;
   duration_ms: int;
   modules_compiled: int;
@@ -86,32 +87,32 @@ type kind =
   | BuildComplete of {
       duration_ms: int;
       results: build_result list;
-      succeeded: string list;
-      failed: string list
+      succeeded: Package_name.t list;
+      failed: Package_name.t list
     }
   | BuildGraphCreated of { nodes: int; duration_ms: int }
   | BuildGraphCreating
-  | BuildStarted of { packages: string list; total_modules: int; workers: int }
-  | CacheHit of { package: string; hash: string }
-  | CacheMiss of { package: string; hash: string }
-  | CacheStored of { package: string; hash: string; artifacts: string list }
-  | CompileError of { package: string; error: build_error }
-  | CompilingImplementation of { package: string; file: string }
-  | CompilingInterface of { package: string; file: string }
-  | ComputingHash of { package: string }
+  | BuildStarted of { packages: Package_name.t list; total_modules: int; workers: int }
+  | CacheHit of { package: Package_name.t; hash: string }
+  | CacheMiss of { package: Package_name.t; hash: string }
+  | CacheStored of { package: Package_name.t; hash: string; artifacts: string list }
+  | CompileError of { package: Package_name.t; error: build_error }
+  | CompilingImplementation of { package: Package_name.t; file: string }
+  | CompilingInterface of { package: Package_name.t; file: string }
+  | ComputingHash of { package: Package_name.t }
   | CopyingFile of { source: string; dest: string }
   | CreatingDirectory of { path: string }
-  | CycleDetected of { packages: string list }
-  | DependencyMissing of { package: string; missing: string list }
-  | DependencySatisfied of { package: string }
-  | HashComputed of { package: string; hash: string }
-  | LinkingExecutable of { package: string; output: string }
-  | LinkingLibrary of { package: string; output: string }
+  | CycleDetected of { packages: Package_name.t list }
+  | DependencyMissing of { package: Package_name.t; missing: Package_name.t list }
+  | DependencySatisfied of { package: Package_name.t }
+  | HashComputed of { package: Package_name.t; hash: string }
+  | LinkingExecutable of { package: Package_name.t; output: string }
+  | LinkingLibrary of { package: Package_name.t; output: string }
   | McpToolCall of { tool: string; args: Json.t }
   | PackageComplete of build_result
-  | PackageSkipped of { package: string; reason: skip_reason }
-  | PackageStarted of { package: string }
-  | QueuePackage of { package: string; queue_type: 
+  | PackageSkipped of { package: Package_name.t; reason: skip_reason }
+  | PackageStarted of { package: Package_name.t }
+  | QueuePackage of { package: Package_name.t; queue_type: 
         [
           `Ready
           | `Waiting
@@ -123,7 +124,7 @@ type kind =
   | ServerScanning of { root: string }
   | ServerShutdown
   | ServerStarted of { pid: string }
-  | WorkerAssigned of { worker_id: Worker_id.t; package: string }
+  | WorkerAssigned of { worker_id: Worker_id.t; package: Package_name.t }
   | WorkerIdle of { worker_id: Worker_id.t }
   | WorkerPoolStarted of { workers: int }
   | WorkerStarted of { worker_id: Worker_id.t }
@@ -140,7 +141,7 @@ type kind =
   | LockfileWriteStarted of { path: string }
   | LockfileWriteFinished of { path: string; duration_ms: int }
   | LockfileWriteFailed of { path: string; error: Pm_error.t }
-  | DependencyResolutionStarted of { packages: string list; mode: 
+  | DependencyResolutionStarted of { packages: Package_name.t list; mode: 
         [
           `Refresh
           | `Unlock
@@ -151,26 +152,26 @@ type kind =
   | DependencyResolutionFinished of { duration_ms: int; resolved_packages: int; resolved_edges: int }
   | DependencyResolutionFailed of { error: Pm_error.t }
   | RegistryIndexUpdating of { registry: string }
-  | DependencyUniverseBuilding of { packages: string list }
+  | DependencyUniverseBuilding of { packages: Package_name.t list }
   | DependencyUniverseBuilt of {
       runtime_packages: int;
       build_packages: int;
       dev_packages: int;
       duration_ms: int
     }
-  | PackageMetadataFetchStarted of { registry: string; package: string }
+  | PackageMetadataFetchStarted of { registry: string; package: Package_name.t }
   | PackageMetadataFetchFinished of {
       registry: string;
-      package: string;
+      package: Package_name.t;
       version: string option;
       duration_ms: int
     }
-  | PackageMetadataFetchFailed of { registry: string; package: string; error: Pm_error.t }
+  | PackageMetadataFetchFailed of { registry: string; package: Package_name.t; error: Pm_error.t }
   | SourceDependencyMaterializationStarted of { source_locator: string; ref_: string option }
   | SourceDependencyMaterializationFinished of {
       source_locator: string;
       ref_: string option;
-      package: string;
+      package: Package_name.t;
       version: string option
     }
   | DependencyManifestUpdated of { path: string; section: string; operation: 
@@ -178,37 +179,37 @@ type kind =
           | `Add
           | `Remove
         ]; dependency: string }
-  | PackageVersionLocked of { package: string; version: string }
+  | PackageVersionLocked of { package: Package_name.t; version: string }
   | PackageVersionsUnchanged of { packages: int }
-  | PackageVersionUpdated of { package: string; from_version: string; to_version: string }
-  | PackageManifestFetchStarted of { package: string; version: string }
-  | PackageManifestFetchFinished of { package: string; version: string; duration_ms: int }
-  | PackageManifestFetchFailed of { package: string; version: string option; error: Pm_error.t }
-  | PackageDownloadStarted of { package: string; version: string; path: string }
-  | PackageDownloadFinished of { package: string; version: string; path: string; duration_ms: int }
-  | PackageDownloadFailed of { package: string; version: string; path: string; error: Pm_error.t }
-  | PackageDownloadSkipped of { package: string; version: string; path: string; reason: string }
-  | PackageCacheHit of { package: string; version: string; path: string }
-  | PackageMaterializationStarted of { package: string; version: string; path: string }
+  | PackageVersionUpdated of { package: Package_name.t; from_version: string; to_version: string }
+  | PackageManifestFetchStarted of { package: Package_name.t; version: string }
+  | PackageManifestFetchFinished of { package: Package_name.t; version: string; duration_ms: int }
+  | PackageManifestFetchFailed of { package: Package_name.t; version: string option; error: Pm_error.t }
+  | PackageDownloadStarted of { package: Package_name.t; version: string; path: string }
+  | PackageDownloadFinished of { package: Package_name.t; version: string; path: string; duration_ms: int }
+  | PackageDownloadFailed of { package: Package_name.t; version: string; path: string; error: Pm_error.t }
+  | PackageDownloadSkipped of { package: Package_name.t; version: string; path: string; reason: string }
+  | PackageCacheHit of { package: Package_name.t; version: string; path: string }
+  | PackageMaterializationStarted of { package: Package_name.t; version: string; path: string }
   | PackageMaterializationFinished of {
-      package: string;
+      package: Package_name.t;
       version: string;
       path: string;
       duration_ms: int
     }
   | PackageMaterializationFailed of {
-      package: string;
+      package: Package_name.t;
       version: string;
       path: string;
       error: Pm_error.t
     }
   | PackageResolvedForBuild of {
-      package: string;
+      package: Package_name.t;
       version: string option;
       path: string;
       workspace: bool
     }
-  | PackageDownloadQueued of { package: string; version: string; path: string }
+  | PackageDownloadQueued of { package: Package_name.t; version: string; path: string }
   | WritingFile of { path: string }
 
 type t = {
@@ -319,18 +320,20 @@ let display = function
       ^ Int.to_string (List.length failed)
       ^ " failed)"
   | PackageStarted { package } ->
-      "Building " ^ package ^ "..."
+      "Building " ^ Package_name.to_string package ^ "..."
   | PackageComplete { package; success; duration_ms; _ } ->
       if success then
-        "✓ Built " ^ package ^ " in " ^ Int.to_string duration_ms ^ "ms"
+        "✓ Built " ^ Package_name.to_string package ^ " in " ^ Int.to_string duration_ms ^ "ms"
       else
-        "✗ Failed to build " ^ package
+        "✗ Failed to build " ^ Package_name.to_string package
   | PackageSkipped { package; reason } ->
       let reason_str =
         match reason with
-        | DependenciesFailed deps -> "dependencies failed: " ^ String.concat ", " deps
+        | DependenciesFailed deps ->
+            "dependencies failed: "
+            ^ String.concat ", " (List.map deps ~fn:Package_name.to_string)
       in
-      "⊘ Skipped " ^ package ^ " (" ^ reason_str ^ ")"
+      "⊘ Skipped " ^ Package_name.to_string package ^ " (" ^ reason_str ^ ")"
   | CompileError { package; error } ->
       let col_start, _ = error.span in
       let kind_msg =
@@ -343,7 +346,7 @@ let display = function
         | OtherError { message } -> message
       in
       "Error in "
-      ^ package
+      ^ Package_name.to_string package
       ^ " ["
       ^ error.file
       ^ ":"
@@ -353,19 +356,27 @@ let display = function
       ^ "]: "
       ^ kind_msg
   | CycleDetected { packages } ->
-      "Circular dependency detected: " ^ String.concat " -> " packages
+      "Circular dependency detected: "
+      ^ String.concat " -> " (List.map packages ~fn:Package_name.to_string)
   | CacheHit { package; _ } ->
-      "Cached " ^ package
+      "Cached " ^ Package_name.to_string package
   | CacheMiss { package; _ } ->
-      "Cache miss for " ^ package
+      "Cache miss for " ^ Package_name.to_string package
   | CacheStored { package; artifacts; _ } ->
-      "Cached " ^ package ^ " (" ^ Int.to_string (List.length artifacts) ^ " artifacts)"
+      "Cached "
+      ^ Package_name.to_string package
+      ^ " ("
+      ^ Int.to_string (List.length artifacts)
+      ^ " artifacts)"
   | WorkerPoolStarted { workers } ->
       "Started worker pool with " ^ Int.to_string workers ^ " workers"
   | WorkerStarted { worker_id } ->
       "Worker " ^ Worker_id.to_string worker_id ^ " started"
   | WorkerAssigned { worker_id; package } ->
-      "Worker " ^ Worker_id.to_string worker_id ^ " assigned to " ^ package
+      "Worker "
+      ^ Worker_id.to_string worker_id
+      ^ " assigned to "
+      ^ Package_name.to_string package
   | WorkerIdle { worker_id } ->
       "Worker " ^ Worker_id.to_string worker_id ^ " idle"
   | ServerStarted { pid } ->
@@ -437,11 +448,11 @@ let display = function
       ^ Int.to_string dev_packages
       ^ ")"
   | PackageMetadataFetchStarted { registry; package } ->
-      "Fetching package metadata for " ^ package ^ " from " ^ registry
+      "Fetching package metadata for " ^ Package_name.to_string package ^ " from " ^ registry
   | PackageMetadataFetchFinished { registry; package; version; duration_ms } -> (
       match version with
       | Some version -> "Fetched package metadata for "
-      ^ package
+      ^ Package_name.to_string package
       ^ "@"
       ^ version
       ^ " from "
@@ -450,7 +461,7 @@ let display = function
       ^ Int.to_string duration_ms
       ^ "ms"
       | None -> "Fetched package metadata for "
-      ^ package
+      ^ Package_name.to_string package
       ^ " from "
       ^ registry
       ^ " in "
@@ -459,7 +470,7 @@ let display = function
     )
   | PackageMetadataFetchFailed { registry; package; error } ->
       "Failed to fetch package metadata for "
-      ^ package
+      ^ Package_name.to_string package
       ^ " from "
       ^ registry
       ^ ": "
@@ -471,8 +482,8 @@ let display = function
     )
   | SourceDependencyMaterializationFinished { source_locator=_; ref_=_; package; version } -> (
       match version with
-      | Some version -> "Discovered source dependency " ^ package ^ "@" ^ version
-      | None -> "Discovered source dependency " ^ package
+      | Some version -> "Discovered source dependency " ^ Package_name.to_string package ^ "@" ^ version
+      | None -> "Discovered source dependency " ^ Package_name.to_string package
     )
   | DependencyManifestUpdated { path; section; operation; dependency } ->
       let verb =
@@ -482,30 +493,46 @@ let display = function
       in
       verb ^ " " ^ dependency ^ " (" ^ section ^ ") in " ^ path
   | PackageVersionLocked { package; version } ->
-      "Locked " ^ package ^ " (" ^ version ^ ")"
+      "Locked " ^ Package_name.to_string package ^ " (" ^ version ^ ")"
   | PackageVersionsUnchanged { packages } ->
       "Dependencies are already up to date (" ^ Int.to_string packages ^ " locked packages unchanged)"
   | PackageVersionUpdated { package; from_version; to_version } ->
-      "Updated " ^ package ^ " (" ^ from_version ^ " -> " ^ to_version ^ ")"
+      "Updated "
+      ^ Package_name.to_string package
+      ^ " ("
+      ^ from_version
+      ^ " -> "
+      ^ to_version
+      ^ ")"
   | PackageManifestFetchStarted { package; version } ->
-      "Fetching manifest for " ^ package ^ "@" ^ version
+      "Fetching manifest for " ^ Package_name.to_string package ^ "@" ^ version
   | PackageManifestFetchFinished { package; version; duration_ms } ->
-      "Fetched manifest for " ^ package ^ "@" ^ version ^ " in " ^ Int.to_string duration_ms ^ "ms"
+      "Fetched manifest for "
+      ^ Package_name.to_string package
+      ^ "@"
+      ^ version
+      ^ " in "
+      ^ Int.to_string duration_ms
+      ^ "ms"
   | PackageManifestFetchFailed { package; version; error } -> (
       match version with
       | Some version -> "Failed to fetch manifest for "
-      ^ package
+      ^ Package_name.to_string package
       ^ "@"
       ^ version
       ^ ": "
       ^ Pm_error.message error
-      | None -> "Failed to fetch manifest for " ^ package ^ ": " ^ Pm_error.message error
+      | None ->
+          "Failed to fetch manifest for "
+          ^ Package_name.to_string package
+          ^ ": "
+          ^ Pm_error.message error
     )
   | PackageDownloadStarted { package; version; _ } ->
-      "Downloading " ^ package ^ "@" ^ version
+      "Downloading " ^ Package_name.to_string package ^ "@" ^ version
   | PackageDownloadFinished { package; version; path; duration_ms } ->
       "Downloaded "
-      ^ package
+      ^ Package_name.to_string package
       ^ "@"
       ^ version
       ^ " to "
@@ -514,16 +541,32 @@ let display = function
       ^ Int.to_string duration_ms
       ^ "ms"
   | PackageDownloadFailed { package; version; error; _ } ->
-      "Failed to download " ^ package ^ "@" ^ version ^ ": " ^ Pm_error.message error
+      "Failed to download "
+      ^ Package_name.to_string package
+      ^ "@"
+      ^ version
+      ^ ": "
+      ^ Pm_error.message error
   | PackageDownloadSkipped { package; version; reason; _ } ->
-      "Skipped download for " ^ package ^ "@" ^ version ^ " (" ^ reason ^ ")"
+      "Skipped download for "
+      ^ Package_name.to_string package
+      ^ "@"
+      ^ version
+      ^ " ("
+      ^ reason
+      ^ ")"
   | PackageCacheHit { package; version; path } ->
-      "Package cache hit for " ^ package ^ "@" ^ version ^ " at " ^ path
+      "Package cache hit for "
+      ^ Package_name.to_string package
+      ^ "@"
+      ^ version
+      ^ " at "
+      ^ path
   | PackageMaterializationStarted { package; version; _ } ->
-      "Materializing " ^ package ^ "@" ^ version
+      "Materializing " ^ Package_name.to_string package ^ "@" ^ version
   | PackageMaterializationFinished { package; version; path; duration_ms } ->
       "Materialized "
-      ^ package
+      ^ Package_name.to_string package
       ^ "@"
       ^ version
       ^ " at "
@@ -532,18 +575,33 @@ let display = function
       ^ Int.to_string duration_ms
       ^ "ms"
   | PackageMaterializationFailed { package; version; error; _ } ->
-      "Failed to materialize " ^ package ^ "@" ^ version ^ ": " ^ Pm_error.message error
+      "Failed to materialize "
+      ^ Package_name.to_string package
+      ^ "@"
+      ^ version
+      ^ ": "
+      ^ Pm_error.message error
   | PackageResolvedForBuild { package; version; path; workspace } -> (
       match version with
       | Some version ->
-          "Resolved " ^ package ^ "@" ^ version ^ " for build at " ^ path ^ (
+          "Resolved "
+          ^ Package_name.to_string package
+          ^ "@"
+          ^ version
+          ^ " for build at "
+          ^ path
+          ^ (
             if workspace then
               " (workspace)"
             else
               ""
           )
       | None ->
-          "Resolved " ^ package ^ " for build at " ^ path ^ (
+          "Resolved "
+          ^ Package_name.to_string package
+          ^ " for build at "
+          ^ path
+          ^ (
             if workspace then
               " (workspace)"
             else
@@ -551,7 +609,7 @@ let display = function
           )
     )
   | PackageDownloadQueued { package; version; _ } ->
-      "Queued download for " ^ package ^ "@" ^ version
+      "Queued download for " ^ Package_name.to_string package ^ "@" ^ version
   | BuildGraphCreating ->
       "Creating build graph..."
   | BuildGraphCreated { nodes; duration_ms } ->
@@ -564,7 +622,7 @@ let display = function
         | `Ready -> "ready"
         | `Waiting -> "waiting"
       in
-      "Queued " ^ package ^ " (" ^ typ ^ ")"
+      "Queued " ^ Package_name.to_string package ^ " (" ^ typ ^ ")"
   | QueueStats { ready; waiting; busy } ->
       "Queue: "
       ^ Int.to_string ready
@@ -574,21 +632,23 @@ let display = function
       ^ Int.to_string busy
       ^ " busy"
   | DependencyMissing { package; missing } ->
-      package ^ " waiting for: " ^ String.concat ", " missing
+      Package_name.to_string package
+      ^ " waiting for: "
+      ^ String.concat ", " (List.map missing ~fn:Package_name.to_string)
   | DependencySatisfied { package } ->
-      package ^ " dependencies satisfied"
+      Package_name.to_string package ^ " dependencies satisfied"
   | CompilingInterface { package; file } ->
-      "[" ^ package ^ "] Compiling interface " ^ file
+      "[" ^ Package_name.to_string package ^ "] Compiling interface " ^ file
   | CompilingImplementation { package; file } ->
-      "[" ^ package ^ "] Compiling " ^ file
+      "[" ^ Package_name.to_string package ^ "] Compiling " ^ file
   | LinkingLibrary { package; output } ->
-      "[" ^ package ^ "] Linking library " ^ output
+      "[" ^ Package_name.to_string package ^ "] Linking library " ^ output
   | LinkingExecutable { package; output } ->
-      "[" ^ package ^ "] Linking executable " ^ output
+      "[" ^ Package_name.to_string package ^ "] Linking executable " ^ output
   | ComputingHash { package } ->
-      "Computing hash for " ^ package
+      "Computing hash for " ^ Package_name.to_string package
   | HashComputed { package; hash } ->
-      "Hash for " ^ package ^ ": " ^ hash
+      "Hash for " ^ Package_name.to_string package ^ ": " ^ hash
   | CopyingFile { source; dest } ->
       "Copying " ^ source ^ " -> " ^ dest
   | WritingFile { path } ->
@@ -636,6 +696,26 @@ let to_string = fun event ->
   else
     "[" ^ timestamp ^ "] " ^ level_str ^ " " ^ msg
 
+let package_name_json = fun package -> Json.String (Package_name.to_string package)
+
+let package_names_json = fun packages ->
+  Json.Array (List.map packages ~fn:package_name_json)
+
+let package_name_of_json = function
+  | Json.String package -> Package_name.from_string package
+  | _ -> Error "invalid package name"
+
+let package_names_of_json = function
+  | Json.Array packages ->
+      let rec loop acc = function
+        | [] -> Ok (List.reverse acc)
+        | json :: rest ->
+            let* package = package_name_of_json json in
+            loop (package :: acc) rest
+      in
+      loop [] packages
+  | _ -> Error "invalid package names"
+
 let json_of_string_option = function
   | Some value -> Json.String value
   | None -> Json.Null
@@ -668,8 +748,8 @@ let kind_to_json = function
   | BuildComplete { duration_ms; results; succeeded; failed } ->
       Json.Object [
         ("duration_ms", Json.Int duration_ms);
-        ("succeeded", Json.Array (List.map succeeded ~fn:(fun s -> Json.String s)));
-        ("failed", Json.Array (List.map failed ~fn:(fun s -> Json.String s)));
+        ("succeeded", package_names_json succeeded);
+        ("failed", package_names_json failed);
       ]
   | BuildGraphCreated { nodes; duration_ms } ->
       Json.Object [ ("nodes", Json.Int nodes); ("duration_ms", Json.Int duration_ms) ]
@@ -677,16 +757,16 @@ let kind_to_json = function
       Json.Object []
   | BuildStarted { packages; total_modules; workers } ->
       Json.Object [
-        ("packages", Json.Array (List.map packages ~fn:(fun p -> Json.String p)));
+        ("packages", package_names_json packages);
         ("total_modules", Json.Int total_modules);
         ("workers", Json.Int workers);
       ]
   | CacheHit { package; hash } ->
-      Json.Object [ ("package", Json.String package); ("hash", Json.String hash) ]
+      Json.Object [ ("package", package_name_json package); ("hash", Json.String hash) ]
   | CacheMiss { package; hash } ->
-      Json.Object [ ("package", Json.String package); ("hash", Json.String hash) ]
+      Json.Object [ ("package", package_name_json package); ("hash", Json.String hash) ]
   | PackageStarted { package } ->
-      Json.Object [ ("package", Json.String package) ]
+      Json.Object [ ("package", package_name_json package) ]
   | PackageComplete {
     package;
     success;
@@ -698,7 +778,7 @@ let kind_to_json = function
 
   } ->
       Json.Object [
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("success", Json.Bool success);
         ("duration_ms", Json.Int duration_ms);
         ("modules_compiled", Json.Int modules_compiled);
@@ -710,10 +790,10 @@ let kind_to_json = function
         match reason with
         | DependenciesFailed deps -> Json.Object [
           ("type", Json.String "dependencies_failed");
-          ("dependencies", Json.Array (List.map deps ~fn:(fun d -> Json.String d)));
+          ("dependencies", package_names_json deps);
         ]
       in
-      Json.Object [ ("package", Json.String package); ("reason", reason_json) ]
+      Json.Object [ ("package", package_name_json package); ("reason", reason_json) ]
   | CompileError { package; error } ->
       let col_start, col_end = error.span in
       let error_message =
@@ -726,7 +806,7 @@ let kind_to_json = function
         | OtherError { message } -> strip_ansi_codes message
       in
       Json.Object [
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("file", Json.String error.file);
         ("line", Json.Int error.line);
         ("span", Json.Array [ Json.Int col_start; Json.Int col_end ]);
@@ -736,31 +816,31 @@ let kind_to_json = function
       ]
   | CacheStored { package; hash; artifacts } ->
       Json.Object [
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("hash", Json.String hash);
         ("artifacts", Json.Array (List.map artifacts ~fn:(fun a -> Json.String a)));
       ]
   | CompilingImplementation { package; file } ->
-      Json.Object [ ("package", Json.String package); ("file", Json.String file) ]
+      Json.Object [ ("package", package_name_json package); ("file", Json.String file) ]
   | CompilingInterface { package; file } ->
-      Json.Object [ ("package", Json.String package); ("file", Json.String file) ]
+      Json.Object [ ("package", package_name_json package); ("file", Json.String file) ]
   | ComputingHash { package } ->
-      Json.Object [ ("package", Json.String package) ]
+      Json.Object [ ("package", package_name_json package) ]
   | CopyingFile { source; dest } ->
       Json.Object [ ("source", Json.String source); ("dest", Json.String dest) ]
   | CreatingDirectory { path } ->
       Json.Object [ ("path", Json.String path) ]
   | CycleDetected { packages } ->
-      Json.Object [ ("packages", Json.Array (List.map packages ~fn:(fun p -> Json.String p))); ]
+      Json.Object [ ("packages", package_names_json packages); ]
   | DependencyMissing { package; missing } ->
       Json.Object [
-        ("package", Json.String package);
-        ("missing", Json.Array (List.map missing ~fn:(fun m -> Json.String m)));
+        ("package", package_name_json package);
+        ("missing", package_names_json missing);
       ]
   | DependencySatisfied { package } ->
-      Json.Object [ ("package", Json.String package) ]
+      Json.Object [ ("package", package_name_json package) ]
   | HashComputed { package; hash } ->
-      Json.Object [ ("package", Json.String package); ("hash", Json.String hash) ]
+      Json.Object [ ("package", package_name_json package); ("hash", Json.String hash) ]
   | StoreCreating ->
       Json.Object []
   | StoreCreated { duration_ms } ->
@@ -770,13 +850,13 @@ let kind_to_json = function
   | WorkerPoolCreated { workers; duration_ms } ->
       Json.Object [ ("workers", Json.Int workers); ("duration_ms", Json.Int duration_ms) ]
   | LinkingExecutable { package; output } ->
-      Json.Object [ ("package", Json.String package); ("output", Json.String output) ]
+      Json.Object [ ("package", package_name_json package); ("output", Json.String output) ]
   | LinkingLibrary { package; output } ->
-      Json.Object [ ("package", Json.String package); ("output", Json.String output) ]
+      Json.Object [ ("package", package_name_json package); ("output", Json.String output) ]
   | McpToolCall { tool; args } ->
       Json.Object [ ("tool", Json.String tool); ("args", args) ]
   | QueuePackage { package; queue_type } ->
-      Json.Object [ ("package", Json.String package); (
+      Json.Object [ ("package", package_name_json package); (
           "queue_type",
           Json.String (
             match queue_type with
@@ -817,7 +897,7 @@ let kind_to_json = function
   | WorkerAssigned { worker_id; package } ->
       Json.Object [
         ("worker_id", Json.String (Worker_id.to_string worker_id));
-        ("package", Json.String package);
+        ("package", package_name_json package);
       ]
   | WorkerIdle { worker_id } ->
       Json.Object [ ("worker_id", Json.String (Worker_id.to_string worker_id)) ]
@@ -845,7 +925,7 @@ let kind_to_json = function
       Json.Object [ ("path", Json.String path); ("error", Pm_error.to_json error) ]
   | DependencyResolutionStarted { packages; mode } ->
       Json.Object [
-        ("packages", Json.Array (List.map packages ~fn:(fun package -> Json.String package)));
+        ("packages", package_names_json packages);
         ("mode", json_of_resolution_mode mode);
       ]
   | DependencyResolutionUsingExistingLock { path } ->
@@ -866,7 +946,7 @@ let kind_to_json = function
       Json.Object [ ("registry", Json.String registry) ]
   | DependencyUniverseBuilding { packages } ->
       Json.Object [
-        ("packages", Json.Array (List.map packages ~fn:(fun package -> Json.String package)))
+        ("packages", package_names_json packages)
       ]
   | DependencyUniverseBuilt { runtime_packages; build_packages; dev_packages; duration_ms } ->
       Json.Object [
@@ -876,18 +956,18 @@ let kind_to_json = function
         ("duration_ms", Json.Int duration_ms);
       ]
   | PackageMetadataFetchStarted { registry; package } ->
-      Json.Object [ ("registry", Json.String registry); ("package", Json.String package) ]
+      Json.Object [ ("registry", Json.String registry); ("package", package_name_json package) ]
   | PackageMetadataFetchFinished { registry; package; version; duration_ms } ->
       Json.Object [
         ("registry", Json.String registry);
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("version", json_of_string_option version);
         ("duration_ms", Json.Int duration_ms);
       ]
   | PackageMetadataFetchFailed { registry; package; error } ->
       Json.Object [
         ("registry", Json.String registry);
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("error", Pm_error.to_json error);
       ]
   | SourceDependencyMaterializationStarted { source_locator; ref_ } ->
@@ -899,7 +979,7 @@ let kind_to_json = function
       Json.Object [
         ("source_locator", Json.String source_locator);
         ("ref", json_of_string_option ref_);
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("version", json_of_string_option version);
       ]
   | DependencyManifestUpdated { path; section; operation; dependency } ->
@@ -910,92 +990,92 @@ let kind_to_json = function
         ("dependency", Json.String dependency);
       ]
   | PackageVersionLocked { package; version } ->
-      Json.Object [ ("package", Json.String package); ("version", Json.String version); ]
+      Json.Object [ ("package", package_name_json package); ("version", Json.String version); ]
   | PackageVersionsUnchanged { packages } ->
       Json.Object [ ("packages", Json.Int packages) ]
   | PackageVersionUpdated { package; from_version; to_version } ->
       Json.Object [
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("from_version", Json.String from_version);
         ("to_version", Json.String to_version);
       ]
   | PackageManifestFetchStarted { package; version } ->
-      Json.Object [ ("package", Json.String package); ("version", Json.String version) ]
+      Json.Object [ ("package", package_name_json package); ("version", Json.String version) ]
   | PackageManifestFetchFinished { package; version; duration_ms } ->
       Json.Object [
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("version", Json.String version);
         ("duration_ms", Json.Int duration_ms);
       ]
   | PackageManifestFetchFailed { package; version; error } ->
       Json.Object [
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("version", json_of_string_option version);
         ("error", Pm_error.to_json error);
       ]
   | PackageDownloadStarted { package; version; path } ->
       Json.Object [
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("version", Json.String version);
         ("path", Json.String path);
       ]
   | PackageDownloadFinished { package; version; path; duration_ms } ->
       Json.Object [
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("version", Json.String version);
         ("path", Json.String path);
         ("duration_ms", Json.Int duration_ms);
       ]
   | PackageDownloadFailed { package; version; path; error } ->
       Json.Object [
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("version", Json.String version);
         ("path", Json.String path);
         ("error", Pm_error.to_json error);
       ]
   | PackageDownloadSkipped { package; version; path; reason } ->
       Json.Object [
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("version", Json.String version);
         ("path", Json.String path);
         ("reason", Json.String reason);
       ]
   | PackageCacheHit { package; version; path } ->
       Json.Object [
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("version", Json.String version);
         ("path", Json.String path);
       ]
   | PackageMaterializationStarted { package; version; path } ->
       Json.Object [
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("version", Json.String version);
         ("path", Json.String path);
       ]
   | PackageMaterializationFinished { package; version; path; duration_ms } ->
       Json.Object [
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("version", Json.String version);
         ("path", Json.String path);
         ("duration_ms", Json.Int duration_ms);
       ]
   | PackageMaterializationFailed { package; version; path; error } ->
       Json.Object [
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("version", Json.String version);
         ("path", Json.String path);
         ("error", Pm_error.to_json error);
       ]
   | PackageResolvedForBuild { package; version; path; workspace } ->
       Json.Object [
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("version", json_of_string_option version);
         ("path", Json.String path);
         ("workspace", Json.Bool workspace);
       ]
   | PackageDownloadQueued { package; version; path } ->
       Json.Object [
-        ("package", Json.String package);
+        ("package", package_name_json package);
         ("version", Json.String version);
         ("path", Json.String path);
       ]
@@ -1042,27 +1122,15 @@ let kind_from_json = fun json ->
                     | Some (Json.Int n) -> n
                     | _ -> 0
                   in
-                  let succeeded =
+                  let* succeeded =
                     match Fields.get "succeeded" data_fields with
-                    | Some (Json.Array arr) ->
-                        List.filter_map ~fn:(
-                            function
-                            | Json.String s -> Some s
-                            | _ -> None
-                          )
-                          arr
-                    | _ -> []
+                    | Some json -> package_names_of_json json
+                    | None -> Ok []
                   in
-                  let failed =
+                  let* failed =
                     match Fields.get "failed" data_fields with
-                    | Some (Json.Array arr) ->
-                        List.filter_map ~fn:(
-                            function
-                            | Json.String s -> Some s
-                            | _ -> None
-                          )
-                          arr
-                    | _ -> []
+                    | Some json -> package_names_of_json json
+                    | None -> Ok []
                   in
                   Ok (BuildComplete { duration_ms; results = []; succeeded; failed })
               | _ -> Error "Invalid BuildComplete data"
@@ -1070,16 +1138,10 @@ let kind_from_json = fun json ->
           | "riot.build.started" -> (
               match data with
               | Json.Object data_fields ->
-                  let packages =
+                  let* packages =
                     match Fields.get "packages" data_fields with
-                    | Some (Json.Array arr) ->
-                        List.filter_map ~fn:(
-                            function
-                            | Json.String s -> Some s
-                            | _ -> None
-                          )
-                          arr
-                    | _ -> []
+                    | Some json -> package_names_of_json json
+                    | None -> Ok []
                   in
                   let total_modules =
                     match Fields.get "total_modules" data_fields with
@@ -1097,10 +1159,10 @@ let kind_from_json = fun json ->
           | "riot.build.package.started" -> (
               match data with
               | Json.Object data_fields ->
-                  let package =
+                  let* package =
                     match Fields.get "package" data_fields with
-                    | Some (Json.String p) -> p
-                    | _ -> ""
+                    | Some json -> package_name_of_json json
+                    | None -> Error "Invalid PackageStarted data"
                   in
                   Ok (PackageStarted { package })
               | _ -> Error "Invalid PackageStarted data"
@@ -1108,10 +1170,10 @@ let kind_from_json = fun json ->
           | "riot.build.package.completed" -> (
               match data with
               | Json.Object data_fields ->
-                  let package =
+                  let* package =
                     match Fields.get "package" data_fields with
-                    | Some (Json.String p) -> p
-                    | _ -> ""
+                    | Some json -> package_name_of_json json
+                    | None -> Error "Invalid PackageComplete data"
                   in
                   let success =
                     match Fields.get "success" data_fields with
@@ -1154,10 +1216,10 @@ let kind_from_json = fun json ->
           | "riot.build.package.skipped" -> (
               match data with
               | Json.Object data_fields ->
-                  let package =
+                  let* package =
                     match Fields.get "package" data_fields with
-                    | Some (Json.String p) -> p
-                    | _ -> ""
+                    | Some json -> package_name_of_json json
+                    | None -> Error "Invalid PackageSkipped data"
                   in
                   let reason =
                     match Fields.get "reason" data_fields with
@@ -1165,17 +1227,12 @@ let kind_from_json = fun json ->
                         match Fields.get "type" reason_fields with
                         | Some (Json.String "dependencies_failed") -> (
                             match Fields.get "dependencies" reason_fields with
-                            | Some (Json.Array deps) ->
-                                let dep_names =
-                                  List.filter_map ~fn:(
-                                      function
-                                      | Json.String s -> Some s
-                                      | _ -> None
-                                    )
-                                    deps
-                                in
-                                DependenciesFailed dep_names
-                            | _ -> DependenciesFailed []
+                            | Some json -> (
+                                match package_names_of_json json with
+                                | Ok dep_names -> DependenciesFailed dep_names
+                                | Error _ -> DependenciesFailed []
+                              )
+                            | None -> DependenciesFailed []
                           )
                         | _ -> DependenciesFailed []
                       )
@@ -1187,10 +1244,10 @@ let kind_from_json = fun json ->
           | "riot.build.cache.hit" -> (
               match data with
               | Json.Object data_fields ->
-                  let package =
+                  let* package =
                     match Fields.get "package" data_fields with
-                    | Some (Json.String p) -> p
-                    | _ -> ""
+                    | Some json -> package_name_of_json json
+                    | None -> Error "Invalid CacheHit data"
                   in
                   let hash =
                     match Fields.get "hash" data_fields with
@@ -1203,10 +1260,10 @@ let kind_from_json = fun json ->
           | "riot.build.cache.miss" -> (
               match data with
               | Json.Object data_fields ->
-                  let package =
+                  let* package =
                     match Fields.get "package" data_fields with
-                    | Some (Json.String p) -> p
-                    | _ -> ""
+                    | Some json -> package_name_of_json json
+                    | None -> Error "Invalid CacheMiss data"
                   in
                   let hash =
                     match Fields.get "hash" data_fields with
@@ -1219,10 +1276,10 @@ let kind_from_json = fun json ->
           | "riot.build.cache.stored" -> (
               match data with
               | Json.Object data_fields ->
-                  let package =
+                  let* package =
                     match Fields.get "package" data_fields with
-                    | Some (Json.String p) -> p
-                    | _ -> ""
+                    | Some json -> package_name_of_json json
+                    | None -> Error "Invalid CacheStored data"
                   in
                   let hash =
                     match Fields.get "hash" data_fields with
@@ -1246,10 +1303,10 @@ let kind_from_json = fun json ->
           | "riot.build.compile.interface" -> (
               match data with
               | Json.Object data_fields ->
-                  let package =
+                  let* package =
                     match Fields.get "package" data_fields with
-                    | Some (Json.String p) -> p
-                    | _ -> ""
+                    | Some json -> package_name_of_json json
+                    | None -> Error "Invalid CompilingInterface data"
                   in
                   let file =
                     match Fields.get "file" data_fields with
@@ -1262,10 +1319,10 @@ let kind_from_json = fun json ->
           | "riot.build.compile.implementation" -> (
               match data with
               | Json.Object data_fields ->
-                  let package =
+                  let* package =
                     match Fields.get "package" data_fields with
-                    | Some (Json.String p) -> p
-                    | _ -> ""
+                    | Some json -> package_name_of_json json
+                    | None -> Error "Invalid CompilingImplementation data"
                   in
                   let file =
                     match Fields.get "file" data_fields with
@@ -1278,10 +1335,10 @@ let kind_from_json = fun json ->
           | "riot.build.compile.error" -> (
               match data with
               | Json.Object data_fields ->
-                  let package =
+                  let* package =
                     match Fields.get "package" data_fields with
-                    | Some (Json.String p) -> p
-                    | _ -> ""
+                    | Some json -> package_name_of_json json
+                    | None -> Error "Invalid CompileError data"
                   in
                   let file =
                     match Fields.get "file" data_fields with
@@ -1356,10 +1413,10 @@ let kind_from_json = fun json ->
           | "riot.build.link.library" -> (
               match data with
               | Json.Object data_fields ->
-                  let package =
+                  let* package =
                     match Fields.get "package" data_fields with
-                    | Some (Json.String p) -> p
-                    | _ -> ""
+                    | Some json -> package_name_of_json json
+                    | None -> Error "Invalid LinkingLibrary data"
                   in
                   let output =
                     match Fields.get "output" data_fields with
@@ -1372,10 +1429,10 @@ let kind_from_json = fun json ->
           | "riot.build.hash.computing" -> (
               match data with
               | Json.Object data_fields ->
-                  let package =
+                  let* package =
                     match Fields.get "package" data_fields with
-                    | Some (Json.String p) -> p
-                    | _ -> ""
+                    | Some json -> package_name_of_json json
+                    | None -> Error "Invalid ComputingHash data"
                   in
                   Ok (ComputingHash { package })
               | _ -> Error "Invalid ComputingHash data"
@@ -1383,10 +1440,10 @@ let kind_from_json = fun json ->
           | "riot.build.hash.computed" -> (
               match data with
               | Json.Object data_fields ->
-                  let package =
+                  let* package =
                     match Fields.get "package" data_fields with
-                    | Some (Json.String p) -> p
-                    | _ -> ""
+                    | Some json -> package_name_of_json json
+                    | None -> Error "Invalid HashComputed data"
                   in
                   let hash =
                     match Fields.get "hash" data_fields with
@@ -1399,10 +1456,10 @@ let kind_from_json = fun json ->
           | "riot.build.link.executable" -> (
               match data with
               | Json.Object data_fields ->
-                  let package =
+                  let* package =
                     match Fields.get "package" data_fields with
-                    | Some (Json.String p) -> p
-                    | _ -> ""
+                    | Some json -> package_name_of_json json
+                    | None -> Error "Invalid LinkingExecutable data"
                   in
                   let output =
                     match Fields.get "output" data_fields with
@@ -1559,16 +1616,10 @@ let kind_from_json = fun json ->
           | "riot.pm.resolution.started" -> (
               match data with
               | Json.Object data_fields ->
-                  let packages =
+                  let* packages =
                     match Fields.get "packages" data_fields with
-                    | Some (Json.Array items) ->
-                        List.filter_map ~fn:(
-                            function
-                            | Json.String package -> Some package
-                            | _ -> None
-                          )
-                          items
-                    | _ -> []
+                    | Some json -> package_names_of_json json
+                    | None -> Ok []
                   in
                   let mode =
                     match Fields.get "mode" data_fields with
@@ -1651,16 +1702,10 @@ let kind_from_json = fun json ->
           | "riot.pm.universe.building" -> (
               match data with
               | Json.Object data_fields ->
-                  let packages =
+                  let* packages =
                     match Fields.get "packages" data_fields with
-                    | Some (Json.Array items) ->
-                        List.filter_map ~fn:(
-                            function
-                            | Json.String package -> Some package
-                            | _ -> None
-                          )
-                          items
-                    | _ -> []
+                    | Some json -> package_names_of_json json
+                    | None -> Ok []
                   in
                   Ok (DependencyUniverseBuilding { packages })
               | _ -> Error "Invalid DependencyUniverseBuilding data"
@@ -1687,10 +1732,10 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match Fields.get "registry" data_fields, Fields.get "package" data_fields with
-                  | Some (Json.String registry), Some (Json.String package) -> Ok (PackageMetadataFetchStarted {
-                    registry;
-                    package
-                  })
+                  | Some (Json.String registry), Some package_json -> (
+                      let* package = package_name_of_json package_json in
+                      Ok (PackageMetadataFetchStarted { registry; package })
+                    )
                   | _ -> Error "Invalid PackageMetadataFetchStarted data"
                 )
               | _ -> Error "Invalid PackageMetadataFetchStarted data"
@@ -1701,12 +1746,13 @@ let kind_from_json = fun json ->
                   match Fields.get "registry" data_fields, Fields.get "package" data_fields, Fields.get
                     "duration_ms"
                     data_fields with
-                  | Some (Json.String registry), Some (Json.String package), Some (Json.Int duration_ms) ->
+                  | Some (Json.String registry), Some package_json, Some (Json.Int duration_ms) ->
                       let version =
                         match Fields.get "version" data_fields with
                         | Some json -> string_option_of_json json
                         | None -> None
                       in
+                      let* package = package_name_of_json package_json in
                       Ok (PackageMetadataFetchFinished { registry; package; version; duration_ms })
                   | _ -> Error "Invalid PackageMetadataFetchFinished data"
                 )
@@ -1718,7 +1764,8 @@ let kind_from_json = fun json ->
                   match Fields.get "registry" data_fields, Fields.get "package" data_fields, Fields.get
                     "error"
                     data_fields with
-                  | Some (Json.String registry), Some (Json.String package), Some error_json -> (
+                  | Some (Json.String registry), Some package_json, Some error_json -> (
+                      let* package = package_name_of_json package_json in
                       match Pm_error.of_json error_json with
                       | Ok error -> Ok (PackageMetadataFetchFailed { registry; package; error })
                       | Error err -> Error ("Invalid PackageMetadataFetchFailed data: " ^ err)
@@ -1746,7 +1793,7 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match Fields.get "source_locator" data_fields, Fields.get "package" data_fields with
-                  | Some (Json.String source_locator), Some (Json.String package) ->
+                  | Some (Json.String source_locator), Some package_json ->
                       let ref_ =
                         match Fields.get "ref" data_fields with
                         | Some json -> string_option_of_json json
@@ -1757,6 +1804,7 @@ let kind_from_json = fun json ->
                         | Some json -> string_option_of_json json
                         | None -> None
                       in
+                      let* package = package_name_of_json package_json in
                       Ok (SourceDependencyMaterializationFinished {
                         source_locator;
                         ref_;
@@ -1791,10 +1839,9 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match Fields.get "package" data_fields, Fields.get "version" data_fields with
-                  | Some (Json.String package), Some (Json.String version) -> Ok (PackageVersionLocked {
-                    package;
-                    version
-                  })
+                  | Some package_json, Some (Json.String version) ->
+                      let* package = package_name_of_json package_json in
+                      Ok (PackageVersionLocked { package; version })
                   | _ -> Error "Invalid PackageVersionLocked data"
                 )
               | _ -> Error "Invalid PackageVersionLocked data"
@@ -1814,11 +1861,9 @@ let kind_from_json = fun json ->
                   match Fields.get "package" data_fields, Fields.get "from_version" data_fields, Fields.get
                     "to_version"
                     data_fields with
-                  | Some (Json.String package), Some (Json.String from_version), Some (Json.String to_version) -> Ok (PackageVersionUpdated {
-                    package;
-                    from_version;
-                    to_version
-                  })
+                  | Some package_json, Some (Json.String from_version), Some (Json.String to_version) ->
+                      let* package = package_name_of_json package_json in
+                      Ok (PackageVersionUpdated { package; from_version; to_version })
                   | _ -> Error "Invalid PackageVersionUpdated data"
                 )
               | _ -> Error "Invalid PackageVersionUpdated data"
@@ -1827,10 +1872,9 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match Fields.get "package" data_fields, Fields.get "version" data_fields with
-                  | Some (Json.String package), Some (Json.String version) -> Ok (PackageManifestFetchStarted {
-                    package;
-                    version
-                  })
+                  | Some package_json, Some (Json.String version) ->
+                      let* package = package_name_of_json package_json in
+                      Ok (PackageManifestFetchStarted { package; version })
                   | _ -> Error "Invalid PackageManifestFetchStarted data"
                 )
               | _ -> Error "Invalid PackageManifestFetchStarted data"
@@ -1841,11 +1885,9 @@ let kind_from_json = fun json ->
                   match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "duration_ms"
                     data_fields with
-                  | Some (Json.String package), Some (Json.String version), Some (Json.Int duration_ms) -> Ok (PackageManifestFetchFinished {
-                    package;
-                    version;
-                    duration_ms
-                  })
+                  | Some package_json, Some (Json.String version), Some (Json.Int duration_ms) ->
+                      let* package = package_name_of_json package_json in
+                      Ok (PackageManifestFetchFinished { package; version; duration_ms })
                   | _ -> Error "Invalid PackageManifestFetchFinished data"
                 )
               | _ -> Error "Invalid PackageManifestFetchFinished data"
@@ -1854,12 +1896,13 @@ let kind_from_json = fun json ->
               match data with
               | Json.Object data_fields -> (
                   match Fields.get "package" data_fields, Fields.get "error" data_fields with
-                  | Some (Json.String package), Some error_json -> (
+                  | Some package_json, Some error_json -> (
                       let version =
                         match Fields.get "version" data_fields with
                         | Some json -> string_option_of_json json
                         | None -> None
                       in
+                      let* package = package_name_of_json package_json in
                       match Pm_error.of_json error_json with
                       | Ok error -> Ok (PackageManifestFetchFailed { package; version; error })
                       | Error err -> Error ("Invalid PackageManifestFetchFailed data: " ^ err)
@@ -1874,11 +1917,9 @@ let kind_from_json = fun json ->
                   match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
                     data_fields with
-                  | Some (Json.String package), Some (Json.String version), Some (Json.String path) -> Ok (PackageDownloadStarted {
-                    package;
-                    version;
-                    path
-                  })
+                  | Some package_json, Some (Json.String version), Some (Json.String path) ->
+                      let* package = package_name_of_json package_json in
+                      Ok (PackageDownloadStarted { package; version; path })
                   | _ -> Error "Invalid PackageDownloadStarted data"
                 )
               | _ -> Error "Invalid PackageDownloadStarted data"
@@ -1889,12 +1930,9 @@ let kind_from_json = fun json ->
                   match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
                     data_fields, Fields.get "duration_ms" data_fields with
-                  | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some (Json.Int duration_ms) -> Ok (PackageDownloadFinished {
-                    package;
-                    version;
-                    path;
-                    duration_ms
-                  })
+                  | Some package_json, Some (Json.String version), Some (Json.String path), Some (Json.Int duration_ms) ->
+                      let* package = package_name_of_json package_json in
+                      Ok (PackageDownloadFinished { package; version; path; duration_ms })
                   | _ -> Error "Invalid PackageDownloadFinished data"
                 )
               | _ -> Error "Invalid PackageDownloadFinished data"
@@ -1905,7 +1943,8 @@ let kind_from_json = fun json ->
                   match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
                     data_fields, Fields.get "error" data_fields with
-                  | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some error_json -> (
+                  | Some package_json, Some (Json.String version), Some (Json.String path), Some error_json -> (
+                      let* package = package_name_of_json package_json in
                       match Pm_error.of_json error_json with
                       | Ok error -> Ok (PackageDownloadFailed { package; version; path; error })
                       | Error err -> Error ("Invalid PackageDownloadFailed data: " ^ err)
@@ -1920,12 +1959,9 @@ let kind_from_json = fun json ->
                   match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
                     data_fields, Fields.get "reason" data_fields with
-                  | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some (Json.String reason) -> Ok (PackageDownloadSkipped {
-                    package;
-                    version;
-                    path;
-                    reason
-                  })
+                  | Some package_json, Some (Json.String version), Some (Json.String path), Some (Json.String reason) ->
+                      let* package = package_name_of_json package_json in
+                      Ok (PackageDownloadSkipped { package; version; path; reason })
                   | _ -> Error "Invalid PackageDownloadSkipped data"
                 )
               | _ -> Error "Invalid PackageDownloadSkipped data"
@@ -1936,11 +1972,9 @@ let kind_from_json = fun json ->
                   match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
                     data_fields with
-                  | Some (Json.String package), Some (Json.String version), Some (Json.String path) -> Ok (PackageCacheHit {
-                    package;
-                    version;
-                    path
-                  })
+                  | Some package_json, Some (Json.String version), Some (Json.String path) ->
+                      let* package = package_name_of_json package_json in
+                      Ok (PackageCacheHit { package; version; path })
                   | _ -> Error "Invalid PackageCacheHit data"
                 )
               | _ -> Error "Invalid PackageCacheHit data"
@@ -1951,11 +1985,9 @@ let kind_from_json = fun json ->
                   match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
                     data_fields with
-                  | Some (Json.String package), Some (Json.String version), Some (Json.String path) -> Ok (PackageMaterializationStarted {
-                    package;
-                    version;
-                    path
-                  })
+                  | Some package_json, Some (Json.String version), Some (Json.String path) ->
+                      let* package = package_name_of_json package_json in
+                      Ok (PackageMaterializationStarted { package; version; path })
                   | _ -> Error "Invalid PackageMaterializationStarted data"
                 )
               | _ -> Error "Invalid PackageMaterializationStarted data"
@@ -1966,12 +1998,9 @@ let kind_from_json = fun json ->
                   match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
                     data_fields, Fields.get "duration_ms" data_fields with
-                  | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some (Json.Int duration_ms) -> Ok (PackageMaterializationFinished {
-                    package;
-                    version;
-                    path;
-                    duration_ms
-                  })
+                  | Some package_json, Some (Json.String version), Some (Json.String path), Some (Json.Int duration_ms) ->
+                      let* package = package_name_of_json package_json in
+                      Ok (PackageMaterializationFinished { package; version; path; duration_ms })
                   | _ -> Error "Invalid PackageMaterializationFinished data"
                 )
               | _ -> Error "Invalid PackageMaterializationFinished data"
@@ -1982,7 +2011,8 @@ let kind_from_json = fun json ->
                   match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
                     data_fields, Fields.get "error" data_fields with
-                  | Some (Json.String package), Some (Json.String version), Some (Json.String path), Some error_json -> (
+                  | Some package_json, Some (Json.String version), Some (Json.String path), Some error_json -> (
+                      let* package = package_name_of_json package_json in
                       match Pm_error.of_json error_json with
                       | Ok error -> Ok (PackageMaterializationFailed {
                         package;
@@ -2002,12 +2032,13 @@ let kind_from_json = fun json ->
                   match Fields.get "package" data_fields, Fields.get "path" data_fields, Fields.get
                     "workspace"
                     data_fields with
-                  | Some (Json.String package), Some (Json.String path), Some (Json.Bool workspace) ->
+                  | Some package_json, Some (Json.String path), Some (Json.Bool workspace) ->
                       let version =
                         match Fields.get "version" data_fields with
                         | Some json -> string_option_of_json json
                         | None -> None
                       in
+                      let* package = package_name_of_json package_json in
                       Ok (PackageResolvedForBuild { package; version; path; workspace })
                   | _ -> Error "Invalid PackageResolvedForBuild data"
                 )
@@ -2019,11 +2050,9 @@ let kind_from_json = fun json ->
                   match Fields.get "package" data_fields, Fields.get "version" data_fields, Fields.get
                     "path"
                     data_fields with
-                  | Some (Json.String package), Some (Json.String version), Some (Json.String path) -> Ok (PackageDownloadQueued {
-                    package;
-                    version;
-                    path
-                  })
+                  | Some package_json, Some (Json.String version), Some (Json.String path) ->
+                      let* package = package_name_of_json package_json in
+                      Ok (PackageDownloadQueued { package; version; path })
                   | _ -> Error "Invalid PackageDownloadQueued data"
                 )
               | _ -> Error "Invalid PackageDownloadQueued data"
@@ -2067,6 +2096,9 @@ let from_json = fun json ->
   | _ -> Error "Invalid JSON format for Event"
 
 module Tests = struct
+  let package_name = fun name ->
+    Result.expect (Package_name.from_string name) ~msg:("package name " ^ name)
+
   let test_lockfile_event_json_roundtrip (): (unit, string) result =
     let event = create
       ~session_id:(Session_id.of_string "test-session")
@@ -2083,10 +2115,10 @@ module Tests = struct
   let test_resolution_event_json_roundtrip (): (unit, string) result =
     let event = create
       ~session_id:(Session_id.of_string "test-session")
-      ~level:Info (DependencyResolutionStarted { packages = [ "app"; "std" ]; mode = `Unlock }) in
+      ~level:Info (DependencyResolutionStarted { packages = [ package_name "app"; package_name "std" ]; mode = `Unlock }) in
     match from_json (to_json event) with
     | Ok { kind=DependencyResolutionStarted { packages; mode=`Unlock }; _ } ->
-        if packages = [ "app"; "std" ] then
+        if packages = [ package_name "app"; package_name "std" ] then
           Ok ()
         else
           Error "expected dependency resolution packages to round-trip"
@@ -2097,7 +2129,7 @@ module Tests = struct
     let event = create
       ~session_id:(Session_id.of_string "test-session")
       ~level:Info (PackageResolvedForBuild {
-        package = "std";
+        package = package_name "std";
         version = Some "0.1.0";
         path = "/Users/example/.riot/registry/pkgs.ml/src/std/0.1.0";
         workspace = false
@@ -2105,7 +2137,7 @@ module Tests = struct
     match from_json (to_json event) with
     | Ok { kind=PackageResolvedForBuild { package; version; path; workspace }; _ } ->
         if
-          String.equal package "std"
+          Package_name.equal package (package_name "std")
           && version = Some "0.1.0"
           && String.equal path "/Users/example/.riot/registry/pkgs.ml/src/std/0.1.0"
           && not workspace
@@ -2141,10 +2173,10 @@ module Tests = struct
   let test_package_locked_event_json_roundtrip (): (unit, string) result =
     let event = create
       ~session_id:(Session_id.of_string "test-session")
-      ~level:Info (PackageVersionLocked { package = "std"; version = "0.2.0" }) in
+      ~level:Info (PackageVersionLocked { package = package_name "std"; version = "0.2.0" }) in
     match from_json (to_json event) with
     | Ok { kind=PackageVersionLocked { package; version }; _ } ->
-        if String.equal package "std" && String.equal version "0.2.0" then
+        if Package_name.equal package (package_name "std") && String.equal version "0.2.0" then
           Ok ()
         else
           Error "expected package locked event to round-trip"

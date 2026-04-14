@@ -1,13 +1,14 @@
 open Std
+open Std.Result.Syntax
 
 type suite_binary = {
-  package_name: string;
+  package_name: Riot_model.Package_name.t;
   suite_name: string;
 }
 
 type test_request = {
   workspace: Riot_model.Workspace.t;
-  package_filter: string option;
+  package_filter: Riot_model.Package_name.t option;
   suite_filter: string option;
   profile: string;
   extra_args: string list;
@@ -75,7 +76,10 @@ type test_suite_summary = {
 
 type test_event =
   | Build of Event.t
-  | NoSuitesFound of { package_name: string option; suite_name: string option }
+  | NoSuitesFound of {
+      package_name: Riot_model.Package_name.t option;
+      suite_name: string option
+    }
   | RunningSuite of suite_binary
   | SuiteCompleted of {
       suite: suite_binary;
@@ -109,12 +113,14 @@ let is_test_binary_name = fun name ->
   String.ends_with ~suffix:"_tests" name || String.ends_with ~suffix:"-tests" name
 
 let compare_suite_binary = fun left right ->
-  String.compare
-    (left.package_name ^ ":" ^ left.suite_name)
-    (right.package_name ^ ":" ^ right.suite_name)
+  match Riot_model.Package_name.compare left.package_name right.package_name with
+  | 0 -> String.compare left.suite_name right.suite_name
+  | cmp -> cmp
 
 let requested_packages = fun suites ->
-  suites |> List.map ~fn:(fun (suite: suite_binary) -> suite.package_name) |> List.unique ~compare:String.compare
+  suites
+  |> List.map ~fn:(fun (suite: suite_binary) -> suite.package_name)
+  |> List.unique ~compare:Riot_model.Package_name.compare
 
 let profile_of_name = function
   | "release" -> Riot_model.Profile.release
@@ -126,7 +132,7 @@ let realized_test_packages = fun ?package_filter (workspace: Riot_model.Workspac
   |> List.filter ~fn:(fun (pkg: Riot_model.Package.t) ->
       match package_filter with
       | None -> true
-      | Some package_name -> String.equal pkg.name package_name)
+      | Some package_name -> Riot_model.Package_name.equal pkg.name package_name)
 
 let collect_suite_binaries = fun (workspace: Riot_model.Workspace.t) ?package_filter ?suite_filter () ->
   realized_test_packages ?package_filter workspace
@@ -137,14 +143,17 @@ let collect_suite_binaries = fun (workspace: Riot_model.Workspace.t) ?package_fi
               | None -> true
               | Some suite_name -> String.equal bin.name suite_name
             ) then
-            Some { package_name = pkg.name; suite_name = bin.name }
+            Some {
+              package_name = pkg.name;
+              suite_name = bin.name
+            }
           else
             None))
   |> List.sort ~compare:compare_suite_binary
 
 let find_suite_source_path = fun ~(workspace:Riot_model.Workspace.t) (suite: suite_binary) ->
   match List.find (realized_test_packages workspace) ~fn:(fun (pkg: Riot_model.Package.t) ->
-    String.equal pkg.name suite.package_name) with
+    Riot_model.Package_name.equal pkg.name suite.package_name) with
   | None -> None
   | Some pkg ->
       List.find pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
@@ -195,11 +204,6 @@ let field = fun name fields ->
   match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with
   | Some (_, value) -> Ok value
   | None -> Error ("missing field " ^ name)
-
-let ( let* ) result f =
-  match result with
-  | Ok value -> f value
-  | Error _ as err -> err
 
 let optional_int_field = fun name fields ->
   match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with
@@ -463,7 +467,7 @@ let test_event_to_json = function
         Data.Json.Object [ ("type", Data.Json.String "NoSuitesFound"); (
             "package_name",
             match package_name with
-            | Some name -> Data.Json.String name
+            | Some name -> Data.Json.String (Riot_model.Package_name.to_string name)
             | None -> Data.Json.Null
           ); (
             "suite_name",
@@ -475,7 +479,7 @@ let test_event_to_json = function
   | RunningSuite { package_name; suite_name } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "RunningSuite");
-        ("package", Data.Json.String package_name);
+        ("package", Data.Json.String (Riot_model.Package_name.to_string package_name));
         ("suite", Data.Json.String suite_name);
       ])
   | SuiteCompleted {
@@ -539,7 +543,7 @@ let test_event_to_json = function
       Some (
         Data.Json.Object [
           ("type", Data.Json.String "SuiteCompleted");
-          ("package", Data.Json.String suite.package_name);
+          ("package", Data.Json.String (Riot_model.Package_name.to_string suite.package_name));
           ("suite", Data.Json.String suite.suite_name);
           ("status", Data.Json.Int status);
           ("stdout", Data.Json.String stdout);
@@ -585,7 +589,7 @@ let test_event_to_json = function
       let failed_tests = failed_tests
       |> List.map ~fn:(fun (failed_test: failed_test) ->
           Data.Json.Object [
-            ("package", Data.Json.String failed_test.suite.package_name);
+            ("package", Data.Json.String (Riot_model.Package_name.to_string failed_test.suite.package_name));
             ("suite", Data.Json.String failed_test.suite.suite_name);
             ("name", Data.Json.String failed_test.name);
             ("message", Data.Json.String failed_test.message);
@@ -617,7 +621,7 @@ let find_suite_binary_path = fun ~(store:Riot_store.Store.t) ~(suite:suite_binar
               "failed to mark suite binary executable: " ^ IO.error_message err)
   in
   let find_suite_export (result: Riot_executor.Package_builder.build_result) =
-    if String.equal result.package.name suite.package_name then
+    if Riot_model.Package_name.equal result.package.name suite.package_name then
       match result.status with
       | Riot_executor.Package_builder.Built artifact
       | Riot_executor.Package_builder.Cached artifact ->
@@ -684,7 +688,7 @@ let run_suite_binary_capture = fun ~workspace_root ~(suite:suite_binary) ~extra_
   let cmd = Command.make
     binary_path
     ~env:[
-      ("RIOT_PACKAGE_NAME", suite.package_name);
+      ("RIOT_PACKAGE_NAME", Riot_model.Package_name.to_string suite.package_name);
       ("RIOT_WORKSPACE_ROOT", Path.to_string workspace_root);
     ]
     ~args:("run-tests" :: extra_args) in
@@ -695,7 +699,7 @@ let list_suite_binary_capture = fun ~workspace_root ~(suite:suite_binary) ~extra
   let cmd = Command.make
     binary_path
     ~env:[
-      ("RIOT_PACKAGE_NAME", suite.package_name);
+      ("RIOT_PACKAGE_NAME", Riot_model.Package_name.to_string suite.package_name);
       ("RIOT_WORKSPACE_ROOT", Path.to_string workspace_root);
     ]
     ~args:("list-tests" :: extra_args) in

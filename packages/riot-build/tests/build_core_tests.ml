@@ -1,6 +1,10 @@
 open Std
 module Test = Std.Test
 
+let package_name = fun name ->
+  Riot_model.Package_name.from_string name
+  |> Result.expect ~msg:("invalid package name: " ^ name)
+
 let target = fun value ->
   Riot_model.Target.from_string value
   |> Result.expect ~msg:("invalid target triple: " ^ value)
@@ -35,6 +39,7 @@ let write_toolchain_config = fun ~root ~targets ->
 
 let make_package = fun ~root ~name ~value ->
   let pkg_dir = Path.(root / Path.v name) in
+  let package_name = package_name name in
   let src_dir = Path.(pkg_dir / Path.v "src") in
   Fs.create_dir_all src_dir |> Result.expect ~msg:"Create src failed";
   Fs.write ("let value = " ^ value ^ "\n") Path.(src_dir / Path.v "lib.ml")
@@ -46,7 +51,7 @@ let make_package = fun ~root ~name ~value ->
     Path.(pkg_dir / Path.v "riot.toml")
   |> Result.expect ~msg:"Write riot.toml failed";
   Riot_model.Package.make
-    ~name
+    ~name:package_name
     ~path:pkg_dir
     ~relative_path:(Path.v name)
     ~library:{ path = Path.v "src/lib.ml" }
@@ -93,7 +98,7 @@ let make_broken_workspace = fun ?target_dir tmpdir ->
   write_workspace_manifest ~root:tmpdir ~members:[ Path.v "demo" ];
   let package =
     Riot_model.Package.make
-      ~name:"demo"
+      ~name:(package_name "demo")
       ~path:pkg_dir
       ~relative_path:(Path.v "demo")
       ~library:{ path = Path.v "src/lib.ml" }
@@ -113,7 +118,7 @@ let make_prepared_workspace = fun ?workspace_manager workspace ->
 
 let make_request = fun
   ~workspace
-  ?(packages = [ "demo" ])
+  ?(packages = [ package_name "demo" ])
   ?(targets = Riot_model.Target.Host)
   ?(scope = Riot_build.Request.Runtime)
   ?(profile = Riot_model.Profile.debug)
@@ -127,6 +132,9 @@ let build_request = fun ?on_event request ->
 let package_names = fun output ->
   Riot_build.Output.packages output
   |> List.map ~fn:Riot_build.Output.package_name
+
+let sort_package_names = fun package_names ->
+  List.sort package_names ~compare:Riot_model.Package_name.compare
 
 let phase_name = function
   | Riot_build.Event.TargetsResolved _ -> "targets_resolved"
@@ -168,7 +176,8 @@ let make_artifact = fun name ->
 let make_build_result = fun ~(package: Riot_model.Package.t) ~status ->
   {
     Riot_executor.Package_builder.package_key =
-      Riot_model.Package.key_of_string (package.name ^ ":runtime");
+      Riot_model.Package.key_of_string
+        (Riot_model.Package_name.to_string package.name ^ ":runtime");
     package;
     status;
     ocamlc_warnings = [];
@@ -204,7 +213,7 @@ let test_output_maps_build_result_statuses = fun _ctx ->
         in
         let open Std.Result.Syntax in
         let expect_package name =
-          match Riot_build.Output.find_package output name with
+          match Riot_build.Output.find_package output (package_name name) with
           | Some package_output -> Ok package_output
           | None -> Error ("missing package output: " ^ name)
         in
@@ -262,7 +271,7 @@ let test_output_exposes_artifacts_and_exports = fun _ctx ->
                 ~status:(Riot_executor.Package_builder.Built artifact);
             ]
         in
-        match Riot_build.Output.find_package output "demo" with
+        match Riot_build.Output.find_package output (package_name "demo") with
         | None ->
             Error "missing package output: demo"
         | Some package_output -> (
@@ -300,7 +309,7 @@ let test_build_returns_successful_output = fun _ctx ->
             Error ("expected build to succeed, got: "
             ^ Riot_build.error_message err)
         | Ok output -> (
-            match Riot_build.Output.find_package output "demo" with
+            match Riot_build.Output.find_package output (package_name "demo") with
             | Some package_output -> (
                 match Riot_build.Output.package_status package_output with
                 | Riot_build.Output.Built _
@@ -333,8 +342,8 @@ let test_build_uses_all_packages_when_none_are_requested = fun _ctx ->
             ^ Riot_build.error_message err)
         | Ok output ->
             Test.assert_equal
-              ~expected:[ "demo"; "util" ]
-              ~actual:(package_names output |> List.sort ~compare:String.compare);
+              ~expected:(sort_package_names [ package_name "demo"; package_name "util" ])
+              ~actual:(package_names output |> sort_package_names);
             Ok ())
   with
   | Ok result -> result
@@ -350,13 +359,13 @@ let test_build_returns_outputs_for_requested_packages = fun _ctx ->
           |> make_prepared_workspace
         in
         match
-          build_request (make_request ~workspace:prepared_workspace ~packages:[ "util" ] ())
+          build_request (make_request ~workspace:prepared_workspace ~packages:[ package_name "util" ] ())
         with
         | Error err ->
             Error ("expected build to succeed, got: "
             ^ Riot_build.error_message err)
         | Ok output ->
-            Test.assert_equal ~expected:[ "util" ] ~actual:(package_names output);
+            Test.assert_equal ~expected:[ package_name "util" ] ~actual:(package_names output);
             Ok ())
   with
   | Ok result -> result
@@ -372,13 +381,13 @@ let test_build_reports_missing_single_package = fun _ctx ->
           |> make_prepared_workspace
         in
         match
-          build_request (make_request ~workspace:prepared_workspace ~packages:[ "missing" ] ())
+          build_request (make_request ~workspace:prepared_workspace ~packages:[ package_name "missing" ] ())
         with
-        | Error (Riot_build.PackageNotFound { package_name; available_packages }) ->
-            Test.assert_equal ~expected:"missing" ~actual:package_name;
+        | Error (Riot_build.PackageNotFound { package_name = missing_package; available_packages }) ->
+            Test.assert_equal ~expected:(package_name "missing") ~actual:missing_package;
             Test.assert_equal
-              ~expected:[ "demo"; "util" ]
-              ~actual:available_packages;
+              ~expected:(sort_package_names [ package_name "demo"; package_name "util" ])
+              ~actual:(sort_package_names available_packages);
             Ok ()
         | Error err ->
             Error ("expected package-not-found error, got: "
@@ -402,16 +411,16 @@ let test_build_reports_missing_multiple_packages = fun _ctx ->
           build_request
             (make_request
               ~workspace:prepared_workspace
-              ~packages:[ "demo"; "missing"; "other" ]
+              ~packages:[ package_name "demo"; package_name "missing"; package_name "other" ]
               ())
         with
-        | Error (Riot_build.PackagesNotFound { package_names; available_packages }) ->
+        | Error (Riot_build.PackagesNotFound { package_names = missing_packages; available_packages }) ->
             Test.assert_equal
-              ~expected:[ "missing"; "other" ]
-              ~actual:package_names;
+              ~expected:(sort_package_names [ package_name "missing"; package_name "other" ])
+              ~actual:(sort_package_names missing_packages);
             Test.assert_equal
-              ~expected:[ "demo"; "util" ]
-              ~actual:available_packages;
+              ~expected:(sort_package_names [ package_name "demo"; package_name "util" ])
+              ~actual:(sort_package_names available_packages);
             Ok ()
         | Error err ->
             Error ("expected packages-not-found error, got: "
@@ -490,7 +499,7 @@ let test_build_can_return_cached_outputs_on_repeat_builds = fun _ctx ->
             Error ("expected second build to succeed, got: "
             ^ Riot_build.error_message err)
         | Ok output -> (
-            match Riot_build.Output.find_package output "demo" with
+            match Riot_build.Output.find_package output (package_name "demo") with
             | Some package_output -> (
                 match Riot_build.Output.package_status package_output with
                 | Riot_build.Output.Cached _ -> Ok ()

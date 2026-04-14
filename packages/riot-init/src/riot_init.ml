@@ -1,7 +1,6 @@
 open Std
 open Riot_model
-
-let ( let* ) result fn = Result.and_then result ~fn
+open Std.Result.Syntax
 
 (** ArgParser command definition *)
 let command =
@@ -509,25 +508,32 @@ let run = fun ~on_event matches ->
       in
       (* Validate name *)
       let* validated_name = validate_name workspace_name in
+      let validated_name_string = Package_name.to_string validated_name in
       (* Create target directory if it doesn't exist *)
       let* () =
         match Fs.create_dir_all target_dir with
         | Ok () -> Ok ()
         | Error _e -> Error (Failure "Failed to create directory")
       in
-      emit ~on_event (WorkspaceInitializationStarted { name = validated_name; target_dir });
+      emit ~on_event (WorkspaceInitializationStarted { name = validated_name_string; target_dir });
       (* Create all workspace files *)
-      let* () = create_workspace_toml ~on_event target_dir validated_name in
+      let* () = create_workspace_toml ~on_event target_dir validated_name_string in
       let* () = create_toolchain_toml ~on_event target_dir in
       let* () = create_gitignore ~on_event target_dir in
-      let* () = create_readme ~on_event target_dir validated_name is_library in
-      let* () = create_dockerfile ~on_event target_dir validated_name is_library in
+      let* () = create_readme ~on_event target_dir validated_name_string is_library in
+      let* () = create_dockerfile ~on_event target_dir validated_name_string is_library in
       let* () = create_ci_workflow ~on_event target_dir in
-      let* () = create_default_package ~on_event target_dir validated_name is_library in
+      let* () = create_default_package ~on_event target_dir validated_name_string is_library in
       emit
         ~on_event
         (WorkspaceInitializationCompleted {
-          next_steps = next_steps ~cwd ~target_dir ~path_arg ~is_library ~workspace_name:validated_name;
+          next_steps =
+            next_steps
+              ~cwd
+              ~target_dir
+              ~path_arg
+              ~is_library
+              ~workspace_name:validated_name_string;
           package_hints
         });
       Ok ()

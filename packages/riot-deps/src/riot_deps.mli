@@ -29,7 +29,7 @@ type dependency_scope = Package_management.dependency_scope =
 type manifest_selection = Package_management.manifest_selection =
   | Current
   | Workspace
-  | Package of string
+  | Package of Riot_model.Package_name.t
 type suggested_package = Package_management.suggested_package = {
   package: string;
   latest_version: string;
@@ -41,7 +41,7 @@ type search_request = Package_management.search_request = {
 }
 type loaded_workspace = Package_management.loaded_workspace = {
   workspace: Riot_model.Workspace.t;
-  package_name: string;
+  package_name: Riot_model.Package_name.t;
 }
 type event_sink = Riot_model.Event.kind -> unit
 type add_request = Package_management.add_request = {
@@ -52,11 +52,11 @@ type add_request = Package_management.add_request = {
 type remove_request = Package_management.remove_request = {
   selection: manifest_selection;
   scope: dependency_scope;
-  dependency: string;
+  dependency: Riot_model.Package_name.t;
 }
 type package_error = Package_management.error =
   | CurrentPackageNotFound of { cwd: Path.t }
-  | PackageNotFound of { package: string }
+  | PackageNotFound of { package: Riot_model.Package_name.t }
   | DependencySpecInvalid of { dependency: string; error: string }
   | PathDependencyMustBeRelative of { dependency: string }
   | PathDependencyLoadFailed of { dependency: string; path: Path.t; error: string }

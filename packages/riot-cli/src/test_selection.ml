@@ -1,4 +1,5 @@
 open Std
+open Std.Result.Syntax
 
 type size_filter =
   | All
@@ -6,7 +7,7 @@ type size_filter =
   | Large
 
 type request = {
-  package_filter: string option;
+  package_filter: Riot_model.Package_name.t option;
   suite_filter: string option;
   query: string option;
   size_filter: size_filter;
@@ -34,21 +35,21 @@ let has_text = fun value -> not (String.equal value "")
 let parse_selector = fun pattern ->
   match split_once pattern ':' with
   | Some (package_name, rest) when has_text package_name && has_text rest -> (
+      let* package_name = Riot_model.Package_name.from_string package_name in
       match split_once rest ':' with
-      | Some (suite_name, query) when has_text suite_name && has_text query -> Some (
-        Some package_name,
-        Some suite_name,
-        Some query
-      )
-      | None -> Some (Some package_name, Some rest, None)
-      | _ -> None
+      | Some (suite_name, query) when has_text suite_name && has_text query ->
+          Ok (Some package_name, Some suite_name, Some query)
+      | None ->
+          Ok (Some package_name, Some rest, None)
+      | _ ->
+          Error "invalid suite selector"
     )
-  | _ -> None
+  | _ -> Error "invalid suite selector"
 
 let parse_request = fun ~pattern ~legacy_package ~size_filter ~flaky_only ->
   match (legacy_package, pattern) with
   | Some package_filter, _ ->
-      {
+      Ok {
         package_filter = Some package_filter;
         suite_filter = None;
         query = pattern;
@@ -57,16 +58,16 @@ let parse_request = fun ~pattern ~legacy_package ~size_filter ~flaky_only ->
       }
   | None, Some pattern -> (
       match parse_selector pattern with
-      | Some (package_filter, suite_filter, query) ->
-          {
+      | Ok (package_filter, suite_filter, query) ->
+          Ok {
             package_filter;
             suite_filter;
             query;
             size_filter;
             flaky_only;
           }
-      | None ->
-          {
+      | Error _ ->
+          Ok {
             package_filter = None;
             suite_filter = None;
             query = Some pattern;
@@ -75,7 +76,7 @@ let parse_request = fun ~pattern ~legacy_package ~size_filter ~flaky_only ->
           }
     )
   | None, None ->
-      {
+      Ok {
         package_filter = None;
         suite_filter = None;
         query = None;

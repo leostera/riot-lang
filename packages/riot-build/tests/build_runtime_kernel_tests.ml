@@ -1,6 +1,10 @@
 open Std
 module Test = Std.Test
 
+let package_name = fun name ->
+  Riot_model.Package_name.from_string name
+  |> Result.expect ~msg:("invalid package name: " ^ name)
+
 let clone_workspace_with_target = fun (workspace: Riot_model.Workspace.t) ~target_dir ->
   Riot_model.Workspace.make
     ?name:workspace.name
@@ -126,7 +130,7 @@ let test_build_runtime_builds_repo_kernel = fun _ctx ->
                 ~on_event:(fun event -> events := event :: !events)
                 (Riot_build.Request.make
                   ~workspace:prepared_workspace
-                  ~packages:[ "kernel" ]
+                  ~packages:[ package_name "kernel" ]
                   ~targets:Riot_model.Target.Host
                   ~scope:Riot_build.Request.Runtime
                   ~profile:Riot_model.Profile.debug
@@ -135,7 +139,7 @@ let test_build_runtime_builds_repo_kernel = fun _ctx ->
             | Error err ->
                 Error (summarize_build_failure err !events)
             | Ok output -> (
-                match Riot_build.Output.find_package output "kernel" with
+                match Riot_build.Output.find_package output (package_name "kernel") with
                 | None ->
                     Error "expected kernel build output"
                 | Some result -> (

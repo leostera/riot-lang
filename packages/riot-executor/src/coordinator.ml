@@ -242,12 +242,13 @@ let mark_package_cached_in_graph = fun package_graph ~package ~package_key ~hash
       }
 
 let finalize_package_success = fun ~session_id ~store ~runtime ->
+  let runtime_package_name = Package_name.to_string runtime.package.name in
   let ocamlc_warnings = collect_ocamlc_warnings runtime.completed_actions in
   Riot_store.Store.materialize_package_exports
     store
     ~exports:runtime.export_entries
     ~target_dir:runtime.target_dir
-  |> Result.expect ~msg:("Failed to materialize package exports for " ^ runtime.package.name);
+  |> Result.expect ~msg:("Failed to materialize package exports for " ^ runtime_package_name);
   let sandbox_dir = Sandbox.get_dir runtime.sandbox in
   let package_outputs =
     collect_package_artifact_outputs
@@ -257,13 +258,13 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
   in
   let artifact = Riot_store.Store.save
     store
-    ~package:runtime.package.name
+    ~package:runtime_package_name
     ~ocamlc_warnings
     ~exports:runtime.export_entries
     ~hash:runtime.hash
     ~sandbox_dir
     ~outs:package_outputs
-  |> Result.expect ~msg:("Failed to save package hash artifact for " ^ runtime.package.name) in
+  |> Result.expect ~msg:("Failed to save package hash artifact for " ^ runtime_package_name) in
   let all_cached =
     HashMap.iter runtime.completed_actions
     |> Iter.Iterator.to_list
@@ -289,13 +290,13 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
     ocamlc_warnings;
   Telemetry.emit
     (
-      BuildCompleted {
-        session_id;
-        package = runtime.package;
-        target = Workspace_planner.Package runtime.package.name;
-        status;
-        duration = Time.Duration.zero;
-      }
+        BuildCompleted {
+          session_id;
+          package = runtime.package;
+          target = Workspace_planner.Package runtime.package.name;
+          status;
+          duration = Time.Duration.zero;
+        }
     );
   match status with
   | `Cached -> (Package_builder.Cached artifact, ocamlc_warnings)
@@ -323,7 +324,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
         Some item
   in
   Telemetry.emit (PlanningWorkspaceStarted { session_id; target; package_count = List.length nodes });
-  let materialize_initial_result package_key package status =
+  let materialize_initial_result package_key (package: Package.t) status =
     let result =
       Package_builder.{
         package_key;
@@ -398,7 +399,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
       ~workspace
       ~profile:profile_name
       ~target:target_triplet
-    / Path.v package_name) in
+    / Path.v (Package_name.to_string package_name)) in
   let finalize_cached_package ~package_key ~(package:Package.t) ~hash ~artifact ~depset ~exports =
     let materialized = Ok () in
     match materialized with
@@ -458,7 +459,8 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
       ~profile:profile_name
       ~target:target_triplet
       ()
-      ~package_name:package.name in
+      ~package_name:(Package_name.to_string package.name)
+    in
     Sandbox.prepare ~sandbox ~package ~inputs ~depset ~store;
     let action_queue = Action_queue.create () in
     let action_nodes = Action_graph.nodes action_graph in
@@ -544,7 +546,9 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 ~duration:(Time.Instant.duration_since ~earlier:planning_start (Time.Instant.now ()))
                 ~package
                 ~reason:(Some ("Missing dependencies: "
-                ^ (missing |> List.map ~fn:(fun p -> p.Package.name) |> String.concat ", ")));
+                ^ (missing
+                  |> List.map ~fn:(fun p -> Package_name.to_string p.Package.name)
+                  |> String.concat ", ")));
               Vector.push still_pending ~value:package_node
           | Ok (FailedDependencies { failed; breakdown; _ }) ->
               emit_package_planning_breakdown package breakdown;
@@ -554,7 +558,9 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 ~duration:(Time.Instant.duration_since ~earlier:planning_start (Time.Instant.now ()))
                 ~package
                 ~reason:(Some ("Failed dependencies: "
-                ^ (failed |> List.map ~fn:(fun p -> p.Package.name) |> String.concat ", ")));
+                ^ (failed
+                  |> List.map ~fn:(fun p -> Package_name.to_string p.Package.name)
+                  |> String.concat ", ")));
               Vector.push still_pending ~value:package_node
           | Ok (Cached {
             package_key;
@@ -633,7 +639,8 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 List.filter_map dep_keys
                   ~fn:(fun dep_key ->
                     match HashMap.get package_results ~key:dep_key with
-                    | Some result when result_is_failed result -> Some result.package.Package.name
+                    | Some result when result_is_failed result ->
+                        Some (Package_name.to_string result.package.Package.name)
                     | _ -> None)
               in
               update_planning_progress
@@ -697,7 +704,9 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                       (Time.Instant.now ()))
                     ~package
                     ~reason:(Some ("Missing dependencies: "
-                    ^ (missing |> List.map ~fn:(fun p -> p.Package.name) |> String.concat ", ")));
+                    ^ (missing
+                      |> List.map ~fn:(fun p -> Package_name.to_string p.Package.name)
+                      |> String.concat ", ")));
                   ()
               | Ok (FailedDependencies { failed; breakdown; _ }) ->
                   emit_package_planning_breakdown package breakdown;
@@ -709,9 +718,11 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                       (Time.Instant.now ()))
                     ~package
                     ~reason:(Some ("Failed dependencies: "
-                    ^ (failed |> List.map ~fn:(fun p -> p.Package.name) |> String.concat ", ")));
+                    ^ (failed
+                      |> List.map ~fn:(fun p -> Package_name.to_string p.Package.name)
+                      |> String.concat ", ")));
                   let names =
-                    List.map failed ~fn:(fun p -> p.Package.name)
+                    List.map failed ~fn:(fun p -> Package_name.to_string p.Package.name)
                   in
                   let _ = materialize_initial_result
                     package_key
