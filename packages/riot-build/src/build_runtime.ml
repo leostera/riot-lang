@@ -302,8 +302,11 @@ let build_with_connect = fun connect ~allow_partial_failures ?(record_cache_gene
                             List.map lane_results ~fn:(fun (_, results) -> results) |> List.concat
                           in
                           let _ =
-                            if record_cache_generation && not had_partial_failure then (
-                              let new_entry_count = new_entry_count_of_lane_results request lane_results in
+                            let new_entry_count = new_entry_count_of_lane_results request lane_results in
+                            if record_cache_generation
+                            && not had_partial_failure
+                            && new_entry_count > 0
+                            then (
                               on_event (Phase (Event.RuntimePhase (Event.CacheGenerationRecordingStarted {
                                 lane_count = List.length lane_results;
                                 new_entry_count;

@@ -241,12 +241,57 @@ let test_build_succeeds_for_nested_udp_workspace_across_file_creation_orders = f
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
+let test_fully_cached_build_skips_cache_generation_recording = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"riot_build_cached_generation_runtime"
+      (fun tmpdir ->
+        let workspace = make_valid_workspace tmpdir in
+        let request = {
+          Riot_build.workspace;
+          packages = [ "demo" ];
+          targets = Riot_build.Host;
+          scope = Riot_build.Runtime;
+          profile = "debug";
+        } in
+        let first_result = Riot_build.build request in
+        match first_result with
+        | Error err ->
+            Error ("expected first build to succeed, got: " ^ Riot_build.build_error_message err)
+        | Ok _ ->
+            let seen_cache_generation = ref false in
+            let second_result =
+              Riot_build.build
+                ~on_event:(fun event ->
+                  match event with
+                  | Riot_build.Phase
+                      (Riot_build.Event.RuntimePhase
+                        (Riot_build.Event.CacheGenerationRecordingStarted _
+                        | Riot_build.Event.CacheGenerationRecorded _)) ->
+                      seen_cache_generation := true
+                  | _ -> ())
+                request
+            in
+            match second_result with
+            | Error err ->
+                Error ("expected cached build to succeed, got: " ^ Riot_build.build_error_message err)
+            | Ok _ ->
+                if !seen_cache_generation then
+                  Error "expected fully cached build to skip cache generation recording"
+                else
+                  Ok ())
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
 let tests =
   let open Test in [
     case "build runtime: failed builds surface as errors" test_build_surfaces_failed_builds;
     case
       "build runtime: nested udp workspace succeeds across file creation orders"
       test_build_succeeds_for_nested_udp_workspace_across_file_creation_orders;
+    case
+      "build runtime: fully cached builds skip cache generation recording"
+      test_fully_cached_build_skips_cache_generation_recording;
     case "build runtime: release builds use the release lane" test_build_release_uses_release_lane;
     case "build runtime: custom target_dir is respected" test_build_uses_custom_target_dir_root;
   ]
