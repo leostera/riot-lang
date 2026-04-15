@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.0.18 - 2026-04-15
+
+### Added
+
+- Added new compiler and backend surface area, including the first-class compiler packages for typed assembly, Wasm, JS backend, and native MIR/LIR/WIR pathways.
+- Added a standalone `parquet` package foundation.
+- Added schema-driven codec and compiler package features, including BSON/CBOR and compact binary codec progress.
+- Added new package-level tests, fixtures, and benchmark suites across planner, toolchain, serde, tty, and publication flows.
+- Added a user-facing Riot skill (`riot-ml`) for building, testing, benchmarking, and running OCaml projects.
+
+### Changed
+
+- Expanded the build architecture with typed workspace/manifest changes, lazy package realization, and request/target-context refactors.
+- Refactored `riot-build` and `riot-planner` surfaces, including command/request typing and build/runtime plan handling.
+- Continued large migration of standard-library usage and runtime surface into the new `std` and kernel model across many packages.
+- Continued extraction and cleanup work in CLI, install/run execution paths, and package modeling APIs.
+- Updated RFD/build docs around parallelism, unified scheduling, and executor decomposition.
+
+### Fixed
+
+- Fixed planner and build correctness around dependency ordering, explicit-root handling, lazy realization, and stale cache/plan state.
+- Fixed workspace consistency issues and target override behavior in build/test flows.
+- Fixed sandbox path normalization and artifact-store edge cases for native/wasm toolchains.
+- Fixed validation and parser behavior in selected core packages during migration work.
+
+### Performance
+
+- Optimized build caching and planning behavior with generation dedupe/indexing and warm-cache reductions.
+- Added and stabilized planner/performance-focused benchmarks for serialization and execution paths.
+- Improved runtime and checker performance by caching module-typing structures and tuning serde/encode/decode variants.
+
 ## 0.0.17 - 2026-04-10
 
 ### Fixed
