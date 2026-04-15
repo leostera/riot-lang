@@ -258,7 +258,6 @@ let map_lane_error = fun error ->
   UnexpectedError { reason = error }
 
 let execute_lane = fun context lane ->
-  emit_target_build_started context (Build_lane.target lane);
   match Build_lane.execute lane with
   | Ok outcome -> Ok (outcome, [])
   | Error error -> Error (map_lane_error error)
@@ -280,6 +279,7 @@ let run_lanes = fun context ~toolchain ->
   in
   let* lanes = prepare_lanes targets in
   let lanes = List.reverse lanes in
+  List.for_each lanes ~fn:(fun lane -> emit_target_build_started context (Build_lane.target lane));
     let results =
       Build_scheduler.run
         ~concurrency:context.build.parallelism
