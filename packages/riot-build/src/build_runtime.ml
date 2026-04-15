@@ -1,11 +1,7 @@
 open Std
 open Std.Result.Syntax
 
-type build_event =
-  | Pm of Riot_model.Event.t
-  | BuildingTarget of { target: Riot_model.Target.t; host: bool }
-  | CacheGc of Riot_store.Cache_gc.event
-  | Phase of Event.runtime_phase
+type build_event = Event.t
 
 type build_error =
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
@@ -42,7 +38,7 @@ type build_context = {
 
 let no_event: build_event -> unit = fun _ -> ()
 
-let emit_runtime_phase = fun context phase -> context.on_event (Phase phase)
+let emit_runtime_phase = fun context phase -> context.on_event (Event.Phase phase)
 
 let emit_targets_resolved = fun context targets ->
   emit_runtime_phase context (Event.TargetsResolved { target_count = List.length targets })
@@ -59,7 +55,7 @@ let emit_runtime_started = fun context -> emit_runtime_phase context Event.Runti
 
 let emit_target_build_started = fun context target ->
   let host = Riot_model.Target.equal target context.host in
-  context.on_event (BuildingTarget { target; host });
+  context.on_event (Event.BuildingTarget { target; host });
   emit_runtime_phase context (Event.TargetBuildStarted { target; host })
 
 let emit_target_build_finished = fun context ~target ~result_count ~had_partial_failure ->

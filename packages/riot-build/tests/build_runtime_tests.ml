@@ -307,8 +307,8 @@ let test_execute_does_not_record_cache_generation_when_disabled = fun _ctx ->
             ~record_cache_generation:false
             ~on_event:(fun event ->
               match event with
-              | Build_runtime.Phase (Riot_build.Event.CacheGenerationRecordingStarted _)
-              | Build_runtime.Phase (Riot_build.Event.CacheGenerationRecorded _) -> saw_cache_event := true
+              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _)
+              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecorded _) -> saw_cache_event := true
               | _ -> ())
             spec
         with
@@ -345,9 +345,9 @@ let test_execute_partial_failures_by_default = fun _ctx ->
           Riot_build.Internal.Build_runtime.execute
             ~on_event:(fun event ->
               match event with
-              | Build_runtime.Phase (Riot_build.Event.TargetBuildFinished { had_partial_failure }) ->
+              | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished { had_partial_failure }) ->
                   saw_partial_failure := had_partial_failure
-              | Build_runtime.Phase (Riot_build.Event.ReturningResults _) ->
+              | Riot_build.Event.Phase (Riot_build.Event.ReturningResults _) ->
                   saw_returning_results := true
               | _ -> ())
             spec
@@ -475,9 +475,9 @@ let test_execute_allows_multi_target_partial_failures = fun _ctx ->
             ~allow_partial_failures:true
             ~on_event:(fun event ->
               match event with
-              | Build_runtime.Phase (Riot_build.Event.TargetBuildStarted { target }) ->
+              | Riot_build.Event.Phase (Riot_build.Event.TargetBuildStarted { target }) ->
                   started_targets := Riot_model.Target.to_string target :: !started_targets
-              | Build_runtime.Phase (Riot_build.Event.TargetBuildFinished {
+              | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished {
                 target;
                 result_count;
                 had_partial_failure = partial
@@ -585,7 +585,7 @@ let test_execute_multi_target_reports_global_returning_results = fun _ctx ->
             ~allow_partial_failures:true
             ~on_event:(fun event ->
               match event with
-              | Build_runtime.Phase (Riot_build.Event.ReturningResults { result_count; had_partial_failure }) ->
+              | Riot_build.Event.Phase (Riot_build.Event.ReturningResults { result_count; had_partial_failure }) ->
                   returning_event := Some (result_count, had_partial_failure)
               | _ -> ())
             spec
@@ -644,7 +644,7 @@ let test_execute_multi_target_all_success_reports_aggregated_results = fun _ctx 
           Riot_build.Internal.Build_runtime.execute
             ~on_event:(fun event ->
               match event with
-              | Build_runtime.Phase (Riot_build.Event.ReturningResults { result_count; had_partial_failure }) ->
+              | Riot_build.Event.Phase (Riot_build.Event.ReturningResults { result_count; had_partial_failure }) ->
                   returning_event := Some (result_count, had_partial_failure)
               | _ -> ())
             spec
@@ -703,8 +703,8 @@ let test_execute_multi_target_partial_failures_skip_cache_recording = fun _ctx -
             ~allow_partial_failures:true
             ~on_event:(fun event ->
               match event with
-              | Build_runtime.Phase (Riot_build.Event.CacheGenerationRecordingStarted _)
-              | Build_runtime.Phase (Riot_build.Event.CacheGenerationRecorded _) -> saw_cache_event := true
+              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _)
+              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecorded _) -> saw_cache_event := true
               | _ -> ())
             spec
         with
@@ -753,9 +753,9 @@ let test_execute_multi_target_success_records_cache_generation = fun _ctx ->
           Riot_build.Internal.Build_runtime.execute
             ~on_event:(fun event ->
               match event with
-              | Build_runtime.Phase (Riot_build.Event.CacheGenerationRecordingStarted _) ->
+              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _) ->
                   recording_started := true
-              | Build_runtime.Phase (Riot_build.Event.CacheGenerationRecorded _) ->
+              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecorded _) ->
                   recording_recorded := true
               | _ -> ())
             spec

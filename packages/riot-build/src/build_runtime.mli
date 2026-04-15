@@ -1,10 +1,6 @@
 open Std
 
-type build_event =
-  | Pm of Riot_model.Event.t
-  | BuildingTarget of { target: Riot_model.Target.t; host: bool }
-  | CacheGc of Riot_store.Cache_gc.event
-  | Phase of Event.runtime_phase
+type build_event = Event.t
 type build_error =
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
   | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
