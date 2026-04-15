@@ -3,7 +3,7 @@ name: riot-ml
 description: Use when helping users build, test, benchmark, run, and maintain OCaml projects with riot. This skill routes to the best Riot workflow, prefers machine-readable `--json` output, and applies package/dependency conventions.
 ---
 
-# Riot project user guide
+# Riot ML
 
 ## Use this skill
 Use this skill when the user wants to:
@@ -40,7 +40,7 @@ Use this skill when the user wants to:
 5. Use `Std.panic` only for intentional hard-fail boundaries.
 6. Equality rules:
    - `=` is structural equality.
-   - `!=` is structural disequality (polymorphic `< >` style is disabled in this ecosystem).
+   - `!=` is structural disequality (operator `< >` is not available in this ecosystem).
    - Use `Std.Ptr.equal` for explicit pointer checks.
 7. Prefer `Std` APIs over custom one-offs in project code:
    - `Std.Path`, `Std.IO`, `Std.Data.Json` and related utilities.
