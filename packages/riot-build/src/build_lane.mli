@@ -8,12 +8,6 @@ type locked
 
 type 'stage t
 
-type outcome = {
-  target: Riot_model.Target.t;
-  results: Package_builder.build_result list;
-  had_partial_failure: bool;
-}
-
 val target: 'a t -> Riot_model.Target.t
 
 val workspace: 'a t -> Riot_model.Workspace.t
@@ -53,4 +47,4 @@ val release:
 
 val execute:
   locked t ->
-  (outcome, error) result
+  (Lane_result.t, error) result

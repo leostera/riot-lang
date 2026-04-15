@@ -24,12 +24,6 @@ type 'stage t = {
   package_graph: Riot_planner.Package_graph.t;
 }
 
-type outcome = {
-  target: Riot_model.Target.t;
-  results: Package_builder.build_result list;
-  had_partial_failure: bool;
-}
-
 let sort_unique_packages = fun package_names ->
   package_names
   |> List.unique ~compare:Riot_model.Package_name.compare
@@ -219,7 +213,7 @@ let package_graph = fun (lane: 'a t) -> lane.package_graph
 
 let release: locked t -> unit = fun lane -> Build_lock.release lane.lock
 
-let execute: locked t -> (outcome, error) result = fun lane ->
+let execute: locked t -> (Lane_result.t, error) result = fun lane ->
   let result =
     try
       Coordinator.build_workspace
@@ -236,8 +230,8 @@ let execute: locked t -> (outcome, error) result = fun lane ->
     | exn -> Error (Kernel.Exception.to_string exn)
   in
   release lane;
-  let* workspace_result = result in
-  Ok {
+  let* (workspace_result: Coordinator.workspace_result) = result in
+  Ok Lane_result.{
     target = lane.target;
     results = workspace_result.results;
     had_partial_failure = has_failed_packages workspace_result.results;
