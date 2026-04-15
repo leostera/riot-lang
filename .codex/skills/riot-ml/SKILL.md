@@ -25,6 +25,32 @@ Use this skill when the user wants to:
    - `docs.pkg.ml/p/<pkg>/<version>/` for package docs
 5. If the request shifts toward contributing to Riot internals, switch to contributor routing and read the AGENTS index.
 
+## Practical Riot style guidance for users
+1. Keep APIs safe by default:
+   - Use `Result`/`Option` for fallible operations.
+   - Prefer explicit `match` error handling over ad hoc exceptions.
+2. Use the conversion naming pattern:
+   - Prefer `from_string`/`to_string` instead of `of_string` when both forms exist.
+3. Keep unsafe APIs explicit:
+   - Prefix externals with `unsafe_`.
+   - Use `_unchecked` only for explicit exceptional paths.
+4. Use structured errors for control flow:
+   - Avoid adding new custom exceptions for normal flow.
+   - Prefer typed `Result` payloads and explicit variants.
+5. Use `Std.panic` only for intentional hard-fail boundaries.
+6. Equality rules:
+   - `=` is structural equality.
+   - `!=` is structural disequality (polymorphic `< >` style is disabled in this ecosystem).
+   - Use `Std.Ptr.equal` for explicit pointer checks.
+7. Prefer `Std` APIs over custom one-offs in project code:
+   - `Std.Path`, `Std.IO`, `Std.Data.Json` and related utilities.
+8. Use `riot` commands with machine-readable output:
+   - Add `--json` for `build`, `test`, `bench`, `run`, `check`, `fmt`, `fix`, and `info`.
+9. Narrow runs and checks by package early:
+   - `-p` / `--package` selectors for iterative work.
+10. Read local signatures from `~/.riot/registry` before adding wrapper code:
+   - quick `.mli` discovery helps avoid API confusion.
+
 ## Common Riot commands
 - `riot build --json` : compile packages and dependencies.
 - `riot test --json` : run project tests.
@@ -40,6 +66,16 @@ Use this skill when the user wants to:
 - `riot.ml`: website and high-level entrypoint.
 - `docs.riot.ml`: documentation portal.
 - `pkgs.ml`: package registry used by dependency workflows.
+
+## Finding installed library signatures (`.mli`) in `~/.riot/registry`
+- `~/.riot/registry` stores installed package artifacts.
+- To inspect local package signatures:
+  - `find ~/.riot/registry -name '*.mli' | head`
+  - narrow by package:  
+    `find ~/.riot/registry -path '*<pkg>*' -name '*.mli'`
+  - inspect package docs quickly:  
+    `find ~/.riot/registry -path '*<pkg>*' | head`
+- Useful for reading APIs before opening external docs.
 
 ## Contributor-mode fallback
 When user asks for Riot internals, architecture, or package-level coding changes, read contributor instructions first.
