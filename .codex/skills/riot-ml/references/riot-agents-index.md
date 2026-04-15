@@ -1,0 +1,83 @@
+# Riot AGENTS map (contributor fallback)
+
+Use this only when the request requires changing Riot internals.
+If the user is only using Riot for their own project, prefer `docs.riot.ml` and package docs first.
+
+## Full contributor AGENTS inventory
+- `/AGENTS.md`: router that maps each subtree to its AGENTS.
+- `compiler/asm/AGENTS.md`: typed assembly document package and ISA vocabularies.
+- `compiler/raml/AGENTS.md`: thin facade/integration surface for Raml compiler family.
+- `compiler/raml-cli/AGENTS.md`: compile CLI entrypoint.
+- `compiler/raml-core/AGENTS.md`: shared frontend and pipeline-neutral compiler surface.
+- `compiler/raml-js/AGENTS.md`: JavaScript backend lowering and emit.
+- `compiler/raml-native/AGENTS.md`: native backend and native artifacts.
+- `compiler/raml-wasm/AGENTS.md`: wasm backend ownership and semantics.
+- `docs/AGENTS.md`: docs, proposals, and RFD workflow guidance.
+- `editors/riot.nvim/AGENTS.md`: Neovim plugin integration.
+- `editors/vscode-riot-ml/AGENTS.md`: VS Code extension integration and fallback behavior.
+- `native/AGENTS.md`: overview of Rust binding layer.
+- `native/hello-rust/AGENTS.md`: Rust sample library used by hello-foreign.
+- `native/riot-bindgen/AGENTS.md`: Rust binding code generation.
+- `native/riot-core/AGENTS.md`: ABI-safe shared value model.
+- `native/riot-derive/AGENTS.md`: binding derive macros.
+- `native/riot-ffi/AGENTS.md`: ergonomic Rust-facing facade.
+- `packages/blink/AGENTS.md`: streaming HTTP client.
+- `packages/contentstore/AGENTS.md`: generic CAS primitives and persistence layout.
+- `packages/fixme/AGENTS.md`: shared rule-authoring for `riot-fix`.
+- `packages/gooey/AGENTS.md`: terminal UI primitives.
+- `packages/hello-foreign/AGENTS.md`: OCaml-to-Rust FFI smoke test.
+- `packages/http/AGENTS.md`: wire-level HTTP behavior and protocol framing.
+- `packages/ignore/AGENTS.md`: ignore-aware traversal and prune behavior.
+- `packages/jsonrpc/AGENTS.md`: JSON-RPC message framing and codec.
+- `packages/kernel/AGENTS.md`: platform abstraction, primitives, and event loop foundations.
+- `packages/krasny/AGENTS.md`: OCaml formatter ownership and behavior.
+- `packages/lsp/AGENTS.md`: LSP methods, codecs, and typing descriptors.
+- `packages/mcp/AGENTS.md`: MCP transport and protocol typing.
+- `packages/mime/AGENTS.md`: MIME parser/rendering helpers.
+- `packages/minttea/AGENTS.md`: Elm-style TUI framework layer.
+- `packages/parquet/AGENTS.md`: Parquet reader/writer primitives.
+- `packages/pkgs-ml/AGENTS.md`: registry-facing helpers and cache layout.
+- `packages/postgres/AGENTS.md`: PostgreSQL adapter.
+- `packages/pretext/AGENTS.md`: text-only layout and print output model.
+- `packages/propane/AGENTS.md`: property-based testing support.
+- `packages/pubgrub/AGENTS.md`: version solving algorithm implementation.
+- `packages/riot-build/AGENTS.md`: in-process build orchestration layer.
+- `packages/riot-check/AGENTS.md`: `riot check` and package-aware typecheck flow.
+- `packages/riot-cli/AGENTS.md`: command parsing, user output, and top-level CLI flow.
+- `packages/riot-deps/AGENTS.md`: dependency solver, lockfile, and registry cache.
+- `packages/riot-eval/AGENTS.md`: OCaml evaluation tooling.
+- `packages/riot-fix/AGENTS.md`: linting and auto-fix pipeline.
+- `packages/riot-fmt/AGENTS.md`: formatting command surface.
+- `packages/riot-init/AGENTS.md`: workspace/package scaffolding.
+- `packages/riot-install/AGENTS.md`: binary selection and install orchestration.
+- `packages/riot-lsp/AGENTS.md`: Riot LSP server and session loop.
+- `packages/riot-model/AGENTS.md`: shared model types for workspace/packages/actions.
+- `packages/riot-planner/AGENTS.md`: build-plan construction and dependency graph.
+- `packages/riot-publish/AGENTS.md`: publish orchestration and upload flow.
+- `packages/riot-run/AGENTS.md`: binary selection and process execution on build outputs.
+- `packages/riot-store/AGENTS.md`: cache layout and artifact persistence.
+- `packages/riot-toolchain/AGENTS.md`: compiler/toolchain invocation wrappers.
+- `packages/serde-bin/AGENTS.md`: schema-driven binary serialization.
+- `packages/serde-bson/AGENTS.md`: schema-driven BSON codec.
+- `packages/serde-cbor/AGENTS.md`: schema-driven CBOR codec.
+- `packages/serde-toml/AGENTS.md`: schema-driven TOML codec.
+- `packages/serde-urlencoded/AGENTS.md`: URL encoded codec and shared helpers.
+- `packages/serde-yaml/AGENTS.md`: schema-driven YAML codec.
+- `packages/sqlite/AGENTS.md`: SQLite adapter for SQL layer.
+- `packages/sqlx-driver/AGENTS.md`: generic driver boundary.
+- `packages/sqlx/AGENTS.md`: high-level SQL API on top of drivers.
+- `packages/std/AGENTS.md`: mandatory standard library surface.
+- `packages/suri/AGENTS.md`: web framework middleware/routing/liveview integration.
+- `packages/syn/AGENTS.md`: parser, lexer, CST, and diagnostics.
+- `packages/tty/AGENTS.md`: terminal control primitives.
+- `packages/typ/AGENTS.md`: type-checker experiments and snapshot docs.
+- `specs/AGENTS.md`: formal model artifacts (TLA+/PlusCal).
+- `specs/actors/AGENTS.md`: runtime semantics for `packages/actors`.
+- `specs/riot/AGENTS.md`: build system model for `packages/riot-*`.
+- `specs/riot-deps/AGENTS.md`: dependency graph, lock, and package feature model.
+
+## Contributor rules
+- Read root AGENTS first, then nearest subtree AGENTS.
+- Read each touched package AGENTS before editing implementation.
+- Prefer machine-readable output (`--json`) when using Riot CLI surfaces.
+- Use the AGENTS map only for contributor-level changes.
