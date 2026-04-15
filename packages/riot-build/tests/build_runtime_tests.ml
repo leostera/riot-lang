@@ -719,6 +719,60 @@ let test_execute_multi_target_partial_failures_skip_cache_recording = fun _ctx -
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
+let test_execute_multi_target_success_records_cache_generation = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"riot_build_multi_target_cache_generation"
+      (fun tmpdir ->
+        let host_target = Riot_model.Target.current in
+        let secondary_target =
+          if String.equal (Riot_model.Target.to_string host_target) "x86_64-unknown-linux-gnu" then
+            target "aarch64-unknown-linux-gnu"
+          else
+            target "x86_64-unknown-linux-gnu"
+        in
+        let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
+        let workspace =
+          make_workspace_with_sources
+            ~root:tmpdir
+            ~toolchain_targets:(Riot_model.Target.Set.to_list requested_targets
+              |> List.map ~fn:Riot_model.Target.to_string)
+            ~packages:[
+              ( "good", "let value = 2\n" );
+              ( "nice", "let answer = 42\n" );
+            ] () in
+        let recording_started = ref false in
+        let recording_recorded = ref false in
+        let spec = Build_spec.make
+          ~workspace
+          ~package_names:[ package_name "good"; package_name "nice" ]
+          ~targets:requested_targets
+          ~scope:Riot_build.Request.Runtime
+          ~profile:Riot_model.Profile.debug
+          ~requested_parallelism:(Some 1) in
+        match
+          Riot_build.Internal.Build_runtime.execute
+            ~on_event:(fun event ->
+              match event with
+              | Build_runtime.Phase (Riot_build.Event.CacheGenerationRecordingStarted _) ->
+                  recording_started := true
+              | Build_runtime.Phase (Riot_build.Event.CacheGenerationRecorded _) ->
+                  recording_recorded := true
+              | _ -> ())
+            spec
+        with
+        | Error err ->
+            Error ("expected successful build, got: " ^ Build_runtime.error_message err)
+        | Ok _ ->
+            if not !recording_started then
+              Error "expected cache generation recording to start"
+            else if not !recording_recorded then
+              Error "expected cache generation recorded event"
+            else
+              Ok ())
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
 let tests =
   let open Test in [
     case "build runtime: release builds use the release lane" test_release_build_uses_release_lane;
@@ -738,6 +792,8 @@ let tests =
       test_execute_multi_target_all_success_reports_aggregated_results;
     case "build runtime: multi-target partial failures skip cache recording"
       test_execute_multi_target_partial_failures_skip_cache_recording;
+    case "build runtime: multi-target success records cache generation"
+      test_execute_multi_target_success_records_cache_generation;
   ]
 
 let name = "Riot Build Runtime Tests"
