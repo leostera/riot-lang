@@ -69,6 +69,27 @@ let test_scheduler_records_errors_and_continues_ready_work = fun _ctx ->
     ~actual:(result_labels results);
   Ok ()
 
+let test_scheduler_ignores_workers_from_previous_runs = fun _ctx ->
+  let rec loop run_index =
+    if run_index = 20 then
+      Ok ()
+    else
+      let results =
+        Build_scheduler.run
+          ~concurrency:4
+          ~tasks:[ 1; 2 ]
+          ~fn:(fun task -> Ok ("run-" ^ Int.to_string run_index ^ "-" ^ Int.to_string task, []))
+      in
+      match result_labels results with
+      | [ _; _ ] -> loop (run_index + 1)
+      | labels ->
+          Error
+            ("expected each repeated scheduler run to complete two tasks, got ["
+            ^ String.concat ", " labels
+            ^ "]")
+  in
+  loop 0
+
 let tests =
   let open Test in
   [
@@ -79,6 +100,9 @@ let tests =
     case
       "build scheduler: records errors and continues ready work"
       test_scheduler_records_errors_and_continues_ready_work;
+    case
+      "build scheduler: ignores ready workers from previous runs"
+      test_scheduler_ignores_workers_from_previous_runs;
   ]
 
 let name = "Riot Build Scheduler Tests"

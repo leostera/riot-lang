@@ -130,6 +130,36 @@ let package_names = fun output ->
 let sort_package_names = fun package_names ->
   List.sort package_names ~compare:Riot_model.Package_name.compare
 
+let expect_int = fun ~label ~expected ~actual ->
+  if Int.equal expected actual then
+    Ok ()
+  else
+    Error
+      (label
+      ^ ": expected "
+      ^ Int.to_string expected
+      ^ ", got "
+      ^ Int.to_string actual)
+
+let expect_string_list = fun ~label ~expected ~actual ->
+  let rec equal left right =
+    match left, right with
+    | [], [] -> true
+    | left :: left_rest, right :: right_rest ->
+        String.equal left right && equal left_rest right_rest
+    | _, _ -> false
+  in
+  if equal expected actual then
+    Ok ()
+  else
+    Error
+      (label
+      ^ ": expected ["
+      ^ String.concat ", " expected
+      ^ "], got ["
+      ^ String.concat ", " actual
+      ^ "]")
+
 let phase_name = function
   | Riot_build.Event.TargetsResolved _ -> "targets_resolved"
   | Riot_build.Event.ToolchainsEnsured _ -> "toolchains_ensured"
@@ -573,10 +603,19 @@ let test_build_preserves_exact_target_subset = fun _ctx ->
         | Ok _ ->
             match !target_count with
             | Some count ->
-                Test.assert_equal ~expected:expected_target_count ~actual:count;
-                Test.assert_equal ~expected:expected_target_count ~actual:!started_count;
-                Test.assert_equal ~expected:expected_target_count ~actual:!finished_count;
-                Ok ()
+                let open Std.Result.Syntax in
+                let* () = expect_int
+                  ~label:"resolved target count"
+                  ~expected:expected_target_count
+                  ~actual:count in
+                let* () = expect_int
+                  ~label:"started target count"
+                  ~expected:expected_target_count
+                  ~actual:!started_count in
+                expect_int
+                  ~label:"finished target count"
+                  ~expected:expected_target_count
+                  ~actual:!finished_count
               | None -> Error "expected targets_resolved event"
             )
   with
@@ -641,17 +680,29 @@ let test_build_multi_target_outputs_and_events = fun _ctx ->
             match !seen_target_count with
             | None -> Error "expected targets_resolved event"
             | Some count ->
-                Test.assert_equal ~expected:expected_target_count ~actual:count;
-                Test.assert_equal
+                let open Std.Result.Syntax in
+                let* () = expect_int
+                  ~label:"resolved target count"
                   ~expected:expected_target_count
-                  ~actual:(List.length !started_targets);
-                Test.assert_equal
+                  ~actual:count in
+                let* () = expect_int
+                  ~label:"started target count"
                   ~expected:expected_target_count
-                  ~actual:(List.length !finished_targets);
+                  ~actual:(List.length !started_targets) in
+                let* () = expect_int
+                  ~label:"finished target count"
+                  ~expected:expected_target_count
+                  ~actual:(List.length !finished_targets) in
                 let started_sorted = sort_target_names !started_targets in
                 let finished_sorted = sort_target_names !finished_targets in
-                Test.assert_equal ~expected:expected_target_names ~actual:started_sorted;
-                Test.assert_equal ~expected:expected_target_names ~actual:finished_sorted;
+                let* () = expect_string_list
+                  ~label:"started targets"
+                  ~expected:expected_target_names
+                  ~actual:started_sorted in
+                let* () = expect_string_list
+                  ~label:"finished targets"
+                  ~expected:expected_target_names
+                  ~actual:finished_sorted in
                 Test.assert_false !any_partial_failure;
                 let build_result_status =
                   if
@@ -760,19 +811,37 @@ let test_build_multi_target_partial_failures_fail_by_default = fun _ctx ->
             match !seen_target_count with
             | None -> Error "expected targets_resolved event"
             | Some count ->
-                Test.assert_equal ~expected:expected_target_count ~actual:count;
-                Test.assert_equal ~expected:expected_target_count ~actual:(List.length !started_targets);
-                Test.assert_equal ~expected:expected_target_count ~actual:(List.length !finished_targets);
-                Test.assert_equal ~expected:expected_target_count ~actual:(List.length !partial_failure_flags);
+                let open Std.Result.Syntax in
+                let* () = expect_int
+                  ~label:"resolved target count"
+                  ~expected:expected_target_count
+                  ~actual:count in
+                let* () = expect_int
+                  ~label:"started target count"
+                  ~expected:expected_target_count
+                  ~actual:(List.length !started_targets) in
+                let* () = expect_int
+                  ~label:"finished target count"
+                  ~expected:expected_target_count
+                  ~actual:(List.length !finished_targets) in
+                let* () = expect_int
+                  ~label:"partial failure flag count"
+                  ~expected:expected_target_count
+                  ~actual:(List.length !partial_failure_flags) in
                 if not (List.all !partial_failure_flags ~fn:(fun partial -> partial)) then
                   Error "expected each target build to report partial failures"
                 else if !saw_returning_results then
                   Error "expected no returning_results event when default multi-target build fails"
                 else
                   let sort_target_names = List.sort ~compare:String.compare in
-                  Test.assert_equal ~expected:expected_targets ~actual:(sort_target_names !started_targets);
-                  Test.assert_equal ~expected:expected_targets ~actual:(sort_target_names !finished_targets);
-                  Ok ()
+                  let* () = expect_string_list
+                    ~label:"started targets"
+                    ~expected:expected_targets
+                    ~actual:(sort_target_names !started_targets) in
+                  expect_string_list
+                    ~label:"finished targets"
+                    ~expected:expected_targets
+                    ~actual:(sort_target_names !finished_targets)
               )
         | Error err ->
             Error ("expected build to fail with BuildFailed, got: " ^ Riot_build.error_message err)

@@ -74,9 +74,13 @@ let rec loop:
       ]) selector = fun msg ->
       match msg with
       | DynamicWorkerPool.WorkerReady worker -> (
-          match Ref.type_equal state.pool.task_ref (DynamicWorkerPool.get_worker_task_ref worker) with
-          | Some Type.Equal -> `select (`WorkerReady worker)
-          | None -> `skip
+          let worker_ref = DynamicWorkerPool.get_worker_task_ref worker in
+          if Ref.equal state.pool.task_ref worker_ref then
+            match Ref.type_equal state.pool.task_ref worker_ref with
+            | Some Type.Equal -> `select (`WorkerReady worker)
+            | None -> `skip
+          else
+            `skip
         )
       | SchedulerTaskResult { result; result_ref } -> (
           match Ref.type_equal state.result_ref result_ref with
