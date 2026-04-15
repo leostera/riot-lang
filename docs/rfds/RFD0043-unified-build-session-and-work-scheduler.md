@@ -73,7 +73,7 @@ The executor already contains part of the architecture Riot wants. In
 - a pending-planning map
 - per-package action queues
 - one workspace-level ready-action queue
-- one worker count derived from `Build_ctx.available_parallelism`
+- one worker count derived from `Build_ctx.parallelism`
 
 That is close to the right direction, but it is not yet unified. Package
 planning still feeds action execution from the side instead of being work in
@@ -324,9 +324,9 @@ Requested parallelism is user intent, not the machine limit. If the request
 does not specify it, Riot should default the request to the available
 parallelism discovered from the host. If the request asks for more workers than
 the host exposes, Riot clamps the worker budget to the available parallelism.
-If the request asks for zero or a negative worker count, Riot clamps it back up
-to one. The final clamped value is the only parallelism value stored in the
-build context.
+Zero or negative worker counts are invalid requests and must fail fast with
+`jobs must be >= 1`. The final clamped value is the only parallelism value
+stored in the build context.
 
 ### Build context
 
@@ -349,11 +349,11 @@ root, and concurrency budget. It also gives every event one source of timing
 and session identity.
 
 Context creation is the only place that combines requested and available
-parallelism:
+parallelism, and it must reject invalid values:
 
 ```ocaml
 let requested = Request.parallelism request |> Option.unwrap_or ~default:available in
-let parallelism = Int.max 1 (Int.min available requested)
+let parallelism = Int.min available requested
 ```
 
 After that point, scheduler code uses `Build_context.parallelism`. It should

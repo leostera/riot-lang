@@ -1,6 +1,6 @@
 [package]
 name = "serde-yaml"
-version = "0.0.17"
+version = "0.0.18"
 
 [lib]
 path = "src/serde_yaml.ml"
