@@ -16,7 +16,6 @@ type error =
   | PlanningFailed of { reason: string }
   | CycleDetected of { cycle_nodes: string list }
   | BuildAlreadyRunning of { lock_path: Path.t }
-  | SessionStartFailed of { reason: string }
   | InvalidRequestedParallelism of int
   | UnexpectedError of { reason: string }
 
@@ -54,7 +53,6 @@ let error_message = function
       "another riot build is already running (" ^ Path.to_string lock_path ^ ")"
   | InvalidRequestedParallelism value ->
       "invalid requested parallelism (" ^ Int.to_string value ^ "): jobs must be >= 1"
-  | SessionStartFailed { reason }
   | UnexpectedError { reason } ->
       reason
 

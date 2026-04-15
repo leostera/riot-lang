@@ -452,11 +452,6 @@ let write_build_error = fun ~mode err ->
     "BuildAlreadyRunning"
     [ ("lock_path", Data.Json.String (Path.to_string lock_path)) ]
     (Riot_build.error_message err)
-  | Riot_build.SessionStartFailed { reason } -> write_command_error
-    ~mode
-    "SessionStartFailed"
-    [ ("reason", Data.Json.String reason) ]
-    reason
   | Riot_build.InvalidRequestedParallelism value -> write_command_error
     ~mode
     "InvalidRequestedParallelism"

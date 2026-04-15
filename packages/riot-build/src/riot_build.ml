@@ -42,7 +42,6 @@ type error = Build_core.error =
   | PlanningFailed of { reason: string }
   | CycleDetected of { cycle_nodes: string list }
   | BuildAlreadyRunning of { lock_path: Path.t }
-  | SessionStartFailed of { reason: string }
   | InvalidRequestedParallelism of int
   | UnexpectedError of { reason: string }
 
