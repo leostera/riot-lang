@@ -261,7 +261,7 @@ let run_lanes = fun context ~toolchain ->
     List.exists (fun (_, outcome) ->
       match outcome with
       | Error _ -> true
-      | Ok (Build_work.LaneCompleted lane_outcome) -> Lane_result.had_partial_failure lane_outcome)
+      | Ok output -> Build_work.had_partial_failure output)
       results
   in
   let all_errors =
@@ -275,21 +275,19 @@ let run_lanes = fun context ~toolchain ->
     List.filter_map results
       ~fn:(fun (_, outcome) ->
         match outcome with
-        | Ok (Build_work.LaneCompleted lane_outcome) -> Some lane_outcome
+        | Ok output -> Build_work.lane_result output
         | Error _ -> None)
   in
   let () =
     List.for_each results ~fn:(fun (work, outcome) ->
       let had_partial_failure =
         match outcome with
-        | Ok (Build_work.LaneCompleted lane_outcome) ->
-            Lane_result.had_partial_failure lane_outcome
+        | Ok output -> Build_work.had_partial_failure output
         | Error _ -> true
       in
       let result_count =
         match outcome with
-        | Ok (Build_work.LaneCompleted lane_outcome) ->
-            List.length (Lane_result.results lane_outcome)
+        | Ok output -> Build_work.result_count output
         | Error _ -> 0
       in
       emit_target_build_finished
