@@ -21,6 +21,7 @@ type build_error =
 
 type build_context = {
   build: Build_context.t;
+  resolved: Resolved_build.t;
   allow_partial_failures: bool;
   record_cache_generation: bool;
 }
@@ -106,6 +107,7 @@ let make_context = fun ~allow_partial_failures ?(record_cache_generation = true)
   in
   Ok {
     build = context;
+    resolved = spec;
     allow_partial_failures;
     record_cache_generation;
   }
@@ -243,16 +245,10 @@ let failed_results = fun results ->
 
 let prepare_lane = fun context ~toolchain target ->
   Build_lane.prepare
-    ~workspace:context.build.workspace
-    ~package_names:context.build.package_names
-    ~scope:context.build.scope
-    ~profile:context.build.profile
-    ~session_id:context.build.session_id
-    ~host:context.build.host
+    context.build
+    context.resolved
     ~target
     ~toolchain
-    ~toolchain_config:context.build.toolchain_config
-    ~parallelism:context.build.parallelism
 
 let map_lane_error = fun error ->
   UnexpectedError { reason = error }
@@ -264,7 +260,7 @@ let execute_lane = fun context lane ->
 
 let run_lanes = fun context ~toolchain ->
   let targets =
-    Riot_model.Target.Set.to_list context.build.targets
+    Riot_model.Target.Set.to_list (Resolved_build.targets context.resolved)
     |> List.sort ~compare:Riot_model.Target.compare
   in
   let rec prepare_lanes = function
@@ -344,10 +340,10 @@ let run_lanes = fun context ~toolchain ->
       Ok (lane_results, has_failures)
 
 let do_build = fun context ->
-  let targets = Riot_model.Target.Set.to_list context.build.targets in
+  let targets = Riot_model.Target.Set.to_list (Resolved_build.targets context.resolved) in
   emit_targets_resolved context targets;
-  let* () = ensure_toolchains_for_targets context context.build.targets in
-  let* () = validate_target_toolchains context context.build.targets in
+  let* () = ensure_toolchains_for_targets context (Resolved_build.targets context.resolved) in
+  let* () = validate_target_toolchains context (Resolved_build.targets context.resolved) in
   emit_runtime_starting context;
   let* toolchain = Riot_toolchain.init ~config:context.build.toolchain_config
   |> Result.map_err ~fn:(fun error -> ToolchainInitializationFailed { target = context.build.host; error }) in

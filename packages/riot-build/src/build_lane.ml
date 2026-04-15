@@ -120,18 +120,18 @@ let make_lane_plan = fun lane_target workspace scope ->
   |> Result.map_err ~fn:plan_error_to_string
 
 let prepare:
-  workspace:Riot_model.Workspace.t ->
-  package_names:Riot_model.Package_name.t list ->
-  scope:Resolved_build.scope ->
-  profile:Riot_model.Profile.t ->
-  session_id:Riot_model.Session_id.t ->
-  host:Riot_model.Target.t ->
+  Build_context.t ->
+  Resolved_build.t ->
   target:Riot_model.Target.t ->
   toolchain:Riot_toolchain.t ->
-  toolchain_config:Riot_model.Toolchain_config.t ->
-  parallelism:int ->
   (locked t, error) result
-  = fun ~workspace ~package_names ~scope ~profile ~session_id ~host ~target ~toolchain ~toolchain_config ~parallelism ->
+  = fun context spec ~target ~toolchain ->
+  let workspace = context.workspace in
+  let package_names = Resolved_build.package_names spec in
+  let scope = Resolved_build.scope spec in
+  let profile = context.profile in
+  let session_id = context.session_id in
+  let host = context.host in
   let package_names = sort_unique_packages package_names in
   let planner_target = planner_target package_names in
   let planner_scope = planner_scope scope in
@@ -140,7 +140,7 @@ let prepare:
       Ok toolchain
     else
       Riot_toolchain.init_for_target
-        ~config:toolchain_config
+        ~config:context.toolchain_config
         ~target
       |> Result.map_err ~fn:(fun reason -> "failed to initialize toolchain for target "
         ^ Riot_model.Target.to_string target
@@ -148,7 +148,7 @@ let prepare:
         ^ reason)
   in
   let* plan = make_lane_plan planner_target workspace planner_scope in
-  let build_ctx = make_build_ctx ~host ~target ~session_id ~profile ~parallelism in
+  let build_ctx = make_build_ctx ~host ~target ~session_id ~profile ~parallelism:context.parallelism in
   let store = Riot_store.Store.create_for_lane
     ~workspace
     ~profile:profile.name

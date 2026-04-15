@@ -41,16 +41,10 @@ val package_plan: 'a t -> Riot_planner.Workspace_planner.package_plan
 val package_graph: 'a t -> Riot_planner.Package_graph.t
 
 val prepare:
-  workspace:Riot_model.Workspace.t ->
-  package_names:Riot_model.Package_name.t list ->
-  scope:Resolved_build.scope ->
-  profile:Riot_model.Profile.t ->
-  session_id:Riot_model.Session_id.t ->
-  host:Riot_model.Target.t ->
+  Build_context.t ->
+  Resolved_build.t ->
   target:Riot_model.Target.t ->
   toolchain:Riot_toolchain.t ->
-  toolchain_config:Riot_model.Toolchain_config.t ->
-  parallelism:int ->
   (locked t, error) result
 
 val execute:

@@ -7,9 +7,6 @@ type error =
 type t = {
   session_id: Riot_model.Session_id.t;
   workspace: Riot_model.Workspace.t;
-  package_names: Riot_model.Package_name.t list;
-  targets: Riot_model.Target.Set.t;
-  scope: Resolved_build.scope;
   profile: Riot_model.Profile.t;
   host: Riot_model.Target.t;
   toolchain_config: Riot_model.Toolchain_config.t;
@@ -31,9 +28,6 @@ let make = fun ?(on_event = no_event) spec ->
   Ok {
     session_id = Riot_model.Session_id.make ();
     workspace;
-    package_names = Resolved_build.package_names spec;
-    targets = Resolved_build.targets spec;
-    scope = Resolved_build.scope spec;
     profile = Resolved_build.profile spec;
     host = Riot_model.Target.current;
     toolchain_config = Riot_model.Toolchain_config.from_root ~root:workspace.Riot_model.Workspace.root;
