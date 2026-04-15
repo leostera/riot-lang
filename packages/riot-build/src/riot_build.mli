@@ -22,6 +22,7 @@ module Internal : sig
   module Build_context = Build_context
   module Build_core = Build_core
   module Build_scheduler = Build_scheduler
+  module Build_work = Build_work
   module Lane_result = Lane_result
   module Package_builder = Package_builder
   module Build_runtime = Build_runtime

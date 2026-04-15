@@ -228,9 +228,9 @@ let prepare_lane = fun context ~toolchain target ->
 let map_lane_error = fun error ->
   UnexpectedError { reason = error }
 
-let execute_lane = fun context lane ->
-  match Build_lane.execute lane with
-  | Ok outcome -> Ok (outcome, [])
+let execute_work = fun work ->
+  match Build_work.execute work with
+  | Ok outcome -> Ok outcome
   | Error error -> Error (map_lane_error error)
 
 let run_lanes = fun context ~toolchain ->
@@ -250,20 +250,18 @@ let run_lanes = fun context ~toolchain ->
   in
   let* lanes = prepare_lanes [] targets in
   List.for_each lanes ~fn:(fun lane -> emit_target_build_started context (Build_lane.target lane));
-    let results =
-      Build_scheduler.run
-        ~concurrency:context.build.parallelism
-        ~tasks:lanes
-        ~fn:(fun lane -> execute_lane context lane)
-  in
+  let work_items = List.map lanes ~fn:Build_work.lane in
   let results =
-    List.map results ~fn:(fun (lane, outcome) -> (lane, outcome))
+    Build_scheduler.run
+      ~concurrency:context.build.parallelism
+      ~tasks:work_items
+      ~fn:execute_work
   in
   let has_failures =
     List.exists (fun (_, outcome) ->
       match outcome with
       | Error _ -> true
-      | Ok (lane_outcome: Lane_result.t) -> lane_outcome.had_partial_failure)
+      | Ok (Build_work.LaneCompleted lane_outcome) -> Lane_result.had_partial_failure lane_outcome)
       results
   in
   let all_errors =
@@ -275,26 +273,28 @@ let run_lanes = fun context ~toolchain ->
   in
   let lane_results =
     List.filter_map results
-      ~fn:(fun (lane, outcome) ->
+      ~fn:(fun (_, outcome) ->
         match outcome with
-        | Ok (lane_outcome: Lane_result.t) -> Some lane_outcome
+        | Ok (Build_work.LaneCompleted lane_outcome) -> Some lane_outcome
         | Error _ -> None)
   in
   let () =
-    List.for_each results ~fn:(fun (lane, outcome) ->
+    List.for_each results ~fn:(fun (work, outcome) ->
       let had_partial_failure =
         match outcome with
-        | Ok (lane_outcome: Lane_result.t) -> lane_outcome.had_partial_failure
+        | Ok (Build_work.LaneCompleted lane_outcome) ->
+            Lane_result.had_partial_failure lane_outcome
         | Error _ -> true
       in
       let result_count =
         match outcome with
-        | Ok (lane_outcome: Lane_result.t) -> List.length lane_outcome.results
+        | Ok (Build_work.LaneCompleted lane_outcome) ->
+            List.length (Lane_result.results lane_outcome)
         | Error _ -> 0
       in
       emit_target_build_finished
         context
-        ~target:(Build_lane.target lane)
+        ~target:(Build_work.target work)
         ~result_count
         ~had_partial_failure)
   in
