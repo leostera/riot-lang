@@ -109,30 +109,25 @@ let error_message = function
   | UnexpectedError { reason } -> reason
 
 let make_context = fun ~allow_partial_failures ?(record_cache_generation = true) ?(on_event = no_event) spec ->
-  let open Std.Result.Syntax in
-  let session_id = Riot_model.Session_id.make () in
-  let workspace = Build_spec.workspace spec in
-  let host = Riot_model.Target.current in
-  let toolchain_config = Riot_model.Toolchain_config.from_root ~root:workspace.Riot_model.Workspace.root in
-  let* parallelism =
-    match Build_spec.requested_parallelism spec with
-    | Some requested when requested < 1 -> Error (InvalidRequestedParallelism requested)
-    | Some requested -> Ok (Int.min Thread.available_parallelism requested)
-    | None -> Ok Thread.available_parallelism
+  let* context =
+    Build_context.make ~on_event spec
+    |> Result.map_err ~fn:(function
+      | Build_context.InvalidRequestedParallelism requested ->
+          InvalidRequestedParallelism requested)
   in
   Ok {
-    session_id;
-    workspace;
-    package_names = Build_spec.package_names spec;
-    targets = Build_spec.targets spec;
-    scope = Build_spec.scope spec;
-    profile = Build_spec.profile spec;
-    host;
-    toolchain_config;
-    parallelism = Int.max 1 parallelism;
+    session_id = context.session_id;
+    workspace = context.workspace;
+    package_names = context.package_names;
+    targets = context.targets;
+    scope = context.scope;
+    profile = context.profile;
+    host = context.host;
+    toolchain_config = context.toolchain_config;
+    parallelism = context.parallelism;
     allow_partial_failures;
     record_cache_generation;
-    on_event;
+    on_event = context.on_event;
   }
 
 let ensure_toolchains_for_targets = fun context targets ->

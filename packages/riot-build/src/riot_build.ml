@@ -16,6 +16,7 @@ module Telemetry_events = Telemetry_events
 module Internal = struct
   module Action_executor = Action_executor
   module Action_queue = Action_queue
+  module Build_context = Build_context
   module Build_core = Build_core
   module Build_scheduler = Build_scheduler
   module Build_spec = Build_spec
