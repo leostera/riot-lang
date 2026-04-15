@@ -29,35 +29,7 @@
     },
     {
       "params": {
-        "diagnostics": [
-          {
-            "message": "unbound name: mystery",
-            "range": {
-              "start": {
-                "line": 0,
-                "character": 12
-              },
-              "end": {
-                "line": 0,
-                "character": 20
-              }
-            },
-            "severity": 1,
-            "code": "TYP2001",
-            "source": "typ",
-            "data": {
-              "id": "TYP2001",
-              "name": "unbound-name",
-              "message": "unbound name: mystery",
-              "severity": "error",
-              "reference_span": {
-                "start": 12,
-                "end": 20
-              },
-              "name_text": "mystery"
-            }
-          }
-        ],
+        "diagnostics": [],
         "uri": "file:///workspace/app.ml",
         "version": 1
       },

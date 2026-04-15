@@ -1,9 +1,8 @@
 open Std
 open Std.Data
+open Std.Result.Syntax
 module Framing = Framing
 module Session = Session
-
-let ( let* ) = Result.and_then
 
 module File_log = struct
   type t = {
@@ -29,15 +28,14 @@ module File_log = struct
     let* () =
       match Path.parent path with
       | None -> Ok ()
-      | Some parent -> Fs.create_dir_all parent |> Result.map_error IO.error_message
+      | Some parent -> Fs.create_dir_all parent |> Result.map_err ~fn:IO.error_message
     in
-    let* sink = Fs.File.open_append path |> Result.map_error IO.error_message in
+    let* sink = Fs.File.open_append path |> Result.map_err ~fn:Fs.File.error_to_string in
     Ok { path; sink }
 
   let write = fun t ~level message ->
     let line = DateTime.to_iso8601 (DateTime.now_utc ()) ^ " | " ^ level ^ " | " ^ message ^ "\n" in
-    ignore ((Fs.File.write_all t.sink line: (unit, _) result));
-    ignore ((Fs.File.sync_data t.sink: (unit, _) result))
+    ignore ((Fs.File.write_all t.sink line: (unit, _) result))
 
   let close = fun t -> ignore ((Fs.File.close t.sink: (unit, _) result))
 end
@@ -68,19 +66,16 @@ let payload_summary = fun payload ->
     )
 
 let write_outbound = fun output messages ->
-  List.fold_left
-    (fun acc json ->
-      let* () = acc in
-      Framing.write output (Std.Data.Json.to_string json)
-      |> Result.map_error (fun message -> Failure message))
-    (Ok ())
-    messages
+  List.fold_left messages ~acc:(Ok ()) ~fn:(fun acc json ->
+    let* () = acc in
+    Framing.write output (Std.Data.Json.to_string json)
+    |> Result.map_err ~fn:(fun message -> Failure message))
 
 let rec loop = fun logger ->
   fun input ->
-    fun output ->
-      fun state ->
-        let* payload_opt = Framing.read input |> Result.map_error (fun message -> Failure message) in
+  fun output ->
+  fun state ->
+    let* payload_opt = Framing.read input |> Result.map_err ~fn:(fun message -> Failure message) in
         match payload_opt with
         | None -> Ok ()
         | Some payload ->
@@ -91,10 +86,13 @@ let rec loop = fun logger ->
                 logger
                 ~level:"DEBUG"
                 ("sending " ^ Int.to_string (List.length outcome.outbound) ^ " outbound message(s)");
-            Option.iter
-              (fun code ->
-                log logger ~level:"INFO" ("lsp session exiting with code " ^ Int.to_string code))
-              outcome.exit_code;
+            (match outcome.exit_code with
+            | None -> ()
+            | Some code ->
+                log
+                  logger
+                  ~level:"INFO"
+                  ("lsp session exiting with code " ^ Int.to_string code));
             let* () = write_outbound output outcome.outbound in
             match outcome.exit_code with
             | Some 0 -> Ok ()
@@ -102,24 +100,54 @@ let rec loop = fun logger ->
             | None -> loop logger input output outcome.state
 
 let run = fun ?log_path () ->
-  let input = Fs.File.from_fd IO.stdin in
-  let output = Fs.File.from_fd IO.stdout in
+  let input =
+    let module Stdin_reader = struct
+      type t = unit
+      type err = IO.error
+
+      let read = fun () ?timeout:_ bytes ->
+        IO.Stdin.read bytes
+
+      let read_vectored = fun () bufs ->
+        IO.Stdin.read_vectored bufs
+    end in
+    IO.Reader.of_read_src (module Stdin_reader) ()
+  in
+  let output =
+    let module Stdout_writer = struct
+      type t = unit
+      type err = IO.error
+
+      let write = fun () ~buf ->
+        let bytes = IO.Bytes.from_string buf in
+        IO.Stdout.write bytes
+
+      let write_owned_vectored = fun () ~bufs ->
+        IO.Stdout.write_vectored bufs
+
+      let flush = fun () ->
+        IO.Stdout.flush ()
+    end in
+    IO.Writer.of_write_src (module Stdout_writer) ()
+  in
   match File_log.open_sink ?path:log_path () with
   | Error _ -> loop None input output Session.empty
   | Ok logger ->
-      Kernel.Fun.protect ~finally:(fun () -> File_log.close logger)
-        (fun () ->
-          log
-            (Some logger)
-            ~level:"INFO"
-            ("riot-lsp started; logging to " ^ Path.to_string logger.path);
-          match loop (Some logger) input output Session.empty with
-          | Ok () as ok ->
-              log (Some logger) ~level:"INFO" "riot-lsp stopped cleanly";
-              ok
-          | Error error as err ->
-              log
-                (Some logger)
-                ~level:"ERROR"
-                ("riot-lsp failed: " ^ Kernel.Exception.to_string error);
-              err)
+      let close = fun () ->
+        File_log.close logger
+      in
+      log
+        (Some logger)
+        ~level:"INFO"
+        ("riot-lsp started; logging to " ^ Path.to_string logger.path);
+      let result =
+        match loop (Some logger) input output Session.empty with
+        | Ok () as ok ->
+            log (Some logger) ~level:"INFO" "riot-lsp stopped cleanly";
+            ok
+        | Error error as err ->
+            log (Some logger) ~level:"ERROR" ("riot-lsp failed: " ^ Kernel.Exception.to_string error);
+            err
+      in
+      close ();
+      result

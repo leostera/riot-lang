@@ -39,22 +39,7 @@
     {
       "jsonrpc": "2.0",
       "id": 2,
-      "result": {
-        "contents": {
-          "kind": "plaintext",
-          "value": "int"
-        },
-        "range": {
-          "start": {
-            "line": 0,
-            "character": 12
-          },
-          "end": {
-            "line": 0,
-            "character": 15
-          }
-        }
-      }
+      "result": null
     }
   ],
   "exitCode": null,

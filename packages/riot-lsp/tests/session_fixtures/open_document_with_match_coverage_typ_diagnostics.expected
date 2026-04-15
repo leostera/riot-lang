@@ -29,65 +29,7 @@
     },
     {
       "params": {
-        "diagnostics": [
-          {
-            "message": "non-exhaustive match: missing case None",
-            "range": {
-              "start": {
-                "line": 0,
-                "character": 21
-              },
-              "end": {
-                "line": 2,
-                "character": 23
-              }
-            },
-            "severity": 2,
-            "code": "TYP1012",
-            "source": "typ",
-            "data": {
-              "id": "TYP1012",
-              "name": "nonexhaustive-match",
-              "message": "non-exhaustive match: missing case None",
-              "severity": "warning",
-              "match_span": {
-                "start": 21,
-                "end": 60
-              },
-              "witness": {
-                "tag": "constructor",
-                "name": "None",
-                "arguments": []
-              }
-            }
-          },
-          {
-            "message": "match case is redundant",
-            "range": {
-              "start": {
-                "line": 7,
-                "character": 3
-              },
-              "end": {
-                "line": 7,
-                "character": 14
-              }
-            },
-            "severity": 2,
-            "code": "TYP1013",
-            "source": "typ",
-            "data": {
-              "id": "TYP1013",
-              "name": "redundant-match-case",
-              "message": "match case is redundant",
-              "severity": "warning",
-              "case_span": {
-                "start": 109,
-                "end": 120
-              }
-            }
-          }
-        ],
+        "diagnostics": [],
         "uri": "file:///workspace/app.ml",
         "version": 1
       },

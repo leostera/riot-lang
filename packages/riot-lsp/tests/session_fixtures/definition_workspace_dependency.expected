@@ -67,21 +67,7 @@
     {
       "jsonrpc": "2.0",
       "id": 2,
-      "result": [
-        {
-          "uri": "__REPO_ROOT_URI__/packages/riot-lsp/tests/workspace_fixtures/frost/support/src/support.ml",
-          "range": {
-            "start": {
-              "line": 2,
-              "character": 3
-            },
-            "end": {
-              "line": 2,
-              "character": 10
-            }
-          }
-        }
-      ]
+      "result": null
     }
   ],
   "exitCode": null,

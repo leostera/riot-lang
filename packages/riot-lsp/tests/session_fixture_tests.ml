@@ -1,7 +1,6 @@
 open Std
 open Std.Data
-
-let ( let* ) = Result.and_then
+open Std.Result.Syntax
 
 let fixture_root = Path.v "packages/riot-lsp/tests/session_fixtures"
 
@@ -14,31 +13,36 @@ let replace_all = fun text ->
   fun ~pattern ->
     fun ~with_ ->
       let pattern_len = String.length pattern in
-      if Int.equal pattern_len 0 then
-        text
-      else
-        let buffer = IO.Buffer.create (String.length text + String.length with_) in
-        let starts_with_pattern offset =
-          let rec loop index =
-            if index >= pattern_len then
-              true
-            else if text.[offset + index] = pattern.[index] then
-              loop (index + 1)
-            else
-              false
-          in
-          offset + pattern_len <= String.length text && loop 0
+    if Int.equal pattern_len 0 then
+      text
+    else
+      let buffer = IO.Buffer.create ~size:(String.length text + String.length with_) in
+      let starts_with_pattern offset =
+        let rec loop index =
+          if index >= pattern_len then
+            true
+          else
+            (match String.get text ~at:(offset + index), String.get pattern ~at:index with
+            | Some text_char, Some pattern_char when Char.equal text_char pattern_char ->
+                loop (index + 1)
+            | _ -> false)
         in
-        let rec loop offset =
-          if offset >= String.length text then
-            ()
-          else if starts_with_pattern offset then
+        offset + pattern_len <= String.length text && loop 0
+      in
+      let rec loop offset =
+        if offset >= String.length text then
+          ()
+        else if starts_with_pattern offset then
             (
               IO.Buffer.add_string buffer with_;
-              loop (offset + pattern_len)
+          loop (offset + pattern_len)
             )
           else (
-            IO.Buffer.add_char buffer text.[offset];
+            let char = match String.get text ~at:offset with
+              | Some value -> value
+              | None -> '\000'
+            in
+            IO.Buffer.add_char buffer char;
             loop (offset + 1)
           )
         in
@@ -59,14 +63,13 @@ let normalize_snapshot_tokens = fun text ->
 
 let read_lines = fun path ->
   Fs.read path
-  |> Result.map_error IO.error_message
-  |> Result.map
-    (fun source ->
+  |> Result.map_err ~fn:IO.error_message
+  |> Result.map ~fn:(fun source ->
       source
       |> String.split_on_char '\n'
-      |> List.map String.trim
-      |> List.map substitute_fixture_tokens
-      |> List.filter (fun line -> not (String.equal line "")))
+      |> List.map ~fn:String.trim
+      |> List.map ~fn:substitute_fixture_tokens
+      |> List.filter ~fn:(fun line -> not (String.equal line "")))
 
 let run_fixture = fun path ->
   let* lines = read_lines path in
@@ -76,8 +79,9 @@ let run_fixture = fun path ->
     exit_code = None
   } in
   Ok (
-    List.fold_left
-      (fun acc line ->
+    List.fold_left lines
+      ~acc:initial
+      ~fn:(fun acc line ->
         let outcome = Riot_lsp.Session.handle_payload acc.Riot_lsp.Session.state line in
         {
           Riot_lsp.Session.state = outcome.state;
@@ -87,8 +91,6 @@ let run_fixture = fun path ->
             | Some code -> Some code
             | None -> acc.exit_code;
         })
-      initial
-      lines
   )
 
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->

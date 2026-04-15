@@ -56,33 +56,6 @@
               "suggestion": "Add a matching interface file at `__REPO_ROOT__/packages/riot-lsp/tests/workspace_fixtures/glacier/app/src/app.mli`.",
               "fix": null
             }
-          },
-          {
-            "message": "unbound name: Int.to_string",
-            "range": {
-              "start": {
-                "line": 0,
-                "character": 14
-              },
-              "end": {
-                "line": 0,
-                "character": 28
-              }
-            },
-            "severity": 1,
-            "code": "TYP2001",
-            "source": "typ",
-            "data": {
-              "id": "TYP2001",
-              "name": "unbound-name",
-              "message": "unbound name: Int.to_string",
-              "severity": "error",
-              "reference_span": {
-                "start": 14,
-                "end": 28
-              },
-              "name_text": "Int.to_string"
-            }
           }
         ],
         "uri": "__REPO_ROOT_URI__/packages/riot-lsp/tests/workspace_fixtures/glacier/app/src/app.ml",

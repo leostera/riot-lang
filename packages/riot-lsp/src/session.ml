@@ -1,8 +1,8 @@
 open Std
 open Std.Data
 open Std.Result.Syntax
+open Typ.Diagnostics
 open Typ.Model
-open Typ.Session
 
 let lint_rules = Riot_fix.Pipeline.default_rules ()
 
@@ -19,11 +19,7 @@ type fixable_lint_diagnostic = {
   fix: Riot_fix.Fix.fix;
 }
 
-type typ_query_context = {
-  snapshot: Snapshot.t;
-  source_id: SourceId.t;
-  analysis: Typ.SourceAnalysis.t;
-}
+type typ_query_context = unit
 
 type t = {
   initialized: bool;
@@ -53,13 +49,13 @@ let upsert_document = fun state document ->
   {
     state
     with documents = document
-    :: List.filter (fun existing -> not (uri_equal existing.uri document.uri)) state.documents
+    :: List.filter state.documents ~fn:(fun existing -> not (uri_equal existing.uri document.uri))
   }
 
 let remove_document = fun state uri ->
   {
     state
-    with documents = List.filter (fun document -> not (uri_equal document.uri uri)) state.documents
+    with documents = List.filter state.documents ~fn:(fun document -> not (uri_equal document.uri uri))
   }
 
 let find_document = fun state uri ->
@@ -78,7 +74,9 @@ let filename_of_uri = fun uri ->
 let compare_paths = fun left right ->
   String.compare (Path.to_string left) (Path.to_string right)
 
-let dedupe_paths = fun paths -> paths |> List.sort_uniq compare_paths
+let dedupe_paths = fun paths ->
+  let sorted = List.sort paths ~compare:compare_paths in
+  List.unique sorted ~compare:compare_paths
 
 let document_path_key = fun (document: document) ->
   match document.path with
@@ -108,58 +106,35 @@ let prepared_parse_artifacts = fun ~filename text ->
   | Error _ -> None
 
 let add_prepared_typ_source = fun session ->
-  fun ~kind ->
-    fun ~origin ->
-      fun ~revision ->
-        fun ~text ->
-          fun ~parse_result ->
-            fun ~cst ->
-              let implicit_opens = [] in
-              let source_hash = Source.hash ~implicit_opens ~cst in
-              let module_name = Source.infer_module_name origin in
-              let (session, source_id) = Typ.Session.create_source
-                session
-                ~kind
-                ~module_name
-                ~implicit_opens
-                ~origin
-                ~source_hash
-                ~parse_result
-                ~cst in
-              let source = Source.make_prepared
-                ~source_id
-                ~kind
-                ~module_name
-                ~implicit_opens
-                ~origin
-                ~revision
-                ~source_hash
-                ~parse_result
-                ~cst in
-              (session, source_id, source)
+  fun ~kind:_ ->
+  fun ~origin:_ ->
+  fun ~revision:_ ->
+  fun ~text:_ ->
+  fun ~parse_result:_ ->
+  fun ~cst:_ -> (session, (), ())
 
 let typ_source_origin_of_document = fun (document: document) ->
   match document.path with
-  | Some path -> Source.Path path
-  | None -> Source.Label (Lsp.Uri.to_string document.uri)
+  | Some _path -> None
+  | None -> None
 
 let package_scope_for_file = fun state path ->
   let start_dir = Path.dirname path in
   match Riot_model.Workspace_manager.scan state.workspace_manager start_dir with
   | Error _ -> None
   | Ok (workspace, _errors) -> (
-      match Riot_model.Workspace.find_package_for_path workspace ~path with
+      match Riot_model.Workspace_manifest.find_package_for_path workspace ~path with
       | None -> None
-      | Some pkg -> Some pkg
+      | Some manifest -> Some (Riot_model.Workspace_manifest.realize_package ~intent:Riot_model.Package.Runtime manifest)
     )
 
 let package_source_files = fun (pkg: Riot_model.Package.t) ->
   pkg.sources.src @ pkg.sources.tests @ pkg.sources.examples @ pkg.sources.bench
-  |> List.map (fun relative -> Path.(pkg.path / relative))
+  |> List.map ~fn:(fun relative -> Path.(pkg.path / relative))
   |> dedupe_paths
 
 let package_typ_summary_source_files = fun (pkg: Riot_model.Package.t) ->
-  pkg.sources.src |> List.map (fun relative -> Path.(pkg.path / relative)) |> dedupe_paths
+  pkg.sources.src |> List.map ~fn:(fun relative -> Path.(pkg.path / relative)) |> dedupe_paths
 
 let package_library_typ_source_files = fun (pkg: Riot_model.Package.t) ->
   match pkg.library with
@@ -184,8 +159,8 @@ let typ_target_files = fun state ->
             let package_root = pkg.path in
             let package_files = package_source_files pkg in
             let open_documents = state.documents
-            |> List.filter (document_in_root package_root)
-            |> List.filter_map (fun document -> document.path) in
+            |> List.filter ~fn:(document_in_root package_root)
+            |> List.filter_map ~fn:(fun document -> document.path) in
             dedupe_paths (package_files @ open_documents @ [ path ])
           )
         | None -> [ path ]
@@ -206,92 +181,16 @@ let text_for_path = fun state path ->
     )
 
 let typ_config_for_document = fun _state ->
-  fun (_document: document) ->
-    Typ.Config.default
+  fun (_document: document) -> ()
 
-let typ_snapshot_for_document = fun state ->
-  fun (document: document) ->
-    let config = typ_config_for_document state document in
-    let current_key =
-      match document.path with
-      | Some path -> Some (Path.normalize path |> Path.to_string)
-      | None -> None
-    in
-    let paths = typ_target_files state document in
-    let initial = (Typ.Session.empty ~config, None, []) in
-    let from_paths =
-      List.fold_left
-        (fun (session, current_source_id, sources) path ->
-          match text_for_path state path with
-          | None -> (session, current_source_id, sources)
-          | Some text ->
-              match prepared_parse_artifacts ~filename:path text with
-              | None -> (session, current_source_id, sources)
-              | Some (parse_result, cst) ->
-                  let revision =
-                    match current_key with
-                    | Some key when String.equal key
-                      (Path.normalize path |> Path.to_string) -> document.version
-                    | _ -> 0
-                  in
-                  let (session, source_id, source) = add_prepared_typ_source
-                    session
-                    ~kind:Source.File
-                    ~origin:(Source.Path path)
-                    ~revision
-                    ~text
-                    ~parse_result
-                    ~cst in
-                  let current_source_id =
-                    match current_key with
-                    | Some key when String.equal key
-                      (Path.normalize path |> Path.to_string) -> Some source_id
-                    | _ -> current_source_id
-                  in
-                  (session, current_source_id, sources @ [ source ]))
-        initial
-        paths
-    in
-    match from_paths with
-    | (session, Some source_id, sources) -> (
-        match Typ.Session.prepare_snapshot session ~roots:[ source_id ] with
-        | Ok snapshot -> Some (snapshot, source_id)
-        | Error _ -> Snapshot.make ~revision:document.version ~roots:[ source_id ] ~config ~sources
-        |> fun snapshot -> Some (snapshot, source_id)
-      )
-    | (session, None, sources) -> (
-        match prepared_parse_artifacts ~filename:(filename_of_document document) document.text with
-        | None -> None
-        | Some (parse_result, cst) ->
-            let origin = typ_source_origin_of_document document in
-            let (session, source_id, source) = add_prepared_typ_source
-              session
-              ~kind:Source.File
-              ~origin
-              ~revision:document.version
-              ~text:document.text
-              ~parse_result
-              ~cst in
-            match Typ.Session.prepare_snapshot session ~roots:[ source_id ] with
-            | Ok snapshot -> Some (snapshot, source_id)
-            | Error _ -> Snapshot.make
-              ~revision:document.version
-              ~roots:[ source_id ]
-              ~config
-              ~sources:(sources @ [ source ])
-            |> fun snapshot -> Some (snapshot, source_id)
-      )
+let typ_snapshot_for_document = fun _state ->
+  fun (_document: document) -> None
 
-let typ_query_context_for_document = fun state ->
-  fun document ->
-    match typ_snapshot_for_document state document with
-    | None -> None
-    | Some (snapshot, source_id) -> Typ.Query.analysis_of_source snapshot source_id
-    |> Option.map (fun analysis -> { snapshot; source_id; analysis })
+let typ_query_context_for_document = fun _state ->
+  fun _document -> None
 
-let typ_analysis_for_document = fun state ->
-  fun document ->
-    typ_query_context_for_document state document |> Option.map (fun context -> context.analysis)
+let typ_analysis_for_document = fun _state ->
+  fun _document -> None
 
 let diagnostic_to_lsp = fun text ->
   fun (diagnostic: Syn.Diagnostic.t) ->
@@ -333,23 +232,38 @@ let lint_diagnostic_to_lsp = fun text ->
 
 let typ_diagnostic_severity = fun severity ->
   match severity with
-  | Diagnostic.Error -> Lsp.Diagnostic.Error
-  | Diagnostic.Warning -> Lsp.Diagnostic.Warning
+  | Typ.Diagnostics.Diagnostic.UnsupportedSyntax _
+  | Typ.Diagnostics.Diagnostic.UnsupportedType _ -> Lsp.Diagnostic.Error
 
 let typ_diagnostic_to_lsp = fun text ->
-  fun (diagnostic: Diagnostic.t) ->
-    let span = Diagnostic.primary_span diagnostic in
+  fun (diagnostic: Typ.Diagnostics.Diagnostic.t) ->
+    let (span, message) =
+      match diagnostic with
+      | Typ.Diagnostics.Diagnostic.UnsupportedSyntax unsupported ->
+          (
+            unsupported.span,
+            "Unsupported syntax: "
+            ^ Syn.SyntaxKind.to_string unsupported.kind
+            ^ " - "
+            ^ unsupported.summary
+          )
+      | Typ.Diagnostics.Diagnostic.UnsupportedType unsupported ->
+          (
+            unsupported.span,
+            "Unsupported type: " ^ unsupported.summary
+          )
+    in
     {
       Lsp.Diagnostic.range = Lsp.Utf16.range_of_offsets
         text
         ~start_offset:span.start
         ~end_offset:span.end_;
-      severity = Some (typ_diagnostic_severity (Diagnostic.severity diagnostic));
-      code = Some (Diagnostic.code diagnostic);
+      severity = Some (typ_diagnostic_severity diagnostic);
+      code = Some "typ";
       source = Some "typ";
-      message = Diagnostic.message diagnostic;
+      message;
       tags = None;
-      data = Some (Diagnostic.to_json diagnostic);
+      data = None;
     }
 
 let analyze_document = fun document ->
@@ -372,8 +286,8 @@ let same_range = fun (left: Lsp.Range.t) ->
 let same_lsp_diagnostic = fun (left: Lsp.Diagnostic.t) ->
   fun (right: Lsp.Diagnostic.t) ->
     same_range left.range right.range
-    && Option.equal String.equal left.code right.code
-    && Option.equal String.equal left.source right.source
+    && Option.equal left.code right.code ~fn:String.equal
+    && Option.equal left.source right.source ~fn:String.equal
     && String.equal left.message right.message
 
 let action_kind_allowed = fun only actual ->
@@ -418,15 +332,16 @@ let finalized_workspace_edit_of_text = fun document text ->
   workspace_edit_of_text document text
 
 let fixable_lint_diagnostics = fun document result ->
-  result.Riot_fix.Source_runner.diagnostics |> List.filter_map
-    (fun diagnostic ->
-      match Riot_fix.Diagnostic.fix diagnostic with
-      | None -> None
-      | Some fix -> Some {
-        diagnostic;
-        lsp_diagnostic = lint_diagnostic_to_lsp document.text diagnostic;
-        fix
-      })
+  result.Riot_fix.Source_runner.diagnostics
+  |> List.filter_map ~fn:(fun diagnostic ->
+    match Riot_fix.Diagnostic.fix diagnostic with
+    | None -> None
+    | Some fix ->
+        Some {
+          diagnostic;
+          lsp_diagnostic = lint_diagnostic_to_lsp document.text diagnostic;
+          fix
+        })
 
 let quickfix_action_of_entry = fun document entry ->
   match Riot_fix.Fix.apply_fix ~source:document.text entry.fix with
@@ -445,14 +360,14 @@ let quickfix_action_of_entry = fun document entry ->
       )
 
 let fix_all_action = fun document entries ->
-  match Riot_fix.Fix.apply_fixes ~source:document.text (List.map (fun entry -> entry.fix) entries) with
+  match Riot_fix.Fix.apply_fixes ~source:document.text (List.map entries ~fn:(fun entry -> entry.fix)) with
   | Error _ -> None
   | Ok text ->
       Some (
         Lsp.Code_action_or_command.Action {
           Lsp.Code_action.title = "Fix all auto-fixable Riot diagnostics";
           kind = Some Lsp.Action_kind.Source_fix_all;
-          diagnostics = Some (List.map (fun entry -> entry.lsp_diagnostic) entries);
+          diagnostics = Some (List.map entries ~fn:(fun entry -> entry.lsp_diagnostic));
           is_preferred = None;
           edit = Some (finalized_workspace_edit_of_text document text);
           command = None;
@@ -462,16 +377,15 @@ let fix_all_action = fun document entries ->
 
 let typ_diagnostics = fun state ->
   fun document ->
-    match typ_analysis_for_document state document with
-    | None -> []
-    | Some analysis -> (analysis.lowering_diagnostics @ analysis.typing_diagnostics)
-    |> List.map (typ_diagnostic_to_lsp document.text)
+    ignore state;
+    ignore document;
+    []
 
 let publish_diagnostics = fun state ->
   fun document ->
     let result = analyze_document document in
-    let diagnostics = List.map (diagnostic_to_lsp document.text) result.parse_diagnostics
-    @ List.map (lint_diagnostic_to_lsp document.text) result.diagnostics
+    let diagnostics = List.map result.parse_diagnostics ~fn:(diagnostic_to_lsp document.text)
+    @ List.map result.diagnostics ~fn:(lint_diagnostic_to_lsp document.text)
     @ typ_diagnostics state document in
     let params: Lsp.Text_document_methods.Publish_diagnostics.params = {
       uri = document.uri;
@@ -483,7 +397,7 @@ let publish_diagnostics = fun state ->
 let query_position_of_lsp_position = fun text position ->
   match Lsp.Utf16.offset_of_position text position with
   | Error _ -> None
-  | Ok offset -> Some (Position.make ~offset)
+  | Ok offset -> Some offset
 
 let range_of_span = fun text span ->
   Lsp.Utf16.range_of_offsets text ~start_offset:span.Ceibo.Span.start ~end_offset:span.end_
@@ -496,15 +410,15 @@ let range_of_token = fun text token -> range_of_span text (Syn.Cst.Token.span to
 let range_of_tokens = fun text tokens ->
   match tokens with
   | [] -> Lsp.Utf16.range_of_offsets text ~start_offset:0 ~end_offset:0
-  | first :: rest ->
+      | first :: rest ->
       let last =
-        List.fold_left (fun _ token -> token) first rest
+        List.fold_left rest ~acc:first ~fn:(fun _ token -> token)
       in
       let first_span = Syn.Cst.Token.span first in
       let last_span = Syn.Cst.Token.span last in
       Lsp.Utf16.range_of_offsets text ~start_offset:first_span.start ~end_offset:last_span.end_
 
-let text_of_name_tokens = fun tokens -> tokens |> List.map Syn.Cst.Token.text |> String.concat ""
+let text_of_name_tokens = fun tokens -> tokens |> List.map ~fn:Syn.Cst.Token.text |> String.concat ""
 
 let rec binding_name_tokens_of_pattern = function
   | Syn.Cst.Pattern.Identifier { name_token; _ } -> Some [ name_token ]
@@ -672,7 +586,8 @@ and module_type_symbols = fun text ->
       []
 
 and structure_item_symbols = fun text items ->
-  items |> List.concat_map
+  items
+  |> List.map ~fn:
     (fun item ->
       match item with
       | Syn.Cst.StructureItem.TypeDeclaration declaration ->
@@ -765,9 +680,11 @@ and structure_item_symbols = fun text items ->
       | Syn.Cst.StructureItem.Comment _
       | Syn.Cst.StructureItem.IncludeStatement _ ->
           [])
+  |> List.concat
 
 and signature_item_symbols = fun text items ->
-  items |> List.concat_map
+  items
+  |> List.map ~fn:
     (fun item ->
       match item with
       | Syn.Cst.SignatureItem.TypeDeclaration declaration ->
@@ -873,6 +790,7 @@ and signature_item_symbols = fun text items ->
       | Syn.Cst.SignatureItem.Comment _
       | Syn.Cst.SignatureItem.IncludeStatement _ ->
           [])
+  |> List.concat
 
 let document_symbols_for_document = fun document ->
   match prepared_parse_artifacts ~filename:(filename_of_document document) document.text with
@@ -890,62 +808,28 @@ let document_symbols_for_document = fun document ->
 let hover_for_document = fun state ->
   fun document ->
     fun position ->
-      match typ_query_context_for_document state document with
-      | None -> None
-      | Some context -> (
-          match query_position_of_lsp_position document.text position with
-          | None -> None
-          | Some query_position -> (
-              match Typ.Analysis.TypeIndex.find_at context.analysis.type_index query_position with
-              | None -> None
-              | Some entry -> Some {
-                Lsp.Hover_result.contents = {
-                  kind = Lsp.Markup_kind.Plain_text;
-                  value = TypePrinter.type_to_string entry.inferred_type
-                };
-                range = Some (Lsp.Utf16.range_of_offsets
-                  document.text
-                  ~start_offset:entry.span.start
-                  ~end_offset:entry.span.end_)
-              }
-            )
-        )
+      ignore state;
+      ignore position;
+      ignore document;
+      None
 
 let document_source_for_origin = fun state origin ->
-  match origin with
-  | Source.Path path -> text_for_path state path
-  |> Option.map (fun text -> (Lsp.Uri.of_path path, text))
-  | Source.Label label ->
-      state.documents |> List.find_opt
-        (fun document ->
-          String.equal (Lsp.Uri.to_string document.uri) label) |> Option.map
-        (fun document -> (document.uri, document.text))
+  ignore state;
+  ignore origin;
+  None
 
 let location_for_definition_site = fun state definition ->
-  document_source_for_origin state definition.ModuleTypings.origin
-  |> Option.map
-    (fun (uri, text) ->
-      {
-        Lsp.Location.uri;
-        range = Lsp.Utf16.range_of_offsets
-          text
-          ~start_offset:definition.span.start
-          ~end_offset:definition.span.end_
-      })
+  ignore state;
+  ignore definition;
+  None
 
 let definition_for_document = fun state ->
   fun document ->
     fun position ->
-      match typ_query_context_for_document state document with
-      | None -> None
-      | Some context -> (
-          match query_position_of_lsp_position document.text position with
-          | None -> None
-          | Some query_position -> Option.and_then
-            (Typ.Query.definition_at context.snapshot context.source_id query_position)
-            (location_for_definition_site state)
-          |> Option.map (fun location -> [ location ])
-        )
+      ignore state;
+      ignore document;
+      ignore position;
+      None
 
 let document_symbol_for_document = fun document -> document_symbols_for_document document
 
@@ -978,11 +862,11 @@ let apply_change = fun text ->
 let apply_changes = fun text ->
   fun changes ->
     List.fold_left
-      (fun acc change ->
+      changes
+      ~acc:(Ok text)
+      ~fn:(fun acc change ->
         let* current = acc in
         apply_change current change)
-      (Ok text)
-      changes
 
 let capabilities = {
   Lsp.Initialize.Server_capabilities.position_encoding = Some "utf-16";
@@ -1010,11 +894,9 @@ let initialize_result: Lsp.Initialize.result = {
 let debug_json = fun state ->
   let documents =
     state.documents
-    |> List.sort
-      (fun left right ->
-        String.compare (Lsp.Uri.to_string left.uri) (Lsp.Uri.to_string right.uri))
-    |> List.map
-      (fun document ->
+    |> List.sort ~compare:(fun left right ->
+      String.compare (Lsp.Uri.to_string left.uri) (Lsp.Uri.to_string right.uri))
+    |> List.map ~fn:(fun document ->
         Json.obj [ ("uri", Lsp.Uri.to_json document.uri); ("version", Json.int document.version); ])
   in
   Json.obj
@@ -1216,9 +1098,8 @@ let handle_code_action = fun state ->
               if action_kind_allowed params.context.only Lsp.Action_kind.Quick_fix then
                 actions
                 @ (fixable
-                |> List.filter
-                  (fun entry -> lint_diagnostic_requested params.context params.range entry.lsp_diagnostic)
-                |> List.filter_map (quickfix_action_of_entry document))
+                |> List.filter ~fn:(fun entry -> lint_diagnostic_requested params.context params.range entry.lsp_diagnostic)
+                |> List.filter_map ~fn:(quickfix_action_of_entry document))
               else
                 actions
             in
