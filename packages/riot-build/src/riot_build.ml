@@ -17,6 +17,7 @@ module Internal = struct
   module Action_executor = Action_executor
   module Action_queue = Action_queue
   module Build_core = Build_core
+  module Build_scheduler = Build_scheduler
   module Build_spec = Build_spec
   module Package_builder = Package_builder
   module Build_runtime = Build_runtime
