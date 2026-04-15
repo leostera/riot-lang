@@ -352,7 +352,7 @@ Context creation is the only place that combines requested and available
 parallelism:
 
 ```ocaml
-let requested = Request.parallelism request |> Option.value ~default:available in
+let requested = Request.parallelism request |> Option.unwrap_or ~default:available in
 let parallelism = Int.max 1 (Int.min available requested)
 ```
 
