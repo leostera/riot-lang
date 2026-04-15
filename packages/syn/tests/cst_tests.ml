@@ -2882,6 +2882,24 @@ val decode : Outer.Inner (* c *).(request -> response)
           Ok ()
       | _ -> Error "expected let binding with expression extension");
   Test.case
+    "cst expression extensions separate payload from shell when payload starts with field access"
+    (fun _ctx ->
+      let result =
+        parse_ml "let _ = [%atomic.loc t.aha_its_using_the_field_name]\n" in
+      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
+      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
+      match structure_items cst with
+      | Syn.Cst.StructureItem.LetBinding { value = Syn.Cst.Expression.Extension extension; _ } :: _ ->
+          Test.assert_equal ~expected:(Some "atomic.loc") ~actual:(Syn.Cst.Ident.name extension.name);
+          (match extension.payload with
+          | Some (Syn.Cst.Payload.Opaque { tokens }) ->
+              Test.assert_equal
+                ~expected:"t.aha_its_using_the_field_name"
+                ~actual:(List.map ~fn:Syn.Cst.Token.full_text tokens |> String.concat "");
+              Ok ()
+          | None -> Error "expected opaque extension payload")
+      | _ -> Error "expected let binding with expression extension");
+  Test.case
     "cst extensions keep typed `:` payloads opaque by default"
     (fun ctx -> assert_ml_cst_snapshot ~ctx "let _ = [%foo: int -> string]\n");
   Test.case

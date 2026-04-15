@@ -100,6 +100,8 @@ let semicolon_text = ";"
 
 let open_bracket_text = "["
 
+let open_brace_text = "{"
+
 let close_bracket_text = "]"
 
 let close_brace_text = "}"
@@ -129,6 +131,39 @@ let extension_sigil_texts = [ percent_text; double_percent_text; triple_percent_
 let annotation_sigil_texts = attribute_sigil_texts @ extension_sigil_texts
 
 let is_annotation_sigil_text = fun text -> List.any annotation_sigil_texts ~fn:(String.equal text)
+
+let annotation_payload_start_offset = fun ~sigils syntax_tokens ->
+  let rec skip_sigils = fun tokens ->
+    match tokens with
+    | syntax_token :: rest when List.any sigils ~fn:(String.equal (Ceibo.Red.SyntaxToken.text syntax_token)) ->
+      skip_sigils rest
+    | rest -> rest
+  in
+  let rec skip_qualified_name_tail = function
+    | dot_token :: _name_token :: rest when String.equal (Ceibo.Red.SyntaxToken.text dot_token) dot_text -> (
+      skip_qualified_name_tail rest
+    )
+    | rest -> rest
+  in
+  match syntax_tokens with
+  | open_token :: rest when
+    let open_token_text = Ceibo.Red.SyntaxToken.text open_token in
+    String.equal open_token_text open_bracket_text
+    || String.equal open_token_text open_brace_text -> (
+      let rest = skip_sigils rest in
+      match rest with
+      | _name_token :: rest ->
+        let rest = skip_qualified_name_tail rest in
+        (match rest with
+        | marker_token :: payload_token :: _ when
+          String.equal (Ceibo.Red.SyntaxToken.text marker_token) colon_text
+          || String.equal (Ceibo.Red.SyntaxToken.text marker_token) question_mark_text ->
+            Some (Ceibo.Red.SyntaxToken.span payload_token).start
+        | payload_token :: _ -> Some (Ceibo.Red.SyntaxToken.span payload_token).start
+        | [] -> None)
+      | [] -> None
+    )
+  | _ -> None
 
 let synthetic_token = fun ~kind ~text ~start_offset ~end_offset ->
   let green_token = Ceibo.Green.make_token ~leading_trivia:[] ~kind ~text ~width:(String.length text) in
@@ -2129,6 +2164,7 @@ let annotation_shell_and_payload = fun ~annotation_kind ~sigils node ->
       ~context:[ "annotation" ]
 
 let annotation_name_from_tokens = fun ~syntax_node ~sigils syntax_tokens ->
+  let cutoff_offset = annotation_payload_start_offset ~sigils syntax_tokens in
   let rec skip_name_tail = function
     | dot_token :: name_token :: rest when String.equal (Ceibo.Red.SyntaxToken.text dot_token) dot_text -> (
         dot_token :: name_token :: skip_name_tail rest
@@ -2139,10 +2175,20 @@ let annotation_name_from_tokens = fun ~syntax_node ~sigils syntax_tokens ->
     syntax_tokens
     |> List.filter
       ~fn:(fun syntax_token ->
+        let include_token =
+          match cutoff_offset with
+          | Some cutoff -> (Ceibo.Red.SyntaxToken.span syntax_token).start < cutoff
+          | None -> true
+        in
+        if not include_token then
+          false
+        else
         let text = Ceibo.Red.SyntaxToken.text syntax_token in
         not
           (String.equal text open_bracket_text
+          || String.equal text open_brace_text
           || String.equal text close_bracket_text
+          || String.equal text close_brace_text
           || List.any sigils ~fn:(String.equal text)))
   in
   match name_tokens with
