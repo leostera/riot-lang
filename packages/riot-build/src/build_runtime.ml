@@ -22,23 +22,14 @@ type build_error =
   | UnexpectedError of { reason: string }
 
 type build_context = {
-  session_id: Riot_model.Session_id.t;
-  workspace: Riot_model.Workspace.t;
-  package_names: Riot_model.Package_name.t list;
-  targets: Riot_model.Target.Set.t;
-  scope: Build_spec.scope;
-  profile: Riot_model.Profile.t;
-  host: Riot_model.Target.t;
-  toolchain_config: Riot_model.Toolchain_config.t;
-  parallelism: int;
+  build: Build_context.t;
   allow_partial_failures: bool;
   record_cache_generation: bool;
-  on_event: build_event -> unit;
 }
 
 let no_event: build_event -> unit = fun _ -> ()
 
-let emit_runtime_phase = fun context phase -> context.on_event (Event.Phase phase)
+let emit_runtime_phase = fun context phase -> context.build.on_event (Event.Phase phase)
 
 let emit_targets_resolved = fun context targets ->
   emit_runtime_phase context (Event.TargetsResolved { target_count = List.length targets })
@@ -54,8 +45,8 @@ let emit_runtime_starting = fun context -> emit_runtime_phase context Event.Runt
 let emit_runtime_started = fun context -> emit_runtime_phase context Event.RuntimeStarted
 
 let emit_target_build_started = fun context target ->
-  let host = Riot_model.Target.equal target context.host in
-  context.on_event (Event.BuildingTarget { target; host });
+  let host = Riot_model.Target.equal target context.build.host in
+  context.build.on_event (Event.BuildingTarget { target; host });
   emit_runtime_phase context (Event.TargetBuildStarted { target; host })
 
 let emit_target_build_finished = fun context ~target ~result_count ~had_partial_failure ->
@@ -116,18 +107,9 @@ let make_context = fun ~allow_partial_failures ?(record_cache_generation = true)
           InvalidRequestedParallelism requested)
   in
   Ok {
-    session_id = context.session_id;
-    workspace = context.workspace;
-    package_names = context.package_names;
-    targets = context.targets;
-    scope = context.scope;
-    profile = context.profile;
-    host = context.host;
-    toolchain_config = context.toolchain_config;
-    parallelism = context.parallelism;
+    build = context;
     allow_partial_failures;
     record_cache_generation;
-    on_event = context.on_event;
   }
 
 let ensure_toolchains_for_targets = fun context targets ->
@@ -135,7 +117,7 @@ let ensure_toolchains_for_targets = fun context targets ->
   let missing =
     List.filter targets
       ~fn:(fun target ->
-        match Riot_toolchain.check_toolchain_status ~version:context.toolchain_config.version ~target with
+        match Riot_toolchain.check_toolchain_status ~version:context.build.toolchain_config.version ~target with
         | Riot_toolchain.NotInstalled _
         | Riot_toolchain.Incomplete _ -> true
         | Riot_toolchain.Installed _ -> false)
@@ -144,8 +126,8 @@ let ensure_toolchains_for_targets = fun context targets ->
     | [] -> Ok ()
     | target :: rest -> (
         match Riot_toolchain.download_and_install_toolchain
-          context.toolchain_config.version
-          ~host:context.host
+          context.build.toolchain_config.version
+          ~host:context.build.host
           ~target with
         | Ok () -> loop rest
         | Error error -> Error (ToolchainInstallFailed { target; error })
@@ -160,7 +142,7 @@ let validate_target_toolchains = fun context targets ->
   let rec loop = function
     | [] -> Ok ()
     | target :: rest -> (
-        match Riot_toolchain.init_for_target ~config:context.toolchain_config ~target with
+        match Riot_toolchain.init_for_target ~config:context.build.toolchain_config ~target with
         | Ok _ -> loop rest
         | Error error -> Error (ToolchainInitializationFailed { target; error })
       )
@@ -219,20 +201,20 @@ let record_successful_build_cache_generation = fun context lane_results ->
     List.map
       lane_results
       ~fn:(fun (target, results) ->
-        generation_lane_of_results ~profile:context.profile.name ~target results)
+        generation_lane_of_results ~profile:context.build.profile.name ~target results)
   in
   let new_entries = List.map
     lane_results
-    ~fn:(fun (target, results) -> new_entries_of_results ~profile:context.profile.name ~target results)
+    ~fn:(fun (target, results) -> new_entries_of_results ~profile:context.build.profile.name ~target results)
   |> List.concat in
-  match Riot_store.Cache_gc.record_successful_build ~workspace:context.workspace ~lanes ~new_entries with
+  match Riot_store.Cache_gc.record_successful_build ~workspace:context.build.workspace ~lanes ~new_entries with
   | Ok _ -> Ok ()
   | Error _ -> Ok ()
 
 let new_entry_count_of_lane_results = fun context lane_results ->
   List.map
     lane_results
-    ~fn:(fun (target, results) -> new_entries_of_results ~profile:context.profile.name ~target results)
+    ~fn:(fun (target, results) -> new_entries_of_results ~profile:context.build.profile.name ~target results)
   |> List.concat
   |> List.length
 
@@ -263,16 +245,16 @@ let failed_results = fun results ->
 
 let prepare_lane = fun context ~toolchain target ->
   Build_lane.prepare
-    ~workspace:context.workspace
-    ~package_names:context.package_names
-    ~scope:context.scope
-    ~profile:context.profile
-    ~session_id:context.session_id
-    ~host:context.host
+    ~workspace:context.build.workspace
+    ~package_names:context.build.package_names
+    ~scope:context.build.scope
+    ~profile:context.build.profile
+    ~session_id:context.build.session_id
+    ~host:context.build.host
     ~target
     ~toolchain
-    ~toolchain_config:context.toolchain_config
-    ~parallelism:context.parallelism
+    ~toolchain_config:context.build.toolchain_config
+    ~parallelism:context.build.parallelism
 
 let map_lane_error = fun error ->
   UnexpectedError { reason = error }
@@ -285,7 +267,7 @@ let execute_lane = fun context lane ->
 
 let run_lanes = fun context ~toolchain ->
   let targets =
-    Riot_model.Target.Set.to_list context.targets
+    Riot_model.Target.Set.to_list context.build.targets
     |> List.sort ~compare:Riot_model.Target.compare
   in
   let rec prepare_lanes = function
@@ -302,7 +284,7 @@ let run_lanes = fun context ~toolchain ->
   let lanes = List.reverse lanes in
     let results =
       Build_scheduler.run
-        ~concurrency:context.parallelism
+        ~concurrency:context.build.parallelism
         ~tasks:lanes
         ~fn:(fun lane -> execute_lane context lane)
   in
@@ -364,13 +346,13 @@ let run_lanes = fun context ~toolchain ->
       Ok (lane_results, has_failures)
 
 let do_build = fun context ->
-  let targets = Riot_model.Target.Set.to_list context.targets in
+  let targets = Riot_model.Target.Set.to_list context.build.targets in
   emit_targets_resolved context targets;
-  let* () = ensure_toolchains_for_targets context context.targets in
-  let* () = validate_target_toolchains context context.targets in
+  let* () = ensure_toolchains_for_targets context context.build.targets in
+  let* () = validate_target_toolchains context context.build.targets in
   emit_runtime_starting context;
-  let* toolchain = Riot_toolchain.init ~config:context.toolchain_config
-  |> Result.map_err ~fn:(fun error -> ToolchainInitializationFailed { target = context.host; error }) in
+  let* toolchain = Riot_toolchain.init ~config:context.build.toolchain_config
+  |> Result.map_err ~fn:(fun error -> ToolchainInitializationFailed { target = context.build.host; error }) in
   emit_runtime_started context;
   let* (lane_results, had_partial_failure) = run_lanes context ~toolchain in
   let all_results =
