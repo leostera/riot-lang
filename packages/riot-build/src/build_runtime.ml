@@ -5,9 +5,6 @@ type build_error =
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
   | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
   | BuildFailed of { errors: Package_builder.build_result list }
-  | PlanningFailed of { reason: string }
-  | CycleDetected of { cycle_nodes: string list }
-  | BuildAlreadyRunning of { lock_path: Path.t }
   | UnexpectedError of { reason: string }
 
 type build_context = {
@@ -69,11 +66,6 @@ let error_message = function
           "build failed:\n"
           ^ String.concat "\n" (List.map failures ~fn:Build_result.failure_message)
     )
-  | PlanningFailed { reason } -> "planning failed: " ^ reason
-  | CycleDetected { cycle_nodes } ->
-      "cyclic dependency detected: " ^ String.concat " -> " cycle_nodes
-  | BuildAlreadyRunning { lock_path } ->
-      "another riot build is already running (" ^ Path.to_string lock_path ^ ")"
   | UnexpectedError { reason } -> reason
 
 let make_context = fun ~allow_partial_failures ?(record_cache_generation = true) build spec ->

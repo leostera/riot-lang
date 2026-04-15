@@ -88,15 +88,6 @@ let map_runtime_error = function
   | Build_runtime.BuildFailed { errors } -> BuildFailed {
     errors = Build_result.failures_of_build_results errors
   }
-  | Build_runtime.PlanningFailed { reason } -> PlanningFailed {
-    reason
-  }
-  | Build_runtime.CycleDetected { cycle_nodes } -> CycleDetected {
-    cycle_nodes
-  }
-  | Build_runtime.BuildAlreadyRunning { lock_path } -> BuildAlreadyRunning {
-    lock_path
-  }
   | Build_runtime.UnexpectedError { reason } -> UnexpectedError {
     reason
   }
