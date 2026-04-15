@@ -1,6 +1,6 @@
 format_version = 1
 
-dependency_hash = "e3c88a0ecbbb74d7"
+dependency_hash = "1056c2d5a5d63125"
 
 [[packages]]
 name = "raml"
@@ -184,6 +184,14 @@ root = "packages/minttea"
 provenance = { kind = "workspace" }
 dependencies = [{ name = "colors", package = { name = "colors" } }, { name = "gooey", package = { name = "gooey" } }, { name = "std", package = { name = "std" } }, { name = "tty", package = { name = "tty" } }]
 build_dependencies = [{ name = "std", package = { name = "std" } }]
+dev_dependencies = []
+
+[[packages]]
+name = "parquet"
+root = "packages/parquet"
+provenance = { kind = "workspace" }
+dependencies = [{ name = "std", package = { name = "std" } }]
+build_dependencies = []
 dev_dependencies = []
 
 [[packages]]

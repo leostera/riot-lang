@@ -25,6 +25,7 @@ members = [
   #"packages/actors",
   "packages/miniriot",
   "packages/minttea",
+  "packages/parquet",
   "packages/postgres",
   "packages/pretext",
   "packages/pkgs-ml",
