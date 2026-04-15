@@ -1,14 +1,5 @@
 # Changelog
 
-## 0.0.18 - 2026-04-10
-
-### Fixed
-
-- `riot init` now defaults to the current directory when no target path is provided.
-- `riot` now gives clearer guidance when commands are run outside a workspace.
-- `riot` surfaces a better hint when a package does not define a runnable binary.
-- Repaired the `miniriot` bootstrap dependency graph.
-
 ## 0.0.16 - 2026-04-10
 
 ### Added
