@@ -315,9 +315,16 @@ val build :
 - requested targets as `Target.request`
 - profile
 - scope
+- optional requested parallelism
 
 It should not contain strings that still need parsing. String targets and
 package names should be parsed at the CLI or command-package edge.
+
+Requested parallelism is user intent, not the machine limit. If the request
+does not specify it, Riot should default the request to the available
+parallelism discovered from the host. If the request asks for more workers than
+the host exposes, Riot clamps the effective worker budget to the available
+parallelism.
 
 ### Build context
 
@@ -331,6 +338,8 @@ type t = {
   host : Target.t;
   toolchain_config : Toolchain_config.t;
   available_parallelism : int;
+  requested_parallelism : int;
+  effective_parallelism : int;
   on_event : Event.t -> unit;
 }
 ```
@@ -338,6 +347,18 @@ type t = {
 This eliminates repeated calls for the same session id, host triple, workspace
 root, and concurrency budget. It also gives every event one source of timing
 and session identity.
+
+The three parallelism fields have distinct meanings:
+
+- `available_parallelism` is the host/runtime limit.
+- `requested_parallelism` is the user-requested worker count after applying the
+  default of `available_parallelism`.
+- `effective_parallelism` is the clamped budget that workers actually use:
+  `min available_parallelism requested_parallelism`.
+
+Scheduler code should use `effective_parallelism`. It should not independently
+read host parallelism, and it should not treat `requested_parallelism` as a
+guaranteed worker count.
 
 ### Resolved build intent
 
@@ -438,7 +459,7 @@ a target loop. Readiness determines what can run. The scheduler owns:
 - failed dependencies
 - package/lane state
 
-Workers consume ready work under one concurrency budget:
+Workers consume ready work under one effective concurrency budget:
 
 ```ocaml
 Scheduler.run :
@@ -448,7 +469,7 @@ Scheduler.run :
   (Lane_result.t list, error) result
 ```
 
-If `available_parallelism = 1`, there is one worker and the scheduler behaves
+If `effective_parallelism = 1`, there is one worker and the scheduler behaves
 serially. If it is `10`, there are at most ten workers across all planning and
 execution work. Riot should not independently create ten planning workers and
 ten action workers for the same build.
