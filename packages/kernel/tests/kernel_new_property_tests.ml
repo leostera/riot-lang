@@ -70,9 +70,12 @@ let wait_for = fun poll ~token ~interest ~source ~pred ->
           ())
         (fun () ->
           match Kernel.Async.Poll.poll ~timeout:100_000_000L poll with
-          | Kernel.Result.Error error -> fail (Kernel.Error.to_string (Kernel.Error.from_async error))
-          | Kernel.Result.Ok events -> List.any events ~fn:(fun event ->
-            Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event))
+          | Kernel.Result.Error error -> fail
+            (Kernel.Error.to_string (Kernel.Error.from_async error))
+          | Kernel.Result.Ok events -> List.any
+            events
+            ~fn:(fun event ->
+              Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event))
 
 let wait_readable = fun poll ~token source ->
   wait_for poll ~token ~interest:Kernel.Async.Interest.readable ~source ~pred:Kernel.Async.Event.is_readable
@@ -269,8 +272,9 @@ let hex_group = fun raw ->
 let ipv6_text = fun raw_groups ->
   let length = Kernel.Array.length raw_groups in
   let groups =
-    Kernel.Array.init ~count:8 ~fn:(fun index ->
-      hex_group (Kernel.Array.get_unchecked raw_groups ~at:(index mod length)))
+    Kernel.Array.init
+      ~count:8
+      ~fn:(fun index -> hex_group (Kernel.Array.get_unchecked raw_groups ~at:(index mod length)))
   in
   String.concat ":" (array_to_list groups)
 
@@ -285,10 +289,9 @@ let bounded_string_array_arb = fun ~min_count ~max_count ~min_len ~max_len ->
     (Generator.array_size (Generator.int_range min_count max_count) element_arb.gen)
     (Arbitrary.array element_arb)
 
-let simple_segment_arb =
-  Arbitrary.map_gen
-    (Generator.string_size (Generator.int_range 1 16) Generator.char_lowercase)
-    Arbitrary.string
+let simple_segment_arb = Arbitrary.map_gen
+  (Generator.string_size (Generator.int_range 1 16) Generator.char_lowercase)
+  Arbitrary.string
 
 let simple_segment_array_arb = fun ~min_count ~max_count ->
   Arbitrary.map_gen
@@ -382,7 +385,9 @@ let string_bytes_roundtrip =
       Kernel.String.equal (Kernel.String.from_bytes (Kernel.String.to_bytes value)) value)
 
 let path_join_preserves_segment_order =
-  property "Path.join preserves simple segment order" Arbitrary.(pair simple_segment_arb simple_segment_arb)
+  property
+    "Path.join preserves simple segment order"
+    Arbitrary.(pair simple_segment_arb simple_segment_arb)
     (fun (left, right) ->
       Kernel.Path.to_string (Kernel.Path.join left right)
       = format Format.[ str left; str "/"; str right ])
@@ -394,10 +399,11 @@ let path_fold_join_preserves_many_segment_order =
     (fun segments ->
       let values = array_to_list segments in
       let actual =
-        List.fold_left values ~acc:None ~fn:(fun acc part ->
-          match acc with
-          | None -> Some part
-          | Some path -> Some (Kernel.Path.join path part))
+        List.fold_left values ~acc:None
+          ~fn:(fun acc part ->
+            match acc with
+            | None -> Some part
+            | Some path -> Some (Kernel.Path.join path part))
       in
       match actual with
       | None -> false
@@ -622,8 +628,7 @@ let file_scalar_write_vectored_read_roundtrips =
                           | Kernel.Result.Ok read ->
                               let _ = Kernel.Fs.File.close input in
                               read = String.length payload
-                              && String.sub (Kernel.IO.Iovec.to_string iov) ~offset:0 ~len:read
-                              = payload
+                              && String.sub (Kernel.IO.Iovec.to_string iov) ~offset:0 ~len:read = payload
               with
               | error ->
                   let _ = Kernel.Fs.File.close file in
@@ -665,8 +670,7 @@ let file_scalar_and_vectored_partial_writes_agree =
                               (Kernel.Fs.File.error_to_string error)
                             | Kernel.Result.Ok read ->
                                 let _ = Kernel.Fs.File.close input in
-                                read = len
-                                && Kernel.Bytes.sub_string buffer ~offset:0 ~len:read = expected
+                                read = len && Kernel.Bytes.sub_string buffer ~offset:0 ~len:read = expected
                 with
                 | error ->
                     let _ = Kernel.Fs.File.close file in
@@ -696,8 +700,7 @@ let file_scalar_and_vectored_partial_writes_agree =
                               (Kernel.Fs.File.error_to_string error)
                             | Kernel.Result.Ok read ->
                                 let _ = Kernel.Fs.File.close input in
-                                read = len
-                                && Kernel.Bytes.sub_string buffer ~offset:0 ~len:read = expected
+                                read = len && Kernel.Bytes.sub_string buffer ~offset:0 ~len:read = expected
                 with
                 | error ->
                     let _ = Kernel.Fs.File.close file in
@@ -737,8 +740,7 @@ let file_scalar_and_vectored_partial_reads_agree =
                               (Kernel.Fs.File.error_to_string error)
                             | Kernel.Result.Ok read ->
                                 let _ = Kernel.Fs.File.close input in
-                                read = len
-                                && Kernel.Bytes.sub_string buffer ~offset:1 ~len = expected
+                                read = len && Kernel.Bytes.sub_string buffer ~offset:1 ~len = expected
                       in
                       let vectored_result =
                         match Kernel.Fs.File.open_read path with
@@ -752,8 +754,7 @@ let file_scalar_and_vectored_partial_reads_agree =
                             | Kernel.Result.Ok read ->
                                 let _ = Kernel.Fs.File.close input in
                                 read = len
-                                && String.sub (Kernel.IO.Iovec.to_string iov) ~offset:1 ~len
-                                = expected
+                                && String.sub (Kernel.IO.Iovec.to_string iov) ~offset:1 ~len = expected
                       in
                       scalar_result && vectored_result
               with
@@ -788,10 +789,7 @@ let tcp_loopback_roundtrips_small_payload =
                               let buffer = Kernel.Bytes.create ~size:(String.length payload) in
                               write_all_stream poll ~token:(Kernel.Async.Token.make 803) client bytes;
                               read_exact_stream poll ~token:(Kernel.Async.Token.make 804) server buffer;
-                              Kernel.Bytes.sub_string
-                                buffer
-                                ~offset:0
-                                ~len:(String.length payload)
+                              Kernel.Bytes.sub_string buffer ~offset:0 ~len:(String.length payload)
                               = payload)))))
 
 let tcp_vectored_loopback_roundtrips_small_payload =
@@ -837,8 +835,7 @@ let tcp_vectored_loopback_roundtrips_small_payload =
                                 server
                                 inbound
                                 ~len:total;
-                              String.sub (Kernel.IO.Iovec.to_string inbound) ~offset:0 ~len:total
-                              = payload)))))
+                              String.sub (Kernel.IO.Iovec.to_string inbound) ~offset:0 ~len:total = payload)))))
 
 let tcp_vectored_loopback_roundtrips_offset_receive_slices =
   property "Net.TcpStream loopback roundtrips vectored payloads into offset receive slices" (bounded_string_array_arb
@@ -878,8 +875,7 @@ let tcp_vectored_loopback_roundtrips_offset_receive_slices =
                                 server
                                 slice
                                 ~len:total;
-                              String.sub (Kernel.IO.Iovec.to_string inbound) ~offset:1 ~len:total
-                              = payload)))))
+                              String.sub (Kernel.IO.Iovec.to_string inbound) ~offset:1 ~len:total = payload)))))
 
 let udp_loopback_roundtrips_small_payload =
   property "Net.UdpSocket loopback preserves small datagrams" (bounded_string_arb
@@ -919,8 +915,7 @@ let udp_loopback_roundtrips_small_payload =
                                       server
                                       buffer in
                                     read = String.length payload
-                                    && Kernel.Bytes.sub_string buffer ~offset:0 ~len:read
-                                    = payload))))
+                                    && Kernel.Bytes.sub_string buffer ~offset:0 ~len:read = payload))))
 
 let tests = [
   iovec_into_string_roundtrips;

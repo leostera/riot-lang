@@ -3,6 +3,7 @@ name = "kernel"
 description = "Platform abstraction layer for Riot"
 version = "0.0.18"
 license = "Apache-2.0"
+public = true
 
 [riot.fix]
 rules = [ "-no-stdlib", "-no-positional-bool-parameters" ]

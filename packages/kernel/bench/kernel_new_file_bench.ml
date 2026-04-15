@@ -5,7 +5,9 @@ let panic_file = fun error ->
   Kernel.SystemError.panic (Kernel.Error.to_string (Kernel.Error.from_fs_file error))
 
 let with_tempdir = fun prefix fn ->
-  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.from_string (Path.to_string tempdir))) with
+  match Fs.with_tempdir
+    ~prefix
+    (fun tempdir -> fn (Kernel.Path.from_string (Path.to_string tempdir))) with
   | Ok value -> value
   | Error _ -> Kernel.SystemError.panic "failed to create temporary directory"
 
@@ -33,8 +35,7 @@ let scalar_payload = Kernel.Bytes.from_string (Kernel.String.make ~len:4_096 ~ch
 
 let vectored_payload =
   Kernel.IO.Iovec.from_string_array
-    (Kernel.Array.init ~count:4 ~fn:(fun _ ->
-       Kernel.String.make ~len:1_024 ~char:'x'))
+    (Kernel.Array.init ~count:4 ~fn:(fun _ -> Kernel.String.make ~len:1_024 ~char:'x'))
 
 let bench_scalar_write = fun () ->
   with_temp_path "kernel_new_file_bench" "scalar.bin"

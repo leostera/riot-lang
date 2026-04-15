@@ -20,21 +20,26 @@ let test_array_init_builds_in_index_order = fun _ctx ->
   let seen = Kernel.Array.make ~count:4 ~value:(-1) in
   let next = ref 0 in
   let built =
-    Kernel.Array.init ~count:4 ~fn:(fun index ->
+    Kernel.Array.init ~count:4
+      ~fn:(fun index ->
         Kernel.Array.set seen ~at:!next ~value:index;
         next := !next + 1;
         index * 2)
   in
   if
     !next = 4
-    && Kernel.Array.get_unchecked seen ~at:0 = 0
-    && Kernel.Array.get_unchecked seen ~at:1 = 1
-    && Kernel.Array.get_unchecked seen ~at:2 = 2
-    && Kernel.Array.get_unchecked seen ~at:3 = 3
-    && Kernel.Array.get_unchecked built ~at:0 = 0
-    && Kernel.Array.get_unchecked built ~at:1 = 2
-    && Kernel.Array.get_unchecked built ~at:2 = 4
-    && Kernel.Array.get_unchecked built ~at:3 = 6
+    && Kernel.Array.get_unchecked seen ~at:0
+    = 0
+    && Kernel.Array.get_unchecked seen ~at:1
+    = 1
+    && Kernel.Array.get_unchecked seen ~at:2
+    = 2
+    && Kernel.Array.get_unchecked seen ~at:3
+    = 3
+    && Kernel.Array.get_unchecked built ~at:0
+    = 0
+    && Kernel.Array.get_unchecked built ~at:1
+    = 2 && Kernel.Array.get_unchecked built ~at:2 = 4 && Kernel.Array.get_unchecked built ~at:3 = 6
   then
     Ok ()
   else
@@ -43,7 +48,8 @@ let test_array_init_builds_in_index_order = fun _ctx ->
 let test_option_map_leaves_none_unforced = fun _ctx ->
   let called = ref false in
   let value =
-    Kernel.Option.map None ~fn:(fun _ ->
+    Kernel.Option.map None
+      ~fn:(fun _ ->
         called := true;
         1)
   in
@@ -55,19 +61,17 @@ let test_option_map_leaves_none_unforced = fun _ctx ->
 let test_result_and_then_short_circuits_errors = fun _ctx ->
   let called = ref false in
   let value =
-    Kernel.Result.and_then (Kernel.Result.Error "boom") ~fn:(fun _ ->
-      called := true;
-      Kernel.Result.Ok 1)
+    Kernel.Result.and_then (Kernel.Result.Error "boom")
+      ~fn:(fun _ ->
+        called := true;
+        Kernel.Result.Ok 1)
   in
   match value with
   | Kernel.Result.Error "boom" when not !called -> Ok ()
   | _ -> Error "expected Result.and_then to leave Error untouched and skip the next step"
 
 let test_bool_not_flips_both_branches = fun _ctx ->
-  if
-    Kernel.Bool.not true = false
-    && Kernel.Bool.not false = true
-  then
+  if Kernel.Bool.not true = false && Kernel.Bool.not false = true then
     Ok ()
   else
     Error "expected Bool.not to invert both boolean branches"
@@ -132,10 +136,11 @@ let test_string_make_fills_every_slot = fun _ctx ->
   let value = Kernel.String.make ~len:4 ~char:'x' in
   if
     Kernel.String.length value = 4
-    && Kernel.String.get_unchecked value ~at:0 = 'x'
-    && Kernel.String.get_unchecked value ~at:1 = 'x'
-    && Kernel.String.get_unchecked value ~at:2 = 'x'
-    && Kernel.String.get_unchecked value ~at:3 = 'x'
+    && Kernel.String.get_unchecked value ~at:0
+    = 'x'
+    && Kernel.String.get_unchecked value ~at:1
+    = 'x'
+    && Kernel.String.get_unchecked value ~at:2 = 'x' && Kernel.String.get_unchecked value ~at:3 = 'x'
   then
     Ok ()
   else
@@ -145,9 +150,10 @@ let test_string_append_preserves_embedded_nul_bytes = fun _ctx ->
   let value = Kernel.String.append "a\000" "b" in
   if
     Kernel.String.length value = 3
-    && Kernel.String.get_unchecked value ~at:0 = 'a'
-    && Kernel.String.get_unchecked value ~at:1 = '\000'
-    && Kernel.String.get_unchecked value ~at:2 = 'b'
+    && Kernel.String.get_unchecked value ~at:0
+    = 'a'
+    && Kernel.String.get_unchecked value ~at:1
+    = '\000' && Kernel.String.get_unchecked value ~at:2 = 'b'
   then
     Ok ()
   else
@@ -245,8 +251,10 @@ let test_iovec_iter_reports_left_to_right_segment_metadata = fun _ctx ->
   let third = Kernel.Bytes.from_string "cde" in
   let iov = Kernel.IO.Iovec.from_bytes_array [|first; second; third|] in
   let seen = ref [] in
-  Kernel.IO.Iovec.for_each iov ~fn:(fun segment ->
-    seen := (segment.offset, segment.length, Kernel.Bytes.length segment.buffer) :: !seen);
+  Kernel.IO.Iovec.for_each
+    iov
+    ~fn:(fun segment ->
+      seen := (segment.offset, segment.length, Kernel.Bytes.length segment.buffer) :: !seen);
   if List.reverse !seen = [ (0, 2, 2); (0, 0, 0); (0, 3, 3) ] then
     Ok ()
   else

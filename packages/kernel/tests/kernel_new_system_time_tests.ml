@@ -13,7 +13,8 @@ let lift_system_time result =
 let lift_monotonic result =
   match result with
   | Kernel.Result.Ok value -> Ok value
-  | Kernel.Result.Error error -> Error (Kernel.Error.to_string (Kernel.Error.from_time_monotonic error))
+  | Kernel.Result.Error error -> Error (Kernel.Error.to_string
+    (Kernel.Error.from_time_monotonic error))
 
 let lift_timer result =
   match result with
@@ -53,18 +54,22 @@ let wait_for_timer = fun poll ~token timer ->
     (fun () ->
       let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll) in
       if
-        List.any events ~fn:(fun event ->
-          Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
-          && Kernel.Async.Event.is_readable event)
+        List.any
+          events
+          ~fn:(fun event ->
+            Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
+            && Kernel.Async.Event.is_readable event)
       then
         Ok ()
       else
         Error "expected timer source to wake the poller")
 
 let has_readable_token = fun token events ->
-  List.any events ~fn:(fun event ->
-    Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
-    && Kernel.Async.Event.is_readable event)
+  List.any
+    events
+    ~fn:(fun event ->
+      Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
+      && Kernel.Async.Event.is_readable event)
 
 let wait_for_readable_token = fun poll ~token ->
   let rec loop attempts =
@@ -264,9 +269,11 @@ let test_timer_every_ns_repeats = fun _ctx ->
               let* events = lift_async
                 (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll) in
               if
-                List.any events ~fn:(fun event ->
-                  Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
-                  && Kernel.Async.Event.is_readable event)
+                List.any
+                  events
+                  ~fn:(fun event ->
+                    Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
+                    && Kernel.Async.Event.is_readable event)
               then
                 poll_twice (remaining - 1)
               else

@@ -25,7 +25,9 @@ let protect = fun ~finally fn ->
       raise error
 
 let with_tempdir = fun prefix fn ->
-  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.from_string (Path.to_string tempdir))) with
+  match Fs.with_tempdir
+    ~prefix
+    (fun tempdir -> fn (Kernel.Path.from_string (Path.to_string tempdir))) with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
@@ -128,13 +130,16 @@ let test_read_entry_reports_entry_kinds = fun _ctx ->
             | Some entry ->
                 let saw_dir =
                   saw_dir
-                  || (Kernel.String.equal (Kernel.Path.to_string entry.path) "nested" && entry.kind = Kernel.Fs.ReadDir.Directory) in
+                  || (Kernel.String.equal (Kernel.Path.to_string entry.path) "nested"
+                  && entry.kind = Kernel.Fs.ReadDir.Directory) in
                 let saw_file =
                   saw_file
-                  || (Kernel.String.equal (Kernel.Path.to_string entry.path) "alpha.txt" && entry.kind = Kernel.Fs.ReadDir.RegularFile) in
+                  || (Kernel.String.equal (Kernel.Path.to_string entry.path) "alpha.txt"
+                  && entry.kind = Kernel.Fs.ReadDir.RegularFile) in
                 let saw_link =
                   saw_link
-                  || (Kernel.String.equal (Kernel.Path.to_string entry.path) "alpha.link" && entry.kind = Kernel.Fs.ReadDir.SymbolicLink) in
+                  || (Kernel.String.equal (Kernel.Path.to_string entry.path) "alpha.link"
+                  && entry.kind = Kernel.Fs.ReadDir.SymbolicLink) in
                 loop saw_dir saw_file saw_link
           in
           protect

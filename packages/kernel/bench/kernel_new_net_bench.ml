@@ -70,8 +70,9 @@ let wait_for = fun poll ~token ~interest ~source ~pred ->
     (fun () ->
       let events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
       let found =
-        List.any events ~fn:(fun event ->
-          Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
+        List.any
+          events
+          ~fn:(fun event -> Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
       in
       if not found then
         Kernel.SystemError.panic "expected readiness event")
@@ -528,7 +529,10 @@ let bench_udp_connected_peer_filtered_roundtrip = fun () ->
                   let _ = lift_udp (Kernel.Net.UdpSocket.connect server client_addr) in
                   let _ = lift_udp (Kernel.Net.UdpSocket.connect client server_addr) in
                   let _ = lift_udp
-                    (Kernel.Net.UdpSocket.send_to other server_addr (Kernel.Bytes.from_string "rogue")) in
+                    (Kernel.Net.UdpSocket.send_to
+                      other
+                      server_addr
+                      (Kernel.Bytes.from_string "rogue")) in
                   let ignored = Kernel.Bytes.create ~size:32 in
                   (
                     match Kernel.Net.UdpSocket.recv server ignored with
@@ -537,10 +541,12 @@ let bench_udp_connected_peer_filtered_roundtrip = fun () ->
                           panic_udp error
                     | Kernel.Result.Ok _ -> Kernel.SystemError.panic "expected connected udp bench to ignore foreign datagrams"
                   );
-                  let _ = lift_udp (Kernel.Net.UdpSocket.send client (Kernel.Bytes.from_string "ping")) in
+                  let _ = lift_udp
+                    (Kernel.Net.UdpSocket.send client (Kernel.Bytes.from_string "ping")) in
                   let server_buf = Kernel.Bytes.create ~size:32 in
                   let _ = recv_udp poll ~token:(Kernel.Async.Token.make 424) server server_buf in
-                  let _ = lift_udp (Kernel.Net.UdpSocket.send server (Kernel.Bytes.from_string "pong")) in
+                  let _ = lift_udp
+                    (Kernel.Net.UdpSocket.send server (Kernel.Bytes.from_string "pong")) in
                   let client_buf = Kernel.Bytes.create ~size:32 in
                   let _ = recv_udp poll ~token:(Kernel.Async.Token.make 425) client client_buf in
                   ()))))

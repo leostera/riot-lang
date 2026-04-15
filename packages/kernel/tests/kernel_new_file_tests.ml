@@ -20,7 +20,9 @@ let protect = fun ~finally fn ->
       raise error
 
 let with_tempdir = fun prefix fn ->
-  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.from_string (Path.to_string tempdir))) with
+  match Fs.with_tempdir
+    ~prefix
+    (fun tempdir -> fn (Kernel.Path.from_string (Path.to_string tempdir))) with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
@@ -161,12 +163,16 @@ let test_create_dir_and_read_dir_names = fun _ctx ->
       in
       let* names = lift (Kernel.Fs.File.read_dir_names tempdir) in
       let has_child =
-        Kernel.Array.fold_left names ~acc:false ~fn:(fun found name ->
-          found || Kernel.String.equal name "child")
+        Kernel.Array.fold_left
+          names
+          ~acc:false
+          ~fn:(fun found name -> found || Kernel.String.equal name "child")
       in
       let has_file =
-        Kernel.Array.fold_left names ~acc:false ~fn:(fun found name ->
-          found || Kernel.String.equal name "alpha.txt")
+        Kernel.Array.fold_left
+          names
+          ~acc:false
+          ~fn:(fun found name -> found || Kernel.String.equal name "alpha.txt")
       in
       let* metadata = lift (Kernel.Fs.File.metadata child_dir) in
       if has_child && has_file && Kernel.Fs.File.Metadata.is_dir metadata then
@@ -471,9 +477,7 @@ let test_read_vectored_roundtrips = fun _ctx ->
             Ok (read, Kernel.IO.Iovec.to_string iov))
       in
       let read, contents = actual in
-      let prefix =
-        Kernel.Bytes.sub_string (Kernel.Bytes.from_string contents) ~offset:0 ~len:read
-      in
+      let prefix = Kernel.Bytes.sub_string (Kernel.Bytes.from_string contents) ~offset:0 ~len:read in
       if read = Kernel.Bytes.length payload && Kernel.String.equal prefix "hello vectored read" then
         Ok ()
       else
@@ -1188,7 +1192,8 @@ let test_read_vectored_ignores_zero_length_segments = fun _ctx ->
 let test_write_vectored_zero_total_length_is_a_no_op = fun _ctx ->
   with_temp_path "kernel_new_file" "write-vectored-zero.txt"
     (fun path ->
-      let iov = Kernel.IO.Iovec.from_bytes_array [|Kernel.Bytes.create ~size:0; Kernel.Bytes.create ~size:0|] in
+      let iov = Kernel.IO.Iovec.from_bytes_array
+        [|Kernel.Bytes.create ~size:0; Kernel.Bytes.create ~size:0|] in
       let* file = lift (Kernel.Fs.File.open_write path) in
       let* written =
         with_file file (fun () -> lift (Kernel.Fs.File.write_vectored file iov))
@@ -1321,7 +1326,10 @@ let test_copy_preserves_large_payloads_beyond_the_internal_chunk_size = fun _ctx
         if index = Kernel.Bytes.length payload then
           ()
         else (
-          Kernel.Bytes.set_unchecked payload ~at:index ~char:(Kernel.Char.from_int_unchecked (65 + (index mod 26)));
+          Kernel.Bytes.set_unchecked
+            payload
+            ~at:index
+            ~char:(Kernel.Char.from_int_unchecked (65 + (index mod 26)));
           fill (index + 1)
         )
       in
@@ -1371,8 +1379,7 @@ let test_copy_preserves_source_permissions = fun _ctx ->
       let* source_metadata = lift (Kernel.Fs.File.metadata source) in
       let* destination_metadata = lift (Kernel.Fs.File.metadata destination) in
       if
-        Kernel.Fs.File.Metadata.permissions source_metadata
-        = Kernel.Fs.File.Metadata.permissions destination_metadata
+        Kernel.Fs.File.Metadata.permissions source_metadata = Kernel.Fs.File.Metadata.permissions destination_metadata
       then
         Ok ()
       else

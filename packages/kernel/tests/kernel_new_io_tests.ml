@@ -130,8 +130,10 @@ let test_stdin_source_register_and_deregister = fun _ctx ->
           let* _events = lift_async (Kernel.Async.Poll.poll ~timeout:0L poll) in
           let* () = lift_async (Kernel.Async.Poll.deregister poll source) in
           Ok ()
-      | Kernel.Result.Error (Kernel.Async.System Kernel.SystemError.InvalidArgument) -> Ok ()
-      | Kernel.Result.Error error -> Error (Kernel.Async.error_to_string error))
+      | Kernel.Result.Error (Kernel.Async.System Kernel.SystemError.InvalidArgument) ->
+          Ok ()
+      | Kernel.Result.Error error ->
+          Error (Kernel.Async.error_to_string error))
 
 let test_stdout_source_register_and_deregister = fun _ctx ->
   with_poll

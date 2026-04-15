@@ -61,7 +61,8 @@ let read_entry = fun dir ->
     | None -> Result.Ok None
     | Some name ->
         let path = Path.from_string name in
-        let* metadata = File.symlink_metadata Path.(dir.root / path) |> Result.map_err ~fn:(fun error -> File error) in
+        let* metadata = File.symlink_metadata Path.(dir.root / path)
+        |> Result.map_err ~fn:(fun error -> File error) in
         Result.Ok (Some { path; kind = File.Metadata.file_type metadata })
 
 let close = fun dir ->

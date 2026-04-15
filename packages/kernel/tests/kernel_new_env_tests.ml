@@ -20,12 +20,13 @@ let protect = fun ~finally fn ->
       raise error
 
 let vars_contain = fun entries ~name ?value () ->
-  Kernel.Array.fold_left entries ~acc:false ~fn:(fun found (entry_name, entry_value) ->
-    found || (
-      Kernel.String.equal entry_name name && match value with
-      | None -> true
-      | Some value -> Kernel.String.equal entry_value value
-    ))
+  Kernel.Array.fold_left entries ~acc:false
+    ~fn:(fun found (entry_name, entry_value) ->
+      found || (
+        Kernel.String.equal entry_name name && match value with
+        | None -> true
+        | Some value -> Kernel.String.equal entry_value value
+      ))
 
 let test_args_include_program_name = fun _ctx ->
   if Kernel.Array.length Kernel.Env.args > 0 then
@@ -44,9 +45,12 @@ let test_set_get_and_remove_var_roundtrip = fun _ctx ->
       let* () = lift (Kernel.Env.set ~var:name ~value:"kernel-new") in
       let value = Kernel.Env.get ~var:name in
       let found =
-        Kernel.Array.fold_left (Kernel.Env.vars ()) ~acc:false ~fn:(fun found (entry_name, entry_value) ->
-          found
-          || (Kernel.String.equal entry_name name && Kernel.String.equal entry_value "kernel-new"))
+        Kernel.Array.fold_left
+          (Kernel.Env.vars ())
+          ~acc:false
+          ~fn:(fun found (entry_name, entry_value) ->
+            found
+            || (Kernel.String.equal entry_name name && Kernel.String.equal entry_value "kernel-new"))
       in
       let* () = lift (Kernel.Env.remove ~var:name) in
       if value = Some "kernel-new" && found && Kernel.Env.get ~var:name = None then
@@ -125,7 +129,9 @@ let test_invalid_var_name_is_rejected = fun _ctx ->
   | _ -> Error "expected invalid env variable names to be rejected in kernel-new"
 
 let with_tempdir = fun prefix fn ->
-  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.from_string (Path.to_string tempdir))) with
+  match Fs.with_tempdir
+    ~prefix
+    (fun tempdir -> fn (Kernel.Path.from_string (Path.to_string tempdir))) with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 

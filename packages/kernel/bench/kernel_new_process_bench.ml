@@ -81,8 +81,9 @@ let wait_for = fun poll ~token ~interest ~source ~pred ->
     (fun () ->
       let events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
       let found =
-        List.any events ~fn:(fun event ->
-          Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
+        List.any
+          events
+          ~fn:(fun event -> Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
       in
       if not found then
         Kernel.SystemError.panic "expected readiness event")
@@ -158,8 +159,7 @@ let bench_spawn_true = fun () ->
           ~args:[||]
           ~stdio:Kernel.Process.default_stdio
           ()) in
-      with_process
-        process
+      with_process process
         (fun process ->
           let _ = wait_for_exit poll ~token:(Kernel.Async.Token.make 610) process in
           ()))

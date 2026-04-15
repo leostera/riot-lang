@@ -2,8 +2,7 @@ open Std
 module Kernel = Kernel
 
 let build_iovec = fun segments segment_size ->
-  Kernel.Array.init ~count:segments ~fn:(fun _ ->
-      Kernel.String.make ~len:segment_size ~char:'x')
+  Kernel.Array.init ~count:segments ~fn:(fun _ -> Kernel.String.make ~len:segment_size ~char:'x')
   |> Kernel.IO.Iovec.from_string_array
 
 let bench_into_string = fun segments segment_size () ->

@@ -1,8 +1,11 @@
 type t = float
 
-let max_float = 1.797_693_134_862_315_71e+308
+external float_of_bits: int64 -> float
+  = "caml_int64_float_of_bits" "caml_int64_float_of_bits_unboxed" [@@unboxed] [@@noalloc]
 
-let min_float = 2.225_073_858_507_201_38e-308
+let max_float = float_of_bits 0x7fef_ffff_ffff_ffffL
+
+let min_float = float_of_bits 0x0010_0000_0000_0000L
 
 let infinity = Caml_runtime.div_float 1.0 0.0
 

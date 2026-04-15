@@ -35,7 +35,9 @@ let protect = fun ~finally fn ->
       raise error
 
 let with_tempdir = fun prefix fn ->
-  match Fs.with_tempdir ~prefix (fun tempdir -> fn (Kernel.Path.from_string (Path.to_string tempdir))) with
+  match Fs.with_tempdir
+    ~prefix
+    (fun tempdir -> fn (Kernel.Path.from_string (Path.to_string tempdir))) with
   | Ok result -> result
   | Error err -> Error (IO.error_message err)
 
@@ -77,8 +79,9 @@ let wait_for = fun poll ~token ~interest ~source ~pred ->
     (fun () ->
       let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
       let found =
-        List.any events ~fn:(fun event ->
-          Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
+        List.any
+          events
+          ~fn:(fun event -> Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
       in
       if found then
         Ok ()
@@ -110,8 +113,7 @@ let read_all = fun poll ~token file ->
   let rec loop parts =
     match Kernel.Fs.File.read file buffer with
     | Kernel.Result.Ok 0 -> Ok (Kernel.String.concat "" (List.reverse parts))
-    | Kernel.Result.Ok count ->
-        loop (Kernel.Bytes.sub_string buffer ~offset:0 ~len:count :: parts)
+    | Kernel.Result.Ok count -> loop (Kernel.Bytes.sub_string buffer ~offset:0 ~len:count :: parts)
     | Kernel.Result.Error error ->
         if is_would_block error then
           let* () = wait_readable poll ~token (Kernel.Fs.File.to_source file) in
@@ -168,9 +170,11 @@ let wait_for_priority_token = fun poll ~token ->
     else
       let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L ~max_events:8 poll) in
       if
-        List.any events ~fn:(fun event ->
-          Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
-          && Kernel.Async.Event.is_priority event)
+        List.any
+          events
+          ~fn:(fun event ->
+            Kernel.Async.Token.equal token (Kernel.Async.Event.token event)
+            && Kernel.Async.Event.is_priority event)
       then
         Ok ()
       else

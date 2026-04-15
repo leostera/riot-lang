@@ -12,7 +12,8 @@ let string_of_tcp_listener_error = fun error ->
 let string_of_tcp_stream_error = fun error ->
   Kernel.Error.to_string (Kernel.Error.from_net_tcp_stream error)
 
-let string_of_udp_error = fun error -> Kernel.Error.to_string (Kernel.Error.from_net_udp_socket error)
+let string_of_udp_error = fun error ->
+  Kernel.Error.to_string (Kernel.Error.from_net_udp_socket error)
 
 let lift_async result =
   match result with
@@ -98,8 +99,9 @@ let wait_for = fun poll ~token ~interest ~source ~pred ->
     (fun () ->
       let* events = lift_async (Kernel.Async.Poll.poll ~timeout:100_000_000L poll) in
       let found =
-        List.any events ~fn:(fun event ->
-          Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
+        List.any
+          events
+          ~fn:(fun event -> Kernel.Async.Token.equal token (Kernel.Async.Event.token event) && pred event)
       in
       if found then
         Ok ()
@@ -113,9 +115,11 @@ let wait_writable = fun poll ~token source ->
   wait_for poll ~token ~interest:Kernel.Async.Interest.writable ~source ~pred:Kernel.Async.Event.is_writable
 
 let has_readable_token = fun token events ->
-  List.any events ~fn:(fun event ->
-    Kernel.Async.Event.is_readable event
-    && Kernel.Async.Token.equal token (Kernel.Async.Event.token event))
+  List.any
+    events
+    ~fn:(fun event ->
+      Kernel.Async.Event.is_readable event
+      && Kernel.Async.Token.equal token (Kernel.Async.Event.token event))
 
 let rec write_all_stream = fun poll ~token stream buffer ~pos ~len ->
   if len = 0 then
@@ -406,9 +410,7 @@ let test_tcp_vectored_burst_roundtrip_preserves_order = fun _ctx ->
             inbound
             ~pos:0
             ~len:total in
-          read_many
-            (remaining - 1)
-            (Kernel.Bytes.sub_string inbound ~offset:0 ~len:total :: acc)
+          read_many (remaining - 1) (Kernel.Bytes.sub_string inbound ~offset:0 ~len:total :: acc)
       in
       let* () = write_many 8 in
       let* actual = read_many 8 [] in
@@ -862,9 +864,7 @@ let test_udp_socket_send_to_and_recv_from = fun _ctx ->
                 if
                   read != 4
                   || not
-                    (Kernel.String.equal
-                      (Kernel.Bytes.sub_string server_buf ~offset:0 ~len:read)
-                      "ping")
+                    (Kernel.String.equal (Kernel.Bytes.sub_string server_buf ~offset:0 ~len:read) "ping")
                   || Kernel.Net.SocketAddr.port from != Kernel.Net.SocketAddr.port client_addr
                 then
                   Error "expected udp recv_from to preserve sender and payload"
@@ -922,9 +922,11 @@ let test_udp_connected_socket_ignores_other_peers = fun _ctx ->
                       else
                         let* events = lift_async (Kernel.Async.Poll.poll ~timeout:1_000_000L poll) in
                         let server_ready =
-                          List.any events ~fn:(fun event ->
-                            Kernel.Async.Event.is_readable event
-                            && Kernel.Async.Token.equal token (Kernel.Async.Event.token event))
+                          List.any
+                            events
+                            ~fn:(fun event ->
+                              Kernel.Async.Event.is_readable event
+                              && Kernel.Async.Token.equal token (Kernel.Async.Event.token event))
                         in
                         let buffer = Kernel.Bytes.create ~size:32 in
                         match Kernel.Net.UdpSocket.recv server buffer with
@@ -1337,9 +1339,7 @@ let test_udp_socket_ipv6_send_to_and_recv_from = fun _ctx ->
                 let* (read, from) = recv_from_udp poll ~token:(Kernel.Async.Token.make 314) server buffer in
                 if
                   read = 4
-                  && Kernel.String.equal
-                    (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read)
-                    "ipv6"
+                  && Kernel.String.equal (Kernel.Bytes.sub_string buffer ~offset:0 ~len:read) "ipv6"
                   && Kernel.String.equal
                     (Kernel.Net.IpAddr.to_string (Kernel.Net.SocketAddr.ip from))
                     "::1"

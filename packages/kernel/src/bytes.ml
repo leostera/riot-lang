@@ -21,8 +21,7 @@ let get_unchecked = fun value ~at ->
 let set_unchecked = fun value ~at ~char ->
   Caml_runtime.bytes_set value at char
 
-let unsafe_set = fun value index char ->
-  set_unchecked value ~at:index ~char
+let unsafe_set = fun value index char -> set_unchecked value ~at:index ~char
 
 let set = fun value ~at ~char ->
   if at < 0 || at >= length value then
