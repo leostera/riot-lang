@@ -4,6 +4,8 @@
 
 # Before Announcing
 
+* Std.Test.serial to run certain tests serially
+
 * Std.String <- actual zero-copy string views with .sub, could we make this copy-on-write ?
 
 * ~acc -> ~init or ffolds
