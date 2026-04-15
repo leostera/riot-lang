@@ -10,12 +10,12 @@ let of_build_runtime_event = fun (event: Build_runtime.build_event) ->
       Some (Event.CacheGc event)
   | Build_runtime.Phase phase ->
       Some (Event.Phase phase)
-  | Build_runtime.Streaming (Client.BuildEvent _) ->
+  | Build_runtime.Streaming (Build_session.BuildEvent _) ->
       None
   | Build_runtime.Streaming
-      (Client.BuildStarted _
-      | Client.BuildCompleted _
-      | Client.BuildFailed _
-      | Client.PlanningFailed _
-      | Client.CycleDetected _) ->
+      (Build_session.BuildStarted _
+      | Build_session.BuildCompleted _
+      | Build_session.BuildFailed _
+      | Build_session.PlanningFailed _
+      | Build_session.CycleDetected _) ->
       None

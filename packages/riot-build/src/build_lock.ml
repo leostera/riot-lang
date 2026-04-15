@@ -1,16 +1,16 @@
 open Std
 
-type t = Client.BuildLock.t = {
+type t = Build_session.BuildLock.t = {
   path: Path.t;
   file: Fs.File.t;
 }
 
-let retry_interval = Client.BuildLock.retry_interval
+let retry_interval = Build_session.BuildLock.retry_interval
 
-let path = Client.BuildLock.path
+let path = Build_session.BuildLock.path
 
-let release = Client.BuildLock.release
+let release = Build_session.BuildLock.release
 
-let wait = Client.BuildLock.wait
+let wait = Build_session.BuildLock.wait
 
-let acquire = Client.BuildLock.acquire
+let acquire = Build_session.BuildLock.acquire

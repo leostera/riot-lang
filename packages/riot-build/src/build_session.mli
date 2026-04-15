@@ -2,7 +2,7 @@ open Std
 open Riot_model
 
 type t = {
-  runtime_pid: Pid.t;
+  session_pid: Pid.t;
   target_dir_root: Path.t;
 }
 type build_stats = {
@@ -14,7 +14,7 @@ type build_stats = {
   cache_misses: int;
 }
 type error =
-  | StartupFailed of { error: Internal_server.error }
+  | StartupFailed of { error: Build_session_runtime.error }
   | PackageNotFound of {
       package_name: Riot_model.Package_name.t;
       available_packages: Riot_model.Package_name.t list

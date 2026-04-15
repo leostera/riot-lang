@@ -1,8 +1,10 @@
 open Std
 open Riot_model
 
+module Session_protocol = Build_session_protocol
+
 type t = {
-  runtime_pid: Pid.t;
+  session_pid: Pid.t;
   target_dir_root: Path.t;
 }
 
@@ -16,7 +18,7 @@ type build_stats = {
 }
 
 type error =
-  | StartupFailed of { error: Internal_server.error }
+  | StartupFailed of { error: Build_session_runtime.error }
   | PackageNotFound of {
       package_name: Package_name.t;
       available_packages: Package_name.t list
@@ -63,7 +65,7 @@ let no_emit: Riot_model.Event.kind -> unit = fun _ -> ()
 
 let error_message = function
   | StartupFailed { error } ->
-      Internal_server.error_message error
+      Build_session_runtime.error_message error
   | PackageNotFound { package_name; _ } ->
       format Format.[ str "Package '"; str (Package_name.to_string package_name); str "' not found" ]
   | PackagesNotFound { package_names; _ } ->
@@ -117,24 +119,24 @@ let error_message = function
       reason
 
 let start = fun ~workspace () ->
-  match Internal_server.start
+  match Build_session_runtime.start
     ~workspace
-    ~config:Server_config.default
+    ~config:Build_session_config.default
     () with
-  | Ok runtime_pid -> Ok { runtime_pid; target_dir_root = workspace.target_dir_root }
+  | Ok session_pid -> Ok { session_pid; target_dir_root = workspace.target_dir_root }
   | Error err -> Error (StartupFailed { error = err })
 
 let close = fun _t -> ()
 
-let send_request = fun t request -> send t.runtime_pid (Protocol.ServerRequest request)
+let send_request = fun t request -> send t.session_pid (Session_protocol.RequestMessage request)
 
 let receive_response = fun ~selector -> receive ~selector ()
 
 let scan_workspace = fun t ~current_dir ->
-  send_request t (Protocol.ScanWorkspace { client_pid = self (); current_dir });
+  send_request t (Session_protocol.ScanWorkspace { reply_to = self (); current_dir });
   let selector msg =
     match msg with
-    | Protocol.ServerResponse Protocol.WorkspaceScanned -> `select (Ok ())
+    | Session_protocol.ResponseMessage Session_protocol.WorkspaceScanned -> `select (Ok ())
     | _ -> `skip
   in
   receive_response ~selector
@@ -267,14 +269,14 @@ module BuildLock = struct
               raise exn
 end
 
-let convert_build_stats: Protocol.BuildStats.t -> build_stats = fun stats ->
+let convert_build_stats: Session_protocol.BuildStats.t -> build_stats = fun stats ->
   {
-    duration_ms = Int.from_float (Protocol.BuildStats.get_build_duration stats *. 1000.0);
-    packages_built = Protocol.BuildStats.get_packages_built stats;
-    packages_failed = Protocol.BuildStats.get_packages_failed stats;
-    total_modules = Protocol.BuildStats.get_total_modules stats;
-    cache_hits = Protocol.BuildStats.get_cache_hits stats;
-    cache_misses = Protocol.BuildStats.get_cache_misses stats;
+    duration_ms = Int.from_float (Session_protocol.BuildStats.get_build_duration stats *. 1000.0);
+    packages_built = Session_protocol.BuildStats.get_packages_built stats;
+    packages_failed = Session_protocol.BuildStats.get_packages_failed stats;
+    total_modules = Session_protocol.BuildStats.get_total_modules stats;
+    cache_hits = Session_protocol.BuildStats.get_cache_hits stats;
+    cache_misses = Session_protocol.BuildStats.get_cache_misses stats;
   }
 
 let same_session = fun left right -> Session_id.to_string left = Session_id.to_string right
@@ -282,7 +284,7 @@ let same_session = fun left right -> Session_id.to_string left = Session_id.to_s
 let elapsed_us_since = fun started_at ->
   Time.Instant.elapsed started_at |> Time.Duration.to_micros
 
-let trace_client = fun ~started_at message ->
+let trace_build_session = fun ~started_at message ->
   let _ = started_at in
   let _ = message in
   ()
@@ -290,39 +292,39 @@ let trace_client = fun ~started_at message ->
 let rec handle_streaming_events = fun t ~started_at session_id callback ->
   let selector msg =
     match msg with
-    | Protocol.ServerResponse (Protocol.BuildEvent { session_id=event_session_id; event }) -> `select (`BuildEvent (
+    | Session_protocol.ResponseMessage (Session_protocol.BuildEvent { session_id=event_session_id; event }) -> `select (`BuildEvent (
       event_session_id,
       event
     ))
-    | Protocol.ServerResponse (Protocol.BuildCompleted {
+    | Session_protocol.ResponseMessage (Session_protocol.BuildCompleted {
       session_id=event_session_id;
       completed_at;
       stats;
       results
     }) -> `select (`BuildCompleted (event_session_id, completed_at, stats, results))
-    | Protocol.ServerResponse (Protocol.BuildFailed {
+    | Session_protocol.ResponseMessage (Session_protocol.BuildFailed {
       session_id=event_session_id;
       failed_at;
       stats;
       built;
       errors
     }) -> `select (`BuildFailed (event_session_id, failed_at, stats, built, errors))
-    | Protocol.ServerResponse (Protocol.PlanningFailed {
+    | Session_protocol.ResponseMessage (Session_protocol.PlanningFailed {
       session_id=event_session_id;
       failed_at;
       reason
     }) -> `select (`PlanningFailed (event_session_id, failed_at, reason))
-    | Protocol.ServerResponse (Protocol.CycleDetected {
+    | Session_protocol.ResponseMessage (Session_protocol.CycleDetected {
       session_id=event_session_id;
       detected_at;
       cycle_nodes
     }) -> `select (`CycleDetected (event_session_id, detected_at, cycle_nodes))
-    | Protocol.ServerResponse (Protocol.PackageNotFound {
+    | Session_protocol.ResponseMessage (Session_protocol.PackageNotFound {
       session_id=event_session_id;
       package_name;
       available_packages
     }) -> `select (`PackageNotFound (event_session_id, package_name, available_packages))
-    | Protocol.ServerResponse (Protocol.PackagesNotFound {
+    | Session_protocol.ResponseMessage (Session_protocol.PackagesNotFound {
       session_id=event_session_id;
       package_names;
       available_packages
@@ -337,7 +339,7 @@ let rec handle_streaming_events = fun t ~started_at session_id callback ->
   | `BuildCompleted (event_session_id, completed_at, stats, results) ->
       if same_session session_id event_session_id then
         let () =
-          trace_client
+          trace_build_session
             ~started_at
             ("build-completed-received results=" ^ Int.to_string (List.length results))
         in
@@ -348,7 +350,7 @@ let rec handle_streaming_events = fun t ~started_at session_id callback ->
           results
         } in
         callback final_event;
-        let () = trace_client ~started_at "build-completed-callback-done" in
+        let () = trace_build_session ~started_at "build-completed-callback-done" in
         Ok final_event
       else
         handle_streaming_events t ~started_at session_id callback
@@ -402,21 +404,21 @@ let build_streaming = fun t target ?(scope = Runtime) ?(profile = "debug") ?targ
     (fun () ->
       let request_target =
         match target with
-        | BuildPackage package -> Protocol.Package package
-        | BuildPackages packages -> Protocol.Packages packages
-        | BuildAll -> Protocol.All
+        | BuildPackage package -> Session_protocol.Package package
+        | BuildPackages packages -> Session_protocol.Packages packages
+        | BuildAll -> Session_protocol.All
       in
       let session_id = Session_id.make () in
       send_request t
         (
-          Protocol.Build {
-            client_pid = self ();
+          Session_protocol.Build {
+            reply_to = self ();
             target = request_target;
             scope =
               (
                 match scope with
-                | Runtime -> Protocol.Runtime
-                | Dev -> Protocol.Dev
+                | Runtime -> Session_protocol.Runtime
+                | Dev -> Session_protocol.Dev
               );
             profile;
             target_arch;
@@ -425,11 +427,11 @@ let build_streaming = fun t target ?(scope = Runtime) ?(profile = "debug") ?targ
         );
       let selector msg =
         match msg with
-        | Protocol.ServerResponse (Protocol.BuildStarted {
+        | Session_protocol.ResponseMessage (Session_protocol.BuildStarted {
           session_id=started_session_id;
           started_at=_
         }) when same_session session_id started_session_id -> `select (Ok started_session_id)
-        | Protocol.ServerResponse (Protocol.PackageNotFound {
+        | Session_protocol.ResponseMessage (Session_protocol.PackageNotFound {
           session_id=event_session_id;
           package_name;
           available_packages
@@ -437,7 +439,7 @@ let build_streaming = fun t target ?(scope = Runtime) ?(profile = "debug") ?targ
           package_name;
           available_packages
         }))
-        | Protocol.ServerResponse (Protocol.PackagesNotFound {
+        | Session_protocol.ResponseMessage (Session_protocol.PackagesNotFound {
           session_id=event_session_id;
           package_names;
           available_packages
@@ -451,29 +453,29 @@ let build_streaming = fun t target ?(scope = Runtime) ?(profile = "debug") ?targ
       | Ok started_session_id ->
           callback (BuildStarted started_session_id);
           let result = handle_streaming_events t ~started_at started_session_id callback in
-          let () = trace_client ~started_at "handle-streaming-events-returned" in
+          let () = trace_build_session ~started_at "handle-streaming-events-returned" in
           result
       | Error err -> Error err)
 
 let find_executable = fun t name ->
-  send_request t (Protocol.FindExecutable { client_pid = self (); name });
+  send_request t (Session_protocol.FindExecutable { reply_to = self (); name });
   let selector msg =
     match msg with
-    | Protocol.ServerResponse (Protocol.ExecutableFound { package; binary }) -> `select (Ok (Some (
+    | Session_protocol.ResponseMessage (Session_protocol.ExecutableFound { package; binary }) -> `select (Ok (Some (
       package,
       binary
     )))
-    | Protocol.ServerResponse Protocol.ExecutableNotFound -> `select (Ok None)
+    | Session_protocol.ResponseMessage Session_protocol.ExecutableNotFound -> `select (Ok None)
     | _ -> `skip
   in
   receive_response ~selector
 
 let new_package = fun t ~path ~name ~is_library ->
-  send_request t (Protocol.NewPackage { client_pid = self (); path; name; is_library });
+  send_request t (Session_protocol.NewPackage { reply_to = self (); path; name; is_library });
   let selector msg =
     match msg with
-    | Protocol.ServerResponse (Protocol.PackageCreated { path; name }) -> `select (Ok (path, name))
-    | Protocol.ServerResponse (Protocol.PackageCreationError { error }) -> `select (Error error)
+    | Session_protocol.ResponseMessage (Session_protocol.PackageCreated { path; name }) -> `select (Ok (path, name))
+    | Session_protocol.ResponseMessage (Session_protocol.PackageCreationError { error }) -> `select (Error error)
     | _ -> `skip
   in
   receive_response ~selector

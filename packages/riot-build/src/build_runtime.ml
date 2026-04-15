@@ -6,12 +6,12 @@ type build_event =
   | BuildingTarget of { target: Riot_model.Target.t; host: bool }
   | CacheGc of Riot_store.Cache_gc.event
   | Phase of Event.runtime_phase
-  | Streaming of Client.streaming_event
+  | Streaming of Build_session.streaming_event
 
 type build_error =
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
   | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
-  | ClientError of Client.error
+  | BuildSessionError of Build_session.error
 
 type build_context = {
   session_id: Riot_model.Session_id.t;
@@ -22,8 +22,8 @@ type build_context = {
   profile: Riot_model.Profile.t;
   host: Riot_model.Target.t;
   toolchain_config: Riot_model.Toolchain_config.t;
-  request_target: Client.build_target;
-  client_scope: Client.build_scope;
+  session_target: Build_session.build_target;
+  session_scope: Build_session.build_scope;
   allow_partial_failures: bool;
   record_cache_generation: bool;
   on_event: build_event -> unit;
@@ -81,18 +81,18 @@ let error_message = function
       ^ Riot_model.Target.to_string target
       ^ ": "
       ^ error
-  | ClientError err ->
-      Client.error_message err
+  | BuildSessionError err ->
+      Build_session.error_message err
 
-let client_scope = function
-  | Build_spec.Runtime -> Client.Runtime
-  | Build_spec.Dev -> Client.Dev
+let session_scope = function
+  | Build_spec.Runtime -> Build_session.Runtime
+  | Build_spec.Dev -> Build_session.Dev
 
-let client_target = fun package_names ->
+let session_target = fun package_names ->
   match package_names with
-  | [] -> Client.BuildAll
-  | [ package_name ] -> Client.BuildPackage package_name
-  | packages -> Client.BuildPackages packages
+  | [] -> Build_session.BuildAll
+  | [ package_name ] -> Build_session.BuildPackage package_name
+  | packages -> Build_session.BuildPackages packages
 
 let make_context = fun ~allow_partial_failures ?(record_cache_generation = true) ?(on_event = no_event) spec ->
   let session_id = Riot_model.Session_id.make () in
@@ -108,8 +108,8 @@ let make_context = fun ~allow_partial_failures ?(record_cache_generation = true)
     profile = Build_spec.profile spec;
     host;
     toolchain_config;
-    request_target = client_target (Build_spec.package_names spec);
-    client_scope = client_scope (Build_spec.scope spec);
+    session_target = session_target (Build_spec.package_names spec);
+    session_scope = session_scope (Build_spec.scope spec);
     allow_partial_failures;
     record_cache_generation;
     on_event;
@@ -163,14 +163,14 @@ let validate_target_toolchains = fun context targets ->
   emit_toolchains_validated context targets;
   Ok ()
 
-let start_runtime = fun context ->
+let start_build_session = fun context ->
   emit_runtime_starting context;
-  let* client =
-    Client.start ~workspace:context.workspace ()
-    |> Result.map_err ~fn:(fun err -> ClientError err)
+  let* session =
+    Build_session.start ~workspace:context.workspace ()
+    |> Result.map_err ~fn:(fun err -> BuildSessionError err)
   in
   emit_runtime_started context;
-  Ok client
+  Ok session
 
 let sort_uniq_strings = fun values ->
   let rec dedupe acc = function
@@ -266,7 +266,7 @@ let record_cache_generation_if_needed = fun context lane_results had_partial_fai
   ) else
     Ok ()
 
-let build_loop = fun context client ->
+let build_loop = fun context session ->
   let targets = Riot_model.Target.Set.to_list context.targets in
   let rec loop acc had_partial_failure = function
     | [] -> Ok (List.reverse acc, had_partial_failure)
@@ -281,27 +281,27 @@ let build_loop = fun context client ->
         let lane_results = ref None in
         let lane_failed = ref false in
         match
-          Client.build_streaming
-            client
-            context.request_target
-            ~scope:context.client_scope
+          Build_session.build_streaming
+            session
+            context.session_target
+            ~scope:context.session_scope
             ~profile:context.profile.name
             ?target_arch
             (fun event ->
               (match event with
-              | Client.BuildCompleted { results; _ } ->
+              | Build_session.BuildCompleted { results; _ } ->
                   lane_results := Some results
-              | Client.BuildFailed { built; errors; _ } ->
+              | Build_session.BuildFailed { built; errors; _ } ->
                   lane_failed := true;
                   lane_results := Some (built @ errors)
-              | Client.BuildStarted _
-              | Client.BuildEvent _
-              | Client.PlanningFailed _
-              | Client.CycleDetected _ ->
+              | Build_session.BuildStarted _
+              | Build_session.BuildEvent _
+              | Build_session.PlanningFailed _
+              | Build_session.CycleDetected _ ->
                   ());
               context.on_event (Streaming event))
         with
-        | Ok (Client.BuildCompleted { results; _ }) ->
+        | Ok (Build_session.BuildCompleted { results; _ }) ->
             emit_target_build_finished
               context
               ~target
@@ -330,9 +330,9 @@ let build_loop = fun context client ->
                   ~had_partial_failure:true;
                 loop ((target, results) :: acc) true rest
             | None ->
-                Error (ClientError err))
+                Error (BuildSessionError err))
         | Error err ->
-            Error (ClientError err)
+            Error (BuildSessionError err)
   in
   loop [] false targets
 
@@ -341,9 +341,9 @@ let do_build = fun context ->
   emit_targets_resolved context targets;
   let* () = ensure_toolchains_for_targets context context.targets in
   let* () = validate_target_toolchains context context.targets in
-  let* client = start_runtime context in
+  let* session = start_build_session context in
   let result =
-    let* (lane_results, had_partial_failure) = build_loop context client in
+    let* (lane_results, had_partial_failure) = build_loop context session in
     let all_results =
       List.map lane_results ~fn:(fun (_, results) -> results) |> List.concat
     in
@@ -359,7 +359,7 @@ let do_build = fun context ->
       ~had_partial_failure;
     Ok all_results
   in
-  Client.close client;
+  Build_session.close session;
   result
 
 let execute = fun ?(allow_partial_failures = false) ?(record_cache_generation = true) ?(on_event = no_event) spec ->

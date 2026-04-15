@@ -10,6 +10,6 @@ val start:
   ?registry:Pkgs_ml.Registry.t ->
   ?registry_name:string ->
   workspace:Riot_model.Workspace.t ->
-  config:Server_config.t ->
+  config:Build_session_config.t ->
   unit ->
   (Pid.t, error) result

@@ -3,6 +3,8 @@ open Std
 open Riot_model
 open Riot_executor
 
+module Session_protocol = Build_session_protocol
+
 (* Build workers only report build progress and results back to the local
    session. *)
 
@@ -15,7 +17,7 @@ let resolve_profile = fun ~(workspace:Workspace.t) profile_name ->
   in
   Profile.apply_overrides base_profile workspace.profile_overrides
 
-let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~session_id ~client_pid ~runtime_pid ~target ~scope ~profile_name ~target_arch ->
+let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~session_id ~reply_to ~session_runtime_pid ~target ~scope ~profile_name ~target_arch ->
   Log.debug
     (
       "Build worker started for session " ^ Session_id.to_string session_id ^ (
@@ -25,17 +27,17 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
       )
     );
   send
-    client_pid
-    (Protocol.ServerResponse (Protocol.BuildStarted { session_id; started_at = DateTime.now () }));
-  let stats = Protocol.BuildStats.make () in
-  Protocol.BuildStats.mark_started stats;
+    reply_to
+    (Session_protocol.ResponseMessage (Session_protocol.BuildStarted { session_id; started_at = DateTime.now () }));
+  let stats = Session_protocol.BuildStats.make () in
+  Session_protocol.BuildStats.mark_started stats;
   let handler_name = "build-worker-" ^ Session_id.to_string session_id in
   Telemetry.attach handler_name
     (fun event ->
       (
         match event with
-        | Riot_executor.Telemetry_events.CacheHit _ -> Protocol.BuildStats.inc_action_cache_hits stats
-        | Riot_executor.Telemetry_events.CacheMiss _ -> Protocol.BuildStats.inc_action_cache_misses stats
+        | Riot_executor.Telemetry_events.CacheHit _ -> Session_protocol.BuildStats.inc_action_cache_hits stats
+        | Riot_executor.Telemetry_events.CacheMiss _ -> Session_protocol.BuildStats.inc_action_cache_misses stats
         | _ -> ()
       );
       (* Filter events by session_id to prevent cross-contamination *)
@@ -72,16 +74,16 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
       in
       match event_session_id with
       | Some event_sid when Session_id.to_string event_sid = Session_id.to_string session_id -> send
-        client_pid
-        (Protocol.ServerResponse (Protocol.BuildEvent { session_id; event }))
+        reply_to
+        (Session_protocol.ResponseMessage (Session_protocol.BuildEvent { session_id; event }))
       | _ ->
           (* Skip events from other sessions or non-build events *)
           ());
   let planner_target =
     match target with
-    | Protocol.All -> Riot_planner.Workspace_planner.All
-    | Protocol.Package name -> Riot_planner.Workspace_planner.Package name
-    | Protocol.Packages names -> Riot_planner.Workspace_planner.Packages names
+    | Session_protocol.All -> Riot_planner.Workspace_planner.All
+    | Session_protocol.Package name -> Riot_planner.Workspace_planner.Package name
+    | Session_protocol.Packages names -> Riot_planner.Workspace_planner.Packages names
   in
   (* Check for package load errors first *)
   if List.length load_errors > 0 then
@@ -90,8 +92,8 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
       |> List.map ~fn:Workspace_manager.load_error_to_string
       |> String.concat "\n" in
       send
-        client_pid
-        (Protocol.ServerResponse (Protocol.PlanningFailed {
+        reply_to
+        (Session_protocol.ResponseMessage (Session_protocol.PlanningFailed {
           session_id;
           failed_at = DateTime.now ();
           reason = "Could not load external packages:\n" ^ error_msg
@@ -177,31 +179,31 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
       Coordinator.build_workspace ~workspace ~toolchain ~store ~target:planner_target
         ~scope:(
           match scope with
-          | Protocol.Runtime -> Riot_planner.Package_graph.Runtime
-          | Protocol.Dev -> Riot_planner.Package_graph.Dev
+          | Session_protocol.Runtime -> Riot_planner.Package_graph.Runtime
+          | Session_protocol.Dev -> Riot_planner.Package_graph.Dev
         )
         ~concurrency
         ~build_ctx
         ~session_id
     in
-    Log.debug "Build worker finished, sending result to client";
+    Log.debug "Build worker finished, sending result to build session";
     match result with
     | Ok workspace_result ->
-        Protocol.BuildStats.set_total_modules stats (List.length workspace_result.results);
+        Session_protocol.BuildStats.set_total_modules stats (List.length workspace_result.results);
         List.for_each
           workspace_result.results
           ~fn:(fun (result: Package_builder.build_result) ->
             match result.status with
             | Package_builder.Built _ ->
-                Protocol.BuildStats.inc_packages_built stats;
-                Protocol.BuildStats.inc_cache_misses stats
+                Session_protocol.BuildStats.inc_packages_built stats;
+                Session_protocol.BuildStats.inc_cache_misses stats
             | Package_builder.Cached _ ->
-                Protocol.BuildStats.inc_cache_hits stats
+                Session_protocol.BuildStats.inc_cache_hits stats
             | Package_builder.Skipped _ ->
                 ()
             | Package_builder.Failed _ ->
-                Protocol.BuildStats.inc_packages_failed stats);
-        Protocol.BuildStats.mark_completed stats;
+                Session_protocol.BuildStats.inc_packages_failed stats);
+        Session_protocol.BuildStats.mark_completed stats;
         if workspace_result.failed_count > 0 then
           (
             let errors =
@@ -224,10 +226,10 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                   | Package_builder.Built _
                   | Package_builder.Cached _ -> true)
             in
-            send client_pid
+            send reply_to
               (
-                Protocol.ServerResponse (
-                  Protocol.BuildFailed {
+                Session_protocol.ResponseMessage (
+                  Session_protocol.BuildFailed {
                     session_id;
                     failed_at = DateTime.now ();
                     stats;
@@ -236,19 +238,19 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                   }
                 )
               );
-            (* Keep the server's canonical graph runtime-shaped. *)
+            (* Keep the session runtime's canonical graph runtime-shaped. *)
             (
               match scope with
-              | Protocol.Runtime -> send
-                runtime_pid
-                (Protocol.UpdatePackageGraph workspace_result.package_graph)
-              | Protocol.Dev -> ()
+              | Session_protocol.Runtime -> send
+                session_runtime_pid
+                (Session_protocol.PackageGraphUpdated workspace_result.package_graph)
+              | Session_protocol.Dev -> ()
             )
           )
         else (
           send
-            client_pid
-            (Protocol.ServerResponse (Protocol.BuildCompleted {
+            reply_to
+            (Session_protocol.ResponseMessage (Session_protocol.BuildCompleted {
               session_id;
               completed_at = DateTime.now ();
               stats;
@@ -256,34 +258,34 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
             }));
           (
             match scope with
-            | Protocol.Runtime -> send
-              runtime_pid
-              (Protocol.UpdatePackageGraph workspace_result.package_graph)
-            | Protocol.Dev -> ()
+            | Session_protocol.Runtime -> send
+              session_runtime_pid
+              (Session_protocol.PackageGraphUpdated workspace_result.package_graph)
+            | Session_protocol.Dev -> ()
           )
         )
     | Error err -> (
         match err with
         | Riot_planner.Workspace_planner.PackageNotFound { name; available } ->
             send
-              client_pid
-              (Protocol.ServerResponse (Protocol.PackageNotFound {
+              reply_to
+              (Session_protocol.ResponseMessage (Session_protocol.PackageNotFound {
                 session_id;
                 package_name = name;
                 available_packages = available
               }))
         | Riot_planner.Workspace_planner.PackagesNotFound { names; available } ->
             send
-              client_pid
-              (Protocol.ServerResponse (Protocol.PackagesNotFound {
+              reply_to
+              (Session_protocol.ResponseMessage (Session_protocol.PackagesNotFound {
                 session_id;
                 package_names = names;
                 available_packages = available
               }))
         | Riot_planner.Workspace_planner.CycleDetected { cycle } ->
             send
-              client_pid
-              (Protocol.ServerResponse (Protocol.CycleDetected {
+              reply_to
+              (Session_protocol.ResponseMessage (Session_protocol.CycleDetected {
                 session_id;
                 cycle_nodes = cycle;
                 detected_at = DateTime.now ()
@@ -313,8 +315,8 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
                 "  • " ^ pkg ^ " requires: " ^ String.concat ", " (List.reverse deps))
             |> String.concat "\n" in
             send
-              client_pid
-              (Protocol.ServerResponse (Protocol.PlanningFailed {
+              reply_to
+              (Session_protocol.ResponseMessage (Session_protocol.PlanningFailed {
                 session_id;
                 failed_at = DateTime.now ();
                 reason = "Missing dependencies:\n" ^ error_msg
@@ -327,8 +329,8 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
             |> List.map ~fn:Workspace_manager.load_error_to_string
             |> String.concat "\n  " in
             send
-              client_pid
-              (Protocol.ServerResponse (Protocol.PlanningFailed {
+              reply_to
+              (Session_protocol.ResponseMessage (Session_protocol.PlanningFailed {
                 session_id;
                 failed_at = DateTime.now ();
                 reason = "Could not load external packages:\n  " ^ error_msg
@@ -340,7 +342,7 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
   Ok ()
 
 (** Start a build in a spawned worker process *)
-let start = fun ~workspace ~load_errors ~toolchain ~concurrency ~session_id ~client_pid ~runtime_pid ~target ~scope ~profile ~target_arch ->
+let start = fun ~workspace ~load_errors ~toolchain ~concurrency ~session_id ~reply_to ~session_runtime_pid ~target ~scope ~profile ~target_arch ->
   let _ =
     spawn
       (fun () ->
@@ -350,8 +352,8 @@ let start = fun ~workspace ~load_errors ~toolchain ~concurrency ~session_id ~cli
           ~toolchain
           ~concurrency
           ~session_id
-          ~client_pid
-          ~runtime_pid
+          ~reply_to
+          ~session_runtime_pid
           ~target
           ~scope
           ~profile_name:profile

@@ -75,32 +75,32 @@ module BuildStats = struct
   let get_action_cache_misses = fun t -> t.action_cache_misses
 end
 
-(** Request types that can be sent to the server *)
+(** Request types exchanged inside the local build session. *)
 type request =
   | Build of {
-      client_pid: Pid.t;
+      reply_to: Pid.t;
       target: target;
       scope: build_scope;
       profile: string;
       target_arch: Riot_model.Target.t option;
       session_id: Session_id.t
     }
-  | Ping of { client_pid: Pid.t }
-  | ScanWorkspace of { client_pid: Pid.t; current_dir: Path.t }
-  | GetWorkspaceConfig of { client_pid: Pid.t }
-  | GetPackageInfo of { client_pid: Pid.t; package_name: Package_name.t }
-  | GetPackageGraph of { client_pid: Pid.t }
-  | FindExecutable of { client_pid: Pid.t; name: string }
-  | FormatFile of { client_pid: Pid.t; file_path: Path.t; check_only: bool }
-  | FormatCode of { client_pid: Pid.t; code: string; file_path: Path.t option }
-  | FormatAll of { client_pid: Pid.t; mode: 
+  | Ping of { reply_to: Pid.t }
+  | ScanWorkspace of { reply_to: Pid.t; current_dir: Path.t }
+  | GetWorkspaceConfig of { reply_to: Pid.t }
+  | GetPackageInfo of { reply_to: Pid.t; package_name: Package_name.t }
+  | GetPackageGraph of { reply_to: Pid.t }
+  | FindExecutable of { reply_to: Pid.t; name: string }
+  | FormatFile of { reply_to: Pid.t; file_path: Path.t; check_only: bool }
+  | FormatCode of { reply_to: Pid.t; code: string; file_path: Path.t option }
+  | FormatAll of { reply_to: Pid.t; mode: 
         [
           `check
           | `write
         ] }
-  | NewPackage of { client_pid: Pid.t; path: Path.t; name: Package_name.t; is_library: bool }
+  | NewPackage of { reply_to: Pid.t; path: Path.t; name: Package_name.t; is_library: bool }
 
-(** Response types from the server *)
+(** Response types emitted by the local build session. *)
 type response =
   | Pong
   | WorkspaceScanned
@@ -146,8 +146,8 @@ type response =
       available_packages: Package_name.t list
     }
 
-(** Message types for server communication *)
+(** Message types for local build-session communication. *)
 type Message.t +=
-  | ServerRequest of request
-  | ServerResponse of response
-  | UpdatePackageGraph of Riot_planner.Package_graph.t
+  | RequestMessage of request
+  | ResponseMessage of response
+  | PackageGraphUpdated of Riot_planner.Package_graph.t

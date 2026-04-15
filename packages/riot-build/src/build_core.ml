@@ -46,13 +46,13 @@ let error_message = function
       ^ ": "
       ^ error
   | BuildFailed { errors } ->
-      Client.error_message (Client.BuildFailed { errors })
+      Build_session.error_message (Build_session.BuildFailed { errors })
   | PlanningFailed { reason } ->
-      Client.error_message (Client.PlanningFailed { reason })
+      Build_session.error_message (Build_session.PlanningFailed { reason })
   | CycleDetected { cycle_nodes } ->
-      Client.error_message (Client.CycleDetected { cycle_nodes })
+      Build_session.error_message (Build_session.CycleDetected { cycle_nodes })
   | BuildAlreadyRunning { lock_path } ->
-      Client.error_message (Client.BuildAlreadyRunning { lock_path })
+      Build_session.error_message (Build_session.BuildAlreadyRunning { lock_path })
   | SessionStartFailed { reason }
   | UnexpectedError { reason } ->
       reason
@@ -128,21 +128,21 @@ let map_runtime_error = function
       ToolchainInstallFailed { target; error }
   | Build_runtime.ToolchainInitializationFailed { target; error } ->
       ToolchainInitializationFailed { target; error }
-  | Build_runtime.ClientError (Client.PackageNotFound { package_name; available_packages }) ->
+  | Build_runtime.BuildSessionError (Build_session.PackageNotFound { package_name; available_packages }) ->
       PackageNotFound { package_name; available_packages }
-  | Build_runtime.ClientError (Client.PackagesNotFound { package_names; available_packages }) ->
+  | Build_runtime.BuildSessionError (Build_session.PackagesNotFound { package_names; available_packages }) ->
       PackagesNotFound { package_names; available_packages }
-  | Build_runtime.ClientError (Client.BuildFailed { errors }) ->
+  | Build_runtime.BuildSessionError (Build_session.BuildFailed { errors }) ->
       BuildFailed { errors }
-  | Build_runtime.ClientError (Client.PlanningFailed { reason }) ->
+  | Build_runtime.BuildSessionError (Build_session.PlanningFailed { reason }) ->
       PlanningFailed { reason }
-  | Build_runtime.ClientError (Client.CycleDetected { cycle_nodes }) ->
+  | Build_runtime.BuildSessionError (Build_session.CycleDetected { cycle_nodes }) ->
       CycleDetected { cycle_nodes }
-  | Build_runtime.ClientError (Client.BuildAlreadyRunning { lock_path }) ->
+  | Build_runtime.BuildSessionError (Build_session.BuildAlreadyRunning { lock_path }) ->
       BuildAlreadyRunning { lock_path }
-  | Build_runtime.ClientError (Client.StartupFailed { error }) ->
-      SessionStartFailed { reason = Internal_server.error_message error }
-  | Build_runtime.ClientError (Client.UnexpectedEvent { reason }) ->
+  | Build_runtime.BuildSessionError (Build_session.StartupFailed { error }) ->
+      SessionStartFailed { reason = Build_session_runtime.error_message error }
+  | Build_runtime.BuildSessionError (Build_session.UnexpectedEvent { reason }) ->
       UnexpectedError { reason }
 
 let execute_raw = fun ?(allow_partial_failures = false) ?(record_cache_generation = true) ?on_event spec ->

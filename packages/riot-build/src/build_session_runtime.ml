@@ -1,7 +1,9 @@
-(** Internal server - Main server loop for handling requests *)
+(** Local build-session runtime loop. *)
 open Std
 open Riot_model
 open Std.Result.Syntax
+
+module Session_protocol = Build_session_protocol
 
 type error =
   | RegistryInitializationFailed of { registry_name: string; error: string }
@@ -16,7 +18,7 @@ let error_message = function
   | WorkspacePreparationFailed { error } -> Riot_model.Pm_error.message error
   | UnexpectedException { error } -> error
 
-type server_state = {
+type session_state = {
   workspace: Workspace.t;
   workspace_manager: Workspace_manager.t;
   toolchain: Riot_toolchain.t;
@@ -32,29 +34,29 @@ let default_registry_name = "pkgs.ml"
 
 let no_emit: Riot_model.Event.kind -> unit = fun _ -> ()
 
-let server_trace_enabled = fun () ->
+let session_trace_enabled = fun () ->
   match Env.get Env.String ~var:"RIOT_SERVER_TRACE" with
   | Some ("1" | "true" | "yes") -> true
   | _ -> false
 
-let trace_server = fun message ->
-  if server_trace_enabled () then
+let trace_session_runtime = fun message ->
+  if session_trace_enabled () then
     eprintln ("[riot-build] " ^ message)
   else
     ()
 
 let resolve_registry = fun ?registry ?(registry_name = default_registry_name) () ->
-  trace_server ("resolve_registry name=" ^ registry_name);
+  trace_session_runtime ("resolve_registry name=" ^ registry_name);
   match registry with
   | Some registry ->
-      trace_server "resolve_registry using provided registry";
+      trace_session_runtime "resolve_registry using provided registry";
       Ok registry
   | None ->
-      trace_server "resolve_registry creating filesystem registry";
+      trace_session_runtime "resolve_registry creating filesystem registry";
       Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name ()
 
 let prepare_workspace = fun ?(emit = no_emit) ~workspace_manager ~(registry:Pkgs_ml.Registry.t) ~(workspace:Workspace_manifest.t) () ->
-  trace_server
+  trace_session_runtime
     ("prepare_workspace root="
     ^ Path.to_string workspace.root
     ^ " packages="
@@ -85,7 +87,7 @@ let ensure_runtime_package_graph = fun state ->
           Log.warn ("  " ^ package ^ " requires: " ^ dependency));
         state
 
-let build_state = fun ~(workspace:Workspace.t) ~workspace_manager ~load_errors ~(registry:Pkgs_ml.Registry.t) ~(config:Server_config.t) ->
+let build_state = fun ~(workspace:Workspace.t) ~workspace_manager ~load_errors ~(registry:Pkgs_ml.Registry.t) ~(config:Build_session_config.t) ->
   let _ = config in
   if List.length load_errors > 0 then
     (
@@ -116,70 +118,70 @@ let build_state = fun ~(workspace:Workspace.t) ~workspace_manager ~load_errors ~
     registry;
   }
 
-(** Main server loop - handle all incoming requests *)
+(** Main build-session loop. *)
 let rec loop = fun state ->
   let selector msg =
     match msg with
-    | Protocol.ServerRequest req -> `select (`Request req)
-    | Protocol.UpdatePackageGraph pg -> `select (`UpdateGraph pg)
+    | Session_protocol.RequestMessage req -> `select (`Request req)
+    | Session_protocol.PackageGraphUpdated pg -> `select (`UpdateGraph pg)
     | _ -> `skip
   in
-  Log.info "[INTERNAL_SERVER] Server loop ready, awaiting next request...";
+  Log.info "[BUILD_SESSION_RUNTIME] Loop ready, awaiting next request...";
   match receive ~selector () with
   | `UpdateGraph package_graph ->
-      Log.info "[INTERNAL_SERVER] Received updated package graph from build worker";
+      Log.info "[BUILD_SESSION_RUNTIME] Received updated package graph from build worker";
       loop { state with package_graph; load_errors = [] }
-  | `Request (Protocol.Ping { client_pid }) ->
-      Log.debug "Server loop received: Ping";
-      handle_ping state client_pid
-  | `Request (Protocol.Build {
-    client_pid;
+  | `Request (Session_protocol.Ping { reply_to }) ->
+      Log.debug "Build session loop received: Ping";
+      handle_ping state reply_to
+  | `Request (Session_protocol.Build {
+    reply_to;
     target;
     scope;
     profile;
     target_arch;
     session_id
   }) ->
-      Log.debug "Server loop received: Build";
-      handle_build state client_pid target scope profile target_arch session_id
-  | `Request (Protocol.ScanWorkspace { client_pid; current_dir }) ->
-      Log.debug "Server loop received: ScanWorkspace";
-      handle_scan_workspace state client_pid current_dir
-  | `Request (Protocol.GetWorkspaceConfig { client_pid }) ->
-      Log.debug "Server loop received: GetWorkspaceConfig";
-      handle_get_workspace_config state client_pid
-  | `Request (Protocol.GetPackageInfo { client_pid; package_name }) ->
-      Log.debug "Server loop received: GetPackageInfo";
-      handle_get_package_info state client_pid package_name
-  | `Request (Protocol.GetPackageGraph { client_pid }) ->
-      Log.debug "Server loop received: GetPackageGraph";
-      handle_get_package_graph state client_pid
-  | `Request (Protocol.FindExecutable { client_pid; name }) ->
-      Log.debug ("Server loop received: FindExecutable(" ^ name ^ ")");
-      handle_find_executable state client_pid name
-  | `Request (Protocol.FormatFile { client_pid; file_path; check_only }) ->
-      Log.debug "Server loop received: FormatFile";
-      handle_format_file state client_pid file_path check_only
-  | `Request (Protocol.FormatCode { client_pid; code; file_path }) ->
-      Log.debug "Server loop received: FormatCode";
-      handle_format_code state client_pid code file_path
-  | `Request (Protocol.FormatAll { client_pid; mode }) ->
-      Log.debug "Server loop received: FormatAll";
-      handle_format_all state client_pid mode
-  | `Request (Protocol.NewPackage { client_pid; path; name; is_library }) ->
-      Log.debug "Server loop received: NewPackage";
-      handle_new_package state client_pid path name is_library
+      Log.debug "Build session loop received: Build";
+      handle_build state reply_to target scope profile target_arch session_id
+  | `Request (Session_protocol.ScanWorkspace { reply_to; current_dir }) ->
+      Log.debug "Build session loop received: ScanWorkspace";
+      handle_scan_workspace state reply_to current_dir
+  | `Request (Session_protocol.GetWorkspaceConfig { reply_to }) ->
+      Log.debug "Build session loop received: GetWorkspaceConfig";
+      handle_get_workspace_config state reply_to
+  | `Request (Session_protocol.GetPackageInfo { reply_to; package_name }) ->
+      Log.debug "Build session loop received: GetPackageInfo";
+      handle_get_package_info state reply_to package_name
+  | `Request (Session_protocol.GetPackageGraph { reply_to }) ->
+      Log.debug "Build session loop received: GetPackageGraph";
+      handle_get_package_graph state reply_to
+  | `Request (Session_protocol.FindExecutable { reply_to; name }) ->
+      Log.debug ("Build session loop received: FindExecutable(" ^ name ^ ")");
+      handle_find_executable state reply_to name
+  | `Request (Session_protocol.FormatFile { reply_to; file_path; check_only }) ->
+      Log.debug "Build session loop received: FormatFile";
+      handle_format_file state reply_to file_path check_only
+  | `Request (Session_protocol.FormatCode { reply_to; code; file_path }) ->
+      Log.debug "Build session loop received: FormatCode";
+      handle_format_code state reply_to code file_path
+  | `Request (Session_protocol.FormatAll { reply_to; mode }) ->
+      Log.debug "Build session loop received: FormatAll";
+      handle_format_all state reply_to mode
+  | `Request (Session_protocol.NewPackage { reply_to; path; name; is_library }) ->
+      Log.debug "Build session loop received: NewPackage";
+      handle_new_package state reply_to path name is_library
 
 (** Handler for ping message *)
-and handle_ping = fun state client_pid ->
-  Log.debug ("handle_ping: Received Ping from " ^ Pid.to_string client_pid);
-  send client_pid (Protocol.ServerResponse Protocol.Pong);
+and handle_ping = fun state reply_to ->
+  Log.debug ("handle_ping: Received Ping from " ^ Pid.to_string reply_to);
+  send reply_to (Session_protocol.ResponseMessage Session_protocol.Pong);
   Log.debug "handle_ping: Pong sent, continuing loop";
   loop state
 
 (** Handler for scan workspace message *)
-and handle_scan_workspace = fun state client_pid current_dir ->
-  trace_server ("handle_scan_workspace cwd=" ^ Path.to_string current_dir);
+and handle_scan_workspace = fun state reply_to current_dir ->
+  trace_session_runtime ("handle_scan_workspace cwd=" ^ Path.to_string current_dir);
   let workspace_manager = Workspace_manager.create () in
   let (workspace, load_errors) = Workspace_manager.scan workspace_manager current_dir
   |> Result.expect ~msg:"riot_build: workspace scan failed" in
@@ -187,29 +189,29 @@ and handle_scan_workspace = fun state client_pid current_dir ->
   |> Result.expect ~msg:"riot_build: workspace pm preparation failed" in
   let package_graph = empty_runtime_package_graph ~workspace in
   let new_state = { state with workspace; workspace_manager; package_graph; load_errors } in
-  trace_server
+  trace_session_runtime
     ("handle_scan_workspace done packages=" ^ Int.to_string (List.length workspace.packages));
-  send client_pid (Protocol.ServerResponse Protocol.WorkspaceScanned);
+  send reply_to (Session_protocol.ResponseMessage Session_protocol.WorkspaceScanned);
   loop new_state
 
 (** Handler for getting workspace configuration *)
-and handle_get_workspace_config = fun state client_pid ->
-  Log.debug ("Server: Received GetWorkspaceConfig from " ^ Pid.to_string client_pid);
+and handle_get_workspace_config = fun state reply_to ->
+  Log.debug ("Build session: Received GetWorkspaceConfig from " ^ Pid.to_string reply_to);
   send
-    client_pid
-    (Protocol.ServerResponse (Protocol.WorkspaceConfig {
+    reply_to
+    (Session_protocol.ResponseMessage (Session_protocol.WorkspaceConfig {
       workspace = state.workspace;
       toolchain = state.toolchain
     }));
   loop state
 
 (** Handler for getting package information *)
-and handle_get_package_info = fun state client_pid package_name ->
+and handle_get_package_info = fun state reply_to package_name ->
   Log.debug
-    ("Server: Received GetPackageInfo for "
+    ("Build session: Received GetPackageInfo for "
     ^ Riot_model.Package_name.to_string package_name
     ^ " from "
-    ^ Pid.to_string client_pid);
+    ^ Pid.to_string reply_to);
   let state = ensure_runtime_package_graph state in
   let package_opt =
     List.find
@@ -221,10 +223,10 @@ and handle_get_package_info = fun state client_pid package_name ->
   (
     match package_opt with
     | None ->
-        Log.debug ("Server: Package " ^ Riot_model.Package_name.to_string package_name ^ " not found");
+        Log.debug ("Build session: Package " ^ Riot_model.Package_name.to_string package_name ^ " not found");
         send
-          client_pid
-          (Protocol.ServerResponse (Protocol.PackageInfo {
+          reply_to
+          (Session_protocol.ResponseMessage (Session_protocol.PackageInfo {
             package = Package.synthetic
               ~name:package_name
               ~path:(Path.v "")
@@ -238,8 +240,8 @@ and handle_get_package_info = fun state client_pid package_name ->
         let all_sources = List.concat
           [ package.sources.src; package.sources.native; package.sources.tests ] in
         send
-          client_pid
-          (Protocol.ServerResponse (Protocol.PackageInfo {
+          reply_to
+          (Session_protocol.ResponseMessage (Session_protocol.PackageInfo {
             package;
             sources = all_sources;
             dependencies
@@ -248,16 +250,16 @@ and handle_get_package_info = fun state client_pid package_name ->
   loop state
 
 (** Handler for getting the package graph *)
-and handle_get_package_graph = fun state client_pid ->
+and handle_get_package_graph = fun state reply_to ->
   let state = ensure_runtime_package_graph state in
-  Log.debug ("Server: Received GetPackageGraph from " ^ Pid.to_string client_pid);
+  Log.debug ("Build session: Received GetPackageGraph from " ^ Pid.to_string reply_to);
   let sorted_packages = Riot_planner.Package_graph.(topological_sort state.package_graph
   |> List.map ~fn:get_package) in
-  send client_pid (Protocol.ServerResponse (Protocol.PackageGraph { nodes = sorted_packages }));
+  send reply_to (Session_protocol.ResponseMessage (Session_protocol.PackageGraph { nodes = sorted_packages }));
   loop state
 
-and handle_find_executable = fun state client_pid name ->
-  Log.debug ("Server: handle_find_executable " ^ name);
+and handle_find_executable = fun state reply_to name ->
+  Log.debug ("Build session: handle_find_executable " ^ name);
   (* Only search in workspace member packages, not external dependencies *)
   let workspace_packages =
     Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Run state.workspace
@@ -271,19 +273,19 @@ and handle_find_executable = fun state client_pid name ->
   (
     match found with
     | Some pkg -> send
-        client_pid
-        (Protocol.ServerResponse (Protocol.ExecutableFound {
+        reply_to
+        (Session_protocol.ResponseMessage (Session_protocol.ExecutableFound {
           package = pkg.name;
           binary = name
         }))
-    | None -> send client_pid (Protocol.ServerResponse Protocol.ExecutableNotFound)
+    | None -> send reply_to (Session_protocol.ResponseMessage Session_protocol.ExecutableNotFound)
   );
   loop state
 
-and handle_format_file = fun state client_pid file_path check_only ->
+and handle_format_file = fun state reply_to file_path check_only ->
   Log.debug
-    ("Server: Received FormatFile from "
-    ^ Pid.to_string client_pid
+    ("Build session: Received FormatFile from "
+    ^ Pid.to_string reply_to
     ^ " for "
     ^ Path.to_string file_path
     ^ " (check_only="
@@ -293,47 +295,47 @@ and handle_format_file = fun state client_pid file_path check_only ->
   let _ = file_path in
   let _ = check_only in
   let response =
-    Protocol.FormatError {
+    Session_protocol.FormatError {
       error = "formatting through riot-build is not available in this runtime"
     }
   in
-  send client_pid (Protocol.ServerResponse response);
+  send reply_to (Session_protocol.ResponseMessage response);
   loop state
 
-and handle_format_code = fun state client_pid code file_path ->
-  Log.debug ("Server: Received FormatCode from " ^ Pid.to_string client_pid);
+and handle_format_code = fun state reply_to code file_path ->
+  Log.debug ("Build session: Received FormatCode from " ^ Pid.to_string reply_to);
   let _ = state in
   let _ = code in
   let _ = file_path in
   let response =
-    Protocol.FormatError {
+    Session_protocol.FormatError {
       error = "formatting through riot-build is not available in this runtime"
     }
   in
-  send client_pid (Protocol.ServerResponse response);
+  send reply_to (Session_protocol.ResponseMessage response);
   loop state
 
-and handle_format_all = fun state client_pid mode ->
+and handle_format_all = fun state reply_to mode ->
   Log.debug
     (
-      "Server: Received FormatAll from " ^ Pid.to_string client_pid ^ " (mode=" ^ (
+      "Build session: Received FormatAll from " ^ Pid.to_string reply_to ^ " (mode=" ^ (
         match mode with
         | `check -> "check"
         | `write -> "write"
       ) ^ ")"
     );
   send
-    client_pid
-    (Protocol.ServerResponse (Protocol.FormatError {
+    reply_to
+    (Session_protocol.ResponseMessage (Session_protocol.FormatError {
       error = "FormatAll not yet implemented with worker pool"
     }));
   loop state
 
-and handle_new_package = fun state client_pid path name is_library ->
+and handle_new_package = fun state reply_to path name is_library ->
   let name_string = Riot_model.Package_name.to_string name in
   Log.debug
-    ("Server: Received NewPackage from "
-    ^ Pid.to_string client_pid
+    ("Build session: Received NewPackage from "
+    ^ Pid.to_string reply_to
     ^ " for "
     ^ name_string
     ^ " at "
@@ -342,8 +344,8 @@ and handle_new_package = fun state client_pid path name is_library ->
   match Fs.create_dir_all src_dir with
   | Error _ ->
       send
-        client_pid
-        (Protocol.ServerResponse (Protocol.PackageCreationError {
+        reply_to
+        (Session_protocol.ResponseMessage (Session_protocol.PackageCreationError {
           error = "Failed to create src directory"
         }));
       loop state
@@ -385,7 +387,7 @@ and handle_new_package = fun state client_pid path name is_library ->
       in
       match (Fs.write ml_content main_ml, Fs.write toml_content package_toml, write_mli) with
       | Ok (), Ok (), Ok () ->
-          Log.debug "Server: Rescanning workspace after package creation";
+          Log.debug "Build session: Rescanning workspace after package creation";
           let workspace_manager = Workspace_manager.create () in
           let (updated_workspace, updated_load_errors) = Workspace_manager.scan
             workspace_manager
@@ -398,7 +400,7 @@ and handle_new_package = fun state client_pid path name is_library ->
             ()
           |> Result.expect ~msg:"Failed to prepare workspace after package creation" in
           Log.debug
-            ("Server: Workspace rescanned, found "
+            ("Build session: Workspace rescanned, found "
             ^ Int.to_string (List.length updated_workspace.packages)
             ^ " packages");
           let updated_package_graph = empty_runtime_package_graph ~workspace:updated_workspace in
@@ -410,40 +412,40 @@ and handle_new_package = fun state client_pid path name is_library ->
             load_errors = updated_load_errors
           } in
           send
-            client_pid
-            (Protocol.ServerResponse (Protocol.PackageCreated { path; name }));
+            reply_to
+            (Session_protocol.ResponseMessage (Session_protocol.PackageCreated { path; name }));
           loop updated_state
       | _ ->
           send
-            client_pid
-            (Protocol.ServerResponse (Protocol.PackageCreationError {
+            reply_to
+            (Session_protocol.ResponseMessage (Session_protocol.PackageCreationError {
               error = "Failed to write package files"
             }));
           loop state
     )
 
 (** Handler for build message - spawns worker and continues loop immediately *)
-and handle_build = fun state client_pid target scope profile target_arch session_id ->
-  trace_server
+and handle_build = fun state reply_to target scope profile target_arch session_id ->
+  trace_session_runtime
     ("handle_build session=" ^ Session_id.to_string session_id ^ " target=" ^ (
       match target with
-      | Protocol.All -> "all"
-      | Protocol.Package p -> "package:" ^ Riot_model.Package_name.to_string p
-      | Protocol.Packages names ->
+      | Session_protocol.All -> "all"
+      | Session_protocol.Package p -> "package:" ^ Riot_model.Package_name.to_string p
+      | Session_protocol.Packages names ->
           "packages:"
           ^ String.concat "," (List.map names ~fn:Riot_model.Package_name.to_string)
     ) ^ " scope=" ^ (
       match scope with
-          | Protocol.Runtime -> "runtime"
-          | Protocol.Dev -> "dev"
+          | Session_protocol.Runtime -> "runtime"
+          | Session_protocol.Dev -> "dev"
     ));
   Log.debug
     (
-      "Server: handle_build called for target: " ^ (
+      "Build session: handle_build called for target: " ^ (
         match target with
-        | Protocol.All -> "All"
-        | Protocol.Package p -> "Package(" ^ Riot_model.Package_name.to_string p ^ ")"
-        | Protocol.Packages names ->
+        | Session_protocol.All -> "All"
+        | Session_protocol.Package p -> "Package(" ^ Riot_model.Package_name.to_string p ^ ")"
+        | Session_protocol.Packages names ->
             "Packages("
             ^ String.concat "," (List.map names ~fn:Riot_model.Package_name.to_string)
             ^ ")"
@@ -460,31 +462,31 @@ and handle_build = fun state client_pid target scope profile target_arch session
     | None -> Riot_model.Riot_dirs.host_target ()
   in
   let updated_state = { state with active_profile; active_target } in
-  trace_server
+  trace_session_runtime
     ("handle_build active_profile="
     ^ active_profile
     ^ " active_target="
     ^ Riot_model.Target.to_string active_target);
-  let runtime_pid = self () in
-  Build_server.start
+  let session_runtime_pid = self () in
+  Build_worker.start
     ~workspace:updated_state.workspace
     ~load_errors:updated_state.load_errors
     ~toolchain:updated_state.toolchain
     ~concurrency:updated_state.concurrency
     ~session_id
-    ~client_pid
-    ~runtime_pid
+    ~reply_to
+    ~session_runtime_pid
     ~target
     ~scope
     ~profile:active_profile
     ~target_arch;
-  trace_server "handle_build spawned build worker";
-  Log.info "[INTERNAL_SERVER] Build worker spawned, continuing server loop";
+  trace_session_runtime "handle_build spawned build worker";
+  Log.info "[BUILD_SESSION_RUNTIME] Build worker spawned, continuing loop";
   loop updated_state
 
-let start = fun ?registry ?(registry_name = default_registry_name) ~(workspace:Workspace.t) ~(config:Server_config.t) () ->
+let start = fun ?registry ?(registry_name = default_registry_name) ~(workspace:Workspace.t) ~(config:Build_session_config.t) () ->
   try
-    trace_server
+    trace_session_runtime
       ("start workspace_root="
       ^ Path.to_string workspace.root
       ^ " packages="
@@ -494,21 +496,21 @@ let start = fun ?registry ?(registry_name = default_registry_name) ~(workspace:W
     let* registry =
       resolve_registry ?registry ~registry_name ()
       |> Result.map_err ~fn:(fun error ->
-          trace_server ("start resolve_registry failed: " ^ error);
+          trace_session_runtime ("start resolve_registry failed: " ^ error);
           RegistryInitializationFailed { registry_name; error })
     in
-    trace_server "start resolved registry";
+    trace_session_runtime "start resolved registry";
     let state = build_state ~workspace ~workspace_manager ~load_errors:[] ~registry ~config in
-    let runtime_pid =
+    let session_pid =
       spawn
         (fun () ->
-          trace_server "runtime loop spawned";
+          trace_session_runtime "runtime loop spawned";
           let _ = loop state in
           Ok ())
     in
-    trace_server ("start returning runtime pid=" ^ Pid.to_string runtime_pid);
-    Ok runtime_pid
+    trace_session_runtime ("start returning session pid=" ^ Pid.to_string session_pid);
+    Ok session_pid
   with
   | exn ->
-      trace_server ("start exception: " ^ Kernel.Exception.to_string exn);
+      trace_session_runtime ("start exception: " ^ Kernel.Exception.to_string exn);
       Error (UnexpectedException { error = Kernel.Exception.to_string exn })
