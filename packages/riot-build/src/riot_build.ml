@@ -4,14 +4,6 @@ module Event = Event
 module Request = Request
 module Build_result = Build_result
 module BuildLock = Build_lock
-module Action_executor = Action_executor
-module Action_queue = Action_queue
-module Package_builder = Package_builder
-module Build_runtime = Build_runtime
-module Coordinator = Coordinator
-module Diagnostic_rewrite = Diagnostic_rewrite
-module Sandbox = Sandbox
-module Telemetry_events = Telemetry_events
 
 module Internal = struct
   module Action_executor = Action_executor
