@@ -323,8 +323,8 @@ package names should be parsed at the CLI or command-package edge.
 Requested parallelism is user intent, not the machine limit. If the request
 does not specify it, Riot should default the request to the available
 parallelism discovered from the host. If the request asks for more workers than
-the host exposes, Riot clamps the effective worker budget to the available
-parallelism.
+the host exposes, Riot clamps the worker budget to the available parallelism.
+The clamped value is the only parallelism value stored in the build context.
 
 ### Build context
 
@@ -337,9 +337,7 @@ type t = {
   profile : Profile.t;
   host : Target.t;
   toolchain_config : Toolchain_config.t;
-  available_parallelism : int;
-  requested_parallelism : int;
-  effective_parallelism : int;
+  parallelism : int;
   on_event : Event.t -> unit;
 }
 ```
@@ -348,17 +346,17 @@ This eliminates repeated calls for the same session id, host triple, workspace
 root, and concurrency budget. It also gives every event one source of timing
 and session identity.
 
-The three parallelism fields have distinct meanings:
+Context creation is the only place that combines requested and available
+parallelism:
 
-- `available_parallelism` is the host/runtime limit.
-- `requested_parallelism` is the user-requested worker count after applying the
-  default of `available_parallelism`.
-- `effective_parallelism` is the clamped budget that workers actually use:
-  `min available_parallelism requested_parallelism`.
+```ocaml
+let requested = Request.parallelism request |> Option.value ~default:available in
+let parallelism = Int.min available requested
+```
 
-Scheduler code should use `effective_parallelism`. It should not independently
-read host parallelism, and it should not treat `requested_parallelism` as a
-guaranteed worker count.
+After that point, scheduler code uses `Build_context.parallelism`. It should
+not independently read host parallelism, and it should not need to know what
+the user originally requested.
 
 ### Resolved build intent
 
@@ -459,7 +457,7 @@ a target loop. Readiness determines what can run. The scheduler owns:
 - failed dependencies
 - package/lane state
 
-Workers consume ready work under one effective concurrency budget:
+Workers consume ready work under one concurrency budget:
 
 ```ocaml
 Scheduler.run :
@@ -469,10 +467,10 @@ Scheduler.run :
   (Lane_result.t list, error) result
 ```
 
-If `effective_parallelism = 1`, there is one worker and the scheduler behaves
-serially. If it is `10`, there are at most ten workers across all planning and
-execution work. Riot should not independently create ten planning workers and
-ten action workers for the same build.
+If `Build_context.parallelism = 1`, there is one worker and the scheduler
+behaves serially. If it is `10`, there are at most ten workers across all
+planning and execution work. Riot should not independently create ten planning
+workers and ten action workers for the same build.
 
 ### Package planning work
 
