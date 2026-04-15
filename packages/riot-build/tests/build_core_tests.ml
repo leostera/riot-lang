@@ -73,6 +73,29 @@ let make_valid_workspace = fun ?(package_names = [ "demo" ]) ?toolchain_targets 
   );
   Riot_model.Workspace.make_realized ~root:tmpdir ~packages ()
 
+let make_workspace_with_sources = fun ?toolchain_targets ~root ~packages () ->
+  let packages =
+    List.map packages
+      ~fn:(fun (name, value) -> make_package ~root ~name ~value)
+  in
+  write_workspace_manifest ~root ~members:(List.map packages ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.relative_path));
+  (
+    match toolchain_targets with
+    | Some targets -> write_toolchain_config ~root ~targets
+    | None -> ()
+  );
+  Riot_model.Workspace.make_realized ~root ~packages ()
+
+let make_two_targets = fun () ->
+  let host_target = Riot_model.Target.current in
+  let secondary_target =
+    if String.equal (Riot_model.Target.to_string host_target) "x86_64-unknown-linux-gnu" then
+      target "aarch64-unknown-linux-gnu"
+    else
+      target "x86_64-unknown-linux-gnu"
+  in
+  Riot_model.Target.Set.of_list [ host_target; secondary_target ]
+
 let make_broken_workspace = fun ?target_dir tmpdir ->
   let pkg_dir = Path.(tmpdir / Path.v "demo") in
   let src_dir = Path.(pkg_dir / Path.v "src") in
@@ -520,9 +543,13 @@ let test_build_preserves_exact_target_subset = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"riot_build_exact_targets"
       (fun tmpdir ->
-        let host = Riot_model.Target.to_string (Riot_model.Riot_dirs.host_target ()) in
+        let requested_targets = make_two_targets () in
+        let expected_targets = Riot_model.Target.Set.to_list requested_targets in
+        let expected_target_count = List.length expected_targets in
         let prepared_workspace = make_valid_workspace
-          ~toolchain_targets:[ host; "x86_64-unknown-linux-gnu"; "wasm32-unknown-wasi" ]
+          ~toolchain_targets:(expected_targets
+            |> List.map ~fn:(fun target -> Riot_model.Target.to_string target)
+            |> List.sort ~compare:String.compare)
           tmpdir in
         let target_count = ref None in
         let started_count = ref 0 in
@@ -538,8 +565,7 @@ let test_build_preserves_exact_target_subset = fun _ctx ->
             )
             (make_request
               ~workspace:prepared_workspace
-              ~targets:(Riot_model.Target.Exact (target_set_of_strings
-                [ host; "x86_64-unknown-linux-gnu" ]))
+              ~targets:(Riot_model.Target.Exact requested_targets)
               ())
         with
         | Error err -> Error ("expected exact target build to succeed, got: "
@@ -547,9 +573,9 @@ let test_build_preserves_exact_target_subset = fun _ctx ->
         | Ok _ ->
             match !target_count with
             | Some count ->
-                Test.assert_equal ~expected:2 ~actual:count;
-                Test.assert_equal ~expected:2 ~actual:!started_count;
-                Test.assert_equal ~expected:2 ~actual:!finished_count;
+                Test.assert_equal ~expected:expected_target_count ~actual:count;
+                Test.assert_equal ~expected:expected_target_count ~actual:!started_count;
+                Test.assert_equal ~expected:expected_target_count ~actual:!finished_count;
                 Ok ()
               | None -> Error "expected targets_resolved event"
             )
@@ -678,6 +704,83 @@ let test_build_multi_target_outputs_and_events = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
+let test_build_multi_target_partial_failures_fail_by_default = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"riot_build_multi_target_partial_fail_default"
+      (fun tmpdir ->
+        let requested_targets = make_two_targets () in
+        let expected_target_count = Riot_model.Target.Set.length requested_targets in
+        let expected_targets =
+          Riot_model.Target.Set.to_list requested_targets
+          |> List.map ~fn:(fun target -> Riot_model.Target.to_string target)
+          |> List.sort ~compare:String.compare
+        in
+        let prepared_workspace =
+          make_workspace_with_sources
+            ~root:tmpdir
+            ~toolchain_targets:expected_targets
+            ~packages:[
+              ("good", "let value = 2\n");
+              ("bad", "let broken =");
+            ] ()
+        in
+        let seen_target_count = ref None in
+        let started_targets = ref [] in
+        let finished_targets = ref [] in
+        let partial_failure_flags = ref [] in
+        let saw_returning_results = ref false in
+        match
+          build_request
+            ~on_event:(
+              function
+              | Riot_build.Event.Phase (Riot_build.Event.TargetsResolved { target_count }) ->
+                  seen_target_count := Some target_count
+              | Riot_build.Event.Phase (Riot_build.Event.TargetBuildStarted { target }) ->
+                  started_targets := Riot_model.Target.to_string target :: !started_targets
+              | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished {
+                had_partial_failure;
+                target;
+                _
+              }) ->
+                  finished_targets := Riot_model.Target.to_string target :: !finished_targets;
+                  partial_failure_flags := had_partial_failure :: !partial_failure_flags
+              | Riot_build.Event.Phase (Riot_build.Event.ReturningResults _) ->
+                  saw_returning_results := true
+              | _ -> ())
+            (make_request
+              ~workspace:prepared_workspace
+              ~targets:(Riot_model.Target.Exact requested_targets)
+              ~packages:[
+                package_name "good";
+                package_name "bad";
+              ] ())
+        with
+        | Ok _ -> Error "expected partial failure to make build fail by default"
+        | Error (Riot_build.BuildFailed _) -> (
+            match !seen_target_count with
+            | None -> Error "expected targets_resolved event"
+            | Some count ->
+                Test.assert_equal ~expected:expected_target_count ~actual:count;
+                Test.assert_equal ~expected:expected_target_count ~actual:(List.length !started_targets);
+                Test.assert_equal ~expected:expected_target_count ~actual:(List.length !finished_targets);
+                Test.assert_equal ~expected:expected_target_count ~actual:(List.length !partial_failure_flags);
+                if not (List.all !partial_failure_flags ~fn:(fun partial -> partial)) then
+                  Error "expected each target build to report partial failures"
+                else if !saw_returning_results then
+                  Error "expected no returning_results event when default multi-target build fails"
+                else
+                  let sort_target_names = List.sort ~compare:String.compare in
+                  Test.assert_equal ~expected:expected_targets ~actual:(sort_target_names !started_targets);
+                  Test.assert_equal ~expected:expected_targets ~actual:(sort_target_names !finished_targets);
+                  Ok ()
+              )
+        | Error err ->
+            Error ("expected build to fail with BuildFailed, got: " ^ Riot_build.error_message err)
+      )
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
 let test_build_rejects_zero_jobs = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"riot_build_zero_jobs"
@@ -776,6 +879,7 @@ let tests =
       case "build core: build emits runtime phases in order" test_build_emits_runtime_phases_in_order;
       case "build core: build preserves exact target subsets" test_build_preserves_exact_target_subset;
       case "build core: build emits multi-target lane outputs and events" test_build_multi_target_outputs_and_events;
+      case "build core: default partial failure defaults to failing in multi-target builds" test_build_multi_target_partial_failures_fail_by_default;
       case "build core: rejects zero jobs requests" test_build_rejects_zero_jobs;
       case "build core: rejects zero jobs requests with clear message" test_build_rejects_zero_jobs_with_message;
       case "build core: rejects negative jobs requests" test_build_rejects_negative_jobs;
