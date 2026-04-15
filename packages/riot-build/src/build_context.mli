@@ -13,4 +13,4 @@ type t = {
   on_event: Event.t -> unit;
 }
 
-val make: ?on_event:(Event.t -> unit) -> Resolved_build.t -> (t, error) result
+val make: ?on_event:(Event.t -> unit) -> Request.t -> (t, error) result

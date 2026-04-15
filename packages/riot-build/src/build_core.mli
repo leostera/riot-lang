@@ -20,15 +20,20 @@ type error =
   | UnexpectedError of { reason: string }
 val error_message: error -> string
 
-val resolve: Request.t -> (Resolved_build.t, error) result
+val make_context:
+  ?on_event:(Event.t -> unit) ->
+  Request.t ->
+  (Build_context.t, error) result
+
+val resolve: Build_context.t -> Request.t -> (Resolved_build.t, error) result
 
 val execute_raw:
   ?allow_partial_failures:bool ->
   ?record_cache_generation:bool ->
-  ?on_event:(Event.t -> unit) ->
+  Build_context.t ->
   Resolved_build.t ->
   (Package_builder.build_result list, error) result
 
-val execute: ?on_event:(Event.t -> unit) -> Resolved_build.t -> (Build_result.t, error) result
+val execute: Build_context.t -> Resolved_build.t -> (Build_result.t, error) result
 
 val build: ?on_event:(Event.t -> unit) -> Request.t -> (Build_result.t, error) result

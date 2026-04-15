@@ -4,15 +4,6 @@ open Std.Result.Syntax
 type build_error =
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
   | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
-  | InvalidRequestedParallelism of int
-  | PackageNotFound of {
-      package_name: Riot_model.Package_name.t;
-      available_packages: Riot_model.Package_name.t list
-    }
-  | PackagesNotFound of {
-      package_names: Riot_model.Package_name.t list;
-      available_packages: Riot_model.Package_name.t list
-    }
   | BuildFailed of { errors: Package_builder.build_result list }
   | PlanningFailed of { reason: string }
   | CycleDetected of { cycle_nodes: string list }
@@ -25,8 +16,6 @@ type build_context = {
   allow_partial_failures: bool;
   record_cache_generation: bool;
 }
-
-let no_event: Event.t -> unit = fun _ -> ()
 
 let emit_runtime_phase = fun context phase -> context.build.on_event (Event.Phase phase)
 
@@ -71,17 +60,6 @@ let error_message = function
   ^ Riot_model.Target.to_string target
   ^ ": "
   ^ error
-  | InvalidRequestedParallelism value ->
-      "invalid requested parallelism (" ^ Int.to_string value ^ "): jobs must be >= 1"
-  | PackageNotFound { package_name; available_packages } ->
-      "Package '" ^ Riot_model.Package_name.to_string package_name
-      ^ "' not found. Available packages: "
-      ^ String.concat ", " (List.map available_packages ~fn:Riot_model.Package_name.to_string)
-  | PackagesNotFound { package_names; available_packages } ->
-      "Packages not found: "
-      ^ String.concat ", " (List.map package_names ~fn:Riot_model.Package_name.to_string)
-      ^ ". Available packages: "
-      ^ String.concat ", " (List.map available_packages ~fn:Riot_model.Package_name.to_string)
   | BuildFailed { errors } -> (
       let failures = Build_result.failures_of_build_results errors in
       match failures with
@@ -98,15 +76,9 @@ let error_message = function
       "another riot build is already running (" ^ Path.to_string lock_path ^ ")"
   | UnexpectedError { reason } -> reason
 
-let make_context = fun ~allow_partial_failures ?(record_cache_generation = true) ?(on_event = no_event) spec ->
-  let* context =
-    Build_context.make ~on_event spec
-    |> Result.map_err ~fn:(function
-      | Build_context.InvalidRequestedParallelism requested ->
-          InvalidRequestedParallelism requested)
-  in
+let make_context = fun ~allow_partial_failures ?(record_cache_generation = true) build spec ->
   Ok {
-    build = context;
+    build;
     resolved = spec;
     allow_partial_failures;
     record_cache_generation;
@@ -357,6 +329,6 @@ let do_build = fun context ->
   emit_returning_results context ~result_count:(List.length all_results) ~had_partial_failure;
   Ok all_results
 
-let execute = fun ?(allow_partial_failures = false) ?(record_cache_generation = true) ?(on_event = no_event) spec ->
-  let* context = make_context ~allow_partial_failures ~record_cache_generation ~on_event spec in
+let execute = fun ?(allow_partial_failures = false) ?(record_cache_generation = true) build spec ->
+  let* context = make_context ~allow_partial_failures ~record_cache_generation build spec in
   do_build context

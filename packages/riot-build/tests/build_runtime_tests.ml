@@ -1,6 +1,7 @@
 open Std
 module Test = Std.Test
 module Build_runtime = Riot_build.Internal.Build_runtime
+module Build_context = Riot_build.Internal.Build_context
 module Resolved_build = Riot_build.Internal.Resolved_build
 module Package_builder = Riot_build.Internal.Package_builder
 
@@ -78,6 +79,54 @@ let make_request = fun ~workspace ?(profile = Riot_model.Profile.debug) () ->
     ~scope:Riot_build.Request.Runtime
     ~profile
     ()
+
+let make_runtime_request =
+  fun
+    ~workspace
+    ~package_names
+    ~targets
+    ?(scope = Riot_build.Request.Runtime)
+    ?(profile = Riot_model.Profile.debug)
+    ?(requested_parallelism = None)
+    () ->
+  Riot_build.Request.make
+    ~workspace
+    ~packages:package_names
+    ~targets:(Riot_model.Target.Exact targets)
+    ~scope
+    ~profile
+    ~requested_parallelism
+    ()
+
+let make_runtime_inputs =
+  fun
+    ?on_event
+    ~workspace
+    ~package_names
+    ~targets
+    ?scope
+    ?profile
+    ?requested_parallelism
+    () ->
+  let request =
+    make_runtime_request
+      ~workspace
+      ~package_names
+      ~targets
+      ?scope
+      ?profile
+      ?requested_parallelism
+      ()
+  in
+  let context =
+    Build_context.make ?on_event request
+    |> Result.expect ~msg:"expected build context creation to succeed"
+  in
+  let resolved =
+    Resolved_build.resolve context request
+    |> Result.expect ~msg:"expected build intent resolution to succeed"
+  in
+  context, resolved
 
 let build_request = fun request -> Riot_build.build request
 
@@ -272,19 +321,22 @@ let test_execute_rejects_invalid_parallelism = fun _ctx ->
     Fs.with_tempdir ~prefix:"riot_build_invalid_parallelism_runtime"
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        let spec = Resolved_build.make
+        let request = make_runtime_request
           ~workspace
           ~package_names:[ package_name "demo" ]
           ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
           ~scope:Riot_build.Request.Runtime
           ~profile:Riot_model.Profile.debug
-          ~requested_parallelism:(Some 0) in
-        match Riot_build.Internal.Build_runtime.execute spec with
-        | Error (Build_runtime.InvalidRequestedParallelism 0) -> Ok ()
+          ~requested_parallelism:(Some 0)
+          () in
+        match Build_context.make request with
+        | Error (Build_context.InvalidRequestedParallelism 0) -> Ok ()
         | Error err ->
-            Error ("expected invalid parallelism error, got: " ^ Build_runtime.error_message err)
+            (match err with
+            | Build_context.InvalidRequestedParallelism requested ->
+                Error ("expected invalid parallelism 0, got " ^ Int.to_string requested))
         | Ok _ ->
-            Error "expected invalid parallelism to reject execution")
+            Error "expected invalid parallelism to reject context creation")
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -294,22 +346,21 @@ let test_execute_does_not_record_cache_generation_when_disabled = fun _ctx ->
     Fs.with_tempdir ~prefix:"riot_build_no_cache_recording"
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        let spec = Resolved_build.make
+        let saw_cache_event = ref false in
+        let context, spec = make_runtime_inputs
           ~workspace
           ~package_names:[ package_name "demo" ]
           ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
-          ~scope:Riot_build.Request.Runtime
-          ~profile:Riot_model.Profile.debug
-          ~requested_parallelism:None in
-        let saw_cache_event = ref false in
+          ~on_event:(fun event ->
+            match event with
+            | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _)
+            | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecorded _) -> saw_cache_event := true
+            | _ -> ())
+          () in
         match
           Riot_build.Internal.Build_runtime.execute
             ~record_cache_generation:false
-            ~on_event:(fun event ->
-              match event with
-              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _)
-              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecorded _) -> saw_cache_event := true
-              | _ -> ())
+            context
             spec
         with
         | Error err -> Error ("expected build to succeed, got: " ^ Build_runtime.error_message err)
@@ -332,24 +383,24 @@ let test_execute_partial_failures_by_default = fun _ctx ->
               ( "bad", "let broken =" );
             ] () in
         let bad = package_name "bad" in
-        let spec = Resolved_build.make
+        let saw_returning_results = ref false in
+        let saw_partial_failure = ref false in
+        let context, spec = make_runtime_inputs
           ~workspace
           ~package_names:[ package_name "good"; package_name "bad" ]
           ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
-          ~scope:Riot_build.Request.Runtime
-          ~profile:Riot_model.Profile.debug
-          ~requested_parallelism:(Some 1) in
-        let saw_returning_results = ref false in
-        let saw_partial_failure = ref false in
+          ~requested_parallelism:(Some 1)
+          ~on_event:(fun event ->
+            match event with
+            | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished { had_partial_failure }) ->
+                saw_partial_failure := had_partial_failure
+            | Riot_build.Event.Phase (Riot_build.Event.ReturningResults _) ->
+                saw_returning_results := true
+            | _ -> ())
+          () in
         match
           Riot_build.Internal.Build_runtime.execute
-            ~on_event:(fun event ->
-              match event with
-              | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished { had_partial_failure }) ->
-                  saw_partial_failure := had_partial_failure
-              | Riot_build.Event.Phase (Riot_build.Event.ReturningResults _) ->
-                  saw_returning_results := true
-              | _ -> ())
+            context
             spec
         with
         | Ok _ -> Error "expected default build to fail when any package fails"
@@ -390,17 +441,17 @@ let test_execute_allows_partial_failures = fun _ctx ->
             ] () in
         let good = package_name "good" in
         let bad = package_name "bad" in
-        let spec = Resolved_build.make
+        let context, spec = make_runtime_inputs
           ~workspace
           ~package_names:[ good; bad ]
           ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
-          ~scope:Riot_build.Request.Runtime
-          ~profile:Riot_model.Profile.debug
-          ~requested_parallelism:(Some 1) in
+          ~requested_parallelism:(Some 1)
+          ~on_event:(fun _ -> ())
+          () in
         let result =
           Riot_build.Internal.Build_runtime.execute
             ~allow_partial_failures:true
-            ~on_event:(fun _ -> ())
+            context
             spec
         in
         match result with
@@ -459,33 +510,33 @@ let test_execute_allows_multi_target_partial_failures = fun _ctx ->
             ] () in
         let good = package_name "good" in
         let bad = package_name "bad" in
-        let spec = Resolved_build.make
-          ~workspace
-          ~package_names:[ good; bad ]
-          ~targets:requested_targets
-          ~scope:Riot_build.Request.Runtime
-          ~profile:Riot_model.Profile.debug
-          ~requested_parallelism:(Some 1) in
         let started_targets = ref [] in
         let finished_targets = ref [] in
         let finished_counts = ref [] in
         let partial_flags = ref [] in
+        let context, spec = make_runtime_inputs
+          ~workspace
+          ~package_names:[ good; bad ]
+          ~targets:requested_targets
+          ~requested_parallelism:(Some 1)
+          ~on_event:(fun event ->
+            match event with
+            | Riot_build.Event.Phase (Riot_build.Event.TargetBuildStarted { target }) ->
+                started_targets := Riot_model.Target.to_string target :: !started_targets
+            | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished {
+              target;
+              result_count;
+              had_partial_failure = partial
+            }) ->
+                finished_targets := Riot_model.Target.to_string target :: !finished_targets;
+                finished_counts := result_count :: !finished_counts;
+                partial_flags := partial :: !partial_flags
+            | _ -> ())
+          () in
         match
           Riot_build.Internal.Build_runtime.execute
             ~allow_partial_failures:true
-            ~on_event:(fun event ->
-              match event with
-              | Riot_build.Event.Phase (Riot_build.Event.TargetBuildStarted { target }) ->
-                  started_targets := Riot_model.Target.to_string target :: !started_targets
-              | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished {
-                target;
-                result_count;
-                had_partial_failure = partial
-              }) ->
-                  finished_targets := Riot_model.Target.to_string target :: !finished_targets;
-                  finished_counts := result_count :: !finished_counts;
-                  partial_flags := partial :: !partial_flags
-              | _ -> ())
+            context
             spec
         with
         | Error err ->
@@ -573,21 +624,21 @@ let test_execute_multi_target_reports_global_returning_results = fun _ctx ->
               ( "good", "let value = 2\n" );
               ( "bad", "let broken =" );
             ] () in
-        let spec = Resolved_build.make
+        let context, spec = make_runtime_inputs
           ~workspace
           ~package_names:[ package_name "good"; package_name "bad" ]
           ~targets:requested_targets
-          ~scope:Riot_build.Request.Runtime
-          ~profile:Riot_model.Profile.debug
-          ~requested_parallelism:(Some 1) in
+          ~requested_parallelism:(Some 1)
+          ~on_event:(fun event ->
+            match event with
+            | Riot_build.Event.Phase (Riot_build.Event.ReturningResults { result_count; had_partial_failure }) ->
+                returning_event := Some (result_count, had_partial_failure)
+            | _ -> ())
+          () in
         match
           Riot_build.Internal.Build_runtime.execute
             ~allow_partial_failures:true
-            ~on_event:(fun event ->
-              match event with
-              | Riot_build.Event.Phase (Riot_build.Event.ReturningResults { result_count; had_partial_failure }) ->
-                  returning_event := Some (result_count, had_partial_failure)
-              | _ -> ())
+            context
             spec
         with
         | Error err ->
@@ -633,20 +684,20 @@ let test_execute_multi_target_all_success_reports_aggregated_results = fun _ctx 
               ( "good", "let value = 2\n" );
               ( "nice", "let answer = 42\n" );
             ] () in
-        let spec = Resolved_build.make
+        let context, spec = make_runtime_inputs
           ~workspace
           ~package_names:[ package_name "good"; package_name "nice" ]
           ~targets:requested_targets
-          ~scope:Riot_build.Request.Runtime
-          ~profile:Riot_model.Profile.debug
-          ~requested_parallelism:(Some 1) in
+          ~requested_parallelism:(Some 1)
+          ~on_event:(fun event ->
+            match event with
+            | Riot_build.Event.Phase (Riot_build.Event.ReturningResults { result_count; had_partial_failure }) ->
+                returning_event := Some (result_count, had_partial_failure)
+            | _ -> ())
+          () in
         match
           Riot_build.Internal.Build_runtime.execute
-            ~on_event:(fun event ->
-              match event with
-              | Riot_build.Event.Phase (Riot_build.Event.ReturningResults { result_count; had_partial_failure }) ->
-                  returning_event := Some (result_count, had_partial_failure)
-              | _ -> ())
+            context
             spec
         with
         | Error err ->
@@ -691,21 +742,21 @@ let test_execute_multi_target_partial_failures_skip_cache_recording = fun _ctx -
               ( "bad", "let broken =" );
             ] () in
         let saw_cache_event = ref false in
-        let spec = Resolved_build.make
+        let context, spec = make_runtime_inputs
           ~workspace
           ~package_names:[ package_name "good"; package_name "bad" ]
           ~targets:requested_targets
-          ~scope:Riot_build.Request.Runtime
-          ~profile:Riot_model.Profile.debug
-          ~requested_parallelism:(Some 1) in
+          ~requested_parallelism:(Some 1)
+          ~on_event:(fun event ->
+            match event with
+            | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _)
+            | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecorded _) -> saw_cache_event := true
+            | _ -> ())
+          () in
         match
           Riot_build.Internal.Build_runtime.execute
             ~allow_partial_failures:true
-            ~on_event:(fun event ->
-              match event with
-              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _)
-              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecorded _) -> saw_cache_event := true
-              | _ -> ())
+            context
             spec
         with
         | Error err ->
@@ -742,22 +793,22 @@ let test_execute_multi_target_success_records_cache_generation = fun _ctx ->
             ] () in
         let recording_started = ref false in
         let recording_recorded = ref false in
-        let spec = Resolved_build.make
+        let context, spec = make_runtime_inputs
           ~workspace
           ~package_names:[ package_name "good"; package_name "nice" ]
           ~targets:requested_targets
-          ~scope:Riot_build.Request.Runtime
-          ~profile:Riot_model.Profile.debug
-          ~requested_parallelism:(Some 1) in
+          ~requested_parallelism:(Some 1)
+          ~on_event:(fun event ->
+            match event with
+            | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _) ->
+                recording_started := true
+            | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecorded _) ->
+                recording_recorded := true
+            | _ -> ())
+          () in
         match
           Riot_build.Internal.Build_runtime.execute
-            ~on_event:(fun event ->
-              match event with
-              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecordingStarted _) ->
-                  recording_started := true
-              | Riot_build.Event.Phase (Riot_build.Event.CacheGenerationRecorded _) ->
-                  recording_recorded := true
-              | _ -> ())
+            context
             spec
         with
         | Error err ->

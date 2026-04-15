@@ -56,66 +56,25 @@ let error_message = function
   | UnexpectedError { reason } ->
       reason
 
-let available_package_names = fun workspace ->
-  workspace.Riot_model.Workspace.packages
-  |> List.map ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> pkg.name)
-  |> List.sort ~compare:Riot_model.Package_name.compare
+let map_context_error = function
+  | Build_context.InvalidRequestedParallelism requested -> InvalidRequestedParallelism requested
 
-let resolve_package_names = fun workspace requested ->
-  let available = available_package_names workspace in
-  match requested with
-  | [] ->
-      Ok available
-  | [ package_name ] ->
-      if List.any available
-          ~fn:(fun available_package_name ->
-            Riot_model.Package_name.equal available_package_name package_name) then
-        Ok [ package_name ]
-      else
-        Error (PackageNotFound { package_name; available_packages = available })
-  | package_names ->
-      let missing =
-        List.filter package_names
-          ~fn:(fun package_name ->
-            not
-              (
-                List.any available
-                  ~fn:(fun available_package_name ->
-                    Riot_model.Package_name.equal available_package_name package_name)
-              ))
-      in
-      if List.is_empty missing then
-        Ok package_names
-      else
-        Error (PackagesNotFound { package_names = missing; available_packages = available })
+let map_resolved_error = function
+  | Resolved_build.TargetSelectionFailed error -> TargetSelectionFailed error
+  | Resolved_build.PackageNotFound {
+    package_name;
+    available_packages
+  } -> PackageNotFound { package_name; available_packages }
+  | Resolved_build.PackagesNotFound {
+    package_names;
+    available_packages
+  } -> PackagesNotFound { package_names; available_packages }
 
-let resolve_target_names = fun workspace request ->
-  let host = Riot_model.Target.current in
-  let configured_targets = Riot_model.Target.configured_targets
-    ~host
-    (Riot_model.Toolchain_config.from_root ~root:workspace.Riot_model.Workspace.root) in
-  Riot_model.Target.resolve ~host ~configured_targets (Request.Internal.targets request)
-  |> Result.map_err ~fn:(fun err -> TargetSelectionFailed err)
+let make_context = fun ?on_event request ->
+  Build_context.make ?on_event request |> Result.map_err ~fn:map_context_error
 
-let resolve = fun request ->
-  let open Std.Result.Syntax in
-    let workspace = Request.Internal.workspace request in
-    let* package_names = resolve_package_names workspace (Request.Internal.packages request) in
-    let* targets = resolve_target_names workspace request in
-    let requested_parallelism = Request.Internal.requested_parallelism request in
-    let* requested_parallelism =
-      match requested_parallelism with
-      | Some requested when requested < 1 -> Error (InvalidRequestedParallelism requested)
-      | Some requested -> Ok (Some requested)
-      | None -> Ok None
-    in
-    Ok (Resolved_build.make
-      ~workspace
-      ~package_names
-      ~targets
-      ~scope:(Request.Internal.scope request)
-      ~profile:(Request.Internal.profile request)
-      ~requested_parallelism)
+let resolve = fun context request ->
+  Resolved_build.resolve context request |> Result.map_err ~fn:map_resolved_error
 
 let map_runtime_error = function
   | Build_runtime.ToolchainInstallFailed { target; error } -> ToolchainInstallFailed {
@@ -126,15 +85,6 @@ let map_runtime_error = function
     target;
     error
   }
-  | Build_runtime.InvalidRequestedParallelism requested -> InvalidRequestedParallelism requested
-  | Build_runtime.PackageNotFound {
-    package_name;
-    available_packages
-  } -> PackageNotFound { package_name; available_packages }
-  | Build_runtime.PackagesNotFound {
-    package_names;
-    available_packages
-  } -> PackagesNotFound { package_names; available_packages }
   | Build_runtime.BuildFailed { errors } -> BuildFailed {
     errors = Build_result.failures_of_build_results errors
   }
@@ -151,13 +101,14 @@ let map_runtime_error = function
     reason
   }
 
-let execute_raw = fun ?(allow_partial_failures = false) ?(record_cache_generation = true) ?on_event spec ->
-  Build_runtime.execute ~allow_partial_failures ~record_cache_generation ?on_event spec
+let execute_raw = fun ?(allow_partial_failures = false) ?(record_cache_generation = true) context spec ->
+  Build_runtime.execute ~allow_partial_failures ~record_cache_generation context spec
   |> Result.map_err ~fn:map_runtime_error
 
-let execute = fun ?on_event spec -> execute_raw ?on_event spec |> Result.map ~fn:Build_result.of_build_results
+let execute = fun context spec -> execute_raw context spec |> Result.map ~fn:Build_result.of_build_results
 
 let build = fun ?on_event request ->
   let open Std.Result.Syntax in
-    let* spec = resolve request in
-    execute ?on_event spec
+  let* context = make_context ?on_event request in
+  let* spec = resolve context request in
+  execute context spec

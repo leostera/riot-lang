@@ -5,16 +5,16 @@ type scope = Request.scope =
   | Dev
 type t
 
-val make:
-  workspace:Riot_model.Workspace.t ->
-  package_names:Riot_model.Package_name.t list ->
-  targets:Riot_model.Target.Set.t ->
-  scope:scope ->
-  profile:Riot_model.Profile.t ->
-  requested_parallelism:int option ->
-  t
-
-val workspace: t -> Riot_model.Workspace.t
+type error =
+  | TargetSelectionFailed of Riot_model.Target.resolve_error
+  | PackageNotFound of {
+      package_name: Riot_model.Package_name.t;
+      available_packages: Riot_model.Package_name.t list
+    }
+  | PackagesNotFound of {
+      package_names: Riot_model.Package_name.t list;
+      available_packages: Riot_model.Package_name.t list
+    }
 
 val package_names: t -> Riot_model.Package_name.t list
 
@@ -22,6 +22,4 @@ val targets: t -> Riot_model.Target.Set.t
 
 val scope: t -> scope
 
-val profile: t -> Riot_model.Profile.t
-
-val requested_parallelism: t -> int option
+val resolve: Build_context.t -> Request.t -> (t, error) result
