@@ -20,7 +20,7 @@ val workspace: 'a t -> Riot_model.Workspace.t
 
 val package_names: 'a t -> Riot_model.Package_name.t list
 
-val scope: 'a t -> Build_spec.scope
+val scope: 'a t -> Resolved_build.scope
 
 val profile_name: 'a t -> string
 
@@ -43,7 +43,7 @@ val package_graph: 'a t -> Riot_planner.Package_graph.t
 val prepare:
   workspace:Riot_model.Workspace.t ->
   package_names:Riot_model.Package_name.t list ->
-  scope:Build_spec.scope ->
+  scope:Resolved_build.scope ->
   profile:Riot_model.Profile.t ->
   session_id:Riot_model.Session_id.t ->
   host:Riot_model.Target.t ->

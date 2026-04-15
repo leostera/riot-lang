@@ -1,7 +1,7 @@
 open Std
 module Test = Std.Test
-module Build_spec = Riot_build.Internal.Build_spec
 module Build_runtime = Riot_build.Internal.Build_runtime
+module Resolved_build = Riot_build.Internal.Resolved_build
 module Package_builder = Riot_build.Internal.Package_builder
 
 let package_name = fun name ->
@@ -272,7 +272,7 @@ let test_execute_rejects_invalid_parallelism = fun _ctx ->
     Fs.with_tempdir ~prefix:"riot_build_invalid_parallelism_runtime"
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        let spec = Build_spec.make
+        let spec = Resolved_build.make
           ~workspace
           ~package_names:[ package_name "demo" ]
           ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
@@ -294,7 +294,7 @@ let test_execute_does_not_record_cache_generation_when_disabled = fun _ctx ->
     Fs.with_tempdir ~prefix:"riot_build_no_cache_recording"
       (fun tmpdir ->
         let workspace = make_valid_workspace tmpdir in
-        let spec = Build_spec.make
+        let spec = Resolved_build.make
           ~workspace
           ~package_names:[ package_name "demo" ]
           ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
@@ -332,7 +332,7 @@ let test_execute_partial_failures_by_default = fun _ctx ->
               ( "bad", "let broken =" );
             ] () in
         let bad = package_name "bad" in
-        let spec = Build_spec.make
+        let spec = Resolved_build.make
           ~workspace
           ~package_names:[ package_name "good"; package_name "bad" ]
           ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
@@ -390,7 +390,7 @@ let test_execute_allows_partial_failures = fun _ctx ->
             ] () in
         let good = package_name "good" in
         let bad = package_name "bad" in
-        let spec = Build_spec.make
+        let spec = Resolved_build.make
           ~workspace
           ~package_names:[ good; bad ]
           ~targets:(Riot_model.Target.make_set [ Riot_model.Target.current ])
@@ -459,7 +459,7 @@ let test_execute_allows_multi_target_partial_failures = fun _ctx ->
             ] () in
         let good = package_name "good" in
         let bad = package_name "bad" in
-        let spec = Build_spec.make
+        let spec = Resolved_build.make
           ~workspace
           ~package_names:[ good; bad ]
           ~targets:requested_targets
@@ -573,7 +573,7 @@ let test_execute_multi_target_reports_global_returning_results = fun _ctx ->
               ( "good", "let value = 2\n" );
               ( "bad", "let broken =" );
             ] () in
-        let spec = Build_spec.make
+        let spec = Resolved_build.make
           ~workspace
           ~package_names:[ package_name "good"; package_name "bad" ]
           ~targets:requested_targets
@@ -633,7 +633,7 @@ let test_execute_multi_target_all_success_reports_aggregated_results = fun _ctx 
               ( "good", "let value = 2\n" );
               ( "nice", "let answer = 42\n" );
             ] () in
-        let spec = Build_spec.make
+        let spec = Resolved_build.make
           ~workspace
           ~package_names:[ package_name "good"; package_name "nice" ]
           ~targets:requested_targets
@@ -691,7 +691,7 @@ let test_execute_multi_target_partial_failures_skip_cache_recording = fun _ctx -
               ( "bad", "let broken =" );
             ] () in
         let saw_cache_event = ref false in
-        let spec = Build_spec.make
+        let spec = Resolved_build.make
           ~workspace
           ~package_names:[ package_name "good"; package_name "bad" ]
           ~targets:requested_targets
@@ -742,7 +742,7 @@ let test_execute_multi_target_success_records_cache_generation = fun _ctx ->
             ] () in
         let recording_started = ref false in
         let recording_recorded = ref false in
-        let spec = Build_spec.make
+        let spec = Resolved_build.make
           ~workspace
           ~package_names:[ package_name "good"; package_name "nice" ]
           ~targets:requested_targets

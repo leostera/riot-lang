@@ -11,7 +11,7 @@ type 'stage t = {
   target: Riot_model.Target.t;
   workspace: Riot_model.Workspace.t;
   package_names: Riot_model.Package_name.t list;
-  scope: Build_spec.scope;
+  scope: Resolved_build.scope;
   profile_name: string;
   session_id: Riot_model.Session_id.t;
   host: Riot_model.Target.t;
@@ -36,8 +36,8 @@ let sort_unique_packages = fun package_names ->
 
 let planner_scope = fun scope ->
   match scope with
-  | Build_spec.Runtime -> Riot_planner.Package_graph.Runtime
-  | Build_spec.Dev -> Riot_planner.Package_graph.Dev
+  | Resolved_build.Runtime -> Riot_planner.Package_graph.Runtime
+  | Resolved_build.Dev -> Riot_planner.Package_graph.Dev
 
 let planner_target = fun package_names ->
   match package_names with
@@ -122,7 +122,7 @@ let make_lane_plan = fun lane_target workspace scope ->
 let prepare:
   workspace:Riot_model.Workspace.t ->
   package_names:Riot_model.Package_name.t list ->
-  scope:Build_spec.scope ->
+  scope:Resolved_build.scope ->
   profile:Riot_model.Profile.t ->
   session_id:Riot_model.Session_id.t ->
   host:Riot_model.Target.t ->
