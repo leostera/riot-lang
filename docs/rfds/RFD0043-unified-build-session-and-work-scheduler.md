@@ -255,13 +255,28 @@ The package responsibilities should be:
 - `riot-cli` parses user input and renders events.
 - `riot-deps` prepares workspaces and materializes external dependencies.
 - `riot-build` resolves build intent, prepares locked lanes, runs the build
-  scheduler, records cache generations, and returns `Build_result.t`.
+  scheduler, executes planned actions, records cache generations, and returns
+  `Build_result.t`.
 - `riot-planner` produces target-aware package, module, and action plans.
-- `riot-executor` executes action nodes and promotes artifacts through
-  `riot-store`.
 - `riot-store` owns artifact storage, cache lookup, generation indexing, and
   GC policy.
 - `riot-toolchain` owns compiler and cross-toolchain discovery.
+
+The separate `riot-executor` package should be folded into `riot-build`.
+Execution is not an independent public domain in the current system:
+`riot-build` already owns lanes, locks, result aggregation, cache generation
+recording, and public build events, while `riot-executor` exposes package
+results and telemetry that `riot-build` and `riot-cli` reach through directly.
+That makes `riot-executor` a leaked implementation boundary, not a reusable
+library boundary.
+
+Folding it does not mean flattening the code into one module. `riot-build`
+should still keep internal modules for scheduler state, action execution,
+sandbox preparation, diagnostic rewriting, package result aggregation, and
+telemetry. The difference is that those modules become private implementation
+details behind `Riot_build.build` and `Riot_build.Event`, so build invariants
+can be expressed across request resolution, locking, planning, execution, and
+finalization without exporting half-built executor types.
 
 `riot-build` should not own:
 
@@ -596,9 +611,9 @@ this RFD does not require introducing user-facing cancellation controls.
 This is a real rewrite, not a cleanup pass.
 
 The main drawback is implementation risk. Build orchestration is central to
-Riot, and concurrency bugs in this layer can be subtle. The rewrite would touch
-`riot-build`, `riot-executor`, parts of `riot-planner`, and test fixtures that
-assert event ordering.
+Riot, and concurrency bugs in this layer can be subtle. The rewrite would fold
+`riot-executor` into `riot-build`, touch parts of `riot-planner`, and update
+test fixtures that assert event ordering.
 
 The second drawback is conceptual weight. A unified work scheduler is a
 stronger abstraction than a simple "plan packages, then execute actions" flow.
@@ -649,6 +664,22 @@ the larger scheduling issue. Riot would still have package planning feeding an
 action queue from the side, and multi-target builds would still tend to be
 organized as lane loops rather than scheduler work.
 
+### Keep `riot-executor` as a separate package
+
+Keeping `riot-executor` separate preserves a familiar package split: planner
+plans, executor executes, build orchestrates.
+
+The problem is that this split is already false in practice. `riot-build`
+depends on executor package-result types in its public API, translates
+executor telemetry into build events, owns build locks and generation
+accounting around executor results, and chooses target lanes above the
+executor. `riot-cli` also reaches directly into executor result/telemetry
+types for formatting. A separate package boundary therefore does not protect a
+clean abstraction; it forces the abstraction to leak.
+
+The better boundary is internal: keep action execution as an internal
+`riot-build` module, but make `Riot_build` the only package-level build API.
+
 ### Plan everything first, then execute
 
 Planning the full workspace before execution is simpler to reason about. It
@@ -673,6 +704,7 @@ The proposed design is the best fit because it addresses the structural causes
 instead of one symptom:
 
 - it deletes the local protocol boundary
+- it deletes the leaked executor package boundary
 - it makes the build order visible in typed values
 - it starts work as soon as dependencies allow it
 - it shares one concurrency budget
@@ -712,9 +744,6 @@ stages, not actor messages.
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-- Should the unified scheduler live in `riot-build` or `riot-executor`? The
-  current package boundary suggests `riot-executor`, but `riot-build` owns
-  lanes, locks, and build result aggregation.
 - Should package planning cache hits be represented as completed package work
   or as a separate cache-hit work item?
 - Should action cache checks happen before enqueuing actions or inside worker
