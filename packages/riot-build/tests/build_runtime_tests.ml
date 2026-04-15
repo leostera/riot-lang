@@ -549,6 +549,67 @@ let test_execute_allows_multi_target_partial_failures = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
+let test_execute_multi_target_reports_global_returning_results = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"riot_build_multi_target_returning_results"
+      (fun tmpdir ->
+        let host_target = Riot_model.Target.current in
+        let secondary_target =
+          if String.equal (Riot_model.Target.to_string host_target) "x86_64-unknown-linux-gnu" then
+            target "aarch64-unknown-linux-gnu"
+          else
+            target "x86_64-unknown-linux-gnu"
+        in
+        let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
+        let target_count = List.length (Riot_model.Target.Set.to_list requested_targets) in
+        let expected_return_count = target_count * 2 in
+        let returning_event = ref None in
+        let workspace =
+          make_workspace_with_sources
+            ~root:tmpdir
+            ~toolchain_targets:(Riot_model.Target.Set.to_list requested_targets
+              |> List.map ~fn:Riot_model.Target.to_string)
+            ~packages:[
+              ( "good", "let value = 2\n" );
+              ( "bad", "let broken =" );
+            ] () in
+        let spec = Build_spec.make
+          ~workspace
+          ~package_names:[ package_name "good"; package_name "bad" ]
+          ~targets:requested_targets
+          ~scope:Riot_build.Request.Runtime
+          ~profile:Riot_model.Profile.debug
+          ~requested_parallelism:(Some 1) in
+        match
+          Riot_build.Internal.Build_runtime.execute
+            ~allow_partial_failures:true
+            ~on_event:(fun event ->
+              match event with
+              | Build_runtime.Phase (Riot_build.Event.ReturningResults { result_count; had_partial_failure }) ->
+                  returning_event := Some (result_count, had_partial_failure)
+              | _ -> ())
+            spec
+        with
+        | Error err ->
+            Error ("expected partial failures to be returned, got: " ^ Build_runtime.error_message err)
+        | Ok _ ->
+            match !returning_event with
+            | None -> Error "expected returning results event"
+            | Some (result_count, had_partial_failure) ->
+                if not (Int.equal result_count expected_return_count) then
+                  Error
+                    ("expected returning result count "
+                    ^ Int.to_string expected_return_count
+                    ^ ", got "
+                    ^ Int.to_string result_count)
+                else if not had_partial_failure then
+                  Error "expected returning results to report partial failure"
+                else
+                  Ok ())
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
 let tests =
   let open Test in [
     case "build runtime: release builds use the release lane" test_release_build_uses_release_lane;
@@ -562,6 +623,8 @@ let tests =
       test_execute_allows_partial_failures;
     case "build runtime: multi-target partial failures can succeed with allow flag"
       test_execute_allows_multi_target_partial_failures;
+    case "build runtime: multi-target partial build returns aggregated returning results"
+      test_execute_multi_target_reports_global_returning_results;
   ]
 
 let name = "Riot Build Runtime Tests"
