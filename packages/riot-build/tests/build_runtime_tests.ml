@@ -7,12 +7,26 @@ module Package_builder = Riot_build.Internal.Package_builder
 let package_name = fun name ->
   Riot_model.Package_name.from_string name |> Result.expect ~msg:("invalid package name: " ^ name)
 
+let target = fun value ->
+  Riot_model.Target.from_string value |> Result.expect ~msg:("invalid target triple: " ^ value)
+
 let write_workspace_manifest = fun ~root ~members ->
   let members = members
   |> List.map ~fn:(fun member -> "  \"" ^ Path.to_string member ^ "\"")
   |> String.concat ",\n" in
   let content = "[workspace]\nmembers = [\n" ^ members ^ "\n]\n" in
   Fs.write content Path.(root / Path.v "riot.toml") |> Result.expect ~msg:"Write workspace riot.toml failed"
+
+let write_toolchain_config = fun ~root ~targets ->
+  let target_lines = targets |> List.map ~fn:(fun target -> "\"" ^ target ^ "\"") |> String.concat ", " in
+  Fs.write
+    ("[toolchain]\nversion = \""
+    ^ Riot_model.Toolchain_config.default_ocaml_version
+    ^ "\"\ntargets = ["
+    ^ target_lines
+    ^ "]\n")
+    Path.(root / Path.v "ocaml-toolchain.toml")
+  |> Result.expect ~msg:"Write ocaml-toolchain.toml failed"
 
 let make_package = fun ~root ~name ~source ->
   let pkg_dir = Path.(root / Path.v name) in
@@ -36,22 +50,25 @@ let make_package = fun ~root ~name ~source ->
     }
     ()
 
-let make_workspace = fun ?target_dir ~root ~packages () ->
+let make_workspace = fun ?target_dir ?toolchain_targets ~root ~packages () ->
   write_workspace_manifest
     ~root
     ~members:(List.map packages ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.relative_path));
+  (match toolchain_targets with
+  | Some targets -> write_toolchain_config ~root ~targets
+  | None -> ());
   Riot_model.Workspace.make_realized ~root ?target_dir ~packages ()
 
-let make_valid_workspace = fun ?target_dir tmpdir ->
+let make_valid_workspace = fun ?target_dir ?toolchain_targets tmpdir ->
   let package = make_package ~root:tmpdir ~name:"demo" ~source:"let value = 42\n" in
-  make_workspace ?target_dir ~root:tmpdir ~packages:[ package ] ()
+  make_workspace ?target_dir ?toolchain_targets ~root:tmpdir ~packages:[ package ] ()
 
-let make_workspace_with_sources = fun ~root ~packages ->
+let make_workspace_with_sources = fun ?toolchain_targets ~root ~packages () ->
   let packages =
     List.map packages
       ~fn:(fun (name, source) -> make_package ~root ~name ~source)
   in
-  make_workspace ~root ~packages ()
+  make_workspace ?toolchain_targets ~root ~packages ()
 
 let make_request = fun ~workspace ?(profile = Riot_model.Profile.debug) () ->
   Riot_build.Request.make
@@ -313,7 +330,7 @@ let test_execute_partial_failures_by_default = fun _ctx ->
             ~packages:[
               ( "good", "let value = 1\n" );
               ( "bad", "let broken =" );
-            ] in
+            ] () in
         let bad = package_name "bad" in
         let spec = Build_spec.make
           ~workspace
@@ -370,7 +387,7 @@ let test_execute_allows_partial_failures = fun _ctx ->
             ~packages:[
               ( "good", "let value = 2\n" );
               ( "bad", "let broken =" );
-            ] in
+            ] () in
         let good = package_name "good" in
         let bad = package_name "bad" in
         let spec = Build_spec.make
@@ -413,6 +430,125 @@ let test_execute_allows_partial_failures = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
+let test_execute_allows_multi_target_partial_failures = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"riot_build_allow_partial_failures_multi_target"
+      (fun tmpdir ->
+        let host_target = Riot_model.Target.current in
+        let secondary_target =
+          if String.equal (Riot_model.Target.to_string host_target) "x86_64-unknown-linux-gnu" then
+            target "aarch64-unknown-linux-gnu"
+          else
+            target "x86_64-unknown-linux-gnu"
+        in
+        let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
+        let expected_targets =
+          requested_targets
+          |> Riot_model.Target.Set.to_list
+          |> List.map ~fn:Riot_model.Target.to_string
+          |> List.sort ~compare:String.compare
+        in
+        let expected_target_count = List.length expected_targets in
+        let workspace =
+          make_workspace_with_sources
+            ~root:tmpdir
+            ~toolchain_targets:expected_targets
+            ~packages:[
+              ( "good", "let value = 2\n" );
+              ( "bad", "let broken =" );
+            ] () in
+        let good = package_name "good" in
+        let bad = package_name "bad" in
+        let spec = Build_spec.make
+          ~workspace
+          ~package_names:[ good; bad ]
+          ~targets:requested_targets
+          ~scope:Riot_build.Request.Runtime
+          ~profile:Riot_model.Profile.debug
+          ~requested_parallelism:(Some 1) in
+        let started_targets = ref [] in
+        let finished_targets = ref [] in
+        let finished_counts = ref [] in
+        let partial_flags = ref [] in
+        match
+          Riot_build.Internal.Build_runtime.execute
+            ~allow_partial_failures:true
+            ~on_event:(fun event ->
+              match event with
+              | Build_runtime.Phase (Riot_build.Event.TargetBuildStarted { target }) ->
+                  started_targets := Riot_model.Target.to_string target :: !started_targets
+              | Build_runtime.Phase (Riot_build.Event.TargetBuildFinished {
+                target;
+                result_count;
+                had_partial_failure = partial
+              }) ->
+                  finished_targets := Riot_model.Target.to_string target :: !finished_targets;
+                  finished_counts := result_count :: !finished_counts;
+                  partial_flags := partial :: !partial_flags
+              | _ -> ())
+            spec
+        with
+        | Error err ->
+            Error ("expected partial failures to be returned, got: " ^ Build_runtime.error_message err)
+        | Ok results ->
+            if not (Int.equal (List.length !started_targets) expected_target_count) then
+              Error ("expected " ^ Int.to_string expected_target_count ^ " target builds started")
+            else if not (Int.equal (List.length !finished_targets) expected_target_count) then
+              Error ("expected " ^ Int.to_string expected_target_count ^ " target builds finished")
+            else if not (Int.equal (List.length !finished_counts) expected_target_count) then
+              Error ("expected " ^ Int.to_string expected_target_count ^ " target result_count events")
+            else if not (List.all !finished_counts ~fn:(fun count -> count = 2)) then
+              Error ("expected each lane to report two package results, got "
+              ^ String.concat ", " (List.map !finished_counts ~fn:Int.to_string))
+            else if not (List.all !partial_flags ~fn:(fun partial -> partial)) then
+              Error "expected each lane to report partial failures"
+            else
+              let sort_target_names = List.sort ~compare:String.compare in
+              let started_sorted = sort_target_names !started_targets in
+              let finished_sorted = sort_target_names !finished_targets in
+              let rec equal_target_lists = fun left right ->
+                match left, right with
+                | [], [] -> true
+                | left :: left_rest, right :: right_rest ->
+                    String.equal left right && equal_target_lists left_rest right_rest
+                | _, _ -> false
+              in
+              if not (equal_target_lists expected_targets started_sorted) then
+                Error ("expected target starts to include " ^ String.concat ", " expected_targets)
+              else if not (equal_target_lists expected_targets finished_sorted) then
+                Error ("expected target finishes to include " ^ String.concat ", " expected_targets)
+              else
+                let build_output = Riot_build.Build_result.of_build_results results in
+                let good_output = Riot_build.Build_result.find_package build_output good in
+                let bad_output = Riot_build.Build_result.find_package build_output bad in
+                let good_ok =
+                  match good_output with
+                  | Some package_output ->
+                      (match Riot_build.Build_result.package_status package_output with
+                      | Riot_build.Build_result.Built _
+                      | Riot_build.Build_result.Cached _ -> true
+                      | _ -> false)
+                  | None -> false
+                in
+                let bad_ok =
+                  match bad_output with
+                  | Some package_output ->
+                      (match Riot_build.Build_result.package_status package_output with
+                      | Riot_build.Build_result.Failed _ -> true
+                      | _ -> false)
+                  | None -> false
+                in
+                if not good_ok then
+                  Error "expected merged output to include successful good package"
+                else if not bad_ok then
+                  Error "expected merged output to include failed bad package"
+                else
+                  Ok ()
+      )
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
 let tests =
   let open Test in [
     case "build runtime: release builds use the release lane" test_release_build_uses_release_lane;
@@ -424,6 +560,8 @@ let tests =
     case "build runtime: partial failures fail by default" test_execute_partial_failures_by_default;
     case "build runtime: allow partial failures returns partial results"
       test_execute_allows_partial_failures;
+    case "build runtime: multi-target partial failures can succeed with allow flag"
+      test_execute_allows_multi_target_partial_failures;
   ]
 
 let name = "Riot Build Runtime Tests"
