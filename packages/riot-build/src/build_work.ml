@@ -16,6 +16,35 @@ let lane = fun lane -> BuildLane lane
 let target = function
   | BuildLane lane -> Build_lane.target lane
 
+let release = function
+  | BuildLane lane -> Build_lane.release lane
+
+let prepare_lane = fun context spec ~toolchain target ->
+  Build_lane.prepare
+    context
+    spec
+    ~target
+    ~toolchain
+  |> Result.map ~fn:lane
+
+let prepare_lanes = fun context spec ~toolchain ->
+  let targets =
+    Riot_model.Target.Set.to_list (Resolved_build.targets spec)
+    |> List.sort ~compare:Riot_model.Target.compare
+  in
+  let release_items = fun items -> List.for_each items ~fn:release in
+  let rec loop prepared = function
+    | [] -> Ok (List.reverse prepared)
+    | target :: rest -> (
+        match prepare_lane context spec ~toolchain target with
+        | Ok item -> loop (item :: prepared) rest
+        | Error _ as error ->
+            release_items prepared;
+            error
+      )
+  in
+  loop [] targets
+
 let lane_result = function
   | LaneCompleted result -> Some result
 

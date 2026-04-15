@@ -218,34 +218,15 @@ let failed_results = fun results ->
       | Package_builder.Cached _
       | Package_builder.Skipped _ -> false)
 
-let prepare_lane = fun context ~toolchain target ->
-  Build_lane.prepare
-    context.build
-    context.resolved
-    ~target
-    ~toolchain
-
 let map_lane_error = fun error ->
   UnexpectedError { reason = error }
 
 let run_lanes = fun context ~toolchain ->
-  let targets =
-    Riot_model.Target.Set.to_list (Resolved_build.targets context.resolved)
-    |> List.sort ~compare:Riot_model.Target.compare
+  let* work_items =
+    Build_work.prepare_lanes context.build context.resolved ~toolchain
+    |> Result.map_err ~fn:map_lane_error
   in
-  let release_lanes = fun lanes -> List.for_each lanes ~fn:Build_lane.release in
-  let rec prepare_lanes prepared = function
-    | [] -> Ok (List.reverse prepared)
-    | target :: rest ->
-        match prepare_lane context ~toolchain target |> Result.map_err ~fn:map_lane_error with
-        | Ok lane -> prepare_lanes (lane :: prepared) rest
-        | Error _ as error ->
-            release_lanes prepared;
-            error
-  in
-  let* lanes = prepare_lanes [] targets in
-  List.for_each lanes ~fn:(fun lane -> emit_target_build_started context (Build_lane.target lane));
-  let work_items = List.map lanes ~fn:Build_work.lane in
+  List.for_each work_items ~fn:(fun work -> emit_target_build_started context (Build_work.target work));
   let results = Build_work.run context.build work_items in
   let has_failures =
     List.exists (fun (_, outcome) ->
