@@ -1,6 +1,5 @@
 open Std
 
-type build_event = Event.t
 type build_error =
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
   | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
@@ -23,6 +22,6 @@ val error_message: build_error -> string
 val execute:
   ?allow_partial_failures:bool ->
   ?record_cache_generation:bool ->
-  ?on_event:(build_event -> unit) ->
+  ?on_event:(Event.t -> unit) ->
   Build_spec.t ->
   (Package_builder.build_result list, build_error) result

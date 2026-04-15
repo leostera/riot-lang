@@ -1,8 +1,6 @@
 open Std
 open Std.Result.Syntax
 
-type build_event = Event.t
-
 type build_error =
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
   | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
@@ -27,7 +25,7 @@ type build_context = {
   record_cache_generation: bool;
 }
 
-let no_event: build_event -> unit = fun _ -> ()
+let no_event: Event.t -> unit = fun _ -> ()
 
 let emit_runtime_phase = fun context phase -> context.build.on_event (Event.Phase phase)
 
