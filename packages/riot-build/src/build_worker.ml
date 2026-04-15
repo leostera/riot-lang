@@ -1,7 +1,6 @@
 (** Build worker - Handles build execution in a spawned process. *)
 open Std
 open Riot_model
-open Riot_executor
 
 module Session_protocol = Build_session_protocol
 
@@ -36,40 +35,40 @@ let init = fun ~(workspace:Workspace.t) ~load_errors ~toolchain ~concurrency ~se
     (fun event ->
       (
         match event with
-        | Riot_executor.Telemetry_events.CacheHit _ -> Session_protocol.BuildStats.inc_action_cache_hits stats
-        | Riot_executor.Telemetry_events.CacheMiss _ -> Session_protocol.BuildStats.inc_action_cache_misses stats
+        | Telemetry_events.CacheHit _ -> Session_protocol.BuildStats.inc_action_cache_hits stats
+        | Telemetry_events.CacheMiss _ -> Session_protocol.BuildStats.inc_action_cache_misses stats
         | _ -> ()
       );
       (* Filter events by session_id to prevent cross-contamination *)
       let event_session_id =
         match event with
-        | Riot_executor.Telemetry_events.WorkspacePlanStarted { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.WorkspacePlanCompleted { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.WorkspaceManifestFilterCompleted { session_id; _ } ->
+        | Telemetry_events.WorkspacePlanStarted { session_id; _ } -> Some session_id
+        | Telemetry_events.WorkspacePlanCompleted { session_id; _ } -> Some session_id
+        | Telemetry_events.WorkspaceManifestFilterCompleted { session_id; _ } ->
             Some session_id
-        | Riot_executor.Telemetry_events.WorkspaceGraphCreated { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.WorkspaceTargetGraphFiltered { session_id; _ } ->
+        | Telemetry_events.WorkspaceGraphCreated { session_id; _ } -> Some session_id
+        | Telemetry_events.WorkspaceTargetGraphFiltered { session_id; _ } ->
             Some session_id
-        | Riot_executor.Telemetry_events.WorkspaceTopologicalSortCompleted { session_id; _ } ->
+        | Telemetry_events.WorkspaceTopologicalSortCompleted { session_id; _ } ->
             Some session_id
-        | Riot_executor.Telemetry_events.PlanningWorkspaceStarted { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.BuildStarted { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.CompilationStarted { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.PackageOcamlcWarnings { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.BuildCompleted { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.BuildFailed { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.BuildSkipped { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.PlanningWorkspaceCompleted { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.PackagePlanningResult { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.PackagePlanningBreakdown { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.WorkspaceStarted { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.WorkspaceCompleted { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.ActionStarted { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.ActionCommandStarted { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.ActionCompleted { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.ActionFailed { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.CacheHit { session_id; _ } -> Some session_id
-        | Riot_executor.Telemetry_events.CacheMiss { session_id; _ } -> Some session_id
+        | Telemetry_events.PlanningWorkspaceStarted { session_id; _ } -> Some session_id
+        | Telemetry_events.BuildStarted { session_id; _ } -> Some session_id
+        | Telemetry_events.CompilationStarted { session_id; _ } -> Some session_id
+        | Telemetry_events.PackageOcamlcWarnings { session_id; _ } -> Some session_id
+        | Telemetry_events.BuildCompleted { session_id; _ } -> Some session_id
+        | Telemetry_events.BuildFailed { session_id; _ } -> Some session_id
+        | Telemetry_events.BuildSkipped { session_id; _ } -> Some session_id
+        | Telemetry_events.PlanningWorkspaceCompleted { session_id; _ } -> Some session_id
+        | Telemetry_events.PackagePlanningResult { session_id; _ } -> Some session_id
+        | Telemetry_events.PackagePlanningBreakdown { session_id; _ } -> Some session_id
+        | Telemetry_events.WorkspaceStarted { session_id; _ } -> Some session_id
+        | Telemetry_events.WorkspaceCompleted { session_id; _ } -> Some session_id
+        | Telemetry_events.ActionStarted { session_id; _ } -> Some session_id
+        | Telemetry_events.ActionCommandStarted { session_id; _ } -> Some session_id
+        | Telemetry_events.ActionCompleted { session_id; _ } -> Some session_id
+        | Telemetry_events.ActionFailed { session_id; _ } -> Some session_id
+        | Telemetry_events.CacheHit { session_id; _ } -> Some session_id
+        | Telemetry_events.CacheMiss { session_id; _ } -> Some session_id
         | _ -> None
       in
       match event_session_id with

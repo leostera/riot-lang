@@ -7,7 +7,7 @@
 1. Keep this package one-shot and local. Do not reintroduce background service, RPC, or socket assumptions.
 2. Session orchestration belongs here; user-facing argument parsing belongs in `riot-cli`.
 3. If behavior starts looking transport-shaped, first ask whether it should be deleted instead.
-4. Changes here commonly affect `riot-cli`, `riot-planner`, and `riot-executor`.
+4. Changes here commonly affect `riot-cli` and `riot-planner`.
 5. Artifact lookup must respect the active build lane (`profile` + `target`) instead of assuming host/default output directories.
 6. Public command entrypoints should expose typed request/event/error APIs from this package; `riot-cli` should only translate `matches` into those requests and render the resulting events.
 7. Normal command entrypoints should assume `riot-cli` already validated workspace load errors; do not reintroduce `load_errors` plumbing into public request types unless a command truly needs partial-workspace behavior.

@@ -52,6 +52,12 @@ let to_int = function
   | Int n -> Some n
   | _ -> None
 
+let bytes_equal = fun left right ->
+  String.equal (Bytes.to_string left) (Bytes.to_string right)
+
+let bytes_compare = fun left right ->
+  String.compare (Bytes.to_string left) (Bytes.to_string right)
+
 let to_int64 = function
   | Int64 n -> Some n
   | _ -> None
@@ -132,13 +138,13 @@ let to_string = function
   | Date (y, m, d) ->
       let pad n width =
         let s = string_of_int n in
-        String.make (max 0 (width - String.length s)) '0' ^ s
+        String.make ~len:(max 0 (width - String.length s)) ~char:'0' ^ s
       in
       pad y 4 ^ "-" ^ pad m 2 ^ "-" ^ pad d 2
   | Time (h, min, s, us) ->
       let pad n width =
         let s = string_of_int n in
-        String.make (max 0 (width - String.length s)) '0' ^ s
+        String.make ~len:(max 0 (width - String.length s)) ~char:'0' ^ s
       in
       pad h 2 ^ ":" ^ pad min 2 ^ ":" ^ pad s 2 ^ "." ^ pad us 6
   | Uuid s ->
@@ -157,7 +163,7 @@ let equal = fun a b ->
   | Float x, Float y -> x = y
   | String x, String y -> x = y
   | Bool x, Bool y -> x = y
-  | Bytes x, Bytes y -> Bytes.equal x y
+  | Bytes x, Bytes y -> bytes_equal x y
   | Timestamp x, Timestamp y -> DateTime.equal x y
   | TimestampWithTimezone x, TimestampWithTimezone y -> DateTime.equal x y
   | Date (y1, m1, d1), Date (y2, m2, d2) -> y1 = y2 && m1 = m2 && d1 = d2
@@ -191,7 +197,7 @@ let compare = fun a b ->
   | Bool x, Bool y ->
       Bool.compare x y
   | Bytes x, Bytes y ->
-      Bytes.compare x y
+      bytes_compare x y
   | Timestamp x, Timestamp y ->
       Time.SystemTime.compare (DateTime.to_system_time x) (DateTime.to_system_time y)
   | TimestampWithTimezone x, TimestampWithTimezone y ->

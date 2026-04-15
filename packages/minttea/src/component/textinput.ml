@@ -60,7 +60,7 @@ let validate = fun t ->
 let set_value = fun t ~value:str ->
   let value =
     if t.char_limit > 0 && String.length str > t.char_limit then
-      String.sub str 0 t.char_limit
+      String.sub str ~offset:0 ~len:t.char_limit
     else
       str
   in
@@ -94,8 +94,13 @@ let set_cursor_position = fun t ~pos ->
 (* Helper: insert text at cursor *)
 
 let insert_at_cursor = fun t text ->
-  let before = String.sub t.value 0 t.cursor_pos in
-  let after = String.sub t.value t.cursor_pos (String.length t.value - t.cursor_pos) in
+  let before = String.sub t.value ~offset:0 ~len:t.cursor_pos in
+  let after =
+    String.sub
+      t.value
+      ~offset:t.cursor_pos
+      ~len:(String.length t.value - t.cursor_pos)
+  in
   let new_value = before ^ text ^ after in
   (* Check char limit *)
   let new_value =
@@ -113,8 +118,13 @@ let delete_char_backward = fun t ->
   if t.cursor_pos = 0 then
     t
   else
-    let before = String.sub t.value 0 (t.cursor_pos - 1) in
-    let after = String.sub t.value t.cursor_pos (String.length t.value - t.cursor_pos) in
+    let before = String.sub t.value ~offset:0 ~len:(t.cursor_pos - 1) in
+    let after =
+      String.sub
+        t.value
+        ~offset:t.cursor_pos
+        ~len:(String.length t.value - t.cursor_pos)
+    in
     validate { t with value = before ^ after; cursor_pos = t.cursor_pos - 1 }
 
 (* Helper: delete character after cursor *)
@@ -123,20 +133,30 @@ let delete_char_forward = fun t ->
   if t.cursor_pos >= String.length t.value then
     t
   else
-    let before = String.sub t.value 0 t.cursor_pos in
-    let after = String.sub t.value (t.cursor_pos + 1) (String.length t.value - t.cursor_pos - 1) in
+    let before = String.sub t.value ~offset:0 ~len:t.cursor_pos in
+    let after =
+      String.sub
+        t.value
+        ~offset:(t.cursor_pos + 1)
+        ~len:(String.length t.value - t.cursor_pos - 1)
+    in
     validate { t with value = before ^ after }
 
 (* Helper: clear before cursor *)
 
 let clear_before_cursor = fun t ->
-  let after = String.sub t.value t.cursor_pos (String.length t.value - t.cursor_pos) in
+  let after =
+    String.sub
+      t.value
+      ~offset:t.cursor_pos
+      ~len:(String.length t.value - t.cursor_pos)
+  in
   validate { t with value = after; cursor_pos = 0 }
 
 (* Helper: clear after cursor *)
 
 let clear_after_cursor = fun t ->
-  let before = String.sub t.value 0 t.cursor_pos in
+  let before = String.sub t.value ~offset:0 ~len:t.cursor_pos in
   validate { t with value = before }
 
 (* Helper: delete word backward *)
@@ -149,14 +169,19 @@ let delete_word_backward = fun t ->
     let rec find_word_start pos =
       if pos = 0 then
         0
-      else if t.value.[pos - 1] = ' ' then
+      else if String.get t.value ~at:(pos - 1) = Some ' ' then
         pos
       else
         find_word_start (pos - 1)
     in
     let word_start = find_word_start t.cursor_pos in
-    let before = String.sub t.value 0 word_start in
-    let after = String.sub t.value t.cursor_pos (String.length t.value - t.cursor_pos) in
+    let before = String.sub t.value ~offset:0 ~len:word_start in
+    let after =
+      String.sub
+        t.value
+        ~offset:t.cursor_pos
+        ~len:(String.length t.value - t.cursor_pos)
+    in
     validate { t with value = before ^ after; cursor_pos = word_start }
 
 let handle_paste = fun t text ->
@@ -204,7 +229,7 @@ let view = fun t ->
   in
   (* Handle width limiting / horizontal scrolling *)
   let visible_content =
-    if t.width > 0 && String.length content > t.width then
+      if t.width > 0 && String.length content > t.width then
       let offset =
         if t.cursor_pos < t.offset then
           t.cursor_pos
@@ -213,7 +238,10 @@ let view = fun t ->
         else
           t.offset
       in
-      String.sub content offset (Int.min t.width (String.length content - offset))
+      String.sub
+        content
+        ~offset
+        ~len:(Int.min t.width (String.length content - offset))
     else
       content
   in
@@ -224,12 +252,12 @@ let view = fun t ->
       if cursor_visual_pos >= String.length visible_content then
         visible_content ^ "█"
       else
-        let before = String.sub visible_content 0 cursor_visual_pos in
-        let at_cursor = String.sub visible_content cursor_visual_pos 1 in
+        let before = String.sub visible_content ~offset:0 ~len:cursor_visual_pos in
+        let at_cursor = String.sub visible_content ~offset:cursor_visual_pos ~len:1 in
         let after = String.sub
           visible_content
-          (cursor_visual_pos + 1)
-          (String.length visible_content - cursor_visual_pos - 1) in
+          ~offset:(cursor_visual_pos + 1)
+          ~len:(String.length visible_content - cursor_visual_pos - 1) in
         before ^ "\027[7m" ^ at_cursor ^ "\027[0m" ^ after
     else
       visible_content

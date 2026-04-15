@@ -196,12 +196,14 @@ let overflow = fun x t -> { t with overflow = x }
 let do_render = fun t str ->
   (* Pre-process padding *)
   let apply_padding str =
-    let pad_left = String.make t.padding_left ' ' in
-    let pad_right = String.make t.padding_right ' ' in
+    let pad_left = String.make ~len:t.padding_left ~char:' ' in
+    let pad_right = String.make ~len:t.padding_right ~char:' ' in
     (* Apply horizontal padding to each line *)
     let lines = Util.Ansi.split_lines str in
     let padded_lines =
-      List.map (fun line -> pad_left ^ line ^ pad_right) lines
+      List.map
+        ~fn:(fun line -> pad_left ^ line ^ pad_right)
+        lines
     in
     let str_with_h_padding = String.concat "\n" padded_lines in
     (* Apply vertical padding (top and bottom) *)
@@ -272,7 +274,7 @@ let do_render = fun t str ->
           (* Create empty lines that match the target width (if set) so they show background color *)
           let empty_line =
             match target_width with
-            | Some w -> String.make w ' '
+            | Some w -> String.make ~len:w ~char:' '
             | None -> ""
           in
           (
@@ -357,13 +359,13 @@ let do_render = fun t str ->
   (* handle margin *)
   let str = Cell.create str in
   if t.margin_left > 0 then
-    Cell.set str (String.make t.margin_left ' ' ^ Cell.get str);
+    Cell.set str (String.make ~len:t.margin_left ~char:' ' ^ Cell.get str);
   if t.margin_right > 0 then
-    Cell.set str (Cell.get str ^ String.make t.margin_right ' ');
+    Cell.set str (Cell.get str ^ String.make ~len:t.margin_right ~char:' ');
   if t.margin_top > 0 then
-    Cell.set str (String.make t.margin_top '\n' ^ Cell.get str);
+    Cell.set str (String.make ~len:t.margin_top ~char:'\n' ^ Cell.get str);
   if t.margin_bottom > 0 then
-    Cell.set str (Cell.get str ^ String.make t.margin_bottom '\n');
+    Cell.set str (Cell.get str ^ String.make ~len:t.margin_bottom ~char:'\n');
   (
     match t.constraints.max_height with
     | Some max_height when max_height > 0 ->

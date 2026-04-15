@@ -29,7 +29,7 @@ let to_string = fun fmt ->
   | Background color -> Escape_seq.background_seq ^ ";" ^ Color.to_escape_seq ~mode:`bg color
 
 let format_string = fun seqs line ->
-  let seqs = List.map to_string seqs |> String.concat ";" in
+  let seqs = List.map ~fn:to_string seqs |> String.concat ";" in
   if seqs = "" then
     line
   else

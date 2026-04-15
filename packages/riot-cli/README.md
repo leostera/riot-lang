@@ -39,9 +39,8 @@ This package depends on:
 - `actors` - Actor runtime
 - `riot-model` - Core data models
 - `riot-fmt` - Formatting command wrapper
-- `riot-build` - Local build session runtime
+- `riot-build` - Build session runtime and execution
 - `riot-planner` - Build planning
-- `riot-executor` - Build execution
 - `riot-store` - Artifact storage
 - `riot-toolchain` - OCaml toolchain integration
 

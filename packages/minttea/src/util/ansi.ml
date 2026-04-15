@@ -28,14 +28,14 @@ let pad_right = fun ~width:target_width c str ->
   if w >= target_width then
     str
   else
-    str ^ String.make (target_width - w) c
+    str ^ String.make ~len:(target_width - w) ~char:c
 
 let pad_left = fun ~width:target_width c str ->
   let w = width str in
   if w >= target_width then
     str
   else
-    String.make (target_width - w) c ^ str
+    String.make ~len:(target_width - w) ~char:c ^ str
 
 let pad_center = fun ~width:target_width c str ->
   let w = width str in
@@ -45,7 +45,7 @@ let pad_center = fun ~width:target_width c str ->
     let total_pad = target_width - w in
     let left_pad = total_pad / 2 in
     let right_pad = total_pad - left_pad in
-    String.make left_pad c ^ str ^ String.make right_pad c
+    String.make ~len:left_pad ~char:c ^ str ^ String.make ~len:right_pad ~char:c
 
 (* Truncate with ellipsis, preserving ANSI codes *)
 
@@ -165,13 +165,9 @@ let word_wrap = fun ~width:target_width str ->
                     build_lines "" 0 (word :: acc) rest
                   else
                     let part = String.sub
-                      stripped_word
-                      0
-                      (min chars_fit (String.length stripped_word)) in
+                      stripped_word ~offset:0 ~len:(min chars_fit (String.length stripped_word)) in
                     let remaining = String.sub
-                      stripped_word
-                      chars_fit
-                      (String.length stripped_word - chars_fit) in
+                      stripped_word ~offset:chars_fit ~len:(String.length stripped_word - chars_fit) in
                     build_lines "" 0 (part :: acc) (remaining :: rest)
                 else
                   build_lines word word_width acc rest
@@ -183,4 +179,4 @@ let word_wrap = fun ~width:target_width str ->
         in
         build_lines "" 0 [] words
     in
-    List.concat (List.map wrap_line lines)
+    List.concat (List.map lines ~fn:wrap_line)

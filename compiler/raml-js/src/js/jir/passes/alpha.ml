@@ -21,9 +21,10 @@ module String_set = struct
   let empty = Storage.empty
 
   let add = fun name set ->
-    Storage.add name () set
+    Storage.insert set ~key:name ~value:()
 
-  let mem = Storage.mem
+  let mem = fun name set ->
+    Storage.has_key set ~key:name
 end
 
 type env = {
@@ -37,7 +38,7 @@ let is_visible = fun env name ->
   String_set.mem name env.visible
 
 let lookup_binding_name = fun env binding_id ->
-  Binding_map.find_opt binding_id env.bindings
+  Binding_map.get env.bindings ~key:binding_id
   |> Option.unwrap_or ~default:(Core.Binding_id.name binding_id)
 
 let fresh_name = fun env name ->
@@ -59,7 +60,7 @@ let bind_binder = fun env (binder: Jir.Binder.t) ->
   let binder = Jir.Binder.rename binder lowered in
   (
     {
-      bindings = Binding_map.add binder.binding_id lowered env.bindings;
+      bindings = Binding_map.insert env.bindings ~key:binder.binding_id ~value:lowered;
       visible = String_set.add lowered env.visible
     },
     binder
@@ -68,11 +69,11 @@ let bind_binder = fun env (binder: Jir.Binder.t) ->
 let bind_binders = fun env binders ->
   let (env, lowered_rev) =
     List.fold_left
-      (fun (env, lowered_rev) binder ->
+      binders
+      ~acc:(env, [])
+      ~fn:(fun (env, lowered_rev) binder ->
         let (env, binder) = bind_binder env binder in
         (env, binder :: lowered_rev))
-      (env, [])
-      binders
   in
   (env, List.rev lowered_rev)
 
@@ -110,9 +111,9 @@ and lower_expr = fun env expr ->
         right = lower_expr env binary.right
       }
   | Jir.Expr.Array elements ->
-      Jir.Expr.Array (List.map (lower_array_element env) elements)
+      Jir.Expr.Array (List.map elements ~fn:(lower_array_element env))
   | Jir.Expr.Object fields ->
-      Jir.Expr.Object (List.map (lower_object_field env) fields)
+      Jir.Expr.Object (List.map fields ~fn:(lower_object_field env))
   | Jir.Expr.Function function_ ->
       let (env, params) = bind_binders env function_.params in
       let body = lower_scoped_block env function_.body in
@@ -130,7 +131,7 @@ and lower_expr = fun env expr ->
   | Jir.Expr.Call call ->
       Jir.Expr.Call Jir.Expr.{
         callee = lower_expr env call.callee;
-        arguments = List.map (lower_expr env) call.arguments
+        arguments = List.map call.arguments ~fn:(lower_expr env)
       }
   | Jir.Expr.Conditional conditional ->
       Jir.Expr.Conditional Jir.Expr.{
@@ -147,7 +148,7 @@ and lower_expr = fun env expr ->
 and lower_statement = fun env statement ->
   match statement with
   | Jir.Statement.Declaration declaration ->
-      let init = Option.map (lower_expr env) declaration.init in
+      let init = Option.map declaration.init ~fn:(lower_expr env) in
       let (env, binder) = bind_binder env declaration.binder in
       (Jir.Statement.Declaration Jir.Declaration.{ declaration with binder; init }, env)
   | Jir.Statement.Block statements ->
@@ -170,16 +171,18 @@ and lower_block = fun env statements ->
       let (rest, env) = lower_block env rest in
       (statement :: rest, env)
 
-and lower_scoped_block = fun env statements -> lower_block env statements |> fst
+and lower_scoped_block = fun env statements ->
+  let body, _env = lower_block env statements in
+  body
 
 let program = fun ~context:_ (program: Jir.Program.t) ->
   let (imports, env) =
     List.fold_left
-      (fun (imports_rev, env) import ->
+      program.imports
+      ~acc:([], empty)
+      ~fn:(fun (imports_rev, env) import ->
         let (import, env) = lower_import env import in
         (import :: imports_rev, env))
-      ([], empty)
-      program.imports
   in
   let (body, _env) = lower_block env program.body in
   { program with imports = List.rev imports; body }

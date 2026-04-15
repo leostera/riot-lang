@@ -86,7 +86,7 @@ module Modules = struct
         ("kind", kind_to_json module_ref.kind);
         ("unit_name", Json.string module_ref.unit_name);
         ("import_path", Json.string module_ref.import_path);
-        ("namespace", Json.array (List.map Json.string module_ref.namespace));
+        ("namespace", Json.array (List.map ~fn:Json.string module_ref.namespace));
       ]
 end
 
@@ -234,7 +234,7 @@ and statement =
 let import_requirement_to_json = fun requirement ->
   let fields = [
     ("from", Json.string (Modules.import_path requirement.from));
-    ("imported", Option.map Json.string requirement.imported |> Option.unwrap_or ~default:Json.null);
+    ("imported", Option.map ~fn:Json.string requirement.imported |> Option.unwrap_or ~default:Json.null);
     ("local", Binder.to_json requirement.local);
   ] in
   if requirement.namespace then
@@ -293,7 +293,7 @@ let rec expr_call_to_json = fun (call: expr_call) ->
   Json.obj
     [
       ("callee", expr_to_json call.callee);
-      ("arguments", Json.array (List.map expr_to_json call.arguments));
+      ("arguments", Json.array (List.map call.arguments ~fn:expr_to_json));
     ]
 
 and expr_global_to_json = fun (global: expr_global) -> Json.obj [ ("name", Json.string global.name) ]
@@ -315,18 +315,18 @@ and expr_array_element_to_json = fun element ->
   | Item expr -> Json.obj [ ("kind", Json.string "item"); ("expr", expr_to_json expr) ]
   | Spread expr -> Json.obj [ ("kind", Json.string "spread"); ("expr", expr_to_json expr) ]
 
-and expr_array_to_json = fun array -> Json.array (List.map expr_array_element_to_json array)
+and expr_array_to_json = fun array -> Json.array (List.map array ~fn:expr_array_element_to_json)
 
 and expr_object_field_to_json = fun (field: expr_object_field) ->
   Json.obj [ ("name", Json.string field.name); ("value", expr_to_json field.value); ]
 
-and expr_object_to_json = fun object_ -> Json.array (List.map expr_object_field_to_json object_)
+and expr_object_to_json = fun object_ -> Json.array (List.map object_ ~fn:expr_object_field_to_json)
 
 and expr_function_to_json = fun (function_: expr_function) ->
   Json.obj
     [
-      ("params", Json.array (List.map Binder.to_json function_.params));
-      ("body", Json.array (List.map statement_to_json function_.body));
+      ("params", Json.array (List.map function_.params ~fn:Binder.to_json));
+      ("body", Json.array (List.map function_.body ~fn:statement_to_json));
     ]
 
 and expr_member_to_json = fun (member: expr_member) ->
@@ -384,15 +384,15 @@ and declaration_to_json = fun declaration ->
     [
       ("kind", declaration_kind_to_json declaration.kind);
       ("binder", Binder.to_json declaration.binder);
-      ("init", Option.map expr_to_json declaration.init |> Option.unwrap_or ~default:Json.null);
+      ("init", Option.map ~fn:expr_to_json declaration.init |> Option.unwrap_or ~default:Json.null);
     ]
 
 and statement_if_to_json = fun (if_: statement_if) ->
   Json.obj
     [
       ("condition", expr_to_json if_.condition);
-      ("then", Json.array (List.map statement_to_json if_.then_));
-      ("else", Json.array (List.map statement_to_json if_.else_));
+      ("then", Json.array (List.map if_.then_ ~fn:statement_to_json));
+      ("else", Json.array (List.map if_.else_ ~fn:statement_to_json));
     ]
 
 and statement_to_json = fun statement ->
@@ -400,7 +400,7 @@ and statement_to_json = fun statement ->
   | Declaration declaration -> Json.obj
     [ ("kind", Json.string "declaration"); ("declaration", declaration_to_json declaration) ]
   | Block statements -> Json.obj
-    [ ("kind", Json.string "block"); ("body", Json.array (List.map statement_to_json statements)) ]
+    [ ("kind", Json.string "block"); ("body", Json.array (List.map statements ~fn:statement_to_json)) ]
   | Expression expr -> Json.obj
     [ ("kind", Json.string "expression"); ("expression", expr_to_json expr) ]
   | Return expr -> Json.obj [ ("kind", Json.string "return"); ("expression", expr_to_json expr) ]
@@ -425,7 +425,7 @@ module Imports = struct
   let equal = fun left right ->
     if Modules.equal left.from right.from then
       if left.namespace = right.namespace then
-        if Option.equal String.equal left.imported right.imported then
+        if Option.equal left.imported right.imported ~fn:String.equal then
           Core.Binding_id.equal left.local.binding_id right.local.binding_id
         else
           false
@@ -686,8 +686,8 @@ module Program = struct
     Json.obj
       [
         ("module_name", Json.string program.module_name);
-        ("imports", Json.array (List.map Imports.to_json program.imports));
-        ("body", Json.array (List.map Statement.to_json program.body));
-        ("exports", Json.array (List.map Export.to_json program.exports));
+        ("imports", Json.array (List.map program.imports ~fn:Imports.to_json));
+        ("body", Json.array (List.map program.body ~fn:Statement.to_json));
+        ("exports", Json.array (List.map program.exports ~fn:Export.to_json));
       ]
 end

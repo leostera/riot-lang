@@ -17,4 +17,4 @@ val execute:
   ?record_cache_generation:bool ->
   ?on_event:(build_event -> unit) ->
   Build_spec.t ->
-  (Riot_executor.Package_builder.build_result list, build_error) result
+  (Package_builder.build_result list, build_error) result

@@ -27,7 +27,6 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/riot-deps/AGENTS.md`: package management, dependency solving, lock refresh, registry cache layout
 - `packages/riot-publish/AGENTS.md`: publish command orchestration across fmt, fix, build, and registry upload
 - `packages/riot-planner/AGENTS.md`: build planning and dependency graph construction
-- `packages/riot-executor/AGENTS.md`: build execution and result aggregation
 - `packages/contentstore/AGENTS.md`: generic content-addressable storage primitives and namespaced bundle persistence
 - `packages/riot-store/AGENTS.md`: artifact store and cache layout
 - `packages/riot-toolchain/AGENTS.md`: compiler/toolchain invocation wrappers

@@ -1,4 +1,5 @@
 open Std
+open Riot_build
 open Std.Collections
 open Riot_model
 module Test = Std.Test
@@ -87,7 +88,7 @@ let test_execute_node_copies_package_relative_sources = fun _ctx ->
             let package = make_package ~root:tmpdir ~name:"kernel" in
             let node = make_node ~package ~srcs:[ Path.v "src/lib.ml" ] in
             let completed = HashMap.create () in
-            let result = Riot_executor.Action_executor.execute_node
+            let result = Action_executor.execute_node
               ~completed
               ~store
               ~session_id:(Riot_model.Session_id.make ())
@@ -95,7 +96,7 @@ let test_execute_node_copies_package_relative_sources = fun _ctx ->
               sandbox
               node in
             match result.status with
-            | Riot_executor.Action_executor.Executed -> (
+            | Action_executor.Executed -> (
                 let copied = Path.(sandbox / Path.v "src/lib.ml") in
                 match Fs.exists copied with
                 | Ok true -> Ok ()
@@ -117,7 +118,7 @@ let test_execute_node_copies_workspace_relative_sources = fun _ctx ->
             let package = make_package ~root:tmpdir ~name:"kernel" in
             let node = make_node ~package ~srcs:[ Path.v "packages/kernel/src/lib.ml" ] in
             let completed = HashMap.create () in
-            let result = Riot_executor.Action_executor.execute_node
+            let result = Action_executor.execute_node
               ~completed
               ~store
               ~session_id:(Riot_model.Session_id.make ())
@@ -125,7 +126,7 @@ let test_execute_node_copies_workspace_relative_sources = fun _ctx ->
               sandbox
               node in
             match result.status with
-            | Riot_executor.Action_executor.Executed -> (
+            | Action_executor.Executed -> (
                 let copied = Path.(sandbox / Path.v "packages/kernel/src/lib.ml") in
                 match Fs.exists copied with
                 | Ok true -> Ok ()
@@ -149,7 +150,7 @@ let test_execute_node_cache_hit_materializes_outputs = fun _ctx ->
         let completed = HashMap.create () in
         let session_id = Riot_model.Session_id.make () in
         let toolchain = test_toolchain () in
-        let first = Riot_executor.Action_executor.execute_node
+        let first = Action_executor.execute_node
           ~completed
           ~store
           ~session_id
@@ -157,10 +158,10 @@ let test_execute_node_cache_hit_materializes_outputs = fun _ctx ->
           sandbox
           node in
         match first.status with
-        | Riot_executor.Action_executor.Executed ->
+        | Action_executor.Executed ->
             let output = Path.(sandbox / Path.v "out.txt") in
             let _ = Fs.remove_file output |> Result.expect ~msg:"remove cached output failed" in
-            let second = Riot_executor.Action_executor.execute_node
+            let second = Action_executor.execute_node
               ~completed
               ~store
               ~session_id
@@ -169,7 +170,7 @@ let test_execute_node_cache_hit_materializes_outputs = fun _ctx ->
               node in
             (
               match second.status with
-              | Riot_executor.Action_executor.Cached _ -> (
+              | Action_executor.Cached _ -> (
                   match Fs.exists output with
                   | Ok true ->
                       if String.equal (read_file output) "cached output" then
@@ -192,6 +193,6 @@ let tests =
     case "execute_node cache hit materializes outputs" test_execute_node_cache_hit_materializes_outputs;
   ]
 
-let name = "riot-executor:action-executor-source-copy"
+let name = "riot-build:action-executor-source-copy"
 
 let () = Actors.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()

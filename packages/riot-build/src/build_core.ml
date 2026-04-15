@@ -12,7 +12,7 @@ type error =
     }
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
   | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
-  | BuildFailed of { errors: Riot_executor.Package_builder.build_result list }
+  | BuildFailed of { errors: Build_result.failure list }
   | PlanningFailed of { reason: string }
   | CycleDetected of { cycle_nodes: string list }
   | BuildAlreadyRunning of { lock_path: Path.t }
@@ -46,7 +46,14 @@ let error_message = function
       ^ ": "
       ^ error
   | BuildFailed { errors } ->
-      Build_session.error_message (Build_session.BuildFailed { errors })
+      (
+        match errors with
+        | [] -> "build failed"
+        | [ failure ] -> Build_result.failure_message failure
+        | failures ->
+            "build failed:\n"
+            ^ String.concat "\n" (List.map failures ~fn:Build_result.failure_message)
+      )
   | PlanningFailed { reason } ->
       Build_session.error_message (Build_session.PlanningFailed { reason })
   | CycleDetected { cycle_nodes } ->
@@ -133,7 +140,7 @@ let map_runtime_error = function
   | Build_runtime.BuildSessionError (Build_session.PackagesNotFound { package_names; available_packages }) ->
       PackagesNotFound { package_names; available_packages }
   | Build_runtime.BuildSessionError (Build_session.BuildFailed { errors }) ->
-      BuildFailed { errors }
+      BuildFailed { errors = Build_result.failures_of_build_results errors }
   | Build_runtime.BuildSessionError (Build_session.PlanningFailed { reason }) ->
       PlanningFailed { reason }
   | Build_runtime.BuildSessionError (Build_session.CycleDetected { cycle_nodes }) ->

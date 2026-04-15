@@ -47,7 +47,7 @@ module Runtime_plan = struct
       [
         (
           "function_table_elements",
-          Json.array (List.map Core.Entity_id.to_json plan.function_table_elements)
+          Json.array (List.map ~fn:Core.Entity_id.to_json plan.function_table_elements)
         );
         ("has_indirect_calls", Json.bool plan.has_indirect_calls);
         ("needs_closure_runtime", Json.bool plan.needs_closure_runtime);
@@ -149,25 +149,25 @@ module Expr = struct
       [
         ("kind", Json.string "direct_call");
         ("callee", Core.Entity_id.to_json call.callee);
-        ("arguments", Json.array (List.map to_json call.arguments));
+        ("arguments", Json.array (List.map ~fn:to_json call.arguments));
       ]
     | Indirect_call call -> Json.obj
       [
         ("kind", Json.string "indirect_call");
         ("callee", to_json call.callee);
-        ("arguments", Json.array (List.map to_json call.arguments));
+        ("arguments", Json.array (List.map ~fn:to_json call.arguments));
       ]
     | Lambda lambda -> Json.obj
       [
         ("kind", Json.string "lambda");
-        ("params", Json.array (List.map param_to_json lambda.params));
+        ("params", Json.array (List.map ~fn:param_to_json lambda.params));
         ("body", to_json lambda.body);
       ]
     | Let let_ -> Json.obj
       [
         ("kind", Json.string "let");
         ("rec_flag", Core.Rec_flag.to_json let_.rec_flag);
-        ("bindings", Json.array (List.map binding_to_json let_.bindings));
+        ("bindings", Json.array (List.map ~fn:binding_to_json let_.bindings));
         ("body", to_json let_.body);
       ]
     | Sequence sequence -> Json.obj
@@ -177,7 +177,7 @@ module Expr = struct
         ("second", to_json sequence.second);
       ]
     | Tuple elements -> Json.obj
-      [ ("kind", Json.string "tuple"); ("elements", Json.array (List.map to_json elements)); ]
+      [ ("kind", Json.string "tuple"); ("elements", Json.array (List.map ~fn:to_json elements)); ]
     | Tuple_get tuple_get -> Json.obj
       [
         ("kind", Json.string "tuple_get");
@@ -196,7 +196,7 @@ module Expr = struct
         ("kind", Json.string "primitive");
         ("name", Core.Primitive.to_json primitive.primitive);
         ("primitive_kind", Primitive_kind.to_json primitive.kind);
-        ("arguments", Json.array (List.map to_json primitive.arguments));
+        ("arguments", Json.array (List.map ~fn:to_json primitive.arguments));
       ]
 
   and binding_to_json = fun binding ->
@@ -221,7 +221,7 @@ module Function = struct
       [
         ("entity_id", Core.Entity_id.to_json function_.entity_id);
         ("name", Json.string function_.name);
-        ("params", Json.array (List.map Expr.param_to_json function_.params));
+        ("params", Json.array (List.map ~fn:Expr.param_to_json function_.params));
         ("body", Expr.to_json function_.body);
       ]
 end
@@ -269,11 +269,11 @@ module Compilation_unit = struct
     Json.obj
       [
         ("unit_id", Core.Unit_id.to_json compilation_unit.unit_id);
-        ("imports", Json.array (List.map Import.to_json compilation_unit.imports));
+        ("imports", Json.array (List.map ~fn:Import.to_json compilation_unit.imports));
         ("runtime_plan", Runtime_plan.to_json compilation_unit.runtime_plan);
-        ("globals", Json.array (List.map Global.to_json compilation_unit.globals));
-        ("functions", Json.array (List.map Function.to_json compilation_unit.functions));
-        ("init", Json.array (List.map Init_item.to_json compilation_unit.init));
-        ("exports", Json.array (List.map Core.Export.to_json compilation_unit.exports));
+        ("globals", Json.array (List.map ~fn:Global.to_json compilation_unit.globals));
+        ("functions", Json.array (List.map ~fn:Function.to_json compilation_unit.functions));
+        ("init", Json.array (List.map ~fn:Init_item.to_json compilation_unit.init));
+        ("exports", Json.array (List.map ~fn:Core.Export.to_json compilation_unit.exports));
       ]
 end

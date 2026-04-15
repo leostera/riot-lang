@@ -27,10 +27,9 @@ let update = fun ?now m ->
     m
 
 let view = fun s ->
-  if s.current_frame > Array.length s.frames then
-    let exception Frame_out_of_bounds in
-    raise Frame_out_of_bounds
+  if s.current_frame < 0 || s.current_frame >= Array.length s.frames then
+    Kernel.SystemError.panic "Sprite.view: current frame out of bounds"
   else
-    s.frames.(s.current_frame)
+    Array.get_unchecked s.frames ~at:s.current_frame
 
 let current_frame_index = fun s -> s.current_frame

@@ -66,8 +66,8 @@ module Instruction = struct
     Json.obj
       [
         ("condition", Operand.to_json if_then_else.condition);
-        ("then", Json.array (List.map to_json if_then_else.then_));
-        ("else", Json.array (List.map to_json if_then_else.else_));
+        ("then", Json.array (List.map ~fn:to_json if_then_else.then_));
+        ("else", Json.array (List.map ~fn:to_json if_then_else.else_));
       ]
 
   and to_json = fun instruction ->
@@ -83,16 +83,16 @@ module Instruction = struct
     | Call { dst; callee; arguments } -> Json.obj
       [
         ("kind", Json.string "call");
-        ("dst", Option.map Json.string dst |> Option.unwrap_or ~default:Json.null);
+        ("dst", Option.map dst ~fn:Json.string |> Option.unwrap_or ~default:Json.null);
         ("callee", Callee.to_json callee);
-        ("arguments", Json.array (List.map Operand.to_json arguments));
+        ("arguments", Json.array (List.map arguments ~fn:Operand.to_json));
       ]
     | If_then_else if_then_else -> Json.obj
       [ ("kind", Json.string "if_then_else"); ("if_then_else", if_then_else_to_json if_then_else); ]
     | Return operand -> Json.obj
       [
         ("kind", Json.string "return");
-        ("operand", Option.map Operand.to_json operand |> Option.unwrap_or ~default:Json.null);
+        ("operand", Option.map operand ~fn:Operand.to_json |> Option.unwrap_or ~default:Json.null);
       ]
     | Comment text -> Json.obj [ ("kind", Json.string "comment"); ("text", Json.string text); ]
 end
@@ -119,8 +119,8 @@ module Procedure = struct
       [
         ("name", Json.string procedure.name);
         ("kind", kind_to_json procedure.kind);
-        ("params", Json.array (List.map Json.string procedure.params));
-        ("body", Json.array (List.map Instruction.to_json procedure.body));
+        ("params", Json.array (List.map ~fn:Json.string procedure.params));
+        ("body", Json.array (List.map ~fn:Instruction.to_json procedure.body));
       ]
 end
 
@@ -147,7 +147,7 @@ module Program = struct
     Json.obj
       [
         ("module_name", Json.string program.module_name);
-        ("procedures", Json.array (List.map Procedure.to_json program.procedures));
-        ("exports", Json.array (List.map Export.to_json program.exports));
+        ("procedures", Json.array (List.map program.procedures ~fn:Procedure.to_json));
+        ("exports", Json.array (List.map program.exports ~fn:Export.to_json));
       ]
 end

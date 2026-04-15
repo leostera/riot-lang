@@ -444,7 +444,7 @@ let write_build_error = fun ~mode err ->
         [
           (
             "errors",
-            Data.Json.Array (List.map errors ~fn:Riot_executor.Package_builder.build_result_to_json)
+            Data.Json.Array (List.map errors ~fn:Riot_build.Build_result.failure_to_json)
           );
         ]
         (Riot_build.error_message err)

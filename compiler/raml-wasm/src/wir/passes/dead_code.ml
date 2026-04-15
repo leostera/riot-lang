@@ -22,24 +22,30 @@ let entity_key = fun entity_id ->
   | None -> Core.Surface_path.to_string (Core.Entity_id.surface_path entity_id)
 
 let create_env = fun (program: Types.Compilation_unit.t) ->
-  let functions_by_key = HashMap.with_capacity 32 in
-  let globals_by_key = HashMap.with_capacity 32 in
+  let functions_by_key = HashMap.with_capacity ~size:32 in
+  let globals_by_key = HashMap.with_capacity ~size:32 in
   let init_global_keys = HashSet.create () in
   List.iter
     (fun (function_: Types.Function.t) ->
-      let _ = HashMap.insert functions_by_key (entity_key function_.entity_id) function_ in
+      let _ = HashMap.insert
+        functions_by_key
+        ~key:(entity_key function_.entity_id)
+        ~value:function_ in
       ())
     program.functions;
   List.iter
     (fun (global: Types.Global.t) ->
-      let _ = HashMap.insert globals_by_key (entity_key global.entity_id) global in
+      let _ = HashMap.insert
+        globals_by_key
+        ~key:(entity_key global.entity_id)
+        ~value:global in
       ())
     program.globals;
   List.iter
     (fun item ->
       match item with
       | Types.Init_item.Global global ->
-          let _ = HashSet.insert init_global_keys (entity_key global.entity_id) in
+          let _ = HashSet.insert init_global_keys ~value:(entity_key global.entity_id) in
           ()
       | Types.Init_item.Eval _ -> ())
     program.init;
@@ -84,12 +90,12 @@ let rec mark_expr = fun env expr ->
 
 and mark_entity = fun env entity_id ->
   let key = entity_key entity_id in
-  match (HashMap.get env.functions_by_key key, HashMap.get env.globals_by_key key) with
-  | (Some function_, _) when not (HashSet.contains env.reachable_functions key) ->
-      let _ = HashSet.insert env.reachable_functions key in
+  match (HashMap.get env.functions_by_key ~key, HashMap.get env.globals_by_key ~key) with
+  | (Some function_, _) when not (HashSet.contains env.reachable_functions ~value:key) ->
+      let _ = HashSet.insert env.reachable_functions ~value:key in
       mark_expr env function_.body
-  | (_, Some global) when not (HashSet.contains env.reachable_globals key) ->
-      let _ = HashSet.insert env.reachable_globals key in
+  | (_, Some global) when not (HashSet.contains env.reachable_globals ~value:key) ->
+      let _ = HashSet.insert env.reachable_globals ~value:key in
       mark_expr env global.expr
   | _ ->
       ()
@@ -100,19 +106,19 @@ let mark_init_item = fun env item ->
   match item with
   | Types.Init_item.Global global ->
       let key = entity_key global.entity_id in
-      if HashSet.contains env.reachable_globals key then
+      if HashSet.contains env.reachable_globals ~value:key then
         ()
       else
-        let _ = HashSet.insert env.reachable_globals key in
+        let _ = HashSet.insert env.reachable_globals ~value:key in
         mark_expr env global.expr
   | Types.Init_item.Eval expr -> mark_expr env expr
 
 let keep_global = fun env (global: Types.Global.t) ->
   let key = entity_key global.entity_id in
-  HashSet.contains env.init_global_keys key || HashSet.contains env.reachable_globals key
+  HashSet.contains env.init_global_keys ~value:key || HashSet.contains env.reachable_globals ~value:key
 
 let keep_function = fun env (function_: Types.Function.t) ->
-  HashSet.contains env.reachable_functions (entity_key function_.entity_id)
+  HashSet.contains env.reachable_functions ~value:(entity_key function_.entity_id)
 
 let keep_init_item = fun env item ->
   match item with
@@ -125,7 +131,7 @@ let program = fun (program: Types.Compilation_unit.t) ->
   List.iter (mark_init_item env) program.init;
   {
     program
-    with globals = List.filter (keep_global env) program.globals;
-    functions = List.filter (keep_function env) program.functions;
-    init = List.filter (keep_init_item env) program.init
+    with globals = List.filter program.globals ~fn:(keep_global env);
+    functions = List.filter program.functions ~fn:(keep_function env);
+    init = List.filter program.init ~fn:(keep_init_item env)
   }

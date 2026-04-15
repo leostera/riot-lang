@@ -1,4 +1,5 @@
 open Std
+open Riot_build
 open Std.Collections
 open Riot_model
 module Test = Std.Test
@@ -43,7 +44,7 @@ let test_collect_source_files = fun _ctx ->
         let package =
           Riot_model.Package.make ~name:(package_name "test") ~path:tmpdir ~relative_path:(Path.v ".") ()
         in
-        let files = Riot_executor.Package_builder.collect_source_files package in
+        let files = Package_builder.collect_source_files package in
         let has_ml =
           List.any files ~fn:(fun p -> Path.to_string p = Path.to_string ml_file)
         in
@@ -88,7 +89,7 @@ let test_build_result_status_variants = fun _ctx ->
       exports = []
     } in
   let result_cached =
-    Riot_executor.Package_builder.{
+    Package_builder.{
       package_key = Riot_planner.Package_graph.package_key
         ~package_name:(Package_name.to_string package.name)
         Riot_planner.Package_graph.Runtime;
@@ -99,7 +100,7 @@ let test_build_result_status_variants = fun _ctx ->
     }
   in
   let result_built =
-    Riot_executor.Package_builder.{
+    Package_builder.{
       package_key = Riot_planner.Package_graph.package_key
         ~package_name:(Package_name.to_string package.name)
         Riot_planner.Package_graph.Runtime;
@@ -110,7 +111,7 @@ let test_build_result_status_variants = fun _ctx ->
     }
   in
   let result_failed =
-    Riot_executor.Package_builder.{
+    Package_builder.{
       package_key = Riot_planner.Package_graph.package_key
         ~package_name:(Package_name.to_string package.name)
         Riot_planner.Package_graph.Runtime;
@@ -126,8 +127,8 @@ let test_build_result_status_variants = fun _ctx ->
 
 let test_package_error_variants = fun _ctx ->
   let planning_error = Riot_planner.Planning_error.Exception { exn = Failure "test" } in
-  let error1 = Riot_executor.Package_builder.PlanningFailed planning_error in
-  let error2 = Riot_executor.Package_builder.ExecutionFailed { message = "build failed" } in
+  let error1 = Package_builder.PlanningFailed planning_error in
+  let error2 = Package_builder.ExecutionFailed { message = "build failed" } in
   match (error1, error2) with
   | PlanningFailed _, ExecutionFailed _ -> Ok ()
   | _ -> Error "Error variants don't match expected types"
@@ -170,7 +171,7 @@ let test_build_writes_hash_manifest_with_exports = fun _ctx ->
           let session_id = Riot_model.Session_id.make () in
           Riot_model.Build_ctx.make ~session_id ~profile:Riot_model.Profile.debug ()
         in
-        let result = Riot_executor.Package_builder.build
+        let result = Package_builder.build
           ~workspace
           ~toolchain:test_toolchain
           ~store
@@ -181,12 +182,12 @@ let test_build_writes_hash_manifest_with_exports = fun _ctx ->
           ~package
           ~build_ctx in
         match result.status with
-        | Riot_executor.Package_builder.Failed err ->
-            Error ("build failed: " ^ Riot_executor.Package_builder.package_error_to_string err)
-        | Riot_executor.Package_builder.Skipped { reason } ->
+        | Package_builder.Failed err ->
+            Error ("build failed: " ^ Package_builder.package_error_to_string err)
+        | Package_builder.Skipped { reason } ->
             Error ("build skipped: " ^ reason)
-        | Riot_executor.Package_builder.Built artifact
-        | Riot_executor.Package_builder.Cached artifact ->
+        | Package_builder.Built artifact
+        | Package_builder.Cached artifact ->
             match Riot_store.Store.load_manifest store ~hash:artifact.hash with
             | None -> Error "expected package hash manifest to be saved"
             | Some manifest ->
@@ -241,7 +242,7 @@ let test_dependency_source_change_rebuilds_dependent_package = fun _ctx ->
         let store = Riot_store.Store.create ~workspace in
         let build_ctx = make_test_build_ctx () in
         let build_package = fun ~package_graph package ->
-          Riot_executor.Package_builder.build
+          Package_builder.build
             ~workspace
             ~toolchain:test_toolchain
             ~store
@@ -278,27 +279,27 @@ let test_dependency_source_change_rebuilds_dependent_package = fun _ctx ->
             second_app.status
           )
         with
-        | Riot_executor.Package_builder.Built _,
-          Riot_executor.Package_builder.Built first_app_artifact,
-          Riot_executor.Package_builder.Built _,
-          Riot_executor.Package_builder.Built second_app_artifact ->
+        | Package_builder.Built _,
+          Package_builder.Built first_app_artifact,
+          Package_builder.Built _,
+          Package_builder.Built second_app_artifact ->
             if Crypto.Hash.equal first_app_artifact.hash second_app_artifact.hash then
               Error "expected dependent package artifact hash to change after dependency source edit"
             else
               Ok ()
-        | Riot_executor.Package_builder.Built _,
-          Riot_executor.Package_builder.Built _,
-          Riot_executor.Package_builder.Built _,
-          Riot_executor.Package_builder.Cached _ ->
+        | Package_builder.Built _,
+          Package_builder.Built _,
+          Package_builder.Built _,
+          Package_builder.Cached _ ->
             Error "expected dependent package rebuild after dependency source edit"
-        | _, _, _, Riot_executor.Package_builder.Failed err ->
-            Error ("dependent rebuild failed: " ^ Riot_executor.Package_builder.package_error_to_string err)
-        | _, Riot_executor.Package_builder.Failed err, _, _ ->
-            Error ("initial dependent build failed: " ^ Riot_executor.Package_builder.package_error_to_string err)
-        | Riot_executor.Package_builder.Failed err, _, _, _ ->
-            Error ("initial dependency build failed: " ^ Riot_executor.Package_builder.package_error_to_string err)
-        | _, _, Riot_executor.Package_builder.Failed err, _ ->
-            Error ("dependency rebuild failed: " ^ Riot_executor.Package_builder.package_error_to_string err)
+        | _, _, _, Package_builder.Failed err ->
+            Error ("dependent rebuild failed: " ^ Package_builder.package_error_to_string err)
+        | _, Package_builder.Failed err, _, _ ->
+            Error ("initial dependent build failed: " ^ Package_builder.package_error_to_string err)
+        | Package_builder.Failed err, _, _, _ ->
+            Error ("initial dependency build failed: " ^ Package_builder.package_error_to_string err)
+        | _, _, Package_builder.Failed err, _ ->
+            Error ("dependency rebuild failed: " ^ Package_builder.package_error_to_string err)
         | _ ->
             Error "unexpected build status sequence"
       )

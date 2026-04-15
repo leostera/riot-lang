@@ -13,7 +13,8 @@ let unary = fun operator operand -> Jir.Expr.Unary Jir.Expr.{ operator; operand 
 
 let binary = fun operator left right -> Jir.Expr.Binary Jir.Expr.{ operator; left; right }
 
-let array = fun elements -> Jir.Expr.Array (List.map (fun expr -> Jir.Expr.Item expr) elements)
+let array = fun elements ->
+  Jir.Expr.Array (List.map elements ~fn:(fun expr -> Jir.Expr.Item expr))
 
 let string_constructor = fun value -> call (global "String") [ value ]
 

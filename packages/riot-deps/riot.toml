@@ -20,6 +20,5 @@ pubgrub = { path = "../pubgrub", version = "*" }
 riot-fmt = { path = "../riot-fmt", version = "*" }
 riot-fix = { path = "../riot-fix", version = "*" }
 riot-planner = { path = "../riot-planner", version = "*" }
-riot-executor = { path = "../riot-executor", version = "*" }
 riot-store = { path = "../riot-store", version = "*" }
 riot-toolchain = { path = "../riot-toolchain", version = "*" }

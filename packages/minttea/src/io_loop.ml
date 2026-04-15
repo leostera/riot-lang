@@ -56,7 +56,7 @@ let rec loop = fun state ->
           (* If no events were generated and it's a simple character *)
           if List.length events = 0 && String.length input = 1 then
             (
-              let c = input.[0] in
+              let c = String.get input ~at:0 |> Option.unwrap in
               let event =
                 if c = '\027' then
                   Event.KeyDown (Event.Escape, Event.NoModifier)

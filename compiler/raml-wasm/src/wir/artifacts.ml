@@ -19,8 +19,8 @@ module Module_summary = struct
   let of_compilation_unit = fun (compilation_unit: Wasm_types.Compilation_unit.t) ->
     {
       unit_name = compilation_unit.unit_id.unit_name;
-      imports = List.map Wasm_types.Import.key compilation_unit.imports;
-      exports = List.map (fun (export: Core.Export.t) -> export.name) compilation_unit.exports;
+      imports = List.map compilation_unit.imports ~fn:Wasm_types.Import.key;
+      exports = List.map compilation_unit.exports ~fn:(fun (export: Core.Export.t) -> export.name);
       global_count = List.length compilation_unit.globals;
       function_count = List.length compilation_unit.functions;
       init_item_count = List.length compilation_unit.init;
@@ -33,8 +33,8 @@ module Module_summary = struct
     Json.obj
       [
         ("unit_name", Json.string summary.unit_name);
-        ("imports", Json.array (List.map Json.string summary.imports));
-        ("exports", Json.array (List.map Json.string summary.exports));
+        ("imports", Json.array (List.map summary.imports ~fn:Json.string));
+        ("exports", Json.array (List.map summary.exports ~fn:Json.string));
         ("global_count", Json.int summary.global_count);
         ("function_count", Json.int summary.function_count);
         ("init_item_count", Json.int summary.init_item_count);
@@ -85,10 +85,10 @@ module Linked_program = struct
     let needs_closure_runtime = ref false in
     let add_import import =
       let key = Wasm_types.Import.key import in
-      if Collections.HashSet.contains seen_imports key then
+      if Collections.HashSet.contains seen_imports ~value:key then
         ()
       else
-        let _ = Collections.HashSet.insert seen_imports key in
+        let _ = Collections.HashSet.insert seen_imports ~value:key in
         imports_rev := import :: !imports_rev
     in
     let add_table_element entity_id =
@@ -101,23 +101,23 @@ module Linked_program = struct
           )
         | None -> Core.Surface_path.to_string (Core.Entity_id.surface_path entity_id)
       in
-      if Collections.HashSet.contains seen_table_elements key then
+      if Collections.HashSet.contains seen_table_elements ~value:key then
         ()
       else
-        let _ = Collections.HashSet.insert seen_table_elements key in
+        let _ = Collections.HashSet.insert seen_table_elements ~value:key in
         function_table_elements_rev := entity_id :: !function_table_elements_rev
     in
     List.iter
       (fun (object_: Object.t) ->
         List.iter add_import object_.program.imports;
         List.iter add_table_element object_.program.runtime_plan.function_table_elements;
-        exports_rev := List.rev_append object_.program.exports !exports_rev;
+        exports_rev := !exports_rev @ object_.program.exports;
         needs_closure_runtime := !needs_closure_runtime || object_.program.runtime_plan.needs_closure_runtime)
       objects;
     {
       objects;
       imports = List.rev !imports_rev;
-      exports = List.rev !exports_rev;
+      exports = !exports_rev;
       function_table_elements = List.rev !function_table_elements_rev;
       needs_closure_runtime = !needs_closure_runtime;
     }
@@ -125,12 +125,12 @@ module Linked_program = struct
   let to_json = fun linked_program ->
     Json.obj
       [
-        ("objects", Json.array (List.map Object.to_json linked_program.objects));
-        ("imports", Json.array (List.map Wasm_types.Import.to_json linked_program.imports));
-        ("exports", Json.array (List.map Core.Export.to_json linked_program.exports));
+        ("objects", Json.array (List.map linked_program.objects ~fn:Object.to_json));
+        ("imports", Json.array (List.map linked_program.imports ~fn:Wasm_types.Import.to_json));
+        ("exports", Json.array (List.map linked_program.exports ~fn:Core.Export.to_json));
         (
           "function_table_elements",
-          Json.array (List.map Core.Entity_id.to_json linked_program.function_table_elements)
+          Json.array (List.map linked_program.function_table_elements ~fn:Core.Entity_id.to_json)
         );
         ("needs_closure_runtime", Json.bool linked_program.needs_closure_runtime);
       ]

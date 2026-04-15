@@ -1,71 +1,56 @@
 open Std
 open Std.Collections
+
 module Test = Std.Test
 
 let package_name = fun name ->
   Riot_model.Package_name.from_string name
   |> Result.expect ~msg:("invalid package name: " ^ name)
 
-let test_workspace_completed_is_silent = fun _ctx ->
+let test_phase_events_are_silent = fun _ctx ->
   let displayed_packages = HashSet.create () in
-  let event = Riot_executor.Telemetry_events.WorkspaceCompleted {
-    session_id = Riot_model.Session_id.make ();
-    target = Riot_planner.Workspace_planner.All;
-    total_duration = Time.Duration.from_millis 42;
-    cached_count = 1;
-    built_count = 2;
-    failed_count = 0;
-  }
-  in
+  let event = Riot_build.Event.Phase Riot_build.Event.RuntimeStarted in
   let rendered = Riot_cli.Event_formatter.format ~displayed_packages event in
   if String.equal rendered "" then
     Ok ()
   else
-    Error ("expected empty workspace summary, got: " ^ rendered)
+    Error ("expected empty phase rendering, got: " ^ rendered)
 
-let test_build_failed_prefixes_package_name = fun _ctx ->
+let test_building_target_mentions_target = fun _ctx ->
   let displayed_packages = HashSet.create () in
-  let package =
-    Riot_model.Package.make ~name:(package_name "syn") ~path:(Path.v ".") ~relative_path:(Path.v ".") ()
+  let target =
+    Riot_model.Target.from_string "aarch64-apple-darwin"
+    |> Result.expect ~msg:"invalid target"
   in
-  let event = Riot_executor.Telemetry_events.BuildFailed {
-    session_id = Riot_model.Session_id.make ();
-    package;
-    target = Riot_planner.Workspace_planner.Package package.name;
-    error = Riot_executor.Telemetry_events.ExecutionFailed { message = "Command failed" }
-  } in
+  let event = Riot_build.Event.BuildingTarget { target; host = false } in
   let rendered = Riot_cli.Event_formatter.format ~displayed_packages event in
-  if String.contains rendered "syn: Execution failed: Command failed" then
+  if String.contains rendered "aarch64-apple-darwin" then
     Ok ()
   else
-    Error ("expected package-prefixed error, got: " ^ rendered)
+    Error ("expected rendered target name, got: " ^ rendered)
 
-let test_package_ocamlc_warnings_prefix_package_name = fun _ctx ->
+let test_pm_events_use_display_text = fun _ctx ->
   let displayed_packages = HashSet.create () in
-  let package = Riot_model.Package.make
-    ~name:(package_name "riot-eval")
-    ~path:(Path.v ".")
-    ~relative_path:(Path.v ".")
-    () in
-  let event = Riot_executor.Telemetry_events.PackageOcamlcWarnings {
-    session_id = Riot_model.Session_id.make ();
-    package;
-    target = Riot_planner.Workspace_planner.Package package.name;
-    source = `Cached;
-    messages = [ "File \"x.ml\", line 1, characters 0-1:\nWarning: example" ];
-  }
+  let event =
+    Riot_model.Event.create
+      ~session_id:(Riot_model.Session_id.make ())
+      ~level:Riot_model.Event.Info
+      (Riot_model.Event.PackageVersionLocked {
+        package = package_name "std";
+        version = "1.0.0";
+      })
   in
-  let rendered = Riot_cli.Event_formatter.format ~displayed_packages event in
-  if String.contains rendered "riot-eval: File \"x.ml\"" then
+  let rendered = Riot_cli.Event_formatter.format ~displayed_packages (Riot_build.Event.Pm event) in
+  if String.contains rendered "std" then
     Ok ()
   else
-    Error ("expected package-prefixed warning, got: " ^ rendered)
+    Error ("expected package name in PM rendering, got: " ^ rendered)
 
 let tests =
   Test.[
-    case "event formatter: workspace completed is silent" test_workspace_completed_is_silent;
-    case "event formatter: build failed prefixes package name" test_build_failed_prefixes_package_name;
-    case "event formatter: package ocamlc warnings prefix package name" test_package_ocamlc_warnings_prefix_package_name;
+    case "event formatter: phase events are silent" test_phase_events_are_silent;
+    case "event formatter: building target mentions target" test_building_target_mentions_target;
+    case "event formatter: pm events use display text" test_pm_events_use_display_text;
   ]
 
 let name = "Riot CLI Event Formatter Tests"

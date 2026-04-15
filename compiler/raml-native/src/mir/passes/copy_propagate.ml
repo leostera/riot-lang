@@ -16,12 +16,14 @@ module Literal = Types.Literal
 type env = (string * Operand.t) list
 
 let find = fun env name ->
-  env |> List.find_map
+  env
+  |> List.find_opt
     (fun (bound_name, operand) ->
       if String.equal bound_name name then
         Some operand
       else
         None)
+  |> Option.map
 
 let remove = fun env name ->
   List.filter (fun (bound_name, _) -> not (String.equal bound_name name)) env

@@ -1,4 +1,5 @@
 open Std
+open Riot_build
 open Std.Collections
 open Riot_model
 module Test = Std.Test
@@ -57,7 +58,7 @@ let node_id = fun (node: Riot_planner.Action_node.t) -> node.id
 
 let failed_result = fun node_id ->
   let now = Time.Instant.now () in
-  Riot_executor.Action_executor.{
+  Action_executor.{
     node_id;
     status = Failed (ExecutionFailed { message = "boom" });
     ocamlc_warnings = [];
@@ -83,7 +84,7 @@ let test_execute_node_writes_file = fun _ctx ->
           ()
         in
         let completed = HashMap.create () in
-        let result = Riot_executor.Action_executor.execute_node
+        let result = Action_executor.execute_node
           ~completed
           ~store
           ~session_id:(Riot_model.Session_id.make ())
@@ -92,16 +93,16 @@ let test_execute_node_writes_file = fun _ctx ->
           node
         in
         match result.status with
-        | Riot_executor.Action_executor.Executed -> (
+        | Action_executor.Executed -> (
             let output_path = Path.(sandbox / output) in
             match Fs.read_to_string output_path with
             | Ok content when String.equal content "hello" -> Ok ()
             | Ok content -> Error ("unexpected output content: " ^ content)
             | Error err -> Error ("failed to read output: " ^ IO.error_message err)
           )
-        | Riot_executor.Action_executor.Cached _
-        | Riot_executor.Action_executor.Failed _
-        | Riot_executor.Action_executor.Skipped -> Error "expected write action to execute")
+        | Action_executor.Cached _
+        | Action_executor.Failed _
+        | Action_executor.Skipped -> Error "expected write action to execute")
   with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
@@ -128,7 +129,7 @@ let test_execute_node_copies_file = fun _ctx ->
           ()
         in
         let completed = HashMap.create () in
-        let result = Riot_executor.Action_executor.execute_node
+        let result = Action_executor.execute_node
           ~completed
           ~store
           ~session_id:(Riot_model.Session_id.make ())
@@ -137,16 +138,16 @@ let test_execute_node_copies_file = fun _ctx ->
           node
         in
         match result.status with
-        | Riot_executor.Action_executor.Executed -> (
+        | Action_executor.Executed -> (
             let destination_path = Path.(sandbox / destination) in
             match Fs.read_to_string destination_path with
             | Ok content when String.equal content "copy me" -> Ok ()
             | Ok content -> Error ("unexpected copied content: " ^ content)
             | Error err -> Error ("failed to read copied file: " ^ IO.error_message err)
           )
-        | Riot_executor.Action_executor.Cached _
-        | Riot_executor.Action_executor.Failed _
-        | Riot_executor.Action_executor.Skipped -> Error "expected copy action to execute")
+        | Action_executor.Cached _
+        | Action_executor.Failed _
+        | Action_executor.Skipped -> Error "expected copy action to execute")
   with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
@@ -171,7 +172,7 @@ let test_execute_node_fails_when_declared_output_is_missing = fun _ctx ->
           ()
         in
         let completed = HashMap.create () in
-        let result = Riot_executor.Action_executor.execute_node
+        let result = Action_executor.execute_node
           ~completed
           ~store
           ~session_id:(Riot_model.Session_id.make ())
@@ -180,16 +181,16 @@ let test_execute_node_fails_when_declared_output_is_missing = fun _ctx ->
           node
         in
         match result.status with
-        | Riot_executor.Action_executor.Failed (OutputsNotCreated { missing }) ->
+        | Action_executor.Failed (OutputsNotCreated { missing }) ->
             let expected = Path.to_string Path.(sandbox / declared_output) in
             if List.any missing ~fn:(fun path -> String.equal (Path.to_string path) expected) then
               Ok ()
             else
               Error "expected missing declared output to be reported"
-        | Riot_executor.Action_executor.Failed _ -> Error "expected output verification failure"
-        | Riot_executor.Action_executor.Cached _
-        | Riot_executor.Action_executor.Executed
-        | Riot_executor.Action_executor.Skipped -> Error "expected missing output failure")
+        | Action_executor.Failed _ -> Error "expected output verification failure"
+        | Action_executor.Cached _
+        | Action_executor.Executed
+        | Action_executor.Skipped -> Error "expected missing output failure")
   with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
@@ -228,7 +229,7 @@ let test_execute_node_skips_when_dependency_failed = fun _ctx ->
           ~key:(node_id dependency)
           ~value:(failed_result (node_id dependency))
         in
-        let result = Riot_executor.Action_executor.execute_node
+        let result = Action_executor.execute_node
           ~completed
           ~store
           ~session_id:(Riot_model.Session_id.make ())
@@ -237,10 +238,10 @@ let test_execute_node_skips_when_dependency_failed = fun _ctx ->
           node
         in
         match result.status with
-        | Riot_executor.Action_executor.Skipped -> Ok ()
-        | Riot_executor.Action_executor.Cached _
-        | Riot_executor.Action_executor.Executed
-        | Riot_executor.Action_executor.Failed _ -> Error "expected node to be skipped")
+        | Action_executor.Skipped -> Ok ()
+        | Action_executor.Cached _
+        | Action_executor.Executed
+        | Action_executor.Failed _ -> Error "expected node to be skipped")
   with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
@@ -253,6 +254,6 @@ let tests =
     case "execute_node skips when dependency already failed" test_execute_node_skips_when_dependency_failed;
   ]
 
-let name = "riot-executor:action-executor"
+let name = "riot-build:action-executor"
 
 let () = Actors.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()

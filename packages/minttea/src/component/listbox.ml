@@ -54,7 +54,7 @@ let selected_item = fun t ->
   if List.length t.filtered_items = 0 then
     None
   else
-    match List.nth_opt t.filtered_items t.selected with
+    match List.get t.filtered_items ~at:t.selected with
     | Some item -> Some item
     | None -> None
 
@@ -98,7 +98,7 @@ let string_contains = fun haystack needle ->
         let rec match_at i =
           if i >= n_len then
             true
-          else if haystack.[pos + i] = needle.[i] then
+          else if String.get haystack ~at:(pos + i) = Some (String.get_unchecked needle ~at:i) then
             match_at (i + 1)
           else
             false
@@ -116,11 +116,9 @@ let apply_filter = fun t query ->
   else
     let query_lower = String.lowercase_ascii query in
     let filtered =
-      List.filter
-        (fun item ->
-          let rendered = String.lowercase_ascii (t.render item) in
-          string_contains rendered query_lower)
-        t.all_items
+      List.filter t.all_items ~fn:(fun item ->
+        let rendered = String.lowercase_ascii (t.render item) in
+        string_contains rendered query_lower)
     in
     { t with filtered_items = filtered; filter_query = query } |> clamp_selection
 

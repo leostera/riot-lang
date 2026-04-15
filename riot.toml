@@ -51,7 +51,6 @@ members = [
   "packages/riot-cli",
   "packages/riot-cmd",
   "packages/riot-eval",
-  "packages/riot-executor",
   "packages/riot-fix",
   "packages/riot-fmt",
   "packages/riot-init",

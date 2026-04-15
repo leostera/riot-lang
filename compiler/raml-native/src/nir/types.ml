@@ -61,7 +61,7 @@ module Expr = struct
     Json.obj
       [
         ("callee", callee_to_json call.callee);
-        ("arguments", Json.array (List.map to_json call.arguments));
+        ("arguments", Json.array (List.map call.arguments ~fn:to_json));
       ]
 
   and if_then_else_to_json = fun if_then_else ->
@@ -78,7 +78,7 @@ module Expr = struct
   and let_to_json = fun let_ ->
     Json.obj
       [
-        ("bindings", Json.array (List.map binding_to_json let_.bindings));
+        ("bindings", Json.array (List.map let_.bindings ~fn:binding_to_json));
         ("body", to_json let_.body);
       ]
 
@@ -106,7 +106,7 @@ module Function = struct
     Json.obj
       [
         ("name", Json.string function_.name);
-        ("params", Json.array (List.map Json.string function_.params));
+        ("params", Json.array (List.map function_.params ~fn:Json.string));
         ("body", Expr.to_json function_.body);
       ]
 end
@@ -200,10 +200,10 @@ module Program = struct
     Json.obj
       [
         ("module_name", Json.string program.module_name);
-        ("imports", Json.array (List.map Import_requirement.to_json program.imports));
-        ("runtime_helpers", Json.array (List.map Runtime_helper.to_json program.runtime_helpers));
-        ("functions", Json.array (List.map Function.to_json program.functions));
-        ("entry", Json.array (List.map Entry_item.to_json program.entry));
-        ("exports", Json.array (List.map Export.to_json program.exports));
+        ("imports", Json.array (List.map program.imports ~fn:Import_requirement.to_json));
+        ("runtime_helpers", Json.array (List.map program.runtime_helpers ~fn:Runtime_helper.to_json));
+        ("functions", Json.array (List.map program.functions ~fn:Function.to_json));
+        ("entry", Json.array (List.map program.entry ~fn:Entry_item.to_json));
+        ("exports", Json.array (List.map program.exports ~fn:Export.to_json));
       ]
 end

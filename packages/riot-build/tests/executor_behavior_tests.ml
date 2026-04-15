@@ -1,4 +1,5 @@
 open Std
+open Riot_build
 open Std.Collections
 open Riot_model
 module Test = Std.Test
@@ -49,15 +50,15 @@ let make_node_in = fun graph ~package ?(deps = []) ~actions ~outs () ->
 let node_id = fun (node: Riot_planner.Action_node.t) -> node.id
 
 let find_result = fun result (node: Riot_planner.Action_node.t) ->
-  HashMap.get result.Riot_executor.Action_executor.completed ~key:(node_id node)
+  HashMap.get result.Action_executor.completed ~key:(node_id node)
 
 let test_execute_empty_graph_returns_no_results = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"executor_empty_graph"
       (fun tmpdir ->
         let workspace = make_workspace tmpdir in
-        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:(package_name "pkg") in
-        let result = Riot_executor.Action_executor.execute
+        let sandbox = Sandbox.create ~workspace () ~package_name:(package_name "pkg") in
+        let result = Action_executor.execute
           ~action_graph:(Riot_planner.Action_graph.create ())
           ~sandbox
           ~store:(Riot_store.Store.create ~workspace)
@@ -65,7 +66,7 @@ let test_execute_empty_graph_returns_no_results = fun _ctx ->
           (test_toolchain ())
           ~concurrency:2
         in
-        let _ = Riot_executor.Sandbox.cleanup sandbox in
+        let _ = Sandbox.cleanup sandbox in
         if HashMap.length result.completed = 0 then
           Ok ()
         else
@@ -102,8 +103,8 @@ let test_execute_runs_independent_actions = fun _ctx ->
           ~outs:[ Path.v "b.txt" ]
           ()
         in
-        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:package.Riot_model.Package.name in
-        let result = Riot_executor.Action_executor.execute
+        let sandbox = Sandbox.create ~workspace () ~package_name:package.Riot_model.Package.name in
+        let result = Action_executor.execute
           ~action_graph:graph
           ~sandbox
           ~store
@@ -111,13 +112,13 @@ let test_execute_runs_independent_actions = fun _ctx ->
           (test_toolchain ())
           ~concurrency:2
         in
-        let output_a = Fs.exists Path.(Riot_executor.Sandbox.get_dir sandbox / Path.v "a.txt") |> Result.unwrap_or ~default:false in
-        let output_b = Fs.exists Path.(Riot_executor.Sandbox.get_dir sandbox / Path.v "b.txt") |> Result.unwrap_or ~default:false in
+        let output_a = Fs.exists Path.(Sandbox.get_dir sandbox / Path.v "a.txt") |> Result.unwrap_or ~default:false in
+        let output_b = Fs.exists Path.(Sandbox.get_dir sandbox / Path.v "b.txt") |> Result.unwrap_or ~default:false in
         let result_a = find_result result node_a in
         let result_b = find_result result node_b in
-        let _ = Riot_executor.Sandbox.cleanup sandbox in
+        let _ = Sandbox.cleanup sandbox in
         match (result_a, result_b) with
-        | Some { status = Riot_executor.Action_executor.Executed; _ }, Some { status = Riot_executor.Action_executor.Executed; _ } ->
+        | Some { status = Action_executor.Executed; _ }, Some { status = Action_executor.Executed; _ } ->
             if output_a && output_b then
               Ok ()
             else
@@ -167,8 +168,8 @@ let test_execute_skips_dependent_action_after_failure = fun _ctx ->
           ()
         in
         Riot_planner.Action_graph.add_dependency graph dependent_node ~depends_on:failing_node;
-        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:package.Riot_model.Package.name in
-        let result = Riot_executor.Action_executor.execute
+        let sandbox = Sandbox.create ~workspace () ~package_name:package.Riot_model.Package.name in
+        let result = Action_executor.execute
           ~action_graph:graph
           ~sandbox
           ~store
@@ -177,14 +178,14 @@ let test_execute_skips_dependent_action_after_failure = fun _ctx ->
           ~concurrency:2
         in
         let success_exists =
-          Fs.exists Path.(Riot_executor.Sandbox.get_dir sandbox / Path.v "success.txt")
+          Fs.exists Path.(Sandbox.get_dir sandbox / Path.v "success.txt")
           |> Result.unwrap_or ~default:false
         in
-        let _ = Riot_executor.Sandbox.cleanup sandbox in
+        let _ = Sandbox.cleanup sandbox in
         match (find_result result failing_node, find_result result dependent_node, find_result result success_node) with
-        | Some { status = Riot_executor.Action_executor.Failed _; _ },
-          Some { status = Riot_executor.Action_executor.Skipped; _ },
-          Some { status = Riot_executor.Action_executor.Executed; _ } ->
+        | Some { status = Action_executor.Failed _; _ },
+          Some { status = Action_executor.Skipped; _ },
+          Some { status = Action_executor.Executed; _ } ->
             if success_exists then
               Ok ()
             else
@@ -201,6 +202,6 @@ let tests =
     case "execute skips dependent action after failure" test_execute_skips_dependent_action_after_failure;
   ]
 
-let name = "riot-executor:executor-behavior"
+let name = "riot-build:executor-behavior"
 
 let () = Actors.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()

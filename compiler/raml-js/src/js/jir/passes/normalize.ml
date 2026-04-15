@@ -40,9 +40,9 @@ module Import_set = struct
   let empty = Storage.empty
 
   let add = fun import set ->
-    Storage.add import () set
+    Storage.insert set ~key:import ~value:()
 
-  let mem = Storage.mem
+  let mem = Storage.has_key
 end
 
 type import_state = {

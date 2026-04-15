@@ -86,3 +86,9 @@ let mut_iter: type item. item array -> item Iter.MutIterator.t = fun arr ->
     let clone = fun state -> { arr = clone state.arr; idx = state.idx }
   end in
   Iter.MutIterator.make (module ArrayMutIter) { arr; idx = 0 }
+
+module Syntax = struct
+  let get = fun values at -> get_unchecked values ~at
+
+  let set = fun values at value -> set_unchecked values ~at ~value
+end

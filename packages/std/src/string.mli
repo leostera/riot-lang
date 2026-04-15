@@ -375,3 +375,9 @@ val contains: string -> string -> bool
 
     @raise Invalid_argument if [chunk_size <= 0]. *)
 val to_reader: ?chunk_size:int -> string -> (string, IO.error) IO.Reader.t
+
+module Syntax: sig
+  val get: string -> int -> char
+
+  val set: string -> int -> char -> unit
+end

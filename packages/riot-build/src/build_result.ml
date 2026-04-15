@@ -6,6 +6,14 @@ type package_scope =
   | Runtime
   | Dev
 
+type failure = {
+  package_name: Riot_model.Package_name.t;
+  package_key: Riot_model.Package.key;
+  message: string;
+  ocamlc_warnings: string list;
+  duration_ms: int;
+}
+
 type package_status =
   | Built of Riot_store.Artifact.t
   | Cached of Riot_store.Artifact.t
@@ -24,11 +32,11 @@ type t = {
 }
 
 let package_status_of_build_status = function
-  | Riot_executor.Package_builder.Built artifact -> Built artifact
-  | Riot_executor.Package_builder.Cached artifact -> Cached artifact
-  | Riot_executor.Package_builder.Skipped { reason } -> Skipped reason
-  | Riot_executor.Package_builder.Failed error ->
-      Failed (Riot_executor.Package_builder.package_error_to_string error)
+  | Package_builder.Built artifact -> Built artifact
+  | Package_builder.Cached artifact -> Cached artifact
+  | Package_builder.Skipped { reason } -> Skipped reason
+  | Package_builder.Failed error ->
+      Failed (Package_builder.package_error_to_string error)
 
 let artifact_of_status = function
   | Built artifact
@@ -103,7 +111,7 @@ let rec upsert_package_result = fun packages incoming ->
       else
         current :: upsert_package_result rest incoming
 
-let package_result_of_build_result = fun (result: Riot_executor.Package_builder.build_result) ->
+let package_result_of_build_result = fun (result: Package_builder.build_result) ->
   let status = package_status_of_build_status result.status in
   {
     package_name = result.package.name;
@@ -144,3 +152,40 @@ let rec find_export_in_artifacts = fun artifacts export_name ->
 
 let find_export = fun t export_name ->
   find_export_in_artifacts t.artifacts export_name
+
+let failure_of_build_result = fun (result: Package_builder.build_result) ->
+  let message =
+    match result.status with
+    | Package_builder.Failed error ->
+        Package_builder.package_error_to_string error
+    | Package_builder.Skipped { reason } ->
+        "Skipped: " ^ reason
+    | Package_builder.Built _
+    | Package_builder.Cached _ ->
+        "Build failed"
+  in
+  {
+    package_name = result.package.name;
+    package_key = result.package_key;
+    message;
+    ocamlc_warnings = result.ocamlc_warnings;
+    duration_ms = Int.from_float (Time.Duration.to_secs_float result.duration *. 1000.0);
+  }
+
+let failures_of_build_results = fun results ->
+  List.map results ~fn:failure_of_build_result
+
+let failure_to_json = fun (failure: failure) ->
+  Data.Json.Object [
+    ("package_name", Data.Json.String (Riot_model.Package_name.to_string failure.package_name));
+    ("package_key", Data.Json.String (Riot_model.Package.key_to_string failure.package_key));
+    ("message", Data.Json.String failure.message);
+    (
+      "ocamlc_warnings",
+      Data.Json.Array (List.map failure.ocamlc_warnings ~fn:Data.Json.string)
+    );
+    ("duration_ms", Data.Json.Int failure.duration_ms);
+  ]
+
+let failure_message = fun (failure: failure) ->
+  Riot_model.Package_name.to_string failure.package_name ^ ": " ^ failure.message

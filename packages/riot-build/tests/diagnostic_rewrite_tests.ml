@@ -1,4 +1,5 @@
 open Std
+open Riot_build
 open Riot_model
 module Test = Std.Test
 
@@ -43,7 +44,7 @@ let test_rewrite_ocamlc_result_rewrites_workspace_paths = fun _ctx ->
         |> List.head
         |> Option.expect ~msg:"expected one parsed diagnostic" in
         let result = Riot_toolchain.Ocamlc.Success { message = ""; diagnostics = [ diagnostic ] } in
-        let rewritten = Riot_executor.Diagnostic_rewrite.rewrite_ocamlc_result
+        let rewritten = Diagnostic_rewrite.rewrite_ocamlc_result
           ~package
           ~sandbox_dir
           result in
@@ -68,7 +69,7 @@ let test_rewrite_ocamlc_result_leaves_generated_paths_alone = fun _ctx ->
         |> Riot_toolchain.Ocamlc.Diagnostic.parse
         |> List.head
         |> Option.expect ~msg:"expected one parsed diagnostic" in
-        let rewritten = Riot_executor.Diagnostic_rewrite.rewrite_ocamlc_result
+        let rewritten = Diagnostic_rewrite.rewrite_ocamlc_result
           ~package
           ~sandbox_dir
           (Riot_toolchain.Ocamlc.Failed {

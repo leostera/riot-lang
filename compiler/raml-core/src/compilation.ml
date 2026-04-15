@@ -3,8 +3,8 @@ open Std.Data
 
 type frontend_diagnostic =
   | Parse of Syn.Diagnostic.t
-  | Lowering of Typ.Model.Diagnostic.t
-  | Typing of Typ.Model.Diagnostic.t
+  | Lowering of Typ.Diagnostics.Diagnostic.t
+  | Typing of Typ.Diagnostics.Diagnostic.t
 
 type t = {
   targeting: Json.t;
@@ -141,7 +141,8 @@ let codegen_to_json = to_json
 
 let frontend_diagnostics = fun compilation -> compilation.frontend_diagnostics
 
-let has_frontend_errors = fun compilation -> compilation.frontend_diagnostics <> []
+let has_frontend_errors = fun compilation ->
+  not (List.is_empty compilation.frontend_diagnostics)
 
 let render_codegen_error = fun error ->
   match json_field_string "kind" error with

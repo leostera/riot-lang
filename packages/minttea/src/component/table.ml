@@ -58,10 +58,7 @@ let set_rows = fun t ~rows ->
   { t with rows; cursor }
 
 let selected_row = fun t ->
-  if List.length t.rows = 0 then
-    None
-  else
-    List.nth_opt t.rows t.cursor
+  List.get t.rows ~at:t.cursor
 
 let selected_index = fun t ->
   if List.length t.rows = 0 then
@@ -135,20 +132,20 @@ let pad_string = fun s width ->
   let len = String.length s in
   if len >= width then
     if width > 0 then
-      String.sub s 0 width
+      String.sub s ~offset:0 ~len:width
     else
       s
   else
-    s ^ String.make (width - len) ' '
+    s ^ String.make ~len:(width - len) ~char:' '
 
 let truncate_string = fun s width ->
   let len = String.length s in
   if len <= width then
     s
   else if width > 3 then
-    String.sub s 0 (width - 3) ^ "..."
+    String.sub s ~offset:0 ~len:(width - 3) ^ "..."
   else
-    String.sub s 0 width
+    String.sub s ~offset:0 ~len:width
 
 let render_cell = fun content width ->
   let truncated = truncate_string content width in
@@ -157,33 +154,35 @@ let render_cell = fun content width ->
 let render_separator = fun (columns: column list) ->
   let parts =
     List.map
-      (fun (col: column) ->
-        String.make col.width '-')
+      ~fn:(fun (col: column) ->
+        String.make ~len:col.width ~char:'-')
       columns
   in
   String.concat "  " parts
 
 let render_header = fun (columns: column list) ->
   let headers =
-    List.map (fun (col: column) -> render_cell col.title col.width) columns
+    List.map ~fn:(fun (col: column) -> render_cell col.title col.width) columns
   in
   String.concat "  " headers
 
-let render_row = fun (columns: column list) row_data is_selected cursor_char ->
+let render_row = fun (columns: column list) (row_data: string list) is_selected cursor_char ->
   let prefix =
     if is_selected then
       cursor_char
     else
-      String.make (String.length cursor_char) ' '
+      String.make ~len:(String.length cursor_char) ~char:' '
   in
   let cells =
-    List.map2 (fun (col: column) cell -> render_cell cell col.width) columns row_data
+    List.map
+      (List.zip columns row_data)
+      ~fn:(fun (col, cell) -> render_cell cell col.width)
   in
   prefix ^ String.concat "  " cells
 
 let view = fun tbl ->
   let module B = Buffer in
-  let buf = B.create 256 in
+  let buf = B.create ~size:256 in
   (* Render header *)
   if tbl.show_header && List.length tbl.columns > 0 then
     begin
@@ -216,10 +215,12 @@ let view = fun tbl ->
                 let col_count = List.length tbl.columns in
                 let row_len = List.length row_data in
                 if row_len < col_count then
-                  let padding = Array.to_list (Array.make (col_count - row_len) "") in
+                  let padding =
+                    Array.to_list (Array.make ~count:(col_count - row_len) ~value:"")
+                  in
                   row_data @ padding
                 else if row_len > col_count then
-                  List.take col_count row_data
+                  List.take row_data ~len:col_count
                 else
                   row_data
               in

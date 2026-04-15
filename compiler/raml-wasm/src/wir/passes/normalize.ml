@@ -14,18 +14,18 @@ let rec normalize_expr = fun expr ->
   | Expr.Var _ ->
       expr
   | Expr.Direct_call call ->
-      Expr.Direct_call { call with arguments = List.map normalize_expr call.arguments }
+      Expr.Direct_call { call with arguments = List.map call.arguments ~fn:normalize_expr }
   | Expr.Indirect_call call ->
       Expr.Indirect_call {
         callee = normalize_expr call.callee;
-        arguments = List.map normalize_expr call.arguments
+        arguments = List.map call.arguments ~fn:normalize_expr
       }
   | Expr.Lambda lambda ->
       Expr.Lambda { lambda with body = normalize_expr lambda.body }
   | Expr.Let let_ ->
       Expr.Let {
         let_
-        with bindings = List.map normalize_binding let_.bindings;
+        with bindings = List.map let_.bindings ~fn:normalize_binding;
         body = normalize_expr let_.body
       }
   | Expr.Sequence sequence ->
@@ -36,7 +36,7 @@ let rec normalize_expr = fun expr ->
       else
         Expr.Sequence { first; second }
   | Expr.Tuple elements ->
-      Expr.Tuple (List.map normalize_expr elements)
+      Expr.Tuple (List.map elements ~fn:normalize_expr)
   | Expr.Tuple_get tuple_get ->
       Expr.Tuple_get { tuple_get with tuple = normalize_expr tuple_get.tuple }
   | Expr.If_then_else if_then_else ->
@@ -50,7 +50,7 @@ let rec normalize_expr = fun expr ->
         | _ -> Expr.If_then_else { condition; then_; else_ }
       end
   | Expr.Primitive primitive ->
-      Expr.Primitive { primitive with arguments = List.map normalize_expr primitive.arguments }
+      Expr.Primitive { primitive with arguments = List.map primitive.arguments ~fn:normalize_expr }
 
 and normalize_binding = fun (binding: Types.Expr.binding) ->
   { binding with expr = normalize_expr binding.expr }
@@ -74,7 +74,7 @@ let normalize_init_item = fun item ->
 let program = fun (program: Types.Compilation_unit.t) ->
   {
     program
-    with globals = List.map normalize_global program.globals;
-    functions = List.map normalize_function program.functions;
-    init = List.filter_map normalize_init_item program.init
+    with globals = List.map program.globals ~fn:normalize_global;
+    functions = List.map program.functions ~fn:normalize_function;
+    init = List.filter_map program.init ~fn:normalize_init_item
   }

@@ -16,23 +16,24 @@ let utf8_len = fun str ->
 
 let split_lines = fun text ->
   (* Split on \n, handling optional \r before it *)
-  String.split_on_char '\n' text |> List.map
-    (fun line ->
-      if String.length line > 0 && line.[String.length line - 1] = '\r' then
-        String.sub line 0 (String.length line - 1)
+  String.split_on_char '\n' text
+  |> List.map
+    ~fn:(fun line ->
+      if String.length line > 0 && String.get line ~at:(String.length line - 1) = Some '\r' then
+        String.sub line ~offset:0 ~len:(String.length line - 1)
       else
         line)
 
 let get_width = fun text ->
   List.fold_left
-    (fun acc line ->
+    (split_lines text)
+    ~acc:0
+    ~fn:(fun acc line ->
       let len = utf8_len (remove_color_sequences line) in
       if acc < len then
         len
       else
         acc)
-    0
-    (split_lines text)
 
 let get_height = fun text -> List.length (split_lines text)
 
@@ -83,13 +84,12 @@ let build_border = fun (border: t) text ->
   let bottom_border = bottom_left ^ create_string width bottom ^ bottom_right in
   let l = split_lines text in
   let l =
-    List.map
-      (fun x ->
+    List.map l
+      ~fn:(fun x ->
         let x_w = get_width x in
         let extra_right_spacing = create_string (width - x_w) " " in
         let res = left ^ x ^ extra_right_spacing ^ right in
         res)
-      l
   in
   let text = String.concat "\n" l in
   top_border ^ "\n" ^ text ^ "\n" ^ bottom_border

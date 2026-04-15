@@ -24,8 +24,11 @@ type config =
       config: 'config;
     } -> config
 
+let sample_random_int = fun () ->
+  Random.int 1_000_000 |> Result.expect ~msg:"failed to generate random connection id"
+
 let gen_id = fun () ->
-  "conn_" ^ string_of_int (Random.int 1_000_000) ^ "_" ^ string_of_int (Random.int 1_000_000)
+  "conn_" ^ string_of_int (sample_random_int ()) ^ "_" ^ string_of_int (sample_random_int ())
 
 (** Create a new connection - connects directly, no spawned process *)
 let create = fun (Config { driver; config }) ->
@@ -66,7 +69,7 @@ let query = fun (Connection t) sql params ->
         to_json = D.error_to_json
       })
       | Ok result_set ->
-          let cursor_id = "cursor_" ^ string_of_int (Random.int 1_000_000) in
+          let cursor_id = "cursor_" ^ string_of_int (sample_random_int ()) in
           let cursor =
             Cursor.make
               cursor_id

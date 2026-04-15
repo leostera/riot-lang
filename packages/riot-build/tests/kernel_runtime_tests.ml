@@ -1,4 +1,5 @@
 open Std
+open Riot_build
 open Std.Collections
 open Riot_model
 module Test = Std.Test
@@ -137,19 +138,19 @@ let summarize_execution_failures = fun ~(action_graph: Riot_planner.Action_graph
            acc)
   in
   let failures =
-    HashMap.to_list result.Riot_executor.Action_executor.completed
+    HashMap.to_list result.Action_executor.completed
     |> List.filter_map ~fn:(fun (node_id, execution_result) ->
-         match execution_result.Riot_executor.Action_executor.status with
-         | Riot_executor.Action_executor.Failed
-             (Riot_executor.Action_executor.ExecutionFailed { message }) ->
+         match execution_result.Action_executor.status with
+         | Action_executor.Failed
+             (Action_executor.ExecutionFailed { message }) ->
              let action =
                match HashMap.get nodes_by_id ~key:node_id with
                | Some node -> action_label node
                | None -> G.Node_id.to_string node_id
              in
              Some (action ^ "\n" ^ message)
-         | Riot_executor.Action_executor.Failed
-             (Riot_executor.Action_executor.OutputsNotCreated { missing }) ->
+         | Action_executor.Failed
+             (Action_executor.OutputsNotCreated { missing }) ->
              let action =
                match HashMap.get nodes_by_id ~key:node_id with
                | Some node -> action_label node
@@ -159,8 +160,8 @@ let summarize_execution_failures = fun ~(action_graph: Riot_planner.Action_graph
                (action
                ^ "\nmissing outputs: "
                ^ String.concat ", " (List.map missing ~fn:Path.to_string))
-         | Riot_executor.Action_executor.Failed
-             (Riot_executor.Action_executor.DependenciesFailed { failed }) ->
+         | Action_executor.Failed
+             (Action_executor.DependenciesFailed { failed }) ->
              let action =
                match HashMap.get nodes_by_id ~key:node_id with
                | Some node -> action_label node
@@ -170,9 +171,9 @@ let summarize_execution_failures = fun ~(action_graph: Riot_planner.Action_graph
                (action
                ^ "\nfailed deps: "
                ^ String.concat ", " (List.map failed ~fn:G.Node_id.to_string))
-         | Riot_executor.Action_executor.Cached _
-         | Riot_executor.Action_executor.Executed
-         | Riot_executor.Action_executor.Skipped ->
+         | Action_executor.Cached _
+         | Action_executor.Executed
+         | Action_executor.Skipped ->
              None)
   in
   "sandbox: "
@@ -205,17 +206,17 @@ let execute_kernel_runtime_graph = fun ~concurrency ->
                     [ package.sources.src; package.sources.native; package.sources.tests ]
                 in
                 let sandbox =
-                  Riot_executor.Sandbox.create
+                  Sandbox.create
                     ~workspace
                     ~profile:"debug"
                     ~target:(Riot_model.Riot_dirs.host_target ())
                     ()
                     ~package_name:package.name
                 in
-                Riot_executor.Sandbox.prepare ~sandbox ~package ~inputs ~depset ~store;
-                let sandbox_dir = Riot_executor.Sandbox.get_dir sandbox in
+                Sandbox.prepare ~sandbox ~package ~inputs ~depset ~store;
+                let sandbox_dir = Sandbox.get_dir sandbox in
                 let result =
-                  Riot_executor.Action_executor.execute
+                  Action_executor.execute
                     ~action_graph
                     ~sandbox
                     ~store
@@ -224,15 +225,15 @@ let execute_kernel_runtime_graph = fun ~concurrency ->
                     ~concurrency
                 in
                 let summary = summarize_execution_failures ~action_graph ~sandbox_dir result in
-                Riot_executor.Sandbox.cleanup sandbox;
+                Sandbox.cleanup sandbox;
                 let failures =
-                  HashMap.to_list result.Riot_executor.Action_executor.completed
+                  HashMap.to_list result.Action_executor.completed
                   |> List.filter ~fn:(fun (_, execution_result) ->
-                       match execution_result.Riot_executor.Action_executor.status with
-                       | Riot_executor.Action_executor.Failed _ -> true
-                       | Riot_executor.Action_executor.Cached _
-                       | Riot_executor.Action_executor.Executed
-                       | Riot_executor.Action_executor.Skipped -> false)
+                       match execution_result.Action_executor.status with
+                       | Action_executor.Failed _ -> true
+                       | Action_executor.Cached _
+                       | Action_executor.Executed
+                       | Action_executor.Skipped -> false)
                 in
                 if List.is_empty failures then
                   Ok ()
@@ -257,6 +258,6 @@ let tests =
     case ~size:Large "kernel runtime graph executes in parallel" test_kernel_runtime_graph_executes_in_parallel;
   ]
 
-let name = "riot-executor:kernel-runtime-tests"
+let name = "riot-build:kernel-runtime-tests"
 
 let () = Actors.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()

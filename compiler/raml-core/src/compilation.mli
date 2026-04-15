@@ -2,8 +2,8 @@ open Std.Data
 
 type frontend_diagnostic =
   | Parse of Syn.Diagnostic.t
-  | Lowering of Typ.Model.Diagnostic.t
-  | Typing of Typ.Model.Diagnostic.t
+  | Lowering of Typ.Diagnostics.Diagnostic.t
+  | Typing of Typ.Diagnostics.Diagnostic.t
 type t
 val create:
   targeting:Json.t ->

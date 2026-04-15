@@ -10,10 +10,11 @@ type t = {
   targets: Riot_model.Target.Set.t;
   scope: scope;
   profile: Riot_model.Profile.t;
+  requested_parallelism: int option;
 }
 
-let make = fun ~workspace ~package_names ~targets ~scope ~profile ->
-  { workspace; package_names; targets; scope; profile }
+let make = fun ~workspace ~package_names ~targets ~scope ~profile ?requested_parallelism ->
+  { workspace; package_names; targets; scope; profile; requested_parallelism }
 
 let workspace = fun t -> t.workspace
 
@@ -24,3 +25,5 @@ let targets = fun t -> t.targets
 let scope = fun t -> t.scope
 
 let profile = fun t -> t.profile
+
+let requested_parallelism = fun t -> t.requested_parallelism

@@ -12,35 +12,34 @@ let empty_names = fun () -> { seen = HashSet.create (); ordered_rev = [] }
 let ordered_names = fun names -> List.rev names.ordered_rev
 
 let add_name = fun names name ->
-  if HashSet.contains names.seen name then
+  if HashSet.contains names.seen ~value:name then
     names
   else
     (
-      let _ = HashSet.insert names.seen name in
+      let _ = HashSet.insert names.seen ~value:name in
       { names with ordered_rev = name :: names.ordered_rev }
     )
 
 let add_names = fun names more ->
-  List.fold_left add_name names more
+  List.fold_left more ~acc:names ~fn:add_name
 
 let merge_names = fun left right ->
-  List.fold_left add_name left (ordered_names right)
+  List.fold_left (ordered_names right) ~acc:left ~fn:add_name
 
-let bound_of_list = HashSet.of_list
+let bound_of_list = HashSet.from_list
 
 let extend_bound = fun bound names ->
-  let bound = HashSet.of_list (HashSet.to_list bound) in
-  List.iter
-    (fun name ->
-      let _ = HashSet.insert bound name in
+  let bound = HashSet.from_list (HashSet.to_list bound) in
+  List.for_each
+    names
+    ~fn:(fun name ->
+      let _ = HashSet.insert bound ~value:name in
       ())
-    names;
   bound
-
-let bound_has = HashSet.contains
+let bound_has = fun set value -> HashSet.contains set ~value
 
 let param_names = fun params ->
-  List.map (fun (param: Core.Expr.param) -> param.name) params
+  List.map ~fn:(fun (param: Core.Expr.param) -> param.name) params
 
 let rec collect_free_vars = fun ~name_of_entity ~bound expr ->
   match expr with
@@ -53,14 +52,14 @@ let rec collect_free_vars = fun ~name_of_entity ~bound expr ->
     )
   | Core.Expr.Apply { callee=Core.Expr.Direct _; arguments } ->
       List.fold_left
-        (fun names argument -> merge_names names (collect_free_vars ~name_of_entity ~bound argument))
-        (empty_names ())
         arguments
+        ~acc:(empty_names ())
+        ~fn:(fun names argument -> merge_names names (collect_free_vars ~name_of_entity ~bound argument))
   | Core.Expr.Apply { callee=Core.Expr.Indirect callee; arguments } ->
       List.fold_left
-        (fun names expr -> merge_names names (collect_free_vars ~name_of_entity ~bound expr))
-        (collect_free_vars ~name_of_entity ~bound callee)
         arguments
+        ~acc:(collect_free_vars ~name_of_entity ~bound callee)
+        ~fn:(fun names expr -> merge_names names (collect_free_vars ~name_of_entity ~bound expr))
   | Core.Expr.Lambda lambda ->
       collect_free_vars
         ~name_of_entity
@@ -68,7 +67,7 @@ let rec collect_free_vars = fun ~name_of_entity ~bound expr ->
         lambda.body
   | Core.Expr.Let let_ ->
       let binding_names =
-        List.map (fun (binding: Core.Expr.binding) -> binding.name) let_.bindings
+        List.map let_.bindings ~fn:(fun (binding: Core.Expr.binding) -> binding.name)
       in
       let binding_scope =
         match let_.rec_flag with
@@ -77,10 +76,10 @@ let rec collect_free_vars = fun ~name_of_entity ~bound expr ->
       in
       let binding_free_vars =
         List.fold_left
-          (fun names (binding: Core.Expr.binding) ->
-            merge_names names (collect_free_vars ~name_of_entity ~bound:binding_scope binding.expr))
-          (empty_names ())
           let_.bindings
+          ~acc:(empty_names ())
+          ~fn:(fun names (binding: Core.Expr.binding) ->
+            merge_names names (collect_free_vars ~name_of_entity ~bound:binding_scope binding.expr))
       in
       merge_names
         binding_free_vars
@@ -91,17 +90,17 @@ let rec collect_free_vars = fun ~name_of_entity ~bound expr ->
         (collect_free_vars ~name_of_entity ~bound sequence.second)
   | Core.Expr.Tuple tuple ->
       List.fold_left
-        (fun names expr -> merge_names names (collect_free_vars ~name_of_entity ~bound expr))
-        (empty_names ())
         tuple
+        ~acc:(empty_names ())
+        ~fn:(fun names expr -> merge_names names (collect_free_vars ~name_of_entity ~bound expr))
   | Core.Expr.Tuple_get tuple_get ->
       collect_free_vars ~name_of_entity ~bound tuple_get.tuple
   | Core.Expr.Record record ->
       List.fold_left
-        (fun names (field: Core.Expr.record_field) ->
-          merge_names names (collect_free_vars ~name_of_entity ~bound field.value))
-        (empty_names ())
         record
+        ~acc:(empty_names ())
+        ~fn:(fun names (field: Core.Expr.record_field) ->
+          merge_names names (collect_free_vars ~name_of_entity ~bound field.value))
   | Core.Expr.Record_get record_get ->
       collect_free_vars ~name_of_entity ~bound record_get.record
   | Core.Expr.If_then_else if_then_else ->
@@ -112,18 +111,17 @@ let rec collect_free_vars = fun ~name_of_entity ~bound expr ->
           (collect_free_vars ~name_of_entity ~bound if_then_else.else_))
   | Core.Expr.Primitive primitive ->
       List.fold_left
-        (fun names expr -> merge_names names (collect_free_vars ~name_of_entity ~bound expr))
-        (empty_names ())
         primitive.arguments
+        ~acc:(empty_names ())
+        ~fn:(fun names expr -> merge_names names (collect_free_vars ~name_of_entity ~bound expr))
 
 let free_vars = fun ~name_of_entity ~bound expr ->
   collect_free_vars ~name_of_entity ~bound:(bound_of_list bound) expr |> ordered_names
 
 let captures_of_lambda = fun ~name_of_entity ~bound_values (lambda: Core.Expr.lambda) ->
   let bound_values = bound_of_list bound_values in
-  free_vars ~name_of_entity ~bound:(param_names lambda.params) lambda.body |> List.filter
-    (fun name ->
-      HashSet.contains bound_values name)
+  free_vars ~name_of_entity ~bound:(param_names lambda.params) lambda.body
+  |> List.filter ~fn:(fun name -> HashSet.contains bound_values ~value:name)
 
 let rec expr_uses_name_as_value_with_shadowed = fun ~name_of_entity ~shadowed name expr ->
   match expr with
@@ -131,7 +129,7 @@ let rec expr_uses_name_as_value_with_shadowed = fun ~name_of_entity ~shadowed na
       false
   | Core.Expr.Var var -> (
       match name_of_entity var with
-      | Some var_name -> (not (HashSet.contains shadowed name)) && String.equal var_name name
+      | Some var_name -> (not (HashSet.contains shadowed ~value:name)) && String.equal var_name name
       | None -> false
     )
   | Core.Expr.Apply { callee=Core.Expr.Direct callee; arguments } -> (
@@ -151,7 +149,7 @@ let rec expr_uses_name_as_value_with_shadowed = fun ~name_of_entity ~shadowed na
         lambda.body
   | Core.Expr.Let let_ ->
       let binding_names =
-        List.map (fun (binding: Core.Expr.binding) -> binding.name) let_.bindings
+        List.map let_.bindings ~fn:(fun (binding: Core.Expr.binding) -> binding.name)
       in
       let binding_shadowed =
         match let_.rec_flag with

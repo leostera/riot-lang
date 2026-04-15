@@ -23,7 +23,7 @@ type error =
       package_names: Riot_model.Package_name.t list;
       available_packages: Riot_model.Package_name.t list
     }
-  | BuildFailed of { errors: Riot_executor.Package_builder.build_result list }
+  | BuildFailed of { errors: Package_builder.build_result list }
   | PlanningFailed of { reason: string }
   | CycleDetected of { cycle_nodes: string list }
   | BuildAlreadyRunning of { lock_path: Path.t }
@@ -35,14 +35,14 @@ type streaming_event =
       session_id: Session_id.t;
       completed_at: DateTime.t;
       stats: build_stats;
-      results: Riot_executor.Package_builder.build_result list
+      results: Package_builder.build_result list
     }
   | BuildFailed of {
       session_id: Session_id.t;
       failed_at: DateTime.t;
       stats: build_stats;
-      built: Riot_executor.Package_builder.build_result list;
-      errors: Riot_executor.Package_builder.build_result list
+      built: Package_builder.build_result list;
+      errors: Package_builder.build_result list
     }
   | PlanningFailed of { session_id: Session_id.t; failed_at: DateTime.t; reason: string }
   | CycleDetected of { session_id: Session_id.t; detected_at: DateTime.t; cycle_nodes: string list }

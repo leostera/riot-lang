@@ -1,10 +1,11 @@
 open Std
+open Riot_build
 open Std.Bench
 open Std.Collections
 open Riot_model
 
-module Action_executor = Riot_executor.Action_executor
-module Action_queue = Riot_executor.Action_queue
+module Action_executor = Action_executor
+module Action_queue = Action_queue
 module Action_graph = Riot_planner.Action_graph
 module Action_node = Riot_planner.Action_node
 module Package = Riot_model.Package
@@ -12,7 +13,7 @@ module Workspace = Riot_model.Workspace
 
 let test_toolchain =
   Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
-  |> Result.expect ~msg:"riot-executor bench toolchain init should succeed"
+  |> Result.expect ~msg:"riot-build bench toolchain init should succeed"
 
 let write_file = fun path contents ->
   let parent =
@@ -358,7 +359,7 @@ let make_execute_graph_miss_bench = fun root ~count ~concurrency ->
     let graph = Action_graph.create () in
     let nodes = make_execute_graph_nodes graph ~package ~count ~seed:(iteration * count) in
     let sandbox =
-      Riot_executor.Sandbox.create ~workspace () ~package_name:package.Package.name
+      Sandbox.create ~workspace () ~package_name:package.Package.name
     in
     let result =
       Action_executor.execute
@@ -369,7 +370,7 @@ let make_execute_graph_miss_bench = fun root ~count ~concurrency ->
         test_toolchain
         ~concurrency
     in
-    Riot_executor.Sandbox.cleanup sandbox;
+    Sandbox.cleanup sandbox;
     if HashMap.length result.completed = List.length nodes then
       ()
     else
@@ -382,7 +383,7 @@ let make_execute_graph_cache_hit_bench = fun root ~count ~concurrency ->
   let session_id = Riot_model.Session_id.make () in
   let graph = Action_graph.create () in
   let _ = make_execute_graph_nodes graph ~package ~count ~seed:0 in
-  let warm_sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:package.Package.name in
+  let warm_sandbox = Sandbox.create ~workspace () ~package_name:package.Package.name in
   let warm_result =
     Action_executor.execute
       ~action_graph:graph
@@ -392,13 +393,13 @@ let make_execute_graph_cache_hit_bench = fun root ~count ~concurrency ->
       test_toolchain
       ~concurrency
   in
-  Riot_executor.Sandbox.cleanup warm_sandbox;
+  Sandbox.cleanup warm_sandbox;
   let all_warm = HashMap.length warm_result.completed = count in
   if not all_warm then
     panic "execute graph cache fixture expected all nodes to complete";
   fun () ->
     let sandbox =
-      Riot_executor.Sandbox.create ~workspace () ~package_name:package.Package.name
+      Sandbox.create ~workspace () ~package_name:package.Package.name
     in
     let result =
       Action_executor.execute
@@ -409,7 +410,7 @@ let make_execute_graph_cache_hit_bench = fun root ~count ~concurrency ->
         test_toolchain
         ~concurrency
     in
-    Riot_executor.Sandbox.cleanup sandbox;
+    Sandbox.cleanup sandbox;
     if HashMap.length result.completed = count then
       ()
     else
@@ -425,31 +426,31 @@ let benchmark_suite = fun root ->
   Bench.[
     with_config
       ~config:queue_config
-      "riot-executor action queue independent 256 nodes"
+      "riot-build action queue independent 256 nodes"
       (make_queue_independent_bench root ~count:256);
     with_config
       ~config:queue_config
-      "riot-executor action queue dependency chain 256 nodes"
+      "riot-build action queue dependency chain 256 nodes"
       (make_queue_chain_bench root ~count:256);
     with_config
       ~config:queue_config
-      "riot-executor action queue failure fanout 255 dependents"
+      "riot-build action queue failure fanout 255 dependents"
       (make_queue_failure_fanout_bench root ~dependents:255);
     with_config
       ~config:node_config
-      "riot-executor execute_node write miss 4kb"
+      "riot-build execute_node write miss 4kb"
       (make_execute_node_write_miss_bench root ~size:4_096);
     with_config
       ~config:node_config
-      "riot-executor execute_node cache hit 4kb"
+      "riot-build execute_node cache hit 4kb"
       (make_execute_node_cache_hit_bench root ~size:4_096);
     with_config
       ~config:graph_config
-      "riot-executor execute graph miss 16 writes concurrency 4"
+      "riot-build execute graph miss 16 writes concurrency 4"
       (make_execute_graph_miss_bench root ~count:16 ~concurrency:4);
     with_config
       ~config:graph_config
-      "riot-executor execute graph cache hit 16 writes concurrency 4"
+      "riot-build execute graph cache hit 16 writes concurrency 4"
       (make_execute_graph_cache_hit_bench root ~count:16 ~concurrency:4);
   ]
 
@@ -460,11 +461,11 @@ let () =
         Fs.with_tempdir ~prefix:"riot_executor_bench"
           (fun root ->
             Bench.Cli.main
-              ~name:"riot-executor benchmarks"
+              ~name:"riot-build benchmarks"
               ~benchmarks:(benchmark_suite root)
               ~args)
       with
       | Ok result -> result
-      | Error err -> panic ("failed to prepare riot-executor bench fixture: " ^ IO.error_message err))
+      | Error err -> panic ("failed to prepare riot-build bench fixture: " ^ IO.error_message err))
     ~args:Env.args
     ()

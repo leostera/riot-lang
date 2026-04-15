@@ -1,9 +1,8 @@
 open Std
 open Std.Data
+open Std.Result.Syntax
 module Compiler_target = Raml_core.Target
 module Target_profile = Target_profile
-
-let ( let* ) = Result.and_then
 
 type artifact =
   | Executable
@@ -37,13 +36,13 @@ let error_to_json = fun error ->
     [
       ("kind", Json.string "unsupported_host_architecture");
       ("host", Compiler_target.to_json host);
-      ("supported_hosts", Json.array Compiler_target.to_json supported_hosts);
+      ("supported_hosts", Json.array (List.map supported_hosts ~fn:Compiler_target.to_json));
     ]
   | UnsupportedTargetArchitecture { host; supported_targets } -> Json.obj
     [
       ("kind", Json.string "unsupported_target_architecture");
       ("host", Compiler_target.to_json host);
-      ("supported_targets", Json.array Compiler_target.to_json supported_targets);
+      ("supported_targets", Json.array (List.map supported_targets ~fn:Compiler_target.to_json));
     ]
   | LinkFailed { command; status; stderr } -> Json.obj
     [

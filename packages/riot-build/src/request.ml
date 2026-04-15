@@ -10,10 +10,11 @@ type t = {
   targets: Riot_model.Target.request;
   scope: scope;
   profile: Riot_model.Profile.t;
+  requested_parallelism: int option;
 }
 
-let make = fun ~workspace ~packages ~targets ~scope ~profile () ->
-  { workspace; packages; targets; scope; profile }
+let make = fun ~workspace ~packages ~targets ~scope ~profile ?requested_parallelism () ->
+  { workspace; packages; targets; scope; profile; requested_parallelism }
 
 module Internal = struct
   let workspace = fun t -> t.workspace
@@ -25,4 +26,6 @@ module Internal = struct
   let scope = fun t -> t.scope
 
   let profile = fun t -> t.profile
+
+  let requested_parallelism = fun t -> t.requested_parallelism
 end

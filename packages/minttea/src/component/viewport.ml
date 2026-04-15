@@ -137,13 +137,15 @@ let view = fun t ->
     | `None -> t.lines
     | `Soft ->
         (* Word wrap each line to fit width *)
-        t.lines |> List.concat_map
+        t.lines
+        |> List.map ~fn:
           (fun line ->
             if line = "" then
               [ line ]
               (* Preserve blank lines *)
             else
               Util.Ansi.word_wrap ~width:t.width line)
+        |> List.concat
   in
   (* Extract visible portion based on scroll position *)
   let start_idx = t.y_offset in

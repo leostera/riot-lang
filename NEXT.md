@@ -4,7 +4,11 @@
 
 # Before Announcing
 
-* Remove option.for_each or at least include in the docs that people should preefr a `match` expression
+* Std.String <- actual zero-copy string views with .sub, could we make this copy-on-write ?
+
+* ~acc -> ~init or ffolds
+
+* option.for_each -> option.if_some ~fn
 
 * riot-deps make workspace_manager a required param instead of an optinoal one
 

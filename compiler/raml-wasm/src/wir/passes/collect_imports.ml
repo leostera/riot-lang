@@ -12,10 +12,10 @@ let empty_imports = fun () -> { seen = HashSet.create (); ordered_rev = [] }
 
 let add_import = fun imports import ->
   let key = Types.Import.key import in
-  if HashSet.contains imports.seen key then
+  if HashSet.contains imports.seen ~value:key then
     imports
   else
-    let _ = HashSet.insert imports.seen key in
+    let _ = HashSet.insert imports.seen ~value:key in
     { imports with ordered_rev = import :: imports.ordered_rev }
 
 let rec collect_expr = fun imports expr ->
@@ -29,23 +29,23 @@ let rec collect_expr = fun imports expr ->
         | None -> imports
         | Some import -> add_import imports import
       in
-      List.fold_left collect_expr imports call.arguments
+      List.fold_left call.arguments ~acc:imports ~fn:collect_expr
   | Types.Expr.Indirect_call call ->
-      List.fold_left collect_expr (collect_expr imports call.callee) call.arguments
+      List.fold_left call.arguments ~acc:(collect_expr imports call.callee) ~fn:collect_expr
   | Types.Expr.Lambda lambda ->
       collect_expr imports lambda.body
   | Types.Expr.Let let_ ->
       let imports =
         List.fold_left
-          (fun imports (binding: Types.Expr.binding) -> collect_expr imports binding.expr)
-          imports
           let_.bindings
+          ~acc:imports
+          ~fn:(fun imports (binding: Types.Expr.binding) -> collect_expr imports binding.expr)
       in
       collect_expr imports let_.body
   | Types.Expr.Sequence sequence ->
       collect_expr (collect_expr imports sequence.first) sequence.second
   | Types.Expr.Tuple elements ->
-      List.fold_left collect_expr imports elements
+      List.fold_left elements ~acc:imports ~fn:collect_expr
   | Types.Expr.Tuple_get tuple_get ->
       collect_expr imports tuple_get.tuple
   | Types.Expr.If_then_else if_then_else ->
@@ -58,7 +58,7 @@ let rec collect_expr = fun imports expr ->
         | None -> imports
         | Some import -> add_import imports import
       in
-      List.fold_left collect_expr imports primitive.arguments
+      List.fold_left primitive.arguments ~acc:imports ~fn:collect_expr
 
 let collect_global = fun imports (global: Types.Global.t) -> collect_expr imports global.expr
 
@@ -73,8 +73,10 @@ let program = fun (program: Types.Compilation_unit.t) ->
   let imports =
     empty_imports ()
     |> fun imports ->
-      List.fold_left collect_global imports program.globals |> fun imports ->
-        List.fold_left collect_function imports program.functions |> fun imports ->
-          List.fold_left collect_init_item imports program.init
+      List.fold_left program.globals ~acc:imports ~fn:collect_global
+      |> fun imports ->
+        List.fold_left program.functions ~acc:imports ~fn:collect_function
+      |> fun imports ->
+        List.fold_left program.init ~acc:imports ~fn:collect_init_item
   in
   { program with imports = List.rev imports.ordered_rev }

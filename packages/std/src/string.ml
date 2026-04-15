@@ -3,6 +3,8 @@ open Iter
 open Prelude
 module Rune = Kernel.Unicode.Rune
 
+external bytes_unsafe_of_string : string -> bytes = "%bytes_of_string"
+
 include Kernel.String
 
 let from_char = fun value -> make ~len:1 ~char:value
@@ -353,3 +355,13 @@ let to_reader = fun ?chunk_size value ->
       Ok (Sync.Cell.get total)
   end in
   IO.Reader.of_read_src (module Read) value
+
+module Syntax = struct
+  let set_unchecked = fun value ~at ~char ->
+    let bytes = bytes_unsafe_of_string value in
+    Kernel.Bytes.set_unchecked bytes ~at ~char
+
+  let get = fun value at -> get_unchecked value ~at
+
+  let set = fun value at char -> set_unchecked value ~at ~char
+end

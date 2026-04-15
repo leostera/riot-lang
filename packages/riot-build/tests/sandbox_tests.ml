@@ -1,4 +1,5 @@
 open Std
+open Riot_build
 open Riot_model
 module Test = Std.Test
 
@@ -33,10 +34,10 @@ let test_sandbox_create_and_get_dir = fun _ctx ->
     Fs.with_tempdir ~prefix:"sandbox_create"
       (fun tmpdir ->
         let workspace = make_workspace tmpdir in
-        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:(package_name "pkg") in
-        let dir = Riot_executor.Sandbox.get_dir sandbox in
+        let sandbox = Sandbox.create ~workspace () ~package_name:(package_name "pkg") in
+        let dir = Sandbox.get_dir sandbox in
         let exists = Fs.exists dir |> Result.unwrap_or ~default:false in
-        let _ = Riot_executor.Sandbox.cleanup sandbox in
+        let _ = Sandbox.cleanup sandbox in
         if exists then
           Ok ()
         else
@@ -55,21 +56,21 @@ let test_sandbox_prepare_copies_package_inputs = fun _ctx ->
         let _ = Fs.create_dir_all package_src |> Result.expect ~msg:"create package src failed" in
         let source = Path.(package_src / Path.v "lib.ml") in
         let _ = Fs.write "let answer = 42" source |> Result.expect ~msg:"write package source failed" in
-        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:package.Riot_model.Package.name in
-        Riot_executor.Sandbox.prepare
+        let sandbox = Sandbox.create ~workspace () ~package_name:package.Riot_model.Package.name in
+        Sandbox.prepare
           ~sandbox
           ~package
           ~inputs:[ Path.v "src/lib.ml" ]
           ~depset:[]
           ~store:(Riot_store.Store.create ~workspace);
-        let copied = Path.(Riot_executor.Sandbox.get_dir sandbox / Path.v "src/lib.ml") in
+        let copied = Path.(Sandbox.get_dir sandbox / Path.v "src/lib.ml") in
         let result =
           match Fs.read_to_string copied with
           | Ok content when String.equal content "let answer = 42" -> Ok ()
           | Ok content -> Error ("unexpected copied content: " ^ content)
           | Error err -> Error ("failed to read copied input: " ^ IO.error_message err)
         in
-        let _ = Riot_executor.Sandbox.cleanup sandbox in
+        let _ = Sandbox.cleanup sandbox in
         result)
   with
   | Ok result -> result
@@ -80,9 +81,9 @@ let test_sandbox_cleanup_removes_dir = fun _ctx ->
     Fs.with_tempdir ~prefix:"sandbox_cleanup"
       (fun tmpdir ->
         let workspace = make_workspace tmpdir in
-        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:(package_name "pkg") in
-        let dir = Riot_executor.Sandbox.get_dir sandbox in
-        let _ = Riot_executor.Sandbox.cleanup sandbox in
+        let sandbox = Sandbox.create ~workspace () ~package_name:(package_name "pkg") in
+        let dir = Sandbox.get_dir sandbox in
+        let _ = Sandbox.cleanup sandbox in
         let exists = Fs.exists dir |> Result.unwrap_or ~default:true in
         if not exists then
           Ok ()
@@ -103,10 +104,10 @@ let test_sandbox_uses_workspace_target_dir_root = fun _ctx ->
             ~packages:[]
             ()
         in
-        let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:(package_name "pkg") in
-        let dir = Riot_executor.Sandbox.get_dir sandbox |> Path.to_string in
+        let sandbox = Sandbox.create ~workspace () ~package_name:(package_name "pkg") in
+        let dir = Sandbox.get_dir sandbox |> Path.to_string in
         let expected_prefix = Path.to_string workspace.target_dir_root in
-        let _ = Riot_executor.Sandbox.cleanup sandbox in
+        let _ = Sandbox.cleanup sandbox in
         if String.starts_with ~prefix:expected_prefix dir then
           Ok ()
         else
@@ -123,6 +124,6 @@ let tests =
     case "sandbox create uses workspace target_dir_root" test_sandbox_uses_workspace_target_dir_root;
   ]
 
-let name = "riot-executor:sandbox"
+let name = "riot-build:sandbox"
 
 let () = Actors.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()

@@ -12,7 +12,7 @@ type error =
     }
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
   | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
-  | BuildFailed of { errors: Riot_executor.Package_builder.build_result list }
+  | BuildFailed of { errors: Build_result.failure list }
   | PlanningFailed of { reason: string }
   | CycleDetected of { cycle_nodes: string list }
   | BuildAlreadyRunning of { lock_path: Path.t }
@@ -30,7 +30,7 @@ val execute_raw:
   ?record_cache_generation:bool ->
   ?on_event:(Event.t -> unit) ->
   Build_spec.t ->
-  (Riot_executor.Package_builder.build_result list, error) result
+  (Package_builder.build_result list, error) result
 
 val execute:
   ?on_event:(Event.t -> unit) ->

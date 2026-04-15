@@ -16,7 +16,7 @@ let read_byte = fun reader ->
   if is_eof reader then
     None
   else
-    let b = Char.code (Bytes.get reader.bytes reader.offset) in
+    let b = Char.code (Option.unwrap (Bytes.get reader.bytes ~at:reader.offset)) in
     reader.offset <- reader.offset + 1;
     Some b
 
@@ -24,10 +24,10 @@ let read_int32 = fun reader ->
   if remaining reader < 4 then
     None
   else
-    let b1 = Char.code (Bytes.get reader.bytes reader.offset) in
-    let b2 = Char.code (Bytes.get reader.bytes (reader.offset + 1)) in
-    let b3 = Char.code (Bytes.get reader.bytes (reader.offset + 2)) in
-    let b4 = Char.code (Bytes.get reader.bytes (reader.offset + 3)) in
+    let b1 = Char.code (Option.unwrap (Bytes.get reader.bytes ~at:reader.offset)) in
+    let b2 = Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 1))) in
+    let b3 = Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 2))) in
+    let b4 = Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 3))) in
     reader.offset <- reader.offset + 4;
     (* Construct as unsigned, then convert to signed *)
     let unsigned = (b1 lsl 24) lor (b2 lsl 16) lor (b3 lsl 8) lor b4 in
@@ -45,8 +45,8 @@ let read_int16 = fun reader ->
   if remaining reader < 2 then
     None
   else
-    let b1 = Char.code (Bytes.get reader.bytes reader.offset) in
-    let b2 = Char.code (Bytes.get reader.bytes (reader.offset + 1)) in
+    let b1 = Char.code (Option.unwrap (Bytes.get reader.bytes ~at:reader.offset)) in
+    let b2 = Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 1))) in
     reader.offset <- reader.offset + 2;
     Some ((b1 lsl 8) lor b2)
 
@@ -54,14 +54,14 @@ let read_int64 = fun reader ->
   if remaining reader < 8 then
     None
   else
-    let b1 = Int64.of_int (Char.code (Bytes.get reader.bytes reader.offset)) in
-    let b2 = Int64.of_int (Char.code (Bytes.get reader.bytes (reader.offset + 1))) in
-    let b3 = Int64.of_int (Char.code (Bytes.get reader.bytes (reader.offset + 2))) in
-    let b4 = Int64.of_int (Char.code (Bytes.get reader.bytes (reader.offset + 3))) in
-    let b5 = Int64.of_int (Char.code (Bytes.get reader.bytes (reader.offset + 4))) in
-    let b6 = Int64.of_int (Char.code (Bytes.get reader.bytes (reader.offset + 5))) in
-    let b7 = Int64.of_int (Char.code (Bytes.get reader.bytes (reader.offset + 6))) in
-    let b8 = Int64.of_int (Char.code (Bytes.get reader.bytes (reader.offset + 7))) in
+    let b1 = Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:reader.offset))) in
+    let b2 = Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 1)))) in
+    let b3 = Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 2)))) in
+    let b4 = Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 3)))) in
+    let b5 = Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 4)))) in
+    let b6 = Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 5)))) in
+    let b7 = Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 6)))) in
+    let b8 = Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 7)))) in
     reader.offset <- reader.offset + 8;
     let result =
       Int64.(logor
@@ -87,7 +87,7 @@ let read_string = fun reader ->
     if is_eof reader then
       None
     else
-      let c = Bytes.get reader.bytes reader.offset in
+      let c = Option.unwrap (Bytes.get reader.bytes ~at:reader.offset) in
       reader.offset <- reader.offset + 1;
       if c = '\x00' then
         Some (Buffer.contents buf)
@@ -102,9 +102,11 @@ let read_bytes = fun reader len ->
   if remaining reader < len then
     None
   else
-    let result = Bytes.sub reader.bytes reader.offset len in
-    reader.offset <- reader.offset + len;
-    Some result
+    match Bytes.sub reader.bytes ~offset:reader.offset ~len with
+    | Error _ -> None
+    | Ok result ->
+        reader.offset <- reader.offset + len;
+        Some result
 
 let read_cstring = fun reader len ->
   match read_bytes reader len with

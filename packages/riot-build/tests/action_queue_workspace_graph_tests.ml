@@ -1,4 +1,5 @@
 open Std
+open Riot_build
 open Riot_model
 module Test = Std.Test
 module G = Graph.SimpleGraph
@@ -48,7 +49,7 @@ let make_action_node_in = fun graph ?(deps = []) ?(outs = []) ?(actions = []) pa
 
 let executed_result = fun node_id ->
   let now = Time.Instant.now () in
-  Riot_executor.Action_queue.{
+  Action_queue.{
     node_id;
     status = Executed;
     ocamlc_warnings = [];
@@ -59,7 +60,7 @@ let executed_result = fun node_id ->
 
 let failed_result = fun node_id ->
   let now = Time.Instant.now () in
-  Riot_executor.Action_queue.{
+  Action_queue.{
     node_id;
     status = Failed (ExecutionFailed { message = "boom" });
     ocamlc_warnings = [];
@@ -69,7 +70,7 @@ let failed_result = fun node_id ->
   }
 
 let queue_respects_dependency_order = fun _ctx ->
-  let queue = Riot_executor.Action_queue.create () in
+  let queue = Action_queue.create () in
   let graph = Riot_planner.Action_graph.create () in
   let dep_node = make_action_node_in
     graph
@@ -83,15 +84,15 @@ let queue_respects_dependency_order = fun _ctx ->
     ~deps:[ dep_node.id ]
     ~actions:[ Riot_planner.Action.WriteFile { destination = Path.v "app.txt"; content = "app" }; ] in
   Riot_planner.Action_graph.add_dependency graph app_node ~depends_on:dep_node;
-  Riot_executor.Action_queue.queue queue app_node;
-  Riot_executor.Action_queue.queue queue dep_node;
-  match Riot_executor.Action_queue.next queue with
+  Action_queue.queue queue app_node;
+  Action_queue.queue queue dep_node;
+  match Action_queue.next queue with
   | None -> Error "expected dependency node first"
   | Some first ->
       Test.assert_true (G.Node_id.eq first.id dep_node.id);
-      Riot_executor.Action_queue.mark_completed queue (executed_result dep_node.id);
+      Action_queue.mark_completed queue (executed_result dep_node.id);
       (
-        match Riot_executor.Action_queue.next queue with
+        match Action_queue.next queue with
         | None -> Error "expected dependent node after dependency completion"
         | Some second ->
             Test.assert_true (G.Node_id.eq second.id app_node.id);
@@ -99,50 +100,50 @@ let queue_respects_dependency_order = fun _ctx ->
       )
 
 let queue_marks_dependents_skipped_after_failure = fun _ctx ->
-  let queue = Riot_executor.Action_queue.create () in
+  let queue = Action_queue.create () in
   let graph = Riot_planner.Action_graph.create () in
   let dep_node = make_action_node_in graph "std" in
   let dependent_node = make_action_node_in graph "riot-model" ~deps:[ dep_node.id ] in
   Riot_planner.Action_graph.add_dependency graph dependent_node ~depends_on:dep_node;
-  Riot_executor.Action_queue.queue queue dependent_node;
-  Riot_executor.Action_queue.queue queue dep_node;
-  let _ = Riot_executor.Action_queue.next queue in
-  Riot_executor.Action_queue.mark_completed queue (failed_result dep_node.id);
-  let _ = Riot_executor.Action_queue.next queue in
-  match Riot_executor.Action_queue.get_result queue dependent_node.id with
+  Action_queue.queue queue dependent_node;
+  Action_queue.queue queue dep_node;
+  let _ = Action_queue.next queue in
+  Action_queue.mark_completed queue (failed_result dep_node.id);
+  let _ = Action_queue.next queue in
+  match Action_queue.get_result queue dependent_node.id with
   | Some { status=Skipped; _ } -> Ok ()
   | Some _ -> Error "expected dependent action to be skipped"
   | None -> Error "missing dependent result"
 
 let requeue_with_deps_moves_blocked_node_and_queues_missing_dependency = fun _ctx ->
-  let queue = Riot_executor.Action_queue.create () in
+  let queue = Action_queue.create () in
   let missing_dep = make_action_node "kernel" in
   let blocked = make_action_node "std" ~deps:[ missing_dep.id ] in
   blocked.deps <- [ missing_dep.id ];
-  Riot_executor.Action_queue.queue queue blocked;
-  let _ = Riot_executor.Action_queue.next queue in
-  Riot_executor.Action_queue.requeue_with_deps
+  Action_queue.queue queue blocked;
+  let _ = Action_queue.next queue in
+  Action_queue.requeue_with_deps
     queue
     blocked
     ~missing_deps:[ missing_dep.id ]
     ~all_nodes:[ blocked; missing_dep ];
-  match Riot_executor.Action_queue.next queue with
+  match Action_queue.next queue with
   | Some ready ->
       Test.assert_true (G.Node_id.eq ready.id missing_dep.id);
       Ok ()
   | None -> Error "expected missing dependency node to be queued"
 
 let is_complete_checks_all_nodes_accounted_for = fun _ctx ->
-  let queue = Riot_executor.Action_queue.create () in
+  let queue = Action_queue.create () in
   let node_a = make_action_node "a" in
   let node_b = make_action_node "b" in
-  Riot_executor.Action_queue.queue queue node_a;
-  Riot_executor.Action_queue.queue queue node_b;
-  let _ = Riot_executor.Action_queue.next queue in
-  Riot_executor.Action_queue.mark_completed queue (executed_result node_a.id);
-  let _ = Riot_executor.Action_queue.next queue in
-  Riot_executor.Action_queue.mark_completed queue (executed_result node_b.id);
-  if Riot_executor.Action_queue.is_complete queue ~total_nodes:2 then
+  Action_queue.queue queue node_a;
+  Action_queue.queue queue node_b;
+  let _ = Action_queue.next queue in
+  Action_queue.mark_completed queue (executed_result node_a.id);
+  let _ = Action_queue.next queue in
+  Action_queue.mark_completed queue (executed_result node_b.id);
+  if Action_queue.is_complete queue ~total_nodes:2 then
     Ok ()
   else
     Error "queue should be complete after both nodes finish"
@@ -155,6 +156,6 @@ let tests =
     case "is_complete checks all nodes accounted for" is_complete_checks_all_nodes_accounted_for;
   ]
 
-let name = "riot-executor:action-queue-workspace-graph"
+let name = "riot-build:action-queue-workspace-graph"
 
 let () = Actors.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()

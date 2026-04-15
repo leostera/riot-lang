@@ -193,27 +193,27 @@ let referenced_hashes_of_artifact = fun (artifact: Riot_store.Artifact.t) ->
 
 let generation_lane_of_results = fun ~profile ~target results ->
   let hashes =
-    List.flat_map results ~fn:(fun (result: Riot_executor.Package_builder.build_result) ->
+    List.flat_map results ~fn:(fun (result: Package_builder.build_result) ->
         match result.status with
-        | Riot_executor.Package_builder.Built artifact
-        | Riot_executor.Package_builder.Cached artifact -> referenced_hashes_of_artifact artifact
-        | Riot_executor.Package_builder.Skipped _
-        | Riot_executor.Package_builder.Failed _ -> [])
+        | Package_builder.Built artifact
+        | Package_builder.Cached artifact -> referenced_hashes_of_artifact artifact
+        | Package_builder.Skipped _
+        | Package_builder.Failed _ -> [])
     |> sort_uniq_strings
   in
   Riot_store.Cache_gc.{ profile; target; hashes }
 
 let new_entries_of_results = fun ~profile ~target results ->
-  List.filter_map results ~fn:(fun (result: Riot_executor.Package_builder.build_result) ->
+  List.filter_map results ~fn:(fun (result: Package_builder.build_result) ->
       match result.status with
-      | Riot_executor.Package_builder.Built artifact -> Some Riot_store.Cache_gc.{
+      | Package_builder.Built artifact -> Some Riot_store.Cache_gc.{
         profile;
         target;
         hash = Std.Crypto.Digest.hex artifact.Riot_store.Artifact.hash;
       }
-      | Riot_executor.Package_builder.Cached _
-      | Riot_executor.Package_builder.Skipped _
-      | Riot_executor.Package_builder.Failed _ -> None)
+      | Package_builder.Cached _
+      | Package_builder.Skipped _
+      | Package_builder.Failed _ -> None)
 
 let record_successful_build_cache_generation = fun context lane_results ->
   let lanes =

@@ -22,7 +22,7 @@ let rec lower_expr = fun (expr: Core.Expr.t) ->
   | Core.Expr.Var entity_id ->
       Wasm_types.Expr.Var entity_id
   | Core.Expr.Apply apply ->
-      let arguments = List.map lower_expr apply.arguments in
+      let arguments = List.map apply.arguments ~fn:lower_expr in
       begin
         match apply.callee with
         | Core.Expr.Direct callee -> Wasm_types.Expr.Direct_call Wasm_types.Expr.{
@@ -36,13 +36,13 @@ let rec lower_expr = fun (expr: Core.Expr.t) ->
       end
   | Core.Expr.Lambda lambda ->
       Wasm_types.Expr.Lambda Wasm_types.Expr.{
-        params = List.map lower_param lambda.params;
+        params = List.map lambda.params ~fn:lower_param;
         body = lower_expr lambda.body
       }
   | Core.Expr.Let let_ ->
       Wasm_types.Expr.Let Wasm_types.Expr.{
         rec_flag = let_.rec_flag;
-        bindings = List.map lower_binding let_.bindings;
+        bindings = List.map let_.bindings ~fn:lower_binding;
         body = lower_expr let_.body
       }
   | Core.Expr.Sequence sequence ->
@@ -51,16 +51,15 @@ let rec lower_expr = fun (expr: Core.Expr.t) ->
         second = lower_expr sequence.second
       }
   | Core.Expr.Tuple tuple ->
-      Wasm_types.Expr.Tuple (List.map lower_expr tuple)
+      Wasm_types.Expr.Tuple (List.map tuple ~fn:lower_expr)
   | Core.Expr.Tuple_get tuple_get ->
       Wasm_types.Expr.Tuple_get Wasm_types.Expr.{
         tuple = lower_expr tuple_get.tuple;
         index = tuple_get.index
       }
   | Core.Expr.Record record ->
-      Wasm_types.Expr.Tuple (List.map
-        (fun (field: Core.Expr.record_field) -> lower_expr field.value)
-        record)
+      Wasm_types.Expr.Tuple (List.map record ~fn:(fun (field: Core.Expr.record_field) ->
+        lower_expr field.value))
   | Core.Expr.Record_get record_get ->
       Wasm_types.Expr.Tuple_get Wasm_types.Expr.{
         tuple = lower_expr record_get.record;
@@ -76,7 +75,7 @@ let rec lower_expr = fun (expr: Core.Expr.t) ->
       Wasm_types.Expr.Primitive Wasm_types.Expr.{
         primitive = primitive.primitive;
         kind = Runtime_imports.classify_primitive primitive.primitive;
-        arguments = List.map lower_expr primitive.arguments
+        arguments = List.map primitive.arguments ~fn:lower_expr
       }
 
 and lower_binding = fun (binding: Core.Expr.binding) ->
@@ -94,7 +93,7 @@ let lower_top_level_binding = fun (binding: Core.Binding.t) ->
   | Core.Expr.Lambda lambda -> `Function Wasm_types.Function.{
     entity_id = binding.entity_id;
     name = binding.name;
-    params = List.map lower_param lambda.params;
+    params = List.map lambda.params ~fn:lower_param;
     body = lower_expr lambda.body
   }
   | _ ->
@@ -118,8 +117,8 @@ let lower_init_item = fun (item: Core.Init_item.t) ->
       (`Eval expr, Some (Wasm_types.Init_item.Eval expr))
 
 let lower_binding_group = fun (group: Core.Binding_group.t) ->
-  List.fold_left
-    (fun (functions, globals, init_items) item ->
+  List.fold_left group.items ~acc:([], [], [])
+    ~fn:(fun (functions, globals, init_items) item ->
       match lower_init_item item with
       | (`Function function_, None) -> (functions @ [ function_ ], globals, init_items)
       | (`Function function_, Some init_item) -> (
@@ -135,17 +134,13 @@ let lower_binding_group = fun (group: Core.Binding_group.t) ->
       )
       | (`Eval _, None) -> (functions, globals, init_items)
       | (`Eval _, Some init_item) -> (functions, globals, init_items @ [ init_item ]))
-    ([], [], [])
-    group.items
 
 let lower_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
   let functions, globals, init =
-    List.fold_left
-      (fun (functions, globals, init_items) group ->
+    List.fold_left compilation_unit.init ~acc:([], [], [])
+      ~fn:(fun (functions, globals, init_items) group ->
         let group_functions, group_globals, group_init = lower_binding_group group in
         (functions @ group_functions, globals @ group_globals, init_items @ group_init))
-      ([], [], [])
-      compilation_unit.init
   in
   Wasm_types.Compilation_unit.{
     unit_id = compilation_unit.unit_id;
@@ -181,14 +176,12 @@ let trace_to_json = fun trace ->
       (
         "passes",
         Json.array
-          (List.map
-            (fun pass ->
-              Json.obj
-                [
-                  ("name", Json.string pass.name);
-                  ("program", Wasm_types.Compilation_unit.to_json pass.program);
-                ])
-            trace.passes)
+          (List.map trace.passes ~fn:(fun pass ->
+            Json.obj
+              [
+                ("name", Json.string pass.name);
+                ("program", Wasm_types.Compilation_unit.to_json pass.program);
+              ]))
       );
       ("final", Wasm_types.Compilation_unit.to_json trace.final);
     ]

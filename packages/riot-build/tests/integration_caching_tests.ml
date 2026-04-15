@@ -1,4 +1,5 @@
 open Std
+open Riot_build
 open Std.Collections
 open Riot_model
 module Test = Std.Test
@@ -98,8 +99,8 @@ let make_graph_with_write = fun ~package ~content ->
 let node_id = fun (node: Riot_planner.Action_node.t) -> node.id
 
 let execute_graph = fun ~workspace ~store ~package ~graph ->
-  let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:package.Riot_model.Package.name in
-  let result = Riot_executor.Action_executor.execute
+  let sandbox = Sandbox.create ~workspace () ~package_name:package.Riot_model.Package.name in
+  let result = Action_executor.execute
     ~action_graph:graph
     ~sandbox
     ~store
@@ -107,15 +108,15 @@ let execute_graph = fun ~workspace ~store ~package ~graph ->
     (test_toolchain ())
     ~concurrency:1
   in
-  let output = Path.(Riot_executor.Sandbox.get_dir sandbox / Path.v "out.txt") in
+  let output = Path.(Sandbox.get_dir sandbox / Path.v "out.txt") in
   let output_content = Fs.read_to_string output in
   let output_exists = Fs.exists output |> Result.unwrap_or ~default:false in
-  let sandbox_dir = Riot_executor.Sandbox.get_dir sandbox in
-  let _ = Riot_executor.Sandbox.cleanup sandbox in
+  let sandbox_dir = Sandbox.get_dir sandbox in
+  let _ = Sandbox.cleanup sandbox in
   (result, output_exists, output_content, sandbox_dir)
 
 let build_package = fun ~workspace ~store ~package ~package_graph ->
-  Riot_executor.Package_builder.build
+  Package_builder.build
     ~workspace
     ~toolchain:(test_toolchain ())
     ~store
@@ -145,21 +146,21 @@ let execute_planned_package = fun ~workspace ~store ~package ~package_graph ->
   | Ok (Riot_planner.Package_planner.Cached _) ->
       Error "expected direct action execution path to replan package"
   | Ok (Riot_planner.Package_planner.Planned { action_graph; depset; _ }) ->
-      let sandbox = Riot_executor.Sandbox.create ~workspace () ~package_name:package.Riot_model.Package.name in
-      Riot_executor.Sandbox.prepare
+      let sandbox = Sandbox.create ~workspace () ~package_name:package.Riot_model.Package.name in
+      Sandbox.prepare
         ~sandbox
         ~package
         ~inputs:(package.Riot_model.Package.sources.src @ package.Riot_model.Package.sources.native @ package.Riot_model.Package.sources.tests)
         ~depset
         ~store;
-      let result = Riot_executor.Action_executor.execute
+      let result = Action_executor.execute
         ~action_graph
         ~sandbox
         ~store
         ~session_id:(Riot_model.Session_id.make ())
         (test_toolchain ())
         ~concurrency:1 in
-      let _ = Riot_executor.Sandbox.cleanup sandbox in
+      let _ = Sandbox.cleanup sandbox in
       Ok result
 
 let test_execute_reuses_cache_for_equivalent_graph = fun _ctx ->
@@ -174,13 +175,13 @@ let test_execute_reuses_cache_for_equivalent_graph = fun _ctx ->
         let graph2, node2 = make_graph_with_write ~package ~content:"cached output" in
         let result2, exists2, content2, _sandbox2 = execute_graph ~workspace ~store ~package ~graph:graph2 in
         match
-          ( HashMap.get result1.Riot_executor.Action_executor.completed ~key:(node_id node1),
-            HashMap.get result2.Riot_executor.Action_executor.completed ~key:(node_id node2),
+          ( HashMap.get result1.Action_executor.completed ~key:(node_id node1),
+            HashMap.get result2.Action_executor.completed ~key:(node_id node2),
             content1,
             content2 )
         with
-        | Some { status = Riot_executor.Action_executor.Executed; _ },
-          Some { status = Riot_executor.Action_executor.Cached _; _ },
+        | Some { status = Action_executor.Executed; _ },
+          Some { status = Action_executor.Cached _; _ },
           Ok first_content,
           Ok second_content ->
             if exists1 && exists2 && String.equal first_content "cached output" && String.equal second_content "cached output" then
@@ -204,12 +205,12 @@ let test_execute_cache_misses_when_action_changes = fun _ctx ->
         let graph2, node2 = make_graph_with_write ~package ~content:"v2" in
         let result2, exists2, content2, _sandbox2 = execute_graph ~workspace ~store ~package ~graph:graph2 in
         match
-          ( HashMap.get result1.Riot_executor.Action_executor.completed ~key:(node_id node1),
-            HashMap.get result2.Riot_executor.Action_executor.completed ~key:(node_id node2),
+          ( HashMap.get result1.Action_executor.completed ~key:(node_id node1),
+            HashMap.get result2.Action_executor.completed ~key:(node_id node2),
             content2 )
         with
-        | Some { status = Riot_executor.Action_executor.Executed; _ },
-          Some { status = Riot_executor.Action_executor.Executed; _ },
+        | Some { status = Action_executor.Executed; _ },
+          Some { status = Action_executor.Executed; _ },
           Ok second_content ->
             if exists1 && exists2 && String.equal second_content "v2" then
               Ok ()
@@ -249,12 +250,12 @@ let test_dependency_change_invalidates_cached_compile_actions = fun _ctx ->
         in
         let first_dep = build_package ~workspace ~store ~package:dep ~package_graph:first_graph in
         match first_dep.status with
-        | Riot_executor.Package_builder.Failed err ->
-            Error ("first dependency build failed: " ^ Riot_executor.Package_builder.package_error_to_string err)
-        | Riot_executor.Package_builder.Skipped { reason } ->
+        | Package_builder.Failed err ->
+            Error ("first dependency build failed: " ^ Package_builder.package_error_to_string err)
+        | Package_builder.Skipped { reason } ->
             Error ("first dependency build skipped: " ^ reason)
-        | Riot_executor.Package_builder.Cached _
-        | Riot_executor.Package_builder.Built _ -> (
+        | Package_builder.Cached _
+        | Package_builder.Built _ -> (
             match execute_planned_package ~workspace ~store ~package:app ~package_graph:first_graph with
             | Error _ as err ->
                 err
@@ -269,28 +270,28 @@ let test_dependency_change_invalidates_cached_compile_actions = fun _ctx ->
                 in
                 let second_dep = build_package ~workspace ~store ~package:dep ~package_graph:second_graph in
                 match second_dep.status with
-                | Riot_executor.Package_builder.Failed err ->
-                    Error ("second dependency build failed: " ^ Riot_executor.Package_builder.package_error_to_string err)
-                | Riot_executor.Package_builder.Skipped { reason } ->
+                | Package_builder.Failed err ->
+                    Error ("second dependency build failed: " ^ Package_builder.package_error_to_string err)
+                | Package_builder.Skipped { reason } ->
                     Error ("second dependency build skipped: " ^ reason)
-                | Riot_executor.Package_builder.Cached _ ->
+                | Package_builder.Cached _ ->
                     Error "expected dependency source edit to miss package cache"
-                | Riot_executor.Package_builder.Built _ -> (
+                | Package_builder.Built _ -> (
                     match execute_planned_package ~workspace ~store ~package:app ~package_graph:second_graph with
                     | Error _ as err ->
                         err
                     | Ok second_app_result ->
                         let statuses =
-                          HashMap.to_list second_app_result.Riot_executor.Action_executor.completed
-                          |> List.map ~fn:(fun (_, result) -> result.Riot_executor.Action_executor.status)
+                          HashMap.to_list second_app_result.Action_executor.completed
+                          |> List.map ~fn:(fun (_, result) -> result.Action_executor.status)
                         in
                         let cached_count =
                           List.fold_left statuses ~acc:0 ~fn:(fun count status ->
                             match status with
-                            | Riot_executor.Action_executor.Cached _ -> count + 1
-                            | Riot_executor.Action_executor.Executed
-                            | Riot_executor.Action_executor.Failed _
-                            | Riot_executor.Action_executor.Skipped -> count)
+                            | Action_executor.Cached _ -> count + 1
+                            | Action_executor.Executed
+                            | Action_executor.Failed _
+                            | Action_executor.Skipped -> count)
                         in
                         if Int.equal cached_count 0 then
                           Ok ()
@@ -312,6 +313,6 @@ let tests =
     case "dependency change invalidates cached compile actions" test_dependency_change_invalidates_cached_compile_actions;
   ]
 
-let name = "riot-executor:integration-caching"
+let name = "riot-build:integration-caching"
 
 let () = Actors.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()

@@ -61,13 +61,13 @@ let is_valid_identifier = fun name ->
   let length = String.length name in
   if length = 0 then
     false
-  else if not (is_identifier_start name.[0]) then
+  else if not (is_identifier_start (String.get_unchecked name ~at:0)) then
     false
   else
     let rec loop index =
       if index >= length then
         true
-      else if is_identifier_continue name.[index] then
+      else if is_identifier_continue (String.get_unchecked name ~at:index) then
         loop (index + 1)
       else
         false
@@ -107,11 +107,11 @@ let sanitize_binding_identifier = fun name ->
   if length = 0 then
     "_"
   else begin
-    push_valid_start name.[0];
+    push_valid_start (String.get_unchecked name ~at:0);
     let rec loop index =
       if index < length then
         begin
-          push_valid_continue name.[index];
+          push_valid_continue (String.get_unchecked name ~at:index);
           loop (index + 1)
         end
     in

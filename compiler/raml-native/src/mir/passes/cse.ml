@@ -33,30 +33,26 @@ let key_equal = fun left right ->
   | _ -> false
 
 let remove_register = fun env name ->
-  List.filter (fun (_, current) -> not (String.equal current name)) env
+  List.filter env ~fn:(fun (_, current) -> not (String.equal current name))
 
 let remove_key = fun env key ->
-  List.filter (fun (current, _) -> not (key_equal current key)) env
+  List.filter env ~fn:(fun (current, _) -> not (key_equal current key))
 
 let bind = fun env key name -> (key, name) :: remove_key (remove_register env name) key
 
 let lookup = fun env key ->
-  env |> List.find_map
-    (fun (current, name) ->
-      if key_equal current key then
-        Some name
-      else
-        None)
+  env
+  |> List.find ~fn:(fun (current, _) ->
+    key_equal current key)
+  |> Option.map ~fn:(fun (_, name) -> name)
 
 let merge_env = fun left right ->
-  left |> List.filter_map
-    (fun (key, left_name) ->
-      right |> List.find_map
-        (fun (other_key, right_name) ->
-          if key_equal key other_key && String.equal left_name right_name then
-            Some (key, left_name)
-          else
-            None))
+  left
+  |> List.filter_map ~fn:(fun (key, left_name) ->
+    right
+    |> List.find ~fn:(fun (other_key, right_name) ->
+      key_equal key other_key && String.equal left_name right_name)
+    |> Option.map ~fn:(fun _ -> (key, left_name)))
 
 let rec rewrite_instruction = fun env instruction ->
   match instruction with
@@ -90,16 +86,15 @@ let rec rewrite_instruction = fun env instruction ->
       (env, instruction)
 
 and rewrite_instructions = fun env instructions ->
-  List.fold_left
-    (fun (env, acc) instruction ->
+  List.fold_left instructions
+    ~acc:(env, [])
+    ~fn:(fun (env, acc) instruction ->
       let env, instruction = rewrite_instruction env instruction in
       (env, acc @ [ instruction ]))
-    (env, [])
-    instructions
 
 let rewrite_procedure = fun (procedure: Procedure.t) ->
   let _, body = rewrite_instructions [] procedure.body in
   { procedure with body }
 
 let program = fun (program: Program.t) ->
-  { program with procedures = List.map rewrite_procedure program.procedures }
+  { program with procedures = List.map program.procedures ~fn:rewrite_procedure }

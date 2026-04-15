@@ -59,10 +59,10 @@ module Binary = struct
   }
 
   let byte = fun value ->
-    String.make 1 (Char.chr value)
+    String.make ~len:1 ~char:(Char.chr value)
 
   let bytes = fun values ->
-    String.concat "" (List.map byte values)
+    String.concat "" (List.map values ~fn:byte)
 
   let concat = fun parts ->
     String.concat "" parts
@@ -82,7 +82,7 @@ module Binary = struct
     let rec loop value acc =
       let byte_value = value land 0x7f in
       let next = value asr 7 in
-      let sign_bit_set = (byte_value land 0x40) <> 0 in
+      let sign_bit_set = byte_value land 0x40 = 0x40 in
       let done_ = (next = 0 && not sign_bit_set) || (next = (-1) && sign_bit_set) in
       if done_ then
         List.rev (byte_value :: acc)
@@ -172,17 +172,17 @@ let entity_key = fun entity_id ->
   | None -> Core.Surface_path.to_string (Core.Entity_id.surface_path entity_id)
 
 let add_string_literal = fun layout value ->
-  match Collections.HashMap.get layout value with
+  match Collections.HashMap.get layout ~key:value with
   | Some info -> (layout, info)
   | None ->
       let offset =
-        Collections.HashMap.fold
-          (fun _ (info: string_data) current -> max current (info.offset + info.length))
+        Collections.HashMap.fold_left
           layout
-          0
+          ~acc:0
+          ~fn:(fun current _ (info: string_data) -> max current (info.offset + info.length))
       in
       let info = { offset; length = String.length value } in
-      let _ = Collections.HashMap.insert layout value info in
+      let _ = Collections.HashMap.insert layout ~key:value ~value:info in
       (layout, info)
 
 let collect_char_error = fun value errors ->
@@ -205,24 +205,24 @@ let rec collect_strings_from_expr = fun layout expr errors ->
       (layout, errors)
   | Types.Expr.Direct_call call ->
       List.fold_left
-        (fun (layout, errors) argument -> collect_strings_from_expr layout argument errors)
-        (layout, errors)
         call.arguments
+        ~acc:(layout, errors)
+        ~fn:(fun (layout, errors) argument -> collect_strings_from_expr layout argument errors)
   | Types.Expr.Indirect_call call ->
       let layout, errors = collect_strings_from_expr layout call.callee errors in
       List.fold_left
-        (fun (layout, errors) argument -> collect_strings_from_expr layout argument errors)
-        (layout, errors)
         call.arguments
+        ~acc:(layout, errors)
+        ~fn:(fun (layout, errors) argument -> collect_strings_from_expr layout argument errors)
   | Types.Expr.Lambda lambda ->
       collect_strings_from_expr layout lambda.body errors
   | Types.Expr.Let let_ ->
       let layout, errors =
         List.fold_left
-          (fun (layout, errors) (binding: Types.Expr.binding) ->
-            collect_strings_from_expr layout binding.expr errors)
-          (layout, errors)
           let_.bindings
+          ~acc:(layout, errors)
+          ~fn:(fun (layout, errors) (binding: Types.Expr.binding) ->
+            collect_strings_from_expr layout binding.expr errors)
       in
       collect_strings_from_expr layout let_.body errors
   | Types.Expr.Sequence sequence ->
@@ -230,9 +230,9 @@ let rec collect_strings_from_expr = fun layout expr errors ->
       collect_strings_from_expr layout sequence.second errors
   | Types.Expr.Tuple items ->
       List.fold_left
-        (fun (layout, errors) item -> collect_strings_from_expr layout item errors)
-        (layout, errors)
         items
+        ~acc:(layout, errors)
+        ~fn:(fun (layout, errors) item -> collect_strings_from_expr layout item errors)
   | Types.Expr.Tuple_get tuple_get ->
       collect_strings_from_expr layout tuple_get.tuple errors
   | Types.Expr.If_then_else if_then_else ->
@@ -241,22 +241,22 @@ let rec collect_strings_from_expr = fun layout expr errors ->
       collect_strings_from_expr layout if_then_else.else_ errors
   | Types.Expr.Primitive primitive ->
       List.fold_left
-        (fun (layout, errors) argument -> collect_strings_from_expr layout argument errors)
-        (layout, errors)
         primitive.arguments
+        ~acc:(layout, errors)
+        ~fn:(fun (layout, errors) argument -> collect_strings_from_expr layout argument errors)
 
 let collect_strings = fun (linked_program: Artifacts.Linked_program.t) ->
   List.fold_left
-    (fun (layout, errors) (object_: Artifacts.Object.t) ->
+    linked_program.objects
+    ~acc:(Collections.HashMap.create (), [])
+    ~fn:(fun (layout, errors) (object_: Artifacts.Object.t) ->
       List.fold_left
-        (fun (layout, errors) item ->
+        object_.program.init
+        ~acc:(layout, errors)
+        ~fn:(fun (layout, errors) item ->
           match item with
           | Types.Init_item.Global global -> collect_strings_from_expr layout global.expr errors
-          | Types.Init_item.Eval expr -> collect_strings_from_expr layout expr errors)
-        (layout, errors)
-        object_.program.init)
-    (Collections.HashMap.create (), [])
-    linked_program.objects
+          | Types.Init_item.Eval expr -> collect_strings_from_expr layout expr errors))
 
 let imported_function_bindings = fun imports ->
   let bindings_rev = ref [] in
@@ -279,7 +279,7 @@ let i32_value = fun ~context value ->
 
 let char_code = fun value ->
   if String.length value = 1 then
-    Ok (Char.code value.[0])
+    Ok (Char.code (String.get_unchecked value ~at:0))
   else
     Error [ Unsupported_char { value } ]
 
@@ -493,8 +493,10 @@ let compile_start = fun ~layout ~imports (linked_program: Artifacts.Linked_progr
   | errors -> Error errors
 
 let data_segments = fun layout ->
-  Collections.HashMap.fold
-    (fun value (data: string_data) segments ->
+  Collections.HashMap.fold_left
+    layout
+    ~acc:[]
+    ~fn:(fun segments value (data: string_data) ->
       Binary.concat
         [
           Binary.encode_u32 0;
@@ -505,16 +507,14 @@ let data_segments = fun layout ->
           value;
         ]
       :: segments)
-    layout
-    []
   |> List.rev
 
 let memory_pages = fun layout ->
   let bytes =
-    Collections.HashMap.fold
-      (fun _ (data: string_data) current -> max current (data.offset + data.length))
+    Collections.HashMap.fold_left
       layout
-      0
+      ~acc:0
+      ~fn:(fun current _ (data: string_data) -> max current (data.offset + data.length))
   in
   let page_size = 65_536 in
   max 1 ((bytes + page_size - 1) / page_size)
@@ -613,15 +613,17 @@ let emit_linked_program = fun (linked_program: Artifacts.Linked_program.t) ->
     Error [ Unsupported_indirect_calls ]
   else
     let functions =
-      List.concat_map
-        (fun (object_: Artifacts.Object.t) -> object_.program.functions)
-        linked_program.objects
+      linked_program.objects
+      |> List.map ~fn:(fun (object_: Artifacts.Object.t) -> object_.program.functions)
+      |> List.concat
     in
     let unsupported_functions =
-      List.map (fun function_ -> Unsupported_function function_) functions
+      List.map functions ~fn:(fun function_ -> Unsupported_function function_)
     in
     let globals =
-      List.concat_map (fun (object_: Artifacts.Object.t) -> object_.program.globals) linked_program.objects
+      linked_program.objects
+      |> List.map ~fn:(fun (object_: Artifacts.Object.t) -> object_.program.globals)
+      |> List.concat
     in
     let unsupported_globals =
       List.filter_map

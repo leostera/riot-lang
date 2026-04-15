@@ -58,7 +58,7 @@ let sample_metadata: Parquet.file_metadata = {
   column_orders = Some [ Parquet.Type_defined_order ];
 }
 
-let sample_file: Parquet.t = {
+let empty_file: Parquet.t = {
   body = "";
   metadata = sample_metadata;
 }
@@ -70,13 +70,13 @@ let buffered_file: Parquet.t = {
 
 let test_roundtrips_empty_file = fun _ctx ->
   let* encoded =
-    match Parquet.to_string sample_file with
+    match Parquet.to_string empty_file with
     | Ok encoded -> Ok encoded
     | Error err -> Error ("parquet encode failed: " ^ Parquet.Error.to_string err)
   in
   match Parquet.from_string encoded with
-  | Ok decoded when decoded = sample_file -> Ok ()
-  | Ok _ -> Error "expected parquet roundtrip to preserve the file"
+  | Ok decoded when decoded = empty_file -> Ok ()
+  | Ok _ -> Error "expected parquet roundtrip to preserve the empty file"
   | Error err -> Error ("parquet decode failed: " ^ Parquet.Error.to_string err)
 
 let test_preserves_body_bytes = fun _ctx ->
@@ -104,48 +104,24 @@ let test_decodes_from_reader = fun _ctx ->
 let test_writes_to_writer = fun _ctx ->
   let buffer = IO.Buffer.create ~size:128 in
   let* () =
-    match Parquet.to_writer (io_writer_of_buffer buffer) sample_file with
+    match Parquet.to_writer (io_writer_of_buffer buffer) empty_file with
     | Ok () -> Ok ()
     | Error err -> Error ("parquet writer encode failed: " ^ Parquet.Error.to_string err)
   in
   match Parquet.from_string (IO.Buffer.contents buffer) with
-  | Ok decoded when decoded = sample_file -> Ok ()
+  | Ok decoded when decoded = empty_file -> Ok ()
   | Ok _ -> Error "expected parquet writer output to decode back into the original file"
   | Error err -> Error ("parquet writer output decode failed: " ^ Parquet.Error.to_string err)
-
-let test_decodes_footer_tail = fun _ctx ->
-  let* encoded =
-    match Parquet.to_string sample_file with
-    | Ok encoded -> Ok encoded
-    | Error err -> Error ("parquet encode failed: " ^ Parquet.Error.to_string err)
-  in
-  let footer = String.sub encoded ~offset:(String.length encoded - 8) ~len:8 in
-  match Parquet.decode_footer_tail footer with
-  | Ok decoded when Int.equal decoded.metadata_length (String.length encoded - 12) && Bool.equal decoded.encrypted_footer false -> Ok ()
-  | Ok _ -> Error "expected parquet footer tail to report the metadata length"
-  | Error err -> Error ("parquet footer decode failed: " ^ Parquet.Error.to_string err)
-
-let test_rejects_trailing_metadata_bytes = fun _ctx ->
-  let* encoded =
-    match Parquet.encode_metadata sample_metadata with
-    | Ok encoded -> Ok encoded
-    | Error err -> Error ("parquet metadata encode failed: " ^ Parquet.Error.to_string err)
-  in
-  match Parquet.decode_metadata (encoded ^ "\000") with
-  | Ok _ -> Error "expected trailing thrift metadata bytes to be rejected"
-  | Error _ -> Ok ()
 
 let tests = [
   Test.case "parquet roundtrips empty files" test_roundtrips_empty_file;
   Test.case "parquet preserves body bytes" test_preserves_body_bytes;
   Test.case "parquet decodes from readers" test_decodes_from_reader;
   Test.case "parquet writes to writers" test_writes_to_writer;
-  Test.case "parquet decodes footer tails" test_decodes_footer_tail;
-  Test.case "parquet rejects trailing metadata bytes" test_rejects_trailing_metadata_bytes;
 ]
 
 let () =
   Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"parquet_tests" ~tests ~args)
+    ~main:(fun ~args -> Test.Cli.main ~name:"parquet_io_tests" ~tests ~args)
     ~args:Env.args
     ()

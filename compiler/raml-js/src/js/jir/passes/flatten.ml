@@ -16,9 +16,9 @@ module String_set = struct
   let empty = Storage.empty
 
   let add = fun name set ->
-    Storage.add name () set
+    Storage.insert set ~key:name ~value:()
 
-  let mem = Storage.mem
+  let mem = Storage.has_key
 end
 
 type state = {

@@ -12,6 +12,7 @@ val make:
   targets:Riot_model.Target.Set.t ->
   scope:scope ->
   profile:Riot_model.Profile.t ->
+  ?requested_parallelism:int option ->
   t
 
 val workspace: t -> Riot_model.Workspace.t
@@ -23,3 +24,5 @@ val targets: t -> Riot_model.Target.Set.t
 val scope: t -> scope
 
 val profile: t -> Riot_model.Profile.t
+
+val requested_parallelism: t -> int option

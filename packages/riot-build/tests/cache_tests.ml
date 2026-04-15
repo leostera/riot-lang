@@ -1,4 +1,5 @@
 open Std
+open Riot_build
 module Test = Std.Test
 
 let package_name = fun name ->
@@ -18,11 +19,11 @@ let make_test_workspace = fun tmpdir packages ->
 
 let package_error_message = fun err ->
   match err with
-  | Riot_executor.Package_builder.PlanningFailed _ -> "planning"
-  | Riot_executor.Package_builder.ExecutionFailed { message } -> message
-  | Riot_executor.Package_builder.ActionExecutionFailed { message } -> message
-  | Riot_executor.Package_builder.ActionOutputsNotCreated _ -> "outputs not created"
-  | Riot_executor.Package_builder.ActionDependenciesFailed _ -> "dependencies failed"
+  | Package_builder.PlanningFailed _ -> "planning"
+  | Package_builder.ExecutionFailed { message } -> message
+  | Package_builder.ActionExecutionFailed { message } -> message
+  | Package_builder.ActionOutputsNotCreated _ -> "outputs not created"
+  | Package_builder.ActionDependenciesFailed _ -> "dependencies failed"
 
 let make_package = fun tmpdir name content ->
   let pkg_dir = Path.(tmpdir / Path.v name) in
@@ -58,7 +59,7 @@ let test_fresh_build_no_cache = fun _ctx ->
         let package_graph = Riot_planner.Package_graph.create
           ~scope:Riot_planner.Package_graph.Runtime workspace
         |> Result.unwrap in
-        let build = Riot_executor.Package_builder.build
+        let build = Package_builder.build
           ~workspace
           ~toolchain
           ~store
@@ -69,10 +70,10 @@ let test_fresh_build_no_cache = fun _ctx ->
             Riot_planner.Package_graph.Runtime)
           ~package in
         match build.status with
-        | Riot_executor.Package_builder.Built _ -> Ok ()
-        | Riot_executor.Package_builder.Cached _ -> Error "Fresh build should not be cached"
-        | Riot_executor.Package_builder.Skipped { reason } -> Error ("Build skipped: " ^ reason)
-        | Riot_executor.Package_builder.Failed err -> Error ("Build failed: "
+        | Package_builder.Built _ -> Ok ()
+        | Package_builder.Cached _ -> Error "Fresh build should not be cached"
+        | Package_builder.Skipped { reason } -> Error ("Build skipped: " ^ reason)
+        | Package_builder.Failed err -> Error ("Build failed: "
         ^ package_error_message err))
   with
   | Ok r -> r
@@ -90,7 +91,7 @@ let test_second_build_reuses_action_cache_path = fun _ctx ->
         let package_graph = Riot_planner.Package_graph.create
           ~scope:Riot_planner.Package_graph.Runtime workspace
         |> Result.unwrap in
-        let first_build = Riot_executor.Package_builder.build
+        let first_build = Package_builder.build
           ~workspace
           ~toolchain
           ~store
@@ -102,7 +103,7 @@ let test_second_build_reuses_action_cache_path = fun _ctx ->
           ~package in
         match first_build.status with
         | Built _ -> (
-            let second_build = Riot_executor.Package_builder.build
+            let second_build = Package_builder.build
               ~workspace
               ~toolchain
               ~store

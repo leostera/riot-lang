@@ -4,6 +4,13 @@ module Event = Event
 module Request = Request
 module Build_result = Build_result
 module BuildLock = Build_lock
+module Action_executor = Action_executor
+module Action_queue = Action_queue
+module Coordinator = Coordinator
+module Diagnostic_rewrite = Diagnostic_rewrite
+module Package_builder = Package_builder
+module Sandbox = Sandbox
+module Telemetry_events = Telemetry_events
 
 type error = Build_core.error =
   | TargetSelectionFailed of Riot_model.Target.resolve_error
@@ -17,7 +24,7 @@ type error = Build_core.error =
     }
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
   | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
-  | BuildFailed of { errors: Riot_executor.Package_builder.build_result list }
+  | BuildFailed of { errors: Build_result.failure list }
   | PlanningFailed of { reason: string }
   | CycleDetected of { cycle_nodes: string list }
   | BuildAlreadyRunning of { lock_path: Path.t }

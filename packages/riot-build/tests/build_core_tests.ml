@@ -1,4 +1,5 @@
 open Std
+open Riot_build
 module Test = Std.Test
 
 let package_name = fun name ->
@@ -172,7 +173,7 @@ let make_artifact = fun ?(exports = []) name ->
 
 let make_build_result = fun ~scope ~(package: Riot_model.Package.t) ~status ->
   {
-    Riot_executor.Package_builder.package_key =
+    Package_builder.package_key =
       Riot_model.Package.key_of_string
         (Riot_model.Package_name.to_string package.name ^ ":" ^ scope);
     package;
@@ -199,20 +200,20 @@ let test_output_maps_build_result_statuses = fun _ctx ->
               make_build_result
                 ~scope:"runtime"
                 ~package:built_pkg
-                ~status:(Riot_executor.Package_builder.Built (make_artifact "built"));
+                ~status:(Package_builder.Built (make_artifact "built"));
               make_build_result
                 ~scope:"runtime"
                 ~package:cached_pkg
-                ~status:(Riot_executor.Package_builder.Cached (make_artifact "cached"));
+                ~status:(Package_builder.Cached (make_artifact "cached"));
               make_build_result
                 ~scope:"runtime"
                 ~package:skipped_pkg
-                ~status:(Riot_executor.Package_builder.Skipped { reason = "not requested" });
+                ~status:(Package_builder.Skipped { reason = "not requested" });
               make_build_result
                 ~scope:"runtime"
                 ~package:failed_pkg
-                ~status:(Riot_executor.Package_builder.Failed
-                  (Riot_executor.Package_builder.ExecutionFailed { message = "boom" }));
+                ~status:(Package_builder.Failed
+                  (Package_builder.ExecutionFailed { message = "boom" }));
             ]
         in
         let open Std.Result.Syntax in
@@ -272,7 +273,7 @@ let test_output_exposes_artifacts_and_exports = fun _ctx ->
             [
               make_runtime_build_result
                 ~package
-                ~status:(Riot_executor.Package_builder.Built artifact);
+                ~status:(Package_builder.Built artifact);
             ]
         in
         match Riot_build.Build_result.find_package output (package_name "demo") with
@@ -325,15 +326,15 @@ let test_output_prefers_dev_scope_and_merges_exports = fun _ctx ->
               make_build_result
                 ~scope:"build"
                 ~package
-                ~status:(Riot_executor.Package_builder.Built build_artifact);
+                ~status:(Package_builder.Built build_artifact);
               make_build_result
                 ~scope:"runtime"
                 ~package
-                ~status:(Riot_executor.Package_builder.Cached runtime_artifact);
+                ~status:(Package_builder.Cached runtime_artifact);
               make_build_result
                 ~scope:"dev"
                 ~package
-                ~status:(Riot_executor.Package_builder.Built dev_artifact);
+                ~status:(Package_builder.Built dev_artifact);
             ]
         in
         let package_outputs = Riot_build.Build_result.packages output in

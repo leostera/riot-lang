@@ -12,6 +12,7 @@ val make:
   targets:Riot_model.Target.request ->
   scope:scope ->
   profile:Riot_model.Profile.t ->
+  ?requested_parallelism:int ->
   unit ->
   t
 
@@ -25,4 +26,6 @@ module Internal: sig
   val scope: t -> scope
 
   val profile: t -> Riot_model.Profile.t
+
+  val requested_parallelism: t -> int option
 end

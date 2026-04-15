@@ -66,10 +66,9 @@ let runtime_scope_wires_workspace_like_graph = fun _ctx ->
     make_package ~dependencies:[ "std"; "kernel" ] "actors";
     make_package ~dependencies:[ "std"; "actors" ] "riot-model";
     make_package ~dependencies:[ "std"; "riot-model" ] "riot-planner";
-    make_package ~dependencies:[ "std"; "riot-model"; "riot-planner" ] "riot-executor";
     make_package ~dependencies:[ "std"; "riot-model"; "riot-planner" ] "riot-store";
     make_package
-      ~dependencies:[ "std"; "riot-model"; "riot-planner"; "riot-executor"; "riot-store" ]
+      ~dependencies:[ "std"; "riot-model"; "riot-planner"; "riot-store" ]
       "riot-build";
   ] in
   let workspace = make_workspace packages in
@@ -79,7 +78,7 @@ let runtime_scope_wires_workspace_like_graph = fun _ctx ->
   assert_same_keys
     ~expected:(package_keys_for_scope
       Runtime
-      [ "std"; "riot-model"; "riot-planner"; "riot-executor"; "riot-store" ])
+      [ "std"; "riot-model"; "riot-planner"; "riot-store" ])
     ~actual:(dependency_keys_for_node graph server_runtime);
   Ok ()
 

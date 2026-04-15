@@ -1,5 +1,13 @@
 open Std
 
+type failure = {
+  package_name: Riot_model.Package_name.t;
+  package_key: Riot_model.Package.key;
+  message: string;
+  ocamlc_warnings: string list;
+  duration_ms: int;
+}
+
 type package_status =
   | Built of Riot_store.Artifact.t
   | Cached of Riot_store.Artifact.t
@@ -10,7 +18,7 @@ type package_result
 
 type t
 
-val of_build_results: Riot_executor.Package_builder.build_result list -> t
+val of_build_results: Package_builder.build_result list -> t
 
 val packages: t -> package_result list
 
@@ -26,3 +34,9 @@ val find_export:
   package_result ->
   string ->
   Riot_store.Manifest.export_entry option
+
+val failures_of_build_results: Package_builder.build_result list -> failure list
+
+val failure_to_json: failure -> Data.Json.t
+
+val failure_message: failure -> string

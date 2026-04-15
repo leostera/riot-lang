@@ -1,4 +1,5 @@
 open Std
+open Riot_build
 module Test = Std.Test
 
 let package_name = fun name ->
@@ -60,7 +61,7 @@ let test_concurrent_builds_different_packages = fun _ctx ->
         let _worker1 =
           spawn
             (fun () ->
-              let result = Riot_executor.Package_builder.build
+              let result = Package_builder.build
                 ~workspace
                 ~toolchain
                 ~store
@@ -91,7 +92,7 @@ let test_concurrent_builds_different_packages = fun _ctx ->
         let _worker2 =
           spawn
             (fun () ->
-              let result = Riot_executor.Package_builder.build
+              let result = Package_builder.build
                 ~workspace
                 ~toolchain
                 ~store
@@ -161,7 +162,7 @@ let test_concurrent_builds_same_package = fun _ctx ->
         let _worker1 =
           spawn
             (fun () ->
-              let result = Riot_executor.Package_builder.build
+              let result = Package_builder.build
                 ~workspace
                 ~toolchain
                 ~store
@@ -192,7 +193,7 @@ let test_concurrent_builds_same_package = fun _ctx ->
         let _worker2 =
           spawn
             (fun () ->
-              let result = Riot_executor.Package_builder.build
+              let result = Package_builder.build
                 ~workspace
                 ~toolchain
                 ~store
@@ -254,7 +255,7 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
         let package_graph = Riot_planner.Package_graph.create
           ~scope:Riot_planner.Package_graph.Runtime workspace
         |> Result.unwrap in
-        let first_build = Riot_executor.Package_builder.build
+        let first_build = Package_builder.build
           ~workspace
           ~toolchain
           ~store
@@ -270,7 +271,7 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
             let _worker1 =
               spawn
                 (fun () ->
-                  let result = Riot_executor.Package_builder.build
+                  let result = Package_builder.build
                     ~workspace
                     ~toolchain
                     ~store
@@ -308,7 +309,7 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
             let _worker2 =
               spawn
                 (fun () ->
-                  let result = Riot_executor.Package_builder.build
+                  let result = Package_builder.build
                     ~workspace
                     ~toolchain
                     ~store

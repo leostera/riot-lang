@@ -44,7 +44,7 @@ let create = fun () ->
     params = [];
     intermediate = "";
     final_char = None;
-    osc_string = Buffer.create 256;
+    osc_string = Buffer.create ~size:256;
     current_param = 0;
   }
 
@@ -157,7 +157,7 @@ let csi_to_event = fun p ->
       | _ -> None
     )
   | Some 'M'
-  | Some 'm' when String.length p.intermediate = 1 && p.intermediate.[0] = '<' ->
+  | Some 'm' when String.length p.intermediate = 1 && String.get p.intermediate ~at:0 = Some '<' ->
       (* SGR mouse protocol *)
       parse_mouse_sgr p.params
   | Some 'I' ->

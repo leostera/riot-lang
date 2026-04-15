@@ -8,7 +8,7 @@
 2. Preserve deterministic planning output for the same workspace inputs.
 3. Scoped package nodes (`pkg.build`, `pkg.runtime`, `pkg.dev`) and their dependency edges are planner-owned behavior; keep those rules explicit.
 4. `build-dependencies` should only participate in the build-scope graph. Runtime and dev products should not accidentally inherit build-only edges.
-5. Changes here often need matching updates in `riot-model` and `riot-executor`.
+5. Changes here often need matching updates in `riot-model` and `riot-build`.
 6. Prefer explicit plan and error types over implicit sentinel values.
 7. Keep default library planning limited to `.cma`/`.cmxa` outputs. Do not reintroduce unconditional `.cmxs` shared-library actions unless there is an explicit runtime consumer and an opt-in surface for it.
 8. Package-plan cache keys must include all compiler inputs that can change produced artifacts, including the resolved toolchain identity for cross builds.

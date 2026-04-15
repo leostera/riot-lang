@@ -6,7 +6,7 @@ let get = fun field row ->
   List.assoc_opt field row
 
 let fields = fun row ->
-  List.map fst row
+  List.map ~fn:(fun (field, _) -> field) row
 
 let int = fun field row ->
   match get field row with
@@ -40,10 +40,11 @@ let timestamp = fun field row ->
 
 let to_string = fun row ->
   let parts =
-    List.map (fun ((field, value)) -> field ^ ": " ^ Value.to_string value) row
+    List.map ~fn:(fun ((field, value)) -> field ^ ": " ^ Value.to_string value) row
   in
   String.concat ", " parts
 
 let equal = fun a b ->
   List.length a = List.length b
-  && List.for_all2 (fun ((f1, v1)) ((f2, v2)) -> f1 = f2 && Value.equal v1 v2) a b
+  && List.zip a b
+  |> List.for_all (fun ((f1, v1), (f2, v2)) -> f1 = f2 && Value.equal v1 v2)

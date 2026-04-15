@@ -4,10 +4,10 @@ open Std.Data
 
 type typing_state = {
   json: Json.t;
-  semantic_tree: Typ.Model.SemanticTree.file option;
+  semantic_tree: unit option;
   parse_diagnostics: Syn.Diagnostic.t list;
-  lowering_diagnostics: Typ.Model.Diagnostic.t list;
-  typing_diagnostics: Typ.Model.Diagnostic.t list;
+  lowering_diagnostics: Typ.Diagnostics.Diagnostic.t list;
+  typing_diagnostics: Typ.Diagnostics.Diagnostic.t list;
   errors: Json.t list;
   is_complete: bool;
 }
@@ -23,23 +23,41 @@ type t = {
 let core_ir = fun pipeline -> pipeline.core_ir
 
 let wrap_issue = fun stage diagnostic ->
-  Json.obj [ ("stage", Json.string stage); ("diagnostic", diagnostic); ]
+  Json.obj [ ("stage", Json.string stage); ("diagnostic", diagnostic) ]
 
-let completeness_to_json = fun completeness ->
-  match completeness with
-  | Typ.Model.FileSummary.Complete -> Json.string "complete"
-  | Typ.Model.FileSummary.Partial -> Json.string "partial"
+let span_to_json = fun (span: Syn.Ceibo.Span.t) ->
+  Json.obj [ ("start", Json.int span.start); ("end", Json.int span.end_) ]
 
-let env_to_json = fun env ->
-  Json.array
-    (env
-    |> List.map
-      ~fn:(fun (name, scheme) ->
-        Json.obj
-          [
-            ("name", Json.string name);
-            ("scheme", Json.string (Typ.Model.TypePrinter.scheme_to_string scheme));
-          ]))
+let diagnostic_to_json = fun diagnostic ->
+  match diagnostic with
+  | Typ.Diagnostics.Diagnostic.UnsupportedSyntax value ->
+      Json.obj
+        [
+          ("tag", Json.string "unsupported_syntax");
+          ("span", span_to_json value.span);
+          ("kind", Json.string (Syn.SyntaxKind.to_string value.kind));
+          ("summary", Json.string value.summary);
+        ]
+  | Typ.Diagnostics.Diagnostic.UnsupportedType value ->
+      Json.obj
+        [
+          ("tag", Json.string "unsupported_type");
+          ("span", span_to_json value.span);
+          ("summary", Json.string value.summary);
+        ]
+
+let cst_builder_error_to_diagnostic = fun (error: Syn.CstBuilder.error) ->
+  Typ.Diagnostics.Diagnostic.UnsupportedSyntax
+    {
+      span = error.span;
+      kind = error.syntax_kind;
+      summary =
+        "Unsupported syntax (" ^ Syn.SyntaxKind.to_string error.syntax_kind ^ ") "
+        ^ error.message;
+    }
+
+let completeness_to_json = fun is_complete ->
+  Json.string (if is_complete then "complete" else "partial")
 
 let backend_to_json = Target.backend_to_json
 
@@ -57,26 +75,24 @@ let typing_state_of_parse_failure = fun parse_result error ->
   let lowering_diagnostics =
     match error with
     | Syn.Parse_diagnostics _ -> []
-    | Syn.Cst_builder_error builder_error -> [
-      Typ.Model.Diagnostic.CstBuilderError { builder_error }
-    ]
+    | Syn.Cst_builder_error builder_error -> [ cst_builder_error_to_diagnostic builder_error ]
   in
   let errors =
     (parse_diagnostics |> List.map ~fn:Syn.Diagnostic.to_json |> List.map ~fn:(wrap_issue "parse"))
   @ (lowering_diagnostics
-  |> List.map ~fn:Typ.Model.Diagnostic.to_json
+  |> List.map ~fn:diagnostic_to_json
   |> List.map ~fn:(wrap_issue "lowering"))
   in
   {
     json = Json.obj
       [
         ("status", Json.string "error");
-        ("completeness", Json.string "partial");
-        ("file_summary", Json.null);
+        ("completeness", completeness_to_json false);
+        ("file_summary", Json.string "partial");
         ("parse_diagnostics", Json.array (List.map parse_diagnostics ~fn:Syn.Diagnostic.to_json));
         (
           "lowering_diagnostics",
-          Json.array (List.map lowering_diagnostics ~fn:Typ.Model.Diagnostic.to_json)
+          Json.array (List.map lowering_diagnostics ~fn:diagnostic_to_json)
         );
         ("typing_diagnostics", Json.array []);
         ("exports", Json.array []);
@@ -89,32 +105,24 @@ let typing_state_of_parse_failure = fun parse_result error ->
     is_complete = false;
   }
 
-let typing_state_of_report = fun (report: Typ.Analysis.Check_result.t) ->
-  let completeness = Typ.Model.FileSummary.completeness report.file_summary in
-  let parse_issues = report.parse_diagnostics
-  |> List.map ~fn:Syn.Diagnostic.to_json
-  |> List.map ~fn:(wrap_issue "parse")
+let typing_state_of_report =
+  fun
+  (report: Typ.Analysis.Check_result.t)
+    ~parse_diagnostics
+    ~source:_
+    ~cst:_ ->
+  let parse_issues =
+    parse_diagnostics
+    |> List.map ~fn:Syn.Diagnostic.to_json
+    |> List.map ~fn:(wrap_issue "parse")
   in
-  let lowering_issues = report.lowering_diagnostics
-  |> List.map ~fn:Typ.Model.Diagnostic.to_json
-  |> List.map ~fn:(wrap_issue "lowering")
+  let lowering_diagnostics = [] in
+  let lowering_issues = [] in
+  let typing_issues =
+    report.diagnostics |> List.map ~fn:diagnostic_to_json |> List.map ~fn:(wrap_issue "typing")
   in
-  let typing_issues = report.typing_diagnostics
-  |> List.map ~fn:Typ.Model.Diagnostic.to_json
-  |> List.map ~fn:(wrap_issue "typing")
-  in
-  let has_errors =
-    report.parse_diagnostics <> []
-    || report.lowering_diagnostics <> []
-    || report.typing_diagnostics <> [] in
-  let is_complete =
-    if has_errors then
-      false
-    else if completeness = Typ.Model.FileSummary.Complete then
-      Option.is_some report.semantic_tree
-    else
-      false
-  in
+  let has_errors = not (List.is_empty parse_diagnostics) || not (List.is_empty report.diagnostics) in
+  let is_complete = not has_errors in
   {
     json =
       Json.obj
@@ -127,53 +135,48 @@ let typing_state_of_report = fun (report: Typ.Analysis.Check_result.t) ->
                 else
                   "error"
               )
-          ); ("completeness", completeness_to_json completeness); (
+          ); ("completeness", completeness_to_json is_complete);
+          (
             "file_summary",
-            Typ.Model.FileSummary.to_json report.file_summary
+            Json.string (if is_complete then "complete" else "partial")
           ); (
             "parse_diagnostics",
-            Json.array (List.map report.parse_diagnostics ~fn:Syn.Diagnostic.to_json)
+            Json.array (List.map parse_diagnostics ~fn:Syn.Diagnostic.to_json)
           ); (
             "lowering_diagnostics",
-            Json.array (List.map report.lowering_diagnostics ~fn:Typ.Model.Diagnostic.to_json)
+            Json.array []
           ); (
             "typing_diagnostics",
-            Json.array (List.map report.typing_diagnostics ~fn:Typ.Model.Diagnostic.to_json)
-          ); ("exports", env_to_json report.exports); ];
-    semantic_tree =
+            Json.array (List.map report.diagnostics ~fn:diagnostic_to_json)
+          ); ("exports", Json.array []); ];
+  semantic_tree =
       if is_complete then
-        report.semantic_tree
+        Some ()
       else
         None;
-    parse_diagnostics = report.parse_diagnostics;
-    lowering_diagnostics = report.lowering_diagnostics;
-    typing_diagnostics = report.typing_diagnostics;
+    parse_diagnostics;
+    lowering_diagnostics;
+    typing_diagnostics = report.diagnostics;
     errors = parse_issues @ lowering_issues @ typing_issues;
     is_complete;
   }
 
-let typing_state = fun ~config ~filename ~source ->
+let typing_state = fun ~config:_ ~filename ~source ->
   let parse_result = Syn.parse ~filename source in
   match Syn.build_cst parse_result with
   | Ok cst ->
-      let origin = Typ.Model.Source.Path filename in
-      let implicit_opens = [] in
-      let source = Typ.Model.Source.make_prepared
-        ~source_id:(Typ.Model.SourceId.of_int 0)
-        ~kind:Typ.Model.Source.File
-        ~module_name:(Typ.Model.Source.infer_module_name origin)
-        ~implicit_opens
-        ~origin
-        ~revision:0
-        ~source_hash:(Typ.Model.Source.hash ~implicit_opens ~cst)
-        ~parse_result
-        ~cst in
-      Typ.check ~config:(Compiler_config.typing_config config) ~source |> typing_state_of_report
+      let source_value = Typ.Model.Source.make ~text:source in
+      let report = Typ.Check.check ~source:source_value cst in
+      typing_state_of_report report
+        ~parse_diagnostics:(Syn.Parser.(parse_result.diagnostics))
+        ~source:source_value
+        ~cst
   | Error error -> typing_state_of_parse_failure parse_result error
 
 let compile_source = fun ~config ~relpath ~source ->
   Result.map
-    (fun source_unit ->
+    (Source_unit.of_source ~relpath ~source)
+    ~fn:(fun source_unit ->
       let typing = typing_state ~config ~filename:relpath ~source in
       let core_ir =
         match typing.semantic_tree with
@@ -198,7 +201,6 @@ let compile_source = fun ~config ~relpath ~source ->
         typing;
         core_ir;
       })
-    (Source_unit.of_source ~relpath ~source)
 
 let json_field_int = fun name json ->
   match Json.get_field name json with
@@ -221,7 +223,7 @@ let json_field_array_length = fun name json ->
 
 let emit_events = fun config ~path pipeline ->
   let unit_name = json_field_string "unit_name" pipeline.source |> Option.unwrap_or ~default:"Unknown" in
-  let source_bytes = json_field_int "source_bytes" pipeline.source |> Option.unwrap_or ~default:0 in
+  let source_bytes = json_field_int "source_bytes" pipeline.typing.json |> Option.unwrap_or ~default:0 in
   let completeness = json_field_string "completeness" pipeline.typing.json
   |> Option.unwrap_or ~default:"partial" in
   Compiler_config.emit_event config (fun () -> Event.SourceLoaded { path; unit_name; source_bytes });

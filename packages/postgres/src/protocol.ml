@@ -869,7 +869,7 @@ module Writer = struct
     Buffer.add_char buf '\x00'
 
   let startup_message = fun ~user ~database ~application_name ->
-    let buf = Buffer.create 256 in
+    let buf = Buffer.create ~size:256 in
     write_int32 buf 0;
     write_int32 buf 196_608;
     write_string buf "user";
@@ -886,34 +886,34 @@ module Writer = struct
     Buffer.add_char buf '\x00';
     let content = Buffer.contents buf in
     let len = String.length content in
-    let result = Buffer.create (len + 4) in
+    let result = Buffer.create ~size:(len + 4) in
     write_int32 result len;
-    Buffer.add_string result (String.sub content 4 (len - 4));
+    Buffer.add_string result (String.sub content ~offset:4 ~len:(len - 4));
     Buffer.contents result
 
   let query_message = fun sql ->
-    let buf = Buffer.create (String.length sql + 8) in
+    let buf = Buffer.create ~size:(String.length sql + 8) in
     Buffer.add_char buf 'Q';
     write_int32 buf (String.length sql + 5);
     write_string buf sql;
     Buffer.contents buf
 
   let parse_message = fun ~statement_name ~query ~param_types ->
-    let buf = Buffer.create 256 in
+    let buf = Buffer.create ~size:256 in
     write_string buf statement_name;
     write_string buf query;
     write_int16 buf (List.length param_types);
     List.iter (fun oid -> write_int32 buf oid) param_types;
     let content = Buffer.contents buf in
     let length = String.length content + 4 in
-    let result = Buffer.create (length + 1) in
+    let result = Buffer.create ~size:(length + 1) in
     Buffer.add_char result 'P';
     write_int32 result length;
     Buffer.add_string result content;
     Buffer.contents result
 
   let bind_message = fun ~portal_name ~statement_name ~params ->
-    let buf = Buffer.create 256 in
+    let buf = Buffer.create ~size:256 in
     write_string buf portal_name;
     write_string buf statement_name;
     write_int16 buf 0;
@@ -926,14 +926,14 @@ module Writer = struct
     write_int16 buf 0;
     let content = Buffer.contents buf in
     let length = String.length content + 4 in
-    let result = Buffer.create (length + 1) in
+    let result = Buffer.create ~size:(length + 1) in
     Buffer.add_char result 'B';
     write_int32 result length;
     Buffer.add_string result content;
     Buffer.contents result
 
   let execute_message = fun ~portal_name ~max_rows ->
-    let buf = Buffer.create 64 in
+    let buf = Buffer.create ~size:64 in
     Buffer.add_char buf 'E';
     write_int32 buf (String.length portal_name + 1 + 4 + 4);
     write_string buf portal_name;
@@ -941,7 +941,7 @@ module Writer = struct
     Buffer.contents buf
 
   let describe_message = fun ~what ~name ->
-    let buf = Buffer.create 64 in
+    let buf = Buffer.create ~size:64 in
     Buffer.add_char buf 'D';
     write_int32 buf (1 + String.length name + 1 + 4);
     Buffer.add_char buf what;
@@ -949,13 +949,13 @@ module Writer = struct
     Buffer.contents buf
 
   let sync_message = fun () ->
-    let buf = Buffer.create 5 in
+    let buf = Buffer.create ~size:5 in
     Buffer.add_char buf 'S';
     write_int32 buf 4;
     Buffer.contents buf
 
   let close_message = fun ~what ~name ->
-    let buf = Buffer.create 64 in
+    let buf = Buffer.create ~size:64 in
     Buffer.add_char buf 'C';
     write_int32 buf (1 + String.length name + 1 + 4);
     Buffer.add_char buf what;
@@ -963,7 +963,7 @@ module Writer = struct
     Buffer.contents buf
 
   let terminate_message = fun () ->
-    let buf = Buffer.create 5 in
+    let buf = Buffer.create ~size:5 in
     Buffer.add_char buf 'X';
     write_int32 buf 4;
     Buffer.contents buf
@@ -1095,8 +1095,8 @@ module Reader = struct
                       | 'M' -> { err with Error.message = value }
                       | 'D' -> { err with Error.detail = Some value }
                       | 'H' -> { err with Error.hint = Some value }
-                      | 'P' -> { err with Error.position = int_of_string_opt value }
-                      | 'p' -> { err with Error.internal_position = int_of_string_opt value }
+                      | 'P' -> { err with Error.position = Int.parse value }
+                      | 'p' -> { err with Error.internal_position = Int.parse value }
                       | 'q' -> { err with Error.internal_query = Some value }
                       | 'W' -> { err with Error.where_context = Some value }
                       | 's' -> { err with Error.schema_name = Some value }
@@ -1105,7 +1105,7 @@ module Reader = struct
                       | 'd' -> { err with Error.datatype_name = Some value }
                       | 'n' -> { err with Error.constraint_name = Some value }
                       | 'F' -> { err with Error.source_file = Some value }
-                      | 'L' -> { err with Error.source_line = int_of_string_opt value }
+                      | 'L' -> { err with Error.source_line = Int.parse value }
                       | 'R' -> { err with Error.source_routine = Some value }
                       | _ -> err
                     in

@@ -74,3 +74,9 @@ val iter: 'value t -> 'value Iter.Iterator.t
     - Time: O(1) to create iterator
     - Space: O(1) *)
 val mut_iter: 'value t -> 'value Iter.MutIterator.t
+
+module Syntax: sig
+  val get: 'value t -> int -> 'value
+
+  val set: 'value t -> int -> 'value -> unit
+end

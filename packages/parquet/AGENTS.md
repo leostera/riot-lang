@@ -13,3 +13,4 @@
 ## Validate
 
 `timeout 60 riot test -p parquet`
+`timeout 60 riot bench -p parquet`

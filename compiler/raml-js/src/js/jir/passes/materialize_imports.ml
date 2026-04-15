@@ -1,8 +1,8 @@
 open Std
 module Jir = Types
 
-let rec lower_expr = fun expr ->
-  match expr with
+  let rec lower_expr = fun expr ->
+    match expr with
   | Jir.Expr.Literal _
   | Jir.Expr.Global _
   | Jir.Expr.Identifier _ -> expr
@@ -15,11 +15,11 @@ let rec lower_expr = fun expr ->
     with left = lower_expr binary.left;
     right = lower_expr binary.right
   }
-  | Jir.Expr.Array elements -> Jir.Expr.Array (List.map lower_array_element elements)
-  | Jir.Expr.Object fields -> Jir.Expr.Object (List.map lower_object_field fields)
+  | Jir.Expr.Array elements -> Jir.Expr.Array (List.map elements ~fn:lower_array_element)
+  | Jir.Expr.Object fields -> Jir.Expr.Object (List.map fields ~fn:lower_object_field)
   | Jir.Expr.Function function_ -> Jir.Expr.Function Jir.Expr.{
     params = function_.params;
-    body = List.map lower_statement function_.body
+    body = List.map function_.body ~fn:lower_statement
   }
   | Jir.Expr.Member member -> Jir.Expr.Member Jir.Expr.{
     object_ = lower_expr member.object_;
@@ -31,7 +31,7 @@ let rec lower_expr = fun expr ->
   }
   | Jir.Expr.Call call -> Jir.Expr.Call Jir.Expr.{
     callee = lower_expr call.callee;
-    arguments = List.map lower_expr call.arguments
+    arguments = List.map call.arguments ~fn:lower_expr
   }
   | Jir.Expr.Conditional conditional -> Jir.Expr.Conditional Jir.Expr.{
     condition = lower_expr conditional.condition;
@@ -52,19 +52,19 @@ and lower_object_field = fun (field: Jir.Expr.object_field) ->
   Jir.Expr.{ field with value = lower_expr field.value }
 
 and lower_statement = fun statement ->
-  match statement with
+    match statement with
   | Jir.Statement.Declaration declaration -> Jir.Statement.Declaration Jir.Declaration.{
     declaration
-    with init = Option.map lower_expr declaration.init
+    with init = Option.map declaration.init ~fn:lower_expr
   }
-  | Jir.Statement.Block statements -> Jir.Statement.Block (List.map lower_statement statements)
+  | Jir.Statement.Block statements -> Jir.Statement.Block (List.map statements ~fn:lower_statement)
   | Jir.Statement.Expression expr -> Jir.Statement.Expression (lower_expr expr)
   | Jir.Statement.Return expr -> Jir.Statement.Return (lower_expr expr)
   | Jir.Statement.If if_ -> Jir.Statement.If Jir.Statement.{
     condition = lower_expr if_.condition;
-    then_ = List.map lower_statement if_.then_;
-    else_ = List.map lower_statement if_.else_
+    then_ = List.map if_.then_ ~fn:lower_statement;
+    else_ = List.map if_.else_ ~fn:lower_statement
   }
 
 let program = fun ~context:_ (program: Jir.Program.t) ->
-  { program with body = List.map lower_statement program.body }
+  { program with body = List.map program.body ~fn:lower_statement }

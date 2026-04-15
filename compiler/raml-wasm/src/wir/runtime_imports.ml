@@ -38,9 +38,7 @@ let import_of_runtime_name = fun name ->
   | _ -> None
 
 let import_of_surface_path = fun path ->
-  match Core.Surface_path.last_name path with
-  | None -> None
-  | Some name -> import_of_runtime_name name
+  import_of_runtime_name (Core.Surface_path.last_name path)
 
 let import_of_direct_callee = fun entity_id ->
   match Core.Entity_id.binding_id entity_id with

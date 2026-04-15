@@ -1,4 +1,5 @@
 open Std
+open Riot_build
 open Riot_model
 module Test = Std.Test
 
@@ -63,13 +64,13 @@ let with_workspace = fun tmpdir f ->
       | Error err -> Error ("workspace ensure failed: " ^ Riot_model.Pm_error.message err)
     )
 
-let result_status_to_string = fun (result: Riot_executor.Package_builder.build_result) ->
+let result_status_to_string = fun (result: Package_builder.build_result) ->
   let status =
     match result.status with
-    | Riot_executor.Package_builder.Cached _ -> "cached"
+    | Package_builder.Cached _ -> "cached"
     | Built _ -> "built"
     | Skipped { reason } -> "skipped(" ^ reason ^ ")"
-    | Failed err -> "failed(" ^ Riot_executor.Package_builder.package_error_to_string err ^ ")"
+    | Failed err -> "failed(" ^ Package_builder.package_error_to_string err ^ ")"
   in
   Package_name.to_string result.package.Riot_model.Package.name ^ ":" ^ status
 
@@ -86,7 +87,7 @@ let test_build_workspace_two_packages_success = fun _ctx ->
             |> Result.expect ~msg:"toolchain init failed" in
             let store = Riot_store.Store.create ~workspace in
             let build_ctx = make_build_ctx ~parallelism:2 () in
-            match Riot_executor.Coordinator.build_workspace
+            match Coordinator.build_workspace
               ~workspace
               ~toolchain
               ~store
@@ -124,7 +125,7 @@ let test_build_workspace_respects_serial_package_orchestration = fun _ctx ->
             |> Result.expect ~msg:"toolchain init failed" in
             let store = Riot_store.Store.create ~workspace in
             let build_ctx = make_build_ctx ~parallelism:1 () in
-            match Riot_executor.Coordinator.build_workspace
+            match Coordinator.build_workspace
               ~workspace
               ~toolchain
               ~store
@@ -162,7 +163,7 @@ let test_failed_dependency_updates_package_graph = fun _ctx ->
             |> Result.expect ~msg:"toolchain init failed" in
             let store = Riot_store.Store.create ~workspace in
             let build_ctx = make_build_ctx ~parallelism:2 () in
-            match Riot_executor.Coordinator.build_workspace
+            match Coordinator.build_workspace
               ~workspace
               ~toolchain
               ~store

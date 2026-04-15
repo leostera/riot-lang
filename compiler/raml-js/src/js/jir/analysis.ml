@@ -14,7 +14,7 @@ module Entity_set = struct
   let empty = Storage.empty
 
   let add = fun entity set ->
-    Storage.add entity () set
+    Storage.insert set ~key:entity ~value:()
 
   let singleton = fun entity ->
     Storage.singleton entity ()

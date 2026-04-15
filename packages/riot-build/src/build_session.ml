@@ -27,7 +27,7 @@ type error =
       package_names: Package_name.t list;
       available_packages: Package_name.t list
     }
-  | BuildFailed of { errors: Riot_executor.Package_builder.build_result list }
+  | BuildFailed of { errors: Package_builder.build_result list }
   | PlanningFailed of { reason: string }
   | CycleDetected of { cycle_nodes: string list }
   | BuildAlreadyRunning of { lock_path: Path.t }
@@ -40,14 +40,14 @@ type streaming_event =
       session_id: Session_id.t;
       completed_at: DateTime.t;
       stats: build_stats;
-      results: Riot_executor.Package_builder.build_result list
+      results: Package_builder.build_result list
     }
   | BuildFailed of {
       session_id: Session_id.t;
       failed_at: DateTime.t;
       stats: build_stats;
-      built: Riot_executor.Package_builder.build_result list;
-      errors: Riot_executor.Package_builder.build_result list
+      built: Package_builder.build_result list;
+      errors: Package_builder.build_result list
     }
   | PlanningFailed of { session_id: Session_id.t; failed_at: DateTime.t; reason: string }
   | CycleDetected of { session_id: Session_id.t; detected_at: DateTime.t; cycle_nodes: string list }
@@ -75,23 +75,23 @@ let error_message = function
           str (String.concat ", " (List.map package_names ~fn:Package_name.to_string))
         ]
   | BuildFailed { errors } ->
-      let render_error (result: Riot_executor.Package_builder.build_result) =
+      let render_error (result: Package_builder.build_result) =
         match result.status with
-        | Riot_executor.Package_builder.Failed err -> format
+        | Package_builder.Failed err -> format
           Format.[
             str (Package_name.to_string result.package.name);
             str ": ";
-            str (Riot_executor.Package_builder.package_error_to_string err);
+            str (Package_builder.package_error_to_string err);
           ]
-        | Riot_executor.Package_builder.Skipped { reason } -> format
+        | Package_builder.Skipped { reason } -> format
           Format.[
             str (Package_name.to_string result.package.name);
             str ": skipped (";
             str reason;
             char ')';
           ]
-        | Riot_executor.Package_builder.Built _
-        | Riot_executor.Package_builder.Cached _ -> format
+        | Package_builder.Built _
+        | Package_builder.Cached _ -> format
           Format.[ str (Package_name.to_string result.package.name); str ": build failed" ]
       in
       (
