@@ -22,10 +22,11 @@
 - Reworked serde property/test suites and formatter updates for ongoing API and package migrations.
 
 ### kernel-std
-- Continued migration of many packages onto the new `std` + kernel API surface (`std`, `kernel`, `actors`, `workspace`, `typ`) including path/read-dir/io/filesystem/validation and bootstrap flow refinements.
-- Added FS event seam for std usage and removed the legacy `kernel-old` package.
-- Absorbed actors runtime into kernel, finished major bootstrap and migration checkpoints, and stabilized kernel bootstrap/self-host paths.
-- Fixed kernel/runtime correctness cases including float parsing behavior, sandbox path normalization, and copy/validation issues.
+- Expanded and standardized the new `std` API surface for common project-wide primitives (`path`, `read_dir`, IO, and core runtime entrypoints), with many call sites moved from legacy kernel usage.
+- Refactored runtime ownership: moved tar and gzip engines out of kernel into std, and ported FS facade + core runtime/IO onto the smaller kernel model.
+- Added a dedicated `std` events seam (`feat(kernel): add fs events seam for std`) and absorbed actors/runtime pieces into kernel/std ownership.
+- Removed legacy runtime debt by dropping `kernel-old` and completing staged migration checkpoints (`kernel,std`, `workspace`, `typ`) across validation and bootstrap.
+- Standardized behavior around bootstrap and runtime correctness (`self-host bootstrap`, sandbox path normalization, valid float-literal restoration, and warning/validation cleanups).
 
 ### tooling
 - Added/updated docs and RFD material for scheduler/executor redesign and parallelism behavior.
