@@ -109,7 +109,7 @@ let resolve = fun request ->
       | Some requested -> Ok (Some requested)
       | None -> Ok None
     in
-    Ok (Build_spec.make
+    Ok (Resolved_build.make
       ~workspace
       ~package_names
       ~targets

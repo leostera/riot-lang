@@ -1,9 +1,9 @@
 open Std
 
-type scope = Resolved_build.scope =
+type scope = Request.scope =
   | Runtime
   | Dev
-type t = Resolved_build.t
+type t
 
 val make:
   workspace:Riot_model.Workspace.t ->

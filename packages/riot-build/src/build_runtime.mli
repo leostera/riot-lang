@@ -23,5 +23,5 @@ val execute:
   ?allow_partial_failures:bool ->
   ?record_cache_generation:bool ->
   ?on_event:(Event.t -> unit) ->
-  Build_spec.t ->
+  Resolved_build.t ->
   (Package_builder.build_result list, build_error) result

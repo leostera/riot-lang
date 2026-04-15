@@ -1,36 +1,21 @@
 open Std
 
-type scope = Request.scope =
+type scope = Resolved_build.scope =
   | Runtime
   | Dev
 
-type t = {
-  workspace: Riot_model.Workspace.t;
-  package_names: Riot_model.Package_name.t list;
-  targets: Riot_model.Target.Set.t;
-  scope: scope;
-  profile: Riot_model.Profile.t;
-  requested_parallelism: int option;
-}
+type t = Resolved_build.t
 
-let make = fun ~workspace ~package_names ~targets ~scope ~profile ~requested_parallelism ->
-  {
-    workspace;
-    package_names;
-    targets;
-    scope;
-    profile;
-    requested_parallelism;
-  }
+let make = Resolved_build.make
 
-let workspace = fun t -> t.workspace
+let workspace = Resolved_build.workspace
 
-let package_names = fun t -> t.package_names
+let package_names = Resolved_build.package_names
 
-let targets = fun t -> t.targets
+let targets = Resolved_build.targets
 
-let scope = fun t -> t.scope
+let scope = Resolved_build.scope
 
-let profile = fun t -> t.profile
+let profile = Resolved_build.profile
 
-let requested_parallelism = fun t -> t.requested_parallelism
+let requested_parallelism = Resolved_build.requested_parallelism

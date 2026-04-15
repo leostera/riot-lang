@@ -25,6 +25,7 @@ module Internal : sig
   module Build_spec = Build_spec
   module Package_builder = Package_builder
   module Build_runtime = Build_runtime
+  module Resolved_build = Resolved_build
   module Coordinator = Coordinator
   module Diagnostic_rewrite = Diagnostic_rewrite
   module Sandbox = Sandbox
