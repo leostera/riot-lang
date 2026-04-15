@@ -2,34 +2,39 @@
 
 ## 0.0.18 - 2026-04-15
 
-### Added
+### riot
+- Expanded Riot build orchestration and toolchain domains (`riot-build`, `riot-planner`, `riot-executor`) with typed command/request surfaces and stronger plan execution contracts.
+- Refactored package-orchestration surfaces across `riot-model`, `riot-install`, `riot-run`, and CLI command paths for clearer package and runtime boundaries.
+- Fixed planner/build regressions including dependency ordering, explicit-root planning, lazy realization, stale work-plan cache state, and workspace target overrides.
+- Hardened artifact and runtime flows in `riot-store` with content-store work, warm-generation dedupe/indexing, and new artifact-store and planner benchmarks.
+- Added/updated Riot-side tests and fixtures for planner, build, toolchain, publish, init, and runtime suites.
 
-- Added new compiler and backend surface area, including the first-class compiler packages for typed assembly, Wasm, JS backend, and native MIR/LIR/WIR pathways.
-- Added a standalone `parquet` package foundation.
-- Added schema-driven codec and compiler package features, including BSON/CBOR and compact binary codec progress.
-- Added new package-level tests, fixtures, and benchmark suites across planner, toolchain, serde, tty, and publication flows.
-- Added a user-facing Riot skill (`riot-ml`) for building, testing, benchmarking, and running OCaml projects.
+### raml
+- Added and split the compiler stack into dedicated packages (`asm`, `raml-core`, `raml-native`, `raml-js`, `raml-wasm`, `raml-cli`).
+- Added new MIR/LIR/WIR/native/JS back-end features: scheduling, legalization, cse/liveness/passes, stack/home allocation, entity/purity/jir simplifications, and runtime import/module support.
+- Expanded JS backend lowering and passes (JIR/JST tooling, property/intrinsic/object/records/modules flows) and improved backend-specific test coverage and docs.
+- Added artifact-store and codegen improvements for Wasm/native toolchains, including layout and decoding/encoding-path hardening.
+- Added many compiler fixtures, snapshots, and regression cases across native, Wasm, and JS tool paths.
 
-### Changed
+### serde
+- Added schema-driven codec surface and format packages (`serde-cbor`, `serde-bson`, `serde-yaml`, `serde-urlencoded`) and evolved compact binary codec support.
+- Expanded `serde-bin` with new codec variants, native fast paths, and additional benchmarked encode/decode scenarios.
+- Reworked serde property/test suites and formatter updates for ongoing API and package migrations.
 
-- Expanded the build architecture with typed workspace/manifest changes, lazy package realization, and request/target-context refactors.
-- Refactored `riot-build` and `riot-planner` surfaces, including command/request typing and build/runtime plan handling.
-- Continued large migration of standard-library usage and runtime surface into the new `std` and kernel model across many packages.
-- Continued extraction and cleanup work in CLI, install/run execution paths, and package modeling APIs.
-- Updated RFD/build docs around parallelism, unified scheduling, and executor decomposition.
+### kernel-std
+- Continued migration of many packages onto the new `std` + kernel API surface (`std`, `kernel`, `actors`, `workspace`, `typ`) including path/read-dir/io/filesystem/validation and bootstrap flow refinements.
+- Added FS event seam for std usage and removed the legacy `kernel-old` package.
+- Absorbed actors runtime into kernel, finished major bootstrap and migration checkpoints, and stabilized kernel bootstrap/self-host paths.
+- Fixed kernel/runtime correctness cases including float parsing behavior, sandbox path normalization, and copy/validation issues.
 
-### Fixed
+### tooling
+- Added/updated docs and RFD material for scheduler/executor redesign and parallelism behavior.
+- Added the new user-facing Riot skill (`riot-ml`) and its associated references/signature guidance.
+- Delivered major package/domain updates for supporting ecosystems (`parquet`, `pretext`, `tty`, `contentstore`, `typ`, `suri`, `propane`, `ignore`) with migration, validation, and hardening work.
 
-- Fixed planner and build correctness around dependency ordering, explicit-root handling, lazy realization, and stale cache/plan state.
-- Fixed workspace consistency issues and target override behavior in build/test flows.
-- Fixed sandbox path normalization and artifact-store edge cases for native/wasm toolchains.
-- Fixed validation and parser behavior in selected core packages during migration work.
-
-### Performance
-
-- Optimized build caching and planning behavior with generation dedupe/indexing and warm-cache reductions.
-- Added and stabilized planner/performance-focused benchmarks for serialization and execution paths.
-- Improved runtime and checker performance by caching module-typing structures and tuning serde/encode/decode variants.
+### performance
+- Added and stabilized benchmark coverage across store/build/planner, serde-bin, and compiler/runtime paths.
+- Improved internal performance through cache pruning, planning overhead reduction, module-typing caching, and targeted serialization micro-optimizations.
 
 ## 0.0.17 - 2026-04-10
 
