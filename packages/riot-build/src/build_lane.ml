@@ -18,6 +18,7 @@ type 'stage t = {
   build_ctx: Riot_model.Build_ctx.t;
   toolchain: Riot_toolchain.t;
   store: Riot_store.Store.t;
+  lock: Build_lock.t;
   planner_target: Riot_planner.Workspace_planner.target;
   package_plan: Riot_planner.Workspace_planner.package_plan;
   package_graph: Riot_planner.Package_graph.t;
@@ -119,6 +120,13 @@ let make_lane_plan = fun lane_target workspace scope ->
     ~load_errors:[]
   |> Result.map_err ~fn:plan_error_to_string
 
+let release_on_error = fun lock result ->
+  match result with
+  | Ok value -> Ok value
+  | Error _ as error ->
+      Build_lock.release lock;
+      error
+
 let prepare:
   Build_context.t ->
   Resolved_build.t ->
@@ -135,39 +143,53 @@ let prepare:
   let package_names = sort_unique_packages package_names in
   let planner_target = planner_target package_names in
   let planner_scope = planner_scope scope in
-  let* lane_toolchain =
-    if Riot_model.Target.equal target host then
-      Ok toolchain
-    else
-      Riot_toolchain.init_for_target
-        ~config:context.toolchain_config
-        ~target
-      |> Result.map_err ~fn:(fun reason -> "failed to initialize toolchain for target "
-        ^ Riot_model.Target.to_string target
-        ^ ": "
-        ^ reason)
+  let* lock =
+    Build_lock.wait
+      ~target_dir_root:workspace.target_dir_root
+      ~profile:profile.name
+      ~target
+    |> Result.map_err ~fn:Kernel.Exception.to_string
   in
-  let* plan = make_lane_plan planner_target workspace planner_scope in
-  let build_ctx = make_build_ctx ~host ~target ~session_id ~profile ~parallelism:context.parallelism in
-  let store = Riot_store.Store.create_for_lane
-    ~workspace
-    ~profile:profile.name
-    ~target in
-  Ok {
-    target;
-    workspace;
-    package_names;
-    scope;
-    profile_name = profile.name;
-    session_id;
-    host;
-    build_ctx;
-    toolchain = lane_toolchain;
-    store;
-    planner_target;
-    package_plan = plan;
-    package_graph = plan.package_graph;
-  }
+  let lane =
+    try
+      let* lane_toolchain =
+        if Riot_model.Target.equal target host then
+          Ok toolchain
+        else
+          Riot_toolchain.init_for_target
+            ~config:context.toolchain_config
+            ~target
+          |> Result.map_err ~fn:(fun reason -> "failed to initialize toolchain for target "
+            ^ Riot_model.Target.to_string target
+            ^ ": "
+            ^ reason)
+      in
+      let* plan = make_lane_plan planner_target workspace planner_scope in
+      let build_ctx = make_build_ctx ~host ~target ~session_id ~profile ~parallelism:context.parallelism in
+      let store = Riot_store.Store.create_for_lane
+        ~workspace
+        ~profile:profile.name
+        ~target in
+      Ok {
+        target;
+        workspace;
+        package_names;
+        scope;
+        profile_name = profile.name;
+        session_id;
+        host;
+        build_ctx;
+        toolchain = lane_toolchain;
+        store;
+        lock;
+        planner_target;
+        package_plan = plan;
+        package_graph = plan.package_graph;
+      }
+    with
+    | exn -> Error (Kernel.Exception.to_string exn)
+  in
+  release_on_error lock lane
 
 let target = fun (lane: 'a t) -> lane.target
 
@@ -195,24 +217,26 @@ let package_plan = fun (lane: 'a t) -> lane.package_plan
 
 let package_graph = fun (lane: 'a t) -> lane.package_graph
 
+let release: locked t -> unit = fun lane -> Build_lock.release lane.lock
+
 let execute: locked t -> (outcome, error) result = fun lane ->
-  let* workspace_result =
-    Build_lock.acquire
-      ~target_dir_root:lane.workspace.target_dir_root
-      ~profile:lane.profile_name
-      ~target:lane.target
-      (fun () ->
-        Coordinator.build_workspace
-          ~workspace:lane.workspace
-          ~toolchain:lane.toolchain
-          ~store:lane.store
-          ~target:lane.planner_target
-          ~scope:(planner_scope lane.scope)
-          ~build_ctx:lane.build_ctx
-          ~session_id:lane.session_id
-        |> Result.map_err ~fn:(fun reason -> Failure (plan_error_to_string reason)))
-    |> Result.map_err ~fn:Kernel.Exception.to_string
+  let result =
+    try
+      Coordinator.build_workspace
+        ~workspace:lane.workspace
+        ~toolchain:lane.toolchain
+        ~store:lane.store
+        ~target:lane.planner_target
+        ~scope:(planner_scope lane.scope)
+        ~build_ctx:lane.build_ctx
+        ~session_id:lane.session_id
+      |> Result.map_err ~fn:(fun reason -> Failure (plan_error_to_string reason))
+      |> Result.map_err ~fn:Kernel.Exception.to_string
+    with
+    | exn -> Error (Kernel.Exception.to_string exn)
   in
+  release lane;
+  let* workspace_result = result in
   Ok {
     target = lane.target;
     results = workspace_result.results;

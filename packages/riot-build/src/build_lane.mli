@@ -47,6 +47,10 @@ val prepare:
   toolchain:Riot_toolchain.t ->
   (locked t, error) result
 
+val release:
+  locked t ->
+  unit
+
 val execute:
   locked t ->
   (outcome, error) result

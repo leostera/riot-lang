@@ -235,18 +235,17 @@ let run_lanes = fun context ~toolchain ->
     Riot_model.Target.Set.to_list (Resolved_build.targets context.resolved)
     |> List.sort ~compare:Riot_model.Target.compare
   in
-  let rec prepare_lanes = function
-    | [] -> Ok []
+  let release_lanes = fun lanes -> List.for_each lanes ~fn:Build_lane.release in
+  let rec prepare_lanes prepared = function
+    | [] -> Ok (List.reverse prepared)
     | target :: rest ->
-        let* lane =
-          prepare_lane context ~toolchain target
-          |> Result.map_err ~fn:map_lane_error
-        in
-        let* lanes = prepare_lanes rest in
-        Ok (lane :: lanes)
+        match prepare_lane context ~toolchain target |> Result.map_err ~fn:map_lane_error with
+        | Ok lane -> prepare_lanes (lane :: prepared) rest
+        | Error _ as error ->
+            release_lanes prepared;
+            error
   in
-  let* lanes = prepare_lanes targets in
-  let lanes = List.reverse lanes in
+  let* lanes = prepare_lanes [] targets in
   List.for_each lanes ~fn:(fun lane -> emit_target_build_started context (Build_lane.target lane));
     let results =
       Build_scheduler.run
