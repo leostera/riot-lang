@@ -9,6 +9,8 @@ type output =
 
 type error = Build_lane.error
 
+type run_result = (t * (output, error) result) list
+
 let lane = fun lane -> BuildLane lane
 
 let target = function
@@ -27,3 +29,9 @@ let execute = function
   | BuildLane lane ->
       let* result = Build_lane.execute lane in
       Ok (LaneCompleted result, [])
+
+let run = fun context work_items ->
+  Build_scheduler.run
+    ~concurrency:context.Build_context.parallelism
+    ~tasks:work_items
+    ~fn:execute

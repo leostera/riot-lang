@@ -8,6 +8,8 @@ type output =
 
 type error = Build_lane.error
 
+type run_result = (t * (output, error) result) list
+
 val lane: Build_lane.locked Build_lane.t -> t
 
 val target: t -> Riot_model.Target.t
@@ -19,3 +21,5 @@ val had_partial_failure: output -> bool
 val result_count: output -> int
 
 val execute: t -> (output * t list, error) result
+
+val run: Build_context.t -> t list -> run_result

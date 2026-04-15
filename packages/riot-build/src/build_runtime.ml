@@ -228,11 +228,6 @@ let prepare_lane = fun context ~toolchain target ->
 let map_lane_error = fun error ->
   UnexpectedError { reason = error }
 
-let execute_work = fun work ->
-  match Build_work.execute work with
-  | Ok outcome -> Ok outcome
-  | Error error -> Error (map_lane_error error)
-
 let run_lanes = fun context ~toolchain ->
   let targets =
     Riot_model.Target.Set.to_list (Resolved_build.targets context.resolved)
@@ -251,12 +246,7 @@ let run_lanes = fun context ~toolchain ->
   let* lanes = prepare_lanes [] targets in
   List.for_each lanes ~fn:(fun lane -> emit_target_build_started context (Build_lane.target lane));
   let work_items = List.map lanes ~fn:Build_work.lane in
-  let results =
-    Build_scheduler.run
-      ~concurrency:context.build.parallelism
-      ~tasks:work_items
-      ~fn:execute_work
-  in
+  let results = Build_work.run context.build work_items in
   let has_failures =
     List.exists (fun (_, outcome) ->
       match outcome with
@@ -268,7 +258,7 @@ let run_lanes = fun context ~toolchain ->
     List.filter_map results
       ~fn:(fun (_, outcome) ->
         match outcome with
-        | Error err -> Some err
+        | Error err -> Some (map_lane_error err)
         | Ok _ -> None)
   in
   let lane_results =
