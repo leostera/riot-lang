@@ -60,12 +60,7 @@ let write_doc_event = fun ~workspace_root ~mode (event: Riot_doc.event) ->
       match event with
       | Riot_doc.PackageGenerationStarted _ -> ()
       | Riot_doc.PackageGenerationFailed { package; version; error; _ } -> out
-        ("   \027[1;31mFailed\027[0m "
-        ^ Package_name.to_string package
-        ^ "@"
-        ^ version
-        ^ ": "
-        ^ error)
+        ("   \027[1;31mFailed\027[0m " ^ Package_name.to_string package ^ "@" ^ version ^ ": " ^ error)
       | Riot_doc.PackageGenerationCompleted summary ->
           if not summary.cache_hit then
             out

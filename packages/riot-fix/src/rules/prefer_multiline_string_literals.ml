@@ -21,17 +21,15 @@ the content is really one static block of text.
 let rec string_literal_chain_size_in_function_body = function
   | Syn.Cst.Expression expression -> string_literal_chain_size expression
   | Syn.Cst.Cases { cases; _ } ->
-      cases
-      |> List.filter_map ~fn:(fun (case: Syn.Cst.match_case) ->
-        match case.guard with
-        | Some guard -> (
-            match string_literal_chain_size guard with
-            | Some _ as size -> size
-            | None -> string_literal_chain_size case.body
-          )
-        | None ->
-            string_literal_chain_size case.body)
-      |> List.head
+      cases |> List.filter_map
+        ~fn:(fun (case: Syn.Cst.match_case) ->
+          match case.guard with
+          | Some guard -> (
+              match string_literal_chain_size guard with
+              | Some _ as size -> size
+              | None -> string_literal_chain_size case.body
+            )
+          | None -> string_literal_chain_size case.body) |> List.head
 
 and string_literal_chain_size = function
   | Syn.Cst.Expression.Path _ ->
@@ -64,33 +62,29 @@ and string_literal_chain_size = function
       match string_literal_chain_size expr.scrutinee with
       | Some _ as size -> size
       | None ->
-          expr.cases
-          |> List.filter_map ~fn:(fun (case: Syn.Cst.match_case) ->
-            match case.guard with
-            | Some guard -> (
-                match string_literal_chain_size guard with
-                | Some _ as size -> size
-                | None -> string_literal_chain_size case.body
-              )
-            | None ->
-                string_literal_chain_size case.body)
-          |> List.head
+          expr.cases |> List.filter_map
+            ~fn:(fun (case: Syn.Cst.match_case) ->
+              match case.guard with
+              | Some guard -> (
+                  match string_literal_chain_size guard with
+                  | Some _ as size -> size
+                  | None -> string_literal_chain_size case.body
+                )
+              | None -> string_literal_chain_size case.body) |> List.head
     )
   | Syn.Cst.Expression.Try expr -> (
       match string_literal_chain_size expr.body with
       | Some _ as size -> size
       | None ->
-          expr.cases
-          |> List.filter_map ~fn:(fun (case: Syn.Cst.match_case) ->
-            match case.guard with
-            | Some guard -> (
-                match string_literal_chain_size guard with
-                | Some _ as size -> size
-                | None -> string_literal_chain_size case.body
-              )
-            | None ->
-                string_literal_chain_size case.body)
-          |> List.head
+          expr.cases |> List.filter_map
+            ~fn:(fun (case: Syn.Cst.match_case) ->
+              match case.guard with
+              | Some guard -> (
+                  match string_literal_chain_size guard with
+                  | Some _ as size -> size
+                  | None -> string_literal_chain_size case.body
+                )
+              | None -> string_literal_chain_size case.body) |> List.head
     )
   | Syn.Cst.Expression.If expr -> (
       match string_literal_chain_size expr.then_branch with

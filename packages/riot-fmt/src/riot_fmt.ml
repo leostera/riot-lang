@@ -71,7 +71,8 @@ let load_fmt_scope = function
       let workspace_toml = Path.(workspace.Workspace.root / Path.v "riot.toml") in
       let packages =
         workspace.Workspace.packages
-        |> List.map ~fn:(fun (pkg: Package_manifest.t) ->
+        |> List.map
+          ~fn:(fun (pkg: Package_manifest.t) ->
             let package_toml = Path.(pkg.path / Path.v "riot.toml") in
             { package_root = pkg.path; config = Fmt_config.load package_toml })
       in
@@ -102,14 +103,13 @@ let matches_ignore_pattern = fun ~root pattern path ->
   String.contains (relative_or_absolute ~root path) pattern
 
 let find_package_scope = fun scope file ->
-  scope.packages
-  |> List.filter_map ~fn:(fun package_scope ->
+  scope.packages |> List.filter_map
+    ~fn:(fun package_scope ->
       match Path.strip_prefix file ~prefix:package_scope.package_root with
       | Ok _ -> Some (String.length (Path.to_string package_scope.package_root), package_scope)
-      | Error _ -> None)
-  |> List.sort ~compare:(fun (left_len, _) (right_len, _) -> Int.compare right_len left_len)
-  |> List.map ~fn:(fun (_, package_scope) -> package_scope)
-  |> function
+      | Error _ -> None) |> List.sort
+    ~compare:(fun (left_len, _) (right_len, _) ->
+      Int.compare right_len left_len) |> List.map ~fn:(fun (_, package_scope) -> package_scope) |> function
   | package_scope :: _ -> Some package_scope
   | [] -> None
 

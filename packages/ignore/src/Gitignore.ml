@@ -151,10 +151,10 @@ let from_file = fun ~syntax path ->
       Ok None
   | Ok true -> (
       match Fs.read path with
-      | Ok text ->
-          of_string ~root:(Path.dirname path) ~syntax text
-          |> fun result -> Result.map result ~fn:Option.some
-          |> fun result -> Result.map_err result ~fn:(fun err -> Invalid_glob err)
+      | Ok text -> of_string ~root:(Path.dirname path) ~syntax text
+      |> fun result ->
+        Result.map result ~fn:Option.some
+        |> fun result -> Result.map_err result ~fn:(fun err -> Invalid_glob err)
       | Error err -> Error (File_system err)
     )
 

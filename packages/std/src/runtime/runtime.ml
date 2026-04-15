@@ -96,9 +96,7 @@ let run = fun ~main ~args ?config () ->
   in
   Kernel.Exception.record_backtrace true;
   let status =
-    Scheduler.run ~config
-      ~main:(fun () ->
-        main ~args)
+    Scheduler.run ~config ~main:(fun () -> main ~args)
   in
   sys_exit status
 

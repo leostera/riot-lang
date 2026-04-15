@@ -15,7 +15,8 @@ let strip_suffix = fun suffix text ->
     text
 
 let clean_docstring = fun raw ->
-  raw |> String.split ~by:"\n" |> List.map ~fn:(fun line ->
+  raw |> String.split ~by:"\n" |> List.map
+    ~fn:(fun line ->
       let trimmed = line |> String.trim |> strip_prefix "(**" |> strip_suffix "*)" |> String.trim in
       if String.starts_with ~prefix:"*" trimmed then
         trimmed |> strip_prefix "*" |> String.trim
@@ -51,7 +52,8 @@ let find_substring_from = fun text pattern start_idx ->
   loop start_idx
 
 let slugify = fun text ->
-  text |> String.map ~fn:(fun ch ->
+  text |> String.map
+    ~fn:(fun ch ->
       match ch with
       | '/'
       | '\\'
@@ -217,7 +219,8 @@ let macro_items_of_snippet = fun ?docstring snippet ->
   let signature = first_nonempty_line snippet in
   let names = extract_deriving_macro_names snippet @ extract_percent_macro_names snippet
   |> List.unique ~compare:String.compare in
-  names |> List.map ~fn:(fun name ->
+  names |> List.map
+    ~fn:(fun name ->
       {
         Doctree.kind = Doctree.Macro_item;
         name;
@@ -242,7 +245,8 @@ let make_item = fun ?docstring ?(detail_groups = []) ~kind ~name snippet ->
 let value_name = fun name_tokens -> name_tokens |> List.map ~fn:Syn.Cst.Token.text |> String.concat ""
 
 let docstrings_before_node = fun ~after_offset syntax_node ->
-  Syn.Cst.leading_trivia_before_node ~after:after_offset syntax_node |> List.filter_map ~fn:(fun trivia ->
+  Syn.Cst.leading_trivia_before_node ~after:after_offset syntax_node |> List.filter_map
+    ~fn:(fun trivia ->
       match trivia with
       | Syn.Cst.Trivia.Docstring doc ->
           let text = clean_docstring (Syn.Cst.Docstring.text doc) in
@@ -447,7 +451,10 @@ let attach_pending_doc_to_recent_variant = fun pending_doc (acc_items: Doctree.i
             else if item.kind = Doctree.Type_item then
               let updated_groups, attached = attach_docstring_to_constructor_groups doc item.detail_groups in
               if attached then
-                (List.reverse_append prefix ({ item with detail_groups = updated_groups } :: rest), None)
+                (
+                  List.reverse_append prefix ({ item with detail_groups = updated_groups } :: rest),
+                  None
+                )
               else
                 (List.reverse_append prefix (item :: rest), Some doc)
             else
@@ -659,7 +666,8 @@ let rec module_of_signature_items = fun ~lookup ~source ~source_path ~path ?docs
 and of_interface_source = fun ~lookup ?path ?docstring (source_file: Source.interface_source) ->
   let parsed = Syn.parse_interface source_file.content in
   let* cst = Syn.build_cst parsed
-  |> Result.map_err ~fn:(fun _ -> "failed to build CST for " ^ Path.to_string source_file.relative_path) in
+  |> Result.map_err
+    ~fn:(fun _ -> "failed to build CST for " ^ Path.to_string source_file.relative_path) in
   match Syn.Cst.SourceFile.signature_items cst with
   | Some items ->
       let path =

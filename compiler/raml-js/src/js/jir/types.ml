@@ -234,7 +234,10 @@ and statement =
 let import_requirement_to_json = fun requirement ->
   let fields = [
     ("from", Json.string (Modules.import_path requirement.from));
-    ("imported", Option.map ~fn:Json.string requirement.imported |> Option.unwrap_or ~default:Json.null);
+    (
+      "imported",
+      Option.map ~fn:Json.string requirement.imported |> Option.unwrap_or ~default:Json.null
+    );
     ("local", Binder.to_json requirement.local);
   ] in
   if requirement.namespace then
@@ -400,7 +403,10 @@ and statement_to_json = fun statement ->
   | Declaration declaration -> Json.obj
     [ ("kind", Json.string "declaration"); ("declaration", declaration_to_json declaration) ]
   | Block statements -> Json.obj
-    [ ("kind", Json.string "block"); ("body", Json.array (List.map statements ~fn:statement_to_json)) ]
+    [
+      ("kind", Json.string "block");
+      ("body", Json.array (List.map statements ~fn:statement_to_json))
+    ]
   | Expression expr -> Json.obj
     [ ("kind", Json.string "expression"); ("expression", expr_to_json expr) ]
   | Return expr -> Json.obj [ ("kind", Json.string "return"); ("expression", expr_to_json expr) ]

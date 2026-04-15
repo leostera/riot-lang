@@ -18,10 +18,12 @@ type binding_site = {
 
 let direct_non_trivia_nodes = fun node ->
   let open Syn.Ceibo.Red in
-    SyntaxNode.children node
-    |> List.filter_map ~fn:(function
-      | Node child when not (is_trivia (SyntaxNode.kind child)) -> Some child
-      | _ -> None)
+    SyntaxNode.children node |> List.filter_map
+      ~fn:(
+        function
+        | Node child when not (is_trivia (SyntaxNode.kind child)) -> Some child
+        | _ -> None
+      )
 
 let is_expression_syntax_kind syntax_kind =
   match syntax_kind with
@@ -142,21 +144,23 @@ let has_parameter_prefix = fun syntax_node ->
 
 let binding_site_of_let_binding = fun binding ->
   Syn.Cst.LetBinding.binding_name_token binding
-  |> Option.map ~fn:(fun name_token ->
-    {
-      syntax_node = Syn.Cst.LetBinding.syntax_node binding;
-      name_token;
-      is_function = Syn.Cst.LetBinding.is_function binding
-    })
+  |> Option.map
+    ~fn:(fun name_token ->
+      {
+        syntax_node = Syn.Cst.LetBinding.syntax_node binding;
+        name_token;
+        is_function = Syn.Cst.LetBinding.is_function binding
+      })
 
 let binding_site_of_expression_let = fun ~syntax_node ~binding_pattern ~bound_value ->
   binding_name_token_from_pattern binding_pattern
-  |> Option.map ~fn:(fun name_token ->
-    {
-      syntax_node;
-      name_token;
-      is_function = has_parameter_prefix syntax_node || expression_is_function bound_value
-    })
+  |> Option.map
+    ~fn:(fun name_token ->
+      {
+        syntax_node;
+        name_token;
+        is_function = has_parameter_prefix syntax_node || expression_is_function bound_value
+      })
 
 let rec binding_sites_of_module_expression module_expression =
   match module_expression with
@@ -184,10 +188,7 @@ and binding_sites_of_object_member object_member =
 and binding_sites_of_function_body function_body =
   match function_body with
   | Syn.Cst.Expression expression -> binding_sites_of_expression expression
-  | Syn.Cst.Cases { cases; _ } ->
-      cases
-      |> List.map ~fn:binding_sites_of_match_case
-      |> List.concat
+  | Syn.Cst.Cases { cases; _ } -> cases |> List.map ~fn:binding_sites_of_match_case |> List.concat
 
 and binding_sites_of_expression = fun expr ->
   match expr with
@@ -197,18 +198,15 @@ and binding_sites_of_expression = fun expr ->
   | Syn.Cst.Expression.Unreachable _
   | Syn.Cst.Expression.Extension _
   | Syn.Cst.Expression.New _ -> []
-  | Syn.Cst.Expression.Constructor { payload; _ } ->
-      Option.to_list payload
-      |> List.map ~fn:binding_sites_of_expression
-      |> List.concat
-  | Syn.Cst.Expression.Object { members; _ } ->
-      members
-      |> List.map ~fn:binding_sites_of_object_member
-      |> List.concat
-  | Syn.Cst.Expression.PolyVariant { payload; _ } ->
-      Option.to_list payload
-      |> List.map ~fn:binding_sites_of_expression
-      |> List.concat
+  | Syn.Cst.Expression.Constructor { payload; _ } -> Option.to_list payload
+  |> List.map ~fn:binding_sites_of_expression
+  |> List.concat
+  | Syn.Cst.Expression.Object { members; _ } -> members
+  |> List.map ~fn:binding_sites_of_object_member
+  |> List.concat
+  | Syn.Cst.Expression.PolyVariant { payload; _ } -> Option.to_list payload
+  |> List.map ~fn:binding_sites_of_expression
+  |> List.concat
   | Syn.Cst.Expression.ModulePack { module_expression; _ } -> binding_sites_of_module_expression module_expression
   | Syn.Cst.Expression.LetModule { module_expression; body; _ } -> binding_sites_of_module_expression
     module_expression
@@ -228,13 +226,11 @@ and binding_sites_of_expression = fun expr ->
   | Syn.Cst.Expression.FieldAccess { receiver; _ } -> binding_sites_of_expression receiver
   | Syn.Cst.Expression.Index { collection; index; _ } -> binding_sites_of_expression collection
   @ binding_sites_of_expression index
-  | Syn.Cst.Expression.ObjectOverride { fields; _ } ->
-      fields
-      |> List.map ~fn:(fun (field: Syn.Cst.object_override_field) ->
-        Option.to_list field.value
-        |> List.map ~fn:binding_sites_of_expression
-        |> List.concat)
-      |> List.concat
+  | Syn.Cst.Expression.ObjectOverride { fields; _ } -> fields
+  |> List.map
+    ~fn:(fun (field: Syn.Cst.object_override_field) ->
+      Option.to_list field.value |> List.map ~fn:binding_sites_of_expression |> List.concat)
+  |> List.concat
   | Syn.Cst.Expression.InstanceVariableAssign { value; _ } -> binding_sites_of_expression value
   | Syn.Cst.Expression.FieldAssign { target; value; _ } -> binding_sites_of_expression
     (Syn.Cst.Expression.FieldAccess target)
@@ -245,37 +241,33 @@ and binding_sites_of_expression = fun expr ->
   @ binding_sites_of_expression right
   | Syn.Cst.Expression.TypeAscription { expression; _ }
   | Syn.Cst.Expression.Polymorphic { expression; _ } -> binding_sites_of_expression expression
-  | Syn.Cst.Expression.Sequence { expressions; _ } ->
-      expressions
-      |> List.map ~fn:binding_sites_of_expression
-      |> List.concat
+  | Syn.Cst.Expression.Sequence { expressions; _ } -> expressions
+  |> List.map ~fn:binding_sites_of_expression
+  |> List.concat
   | Syn.Cst.Expression.Tuple { elements; _ }
   | Syn.Cst.Expression.List { elements; _ }
-  | Syn.Cst.Expression.Array { elements; _ } ->
-      elements
-      |> List.map ~fn:binding_sites_of_expression
-      |> List.concat
-  | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Literal { fields; _ }) ->
-      fields
-      |> List.map ~fn:(fun (field: Syn.Cst.record_expression_field) ->
-        binding_sites_of_expression field.value)
-      |> List.concat
+  | Syn.Cst.Expression.Array { elements; _ } -> elements
+  |> List.map ~fn:binding_sites_of_expression
+  |> List.concat
+  | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Literal { fields; _ }) -> fields
+  |> List.map
+    ~fn:(fun (field: Syn.Cst.record_expression_field) -> binding_sites_of_expression field.value)
+  |> List.concat
   | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Update { base; fields; _ }) -> binding_sites_of_expression
     base
   @ (fields
-  |> List.map ~fn:(fun (field: Syn.Cst.record_expression_field) ->
-    binding_sites_of_expression field.value)
+  |> List.map
+    ~fn:(fun (field: Syn.Cst.record_expression_field) -> binding_sites_of_expression field.value)
   |> List.concat)
   | Syn.Cst.Expression.LocalOpen (Syn.Cst.LetOpen { body; _ })
   | Syn.Cst.Expression.LocalOpen (Syn.Cst.Delimited { body; _ }) -> binding_sites_of_expression body
   | Syn.Cst.Expression.Fun { body; _ } -> binding_sites_of_function_body body
-  | Syn.Cst.Expression.Function { cases; _ } ->
-      cases
-      |> List.map ~fn:binding_sites_of_match_case
-      |> List.concat
+  | Syn.Cst.Expression.Function { cases; _ } -> cases
+  |> List.map ~fn:binding_sites_of_match_case
+  |> List.concat
   | Syn.Cst.Expression.LetOperator { binding; body; _ } -> (binding_operator_bindings_of_chain binding
-  |> List.map ~fn:(fun ({ bound_value; _ }: Syn.Cst.binding_operator_binding) ->
-    binding_sites_of_expression bound_value)
+  |> List.map
+    ~fn:(fun ({ bound_value; _ }: Syn.Cst.binding_operator_binding) -> binding_sites_of_expression bound_value)
   |> List.concat)
   @ binding_sites_of_expression body
   | Syn.Cst.Expression.Let {
@@ -287,42 +279,31 @@ and binding_sites_of_expression = fun expr ->
     _
   } -> Option.to_list (binding_site_of_expression_let ~syntax_node ~binding_pattern ~bound_value)
   @ binding_sites_of_expression bound_value
-  @ (Option.to_list and_binding
-  |> List.map ~fn:binding_sites_of_let_binding
-  |> List.concat)
+  @ (Option.to_list and_binding |> List.map ~fn:binding_sites_of_let_binding |> List.concat)
   @ binding_sites_of_expression body
   | Syn.Cst.Expression.Match { scrutinee; cases; _ } -> binding_sites_of_expression scrutinee
-  @ (cases
-  |> List.map ~fn:binding_sites_of_match_case
-  |> List.concat)
+  @ (cases |> List.map ~fn:binding_sites_of_match_case |> List.concat)
   | Syn.Cst.Expression.Try { body; cases; _ } -> binding_sites_of_expression body
-  @ (cases
-  |> List.map ~fn:binding_sites_of_match_case
-  |> List.concat)
+  @ (cases |> List.map ~fn:binding_sites_of_match_case |> List.concat)
   | Syn.Cst.Expression.If { condition; then_branch; else_branch; _ } -> binding_sites_of_expression condition
   @ binding_sites_of_expression then_branch
-  @ (Option.to_list else_branch
-  |> List.map ~fn:binding_sites_of_expression
-  |> List.concat)
+  @ (Option.to_list else_branch |> List.map ~fn:binding_sites_of_expression |> List.concat)
   | Syn.Cst.Expression.Parenthesized { inner; _ } -> binding_sites_of_expression inner
 
 and binding_sites_of_apply_argument argument =
   match argument with
   | Syn.Cst.Positional argument -> binding_sites_of_expression argument
   | Syn.Cst.Labeled { value; _ }
-  | Syn.Cst.Optional { value; _ } ->
-      Option.to_list value
-      |> List.map ~fn:binding_sites_of_expression
-      |> List.concat
+  | Syn.Cst.Optional { value; _ } -> Option.to_list value
+  |> List.map ~fn:binding_sites_of_expression
+  |> List.concat
 
 and binding_sites_of_let_binding = fun binding ->
   Option.to_list (binding_site_of_let_binding binding)
   @ binding_sites_of_expression (Syn.Cst.LetBinding.value binding)
 
 and binding_sites_of_match_case = fun ({ guard; body; _ }: Syn.Cst.match_case) ->
-  (Option.to_list guard
-  |> List.map ~fn:binding_sites_of_expression
-  |> List.concat)
+  (Option.to_list guard |> List.map ~fn:binding_sites_of_expression |> List.concat)
   @ binding_sites_of_expression body
 
 and binding_sites_of_class_field class_field =
@@ -352,10 +333,9 @@ and binding_sites_of_class_expression class_expression =
   match class_expression with
   | Syn.Cst.ClassExpression.Path _
   | Syn.Cst.ClassExpression.Extension _ -> []
-  | Syn.Cst.ClassExpression.Structure { fields; _ } ->
-      fields
-      |> List.map ~fn:binding_sites_of_class_field
-      |> List.concat
+  | Syn.Cst.ClassExpression.Structure { fields; _ } -> fields
+  |> List.map ~fn:binding_sites_of_class_field
+  |> List.concat
   | Syn.Cst.ClassExpression.Fun { body; _ } -> binding_sites_of_class_expression body
   | Syn.Cst.ClassExpression.Apply { callee; argument; _ } -> binding_sites_of_class_expression callee
   @ binding_sites_of_apply_argument argument
@@ -368,9 +348,7 @@ and binding_sites_of_class_expression class_expression =
     _
   } -> Option.to_list (binding_site_of_expression_let ~syntax_node ~binding_pattern ~bound_value)
   @ binding_sites_of_expression bound_value
-  @ (Option.to_list and_binding
-  |> List.map ~fn:binding_sites_of_let_binding
-  |> List.concat)
+  @ (Option.to_list and_binding |> List.map ~fn:binding_sites_of_let_binding |> List.concat)
   @ binding_sites_of_class_expression body
   | Syn.Cst.ClassExpression.Constraint { class_expression; _ } -> binding_sites_of_class_expression class_expression
   | Syn.Cst.ClassExpression.LocalOpen (Syn.Cst.LetOpen { body; _ })
@@ -386,9 +364,7 @@ let binding_sites_of_structure_item structure_item =
   | Syn.Cst.StructureItem.Expression expr ->
       binding_sites_of_expression expr
   | Syn.Cst.StructureItem.ClassDeclaration { class_body; _ } ->
-      [ class_body ]
-      |> List.map ~fn:binding_sites_of_class_expression
-      |> List.concat
+      [ class_body ] |> List.map ~fn:binding_sites_of_class_expression |> List.concat
   | Syn.Cst.StructureItem.ModuleDeclaration decl ->
       let rec binding_sites_of_module_structure decl =
         let rest =

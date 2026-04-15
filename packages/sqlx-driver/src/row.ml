@@ -5,8 +5,7 @@ type t = (string * Value.t) list
 let get = fun field row ->
   List.assoc_opt field row
 
-let fields = fun row ->
-  List.map ~fn:(fun (field, _) -> field) row
+let fields = fun row -> List.map ~fn:(fun (field, _) -> field) row
 
 let int = fun field row ->
   match get field row with
@@ -45,6 +44,5 @@ let to_string = fun row ->
   String.concat ", " parts
 
 let equal = fun a b ->
-  List.length a = List.length b
-  && List.zip a b
+  List.length a = List.length b && List.zip a b
   |> List.for_all (fun ((f1, v1), (f2, v2)) -> f1 = f2 && Value.equal v1 v2)

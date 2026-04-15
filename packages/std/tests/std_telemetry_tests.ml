@@ -21,10 +21,7 @@ let test_emit_and_receive = Test.case "telemetry: emit and receive" @@ fun _ctx 
   Telemetry.stop ();
   match !received with
   | [99;42] -> Ok ()
-  | _ ->
-      Error
-        ("Expected [99; 42], got "
-        ^ String.concat ", " (List.map !received ~fn:Int.to_string))
+  | _ -> Error ("Expected [99; 42], got " ^ String.concat ", " (List.map !received ~fn:Int.to_string))
 
 let test_multiple_handlers = Test.case "telemetry: multiple handlers" @@ fun _ctx ->
   let _pid = Telemetry.start () in

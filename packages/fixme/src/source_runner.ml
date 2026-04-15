@@ -64,8 +64,8 @@ let lint_diagnostics = fun ~rules ?filename ?on_progress ~source (
           | None -> "<stdin>"
         in
         let ctx = Rule.{ file_path; source = source_text; cst } in
-        rules
-        |> List.map ~fn:(fun rule ->
+        rules |> List.map
+          ~fn:(fun rule ->
             let rule_id = Rule.id rule in
             emit_progress on_progress (RuleStarted { rule_id });
             trace ?filename ("rule start " ^ rule_id);
@@ -76,8 +76,7 @@ let lint_diagnostics = fun ~rules ?filename ?on_progress ~source (
             trace
               ?filename
               ("rule finish " ^ rule_id ^ " (" ^ Int.to_string (List.length diagnostics) ^ " diagnostics)");
-            diagnostics)
-        |> List.concat
+            diagnostics) |> List.concat
 
 let run = fun ~rules ?filename ?on_progress source ->
   let parse_result = parse ?filename source in
@@ -95,8 +94,7 @@ let has_parse_errors = fun result -> not (List.is_empty result.parse_diagnostics
 let has_errors = fun result ->
   List.any result.diagnostics ~fn:(fun diag -> Diagnostic.severity diag = Diagnostic.Error)
 
-let safe_fixes = fun result ->
-  List.filter_map result.diagnostics ~fn:Diagnostic.fix
+let safe_fixes = fun result -> List.filter_map result.diagnostics ~fn:Diagnostic.fix
 
 let can_apply_safe_fixes = fun result ->
   not (has_parse_errors result) && not (has_errors result) && not (List.is_empty (safe_fixes result))

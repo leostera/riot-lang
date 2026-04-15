@@ -21,8 +21,7 @@ let write_uint16_be = fun value ->
   let b1 = Char.from_int_unchecked (value land 0xff) in
   String.make ~len:1 ~char:b0 ^ String.make ~len:1 ~char:b1
 
-let write_uint8 = fun value ->
-  String.make ~len:1 ~char:(Char.from_int_unchecked (value land 0xff))
+let write_uint8 = fun value -> String.make ~len:1 ~char:(Char.from_int_unchecked (value land 0xff))
 
 let frame_type_to_int = function
   | Frame.Data -> 0x0

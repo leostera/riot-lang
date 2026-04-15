@@ -3,7 +3,7 @@ open Std
 open Std.Collections
 
 let () =
-  let print_numbered_lines = fun lines ~show_width ->
+  let print_numbered_lines lines ~show_width =
     List.for_each (List.enumerate lines)
       ~fn:(fun (i, line) ->
         let num =

@@ -205,7 +205,8 @@ let override_from_toml: (string * Std.Data.Toml.value) list -> profile_override 
       match Fields.get key table_items with
       | Some (Array arr) ->
           Override (
-            List.filter_map ~fn:(
+            List.filter_map
+              ~fn:(
                 function
                 | String s -> Some s
                 | _ -> None
@@ -255,7 +256,8 @@ let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_it
     let get_string_list key =
       match Fields.get key table_items with
       | Some (Array arr) ->
-          List.filter_map ~fn:(
+          List.filter_map
+            ~fn:(
               function
               | String s -> Some s
               | _ -> None
@@ -298,7 +300,8 @@ let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_it
         (
           match Fields.get "cc_flags" table_items with
           | Some (Array arr) ->
-              List.filter_map ~fn:(
+              List.filter_map
+                ~fn:(
                   function
                   | String s -> Some s
                   | _ -> None
@@ -310,7 +313,8 @@ let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_it
         (
           match Fields.get "ld_flags" table_items with
           | Some (Array arr) ->
-              List.filter_map ~fn:(
+              List.filter_map
+                ~fn:(
                   function
                   | String s -> Some s
                   | _ -> None
@@ -322,7 +326,8 @@ let from_toml: (string * Std.Data.Toml.value) list -> base:t -> t = fun table_it
         (
           match Fields.get "ocamlc_flags" table_items with
           | Some (Array arr) ->
-              List.filter_map ~fn:(
+              List.filter_map
+                ~fn:(
                   function
                   | String s -> Some s
                   | _ -> None
@@ -404,12 +409,10 @@ let hash = fun state profile ->
   H.write state (Bool.to_string profile.unsafe);
   H.write state (Bool.to_string profile.no_alias_deps);
   List.for_each profile.open_modules ~fn:(H.write state);
-  List.for_each
-    profile.warnings
+  List.for_each profile.warnings
     ~fn:(fun w ->
       H.write state (Ocaml_compiler.warning_to_string w));
-  List.for_each
-    profile.errors
+  List.for_each profile.errors
     ~fn:(fun w ->
       H.write state (Ocaml_compiler.warning_to_string w));
   List.for_each profile.cc_flags ~fn:(H.write state);

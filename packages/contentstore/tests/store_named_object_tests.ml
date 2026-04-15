@@ -1,5 +1,4 @@
 open Std
-
 module Test = Std.Test
 
 let read_opened_file = fun file ->
@@ -7,9 +6,7 @@ let read_opened_file = fun file ->
   let _ = Fs.File.close file |> Result.expect ~msg:"close should succeed" in
   content
 
-let namespace = fun parts ->
-  Contentstore.Namespace.from_parts parts
-  |> Result.expect ~msg:"invalid test namespace"
+let namespace = fun parts -> Contentstore.Namespace.from_parts parts |> Result.expect ~msg:"invalid test namespace"
 
 let make_store = fun tmpdir parts ->
   Contentstore.create
@@ -18,13 +15,11 @@ let make_store = fun tmpdir parts ->
     ~policy:Contentstore.Policy.default
 
 let with_store = fun prefix parts fn ->
-  Fs.with_tempdir ~prefix
-    (fun tmpdir -> fn ~tmpdir ~store:(make_store tmpdir parts))
+  Fs.with_tempdir ~prefix (fun tmpdir -> fn ~tmpdir ~store:(make_store tmpdir parts))
   |> Result.unwrap_or ~default:(Error "tempdir creation failed")
 
 let open_named_object_to_string = fun store ~key ->
-  Contentstore.open_named_object store ~key
-  |> Result.map ~fn:read_opened_file
+  Contentstore.open_named_object store ~key |> Result.map ~fn:read_opened_file
 
 let named_namespace_dir = fun store ->
   Path.(Contentstore.root store / Path.v "named" / Path.v "plans")
@@ -44,8 +39,7 @@ let test_save_named_object_overwrites = fun _ctx ->
 let test_save_named_empty_object_roundtrip = fun _ctx ->
   with_store "contentstore-save-named-empty-object" [ "plans" ]
     (fun ~tmpdir:_ ~store ->
-      let _ = Contentstore.save_named_object store ~key:"empty" ~content:""
-      |> Result.expect ~msg:"save_named_object should succeed" in
+      let _ = Contentstore.save_named_object store ~key:"empty" ~content:"" |> Result.expect ~msg:"save_named_object should succeed" in
       match open_named_object_to_string store ~key:"empty" with
       | Ok "" -> Ok ()
       | Ok _ -> Error "expected empty named object to stay empty"
@@ -55,8 +49,7 @@ let test_save_named_binary_object_roundtrip = fun _ctx ->
   with_store "contentstore-save-named-binary-object" [ "plans" ]
     (fun ~tmpdir:_ ~store ->
       let content = "hello\000world\255" in
-      let _ = Contentstore.save_named_object store ~key:"binary" ~content
-      |> Result.expect ~msg:"save_named_object should succeed" in
+      let _ = Contentstore.save_named_object store ~key:"binary" ~content |> Result.expect ~msg:"save_named_object should succeed" in
       match open_named_object_to_string store ~key:"binary" with
       | Ok loaded when String.equal loaded content -> Ok ()
       | Ok _ -> Error "expected binary named object to roundtrip"
@@ -69,10 +62,8 @@ let test_save_named_file_overwrites = fun _ctx ->
       let second = Path.(tmpdir / Path.v "second.bin") in
       let _ = Fs.write "first" first |> Result.expect ~msg:"write first source should succeed" in
       let _ = Fs.write "second" second |> Result.expect ~msg:"write second source should succeed" in
-      let _ = Contentstore.save_named_file store ~key:"active" ~source:first
-      |> Result.expect ~msg:"first save_named_file should succeed" in
-      let _ = Contentstore.save_named_file store ~key:"active" ~source:second
-      |> Result.expect ~msg:"second save_named_file should succeed" in
+      let _ = Contentstore.save_named_file store ~key:"active" ~source:first |> Result.expect ~msg:"first save_named_file should succeed" in
+      let _ = Contentstore.save_named_file store ~key:"active" ~source:second |> Result.expect ~msg:"second save_named_file should succeed" in
       match open_named_object_to_string store ~key:"active" with
       | Ok "second" -> Ok ()
       | Ok other -> Error ("expected latest named file to win, got " ^ String.escaped other)
@@ -85,7 +76,10 @@ let test_different_named_keys_are_isolated = fun _ctx ->
       |> Result.expect ~msg:"save left named object should succeed" in
       let _ = Contentstore.save_named_object store ~key:"right" ~content:"right"
       |> Result.expect ~msg:"save right named object should succeed" in
-      match (open_named_object_to_string store ~key:"left", open_named_object_to_string store ~key:"right") with
+      match (
+        open_named_object_to_string store ~key:"left",
+        open_named_object_to_string store ~key:"right"
+      ) with
       | (Ok "left", Ok "right") -> Ok ()
       | _ -> Error "expected different named keys to remain isolated")
 
@@ -106,8 +100,7 @@ let test_named_unicode_key_roundtrip = fun _ctx ->
   with_store "contentstore-save-named-unicode-key" [ "plans" ]
     (fun ~tmpdir:_ ~store ->
       let key = "現在" in
-      let _ = Contentstore.save_named_object store ~key ~content:"payload"
-      |> Result.expect ~msg:"save_named_object should succeed" in
+      let _ = Contentstore.save_named_object store ~key ~content:"payload" |> Result.expect ~msg:"save_named_object should succeed" in
       match open_named_object_to_string store ~key with
       | Ok "payload" -> Ok ()
       | Ok _ -> Error "expected unicode named key to roundtrip"
@@ -116,9 +109,10 @@ let test_named_unicode_key_roundtrip = fun _ctx ->
 let test_named_long_key_roundtrip = fun _ctx ->
   with_store "contentstore-save-named-long-key" [ "plans" ]
     (fun ~tmpdir:_ ~store ->
-      let key = String.init ~len:2_048 ~fn:(fun _ -> 'k') in
-      let _ = Contentstore.save_named_object store ~key ~content:"payload"
-      |> Result.expect ~msg:"save_named_object should succeed" in
+      let key =
+        String.init ~len:2_048 ~fn:(fun _ -> 'k')
+      in
+      let _ = Contentstore.save_named_object store ~key ~content:"payload" |> Result.expect ~msg:"save_named_object should succeed" in
       match open_named_object_to_string store ~key with
       | Ok "payload" -> Ok ()
       | Ok _ -> Error "expected long named key to roundtrip"
@@ -128,8 +122,7 @@ let test_named_punctuation_key_roundtrip = fun _ctx ->
   with_store "contentstore-save-named-punctuation-key" [ "plans" ]
     (fun ~tmpdir:_ ~store ->
       let key = "release@2026:04:13?ok=yes#x/y" in
-      let _ = Contentstore.save_named_object store ~key ~content:"payload"
-      |> Result.expect ~msg:"save_named_object should succeed" in
+      let _ = Contentstore.save_named_object store ~key ~content:"payload" |> Result.expect ~msg:"save_named_object should succeed" in
       match open_named_object_to_string store ~key with
       | Ok "payload" -> Ok ()
       | Ok _ -> Error "expected punctuation named key to roundtrip"
@@ -152,7 +145,9 @@ let test_named_overwrite_with_larger_content = fun _ctx ->
     (fun ~tmpdir:_ ~store ->
       let _ = Contentstore.save_named_object store ~key:"current" ~content:"small"
       |> Result.expect ~msg:"first save_named_object should succeed" in
-      let larger = String.init ~len:8_192 ~fn:(fun _ -> 'x') in
+      let larger =
+        String.init ~len:8_192 ~fn:(fun _ -> 'x')
+      in
       let _ = Contentstore.save_named_object store ~key:"current" ~content:larger
       |> Result.expect ~msg:"second save_named_object should succeed" in
       match open_named_object_to_string store ~key:"current" with
@@ -163,7 +158,9 @@ let test_named_overwrite_with_larger_content = fun _ctx ->
 let test_named_overwrite_with_smaller_content = fun _ctx ->
   with_store "contentstore-save-named-smaller-content" [ "plans" ]
     (fun ~tmpdir:_ ~store ->
-      let larger = String.init ~len:8_192 ~fn:(fun _ -> 'x') in
+      let larger =
+        String.init ~len:8_192 ~fn:(fun _ -> 'x')
+      in
       let _ = Contentstore.save_named_object store ~key:"current" ~content:larger
       |> Result.expect ~msg:"first save_named_object should succeed" in
       let _ = Contentstore.save_named_object store ~key:"current" ~content:"small"
@@ -177,19 +174,14 @@ let test_failed_named_overwrite_preserves_previous_value = fun _ctx ->
   with_store "contentstore-save-named-failed-overwrite" [ "plans" ]
     (fun ~tmpdir:_ ~store ->
       let key = "current" in
-      let _ = Contentstore.save_named_object store ~key ~content:"first"
-      |> Result.expect ~msg:"initial save_named_object should succeed" in
+      let _ = Contentstore.save_named_object store ~key ~content:"first" |> Result.expect ~msg:"initial save_named_object should succeed" in
       let key_hash = Crypto.hash_string key |> Crypto.Digest.hex in
       let parent_dir =
-        Path.(
-          Contentstore.root store
-          / Path.v "named"
-          / Path.v "plans"
-          / Path.v (String.sub key_hash ~offset:0 ~len:2)
-        )
-      in
-      let _ = Fs.set_permissions parent_dir (Fs.Permissions.of_mode 0o555)
-      |> Result.expect ~msg:"chmod shard dir should succeed" in
+        Path.(Contentstore.root store
+        / Path.v "named"
+        / Path.v "plans"
+        / Path.v (String.sub key_hash ~offset:0 ~len:2)) in
+      let _ = Fs.set_permissions parent_dir (Fs.Permissions.of_mode 0o555) |> Result.expect ~msg:"chmod shard dir should succeed" in
       let result =
         match Contentstore.save_named_object store ~key ~content:"second" with
         | Error (Contentstore.Store.Io _) -> (

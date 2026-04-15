@@ -18,9 +18,7 @@ let test_complex_nested_layout = fun _ctx ->
     ] in
   let commands = layout ~config:(make_config ()) elem in
   let text_count =
-    List.fold_left
-      commands
-      ~acc:0
+    List.fold_left commands ~acc:0
       ~fn:(fun acc cmd ->
         match cmd.Render.command_type with
         | Text _ -> acc + 1
@@ -35,8 +33,7 @@ let test_flexbox_style_layout = fun _ctx ->
   let elem = Element.row [ Element.text "Left"; Element.spacer ~flex:1.0 (); Element.text "Right"; ] in
   let commands = layout ~config:(make_config ()) elem in
   let text_positions =
-    List.filter_map
-      commands
+    List.filter_map commands
       ~fn:(fun cmd ->
         match cmd.Render.command_type with
         | Text { content; _ } -> Some (content, cmd.bounding_box.x)
@@ -54,8 +51,7 @@ let test_responsive_percent_sizing = fun _ctx ->
     ] in
   let commands = layout ~config:(make_config ()) elem in
   let widths =
-    List.filter_map
-      commands
+    List.filter_map commands
       ~fn:(fun cmd ->
         match cmd.Render.command_type with
         | Rectangle _ -> Some cmd.bounding_box.width
@@ -82,18 +78,14 @@ let test_card_ui_pattern = fun _ctx ->
     ] in
   let commands = layout ~config:(make_config ()) card in
   let rect_count =
-    List.fold_left
-      commands
-      ~acc:0
+    List.fold_left commands ~acc:0
       ~fn:(fun acc cmd ->
         match cmd.Render.command_type with
         | Rectangle _ -> acc + 1
         | _ -> acc)
   in
   let text_count =
-    List.fold_left
-      commands
-      ~acc:0
+    List.fold_left commands ~acc:0
       ~fn:(fun acc cmd ->
         match cmd.Render.command_type with
         | Text _ -> acc + 1
@@ -124,8 +116,7 @@ let test_grid_like_layout = fun _ctx ->
     ] in
   let commands = layout ~config:(make_config ()) grid in
   let colors =
-    List.filter_map
-      commands
+    List.filter_map commands
       ~fn:(fun cmd ->
         match cmd.Render.command_type with
         | Rectangle { color; _ } -> Some color
@@ -148,8 +139,7 @@ let test_alignment_with_fixed_sizes = fun _ctx ->
     ] in
   let commands = layout ~config:(make_config ()) elem in
   let boxes =
-    List.filter_map
-      commands
+    List.filter_map commands
       ~fn:(fun cmd ->
         match cmd.Render.command_type with
         | Rectangle _ -> Some (

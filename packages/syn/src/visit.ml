@@ -1,6 +1,5 @@
 open Std
 
-
 type 'ctx walker = {
   apply_argument: 'ctx -> Cst.apply_argument -> 'ctx;
   attribute: 'ctx -> Cst.attribute -> 'ctx;
@@ -228,8 +227,7 @@ and descend_pattern = fun walk ctx (pattern: Cst.Pattern.t) ->
       List.fold_left attributes ~acc:ctx ~fn:walk.attribute
   | Cst.Pattern.Tuple { elements; attributes; _ } ->
       let ctx =
-        List.fold_left elements
-          ~acc:ctx
+        List.fold_left elements ~acc:ctx
           ~fn:(fun ctx (element: Cst.tuple_pattern_element) ->
             walk.pattern ctx element.pattern)
       in
@@ -241,8 +239,7 @@ and descend_pattern = fun walk ctx (pattern: Cst.Pattern.t) ->
       List.fold_left attributes ~acc:ctx ~fn:walk.attribute
   | Cst.Pattern.Record { fields; attributes; _ } ->
       let ctx =
-        List.fold_left fields
-          ~acc:ctx
+        List.fold_left fields ~acc:ctx
           ~fn:(fun ctx (field: Cst.record_pattern_field) ->
             match field.pattern with
             | Some pattern -> walk.pattern ctx pattern
@@ -404,8 +401,7 @@ and descend_type_definition = fun walk ctx (type_definition: Cst.TypeDefinition.
   | Cst.TypeDefinition.Object { fields; _ } ->
       List.fold_left fields ~acc:ctx ~fn:walk.object_type_field
   | Cst.TypeDefinition.Record { fields; _ } ->
-      List.fold_left fields
-        ~acc:ctx
+      List.fold_left fields ~acc:ctx
         ~fn:(fun ctx field ->
           let ctx = List.fold_left (Cst.RecordField.attributes field) ~acc:ctx ~fn:walk.attribute in
           walk.core_type ctx (Cst.RecordField.field_type field))
@@ -420,8 +416,7 @@ and descend_variant_constructor = fun walk ctx (constructor: Cst.VariantConstruc
     match Cst.VariantConstructor.arguments constructor with
     | Some (Cst.ConstructorArguments.Tuple elements) -> List.fold_left elements ~acc:ctx ~fn:walk.core_type
     | Some (Cst.ConstructorArguments.Record { fields; _ }) ->
-        List.fold_left fields
-          ~acc:ctx
+        List.fold_left fields ~acc:ctx
           ~fn:(fun ctx field ->
             let ctx = List.fold_left (Cst.RecordField.attributes field) ~acc:ctx ~fn:walk.attribute in
             walk.core_type ctx (Cst.RecordField.field_type field))
@@ -530,15 +525,13 @@ and descend_record_expression = fun walk ctx (record_expression: Cst.RecordExpre
   match record_expression with
   | Cst.RecordExpression.Literal { fields; attributes; _ } ->
       let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
-      List.fold_left fields
-        ~acc:ctx
+      List.fold_left fields ~acc:ctx
         ~fn:(fun ctx (field: Cst.record_expression_field) ->
           walk.expression ctx field.value)
   | Cst.RecordExpression.Update { base; fields; attributes; _ } ->
       let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
       let ctx = walk.expression ctx base in
-      List.fold_left fields
-        ~acc:ctx
+      List.fold_left fields ~acc:ctx
         ~fn:(fun ctx (field: Cst.record_expression_field) ->
           walk.expression ctx field.value)
 
@@ -645,8 +638,7 @@ and descend_expression = fun walk ctx (expression: Cst.Expression.t) ->
       walk.expression ctx index
   | Cst.Expression.ObjectOverride { fields; attributes; _ } ->
       let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
-      List.fold_left fields
-        ~acc:ctx
+      List.fold_left fields ~acc:ctx
         ~fn:(fun ctx (field: Cst.object_override_field) ->
           match field.value with
           | Some value -> walk.expression ctx value
@@ -887,12 +879,7 @@ and descend_class_type_declaration = fun walk ctx (declaration: Cst.class_type_d
   walk.class_type ctx declaration.class_type_body
 
 and descend_module_signature = fun walk ctx (declaration: Cst.ModuleSignature.t) ->
-  let ctx =
-    List.fold_left
-      (Cst.ModuleSignature.functor_parameters declaration)
-      ~acc:ctx
-      ~fn:walk.functor_parameter
-  in
+  let ctx = List.fold_left (Cst.ModuleSignature.functor_parameters declaration) ~acc:ctx ~fn:walk.functor_parameter in
   let ctx =
     match Cst.ModuleSignature.definition declaration with
     | Cst.ModuleSignature.Signature module_type -> walk.module_type ctx module_type
@@ -903,12 +890,7 @@ and descend_module_signature = fun walk ctx (declaration: Cst.ModuleSignature.t)
   | None -> ctx
 
 and descend_module_structure = fun walk ctx (declaration: Cst.ModuleStructure.t) ->
-  let ctx =
-    List.fold_left
-      (Cst.ModuleStructure.functor_parameters declaration)
-      ~acc:ctx
-      ~fn:walk.functor_parameter
-  in
+  let ctx = List.fold_left (Cst.ModuleStructure.functor_parameters declaration) ~acc:ctx ~fn:walk.functor_parameter in
   let ctx =
     match Cst.ModuleStructure.module_type declaration with
     | Some module_type -> walk.module_type ctx module_type

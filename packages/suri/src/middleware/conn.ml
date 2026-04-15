@@ -173,5 +173,4 @@ let assign = fun key value t ->
   let _ = HashMap.insert t.assigns ~key ~value in
   ()
 
-let get_assign = fun key t ->
-  HashMap.get t.assigns ~key
+let get_assign = fun key t -> HashMap.get t.assigns ~key

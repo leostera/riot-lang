@@ -35,7 +35,8 @@ let diagnostic_for_binding = fun binding ->
   else
     let positional_params =
       parameters
-      |> List.filter ~fn:(
+      |> List.filter
+        ~fn:(
           function
           | Syn.Cst.Parameter.Positional _ -> true
           | Syn.Cst.Parameter.Labeled _
@@ -50,7 +51,9 @@ let diagnostic_for_binding = fun binding ->
         if first_name = Some "t" then
           None
         else if
-          List.any positional_params ~fn:(fun parameter -> Syn.Cst.Parameter.name parameter = Some "t")
+          List.any
+            positional_params
+            ~fn:(fun parameter -> Syn.Cst.Parameter.name parameter = Some "t")
         then
           positional_params
           |> List.find ~fn:(fun parameter -> Syn.Cst.Parameter.name parameter = Some "t")

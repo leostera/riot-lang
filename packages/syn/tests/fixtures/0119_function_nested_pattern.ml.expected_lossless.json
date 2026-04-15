@@ -398,24 +398,24 @@
                 ]
               },
               {
-                "type": "token",
-                "kind": "IDENT_EXPR",
-                "text": "|",
-                "width": 1,
-                "full_width": 4,
-                "leading_trivia": [
-                  {
-                    "kind": "WHITESPACE",
-                    "text": "\n  ",
-                    "width": 3
-                  }
-                ]
-              },
-              {
                 "type": "node",
                 "kind": "MATCH_CASE",
-                "width": 21,
+                "width": 25,
                 "children": [
+                  {
+                    "type": "token",
+                    "kind": "IDENT_EXPR",
+                    "text": "|",
+                    "width": 1,
+                    "full_width": 4,
+                    "leading_trivia": [
+                      {
+                        "kind": "WHITESPACE",
+                        "text": "\n  ",
+                        "width": 3
+                      }
+                    ]
+                  },
                   {
                     "type": "node",
                     "kind": "CONSTRUCTOR_PATTERN",

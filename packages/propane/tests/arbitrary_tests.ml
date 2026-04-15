@@ -1,25 +1,19 @@
 open Std
 open Propane
 
-let make_rng = fun seed ->
-  Random.Rng.standard ~seed:(Int.to_string seed) ()
-  |> Result.expect ~msg:"failed to create deterministic rng"
+let make_rng = fun seed -> Random.Rng.standard ~seed:(Int.to_string seed) () |> Result.expect ~msg:"failed to create deterministic rng"
 
 let test_make_preserves_supplied_components = fun _ctx ->
   let gen = Generator.return 7 in
-  let shrink = fun value -> [ value - 1 ] in
-  let print = fun value -> "value:" ^ Int.to_string value in
-  let small = fun value -> value in
+  let shrink value = [ value - 1 ] in
+  let print value = "value:" ^ Int.to_string value in
+  let small value = value in
   let arb = Arbitrary.make ~shrink ~print ~small gen in
   let rng = make_rng 1 in
   let generated = Generator.generate rng arb.gen in
   match (arb.shrink, arb.print, arb.small) with
   | (Some shrinker, Some printer, Some small_fn) ->
-      if generated = 7
-         && shrinker 7 = [ 6 ]
-         && printer 7 = "value:7"
-         && small_fn 7 = 7
-      then
+      if generated = 7 && shrinker 7 = [ 6 ] && printer 7 = "value:7" && small_fn 7 = 7 then
         Ok ()
       else
         Error "Arbitrary.make did not preserve the supplied components"
@@ -30,10 +24,11 @@ let test_int_wires_generator_shrinker_printer_and_small = fun _ctx ->
   let value = Generator.generate rng Arbitrary.int.gen in
   match (Arbitrary.int.shrink, Arbitrary.int.print, Arbitrary.int.small) with
   | (Some shrinker, Some printer, Some small_fn) ->
-      if printer 42 = "42"
-         && List.any (shrinker 100) ~fn:(fun candidate -> candidate = 0)
-         && small_fn (-42) = 42
-         && value >= Int.min_int
+      if
+        printer 42 = "42"
+        && List.any (shrinker 100) ~fn:(fun candidate -> candidate = 0)
+        && small_fn (-42) = 42
+        && value >= Int.min_int
       then
         Ok ()
       else
@@ -177,10 +172,7 @@ let test_map_preserves_inverse_driven_printer_and_small = fun _ctx ->
   let arb = Arbitrary.map Int.to_string Int.parse_unchecked Arbitrary.int in
   match (arb.shrink, arb.print, arb.small) with
   | (Some shrinker, Some printer, Some small) ->
-      if List.contains (shrinker "10") ~value:"0"
-         && printer "12" = "12"
-         && small "-9" = 9
-      then
+      if List.contains (shrinker "10") ~value:"0" && printer "12" = "12" && small "-9" = 9 then
         Ok ()
       else
         Error "Arbitrary.map did not preserve shrink, print, or small via the inverse mapping"
@@ -192,35 +184,32 @@ let test_map_gen_replaces_only_the_generator = fun _ctx ->
   let value = Generator.generate rng arb.gen in
   match (arb.shrink, arb.print, arb.small) with
   | (Some shrinker, Some printer, Some small) ->
-      if value = 7
-         && List.contains (shrinker 10) ~value:0
-         && printer 5 = "5"
-         && small (-4) = 4
-      then
+      if value = 7 && List.contains (shrinker 10) ~value:0 && printer 5 = "5" && small (-4) = 4 then
         Ok ()
       else
         Error "Arbitrary.map_gen should only replace the generator"
   | _ -> Error "Arbitrary.map_gen should preserve shrink, print, and small"
 
-let tests = Test.[
-  case "make preserves supplied components" test_make_preserves_supplied_components;
-  case "int wires generator shrinker printer and small" test_int_wires_generator_shrinker_printer_and_small;
-  case "list omits printer when element printer is missing" test_list_omits_printer_when_element_printer_is_missing;
-  case "list keeps structural shrinker without element shrinker" test_list_keeps_structural_shrinker_without_element_shrinker;
-  case "array small is array length" test_array_small_is_array_length;
-  case "vector small is vector length" test_vector_small_is_vector_length;
-  case "hashmap small is entry count" test_hashmap_small_is_entry_count;
-  case "hashset small is cardinality" test_hashset_small_is_cardinality;
-  case "queue small is length" test_queue_small_is_length;
-  case "deque small is length" test_deque_small_is_length;
-  case "heap small is size" test_heap_small_is_size;
-  case "pair requires both printers" test_pair_requires_both_printers;
-  case "pair requires both shrinkers" test_pair_requires_both_shrinkers;
-  case "option small counts none and some" test_option_small_counts_none_and_some;
-  case "result small counts payload size" test_result_small_counts_payload_size;
-  case "map preserves inverse driven printer and small" test_map_preserves_inverse_driven_printer_and_small;
-  case "map_gen replaces only the generator" test_map_gen_replaces_only_the_generator;
-]
+let tests =
+  Test.[
+    case "make preserves supplied components" test_make_preserves_supplied_components;
+    case "int wires generator shrinker printer and small" test_int_wires_generator_shrinker_printer_and_small;
+    case "list omits printer when element printer is missing" test_list_omits_printer_when_element_printer_is_missing;
+    case "list keeps structural shrinker without element shrinker" test_list_keeps_structural_shrinker_without_element_shrinker;
+    case "array small is array length" test_array_small_is_array_length;
+    case "vector small is vector length" test_vector_small_is_vector_length;
+    case "hashmap small is entry count" test_hashmap_small_is_entry_count;
+    case "hashset small is cardinality" test_hashset_small_is_cardinality;
+    case "queue small is length" test_queue_small_is_length;
+    case "deque small is length" test_deque_small_is_length;
+    case "heap small is size" test_heap_small_is_size;
+    case "pair requires both printers" test_pair_requires_both_printers;
+    case "pair requires both shrinkers" test_pair_requires_both_shrinkers;
+    case "option small counts none and some" test_option_small_counts_none_and_some;
+    case "result small counts payload size" test_result_small_counts_payload_size;
+    case "map preserves inverse driven printer and small" test_map_preserves_inverse_driven_printer_and_small;
+    case "map_gen replaces only the generator" test_map_gen_replaces_only_the_generator;
+  ]
 
 let () =
   Actors.run

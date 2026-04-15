@@ -116,9 +116,10 @@ let apply_filter = fun t query ->
   else
     let query_lower = String.lowercase_ascii query in
     let filtered =
-      List.filter t.all_items ~fn:(fun item ->
-        let rendered = String.lowercase_ascii (t.render item) in
-        string_contains rendered query_lower)
+      List.filter t.all_items
+        ~fn:(fun item ->
+          let rendered = String.lowercase_ascii (t.render item) in
+          string_contains rendered query_lower)
     in
     { t with filtered_items = filtered; filter_query = query } |> clamp_selection
 

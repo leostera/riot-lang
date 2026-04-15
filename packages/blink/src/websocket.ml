@@ -21,11 +21,9 @@ let generate_websocket_key = fun () ->
   let random_bytes = Bytes.create ~size:16 in
   for i = 0 to 15 do
     yield ();
-    Bytes.set_unchecked random_bytes ~at:i ~char:
-      (
-        Char.from_int_unchecked
-          (Random.int 256 |> Result.expect ~msg:"failed to generate websocket key byte")
-      )
+    Bytes.set_unchecked random_bytes ~at:i
+      ~char:(Char.from_int_unchecked
+        (Random.int 256 |> Result.expect ~msg:"failed to generate websocket key byte"))
   done;
   Encoding.Base64.encode_bytes random_bytes
 
@@ -203,10 +201,8 @@ let receive = fun conn ->
           | Http.Ws.Frame.Close ->
               conn.closed <- true;
               if String.length frame.payload >= 2 then
-                let code =
-                  (Char.code (String.get_unchecked frame.payload ~at:0) lsl 8)
-                  lor Char.code (String.get_unchecked frame.payload ~at:1)
-                in
+                let code = (Char.code (String.get_unchecked frame.payload ~at:0) lsl 8)
+                lor Char.code (String.get_unchecked frame.payload ~at:1) in
                 let reason =
                   if String.length frame.payload > 2 then
                     String.sub frame.payload ~offset:2 ~len:(String.length frame.payload - 2)

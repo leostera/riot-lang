@@ -47,10 +47,11 @@ let parse_fields = fun input ->
           let index = Vector.len groups in
           let values = Vector.with_capacity ~size:4 in
           Vector.push values ~value;
-          Vector.push groups ~value:({ key; values }: grouped_field_acc);
+          Vector.push groups ~value:(({ key; values }: grouped_field_acc));
           ignore (HashMap.insert indices ~key ~value:index))
     pairs;
-  Array.init ~count:(Vector.len groups) ~fn:(fun index ->
+  Array.init ~count:(Vector.len groups)
+    ~fn:(fun index ->
       let group = Vector.get_unchecked groups ~at:index in
       ({ key = group.key; values = Vector.to_array group.values }: grouped_field))
 
@@ -136,7 +137,8 @@ let rec backend: state De.backend = {
       match state.context with
       | Top_level -> unsupported_top_level "array"
       | Field_values values ->
-          Array.init ~count:(Array.length values) ~fn:(fun index ->
+          Array.init ~count:(Array.length values)
+            ~fn:(fun index ->
               let value = Array.get_unchecked values ~at:index in
               decode.run backend (state_of_value value)));
   record =

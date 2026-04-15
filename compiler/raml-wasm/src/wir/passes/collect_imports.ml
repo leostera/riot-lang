@@ -70,13 +70,10 @@ let collect_init_item = fun imports item ->
   | Types.Init_item.Eval expr -> collect_expr imports expr
 
 let program = fun (program: Types.Compilation_unit.t) ->
-  let imports =
-    empty_imports ()
+  let imports = empty_imports ()
+  |> fun imports ->
+    List.fold_left program.globals ~acc:imports ~fn:collect_global
     |> fun imports ->
-      List.fold_left program.globals ~acc:imports ~fn:collect_global
-      |> fun imports ->
-        List.fold_left program.functions ~acc:imports ~fn:collect_function
-      |> fun imports ->
-        List.fold_left program.init ~acc:imports ~fn:collect_init_item
-  in
+      List.fold_left program.functions ~acc:imports ~fn:collect_function
+      |> fun imports -> List.fold_left program.init ~acc:imports ~fn:collect_init_item in
   { program with imports = List.rev imports.ordered_rev }

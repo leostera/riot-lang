@@ -1,15 +1,15 @@
 open Std
 open Riot_build
 open Riot_model
+
+module Coordinator = Riot_build.Internal.Coordinator
+module Package_builder = Riot_build.Internal.Package_builder
+
 module Test = Std.Test
 
 let make_build_ctx = fun ?(parallelism = 2) () ->
   let session_id = Riot_model.Session_id.make () in
-  Riot_model.Build_ctx.make
-    ~session_id
-    ~profile:Riot_model.Profile.debug
-    ~available_parallelism:parallelism
-    ()
+  Riot_model.Build_ctx.make ~session_id ~profile:Riot_model.Profile.debug ~parallelism ()
 
 let write_package = fun ~root ~name ~lib_body ~deps ->
   let pkg_dir = Path.(root / Path.v name) in
@@ -38,13 +38,11 @@ let write_workspace = fun ~root members ->
   ()
 
 let make_registry = fun tmpdir ->
-  let cache =
-    Pkgs_ml.Registry_cache.create
-      ~riot_home:Path.(tmpdir / Path.v ".riot")
-      ~registry_name:"pkgs.ml"
-      ()
-    |> Result.expect ~msg:"registry cache init failed"
-  in
+  let cache = Pkgs_ml.Registry_cache.create
+    ~riot_home:Path.(tmpdir / Path.v ".riot")
+    ~registry_name:"pkgs.ml"
+    ()
+  |> Result.expect ~msg:"registry cache init failed" in
   Pkgs_ml.Registry.in_memory ~cache ~packages:[] ()
 
 let with_workspace = fun tmpdir f ->
@@ -52,14 +50,12 @@ let with_workspace = fun tmpdir f ->
   match Riot_model.Workspace_manager.scan workspace_manager tmpdir with
   | Error _ -> Error "workspace scan failed"
   | Ok (workspace_manifest, _load_errors) -> (
-      match
-        Riot_deps.ensure_workspace
-          ~workspace_manager
-          ~mode:Riot_deps.Dep_solver.Refresh
-          ~registry:(make_registry tmpdir)
-          ~workspace:workspace_manifest
-          ()
-      with
+      match Riot_deps.ensure_workspace
+        ~workspace_manager
+        ~mode:Riot_deps.Dep_solver.Refresh
+        ~registry:(make_registry tmpdir)
+        ~workspace:workspace_manifest
+        () with
       | Ok workspace -> f workspace
       | Error err -> Error ("workspace ensure failed: " ^ Riot_model.Pm_error.message err)
     )
@@ -93,7 +89,6 @@ let test_build_workspace_two_packages_success = fun _ctx ->
               ~store
               ~target:Riot_planner.Workspace_planner.All
               ~scope:Riot_planner.Package_graph.Runtime
-              ~concurrency:2
               ~build_ctx
               ~session_id:build_ctx.Riot_model.Build_ctx.session_id with
             | Error _ -> Error "workspace build failed"
@@ -131,7 +126,6 @@ let test_build_workspace_respects_serial_package_orchestration = fun _ctx ->
               ~store
               ~target:Riot_planner.Workspace_planner.All
               ~scope:Riot_planner.Package_graph.Runtime
-              ~concurrency:4
               ~build_ctx
               ~session_id:build_ctx.Riot_model.Build_ctx.session_id with
             | Error _ -> Error "workspace build failed"
@@ -169,7 +163,6 @@ let test_failed_dependency_updates_package_graph = fun _ctx ->
               ~store
               ~target:Riot_planner.Workspace_planner.All
               ~scope:Riot_planner.Package_graph.Runtime
-              ~concurrency:2
               ~build_ctx
               ~session_id:build_ctx.Riot_model.Build_ctx.session_id with
             | Error _ -> Error "workspace build failed"
@@ -181,7 +174,8 @@ let test_failed_dependency_updates_package_graph = fun _ctx ->
                 | None ->
                     let graph_nodes = Riot_planner.Package_graph.topological_sort result.package_graph
                     |> List.map
-                      ~fn:(fun node -> Riot_planner.Package_graph.get_key node |> Riot_model.Package.key_to_string) in
+                      ~fn:(fun node ->
+                        Riot_planner.Package_graph.get_key node |> Riot_model.Package.key_to_string) in
                     Error ("missing package graph node for failed package; graph keys=["
                     ^ String.concat ", " graph_nodes
                     ^ "]")

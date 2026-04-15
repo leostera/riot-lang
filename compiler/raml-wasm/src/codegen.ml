@@ -58,8 +58,7 @@ module Binary = struct
     payload: string;
   }
 
-  let byte = fun value ->
-    String.make ~len:1 ~char:(Char.chr value)
+  let byte = fun value -> String.make ~len:1 ~char:(Char.chr value)
 
   let bytes = fun values ->
     String.concat "" (List.map values ~fn:byte)
@@ -246,13 +245,9 @@ let rec collect_strings_from_expr = fun layout expr errors ->
         ~fn:(fun (layout, errors) argument -> collect_strings_from_expr layout argument errors)
 
 let collect_strings = fun (linked_program: Artifacts.Linked_program.t) ->
-  List.fold_left
-    linked_program.objects
-    ~acc:(Collections.HashMap.create (), [])
+  List.fold_left linked_program.objects ~acc:(Collections.HashMap.create (), [])
     ~fn:(fun (layout, errors) (object_: Artifacts.Object.t) ->
-      List.fold_left
-        object_.program.init
-        ~acc:(layout, errors)
+      List.fold_left object_.program.init ~acc:(layout, errors)
         ~fn:(fun (layout, errors) item ->
           match item with
           | Types.Init_item.Global global -> collect_strings_from_expr layout global.expr errors
@@ -612,19 +607,15 @@ let emit_linked_program = fun (linked_program: Artifacts.Linked_program.t) ->
   else if linked_program.function_table_elements <> [] then
     Error [ Unsupported_indirect_calls ]
   else
-    let functions =
-      linked_program.objects
-      |> List.map ~fn:(fun (object_: Artifacts.Object.t) -> object_.program.functions)
-      |> List.concat
-    in
+    let functions = linked_program.objects
+    |> List.map ~fn:(fun (object_: Artifacts.Object.t) -> object_.program.functions)
+    |> List.concat in
     let unsupported_functions =
       List.map functions ~fn:(fun function_ -> Unsupported_function function_)
     in
-    let globals =
-      linked_program.objects
-      |> List.map ~fn:(fun (object_: Artifacts.Object.t) -> object_.program.globals)
-      |> List.concat
-    in
+    let globals = linked_program.objects
+    |> List.map ~fn:(fun (object_: Artifacts.Object.t) -> object_.program.globals)
+    |> List.concat in
     let unsupported_globals =
       List.filter_map
         (fun (global: Types.Global.t) ->

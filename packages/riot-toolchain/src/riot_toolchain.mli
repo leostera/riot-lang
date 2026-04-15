@@ -54,7 +54,8 @@ val hash: t -> Crypto.hash
 val get_host_triple: unit -> Riot_model.Target.t
 
 (** Get the current host architecture triple *)
-val init_for_target: config:Riot_model.Toolchain_config.t -> target:Riot_model.Target.t -> (t, string) result
+val init_for_target:
+  config:Riot_model.Toolchain_config.t -> target:Riot_model.Target.t -> (t, string) result
 
 (** Initialize toolchain for a specific target architecture.
     
@@ -63,7 +64,8 @@ val init_for_target: config:Riot_model.Toolchain_config.t -> target:Riot_model.T
     - If target != host: Downloads and uses cross-compilation toolchain
     
     Returns Ok toolchain if ready, Error msg otherwise. *)
-val get_for_target: config:Riot_model.Toolchain_config.t -> target:Riot_model.Target.t -> (t, string) result
+val get_for_target:
+  config:Riot_model.Toolchain_config.t -> target:Riot_model.Target.t -> (t, string) result
 
 (** Get toolchain for specific target (lazy initialization).
     Equivalent to init_for_target but more explicit about intent. *)

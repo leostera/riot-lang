@@ -2,6 +2,9 @@ open Std
 open Riot_build
 open Std.Collections
 open Riot_model
+
+module Package_builder = Riot_build.Internal.Package_builder
+
 module Test = Std.Test
 
 let package_name = fun value ->
@@ -17,14 +20,15 @@ let make_test_build_ctx = fun () ->
 let workspace_dependency = fun name ->
   Riot_model.Package.{
     name = package_name name;
-    source = {
-      workspace = true;
-      builtin = false;
-      path = None;
-      source_locator = None;
-      ref_ = None;
-      version = None;
-    };
+    source =
+      {
+        workspace = true;
+        builtin = false;
+        path = None;
+        source_locator = None;
+        ref_ = None;
+        version = None;
+      };
   }
 
 let test_collect_source_files = fun _ctx ->
@@ -41,9 +45,11 @@ let test_collect_source_files = fun _ctx ->
         let _ = Fs.write "val x : int" mli_file |> Result.expect ~msg:"Write failed" in
         let _ = Fs.write "int main() {}" c_file |> Result.expect ~msg:"Write failed" in
         let _ = Fs.write "readme" txt_file |> Result.expect ~msg:"Write failed" in
-        let package =
-          Riot_model.Package.make ~name:(package_name "test") ~path:tmpdir ~relative_path:(Path.v ".") ()
-        in
+        let package = Riot_model.Package.make
+          ~name:(package_name "test")
+          ~path:tmpdir
+          ~relative_path:(Path.v ".")
+          () in
         let files = Package_builder.collect_source_files package in
         let has_ml =
           List.any files ~fn:(fun p -> Path.to_string p = Path.to_string ml_file)
@@ -78,9 +84,11 @@ let test_collect_source_files = fun _ctx ->
   | Error _ -> Error "Tempdir creation failed"
 
 let test_build_result_status_variants = fun _ctx ->
-  let package =
-    Riot_model.Package.make ~name:(package_name "test") ~path:(Path.v ".") ~relative_path:(Path.v ".") ()
-  in
+  let package = Riot_model.Package.make
+    ~name:(package_name "test")
+    ~path:(Path.v ".")
+    ~relative_path:(Path.v ".")
+    () in
   let artifact =
     Riot_store.Artifact.{
       hash = Crypto.hash_string "test";
@@ -141,12 +149,8 @@ let test_build_writes_hash_manifest_with_exports = fun _ctx ->
         let src_dir = Path.(package_dir / Path.v "src") in
         let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"create src dir failed" in
         let _ = Fs.write "let answer = 42\n" Path.(src_dir / Path.v "lib.ml") |> Result.expect ~msg:"write source failed" in
-        let package =
-          Riot_model.Package.make
-            ~name:(package_name "pkg")
-            ~path:package_dir
-            ~relative_path:(Path.v "pkg")
-            ~library:{ path = Path.v "src/lib.ml" }
+        let package = Riot_model.Package.make ~name:(package_name "pkg") ~path:package_dir ~relative_path:(Path.v
+          "pkg") ~library:{ path = Path.v "src/lib.ml" }
           ~sources:{
             src = [ Path.v "src/lib.ml" ];
             native = [];
@@ -156,13 +160,11 @@ let test_build_writes_hash_manifest_with_exports = fun _ctx ->
           }
           ()
         in
-        let workspace =
-          Riot_model.Workspace.make_realized
-            ~root:tmpdir
-            ~packages:[ package ]
-            ~target_dir:"target"
-            ()
-        in
+        let workspace = Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ package ]
+          ~target_dir:"target"
+          () in
         let store = Riot_store.Store.create ~workspace in
         let package_graph = Riot_planner.Package_graph.create
           ~scope:Riot_planner.Package_graph.Runtime workspace
@@ -205,12 +207,9 @@ let make_library_package = fun ~root ~name ?(dependencies = []) source ->
   let source_path = Path.(src_dir / Path.v (name ^ ".ml")) in
   let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"create src dir failed" in
   let _ = Fs.write source source_path |> Result.expect ~msg:"write source failed" in
-  Riot_model.Package.make
-    ~name:(package_name name)
-    ~path:package_dir
-    ~relative_path:(Path.v name)
-    ~dependencies:(List.map dependencies ~fn:workspace_dependency)
-    ~library:{ path = Path.v ("src/" ^ name ^ ".ml") }
+  Riot_model.Package.make ~name:(package_name name) ~path:package_dir ~relative_path:(Path.v name) ~dependencies:(List.map
+    dependencies
+    ~fn:workspace_dependency) ~library:{ path = Path.v ("src/" ^ name ^ ".ml") }
     ~sources:{
       src = [ Path.v ("src/" ^ name ^ ".ml") ];
       native = [];
@@ -225,84 +224,52 @@ let test_dependency_source_change_rebuilds_dependent_package = fun _ctx ->
     Fs.with_tempdir ~prefix:"pkg_builder_dep_rebuild"
       (fun tmpdir ->
         let dep = make_library_package ~root:tmpdir ~name:"dep" "let value = 1\n" in
-        let app =
-          make_library_package
-            ~root:tmpdir
-            ~name:"app"
-            ~dependencies:[ "dep" ]
-            "let value = Dep.value\n"
-        in
-        let workspace =
-          Riot_model.Workspace.make_realized
-            ~root:tmpdir
-            ~packages:[ dep; app ]
-            ~target_dir:"target"
-            ()
-        in
+        let app = make_library_package ~root:tmpdir ~name:"app" ~dependencies:[ "dep" ] "let value = Dep.value\n" in
+        let workspace = Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ dep; app ]
+          ~target_dir:"target"
+          () in
         let store = Riot_store.Store.create ~workspace in
         let build_ctx = make_test_build_ctx () in
-        let build_package = fun ~package_graph package ->
-          Package_builder.build
-            ~workspace
-            ~toolchain:test_toolchain
-            ~store
-            ~package_graph
-            ~package_key:(Riot_planner.Package_graph.package_key
-              ~package_name:(Package_name.to_string package.Riot_model.Package.name)
-              Riot_planner.Package_graph.Runtime)
-            ~package
-            ~build_ctx
-        in
-        let first_graph =
-          Riot_planner.Package_graph.create
-            ~scope:Riot_planner.Package_graph.Runtime
-            workspace
-          |> Result.unwrap
-        in
+        let build_package ~package_graph package = Package_builder.build
+          ~workspace
+          ~toolchain:test_toolchain
+          ~store
+          ~package_graph
+          ~package_key:(Riot_planner.Package_graph.package_key
+            ~package_name:(Package_name.to_string package.Riot_model.Package.name)
+            Riot_planner.Package_graph.Runtime)
+          ~package
+          ~build_ctx in
+        let first_graph = Riot_planner.Package_graph.create
+          ~scope:Riot_planner.Package_graph.Runtime workspace
+        |> Result.unwrap in
         let first_dep = build_package ~package_graph:first_graph dep in
         let first_app = build_package ~package_graph:first_graph app in
         let dep_source = Path.(dep.path / Path.v "src" / Path.v "dep.ml") in
         let _ = Fs.write "let value = 2\n" dep_source |> Result.expect ~msg:"rewrite dep source failed" in
-        let second_graph =
-          Riot_planner.Package_graph.create
-            ~scope:Riot_planner.Package_graph.Runtime
-            workspace
-          |> Result.unwrap
-        in
+        let second_graph = Riot_planner.Package_graph.create
+          ~scope:Riot_planner.Package_graph.Runtime workspace
+        |> Result.unwrap in
         let second_dep = build_package ~package_graph:second_graph dep in
         let second_app = build_package ~package_graph:second_graph app in
-        match
-          (
-            first_dep.status,
-            first_app.status,
-            second_dep.status,
-            second_app.status
-          )
-        with
-        | Package_builder.Built _,
-          Package_builder.Built first_app_artifact,
-          Package_builder.Built _,
-          Package_builder.Built second_app_artifact ->
+        match (first_dep.status, first_app.status, second_dep.status, second_app.status) with
+        | Package_builder.Built _, Package_builder.Built first_app_artifact, Package_builder.Built _, Package_builder.Built second_app_artifact ->
             if Crypto.Hash.equal first_app_artifact.hash second_app_artifact.hash then
               Error "expected dependent package artifact hash to change after dependency source edit"
             else
               Ok ()
-        | Package_builder.Built _,
-          Package_builder.Built _,
-          Package_builder.Built _,
-          Package_builder.Cached _ ->
-            Error "expected dependent package rebuild after dependency source edit"
-        | _, _, _, Package_builder.Failed err ->
-            Error ("dependent rebuild failed: " ^ Package_builder.package_error_to_string err)
-        | _, Package_builder.Failed err, _, _ ->
-            Error ("initial dependent build failed: " ^ Package_builder.package_error_to_string err)
-        | Package_builder.Failed err, _, _, _ ->
-            Error ("initial dependency build failed: " ^ Package_builder.package_error_to_string err)
-        | _, _, Package_builder.Failed err, _ ->
-            Error ("dependency rebuild failed: " ^ Package_builder.package_error_to_string err)
-        | _ ->
-            Error "unexpected build status sequence"
-      )
+        | Package_builder.Built _, Package_builder.Built _, Package_builder.Built _, Package_builder.Cached _ -> Error "expected dependent package rebuild after dependency source edit"
+        | _, _, _, Package_builder.Failed err -> Error ("dependent rebuild failed: "
+        ^ Package_builder.package_error_to_string err)
+        | _, Package_builder.Failed err, _, _ -> Error ("initial dependent build failed: "
+        ^ Package_builder.package_error_to_string err)
+        | Package_builder.Failed err, _, _, _ -> Error ("initial dependency build failed: "
+        ^ Package_builder.package_error_to_string err)
+        | _, _, Package_builder.Failed err, _ -> Error ("dependency rebuild failed: "
+        ^ Package_builder.package_error_to_string err)
+        | _ -> Error "unexpected build status sequence")
   with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"

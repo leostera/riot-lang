@@ -378,15 +378,13 @@ let init_registry = fun () ->
     ~fn:(fun error -> RegistryInitializationFailed { registry = registry_name; error })
 
 let ensure_loaded_workspace = fun ~workspace_manager ~registry ~(workspace:Workspace_manifest.t) ~package_name () ->
-  let* workspace =
-    Workspace_resolution.ensure_workspace
-      ~workspace_manager
-      ~mode:Dep_solver.Refresh
-      ~registry
-      ~workspace
-      ()
-    |> Result.map_err ~fn:(fun error -> LockRefreshFailed error)
-  in
+  let* workspace = Workspace_resolution.ensure_workspace
+    ~workspace_manager
+    ~mode:Dep_solver.Refresh
+    ~registry
+    ~workspace
+    ()
+  |> Result.map_err ~fn:(fun error -> LockRefreshFailed error) in
   Ok { workspace; package_name }
 
 let select_materialized_package = fun ~(workspace:Riot_model.Workspace_manifest.t) ?preferred_package_name ~package_root () ->
@@ -757,13 +755,15 @@ let load_source_workspace_from_spec = fun ?(emit = no_emit) ~workspace_manager ?
   let* registry = init_registry () in
   let loaded =
     match decode_detached_package ~package_root:materialized.package_root with
-    | Ok package ->
-        ensure_loaded_workspace
-          ~workspace_manager
-          ~registry
-          ~workspace:(Riot_model.Workspace_manifest.make ~root:materialized.package_root ~packages:[ package ] ())
-          ~package_name:package.name
-          ()
+    | Ok package -> ensure_loaded_workspace
+      ~workspace_manager
+      ~registry
+      ~workspace:(Riot_model.Workspace_manifest.make
+        ~root:materialized.package_root
+        ~packages:[ package ]
+        ())
+      ~package_name:package.name
+      ()
     | Error _ -> (
         let* workspace = scan_workspace_from_root
           ~workspace_manager
@@ -773,12 +773,7 @@ let load_source_workspace_from_spec = fun ?(emit = no_emit) ~workspace_manager ?
           ~workspace
           ~package_root:materialized.package_root
           () in
-        ensure_loaded_workspace
-          ~workspace_manager
-          ~registry
-          ~workspace
-          ~package_name
-          ()
+        ensure_loaded_workspace ~workspace_manager ~registry ~workspace ~package_name ()
       )
   in
   let* loaded = loaded in
@@ -923,14 +918,12 @@ let load_registry_workspace_from_spec = fun ?(emit = no_emit) ?registry ~workspa
         registry = registry_name;
         error = err
       }) in
-  let* loaded =
-    ensure_loaded_workspace
-      ~workspace_manager
-      ~registry
-      ~workspace:(Riot_model.Workspace_manifest.make ~root:package_root ~packages:[ package ] ())
-      ~package_name:package.name
-      ()
-  in
+  let* loaded = ensure_loaded_workspace
+    ~workspace_manager
+    ~registry
+    ~workspace:(Riot_model.Workspace_manifest.make ~root:package_root ~packages:[ package ] ())
+    ~package_name:package.name
+    () in
   emit
     (Riot_model.Event.PackageResolvedForBuild {
       package = loaded.package_name;

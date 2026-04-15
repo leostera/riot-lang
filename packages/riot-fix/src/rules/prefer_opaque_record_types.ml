@@ -66,14 +66,12 @@ let diagnostic_for_type_declaration = fun value_declarations decl ->
       match Syn.Cst.TypeDeclaration.type_definition decl with
       | Syn.Cst.TypeDefinition.Record { fields; _ } ->
           let field_names = fields |> List.map ~fn:Syn.Cst.RecordField.name in
-          let accessor_names =
-            value_declarations
-            |> List.filter ~fn:is_accessor_of_t
-            |> List.map ~fn:(fun (value_decl: Syn.Cst.value_declaration) ->
+          let accessor_names = value_declarations
+          |> List.filter ~fn:is_accessor_of_t
+          |> List.map
+            ~fn:(fun (value_decl: Syn.Cst.value_declaration) ->
               value_decl.name_tokens |> List.map ~fn:Syn.Cst.Token.text |> String.concat "")
-            |> List.filter ~fn:(fun name ->
-              List.contains field_names ~value:name)
-          in
+          |> List.filter ~fn:(fun name -> List.contains field_names ~value:name) in
           if List.length accessor_names > 0 then
             Some (make_diagnostic decl accessor_names)
           else
@@ -93,13 +91,15 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
       | Some items ->
           let value_declarations =
             items
-            |> List.filter_map ~fn:(
+            |> List.filter_map
+              ~fn:(
                 function
                 | Syn.Cst.SignatureItem.ValueDeclaration decl -> Some decl
                 | _ -> None
               )
           in
-          items |> List.filter_map ~fn:(
+          items |> List.filter_map
+            ~fn:(
               function
               | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostic_for_type_declaration
                 value_declarations

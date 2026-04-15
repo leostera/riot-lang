@@ -159,13 +159,19 @@ let run = fun matches ->
               Ok ()
           | Ok (workspace, _load_errors) ->
               if has_packages then
-                List.for_each (Shell_completions.list_packages workspace) ~fn:(fun pkg -> println pkg);
+                List.for_each
+                  (Shell_completions.list_packages workspace)
+                  ~fn:(fun pkg -> println pkg);
               if has_binaries then
-                List.for_each (Shell_completions.list_binaries workspace) ~fn:(fun bin -> println bin);
+                List.for_each
+                  (Shell_completions.list_binaries workspace)
+                  ~fn:(fun bin -> println bin);
               if has_tests then
                 List.for_each (Shell_completions.list_tests workspace) ~fn:(fun test -> println test);
               if has_benchmarks then
-                List.for_each (Shell_completions.list_benchmarks workspace) ~fn:(fun bench -> println bench);
+                List.for_each
+                  (Shell_completions.list_benchmarks workspace)
+                  ~fn:(fun bench -> println bench);
               if has_commands then
                 (
                   let command_lines = Shell_completions.list_commands workspace in

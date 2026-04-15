@@ -115,9 +115,10 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.for_each bufs ~fn:(fun { buffer = chunk; offset; length } ->
-        IO.Buffer.add_subbytes buffer chunk offset length;
-        written := !written + length);
+      IO.Iovec.for_each bufs
+        ~fn:(fun { buffer=chunk; offset; length } ->
+          IO.Buffer.add_subbytes buffer chunk offset length;
+          written := !written + length);
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -292,8 +293,7 @@ let tags_of_count = fun count ->
   done;
   tags
 
-let scores_of_count = fun count ->
-  Array.init ~count ~fn:(fun index -> (index * 97) mod 1_000_000)
+let scores_of_count = fun count -> Array.init ~count ~fn:(fun index -> (index * 97) mod 1_000_000)
 
 let vec_to_list = fun values ->
   let items = ref [] in
@@ -381,10 +381,7 @@ let berth_of_toml = fun value ->
 
 let vec_of_list = fun values ->
   let vec = Vector.with_capacity ~size:(List.length values) in
-  List.iter
-    (fun value ->
-      Vector.push vec ~value)
-    values;
+  List.iter (fun value -> Vector.push vec ~value) values;
   vec
 
 let manifest_of_toml = fun value ->

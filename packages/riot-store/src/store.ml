@@ -9,13 +9,9 @@ module Manifest = Manifest
 
 let ( let* ) result fn = Result.and_then result ~fn
 
-let artifacts_namespace =
-  Contentstore.Namespace.from_parts [ "artifacts" ]
-  |> Result.expect ~msg:"riot-store artifacts namespace should be valid"
+let artifacts_namespace = Contentstore.Namespace.from_parts [ "artifacts" ] |> Result.expect ~msg:"riot-store artifacts namespace should be valid"
 
-let plans_namespace =
-  Contentstore.Namespace.from_parts [ "plans" ]
-  |> Result.expect ~msg:"riot-store plans namespace should be valid"
+let plans_namespace = Contentstore.Namespace.from_parts [ "plans" ] |> Result.expect ~msg:"riot-store plans namespace should be valid"
 
 type t = {
   content_store: ContentStore.t;
@@ -135,23 +131,24 @@ let error_message = function
 (** Create a store rooted at a specific build lane *)
 let create_for_lane = fun ~(workspace:Workspace.t) ~profile ~target ->
   let store_dir =
-    Path.(
-      workspace.target_dir_root
-      / Path.v profile
-      / Path.v (Riot_model.Target.to_string target)
-      / Path.v "cache")
-  in
+    Path.(workspace.target_dir_root
+    / Path.v profile
+    / Path.v (Riot_model.Target.to_string target)
+    / Path.v "cache") in
   {
-    content_store = ContentStore.create ~root:store_dir ~ns:artifacts_namespace ~policy:Contentstore.Policy.default;
-    plan_store = ContentStore.create ~root:store_dir ~ns:plans_namespace ~policy:Contentstore.Policy.default;
+    content_store = ContentStore.create
+      ~root:store_dir
+      ~ns:artifacts_namespace
+      ~policy:Contentstore.Policy.default;
+    plan_store = ContentStore.create
+      ~root:store_dir
+      ~ns:plans_namespace
+      ~policy:Contentstore.Policy.default
   }
 
 (** Create a new store for the given workspace *)
 let create = fun ~(workspace:Workspace.t) ->
-  create_for_lane
-    ~workspace
-    ~profile:"debug"
-    ~target:(Riot_dirs.host_target ())
+  create_for_lane ~workspace ~profile:"debug" ~target:(Riot_dirs.host_target ())
 
 (** Get the path for a given hash in the store *)
 let get_hash_dir = fun store hash ->
@@ -185,19 +182,11 @@ let artifact_temp_dir = fun store hash ->
   let nanos = Time.SystemTime.duration_since_epoch () |> Time.Duration.to_nanos in
   let pid = Process.id () |> Int32.to_string in
   let nonce = next_artifact_temp_nonce () |> Int64.to_string in
-  let temp_name =
-    Std.Crypto.Digest.hex hash
-    ^ ".tmp."
-    ^ pid
-    ^ "."
-    ^ Int64.to_string nanos
-    ^ "."
-    ^ nonce
-  in
+  let temp_name = Std.Crypto.Digest.hex hash ^ ".tmp." ^ pid ^ "." ^ Int64.to_string nanos ^ "." ^ nonce in
   Path.(ContentStore.root store.content_store / Path.v temp_name)
 
 let hash_of_hex = fun hex ->
-  let hex_nibble = fun ch ->
+  let hex_nibble ch =
     match ch with
     | '0' .. '9' -> Some (Char.code ch - Char.code '0')
     | 'a' .. 'f' -> Some (10 + Char.code ch - Char.code 'a')
@@ -332,7 +321,7 @@ let store_artifacts = fun store ~package ?(ocamlc_warnings = []) ?(exports = [])
         CommitArtifactsFailed {
           source_dir = temp_dir;
           destination_dir = hash_dir;
-          cause = ContentStore.error_message cause;
+          cause = ContentStore.error_message cause
         }) in
     let stored_files =
       List.map stored_files_with_sizes ~fn:(fun (path, _) -> path)
@@ -414,11 +403,7 @@ let hash_dir_of = fun store hash -> get_hash_dir store hash
 let save_plan_bundle = fun store ~hash ~plan ->
   ContentStore.save_object store.plan_store ~hash ~content:(Std.Data.Json.to_string plan)
   |> Result.map_err
-    ~fn:(fun cause ->
-      SavePlanBundleFailed {
-        hash;
-        cause = ContentStore.error_message cause;
-      })
+    ~fn:(fun cause -> SavePlanBundleFailed { hash; cause = ContentStore.error_message cause })
 
 let load_plan_bundle = fun store ~hash ->
   match ContentStore.open_object store.plan_store ~hash with

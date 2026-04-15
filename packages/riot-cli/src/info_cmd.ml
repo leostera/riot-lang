@@ -21,7 +21,9 @@ let rec toml_json = function
   | Data.Toml.String value -> Data.Json.String value
   | Data.Toml.Int value -> Data.Json.Int value
   | Data.Toml.Array values -> Data.Json.Array (List.map values ~fn:toml_json)
-  | Data.Toml.Table fields -> Data.Json.Object (List.map fields ~fn:(fun (key, value) -> (key, toml_json value)))
+  | Data.Toml.Table fields -> Data.Json.Object (List.map
+    fields
+    ~fn:(fun (key, value) -> (key, toml_json value)))
   | Data.Toml.Bool value -> Data.Json.Bool value
 
 let workspace_kind = fun ~(workspace_manager:Workspace_manager.t) (workspace: Workspace_manifest.t) ->
@@ -29,7 +31,9 @@ let workspace_kind = fun ~(workspace_manager:Workspace_manager.t) (workspace: Wo
   match Workspace_manager.load_riot_toml workspace_manager manifest_path with
   | Ok toml -> (
       match Data.Toml.get_table toml with
-      | Some fields when List.any fields ~fn:(fun (name, _) -> String.equal name "workspace") -> Workspace
+      | Some fields when List.any fields
+        ~fn:(fun (name, _) ->
+          String.equal name "workspace") -> Workspace
       | _ -> Package
     )
   | Error _ -> Workspace
@@ -50,9 +54,8 @@ let relative_or_absolute_path = fun ~root path ->
   | Error _ -> Path.to_string path
 
 let workspace_packages = fun (workspace: Workspace_manifest.t) ->
-  workspace.packages
-  |> List.filter ~fn:Package_manifest.is_workspace_member
-  |> List.sort ~compare:(fun (left: Package_manifest.t) (right: Package_manifest.t) ->
+  workspace.packages |> List.filter ~fn:Package_manifest.is_workspace_member |> List.sort
+    ~compare:(fun (left: Package_manifest.t) (right: Package_manifest.t) ->
       Package_name.compare left.name right.name)
 
 let manifest_path = fun path -> Path.normalize Path.(path / Path.v "riot.toml")
@@ -115,7 +118,9 @@ let error_json = fun ~kind ~message ->
     ("error", Data.Json.String message);
   ]
 
-let print_workspace = fun ~(load_errors:Workspace_manager.load_error list) (workspace: Workspace_manifest.t) ->
+let print_workspace = fun ~(load_errors:Workspace_manager.load_error list) (
+  workspace: Workspace_manifest.t
+) ->
   let workspace_manager = Workspace_manager.create () in
   let kind = workspace_kind ~workspace_manager workspace in
   let workspace_manifest_path = manifest_path workspace.root in
@@ -131,8 +136,8 @@ let print_workspace = fun ~(load_errors:Workspace_manager.load_error list) (work
   println ("Target dir: " ^ Path.to_string workspace.target_dir_root);
   println "";
   println "Packages:";
-  workspace_packages workspace |> List.for_each ~fn:
-    (fun (pkg: Package_manifest.t) ->
+  workspace_packages workspace |> List.for_each
+    ~fn:(fun (pkg: Package_manifest.t) ->
       let package_manifest_path = manifest_path pkg.path in
       println
         ("  - "

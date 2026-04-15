@@ -71,7 +71,10 @@ let decode_credentials = fun auth_header ->
           match String.index_of decoded ~char:':' with
           | Option.Some idx ->
               let username = String.sub decoded ~offset:0 ~len:idx in
-              let password = String.sub decoded ~offset:(idx + 1) ~len:(String.length decoded - idx - 1) in
+              let password = String.sub
+                decoded
+                ~offset:(idx + 1)
+                ~len:(String.length decoded - idx - 1) in
               Option.some (username, password)
           | Option.None -> Option.none
         )

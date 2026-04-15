@@ -45,14 +45,11 @@ let named_object_segments = fun ~ns ~key ->
   let key_hash = Crypto.hash_string key |> Crypto.Digest.hex in
   "named" :: Namespace.parts ns @ [ shard_of_hex key_hash; key_hash ]
 
-let tree_dir = fun root hash ->
-  path_of_segments root (tree_segments hash)
+let tree_dir = fun root hash -> path_of_segments root (tree_segments hash)
 
-let object_path = fun root ~ns ~hash ->
-  path_of_segments root (object_segments ~ns ~hash)
+let object_path = fun root ~ns ~hash -> path_of_segments root (object_segments ~ns ~hash)
 
-let named_object_path = fun root ~ns ~key ->
-  path_of_segments root (named_object_segments ~ns ~key)
+let named_object_path = fun root ~ns ~key -> path_of_segments root (named_object_segments ~ns ~key)
 
 let temp_segments = fun ~scope ~seed ->
   let pid = Process.id () |> Int32.to_string in
@@ -60,5 +57,4 @@ let temp_segments = fun ~scope ~seed ->
   let counter = Sync.Atomic.fetch_and_add temp_counter 1 |> Int.to_string in
   [ "tmp"; scope_segment scope; seed ^ "." ^ pid ^ "." ^ nanos ^ "." ^ counter ^ ".tmp" ]
 
-let temp_path = fun root ~scope ~seed ->
-  path_of_segments root (temp_segments ~scope ~seed)
+let temp_path = fun root ~scope ~seed -> path_of_segments root (temp_segments ~scope ~seed)

@@ -55,13 +55,20 @@ let read_int64 = fun reader ->
     None
   else
     let b1 = Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:reader.offset))) in
-    let b2 = Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 1)))) in
-    let b3 = Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 2)))) in
-    let b4 = Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 3)))) in
-    let b5 = Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 4)))) in
-    let b6 = Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 5)))) in
-    let b7 = Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 6)))) in
-    let b8 = Int64.of_int (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 7)))) in
+    let b2 = Int64.of_int
+      (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 1)))) in
+    let b3 = Int64.of_int
+      (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 2)))) in
+    let b4 = Int64.of_int
+      (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 3)))) in
+    let b5 = Int64.of_int
+      (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 4)))) in
+    let b6 = Int64.of_int
+      (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 5)))) in
+    let b7 = Int64.of_int
+      (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 6)))) in
+    let b8 = Int64.of_int
+      (Char.code (Option.unwrap (Bytes.get reader.bytes ~at:(reader.offset + 7)))) in
     reader.offset <- reader.offset + 8;
     let result =
       Int64.(logor

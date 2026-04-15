@@ -108,7 +108,7 @@ let rec parse_content_type_string = fun value ->
   let rec parse_params str acc =
     let str = String.trim str in
     let str =
-        if String.starts_with ~prefix:";" str then
+      if String.starts_with ~prefix:";" str then
         String.trim (String.sub str ~offset:1 ~len:(String.length str - 1))
       else
         str
@@ -214,7 +214,9 @@ and combine_rfc2231_params = fun raw_params ->
           ~compare:(fun ((a, _)) ((b, _)) ->
             Int.compare a b)
       in
-      let value = String.concat "" (List.map ~fn:(fun (_, value) -> value) parts) in
+      let value =
+        String.concat "" (List.map ~fn:(fun (_, value) -> value) parts)
+      in
       Cell.set combined ((name, value) :: Cell.get combined));
   Cell.get combined
 
@@ -229,14 +231,14 @@ let parse_content_type = fun value ->
 
 let parse_content_disposition = fun value ->
   let value = String.trim value in
-    let disp_type, params =
+  let disp_type, params =
     match String.index_of value ~char:';' with
-      | None -> (value, [])
-      | Some idx ->
-          let dtype = String.trim (String.sub value ~offset:0 ~len:idx) in
-          let rest = String.sub value ~offset:(idx + 1) ~len:(String.length value - idx - 1) in
-          let (_, parameters) = parse_content_type_string ("x;" ^ rest) in
-          (dtype, parameters)
+    | None -> (value, [])
+    | Some idx ->
+        let dtype = String.trim (String.sub value ~offset:0 ~len:idx) in
+        let rest = String.sub value ~offset:(idx + 1) ~len:(String.length value - idx - 1) in
+        let (_, parameters) = parse_content_type_string ("x;" ^ rest) in
+        (dtype, parameters)
   in
   let filename = List.assoc_opt "filename" params in
   match String.lowercase_ascii disp_type with
@@ -254,8 +256,7 @@ let parse_header = fun ((name, value)) ->
   | "content-description" -> ContentDescription value
   | _ -> Other (name, value)
 
-let parse_headers = fun raw_headers ->
-  List.map ~fn:parse_header raw_headers
+let parse_headers = fun raw_headers -> List.map ~fn:parse_header raw_headers
 
 let parse_part_headers_and_body = fun content ->
   let lines = String.split_on_char '\n' content in
@@ -274,7 +275,8 @@ let parse_part_headers_and_body = fun content ->
               let value_start = idx + 1 in
               let value =
                 if value_start < String.length line then
-                  String.trim (String.sub line ~offset:value_start ~len:(String.length line - value_start))
+                  String.trim
+                    (String.sub line ~offset:value_start ~len:(String.length line - value_start))
                 else
                   ""
               in
@@ -391,9 +393,8 @@ let quoted_printable_decode = fun s ->
       else if String.get_unchecked s ~at:(i + 1) = '\n' then
         decode (i + 2)
       else if
-        String.get_unchecked s ~at:(i + 1) = '\r'
-        && i + 2 < len
-        && String.get_unchecked s ~at:(i + 2) = '\n'
+        String.get_unchecked s ~at:(i + 1)
+        = '\r' && i + 2 < len && String.get_unchecked s ~at:(i + 2) = '\n'
       then
         decode (i + 3)
       else if i + 2 < len then

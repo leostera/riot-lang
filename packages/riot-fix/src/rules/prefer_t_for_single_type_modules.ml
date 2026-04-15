@@ -29,22 +29,24 @@ let single_type_decl_token = fun (decl: Syn.Cst.TypeDeclaration.t) ->
 
 let single_structure_type_decl_token = fun items ->
   match
-    List.filter_map
-      items
-      ~fn:(function
+    List.filter_map items
+      ~fn:(
+        function
         | Syn.Cst.StructureItem.TypeDeclaration decl -> Some decl
-        | _ -> None)
+        | _ -> None
+      )
   with
   | [ decl ] -> single_type_decl_token decl
   | _ -> None
 
 let single_signature_type_decl_token = fun items ->
   match
-    List.filter_map
-      items
-      ~fn:(function
+    List.filter_map items
+      ~fn:(
+        function
         | Syn.Cst.SignatureItem.TypeDeclaration decl -> Some decl
-        | _ -> None)
+        | _ -> None
+      )
   with
   | [ decl ] -> single_type_decl_token decl
   | _ -> None
@@ -84,32 +86,36 @@ let diagnostic_for_module_type_decl = fun decl ->
 let diagnostics_for_items = fun source_file ->
   match source_file with
   | Syn.Cst.Implementation { items; _ } ->
-      items
-      |> List.filter_map ~fn:(function
-        | Syn.Cst.StructureItem.ModuleDeclaration decl -> diagnostic_for_module_structure decl
-        | Syn.Cst.StructureItem.ModuleTypeDeclaration decl -> diagnostic_for_module_type_decl decl
-        | _ -> None)
+      items |> List.filter_map
+        ~fn:(
+          function
+          | Syn.Cst.StructureItem.ModuleDeclaration decl -> diagnostic_for_module_structure decl
+          | Syn.Cst.StructureItem.ModuleTypeDeclaration decl -> diagnostic_for_module_type_decl decl
+          | _ -> None
+        )
   | Syn.Cst.Interface { items; _ } ->
-      items
-      |> List.filter_map ~fn:(function
-        | Syn.Cst.SignatureItem.ModuleDeclaration decl -> (
-            match Syn.Cst.ModuleSignature.definition decl with
-            | Syn.Cst.ModuleSignature.Signature module_type -> (
-                match Syn.CstBuilder.signature_items_of_module_type module_type with
-                | Ok items -> (
-                    match single_signature_type_decl_token items with
-                    | Some token when Syn.Ceibo.Red.SyntaxToken.text token != "t" ->
-                        Some (make_diagnostic token)
-                    | _ -> None
-                  )
-                | Error _ -> None
-              )
-            | Syn.Cst.ModuleSignature.Alias _ -> None
-          )
-        | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl ->
-            diagnostic_for_module_type_decl decl
-        | _ ->
-            None)
+      items |> List.filter_map
+        ~fn:(
+          function
+          | Syn.Cst.SignatureItem.ModuleDeclaration decl -> (
+              match Syn.Cst.ModuleSignature.definition decl with
+              | Syn.Cst.ModuleSignature.Signature module_type -> (
+                  match Syn.CstBuilder.signature_items_of_module_type module_type with
+                  | Ok items -> (
+                      match single_signature_type_decl_token items with
+                      | Some token when Syn.Ceibo.Red.SyntaxToken.text token != "t" -> Some (make_diagnostic
+                        token)
+                      | _ -> None
+                    )
+                  | Error _ -> None
+                )
+              | Syn.Cst.ModuleSignature.Alias _ -> None
+            )
+          | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl ->
+              diagnostic_for_module_type_decl decl
+          | _ ->
+              None
+        )
 
 let make = fun () ->
   Rule.make ~id:rule_id ~description:rule_description ~explain:rule_explain

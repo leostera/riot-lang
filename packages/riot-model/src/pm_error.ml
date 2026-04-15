@@ -358,7 +358,8 @@ let rec of_json = function
             fields with
           | Some (Json.String dependency_name), Some path_json, Some (Json.String error) -> path_of_json
             path_json
-          |> Result.map ~fn:(fun manifest_path ->
+          |> Result.map
+            ~fn:(fun manifest_path ->
               PathDependencyDecodeFailed { dependency_name; manifest_path; error })
           | _ -> Error "invalid PathDependencyDecodeFailed"
         )
@@ -375,7 +376,8 @@ let rec of_json = function
                 | Some _ -> Error "invalid SourceDependencyLoadFailed.ref"
               in
               ref_
-              |> Result.map ~fn:(fun ref_ ->
+              |> Result.map
+                ~fn:(fun ref_ ->
                   SourceDependencyLoadFailed { dependency_name; source_locator; ref_; error })
           | _ -> Error "invalid SourceDependencyLoadFailed"
         )
@@ -385,7 +387,8 @@ let rec of_json = function
             fields with
           | Some (Json.String dependency_name), Some path_json, Some (Json.String error) -> path_of_json
             path_json
-          |> Result.map ~fn:(fun manifest_path ->
+          |> Result.map
+            ~fn:(fun manifest_path ->
               SourceDependencyDecodeFailed { dependency_name; manifest_path; error })
           | _ -> Error "invalid SourceDependencyDecodeFailed"
         )
@@ -398,9 +401,9 @@ let rec of_json = function
           | _ -> Error "invalid RegistryLatestReleaseMissing"
         )
       | Some (Json.String "RegistryReleaseYanked") -> (
-          match Fields.get "package" fields, Fields.get "registry" fields, Fields.get
-            "version"
-            fields, Fields.get "required_by" fields with
+          match Fields.get "package" fields, Fields.get "registry" fields, Fields.get "version" fields, Fields.get
+            "required_by"
+            fields with
           | Some (Json.String package), Some (Json.String registry), Some (Json.String version), required_by_json_opt ->
               let required_by =
                 match required_by_json_opt with
@@ -421,13 +424,13 @@ let rec of_json = function
                     Error "invalid RegistryReleaseYanked.required_by"
               in
               required_by
-              |> Result.map ~fn:(fun required_by -> RegistryReleaseYanked { package; registry; version; required_by })
+              |> Result.map
+                ~fn:(fun required_by ->
+                  RegistryReleaseYanked { package; registry; version; required_by })
           | _ -> Error "invalid RegistryReleaseYanked"
         )
       | Some (Json.String "PackageMetadataReadFailed") -> (
-          match Fields.get "package" fields, Fields.get "registry" fields, Fields.get
-            "error"
-            fields with
+          match Fields.get "package" fields, Fields.get "registry" fields, Fields.get "error" fields with
           | Some (Json.String package), Some (Json.String registry), Some (Json.String error) -> Ok (PackageMetadataReadFailed {
             package;
             registry;
@@ -460,13 +463,14 @@ let rec of_json = function
                     Error "invalid PackageNotFound.required_by"
               in
               required_by
-              |> Result.map ~fn:(fun required_by -> PackageNotFound { package; registry; required_by })
+              |> Result.map
+                ~fn:(fun required_by -> PackageNotFound { package; registry; required_by })
           | _ -> Error "invalid PackageNotFound"
         )
       | Some (Json.String "RegistryVersionNotFound") -> (
-          match Fields.get "package" fields, Fields.get "registry" fields, Fields.get
-            "requirement"
-            fields, Fields.get "available_versions" fields, Fields.get "required_by" fields with
+          match Fields.get "package" fields, Fields.get "registry" fields, Fields.get "requirement" fields, Fields.get
+            "available_versions"
+            fields, Fields.get "required_by" fields with
           | Some (Json.String package), Some (Json.String registry), Some (Json.String requirement), Some (Json.Array available_versions), required_by_json_opt ->
               let available_versions =
                 let rec loop acc = function

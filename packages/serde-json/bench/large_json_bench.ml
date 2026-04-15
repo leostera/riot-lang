@@ -1,5 +1,4 @@
 open Std
-
 module Vector = Collections.Vector
 
 let ( let* ) value fn = Result.and_then value ~fn

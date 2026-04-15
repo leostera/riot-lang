@@ -17,13 +17,11 @@ val build_workspace:
   store:Riot_store.Store.t ->
   target:Workspace_planner.target ->
   scope:Package_graph.build_scope ->
-  concurrency:int ->
   build_ctx:Build_ctx.t ->
   session_id:Session_id.t ->
   (workspace_result, Workspace_planner.plan_error) result
 
 (** Plan and execute a workspace build.
 
-    Concurrency ownership is action-scoped: [concurrency] must be threaded into
-    [build_ctx.available_parallelism], and package orchestration must not create
-    an additional competing worker pool. *)
+    Scheduler concurrency is sourced from `build_ctx.parallelism`; package
+    orchestration must not create additional competing worker pools. *)

@@ -190,7 +190,11 @@ let instantiate = fun state ~level ty ->
   let rec loop ty =
     match prune ty with
     | TVar { var=Generic id } -> (
-        match List.find !subst ~fn:(fun (other_id, _) -> Int.equal id other_id) with
+        match
+          List.find !subst
+            ~fn:(fun (other_id, _) ->
+              Int.equal id other_id)
+        with
         | Some (_, replacement) -> replacement
         | None ->
             let replacement = fresh_tyvar state ~level in
@@ -300,7 +304,11 @@ let rec public_type_of_ty = fun vars ty ->
   | TVar { var=Link linked_ty } -> public_type_of_ty vars linked_ty
 
 and public_tyvar_id = fun vars id ->
-  match List.find !vars ~fn:(fun (other_id, _) -> Int.equal id other_id) with
+  match
+    List.find !vars
+      ~fn:(fun (other_id, _) ->
+        Int.equal id other_id)
+  with
   | Some (_, public_id) -> public_id
   | None ->
       let public_id = List.length !vars in
@@ -470,7 +478,10 @@ let rec lower_core_type = fun state ~level vars core_type ->
       fresh_tyvar state ~level
 
 let extend_mono = fun (env: env) (bindings: binding list) ->
-  List.fold_left bindings ~acc:env ~fn:(fun (extended_env: env) (binding: binding) -> binding :: extended_env)
+  List.fold_left
+    bindings
+    ~acc:env
+    ~fn:(fun (extended_env: env) (binding: binding) -> binding :: extended_env)
 
 let extend_generalized = fun (env: env) ~level (bindings: binding list) ->
   List.fold_left
@@ -600,8 +611,7 @@ let rec infer_expression = fun state env ~level expression ->
       TTuple (List.map tuple.elements ~fn:(infer_expression state env ~level))
   | Cst.Expression.List list_expression ->
       let element_ty = fresh_tyvar state ~level in
-      List.for_each
-        list_expression.elements
+      List.for_each list_expression.elements
         ~fn:(fun element ->
           let inferred = infer_expression state env ~level element in
           unify state ~at:(Cst.Expression.syntax_node element) element_ty inferred);
@@ -982,9 +992,7 @@ let check_implementation = fun ~typing_context (implementation: Cst.implementati
   let state = make_state ~next_binding_stamp:typing_context.Typing_context.next_binding_stamp in
   let env = env_of_typing_context typing_context in
   let _, bindings =
-    List.fold_left
-      implementation.items
-      ~acc:(env, [])
+    List.fold_left implementation.items ~acc:(env, [])
       ~fn:(fun (env, bindings) item ->
         let next_env, item_bindings = infer_structure_item state env ~level:0 item in
         (next_env, List.append bindings item_bindings))
@@ -1054,9 +1062,7 @@ let check_interface = fun ~typing_context (interface: Cst.interface) ->
   let state = make_state ~next_binding_stamp:typing_context.Typing_context.next_binding_stamp in
   let env = env_of_typing_context typing_context in
   let _, bindings =
-    List.fold_left
-      interface.items
-      ~acc:(env, [])
+    List.fold_left interface.items ~acc:(env, [])
       ~fn:(fun (env, bindings) item ->
         let next_env, item_bindings = check_signature_item state env ~level:0 item in
         (next_env, List.append bindings item_bindings))

@@ -25,7 +25,11 @@ let get_bool = function
   | _ -> None
 
 let find_value = fun items key ->
-  match List.find items ~fn:(fun (candidate, _) -> String.equal candidate key) with
+  match
+    List.find items
+      ~fn:(fun (candidate, _) ->
+        String.equal candidate key)
+  with
   | Some (_, value) -> Some value
   | None -> None
 

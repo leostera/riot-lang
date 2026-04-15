@@ -27,8 +27,7 @@ let create = fun ~cookie_name ~secret () ->
   { data; cookie_name; secret; modified = false }
 
 (** Get value from session *)
-let get_value = fun key session ->
-  HashMap.get session.data.values ~key
+let get_value = fun key session -> HashMap.get session.data.values ~key
 
 (** Put value in session *)
 let put = fun key value session ->
@@ -61,8 +60,7 @@ let is_modified = fun session -> session.modified
 (** Serialize session data to JSON *)
 let to_json = fun data ->
   let open Data.Json in
-    let values_list = HashMap.to_list data.values
-    |> List.map ~fn:(fun ((k, v)) -> (k, string v)) in
+    let values_list = HashMap.to_list data.values |> List.map ~fn:(fun ((k, v)) -> (k, string v)) in
     obj
       [ ("values", obj values_list); ("created_at", int (Int64.to_int data.created_at)); (
           "expires_at",

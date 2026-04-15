@@ -84,9 +84,9 @@ let main = fun ~args ->
               println (Fs.Walker.FileItem.path_string entry);
             loop iter'
       in
-      loop iter
-      |> Result.map ~fn:(fun () ->
-             if config.count_only then
-               println (Int.to_string !count))
+      loop iter |> Result.map
+        ~fn:(fun () ->
+          if config.count_only then
+            println (Int.to_string !count))
 
 let () = Runtime.run ~main ~args:Env.args ()

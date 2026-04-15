@@ -791,11 +791,12 @@ let gzip_file = fun ~src ~dst ->
   match Fs.create_dir_all parent with
   | Error err -> Error ("failed to create gzip output parent directory: " ^ IO.error_message err)
   | Ok () ->
-      Compress.Gzip.compress_file ~src ~dst |> Result.map_err ~fn:
-        (
+      Compress.Gzip.compress_file ~src ~dst |> Result.map_err
+        ~fn:(
           function
           | Compress.Gzip.File_io_error err -> "failed to gzip test archive: " ^ IO.error_message err
-          | Compress.Gzip.File_gzip_error err -> "failed to gzip test archive: " ^ Compress.Gzip.error_to_string err
+          | Compress.Gzip.File_gzip_error err -> "failed to gzip test archive: "
+          ^ Compress.Gzip.error_to_string err
         )
 
 let test_filesystem_registry_materializes_cached_release = fun _ctx ->
@@ -970,7 +971,8 @@ let test_filesystem_registry_downloads_release_archive_on_cache_miss = fun _ctx 
                     | Ok false, _, _ ->
                         Error "expected downloaded archive to be cached"
                     | Ok true, Ok manifest, Ok source ->
-                        let requested = List.reverse !requests |> List.map ~fn:(fun request -> request.url) in
+                        let requested = List.reverse !requests
+                        |> List.map ~fn:(fun request -> request.url) in
                         if
                           String.equal manifest "[package]\nname = \"std\"\nversion = \"0.1.0\"\n"
                           && String.equal source "let answer = 42\n"
@@ -1058,7 +1060,8 @@ let test_filesystem_registry_refetches_corrupt_cached_archive = fun _ctx ->
                     match Fs.read manifest_path, Fs.read materialized_source with
                     | Ok manifest, Ok source when String.equal manifest "[package]\nname = \"std\"\nversion = \"0.1.0\"\n"
                     && String.equal source "let answer = 42\n" ->
-                        let requested = List.reverse !requests |> List.map ~fn:(fun request -> request.url) in
+                        let requested = List.reverse !requests
+                        |> List.map ~fn:(fun request -> request.url) in
                         if
                           requested
                           = [
@@ -1279,8 +1282,7 @@ let test_registry_riot_agent_env_override_wins_over_default_agent = fun _ctx ->
               match List.reverse !requests with
               | [ request ] ->
                   let header =
-                    List.find
-                      request.headers
+                    List.find request.headers
                       ~fn:(fun (name, _value) ->
                         String.equal name "X-Riot-Agent")
                   in

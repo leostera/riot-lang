@@ -213,16 +213,13 @@ let call_batch: type req res. (req, res) t -> req list -> (res Common.response l
       match receive_raw_response client with
       | Error e -> Error (Common.InternalError { context = "call_batch_receive"; details = e })
       | Ok str ->
-          let* json =
-            Json.of_string str
-            |> Result.map_err ~fn:(fun e ->
-              Common.ParseError { raw_input = str; parse_error = Json.error_to_string e })
-          in
+          let* json = Json.of_string str
+          |> Result.map_err
+            ~fn:(fun e -> Common.ParseError { raw_input = str; parse_error = Json.error_to_string e }) in
           match json with
           | Json.Array responses ->
               let parsed_responses =
-                List.fold_left responses
-                  ~acc:(Ok [])
+                List.fold_left responses ~acc:(Ok [])
                   ~fn:(fun acc json_resp ->
                     let* responses = acc in
                     match json_resp with
@@ -240,14 +237,10 @@ let call_batch: type req res. (req, res) t -> req list -> (res Common.response l
                                       id
                                     }
                                     :: responses)
-                                    | Error err_json ->
-                                        Error (
-                                          Common.InternalError {
-                                            context = "call_batch_parse_result";
-                                            details =
-                                              "Failed to parse result: " ^ Json.to_string err_json;
-                                          }
-                                        )
+                                    | Error err_json -> Error (Common.InternalError {
+                                      context = "call_batch_parse_result";
+                                      details = "Failed to parse result: " ^ Json.to_string err_json
+                                    })
                                   )
                                 | None -> Error (Common.InvalidRequest {
                                   request_json = json_resp;

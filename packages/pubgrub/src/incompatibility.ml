@@ -120,8 +120,7 @@ let normalize_terms = fun terms ->
           if Term.is_any merged then
             acc_without_pkg
           else
-            merged :: acc_without_pkg)
-    |> List.reverse
+            merged :: acc_without_pkg) |> List.reverse
 
 let prior_cause = fun ?extra_term incompat satisfier_cause package ->
   let incompat_terms = terms incompat in
@@ -189,7 +188,8 @@ let prior_cause = fun ?extra_term incompat satisfier_cause package ->
             | None -> incompat_t :: acc)
       in
       let remaining_satisfier_terms =
-        List.filter other_satisfier_terms
+        List.filter
+          other_satisfier_terms
           ~fn:(fun t ->
             not (List.any other_incompat_terms ~fn:(fun it -> Term.package it = Term.package t)))
       in

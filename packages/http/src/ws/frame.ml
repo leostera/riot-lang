@@ -62,9 +62,7 @@ let unmask = fun mask payload ->
   for i = 0 to len - 1 do
     let mask_byte = Int32.(logand (shift_right mask (8 * (3 - (i mod 4)))) 0xffl |> to_int) in
     let payload_byte = payload |> String.get_unchecked ~at:i |> Char.to_int in
-    let _ =
-      Bytes.set result ~at:i ~char:(Char.from_int_unchecked (payload_byte lxor mask_byte))
-    in
+    let _ = Bytes.set result ~at:i ~char:(Char.from_int_unchecked (payload_byte lxor mask_byte)) in
     ()
   done;
   Bytes.to_string result

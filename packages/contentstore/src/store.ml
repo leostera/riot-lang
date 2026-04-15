@@ -1,6 +1,7 @@
 open Std
 
 type policy = Policy.t
+
 module Namespace = Namespace
 
 type source_path_error = Store_error.source_path_error =
@@ -38,32 +39,24 @@ let policy = fun store -> store.policy
 let hash_dir_of = fun store hash ->
   Layout.tree_dir store.root hash
 
-let exists = fun store hash ->
-  Fs.exists (hash_dir_of store hash)
-  |> Result.unwrap_or ~default:false
+let exists = fun store hash -> Fs.exists (hash_dir_of store hash) |> Result.unwrap_or ~default:false
 
 let open_path = fun path ->
-  let* path_exists =
-    Fs.exists path
-    |> Result.map_err ~fn:(fun detail ->
-      Io { op = "exists"; path; related_path = None; detail = Fs detail })
-  in
+  let* path_exists = Fs.exists path
+  |> Result.map_err
+    ~fn:(fun detail -> Io { op = "exists"; path; related_path = None; detail = Fs detail }) in
   if not path_exists then
     Error (Missing { path })
   else
     Fs.File.open_read path
-    |> Result.map_err ~fn:(fun detail ->
-      Io { op = "open_read"; path; related_path = None; detail = File detail })
+    |> Result.map_err
+      ~fn:(fun detail -> Io { op = "open_read"; path; related_path = None; detail = File detail })
 
-let temp_path = fun store ~scope ~seed ->
-  Layout.temp_path store.root ~scope ~seed
+let temp_path = fun store ~scope ~seed -> Layout.temp_path store.root ~scope ~seed
 
-let seed_of_hash = fun hash ->
-  Crypto.Digest.hex hash
+let seed_of_hash = fun hash -> Crypto.Digest.hex hash
 
-let seed_of_key = fun key ->
-  Crypto.hash_string key
-  |> Crypto.Digest.hex
+let seed_of_key = fun key -> Crypto.hash_string key |> Crypto.Digest.hex
 
 let save_object = fun store ~hash ~content ->
   let destination = Layout.object_path store.root ~ns:store.ns ~hash in
@@ -75,8 +68,7 @@ let save_file = fun store ~hash ~source ->
   let temp = temp_path store ~scope:Layout.Immutable ~seed:(seed_of_hash hash) in
   Atomic.copy_file_if_absent ~source ~temp ~dst:destination
 
-let open_object = fun store ~hash ->
-  open_path (Layout.object_path store.root ~ns:store.ns ~hash)
+let open_object = fun store ~hash -> open_path (Layout.object_path store.root ~ns:store.ns ~hash)
 
 let save_named_object = fun store ~key ~content ->
   let destination = Layout.named_object_path store.root ~ns:store.ns ~key in

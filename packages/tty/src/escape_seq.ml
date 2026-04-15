@@ -199,12 +199,9 @@ let strip = fun str ->
     else if String.get_unchecked str ~at:i = '\x1b' then
       if i + 1 < len then
         match String.get_unchecked str ~at:(i + 1) with
-        | '[' ->
-            scan (skip_csi (i + 2))
-        | ']' ->
-            scan (skip_osc (i + 2))
-        | _ ->
-            scan (i + 1)
+        | '[' -> scan (skip_csi (i + 2))
+        | ']' -> scan (skip_osc (i + 2))
+        | _ -> scan (i + 1)
       else
         scan (i + 1)
     else begin
@@ -216,5 +213,4 @@ let strip = fun str ->
 
 (* Calculate display width ignoring ANSI codes *)
 
-let width = fun str ->
-  String.width (strip str)
+let width = fun str -> String.width (strip str)

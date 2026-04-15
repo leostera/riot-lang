@@ -35,8 +35,7 @@ let package_status_of_build_status = function
   | Package_builder.Built artifact -> Built artifact
   | Package_builder.Cached artifact -> Cached artifact
   | Package_builder.Skipped { reason } -> Skipped reason
-  | Package_builder.Failed error ->
-      Failed (Package_builder.package_error_to_string error)
+  | Package_builder.Failed error -> Failed (Package_builder.package_error_to_string error)
 
 let artifact_of_status = function
   | Built artifact
@@ -68,9 +67,7 @@ let status_priority = function
   | Built _ -> 3
 
 let should_prefer = fun current incoming ->
-  let scope_comparison =
-    Int.compare (scope_priority incoming.scope) (scope_priority current.scope)
-  in
+  let scope_comparison = Int.compare (scope_priority incoming.scope) (scope_priority current.scope) in
   if scope_comparison > 0 then
     true
   else if scope_comparison < 0 then
@@ -79,11 +76,11 @@ let should_prefer = fun current incoming ->
     Int.compare (status_priority incoming.status) (status_priority current.status) > 0
 
 let merge_artifacts = fun current incoming ->
-  List.fold_left incoming ~acc:current ~fn:(fun acc (artifact: Riot_store.Artifact.t) ->
-      if
-        List.any acc ~fn:(fun existing ->
-            Crypto.Hash.equal existing.Riot_store.Artifact.hash artifact.hash)
-      then
+  List.fold_left incoming ~acc:current
+    ~fn:(fun acc (artifact: Riot_store.Artifact.t) ->
+      if List.any acc
+          ~fn:(fun existing ->
+            Crypto.Hash.equal existing.Riot_store.Artifact.hash artifact.hash) then
         acc
       else
         acc @ [ artifact ])
@@ -99,7 +96,7 @@ let merge_package_result = fun current incoming ->
     package_name = current.package_name;
     scope = preferred.scope;
     status = preferred.status;
-    artifacts = merge_artifacts current.artifacts incoming.artifacts;
+    artifacts = merge_artifacts current.artifacts incoming.artifacts
   }
 
 let rec upsert_package_result = fun packages incoming ->
@@ -117,52 +114,52 @@ let package_result_of_build_result = fun (result: Package_builder.build_result) 
     package_name = result.package.name;
     scope = scope_of_package_key result.package_key;
     status;
-    artifacts = Option.to_list (artifact_of_status status);
+    artifacts = Option.to_list (artifact_of_status status)
   }
 
 let of_build_results = fun results ->
   {
-    packages = List.fold_left results ~acc:[] ~fn:(fun acc result ->
-        upsert_package_result acc (package_result_of_build_result result));
+    packages = List.fold_left
+      results
+      ~acc:[]
+      ~fn:(fun acc result -> upsert_package_result acc (package_result_of_build_result result))
   }
 
 let packages = fun t -> t.packages
 
 let find_package = fun t name ->
-  List.find t.packages ~fn:(fun pkg -> Riot_model.Package_name.equal pkg.package_name name)
+  List.find t.packages
+    ~fn:(fun pkg ->
+      Riot_model.Package_name.equal pkg.package_name name)
 
 let package_name = fun t -> t.package_name
 
 let package_status = fun t -> t.status
 
-let package_artifact = fun t ->
-  artifact_of_status t.status
+let package_artifact = fun t -> artifact_of_status t.status
 
 let rec find_export_in_artifacts = fun artifacts export_name ->
   match artifacts with
   | [] -> None
   | (artifact: Riot_store.Artifact.t) :: rest -> (
       match
-        List.find artifact.exports ~fn:(fun (entry: Riot_store.Manifest.export_entry) ->
+        List.find artifact.exports
+          ~fn:(fun (entry: Riot_store.Manifest.export_entry) ->
             String.equal entry.name export_name)
       with
       | Some entry -> Some entry
       | None -> find_export_in_artifacts rest export_name
     )
 
-let find_export = fun t export_name ->
-  find_export_in_artifacts t.artifacts export_name
+let find_export = fun t export_name -> find_export_in_artifacts t.artifacts export_name
 
 let failure_of_build_result = fun (result: Package_builder.build_result) ->
   let message =
     match result.status with
-    | Package_builder.Failed error ->
-        Package_builder.package_error_to_string error
-    | Package_builder.Skipped { reason } ->
-        "Skipped: " ^ reason
+    | Package_builder.Failed error -> Package_builder.package_error_to_string error
+    | Package_builder.Skipped { reason } -> "Skipped: " ^ reason
     | Package_builder.Built _
-    | Package_builder.Cached _ ->
-        "Build failed"
+    | Package_builder.Cached _ -> "Build failed"
   in
   {
     package_name = result.package.name;
@@ -172,18 +169,14 @@ let failure_of_build_result = fun (result: Package_builder.build_result) ->
     duration_ms = Int.from_float (Time.Duration.to_secs_float result.duration *. 1000.0);
   }
 
-let failures_of_build_results = fun results ->
-  List.map results ~fn:failure_of_build_result
+let failures_of_build_results = fun results -> List.map results ~fn:failure_of_build_result
 
 let failure_to_json = fun (failure: failure) ->
   Data.Json.Object [
     ("package_name", Data.Json.String (Riot_model.Package_name.to_string failure.package_name));
     ("package_key", Data.Json.String (Riot_model.Package.key_to_string failure.package_key));
     ("message", Data.Json.String failure.message);
-    (
-      "ocamlc_warnings",
-      Data.Json.Array (List.map failure.ocamlc_warnings ~fn:Data.Json.string)
-    );
+    ("ocamlc_warnings", Data.Json.Array (List.map failure.ocamlc_warnings ~fn:Data.Json.string));
     ("duration_ms", Data.Json.Int failure.duration_ms);
   ]
 

@@ -74,9 +74,9 @@ module Token = struct
 
   let is_operator_like_name = fun token ->
     let token_text = text token in
-      let rec contains_non_identifier_char index =
-        if index >= String.length token_text then
-          false
+    let rec contains_non_identifier_char index =
+      if index >= String.length token_text then
+        false
       else if is_identifier_char (char_at token_text index) then
         contains_non_identifier_char (index + 1)
       else
@@ -152,16 +152,15 @@ module Ident = struct
           let first_width = String.length first in
           let first_node = make_node () in
           let initial = Ident { syntax_node = first_node; name_token = first_token } in
-          List.fold_left rest
-            ~acc:(initial, first_width)
+          List.fold_left rest ~acc:(initial, first_width)
             ~fn:(fun (prefix, width) segment ->
               if String.length segment = 0 then
                 raise (Failure "Syn.Cst.Ident.from_string does not allow empty path segments");
               let name_token = make_ident_segment segment in
               let dot_token = make_ident_segment "." in
               let width = width + 1 + String.length segment in
-              (Qualified { syntax_node = make_node (); prefix; dot_token; name_token }, width))
-            |> fun (ident, _) -> ident
+              (Qualified { syntax_node = make_node (); prefix; dot_token; name_token }, width)) |> fun (ident, _) ->
+            ident
 
   let equal = fun left right ->
     let left_segments = segments left |> List.map ~fn:Token.text in
@@ -2257,8 +2256,8 @@ module TypeVariable = struct
     Ceibo.Red.SyntaxNode.children type_variable.syntax_node |> List.filter_map
       ~fn:(
         function
-        | Ceibo.Red.Token tok when not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)) ->
-            Some (Ceibo.Red.SyntaxToken.text tok)
+        | Ceibo.Red.Token tok when not (is_trivia (Ceibo.Red.SyntaxToken.kind tok)) -> Some (Ceibo.Red.SyntaxToken.text
+          tok)
         | _ -> None
       ) |> String.concat ""
 
@@ -2875,7 +2874,9 @@ let docstring_kind_from_text = fun comment_text ->
     Ordinary
   else
     let body = substring comment_text 3 (len - 5) |> String.trim in
-    if String.length body > 0 && (Char.equal (char_at body 0) '{' || Char.equal (char_at body 0) '#') then
+    if
+      String.length body > 0 && (Char.equal (char_at body 0) '{' || Char.equal (char_at body 0) '#')
+    then
       Section
     else
       Ordinary

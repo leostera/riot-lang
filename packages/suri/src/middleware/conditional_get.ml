@@ -25,7 +25,7 @@ let parse_http_date = fun date_str ->
           | _ -> raise (Invalid_argument "Invalid month")
         in
         let time_parts = String.split_on_char ':' time in
-        let get_time_part = fun index ->
+        let get_time_part index =
           match List.get time_parts ~at:index with
           | Option.Some v -> Int.of_string v
           | Option.None -> raise (Invalid_argument "Invalid time format")
@@ -118,9 +118,7 @@ let not_modified_response = fun conn resp_headers ->
   let conn' = Conn.with_status Net.Http.Status.NotModified conn in
   let conn' = Conn.with_body "" conn' in
   (* Preserve cacheable headers from response *)
-  List.fold_left
-    cacheable_headers
-    ~acc:conn'
+  List.fold_left cacheable_headers ~acc:conn'
     ~fn:(fun acc_conn header_name ->
       match Net.Http.Header.get resp_headers header_name with
       | Some value -> Conn.with_header header_name value acc_conn
@@ -137,9 +135,7 @@ let middleware = fun ~conn ~next ->
       let conn' = next conn in
       (* Get response headers *)
       let resp_headers =
-        List.fold_left
-          (Conn.resp_headers conn')
-          ~acc:Net.Http.Header.empty
+        List.fold_left (Conn.resp_headers conn') ~acc:Net.Http.Header.empty
           ~fn:(fun headers ((name, value)) ->
             Net.Http.Header.add headers name value)
       in

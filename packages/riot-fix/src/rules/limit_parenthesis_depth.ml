@@ -35,13 +35,13 @@ let rec diagnostics_for_function_body = fun ~inside_parenthesized_chain ->
   function
   | Syn.Cst.Expression expression -> diagnostics_for_expression ~inside_parenthesized_chain expression
   | Syn.Cst.Cases { cases; _ } ->
-      cases
-      |> List.map ~fn:(fun (case: Syn.Cst.match_case) ->
-        (match case.guard with
-         | Some guard -> diagnostics_for_expression ~inside_parenthesized_chain guard
-         | None -> [])
-        @ diagnostics_for_expression ~inside_parenthesized_chain case.body)
-      |> List.concat
+      cases |> List.map
+        ~fn:(fun (case: Syn.Cst.match_case) ->
+          (
+            match case.guard with
+            | Some guard -> diagnostics_for_expression ~inside_parenthesized_chain guard
+            | None -> []
+          ) @ diagnostics_for_expression ~inside_parenthesized_chain case.body) |> List.concat
 
 and diagnostics_for_expression = fun ~inside_parenthesized_chain ->
   function
@@ -75,23 +75,23 @@ and diagnostics_for_expression = fun ~inside_parenthesized_chain ->
       @ diagnostics_for_expression ~inside_parenthesized_chain expr.body
   | Syn.Cst.Expression.Match expr ->
       diagnostics_for_expression ~inside_parenthesized_chain expr.scrutinee @ (
-        expr.cases
-        |> List.map ~fn:(fun (case: Syn.Cst.match_case) ->
-          (match case.guard with
-           | Some guard -> diagnostics_for_expression ~inside_parenthesized_chain guard
-           | None -> [])
-          @ diagnostics_for_expression ~inside_parenthesized_chain case.body)
-        |> List.concat
+        expr.cases |> List.map
+          ~fn:(fun (case: Syn.Cst.match_case) ->
+            (
+              match case.guard with
+              | Some guard -> diagnostics_for_expression ~inside_parenthesized_chain guard
+              | None -> []
+            ) @ diagnostics_for_expression ~inside_parenthesized_chain case.body) |> List.concat
       )
   | Syn.Cst.Expression.Try expr ->
       diagnostics_for_expression ~inside_parenthesized_chain expr.body @ (
-        expr.cases
-        |> List.map ~fn:(fun (case: Syn.Cst.match_case) ->
-          (match case.guard with
-           | Some guard -> diagnostics_for_expression ~inside_parenthesized_chain guard
-           | None -> [])
-          @ diagnostics_for_expression ~inside_parenthesized_chain case.body)
-        |> List.concat
+        expr.cases |> List.map
+          ~fn:(fun (case: Syn.Cst.match_case) ->
+            (
+              match case.guard with
+              | Some guard -> diagnostics_for_expression ~inside_parenthesized_chain guard
+              | None -> []
+            ) @ diagnostics_for_expression ~inside_parenthesized_chain case.body) |> List.concat
       )
   | Syn.Cst.Expression.If expr ->
       diagnostics_for_expression ~inside_parenthesized_chain expr.condition
@@ -121,8 +121,9 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
   |> Option.unwrap_or ~default:[]
   |> List.map ~fn:Traversal.let_bindings_of_structure_item
   |> List.concat
-  |> List.map ~fn:(fun binding ->
-    diagnostics_for_expression ~inside_parenthesized_chain:false (Syn.Cst.LetBinding.value binding))
+  |> List.map
+    ~fn:(fun binding ->
+      diagnostics_for_expression ~inside_parenthesized_chain:false (Syn.Cst.LetBinding.value binding))
   |> List.concat
 
 let make = fun () ->

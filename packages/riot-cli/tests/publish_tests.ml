@@ -2,8 +2,7 @@ open Std
 module Test = Std.Test
 
 let package_name = fun name ->
-  Riot_model.Package_name.from_string name
-  |> Result.expect ~msg:("invalid package name: " ^ name)
+  Riot_model.Package_name.from_string name |> Result.expect ~msg:("invalid package name: " ^ name)
 
 let parse_publish = fun args ->
   match ArgParser.get_matches Riot_cli.Publish.command args with

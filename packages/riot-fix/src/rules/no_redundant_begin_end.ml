@@ -17,18 +17,17 @@ actually doing.
 |}
 
 let opens_with_begin = fun ({ syntax_node; _ }: Syn.Cst.parenthesized_expression) ->
-  Syn.Ceibo.Red.SyntaxNode.children syntax_node
-  |> List.filter_map ~fn:(function
-    | Syn.Ceibo.Red.Token token ->
-        let text = Syn.Ceibo.Red.SyntaxToken.text token in
-        if String.equal text " " || String.equal text "\n" || String.equal text "\t" then
-          None
-        else
-          Some (String.equal text "begin")
-    | _ ->
-        None)
-  |> List.head
-  |> Option.unwrap_or ~default:false
+  Syn.Ceibo.Red.SyntaxNode.children syntax_node |> List.filter_map
+    ~fn:(
+      function
+      | Syn.Ceibo.Red.Token token ->
+          let text = Syn.Ceibo.Red.SyntaxToken.text token in
+          if String.equal text " " || String.equal text "\n" || String.equal text "\t" then
+            None
+          else
+            Some (String.equal text "begin")
+      | _ -> None
+    ) |> List.head |> Option.unwrap_or ~default:false
 
 let make_fix = fun ({ syntax_node; inner; _ }: Syn.Cst.parenthesized_expression) ->
   Fix.make

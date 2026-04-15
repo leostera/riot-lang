@@ -266,7 +266,7 @@ let skip_spaces_tabs = fun text index ->
     if current >= len then
       current
     else
-      let char = (char_at text current) in
+      let char = char_at text current in
       if char = ' ' || char = '\t' then
         loop (current + 1)
       else
@@ -374,7 +374,7 @@ let parse_reference_title_piece = fun text start ->
   if start >= len || not (is_title_opener (char_at text start)) then
     None
   else
-    let opener = (char_at text start) in
+    let opener = char_at text start in
     let closer =
       if opener = '(' then
         ')'
@@ -494,10 +494,10 @@ let parse_reference_definition_paragraph = fun lines start ->
     let rec gather index acc best =
       if index >= Array.length lines then
         best
-      else if line_is_blank (array_at lines (index)).text then
+      else if line_is_blank (array_at lines index).text then
         best
       else
-        let current = (array_at lines (index)) in
+        let current = array_at lines index in
         let text = normalize_reference_line current.text in
         let rev_texts = text :: acc in
         let candidate = List.reverse rev_texts |> String.concat "\n" in
@@ -592,7 +592,7 @@ let make_control_diagnostics = fun source ->
     if index >= len then
       diags
     else
-      let char = (char_at source index) in
+      let char = char_at source index in
       if Char.code char < 32 && char_not char '\t' && char_not char '\n' && char_not char '\r' then
         let found = { kind = "control"; text = repeat_char 1 char } in
         let diag = unexpected_control_character
@@ -661,7 +661,7 @@ let parse_thematic_break = fun text ->
     if len < 3 then
       None
     else
-      let marker = (char_at line 0) in
+      let marker = char_at line 0 in
       if char_not marker '*' && char_not marker '-' && char_not marker '_' then
         None
       else
@@ -689,7 +689,7 @@ let parse_setext_underline = fun text ->
     if len = 0 then
       None
     else
-      let marker = (char_at line 0) in
+      let marker = char_at line 0 in
       if char_not marker '=' && char_not marker '-' then
         None
       else if string_all_equal marker line then
@@ -715,7 +715,7 @@ let parse_fence_open = fun text ->
   if indent >= len then
     None
   else
-    let marker = (char_at text indent) in
+    let marker = char_at text indent in
     if char_not marker '`' && char_not marker '~' then
       None
     else
@@ -775,7 +775,7 @@ let parse_fenced_code_block = fun lines start ->
   if start >= Array.length lines then
     None
   else
-    let first = (array_at lines (start)) in
+    let first = array_at lines start in
     match parse_fence_open first.text with
     | None -> None
     | Some (marker, marker_len, opener_indent, info) ->
@@ -787,10 +787,10 @@ let parse_fenced_code_block = fun lines start ->
         let rec collect_code_lines index acc =
           if index >= Array.length lines then
             (None, List.reverse acc)
-          else if parse_fence_close marker_len marker (array_at lines (index)) then
+          else if parse_fence_close marker_len marker (array_at lines index) then
             (Some index, List.reverse acc)
           else
-            collect_code_lines (index + 1) (strip_content_indent (array_at lines (index)).text :: acc)
+            collect_code_lines (index + 1) (strip_content_indent (array_at lines index).text :: acc)
         in
         (
           match collect_code_lines (start + 1) [] with
@@ -834,7 +834,7 @@ let parse_indented_code_block = fun lines start ->
     None
   else
     let is_indented_line text = Option.is_some (drop_indent_columns text 4) in
-    if not (is_indented_line (array_at lines (start)).text) then
+    if not (is_indented_line (array_at lines start).text) then
       None
     else
       let strip_line text =
@@ -846,16 +846,16 @@ let parse_indented_code_block = fun lines start ->
         if index >= Array.length lines then
           (index, List.reverse acc)
         else
-          let line = (array_at lines (index)).text in
+          let line = (array_at lines index).text in
           if is_indented_line line then
             collect (index + 1) (strip_line line :: acc)
           else if line_is_blank line then
             let rec next_nonblank index =
               if index >= Array.length lines then
                 None
-              else if line_is_blank (array_at lines (index)).text then
+              else if line_is_blank (array_at lines index).text then
                 next_nonblank (index + 1)
-              else if is_indented_line (array_at lines (index)).text then
+              else if is_indented_line (array_at lines index).text then
                 Some index
               else
                 None
@@ -916,7 +916,7 @@ let parse_list_marker = fun text ->
     if indent_offset >= len then
       None
     else
-      let marker = (char_at text indent_offset) in
+      let marker = char_at text indent_offset in
       if marker = '-' || marker = '*' || marker = '+' then
         if marker = '*' && String.equal text "* a *" then
           None
@@ -1386,8 +1386,7 @@ let type_6_html_block = fun trimmed ->
         1
     in
     match scan_html_tag_name trimmed start with
-    | Some (tag, finish) when List.contains html_block_tags ~value:tag
-    && html_tag_boundary trimmed finish -> Some Html_block_6
+    | Some (tag, finish) when List.contains html_block_tags ~value:tag && html_tag_boundary trimmed finish -> Some Html_block_6
     | _ -> None
 
 let type_7_html_block = fun trimmed ->
@@ -1470,7 +1469,7 @@ let rec parse_block_quote = fun flavor lines start ->
   if start >= Array.length lines then
     None
   else
-    let first = (array_at lines (start)) in
+    let first = array_at lines start in
     match parse_block_quote_prefix first.text with
     | None -> None
     | Some (content_start, content) ->
@@ -1518,10 +1517,10 @@ let rec parse_block_quote = fun flavor lines start ->
           if index >= Array.length lines then
             (List.reverse acc, index)
           else
-            let text = (array_at lines (index)).text in
+            let text = (array_at lines index).text in
             match parse_block_quote_prefix text with
             | Some (nested_start, nested) ->
-                let nested_offset = (array_at lines (index)).start + nested_start in
+                let nested_offset = (array_at lines index).start + nested_start in
                 let paragraph_open =
                   if nested = "" then
                     false
@@ -1536,12 +1535,12 @@ let rec parse_block_quote = fun flavor lines start ->
                   if List.length acc > 1 then
                     collect
                       (index + 1)
-                      ({ text = "    " ^ text; start = (array_at lines (index)).start } :: acc)
+                      ({ text = "    " ^ text; start = (array_at lines index).start } :: acc)
                       true
                   else
                     (List.reverse acc, index)
                 else if paragraph_open && not (paragraph_interrupts text) then
-                  collect (index + 1) ({ text; start = (array_at lines (index)).start } :: acc) true
+                  collect (index + 1) ({ text; start = (array_at lines index).start } :: acc) true
                 else
                   (List.reverse acc, index)
         in
@@ -1571,7 +1570,7 @@ and parse_table = fun flavor lines start ->
   if not (is_gfm flavor) || start + 1 >= Array.length lines then
     None
   else
-    match parse_table_row flavor (array_at lines (start)).text with
+    match parse_table_row flavor (array_at lines start).text with
     | None -> None
     | Some header_cells ->
         let delimiter_cells = split_table_cells (array_at lines (start + 1)).text in
@@ -1598,10 +1597,10 @@ and parse_table = fun flavor lines start ->
             let rec collect_rows index acc =
               if index >= Array.length lines then
                 (List.reverse acc, index)
-              else if line_is_blank (array_at lines (index)).text then
+              else if line_is_blank (array_at lines index).text then
                 (List.reverse acc, index)
               else
-                match parse_table_row flavor (array_at lines (index)).text with
+                match parse_table_row flavor (array_at lines index).text with
                 | None -> (List.reverse acc, index)
                 | Some row -> collect_rows
                   (index + 1)
@@ -1620,7 +1619,7 @@ and parse_list = fun flavor lines start ->
   if start >= Array.length lines then
     None
   else
-    match parse_list_marker (array_at lines (start)).text with
+    match parse_list_marker (array_at lines start).text with
     | None -> None
     | Some first ->
         let html_block_interrupts text =
@@ -1679,27 +1678,27 @@ and parse_list = fun flavor lines start ->
         let rec blank_continues_item continuation_min sibling_marker has_content index =
           if index >= Array.length lines then
             false
-          else if line_is_blank (array_at lines (index)).text then
+          else if line_is_blank (array_at lines index).text then
             blank_continues_item continuation_min sibling_marker has_content (index + 1)
           else
-            match parse_list_marker (array_at lines (index)).text with
+            match parse_list_marker (array_at lines index).text with
             | Some marker when sibling_marker marker
-            && Option.is_none (parse_thematic_break (array_at lines (index)).text) -> true
+            && Option.is_none (parse_thematic_break (array_at lines index).text) -> true
             | _ -> has_content
-            && Option.is_some (drop_indent_columns (array_at lines (index)).text continuation_min)
+            && Option.is_some (drop_indent_columns (array_at lines index).text continuation_min)
         in
         let rec collect_item_body continuation_min sibling_marker index acc had_blank paragraph_open has_content =
           if index >= Array.length lines then
             (index, List.reverse acc, had_blank)
           else
-            let text = (array_at lines (index)).text in
+            let text = (array_at lines index).text in
             if line_is_blank text then
               if blank_continues_item continuation_min sibling_marker has_content (index + 1) then
                 collect_item_body
                   continuation_min
                   sibling_marker
                   (index + 1)
-                  ({ text = ""; start = (array_at lines (index)).start } :: acc)
+                  ({ text = ""; start = (array_at lines index).start } :: acc)
                   true
                   false
                   has_content
@@ -1716,7 +1715,7 @@ and parse_list = fun flavor lines start ->
                     continuation_min
                     sibling_marker
                     (index + 1)
-                    ({ text = content; start = (array_at lines (index)).start + content_offset } :: acc)
+                    ({ text = content; start = (array_at lines index).start + content_offset } :: acc)
                     had_blank
                     ((not (String.equal content "")) && opens_paragraph content)
                     (has_content || not (String.equal content ""))
@@ -1726,7 +1725,7 @@ and parse_list = fun flavor lines start ->
                           continuation_min
                           sibling_marker
                           (index + 1)
-                          ({ text; start = (array_at lines (index)).start } :: acc)
+                          ({ text; start = (array_at lines index).start } :: acc)
                           had_blank
                           true
                           true
@@ -1738,16 +1737,16 @@ and parse_list = fun flavor lines start ->
           if index >= Array.length lines then
             (List.reverse acc, index, List.reverse diagnostics, loose)
           else
-            match parse_list_marker (array_at lines (index)).text with
+            match parse_list_marker (array_at lines index).text with
             | Some marker when list_item_marker marker
-            && Option.is_none (parse_thematic_break (array_at lines (index)).text) -> (
-                let head_text = item_head_text (array_at lines (index)).text marker in
+            && Option.is_none (parse_thematic_break (array_at lines index).text) -> (
+                let head_text = item_head_text (array_at lines index).text marker in
                 let task, body_text =
                   match parse_task_list_marker flavor head_text with
                   | Some (checked, content) -> (Some checked, content)
                   | None -> (None, head_text)
                 in
-                let head_start = (array_at lines (index)).start + marker.marker_after in
+                let head_start = (array_at lines index).start + marker.marker_after in
                 let head_start =
                   if Option.is_some task then
                     head_start + 4
@@ -1863,7 +1862,7 @@ and parse_raw_html_line = fun lines start ->
         if index >= Array.length lines then
           (List.reverse acc, index)
         else
-          let current = (array_at lines (index)).text in
+          let current = (array_at lines index).text in
           let acc = current :: acc in
           if Option.is_some (find_substring current 0 terminator) then
             (List.reverse acc, index + 1)
@@ -1877,7 +1876,7 @@ and parse_raw_html_line = fun lines start ->
         if index >= Array.length lines then
           (List.reverse acc, index)
         else
-          let current = (array_at lines (index)).text in
+          let current = (array_at lines index).text in
           let acc = current :: acc in
           if contains_ascii_ci ~needle:terminator current then
             (List.reverse acc, index + 1)
@@ -1890,14 +1889,14 @@ and parse_raw_html_line = fun lines start ->
       let rec loop index acc =
         if index >= Array.length lines then
           (List.reverse acc, index)
-        else if index > start && line_is_blank (array_at lines (index)).text then
+        else if index > start && line_is_blank (array_at lines index).text then
           (List.reverse acc, index)
         else
-          loop (index + 1) ((array_at lines (index)).text :: acc)
+          loop (index + 1) ((array_at lines index).text :: acc)
       in
       loop start []
     in
-    let line = (array_at lines (start)).text in
+    let line = (array_at lines start).text in
     match classify_html_block_start line with
     | None -> None
     | Some kind ->
@@ -1923,7 +1922,7 @@ and parse_paragraph = fun flavor lines start ->
   if start >= Array.length lines then
     None
   else
-    match parse_heading (array_at lines (start)).text with
+    match parse_heading (array_at lines start).text with
     | Some (level, content) ->
         let children =
           if String.equal content "" then
@@ -1956,9 +1955,9 @@ and parse_paragraph = fun flavor lines start ->
               if index >= len then
                 (index, None, List.reverse acc)
               else
-                let line = (array_at lines (index)).text in
+                let line = (array_at lines index).text in
                 match parse_setext_underline line with
-                | Some level -> (index + 1, Some (level, (array_at lines (index))), List.reverse acc)
+                | Some level -> (index + 1, Some (level, (array_at lines index)), List.reverse acc)
                 | None ->
                     if line_is_blank line then
                       (index, None, List.reverse acc)
@@ -1969,7 +1968,7 @@ and parse_paragraph = fun flavor lines start ->
             in
             let next, setext, texts = collect
               (start + 1)
-              [ normalize_paragraph_line (array_at lines (start)).text ] in
+              [ normalize_paragraph_line (array_at lines start).text ] in
             let text = String.concat "\n" texts in
             let setext_text =
               texts
@@ -1995,7 +1994,7 @@ and parse_paragraph = fun flavor lines start ->
 and parse_blocks = fun ~flavor lines start ->
   if start >= Array.length lines then
     ([], [])
-  else if line_is_blank (array_at lines (start)).text then
+  else if line_is_blank (array_at lines start).text then
     parse_blocks ~flavor lines (start + 1)
   else
     let block =
@@ -2011,7 +2010,7 @@ and parse_blocks = fun ~flavor lines start ->
                   match parse_table flavor lines start with
                   | Some result -> Some result
                   | None -> (
-                      if is_some (parse_thematic_break (array_at lines (start)).text) then
+                      if is_some (parse_thematic_break (array_at lines start).text) then
                         Some (node Syntax_kind.Horizontal_rule [], start + 1, [])
                       else
                         (

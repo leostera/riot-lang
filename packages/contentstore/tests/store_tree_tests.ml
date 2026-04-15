@@ -1,10 +1,7 @@
 open Std
-
 module Test = Std.Test
 
-let namespace = fun parts ->
-  Contentstore.Namespace.from_parts parts
-  |> Result.expect ~msg:"invalid test namespace"
+let namespace = fun parts -> Contentstore.Namespace.from_parts parts |> Result.expect ~msg:"invalid test namespace"
 
 let make_store = fun tmpdir parts ->
   Contentstore.create
@@ -13,8 +10,7 @@ let make_store = fun tmpdir parts ->
     ~policy:Contentstore.Policy.default
 
 let with_store = fun prefix parts fn ->
-  Fs.with_tempdir ~prefix
-    (fun tmpdir -> fn ~tmpdir ~store:(make_store tmpdir parts))
+  Fs.with_tempdir ~prefix (fun tmpdir -> fn ~tmpdir ~store:(make_store tmpdir parts))
   |> Result.unwrap_or ~default:(Error "tempdir creation failed")
 
 let write_tree = fun root entries ->
@@ -29,8 +25,7 @@ let write_tree = fun root entries ->
   in
   loop entries
 
-let read_tree_file = fun root relative_path ->
-  Fs.read_to_string Path.(root / relative_path)
+let read_tree_file = fun root relative_path -> Fs.read_to_string Path.(root / relative_path)
 
 let test_commit_dir_first_writer_wins = fun _ctx ->
   with_store "contentstore-commit-dir" [ "modules" ]
@@ -58,10 +53,8 @@ let test_commit_dir_with_one_file = fun _ctx ->
       let hash = Crypto.hash_string "one-file" in
       let source_dir = Path.(tmpdir / Path.v "source") in
       let _ = Fs.create_dir_all source_dir |> Result.expect ~msg:"create source dir should succeed" in
-      let _ = Fs.write "payload" Path.(source_dir / Path.v "payload.txt")
-      |> Result.expect ~msg:"write payload should succeed" in
-      let _ = Contentstore.commit_dir store ~hash ~source_dir
-      |> Result.expect ~msg:"commit_dir should succeed" in
+      let _ = Fs.write "payload" Path.(source_dir / Path.v "payload.txt") |> Result.expect ~msg:"write payload should succeed" in
+      let _ = Contentstore.commit_dir store ~hash ~source_dir |> Result.expect ~msg:"commit_dir should succeed" in
       match Fs.read_to_string Path.(Contentstore.hash_dir_of store hash / Path.v "payload.txt") with
       | Ok "payload" -> Ok ()
       | Ok _ -> Error "expected one-file tree commit to stay readable"
@@ -79,14 +72,13 @@ let test_commit_dir_preserves_nested_structure_and_bytes = fun _ctx ->
       ] in
       let _ = Fs.create_dir_all source_dir |> Result.expect ~msg:"create source dir should succeed" in
       let _ = write_tree source_dir entries |> Result.expect ~msg:"write tree should succeed" in
-      let _ = Contentstore.commit_dir store ~hash ~source_dir
-      |> Result.expect ~msg:"commit_dir should succeed" in
+      let _ = Contentstore.commit_dir store ~hash ~source_dir |> Result.expect ~msg:"commit_dir should succeed" in
       let committed_root = Contentstore.hash_dir_of store hash in
-      match
-        ( read_tree_file committed_root Path.(Path.v "a" / Path.v "payload.txt")
-        , read_tree_file committed_root Path.(Path.v "a" / Path.v "b" / Path.v "binary.bin")
-        , read_tree_file committed_root Path.(Path.v "c" / Path.v "d" / Path.v "leaf.txt") )
-      with
+      match (
+        read_tree_file committed_root Path.(Path.v "a" / Path.v "payload.txt"),
+        read_tree_file committed_root Path.(Path.v "a" / Path.v "b" / Path.v "binary.bin"),
+        read_tree_file committed_root Path.(Path.v "c" / Path.v "d" / Path.v "leaf.txt")
+      ) with
       | (Ok "alpha", Ok "bin\000\255", Ok "omega") -> Ok ()
       | _ -> Error "expected commit_dir to preserve nested structure and file bytes exactly")
 
@@ -96,8 +88,7 @@ let test_commit_dir_of_empty_directory_creates_empty_destination = fun _ctx ->
       let hash = Crypto.hash_string "empty-tree" in
       let source_dir = Path.(tmpdir / Path.v "source") in
       let _ = Fs.create_dir_all source_dir |> Result.expect ~msg:"create source dir should succeed" in
-      let _ = Contentstore.commit_dir store ~hash ~source_dir
-      |> Result.expect ~msg:"commit_dir should succeed" in
+      let _ = Contentstore.commit_dir store ~hash ~source_dir |> Result.expect ~msg:"commit_dir should succeed" in
       let destination = Contentstore.hash_dir_of store hash in
       let exists = Fs.exists destination |> Result.expect ~msg:"exists should succeed" in
       let entries =
@@ -123,8 +114,7 @@ let test_commit_dir_large_tree_remains_readable = fun _ctx ->
           let relative = Path.(Path.v "files" / Path.v ("file-" ^ Int.to_string index ^ ".txt")) in
           let path = Path.(source_dir / relative) in
           let _ = Fs.create_dir_all (Path.dirname path) |> Result.expect ~msg:"create parent dirs should succeed" in
-          let _ = Fs.write ("payload-" ^ Int.to_string index) path
-          |> Result.expect ~msg:"write payload should succeed" in
+          let _ = Fs.write ("payload-" ^ Int.to_string index) path |> Result.expect ~msg:"write payload should succeed" in
           write_many (index + 1)
       in
       let rec verify_many root index =
@@ -133,12 +123,13 @@ let test_commit_dir_large_tree_remains_readable = fun _ctx ->
         else
           let relative = Path.(Path.v "files" / Path.v ("file-" ^ Int.to_string index ^ ".txt")) in
           match Fs.read_to_string Path.(root / relative) with
-          | Ok loaded when String.equal loaded ("payload-" ^ Int.to_string index) -> verify_many root (index + 1)
+          | Ok loaded when String.equal loaded ("payload-" ^ Int.to_string index) -> verify_many
+            root
+            (index + 1)
           | _ -> Error "expected all files in a large committed tree to remain readable"
       in
       let _ = write_many 0 |> Result.expect ~msg:"write large tree should succeed" in
-      let _ = Contentstore.commit_dir store ~hash ~source_dir
-      |> Result.expect ~msg:"commit_dir should succeed" in
+      let _ = Contentstore.commit_dir store ~hash ~source_dir |> Result.expect ~msg:"commit_dir should succeed" in
       verify_many (Contentstore.hash_dir_of store hash) 0)
 
 let test_commit_dir_rejects_file_source = fun _ctx ->
@@ -147,7 +138,10 @@ let test_commit_dir_rejects_file_source = fun _ctx ->
       let source = Path.(tmpdir / Path.v "source.txt") in
       let _ = Fs.write "not a directory" source |> Result.expect ~msg:"write source should succeed" in
       match Contentstore.commit_dir store ~hash:(Crypto.hash_string "invalid") ~source_dir:source with
-      | Error (Contentstore.Store.Invalid_source_path { reason = Contentstore.Store.Source_not_directory; _ }) -> Ok ()
+      | Error (Contentstore.Store.Invalid_source_path {
+        reason=Contentstore.Store.Source_not_directory;
+        _
+      }) -> Ok ()
       | Error err -> Error ("unexpected error: " ^ Contentstore.Store.error_message err)
       | Ok () -> Error "expected commit_dir to reject a file source")
 
@@ -156,7 +150,7 @@ let test_commit_dir_rejects_missing_source = fun _ctx ->
     (fun ~tmpdir ~store ->
       let source = Path.(tmpdir / Path.v "missing") in
       match Contentstore.commit_dir store ~hash:(Crypto.hash_string "missing") ~source_dir:source with
-      | Error (Contentstore.Store.Invalid_source_path { reason = Contentstore.Store.Source_missing; _ }) -> Ok ()
+      | Error (Contentstore.Store.Invalid_source_path { reason=Contentstore.Store.Source_missing; _ }) -> Ok ()
       | Error err -> Error ("unexpected error: " ^ Contentstore.Store.error_message err)
       | Ok () -> Error "expected commit_dir to reject a missing source path")
 
@@ -181,10 +175,8 @@ let test_commit_dir_consumes_source_dir_on_success = fun _ctx ->
       let hash = Crypto.hash_string "consume-source" in
       let source_dir = Path.(tmpdir / Path.v "source") in
       let _ = Fs.create_dir_all source_dir |> Result.expect ~msg:"create source dir should succeed" in
-      let _ = Fs.write "payload" Path.(source_dir / Path.v "payload.txt")
-      |> Result.expect ~msg:"write payload should succeed" in
-      let _ = Contentstore.commit_dir store ~hash ~source_dir
-      |> Result.expect ~msg:"commit_dir should succeed" in
+      let _ = Fs.write "payload" Path.(source_dir / Path.v "payload.txt") |> Result.expect ~msg:"write payload should succeed" in
+      let _ = Contentstore.commit_dir store ~hash ~source_dir |> Result.expect ~msg:"commit_dir should succeed" in
       let source_exists = Fs.exists source_dir |> Result.expect ~msg:"exists should succeed" in
       if source_exists then
         Error "expected successful commit_dir to consume the source directory"
@@ -199,14 +191,10 @@ let test_duplicate_commit_consumes_second_source_dir = fun _ctx ->
       let second_dir = Path.(tmpdir / Path.v "second") in
       let _ = Fs.create_dir_all first_dir |> Result.expect ~msg:"create first dir should succeed" in
       let _ = Fs.create_dir_all second_dir |> Result.expect ~msg:"create second dir should succeed" in
-      let _ = Fs.write "first" Path.(first_dir / Path.v "payload.txt")
-      |> Result.expect ~msg:"write first payload should succeed" in
-      let _ = Fs.write "second" Path.(second_dir / Path.v "payload.txt")
-      |> Result.expect ~msg:"write second payload should succeed" in
-      let _ = Contentstore.commit_dir store ~hash ~source_dir:first_dir
-      |> Result.expect ~msg:"first commit_dir should succeed" in
-      let _ = Contentstore.commit_dir store ~hash ~source_dir:second_dir
-      |> Result.expect ~msg:"second commit_dir should succeed" in
+      let _ = Fs.write "first" Path.(first_dir / Path.v "payload.txt") |> Result.expect ~msg:"write first payload should succeed" in
+      let _ = Fs.write "second" Path.(second_dir / Path.v "payload.txt") |> Result.expect ~msg:"write second payload should succeed" in
+      let _ = Contentstore.commit_dir store ~hash ~source_dir:first_dir |> Result.expect ~msg:"first commit_dir should succeed" in
+      let _ = Contentstore.commit_dir store ~hash ~source_dir:second_dir |> Result.expect ~msg:"second commit_dir should succeed" in
       let second_exists = Fs.exists second_dir |> Result.expect ~msg:"exists should succeed" in
       match Fs.read_to_string Path.(Contentstore.hash_dir_of store hash / Path.v "payload.txt") with
       | Ok "first" when not second_exists -> Ok ()
@@ -222,18 +210,16 @@ let test_different_hashes_create_distinct_tree_destinations = fun _ctx ->
       let right_dir = Path.(tmpdir / Path.v "right") in
       let _ = Fs.create_dir_all left_dir |> Result.expect ~msg:"create left dir should succeed" in
       let _ = Fs.create_dir_all right_dir |> Result.expect ~msg:"create right dir should succeed" in
-      let _ = Fs.write "left" Path.(left_dir / Path.v "payload.txt")
-      |> Result.expect ~msg:"write left payload should succeed" in
-      let _ = Fs.write "right" Path.(right_dir / Path.v "payload.txt")
-      |> Result.expect ~msg:"write right payload should succeed" in
+      let _ = Fs.write "left" Path.(left_dir / Path.v "payload.txt") |> Result.expect ~msg:"write left payload should succeed" in
+      let _ = Fs.write "right" Path.(right_dir / Path.v "payload.txt") |> Result.expect ~msg:"write right payload should succeed" in
       let _ = Contentstore.commit_dir store ~hash:left_hash ~source_dir:left_dir
       |> Result.expect ~msg:"left commit_dir should succeed" in
       let _ = Contentstore.commit_dir store ~hash:right_hash ~source_dir:right_dir
       |> Result.expect ~msg:"right commit_dir should succeed" in
-      match
-        ( Fs.read_to_string Path.(Contentstore.hash_dir_of store left_hash / Path.v "payload.txt")
-        , Fs.read_to_string Path.(Contentstore.hash_dir_of store right_hash / Path.v "payload.txt") )
-      with
+      match (
+        Fs.read_to_string Path.(Contentstore.hash_dir_of store left_hash / Path.v "payload.txt"),
+        Fs.read_to_string Path.(Contentstore.hash_dir_of store right_hash / Path.v "payload.txt")
+      ) with
       | (Ok "left", Ok "right") -> Ok ()
       | _ -> Error "expected different hashes to create distinct readable tree destinations")
 
@@ -243,10 +229,8 @@ let test_commit_dir_source_inside_store_is_safe = fun _ctx ->
       let hash = Crypto.hash_string "inside-store" in
       let source_dir = Path.(Contentstore.root store / Path.v "scratch" / Path.v "source") in
       let _ = Fs.create_dir_all source_dir |> Result.expect ~msg:"create source dir should succeed" in
-      let _ = Fs.write "payload" Path.(source_dir / Path.v "payload.txt")
-      |> Result.expect ~msg:"write payload should succeed" in
-      let _ = Contentstore.commit_dir store ~hash ~source_dir
-      |> Result.expect ~msg:"commit_dir should succeed" in
+      let _ = Fs.write "payload" Path.(source_dir / Path.v "payload.txt") |> Result.expect ~msg:"write payload should succeed" in
+      let _ = Contentstore.commit_dir store ~hash ~source_dir |> Result.expect ~msg:"commit_dir should succeed" in
       match Fs.read_to_string Path.(Contentstore.hash_dir_of store hash / Path.v "payload.txt") with
       | Ok "payload" -> Ok ()
       | Ok _ -> Error "expected commit_dir to stay consistent when the source dir lives under the store root"

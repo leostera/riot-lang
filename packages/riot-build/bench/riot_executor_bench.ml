@@ -3,17 +3,16 @@ open Riot_build
 open Std.Bench
 open Std.Collections
 open Riot_model
-
-module Action_executor = Action_executor
-module Action_queue = Action_queue
+module Action_executor = Riot_build.Internal.Action_executor
+module Action_queue = Riot_build.Internal.Action_queue
+module Sandbox = Riot_build.Internal.Sandbox
 module Action_graph = Riot_planner.Action_graph
 module Action_node = Riot_planner.Action_node
 module Package = Riot_model.Package
 module Workspace = Riot_model.Workspace
 
-let test_toolchain =
-  Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
-  |> Result.expect ~msg:"riot-build bench toolchain init should succeed"
+let test_toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
+|> Result.expect ~msg:"riot-build bench toolchain init should succeed"
 
 let write_file = fun path contents ->
   let parent =
@@ -30,14 +29,16 @@ let cleanup_dir = fun path ->
   | Error _ -> ()
 
 let payload = fun ~size ~seed ->
-  String.init ~len:size ~fn:(fun index ->
-    Char.from_int_unchecked (Char.to_int 'a' + ((index + seed) mod 26)))
+  String.init
+    ~len:size
+    ~fn:(fun index -> Char.from_int_unchecked (Char.to_int 'a' + ((index + seed) mod 26)))
 
 let make_workspace = fun root ->
   Workspace.{
     name = None;
     root;
-    target_dir_root = Path.(root / Path.v "target");
+    target_dir_root =
+      Path.(root / Path.v "target");
     packages = [];
     dependencies = [];
     dev_dependencies = [];
@@ -92,8 +93,7 @@ let failed_result = fun node_id ->
     completed_at = now;
   }
 
-let queue_all = fun queue nodes ->
-  List.for_each nodes ~fn:(Action_queue.queue queue)
+let queue_all = fun queue nodes -> List.for_each nodes ~fn:(Action_queue.queue queue)
 
 let drain_queue_success = fun queue ~total_nodes ->
   let rec loop () =
@@ -111,18 +111,20 @@ let drain_queue_success = fun queue ~total_nodes ->
 
 let make_independent_nodes = fun ~package ~count ->
   let graph = Action_graph.create () in
-  List.init ~count ~fn:(fun index ->
-    make_node_in
-      graph
-      ~package
-      ~actions:[
-        Riot_planner.Action.WriteFile {
-          destination = Path.v ("out-" ^ Int.to_string index ^ ".txt");
-          content = "x";
-        };
-      ]
-      ~outs:[ Path.v ("out-" ^ Int.to_string index ^ ".txt") ]
-      ())
+  List.init
+    ~count
+    ~fn:(fun index ->
+      make_node_in
+        graph
+        ~package
+        ~actions:[
+          Riot_planner.Action.WriteFile {
+            destination = Path.v ("out-" ^ Int.to_string index ^ ".txt");
+            content = "x"
+          };
+        ]
+        ~outs:[ Path.v ("out-" ^ Int.to_string index ^ ".txt") ]
+        ())
 
 let make_chain_nodes = fun ~package ~count ->
   let graph = Action_graph.create () in
@@ -135,20 +137,18 @@ let make_chain_nodes = fun ~package ~count ->
         | Some node -> [ node.id ]
         | None -> []
       in
-      let node =
-        make_node_in
-          graph
-          ~package
-          ~deps
-          ~actions:[
-            Riot_planner.Action.WriteFile {
-              destination = Path.v ("chain-" ^ Int.to_string index ^ ".txt");
-              content = "x";
-            };
-          ]
-          ~outs:[ Path.v ("chain-" ^ Int.to_string index ^ ".txt") ]
-          ()
-      in
+      let node = make_node_in
+        graph
+        ~package
+        ~deps
+        ~actions:[
+          Riot_planner.Action.WriteFile {
+            destination = Path.v ("chain-" ^ Int.to_string index ^ ".txt");
+            content = "x"
+          };
+        ]
+        ~outs:[ Path.v ("chain-" ^ Int.to_string index ^ ".txt") ]
+        () in
       (
         match previous with
         | Some prev -> Action_graph.add_dependency graph node ~depends_on:prev
@@ -160,32 +160,29 @@ let make_chain_nodes = fun ~package ~count ->
 
 let make_failure_fanout_nodes = fun ~package ~dependents ->
   let graph = Action_graph.create () in
-  let root =
-    make_node_in
-      graph
-      ~package
-      ~actions:[ Riot_planner.Action.WriteFile { destination = Path.v "root.txt"; content = "root" }; ]
-      ~outs:[ Path.v "root.txt" ]
-      ()
-  in
+  let root = make_node_in
+    graph
+    ~package
+    ~actions:[ Riot_planner.Action.WriteFile { destination = Path.v "root.txt"; content = "root" }; ]
+    ~outs:[ Path.v "root.txt" ]
+    () in
   let children =
-    List.init ~count:dependents ~fn:(fun index ->
-      let node =
-        make_node_in
+    List.init ~count:dependents
+      ~fn:(fun index ->
+        let node = make_node_in
           graph
           ~package
           ~deps:[ root.id ]
           ~actions:[
             Riot_planner.Action.WriteFile {
               destination = Path.v ("child-" ^ Int.to_string index ^ ".txt");
-              content = "child";
+              content = "child"
             };
           ]
           ~outs:[ Path.v ("child-" ^ Int.to_string index ^ ".txt") ]
-          ()
-      in
-      Action_graph.add_dependency graph node ~depends_on:root;
-      node)
+          () in
+        Action_graph.add_dependency graph node ~depends_on:root;
+        node)
   in
   (root, children)
 
@@ -217,8 +214,9 @@ let make_queue_failure_fanout_bench = fun root ~dependents ->
     queue_all queue (children @ [ root_node ]);
     (
       match Action_queue.next queue with
-      | Some node when node.id = root_node.id ->
-          Action_queue.mark_completed queue (failed_result root_node.id)
+      | Some node when node.id = root_node.id -> Action_queue.mark_completed
+        queue
+        (failed_result root_node.id)
       | Some _ -> panic "queue failure bench expected root node first"
       | None -> panic "queue failure bench expected root node"
     );
@@ -248,28 +246,24 @@ let make_execute_node_write_miss_bench = fun root ~size ->
     let _ = Fs.create_dir_all sandbox |> Result.expect ~msg:"create write bench sandbox should succeed" in
     let output = Path.v "out.txt" in
     let graph = Action_graph.create () in
-    let node =
-      make_node_in
-        graph
-        ~package
-        ~actions:[
-          Riot_planner.Action.WriteFile {
-            destination = output;
-            content = Int.to_string iteration ^ ":" ^ payload ~size ~seed:iteration;
-          };
-        ]
-        ~outs:[ output ]
-        ()
-    in
-    let result =
-      Action_executor.execute_node
-        ~completed:(HashMap.create ())
-        ~store
-        ~session_id
-        test_toolchain
-        sandbox
-        node
-    in
+    let node = make_node_in
+      graph
+      ~package
+      ~actions:[
+        Riot_planner.Action.WriteFile {
+          destination = output;
+          content = Int.to_string iteration ^ ":" ^ payload ~size ~seed:iteration
+        };
+      ]
+      ~outs:[ output ]
+      () in
+    let result = Action_executor.execute_node
+      ~completed:(HashMap.create ())
+      ~store
+      ~session_id
+      test_toolchain
+      sandbox
+      node in
     cleanup_dir sandbox;
     match result.status with
     | Action_executor.Executed -> ()
@@ -284,25 +278,23 @@ let make_execute_node_cache_hit_bench = fun root ~size ->
   let session_id = Riot_model.Session_id.make () in
   let output = Path.v "out.txt" in
   let graph = Action_graph.create () in
-  let node =
-    make_node_in
-      graph
-      ~package
-      ~actions:[ Riot_planner.Action.WriteFile { destination = output; content = payload ~size ~seed:0 }; ]
-      ~outs:[ output ]
-      ()
-  in
+  let node = make_node_in
+    graph
+    ~package
+    ~actions:[
+      Riot_planner.Action.WriteFile { destination = output; content = payload ~size ~seed:0 };
+    ]
+    ~outs:[ output ]
+    () in
   let warm_sandbox = Path.(workspace.root / Path.v "warm-sandbox") in
   let _ = Fs.create_dir_all warm_sandbox |> Result.expect ~msg:"create warm sandbox should succeed" in
-  let warm_result =
-    Action_executor.execute_node
-      ~completed:(HashMap.create ())
-      ~store
-      ~session_id
-      test_toolchain
-      warm_sandbox
-      node
-  in
+  let warm_result = Action_executor.execute_node
+    ~completed:(HashMap.create ())
+    ~store
+    ~session_id
+    test_toolchain
+    warm_sandbox
+    node in
   (
     match warm_result.status with
     | Action_executor.Executed -> ()
@@ -317,15 +309,13 @@ let make_execute_node_cache_hit_bench = fun root ~size ->
     counter := iteration + 1;
     let sandbox = Path.(workspace.root / Path.v "cache-sandboxes" / Path.v (Int.to_string iteration)) in
     let _ = Fs.create_dir_all sandbox |> Result.expect ~msg:"create cache hit sandbox should succeed" in
-    let result =
-      Action_executor.execute_node
-        ~completed:(HashMap.create ())
-        ~store
-        ~session_id
-        test_toolchain
-        sandbox
-        node
-    in
+    let result = Action_executor.execute_node
+      ~completed:(HashMap.create ())
+      ~store
+      ~session_id
+      test_toolchain
+      sandbox
+      node in
     cleanup_dir sandbox;
     match result.status with
     | Action_executor.Cached _ -> ()
@@ -334,18 +324,20 @@ let make_execute_node_cache_hit_bench = fun root ~size ->
     | Action_executor.Skipped -> panic "execute_node cache hit bench expected cached result"
 
 let make_execute_graph_nodes = fun graph ~package ~count ~seed ->
-  List.init ~count ~fn:(fun index ->
-    make_node_in
-      graph
-      ~package
-      ~actions:[
-        Riot_planner.Action.WriteFile {
-          destination = Path.v ("out-" ^ Int.to_string index ^ ".txt");
-          content = payload ~size:1_024 ~seed:(seed + index);
-        };
-      ]
-      ~outs:[ Path.v ("out-" ^ Int.to_string index ^ ".txt") ]
-      ())
+  List.init
+    ~count
+    ~fn:(fun index ->
+      make_node_in
+        graph
+        ~package
+        ~actions:[
+          Riot_planner.Action.WriteFile {
+            destination = Path.v ("out-" ^ Int.to_string index ^ ".txt");
+            content = payload ~size:1_024 ~seed:(seed + index)
+          };
+        ]
+        ~outs:[ Path.v ("out-" ^ Int.to_string index ^ ".txt") ]
+        ())
 
 let make_execute_graph_miss_bench = fun root ~count ~concurrency ->
   let workspace = make_workspace Path.(root / Path.v ("execute-graph-miss-" ^ Int.to_string count)) in
@@ -358,18 +350,14 @@ let make_execute_graph_miss_bench = fun root ~count ~concurrency ->
     counter := iteration + 1;
     let graph = Action_graph.create () in
     let nodes = make_execute_graph_nodes graph ~package ~count ~seed:(iteration * count) in
-    let sandbox =
-      Sandbox.create ~workspace () ~package_name:package.Package.name
-    in
-    let result =
-      Action_executor.execute
-        ~action_graph:graph
-        ~sandbox
-        ~store
-        ~session_id
-        test_toolchain
-        ~concurrency
-    in
+    let sandbox = Sandbox.create ~workspace () ~package_name:package.Package.name in
+    let result = Action_executor.execute
+      ~action_graph:graph
+      ~sandbox
+      ~store
+      ~session_id
+      test_toolchain
+      ~concurrency in
     Sandbox.cleanup sandbox;
     if HashMap.length result.completed = List.length nodes then
       ()
@@ -384,32 +372,26 @@ let make_execute_graph_cache_hit_bench = fun root ~count ~concurrency ->
   let graph = Action_graph.create () in
   let _ = make_execute_graph_nodes graph ~package ~count ~seed:0 in
   let warm_sandbox = Sandbox.create ~workspace () ~package_name:package.Package.name in
-  let warm_result =
-    Action_executor.execute
-      ~action_graph:graph
-      ~sandbox:warm_sandbox
-      ~store
-      ~session_id
-      test_toolchain
-      ~concurrency
-  in
+  let warm_result = Action_executor.execute
+    ~action_graph:graph
+    ~sandbox:warm_sandbox
+    ~store
+    ~session_id
+    test_toolchain
+    ~concurrency in
   Sandbox.cleanup warm_sandbox;
   let all_warm = HashMap.length warm_result.completed = count in
   if not all_warm then
     panic "execute graph cache fixture expected all nodes to complete";
   fun () ->
-    let sandbox =
-      Sandbox.create ~workspace () ~package_name:package.Package.name
-    in
-    let result =
-      Action_executor.execute
-        ~action_graph:graph
-        ~sandbox
-        ~store
-        ~session_id
-        test_toolchain
-        ~concurrency
-    in
+    let sandbox = Sandbox.create ~workspace () ~package_name:package.Package.name in
+    let result = Action_executor.execute
+      ~action_graph:graph
+      ~sandbox
+      ~store
+      ~session_id
+      test_toolchain
+      ~concurrency in
     Sandbox.cleanup sandbox;
     if HashMap.length result.completed = count then
       ()
@@ -457,14 +439,10 @@ let benchmark_suite = fun root ->
 let () =
   Actors.run
     ~main:(fun ~args ->
-      match
-        Fs.with_tempdir ~prefix:"riot_executor_bench"
-          (fun root ->
-            Bench.Cli.main
-              ~name:"riot-build benchmarks"
-              ~benchmarks:(benchmark_suite root)
-              ~args)
-      with
+      match Fs.with_tempdir
+        ~prefix:"riot_executor_bench"
+        (fun root ->
+          Bench.Cli.main ~name:"riot-build benchmarks" ~benchmarks:(benchmark_suite root) ~args) with
       | Ok result -> result
       | Error err -> panic ("failed to prepare riot-build bench fixture: " ^ IO.error_message err))
     ~args:Env.args

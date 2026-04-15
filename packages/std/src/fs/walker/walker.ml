@@ -270,11 +270,7 @@ let compare_item_path = fun left right ->
 let next_dir_entry = fun opts ~depth ~dir_path handle ->
   match ReadDir.next handle with
   | None -> None
-  | Some entry -> Some (hinted_entry
-    opts
-    ~depth:(depth + 1)
-    ~dir_path
-    entry)
+  | Some entry -> Some (hinted_entry opts ~depth:(depth + 1) ~dir_path entry)
 
 let next_dir_list = fun opts dir_list ->
   match dir_list with

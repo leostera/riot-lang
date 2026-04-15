@@ -55,7 +55,9 @@ let upsert_document = fun state document ->
 let remove_document = fun state uri ->
   {
     state
-    with documents = List.filter state.documents ~fn:(fun document -> not (uri_equal document.uri uri))
+    with documents = List.filter
+      state.documents
+      ~fn:(fun document -> not (uri_equal document.uri uri))
   }
 
 let find_document = fun state uri ->
@@ -107,11 +109,8 @@ let prepared_parse_artifacts = fun ~filename text ->
 
 let add_prepared_typ_source = fun session ->
   fun ~kind:_ ->
-  fun ~origin:_ ->
-  fun ~revision:_ ->
-  fun ~text:_ ->
-  fun ~parse_result:_ ->
-  fun ~cst:_ -> (session, (), ())
+    fun ~origin:_ ->
+      fun ~revision:_ -> fun ~text:_ -> fun ~parse_result:_ -> fun ~cst:_ -> (session, (), ())
 
 let typ_source_origin_of_document = fun (document: document) ->
   match document.path with
@@ -125,7 +124,8 @@ let package_scope_for_file = fun state path ->
   | Ok (workspace, _errors) -> (
       match Riot_model.Workspace_manifest.find_package_for_path workspace ~path with
       | None -> None
-      | Some manifest -> Some (Riot_model.Workspace_manifest.realize_package ~intent:Riot_model.Package.Runtime manifest)
+      | Some manifest -> Some (Riot_model.Workspace_manifest.realize_package
+        ~intent:Riot_model.Package.Runtime manifest)
     )
 
 let package_source_files = fun (pkg: Riot_model.Package.t) ->
@@ -180,17 +180,13 @@ let text_for_path = fun state path ->
       | Error _ -> None
     )
 
-let typ_config_for_document = fun _state ->
-  fun (_document: document) -> ()
+let typ_config_for_document = fun _state -> fun (_document: document) -> ()
 
-let typ_snapshot_for_document = fun _state ->
-  fun (_document: document) -> None
+let typ_snapshot_for_document = fun _state -> fun (_document: document) -> None
 
-let typ_query_context_for_document = fun _state ->
-  fun _document -> None
+let typ_query_context_for_document = fun _state -> fun _document -> None
 
-let typ_analysis_for_document = fun _state ->
-  fun _document -> None
+let typ_analysis_for_document = fun _state -> fun _document -> None
 
 let diagnostic_to_lsp = fun text ->
   fun (diagnostic: Syn.Diagnostic.t) ->
@@ -239,19 +235,14 @@ let typ_diagnostic_to_lsp = fun text ->
   fun (diagnostic: Typ.Diagnostics.Diagnostic.t) ->
     let (span, message) =
       match diagnostic with
-      | Typ.Diagnostics.Diagnostic.UnsupportedSyntax unsupported ->
-          (
-            unsupported.span,
-            "Unsupported syntax: "
-            ^ Syn.SyntaxKind.to_string unsupported.kind
-            ^ " - "
-            ^ unsupported.summary
-          )
-      | Typ.Diagnostics.Diagnostic.UnsupportedType unsupported ->
-          (
-            unsupported.span,
-            "Unsupported type: " ^ unsupported.summary
-          )
+      | Typ.Diagnostics.Diagnostic.UnsupportedSyntax unsupported -> (
+        unsupported.span,
+        "Unsupported syntax: " ^ Syn.SyntaxKind.to_string unsupported.kind ^ " - " ^ unsupported.summary
+      )
+      | Typ.Diagnostics.Diagnostic.UnsupportedType unsupported -> (
+        unsupported.span,
+        "Unsupported type: " ^ unsupported.summary
+      )
     in
     {
       Lsp.Diagnostic.range = Lsp.Utf16.range_of_offsets
@@ -332,16 +323,15 @@ let finalized_workspace_edit_of_text = fun document text ->
   workspace_edit_of_text document text
 
 let fixable_lint_diagnostics = fun document result ->
-  result.Riot_fix.Source_runner.diagnostics
-  |> List.filter_map ~fn:(fun diagnostic ->
-    match Riot_fix.Diagnostic.fix diagnostic with
-    | None -> None
-    | Some fix ->
-        Some {
-          diagnostic;
-          lsp_diagnostic = lint_diagnostic_to_lsp document.text diagnostic;
-          fix
-        })
+  result.Riot_fix.Source_runner.diagnostics |> List.filter_map
+    ~fn:(fun diagnostic ->
+      match Riot_fix.Diagnostic.fix diagnostic with
+      | None -> None
+      | Some fix -> Some {
+        diagnostic;
+        lsp_diagnostic = lint_diagnostic_to_lsp document.text diagnostic;
+        fix
+      })
 
 let quickfix_action_of_entry = fun document entry ->
   match Riot_fix.Fix.apply_fix ~source:document.text entry.fix with
@@ -360,7 +350,9 @@ let quickfix_action_of_entry = fun document entry ->
       )
 
 let fix_all_action = fun document entries ->
-  match Riot_fix.Fix.apply_fixes ~source:document.text (List.map entries ~fn:(fun entry -> entry.fix)) with
+  match Riot_fix.Fix.apply_fixes
+    ~source:document.text
+    (List.map entries ~fn:(fun entry -> entry.fix)) with
   | Error _ -> None
   | Ok text ->
       Some (
@@ -410,7 +402,7 @@ let range_of_token = fun text token -> range_of_span text (Syn.Cst.Token.span to
 let range_of_tokens = fun text tokens ->
   match tokens with
   | [] -> Lsp.Utf16.range_of_offsets text ~start_offset:0 ~end_offset:0
-      | first :: rest ->
+  | first :: rest ->
       let last =
         List.fold_left rest ~acc:first ~fn:(fun _ token -> token)
       in
@@ -586,9 +578,8 @@ and module_type_symbols = fun text ->
       []
 
 and structure_item_symbols = fun text items ->
-  items
-  |> List.map ~fn:
-    (fun item ->
+  items |> List.map
+    ~fn:(fun item ->
       match item with
       | Syn.Cst.StructureItem.TypeDeclaration declaration ->
           type_declaration_group_symbols text declaration
@@ -679,13 +670,11 @@ and structure_item_symbols = fun text items ->
       | Syn.Cst.StructureItem.Docstring _
       | Syn.Cst.StructureItem.Comment _
       | Syn.Cst.StructureItem.IncludeStatement _ ->
-          [])
-  |> List.concat
+          []) |> List.concat
 
 and signature_item_symbols = fun text items ->
-  items
-  |> List.map ~fn:
-    (fun item ->
+  items |> List.map
+    ~fn:(fun item ->
       match item with
       | Syn.Cst.SignatureItem.TypeDeclaration declaration ->
           type_declaration_group_symbols text declaration
@@ -789,8 +778,7 @@ and signature_item_symbols = fun text items ->
       | Syn.Cst.SignatureItem.Docstring _
       | Syn.Cst.SignatureItem.Comment _
       | Syn.Cst.SignatureItem.IncludeStatement _ ->
-          [])
-  |> List.concat
+          []) |> List.concat
 
 let document_symbols_for_document = fun document ->
   match prepared_parse_artifacts ~filename:(filename_of_document document) document.text with
@@ -861,9 +849,7 @@ let apply_change = fun text ->
 
 let apply_changes = fun text ->
   fun changes ->
-    List.fold_left
-      changes
-      ~acc:(Ok text)
+    List.fold_left changes ~acc:(Ok text)
       ~fn:(fun acc change ->
         let* current = acc in
         apply_change current change)
@@ -894,9 +880,11 @@ let initialize_result: Lsp.Initialize.result = {
 let debug_json = fun state ->
   let documents =
     state.documents
-    |> List.sort ~compare:(fun left right ->
-      String.compare (Lsp.Uri.to_string left.uri) (Lsp.Uri.to_string right.uri))
-    |> List.map ~fn:(fun document ->
+    |> List.sort
+      ~compare:(fun left right ->
+        String.compare (Lsp.Uri.to_string left.uri) (Lsp.Uri.to_string right.uri))
+    |> List.map
+      ~fn:(fun document ->
         Json.obj [ ("uri", Lsp.Uri.to_json document.uri); ("version", Json.int document.version); ])
   in
   Json.obj
@@ -1098,7 +1086,8 @@ let handle_code_action = fun state ->
               if action_kind_allowed params.context.only Lsp.Action_kind.Quick_fix then
                 actions
                 @ (fixable
-                |> List.filter ~fn:(fun entry -> lint_diagnostic_requested params.context params.range entry.lsp_diagnostic)
+                |> List.filter
+                  ~fn:(fun entry -> lint_diagnostic_requested params.context params.range entry.lsp_diagnostic)
                 |> List.filter_map ~fn:(quickfix_action_of_entry document))
               else
                 actions

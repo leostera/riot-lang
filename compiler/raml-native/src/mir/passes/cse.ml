@@ -35,24 +35,23 @@ let key_equal = fun left right ->
 let remove_register = fun env name ->
   List.filter env ~fn:(fun (_, current) -> not (String.equal current name))
 
-let remove_key = fun env key ->
-  List.filter env ~fn:(fun (current, _) -> not (key_equal current key))
+let remove_key = fun env key -> List.filter env ~fn:(fun (current, _) -> not (key_equal current key))
 
 let bind = fun env key name -> (key, name) :: remove_key (remove_register env name) key
 
 let lookup = fun env key ->
   env
-  |> List.find ~fn:(fun (current, _) ->
-    key_equal current key)
+  |> List.find ~fn:(fun (current, _) -> key_equal current key)
   |> Option.map ~fn:(fun (_, name) -> name)
 
 let merge_env = fun left right ->
   left
-  |> List.filter_map ~fn:(fun (key, left_name) ->
-    right
-    |> List.find ~fn:(fun (other_key, right_name) ->
-      key_equal key other_key && String.equal left_name right_name)
-    |> Option.map ~fn:(fun _ -> (key, left_name)))
+  |> List.filter_map
+    ~fn:(fun (key, left_name) ->
+      right
+      |> List.find
+        ~fn:(fun (other_key, right_name) -> key_equal key other_key && String.equal left_name right_name)
+      |> Option.map ~fn:(fun _ -> (key, left_name)))
 
 let rec rewrite_instruction = fun env instruction ->
   match instruction with
@@ -86,8 +85,7 @@ let rec rewrite_instruction = fun env instruction ->
       (env, instruction)
 
 and rewrite_instructions = fun env instructions ->
-  List.fold_left instructions
-    ~acc:(env, [])
+  List.fold_left instructions ~acc:(env, [])
     ~fn:(fun (env, acc) instruction ->
       let env, instruction = rewrite_instruction env instruction in
       (env, acc @ [ instruction ]))

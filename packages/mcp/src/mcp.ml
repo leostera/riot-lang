@@ -412,7 +412,9 @@ let request_params_to_json = function
     ("name", Json.String name);
     (
       "arguments",
-      option_to_json (fun args -> Json.Object (List.map ~fn:(fun ((k, v)) -> (k, Json.String v)) args)) arguments
+      option_to_json
+        (fun args -> Json.Object (List.map ~fn:(fun ((k, v)) -> (k, Json.String v)) args))
+        arguments
     );
   ]
   | CompleteSamplingParams params -> Json.Object [
@@ -787,7 +789,8 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
         Json.Object [ (
             "tools",
             Json.Array (
-              List.map ~fn:(fun (t: tool) ->
+              List.map
+                ~fn:(fun (t: tool) ->
                   Json.Object [ ("name", Json.String t.name); (
                       "description",
                       match t.description with
@@ -807,7 +810,8 @@ module MakeProtocol (T : ToolProtocol): McpApplicationProtocol with type tool_re
         Json.Object [ (
             "resources",
             Json.Array (
-              List.map ~fn:(fun r ->
+              List.map
+                ~fn:(fun r ->
                   Json.Object [ ("uri", Json.String r.uri); (
                       "name",
                       match r.name with

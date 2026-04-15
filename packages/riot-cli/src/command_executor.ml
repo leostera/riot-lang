@@ -1,7 +1,6 @@
 open Std
 
-let array_of_list = fun lst ->
-  Kernel.Array.from_list lst
+let array_of_list = fun lst -> Kernel.Array.from_list lst
 
 let execute = fun ~command_binary ~args ->
   let command_path = Path.to_string command_binary in

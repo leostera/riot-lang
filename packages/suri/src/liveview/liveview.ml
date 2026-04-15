@@ -69,17 +69,17 @@ let rec attach_handler_ids registry (component: 'msg Component.t): 'msg Componen
       in
       (* Register event handlers and create data attributes *)
       let handler_attrs =
-          List.map
-            ~fn:(fun attr ->
-              match attr with
-              | event_name, handler ->
-                  let handler_id = HandlerRegistry.register registry handler in
-                  [
-                    Component.Attr ("data-lv-handler", handler_id);
-                    Component.Attr ("data-lv-event", event_name);
-                  ])
-            event_handlers
-          |> List.concat
+        List.map
+          ~fn:(fun attr ->
+            match attr with
+            | event_name, handler ->
+                let handler_id = HandlerRegistry.register registry handler in
+                [
+                  Component.Attr ("data-lv-handler", handler_id);
+                  Component.Attr ("data-lv-event", event_name);
+                ])
+          event_handlers
+        |> List.concat
       in
       (* Process children recursively *)
       let new_children = List.map ~fn:(attach_handler_ids registry) children in

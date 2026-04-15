@@ -183,7 +183,6 @@ end
 module ReadDir: sig
   (** Directory iterator *)
   type t
-
   type entry_kind = Kernel.Fs.ReadDir.kind =
     | RegularFile
     | Directory
@@ -193,12 +192,10 @@ module ReadDir: sig
     | NamedPipe
     | Socket
     | Unknown
-
   type entry = {
     path: Path.t;
     kind: entry_kind;
   }
-
   val open_dir: Path.t -> (t, error) Result.t
 
   (** Opaque directory handle *)

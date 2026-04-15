@@ -5,13 +5,8 @@ let package_name = fun name ->
   Result.expect (Riot_model.Package_name.from_string name) ~msg:("package name " ^ name)
 
 let test_building_target_event_to_json = fun _ctx ->
-  let target =
-    Result.expect
-      (Riot_model.Target.from_string "aarch64-unknown-linux-gnu")
-      ~msg:"target"
-  in
-  let actual = Riot_build.Event.to_json
-    (Riot_build.Event.BuildingTarget { target; host = false }) in
+  let target = Result.expect (Riot_model.Target.from_string "aarch64-unknown-linux-gnu") ~msg:"target" in
+  let actual = Riot_build.Event.to_json (Riot_build.Event.BuildingTarget { target; host = false }) in
   Test.assert_equal
     ~expected:(Some (Data.Json.Object [
       ("type", Data.Json.String "BuildingTarget");
@@ -33,8 +28,9 @@ let test_pm_event_to_json_reuses_riot_model_event_shape = fun _ctx ->
   match Riot_build.Event.to_json (Riot_build.Event.Pm event) with
   | Some (Data.Json.Object fields) -> (
       match
-        List.find fields ~fn:(fun (name, _) -> String.equal name "event")
-        |> Option.map ~fn:(fun (_, value) -> value)
+        List.find fields
+          ~fn:(fun (name, _) ->
+            String.equal name "event") |> Option.map ~fn:(fun (_, value) -> value)
       with
       | Some (Data.Json.String "riot.pm.package_download.started") -> Ok ()
       | Some json -> Error ("expected PM event name in JSON, got " ^ Data.Json.to_string json)

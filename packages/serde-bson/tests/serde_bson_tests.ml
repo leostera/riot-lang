@@ -17,9 +17,11 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.for_each ~fn:(fun { buffer = chunk; offset; length } ->
+      IO.Iovec.for_each
+        ~fn:(fun { buffer=chunk; offset; length } ->
           IO.Buffer.add_subbytes buffer chunk offset length;
-          written := !written + length) bufs;
+          written := !written + length)
+        bufs;
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -255,7 +257,9 @@ let equal_manifest = fun (left: manifest) (right: manifest) ->
   && left.scores = right.scores
 
 let byte_values = fun value ->
-  List.init ~count:(String.length value) ~fn:(fun index -> Char.code (String.get_unchecked value ~at:index))
+  List.init
+    ~count:(String.length value)
+    ~fn:(fun index -> Char.code (String.get_unchecked value ~at:index))
 
 let sample_manifest: manifest = {
   ship = "Thousand Sunny";

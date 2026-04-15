@@ -1,5 +1,4 @@
 open Std
-
 module Rune = Kernel.Unicode.Rune
 
 type read_result =
@@ -44,10 +43,9 @@ let utf8_char_length = fun first_byte ->
 let is_valid_buffer = fun reader ->
   let value = IO.Bytes.sub_unchecked reader.data ~offset:0 ~len:reader.len |> IO.Bytes.to_string in
   match String.get_utf_8_rune value ~at:0 with
-  | Some decode ->
-      Rune.utf_decode_is_valid decode && Int.equal (Rune.utf_decode_length decode) reader.len
-  | None ->
-      false
+  | Some decode -> Rune.utf_decode_is_valid decode
+  && Int.equal (Rune.utf_decode_length decode) reader.len
+  | None -> false
 
 let read_more = fun reader ~read ->
   let remaining = reader.len - reader.pos in
@@ -76,24 +74,22 @@ let read = fun reader ~read ->
           `Malformed "Invalid UTF-8 start byte"
         else if len = 1 then
           `Read (IO.Bytes.sub_unchecked reader.data ~offset:0 ~len:1 |> IO.Bytes.to_string)
-        else
-          (
-            reader.pos <- 1;
-            reader.len <- len;
-            match read_more reader ~read with
-            | `Retry when Int.equal reader.pos reader.len ->
-                if is_valid_buffer reader then
-                  let value = IO.Bytes.sub_unchecked reader.data ~offset:0 ~len:reader.len |> IO.Bytes.to_string in
-                  clear reader;
-                  `Read value
-                else
-                  (
-                    clear reader;
-                    `Malformed "Invalid UTF-8 sequence"
-                  )
-            | result ->
-                result
-          )
+        else (
+          reader.pos <- 1;
+          reader.len <- len;
+          match read_more reader ~read with
+          | `Retry when Int.equal reader.pos reader.len ->
+              if is_valid_buffer reader then
+                let value = IO.Bytes.sub_unchecked reader.data ~offset:0 ~len:reader.len
+                |> IO.Bytes.to_string in
+                clear reader;
+                `Read value
+              else (
+                clear reader;
+                `Malformed "Invalid UTF-8 sequence"
+              )
+          | result -> result
+        )
     | `Ok _ ->
         `Malformed "Unexpected read length"
     | `Would_block ->
@@ -107,10 +103,8 @@ let read = fun reader ~read ->
           let value = IO.Bytes.sub_unchecked reader.data ~offset:0 ~len:reader.len |> IO.Bytes.to_string in
           clear reader;
           `Read value
-        else
-          (
-            clear reader;
-            `Malformed "Invalid UTF-8 sequence"
-          )
-    | result ->
-        result
+        else (
+          clear reader;
+          `Malformed "Invalid UTF-8 sequence"
+        )
+    | result -> result

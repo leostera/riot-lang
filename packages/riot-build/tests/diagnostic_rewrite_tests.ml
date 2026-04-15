@@ -3,6 +3,8 @@ open Riot_build
 open Riot_model
 module Test = Std.Test
 
+module Diagnostic_rewrite = Riot_build.Internal.Diagnostic_rewrite
+
 let package_name = fun value ->
   Package_name.from_string value |> Result.expect ~msg:("expected valid package name: " ^ value)
 
@@ -44,10 +46,7 @@ let test_rewrite_ocamlc_result_rewrites_workspace_paths = fun _ctx ->
         |> List.head
         |> Option.expect ~msg:"expected one parsed diagnostic" in
         let result = Riot_toolchain.Ocamlc.Success { message = ""; diagnostics = [ diagnostic ] } in
-        let rewritten = Diagnostic_rewrite.rewrite_ocamlc_result
-          ~package
-          ~sandbox_dir
-          result in
+        let rewritten = Diagnostic_rewrite.rewrite_ocamlc_result ~package ~sandbox_dir result in
         let warnings = Riot_toolchain.Ocamlc.get_ocamlc_warnings rewritten in
         match warnings with
         | [ warning ] when String.contains warning "./packages/riot-cli/src/install.ml" -> Ok ()

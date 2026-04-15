@@ -11,9 +11,7 @@ module Env = struct
     let singleton = fun name -> [ name ]
 
     let union = fun left right ->
-      List.unique
-        (List.sort (left @ right) ~compare:String.compare)
-        ~compare:String.compare
+      List.unique (List.sort (left @ right) ~compare:String.compare) ~compare:String.compare
 
     let elements = fun names -> names
   end
@@ -49,7 +47,11 @@ module Env = struct
     | [] -> env
     | segment :: rest ->
         let existing =
-          match List.find env ~fn:(fun (name, _) -> String.equal name segment) with
+          match
+            List.find env
+              ~fn:(fun (name, _) ->
+                String.equal name segment)
+          with
           | Some (_, node) -> node
           | None -> Node (Names.empty, [])
         in
@@ -69,17 +71,16 @@ module Env = struct
 
   let rec collect_free = function
     | Node (free, children) ->
-        List.fold_left
-          children
-          ~acc:free
+        List.fold_left children ~acc:free
           ~fn:(fun acc (_, child) ->
             Names.union acc (collect_free child))
 
   let merge_children env node = merge env (children node)
 
   let find = fun name env ->
-    List.find env ~fn:(fun (key, _) -> String.equal key name)
-    |> Option.map ~fn:(fun (_, value) -> value)
+    List.find env
+      ~fn:(fun (key, _) ->
+        String.equal key name) |> Option.map ~fn:(fun (_, value) -> value)
 
   let rec lookup_free segments env =
     match segments with
@@ -99,7 +100,8 @@ module Env = struct
 
   let rec lookup_map segments env =
     match segments with
-    | [] -> None
+    | [] ->
+        None
     | [ segment ] ->
         find segment env
     | segment :: rest ->
@@ -118,8 +120,7 @@ module DepSet = struct
     deps
 
   let add_names = fun deps names ->
-    List.for_each
-      names
+    List.for_each names
       ~fn:(fun name ->
         let _ = HashSet.insert deps ~value:name in
         ());
@@ -167,8 +168,7 @@ let drop_last = function
 let is_uppercase_ascii = fun ch -> ch >= 'A' && ch <= 'Z'
 
 let is_module_head = fun segment ->
-  String.length segment > 0
-  && is_uppercase_ascii (String.get_unchecked segment ~at:0)
+  String.length segment > 0 && is_uppercase_ascii (String.get_unchecked segment ~at:0)
 
 let add_names = DepSet.add_names
 
@@ -209,17 +209,13 @@ let collect_option = fun f env deps value ->
   | None -> Ok deps
 
 let collect_list = fun f env deps values ->
-  List.fold_left
-    values
-    ~acc:(Ok deps)
+  List.fold_left values ~acc:(Ok deps)
     ~fn:(fun acc value ->
       let* deps = acc in
       f env deps value)
 
 let collect_list_with = fun f acc values ->
-  List.fold_left
-    values
-    ~acc:(Ok acc)
+  List.fold_left values ~acc:(Ok acc)
     ~fn:(fun acc value ->
       let* acc = acc in
       f acc value)
@@ -360,9 +356,7 @@ and collect_type_declaration env deps declaration =
   | None -> Ok deps
 
 and collect_functor_parameters env deps parameters =
-  List.fold_left
-    parameters
-    ~acc:(Ok (deps, env))
+  List.fold_left parameters ~acc:(Ok (deps, env))
     ~fn:(fun acc parameter ->
       let* (deps, env) = acc in
       let* deps = collect_module_type env deps parameter.Cst.FunctorParameter.module_type in
@@ -528,9 +522,7 @@ and bind_pattern_modules env pattern =
   | Cst.Pattern.Array { elements; _ } ->
       List.fold_left elements ~acc:env ~fn:bind_pattern_modules
   | Cst.Pattern.Record { fields; _ } ->
-      List.fold_left
-        fields
-        ~acc:env
+      List.fold_left fields ~acc:env
         ~fn:(fun env (field: Cst.record_pattern_field) ->
           match field.pattern with
           | Some pattern -> bind_pattern_modules env pattern
@@ -570,9 +562,7 @@ and bind_parameter_modules env parameter =
       env
 
 and collect_parameters env deps parameters =
-  List.fold_left
-    parameters
-    ~acc:(Ok (deps, env))
+  List.fold_left parameters ~acc:(Ok (deps, env))
     ~fn:(fun acc parameter ->
       let* (deps, env) = acc in
       let* deps = collect_parameter env deps parameter in
@@ -859,9 +849,7 @@ and collect_structure env deps items =
   Ok (deps, env)
 
 and collect_structure_binding env deps items =
-  List.fold_left
-    items
-    ~acc:(Ok (deps, env, Env.empty))
+  List.fold_left items ~acc:(Ok (deps, env, Env.empty))
     ~fn:(fun acc item ->
       let* (deps, env, bindings) = acc in
       collect_structure_item env deps bindings item)
@@ -978,9 +966,7 @@ and collect_structure_item env deps bindings item =
       Ok (deps, env, bindings)
 
 and collect_signature_binding env deps items =
-  List.fold_left
-    items
-    ~acc:(Ok (deps, env, Env.empty))
+  List.fold_left items ~acc:(Ok (deps, env, Env.empty))
     ~fn:(fun acc item ->
       let* (deps, env, bindings) = acc in
       collect_signature_item env deps bindings item)

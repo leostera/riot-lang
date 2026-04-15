@@ -209,8 +209,8 @@ let target_to_json = fun target ->
     match target with
     | Workspace_planner.All -> "all"
     | Workspace_planner.Package pkg -> Package_name.to_string pkg
-    | Workspace_planner.Packages pkgs ->
-        "packages:" ^ String.concat "," (List.map pkgs ~fn:Package_name.to_string)
+    | Workspace_planner.Packages pkgs -> "packages:"
+    ^ String.concat "," (List.map pkgs ~fn:Package_name.to_string)
   )
 
 let target_of_json = function
@@ -218,7 +218,10 @@ let target_of_json = function
       Ok Workspace_planner.All
   | Data.Json.String target_str when String.starts_with ~prefix:"packages:" target_str ->
       let prefix_len = String.length "packages:" in
-      let packages_str = String.sub target_str ~offset:prefix_len ~len:(String.length target_str - prefix_len) in
+      let packages_str = String.sub
+        target_str
+        ~offset:prefix_len
+        ~len:(String.length target_str - prefix_len) in
       let packages =
         if String.equal packages_str "" then
           Ok []
@@ -274,18 +277,29 @@ let warning_source_of_json = function
   | Data.Json.String "cached" -> Ok `Cached
   | _ -> Error (Data.Json.String "Invalid warning source")
 
-let planning_breakdown_to_json breakdown =
-  Data.Json.Object [
-    ("dependency_count", Data.Json.Int breakdown.dependency_count);
-    ("dependency_check_duration_ms", Data.Json.Int (Time.Duration.to_millis breakdown.dependency_check_duration));
-    ("input_hash_duration_ms", Data.Json.Int (Time.Duration.to_millis breakdown.input_hash_duration));
-    ("artifact_lookup_duration_ms", Data.Json.Int (Time.Duration.to_millis breakdown.artifact_lookup_duration));
-    ("artifact_cache_hit", Data.Json.Bool breakdown.artifact_cache_hit);
-    ("plan_bundle_lookup_duration_ms", Data.Json.Int (Time.Duration.to_millis breakdown.plan_bundle_lookup_duration));
-    ("plan_bundle_decode_duration_ms", Data.Json.Int (Time.Duration.to_millis breakdown.plan_bundle_decode_duration));
-    ("plan_bundle_cache_hit", Data.Json.Bool breakdown.plan_bundle_cache_hit);
-    ("module_plan_duration_ms", Data.Json.Int (Time.Duration.to_millis breakdown.module_plan_duration));
-  ]
+let planning_breakdown_to_json breakdown = Data.Json.Object [
+  ("dependency_count", Data.Json.Int breakdown.dependency_count);
+  (
+    "dependency_check_duration_ms",
+    Data.Json.Int (Time.Duration.to_millis breakdown.dependency_check_duration)
+  );
+  ("input_hash_duration_ms", Data.Json.Int (Time.Duration.to_millis breakdown.input_hash_duration));
+  (
+    "artifact_lookup_duration_ms",
+    Data.Json.Int (Time.Duration.to_millis breakdown.artifact_lookup_duration)
+  );
+  ("artifact_cache_hit", Data.Json.Bool breakdown.artifact_cache_hit);
+  (
+    "plan_bundle_lookup_duration_ms",
+    Data.Json.Int (Time.Duration.to_millis breakdown.plan_bundle_lookup_duration)
+  );
+  (
+    "plan_bundle_decode_duration_ms",
+    Data.Json.Int (Time.Duration.to_millis breakdown.plan_bundle_decode_duration)
+  );
+  ("plan_bundle_cache_hit", Data.Json.Bool breakdown.plan_bundle_cache_hit);
+  ("module_plan_duration_ms", Data.Json.Int (Time.Duration.to_millis breakdown.module_plan_duration));
+]
 
 let planning_breakdown_of_json = function
   | Data.Json.Object fields -> (
@@ -300,17 +314,7 @@ let planning_breakdown_of_json = function
         Data.Json.get_field "plan_bundle_cache_hit" (Data.Json.Object fields),
         Data.Json.get_field "module_plan_duration_ms" (Data.Json.Object fields)
       ) with
-      | (
-          Some (Data.Json.Int dependency_count),
-          Some (Data.Json.Int dependency_check_duration_ms),
-          Some (Data.Json.Int input_hash_duration_ms),
-          Some (Data.Json.Int artifact_lookup_duration_ms),
-          Some (Data.Json.Bool artifact_cache_hit),
-          Some (Data.Json.Int plan_bundle_lookup_duration_ms),
-          Some (Data.Json.Int plan_bundle_decode_duration_ms),
-          Some (Data.Json.Bool plan_bundle_cache_hit),
-          Some (Data.Json.Int module_plan_duration_ms)
-        ) ->
+      | (Some (Data.Json.Int dependency_count), Some (Data.Json.Int dependency_check_duration_ms), Some (Data.Json.Int input_hash_duration_ms), Some (Data.Json.Int artifact_lookup_duration_ms), Some (Data.Json.Bool artifact_cache_hit), Some (Data.Json.Int plan_bundle_lookup_duration_ms), Some (Data.Json.Int plan_bundle_decode_duration_ms), Some (Data.Json.Bool plan_bundle_cache_hit), Some (Data.Json.Int module_plan_duration_ms)) ->
           Ok {
             dependency_count;
             dependency_check_duration = Time.Duration.from_millis dependency_check_duration_ms;
@@ -326,16 +330,24 @@ let planning_breakdown_of_json = function
     )
   | _ -> Error (Data.Json.String "Package planning breakdown must be an object")
 
-let workspace_graph_breakdown_to_json breakdown =
-  Data.Json.Object [
-    ("build_node_realization_count", Data.Json.Int breakdown.build_node_realization_count);
-    ("build_node_realization_duration_ms", Data.Json.Int (Time.Duration.to_millis breakdown.build_node_realization_duration));
-    ("runtime_node_realization_count", Data.Json.Int breakdown.runtime_node_realization_count);
-    ("runtime_node_realization_duration_ms", Data.Json.Int (Time.Duration.to_millis breakdown.runtime_node_realization_duration));
-    ("dev_node_realization_count", Data.Json.Int breakdown.dev_node_realization_count);
-    ("dev_node_realization_duration_ms", Data.Json.Int (Time.Duration.to_millis breakdown.dev_node_realization_duration));
-    ("edge_wiring_duration_ms", Data.Json.Int (Time.Duration.to_millis breakdown.edge_wiring_duration));
-  ]
+let workspace_graph_breakdown_to_json breakdown = Data.Json.Object [
+  ("build_node_realization_count", Data.Json.Int breakdown.build_node_realization_count);
+  (
+    "build_node_realization_duration_ms",
+    Data.Json.Int (Time.Duration.to_millis breakdown.build_node_realization_duration)
+  );
+  ("runtime_node_realization_count", Data.Json.Int breakdown.runtime_node_realization_count);
+  (
+    "runtime_node_realization_duration_ms",
+    Data.Json.Int (Time.Duration.to_millis breakdown.runtime_node_realization_duration)
+  );
+  ("dev_node_realization_count", Data.Json.Int breakdown.dev_node_realization_count);
+  (
+    "dev_node_realization_duration_ms",
+    Data.Json.Int (Time.Duration.to_millis breakdown.dev_node_realization_duration)
+  );
+  ("edge_wiring_duration_ms", Data.Json.Int (Time.Duration.to_millis breakdown.edge_wiring_duration));
+]
 
 let workspace_graph_breakdown_of_json = function
   | Data.Json.Object fields -> (
@@ -348,15 +360,7 @@ let workspace_graph_breakdown_of_json = function
         Data.Json.get_field "dev_node_realization_duration_ms" (Data.Json.Object fields),
         Data.Json.get_field "edge_wiring_duration_ms" (Data.Json.Object fields)
       ) with
-      | (
-          Some (Data.Json.Int build_node_realization_count),
-          Some (Data.Json.Int build_node_realization_duration_ms),
-          Some (Data.Json.Int runtime_node_realization_count),
-          Some (Data.Json.Int runtime_node_realization_duration_ms),
-          Some (Data.Json.Int dev_node_realization_count),
-          Some (Data.Json.Int dev_node_realization_duration_ms),
-          Some (Data.Json.Int edge_wiring_duration_ms)
-        ) ->
+      | (Some (Data.Json.Int build_node_realization_count), Some (Data.Json.Int build_node_realization_duration_ms), Some (Data.Json.Int runtime_node_realization_count), Some (Data.Json.Int runtime_node_realization_duration_ms), Some (Data.Json.Int dev_node_realization_count), Some (Data.Json.Int dev_node_realization_duration_ms), Some (Data.Json.Int edge_wiring_duration_ms)) ->
           Ok {
             build_node_realization_count;
             build_node_realization_duration = Time.Duration.from_millis build_node_realization_duration_ms;
@@ -391,6 +395,7 @@ let to_json: Telemetry.event -> Data.Json.t option = function
     workspace_package_count;
     planned_package_count;
     duration;
+
   } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "WorkspacePlanCompleted");
@@ -405,6 +410,7 @@ let to_json: Telemetry.event -> Data.Json.t option = function
     target;
     filtered_workspace_package_count;
     duration;
+
   } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "WorkspaceManifestFilterCompleted");
@@ -413,7 +419,13 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("filtered_workspace_package_count", Data.Json.Int filtered_workspace_package_count);
         ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
       ])
-  | WorkspaceGraphCreated { session_id; target; node_count; breakdown; duration } ->
+  | WorkspaceGraphCreated {
+    session_id;
+    target;
+    node_count;
+    breakdown;
+    duration
+  } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "WorkspaceGraphCreated");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
@@ -430,12 +442,7 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         ("node_count", Data.Json.Int node_count);
         ("duration_ms", Data.Json.Int (Time.Duration.to_millis duration));
       ])
-  | WorkspaceTopologicalSortCompleted {
-    session_id;
-    target;
-    sorted_package_count;
-    duration;
-  } ->
+  | WorkspaceTopologicalSortCompleted { session_id; target; sorted_package_count; duration;  } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "WorkspaceTopologicalSortCompleted");
         ("session_id", Data.Json.String (Session_id.to_string session_id));
@@ -493,15 +500,13 @@ let to_json: Telemetry.event -> Data.Json.t option = function
         )
       )
   | PackagePlanningBreakdown { session_id; package; target; breakdown } ->
-      Some (
-        Data.Json.Object [
-          ("type", Data.Json.String "PackagePlanningBreakdown");
-          ("session_id", Data.Json.String (Session_id.to_string session_id));
-          ("package", Package.to_json package);
-          ("target", target_to_json target);
-          ("breakdown", planning_breakdown_to_json breakdown);
-        ]
-      )
+      Some (Data.Json.Object [
+        ("type", Data.Json.String "PackagePlanningBreakdown");
+        ("session_id", Data.Json.String (Session_id.to_string session_id));
+        ("package", Package.to_json package);
+        ("target", target_to_json target);
+        ("breakdown", planning_breakdown_to_json breakdown);
+      ])
   | CompilationStarted { session_id; package; target } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "CompilationStarted");
@@ -613,11 +618,9 @@ let to_json: Telemetry.event -> Data.Json.t option = function
     status;
     duration
   } ->
-      let artifact_files =
-        Data.Json.Array (
-          List.map artifact.files ~fn:(fun p -> Data.Json.String (Path.to_string p))
-        )
-      in
+      let artifact_files = Data.Json.Array (List.map
+        artifact.files
+        ~fn:(fun p -> Data.Json.String (Path.to_string p))) in
       Some (
         Data.Json.Object [
           ("type", Data.Json.String "ActionCompleted");
@@ -689,7 +692,9 @@ let to_json: Telemetry.event -> Data.Json.t option = function
 
 let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json ->
   let get_field fields ~name =
-    List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name)
+    List.find fields
+      ~fn:(fun (field_name, _) ->
+        String.equal field_name name)
     |> Option.map ~fn:(fun (_, value) -> value)
   in
   let get_session_id fields =
@@ -720,10 +725,7 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
           | _ -> Error (Data.Json.String "Invalid BuildStarted event")
         )
       | Some (Data.Json.String "WorkspacePlanStarted") -> (
-          match (
-            get_field fields ~name:"target",
-            get_field fields ~name:"workspace_package_count"
-          ) with
+          match (get_field fields ~name:"target", get_field fields ~name:"workspace_package_count") with
           | Some (Data.Json.String target_str), Some (Data.Json.Int workspace_package_count) -> (
               match target_of_json (Data.Json.String target_str) with
               | Ok target -> Ok (WorkspacePlanStarted {
@@ -745,13 +747,15 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
           | (Some (Data.Json.String target_str), Some (Data.Json.Int workspace_package_count), Some (Data.Json.Int planned_package_count), Some (Data.Json.Int duration_ms)) -> (
               match target_of_json (Data.Json.String target_str) with
               | Ok target ->
-                  Ok (WorkspacePlanCompleted {
-                    session_id = get_session_id fields;
-                    target;
-                    workspace_package_count;
-                    planned_package_count;
-                    duration = Time.Duration.from_millis duration_ms;
-                  })
+                  Ok (
+                    WorkspacePlanCompleted {
+                      session_id = get_session_id fields;
+                      target;
+                      workspace_package_count;
+                      planned_package_count;
+                      duration = Time.Duration.from_millis duration_ms;
+                    }
+                  )
               | Error e -> Error e
             )
           | _ -> Error (Data.Json.String "Invalid WorkspacePlanCompleted event")
@@ -764,13 +768,12 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
           ) with
           | (Some (Data.Json.String target_str), Some (Data.Json.Int filtered_workspace_package_count), Some (Data.Json.Int duration_ms)) -> (
               match target_of_json (Data.Json.String target_str) with
-              | Ok target ->
-                  Ok (WorkspaceManifestFilterCompleted {
-                    session_id = get_session_id fields;
-                    target;
-                    filtered_workspace_package_count;
-                    duration = Time.Duration.from_millis duration_ms;
-                  })
+              | Ok target -> Ok (WorkspaceManifestFilterCompleted {
+                session_id = get_session_id fields;
+                target;
+                filtered_workspace_package_count;
+                duration = Time.Duration.from_millis duration_ms
+              })
               | Error e -> Error e
             )
           | _ -> Error (Data.Json.String "Invalid WorkspaceManifestFilterCompleted event")
@@ -782,26 +785,20 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
             get_field fields ~name:"breakdown",
             get_field fields ~name:"duration_ms"
           ) with
-          | (
-              Some (Data.Json.String target_str),
-              Some (Data.Json.Int node_count),
-              Some breakdown_json,
-              Some (Data.Json.Int duration_ms)
-            ) -> (
-              match
-                target_of_json (Data.Json.String target_str),
-                workspace_graph_breakdown_of_json breakdown_json
-              with
+          | (Some (Data.Json.String target_str), Some (Data.Json.Int node_count), Some breakdown_json, Some (Data.Json.Int duration_ms)) -> (
+              match target_of_json (Data.Json.String target_str), workspace_graph_breakdown_of_json breakdown_json with
               | Ok target, Ok breakdown ->
-                  Ok (WorkspaceGraphCreated {
-                    session_id = get_session_id fields;
-                    target;
-                    node_count;
-                    breakdown;
-                    duration = Time.Duration.from_millis duration_ms;
-                  })
-              | Error e, _
-              | _, Error e -> Error e
+                  Ok (
+                    WorkspaceGraphCreated {
+                      session_id = get_session_id fields;
+                      target;
+                      node_count;
+                      breakdown;
+                      duration = Time.Duration.from_millis duration_ms;
+                    }
+                  )
+              | (Error e, _)
+              | (_, Error e) -> Error e
             )
           | _ -> Error (Data.Json.String "Invalid WorkspaceGraphCreated event")
         )
@@ -813,13 +810,12 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
           ) with
           | (Some (Data.Json.String target_str), Some (Data.Json.Int node_count), Some (Data.Json.Int duration_ms)) -> (
               match target_of_json (Data.Json.String target_str) with
-              | Ok target ->
-                  Ok (WorkspaceTargetGraphFiltered {
-                    session_id = get_session_id fields;
-                    target;
-                    node_count;
-                    duration = Time.Duration.from_millis duration_ms;
-                  })
+              | Ok target -> Ok (WorkspaceTargetGraphFiltered {
+                session_id = get_session_id fields;
+                target;
+                node_count;
+                duration = Time.Duration.from_millis duration_ms
+              })
               | Error e -> Error e
             )
           | _ -> Error (Data.Json.String "Invalid WorkspaceTargetGraphFiltered event")
@@ -832,13 +828,12 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
           ) with
           | (Some (Data.Json.String target_str), Some (Data.Json.Int sorted_package_count), Some (Data.Json.Int duration_ms)) -> (
               match target_of_json (Data.Json.String target_str) with
-              | Ok target ->
-                  Ok (WorkspaceTopologicalSortCompleted {
-                    session_id = get_session_id fields;
-                    target;
-                    sorted_package_count;
-                    duration = Time.Duration.from_millis duration_ms;
-                  })
+              | Ok target -> Ok (WorkspaceTopologicalSortCompleted {
+                session_id = get_session_id fields;
+                target;
+                sorted_package_count;
+                duration = Time.Duration.from_millis duration_ms
+              })
               | Error e -> Error e
             )
           | _ -> Error (Data.Json.String "Invalid WorkspaceTopologicalSortCompleted event")
@@ -931,15 +926,12 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                     target_of_json (Data.Json.String target_str),
                     planning_breakdown_of_json breakdown_json
                   ) with
-                  | Ok target, Ok breakdown ->
-                      Ok (
-                        PackagePlanningBreakdown {
-                          session_id = get_session_id fields;
-                          package;
-                          target;
-                          breakdown;
-                        }
-                      )
+                  | Ok target, Ok breakdown -> Ok (PackagePlanningBreakdown {
+                    session_id = get_session_id fields;
+                    package;
+                    target;
+                    breakdown
+                  })
                   | Error e, _ -> Error e
                   | _, Error e -> Error e
                 )
@@ -1062,9 +1054,12 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                                     match get_field planning_fields ~name:"cycle" with
                                     | Some (Data.Json.Array arr) ->
                                         let cycle =
-                                          List.filter_map arr ~fn:(function
-                                            | Data.Json.String s -> Some s
-                                            | _ -> None)
+                                          List.filter_map arr
+                                            ~fn:(
+                                              function
+                                              | Data.Json.String s -> Some s
+                                              | _ -> None
+                                            )
                                         in
                                         Ok (PlanningFailed (Planning_error.CyclicDependency { cycle }))
                                     | _ -> Ok (ExecutionFailed {
@@ -1138,9 +1133,12 @@ let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json -
                             match get_field error_fields ~name:"missing" with
                             | Some (Data.Json.Array arr) ->
                                 let missing =
-                                  List.filter_map arr ~fn:(function
-                                    | Data.Json.String s -> Some (Path.v s)
-                                    | _ -> None)
+                                  List.filter_map arr
+                                    ~fn:(
+                                      function
+                                      | Data.Json.String s -> Some (Path.v s)
+                                      | _ -> None
+                                    )
                                 in
                                 Ok (ActionOutputsNotCreated { missing })
                             | _ -> Ok (ExecutionFailed {

@@ -1,22 +1,25 @@
 open Std
-
 module Utf8_reader = Tty__Utf8_reader
 
 let ansi_rich_text =
   let chunk = "\x1b[1;31merror\x1b[0m " in
   String.concat "" (List.init ~count:256 ~fn:(fun _ -> chunk))
 
-let ascii_text = String.concat "" (List.init ~count:256 ~fn:(fun _ -> "tty benchmark payload "))
+let ascii_text =
+  String.concat "" (List.init ~count:256 ~fn:(fun _ -> "tty benchmark payload "))
 
 let osc_rich_text =
   let chunk = "\x1b]2;tty\x07\x1b[38;5;196mwarn\x1b[0m " in
   String.concat "" (List.init ~count:256 ~fn:(fun _ -> chunk))
 
-let styled_text = String.concat "" (List.init ~count:128 ~fn:(fun _ -> "tty benchmark payload "))
+let styled_text =
+  String.concat "" (List.init ~count:128 ~fn:(fun _ -> "tty benchmark payload "))
 
-let styled_fragments = List.init ~count:1_024 ~fn:(fun _ -> "tty")
+let styled_fragments =
+  List.init ~count:1_024 ~fn:(fun _ -> "tty")
 
-let unicode_text = String.concat "" (List.init ~count:256 ~fn:(fun _ -> "Cafe\u{0301} 🙂 "))
+let unicode_text =
+  String.concat "" (List.init ~count:256 ~fn:(fun _ -> "Cafe\u{0301} 🙂 "))
 
 let mixed_trace = "\x1b[200~hello\x1b[201~\x1b[A\x1b[<0;10;20Mplain-text\x1b[I"
 
@@ -39,12 +42,11 @@ let plain_typing_chunks =
     ~count:(String.length plain_typing_trace)
     ~fn:(fun index -> String.sub plain_typing_trace ~offset:index ~len:1)
 
-let style =
-  Tty.Style.default
-  |> Tty.Style.bold
-  |> Tty.Style.underline
-  |> Tty.Style.fg (Tty.Color.make "#FF8800")
-  |> Tty.Style.bg (Tty.Color.ansi 4)
+let style = Tty.Style.default
+|> Tty.Style.bold
+|> Tty.Style.underline
+|> Tty.Style.fg (Tty.Color.make "#FF8800")
+|> Tty.Style.bg (Tty.Color.ansi 4)
 
 let bench_cursor_position_seq = fun () ->
   let _ = Tty.Escape_seq.cursor_position_seq 24 80 in
@@ -76,7 +78,9 @@ let bench_style_styled = fun () ->
 
 let bench_style_short_fragments = fun () ->
   let _ =
-    List.map styled_fragments ~fn:(fun fragment -> Tty.Style.styled style fragment)
+    List.map styled_fragments
+      ~fn:(fun fragment ->
+        Tty.Style.styled style fragment)
   in
   ()
 
@@ -88,8 +92,7 @@ let make_read = fun chunks ->
   let remaining = ref chunks in
   fun bytes ~offset ~len ->
     match !remaining with
-    | [] ->
-        `Ok 0
+    | [] -> `Ok 0
     | chunk :: rest ->
         let count = Int.min len (String.length chunk) in
         IO.Bytes.blit_string chunk ~src_offset:0 ~dst:bytes ~dst_offset:offset ~len:count;
@@ -110,8 +113,7 @@ let bench_utf8_reader_emoji = fun () ->
   ()
 
 let bench_parser_chunked_trace = fun () ->
-  let rec loop parser =
-    function
+  let rec loop parser = function
     | [] ->
         let _ = Tty.Input.Parser.flush parser in
         ()
@@ -127,8 +129,7 @@ let bench_parser_whole_trace = fun () ->
   ()
 
 let bench_parser_chunked_paste = fun () ->
-  let rec loop parser =
-    function
+  let rec loop parser = function
     | [] ->
         let _ = Tty.Input.Parser.flush parser in
         ()
@@ -139,8 +140,7 @@ let bench_parser_chunked_paste = fun () ->
   loop (Tty.Input.Parser.create ()) paste_trace_chunks
 
 let bench_parser_chunked_plain_typing = fun () ->
-  let rec loop parser =
-    function
+  let rec loop parser = function
     | [] ->
         let _ = Tty.Input.Parser.flush parser in
         ()
@@ -170,4 +170,7 @@ let benchmarks =
   ]
 
 let () =
-  Runtime.run ~main:(fun ~args -> Bench.Cli.main ~name:"tty benchmarks" ~benchmarks ~args) ~args:Env.args ()
+  Runtime.run
+    ~main:(fun ~args -> Bench.Cli.main ~name:"tty benchmarks" ~benchmarks ~args)
+    ~args:Env.args
+    ()

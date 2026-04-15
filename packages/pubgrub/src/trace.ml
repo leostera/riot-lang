@@ -55,7 +55,8 @@ let bound_to_json = function
 
 let ranges_to_json = fun ranges ->
   ranges
-  |> List.map ~fn:(fun (start, finish) ->
+  |> List.map
+    ~fn:(fun (start, finish) ->
       json_obj [ ("start", bound_to_json start); ("end", bound_to_json finish) ])
   |> json_array
 
@@ -68,11 +69,13 @@ let term_to_json = fun term ->
     ]
 
 let incompatibility_to_json = fun incompat ->
-  json_obj [ ("terms", incompat |> Incompatibility.terms |> List.map ~fn:term_to_json |> json_array) ]
+  json_obj
+    [ ("terms", incompat |> Incompatibility.terms |> List.map ~fn:term_to_json |> json_array) ]
 
 let solution_to_json = fun solution ->
   solution
-  |> List.map ~fn:(fun (package, version) ->
+  |> List.map
+    ~fn:(fun (package, version) ->
       json_obj [ ("package", json_string package); ("version", version_to_json version) ])
   |> json_array
 

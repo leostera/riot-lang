@@ -25,8 +25,7 @@ type config = {
 
 let default_config = { max_frame_size = default_max_frame_size }
 
-let byte_at = fun data offset ->
-  data |> String.get_unchecked ~at:offset |> Char.to_int
+let byte_at = fun data offset -> data |> String.get_unchecked ~at:offset |> Char.to_int
 
 let read_uint24_be = fun data offset ->
   if offset + 3 > String.length data then

@@ -27,8 +27,7 @@ type plan_result = {
 
 let plan_node = fun input ->
   let namespace =
-    Module_name.(input.package.name |> Package_name.to_string |> of_string |> to_string)
-  in
+    Module_name.(input.package.name |> Package_name.to_string |> of_string |> to_string) in
   let config =
     Module_graph.{
       root = input.package.path;
@@ -70,8 +69,7 @@ let plan_node = fun input ->
         (* Check if any package (including our own) needs unix *)
         let needs_unix =
           let check_pkg (pkg: Package.t) =
-            List.any
-              (Package.build_graph_dependencies pkg)
+            List.any (Package.build_graph_dependencies pkg)
               ~fn:(fun (d: Package.dependency) ->
                 Package_name.equal d.name
                   (Package_name.from_string "unix" |> Result.expect ~msg:"expected valid package name"))
@@ -82,8 +80,7 @@ let plan_node = fun input ->
         (* Check if any package (including our own) needs dynlink *)
         let needs_dynlink =
           let check_pkg (pkg: Package.t) =
-            List.any
-              (Package.build_graph_dependencies pkg)
+            List.any (Package.build_graph_dependencies pkg)
               ~fn:(fun (d: Package.dependency) ->
                 Package_name.equal d.name
                   (Package_name.from_string "dynlink" |> Result.expect ~msg:"expected valid package name"))
@@ -112,16 +109,18 @@ let plan_node = fun input ->
           let dep_libs = List.map transitive_deps ~fn:Dependency.library_cmxa in
           let own_lib =
             match input.package.library with
-            | Some _ ->
-                [ Module_name.(of_string (Package_name.to_string input.package.name) |> cmxa) ]
+            | Some _ -> [
+              Module_name.(of_string (Package_name.to_string input.package.name) |> cmxa)
+            ]
             | None -> []
           in
           let seen_libraries = HashSet.create () in
-          List.filter_map (unix_lib @ dynlink_lib @ dep_libs @ own_lib) ~fn:(fun library_path ->
-            if HashSet.insert seen_libraries ~value:library_path then
-              Some library_path
-            else
-              None)
+          List.filter_map (unix_lib @ dynlink_lib @ dep_libs @ own_lib)
+            ~fn:(fun library_path ->
+              if HashSet.insert seen_libraries ~value:library_path then
+                Some library_path
+              else
+                None)
         in
         (* Add cache directories from dependencies to includes *)
         let dep_cache_dirs =
@@ -152,14 +151,11 @@ let plan_node = fun input ->
               ~name:bin.name
               ~source:bin.path
               ~libraries:binary_libraries
-              ~includes:binary_includes)
-        ;
+              ~includes:binary_includes);
         (* Add command nodes for package commands *)
         (* Commands are regular binaries - link all libraries like regular binaries *)
         Log.debug
-          ("[MODULE_PLANNER] Command includes for "
-          ^ Package_name.to_string input.package.name
-          ^ ":");
+          ("[MODULE_PLANNER] Command includes for " ^ Package_name.to_string input.package.name ^ ":");
         List.for_each binary_includes ~fn:(fun inc -> Log.debug ("  " ^ Path.to_string inc));
         List.for_each
           input.package.commands
@@ -169,16 +165,14 @@ let plan_node = fun input ->
               ~name:cmd.name
               ~source:cmd.command_source
               ~libraries:binary_libraries
-              ~includes:binary_includes)
-        ;
+              ~includes:binary_includes);
         let module_graph = Module_graph.graph graph_builder in
         let analyzed_modules = Module_graph.analyzed_modules graph_builder in
         (
           match G.topo_sort module_graph with
           | Error cycle_ids ->
               let cycle =
-                List.filter_map
-                  cycle_ids
+                List.filter_map cycle_ids
                   ~fn:(fun node_id ->
                     match G.get_node module_graph node_id with
                     | None -> None
@@ -211,11 +205,11 @@ let plan_node = fun input ->
                 module_graph in
               let sources =
                 sorted_modules
-                |> List.map ~fn:(fun (node: Module_node.t G.node) ->
+                |> List.map
+                  ~fn:(fun (node: Module_node.t G.node) ->
                     match node.value.kind with
                     | Native { files } ->
-                        List.map
-                          files
+                        List.map files
                           ~fn:(fun path ->
                             if Path.is_absolute path then
                               path

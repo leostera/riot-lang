@@ -34,8 +34,16 @@ type plan_result =
       depset: Dependency.t list;
       breakdown: planning_breakdown
     }
-  | MissingDependencies of { package: Package.t; missing: Package.t list; breakdown: planning_breakdown }
-  | FailedDependencies of { package: Package.t; failed: Package.t list; breakdown: planning_breakdown }
+  | MissingDependencies of {
+      package: Package.t;
+      missing: Package.t list;
+      breakdown: planning_breakdown
+    }
+  | FailedDependencies of {
+      package: Package.t;
+      failed: Package.t list;
+      breakdown: planning_breakdown
+    }
 
 and planning_breakdown = {
   dependency_count: int;

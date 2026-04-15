@@ -1,52 +1,50 @@
 open Std
 open Pretext
 
-let paragraph =
-  [
-    str "The";
-    brk;
-    str "quick";
-    brk;
-    str "brown";
-    brk;
-    str "fox";
-    brk;
-    str "jumps";
-    brk;
-    str "over";
-    brk;
-    str "the";
-    brk;
-    str "lazy";
-    brk;
-    str "dog";
-  ]
+let paragraph = [
+  str "The";
+  brk;
+  str "quick";
+  brk;
+  str "brown";
+  brk;
+  str "fox";
+  brk;
+  str "jumps";
+  brk;
+  str "over";
+  brk;
+  str "the";
+  brk;
+  str "lazy";
+  brk;
+  str "dog";
+]
 
-let nested_doc =
-  group
-    [
-      str "{";
-      nest
-        2
-        [
-          line;
-          str "\"name\":";
-          brk;
-          str "\"pretext\",";
-          line;
-          str "\"features\":";
-          brk;
-          group
-            [
-              str "[";
-              nest 2 [ brk; str "\"unicode\""; brk; str "\"groups\""; brk; str "\"layout\"" ];
-              brk;
-              str "]";
-            ];
-        ];
-      line;
-      str "}";
-    ]
+let nested_doc = group
+  [
+    str "{";
+    nest
+      2
+      [
+        line;
+        str "\"name\":";
+        brk;
+        str "\"pretext\",";
+        line;
+        str "\"features\":";
+        brk;
+        group
+          [
+            str "[";
+            nest 2 [ brk; str "\"unicode\""; brk; str "\"groups\""; brk; str "\"layout\"" ];
+            brk;
+            str "]";
+          ];
+      ];
+    line;
+    str "}";
+  ]
 
 let repeated_docs = List.init ~count:200 ~fn:(fun _ -> paragraph) |> List.concat
 
@@ -72,15 +70,17 @@ let bench_multiline_text = fun () ->
   ()
 
 let medium: Bench.bench_config = { iterations = 200; warmup = 20 }
+
 let heavy: Bench.bench_config = { iterations = 100; warmup = 10 }
 
-let benchmarks = Bench.[
-  with_config ~config:medium "pretext flat paragraph" bench_flat_layout;
-  with_config ~config:medium "pretext broken paragraph" bench_broken_layout;
-  with_config ~config:medium "pretext nested document" bench_nested_doc;
-  with_config ~config:heavy "pretext repeated concat" bench_large_concat;
-  with_config ~config:medium "pretext multiline text" bench_multiline_text;
-]
+let benchmarks =
+  Bench.[
+    with_config ~config:medium "pretext flat paragraph" bench_flat_layout;
+    with_config ~config:medium "pretext broken paragraph" bench_broken_layout;
+    with_config ~config:medium "pretext nested document" bench_nested_doc;
+    with_config ~config:heavy "pretext repeated concat" bench_large_concat;
+    with_config ~config:medium "pretext multiline text" bench_multiline_text;
+  ]
 
 let () =
   Actors.run

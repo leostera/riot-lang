@@ -165,9 +165,13 @@ let word_wrap = fun ~width:target_width str ->
                     build_lines "" 0 (word :: acc) rest
                   else
                     let part = String.sub
-                      stripped_word ~offset:0 ~len:(min chars_fit (String.length stripped_word)) in
+                      stripped_word
+                      ~offset:0
+                      ~len:(min chars_fit (String.length stripped_word)) in
                     let remaining = String.sub
-                      stripped_word ~offset:chars_fit ~len:(String.length stripped_word - chars_fit) in
+                      stripped_word
+                      ~offset:chars_fit
+                      ~len:(String.length stripped_word - chars_fit) in
                     build_lines "" 0 (part :: acc) (remaining :: rest)
                 else
                   build_lines word word_width acc rest

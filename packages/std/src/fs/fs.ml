@@ -87,7 +87,8 @@ let read_to_string = fun path ->
 let read_dir = fun path ->
   match ReadDir.open_dir path with
   | Error e -> Error e
-  | Ok state -> Ok (MutIterator.make (module ReadDir) state |> MutIterator.map ~fn:(fun (entry: ReadDir.entry) -> entry.path))
+  | Ok state -> Ok (MutIterator.make (module ReadDir) state
+  |> MutIterator.map ~fn:(fun (entry: ReadDir.entry) -> entry.path))
 
 let remove_file = fun path -> Kernel.Fs.File.remove_file (kernel_path path) |> convert_kernel_result
 

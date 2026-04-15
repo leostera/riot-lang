@@ -27,6 +27,7 @@ type request = {
   targets: Riot_model.Target.request;
   scope: build_scope;
   profile: Riot_model.Profile.t;
+  requested_parallelism: int option;
   output_mode: output_mode;
   show_finished_summary: bool;
 }
@@ -49,19 +50,16 @@ let build_request_label = fun (request: request) ->
   let packages =
     match request.packages with
     | [] -> "all"
-    | packages -> packages
-      |> List.map ~fn:Riot_model.Package_name.to_string
-      |> String.concat ","
+    | packages -> packages |> List.map ~fn:Riot_model.Package_name.to_string |> String.concat ","
   in
   let targets =
     match request.targets with
     | Riot_model.Target.Host -> "host"
     | Riot_model.Target.All -> "all"
     | Riot_model.Target.Pattern pattern -> pattern
-    | Riot_model.Target.Exact targets ->
-        Riot_model.Target.Set.to_list targets
-        |> List.map ~fn:Riot_model.Target.to_string
-        |> String.concat ","
+    | Riot_model.Target.Exact targets -> Riot_model.Target.Set.to_list targets
+    |> List.map ~fn:Riot_model.Target.to_string
+    |> String.concat ","
   in
   "Build(" ^ packages ^ "; targets=" ^ targets ^ "; profile=" ^ request.profile.name ^ ")"
 
@@ -81,7 +79,12 @@ let stamp_json_event = fun (json: Data.Json.t) ->
   match json with
   | Data.Json.Object fields ->
       let fields =
-        if Option.is_some (List.find fields ~fn:(fun (name, _) -> String.equal name "emitted_at_us")) then
+        if Option.is_some
+            (
+              List.find fields
+                ~fn:(fun (name, _) ->
+                  String.equal name "emitted_at_us")
+            ) then
           fields
         else
           fields @ [ ("emitted_at_us", Data.Json.Int (event_elapsed_us ())) ]
@@ -119,20 +122,13 @@ let format_pm_event = fun ~seen_registry_updates kind ->
   | Riot_model.Event.PackageResolvedForBuild _ ->
       None
   | Riot_model.Event.PackageDownloadStarted { package; version; _ } ->
-      Some (
-        "    \027[1;32mFetching\027[0m "
-        ^ Riot_model.Package_name.to_string package
-        ^ " "
-        ^ version
-      )
+      Some ("    \027[1;32mFetching\027[0m " ^ Riot_model.Package_name.to_string package ^ " " ^ version)
   | Riot_model.Event.PackageDownloadQueued { package; version; _ } ->
-      Some (
-        "      \027[1;33mQueued\027[0m "
-        ^ Riot_model.Package_name.to_string package
-        ^ " ("
-        ^ version
-        ^ ")"
-      )
+      Some ("      \027[1;33mQueued\027[0m "
+      ^ Riot_model.Package_name.to_string package
+      ^ " ("
+      ^ version
+      ^ ")")
   | Riot_model.Event.DependencyResolutionStarted _
   | Riot_model.Event.DependencyResolutionRefreshingLock _
   | Riot_model.Event.DependencyResolutionFailed _
@@ -175,25 +171,21 @@ let format_pm_event = fun ~seen_registry_updates kind ->
       in
       Some ("    \027[1;32m" ^ verb ^ "\027[0m " ^ dependency ^ " (" ^ section ^ ") in " ^ path)
   | Riot_model.Event.PackageVersionLocked { package; version } ->
-      Some (
-        "      \027[1;32mLocked\027[0m "
-        ^ Riot_model.Package_name.to_string package
-        ^ " ("
-        ^ version
-        ^ ")"
-      )
+      Some ("      \027[1;32mLocked\027[0m "
+      ^ Riot_model.Package_name.to_string package
+      ^ " ("
+      ^ version
+      ^ ")")
   | Riot_model.Event.PackageVersionsUnchanged _ ->
       Some "    Dependencies are already up to date"
   | Riot_model.Event.PackageVersionUpdated { package; from_version; to_version } ->
-      Some (
-        "    \027[1;32mUpdated\027[0m "
-        ^ Riot_model.Package_name.to_string package
-        ^ " ("
-        ^ from_version
-        ^ " -> "
-        ^ to_version
-        ^ ")"
-      )
+      Some ("    \027[1;32mUpdated\027[0m "
+      ^ Riot_model.Package_name.to_string package
+      ^ " ("
+      ^ from_version
+      ^ " -> "
+      ^ to_version
+      ^ ")")
   | kind ->
       Some (Riot_model.Event.display kind)
 
@@ -221,6 +213,7 @@ let command =
         option "target" |> short 'x' |> long "target" |> help "Target architecture (exact triple, pattern like 'linux'/'aarch64', or 'all')";
         flag "all-targets" |> help "Build for all configured targets";
         flag "release" |> long "release" |> help "Use the release build profile";
+        option "jobs" |> short 'j' |> long "jobs" |> help "Limit parallel workers";
         flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
       ]
 
@@ -244,26 +237,34 @@ let profile_of_matches = fun matches ->
   else
     Riot_model.Profile.debug
 
+let requested_parallelism_of_matches = fun matches ->
+  match ArgParser.get_one matches "jobs" with
+  | None -> Ok None
+  | Some value -> (
+      match Int.parse value with
+      | Some workers -> Ok (Some workers)
+      | None -> Error (Failure ("invalid --jobs value: " ^ value))
+    )
+
 let parse_package_names = fun package_names ->
   let rec loop acc = function
     | [] -> Ok (List.reverse acc)
     | package_name :: rest -> (
         match Riot_model.Package_name.from_string package_name with
         | Ok package_name -> loop (package_name :: acc) rest
-        | Error error ->
-            Error
-              (Failure ("invalid package name '" ^ package_name ^ "': " ^ error))
+        | Error error -> Error (Failure ("invalid package name '" ^ package_name ^ "': " ^ error))
       )
   in
   loop [] package_names
 
-let make_request = fun ~workspace ?(scope = Runtime) ?(profile = Riot_model.Profile.debug) ?(mode = Human) ?(show_finished_summary = true) ~packages ~targets () ->
+let make_request = fun ~workspace ?(scope = Runtime) ?(profile = Riot_model.Profile.debug) ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) ~packages ~targets () ->
   {
     workspace;
     packages;
     targets;
     scope;
     profile;
+    requested_parallelism;
     output_mode = mode;
     show_finished_summary;
   }
@@ -271,15 +272,18 @@ let make_request = fun ~workspace ?(scope = Runtime) ?(profile = Riot_model.Prof
 let request_of_matches = fun ~workspace matches ->
   match parse_package_names (ArgParser.get_many matches "package") with
   | Error _ as err -> err
-  | Ok packages ->
-      Ok
-        (make_request
-           ~workspace
-           ~profile:(profile_of_matches matches)
-           ~mode:(output_mode_of_matches matches)
-           ~packages
-           ~targets:(target_request_of_matches matches)
-           ())
+  | Ok packages -> (
+      match requested_parallelism_of_matches matches with
+      | Error _ as err -> err
+      | Ok requested_parallelism -> Ok (make_request
+        ~workspace
+        ~profile:(profile_of_matches matches)
+        ~mode:(output_mode_of_matches matches)
+        ~requested_parallelism
+        ~packages
+        ~targets:(target_request_of_matches matches)
+        ())
+    )
 
 let write_building_target_event = fun ~mode ~target ~host ->
   let target_name = Riot_model.Target.to_string target in
@@ -346,21 +350,18 @@ let write_cache_gc_event = fun ~mode event ->
 
 let write_package_not_found_error = fun ~mode ~package_name ~available_packages ->
   let package_name = Riot_model.Package_name.to_string package_name in
-  let available_packages =
-    List.map available_packages ~fn:Riot_model.Package_name.to_string
-  in
+  let available_packages = List.map available_packages ~fn:Riot_model.Package_name.to_string in
   if mode = Json then
     write_json_event
       (command_error_event_to_json
-         "PackageNotFound"
-         [
-           ("package_name", Data.Json.String package_name);
-           (
-             "available_packages",
-             Data.Json.Array
-               (List.map available_packages ~fn:(fun pkg -> Data.Json.String pkg))
-           );
-         ])
+        "PackageNotFound"
+        [
+          ("package_name", Data.Json.String package_name);
+          (
+            "available_packages",
+            Data.Json.Array (List.map available_packages ~fn:(fun pkg -> Data.Json.String pkg))
+          );
+        ])
   else (
     out ("\027[1;31mError\027[0m: Package '" ^ package_name ^ "' not found");
     out "";
@@ -369,28 +370,22 @@ let write_package_not_found_error = fun ~mode ~package_name ~available_packages 
   )
 
 let write_packages_not_found_error = fun ~mode ~package_names ~available_packages ->
-  let package_names =
-    List.map package_names ~fn:Riot_model.Package_name.to_string
-  in
-  let available_packages =
-    List.map available_packages ~fn:Riot_model.Package_name.to_string
-  in
+  let package_names = List.map package_names ~fn:Riot_model.Package_name.to_string in
+  let available_packages = List.map available_packages ~fn:Riot_model.Package_name.to_string in
   if mode = Json then
     write_json_event
       (command_error_event_to_json
-         "PackagesNotFound"
-         [
-           (
-             "package_names",
-             Data.Json.Array
-               (List.map package_names ~fn:(fun pkg -> Data.Json.String pkg))
-           );
-           (
-             "available_packages",
-             Data.Json.Array
-               (List.map available_packages ~fn:(fun pkg -> Data.Json.String pkg))
-           );
-         ])
+        "PackagesNotFound"
+        [
+          (
+            "package_names",
+            Data.Json.Array (List.map package_names ~fn:(fun pkg -> Data.Json.String pkg))
+          );
+          (
+            "available_packages",
+            Data.Json.Array (List.map available_packages ~fn:(fun pkg -> Data.Json.String pkg))
+          );
+        ])
   else (
     out ("\027[1;31mError\027[0m: Packages not found: " ^ String.concat ", " package_names);
     out "";
@@ -400,101 +395,92 @@ let write_packages_not_found_error = fun ~mode ~package_names ~available_package
 
 let write_build_error = fun ~mode err ->
   match err with
-  | Riot_build.TargetSelectionFailed { pattern; available_targets } ->
-      write_command_error
-        ~mode
-        "NoTargetsMatched"
-        [
-          ("pattern", Data.Json.String pattern);
-                  (
-                    "available_targets",
-                    Data.Json.Array
-                      (List.map available_targets
-                        ~fn:(fun target ->
-                          Data.Json.String (Riot_model.Target.to_string target)))
-                  );
-                ]
-        (Riot_build.error_message err)
-  | Riot_build.PackageNotFound { package_name; available_packages } ->
-      write_package_not_found_error ~mode ~package_name ~available_packages
-  | Riot_build.PackagesNotFound { package_names; available_packages } ->
-      write_packages_not_found_error ~mode ~package_names ~available_packages
-  | Riot_build.ToolchainInstallFailed { target; error } ->
-      write_command_error
-        ~mode
-        "ToolchainInstallFailed"
-        [
-          ("target", Data.Json.String (Riot_model.Target.to_string target));
-          ("reason", Data.Json.String error);
-        ]
-        (Riot_build.error_message err)
-  | Riot_build.ToolchainInitializationFailed { target; error } ->
-      write_command_error
-        ~mode
-        "ToolchainInitializationFailed"
-        [
-          ("target", Data.Json.String (Riot_model.Target.to_string target));
-          ("reason", Data.Json.String error);
-        ]
-        (Riot_build.error_message err)
-  | Riot_build.BuildFailed { errors } ->
-      write_command_error
-        ~mode
-        "BuildFailed"
-        [
-          (
-            "errors",
-            Data.Json.Array (List.map errors ~fn:Riot_build.Build_result.failure_to_json)
-          );
-        ]
-        (Riot_build.error_message err)
-  | Riot_build.PlanningFailed { reason } ->
-      write_command_error
-        ~mode
-        "PlanningFailed"
-        [ ("reason", Data.Json.String reason) ]
-        (Riot_build.error_message err)
-  | Riot_build.CycleDetected { cycle_nodes } ->
-      write_command_error
-        ~mode
-        "CycleDetected"
-        [ ("cycle_nodes", Data.Json.Array (List.map cycle_nodes ~fn:Data.Json.string)) ]
-        (Riot_build.error_message err)
-  | Riot_build.BuildAlreadyRunning { lock_path } ->
-      write_command_error
-        ~mode
-        "BuildAlreadyRunning"
-        [ ("lock_path", Data.Json.String (Path.to_string lock_path)) ]
-        (Riot_build.error_message err)
-  | Riot_build.SessionStartFailed { reason } ->
-      write_command_error
-        ~mode
-        "SessionStartFailed"
-        [ ("reason", Data.Json.String reason) ]
-        reason
-  | Riot_build.UnexpectedError { reason } ->
-      write_command_error
-        ~mode
-        "UnexpectedError"
-        [ ("reason", Data.Json.String reason) ]
-        reason
+  | Riot_build.TargetSelectionFailed { pattern; available_targets } -> write_command_error
+    ~mode
+    "NoTargetsMatched"
+    [
+      ("pattern", Data.Json.String pattern);
+      (
+        "available_targets",
+        Data.Json.Array (List.map
+          available_targets
+          ~fn:(fun target -> Data.Json.String (Riot_model.Target.to_string target)))
+      );
+    ]
+    (Riot_build.error_message err)
+  | Riot_build.PackageNotFound { package_name; available_packages } -> write_package_not_found_error
+    ~mode
+    ~package_name
+    ~available_packages
+  | Riot_build.PackagesNotFound { package_names; available_packages } -> write_packages_not_found_error
+    ~mode
+    ~package_names
+    ~available_packages
+  | Riot_build.ToolchainInstallFailed { target; error } -> write_command_error
+    ~mode
+    "ToolchainInstallFailed"
+    [
+      ("target", Data.Json.String (Riot_model.Target.to_string target));
+      ("reason", Data.Json.String error);
+    ]
+    (Riot_build.error_message err)
+  | Riot_build.ToolchainInitializationFailed { target; error } -> write_command_error
+    ~mode
+    "ToolchainInitializationFailed"
+    [
+      ("target", Data.Json.String (Riot_model.Target.to_string target));
+      ("reason", Data.Json.String error);
+    ]
+    (Riot_build.error_message err)
+  | Riot_build.BuildFailed { errors } -> write_command_error
+    ~mode
+    "BuildFailed"
+    [ ("errors", Data.Json.Array (List.map errors ~fn:Riot_build.Build_result.failure_to_json)); ]
+    (Riot_build.error_message err)
+  | Riot_build.PlanningFailed { reason } -> write_command_error
+    ~mode
+    "PlanningFailed"
+    [ ("reason", Data.Json.String reason) ]
+    (Riot_build.error_message err)
+  | Riot_build.CycleDetected { cycle_nodes } -> write_command_error
+    ~mode
+    "CycleDetected"
+    [ ("cycle_nodes", Data.Json.Array (List.map cycle_nodes ~fn:Data.Json.string)) ]
+    (Riot_build.error_message err)
+  | Riot_build.BuildAlreadyRunning { lock_path } -> write_command_error
+    ~mode
+    "BuildAlreadyRunning"
+    [ ("lock_path", Data.Json.String (Path.to_string lock_path)) ]
+    (Riot_build.error_message err)
+  | Riot_build.SessionStartFailed { reason } -> write_command_error
+    ~mode
+    "SessionStartFailed"
+    [ ("reason", Data.Json.String reason) ]
+    reason
+  | Riot_build.InvalidRequestedParallelism value -> write_command_error
+    ~mode
+    "InvalidRequestedParallelism"
+    [ ("value", Data.Json.Int value) ]
+    (Riot_build.error_message err)
+  | Riot_build.UnexpectedError { reason } -> write_command_error
+    ~mode
+    "UnexpectedError"
+    [ ("reason", Data.Json.String reason) ]
+    reason
 
 let record_output_progress = fun progress output ->
-  Riot_build.Build_result.packages output
-  |> List.for_each ~fn:(fun package_output ->
-         match Riot_build.Build_result.package_status package_output with
-         | Riot_build.Build_result.Built _ -> progress.built_count <- progress.built_count + 1
-         | Riot_build.Build_result.Cached _ -> progress.cached_count <- progress.cached_count + 1
-         | Riot_build.Build_result.Skipped _ -> progress.skipped_count <- progress.skipped_count + 1
-         | Riot_build.Build_result.Failed _ -> progress.failed_count <- progress.failed_count + 1)
+  Riot_build.Build_result.packages output |> List.for_each
+    ~fn:(fun package_output ->
+      match Riot_build.Build_result.package_status package_output with
+      | Riot_build.Build_result.Built _ -> progress.built_count <- progress.built_count + 1
+      | Riot_build.Build_result.Cached _ -> progress.cached_count <- progress.cached_count + 1
+      | Riot_build.Build_result.Skipped _ -> progress.skipped_count <- progress.skipped_count + 1
+      | Riot_build.Build_result.Failed _ -> progress.failed_count <- progress.failed_count + 1)
 
 let run_request = fun (request: request) ->
   trace_build
     (
-      "run_request request="
-      ^ build_request_label request
-      ^ " scope="
-      ^ match request.scope with
+      "run_request request=" ^ build_request_label request ^ " scope=" ^ match request.scope with
       | Runtime -> "runtime"
       | Dev ->
           "dev" ^ " mode=" ^ match request.output_mode with
@@ -507,15 +493,10 @@ let run_request = fun (request: request) ->
   let progress = { built_count = 0; cached_count = 0; failed_count = 0; skipped_count = 0 } in
   let attempted_build = ref false in
   let pm_session_id = Riot_model.Session_id.make () in
-  let emit_pm_kind = fun kind ->
-    write_pm_event
-      ~mode:request.output_mode
-      ~seen_registry_updates
-      (Riot_model.Event.create
-         ~session_id:pm_session_id
-         ~level:Riot_model.Event.Info
-         kind)
-  in
+  let emit_pm_kind kind = write_pm_event
+    ~mode:request.output_mode
+    ~seen_registry_updates
+    (Riot_model.Event.create ~session_id:pm_session_id ~level:Riot_model.Event.Info kind) in
   let on_build_event = function
     | Riot_build.Event.Pm kind ->
         emit_pm_kind kind.kind
@@ -533,18 +514,21 @@ let run_request = fun (request: request) ->
     Riot_build.build
       ~on_event:on_build_event
       (Riot_build.Request.make
-         ~workspace:request.workspace
-         ~packages:request.packages
-         ~targets:request.targets
-         ~scope:request.scope
-         ~profile:request.profile
-         ())
-    |> Result.map ~fn:(fun output ->
-           record_output_progress progress output;
-           ())
-    |> Result.map_err ~fn:(fun err ->
-           write_build_error ~mode:request.output_mode err;
-           Failure (Riot_build.error_message err))
+        ~workspace:request.workspace
+        ~packages:request.packages
+        ~targets:request.targets
+        ~scope:request.scope
+        ~profile:request.profile
+        ~requested_parallelism:request.requested_parallelism
+        ())
+    |> Result.map
+      ~fn:(fun output ->
+        record_output_progress progress output;
+        ())
+    |> Result.map_err
+      ~fn:(fun err ->
+        write_build_error ~mode:request.output_mode err;
+        Failure (Riot_build.error_message err))
   in
   if request.show_finished_summary && !attempted_build then
     (
@@ -595,8 +579,9 @@ let run_request = fun (request: request) ->
       Error err
 
 let print_workspace_load_errors = fun errors ->
-  List.for_each errors ~fn:
-    (fun err -> out ("\027[1;31mError\027[0m: " ^ Workspace_manager.load_error_to_string err))
+  List.for_each
+    errors
+    ~fn:(fun err -> out ("\027[1;31mError\027[0m: " ^ Workspace_manager.load_error_to_string err))
 
 type loaded_workspace = {
   workspace: Workspace.t;
@@ -604,10 +589,8 @@ type loaded_workspace = {
 
 let load_workspace_strict = fun cwd ->
   let workspace_manager = Workspace_manager.create () in
-  let* registry =
-    Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" ()
-    |> Result.map_err ~fn:(fun err -> Failure err)
-  in
+  let* registry = Pkgs_ml.Registry.create_filesystem ?riot_home:None ~registry_name:"pkgs.ml" ()
+  |> Result.map_err ~fn:(fun err -> Failure err) in
   match Workspace_manager.scan workspace_manager cwd with
   | Error err ->
       Error (Failure err)
@@ -615,50 +598,51 @@ let load_workspace_strict = fun cwd ->
       print_workspace_load_errors load_errors;
       Error (Failure "Workspace load failed")
   | Ok (workspace, _) ->
-      let* workspace =
-        Riot_deps.ensure_workspace ~workspace_manager ~mode:Riot_deps.Dep_solver.Refresh ~registry ~workspace ()
-        |> Result.map_err ~fn:(fun err -> Failure (Riot_model.Pm_error.message err))
-      in
+      let* workspace = Riot_deps.ensure_workspace
+        ~workspace_manager
+        ~mode:Riot_deps.Dep_solver.Refresh
+        ~registry
+        ~workspace
+        ()
+      |> Result.map_err ~fn:(fun err -> Failure (Riot_model.Pm_error.message err)) in
       Ok { workspace }
 
-let build_command = fun ~workspace ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) package_opt target_arch ->
+let build_command = fun ~workspace ?(scope = Runtime) ?(profile = "debug") ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) package_opt target_arch ->
   let packages = package_opt |> Option.to_list in
   run_request
-    (make_request
-       ~workspace
-       ~scope
-       ~profile:(
-         match profile with
-         | "release" -> Riot_model.Profile.release
-         | _ -> Riot_model.Profile.debug
-       )
-       ~mode
-       ~show_finished_summary
-       ~packages
-       ~targets:(
-         match target_arch with
-         | Some target -> Riot_model.Target.parse target
-         | None -> Riot_model.Target.Host
-       )
-       ())
+    (
+      make_request ~workspace ~scope
+        ~profile:(
+          match profile with
+          | "release" -> Riot_model.Profile.release
+          | _ -> Riot_model.Profile.debug
+        )
+        ~mode
+        ~show_finished_summary
+        ~requested_parallelism
+        ~packages
+        ~targets:(
+          match target_arch with
+          | Some target -> Riot_model.Target.parse target
+          | None -> Riot_model.Target.Host
+        )
+        ()
+    )
 
-let build_packages_command = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) package_names target_arch ->
+let build_packages_command = fun ~workspace ?(scope = Runtime) ?(mode = Human) ?(show_finished_summary = true) ?(requested_parallelism = None) package_names target_arch ->
   match parse_package_names package_names with
   | Error _ as err -> err
   | Ok packages ->
       run_request
-        (make_request
-           ~workspace
-           ~scope
-           ~mode
-           ~show_finished_summary
-           ~packages
-           ~targets:(
-             match target_arch with
-             | Some target -> Riot_model.Target.parse target
-             | None -> Riot_model.Target.Host
-           )
-           ())
+        (
+          make_request ~workspace ~scope ~mode ~show_finished_summary ~requested_parallelism ~packages
+            ~targets:(
+              match target_arch with
+              | Some target -> Riot_model.Target.parse target
+              | None -> Riot_model.Target.Host
+            )
+            ()
+        )
 
 let run = fun ~workspace matches ->
   match request_of_matches ~workspace matches with

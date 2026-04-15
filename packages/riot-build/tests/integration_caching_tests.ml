@@ -2,37 +2,38 @@ open Std
 open Riot_build
 open Std.Collections
 open Riot_model
+
+module Action_executor = Riot_build.Internal.Action_executor
+module Package_builder = Riot_build.Internal.Package_builder
+module Sandbox = Riot_build.Internal.Sandbox
+
 module Test = Std.Test
 
 let package_name = fun value ->
   Package_name.from_string value |> Result.expect ~msg:("expected valid package name: " ^ value)
 
 let test_toolchain = fun () ->
-  Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
-  |> Result.expect ~msg:"failed to initialize toolchain"
+  Riot_toolchain.init ~config:Riot_model.Toolchain_config.default |> Result.expect ~msg:"failed to initialize toolchain"
 
 let make_test_build_ctx = fun () ->
   let session_id = Riot_model.Session_id.make () in
   Riot_model.Build_ctx.make ~session_id ~profile:Riot_model.Profile.debug ()
 
 let make_workspace = fun ?(packages = []) root ->
-  Riot_model.Workspace.make_realized
-    ~root
-    ~packages
-    ~target_dir:"target"
-    ()
+  Riot_model.Workspace.make_realized ~root ~packages ~target_dir:"target" ()
 
 let workspace_dependency = fun name ->
   Riot_model.Package.{
     name = package_name name;
-    source = {
-      workspace = true;
-      builtin = false;
-      path = None;
-      source_locator = None;
-      ref_ = None;
-      version = None;
-    };
+    source =
+      {
+        workspace = true;
+        builtin = false;
+        path = None;
+        source_locator = None;
+        ref_ = None;
+        version = None;
+      };
   }
 
 let make_package = fun ~root ~name ->
@@ -55,20 +56,16 @@ let make_library_package = fun ~root ~name ?interface ?(dependencies = []) imple
   let _ = Fs.write implementation impl_path |> Result.expect ~msg:"failed to write impl" in
   let srcs =
     match interface with
-    | None ->
-        [ impl_rel ]
+    | None -> [ impl_rel ]
     | Some signature ->
         let intf_rel = Path.v ("src/" ^ name ^ ".mli") in
         let intf_path = Path.(path / intf_rel) in
         let _ = Fs.write signature intf_path |> Result.expect ~msg:"failed to write interface" in
         [ intf_rel; impl_rel ]
   in
-  Riot_model.Package.make
-    ~name:package_name
-    ~path
-    ~relative_path:(Path.v ("packages/" ^ name))
-    ~dependencies:(List.map dependencies ~fn:workspace_dependency)
-    ~library:{ path = impl_rel }
+  Riot_model.Package.make ~name:package_name ~path ~relative_path:(Path.v ("packages/" ^ name)) ~dependencies:(List.map
+    dependencies
+    ~fn:workspace_dependency) ~library:{ path = impl_rel }
     ~sources:{
       src = srcs;
       native = [];
@@ -82,10 +79,7 @@ let make_graph_with_write = fun ~package ~content ->
   let graph = Riot_planner.Action_graph.create () in
   let spec =
     Riot_planner.Action_node.make
-      ~actions:[ Riot_planner.Action.WriteFile {
-        destination = Path.v "out.txt";
-        content
-      }; ]
+      ~actions:[ Riot_planner.Action.WriteFile { destination = Path.v "out.txt"; content }; ]
       ~outs:[ Path.v "out.txt" ]
       ~srcs:[]
       ~package
@@ -106,8 +100,7 @@ let execute_graph = fun ~workspace ~store ~package ~graph ->
     ~store
     ~session_id:(Riot_model.Session_id.make ())
     (test_toolchain ())
-    ~concurrency:1
-  in
+    ~concurrency:1 in
   let output = Path.(Sandbox.get_dir sandbox / Path.v "out.txt") in
   let output_content = Fs.read_to_string output in
   let output_exists = Fs.exists output |> Result.unwrap_or ~default:false in
@@ -150,7 +143,9 @@ let execute_planned_package = fun ~workspace ~store ~package ~package_graph ->
       Sandbox.prepare
         ~sandbox
         ~package
-        ~inputs:(package.Riot_model.Package.sources.src @ package.Riot_model.Package.sources.native @ package.Riot_model.Package.sources.tests)
+        ~inputs:(package.Riot_model.Package.sources.src
+        @ package.Riot_model.Package.sources.native
+        @ package.Riot_model.Package.sources.tests)
         ~depset
         ~store;
       let result = Action_executor.execute
@@ -174,17 +169,19 @@ let test_execute_reuses_cache_for_equivalent_graph = fun _ctx ->
         let result1, exists1, content1, _sandbox1 = execute_graph ~workspace ~store ~package ~graph:graph1 in
         let graph2, node2 = make_graph_with_write ~package ~content:"cached output" in
         let result2, exists2, content2, _sandbox2 = execute_graph ~workspace ~store ~package ~graph:graph2 in
-        match
-          ( HashMap.get result1.Action_executor.completed ~key:(node_id node1),
-            HashMap.get result2.Action_executor.completed ~key:(node_id node2),
-            content1,
-            content2 )
-        with
-        | Some { status = Action_executor.Executed; _ },
-          Some { status = Action_executor.Cached _; _ },
-          Ok first_content,
-          Ok second_content ->
-            if exists1 && exists2 && String.equal first_content "cached output" && String.equal second_content "cached output" then
+        match (
+          HashMap.get result1.Action_executor.completed ~key:(node_id node1),
+          HashMap.get result2.Action_executor.completed ~key:(node_id node2),
+          content1,
+          content2
+        ) with
+        | Some { status=Action_executor.Executed; _ }, Some { status=Action_executor.Cached _; _ }, Ok first_content, Ok second_content ->
+            if
+              exists1
+              && exists2
+              && String.equal first_content "cached output"
+              && String.equal second_content "cached output"
+            then
               Ok ()
             else
               Error "expected both sandboxes to materialize identical cached output"
@@ -204,14 +201,12 @@ let test_execute_cache_misses_when_action_changes = fun _ctx ->
         let result1, exists1, _, _sandbox1 = execute_graph ~workspace ~store ~package ~graph:graph1 in
         let graph2, node2 = make_graph_with_write ~package ~content:"v2" in
         let result2, exists2, content2, _sandbox2 = execute_graph ~workspace ~store ~package ~graph:graph2 in
-        match
-          ( HashMap.get result1.Action_executor.completed ~key:(node_id node1),
-            HashMap.get result2.Action_executor.completed ~key:(node_id node2),
-            content2 )
-        with
-        | Some { status = Action_executor.Executed; _ },
-          Some { status = Action_executor.Executed; _ },
-          Ok second_content ->
+        match (
+          HashMap.get result1.Action_executor.completed ~key:(node_id node1),
+          HashMap.get result2.Action_executor.completed ~key:(node_id node2),
+          content2
+        ) with
+        | Some { status=Action_executor.Executed; _ }, Some { status=Action_executor.Executed; _ }, Ok second_content ->
             if exists1 && exists2 && String.equal second_content "v2" then
               Ok ()
             else
@@ -225,29 +220,18 @@ let test_dependency_change_invalidates_cached_compile_actions = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"integration_dep_cache_invalidates"
       (fun tmpdir ->
-        let dep =
-          make_library_package
-            ~root:tmpdir
-            ~name:"dep"
-            ~interface:"val value : int\n"
-            "let value = 1\n"
-        in
-        let app =
-          make_library_package
-            ~root:tmpdir
-            ~name:"app"
-            ~interface:"val value : int\n"
-            ~dependencies:[ "dep" ]
-            "let value = Dep.value\n"
-        in
+        let dep = make_library_package ~root:tmpdir ~name:"dep" ~interface:"val value : int\n" "let value = 1\n" in
+        let app = make_library_package
+          ~root:tmpdir
+          ~name:"app"
+          ~interface:"val value : int\n"
+          ~dependencies:[ "dep" ]
+          "let value = Dep.value\n" in
         let workspace = make_workspace ~packages:[ dep; app ] tmpdir in
         let store = Riot_store.Store.create ~workspace in
-        let first_graph =
-          Riot_planner.Package_graph.create
-            ~scope:Riot_planner.Package_graph.Runtime
-            workspace
-          |> Result.expect ~msg:"failed to create first package graph"
-        in
+        let first_graph = Riot_planner.Package_graph.create
+          ~scope:Riot_planner.Package_graph.Runtime workspace
+        |> Result.expect ~msg:"failed to create first package graph" in
         let first_dep = build_package ~workspace ~store ~package:dep ~package_graph:first_graph in
         match first_dep.status with
         | Package_builder.Failed err ->
@@ -257,41 +241,36 @@ let test_dependency_change_invalidates_cached_compile_actions = fun _ctx ->
         | Package_builder.Cached _
         | Package_builder.Built _ -> (
             match execute_planned_package ~workspace ~store ~package:app ~package_graph:first_graph with
-            | Error _ as err ->
-                err
+            | Error _ as err -> err
             | Ok _first_app_result ->
                 let dep_source = Path.(dep.path / Path.v "src" / Path.v "dep.ml") in
                 let _ = Fs.write "let value = 2\n" dep_source |> Result.expect ~msg:"failed to rewrite dependency source" in
-                let second_graph =
-                  Riot_planner.Package_graph.create
-                    ~scope:Riot_planner.Package_graph.Runtime
-                    workspace
-                  |> Result.expect ~msg:"failed to create second package graph"
-                in
+                let second_graph = Riot_planner.Package_graph.create
+                  ~scope:Riot_planner.Package_graph.Runtime workspace
+                |> Result.expect ~msg:"failed to create second package graph" in
                 let second_dep = build_package ~workspace ~store ~package:dep ~package_graph:second_graph in
                 match second_dep.status with
                 | Package_builder.Failed err ->
-                    Error ("second dependency build failed: " ^ Package_builder.package_error_to_string err)
+                    Error ("second dependency build failed: "
+                    ^ Package_builder.package_error_to_string err)
                 | Package_builder.Skipped { reason } ->
                     Error ("second dependency build skipped: " ^ reason)
                 | Package_builder.Cached _ ->
                     Error "expected dependency source edit to miss package cache"
                 | Package_builder.Built _ -> (
                     match execute_planned_package ~workspace ~store ~package:app ~package_graph:second_graph with
-                    | Error _ as err ->
-                        err
+                    | Error _ as err -> err
                     | Ok second_app_result ->
-                        let statuses =
-                          HashMap.to_list second_app_result.Action_executor.completed
-                          |> List.map ~fn:(fun (_, result) -> result.Action_executor.status)
-                        in
+                        let statuses = HashMap.to_list second_app_result.Action_executor.completed
+                        |> List.map ~fn:(fun (_, result) -> result.Action_executor.status) in
                         let cached_count =
-                          List.fold_left statuses ~acc:0 ~fn:(fun count status ->
-                            match status with
-                            | Action_executor.Cached _ -> count + 1
-                            | Action_executor.Executed
-                            | Action_executor.Failed _
-                            | Action_executor.Skipped -> count)
+                          List.fold_left statuses ~acc:0
+                            ~fn:(fun count status ->
+                              match status with
+                              | Action_executor.Cached _ -> count + 1
+                              | Action_executor.Executed
+                              | Action_executor.Failed _
+                              | Action_executor.Skipped -> count)
                         in
                         if Int.equal cached_count 0 then
                           Ok ()
@@ -300,8 +279,7 @@ let test_dependency_change_invalidates_cached_compile_actions = fun _ctx ->
                           ^ Int.to_string cached_count
                           ^ " cached actions")
                   )
-          )
-      )
+          ))
   with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)

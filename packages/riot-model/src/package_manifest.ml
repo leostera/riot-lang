@@ -1,11 +1,17 @@
 open Std
 
 type dependency_source = Package.dependency_source
+
 type dependency_scope = Package.dependency_scope
+
 type dependency = Package.dependency
+
 type publish_metadata = Package.publish_metadata
+
 type binary = Package.binary
+
 type library = Package.library
+
 type realization_intent = Package.realization_intent =
   | Build
   | Runtime
@@ -15,8 +21,11 @@ type realization_intent = Package.realization_intent =
   | Bench
   | Doc
   | Check
+
 type profile_override = Package.profile_override
+
 type compiler_config = Package.compiler_config
+
 type foreign_dependency = Package.foreign_dependency
 
 type t = Package.manifest_spec = {
@@ -56,8 +65,7 @@ let is_workspace_member = fun manifest ->
   let rel_str = Path.to_string manifest.relative_path in
   not (String.starts_with ~prefix:"../" rel_str || Path.is_absolute manifest.relative_path)
 
-let all_dependencies = fun manifest ->
-  manifest.dependencies @ manifest.dev_dependencies @ manifest.build_dependencies
+let all_dependencies = fun manifest -> manifest.dependencies @ manifest.dev_dependencies @ manifest.build_dependencies
 
 let from_toml = Package.parse_manifest_spec
 

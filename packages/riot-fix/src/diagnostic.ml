@@ -165,12 +165,10 @@ let extract_code_snippet_from_layout = fun layout (span: Syn.Ceibo.Span.t) ->
           else
             remaining
       in
-      let pointer_line =
-        String.make ~len:start_col ~char:' '
-        ^ "\027[1;33m"
-        ^ String.make ~len:marker_width ~char:'^'
-        ^ "\027[0m"
-      in
+      let pointer_line = String.make ~len:start_col ~char:' '
+      ^ "\027[1;33m"
+      ^ String.make ~len:marker_width ~char:'^'
+      ^ "\027[0m" in
       Some (code_line, pointer_line, start_idx + 1)
 
 let extract_code_snippet = fun source span ->
@@ -241,8 +239,7 @@ type grouped = {
 let group_diagnostics: t list -> grouped list = fun diags ->
   let module DiagMap = Collections.HashMap in
   let map = DiagMap.create () in
-  List.for_each
-    diags
+  List.for_each diags
     ~fn:(fun (diag: t) ->
       let fix_title = fix diag |> Option.map ~fn:Fix.title in
       let key = (severity diag, message diag, rule_id diag, suggestion diag, fix_title) in
@@ -278,15 +275,12 @@ let grouped_to_formatted_output = fun ~file ~source grouped ->
   let header = Path.to_string file ^ ":" in
   let basic_info = [ colored_header_label grouped.severity grouped.rule_id; ""; grouped.message; ] in
   let spans =
-    List.sort
-      grouped.spans
+    List.sort grouped.spans
       ~compare:(fun (left: Syn.Ceibo.Span.t) (right: Syn.Ceibo.Span.t) ->
         Int.compare left.start right.start)
   in
   let lines_with_snippets =
-    List.fold_left
-      spans
-      ~acc:basic_info
+    List.fold_left spans ~acc:basic_info
       ~fn:(fun acc span ->
         match extract_code_snippet_from_layout layout span with
         | Some (code_line, pointer_line, line_num) -> acc
@@ -314,15 +308,12 @@ let grouped_to_formatted_output_with_layout = fun ~file ~layout grouped ->
   let header = Path.to_string file ^ ":" in
   let basic_info = [ colored_header_label grouped.severity grouped.rule_id; ""; grouped.message; ] in
   let spans =
-    List.sort
-      grouped.spans
+    List.sort grouped.spans
       ~compare:(fun (left: Syn.Ceibo.Span.t) (right: Syn.Ceibo.Span.t) ->
         Int.compare left.start right.start)
   in
   let lines_with_snippets =
-    List.fold_left
-      spans
-      ~acc:basic_info
+    List.fold_left spans ~acc:basic_info
       ~fn:(fun acc span ->
         match extract_code_snippet_from_layout layout span with
         | Some (code_line, pointer_line, line_num) -> acc

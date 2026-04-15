@@ -22,13 +22,13 @@ let max_nested_match_depth = 3
 let rec child_expressions_of_function_body = function
   | Syn.Cst.Expression expression -> [ expression ]
   | Syn.Cst.Cases { cases; _ } ->
-      cases
-      |> List.map ~fn:(fun (case: Syn.Cst.match_case) ->
-        (match case.guard with
-         | Some guard -> [ guard ]
-         | None -> [])
-        @ [ case.body ])
-      |> List.concat
+      cases |> List.map
+        ~fn:(fun (case: Syn.Cst.match_case) ->
+          (
+            match case.guard with
+            | Some guard -> [ guard ]
+            | None -> []
+          ) @ [ case.body ]) |> List.concat
 
 and child_expressions = function
   | Syn.Cst.Expression.Path _
@@ -53,23 +53,23 @@ and child_expressions = function
       [ expr.bound_value; expr.body ]
   | Syn.Cst.Expression.Match expr ->
       expr.scrutinee :: (
-        expr.cases
-        |> List.map ~fn:(fun (case: Syn.Cst.match_case) ->
-          (match case.guard with
-           | Some guard -> [ guard ]
-           | None -> [])
-          @ [ case.body ])
-        |> List.concat
+        expr.cases |> List.map
+          ~fn:(fun (case: Syn.Cst.match_case) ->
+            (
+              match case.guard with
+              | Some guard -> [ guard ]
+              | None -> []
+            ) @ [ case.body ]) |> List.concat
       )
   | Syn.Cst.Expression.Try expr ->
       expr.body :: (
-        expr.cases
-        |> List.map ~fn:(fun (case: Syn.Cst.match_case) ->
-          (match case.guard with
-           | Some guard -> [ guard ]
-           | None -> [])
-          @ [ case.body ])
-        |> List.concat
+        expr.cases |> List.map
+          ~fn:(fun (case: Syn.Cst.match_case) ->
+            (
+              match case.guard with
+              | Some guard -> [ guard ]
+              | None -> []
+            ) @ [ case.body ]) |> List.concat
       )
   | Syn.Cst.Expression.If expr ->
       let base = [ expr.condition; expr.then_branch ] in
@@ -89,13 +89,8 @@ let max_list = function
 
 let rec match_chain_depth = function
   | Syn.Cst.Expression.Match expr -> 1
-  + (child_expressions (Syn.Cst.Expression.Match expr)
-    |> List.map ~fn:match_chain_depth
-    |> max_list)
-  | expr ->
-      child_expressions expr
-      |> List.map ~fn:match_chain_depth
-      |> max_list
+  + (child_expressions (Syn.Cst.Expression.Match expr) |> List.map ~fn:match_chain_depth |> max_list)
+  | expr -> child_expressions expr |> List.map ~fn:match_chain_depth |> max_list
 
 let make_diagnostic = fun (expr: Syn.Cst.match_expression) depth ->
   Diagnostic.make
@@ -110,8 +105,7 @@ let rec diagnostics_for_expression = fun ~inside_match ->
   | Syn.Cst.Expression.Match expr ->
       let nested = child_expressions (Syn.Cst.Expression.Match expr)
       |> List.map ~fn:(diagnostics_for_expression ~inside_match:true)
-      |> List.concat
-      in
+      |> List.concat in
       if inside_match then
         nested
       else
@@ -120,10 +114,9 @@ let rec diagnostics_for_expression = fun ~inside_match ->
           make_diagnostic expr depth :: nested
         else
           nested
-  | expr ->
-      child_expressions expr
-      |> List.map ~fn:(diagnostics_for_expression ~inside_match)
-      |> List.concat
+  | expr -> child_expressions expr
+  |> List.map ~fn:(diagnostics_for_expression ~inside_match)
+  |> List.concat
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in
@@ -131,8 +124,9 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
   |> Option.unwrap_or ~default:[]
   |> List.map ~fn:Traversal.let_bindings_of_structure_item
   |> List.concat
-  |> List.map ~fn:(fun binding ->
-    diagnostics_for_expression ~inside_match:false (Syn.Cst.LetBinding.value binding))
+  |> List.map
+    ~fn:(fun binding ->
+      diagnostics_for_expression ~inside_match:false (Syn.Cst.LetBinding.value binding))
   |> List.concat
 
 let make = fun () ->

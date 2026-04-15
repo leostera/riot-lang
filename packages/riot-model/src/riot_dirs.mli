@@ -70,7 +70,8 @@ val cache_dir_in_workspace: workspace:Workspace.t -> profile:string -> target:Ta
 val build_lock_path_with_target: workspace_root:Path.t -> profile:string -> target:Target.t -> Path.t
 
 (** Get build lock path for a specific profile and target lane in a workspace. *)
-val build_lock_path_in_workspace: workspace:Workspace.t -> profile:string -> target:Target.t -> Path.t
+val build_lock_path_in_workspace:
+  workspace:Workspace.t -> profile:string -> target:Target.t -> Path.t
 
 (** Backward compatible functions - default to debug profile + host target *)
 

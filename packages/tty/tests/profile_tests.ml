@@ -1,20 +1,17 @@
 open Std
-
 module Test = Std.Test
 
-let (let*) = fun value fn -> Result.and_then value ~fn
+let ( let* ) = fun value fn -> Result.and_then value ~fn
 
 let apply_env_value = fun name value_opt ->
   match value_opt with
-  | Some value ->
-      Kernel.Env.set ~var:name ~value
-      |> Result.map_err ~fn:Kernel.Env.error_to_string
-  | None ->
-      Kernel.Env.remove ~var:name
-      |> Result.map_err ~fn:Kernel.Env.error_to_string
+  | Some value -> Kernel.Env.set ~var:name ~value |> Result.map_err ~fn:Kernel.Env.error_to_string
+  | None -> Kernel.Env.remove ~var:name |> Result.map_err ~fn:Kernel.Env.error_to_string
 
 let with_env = fun bindings fn ->
-  let saved = List.map bindings ~fn:(fun (name, _) -> (name, Kernel.Env.get ~var:name)) in
+  let saved =
+    List.map bindings ~fn:(fun (name, _) -> (name, Kernel.Env.get ~var:name))
+  in
   let rec apply = function
     | [] -> Ok ()
     | (name, value_opt) :: rest ->
@@ -32,25 +29,39 @@ let with_env = fun bindings fn ->
       Error error
 
 let test_truecolor_env_preserves_rgb = fun _ctx ->
-  with_env [ ("TERM", Some "xterm-256color"); ("COLORTERM", Some "truecolor"); ("TERM_PROGRAM", None) ]
+  with_env [
+    ("TERM", Some "xterm-256color");
+    ("COLORTERM", Some "truecolor");
+    ("TERM_PROGRAM", None)
+  ]
     (fun () ->
       match Tty.Profile.convert (Tty.Profile.from_env ()) (Tty.Color.of_rgb (12, 34, 56)) with
       | Tty.Color.RGB (12, 34, 56) -> Ok ()
       | color -> Error ("Expected truecolor profile to preserve RGB, got " ^ Tty.Color.to_string color))
 
 let test_screen_truecolor_without_tmux_degrades_to_ansi256 = fun _ctx ->
-  with_env [ ("TERM", Some "screen-256color"); ("COLORTERM", Some "truecolor"); ("TERM_PROGRAM", None) ]
+  with_env [
+    ("TERM", Some "screen-256color");
+    ("COLORTERM", Some "truecolor");
+    ("TERM_PROGRAM", None)
+  ]
     (fun () ->
       match Tty.Profile.convert (Tty.Profile.from_env ()) (Tty.Color.of_rgb (12, 34, 56)) with
       | Tty.Color.ANSI256 _ -> Ok ()
-      | color -> Error ("Expected screen truecolor profile to degrade to ANSI256, got " ^ Tty.Color.to_string color))
+      | color -> Error ("Expected screen truecolor profile to degrade to ANSI256, got "
+      ^ Tty.Color.to_string color))
 
 let test_tmux_truecolor_preserves_rgb = fun _ctx ->
-  with_env [ ("TERM", Some "screen-256color"); ("COLORTERM", Some "truecolor"); ("TERM_PROGRAM", Some "tmux") ]
+  with_env [
+    ("TERM", Some "screen-256color");
+    ("COLORTERM", Some "truecolor");
+    ("TERM_PROGRAM", Some "tmux")
+  ]
     (fun () ->
       match Tty.Profile.convert (Tty.Profile.from_env ()) (Tty.Color.of_rgb (12, 34, 56)) with
       | Tty.Color.RGB (12, 34, 56) -> Ok ()
-      | color -> Error ("Expected tmux truecolor profile to preserve RGB, got " ^ Tty.Color.to_string color))
+      | color -> Error ("Expected tmux truecolor profile to preserve RGB, got "
+      ^ Tty.Color.to_string color))
 
 let test_linux_env_degrades_to_ansi = fun _ctx ->
   with_env [ ("TERM", Some "linux"); ("COLORTERM", None); ("TERM_PROGRAM", None) ]
@@ -64,7 +75,8 @@ let test_xterm_256color_detects_ansi256 = fun _ctx ->
     (fun () ->
       match Tty.Profile.convert (Tty.Profile.from_env ()) (Tty.Color.of_rgb (12, 34, 56)) with
       | Tty.Color.ANSI256 _ -> Ok ()
-      | color -> Error ("Expected xterm-256color to degrade RGB to ANSI256, got " ^ Tty.Color.to_string color))
+      | color -> Error ("Expected xterm-256color to degrade RGB to ANSI256, got "
+      ^ Tty.Color.to_string color))
 
 let test_missing_color_env_disables_color = fun _ctx ->
   with_env [ ("TERM", None); ("COLORTERM", None); ("TERM_PROGRAM", None) ]
@@ -92,7 +104,8 @@ let test_convert_rgb_to_ansi256 = fun _ctx ->
     (fun () ->
       match Tty.Profile.convert (Tty.Profile.from_env ()) (Tty.Color.of_rgb (12, 34, 56)) with
       | Tty.Color.ANSI256 _ -> Ok ()
-      | color -> Error ("Expected ANSI256 profile to degrade RGB to ANSI256, got " ^ Tty.Color.to_string color))
+      | color -> Error ("Expected ANSI256 profile to degrade RGB to ANSI256, got "
+      ^ Tty.Color.to_string color))
 
 let test_convert_rgb_to_ansi = fun _ctx ->
   with_env [ ("TERM", Some "linux"); ("COLORTERM", None); ("TERM_PROGRAM", None) ]

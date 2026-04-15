@@ -13,38 +13,42 @@ let replace_all = fun text ->
   fun ~pattern ->
     fun ~with_ ->
       let pattern_len = String.length pattern in
-    if Int.equal pattern_len 0 then
-      text
-    else
-      let buffer = IO.Buffer.create ~size:(String.length text + String.length with_) in
-      let starts_with_pattern offset =
-        let rec loop index =
-          if index >= pattern_len then
-            true
-          else
-            (match String.get text ~at:(offset + index), String.get pattern ~at:index with
-            | Some text_char, Some pattern_char when Char.equal text_char pattern_char ->
-                loop (index + 1)
-            | _ -> false)
+      if Int.equal pattern_len 0 then
+        text
+      else
+        let buffer = IO.Buffer.create ~size:(String.length text + String.length with_) in
+        let starts_with_pattern offset =
+          let rec loop index =
+            if index >= pattern_len then
+              true
+            else
+              (
+                match String.get text ~at:(offset + index), String.get pattern ~at:index with
+                | Some text_char, Some pattern_char when Char.equal text_char pattern_char -> loop
+                  (index + 1)
+                | _ -> false
+              )
+          in
+          offset + pattern_len <= String.length text && loop 0
         in
-        offset + pattern_len <= String.length text && loop 0
-      in
-      let rec loop offset =
-        if offset >= String.length text then
-          ()
-        else if starts_with_pattern offset then
+        let rec loop offset =
+          if offset >= String.length text then
+            ()
+          else if starts_with_pattern offset then
             (
               IO.Buffer.add_string buffer with_;
-          loop (offset + pattern_len)
+              loop (offset + pattern_len)
             )
-          else (
-            let char = match String.get text ~at:offset with
-              | Some value -> value
-              | None -> '\000'
-            in
-            IO.Buffer.add_char buffer char;
-            loop (offset + 1)
-          )
+          else
+            (
+              let char =
+                match String.get text ~at:offset with
+                | Some value -> value
+                | None -> '\000'
+              in
+              IO.Buffer.add_char buffer char;
+              loop (offset + 1)
+            )
         in
         let () = loop 0 in
         IO.Buffer.contents buffer
@@ -64,7 +68,8 @@ let normalize_snapshot_tokens = fun text ->
 let read_lines = fun path ->
   Fs.read path
   |> Result.map_err ~fn:IO.error_message
-  |> Result.map ~fn:(fun source ->
+  |> Result.map
+    ~fn:(fun source ->
       source
       |> String.split_on_char '\n'
       |> List.map ~fn:String.trim
@@ -79,8 +84,7 @@ let run_fixture = fun path ->
     exit_code = None
   } in
   Ok (
-    List.fold_left lines
-      ~acc:initial
+    List.fold_left lines ~acc:initial
       ~fn:(fun acc line ->
         let outcome = Riot_lsp.Session.handle_payload acc.Riot_lsp.Session.state line in
         {

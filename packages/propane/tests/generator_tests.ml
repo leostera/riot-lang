@@ -2,9 +2,7 @@
 open Std
 open Propane
 
-let make_rng = fun seed ->
-  Random.Rng.standard ~seed:(Int.to_string seed) ()
-  |> Result.expect ~msg:"failed to create deterministic rng"
+let make_rng = fun seed -> Random.Rng.standard ~seed:(Int.to_string seed) () |> Result.expect ~msg:"failed to create deterministic rng"
 
 let expect_raises = fun thunk ->
   try
@@ -31,14 +29,12 @@ let test_int_range_stays_within_bounds = fun _ctx ->
   in
   loop 500 false false
 
-let test_one_of_empty_raises = fun _ctx ->
-  expect_raises (fun () -> Generator.one_of [])
+let test_one_of_empty_raises = fun _ctx -> expect_raises (fun () -> Generator.one_of [])
 
 let test_frequency_rejects_non_positive_weights = fun _ctx ->
   match expect_raises (fun () -> Generator.frequency [ (0, Generator.return 1) ]) with
   | Error _ as err -> err
-  | Ok () ->
-      expect_raises (fun () -> Generator.frequency [ (-1, Generator.return 1) ])
+  | Ok () -> expect_raises (fun () -> Generator.frequency [ ((-1), Generator.return 1) ])
 
 let test_sized_receives_the_ambient_size = fun _ctx ->
   let gen = Generator.sized Generator.return in
@@ -82,7 +78,8 @@ let test_rune_printable_produces_printable_runes = fun _ctx ->
       if Unicode.Rune.is_print value then
         loop (remaining - 1)
       else
-        Error ("rune_printable produced a non-printable rune: " ^ Int.to_string (Unicode.Rune.to_int value))
+        Error ("rune_printable produced a non-printable rune: "
+        ^ Int.to_string (Unicode.Rune.to_int value))
   in
   loop 200
 
@@ -122,25 +119,23 @@ let test_float_spans_both_signs = fun _ctx ->
         Error "float generator did not cover both signs"
     else
       let value = Generator.generate rnd Generator.float in
-      loop
-        (remaining - 1)
-        (seen_positive || value > 0.0)
-        (seen_negative || value < 0.0)
+      loop (remaining - 1) (seen_positive || value > 0.0) (seen_negative || value < 0.0)
   in
   loop 200 false false
 
-let tests = Test.[
-  case "int_range stays within bounds and reaches both ends" test_int_range_stays_within_bounds;
-  case "one_of rejects an empty input" test_one_of_empty_raises;
-  case "frequency rejects non-positive weights" test_frequency_rejects_non_positive_weights;
-  case "sized receives the ambient size" test_sized_receives_the_ambient_size;
-  case "resize overrides the ambient size" test_resize_overrides_the_ambient_size;
-  case "char_printable excludes control bytes" test_char_printable_excludes_controls;
-  case "rune_printable produces printable runes" test_rune_printable_produces_printable_runes;
-  case "string_size uses the requested length" test_string_size_uses_the_requested_length;
-  case "frequency bias is observable" test_frequency_bias_is_observable;
-  case "float spans both signs" test_float_spans_both_signs;
-]
+let tests =
+  Test.[
+    case "int_range stays within bounds and reaches both ends" test_int_range_stays_within_bounds;
+    case "one_of rejects an empty input" test_one_of_empty_raises;
+    case "frequency rejects non-positive weights" test_frequency_rejects_non_positive_weights;
+    case "sized receives the ambient size" test_sized_receives_the_ambient_size;
+    case "resize overrides the ambient size" test_resize_overrides_the_ambient_size;
+    case "char_printable excludes control bytes" test_char_printable_excludes_controls;
+    case "rune_printable produces printable runes" test_rune_printable_produces_printable_runes;
+    case "string_size uses the requested length" test_string_size_uses_the_requested_length;
+    case "frequency bias is observable" test_frequency_bias_is_observable;
+    case "float spans both signs" test_float_spans_both_signs;
+  ]
 
 let () =
   Actors.run

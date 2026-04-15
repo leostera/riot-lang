@@ -114,8 +114,7 @@ and calculate_container_fit_size: layout_node -> Viewport.t -> Super.Config.t ->
   List.iter (fun child -> calculate_sizes child available config) node.children;
   (* Sum up children based on direction *)
   let total_width, total_height =
-    List.fold_left node.children
-      ~acc:(0.0, 0.0)
+    List.fold_left node.children ~acc:(0.0, 0.0)
       ~fn:(fun (w, h) child ->
         match style.direction with
         | Style.LeftToRight -> (
@@ -148,8 +147,7 @@ and layout_children: layout_node -> Super.Config.t -> unit = fun node config ->
   let available_height = node.computed_size.height -. padding_vertical style.padding in
   (* Partition children by sizing type *)
   let fit_children, grow_children, fixed_children, percent_children =
-    List.fold_left node.children
-      ~acc:([], [], [], [])
+    List.fold_left node.children ~acc:([], [], [], [])
       ~fn:(fun (fit, grow, fixed, percent) child ->
         let child_style = child.style in
         match style.direction with
@@ -170,8 +168,7 @@ and layout_children: layout_node -> Super.Config.t -> unit = fun node config ->
   in
   (* Calculate space used by FIT and FIXED children *)
   let fit_space =
-    List.fold_left fit_children
-      ~acc:0.0
+    List.fold_left fit_children ~acc:0.0
       ~fn:(fun acc child ->
         acc +. (
           match style.direction with
@@ -180,8 +177,7 @@ and layout_children: layout_node -> Super.Config.t -> unit = fun node config ->
         ))
   in
   let fixed_space =
-    List.fold_left fixed_children
-      ~acc:0.0
+    List.fold_left fixed_children ~acc:0.0
       ~fn:(fun acc child ->
         let size =
           match style.direction with
@@ -199,8 +195,7 @@ and layout_children: layout_node -> Super.Config.t -> unit = fun node config ->
         acc +. size)
   in
   let percent_space =
-    List.fold_left percent_children
-      ~acc:0.0
+    List.fold_left percent_children ~acc:0.0
       ~fn:(fun acc child ->
         let size =
           match style.direction with

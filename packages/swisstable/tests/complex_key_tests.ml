@@ -192,8 +192,7 @@ let user_key_multiple_prop =
         (fun ((user, value)) -> Collections.HashMap.insert ref_map ~key:user ~value |> ignore)
         pairs;
       (* Verify all accessible *)
-      Collections.HashMap.for_each
-        ref_map
+      Collections.HashMap.for_each ref_map
         ~fn:(fun user expected_value ->
           match Swisstable.get map user with
           | Some actual_value ->
@@ -261,8 +260,7 @@ let event_key_multiple_prop =
       (* Verify lengths match *)
       if not (Swisstable.len map = Collections.HashMap.length ref_map) then
         fail "Event map lengths differ";
-      Collections.HashMap.for_each
-        ref_map
+      Collections.HashMap.for_each ref_map
         ~fn:(fun event expected ->
           match Swisstable.get map event with
           | Some actual when actual = expected -> ()
@@ -349,8 +347,7 @@ let customer_key_multiple_prop =
       (* Verify equivalence *)
       if not (Swisstable.len map = Collections.HashMap.length ref_map) then
         fail "Customer map lengths differ";
-      Collections.HashMap.for_each
-        ref_map
+      Collections.HashMap.for_each ref_map
         ~fn:(fun customer expected ->
           match Swisstable.get map customer with
           | Some actual when actual = expected -> ()
@@ -368,8 +365,7 @@ let collision_point_prop =
       assume (Collections.List.length pairs <= 50);
       (* Use small point range (0-9) to force collisions *)
       let small_pairs =
-        List.map
-          pairs
+        List.map pairs
           ~fn:(fun ((k, v)) ->
             let x =
               if k < 0 then
@@ -391,8 +387,7 @@ let collision_point_prop =
       (* Verify lengths match *)
       if not (Swisstable.len map = Collections.HashMap.length ref_map) then
         fail "Lengths differ after collision test";
-      Collections.HashMap.for_each
-        ref_map
+      Collections.HashMap.for_each ref_map
         ~fn:(fun p v ->
           match Swisstable.get map p with
           | Some v' when v' = v -> ()

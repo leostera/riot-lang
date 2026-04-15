@@ -133,13 +133,11 @@ let test_escape_sequences_are_strings = fun _ctx ->
     ]
     in
     (* Verify they're all non-empty strings starting with ESC *)
-    if
-      List.all sequences ~fn:(fun s ->
-        String.length s > 0 && match String.get s ~at:0 with
-        | Some value -> Char.equal value '\x1b'
-        | None -> false
-      )
-    then
+    if List.all sequences
+        ~fn:(fun s ->
+          String.length s > 0 && match String.get s ~at:0 with
+          | Some value -> Char.equal value '\x1b'
+          | None -> false) then
       Ok ()
     else
       Error "Some escape sequences are invalid"

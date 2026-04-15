@@ -31,11 +31,7 @@ type publish_event =
       version: Std.Version.t option;
       stage: publish_check_stage
     }
-  | Packing of {
-      package: Riot_model.Package_name.t;
-      version: Std.Version.t;
-      artifact_path: Path.t
-    }
+  | Packing of { package: Riot_model.Package_name.t; version: Std.Version.t; artifact_path: Path.t }
   | SkippedNotPublic of { package: Riot_model.Package_name.t; version: Std.Version.t option }
   | SkippedAlreadyPublished of { package: Riot_model.Package_name.t; version: Std.Version.t }
   | DryRunPlanned of Riot_deps.Publisher.prepared_publish
@@ -60,13 +56,12 @@ type publish_error =
   | PublishFailed of { package: Riot_model.Package_name.t; error: Riot_deps.Publisher.error }
 val publish_error_message: publish_error -> string
 
-module For_test : sig
+module For_test: sig
   type deps = {
     resolve_registry: unit -> (Pkgs_ml.Registry.t, publish_error) result;
     load_api_token: registry_name:string -> (string, publish_error) result;
     workspace_publish_order:
-      packages:Riot_model.Package.t list ->
-      (Riot_model.Package.t list, publish_error) result;
+      packages:Riot_model.Package.t list -> (Riot_model.Package.t list, publish_error) result;
     published_version_exists:
       registry:Pkgs_ml.Registry.t ->
       package_name:Riot_model.Package_name.t ->
@@ -77,7 +72,7 @@ module For_test : sig
       workspace:Riot_model.Workspace.t ->
       package:Riot_model.Package.t ->
       (unit, publish_error) result;
-    run_fix_check:
+    run_fix_check: 
       emit:(publish_event -> unit) ->
       registry:Pkgs_ml.Registry.t ->
       workspace:Riot_model.Workspace.t ->
@@ -105,7 +100,6 @@ module For_test : sig
       Riot_deps.Publisher.prepared_publish ->
       (Pkgs_ml.Registry.published_release, publish_error) result;
   }
-
   val default_deps: deps
 
   val publish_with:

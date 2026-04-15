@@ -65,8 +65,7 @@ let parse_set_cookie = fun header ->
           in
           (* Parse attributes *)
           let cookie =
-            List.fold_left attrs
-              ~acc:cookie
+            List.fold_left attrs ~acc:cookie
               ~fn:(fun c attr ->
                 match parse_attribute attr with
                 | (Some "max-age", Some value) -> (

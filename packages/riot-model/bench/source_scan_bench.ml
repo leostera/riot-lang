@@ -1,6 +1,5 @@
 open Std
 open Std.Bench
-
 module Package_manifest = Riot_model.Package_manifest
 
 let bench_config: Bench.bench_config = { iterations = 20; warmup = 5 }
@@ -13,14 +12,12 @@ type fixture = {
 
 let sink = ref 0
 
-let consume_sources = fun (sources:Riot_model.Package.sources) ->
-  let total =
-    List.length sources.src
-    + List.length sources.native
-    + List.length sources.tests
-    + List.length sources.examples
-    + List.length sources.bench
-  in
+let consume_sources = fun (sources: Riot_model.Package.sources) ->
+  let total = List.length sources.src
+  + List.length sources.native
+  + List.length sources.tests
+  + List.length sources.examples
+  + List.length sources.bench in
   sink := !sink + total;
   if total <= 0 then
     panic "expected source scan benchmark to discover at least one source file"
@@ -30,21 +27,15 @@ let load_manifest = fun ~workspace_root ~relative_path ->
   let manifest_path = Path.(package_path / Path.v "riot.toml") in
   let manifest_source = Fs.read manifest_path |> Result.expect ~msg:"expected benchmark manifest to load" in
   let manifest_toml = Data.Toml.parse manifest_source |> Result.expect ~msg:"expected benchmark manifest to parse" in
-  let manifest =
-    Package_manifest.from_toml
-      manifest_toml
-      ~workspace_deps:[]
-      ~workspace_dev_deps:[]
-      ~workspace_build_deps:[]
-      ~path:package_path
-      ~relative_path
-    |> Result.expect ~msg:"expected benchmark package manifest to decode"
-  in
-  {
-    label = Path.to_string relative_path;
-    package_path;
-    manifest;
-  }
+  let manifest = Package_manifest.from_toml
+    manifest_toml
+    ~workspace_deps:[]
+    ~workspace_dev_deps:[]
+    ~workspace_build_deps:[]
+    ~path:package_path
+    ~relative_path
+  |> Result.expect ~msg:"expected benchmark package manifest to decode" in
+  { label = Path.to_string relative_path; package_path; manifest }
 
 let should_skip_source_entry = fun filename ->
   String.starts_with ~prefix:"." (Path.basename filename)
@@ -86,8 +77,10 @@ let old_collect_relative_files = fun ~package_path ~root ?(excluded_relpaths = [
   let iter = Fs.Walker.into_iter walker in
   let rec loop acc iter =
     match Iter.Iterator.next iter with
-    | None, _ -> List.reverse acc
-    | Some (Error _), iter' -> loop acc iter'
+    | None, _ ->
+        List.reverse acc
+    | Some (Error _), iter' ->
+        loop acc iter'
     | Some (Ok (entry: Fs.Walker.FileItem.t)), iter' -> (
         let path = Fs.Walker.FileItem.path entry in
         match Fs.Walker.FileItem.kind entry with
@@ -123,25 +116,24 @@ let old_scan_sources = fun ~package_path ~roots ->
     bench = find_bucket "bench";
   }
 
-let bench_old_style_runtime = fun (fixture:fixture) () ->
-  old_scan_sources ~package_path:fixture.package_path ~roots:[ "src"; "native" ]
-  |> consume_sources
+let bench_old_style_runtime = fun (fixture: fixture) () ->
+  old_scan_sources ~package_path:fixture.package_path ~roots:[ "src"; "native" ] |> consume_sources
 
-let bench_old_style_all_buckets = fun (fixture:fixture) () ->
+let bench_old_style_all_buckets = fun (fixture: fixture) () ->
   old_scan_sources
     ~package_path:fixture.package_path
     ~roots:[ "src"; "tests"; "native"; "examples"; "bench" ]
   |> consume_sources
 
-let bench_current_runtime = fun (fixture:fixture) () ->
+let bench_current_runtime = fun (fixture: fixture) () ->
   Package_manifest.realize ~intent:Package_manifest.Runtime fixture.manifest
   |> fun pkg -> consume_sources pkg.sources
 
-let bench_current_dev = fun (fixture:fixture) () ->
+let bench_current_dev = fun (fixture: fixture) () ->
   Package_manifest.realize ~intent:Package_manifest.Dev fixture.manifest
   |> fun pkg -> consume_sources pkg.sources
 
-let benchmark_group = fun (fixture:fixture) ->
+let benchmark_group = fun (fixture: fixture) ->
   Bench.[
     with_config
       ~config:bench_config
@@ -173,9 +165,6 @@ let benchmarks = fun () ->
 let () =
   Runtime.run
     ~main:(fun ~args ->
-      Bench.Cli.main
-        ~name:"Riot Model Source Scan Benchmarks"
-        ~benchmarks:(benchmarks ())
-        ~args)
+      Bench.Cli.main ~name:"Riot Model Source Scan Benchmarks" ~benchmarks:(benchmarks ()) ~args)
     ~args:Env.args
     ()

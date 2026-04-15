@@ -109,11 +109,9 @@ let from_env = fun () ->
     | Some "tmux" -> true
     | _ -> false
   in
-  let is_term sub_str =
-    term
-    |> Option.map ~fn:(string_contains ~sub_str)
-    |> Option.unwrap_or ~default:false
-  in
+  let is_term sub_str = term
+  |> Option.map ~fn:(string_contains ~sub_str)
+  |> Option.unwrap_or ~default:false in
   let is_256color = is_term "256color" in
   let is_color = is_term "color" in
   let is_ansi = is_term "ansi" in
@@ -131,18 +129,27 @@ let default = from_env ()
 
 let convert = fun profile color ->
   match (color, profile) with
-  | _, No_color -> Color.no_color
-  | Color.No_color, _ -> Color.no_color
-  | Color.ANSI _, _ -> color
+  | _, No_color ->
+      Color.no_color
+  | Color.No_color, _ ->
+      Color.no_color
+  | Color.ANSI _, _ ->
+      color
   | Color.ANSI256 _, ANSI ->
-      let rgb = rgb_of_ansi256
-        (match color with
-        | Color.ANSI256 index -> index
-        | _ -> 0) in
+      let rgb =
+        rgb_of_ansi256
+          (
+            match color with
+            | Color.ANSI256 index -> index
+            | _ -> 0
+          )
+      in
       Color.ansi (nearest_ansi_index rgb)
-  | Color.ANSI256 _, _ -> color
+  | Color.ANSI256 _, _ ->
+      color
   | Color.RGB (red, green, blue), ANSI ->
       Color.ansi (nearest_ansi_index (red, green, blue))
   | Color.RGB (red, green, blue), ANSI256 ->
       Color.ansi256 (ansi256_of_rgb (red, green, blue))
-  | Color.RGB _, True_color -> color
+  | Color.RGB _, True_color ->
+      color

@@ -18,8 +18,7 @@ This matters most in code that evolves over time. A prime that felt obvious when
 code had two lines often becomes opaque once the function grows.
 |}
 
-let contains_prime = fun text ->
-  String.exists ~fn:(fun ch -> ch = '\'') text
+let contains_prime = fun text -> String.exists ~fn:(fun ch -> ch = '\'') text
 
 let trailing_prime_count = fun text ->
   let rec loop index count =

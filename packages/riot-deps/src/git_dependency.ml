@@ -110,7 +110,7 @@ let parse_spec = fun raw ->
       }
   | _ -> Error (InvalidSourceSpec { source = raw; error = "expected at most one #ref suffix" })
 
-let to_string = fun ({ source_locator; ref_ = ref_opt }: spec) ->
+let to_string = fun ({ source_locator; ref_=ref_opt }: spec) ->
   match ref_opt with
   | Some ref_ -> source_locator ^ "#" ^ ref_
   | None -> source_locator

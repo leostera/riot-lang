@@ -16,7 +16,13 @@ type config = {
   verbose: bool;
 }
 
-let default_config = { test_count = 100; max_shrink_steps = 1_000; max_size = 100; seed = None; verbose = false }
+let default_config = {
+  test_count = 100;
+  max_shrink_steps = 1_000;
+  max_size = 100;
+  seed = None;
+  verbose = false;
+}
 
 (* Internal property representation *)
 
@@ -61,7 +67,8 @@ let order_candidates = fun arb candidates ->
   | None -> candidates
   | Some small ->
       List.sort candidates
-        ~compare:(fun left right -> Int.compare (small left) (small right))
+        ~compare:(fun left right ->
+          Int.compare (small left) (small right))
 
 let size_for_test = fun config index ->
   let max_size = Int.max config.max_size 0 in
@@ -80,10 +87,7 @@ let shrink_counter_example = fun arb value predicate max_steps ->
         if steps_taken >= max_steps then
           (current, steps_taken)
         else
-          let candidates =
-            Shrinker.shrink shrinker current
-            |> order_candidates arb
-          in
+          let candidates = Shrinker.shrink shrinker current |> order_candidates arb in
           let rec try_candidates = function
             | [] -> (current, steps_taken)
             | candidate :: rest ->
@@ -155,12 +159,12 @@ let check = fun ?(config = default_config) (Prop prop) ->
           if config.verbose then
             println
               ("Test "
-               ^ Int.to_string (!tests_run)
-               ^ "/"
-               ^ Int.to_string config.test_count
-               ^ " passed (size="
-               ^ Int.to_string size
-               ^ ")");
+              ^ Int.to_string (!tests_run)
+              ^ "/"
+              ^ Int.to_string config.test_count
+              ^ " passed (size="
+              ^ Int.to_string size
+              ^ ")");
           test_loop (n + 1)
       | Some (`Failed value) ->
           (* Property failed! Shrink to find minimal counter-example *)

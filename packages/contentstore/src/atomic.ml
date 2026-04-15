@@ -16,7 +16,8 @@ let cleanup_dir = fun path ->
   | Error _ -> ()
 
 let ensure_dir = fun path ->
-  Fs.create_dir_all path |> Result.map_err ~fn:(fun detail -> io_error ~op:"create_dir_all" ~path detail)
+  Fs.create_dir_all path
+  |> Result.map_err ~fn:(fun detail -> io_error ~op:"create_dir_all" ~path detail)
 
 let ensure_parent = fun path -> ensure_dir (Path.dirname path)
 
@@ -92,8 +93,7 @@ let replace_with_temp = fun ~temp ~dst ->
     let* () = ensure_parent dst in
     match Fs.rename ~src:temp ~dst with
     | Ok () -> Ok ()
-    | Error detail ->
-        Error (io_error ~op:"rename" ~path:dst ~related_path:temp detail)
+    | Error detail -> Error (io_error ~op:"rename" ~path:dst ~related_path:temp detail)
   in
   match result with
   | Ok () -> Ok ()
@@ -126,27 +126,35 @@ let rec copy_tree = fun ~src ~dst ->
             copy_tree ~src:src_entry ~dst:dst_entry
           else
             Fs.copy ~src:src_entry ~dst:dst_entry
-            |> Result.map_err ~fn:(fun detail -> io_error ~op:"copy" ~path:dst_entry ~related_path:src_entry detail) in
+            |> Result.map_err
+              ~fn:(fun detail -> io_error ~op:"copy" ~path:dst_entry ~related_path:src_entry detail)
+        in
         loop ()
   in
   loop ()
 
 let commit_dir_if_absent = fun ~source_dir ~staging ~dst ->
-  let wrap_destination_error = fun ~op error ->
+  let wrap_destination_error ~op error =
     match error with
-    | Store_error.Io { detail; _ } ->
-        Error (Store_error.Io { op; path = dst; related_path = Some source_dir; detail })
+    | Store_error.Io { detail; _ } -> Error (Store_error.Io {
+      op;
+      path = dst;
+      related_path = Some source_dir;
+      detail
+    })
     | _ -> Error error
   in
   let* () = validate_source_path ~kind:Directory source_dir in
-  let* () = ensure_parent dst
-  |> Result.or_else ~fn:(wrap_destination_error ~op:"create_dir_all") in
+  let* () = ensure_parent dst |> Result.or_else ~fn:(wrap_destination_error ~op:"create_dir_all") in
   let* already_exists = Fs.exists dst
-  |> Result.map_err ~fn:(fun detail -> io_error ~op:"exists" ~path:dst ~related_path:source_dir detail) in
-  if already_exists then (
-    cleanup_dir source_dir;
-    Ok ()
-  ) else
+  |> Result.map_err
+    ~fn:(fun detail -> io_error ~op:"exists" ~path:dst ~related_path:source_dir detail) in
+  if already_exists then
+    (
+      cleanup_dir source_dir;
+      Ok ()
+    )
+  else
     match Fs.rename ~src:source_dir ~dst with
     | Ok () -> Ok ()
     | Error _ -> (
@@ -179,5 +187,6 @@ let commit_dir_if_absent = fun ~source_dir ~staging ~dst ->
                     result
               )
           )
-        | Error detail -> Error (io_error ~op:"exists" ~path:dst ~related_path:source_dir detail)
+        | Error detail ->
+            Error (io_error ~op:"exists" ~path:dst ~related_path:source_dir detail)
       )

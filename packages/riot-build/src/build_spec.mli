@@ -3,16 +3,14 @@ open Std
 type scope = Request.scope =
   | Runtime
   | Dev
-
 type t
-
 val make:
   workspace:Riot_model.Workspace.t ->
   package_names:Riot_model.Package_name.t list ->
   targets:Riot_model.Target.Set.t ->
   scope:scope ->
   profile:Riot_model.Profile.t ->
-  ?requested_parallelism:int option ->
+  requested_parallelism:int option ->
   t
 
 val workspace: t -> Riot_model.Workspace.t

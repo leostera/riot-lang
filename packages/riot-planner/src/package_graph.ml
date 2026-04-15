@@ -96,8 +96,7 @@ let package_key = fun ~package_name scope ->
       | Dev -> "dev"
     )
 
-let elapsed_us_since = fun started_at ->
-  Time.Instant.elapsed started_at |> Time.Duration.to_micros
+let elapsed_us_since = fun started_at -> Time.Instant.elapsed started_at |> Time.Duration.to_micros
 
 let trace_package_graph = fun message ->
   let _ = message in
@@ -172,8 +171,7 @@ let realize_projected_package = fun (workspace: Workspace.t) scope (pkg: Package
     | Runtime -> Package.Runtime
     | Dev -> Package.Dev
   in
-  Workspace.realize_package ~intent pkg
-  |> projected_package scope
+  Workspace.realize_package ~intent pkg |> projected_package scope
 
 let empty_breakdown = {
   build_node_realization_count = 0;
@@ -202,52 +200,43 @@ let create_with_breakdown ~scope (workspace: Workspace.t): ((t * create_breakdow
   let realize_and_insert_node scope (pkg: Package_manifest.t) =
     let realization_started_at = Time.Instant.now () in
     let package = realize_projected_package workspace scope pkg in
-    let realization_duration =
-      Time.Instant.duration_since ~earlier:realization_started_at (Time.Instant.now ())
-    in
+    let realization_duration = Time.Instant.duration_since
+      ~earlier:realization_started_at
+      (Time.Instant.now ()) in
     breakdown := (
       match scope with
-      | Build ->
-          {
-            (!breakdown) with
-            build_node_realization_count = (!breakdown).build_node_realization_count + 1;
-            build_node_realization_duration =
-              Time.Duration.add
-                (!breakdown).build_node_realization_duration
-                realization_duration;
-          }
-      | Runtime ->
-          {
-            (!breakdown) with
-            runtime_node_realization_count = (!breakdown).runtime_node_realization_count + 1;
-            runtime_node_realization_duration =
-              Time.Duration.add
-                (!breakdown).runtime_node_realization_duration
-                realization_duration;
-          }
-      | Dev ->
-          {
-            (!breakdown) with
-            dev_node_realization_count = (!breakdown).dev_node_realization_count + 1;
-            dev_node_realization_duration =
-              Time.Duration.add
-                (!breakdown).dev_node_realization_duration
-                realization_duration;
-          }
+      | Build -> {
+        (!breakdown)
+        with build_node_realization_count = (!breakdown).build_node_realization_count + 1;
+        build_node_realization_duration = Time.Duration.add
+          (!breakdown).build_node_realization_duration
+          realization_duration
+      }
+      | Runtime -> {
+        (!breakdown)
+        with runtime_node_realization_count = (!breakdown).runtime_node_realization_count + 1;
+        runtime_node_realization_duration = Time.Duration.add
+          (!breakdown).runtime_node_realization_duration
+          realization_duration
+      }
+      | Dev -> {
+        (!breakdown)
+        with dev_node_realization_count = (!breakdown).dev_node_realization_count + 1;
+        dev_node_realization_duration = Time.Duration.add
+          (!breakdown).dev_node_realization_duration
+          realization_duration
+      }
     );
     insert_node package scope
   in
   (
     match scope with
-    | Build ->
-        List.for_each
-          workspace.packages
-          ~fn:(fun (pkg: Package_manifest.t) ->
-            realize_and_insert_node Build pkg)
+    | Build -> List.for_each
+      workspace.packages
+      ~fn:(fun (pkg: Package_manifest.t) -> realize_and_insert_node Build pkg)
     | Runtime
     | Dev ->
-        List.for_each
-          workspace.packages
+        List.for_each workspace.packages
           ~fn:(fun (pkg: Package_manifest.t) ->
             if needs_build_scope_node pkg then
               realize_and_insert_node Build pkg)
@@ -256,29 +245,26 @@ let create_with_breakdown ~scope (workspace: Workspace.t): ((t * create_breakdow
     match scope with
     | Build -> ()
     | Runtime
-    | Dev ->
-        List.for_each
-          workspace.packages
-          ~fn:(fun (pkg: Package_manifest.t) ->
-            realize_and_insert_node Runtime pkg)
+    | Dev -> List.for_each
+      workspace.packages
+      ~fn:(fun (pkg: Package_manifest.t) -> realize_and_insert_node Runtime pkg)
   );
   (
     match scope with
-    | Dev ->
-        List.for_each
-          workspace.packages
-          ~fn:(fun (pkg: Package_manifest.t) ->
-            realize_and_insert_node Dev pkg)
+    | Dev -> List.for_each
+      workspace.packages
+      ~fn:(fun (pkg: Package_manifest.t) -> realize_and_insert_node Dev pkg)
     | Build
     | Runtime -> ()
   );
   let edge_wiring_started_at = Time.Instant.now () in
-  List.for_each
-    workspace.packages
+  List.for_each workspace.packages
     ~fn:(fun (pkg: Package_manifest.t) ->
       let add_dep_edge ~from_scope dep_name =
         let dep_name_string = Package_name.to_string dep_name in
-        match HashMap.get name_to_node ~key:(package_key ~package_name:(Package_name.to_string pkg.name) from_scope) with
+        match HashMap.get
+          name_to_node
+          ~key:(package_key ~package_name:(Package_name.to_string pkg.name) from_scope) with
         | None -> ()
         | Some from_node -> (
             let dep_scope =
@@ -293,21 +279,32 @@ let create_with_breakdown ~scope (workspace: Workspace.t): ((t * create_breakdow
                 if not (is_well_known_package dep_name) then
                   Vector.push
                     missing
-                    ~value:{ package = Package_name.to_string pkg.name; dependency = dep_name_string }
+                    ~value:{
+                      package = Package_name.to_string pkg.name;
+                      dependency = dep_name_string
+                    }
           )
       in
       (
         match (
-          HashMap.get name_to_node ~key:(package_key ~package_name:(Package_name.to_string pkg.name) Runtime),
-          HashMap.get name_to_node ~key:(package_key ~package_name:(Package_name.to_string pkg.name) Build)
+          HashMap.get
+            name_to_node
+            ~key:(package_key ~package_name:(Package_name.to_string pkg.name) Runtime),
+          HashMap.get
+            name_to_node
+            ~key:(package_key ~package_name:(Package_name.to_string pkg.name) Build)
         ) with
         | Some runtime_node, Some build_node -> G.add_edge runtime_node ~depends_on:build_node
         | _ -> ()
       );
       (
         match (
-          HashMap.get name_to_node ~key:(package_key ~package_name:(Package_name.to_string pkg.name) Dev),
-          HashMap.get name_to_node ~key:(package_key ~package_name:(Package_name.to_string pkg.name) Runtime)
+          HashMap.get
+            name_to_node
+            ~key:(package_key ~package_name:(Package_name.to_string pkg.name) Dev),
+          HashMap.get
+            name_to_node
+            ~key:(package_key ~package_name:(Package_name.to_string pkg.name) Runtime)
         ) with
         | Some dev_node, Some runtime_node -> G.add_edge dev_node ~depends_on:runtime_node
         | _ -> ()
@@ -327,10 +324,9 @@ let create_with_breakdown ~scope (workspace: Workspace.t): ((t * create_breakdow
          tooling is the target. *)
       (
         match scope with
-        | Build ->
-            List.for_each
-              pkg.build_dependencies
-              ~fn:(fun (dep: Package.dependency) -> add_dep_edge ~from_scope:Build dep.name)
+        | Build -> List.for_each
+          pkg.build_dependencies
+          ~fn:(fun (dep: Package.dependency) -> add_dep_edge ~from_scope:Build dep.name)
         | Runtime
         | Dev -> ()
       );
@@ -340,13 +336,12 @@ let create_with_breakdown ~scope (workspace: Workspace.t): ((t * create_breakdow
       match scope with
       | Build
       | Runtime -> ()
-      | Dev ->
-          List.for_each
-            pkg.dev_dependencies
-            ~fn:(fun (dep: Package.dependency) -> add_dep_edge ~from_scope:Dev dep.name));
-  let edge_wiring_duration =
-    Time.Instant.duration_since ~earlier:edge_wiring_started_at (Time.Instant.now ())
-  in
+      | Dev -> List.for_each
+        pkg.dev_dependencies
+        ~fn:(fun (dep: Package.dependency) -> add_dep_edge ~from_scope:Dev dep.name));
+  let edge_wiring_duration = Time.Instant.duration_since
+    ~earlier:edge_wiring_started_at
+    (Time.Instant.now ()) in
   breakdown := { (!breakdown) with edge_wiring_duration };
   let missing = Vector.iter missing |> Iterator.to_list in
   let result =
@@ -370,15 +365,15 @@ let create_with_breakdown ~scope (workspace: Workspace.t): ((t * create_breakdow
   in
   result
 
-let create ~scope workspace =
-  create_with_breakdown ~scope workspace
-  |> Result.map ~fn:(fun (graph, _breakdown) -> graph)
+let create ~scope workspace = create_with_breakdown ~scope workspace
+|> Result.map ~fn:(fun (graph, _breakdown) -> graph)
 
 let get_node = fun pg package ->
-  HashMap.get pg.name_to_node ~key:(package_key ~package_name:(Package_name.to_string package.Package.name) Runtime)
+  HashMap.get
+    pg.name_to_node
+    ~key:(package_key ~package_name:(Package_name.to_string package.Package.name) Runtime)
 
-let get_node_by_key = fun pg key ->
-  HashMap.get pg.name_to_node ~key
+let get_node_by_key = fun pg key -> HashMap.get pg.name_to_node ~key
 
 let mark_planned = fun pg package_key ~module_graph ~action_graph ~hash ->
   match HashMap.get pg.name_to_node ~key:package_key with
@@ -399,11 +394,9 @@ let size = fun pg -> HashMap.length pg.name_to_node
 let packages = fun pg -> G.map pg.graph ~fn:(fun ((_id, node)) -> get_package node.value)
 
 let find_package = fun pg name ->
-  match
-    HashMap.get
-      pg.name_to_node
-      ~key:(package_key ~package_name:(Package_name.to_string name) Runtime)
-  with
+  match HashMap.get
+    pg.name_to_node
+    ~key:(package_key ~package_name:(Package_name.to_string name) Runtime) with
   | Some node -> Some (get_package node.value)
   | None -> None
 
@@ -426,18 +419,14 @@ let filter_for_packages = fun pg pkg_names ->
   | _ ->
       let reachable_ids = G.reachable_from pg.graph target_nodes in
       let reachable_set = HashSet.create () in
-      List.for_each
-        target_nodes
+      List.for_each target_nodes
         ~fn:(fun (node: package_node G.node) ->
           let _ = HashSet.insert reachable_set ~value:node.id in
-          ())
-      ;
-      List.for_each
-        reachable_ids
+          ());
+      List.for_each reachable_ids
         ~fn:(fun id ->
           let _ = HashSet.insert reachable_set ~value:id in
-          ())
-      ;
+          ());
       let filtered_graph = G.make () in
       let filtered_name_to_node = HashMap.create () in
       G.iter pg.graph
@@ -452,8 +441,7 @@ let filter_for_packages = fun pg pkg_names ->
             match HashMap.get filtered_name_to_node ~key:(get_key node.value) with
             | None -> ()
             | Some new_node ->
-                List.for_each
-                  node.deps
+                List.for_each node.deps
                   ~fn:(fun dep_id ->
                     if HashSet.contains reachable_set ~value:dep_id then
                       match G.get_node pg.graph dep_id with
@@ -471,8 +459,7 @@ let get_graph_node = fun pg node_id ->
   G.get_node pg.graph node_id
 
 let get_dependencies_for_node = fun pg (node: package_node G.node) ->
-  List.filter_map
-    node.deps
+  List.filter_map node.deps
     ~fn:(fun dep_id ->
       match G.get_node pg.graph dep_id with
       | Some dep_node -> Some dep_node.value
@@ -480,14 +467,15 @@ let get_dependencies_for_node = fun pg (node: package_node G.node) ->
 
 let get_dependencies = fun graph (package: Package.t) ->
   let filtered_graph = filter_for_package graph package.name in
-  match HashMap.get filtered_graph.name_to_node ~key:(package_key ~package_name:(Package_name.to_string package.name) Runtime) with
+  match HashMap.get
+    filtered_graph.name_to_node
+    ~key:(package_key ~package_name:(Package_name.to_string package.name) Runtime) with
   | None -> []
   | Some runtime_node -> get_dependencies_for_node filtered_graph runtime_node
 
 let get_unplanned_dependencies = fun pg (pkg: Package.t) ->
   let deps = get_dependencies pg pkg in
-  List.filter_map
-    deps
+  List.filter_map deps
     ~fn:(fun dep ->
       if not (is_planned dep) then
         Some (get_package dep)
@@ -501,8 +489,7 @@ let topological_sort = fun pg ->
   | Ok sorted_nodes -> List.map sorted_nodes ~fn:(fun (node: package_node G.node) -> node.value)
   | Error node_ids ->
       let names =
-        List.filter_map
-          node_ids
+        List.filter_map node_ids
           ~fn:(fun id ->
             match G.get_node pg.graph id with
             | Some node -> Some (Package_name.to_string (get_package node.value).name)

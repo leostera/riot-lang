@@ -65,10 +65,7 @@ type test_suite_summary = {
 }
 type test_event =
   | Build of Riot_build.Event.t
-  | NoSuitesFound of {
-      package_name: Package_name.t option;
-      suite_name: string option
-    }
+  | NoSuitesFound of { package_name: Package_name.t option; suite_name: string option }
   | RunningSuite of suite_binary
   | SuiteCompleted of {
       suite: suite_binary;
@@ -87,11 +84,7 @@ type test_error =
   | SuiteExecutionError of { suite: suite_binary; reason: string }
   | SuitesFailed of int
 val collect_suite_binaries:
-  Workspace.t ->
-  ?package_filter:Package_name.t ->
-  ?suite_filter:string ->
-  unit ->
-  suite_binary list
+  Workspace.t -> ?package_filter:Package_name.t -> ?suite_filter:string -> unit -> suite_binary list
 
 val test_error_message: test_error -> string
 

@@ -64,7 +64,7 @@ let error_to_json = fun error ->
           ("source_kind", Json.string (source_kind_to_string kind));
         ]
   | UnsupportedItem { item_id; kind; scope_path } ->
-  let _ = item_id in
+      let _ = item_id in
       Json.obj
         [
           ("kind", Json.string "unsupported_item");
@@ -98,52 +98,33 @@ let error_to_json = fun error ->
 
 let lower_binding = fun ~name ~scope_path ->
   match scope_path with
-  | "" ->
-      {
-        export = Some Core.Export.{ name; symbol = Core.Entity_id.of_name name };
-        item = Core.Init_item.Eval (Core.Expr.Constant (Core.Constant.Unit));
-      }
-  | _ ->
-      {
-        export = None;
-        item = Core.Init_item.Eval (Core.Expr.Constant (Core.Constant.Unit));
-      }
+  | "" -> {
+    export = Some Core.Export.{ name; symbol = Core.Entity_id.of_name name };
+    item = Core.Init_item.Eval (Core.Expr.Constant Core.Constant.Unit)
+  }
+  | _ -> { export = None; item = Core.Init_item.Eval (Core.Expr.Constant Core.Constant.Unit) }
 
 let lower_value_item = fun _value_item ->
-  let binding =
-    lower_binding ~name:"" ~scope_path:""
-  in
+  let binding = lower_binding ~name:"" ~scope_path:"" in
   Ok Core.Binding_group.{
     rec_flag = Core.Rec_flag.Nonrecursive;
     items = [ binding.item ];
-    exports = Option.to_list binding.export;
+    exports = Option.to_list binding.export
   }
 
 let lower_item = fun semantic_tree item ->
   let _ = item in
   let _ = semantic_tree in
-  Ok Core.Binding_group.{
-    rec_flag = Core.Rec_flag.Nonrecursive;
-    items = [];
-    exports = [];
-  }
+  Ok Core.Binding_group.{ rec_flag = Core.Rec_flag.Nonrecursive; items = []; exports = [] }
 
 let unsupported_file = fun (source_unit: Source_unit.t) ->
-  Error
-    [
-      UnsupportedSourceKind
-        {
-          kind = source_unit.kind;
-        };
-    ]
+  Error [ UnsupportedSourceKind { kind = source_unit.kind }; ]
 
 let lower_file = fun ~(source_unit:Source_unit.t) (_semantic_tree: unit) ->
   match source_unit.kind with
   | Source_unit.Interface -> unsupported_file source_unit
-  | Source_unit.Implementation ->
-      Ok
-        Core.Compilation_unit.{
-          unit_id = Core.Unit_id.of_source_unit source_unit;
-          exports = [];
-          init = [];
-        }
+  | Source_unit.Implementation -> Ok Core.Compilation_unit.{
+    unit_id = Core.Unit_id.of_source_unit source_unit;
+    exports = [];
+    init = []
+  }

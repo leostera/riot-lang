@@ -33,11 +33,8 @@ let target_to_string = Riot_model.Target.to_string
 
 let get_host_triple = fun () ->
   match System.os_type with
-  | "Unix" ->
-      System.host_triple
-  | _ ->
-      Riot_model.Target.from_string "x86_64-unknown-linux"
-      |> Result.expect ~msg:"invalid default host triple"
+  | "Unix" -> System.host_triple
+  | _ -> Riot_model.Target.from_string "x86_64-unknown-linux" |> Result.expect ~msg:"invalid default host triple"
 
 let get_toolchain_path = fun version ->
   let host_triple = get_host_triple () in
@@ -98,7 +95,7 @@ let write_path_fingerprint = fun hasher path ->
   | Error _ -> Crypto.Sha256.write hasher "missing"
 
 let first_existing = fun paths ->
-  let rec loop = fun remaining ->
+  let rec loop remaining =
     match remaining with
     | [] -> None
     | path :: rest ->
@@ -280,12 +277,8 @@ let download_and_install_toolchain = fun version ~host ~target ->
       (url, filename, "native")
     else
       (* Cross-compilation toolchain *)
-      let url =
-        base_url ^ "/ocaml-" ^ version ^ "-" ^ host_name ^ "-x-" ^ target_name ^ ".tar.gz"
-      in
-      let filename =
-        "ocaml-" ^ version ^ "-" ^ host_name ^ "-x-" ^ target_name ^ ".tar.gz"
-      in
+      let url = base_url ^ "/ocaml-" ^ version ^ "-" ^ host_name ^ "-x-" ^ target_name ^ ".tar.gz" in
+      let filename = "ocaml-" ^ version ^ "-" ^ host_name ^ "-x-" ^ target_name ^ ".tar.gz" in
       (url, filename, "cross-compilation from " ^ host_name ^ " to " ^ target_name)
   in
   println ("📥 Downloading OCaml " ^ version ^ " for " ^ target_name ^ " (" ^ description ^ ")...");
@@ -413,16 +406,9 @@ let init = fun ~config ->
                 let host_triple = get_host_triple () in
                 Error (
                   "Toolchain not found!\n\n\
-                  Looking for: OCaml "
-                  ^ version
-                  ^ " for "
-                  ^ target_to_string host_triple
-                  ^ "\n\
-                  Expected location: "
-                  ^ Path.to_string toolchain_path
-                  ^ "\n\n\
-                  Download failed: "
-                  ^ msg
+                  Looking for: OCaml " ^ version ^ " for " ^ target_to_string host_triple ^ "\n\
+                  Expected location: " ^ Path.to_string toolchain_path ^ "\n\n\
+                  Download failed: " ^ msg
                 )
           )
     )
@@ -518,8 +504,7 @@ let init_for_target = fun ~config ~target ->
         ^ " but it is still incomplete: "
         ^ String.concat ", " missing)
       )
-    | Error msg ->
-        Error ("Failed to download toolchain for " ^ target_to_string target ^ ": " ^ msg)
+    | Error msg -> Error ("Failed to download toolchain for " ^ target_to_string target ^ ": " ^ msg)
   in
   (* Check if already installed *)
   match Fs.is_dir bin_dir with
@@ -582,8 +567,10 @@ let init_for_target = fun ~config ~target ->
                     | Ok () -> Ok toolchain
                     | Error msg -> Error ("Downloaded but incomplete: " ^ msg)
                   )
-              | Error msg ->
-                  Error ("Failed to download toolchain for " ^ target_to_string target ^ ": " ^ msg)
+              | Error msg -> Error ("Failed to download toolchain for "
+              ^ target_to_string target
+              ^ ": "
+              ^ msg)
             )
         )
       else
@@ -694,8 +681,22 @@ let install_all_toolchains = fun ~config ->
                   Error (target_to_string info.target, msg)
             ))
   in
-  let successes = List.filter results ~fn:(function Ok _ -> true | Error _ -> false) in
-  let failures = List.filter results ~fn:(function Error _ -> true | Ok _ -> false) in
+  let successes =
+    List.filter results
+      ~fn:(
+        function
+        | Ok _ -> true
+        | Error _ -> false
+      )
+  in
+  let failures =
+    List.filter results
+      ~fn:(
+        function
+        | Error _ -> true
+        | Ok _ -> false
+      )
+  in
   if List.length failures > 0 then
     let errors =
       List.filter_map results
@@ -764,8 +765,10 @@ let require_json_target_field = fun name json ->
   | Ok raw -> (
       match Riot_model.Target.from_string raw with
       | Ok target -> Ok target
-      | Error msg ->
-          Error ("Toolchain manifest field '" ^ name ^ "' must be a valid target triple: " ^ msg)
+      | Error msg -> Error ("Toolchain manifest field '"
+      ^ name
+      ^ "' must be a valid target triple: "
+      ^ msg)
     )
 
 let optional_json_string_field = fun name json ->
@@ -869,19 +872,15 @@ let parse_available_toolchains_manifest = fun raw ->
                           if not (Int.equal by_version 0) then
                             by_version
                           else
-                            let by_host =
-                              String.compare
-                                (Riot_model.Target.to_string left.host)
-                                (Riot_model.Target.to_string right.host)
-                            in
+                            let by_host = String.compare
+                              (Riot_model.Target.to_string left.host)
+                              (Riot_model.Target.to_string right.host) in
                             if not (Int.equal by_host 0) then
                               by_host
                             else
-                              let by_target =
-                                String.compare
-                                  (Riot_model.Target.to_string left.target)
-                                  (Riot_model.Target.to_string right.target)
-                              in
+                              let by_target = String.compare
+                                (Riot_model.Target.to_string left.target)
+                                (Riot_model.Target.to_string right.target) in
                               if not (Int.equal by_target 0) then
                                 by_target
                               else

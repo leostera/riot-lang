@@ -2,7 +2,6 @@ open Std
 module Array = Collections.Array
 module Vector = Collections.Vector
 open Std.Result.Syntax
-
 module De = Serde.De
 module Input = Buffered_input
 
@@ -61,7 +60,8 @@ let expect_literal = fun state literal ->
     else
       match Input.peek_char state.input ~offset:index with
       | None -> unexpected_end state literal
-      | Some actual when Char.equal actual (String.get_unchecked literal ~at:index) -> loop (index + 1)
+      | Some actual when Char.equal actual (String.get_unchecked literal ~at:index) -> loop
+        (index + 1)
       | Some _ -> error_at start ("expected '" ^ literal ^ "'")
   in
   loop 0
@@ -991,7 +991,10 @@ let parse_number_text_reader = fun state reader ->
       if reader.Input.eof then
         (
           reader.Input.pos <- !pos;
-          { text = String.sub reader.Input.view ~offset:!start ~len:(!pos - !start); is_float = !is_float }
+          {
+            text = String.sub reader.Input.view ~offset:!start ~len:(!pos - !start);
+            is_float = !is_float
+          }
         )
       else
         raise Use_slow_number_path
@@ -999,12 +1002,18 @@ let parse_number_text_reader = fun state reader ->
       match current () with
       | Some actual when is_value_delimiter (Some actual) ->
           reader.Input.pos <- !pos;
-          { text = String.sub reader.Input.view ~offset:!start ~len:(!pos - !start); is_float = !is_float }
+          {
+            text = String.sub reader.Input.view ~offset:!start ~len:(!pos - !start);
+            is_float = !is_float
+          }
       | Some actual ->
           unexpected_character state actual "number delimiter"
       | None ->
           reader.Input.pos <- !pos;
-          { text = String.sub reader.Input.view ~offset:!start ~len:(!pos - !start); is_float = !is_float }
+          {
+            text = String.sub reader.Input.view ~offset:!start ~len:(!pos - !start);
+            is_float = !is_float
+          }
   with
   | Use_slow_number_path ->
       reader.Input.pos <- !start;
@@ -1207,7 +1216,7 @@ let parse_int_generic = fun state ->
   if negative then
     !acc
   else
-    - !acc
+    -!acc
 
 let parse_int_reader = fun state reader ->
   let fallback () =
@@ -1309,7 +1318,7 @@ let parse_int_reader = fun state reader ->
     if negative then
       !acc
     else
-      - !acc
+      -!acc
   with
   | Use_slow_number_path ->
       reader.Input.pos <- !start;

@@ -1,7 +1,11 @@
 open Std
 open Std.Result.Syntax
 
-type error = [ `Msg of string | `Io_error of IO.error ]
+type error =
+[
+  `Msg of string
+  | `Io_error of IO.error
+]
 
 module Error = struct
   type t = error
@@ -219,8 +223,7 @@ let string_segment_equals = fun value ~offset segment ->
   && Int.compare (offset + segment_length) (String.length value) <= 0
   && String.equal (String.sub value ~offset ~len:segment_length) segment
 
-let get_byte = fun value at ->
-  Char.code (String.get_unchecked value ~at)
+let get_byte = fun value at -> Char.code (String.get_unchecked value ~at)
 
 let decode_u32_le = fun value ~offset ->
   get_byte value offset
@@ -280,12 +283,7 @@ module Thrift = struct
     size: int;
   }
 
-  let input_of_string = fun source ->
-    {
-      source;
-      length = String.length source;
-      pos = 0;
-    }
+  let input_of_string = fun source -> { source; length = String.length source; pos = 0 }
 
   let at = fun input message ->
     fail ("parquet compact thrift " ^ message ^ " at byte " ^ Int.to_string input.pos)
@@ -320,8 +318,7 @@ module Thrift = struct
   let rec read_vlq = fun input ->
     let rec loop shift acc =
       let* byte = read_byte input in
-      let acc =
-        Int64.logor acc (Int64.shift_left (Int64.of_int (byte land 0x7f)) shift) in
+      let acc = Int64.logor acc (Int64.shift_left (Int64.of_int (byte land 0x7f)) shift) in
       if Int.equal (byte land 0x80) 0 then
         Ok acc
       else if Int.compare shift 63 >= 0 then
@@ -352,18 +349,15 @@ module Thrift = struct
   let read_double = fun input ->
     let* bytes = read_string input 8 "double" in
     let open Int64 in
-    let byte index =
-      shift_left (of_int (get_byte bytes index)) (index * 8) in
-    Ok (float_of_bits
-      (logor
-        (byte 0)
+      let byte index = shift_left (of_int (get_byte bytes index)) (index * 8) in
+      Ok (float_of_bits
         (logor
-          (byte 1)
+          (byte 0)
           (logor
-            (byte 2)
+            (byte 1)
             (logor
-              (byte 3)
-              (logor (byte 4) (logor (byte 5) (logor (byte 6) (byte 7)))))))))
+              (byte 2)
+              (logor (byte 3) (logor (byte 4) (logor (byte 5) (logor (byte 6) (byte 7)))))))))
 
   let read_binary = fun input ->
     let* length = read_vlq input in
@@ -409,7 +403,8 @@ module Thrift = struct
     | 10 -> Ok Set_element
     | 11 -> Ok Map_element
     | 12 -> Ok Struct_element
-    | _ -> fail ("parquet compact thrift encountered unknown list element type " ^ Int.to_string code)
+    | _ -> fail
+      ("parquet compact thrift encountered unknown list element type " ^ Int.to_string code)
 
   let field_type_of_element_type = fun value ->
     match value with
@@ -442,11 +437,7 @@ module Thrift = struct
   let read_list_begin = fun input ->
     let* header = read_byte input in
     if Int.equal header 0 then
-      Ok
-        {
-          element_type = Byte_element;
-          size = 0;
-        }
+      Ok { element_type = Byte_element; size = 0 }
     else
       let* element_type = element_type_of_code (header land 0x0f) in
       let size_hint = header lsr 4 in
@@ -457,24 +448,14 @@ module Thrift = struct
         else
           Ok size_hint
       in
-      Ok
-        {
-          element_type;
-          size;
-        }
+      Ok { element_type; size }
 
   let read_field_begin = fun input last_field_id ->
     let* header = read_byte input in
     let field_delta = (header land 0xf0) lsr 4 in
     let* field_type = field_type_of_code (header land 0x0f) in
     match field_type with
-    | Stop ->
-        Ok
-          {
-            id = 0;
-            field_type = Stop;
-            bool_value = None;
-          }
+    | Stop -> Ok { id = 0; field_type = Stop; bool_value = None }
     | _ ->
         let* field_id =
           if Int.equal field_delta 0 then
@@ -488,12 +469,7 @@ module Thrift = struct
           | Boolean_false -> Some false
           | _ -> None
         in
-        Ok
-          {
-            id = field_id;
-            field_type;
-            bool_value;
-          }
+        Ok { id = field_id; field_type; bool_value }
 
   let rec skip = fun input field_type ->
     let rec skip_with_depth depth field_type =
@@ -503,7 +479,8 @@ module Thrift = struct
         match field_type with
         | Stop
         | Boolean_true
-        | Boolean_false -> Ok ()
+        | Boolean_false ->
+            Ok ()
         | Byte ->
             let* _ = read_byte input in
             Ok ()
@@ -569,22 +546,20 @@ module Thrift = struct
     let* () = ensure_i32 "i32" value in
     write_zig_zag buffer (Int64.of_int value)
 
-  let write_i64 = fun buffer value ->
-    write_zig_zag buffer value
+  let write_i64 = fun buffer value -> write_zig_zag buffer value
 
   let write_double = fun buffer value ->
     let bits = Int64.bits_of_float value in
     let open Int64 in
-    let add shift =
-      write_byte buffer (to_int (logand (shift_right_logical bits shift) 0xffL)) in
-    let* () = add 0 in
-    let* () = add 8 in
-    let* () = add 16 in
-    let* () = add 24 in
-    let* () = add 32 in
-    let* () = add 40 in
-    let* () = add 48 in
-    add 56
+      let add shift = write_byte buffer (to_int (logand (shift_right_logical bits shift) 0xffL)) in
+      let* () = add 0 in
+      let* () = add 8 in
+      let* () = add 16 in
+      let* () = add 24 in
+      let* () = add 32 in
+      let* () = add 40 in
+      let* () = add 48 in
+      add 56
 
   let write_binary = fun buffer value ->
     let* () = write_vlq buffer (Int64.of_int (String.length value)) in
@@ -632,12 +607,13 @@ module Thrift = struct
       Ok field_id
 
   let write_bool_field_begin = fun buffer field_id last_field_id value ->
-    write_field_begin
-      buffer
-      (if value then
-        Boolean_true
-      else
-        Boolean_false)
+    write_field_begin buffer
+      (
+        if value then
+          Boolean_true
+        else
+          Boolean_false
+      )
       field_id
       last_field_id
 
@@ -648,8 +624,7 @@ module Thrift = struct
       let* () = write_byte buffer (0xf0 lor code_of_element_type element_type) in
       write_vlq buffer (Int64.of_int length)
 
-  let write_struct_end = fun buffer ->
-    write_byte buffer 0
+  let write_struct_end = fun buffer -> write_byte buffer 0
 end
 
 let physical_type_of_int = fun value ->
@@ -832,10 +807,10 @@ let decode_list = fun input ~name ~element_type decode_element ->
     else
       fail
         ("parquet metadata list "
-         ^ name
-         ^ " expected "
-         ^ Thrift.string_of_element_type element_type
-         ^ " elements")
+        ^ name
+        ^ " expected "
+        ^ Thrift.string_of_element_type element_type
+        ^ " elements")
   in
   let rec loop remaining acc =
     if Int.equal remaining 0 then
@@ -895,11 +870,7 @@ let rec decode_key_value = fun input ->
     match field.field_type with
     | Thrift.Stop ->
         let* key = require_field "KeyValue.key" !key in
-        Ok
-          {
-            key;
-            value = !value;
-          }
+        Ok { key; value = !value }
     | _ ->
         let* () =
           match field.id with
@@ -913,7 +884,8 @@ let rec decode_key_value = fun input ->
               let* read = Thrift.read_binary input in
               value := Some read;
               Ok ()
-          | _ -> Thrift.skip input field.field_type
+          | _ ->
+              Thrift.skip input field.field_type
         in
         loop field.id
   in
@@ -939,12 +911,7 @@ and decode_sorting_column = fun input ->
         let* column_idx = require_field "SortingColumn.column_idx" !column_idx in
         let* descending = require_field "SortingColumn.descending" !descending in
         let* nulls_first = require_field "SortingColumn.nulls_first" !nulls_first in
-        Ok
-          {
-            column_idx;
-            descending;
-            nulls_first;
-          }
+        Ok { column_idx; descending; nulls_first }
     | _ ->
         let* () =
           match field.id with
@@ -961,7 +928,8 @@ and decode_sorting_column = fun input ->
               let* () = expect_bool_field field "SortingColumn.nulls_first" in
               nulls_first := field.bool_value;
               Ok ()
-          | _ -> Thrift.skip input field.field_type
+          | _ ->
+              Thrift.skip input field.field_type
         in
         loop field.id
   in
@@ -984,12 +952,7 @@ and decode_page_encoding_stats = fun input ->
         let* page_type = require_field "PageEncodingStats.page_type" !page_type in
         let* encoding = require_field "PageEncodingStats.encoding" !encoding in
         let* count = require_field "PageEncodingStats.count" !count in
-        Ok
-          {
-            page_type;
-            encoding;
-            count;
-          }
+        Ok { page_type; encoding; count }
     | _ ->
         let* () =
           match field.id with
@@ -1008,7 +971,8 @@ and decode_page_encoding_stats = fun input ->
               let* read = Thrift.read_i32 input in
               count := Some read;
               Ok ()
-          | _ -> Thrift.skip input field.field_type
+          | _ ->
+              Thrift.skip input field.field_type
         in
         loop field.id
   in
@@ -1035,18 +999,17 @@ and decode_schema_element = fun input ->
     match field.field_type with
     | Thrift.Stop ->
         let* name = require_field "SchemaElement.name" !name in
-        Ok
-          {
-            type_ = !type_;
-            type_length = !type_length;
-            repetition_type = !repetition_type;
-            name;
-            num_children = !num_children;
-            converted_type = !converted_type;
-            scale = !scale;
-            precision = !precision;
-            field_id = !field_id;
-          }
+        Ok {
+          type_ = !type_;
+          type_length = !type_length;
+          repetition_type = !repetition_type;
+          name;
+          num_children = !num_children;
+          converted_type = !converted_type;
+          scale = !scale;
+          precision = !precision;
+          field_id = !field_id;
+        }
     | _ ->
         let* () =
           match field.id with
@@ -1095,7 +1058,8 @@ and decode_schema_element = fun input ->
               let* read = Thrift.read_i32 input in
               field_id := Some read;
               Ok ()
-          | _ -> Thrift.skip input field.field_type
+          | _ ->
+              Thrift.skip input field.field_type
         in
         loop field.id
   in
@@ -1115,8 +1079,11 @@ and encode_schema_element = fun buffer (value: schema_element) ->
   let* last_field_id =
     match value.repetition_type with
     | None -> Ok last_field_id
-    | Some repetition_type ->
-        write_i32_field buffer 3 last_field_id (int_of_field_repetition_type repetition_type)
+    | Some repetition_type -> write_i32_field
+      buffer
+      3
+      last_field_id
+      (int_of_field_repetition_type repetition_type)
   in
   let* last_field_id = write_string_field buffer 4 last_field_id value.name in
   let* last_field_id =
@@ -1127,7 +1094,11 @@ and encode_schema_element = fun buffer (value: schema_element) ->
   let* last_field_id =
     match value.converted_type with
     | None -> Ok last_field_id
-    | Some converted_type -> write_i32_field buffer 6 last_field_id (int_of_converted_type converted_type)
+    | Some converted_type -> write_i32_field
+      buffer
+      6
+      last_field_id
+      (int_of_converted_type converted_type)
   in
   let* last_field_id =
     match value.scale with
@@ -1200,23 +1171,22 @@ and decode_column_metadata = fun input ->
         let* total_uncompressed_size = require_field "ColumnMetaData.total_uncompressed_size" !total_uncompressed_size in
         let* total_compressed_size = require_field "ColumnMetaData.total_compressed_size" !total_compressed_size in
         let* data_page_offset = require_field "ColumnMetaData.data_page_offset" !data_page_offset in
-        Ok
-          {
-            type_;
-            encodings;
-            path_in_schema;
-            codec;
-            num_values;
-            total_uncompressed_size;
-            total_compressed_size;
-            key_value_metadata = !key_value_metadata;
-            data_page_offset;
-            index_page_offset = !index_page_offset;
-            dictionary_page_offset = !dictionary_page_offset;
-            encoding_stats = !encoding_stats;
-            bloom_filter_offset = !bloom_filter_offset;
-            bloom_filter_length = !bloom_filter_length;
-          }
+        Ok {
+          type_;
+          encodings;
+          path_in_schema;
+          codec;
+          num_values;
+          total_uncompressed_size;
+          total_compressed_size;
+          key_value_metadata = !key_value_metadata;
+          data_page_offset;
+          index_page_offset = !index_page_offset;
+          dictionary_page_offset = !dictionary_page_offset;
+          encoding_stats = !encoding_stats;
+          bloom_filter_offset = !bloom_filter_offset;
+          bloom_filter_length = !bloom_filter_length;
+        }
     | _ ->
         let* () =
           match field.id with
@@ -1228,17 +1198,19 @@ and decode_column_metadata = fun input ->
           | 2 ->
               let* () = expect_field_type field.field_type Thrift.List "ColumnMetaData.encodings" in
               let* read =
-                decode_list input ~name:"ColumnMetaData.encodings" ~element_type:Thrift.I32_element (fun input ->
-                  let* value = Thrift.read_i32 input in
-                  Ok (encoding_of_int value))
+                decode_list input ~name:"ColumnMetaData.encodings"
+                  ~element_type:Thrift.I32_element (fun input ->
+                    let* value = Thrift.read_i32 input in
+                    Ok (encoding_of_int value))
               in
               encodings := Some read;
               Ok ()
           | 3 ->
               let* () = expect_field_type field.field_type Thrift.List "ColumnMetaData.path_in_schema" in
-              let* read =
-                decode_list input ~name:"ColumnMetaData.path_in_schema" ~element_type:Thrift.Binary_element Thrift.read_binary
-              in
+              let* read = decode_list
+                input
+                ~name:"ColumnMetaData.path_in_schema"
+                ~element_type:Thrift.Binary_element Thrift.read_binary in
               path_in_schema := Some read;
               Ok ()
           | 4 ->
@@ -1263,9 +1235,10 @@ and decode_column_metadata = fun input ->
               Ok ()
           | 8 ->
               let* () = expect_field_type field.field_type Thrift.List "ColumnMetaData.key_value_metadata" in
-              let* read =
-                decode_list input ~name:"ColumnMetaData.key_value_metadata" ~element_type:Thrift.Struct_element decode_key_value
-              in
+              let* read = decode_list
+                input
+                ~name:"ColumnMetaData.key_value_metadata"
+                ~element_type:Thrift.Struct_element decode_key_value in
               key_value_metadata := Some read;
               Ok ()
           | 9 ->
@@ -1285,9 +1258,10 @@ and decode_column_metadata = fun input ->
               Ok ()
           | 13 ->
               let* () = expect_field_type field.field_type Thrift.List "ColumnMetaData.encoding_stats" in
-              let* read =
-                decode_list input ~name:"ColumnMetaData.encoding_stats" ~element_type:Thrift.Struct_element decode_page_encoding_stats
-              in
+              let* read = decode_list
+                input
+                ~name:"ColumnMetaData.encoding_stats"
+                ~element_type:Thrift.Struct_element decode_page_encoding_stats in
               encoding_stats := Some read;
               Ok ()
           | 14 ->
@@ -1300,7 +1274,8 @@ and decode_column_metadata = fun input ->
               let* read = Thrift.read_i32 input in
               bloom_filter_length := Some read;
               Ok ()
-          | _ -> Thrift.skip input field.field_type
+          | _ ->
+              Thrift.skip input field.field_type
         in
         loop field.id
   in
@@ -1309,17 +1284,18 @@ and decode_column_metadata = fun input ->
 and encode_column_metadata = fun buffer (value: column_metadata) ->
   let* last_field_id = write_i32_field buffer 1 0 (int_of_physical_type value.type_) in
   let* last_field_id =
-    write_list_field
-      buffer
-      2
-      last_field_id
-      Thrift.I32_element
-      (fun buffer value -> Thrift.write_i32 buffer (int_of_encoding value))
+    write_list_field buffer 2 last_field_id Thrift.I32_element
+      (fun buffer value ->
+        Thrift.write_i32 buffer (int_of_encoding value))
       value.encodings
   in
-  let* last_field_id =
-    write_list_field buffer 3 last_field_id Thrift.Binary_element Thrift.write_binary value.path_in_schema
-  in
+  let* last_field_id = write_list_field
+    buffer
+    3
+    last_field_id
+    Thrift.Binary_element
+    Thrift.write_binary
+    value.path_in_schema in
   let* last_field_id = write_i32_field buffer 4 last_field_id (int_of_compression_codec value.codec) in
   let* last_field_id = write_i64_field buffer 5 last_field_id value.num_values in
   let* last_field_id = write_i64_field buffer 6 last_field_id value.total_uncompressed_size in
@@ -1327,8 +1303,13 @@ and encode_column_metadata = fun buffer (value: column_metadata) ->
   let* last_field_id =
     match value.key_value_metadata with
     | None -> Ok last_field_id
-    | Some key_value_metadata ->
-        write_list_field buffer 8 last_field_id Thrift.Struct_element encode_key_value key_value_metadata
+    | Some key_value_metadata -> write_list_field
+      buffer
+      8
+      last_field_id
+      Thrift.Struct_element
+      encode_key_value
+      key_value_metadata
   in
   let* last_field_id = write_i64_field buffer 9 last_field_id value.data_page_offset in
   let* last_field_id =
@@ -1344,8 +1325,13 @@ and encode_column_metadata = fun buffer (value: column_metadata) ->
   let* last_field_id =
     match value.encoding_stats with
     | None -> Ok last_field_id
-    | Some encoding_stats ->
-        write_list_field buffer 13 last_field_id Thrift.Struct_element encode_page_encoding_stats encoding_stats
+    | Some encoding_stats -> write_list_field
+      buffer
+      13
+      last_field_id
+      Thrift.Struct_element
+      encode_page_encoding_stats
+      encoding_stats
   in
   let* last_field_id =
     match value.bloom_filter_offset with
@@ -1373,17 +1359,16 @@ and decode_column_chunk = fun input ->
     match field.field_type with
     | Thrift.Stop ->
         let* file_offset = require_field "ColumnChunk.file_offset" !file_offset in
-        Ok
-          {
-            file_path = !file_path;
-            file_offset;
-            meta_data = !meta_data;
-            offset_index_offset = !offset_index_offset;
-            offset_index_length = !offset_index_length;
-            column_index_offset = !column_index_offset;
-            column_index_length = !column_index_length;
-            encrypted_column_metadata = !encrypted_column_metadata;
-          }
+        Ok {
+          file_path = !file_path;
+          file_offset;
+          meta_data = !meta_data;
+          offset_index_offset = !offset_index_offset;
+          offset_index_length = !offset_index_length;
+          column_index_offset = !column_index_offset;
+          column_index_length = !column_index_length;
+          encrypted_column_metadata = !encrypted_column_metadata;
+        }
     | _ ->
         let* () =
           match field.id with
@@ -1427,7 +1412,8 @@ and decode_column_chunk = fun input ->
               let* read = Thrift.read_binary input in
               encrypted_column_metadata := Some read;
               Ok ()
-          | _ -> Thrift.skip input field.field_type
+          | _ ->
+              Thrift.skip input field.field_type
         in
         loop field.id
   in
@@ -1487,24 +1473,24 @@ and decode_row_group = fun input ->
         let* columns = require_field "RowGroup.columns" !columns in
         let* total_byte_size = require_field "RowGroup.total_byte_size" !total_byte_size in
         let* num_rows = require_field "RowGroup.num_rows" !num_rows in
-        Ok
-          {
-            columns;
-            total_byte_size;
-            num_rows;
-            sorting_columns = !sorting_columns;
-            file_offset = !file_offset;
-            total_compressed_size = !total_compressed_size;
-            ordinal = !ordinal;
-          }
+        Ok {
+          columns;
+          total_byte_size;
+          num_rows;
+          sorting_columns = !sorting_columns;
+          file_offset = !file_offset;
+          total_compressed_size = !total_compressed_size;
+          ordinal = !ordinal;
+        }
     | _ ->
         let* () =
           match field.id with
           | 1 ->
               let* () = expect_field_type field.field_type Thrift.List "RowGroup.columns" in
-              let* read =
-                decode_list input ~name:"RowGroup.columns" ~element_type:Thrift.Struct_element decode_column_chunk
-              in
+              let* read = decode_list
+                input
+                ~name:"RowGroup.columns"
+                ~element_type:Thrift.Struct_element decode_column_chunk in
               columns := Some read;
               Ok ()
           | 2 ->
@@ -1519,9 +1505,10 @@ and decode_row_group = fun input ->
               Ok ()
           | 4 ->
               let* () = expect_field_type field.field_type Thrift.List "RowGroup.sorting_columns" in
-              let* read =
-                decode_list input ~name:"RowGroup.sorting_columns" ~element_type:Thrift.Struct_element decode_sorting_column
-              in
+              let* read = decode_list
+                input
+                ~name:"RowGroup.sorting_columns"
+                ~element_type:Thrift.Struct_element decode_sorting_column in
               sorting_columns := Some read;
               Ok ()
           | 5 ->
@@ -1539,22 +1526,27 @@ and decode_row_group = fun input ->
               let* read = Thrift.read_i16 input in
               ordinal := Some read;
               Ok ()
-          | _ -> Thrift.skip input field.field_type
+          | _ ->
+              Thrift.skip input field.field_type
         in
         loop field.id
   in
   loop 0
 
 and encode_row_group = fun buffer (value: row_group) ->
-  let* last_field_id =
-    write_list_field buffer 1 0 Thrift.Struct_element encode_column_chunk value.columns in
+  let* last_field_id = write_list_field buffer 1 0 Thrift.Struct_element encode_column_chunk value.columns in
   let* last_field_id = write_i64_field buffer 2 last_field_id value.total_byte_size in
   let* last_field_id = write_i64_field buffer 3 last_field_id value.num_rows in
   let* last_field_id =
     match value.sorting_columns with
     | None -> Ok last_field_id
-    | Some sorting_columns ->
-        write_list_field buffer 4 last_field_id Thrift.Struct_element encode_sorting_column sorting_columns
+    | Some sorting_columns -> write_list_field
+      buffer
+      4
+      last_field_id
+      Thrift.Struct_element
+      encode_sorting_column
+      sorting_columns
   in
   let* last_field_id =
     match value.file_offset with
@@ -1589,16 +1581,15 @@ and decode_file_metadata_input = fun input ->
         let* schema = require_field "FileMetaData.schema" !schema in
         let* num_rows = require_field "FileMetaData.num_rows" !num_rows in
         let* row_groups = require_field "FileMetaData.row_groups" !row_groups in
-        Ok
-          {
-            version;
-            schema;
-            num_rows;
-            row_groups;
-            key_value_metadata = !key_value_metadata;
-            created_by = !created_by;
-            column_orders = !column_orders;
-          }
+        Ok {
+          version;
+          schema;
+          num_rows;
+          row_groups;
+          key_value_metadata = !key_value_metadata;
+          created_by = !created_by;
+          column_orders = !column_orders;
+        }
     | _ ->
         let* () =
           match field.id with
@@ -1609,9 +1600,10 @@ and decode_file_metadata_input = fun input ->
               Ok ()
           | 2 ->
               let* () = expect_field_type field.field_type Thrift.List "FileMetaData.schema" in
-              let* read =
-                decode_list input ~name:"FileMetaData.schema" ~element_type:Thrift.Struct_element decode_schema_element
-              in
+              let* read = decode_list
+                input
+                ~name:"FileMetaData.schema"
+                ~element_type:Thrift.Struct_element decode_schema_element in
               schema := Some read;
               Ok ()
           | 3 ->
@@ -1621,16 +1613,18 @@ and decode_file_metadata_input = fun input ->
               Ok ()
           | 4 ->
               let* () = expect_field_type field.field_type Thrift.List "FileMetaData.row_groups" in
-              let* read =
-                decode_list input ~name:"FileMetaData.row_groups" ~element_type:Thrift.Struct_element decode_row_group
-              in
+              let* read = decode_list
+                input
+                ~name:"FileMetaData.row_groups"
+                ~element_type:Thrift.Struct_element decode_row_group in
               row_groups := Some read;
               Ok ()
           | 5 ->
               let* () = expect_field_type field.field_type Thrift.List "FileMetaData.key_value_metadata" in
-              let* read =
-                decode_list input ~name:"FileMetaData.key_value_metadata" ~element_type:Thrift.Struct_element decode_key_value
-              in
+              let* read = decode_list
+                input
+                ~name:"FileMetaData.key_value_metadata"
+                ~element_type:Thrift.Struct_element decode_key_value in
               key_value_metadata := Some read;
               Ok ()
           | 6 ->
@@ -1640,12 +1634,14 @@ and decode_file_metadata_input = fun input ->
               Ok ()
           | 7 ->
               let* () = expect_field_type field.field_type Thrift.List "FileMetaData.column_orders" in
-              let* read =
-                decode_list input ~name:"FileMetaData.column_orders" ~element_type:Thrift.Struct_element decode_column_order
-              in
+              let* read = decode_list
+                input
+                ~name:"FileMetaData.column_orders"
+                ~element_type:Thrift.Struct_element decode_column_order in
               column_orders := Some read;
               Ok ()
-          | _ -> Thrift.skip input field.field_type
+          | _ ->
+              Thrift.skip input field.field_type
         in
         loop field.id
   in
@@ -1653,18 +1649,31 @@ and decode_file_metadata_input = fun input ->
 
 and encode_file_metadata = fun buffer (value: file_metadata) ->
   let* last_field_id = write_i32_field buffer 1 0 value.version in
-  let* last_field_id =
-    write_list_field buffer 2 last_field_id Thrift.Struct_element encode_schema_element value.schema
-  in
+  let* last_field_id = write_list_field
+    buffer
+    2
+    last_field_id
+    Thrift.Struct_element
+    encode_schema_element
+    value.schema in
   let* last_field_id = write_i64_field buffer 3 last_field_id value.num_rows in
-  let* last_field_id =
-    write_list_field buffer 4 last_field_id Thrift.Struct_element encode_row_group value.row_groups
-  in
+  let* last_field_id = write_list_field
+    buffer
+    4
+    last_field_id
+    Thrift.Struct_element
+    encode_row_group
+    value.row_groups in
   let* last_field_id =
     match value.key_value_metadata with
     | None -> Ok last_field_id
-    | Some key_value_metadata ->
-        write_list_field buffer 5 last_field_id Thrift.Struct_element encode_key_value key_value_metadata
+    | Some key_value_metadata -> write_list_field
+      buffer
+      5
+      last_field_id
+      Thrift.Struct_element
+      encode_key_value
+      key_value_metadata
   in
   let* last_field_id =
     match value.created_by with
@@ -1674,8 +1683,13 @@ and encode_file_metadata = fun buffer (value: file_metadata) ->
   let* _last_field_id =
     match value.column_orders with
     | None -> Ok last_field_id
-    | Some column_orders ->
-        write_list_field buffer 7 last_field_id Thrift.Struct_element encode_column_order column_orders
+    | Some column_orders -> write_list_field
+      buffer
+      7
+      last_field_id
+      Thrift.Struct_element
+      encode_column_order
+      column_orders
   in
   Thrift.write_struct_end buffer
 
@@ -1696,17 +1710,9 @@ let decode_footer_tail = fun input ->
   if not (Int.equal (String.length input) footer_size) then
     fail ("parquet footer tail must be exactly " ^ Int.to_string footer_size ^ " bytes")
   else if string_segment_equals input ~offset:4 magic then
-    Ok
-      {
-        metadata_length = decode_u32_le input ~offset:0;
-        encrypted_footer = false;
-      }
+    Ok { metadata_length = decode_u32_le input ~offset:0; encrypted_footer = false }
   else if string_segment_equals input ~offset:4 encrypted_magic then
-    Ok
-      {
-        metadata_length = decode_u32_le input ~offset:0;
-        encrypted_footer = true;
-      }
+    Ok { metadata_length = decode_u32_le input ~offset:0; encrypted_footer = true }
   else
     fail "parquet footer tail has invalid magic bytes"
 
@@ -1734,16 +1740,15 @@ let from_string = fun input ->
         fail "parquet metadata length points outside the file"
       else
         let metadata_bytes = String.sub input ~offset:metadata_offset ~len:footer.metadata_length in
-        let body = String.sub input ~offset:(String.length magic) ~len:(metadata_offset - String.length magic) in
+        let body = String.sub
+          input
+          ~offset:(String.length magic)
+          ~len:(metadata_offset - String.length magic) in
         let* metadata = decode_metadata metadata_bytes in
-        Ok
-          {
-            body;
-            metadata;
-          }
+        Ok { body; metadata }
 
 let from_reader = fun reader ->
-  let buffer = IO.Buffer.create ~size:4096 in
+  let buffer = IO.Buffer.create ~size:4_096 in
   match IO.read_to_end reader ~buf:buffer with
   | Ok _ -> from_string (IO.Buffer.contents buffer)
   | Error err -> io_error err
@@ -1751,8 +1756,8 @@ let from_reader = fun reader ->
 let to_string = fun (value: t) ->
   let* metadata_bytes = encode_metadata value.metadata in
   let* footer = encode_footer_tail (String.length metadata_bytes) in
-  let buffer =
-    IO.Buffer.create ~size:(String.length magic + String.length value.body + String.length metadata_bytes + footer_size) in
+  let buffer = IO.Buffer.create
+    ~size:(String.length magic + String.length value.body + String.length metadata_bytes + footer_size) in
   IO.Buffer.add_string buffer magic;
   IO.Buffer.add_string buffer value.body;
   IO.Buffer.add_string buffer metadata_bytes;

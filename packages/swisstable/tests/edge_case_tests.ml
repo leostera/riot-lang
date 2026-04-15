@@ -1,7 +1,6 @@
 open Std
 
-let make_keys = fun n ->
-  Collections.Array.init ~count:n ~fn:(fun i -> "key" ^ string_of_int i)
+let make_keys = fun n -> Collections.Array.init ~count:n ~fn:(fun i -> "key" ^ string_of_int i)
 
 let tests = [
   Test.case "hash collisions"

@@ -3,7 +3,7 @@ open Iter
 open Prelude
 module Rune = Kernel.Unicode.Rune
 
-external bytes_unsafe_of_string : string -> bytes = "%bytes_of_string"
+external bytes_unsafe_of_string: string -> bytes = "%bytes_of_string"
 
 include Kernel.String
 

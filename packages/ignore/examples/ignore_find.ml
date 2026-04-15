@@ -30,14 +30,12 @@ let rec parse_args = fun config ->
       parse_args { config with count_only = true } rest
   | "--concurrency" :: value :: rest -> (
       match Int.parse value with
-      | Some concurrency ->
-          parse_args { config with concurrency = Int.max 1 concurrency } rest
+      | Some concurrency -> parse_args { config with concurrency = Int.max 1 concurrency } rest
       | None -> Help
     )
   | "--repeat" :: value :: rest -> (
       match Int.parse value with
-      | Some repeat ->
-          parse_args { config with repeat = Int.max 1 repeat } rest
+      | Some repeat -> parse_args { config with repeat = Int.max 1 repeat } rest
       | None -> Help
     )
   | "--help" :: _
@@ -68,8 +66,7 @@ let run_once = fun config walker ->
       let _ = Sync.Atomic.fetch_and_add count 1 in
       if not config.count_only then
         println (Fs.Walker.FileItem.path_string entry);
-      Fs.Walker.Continue)
-  |> Result.map ~fn:(fun () -> Sync.Atomic.get count)
+      Fs.Walker.Continue) |> Result.map ~fn:(fun () -> Sync.Atomic.get count)
 
 let rec run_repeated = fun config walker remaining total ->
   if remaining = 0 then

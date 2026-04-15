@@ -81,8 +81,7 @@ let deps = fun t ~cwd ~file ~package_namespace ->
         else
           let result = String.split ~by:" " deps
           |> List.map ~fn:String.trim
-          |> List.map ~fn:(fun modname -> Module_name.of_string ~namespace:package_namespace modname)
-          in
+          |> List.map ~fn:(fun modname -> Module_name.of_string ~namespace:package_namespace modname) in
           Log.trace
             ("[OCAMLDEP] Parsed "
             ^ Int.to_string (List.length result)

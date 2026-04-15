@@ -478,8 +478,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
               action = node
             });
           let copy_result: (unit, string) Result.t =
-            List.fold_left sources
-              ~acc:(Ok ())
+            List.fold_left sources ~acc:(Ok ())
               ~fn:(fun acc src_path ->
                 match acc with
                 | Error _ -> acc
@@ -642,9 +641,10 @@ let rec worker_loop = fun ~coordinator ~toolchain ~sandbox_dir ~completed ~store
       let result = execute_node ~completed ~store ~session_id toolchain sandbox_dir node in
       send coordinator (ActionCompleted { worker_pid = self (); result });
       worker_loop ~coordinator ~toolchain ~sandbox_dir ~completed ~store ~session_id
-  | StopWorker { reply_to = _ } ->
+  | StopWorker { reply_to=_ } ->
       Ok ()
-  | _ -> worker_loop ~coordinator ~toolchain ~sandbox_dir ~completed ~store ~session_id
+  | _ ->
+      worker_loop ~coordinator ~toolchain ~sandbox_dir ~completed ~store ~session_id
 
 let execute = fun ~action_graph ~sandbox ~store ~session_id toolchain ~concurrency ->
   let sandbox_dir = Sandbox.get_dir sandbox in
@@ -661,7 +661,8 @@ let execute = fun ~action_graph ~sandbox ~store ~session_id toolchain ~concurren
       ^ Int.to_string concurrency);
     let queue = Action_queue.create () in
     List.for_each sorted_nodes
-      ~fn:(fun node -> Action_queue.queue queue node);
+      ~fn:(fun node ->
+        Action_queue.queue queue node);
     let workers =
       List.init
         ~count:concurrency
@@ -679,8 +680,7 @@ let execute = fun ~action_graph ~sandbox ~store ~session_id toolchain ~concurren
     let worker_pids = HashSet.from_list workers in
     let _worker_monitors = List.map workers ~fn:Runtime.Actor.monitor in
     let idle_workers = Queue.create () in
-    List.for_each workers
-      ~fn:(fun pid -> Queue.push idle_workers ~value:pid);
+    List.for_each workers ~fn:(fun pid -> Queue.push idle_workers ~value:pid);
     let busy_workers: (Pid.t, Action_node.t) HashMap.t = HashMap.create () in
     let rec drain_work_queue () =
       match Queue.pop idle_workers with
@@ -751,14 +751,12 @@ let execute = fun ~action_graph ~sandbox ~store ~session_id toolchain ~concurren
         ()
       else
         match receive_any () with
-        | Runtime.Actor.DOWN { pid; ref = _; reason = _ } ->
+        | Runtime.Actor.DOWN { pid; ref=_; reason=_ } ->
             let _ = HashSet.remove worker_pids ~value:pid in
             wait_for_workers ()
         | _ -> wait_for_workers ()
     in
     dispatch_loop ();
-    List.for_each workers
-      ~fn:(fun worker ->
-        send worker (StopWorker { reply_to = coordinator_pid }));
+    List.for_each workers ~fn:(fun worker -> send worker (StopWorker { reply_to = coordinator_pid }));
     wait_for_workers ();
     { completed = queue.completed }

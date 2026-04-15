@@ -235,8 +235,7 @@ let run_generated_runner = fun ~cwd ~(build_package:Types.build_package) ~report
   let plan = Fixme_runner.materialize ~workspace_root ~target_dir_root providers in
   let args = generated_runner_args ~cwd ~mode ~limit ~target ~output_mode in
   trace_fix
-    ("building generated runner package "
-    ^ Riot_model.Package_name.to_string plan.package_name);
+    ("building generated runner package " ^ Riot_model.Package_name.to_string plan.package_name);
   match
     build_package ~workspace ~package_name:plan.package_name ~profile:"release"
       ~transform_workspace:(fun workspace ->

@@ -230,10 +230,9 @@ let builtin_rule_factories = fun () ->
   ]
 
 let builtin_rule_category = fun rule_id ->
-  builtin_rule_factories ()
-  |> List.find ~fn:(fun factory ->
-    String.equal factory.id rule_id)
-  |> Option.map ~fn:(fun factory -> factory.category)
+  builtin_rule_factories () |> List.find
+    ~fn:(fun factory ->
+      String.equal factory.id rule_id) |> Option.map ~fn:(fun factory -> factory.category)
 
 let package_rules = fun () -> Provider_registry.rules ()
 
@@ -243,17 +242,14 @@ let unqualified_rule_id = fun rule_id ->
   | None -> rule_id
 
 let filtered_builtin_rules = fun package_rules ->
-  let shadowed_ids =
-    package_rules
-    |> List.map ~fn:Rule.id
-    |> List.map ~fn:unqualified_rule_id
-  in
+  let shadowed_ids = package_rules |> List.map ~fn:Rule.id |> List.map ~fn:unqualified_rule_id in
   builtin_rule_factories ()
   |> List.map ~fn:(fun factory -> factory.make ())
-  |> List.filter ~fn:(fun rule ->
-    not (List.contains shadowed_ids ~value:(unqualified_rule_id (Rule.id rule))))
+  |> List.filter
+    ~fn:(fun rule -> not (List.contains shadowed_ids ~value:(unqualified_rule_id (Rule.id rule))))
 
-let builtin_rules = fun () -> builtin_rule_factories () |> List.map ~fn:(fun factory -> factory.make ())
+let builtin_rules = fun () ->
+  builtin_rule_factories () |> List.map ~fn:(fun factory -> factory.make ())
 
 let run = fun pipeline ?filename ?on_progress source ->
   Fixme.Source_runner.run ~rules:pipeline.rules ?filename ?on_progress source
@@ -276,19 +272,17 @@ let matching_rule_ids = fun rules requested_id ->
 
 let rules_by_id = fun ids ->
   let available_rules = default_rules () in
-  ids
-  |> List.map ~fn:(fun id ->
-    match matching_rule_ids available_rules id with
-    | [] ->
-        Log.warn ("Unknown riot-fix rule '" ^ id ^ "', ignoring");
-        []
-    | matches ->
-        matches)
-  |> List.concat
-  |> List.sort ~compare:String.compare
-  |> List.unique ~compare:String.compare
-  |> List.filter_map ~fn:(fun id ->
-    List.find available_rules ~fn:(fun rule ->
-      String.equal (Rule.id rule) id))
+  ids |> List.map
+    ~fn:(fun id ->
+      match matching_rule_ids available_rules id with
+      | [] ->
+          Log.warn ("Unknown riot-fix rule '" ^ id ^ "', ignoring");
+          []
+      | matches -> matches) |> List.concat |> List.sort ~compare:String.compare |> List.unique
+    ~compare:String.compare |> List.filter_map
+    ~fn:(fun id ->
+      List.find available_rules
+        ~fn:(fun rule ->
+          String.equal (Rule.id rule) id))
 
 let default = fun () -> make ~rules:(default_rules ()) ()

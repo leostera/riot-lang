@@ -54,9 +54,7 @@ let render_to_string = fun commands ->
     else
       (* Create grid *)
       let grid =
-        Array.init ~count:height
-          ~fn:(fun _ ->
-            Array.init ~count:width ~fn:(fun _ -> make_cell ()))
+        Array.init ~count:height ~fn:(fun _ -> Array.init ~count:width ~fn:(fun _ -> make_cell ()))
       in
       (* Fill grid from commands *)
       List.iter
@@ -159,12 +157,13 @@ let render_to_string = fun commands ->
         commands;
       (* Collect Custom commands for post-processing *)
       let custom_commands =
-        List.filter_map commands ~fn:(fun cmd ->
-          match cmd.Render.command_type with
-          | Render.Custom { data } ->
-              let col, row = coords_to_cell cmd.bounding_box.x cmd.bounding_box.y in
-              Some (row, col, data)
-          | _ -> None)
+        List.filter_map commands
+          ~fn:(fun cmd ->
+            match cmd.Render.command_type with
+            | Render.Custom { data } ->
+                let col, row = coords_to_cell cmd.bounding_box.x cmd.bounding_box.y in
+                Some (row, col, data)
+            | _ -> None)
       in
       (* Convert grid to string line-by-line *)
       let buf = Buffer.create (height * width * 2) in

@@ -3,8 +3,7 @@ open Std
 let input_buffer = Utf8_reader.create ()
 
 let read_utf8 = fun () ->
-  Utf8_reader.read
-    input_buffer
+  Utf8_reader.read input_buffer
     ~read:(fun bytes ~offset ~len ->
       match IO.Stdin.read ~offset ~len bytes with
       | Ok count -> `Ok count

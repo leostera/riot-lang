@@ -66,16 +66,17 @@ let payload_summary = fun payload ->
     )
 
 let write_outbound = fun output messages ->
-  List.fold_left messages ~acc:(Ok ()) ~fn:(fun acc json ->
-    let* () = acc in
-    Framing.write output (Std.Data.Json.to_string json)
-    |> Result.map_err ~fn:(fun message -> Failure message))
+  List.fold_left messages ~acc:(Ok ())
+    ~fn:(fun acc json ->
+      let* () = acc in
+      Framing.write output (Std.Data.Json.to_string json)
+      |> Result.map_err ~fn:(fun message -> Failure message))
 
 let rec loop = fun logger ->
   fun input ->
-  fun output ->
-  fun state ->
-    let* payload_opt = Framing.read input |> Result.map_err ~fn:(fun message -> Failure message) in
+    fun output ->
+      fun state ->
+        let* payload_opt = Framing.read input |> Result.map_err ~fn:(fun message -> Failure message) in
         match payload_opt with
         | None -> Ok ()
         | Some payload ->
@@ -86,13 +87,14 @@ let rec loop = fun logger ->
                 logger
                 ~level:"DEBUG"
                 ("sending " ^ Int.to_string (List.length outcome.outbound) ^ " outbound message(s)");
-            (match outcome.exit_code with
-            | None -> ()
-            | Some code ->
-                log
-                  logger
-                  ~level:"INFO"
-                  ("lsp session exiting with code " ^ Int.to_string code));
+            (
+              match outcome.exit_code with
+              | None -> ()
+              | Some code -> log
+                logger
+                ~level:"INFO"
+                ("lsp session exiting with code " ^ Int.to_string code)
+            );
             let* () = write_outbound output outcome.outbound in
             match outcome.exit_code with
             | Some 0 -> Ok ()
@@ -103,43 +105,36 @@ let run = fun ?log_path () ->
   let input =
     let module Stdin_reader = struct
       type t = unit
+
       type err = IO.error
 
-      let read = fun () ?timeout:_ bytes ->
-        IO.Stdin.read bytes
+      let read = fun () ?timeout:_ bytes -> IO.Stdin.read bytes
 
-      let read_vectored = fun () bufs ->
-        IO.Stdin.read_vectored bufs
+      let read_vectored = fun () bufs -> IO.Stdin.read_vectored bufs
     end in
     IO.Reader.of_read_src (module Stdin_reader) ()
   in
   let output =
     let module Stdout_writer = struct
       type t = unit
+
       type err = IO.error
 
       let write = fun () ~buf ->
         let bytes = IO.Bytes.from_string buf in
         IO.Stdout.write bytes
 
-      let write_owned_vectored = fun () ~bufs ->
-        IO.Stdout.write_vectored bufs
+      let write_owned_vectored = fun () ~bufs -> IO.Stdout.write_vectored bufs
 
-      let flush = fun () ->
-        IO.Stdout.flush ()
+      let flush = fun () -> IO.Stdout.flush ()
     end in
     IO.Writer.of_write_src (module Stdout_writer) ()
   in
   match File_log.open_sink ?path:log_path () with
   | Error _ -> loop None input output Session.empty
   | Ok logger ->
-      let close = fun () ->
-        File_log.close logger
-      in
-      log
-        (Some logger)
-        ~level:"INFO"
-        ("riot-lsp started; logging to " ^ Path.to_string logger.path);
+      let close () = File_log.close logger in
+      log (Some logger) ~level:"INFO" ("riot-lsp started; logging to " ^ Path.to_string logger.path);
       let result =
         match loop (Some logger) input output Session.empty with
         | Ok () as ok ->

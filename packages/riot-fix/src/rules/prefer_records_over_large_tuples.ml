@@ -36,8 +36,7 @@ let should_prefer_record = fun elements ->
         match simple_type_name first with
         | None -> false
         | Some first_name ->
-            List.all
-              rest
+            List.all rest
               ~fn:(fun element ->
                 match simple_type_name element with
                 | Some name -> String.equal name first_name
@@ -86,38 +85,48 @@ let rec diagnostics_for_core_type = fun type_ ->
       in
       here @ (elements |> List.map ~fn:diagnostics_for_core_type |> List.concat)
   | Syn.Cst.CoreType.PolyVariant { fields; _ } ->
-      fields
-      |> List.map ~fn:(
+      fields |> List.map
+        ~fn:(
           function
           | Syn.Cst.RowField.Tag { payload_type; _ } -> Option.to_list payload_type
           |> List.map ~fn:diagnostics_for_core_type
           |> List.concat
           | Syn.Cst.RowField.Inherit { type_; _ } -> diagnostics_for_core_type type_
-        )
-      |> List.concat
+        ) |> List.concat
   | Syn.Cst.CoreType.Record { fields; _ } ->
       fields
-      |> List.map ~fn:(fun (field: Syn.Cst.record_type_field) -> diagnostics_for_core_type field.field_type)
+      |> List.map
+        ~fn:(fun (field: Syn.Cst.record_type_field) -> diagnostics_for_core_type field.field_type)
       |> List.concat
   | Syn.Cst.CoreType.FirstClassModule _ ->
       []
   | Syn.Cst.CoreType.Object { fields; _ } ->
       fields
-      |> List.map ~fn:(fun (field: Syn.Cst.object_type_field) -> diagnostics_for_core_type field.field_type)
+      |> List.map
+        ~fn:(fun (field: Syn.Cst.object_type_field) -> diagnostics_for_core_type field.field_type)
       |> List.concat
 
 let diagnostics_for_variant_constructor = fun (constructor: Syn.Cst.VariantConstructor.t) ->
   let from_arguments =
     match Syn.Cst.VariantConstructor.arguments constructor with
-    | Some (Syn.Cst.ConstructorArguments.Tuple types) -> types |> List.map ~fn:diagnostics_for_core_type |> List.concat
+    | Some (Syn.Cst.ConstructorArguments.Tuple types) -> types
+    |> List.map ~fn:diagnostics_for_core_type
+    |> List.concat
     | Some (Syn.Cst.ConstructorArguments.Record { fields; _ }) -> fields
-    |> List.map ~fn:(fun (field: Syn.Cst.RecordField.t) -> diagnostics_for_core_type field.field_type)
+    |> List.map
+      ~fn:(fun (field: Syn.Cst.RecordField.t) -> diagnostics_for_core_type field.field_type)
     |> List.concat
     | None -> []
   in
   from_arguments
-  @ (Syn.Cst.VariantConstructor.payload_type constructor |> Option.to_list |> List.map ~fn:diagnostics_for_core_type |> List.concat)
-  @ (Syn.Cst.VariantConstructor.result_type constructor |> Option.to_list |> List.map ~fn:diagnostics_for_core_type |> List.concat)
+  @ (Syn.Cst.VariantConstructor.payload_type constructor
+  |> Option.to_list
+  |> List.map ~fn:diagnostics_for_core_type
+  |> List.concat)
+  @ (Syn.Cst.VariantConstructor.result_type constructor
+  |> Option.to_list
+  |> List.map ~fn:diagnostics_for_core_type
+  |> List.concat)
 
 let diagnostics_for_type_definition = function
   | Syn.Cst.TypeDefinition.Abstract
@@ -126,12 +135,15 @@ let diagnostics_for_type_definition = function
   | Syn.Cst.TypeDefinition.Alias { manifest; _ } -> diagnostics_for_core_type manifest
   | Syn.Cst.TypeDefinition.FirstClassModule _ -> []
   | Syn.Cst.TypeDefinition.Object { fields; _ } -> fields
-  |> List.map ~fn:(fun (field: Syn.Cst.object_type_field) -> diagnostics_for_core_type field.field_type)
+  |> List.map
+    ~fn:(fun (field: Syn.Cst.object_type_field) -> diagnostics_for_core_type field.field_type)
   |> List.concat
   | Syn.Cst.TypeDefinition.Record { fields; _ } -> fields
   |> List.map ~fn:(fun (field: Syn.Cst.RecordField.t) -> diagnostics_for_core_type field.field_type)
   |> List.concat
-  | Syn.Cst.TypeDefinition.Variant { constructors; _ } -> constructors |> List.map ~fn:diagnostics_for_variant_constructor |> List.concat
+  | Syn.Cst.TypeDefinition.Variant { constructors; _ } -> constructors
+  |> List.map ~fn:diagnostics_for_variant_constructor
+  |> List.concat
 
 let diagnostics_for_type_declaration = fun decl ->
   let from_definition =
@@ -142,7 +154,8 @@ let diagnostics_for_type_declaration = fun decl ->
   in
   from_definition
   @ ((Syn.Cst.TypeDeclaration.constraints decl
-  |> List.map ~fn:(fun (constraint_: Syn.Cst.TypeConstraint.t) ->
+  |> List.map
+    ~fn:(fun (constraint_: Syn.Cst.TypeConstraint.t) ->
       diagnostics_for_core_type constraint_.left @ diagnostics_for_core_type constraint_.right))
   |> List.concat)
 
@@ -154,23 +167,21 @@ let diagnostics_for_external_declaration = fun ({ type_; _ }: Syn.Cst.external_d
 
 let diagnostics_for_source_file = function
   | Syn.Cst.Implementation { items; _ } ->
-      items
-      |> List.map ~fn:(
+      items |> List.map
+        ~fn:(
           function
           | Syn.Cst.StructureItem.TypeDeclaration decl -> diagnostics_for_type_declaration decl
           | Syn.Cst.StructureItem.ExternalDeclaration decl -> diagnostics_for_external_declaration decl
           | _ -> []
-        )
-      |> List.concat
+        ) |> List.concat
   | Syn.Cst.Interface { items; _ } ->
-      items
-      |> List.map ~fn:(
+      items |> List.map
+        ~fn:(
           function
           | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostics_for_type_declaration decl
           | Syn.Cst.SignatureItem.ValueDeclaration decl -> diagnostics_for_value_declaration decl
           | _ -> []
-        )
-      |> List.concat
+        ) |> List.concat
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in

@@ -1,7 +1,11 @@
 open Std
 
 let assoc_value = fun entries key ->
-  match Collections.List.find entries ~fn:(fun (entry_key, _) -> String.equal entry_key key) with
+  match
+    Collections.List.find entries
+      ~fn:(fun (entry_key, _) ->
+        String.equal entry_key key)
+  with
   | Some (_, value) -> Some value
   | None -> None
 

@@ -35,8 +35,9 @@ and expressions_of_class_field = function
 and expressions_of_class_expression = function
   | Cst.ClassExpression.Path _
   | Cst.ClassExpression.Extension _ -> []
-  | Cst.ClassExpression.Structure { fields; _ } ->
-      fields |> List.map ~fn:expressions_of_class_field |> List.concat
+  | Cst.ClassExpression.Structure { fields; _ } -> fields
+  |> List.map ~fn:expressions_of_class_field
+  |> List.concat
   | Cst.ClassExpression.Fun { body; _ } -> expressions_of_class_expression body
   | Cst.ClassExpression.Apply { callee; argument; _ } -> expressions_of_class_expression callee
   @ expressions_of_apply_argument argument
@@ -142,14 +143,12 @@ let children_of_expression = function
       match body with
       | Cst.Expression expression -> [ expression ]
       | Cst.Cases { cases; _ } -> cases
-      |> List.map
-        ~fn:(fun ({ guard; body; _ }: Cst.match_case) -> Option.to_list guard @ [ body ])
+      |> List.map ~fn:(fun ({ guard; body; _ }: Cst.match_case) -> Option.to_list guard @ [ body ])
       |> List.concat
     )
   | Cst.Expression.Function { cases; _ } ->
       cases
-      |> List.map
-        ~fn:(fun ({ guard; body; _ }: Cst.match_case) -> Option.to_list guard @ [ body ])
+      |> List.map ~fn:(fun ({ guard; body; _ }: Cst.match_case) -> Option.to_list guard @ [ body ])
       |> List.concat
   | Cst.Expression.LetOperator { binding; body; _ } ->
       (binding_operator_bindings_of_chain binding
@@ -172,14 +171,12 @@ let children_of_expression = function
   | Cst.Expression.Match { scrutinee; cases; _ } ->
       [ scrutinee ]
       @ (cases
-      |> List.map
-        ~fn:(fun ({ guard; body; _ }: Cst.match_case) -> Option.to_list guard @ [ body ])
+      |> List.map ~fn:(fun ({ guard; body; _ }: Cst.match_case) -> Option.to_list guard @ [ body ])
       |> List.concat)
   | Cst.Expression.Try { body; cases; _ } ->
       [ body ]
       @ (cases
-      |> List.map
-        ~fn:(fun ({ guard; body; _ }: Cst.match_case) -> Option.to_list guard @ [ body ])
+      |> List.map ~fn:(fun ({ guard; body; _ }: Cst.match_case) -> Option.to_list guard @ [ body ])
       |> List.concat)
   | Cst.Expression.If { condition; then_branch; else_branch; _ } ->
       [ condition; then_branch ] @ Option.to_list else_branch
@@ -230,8 +227,7 @@ let children_of_core_type = function
           function
           | Cst.RowField.Tag tag -> Option.to_list tag.payload_type
           | Cst.RowField.Inherit { type_; _ } -> [ type_ ]
-        )
-      |> List.concat
+        ) |> List.concat
   | Cst.CoreType.Record { fields; _ } -> fields
   |> List.map ~fn:(fun (field: Cst.record_type_field) -> field.field_type)
   | Cst.CoreType.FirstClassModule _

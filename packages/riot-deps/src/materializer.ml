@@ -82,7 +82,12 @@ let ensure_registry_package = fun ?(emit = no_emit) ~registry ~(pkg:Riot_model.L
       | Needs_materialization_from_cache
       | Needs_download ->
           let started = Time.Instant.now () in
-          emit (Riot_model.Event.PackageMaterializationStarted { package = event_package; version; path });
+          emit
+            (Riot_model.Event.PackageMaterializationStarted {
+              package = event_package;
+              version;
+              path
+            });
           if state = Needs_download then
             emit (Riot_model.Event.PackageDownloadStarted { package = event_package; version; path });
           match Pkgs_ml.Registry.materialize_release registry ~package_name:package ~version with

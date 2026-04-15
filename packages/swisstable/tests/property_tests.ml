@@ -39,8 +39,7 @@ let swisstable = fun key_arb value_arb ->
       let pairs_str =
         String.concat ", "
           (
-            List.map
-              entries
+            List.map entries
               ~fn:(fun ((k, v)) ->
                 let k_str =
                   match key_arb.Arbitrary.print with
@@ -264,8 +263,7 @@ let many_insertions_prop =
       let ref_map = Collections.HashMap.create () in
       List.iter (fun ((k, v)) -> Collections.HashMap.insert ref_map ~key:k ~value:v |> ignore) pairs;
       (* Verify all unique keys are accessible and match reference *)
-      Collections.HashMap.for_each
-        ref_map
+      Collections.HashMap.for_each ref_map
         ~fn:(fun k expected_v ->
           match Swisstable.get map k with
           | Some actual_v ->

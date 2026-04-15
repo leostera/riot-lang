@@ -18,9 +18,7 @@ type realization_intent = Package.realization_intent =
 type profile_override = Package.profile_override
 type compiler_config = Package.compiler_config
 type foreign_dependency = Package.foreign_dependency
-
 type t = Package.manifest_spec
-
 val of_package: Package.t -> t
 
 val is_workspace_member: t -> bool

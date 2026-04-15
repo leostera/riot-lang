@@ -120,8 +120,10 @@ let delimiter_of_quoted_string_header = fun header ~is_extension ->
         | _ -> find_last_space (i - 1)
     in
     match find_last_space (String.length trimmed - 1) with
-    | Some i when i + 1 < String.length trimmed ->
-        String.sub trimmed ~offset:(i + 1) ~len:(String.length trimmed - i - 1)
+    | Some i when i + 1 < String.length trimmed -> String.sub
+      trimmed
+      ~offset:(i + 1)
+      ~len:(String.length trimmed - i - 1)
     | _ -> ""
 
 let rec find_quoted_string_pipe_offset = fun cursor offset ~is_extension ->
@@ -395,8 +397,7 @@ let lex_number = fun cursor token_start ->
     String.for_each s
       ~fn:(fun c ->
         if c != '_' then
-          Buffer.add_char buf c)
-    ;
+          Buffer.add_char buf c);
     Buffer.contents buf
   in
   let consume_numeric_suffix () =

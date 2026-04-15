@@ -28,26 +28,30 @@ let realized_workspace_packages = fun ~intent (workspace: Riot_model.Workspace_m
 
 (** List binaries as "package:binary" for display in completions, excluding tests *)
 let list_binaries = fun (workspace: Riot_model.Workspace_manifest.t) ->
-  realized_workspace_packages ~intent:Riot_model.Package.Run workspace
-  |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
-      List.filter_map pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
+  realized_workspace_packages ~intent:Riot_model.Package.Run workspace |> List.flat_map
+    ~fn:(fun (pkg: Riot_model.Package.t) ->
+      List.filter_map pkg.binaries
+        ~fn:(fun (bin: Riot_model.Package.binary) ->
           (* Filter out test binaries *)
           if
             String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name
           then
             None
           else
-            Some (Riot_model.Package_name.to_string pkg.name ^ ":" ^ bin.name)))
-  |> List.unique ~compare:String.compare
+            Some (Riot_model.Package_name.to_string pkg.name ^ ":" ^ bin.name))) |> List.unique
+    ~compare:String.compare
 
 (** List package names, package wildcards, and test binaries for completions *)
 let list_tests = fun (workspace: Riot_model.Workspace_manifest.t) ->
   let test_packages =
     realized_workspace_packages ~intent:Riot_model.Package.Test workspace
-    |> List.filter_map ~fn:(fun (pkg: Riot_model.Package.t) ->
+    |> List.filter_map
+      ~fn:(fun (pkg: Riot_model.Package.t) ->
         let has_tests =
-          List.any pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
-            String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name)
+          List.any
+            pkg.binaries
+            ~fn:(fun (bin: Riot_model.Package.binary) ->
+              String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name)
         in
         if has_tests then
           Some (Riot_model.Package_name.to_string pkg.name)
@@ -56,8 +60,10 @@ let list_tests = fun (workspace: Riot_model.Workspace_manifest.t) ->
   in
   let individual_tests =
     realized_workspace_packages ~intent:Riot_model.Package.Test workspace
-    |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
-        List.filter_map pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
+    |> List.flat_map
+      ~fn:(fun (pkg: Riot_model.Package.t) ->
+        List.filter_map pkg.binaries
+          ~fn:(fun (bin: Riot_model.Package.binary) ->
             if
               String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name
             then
@@ -75,8 +81,10 @@ let list_tests = fun (workspace: Riot_model.Workspace_manifest.t) ->
 let list_benchmarks = fun (workspace: Riot_model.Workspace_manifest.t) ->
   let individual_benches =
     realized_workspace_packages ~intent:Riot_model.Package.Bench workspace
-    |> List.flat_map ~fn:(fun (pkg: Riot_model.Package.t) ->
-        List.filter_map pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
+    |> List.flat_map
+      ~fn:(fun (pkg: Riot_model.Package.t) ->
+        List.filter_map pkg.binaries
+          ~fn:(fun (bin: Riot_model.Package.binary) ->
             if String.ends_with ~suffix:"_bench" bin.name then
               Some (Riot_model.Package_name.to_string pkg.name ^ ":" ^ bin.name)
             else
@@ -85,10 +93,12 @@ let list_benchmarks = fun (workspace: Riot_model.Workspace_manifest.t) ->
   (* Add pkg:... entries for packages with benchmarks *)
   let package_wildcards =
     realized_workspace_packages ~intent:Riot_model.Package.Bench workspace
-    |> List.filter_map ~fn:(fun (pkg: Riot_model.Package.t) ->
+    |> List.filter_map
+      ~fn:(fun (pkg: Riot_model.Package.t) ->
         let has_benches =
-          List.any pkg.binaries ~fn:(fun (bin: Riot_model.Package.binary) ->
-            String.ends_with ~suffix:"_bench" bin.name)
+          List.any
+            pkg.binaries
+            ~fn:(fun (bin: Riot_model.Package.binary) -> String.ends_with ~suffix:"_bench" bin.name)
         in
         if has_benches then
           Some (Riot_model.Package_name.to_string pkg.name ^ ":...")
@@ -99,7 +109,8 @@ let list_benchmarks = fun (workspace: Riot_model.Workspace_manifest.t) ->
 
 (** List package commands as "package:command\tdescription" (tab-separated) for display in completions *)
 let list_commands = fun (workspace: Riot_model.Workspace_manifest.t) ->
-  Riot_model.Workspace_manifest.discover_commands workspace |> List.map ~fn:(fun (cmd: Riot_model.Package_command.t) ->
+  Riot_model.Workspace_manifest.discover_commands workspace |> List.map
+    ~fn:(fun (cmd: Riot_model.Package_command.t) ->
       let name = Riot_model.Package_name.to_string cmd.package_name ^ ":" ^ cmd.name in
       (* Use help text from TOML, or provide fallback *)
       let desc =
@@ -114,7 +125,8 @@ let list_commands = fun (workspace: Riot_model.Workspace_manifest.t) ->
 
 (** List package command descriptions matching the order of list_commands *)
 let list_command_descriptions = fun (workspace: Riot_model.Workspace_manifest.t) ->
-  list_commands workspace |> List.map ~fn:(fun line ->
+  list_commands workspace |> List.map
+    ~fn:(fun line ->
       (* Extract description after tab *)
       let rec find_tab at =
         if at >= String.length line then

@@ -158,10 +158,7 @@ let test_utf8_decode = fun _ctx ->
             else
               to_hex
                 (n / 16)
-                (String.make
-                  ~len:1
-                  ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
-                ^ acc)
+                (String.make ~len:1 ~char:(String.get_unchecked hex_chars ~at:(n mod 16)) ^ acc)
                 (len - 1)
           in
           "U+" ^ to_hex code "" 4
@@ -214,10 +211,7 @@ let test_rune_to_int = fun _ctx ->
             else
               to_hex
                 (n / 16)
-                (String.make
-                  ~len:1
-                  ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
-                ^ acc)
+                (String.make ~len:1 ~char:(String.get_unchecked hex_chars ~at:(n mod 16)) ^ acc)
           in
           to_hex code ""
         in
@@ -620,10 +614,7 @@ let test_max_unicode_code_point = fun _ctx ->
             else
               to_hex
                 (n / 16)
-                (String.make
-                  ~len:1
-                  ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
-                ^ acc)
+                (String.make ~len:1 ~char:(String.get_unchecked hex_chars ~at:(n mod 16)) ^ acc)
           in
           to_hex code ""
         in
@@ -695,10 +686,7 @@ let test_rune_to_int_of_int_roundtrip = fun _ctx ->
             else
               helper
                 (n / 16)
-                (String.make
-                  ~len:1
-                  ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
-                ^ acc)
+                (String.make ~len:1 ~char:(String.get_unchecked hex_chars ~at:(n mod 16)) ^ acc)
           in
           helper n ""
         in
@@ -737,10 +725,7 @@ let test_greek_case_conversion = fun _ctx ->
           else
             to_hex
               (n / 16)
-              (String.make
-                ~len:1
-                ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
-              ^ acc)
+              (String.make ~len:1 ~char:(String.get_unchecked hex_chars ~at:(n mod 16)) ^ acc)
               (len - 1)
         in
         Error ("Expected U+0391 (Α), got U+" ^ to_hex upper_code "" 4)
@@ -762,10 +747,7 @@ let test_cyrillic_case_conversion = fun _ctx ->
           else
             to_hex
               (n / 16)
-              (String.make
-                ~len:1
-                ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
-              ^ acc)
+              (String.make ~len:1 ~char:(String.get_unchecked hex_chars ~at:(n mod 16)) ^ acc)
               (len - 1)
         in
         Error ("Expected U+0410 (А), got U+" ^ to_hex upper_code "" 4)
@@ -787,10 +769,7 @@ let test_greek_uppercase_to_lowercase = fun _ctx ->
           else
             to_hex
               (n / 16)
-              (String.make
-                ~len:1
-                ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
-              ^ acc)
+              (String.make ~len:1 ~char:(String.get_unchecked hex_chars ~at:(n mod 16)) ^ acc)
               (len - 1)
         in
         Error ("Expected U+03B1 (α), got U+" ^ to_hex lower_code "" 4)
@@ -813,10 +792,7 @@ let test_latin_extended_uppercase = fun _ctx ->
           else
             to_hex
               (n / 16)
-              (String.make
-                ~len:1
-                ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
-              ^ acc)
+              (String.make ~len:1 ~char:(String.get_unchecked hex_chars ~at:(n mod 16)) ^ acc)
               (len - 1)
         in
         Error ("Expected U+0101 (ā), got U+" ^ to_hex lower_code "" 4)
@@ -838,8 +814,7 @@ let test_integration_wrap_and_width = fun _ctx ->
   let text = "Hello world, this is a test" in
   let lines = Unicode.Segmentation.wrap_lines ~width:15 text in
   let all_valid =
-    List.all
-      lines
+    List.all lines
       ~fn:(fun line ->
         let w = String.width line in
         w <= 15)

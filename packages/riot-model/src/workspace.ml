@@ -35,17 +35,16 @@ let make ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(b
   profile_overrides;
 }
 
-let make_realized ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir () =
-  make
-    ?name
-    ~root
-    ~packages:(List.map packages ~fn:Package_manifest.of_package)
-    ~dependencies
-    ~dev_dependencies
-    ~build_dependencies
-    ~profile_overrides
-    ?target_dir
-    ()
+let make_realized ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir () = make
+  ?name
+  ~root
+  ~packages:(List.map packages ~fn:Package_manifest.of_package)
+  ~dependencies
+  ~dev_dependencies
+  ~build_dependencies
+  ~profile_overrides
+  ?target_dir
+  ()
 
 let dependencies_for_scope = fun scope (workspace: t) ->
   match scope with
@@ -67,29 +66,27 @@ let find_package_for_path = fun (workspace: t) ~path ->
     | Ok _ -> true
     | Error _ -> false
   in
-  workspace.packages
-  |> List.filter ~fn:contains_path
-  |> List.sort ~compare:(fun (left: Package_manifest.t) (right: Package_manifest.t) ->
+  workspace.packages |> List.filter ~fn:contains_path |> List.sort
+    ~compare:(fun (left: Package_manifest.t) (right: Package_manifest.t) ->
       Int.compare
         (String.length (Path.to_string (package_root workspace right)))
-        (String.length (Path.to_string (package_root workspace left))))
-  |> function
+        (String.length (Path.to_string (package_root workspace left)))) |> function
   | pkg :: _ -> Some pkg
   | [] -> None
 
-let realize_package = fun ~intent manifest ->
-  Package_manifest.realize ~intent manifest
+let realize_package = fun ~intent manifest -> Package_manifest.realize ~intent manifest
 
 let realize_packages = fun ~intent workspace ->
   List.map workspace.packages ~fn:(realize_package ~intent)
 
 let project_id = fun workspace ->
   let root_str = Path.to_string workspace.root in
-  String.map root_str ~fn:(fun c ->
-    if c = '/' then
-      '-'
-    else
-      c)
+  String.map root_str
+    ~fn:(fun c ->
+      if c = '/' then
+        '-'
+      else
+        c)
 
 let server_port = fun workspace ->
   let root_str = Path.to_string workspace.root in

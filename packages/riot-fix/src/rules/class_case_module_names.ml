@@ -17,8 +17,7 @@ Prefer `FooBar`, `HttpClient`, or `ParserState`. Save underscores for value-leve
 identifiers.
 |}
 
-let contains_underscore = fun text ->
-  String.exists ~fn:(fun ch -> ch = '_') text
+let contains_underscore = fun text -> String.exists ~fn:(fun ch -> ch = '_') text
 
 let starts_upper = fun text ->
   String.length text > 0 && let ch = String.get_unchecked text ~at:0 in
@@ -28,11 +27,9 @@ let capitalize_piece = fun piece ->
   if String.equal piece "" then
     ""
   else
-    let first =
-      String.get_unchecked piece ~at:0
-      |> Char.uppercase_ascii
-      |> fun char -> String.make ~len:1 ~char
-    in
+    let first = String.get_unchecked piece ~at:0
+    |> Char.uppercase_ascii
+    |> fun char -> String.make ~len:1 ~char in
     let rest =
       if String.length piece = 1 then
         ""
@@ -109,21 +106,23 @@ let rec diagnostics_for_module_signature = fun decl ->
 let diagnostics_for_items = fun source_file ->
   match source_file with
   | Syn.Cst.Implementation { items; _ } ->
-      items
-      |> List.map ~fn:(function
-        | Syn.Cst.StructureItem.ModuleDeclaration decl -> diagnostics_for_module_structure decl
-        | Syn.Cst.StructureItem.ModuleTypeDeclaration decl ->
-            Option.to_list (diagnostic_for_module_type_decl decl)
-        | _ -> [])
-      |> List.concat
+      items |> List.map
+        ~fn:(
+          function
+          | Syn.Cst.StructureItem.ModuleDeclaration decl -> diagnostics_for_module_structure decl
+          | Syn.Cst.StructureItem.ModuleTypeDeclaration decl -> Option.to_list
+            (diagnostic_for_module_type_decl decl)
+          | _ -> []
+        ) |> List.concat
   | Syn.Cst.Interface { items; _ } ->
-      items
-      |> List.map ~fn:(function
-        | Syn.Cst.SignatureItem.ModuleDeclaration decl -> diagnostics_for_module_signature decl
-        | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl ->
-            Option.to_list (diagnostic_for_module_type_decl decl)
-        | _ -> [])
-      |> List.concat
+      items |> List.map
+        ~fn:(
+          function
+          | Syn.Cst.SignatureItem.ModuleDeclaration decl -> diagnostics_for_module_signature decl
+          | Syn.Cst.SignatureItem.ModuleTypeDeclaration decl -> Option.to_list
+            (diagnostic_for_module_type_decl decl)
+          | _ -> []
+        ) |> List.concat
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in

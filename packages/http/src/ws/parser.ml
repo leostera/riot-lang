@@ -10,8 +10,7 @@ type 'a parse_result =
   | Need_more
   | Error of string
 
-let byte_at = fun input at ->
-  input |> String.get_unchecked ~at |> Char.to_int
+let byte_at = fun input at -> input |> String.get_unchecked ~at |> Char.to_int
 
 (* Parse a single WebSocket frame *)
 
@@ -53,12 +52,7 @@ let parse = fun input ->
             (* Signal need more *)
           else
             (* Read 8 bytes, but only use lower 4 bytes for simplicity *)
-            let len_bytes = [
-              byte_at input 6;
-              byte_at input 7;
-              byte_at input 8;
-              byte_at input 9;
-            ] in
+            let len_bytes = [ byte_at input 6; byte_at input 7; byte_at input 8; byte_at input 9; ] in
             let payload_len =
               List.fold_left len_bytes ~acc:0 ~fn:(fun acc b -> (acc lsl 8) lor b)
             in
@@ -115,7 +109,8 @@ let parse = fun input ->
               }
             in
             (* Return frame and remaining data *)
-            let remaining = String.sub input
+            let remaining = String.sub
+              input
               ~offset:(total_header_size + payload_length)
               ~len:(len - total_header_size - payload_length) in
             Done { value = frame; remaining }

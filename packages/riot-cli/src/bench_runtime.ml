@@ -128,36 +128,38 @@ let profile_of_name = function
 let realized_bench_packages = fun ?package_filter (workspace: Workspace.t) ->
   Workspace.realize_packages ~intent:Package.Bench workspace
   |> List.filter ~fn:Package.is_workspace_member
-  |> List.filter ~fn:(fun (pkg: Package.t) ->
+  |> List.filter
+    ~fn:(fun (pkg: Package.t) ->
       match package_filter with
       | None -> true
       | Some package_name -> Package_name.equal pkg.name package_name)
 
 let collect_suite_binaries = fun (workspace: Workspace.t) ?package_filter ?suite_filter () ->
-  realized_bench_packages ?package_filter workspace
-  |> List.flat_map ~fn:(fun (pkg: Package.t) ->
-      List.filter_map pkg.binaries ~fn:(fun (bin: Package.binary) ->
+  realized_bench_packages ?package_filter workspace |> List.flat_map
+    ~fn:(fun (pkg: Package.t) ->
+      List.filter_map pkg.binaries
+        ~fn:(fun (bin: Package.binary) ->
           if is_benchmark_binary_name bin.name && (
               match suite_filter with
               | None -> true
               | Some suite_name -> String.equal bin.name suite_name
             ) then
-            Some {
-              package_name = pkg.name;
-              suite_name = bin.name
-            }
+            Some { package_name = pkg.name; suite_name = bin.name }
           else
-            None))
-  |> List.sort ~compare:compare_suite_binary
+            None)) |> List.sort ~compare:compare_suite_binary
 
 let find_suite_source_path = fun ~(workspace:Workspace.t) (suite: suite_binary) ->
-  match List.find (realized_bench_packages workspace) ~fn:(fun (pkg: Package.t) ->
-    Package_name.equal pkg.name suite.package_name) with
+  match
+    List.find (realized_bench_packages workspace)
+      ~fn:(fun (pkg: Package.t) ->
+        Package_name.equal pkg.name suite.package_name)
+  with
   | None -> None
   | Some pkg ->
-      List.find pkg.binaries ~fn:(fun (bin: Package.binary) ->
-        String.equal bin.name suite.suite_name)
-      |> Option.map ~fn:(fun (bin: Package.binary) -> Path.(pkg.path / bin.path))
+      List.find pkg.binaries
+        ~fn:(fun (bin: Package.binary) ->
+          String.equal bin.name suite.suite_name) |> Option.map
+        ~fn:(fun (bin: Package.binary) -> Path.(pkg.path / bin.path))
 
 let bench_error_message = function
   | BuildFailed err -> Riot_build.error_message err
@@ -204,12 +206,20 @@ let get_bool = function
   | other -> error_expected "bool" other
 
 let field = fun name fields ->
-  match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with
+  match
+    List.find fields
+      ~fn:(fun (field_name, _) ->
+        String.equal field_name name)
+  with
   | Some (_, value) -> Ok value
   | None -> Error ("missing field " ^ name)
 
 let optional_int_field = fun name fields ->
-  match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with
+  match
+    List.find fields
+      ~fn:(fun (field_name, _) ->
+        String.equal field_name name)
+  with
   | Some (_, value) -> get_int value |> Result.map ~fn:Option.some
   | None -> Ok None
 
@@ -223,7 +233,8 @@ let split_json_stdout = fun stdout ->
   | Some (json_idx, json_line) ->
       let prefix =
         indexed
-        |> List.filter_map ~fn:(fun (idx, line) ->
+        |> List.filter_map
+          ~fn:(fun (idx, line) ->
             if idx < json_idx then
               Some line
             else
@@ -336,12 +347,20 @@ let listed_bench_item_of_json = fun json ->
     | other -> Error ("unknown benchmark list item kind " ^ other)
   in
   let skip =
-    match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name "skip") with
+    match
+      List.find fields
+        ~fn:(fun (field_name, _) ->
+          String.equal field_name "skip")
+    with
     | Some (_, value) -> get_bool value
     | None -> Ok false
   in
   let cases =
-    match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name "cases") with
+    match
+      List.find fields
+        ~fn:(fun (field_name, _) ->
+          String.equal field_name "cases")
+    with
     | None -> Ok []
     | Some (_, value) ->
         let* values = get_array value in
@@ -496,18 +515,20 @@ let bench_event_to_json = function
         ("fastest", Data.Json.String comparison.fastest);
         (
           "case_results",
-          Data.Json.Array (List.map comparison.case_results ~fn:(fun (case_result: bench_comparison_case_result) ->
+          Data.Json.Array (List.map
+            comparison.case_results
+            ~fn:(fun (case_result: bench_comparison_case_result) ->
               Data.Json.Object [
                 ("name", Data.Json.String case_result.name);
                 ("statistics", statistics_to_json case_result.statistics);
-              ])
-          )
+              ]))
         );
         (
           "speedup_ratios",
-          Data.Json.Array (List.map comparison.speedup_ratios ~fn:(fun (name, ratio) ->
-              Data.Json.Object [ ("name", Data.Json.String name); ("ratio", Data.Json.Float ratio); ])
-          )
+          Data.Json.Array (List.map
+            comparison.speedup_ratios
+            ~fn:(fun (name, ratio) ->
+              Data.Json.Object [ ("name", Data.Json.String name); ("ratio", Data.Json.Float ratio); ]))
         );
       ] in
       Some (
@@ -560,8 +581,7 @@ let bench_event_to_json = function
 
 let ensure_executable_binary_path = fun ~kind path ->
   match Fs.metadata path with
-  | Error err ->
-      Error ("failed to read " ^ kind ^ " metadata: " ^ IO.error_message err)
+  | Error err -> Error ("failed to read " ^ kind ^ " metadata: " ^ IO.error_message err)
   | Ok metadata ->
       let mode = Fs.Metadata.mode metadata in
       if mode land 0o111 != 0 then
@@ -569,13 +589,15 @@ let ensure_executable_binary_path = fun ~kind path ->
       else
         Fs.set_permissions path (Fs.Permissions.of_mode (mode lor 0o111))
         |> Result.map ~fn:(fun () -> path)
-        |> Result.map_err ~fn:(fun err ->
-            "failed to mark " ^ kind ^ " executable: " ^ IO.error_message err)
+        |> Result.map_err
+          ~fn:(fun err -> "failed to mark " ^ kind ^ " executable: " ^ IO.error_message err)
 
-let find_suite_binary_path_in_output = fun ~(store:Riot_store.Store.t) ~(suite:suite_binary) (output: Riot_build.Build_result.t) ->
+let find_suite_binary_path_in_output = fun ~(store:Riot_store.Store.t) ~(suite:suite_binary) (
+  output: Riot_build.Build_result.t
+) ->
   match
-    Riot_build.Build_result.find_package output suite.package_name
-    |> Option.and_then ~fn:(fun package_output ->
+    Riot_build.Build_result.find_package output suite.package_name |> Option.and_then
+      ~fn:(fun package_output ->
         Riot_build.Build_result.find_export package_output suite.suite_name)
   with
   | None -> Error (SuiteArtifactNotFound {
@@ -584,9 +606,8 @@ let find_suite_binary_path_in_output = fun ~(store:Riot_store.Store.t) ~(suite:s
   })
   | Some export_entry -> (
       match Riot_store.Store.export_source_path store export_entry with
-      | Some path ->
-          ensure_executable_binary_path ~kind:"benchmark binary" path
-          |> Result.map_err ~fn:(fun reason -> SuiteArtifactNotFound { suite; reason })
+      | Some path -> ensure_executable_binary_path ~kind:"benchmark binary" path
+      |> Result.map_err ~fn:(fun reason -> SuiteArtifactNotFound { suite; reason })
       | None -> Error (SuiteArtifactNotFound {
         suite;
         reason = "suite '" ^ suite.suite_name ^ "' resolved to an invalid absolute export path"
@@ -654,10 +675,8 @@ let resolve_suite_binaries = fun ~store ~suites output ->
     | [] -> (List.reverse resolved, List.reverse missing)
     | suite :: rest -> (
         match find_suite_binary_path_in_output ~store ~suite output with
-        | Ok binary_path ->
-            loop ((suite, binary_path) :: resolved) missing rest
-        | Error err ->
-            loop resolved ((suite, err) :: missing) rest
+        | Ok binary_path -> loop ((suite, binary_path) :: resolved) missing rest
+        | Error err -> loop resolved ((suite, err) :: missing) rest
       )
   in
   loop [] [] suites
@@ -673,7 +692,11 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
   if suites = [] then
     Ok []
   else
-    match build_output ~workspace:request.workspace ~packages:(requested_packages suites) ~profile:request.profile () with
+    match build_output
+      ~workspace:request.workspace
+      ~packages:(requested_packages suites)
+      ~profile:request.profile
+      () with
     | Error err -> Error (BuildFailed err)
     | Ok output ->
         let store = store_for_request request in
@@ -755,7 +778,8 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
           in
           let initial_active, remaining = spawn_initial 0 suite_binaries in
           collect initial_active remaining []
-          |> Result.map ~fn:(fun collected ->
+          |> Result.map
+            ~fn:(fun collected ->
               collected
               |> List.sort ~compare:(fun (left, _) (right, _) -> compare_suite_binary left right)
               |> List.map ~fn:(fun (_, value) -> value))
@@ -772,14 +796,12 @@ let bench = fun ?(on_event = no_event) (request: bench_request) ->
       Ok ()
     )
   else
-    match
-      build_output
-        ~workspace:request.workspace
-        ~packages:(requested_packages suites)
-        ~profile:request.profile
-        ~on_event:(fun event -> on_event (Build event))
-        ()
-    with
+    match build_output
+      ~workspace:request.workspace
+      ~packages:(requested_packages suites)
+      ~profile:request.profile
+      ~on_event:(fun event -> on_event (Build event))
+      () with
     | Error err -> Error (BuildFailed err)
     | Ok output ->
         let store = store_for_request request in

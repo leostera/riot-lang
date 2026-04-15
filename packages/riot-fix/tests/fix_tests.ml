@@ -9,9 +9,9 @@ let synthetic_token = fun ~span ~text ->
   Syn.Ceibo.Red.new_token green span
 
 let find_token_by_text = fun red_root text ->
-  Syn.Ceibo.Red.SyntaxNode.tokens red_root
-  |> List.find ~fn:(fun token ->
-    String.equal (Syn.Ceibo.Red.SyntaxToken.text token) text)
+  Syn.Ceibo.Red.SyntaxNode.tokens red_root |> List.find
+    ~fn:(fun token ->
+      String.equal (Syn.Ceibo.Red.SyntaxToken.text token) text)
 
 let warning_diagnostic = fun ~rule_id ~message ~token ~fix ->
   Riot_fix.Diagnostic.make

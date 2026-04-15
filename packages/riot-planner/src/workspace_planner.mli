@@ -7,7 +7,6 @@ type target =
   | All
   | Package of Package_name.t
   | Packages of Package_name.t list
-
 type planning_breakdown = {
   manifest_filter_duration: Time.Duration.t;
   filtered_workspace_package_count: int;
@@ -19,7 +18,6 @@ type planning_breakdown = {
   topological_sort_duration: Time.Duration.t;
   sorted_package_count: int;
 }
-
 type package_plan = {
   packages: Package.t list;
   nodes: Package_graph.package_node list;

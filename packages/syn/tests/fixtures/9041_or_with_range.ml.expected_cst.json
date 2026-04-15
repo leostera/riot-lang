@@ -99,7 +99,7 @@
                 "syntax_node": {
                   "kind": "MATCH_CASE",
                   "span": {
-                    "start": 68,
+                    "start": 64,
                     "end": 90
                   }
                 },
@@ -556,7 +556,7 @@
                 "syntax_node": {
                   "kind": "MATCH_CASE",
                   "span": {
-                    "start": 249,
+                    "start": 245,
                     "end": 284
                   }
                 },
@@ -873,7 +873,7 @@
                 "syntax_node": {
                   "kind": "MATCH_CASE",
                   "span": {
-                    "start": 366,
+                    "start": 362,
                     "end": 402
                   }
                 },

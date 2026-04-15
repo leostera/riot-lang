@@ -29,8 +29,7 @@ let to_snake_case = fun text ->
     pieces := piece :: !pieces
   in
   let prev_was_lower_or_digit = ref false in
-  String.for_each
-    text
+  String.for_each text
     ~fn:(fun ch ->
       if is_upper ch then
         (

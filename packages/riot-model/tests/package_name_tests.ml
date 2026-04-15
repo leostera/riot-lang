@@ -8,13 +8,11 @@ let test_from_string_accepts_valid_package_name = fun _ctx ->
         Ok ()
       else
         Error "expected package name to roundtrip through Package_name.to_string"
-  | Error err ->
-      Error ("expected valid package name, got error: " ^ err)
+  | Error err -> Error ("expected valid package name, got error: " ^ err)
 
 let test_from_string_rejects_invalid_leading_character = fun _ctx ->
   match Riot_model.Package_name.from_string "Riot" with
-  | Ok _ ->
-      Error "expected uppercase-leading package name to be rejected"
+  | Ok _ -> Error "expected uppercase-leading package name to be rejected"
   | Error err ->
       if String.contains err "start with a lowercase letter" then
         Ok ()
@@ -23,8 +21,7 @@ let test_from_string_rejects_invalid_leading_character = fun _ctx ->
 
 let test_from_string_rejects_invalid_suffix = fun _ctx ->
   match Riot_model.Package_name.from_string "riot-" with
-  | Ok _ ->
-      Error "expected trailing hyphen package name to be rejected"
+  | Ok _ -> Error "expected trailing hyphen package name to be rejected"
   | Error err ->
       if String.contains err "cannot end with hyphen or underscore" then
         Ok ()

@@ -3,7 +3,7 @@ open Std
 let () =
   Runtime.run
     ~main:(fun ~args:_ ->
-      let rune_hex = fun rune ->
+      let rune_hex rune =
         let hex_chars = "0123456789ABCDEF" in
         let rec to_hex n acc =
           if n = 0 then
@@ -14,10 +14,7 @@ let () =
           else
             to_hex
               (n / 16)
-              (String.make
-                 ~len:1
-                 ~char:(String.get_unchecked hex_chars ~at:(n mod 16))
-               ^ acc)
+              (String.make ~len:1 ~char:(String.get_unchecked hex_chars ~at:(n mod 16)) ^ acc)
         in
         to_hex (Unicode.Rune.to_int rune) ""
       in

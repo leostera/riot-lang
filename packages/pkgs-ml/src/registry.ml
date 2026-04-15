@@ -143,8 +143,9 @@ let riot_agent_override = fun () -> Env.get Env.String ~var:"RIOT_AGENT_HEADER" 
 
 let default_http_headers = fun headers ->
   let has_riot_agent =
-    List.any headers ~fn:(fun (name, _value) ->
-      String.equal (String.lowercase_ascii name) "x-riot-agent")
+    List.any headers
+      ~fn:(fun (name, _value) ->
+        String.equal (String.lowercase_ascii name) "x-riot-agent")
   in
   if has_riot_agent then
     headers
@@ -173,7 +174,8 @@ let default_fetch =
       | Error err -> Error (blink_error_message err)
       | Ok conn ->
           let request =
-            List.fold_left headers ~acc:(Net.Http.Request.create method_ uri) ~fn:(fun request (name, value) ->
+            List.fold_left headers ~acc:(Net.Http.Request.create method_ uri)
+              ~fn:(fun request (name, value) ->
                 Net.Http.Request.add_header request name value)
           in
           let finish result =
@@ -226,12 +228,16 @@ let release_key = fun ~package_name ~version -> (Sparse_index.normalized_name pa
 
 let in_memory = fun ?config ~cache ?(releases = []) ~packages () ->
   let packages =
-    List.map packages ~fn:(fun (document: Sparse_index.package_document) ->
-      (Sparse_index.normalized_name document.name, document))
+    List.map
+      packages
+      ~fn:(fun (document: Sparse_index.package_document) ->
+        (Sparse_index.normalized_name document.name, document))
   in
   let releases =
-    List.map releases ~fn:(fun (release: release_source) ->
-      (release_key ~package_name:release.package_name ~version:release.version, release))
+    List.map
+      releases
+      ~fn:(fun (release: release_source) ->
+        (release_key ~package_name:release.package_name ~version:release.version, release))
   in
   { cache; fetch = default_fetch; source = In_memory { config; packages; releases } }
 
@@ -583,8 +589,9 @@ let read_package_document = fun registry ~package_name ->
           | Ok (Some config) -> fetch_package_document config
         )
     )
-  | In_memory { packages; config=_; releases=_ } ->
-      Ok (assoc_value packages ~key:(Sparse_index.normalized_name package_name))
+  | In_memory { packages; config=_; releases=_ } -> Ok (assoc_value
+    packages
+    ~key:(Sparse_index.normalized_name package_name))
 
 let search_packages = fun registry ~query ?(limit = 5) () ->
   if String.equal (String.trim query) "" then
@@ -616,26 +623,23 @@ let search_packages = fun registry ~query ?(limit = 5) () ->
       )
     | In_memory { packages; config=_; releases=_ } ->
         let normalized_query = Sparse_index.normalized_name query in
-        packages
-        |> List.map ~fn:(fun (_, document) -> document)
-        |> List.filter ~fn:(fun (document: Sparse_index.package_document) ->
+        packages |> List.map ~fn:(fun (_, document) -> document) |> List.filter
+          ~fn:(fun (document: Sparse_index.package_document) ->
             let normalized_name = Sparse_index.normalized_name document.name in
             String.equal normalized_name normalized_query
             || String.starts_with ~prefix:normalized_query normalized_name
-            || String.contains normalized_name normalized_query)
-        |> List.sort ~compare:(fun (left: Sparse_index.package_document) (right: Sparse_index.package_document) ->
-          String.compare left.name right.name)
-        |> take limit
-        |> List.map ~fn:(fun (document: Sparse_index.package_document) ->
-          {
-            package_name = document.name;
-            latest_version = document.latest;
-            description =
-              match document.releases with
-              | release :: _ -> release.description
-              | [] -> None;
-          })
-        |> fun results -> Ok results
+            || String.contains normalized_name normalized_query) |> List.sort
+          ~compare:(fun (left: Sparse_index.package_document) (right: Sparse_index.package_document) ->
+            String.compare left.name right.name) |> take limit |> List.map
+          ~fn:(fun (document: Sparse_index.package_document) ->
+            {
+              package_name = document.name;
+              latest_version = document.latest;
+              description =
+                match document.releases with
+                | release :: _ -> release.description
+                | [] -> None;
+            }) |> fun results -> Ok results
 
 let refresh_package_document = fun registry ~package_name ->
   match registry.source with
@@ -671,8 +675,9 @@ let refresh_package_document = fun registry ~package_name ->
                 )
             )
     )
-  | In_memory { packages; config=_; releases=_ } ->
-      Ok (assoc_value packages ~key:(Sparse_index.normalized_name package_name))
+  | In_memory { packages; config=_; releases=_ } -> Ok (assoc_value
+    packages
+    ~key:(Sparse_index.normalized_name package_name))
 
 let write_release_files = fun ~root (release: release_source) ->
   let manifest_path = Path.(root / Path.v "riot.toml") in
@@ -743,9 +748,10 @@ let cached_archive_is_gzip = fun archive_path ->
   ^ "': "
   ^ Fs.File.error_to_string err)
   | Ok file ->
-      protect ~finally:(fun () ->
-        let _ = Fs.File.close file in
-        ())
+      protect
+        ~finally:(fun () ->
+          let _ = Fs.File.close file in
+          ())
         (fun () ->
           let magic = IO.Bytes.create ~size:2 in
           IO.Bytes.fill magic ~offset:0 ~len:2 ~char:'\000';
@@ -777,9 +783,10 @@ let extract_cached_archive = fun ~archive_path ~root ->
           match Fs.File.open_read archive_path with
           | Error err -> fail (Fs.File.error_to_string err)
           | Ok file ->
-              protect ~finally:(fun () ->
-                let _ = Fs.File.close file in
-                ())
+              protect
+                ~finally:(fun () ->
+                  let _ = Fs.File.close file in
+                  ())
                 (fun () ->
                   let reader = Fs.File.to_reader file |> Compress.Gzip.to_reader in
                   match Archive.Tar.extract reader ~into:root with
@@ -839,12 +846,13 @@ let normalize_legacy_package_root = fun ~root ~(release:Sparse_index.release) ->
   | Ok false ->
       let* entries = read_dir_entries root in
       let top_level_dirs =
-        List.filter_map entries ~fn:(fun entry ->
-          let full_path = Path.(root / entry) in
-          match path_is_directory full_path with
-          | Ok true -> Some (Ok full_path)
-          | Ok false -> None
-          | Error err -> Some (Error err))
+        List.filter_map entries
+          ~fn:(fun entry ->
+            let full_path = Path.(root / entry) in
+            match path_is_directory full_path with
+            | Ok true -> Some (Ok full_path)
+            | Ok false -> None
+            | Error err -> Some (Error err))
       in
       let* top_level_dirs =
         let rec collect acc = function
@@ -922,8 +930,9 @@ let find_release = fun registry ~package_name ~version ->
       Error ("package '" ^ package_name ^ "' was not found in registry '" ^ name registry ^ "'")
   | Ok (Some document) -> (
       match
-        List.find document.releases ~fn:(fun (release: Sparse_index.release) ->
-          String.equal release.version version)
+        List.find document.releases
+          ~fn:(fun (release: Sparse_index.release) ->
+            String.equal release.version version)
       with
       | Some release when release.yanked -> Error ("package '"
       ^ package_name

@@ -47,14 +47,18 @@ let parse_rule_override item =
         Some { name; state = Enabled }
   | Data.Toml.Table attrs -> (
       let name_value =
-        List.find attrs ~fn:(fun (attr_name, _) -> String.equal attr_name "name")
+        List.find attrs
+          ~fn:(fun (attr_name, _) ->
+            String.equal attr_name "name")
         |> Option.map ~fn:(fun (_, value) -> value)
       in
       match name_value with
       | Some (Data.Toml.String name) ->
           let state =
             let state_value =
-              List.find attrs ~fn:(fun (attr_name, _) -> String.equal attr_name "state")
+              List.find attrs
+                ~fn:(fun (attr_name, _) ->
+                  String.equal attr_name "state")
               |> Option.map ~fn:(fun (_, value) -> value)
             in
             match state_value with
@@ -72,20 +76,26 @@ let parse_fix_config toml =
   match toml with
   | Data.Toml.Table items -> (
       let riot_value =
-        List.find items ~fn:(fun (item_name, _) -> String.equal item_name "riot")
+        List.find items
+          ~fn:(fun (item_name, _) ->
+            String.equal item_name "riot")
         |> Option.map ~fn:(fun (_, value) -> value)
       in
       match riot_value with
       | Some (Data.Toml.Table riot_items) -> (
           let fix_value =
-            List.find riot_items ~fn:(fun (item_name, _) -> String.equal item_name "fix")
+            List.find riot_items
+              ~fn:(fun (item_name, _) ->
+                String.equal item_name "fix")
             |> Option.map ~fn:(fun (_, value) -> value)
           in
           match fix_value with
           | Some (Data.Toml.Table fix_items) ->
               let ignore_patterns =
                 let ignore_value =
-                  List.find fix_items ~fn:(fun (item_name, _) -> String.equal item_name "ignore")
+                  List.find fix_items
+                    ~fn:(fun (item_name, _) ->
+                      String.equal item_name "ignore")
                   |> Option.map ~fn:(fun (_, value) -> value)
                 in
                 match ignore_value with
@@ -94,7 +104,9 @@ let parse_fix_config toml =
               in
               let rules =
                 let rules_value =
-                  List.find fix_items ~fn:(fun (item_name, _) -> String.equal item_name "rules")
+                  List.find fix_items
+                    ~fn:(fun (item_name, _) ->
+                      String.equal item_name "rules")
                   |> Option.map ~fn:(fun (_, value) -> value)
                 in
                 match rules_value with
@@ -127,9 +139,10 @@ let load_scope = fun ~cwd ->
       let packages =
         workspace.packages
         |> List.filter ~fn:Package_manifest.is_workspace_member
-        |> List.map ~fn:(fun (pkg: Package_manifest.t) ->
-          let package_toml = Path.(pkg.path / Path.v "riot.toml") in
-          { package_root = pkg.path; config = load_fix_config package_toml })
+        |> List.map
+          ~fn:(fun (pkg: Package_manifest.t) ->
+            let package_toml = Path.(pkg.path / Path.v "riot.toml") in
+            { package_root = pkg.path; config = load_fix_config package_toml })
       in
       Some {
         workspace;
@@ -206,15 +219,13 @@ let matches_pattern = fun pattern candidate ->
     String.equal pattern candidate || String.equal pattern basename || String.contains candidate pattern
 
 let find_package_scope = fun scope file ->
-  scope.packages
-  |> List.filter_map ~fn:(fun package_scope ->
-    match Path.strip_prefix file ~prefix:package_scope.package_root with
-    | Ok _ -> Some (String.length (Path.to_string package_scope.package_root), package_scope)
-    | Error _ -> None)
-  |> List.sort ~compare:(fun (left_len, _) (right_len, _) ->
-    Int.compare right_len left_len)
-  |> List.map ~fn:(fun (_, package_scope) -> package_scope)
-  |> function
+  scope.packages |> List.filter_map
+    ~fn:(fun package_scope ->
+      match Path.strip_prefix file ~prefix:package_scope.package_root with
+      | Ok _ -> Some (String.length (Path.to_string package_scope.package_root), package_scope)
+      | Error _ -> None) |> List.sort
+    ~compare:(fun (left_len, _) (right_len, _) ->
+      Int.compare right_len left_len) |> List.map ~fn:(fun (_, package_scope) -> package_scope) |> function
   | package_scope :: _ -> Some package_scope
   | [] -> None
 
@@ -245,8 +256,9 @@ let matching_rule_names = fun states name ->
       List.map states ~fn:(fun (rule_name, _) -> rule_name)
     in
     let exact_matches =
-      List.filter names ~fn:(fun actual ->
-        String.equal actual name)
+      List.filter names
+        ~fn:(fun actual ->
+          String.equal actual name)
     in
     if not (List.is_empty exact_matches) then
       exact_matches
@@ -259,9 +271,7 @@ let matching_rule_names = fun states name ->
         [ name ]
 
 let apply_rule_overrides = fun states overrides ->
-  List.fold_left
-    overrides
-    ~acc:states
+  List.fold_left overrides ~acc:states
     ~fn:(fun acc rule_override ->
       let enabled =
         match rule_override.state with
@@ -269,8 +279,7 @@ let apply_rule_overrides = fun states overrides ->
         | Disabled -> false
       in
       matching_rule_names acc rule_override.name
-      |> List.fold_left ~acc ~fn:(fun acc rule_name ->
-        set_rule_state acc rule_name enabled))
+      |> List.fold_left ~acc ~fn:(fun acc rule_name -> set_rule_state acc rule_name enabled))
 
 let default_rule_states = fun () ->
   Pipeline.default_rule_ids () |> List.map ~fn:(fun name -> (name, true))
@@ -288,10 +297,11 @@ let effective_rule_states = fun scope file ->
 let pipeline_for_file = fun scope file ->
   let enabled_rule_ids =
     effective_rule_states scope file
-    |> List.filter_map ~fn:(fun (name, enabled) ->
-      if enabled then
-        Some name
-      else
-        None)
+    |> List.filter_map
+      ~fn:(fun (name, enabled) ->
+        if enabled then
+          Some name
+        else
+          None)
   in
   Pipeline.make ~rules:(Pipeline.rules_by_id enabled_rule_ids) ()

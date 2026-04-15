@@ -1,51 +1,39 @@
 open Std
 open Propane
-
 module Test = Std.Test
 
 let examples = 500
 
-let property_config = {
-  Property.default_config with
-  test_count = examples;
-}
+let property_config = { Property.default_config with test_count = examples }
 
 let assert_property = fun name property ->
   match Property.check ~config:property_config property with
   | Property.Success -> Ok ()
-  | Property.Failure { counter_example; shrink_steps } ->
-      Error (
-        name
-        ^ " failed\nCounter-example:\n"
-        ^ counter_example
-        ^ "\nShrink steps: "
-        ^ Int.to_string shrink_steps
-      )
-  | Property.Error { exception_ = _; backtrace } ->
-      Error (name ^ " raised an unexpected exception\n" ^ backtrace)
-  | Property.Assumption_violated ->
-      Error (name ^ " exhausted assumptions")
+  | Property.Failure { counter_example; shrink_steps } -> Error (name
+  ^ " failed\nCounter-example:\n"
+  ^ counter_example
+  ^ "\nShrink steps: "
+  ^ Int.to_string shrink_steps)
+  | Property.Error { exception_=_; backtrace } -> Error (name
+  ^ " raised an unexpected exception\n"
+  ^ backtrace)
+  | Property.Assumption_violated -> Error (name ^ " exhausted assumptions")
 
 let read_opened_file = fun file ->
   let content = Fs.File.read_to_end file |> Result.expect ~msg:"read_to_end should succeed" in
   let _ = Fs.File.close file |> Result.expect ~msg:"close should succeed" in
   content
 
-let namespace = fun parts ->
-  Contentstore.Namespace.from_parts parts
-  |> Result.expect ~msg:"invalid test namespace"
+let namespace = fun parts -> Contentstore.Namespace.from_parts parts |> Result.expect ~msg:"invalid test namespace"
 
 let with_store = fun prefix parts fn ->
   Fs.with_tempdir ~prefix
     (fun tmpdir ->
-      let store =
-        Contentstore.create
-          ~root:Path.(tmpdir / Path.v "cache")
-          ~ns:(namespace parts)
-          ~policy:Contentstore.Policy.default
-      in
-      fn ~tmpdir ~store)
-  |> Result.unwrap_or ~default:false
+      let store = Contentstore.create
+        ~root:Path.(tmpdir / Path.v "cache")
+        ~ns:(namespace parts)
+        ~policy:Contentstore.Policy.default in
+      fn ~tmpdir ~store) |> Result.unwrap_or ~default:false
 
 let named_objects_keep_last_writer =
   Property.for_all Arbitrary.(pair string string)
@@ -65,8 +53,7 @@ let save_named_object_roundtrip =
     (fun (key, content) ->
       with_store "contentstore-prop-named-roundtrip" [ "named" ]
         (fun ~tmpdir:_ ~store ->
-          let _ = Contentstore.save_named_object store ~key ~content
-          |> Result.expect ~msg:"save_named_object should succeed" in
+          let _ = Contentstore.save_named_object store ~key ~content |> Result.expect ~msg:"save_named_object should succeed" in
           match Contentstore.open_named_object store ~key |> Result.map ~fn:read_opened_file with
           | Ok loaded -> String.equal loaded content
           | Error _ -> false))
@@ -83,12 +70,12 @@ let distinct_named_keys_are_isolated =
           |> Result.expect ~msg:"save left named object should succeed" in
           let _ = Contentstore.save_named_object store ~key:right_key ~content:right_content
           |> Result.expect ~msg:"save right named object should succeed" in
-          match
-            ( Contentstore.open_named_object store ~key:left_key |> Result.map ~fn:read_opened_file
-            , Contentstore.open_named_object store ~key:right_key |> Result.map ~fn:read_opened_file )
-          with
-          | (Ok loaded_left, Ok loaded_right) ->
-              String.equal loaded_left left_content && String.equal loaded_right right_content
+          match (
+            Contentstore.open_named_object store ~key:left_key |> Result.map ~fn:read_opened_file,
+            Contentstore.open_named_object store ~key:right_key |> Result.map ~fn:read_opened_file
+          ) with
+          | (Ok loaded_left, Ok loaded_right) -> String.equal loaded_left left_content
+          && String.equal loaded_right right_content
           | _ -> false))
 
 let named_writes_survive_reopen =
@@ -102,34 +89,40 @@ let named_writes_survive_reopen =
             match remaining with
             | [] -> latest
             | content :: rest ->
-                let _ = Contentstore.save_named_object store ~key ~content
-                |> Result.expect ~msg:"save_named_object should succeed" in
+                let _ = Contentstore.save_named_object store ~key ~content |> Result.expect ~msg:"save_named_object should succeed" in
                 write_all content rest
           in
           let latest = write_all "" contents in
-          let reopened =
-            Contentstore.create
-              ~root
-              ~ns:(namespace [ "named" ])
-              ~policy:Contentstore.Policy.default
-          in
+          let reopened = Contentstore.create
+            ~root
+            ~ns:(namespace [ "named" ])
+            ~policy:Contentstore.Policy.default in
           match Contentstore.open_named_object reopened ~key |> Result.map ~fn:read_opened_file with
           | Ok loaded -> String.equal loaded latest
           | Error _ -> false))
 
 let tests = [
-  Test.property "save_named_object keeps last writer" ~examples
+  Test.property
+    "save_named_object keeps last writer"
+    ~examples
     (fun _ctx -> assert_property "save_named_object keeps last writer" named_objects_keep_last_writer);
-  Test.property "save_named_object/open_named_object roundtrip" ~examples
+  Test.property
+    "save_named_object/open_named_object roundtrip"
+    ~examples
     (fun _ctx -> assert_property "save_named_object/open_named_object roundtrip" save_named_object_roundtrip);
-  Test.property "distinct named keys are isolated" ~examples
+  Test.property
+    "distinct named keys are isolated"
+    ~examples
     (fun _ctx -> assert_property "distinct named keys are isolated" distinct_named_keys_are_isolated);
-  Test.property "named writes survive reopen" ~examples
+  Test.property
+    "named writes survive reopen"
+    ~examples
     (fun _ctx -> assert_property "named writes survive reopen" named_writes_survive_reopen);
 ]
 
 let () =
   Actors.run
-    ~main:(fun ~args -> Test.Cli.main ~name:"contentstore_store_named_object_property_tests" ~tests ~args)
+    ~main:(fun ~args ->
+      Test.Cli.main ~name:"contentstore_store_named_object_property_tests" ~tests ~args)
     ~args:Env.args
     ()

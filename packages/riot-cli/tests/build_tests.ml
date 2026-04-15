@@ -108,6 +108,93 @@ let test_build_accepts_release_flag = fun _ctx ->
       else
         Error "expected --release flag to be parsed"
 
+let test_build_accepts_jobs_flag = fun _ctx ->
+  match parse_build [ "build"; "--jobs"; "4"; "syn" ] with
+  | Error err -> Error ("expected build args to parse: " ^ err)
+  | Ok matches ->
+      match ArgParser.get_one matches "jobs" with
+      | Some jobs -> if String.equal jobs "4" then Ok () else Error ("unexpected --jobs value: " ^ jobs)
+      | None -> Error "expected --jobs flag to be parsed"
+
+let test_build_rejects_invalid_jobs_flag = fun _ctx ->
+  match
+    Fs.with_tempdir
+      ~prefix:"riot_cli_build_invalid_jobs"
+      (fun tmpdir ->
+        let workspace = make_valid_workspace tmpdir in
+        match parse_build [ "build"; "--jobs"; "abc"; "demo" ] with
+        | Error err -> Error ("expected build args to parse: " ^ err)
+        | Ok matches ->
+            match Riot_cli.Build.run ~workspace matches with
+            | Ok () -> Error "expected invalid --jobs value to fail"
+            | Error (Failure message) ->
+                if String.equal message "invalid --jobs value: abc" then Ok ()
+                else Error ("unexpected jobs parse error: " ^ message)
+            | Error err -> Error ("expected failure to be Failure: " ^ Kernel.Exception.to_string err))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
+let test_build_accepts_jobs_flag_in_run = fun _ctx ->
+  match
+    Fs.with_tempdir
+      ~prefix:"riot_cli_build_jobs_runtime"
+      (fun tmpdir ->
+        let workspace = make_valid_workspace tmpdir in
+        match parse_build [ "build"; "--jobs"; "2"; "demo" ] with
+        | Error err -> Error ("expected build args to parse: " ^ err)
+        | Ok matches ->
+            match Riot_cli.Build.run ~workspace matches with
+            | Ok () -> Ok ()
+            | Error err -> Error ("expected build success: " ^ Kernel.Exception.to_string err))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
+let test_build_rejects_zero_jobs_runtime = fun _ctx ->
+  match
+    Fs.with_tempdir
+      ~prefix:"riot_cli_build_zero_jobs"
+      (fun tmpdir ->
+        let workspace = make_valid_workspace tmpdir in
+        match parse_build [ "build"; "--jobs"; "0"; "demo" ] with
+        | Error err -> Error ("expected build args to parse: " ^ err)
+        | Ok matches ->
+            match Riot_cli.Build.run ~workspace matches with
+            | Error (Failure message)
+              when String.equal message "invalid requested parallelism (0): jobs must be >= 1" ->
+                Ok ()
+            | Error (Failure message) ->
+                Error ("unexpected failure message: " ^ message)
+            | Ok () -> Error "expected zero jobs to be rejected"
+            | Error err ->
+                Error ("expected Failure: " ^ Kernel.Exception.to_string err)))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
+let test_build_rejects_negative_jobs_runtime = fun _ctx ->
+  match
+    Fs.with_tempdir
+      ~prefix:"riot_cli_build_negative_jobs"
+      (fun tmpdir ->
+        let workspace = make_valid_workspace tmpdir in
+        match parse_build [ "build"; "--jobs"; "-1"; "demo" ] with
+        | Error err -> Error ("expected build args to parse: " ^ err)
+        | Ok matches ->
+            match Riot_cli.Build.run ~workspace matches with
+            | Error (Failure message)
+              when String.equal message "invalid requested parallelism (-1): jobs must be >= 1" ->
+                Ok ()
+            | Error (Failure message) ->
+                Error ("unexpected failure message: " ^ message)
+            | Ok () -> Error "expected negative jobs to be rejected"
+            | Error err ->
+                Error ("expected Failure: " ^ Kernel.Exception.to_string err)))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
 let test_build_command_accepts_workspace = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"riot_cli_build_command"
@@ -491,6 +578,11 @@ let tests =
     case "build: usage shows variadic packages" test_build_usage_shows_variadic_packages;
     case "build: parse --json flag" test_build_accepts_json_flag;
     case "build: parse --release flag" test_build_accepts_release_flag;
+    case "build: parse --jobs flag" test_build_accepts_jobs_flag;
+    case "build: reject invalid --jobs flag" test_build_rejects_invalid_jobs_flag;
+    case "build: accept --jobs flag at runtime" test_build_accepts_jobs_flag_in_run;
+    case "build: reject zero --jobs at runtime" test_build_rejects_zero_jobs_runtime;
+    case "build: reject negative --jobs at runtime" test_build_rejects_negative_jobs_runtime;
     case "build: command accepts workspace" test_build_command_accepts_workspace;
     case "build: run accepts workspace" test_build_run_accepts_workspace;
     case "test: parse --json flag" test_test_accepts_json_flag;

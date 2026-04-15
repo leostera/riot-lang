@@ -17,11 +17,7 @@ val is_built: t -> bool
 val status_string: t -> string
 
 (** Human-readable status: "ready" or "not built" *)
-val parse_from_toml:
-  Toml.value list ->
-  package_name:Package_name.t ->
-  package_path:Path.t ->
-  t list
+val parse_from_toml: Toml.value list -> package_name:Package_name.t -> package_path:Path.t -> t list
 
 (** Parse [[command]] declarations from TOML.
     

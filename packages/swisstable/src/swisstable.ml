@@ -258,12 +258,7 @@ module RawTable = struct
     let bucket_mask = buckets - 1 in
     let ctrl = Kernel.Bytes.create ~size:(buckets + Group.width) in
     Kernel.Bytes.fill ctrl ~offset:0 ~len:(buckets + Group.width) ~char:(Kernel.Char.chr Tag.empty);
-    {
-      buckets = Array.make ~count:buckets ~value:None;
-      ctrl;
-      len = 0;
-      bucket_mask
-    }
+    { buckets = Array.make ~count:buckets ~value:None; ctrl; len = 0; bucket_mask }
 
   (* Find the bucket index for a key with precomputed hash, or None if not found *)
 
@@ -314,7 +309,11 @@ module RawTable = struct
     let new_bucket_mask = new_buckets - 1 in
     let old_buckets = table.buckets in
     let ctrl = Kernel.Bytes.create ~size:(new_buckets + Group.width) in
-    Kernel.Bytes.fill ctrl ~offset:0 ~len:(new_buckets + Group.width) ~char:(Kernel.Char.chr Tag.empty);
+    Kernel.Bytes.fill
+      ctrl
+      ~offset:0
+      ~len:(new_buckets + Group.width)
+      ~char:(Kernel.Char.chr Tag.empty);
     (* Replace table contents *)
     table.buckets <- Array.make ~count:new_buckets ~value:None;
     table.ctrl <- ctrl;
@@ -379,7 +378,9 @@ module RawTable = struct
     let h2 = hash_h2 hash in
     match find_with_hash table key hash h2 with
     | None -> None
-    | Some idx -> Option.map (Array.get_unchecked table.buckets ~at:idx) ~fn:(fun (_, value) -> value)
+    | Some idx -> Option.map
+      (Array.get_unchecked table.buckets ~at:idx)
+      ~fn:(fun (_, value) -> value)
 
   (* Check if key exists *)
 
@@ -404,15 +405,17 @@ module RawTable = struct
   (* Iterate over all key-value pairs *)
 
   let iter = fun f table ->
-    Array.for_each table.buckets ~fn:(function
-      | Some (k, v) -> f k v
-      | None -> ())
+    Array.for_each table.buckets
+      ~fn:(
+        function
+        | Some (k, v) -> f k v
+        | None -> ()
+      )
 
   (* Fold over all key-value pairs *)
 
   let fold = fun f table acc ->
-    Array.fold_left table.buckets
-      ~acc
+    Array.fold_left table.buckets ~acc
       ~fn:(fun acc bucket ->
         match bucket with
         | Some (k, v) -> f k v acc
@@ -421,8 +424,7 @@ module RawTable = struct
   (* Convert to list *)
 
   let to_list = fun table ->
-    Array.fold_left table.buckets
-      ~acc:[]
+    Array.fold_left table.buckets ~acc:[]
       ~fn:(fun acc bucket ->
         match bucket with
         | Some (k, v) -> (k, v) :: acc

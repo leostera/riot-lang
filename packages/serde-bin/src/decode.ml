@@ -243,7 +243,8 @@ let rec list_backend: 'value. state -> 'value De.t -> 'value vec = fun state dec
 
 and array_backend: 'value. state -> 'value De.t -> 'value array = fun state decode ->
   let len = decode_length state "array" in
-  Array.init ~count:len ~fn:(fun _index ->
+  Array.init ~count:len
+    ~fn:(fun _index ->
       decode.run backend state)
 
 and record_backend:

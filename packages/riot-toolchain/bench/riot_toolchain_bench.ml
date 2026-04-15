@@ -26,17 +26,18 @@ let bench_compile_impl_to_string = fun () ->
     ocamlc
     ~cwd:(Path.v "/tmp/work")
     ~includes:[ Path.v "src"; Path.v "_build/generated"; Path.v "vendor/lib" ]
-    ~flags:
-      [
-        Riot_toolchain.Ocamlc.NoPervasives;
-        Riot_toolchain.Ocamlc.NoStdlib;
-        Riot_toolchain.Ocamlc.Inline 0;
-        Riot_toolchain.Ocamlc.WarnError [ Riot_toolchain.Ocamlc.PartialMatch; Riot_toolchain.Ocamlc.UnusedVariable ];
-        Riot_toolchain.Ocamlc.Raw "-O2";
-      ]
+    ~flags:[
+      Riot_toolchain.Ocamlc.NoPervasives;
+      Riot_toolchain.Ocamlc.NoStdlib;
+      Riot_toolchain.Ocamlc.Inline 0;
+      Riot_toolchain.Ocamlc.WarnError [
+        Riot_toolchain.Ocamlc.PartialMatch;
+        Riot_toolchain.Ocamlc.UnusedVariable
+      ];
+      Riot_toolchain.Ocamlc.Raw "-O2";
+    ]
     ~output:(Path.v "foo.cmx")
-    (Path.v "src/foo.ml")
-  in
+    (Path.v "src/foo.ml") in
   let _ = Riot_toolchain.Ocamlc.to_string invocation in
   ()
 
@@ -54,12 +55,13 @@ let bench_parse_c_error = fun () ->
 
 let medium: Bench.bench_config = { iterations = 300; warmup = 30 }
 
-let benchmarks = Bench.[
-  with_config ~config:medium "riot-toolchain compile_impl to_string" bench_compile_impl_to_string;
-  with_config ~config:medium "riot-toolchain parse ocaml warning" bench_parse_ocaml_warning;
-  with_config ~config:medium "riot-toolchain parse colored ocaml warning" bench_parse_colored_ocaml_warning;
-  with_config ~config:medium "riot-toolchain parse c error" bench_parse_c_error;
-]
+let benchmarks =
+  Bench.[
+    with_config ~config:medium "riot-toolchain compile_impl to_string" bench_compile_impl_to_string;
+    with_config ~config:medium "riot-toolchain parse ocaml warning" bench_parse_ocaml_warning;
+    with_config ~config:medium "riot-toolchain parse colored ocaml warning" bench_parse_colored_ocaml_warning;
+    with_config ~config:medium "riot-toolchain parse c error" bench_parse_c_error;
+  ]
 
 let () =
   Actors.run

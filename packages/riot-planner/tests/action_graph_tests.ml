@@ -8,14 +8,16 @@ let test_toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.def
 
 let make_package = fun name ->
   Riot_model.Package.make
-    ~name:(Package_name.from_string name |> Result.expect ~msg:("expected valid package name: " ^ name))
+    ~name:(Package_name.from_string name
+    |> Result.expect ~msg:("expected valid package name: " ^ name))
     ~path:(Path.v ".")
     ~relative_path:(Path.v ".")
     ()
 
 let make_package_with_paths = fun ~name ~path ~relative_path ->
   Riot_model.Package.make
-    ~name:(Package_name.from_string name |> Result.expect ~msg:("expected valid package name: " ^ name))
+    ~name:(Package_name.from_string name
+    |> Result.expect ~msg:("expected valid package name: " ^ name))
     ~path
     ~relative_path
     ()
@@ -32,15 +34,16 @@ let make_write_spec = fun ~package ~path ~content ~deps ~dependency_hashes ->
 
 let find_action_node_by_output = fun graph output_name ->
   Riot_planner.Action_graph.nodes graph
-  |> List.find ~fn:(fun (node: Riot_planner.Action_node.t) ->
+  |> List.find
+    ~fn:(fun (node: Riot_planner.Action_node.t) ->
       List.any node.value.outs ~fn:(fun output -> Path.to_string output = output_name))
 
 let dependency_output_names = fun graph (node: Riot_planner.Action_node.t) ->
-  List.filter_map node.deps ~fn:(fun dep_id ->
-    match G.get_node (Riot_planner.Action_graph.graph graph) dep_id with
-    | Some dep_node ->
-        List.head dep_node.value.outs |> Option.map ~fn:Path.to_string
-    | None -> None)
+  List.filter_map node.deps
+    ~fn:(fun dep_id ->
+      match G.get_node (Riot_planner.Action_graph.graph graph) dep_id with
+      | Some dep_node -> List.head dep_node.value.outs |> Option.map ~fn:Path.to_string
+      | None -> None)
 
 let test_action_graph_json_round_trip_preserves_dependencies = fun _ctx ->
   let package = make_package "pkg" in
@@ -77,9 +80,7 @@ let test_action_graph_json_round_trip_preserves_dependencies = fun _ctx ->
       match Data.Json.get_field "nodes" encoded_decoded with
       | Some (Data.Json.Array node_jsons) ->
           let edge_count =
-            List.fold_left
-              node_jsons
-              ~acc:0
+            List.fold_left node_jsons ~acc:0
               ~fn:(fun acc node_json ->
                 match Data.Json.get_field "dependencies" node_json with
                 | Some (Data.Json.Array deps) -> acc + List.length deps
@@ -169,11 +170,11 @@ let test_action_graph_json_round_trip_preserves_dependency_order = fun _ctx ->
   in
   let node_c = Riot_planner.Action_graph.add_node graph spec_c in
   let spec_d =
-    make_write_spec
-      ~package
-      ~path:(Path.v "d.txt")
-      ~content:"d"
-      ~deps:[ node_a.id; node_b.id; node_c.id ]
+    make_write_spec ~package ~path:(Path.v "d.txt") ~content:"d" ~deps:[
+      node_a.id;
+      node_b.id;
+      node_c.id
+    ]
       ~dependency_hashes:(fun dep_id ->
         if Graph.SimpleGraph.Node_id.eq dep_id node_a.id then
           Riot_planner.Action_node.get_hash node_a
@@ -288,8 +289,7 @@ let test_library_builds_do_not_emit_shared_library_actions = fun _ctx ->
           ~needs_dynlink:false
           module_graph in
         let shared_actions =
-          List.filter
-            (Riot_planner.Action_graph.to_action_list action_graph)
+          List.filter (Riot_planner.Action_graph.to_action_list action_graph)
             ~fn:(
               function
               | Riot_planner.Action.CreateSharedLibrary _ -> true
@@ -359,8 +359,7 @@ let test_library_actions_exclude_ml_object_files = fun _ctx ->
           ~needs_dynlink:false
           module_graph in
         match
-          List.find
-            (Riot_planner.Action_graph.to_action_list action_graph)
+          List.find (Riot_planner.Action_graph.to_action_list action_graph)
             ~fn:(
               function
               | Riot_planner.Action.CreateLibrary _ -> true
@@ -426,8 +425,7 @@ let test_release_profile_flags_flow_into_compile_actions = fun _ctx ->
           ~needs_dynlink:false
           module_graph in
         match
-          List.find
-            (Riot_planner.Action_graph.to_action_list action_graph)
+          List.find (Riot_planner.Action_graph.to_action_list action_graph)
             ~fn:(
               function
               | Riot_planner.Action.CompileImplementation _ -> true
@@ -435,7 +433,9 @@ let test_release_profile_flags_flow_into_compile_actions = fun _ctx ->
             )
         with
         | Some (Riot_planner.Action.CompileImplementation { flags; _ }) ->
-            let has_flag expected = List.any flags ~fn:(fun flag -> flag = expected) in
+            let has_flag expected =
+              List.any flags ~fn:(fun flag -> flag = expected)
+            in
             if not (has_flag (Riot_toolchain.Ocamlc.Inline 100)) then
               Error "expected release compile action to include inline threshold"
             else if not (has_flag Riot_toolchain.Ocamlc.NoAssert) then
@@ -474,12 +474,10 @@ let test_create_library_preserves_module_dependency_order = fun _ctx ->
           ~profile:Riot_model.Profile.release
           () in
         let module_graph = G.make () in
-        let make_ml_node = fun filename ->
-          let mod_ =
-            Riot_model.Module.make
-              ~namespace:Riot_model.Namespace.empty
-              ~filename:(Path.v ("src/" ^ filename ^ ".ml"))
-          in
+        let make_ml_node filename =
+          let mod_ = Riot_model.Module.make
+            ~namespace:Riot_model.Namespace.empty
+            ~filename:(Path.v ("src/" ^ filename ^ ".ml")) in
           G.add_node
             module_graph
             (Riot_planner.Module_node.make_ml
@@ -508,8 +506,7 @@ let test_create_library_preserves_module_dependency_order = fun _ctx ->
           ~needs_dynlink:false
           module_graph in
         match
-          List.find
-            (Riot_planner.Action_graph.to_action_list action_graph)
+          List.find (Riot_planner.Action_graph.to_action_list action_graph)
             ~fn:(fun action ->
               match action with
               | Riot_planner.Action.CreateLibrary _ -> true

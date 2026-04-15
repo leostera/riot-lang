@@ -5,7 +5,8 @@ module G = Std.Graph.SimpleGraph
 
 let make_package = fun name ->
   Riot_model.Package.make
-    ~name:(Package_name.from_string name |> Result.expect ~msg:("expected valid package name: " ^ name))
+    ~name:(Package_name.from_string name
+    |> Result.expect ~msg:("expected valid package name: " ^ name))
     ~path:(Path.v ".")
     ~relative_path:(Path.v ".")
     ()
@@ -36,8 +37,11 @@ let test_transitive_closure_dependency_first_order = fun _ctx ->
   |> List.map ~fn:(fun d -> d.Riot_planner.Dependency.package.name) in
   if
     names
-    = List.map [ "c"; "b"; "a" ] ~fn:(fun value ->
-      Package_name.from_string value |> Result.expect ~msg:("expected valid package name: " ^ value))
+    = List.map
+      [ "c"; "b"; "a" ]
+      ~fn:(fun value ->
+        Package_name.from_string value
+        |> Result.expect ~msg:("expected valid package name: " ^ value))
   then
     Ok ()
   else
@@ -52,11 +56,8 @@ let test_library_cmxa_uses_store_location = fun _ctx ->
       hash = Crypto.hash_string "std"
     } in
   let expected =
-    Path.(
-      dep.artifact_dir
-      / Riot_model.Module_name.(of_string (Package_name.to_string dep.package.name) |> cmxa)
-    )
-  in
+    Path.(dep.artifact_dir
+    / Riot_model.Module_name.(of_string (Package_name.to_string dep.package.name) |> cmxa)) in
   let got = Riot_planner.Dependency.library_cmxa dep in
   if Path.equal expected got then
     Ok ()
@@ -75,11 +76,9 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
         let _ = Fs.write "type t = int\nlet x = 1\n" Path.(src_dir / Path.v "foo.ml")
         |> Result.expect ~msg:"expected foo.ml write to succeed" in
         let _ = Fs.write "val y : Foo.t\n" Path.(src_dir / Path.v "bar.mli") |> Result.expect ~msg:"expected bar.mli write to succeed" in
-        let package =
-          Riot_model.Package.make
-            ~name:(Package_name.from_string "pkg" |> Result.expect ~msg:"expected valid package name")
-            ~path:package_root
-            ~relative_path:(Path.v "pkg")
+        let package = Riot_model.Package.make ~name:(Package_name.from_string "pkg"
+        |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:(Path.v
+          "pkg")
           ~sources:{
             src = [ Path.v "src/foo.mli"; Path.v "src/foo.ml"; Path.v "src/bar.mli" ];
             native = [];
@@ -89,13 +88,11 @@ let test_module_graph_prefers_implementation_when_interface_exists = fun _ctx ->
           }
           ()
         in
-        let workspace =
-          Riot_model.Workspace.make_realized
-            ~root:tmpdir
-            ~packages:[ package ]
-            ~target_dir:"target"
-            ()
-        in
+        let workspace = Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ package ]
+          ~target_dir:"target"
+          () in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"expected toolchain init to succeed" in
         let graph_builder = Riot_planner.Module_graph.create
@@ -183,11 +180,9 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
         let _ = write Path.(process_dir / Path.v "unix.ml") "let inherited : Fs.File.t option = None\n" in
         let _ = write Path.(env_dir / Path.v "env.ml") "include Unix\n" in
         let _ = write Path.(env_dir / Path.v "unix.ml") "let cwd = \".\"\n" in
-        let package =
-          Riot_model.Package.make
-            ~name:(Package_name.from_string "kernel-new" |> Result.expect ~msg:"expected valid package name")
-            ~path:package_root
-            ~relative_path:(Path.v "pkg")
+        let package = Riot_model.Package.make ~name:(Package_name.from_string "kernel-new"
+        |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:(Path.v
+          "pkg")
           ~sources:{
             src =
               [
@@ -209,13 +204,11 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
           }
           ()
         in
-        let workspace =
-          Riot_model.Workspace.make_realized
-            ~root:tmpdir
-            ~packages:[ package ]
-            ~target_dir:"target"
-            ()
-        in
+        let workspace = Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ package ]
+          ~target_dir:"target"
+          () in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"expected toolchain init to succeed" in
         let graph_builder = Riot_planner.Module_graph.create
@@ -226,10 +219,7 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
             root_mode = Riot_planner.Module_graph.Library_root {
               library_name = Package_name.to_string package.name
             };
-            namespace =
-              Riot_model.Module_name.(
-                Package_name.to_string package.name |> of_string |> to_string
-              );
+            namespace = Riot_model.Module_name.(Package_name.to_string package.name |> of_string |> to_string);
             package;
             toolchain;
             workspace;
@@ -258,7 +248,9 @@ let test_module_graph_resolves_nested_local_unix_backend = fun _ctx ->
               G.topo_sort graph
             ) with
             | Ok file_node, Ok file_unix_node, Ok process_unix_node, Ok _ ->
-                let depends_on_file_unix = List.any file_node.deps ~fn:(G.Node_id.eq file_unix_node.id) in
+                let depends_on_file_unix = List.any
+                  file_node.deps
+                  ~fn:(G.Node_id.eq file_unix_node.id) in
                 let depends_on_process_unix = List.any
                   file_node.deps
                   ~fn:(G.Node_id.eq process_unix_node.id) in
@@ -288,12 +280,9 @@ let test_module_graph_uses_explicit_root_library_path = fun _ctx ->
         |> Result.expect ~msg:"expected lib.ml write to succeed" in
         let _ = Fs.write "let value = 42\n" Path.(src_dir / Path.v "helper.ml")
         |> Result.expect ~msg:"expected helper.ml write to succeed" in
-        let package =
-          Riot_model.Package.make
-            ~name:(Package_name.from_string "pkg" |> Result.expect ~msg:"expected valid package name")
-            ~path:package_root
-            ~relative_path:(Path.v "pkg")
-          ~library:{ path = Path.v "src/lib.ml" }
+        let package = Riot_model.Package.make ~name:(Package_name.from_string "pkg"
+        |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:(Path.v
+          "pkg") ~library:{ path = Path.v "src/lib.ml" }
           ~sources:{
             src = [ Path.v "src/lib.ml"; Path.v "src/helper.ml" ];
             native = [];
@@ -303,13 +292,11 @@ let test_module_graph_uses_explicit_root_library_path = fun _ctx ->
           }
           ()
         in
-        let workspace =
-          Riot_model.Workspace.make_realized
-            ~root:tmpdir
-            ~packages:[ package ]
-            ~target_dir:"target"
-            ()
-        in
+        let workspace = Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ package ]
+          ~target_dir:"target"
+          () in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"expected toolchain init to succeed" in
         let graph_builder = Riot_planner.Module_graph.create
@@ -331,30 +318,33 @@ let test_module_graph_uses_explicit_root_library_path = fun _ctx ->
         | Ok () -> (
             let graph = Riot_planner.Module_graph.graph graph_builder in
             match G.topo_sort graph with
-            | Error cycle_ids ->
-                Error ("unexpected cycle: "
-                ^ String.concat " -> " (List.map cycle_ids ~fn:G.Node_id.to_string))
+            | Error cycle_ids -> Error ("unexpected cycle: "
+            ^ String.concat " -> " (List.map cycle_ids ~fn:G.Node_id.to_string))
             | Ok _ ->
                 let impl_nodes =
                   G.map graph ~fn:(fun x -> x)
-                  |> List.filter_map ~fn:(fun (_id, (node: Riot_planner.Module_node.t G.node)) ->
-                    match node.value.kind with
-                    | Riot_planner.Module_node.ML mod_ ->
-                        Some (mod_, node.value.file)
-                    | _ -> None)
+                  |> List.filter_map
+                    ~fn:(fun (_id, (node: Riot_planner.Module_node.t G.node)) ->
+                      match node.value.kind with
+                      | Riot_planner.Module_node.ML mod_ -> Some (mod_, node.value.file)
+                      | _ -> None)
                 in
                 let has_pkg_root =
-                  List.any impl_nodes ~fn:(fun (mod_, file) ->
-                    String.equal (Riot_model.Module_name.to_string (Riot_model.Module.module_name mod_)) "Pkg"
-                    && match file with
-                    | Riot_planner.Module_node.Concrete path -> Path.equal path (Path.v "src/lib.ml")
-                    | _ -> false)
+                  List.any impl_nodes
+                    ~fn:(fun (mod_, file) ->
+                      String.equal
+                        (Riot_model.Module_name.to_string (Riot_model.Module.module_name mod_))
+                        "Pkg"
+                      && match file with
+                      | Riot_planner.Module_node.Concrete path -> Path.equal
+                        path
+                        (Path.v "src/lib.ml")
+                      | _ -> false)
                 in
                 let has_child_lib =
-                  List.any impl_nodes ~fn:(fun (mod_, _file) ->
-                    String.equal
-                      (Riot_model.Module.namespaced_name mod_)
-                      "Pkg__Lib")
+                  List.any impl_nodes
+                    ~fn:(fun (mod_, _file) ->
+                      String.equal (Riot_model.Module.namespaced_name mod_) "Pkg__Lib")
                 in
                 if has_pkg_root && not has_child_lib then
                   Ok ()
@@ -378,12 +368,9 @@ let test_module_graph_uses_explicit_root_library_path_case_insensitively = fun _
         |> Result.expect ~msg:"expected Krasny.ml write to succeed" in
         let _ = Fs.write "let value = 42\n" Path.(src_dir / Path.v "helper.ml")
         |> Result.expect ~msg:"expected helper.ml write to succeed" in
-        let package =
-          Riot_model.Package.make
-            ~name:(Package_name.from_string "krasny" |> Result.expect ~msg:"expected valid package name")
-            ~path:package_root
-            ~relative_path:(Path.v "pkg")
-          ~library:{ path = Path.v "src/krasny.ml" }
+        let package = Riot_model.Package.make ~name:(Package_name.from_string "krasny"
+        |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:(Path.v
+          "pkg") ~library:{ path = Path.v "src/krasny.ml" }
           ~sources:{
             src = [ Path.v "src/Krasny.ml"; Path.v "src/helper.ml" ];
             native = [];
@@ -393,13 +380,11 @@ let test_module_graph_uses_explicit_root_library_path_case_insensitively = fun _
           }
           ()
         in
-        let workspace =
-          Riot_model.Workspace.make_realized
-            ~root:tmpdir
-            ~packages:[ package ]
-            ~target_dir:"target"
-            ()
-        in
+        let workspace = Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ package ]
+          ~target_dir:"target"
+          () in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"expected toolchain init to succeed" in
         let graph_builder = Riot_planner.Module_graph.create
@@ -421,30 +406,33 @@ let test_module_graph_uses_explicit_root_library_path_case_insensitively = fun _
         | Ok () -> (
             let graph = Riot_planner.Module_graph.graph graph_builder in
             match G.topo_sort graph with
-            | Error cycle_ids ->
-                Error ("unexpected cycle: "
-                ^ String.concat " -> " (List.map cycle_ids ~fn:G.Node_id.to_string))
+            | Error cycle_ids -> Error ("unexpected cycle: "
+            ^ String.concat " -> " (List.map cycle_ids ~fn:G.Node_id.to_string))
             | Ok _ ->
                 let impl_nodes =
                   G.map graph ~fn:(fun x -> x)
-                  |> List.filter_map ~fn:(fun (_id, (node: Riot_planner.Module_node.t G.node)) ->
-                    match node.value.kind with
-                    | Riot_planner.Module_node.ML mod_ ->
-                        Some (mod_, node.value.file)
-                    | _ -> None)
+                  |> List.filter_map
+                    ~fn:(fun (_id, (node: Riot_planner.Module_node.t G.node)) ->
+                      match node.value.kind with
+                      | Riot_planner.Module_node.ML mod_ -> Some (mod_, node.value.file)
+                      | _ -> None)
                 in
                 let has_pkg_root =
-                  List.any impl_nodes ~fn:(fun (mod_, file) ->
-                    String.equal (Riot_model.Module_name.to_string (Riot_model.Module.module_name mod_)) "Krasny"
-                    && match file with
-                    | Riot_planner.Module_node.Concrete path -> Path.equal path (Path.v "src/Krasny.ml")
-                    | _ -> false)
+                  List.any impl_nodes
+                    ~fn:(fun (mod_, file) ->
+                      String.equal
+                        (Riot_model.Module_name.to_string (Riot_model.Module.module_name mod_))
+                        "Krasny"
+                      && match file with
+                      | Riot_planner.Module_node.Concrete path -> Path.equal
+                        path
+                        (Path.v "src/Krasny.ml")
+                      | _ -> false)
                 in
                 let has_child_krasny =
-                  List.any impl_nodes ~fn:(fun (mod_, _file) ->
-                    String.equal
-                      (Riot_model.Module.namespaced_name mod_)
-                      "Krasny__Krasny")
+                  List.any impl_nodes
+                    ~fn:(fun (mod_, _file) ->
+                      String.equal (Riot_model.Module.namespaced_name mod_) "Krasny__Krasny")
                 in
                 if has_pkg_root && not has_child_krasny then
                   Ok ()
@@ -480,11 +468,9 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
         let _ = write Path.(testing_dir / Path.v "shared.ml") "let level = \"testing\"\n" in
         let _ = write Path.(testing_dir / Path.v "user.ml") "include Shared\n" in
         let _ = write Path.(testing_dir / Path.v "report.ml") "include Helpers\n" in
-        let package =
-          Riot_model.Package.make
-            ~name:(Package_name.from_string "deep-graph" |> Result.expect ~msg:"expected valid package name")
-            ~path:package_root
-            ~relative_path:(Path.v "pkg")
+        let package = Riot_model.Package.make ~name:(Package_name.from_string "deep-graph"
+        |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:(Path.v
+          "pkg")
           ~sources:{
             src = [
               Path.v "src/shared.ml";
@@ -502,13 +488,11 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
           }
           ()
         in
-        let workspace =
-          Riot_model.Workspace.make_realized
-            ~root:tmpdir
-            ~packages:[ package ]
-            ~target_dir:"target"
-            ()
-        in
+        let workspace = Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ package ]
+          ~target_dir:"target"
+          () in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"expected toolchain init to succeed" in
         let graph_builder = Riot_planner.Module_graph.create
@@ -519,10 +503,7 @@ let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx 
             root_mode = Riot_planner.Module_graph.Library_root {
               library_name = Package_name.to_string package.name
             };
-            namespace =
-              Riot_model.Module_name.(
-                Package_name.to_string package.name |> of_string |> to_string
-              );
+            namespace = Riot_model.Module_name.(Package_name.to_string package.name |> of_string |> to_string);
             package;
             toolchain;
             workspace;
@@ -604,16 +585,8 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
         let _ = write Path.(net_dir / Path.v "net.ml") "module Udp_socket = Udp_socket\nmodule Udp_server = Udp_server\n" in
         let _ = write Path.(net_dir / Path.v "udp_socket.mli") "type t\n" in
         let _ = write Path.(net_dir / Path.v "udp_socket.ml") "type t = unit\n" in
-        let _ =
-          write
-            Path.(net_dir / Path.v "udp_server.mli")
-            "type handler = socket:Udp_socket.t -> bytes -> unit\nval run : handler -> unit\n"
-        in
-        let _ =
-          write
-            Path.(net_dir / Path.v "udp_server.ml")
-            "type handler = socket:Udp_socket.t -> bytes -> unit\nlet run _ = ()\n"
-        in
+        let _ = write Path.(net_dir / Path.v "udp_server.mli") "type handler = socket:Udp_socket.t -> bytes -> unit\nval run : handler -> unit\n" in
+        let _ = write Path.(net_dir / Path.v "udp_server.ml") "type handler = socket:Udp_socket.t -> bytes -> unit\nlet run _ = ()\n" in
         let source_orders = [
           [
             Path.v "src/demo.ml";
@@ -650,34 +623,29 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
         ] in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"expected toolchain init to succeed" in
-        let source_order_to_string source_order =
-          source_order |> List.map ~fn:Path.to_string |> String.concat ", "
-        in
+        let source_order_to_string source_order = source_order
+        |> List.map ~fn:Path.to_string
+        |> String.concat ", " in
         let rec run = function
           | [] -> Ok ()
           | source_order :: rest ->
-              let package =
-                Riot_model.Package.make
-                  ~name:(Package_name.from_string "demo" |> Result.expect ~msg:"expected valid package name")
-                  ~path:package_root
-                  ~relative_path:(Path.v "pkg")
-                  ~library:{ path = Path.v "src/demo.ml" }
-                  ~sources:{
-                    src = source_order;
-                    native = [];
-                    tests = [];
-                    examples = [];
-                    bench = [];
-                  }
-                  ()
+              let package = Riot_model.Package.make ~name:(Package_name.from_string "demo"
+              |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:(Path.v
+                "pkg") ~library:{ path = Path.v "src/demo.ml" }
+                ~sources:{
+                  src = source_order;
+                  native = [];
+                  tests = [];
+                  examples = [];
+                  bench = [];
+                }
+                ()
               in
-              let workspace =
-                Riot_model.Workspace.make_realized
-                  ~root:tmpdir
-                  ~packages:[ package ]
-                  ~target_dir:"target"
-                  ()
-              in
+              let workspace = Riot_model.Workspace.make_realized
+                ~root:tmpdir
+                ~packages:[ package ]
+                ~target_dir:"target"
+                () in
               let graph_builder = Riot_planner.Module_graph.create
                 Riot_planner.Module_graph.{
                   root = package_root;
@@ -686,21 +654,19 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
                   root_mode = Riot_planner.Module_graph.Library_root {
                     library_name = Package_name.to_string package.name
                   };
-                  namespace =
-                    Riot_model.Module_name.(
-                      Package_name.to_string package.name |> of_string |> to_string
-                    );
+                  namespace = Riot_model.Module_name.(Package_name.to_string package.name
+                  |> of_string
+                  |> to_string);
                   package;
                   toolchain;
                   workspace;
                 }
               in
               match Riot_planner.Module_graph.wire_dependencies graph_builder with
-              | Error err ->
-                  Error ("unexpected planner error for allowed source order ["
-                  ^ source_order_to_string source_order
-                  ^ "]: "
-                  ^ Riot_planner.Planning_error.to_string err)
+              | Error err -> Error ("unexpected planner error for allowed source order ["
+              ^ source_order_to_string source_order
+              ^ "]: "
+              ^ Riot_planner.Planning_error.to_string err)
               | Ok () ->
                   let graph = Riot_planner.Module_graph.graph graph_builder in
                   let find_mli qualified_name =
@@ -724,37 +690,35 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
                         qualified_name
                       | _ -> false
                     in
-                    let matches = List.filter (G.map graph ~fn:(fun x -> x)) ~fn:matches in
+                    let matches =
+                      List.filter (G.map graph ~fn:(fun x -> x)) ~fn:matches
+                    in
                     if List.is_empty matches then
                       Error ("expected module not found: " ^ qualified_name)
                     else
                       Ok (List.map matches ~fn:(fun (_node_id, node) -> node))
                   in
                   let module_dependency_labels ((node: Riot_planner.Module_node.t G.node)) =
-                    List.filter_map node.deps ~fn:(fun dep_id ->
-                      match G.get_node graph dep_id with
-                      | Some dep_node -> (
-                          match dep_node.value.kind with
-                          | Riot_planner.Module_node.ML mod_ ->
-                              Some ("ML(" ^ Riot_model.Module.namespaced_name mod_ ^ ")")
-                          | Riot_planner.Module_node.MLI mod_ ->
-                              Some ("MLI(" ^ Riot_model.Module.namespaced_name mod_ ^ ")")
-                          | Riot_planner.Module_node.Library _ ->
-                              Some "Library"
-                          | Riot_planner.Module_node.Binary _ ->
-                              Some "Binary"
-                          | Riot_planner.Module_node.C ->
-                              Some "C"
-                          | Riot_planner.Module_node.H ->
-                              Some "H"
-                          | Riot_planner.Module_node.Native _ ->
-                              Some "Native"
-                          | Riot_planner.Module_node.Other label ->
-                              Some ("Other(" ^ label ^ ")")
-                          | Riot_planner.Module_node.Root ->
-                              Some "Root"
-                        )
-                      | None -> None)
+                    List.filter_map node.deps
+                      ~fn:(fun dep_id ->
+                        match G.get_node graph dep_id with
+                        | Some dep_node -> (
+                            match dep_node.value.kind with
+                            | Riot_planner.Module_node.ML mod_ -> Some ("ML("
+                            ^ Riot_model.Module.namespaced_name mod_
+                            ^ ")")
+                            | Riot_planner.Module_node.MLI mod_ -> Some ("MLI("
+                            ^ Riot_model.Module.namespaced_name mod_
+                            ^ ")")
+                            | Riot_planner.Module_node.Library _ -> Some "Library"
+                            | Riot_planner.Module_node.Binary _ -> Some "Binary"
+                            | Riot_planner.Module_node.C -> Some "C"
+                            | Riot_planner.Module_node.H -> Some "H"
+                            | Riot_planner.Module_node.Native _ -> Some "Native"
+                            | Riot_planner.Module_node.Other label -> Some ("Other(" ^ label ^ ")")
+                            | Riot_planner.Module_node.Root -> Some "Root"
+                          )
+                        | None -> None)
                   in
                   match (
                     find_mli "Demo__Net__Udp_server",
@@ -776,11 +740,9 @@ let test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orde
                         ^ String.concat ", " (module_dependency_labels udp_server_mli)
                         ^ "]")
                   | (Error msg, _, _)
-                  | (_, Error msg, _ ) ->
-                      Error msg
-                  | _, _, Error cycle_ids ->
-                      Error ("unexpected cycle: "
-                      ^ String.concat " -> " (List.map cycle_ids ~fn:G.Node_id.to_string))
+                  | (_, Error msg, _) -> Error msg
+                  | _, _, Error cycle_ids -> Error ("unexpected cycle: "
+                  ^ String.concat " -> " (List.map cycle_ids ~fn:G.Node_id.to_string))
         in
         run source_orders)
   with
@@ -796,9 +758,7 @@ let tests =
     case "module graph uses explicit root library path despite case mismatch" test_module_graph_uses_explicit_root_library_path_case_insensitively;
     case "module graph resolves nested local unix backend" test_module_graph_resolves_nested_local_unix_backend;
     case "module graph resolves deeply nested modules namespace-first" test_module_graph_resolves_deeply_nested_modules_namespace_first;
-    case
-      "module graph keeps nested sibling dependency across allowed source orders"
-      test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orders;
+    case "module graph keeps nested sibling dependency across allowed source orders" test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orders;
   ]
 
 let name = "Planner Dependency Resolution Tests"

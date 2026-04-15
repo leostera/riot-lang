@@ -751,7 +751,9 @@ let to_json = fun err ->
 let from_json = fun json ->
   let open Data.Json in
     let field name fields =
-      List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name)
+      List.find fields
+        ~fn:(fun (field_name, _) ->
+          String.equal field_name name)
       |> Option.map ~fn:(fun (_, value) -> value)
     in
     match json with
@@ -761,8 +763,7 @@ let from_json = fun json ->
         match (kind_json, span_json) with
         | Some (Object kind_fields), Some (Object span_fields) -> (
             let id_opt =
-              Option.and_then
-                (field "id" kind_fields)
+              Option.and_then (field "id" kind_fields)
                 ~fn:(
                   function
                   | String s -> Some s
@@ -774,8 +775,7 @@ let from_json = fun json ->
               match found_obj with
               | Some (Object found_fields) ->
                   let kind =
-                    Option.and_then
-                      (field "kind" found_fields)
+                    Option.and_then (field "kind" found_fields)
                       ~fn:(
                         function
                         | String s -> Some s
@@ -784,8 +784,7 @@ let from_json = fun json ->
                     |> Option.unwrap_or ~default:""
                   in
                   let text =
-                    Option.and_then
-                      (field "text" found_fields)
+                    Option.and_then (field "text" found_fields)
                       ~fn:(
                         function
                         | String s -> Some s
@@ -797,8 +796,7 @@ let from_json = fun json ->
               | _ -> { kind = ""; text = "" }
             in
             let start =
-              Option.and_then
-                (field "start" span_fields)
+              Option.and_then (field "start" span_fields)
                 ~fn:(
                   function
                   | Int n -> Some n
@@ -807,8 +805,7 @@ let from_json = fun json ->
               |> Option.unwrap_or ~default:0
             in
             let end_ =
-              Option.and_then
-                (field "end" span_fields)
+              Option.and_then (field "end" span_fields)
                 ~fn:(
                   function
                   | Int n -> Some n
@@ -820,8 +817,7 @@ let from_json = fun json ->
             match id_opt with
             | Some id ->
                 let expected =
-                  Option.and_then
-                    (field "expected" kind_fields)
+                  Option.and_then (field "expected" kind_fields)
                     ~fn:(
                       function
                       | String s -> Some s
@@ -830,8 +826,7 @@ let from_json = fun json ->
                   |> Option.unwrap_or ~default:""
                 in
                 let fix =
-                  Option.and_then
-                    (field "fix" kind_fields)
+                  Option.and_then (field "fix" kind_fields)
                     ~fn:(
                       function
                       | String s -> Some s

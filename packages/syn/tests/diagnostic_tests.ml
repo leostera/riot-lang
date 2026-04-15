@@ -6,9 +6,9 @@ let canonicalize_json =
   let rec loop = function
     | Json.Object fields ->
         Json.Object (
-          fields
-          |> List.map ~fn:(fun (key, value) -> (key, loop value))
-          |> List.sort ~compare:(fun (left, _) (right, _) -> String.compare left right)
+          fields |> List.map ~fn:(fun (key, value) -> (key, loop value)) |> List.sort
+            ~compare:(fun (left, _) (right, _) ->
+              String.compare left right)
         )
     | Json.Array items -> Json.Array (List.map items ~fn:loop)
     | other -> other
@@ -19,9 +19,7 @@ let test_diagnostic = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let source = Fs.read ctx.fixture_path |> Result.expect ~msg:"Failed to read test file" in
   let parse_result = Syn.parse ~filename:ctx.fixture_path source in
   let actual_diagnostics = parse_result.Parser.diagnostics in
-  let actual_json =
-    Json.Array (List.map actual_diagnostics ~fn:Diagnostic.to_json) |> canonicalize_json
-  in
+  let actual_json = Json.Array (List.map actual_diagnostics ~fn:Diagnostic.to_json) |> canonicalize_json in
   Test.Snapshot.assert_with
     ~ctx:ctx.test
     ~render:(fun json -> Json.to_string_pretty json ^ "\n")

@@ -17,9 +17,11 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.for_each ~fn:(fun { buffer = chunk; offset; length } ->
+      IO.Iovec.for_each
+        ~fn:(fun { buffer=chunk; offset; length } ->
           IO.Buffer.add_subbytes buffer chunk offset length;
-          written := !written + length) bufs;
+          written := !written + length)
+        bufs;
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -370,11 +372,7 @@ let test_roundtrips_large_float = fun _ctx ->
 
 let test_decodes_negative_int64_across_reader_chunk_boundary = fun _ctx ->
   match Serde_json.of_reader De.int64 (String.to_reader ~chunk_size:1 "-1689690667") with
-  | Ok actual ->
-      expect_equal
-        ~expected:(-1689690667L)
-        ~actual
-        ~message:"expected serde-json to decode a negative int64 when the sign and digits are split across reader chunks"
+  | Ok actual -> expect_equal ~expected:(-1_689_690_667L) ~actual ~message:"expected serde-json to decode a negative int64 when the sign and digits are split across reader chunks"
   | Error err -> Error ("reader decode failed: " ^ Serde.Error.to_string err)
 
 let tests =
@@ -390,9 +388,7 @@ let tests =
     case "serde-json roundtrips records" test_roundtrips_record;
     case "serde-json roundtrips arrays" test_roundtrips_arrays;
     case "serde-json roundtrips large floats" test_roundtrips_large_float;
-    case
-      "serde-json decodes negative int64 across reader chunk boundary"
-      test_decodes_negative_int64_across_reader_chunk_boundary;
+    case "serde-json decodes negative int64 across reader chunk boundary" test_decodes_negative_int64_across_reader_chunk_boundary;
   ]
 
 let () =

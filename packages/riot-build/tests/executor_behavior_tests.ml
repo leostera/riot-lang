@@ -2,14 +2,17 @@ open Std
 open Riot_build
 open Std.Collections
 open Riot_model
+
+module Action_executor = Riot_build.Internal.Action_executor
+module Sandbox = Riot_build.Internal.Sandbox
+
 module Test = Std.Test
 
 let package_name = fun value ->
   Package_name.from_string value |> Result.expect ~msg:("expected valid package name: " ^ value)
 
 let test_toolchain = fun () ->
-  Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
-  |> Result.expect ~msg:"failed to initialize toolchain"
+  Riot_toolchain.init ~config:Riot_model.Toolchain_config.default |> Result.expect ~msg:"failed to initialize toolchain"
 
 let make_workspace = fun root ->
   Riot_model.Workspace.{
@@ -64,8 +67,7 @@ let test_execute_empty_graph_returns_no_results = fun _ctx ->
           ~store:(Riot_store.Store.create ~workspace)
           ~session_id:(Riot_model.Session_id.make ())
           (test_toolchain ())
-          ~concurrency:2
-        in
+          ~concurrency:2 in
         let _ = Sandbox.cleanup sandbox in
         if HashMap.length result.completed = 0 then
           Ok ()
@@ -86,23 +88,15 @@ let test_execute_runs_independent_actions = fun _ctx ->
         let node_a = make_node_in
           graph
           ~package
-          ~actions:[ Riot_planner.Action.WriteFile {
-            destination = Path.v "a.txt";
-            content = "a"
-          }; ]
+          ~actions:[ Riot_planner.Action.WriteFile { destination = Path.v "a.txt"; content = "a" }; ]
           ~outs:[ Path.v "a.txt" ]
-          ()
-        in
+          () in
         let node_b = make_node_in
           graph
           ~package
-          ~actions:[ Riot_planner.Action.WriteFile {
-            destination = Path.v "b.txt";
-            content = "b"
-          }; ]
+          ~actions:[ Riot_planner.Action.WriteFile { destination = Path.v "b.txt"; content = "b" }; ]
           ~outs:[ Path.v "b.txt" ]
-          ()
-        in
+          () in
         let sandbox = Sandbox.create ~workspace () ~package_name:package.Riot_model.Package.name in
         let result = Action_executor.execute
           ~action_graph:graph
@@ -110,15 +104,16 @@ let test_execute_runs_independent_actions = fun _ctx ->
           ~store
           ~session_id:(Riot_model.Session_id.make ())
           (test_toolchain ())
-          ~concurrency:2
-        in
-        let output_a = Fs.exists Path.(Sandbox.get_dir sandbox / Path.v "a.txt") |> Result.unwrap_or ~default:false in
-        let output_b = Fs.exists Path.(Sandbox.get_dir sandbox / Path.v "b.txt") |> Result.unwrap_or ~default:false in
+          ~concurrency:2 in
+        let output_a = Fs.exists Path.(Sandbox.get_dir sandbox / Path.v "a.txt")
+        |> Result.unwrap_or ~default:false in
+        let output_b = Fs.exists Path.(Sandbox.get_dir sandbox / Path.v "b.txt")
+        |> Result.unwrap_or ~default:false in
         let result_a = find_result result node_a in
         let result_b = find_result result node_b in
         let _ = Sandbox.cleanup sandbox in
         match (result_a, result_b) with
-        | Some { status = Action_executor.Executed; _ }, Some { status = Action_executor.Executed; _ } ->
+        | Some { status=Action_executor.Executed; _ }, Some { status=Action_executor.Executed; _ } ->
             if output_a && output_b then
               Ok ()
             else
@@ -139,34 +134,34 @@ let test_execute_skips_dependent_action_after_failure = fun _ctx ->
         let failing_node = make_node_in
           graph
           ~package
-          ~actions:[ Riot_planner.Action.CopyFile {
-            source = Path.v "missing.txt";
-            destination = Path.v "fail.txt"
-          }; ]
+          ~actions:[
+            Riot_planner.Action.CopyFile {
+              source = Path.v "missing.txt";
+              destination = Path.v "fail.txt"
+            };
+          ]
           ~outs:[ Path.v "fail.txt" ]
-          ()
-        in
+          () in
         let dependent_node = make_node_in
           graph
           ~package
           ~deps:[ node_id failing_node ]
-          ~actions:[ Riot_planner.Action.WriteFile {
-            destination = Path.v "dependent.txt";
-            content = "dependent"
-          }; ]
+          ~actions:[
+            Riot_planner.Action.WriteFile {
+              destination = Path.v "dependent.txt";
+              content = "dependent"
+            };
+          ]
           ~outs:[ Path.v "dependent.txt" ]
-          ()
-        in
+          () in
         let success_node = make_node_in
           graph
           ~package
-          ~actions:[ Riot_planner.Action.WriteFile {
-            destination = Path.v "success.txt";
-            content = "success"
-          }; ]
+          ~actions:[
+            Riot_planner.Action.WriteFile { destination = Path.v "success.txt"; content = "success" };
+          ]
           ~outs:[ Path.v "success.txt" ]
-          ()
-        in
+          () in
         Riot_planner.Action_graph.add_dependency graph dependent_node ~depends_on:failing_node;
         let sandbox = Sandbox.create ~workspace () ~package_name:package.Riot_model.Package.name in
         let result = Action_executor.execute
@@ -175,17 +170,19 @@ let test_execute_skips_dependent_action_after_failure = fun _ctx ->
           ~store
           ~session_id:(Riot_model.Session_id.make ())
           (test_toolchain ())
-          ~concurrency:2
-        in
-        let success_exists =
-          Fs.exists Path.(Sandbox.get_dir sandbox / Path.v "success.txt")
-          |> Result.unwrap_or ~default:false
-        in
+          ~concurrency:2 in
+        let success_exists = Fs.exists Path.(Sandbox.get_dir sandbox / Path.v "success.txt")
+        |> Result.unwrap_or ~default:false in
         let _ = Sandbox.cleanup sandbox in
-        match (find_result result failing_node, find_result result dependent_node, find_result result success_node) with
-        | Some { status = Action_executor.Failed _; _ },
-          Some { status = Action_executor.Skipped; _ },
-          Some { status = Action_executor.Executed; _ } ->
+        match (
+          find_result result failing_node,
+          find_result result dependent_node,
+          find_result result success_node
+        ) with
+        | Some { status=Action_executor.Failed _; _ }, Some { status=Action_executor.Skipped; _ }, Some {
+          status=Action_executor.Executed;
+          _
+        } ->
             if success_exists then
               Ok ()
             else

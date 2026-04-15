@@ -91,24 +91,23 @@ let format_code = fun t ~code ~file_path ->
   let temp_file = "/tmp/riot_format_" ^ Int32.to_string (Process.id ()) ^ extension in
   let temp_file_path = Path.v temp_file in
   (
-      match Fs.write code temp_file_path with
-      | Error err -> Error ("Failed to write temp file: " ^ IO.error_message err)
-      | Ok () ->
-          let result =
-            let ocamlformat_bin = Path.to_string t in
-            let cmd_str = ocamlformat_bin ^ " --enable-outside-detected-project " ^ temp_file in
-            let cmd = Command.make ~args:[ "-c"; cmd_str ] "sh" in
-            match Command.output cmd with
-            | Ok output when output.Command.status = 0 ->
-                let changed = not
-                  (String.equal (String.trim output.Command.stdout) (String.trim code)) in
-                Formatted { code = output.Command.stdout; changed }
-            | Ok output ->
-                Error ("ocamlformat failed with status " ^ Int.to_string output.Command.status)
-            | Error (Command.SystemError msg) ->
-                Error msg
-          in
-          (* Clean up temp file *)
-          let _ = Fs.remove_file temp_file_path in
-          result
-    )
+    match Fs.write code temp_file_path with
+    | Error err -> Error ("Failed to write temp file: " ^ IO.error_message err)
+    | Ok () ->
+        let result =
+          let ocamlformat_bin = Path.to_string t in
+          let cmd_str = ocamlformat_bin ^ " --enable-outside-detected-project " ^ temp_file in
+          let cmd = Command.make ~args:[ "-c"; cmd_str ] "sh" in
+          match Command.output cmd with
+          | Ok output when output.Command.status = 0 ->
+              let changed = not (String.equal (String.trim output.Command.stdout) (String.trim code)) in
+              Formatted { code = output.Command.stdout; changed }
+          | Ok output ->
+              Error ("ocamlformat failed with status " ^ Int.to_string output.Command.status)
+          | Error (Command.SystemError msg) ->
+              Error msg
+        in
+        (* Clean up temp file *)
+        let _ = Fs.remove_file temp_file_path in
+        result
+  )

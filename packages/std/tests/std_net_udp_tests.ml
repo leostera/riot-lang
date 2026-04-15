@@ -46,12 +46,13 @@ let test_udp_socket_send_to_and_recv_from = fun _ctx ->
               Error ("server recv_from failed: " ^ string_of_udp_error err)
           | Ok { bytes_read; from } ->
               if not
-                   (String.equal
+                  (
+                    String.equal
                       (Bytes.sub server_buffer ~offset:0 ~len:bytes_read
                       |> Result.expect ~msg:"server datagram slice should be valid"
                       |> Bytes.to_string)
-                      "ping")
-              then
+                      "ping"
+                  ) then
                 (
                   Net.UdpSocket.close client;
                   Net.UdpSocket.close server;
@@ -83,12 +84,13 @@ let test_udp_socket_send_to_and_recv_from = fun _ctx ->
                         Net.UdpSocket.close client;
                         Net.UdpSocket.close server;
                         if not
-                             (String.equal
+                            (
+                              String.equal
                                 (Bytes.sub client_buffer ~offset:0 ~len:bytes_read
                                 |> Result.expect ~msg:"client datagram slice should be valid"
                                 |> Bytes.to_string)
-                                "pong")
-                        then
+                                "pong"
+                            ) then
                           Error "client received the wrong datagram payload"
                         else if not (Int.equal (Net.Addr.port from) (Net.Addr.port server_addr)) then
                           Error "client recv_from should report the server port"
@@ -130,12 +132,13 @@ let test_udp_socket_connect_supports_send_and_recv = fun _ctx ->
                   Error ("connected recv failed: " ^ string_of_udp_error err)
               | Ok bytes_read ->
                   if not
-                       (String.equal
+                      (
+                        String.equal
                           (Bytes.sub server_buffer ~offset:0 ~len:bytes_read
                           |> Result.expect ~msg:"connected server datagram slice should be valid"
                           |> Bytes.to_string)
-                          "hello")
-                  then
+                          "hello"
+                      ) then
                     (
                       Net.UdpSocket.close client;
                       Net.UdpSocket.close server;
@@ -161,11 +164,10 @@ let test_udp_socket_connect_supports_send_and_recv = fun _ctx ->
                             Net.UdpSocket.close client;
                             Net.UdpSocket.close server;
                             if String.equal
-                                 (Bytes.sub client_buffer ~offset:0 ~len:reply_bytes
-                                 |> Result.expect ~msg:"connected client datagram slice should be valid"
-                                 |> Bytes.to_string)
-                                 "world"
-                            then
+                                (Bytes.sub client_buffer ~offset:0 ~len:reply_bytes
+                                |> Result.expect ~msg:"connected client datagram slice should be valid"
+                                |> Bytes.to_string)
+                                "world" then
                               Ok ()
                             else
                               Error "connected reply recv returned the wrong payload"
@@ -176,11 +178,9 @@ let test_udp_socket_connect_supports_send_and_recv = fun _ctx ->
 let test_udp_server_serves_one_datagram = fun _ctx ->
   let parent = Runtime.self () in
   let handler ~socket ~from payload ~len =
-    let received =
-      Bytes.sub payload ~offset:0 ~len
-      |> Result.expect ~msg:"server handler payload slice should be valid"
-      |> Bytes.to_string
-    in
+    let received = Bytes.sub payload ~offset:0 ~len
+    |> Result.expect ~msg:"server handler payload slice should be valid"
+    |> Bytes.to_string in
     Runtime.send parent (Udp_server_received received);
     let _ =
       match Net.UdpSocket.send_to socket from (Bytes.from_string "pong") () with
@@ -243,11 +243,10 @@ let test_udp_server_serves_one_datagram = fun _ctx ->
                   | Ok { bytes_read; _ } ->
                       Net.UdpSocket.close client;
                       if String.equal
-                           (Bytes.sub buffer ~offset:0 ~len:bytes_read
-                           |> Result.expect ~msg:"server reply slice should be valid"
-                           |> Bytes.to_string)
-                           "pong"
-                      then
+                          (Bytes.sub buffer ~offset:0 ~len:bytes_read
+                          |> Result.expect ~msg:"server reply slice should be valid"
+                          |> Bytes.to_string)
+                          "pong" then
                         Ok ()
                       else
                         Error "UdpServer reply payload was incorrect"

@@ -3,8 +3,9 @@ open Std
 let ( let* ) result fn = Result.and_then result ~fn
 
 let field_value = fun fields ~field ->
-  List.find fields ~fn:(fun (name, _) -> String.equal name field)
-  |> Option.map ~fn:(fun (_, value) -> value)
+  List.find fields
+    ~fn:(fun (name, _) ->
+      String.equal name field) |> Option.map ~fn:(fun (_, value) -> value)
 
 type config = {
   schema_version: int;
@@ -430,9 +431,11 @@ module Tests = struct
               && String.equal release.version "0.0.1"
               && String.equal release.manifest_key "packages/kernel/0.0.1/2aef0372bf5b6687db05bda80cde55f960cbfd9d.manifest.json"
               && List.length release.dependencies = 1
-              && (match List.get release.dependencies ~at:0 with
-                 | Some dependency -> String.equal dependency.name "std"
-                 | None -> false)
+              && (
+                match List.get release.dependencies ~at:0 with
+                | Some dependency -> String.equal dependency.name "std"
+                | None -> false
+              )
             then
               Ok ()
             else

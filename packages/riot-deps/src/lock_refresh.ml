@@ -13,7 +13,9 @@ let rec canonicalize_toml_value = function
       Std.Data.Toml.Table (
         fields
         |> List.map ~fn:(fun (key, value) -> (key, canonicalize_toml_value value))
-        |> List.sort ~compare:(fun (left, _) (right, _) -> String.compare left right)
+        |> List.sort
+          ~compare:(fun (left, _) (right, _) ->
+            String.compare left right)
       )
 
 let manifest_id = fun ~workspace_root manifest_path ->
@@ -25,8 +27,9 @@ let dependency_section_value = fun ~manifest_path section_name toml ->
   match toml with
   | Std.Data.Toml.Table fields -> (
       match
-        List.find fields ~fn:(fun (key, _) -> String.equal key section_name)
-        |> Option.map ~fn:(fun (_, value) -> value)
+        List.find fields
+          ~fn:(fun (key, _) ->
+            String.equal key section_name) |> Option.map ~fn:(fun (_, value) -> value)
       with
       | Some (Std.Data.Toml.Table _ as value) -> Ok (canonicalize_toml_value value)
       | Some _ -> Error (format

@@ -36,13 +36,15 @@ let diagnostic_for_open_statement = fun stmt ->
 let diagnostics_for_items = fun source_file ->
   match source_file with
   | Syn.Cst.Implementation { items; _ } ->
-      items |> List.filter_map ~fn:(
+      items |> List.filter_map
+        ~fn:(
           function
           | Syn.Cst.StructureItem.OpenStatement stmt -> diagnostic_for_open_statement stmt
           | _ -> None
         )
   | Syn.Cst.Interface { items; _ } ->
-      items |> List.filter_map ~fn:(
+      items |> List.filter_map
+        ~fn:(
           function
           | Syn.Cst.SignatureItem.OpenStatement stmt -> diagnostic_for_open_statement stmt
           | _ -> None

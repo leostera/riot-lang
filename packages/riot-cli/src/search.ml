@@ -63,8 +63,8 @@ let write_human_results = fun ~query results ->
   match results with
   | [] -> println ("No packages found for '" ^ query ^ "'")
   | results ->
-      List.for_each results ~fn:
-        (fun (result: Riot_deps.suggested_package) ->
+      List.for_each results
+        ~fn:(fun (result: Riot_deps.suggested_package) ->
           match result.description with
           | Some description -> println
             (result.package ^ "@" ^ result.latest_version ^ " - " ^ description)

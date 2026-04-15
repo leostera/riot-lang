@@ -263,8 +263,7 @@ module Driver = struct
                     ^ string_of_int secret_key);
                   read_until_ready ()
               | Protocol.ReadyForQuery status ->
-                  Log.debug
-                    ("Ready for query, status: " ^ String.make ~len:1 ~char:status);
+                  Log.debug ("Ready for query, status: " ^ String.make ~len:1 ~char:status);
                   Ok ()
               | Protocol.ErrorResponse err ->
                   Error (ProtocolError err)
@@ -272,9 +271,8 @@ module Driver = struct
                   Log.info ("PostgreSQL notice: " ^ Protocol.Error.message err);
                   read_until_ready ()
               | _ ->
-                  Error
-                    (UnexpectedMessage
-                       ("During handshake: " ^ String.make ~len:1 ~char:(Char.chr msg_type)))
+                  Error (UnexpectedMessage ("During handshake: "
+                  ^ String.make ~len:1 ~char:(Char.chr msg_type)))
             )
         in
         read_until_ready ()
@@ -310,7 +308,11 @@ module Driver = struct
       )
 
   let connect = fun (cfg: Config.t) ->
-    let id = "pg_" ^ (string_of_int (Random.int 1_000_000 |> Result.expect ~msg:"failed to generate client id")) in
+    let id = "pg_" ^ (
+      string_of_int
+        (Random.int 1_000_000 |> Result.expect ~msg:"failed to generate client id")
+    )
+    in
     match Net.Addr.of_host_and_port ~host:cfg.host ~port:cfg.port with
     | Error (Net.Addr.System_error _err) ->
         (* Host resolution failure - treat as connection refused *)
@@ -359,9 +361,7 @@ module Driver = struct
     match String.last_index str ' ' with
     | Some idx when idx > 10 -> (
         (* Check if what comes after looks like a timezone abbreviation *)
-        let after_space =
-          String.sub str ~offset:(idx + 1) ~len:(String.length str - idx - 1)
-        in
+        let after_space = String.sub str ~offset:(idx + 1) ~len:(String.length str - idx - 1) in
         (* Timezone names are usually 3-4 uppercase letters or contain '/' *)
         let is_tz_name =
           String.length after_space <= 5
@@ -384,9 +384,7 @@ module Driver = struct
       match String.index_of str ~char:' ' with
       | Some idx ->
           let before = String.sub str ~offset:0 ~len:idx in
-          let after =
-            String.sub str ~offset:(idx + 1) ~len:(String.length str - idx - 1)
-          in
+          let after = String.sub str ~offset:(idx + 1) ~len:(String.length str - idx - 1) in
           before ^ "T" ^ after ^ "Z"
       | None -> str ^ "Z"
     in
@@ -402,9 +400,7 @@ module Driver = struct
       match String.index_of str ~char:' ' with
       | Some idx ->
           let before = String.sub str ~offset:0 ~len:idx in
-          let after =
-            String.sub str ~offset:(idx + 1) ~len:(String.length str - idx - 1)
-          in
+          let after = String.sub str ~offset:(idx + 1) ~len:(String.length str - idx - 1) in
           before ^ "T" ^ after
       | None -> str
     in
@@ -419,13 +415,13 @@ module Driver = struct
         | _ -> Sqlx_driver.Value.string value
       )
     | Protocol.TypeOid.Int2 -> (
-      match Int.parse value with
-      | Some n -> Sqlx_driver.Value.int16 n
+        match Int.parse value with
+        | Some n -> Sqlx_driver.Value.int16 n
         | None -> Sqlx_driver.Value.string value
       )
     | Protocol.TypeOid.Int4 -> (
-      match Int.parse value with
-      | Some n -> Sqlx_driver.Value.int n
+        match Int.parse value with
+        | Some n -> Sqlx_driver.Value.int n
         | None -> Sqlx_driver.Value.string value
       )
     | Protocol.TypeOid.Int8 -> (
@@ -538,8 +534,8 @@ module Driver = struct
     if conn.closed then
       Error ConnectionClosed
     else
-      let name =
-        "stmt_" ^ string_of_int (Random.int 1_000_000 |> Result.expect ~msg:"failed to generate statement id")
+      let name = "stmt_" ^ string_of_int
+        (Random.int 1_000_000 |> Result.expect ~msg:"failed to generate statement id")
       in
       let stmt = { name; sql; conn } in
       let _ = Collections.HashMap.insert conn.prepared_statements ~key:name ~value:stmt in
@@ -560,7 +556,7 @@ module Driver = struct
               ~query:stmt.sql
               ~param_types:[] in
             let describe_msg = Protocol.Writer.describe_message ~what:'S' ~name:stmt.name in
-      let encoded_params = List.map params ~fn:encode_param in
+            let encoded_params = List.map params ~fn:encode_param in
             let bind_msg = Protocol.Writer.bind_message
               ~portal_name:""
               ~statement_name:stmt.name
@@ -598,23 +594,23 @@ module Driver = struct
                       | Protocol.DataRow cols ->
                           let row =
                             if List.length !column_info = List.length cols then
-                              List.zip !column_info cols
-                              |> List.map ~fn:(fun ((field: Protocol.Row.field), row_val) ->
-                                let decoded_value =
-                                  match row_val with
-                                  | Protocol.Row.Null -> Sqlx_driver.Value.null
-                                  | Protocol.Row.Value value -> decode_value field value
-                                in
-                                (field.name, decoded_value))
+                              List.zip !column_info cols |> List.map
+                                ~fn:(fun ((field: Protocol.Row.field), row_val) ->
+                                  let decoded_value =
+                                    match row_val with
+                                    | Protocol.Row.Null -> Sqlx_driver.Value.null
+                                    | Protocol.Row.Value value -> decode_value field value
+                                  in
+                                  (field.name, decoded_value))
                             else
-                              List.enumerate cols
-                              |> List.map ~fn:(fun (index, row_val) ->
-                                let value =
-                                  match row_val with
-                                  | Protocol.Row.Null -> Sqlx_driver.Value.null
-                                  | Protocol.Row.Value v -> Sqlx_driver.Value.string v
-                                in
-                                ("col_" ^ string_of_int index, value))
+                              List.enumerate cols |> List.map
+                                ~fn:(fun (index, row_val) ->
+                                  let value =
+                                    match row_val with
+                                    | Protocol.Row.Null -> Sqlx_driver.Value.null
+                                    | Protocol.Row.Value v -> Sqlx_driver.Value.string v
+                                  in
+                                  ("col_" ^ string_of_int index, value))
                           in
                           Collections.Queue.push result_set.rows row;
                           read_extended_results ()
@@ -624,7 +620,7 @@ module Driver = struct
                           (
                             match List.rev parts with
                             | n :: _ -> (
-                          match Int.parse n with
+                                match Int.parse n with
                                 | Some count -> result_set.rows_affected <- count
                                 | None -> ()
                               )
@@ -666,8 +662,8 @@ module Driver = struct
                       | Protocol.DataRow cols ->
                           let row =
                             if List.length !column_info = List.length cols then
-                              List.zip !column_info cols
-                              |> List.map ~fn:(fun ((field: Protocol.Row.field), row_val) ->
+                              List.zip !column_info cols |> List.map
+                                ~fn:(fun ((field: Protocol.Row.field), row_val) ->
                                   let decoded_value =
                                     match row_val with
                                     | Protocol.Row.Null -> Sqlx_driver.Value.null
@@ -675,14 +671,14 @@ module Driver = struct
                                   in
                                   (field.name, decoded_value))
                             else
-                              List.enumerate cols
-                              |> List.map ~fn:(fun (index, row_val) ->
-                                let value =
-                                  match row_val with
-                                  | Protocol.Row.Null -> Sqlx_driver.Value.null
-                                  | Protocol.Row.Value v -> Sqlx_driver.Value.string v
-                                in
-                                ("col_" ^ string_of_int index, value))
+                              List.enumerate cols |> List.map
+                                ~fn:(fun (index, row_val) ->
+                                  let value =
+                                    match row_val with
+                                    | Protocol.Row.Null -> Sqlx_driver.Value.null
+                                    | Protocol.Row.Value v -> Sqlx_driver.Value.string v
+                                  in
+                                  ("col_" ^ string_of_int index, value))
                           in
                           Collections.Queue.push result_set.rows row;
                           read_query_results ()
@@ -692,7 +688,7 @@ module Driver = struct
                           (
                             match List.rev parts with
                             | n :: _ -> (
-                          match Int.parse n with
+                                match Int.parse n with
                                 | Some count -> result_set.rows_affected <- count
                                 | None -> ()
                               )
@@ -707,10 +703,8 @@ module Driver = struct
                           Log.info ("PostgreSQL notice: " ^ Protocol.Error.message err);
                           read_query_results ()
                       | _ ->
-                          Error
-                            (UnexpectedMessage
-                               ("During query: "
-                               ^ String.make ~len:1 ~char:(Char.chr msg_type)))
+                          Error (UnexpectedMessage ("During query: "
+                          ^ String.make ~len:1 ~char:(Char.chr msg_type)))
                     )
                 in
                 read_query_results ()

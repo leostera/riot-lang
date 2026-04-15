@@ -15,23 +15,17 @@ type t = {
   host: Target.t;
   compilation_mode: compilation_mode;
   profile: Profile.t;
-  available_parallelism: int;
+  parallelism: int;
   session_id: Session_id.t;
 }
 
-let make = fun
-  ~session_id
-  ~profile
-  ?(compilation_mode = HostOnly)
-  ?(available_parallelism = Thread.available_parallelism)
-  ()
-  ->
+let make = fun ~session_id ~profile ?(compilation_mode = HostOnly) ?(parallelism = Thread.available_parallelism) () ->
   let host = Target.current in
   {
     host;
     compilation_mode;
     profile;
-    available_parallelism;
+    parallelism;
     session_id;
   }
 
@@ -72,8 +66,7 @@ let hash = fun state ctx ->
   Target.hash state ctx.host;
   (
     match ctx.compilation_mode with
-    | HostOnly ->
-        H.write state "host-only"
+    | HostOnly -> H.write state "host-only"
     | Cross config ->
         H.write state "cross";
         Target.hash state config.target;

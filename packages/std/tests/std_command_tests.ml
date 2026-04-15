@@ -50,7 +50,8 @@ let test_command_output_handles_parallel_shell_commands = fun _ctx ->
   let count = 16 in
   let expected_stdout = "parallel-output" in
   let _workers =
-    List.init ~count ~fn:(fun index ->
+    List.init ~count
+      ~fn:(fun index ->
         Runtime.spawn
           (fun () ->
             let result =
@@ -114,7 +115,8 @@ let test_command_output_handles_parallel_fast_exit_commands = fun _ctx ->
       | Ok () -> run_n (remaining - 1)
   in
   let _workers =
-    List.init ~count:worker_count ~fn:(fun index ->
+    List.init ~count:worker_count
+      ~fn:(fun index ->
         Runtime.spawn
           (fun () ->
             let result = run_n iterations_per_worker in

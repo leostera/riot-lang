@@ -43,9 +43,7 @@ let path_error_to_string = function
   | Path.SystemError message -> message
 
 let package_module_name = fun name ->
-  String.split ~by:"-" name
-  |> List.map ~fn:String.capitalize_ascii
-  |> String.concat ""
+  String.split ~by:"-" name |> List.map ~fn:String.capitalize_ascii |> String.concat ""
 
 let with_current_dir_result = fun dir fn ->
   let original = Env.current_dir () |> Result.expect ~msg:"expected current directory" in
@@ -195,13 +193,11 @@ let test_new_package_uses_typed_paths = fun _ctx ->
     (fun tempdir ->
       let workspace = Riot_model.Workspace_manifest.make ~root:tempdir ~packages:[] () in
       let package_dir = Path.(tempdir / Path.v "packages" / Path.v "demo-lib") in
-      let* (_created_path, created_name) =
-        Riot_init.new_package
-          ~workspace
-          ~path:package_dir
-          ~name:"demo-lib"
-          ~is_library:true
-      in
+      let* (_created_path, created_name) = Riot_init.new_package
+        ~workspace
+        ~path:package_dir
+        ~name:"demo-lib"
+        ~is_library:true in
       let module_name = package_module_name "demo-lib" in
       let* () = assert_exists Path.(package_dir / Path.v "riot.toml") in
       let* () = assert_exists Path.(package_dir / Path.v "src" / Path.v (module_name ^ ".ml")) in

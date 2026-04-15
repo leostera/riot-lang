@@ -62,7 +62,7 @@ module Matcher = struct
     let parts = String.split_on_char '/' path in
     List.filter_map
       ~fn:(fun part ->
-      if part = "" then
+        if part = "" then
           None
         else if String.starts_with ~prefix:":" part then
           Some (Param (String.sub part ~offset:1 ~len:(String.length part - 1)))

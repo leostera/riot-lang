@@ -47,11 +47,12 @@ module Builder = struct
     | Toml_value.Array values ->
         let items = values |> List.map ~fn:of_toml |> Vector.from_list in
         let ok = ref true in
-        Vector.for_each items ~fn:(fun value ->
-          if !ok then
-            match value with
-            | Table _ -> ()
-            | _ -> ok := false);
+        Vector.for_each items
+          ~fn:(fun value ->
+            if !ok then
+              match value with
+              | Table _ -> ()
+              | _ -> ok := false);
         if !ok then
           Array_of_tables items
         else
@@ -67,25 +68,28 @@ module Builder = struct
     | Int value -> Toml_value.Int value
     | Float value -> Toml_value.Float value
     | Bool value -> Toml_value.Bool value
-    | Array values ->
-        Toml_value.Array (values |> Vector.to_array |> Array.to_list |> List.map ~fn:to_toml)
-    | Array_of_tables values ->
-        Toml_value.Array (values |> Vector.to_array |> Array.to_list |> List.map ~fn:to_toml)
+    | Array values -> Toml_value.Array (values |> Vector.to_array |> Array.to_list |> List.map ~fn:to_toml)
+    | Array_of_tables values -> Toml_value.Array (values
+    |> Vector.to_array
+    |> Array.to_list
+    |> List.map ~fn:to_toml)
     | Table table -> Toml_value.Table (table_items table)
 
   and table_items = fun table ->
     let items = ref [] in
-    Vector.for_each table.order ~fn:(fun key ->
-      match HashMap.get table.values ~key with
-      | Some value -> items := (key, to_toml value) :: !items
-      | None -> ());
+    Vector.for_each table.order
+      ~fn:(fun key ->
+        match HashMap.get table.values ~key with
+        | Some value -> items := (key, to_toml value) :: !items
+        | None -> ());
     List.rev !items
 
   let iter_table = fun table fn ->
-    Vector.for_each table.order ~fn:(fun key ->
-      match HashMap.get table.values ~key with
-      | Some value -> fn key value
-      | None -> ())
+    Vector.for_each table.order
+      ~fn:(fun key ->
+        match HashMap.get table.values ~key with
+        | Some value -> fn key value
+        | None -> ())
 
   let table_singleton = fun table ->
     if Int.equal (Vector.len table.order) 1 then
@@ -109,8 +113,7 @@ module Builder = struct
     | Array_of_tables values -> Vector.for_each values ~fn
     | _ -> panic "Parse.Builder.array_iter: expected array value"
 
-  let get_field = fun table key ->
-    HashMap.get table.values ~key
+  let get_field = fun table key -> HashMap.get table.values ~key
 
   let expect_table = fun key value ->
     match value with
@@ -123,11 +126,12 @@ module Builder = struct
         values
     | Array values ->
         let ok = ref true in
-        Vector.for_each values ~fn:(fun value ->
-          if !ok then
-            match value with
-            | Table _ -> ()
-            | _ -> ok := false);
+        Vector.for_each values
+          ~fn:(fun value ->
+            if !ok then
+              match value with
+              | Table _ -> ()
+              | _ -> ok := false);
         if !ok then
           values
         else
@@ -369,7 +373,11 @@ let token_has_float_marker = fun token ->
 
 let quoted_key = fun segment ->
   let len = String.length segment in
-  if Int.compare len 2 >= 0 && Char.equal (String.unsafe_get segment 0) '"' && Char.equal (String.unsafe_get segment (len - 1)) '"' then
+  if
+    Int.compare len 2 >= 0
+    && Char.equal (String.unsafe_get segment 0) '"'
+    && Char.equal (String.unsafe_get segment (len - 1)) '"'
+  then
     let value_text = String.sub segment ~offset:0 ~len in
     let text_len = String.length value_text in
     let pos = ref 1 in
@@ -547,8 +555,7 @@ let parse_value_text = fun input ->
     | Some char when is_ws char ->
         advance ();
         skip_ws ()
-    | _ ->
-        ()
+    | _ -> ()
   in
   let hex_value = function
     | '0' .. '9' as c -> Some (Char.code c - Char.code '0')
@@ -751,16 +758,11 @@ let parse_value_text = fun input ->
   and parse_value () =
     skip_ws ();
     match peek () with
-    | None ->
-        fail "expected value"
-    | Some '"' ->
-        parse_quoted_string ()
-    | Some '[' ->
-        parse_array ()
-    | Some '{' ->
-        parse_inline_table ()
-    | Some _ ->
-        parse_scalar ()
+    | None -> fail "expected value"
+    | Some '"' -> parse_quoted_string ()
+    | Some '[' -> parse_array ()
+    | Some '{' -> parse_inline_table ()
+    | Some _ -> parse_scalar ()
   in
   let value = parse_value () in
   skip_ws ();

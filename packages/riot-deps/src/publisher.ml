@@ -235,8 +235,8 @@ let validate_registry_dependencies = fun ~registry ~publishing_workspace_package
         if Riot_model.Package.is_builtin_dependency dep then
           loop rest
         else if List.any publishing_workspace_packages
-          ~fn:(fun package_name -> Riot_model.Package_name.equal dep.name package_name)
-        then
+            ~fn:(fun package_name ->
+              Riot_model.Package_name.equal dep.name package_name) then
           loop rest
         else if Option.is_some dep.source.source_locator then
           loop rest
@@ -424,8 +424,7 @@ let publish = fun ~registry ~target_dir_root ~publishing_workspace_packages ~(pa
 let assoc_package = fun packages name ->
   List.find packages
     ~fn:(fun (pkg_name, _pkg) ->
-      Riot_model.Package_name.equal pkg_name name)
-  |> Option.map ~fn:(fun (_, package) -> package)
+      Riot_model.Package_name.equal pkg_name name) |> Option.map ~fn:(fun (_, package) -> package)
 
 let workspace_runtime_dependency_names = fun ~workspace_packages (pkg: Riot_model.Package.t) ->
   let is_workspace_dependency (dep: Riot_model.Package.dependency) =
@@ -449,9 +448,7 @@ let workspace_publish_order = fun ~packages ->
       Ok (visited, ordered)
     else if List.any visiting ~fn:(Riot_model.Package_name.equal name) then
       Error (CyclicWorkspacePublishOrder {
-        cycle =
-          List.reverse (name :: visiting)
-          |> List.map ~fn:Riot_model.Package_name.to_string
+        cycle = List.reverse (name :: visiting) |> List.map ~fn:Riot_model.Package_name.to_string
       })
     else
       match assoc_package workspace_packages name with

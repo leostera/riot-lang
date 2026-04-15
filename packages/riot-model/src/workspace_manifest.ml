@@ -104,8 +104,7 @@ let parse_dependency: string -> Toml.value -> (Package.dependency, string) resul
       in
       let source_locator =
         match Fields.get "source" attrs, Fields.get "github" attrs with
-        | Some _, Some _ ->
-            Error ("dependency '" ^ dependency_name ^ "' cannot specify both source and github")
+        | Some _, Some _ -> Error ("dependency '" ^ dependency_name ^ "' cannot specify both source and github")
         | Some (Toml.String locator), None -> Ok (Some (normalize_source_locator locator))
         | Some _, None -> Error ("dependency '" ^ dependency_name ^ "' has non-string source locator")
         | None, Some (Toml.String github) -> Ok (Some (github_locator_of_value github))
@@ -120,9 +119,8 @@ let parse_dependency: string -> Toml.value -> (Package.dependency, string) resul
       in
       let version =
         match Fields.get "version" attrs with
-        | Some (Toml.String requirement) ->
-            validate_requirement ~dependency_name requirement
-            |> Result.map ~fn:(fun version -> Some version)
+        | Some (Toml.String requirement) -> validate_requirement ~dependency_name requirement
+        |> Result.map ~fn:(fun version -> Some version)
         | Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string version requirement")
         | None -> Ok None
       in
@@ -140,8 +138,7 @@ let parse_dependency: string -> Toml.value -> (Package.dependency, string) resul
               source_locator;
               ref_;
               version;
-            }
-          |> Result.map ~fn:make_dependency
+            } |> Result.map ~fn:make_dependency
     )
   | Toml.String requirement -> (
       match validate_requirement ~dependency_name requirement with
@@ -155,8 +152,7 @@ let parse_dependency: string -> Toml.value -> (Package.dependency, string) resul
               source_locator = None;
               ref_ = None;
               version = Some version;
-            }
-          |> Result.map ~fn:make_dependency
+            } |> Result.map ~fn:make_dependency
     )
   | _ ->
       Error ("dependency '" ^ dependency_name ^ "' must be a string or table")
@@ -189,9 +185,9 @@ let parse_members: Toml.value -> Path.t list = fun toml ->
       match Fields.get "workspace" items with
       | Some (Toml.Table workspace_items) -> (
           match Fields.get "members" workspace_items with
-          | Some (Toml.Array members) ->
-              List.filter_map members ~fn:(fun m ->
-                Option.map (Toml.get_string m) ~fn:Path.v)
+          | Some (Toml.Array members) -> List.filter_map
+            members
+            ~fn:(fun m -> Option.map (Toml.get_string m) ~fn:Path.v)
           | _ -> []
         )
       | _ -> []
@@ -233,7 +229,8 @@ let parse_profile_overrides: Toml.value -> (string * Profile.profile_override) l
       Log.debug
         ("[WORKSPACE] Looking for [profile] in TOML with " ^ Int.to_string (List.length items) ^ " top-level keys");
       Log.debug
-        ("[WORKSPACE] Top-level keys: " ^ String.concat ", " (List.map items ~fn:(fun (key, _) -> key)));
+        ("[WORKSPACE] Top-level keys: "
+        ^ String.concat ", " (List.map items ~fn:(fun (key, _) -> key)));
       match Fields.get "profile" items with
       | Some (Toml.Table profile_items) ->
           Log.debug
@@ -241,7 +238,8 @@ let parse_profile_overrides: Toml.value -> (string * Profile.profile_override) l
             ^ Int.to_string (List.length profile_items)
             ^ " profiles");
           let result =
-            List.filter_map profile_items ~fn:(fun (profile_name, value) ->
+            List.filter_map profile_items
+              ~fn:(fun (profile_name, value) ->
                 Log.debug ("[WORKSPACE] Parsing profile: " ^ profile_name);
                 match value with
                 | Toml.Table profile_table ->
@@ -330,17 +328,16 @@ let make ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(b
   profile_overrides;
 }
 
-let make_realized ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir () =
-  make
-    ?name
-    ~root
-    ~packages:(List.map packages ~fn:Package_manifest.of_package)
-    ~dependencies
-    ~dev_dependencies
-    ~build_dependencies
-    ~profile_overrides
-    ?target_dir
-    ()
+let make_realized ?name ~root ~packages ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) ?(profile_overrides = []) ?target_dir () = make
+  ?name
+  ~root
+  ~packages:(List.map packages ~fn:Package_manifest.of_package)
+  ~dependencies
+  ~dev_dependencies
+  ~build_dependencies
+  ~profile_overrides
+  ?target_dir
+  ()
 
 let dependencies_for_scope = fun scope (workspace: t) ->
   match scope with
@@ -362,18 +359,15 @@ let find_package_for_path = fun (workspace: t) ~path ->
     | Ok _ -> true
     | Error _ -> false
   in
-  workspace.packages
-  |> List.filter ~fn:contains_path
-  |> List.sort ~compare:(fun (left: Package_manifest.t) (right: Package_manifest.t) ->
+  workspace.packages |> List.filter ~fn:contains_path |> List.sort
+    ~compare:(fun (left: Package_manifest.t) (right: Package_manifest.t) ->
       Int.compare
         (String.length (Path.to_string (package_root workspace right)))
-        (String.length (Path.to_string (package_root workspace left))))
-  |> function
+        (String.length (Path.to_string (package_root workspace left)))) |> function
   | pkg :: _ -> Some pkg
   | [] -> None
 
-let realize_package = fun ~intent manifest ->
-  Package_manifest.realize ~intent manifest
+let realize_package = fun ~intent manifest -> Package_manifest.realize ~intent manifest
 
 let realize_packages = fun ~intent workspace ->
   List.map workspace.packages ~fn:(realize_package ~intent)
@@ -381,11 +375,12 @@ let realize_packages = fun ~intent workspace ->
 (** Utility functions *)
 let project_id = fun workspace ->
   let root_str = Path.to_string workspace.root in
-  String.map root_str ~fn:(fun c ->
-    if c = '/' then
-      '-'
-    else
-      c)
+  String.map root_str
+    ~fn:(fun c ->
+      if c = '/' then
+        '-'
+      else
+        c)
 
 let server_port = fun workspace ->
   let root_str = Path.to_string workspace.root in
@@ -405,8 +400,7 @@ let discover_fix_providers: t -> Fix_provider.t list = fun workspace ->
   List.map workspace.packages ~fn:(fun (pkg: Package_manifest.t) -> pkg.fix_providers) |> List.concat
 
 module Tests = struct
-  let package_name value =
-    Package_name.from_string value |> Result.expect ~msg:"expected valid package name"
+  let package_name value = Package_name.from_string value |> Result.expect ~msg:"expected valid package name"
 
   let test_parse_workspace_toml (): (unit, string) result = Ok () [@test]
 
@@ -508,14 +502,11 @@ rules = ["no-stdlib"]
     let workspace = make_realized ~root:(Path.v "/tmp/example") ~packages:[ package ] () in
     match discover_fix_providers workspace with
     | [ provider ] ->
-        if
-          Package_name.equal
-            provider.package_name
-            (Package_name.from_string "std" |> Result.expect ~msg:"expected valid package name")
-          && String.equal (Path.to_string provider.source_path) "/tmp/example/packages/std/fix/no_stdlib_provider.ml"
-          && String.equal provider.name "std"
-          && provider.rules = [ "std:no-stdlib" ]
-        then
+        if Package_name.equal provider.package_name
+            (Package_name.from_string "std" |> Result.expect ~msg:"expected valid package name") && String.equal
+            (Path.to_string provider.source_path)
+            "/tmp/example/packages/std/fix/no_stdlib_provider.ml" && String.equal provider.name "std" && provider.rules
+          = [ "std:no-stdlib" ] then
           Ok ()
         else
           Error "expected provider metadata to round-trip"

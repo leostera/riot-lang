@@ -10,7 +10,6 @@ type event =
       next_steps: string list;
       package_hints: (package_kind * string) list
     }
-
 val new_package:
   workspace:Riot_model.Workspace_manifest.t ->
   path:Path.t ->

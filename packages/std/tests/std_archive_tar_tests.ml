@@ -73,8 +73,7 @@ let build_archive = fun entries ->
       let size = Int64.from_int (String.length data) in
       IO.Buffer.add_bytes buffer (make_header ~name ~kind ~mode ~size);
       IO.Buffer.add_string buffer data;
-      IO.Buffer.add_string buffer (pad_data data))
-  ;
+      IO.Buffer.add_string buffer (pad_data data));
   IO.Buffer.add_string buffer (String.make ~len:(tar_block_size * 2) ~char:'\000');
   IO.Buffer.contents buffer
 
@@ -101,10 +100,12 @@ let with_temp_dir = fun label fn ->
   | Ok () ->
       let result = fn temp_root in
       let cleanup = Fs.remove_dir_all temp_root in
-      (match result, cleanup with
-      | Error err, _ -> Error err
-      | Ok (), Ok () -> Ok ()
-      | Ok (), Error err -> Error ("failed to remove temp dir: " ^ IO.error_message err))
+      (
+        match result, cleanup with
+        | Error err, _ -> Error err
+        | Ok (), Ok () -> Ok ()
+        | Ok (), Error err -> Error ("failed to remove temp dir: " ^ IO.error_message err)
+      )
 
 let test_extract_writes_regular_files = fun _ctx ->
   let archive = build_archive

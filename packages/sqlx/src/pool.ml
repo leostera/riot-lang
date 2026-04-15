@@ -65,17 +65,19 @@ let spawn_connection = fun (Config { driver; driver_config; _ }) ->
 
 let find_available = fun connections ->
   List.find_opt
-    (function
-    | Available _ -> true
-    | _ -> false)
+    (
+      function
+      | Available _ -> true
+      | _ -> false
+    )
     (Cell.get connections)
 
 let mark_in_use = fun connections conn requester ->
   Cell.set connections
     (
-      List.map
-        (Cell.get connections)
-        ~fn:(function
+      List.map (Cell.get connections)
+        ~fn:(
+          function
           | Available c when Connection.id c = Connection.id conn -> InUse (
             c,
             requester,
@@ -88,9 +90,9 @@ let mark_in_use = fun connections conn requester ->
 let mark_available = fun connections conn ->
   Cell.set connections
     (
-      List.map
-        (Cell.get connections)
-        ~fn:(function
+      List.map (Cell.get connections)
+        ~fn:(
+          function
           | InUse (c, _, _) when Connection.id c = Connection.id conn -> Available c
           | other -> other
         )
@@ -125,8 +127,7 @@ let handle_release = fun state conn ->
 let check_connections = fun state ->
   let now = Time.Instant.now () in
   let updated =
-    List.filter_map
-      (Cell.get state.connections)
+    List.filter_map (Cell.get state.connections)
       ~fn:(
         function
         | Available conn ->
@@ -163,9 +164,7 @@ let check_connections = fun state ->
 let get_stats = fun state ->
   let total = List.length (Cell.get state.connections) in
   let available =
-    List.fold_left
-      (Cell.get state.connections)
-      ~acc:0
+    List.fold_left (Cell.get state.connections) ~acc:0
       ~fn:(fun acc ->
         function
         | Available _ -> acc + 1

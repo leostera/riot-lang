@@ -11,8 +11,6 @@ val command: Std.ArgParser.command
 val message: error -> string
 
 val resolve_request:
-  package_name:Riot_model.Package_name.t option ->
-  workspace_mode:bool ->
-  (request, error) result
+  package_name:Riot_model.Package_name.t option -> workspace_mode:bool -> (request, error) result
 
 val run: Riot_model.Workspace.t -> Std.ArgParser.matches -> (unit, exn) result

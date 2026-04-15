@@ -164,7 +164,7 @@ let compare_option compare_value left right =
   | None, Some _ -> (-1)
   | Some _, None -> 1
   | Some left, Some right -> compare_value left right
-  
+
 let compare_package_name = Package_name.compare
 
 let compare_dependency_source = fun left right ->
@@ -230,8 +230,7 @@ let compare_foreign_dependency = fun (left: foreign_dependency) (right: foreign_
   else
     compare_path left.path right.path
 
-let canonicalize_path_list = fun paths ->
-  List.unique paths ~compare:compare_path
+let canonicalize_path_list = fun paths -> List.unique paths ~compare:compare_path
 
 let canonicalize_sources = fun sources ->
   {
@@ -310,7 +309,8 @@ let synthetic = fun ~name ~path ~relative_path -> make ~name ~path ~relative_pat
 
 let equal = fun a b -> Package_name.equal a.name b.name && a.path = b.path
 
-let root_module_name = fun (pkg: t) -> Module_name.(of_string (Package_name.to_string pkg.name) |> to_string)
+let root_module_name = fun (pkg: t) ->
+  Module_name.(of_string (Package_name.to_string pkg.name) |> to_string)
 
 let key_of_string = fun value -> Key value
 
@@ -354,11 +354,9 @@ let binary_scope: binary -> dependency_scope = fun (bin: binary) ->
     Normal
 
 let scope_of_binary_name = fun (pkg: t) ~binary_name ->
-  List.find
-    pkg.binaries
+  List.find pkg.binaries
     ~fn:(fun (bin: binary) ->
-      String.equal bin.name binary_name)
-  |> Option.map ~fn:binary_scope
+      String.equal bin.name binary_name) |> Option.map ~fn:binary_scope
 
 let binaries_for_scope = fun scope (pkg: t) ->
   match scope with
@@ -432,9 +430,11 @@ let resolve_scope = fun ~scope_name ~manifest_dependencies ~lock_dependencies ->
           loop acc rest
         else
           (
-            match List.find
-              lock_dependencies
-              ~fn:(fun (dep: Lockfile.dependency) -> Package_name.equal dep.name requirement.name) with
+            match
+              List.find lock_dependencies
+                ~fn:(fun (dep: Lockfile.dependency) ->
+                  Package_name.equal dep.name requirement.name)
+            with
             | Some resolved -> loop ({ requirement; resolved_id = resolved.package } :: acc) rest
             | None -> Error ("lockfile is missing resolved "
             ^ scope_name
@@ -485,8 +485,7 @@ let is_workspace_member: t -> bool = fun pkg ->
   not (String.starts_with ~prefix:"../" rel_str || Path.is_absolute pkg.relative_path)
 
 (** Validate package name according to Riot naming conventions *)
-let validate_name = fun name ->
-  Package_name.from_string name
+let validate_name = fun name -> Package_name.from_string name
 
 let version_parse_error_to_string = fun err ->
   match err with
@@ -495,8 +494,7 @@ let version_parse_error_to_string = fun err ->
   | Version.Invalid_pre_release_segment segment -> "invalid pre-release segment: " ^ segment
 
 (** Package TOML parsing *)
-let parse_name:
-  (string * Toml.value) list -> string -> (Package_name.t, string) result = fun items fallback ->
+let parse_name: (string * Toml.value) list -> string -> (Package_name.t, string) result = fun items fallback ->
   let raw_name =
     match Fields.get "package" items with
     | Some (Toml.Table pkg_items) -> (
@@ -576,13 +574,14 @@ let parse_publish_metadata: (string * Toml.value) list -> (publish_metadata, str
       Ok default_publish_metadata
 
 let resolve_workspace_dependency: Package_name.t -> dependency list -> dependency = fun name workspace_deps ->
-  match List.find workspace_deps ~fn:(fun (d: dependency) -> Package_name.equal d.name name) with
+  match
+    List.find workspace_deps
+      ~fn:(fun (d: dependency) ->
+        Package_name.equal d.name name)
+  with
   | Some dep -> dep
-  | None ->
-      panic
-        ("Dependency '"
-        ^ Package_name.to_string name
-        ^ "' with { workspace = true } not found in workspace dependencies")
+  | None -> panic
+    ("Dependency '" ^ Package_name.to_string name ^ "' with { workspace = true } not found in workspace dependencies")
 
 let validate_requirement = fun ~dependency_name requirement ->
   let trimmed = String.trim requirement in
@@ -662,8 +661,7 @@ let validate_dependency_source = fun ~dependency_name source ->
     Ok { source with version = Some Version.any }
 
 let parse_dependency:
-  string -> Toml.value -> workspace_deps:dependency list -> (dependency, string) result =
- fun raw_name value ~workspace_deps ->
+  string -> Toml.value -> workspace_deps:dependency list -> (dependency, string) result = fun raw_name value ~workspace_deps ->
   let* name = Package_name.from_string raw_name in
   let dependency_name = Package_name.to_string name in
   match value with
@@ -688,8 +686,7 @@ let parse_dependency:
           in
           let source_locator =
             match Fields.get "source" attrs, Fields.get "github" attrs with
-            | Some _, Some _ ->
-                Error ("dependency '" ^ dependency_name ^ "' cannot specify both source and github")
+            | Some _, Some _ -> Error ("dependency '" ^ dependency_name ^ "' cannot specify both source and github")
             | Some (Toml.String locator), None -> Ok (Some (normalize_source_locator locator))
             | Some _, None -> Error ("dependency '" ^ dependency_name ^ "' has non-string source locator")
             | None, Some (Toml.String github) -> Ok (Some (github_locator_of_value github))
@@ -704,8 +701,7 @@ let parse_dependency:
           in
           let version =
             match Fields.get "version" attrs with
-            | Some (Toml.String requirement) ->
-                validate_requirement ~dependency_name requirement
+            | Some (Toml.String requirement) -> validate_requirement ~dependency_name requirement
             |> Result.map ~fn:(fun version -> Some version)
             | Some _ -> Error ("dependency '" ^ dependency_name ^ "' has non-string version requirement")
             | None -> Ok None
@@ -715,27 +711,25 @@ let parse_dependency:
           | _, (Error _ as err), _, _ -> err
           | _, _, (Error _ as err), _ -> err
           | _, _, _, (Error _ as err) -> err
-          | Ok path, Ok source_locator, Ok ref_, Ok version ->
-              validate_dependency_source
-                ~dependency_name
-                (make_source
-                  ~builtin:(is_builtin_dependency_name dependency_name)
-                  ?path
-                  ?source_locator
-                  ?ref_
-                  ?version
-                  ())
-              |> Result.map ~fn:(fun source -> { name; source })
+          | Ok path, Ok source_locator, Ok ref_, Ok version -> validate_dependency_source
+            ~dependency_name
+            (make_source
+              ~builtin:(is_builtin_dependency_name dependency_name)
+              ?path
+              ?source_locator
+              ?ref_
+              ?version
+              ())
+          |> Result.map ~fn:(fun source -> { name; source })
         )
     )
   | Toml.String requirement -> (
       match validate_requirement ~dependency_name requirement with
       | Error _ as err -> err
-      | Ok version ->
-          validate_dependency_source
-            ~dependency_name
-            (make_source ~builtin:(is_builtin_dependency_name dependency_name) ~version ())
-          |> Result.map ~fn:(fun source -> { name; source })
+      | Ok version -> validate_dependency_source
+        ~dependency_name
+        (make_source ~builtin:(is_builtin_dependency_name dependency_name) ~version ())
+      |> Result.map ~fn:(fun source -> { name; source })
     )
   | _ ->
       Error ("dependency '" ^ dependency_name ^ "' must be a string or table")
@@ -892,7 +886,8 @@ let dependency_source_of_json = fun json ->
                 version = Some Version.any;
               }
           | Some (Json.String requirement) ->
-              validate_requirement ~dependency_name:"<json>" requirement |> Result.map ~fn:(fun version ->
+              validate_requirement ~dependency_name:"<json>" requirement |> Result.map
+                ~fn:(fun version ->
                   {
                     workspace = false;
                     builtin = false;
@@ -982,7 +977,8 @@ let parse_foreign_dependency:
         match Fields.get key attrs with
         | Some (Toml.Array arr) ->
             let strings =
-              List.filter_map ~fn:(
+              List.filter_map
+                ~fn:(
                   function
                   | Toml.String s -> Some s
                   | _ -> None
@@ -1002,7 +998,8 @@ let parse_foreign_dependency:
         match Fields.get key attrs with
         | Some (Toml.Array arr) ->
             let strings =
-              List.filter_map ~fn:(
+              List.filter_map
+                ~fn:(
                   function
                   | Toml.String s -> Some s
                   | _ -> None
@@ -1018,7 +1015,8 @@ let parse_foreign_dependency:
       let get_env () =
         match Fields.get "env" attrs with
         | Some (Toml.Table env_items) ->
-            List.filter_map ~fn:(fun ((k, v)) ->
+            List.filter_map
+              ~fn:(fun ((k, v)) ->
                 match v with
                 | Toml.String s -> Some (k, s)
                 | _ -> None)
@@ -1052,7 +1050,8 @@ let parse_foreign_dependency:
                         let entry_name = Path.basename rel_path in
                         let exclude_dirs = [ "target"; "_build"; "build"; "dist"; "node_modules" ] in
                         let should_skip =
-                          String.starts_with ~prefix:"." entry_name || List.contains exclude_dirs ~value:entry_name in
+                          String.starts_with ~prefix:"." entry_name
+                          || List.contains exclude_dirs ~value:entry_name in
                         if should_skip then
                           false
                         else
@@ -1126,7 +1125,8 @@ let parse_foreign_dependencies:
     ("[PACKAGE] Available keys: " ^ String.concat ", " (List.map items ~fn:(fun (key, _) -> key)));
   (* Collect all keys that start with "foreign-dependencies." *)
   let foreign_dep_items =
-    List.filter_map ~fn:(fun ((key, value)) ->
+    List.filter_map
+      ~fn:(fun ((key, value)) ->
         if String.starts_with ~prefix:"foreign-dependencies." key then
           let prefix_len = String.length "foreign-dependencies." in
           let dep_name = String.sub key ~offset:prefix_len ~len:(String.length key - prefix_len) in
@@ -1157,10 +1157,13 @@ let parse_foreign_dependencies:
     Ok []
   else
     let results =
-      List.map all_deps ~fn:(fun ((name, value)) -> parse_foreign_dependency name value ~package_path)
+      List.map
+        all_deps
+        ~fn:(fun ((name, value)) -> parse_foreign_dependency name value ~package_path)
     in
     let errors =
-      List.filter_map ~fn:(fun r ->
+      List.filter_map
+        ~fn:(fun r ->
           match r with
           | Error e -> Some e
           | Ok _ -> None)
@@ -1170,7 +1173,8 @@ let parse_foreign_dependencies:
       Error (String.concat "; " errors)
     else
       Ok (
-        List.filter_map ~fn:(fun r ->
+        List.filter_map
+          ~fn:(fun r ->
             match r with
             | Ok d -> Some d
             | Error _ -> None)
@@ -1208,7 +1212,8 @@ let parse_binaries: (string * Toml.value) list -> package_path:Path.t -> (binary
   | Some (Toml.Array bin_entries) ->
       let results = List.map bin_entries ~fn:(parse_binary ~package_path) in
       let errors =
-        List.filter_map ~fn:(fun r ->
+        List.filter_map
+          ~fn:(fun r ->
             match r with
             | Error e -> Some e
             | Ok _ -> None)
@@ -1218,7 +1223,8 @@ let parse_binaries: (string * Toml.value) list -> package_path:Path.t -> (binary
         Error (String.concat "; " errors)
       else
         Ok (
-          List.filter_map ~fn:(fun r ->
+          List.filter_map
+            ~fn:(fun r ->
               match r with
               | Ok b -> Some b
               | Error _ -> None)
@@ -1261,7 +1267,8 @@ let parse_compiler_config: (string * Toml.value) list -> compiler_config = fun i
   let profile_overrides =
     match Fields.get "profile" items with
     | Some (Toml.Table profile_table) ->
-        List.filter_map ~fn:(fun ((profile_name, value)) ->
+        List.filter_map
+          ~fn:(fun ((profile_name, value)) ->
             match value with
             | Toml.Table profile_items -> Some (
               profile_name,
@@ -1275,7 +1282,8 @@ let parse_compiler_config: (string * Toml.value) list -> compiler_config = fun i
   let target_overrides =
     match Fields.get "target" items with
     | Some (Toml.Table target_table) ->
-        List.filter_map ~fn:(fun ((platform, value)) ->
+        List.filter_map
+          ~fn:(fun ((platform, value)) ->
             match value with
             | Toml.Table platform_items ->
                 let profile_override = Profile.override_from_toml platform_items in
@@ -1347,13 +1355,13 @@ let provider_excluded_relpaths = fun ~(package_path:Path.t) providers ->
     else
       [ rel_path ]
   in
-  providers |> List.filter_map ~fn:(fun (provider: Fix_provider.t) ->
+  providers |> List.filter_map
+    ~fn:(fun (provider: Fix_provider.t) ->
       match Path.strip_prefix provider.source_path ~prefix:package_path with
       | Ok rel_path -> Some (collect_provider_tree rel_path)
-      | Error _ -> None)
-  |> List.concat
-  |> List.unique ~compare:(fun left right ->
-    String.compare (Path.to_string left) (Path.to_string right))
+      | Error _ -> None) |> List.concat |> List.unique
+    ~compare:(fun left right ->
+      String.compare (Path.to_string left) (Path.to_string right))
 
 type source_bucket =
   | Src
@@ -1372,11 +1380,9 @@ let source_buckets_for_intent = function
   | Doc -> [ Src ]
   | Check -> [ Src; Native; Tests; Examples; Bench ]
 
-let source_bucket_enabled buckets bucket =
-  List.contains buckets ~value:bucket
+let source_bucket_enabled buckets bucket = List.contains buckets ~value:bucket
 
-let elapsed_us_since = fun started_at ->
-  Time.Instant.elapsed started_at |> Time.Duration.to_micros
+let elapsed_us_since = fun started_at -> Time.Instant.elapsed started_at |> Time.Duration.to_micros
 
 let trace_package = fun message ->
   let _ = message in
@@ -1404,19 +1410,16 @@ let bucket_of_rel_path path_components =
 let scan_roots_for_intent = fun ~(intent:realization_intent) ~(package_path:Path.t) ->
   let roots =
     match intent with
-    | Runtime ->
-        [
-          Path.(package_path / Path.v "src");
-          Path.(package_path / Path.v "native");
-        ]
+    | Runtime -> [ Path.(package_path / Path.v "src"); Path.(package_path / Path.v "native"); ]
     | _ -> [ package_path ]
   in
   List.filter roots ~fn:Path.exists
 
-let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) ?(excluded_relpaths = []) (): sources =
+let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) ?(excluded_relpaths = []) ():
+  sources =
   let started_at = Time.Instant.now () in
   let excluded_relpath_strings = excluded_relpaths |> List.map ~fn:Path.to_string in
-  let path_components = fun path -> Path.components path |> List.map ~fn:Path.to_string in
+  let path_components path = Path.components path |> List.map ~fn:Path.to_string in
   let enabled_buckets = source_buckets_for_intent intent in
   if List.is_empty enabled_buckets then
     empty_sources
@@ -1452,52 +1455,52 @@ let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) 
       in
       match Ignore.Walker.to_list walker with
       | Ok entries ->
-          List.for_each entries ~fn:(fun (entry: Fs.Walker.FileItem.t) ->
-            let () = visited_entries := !visited_entries + 1 in
-            let path = Fs.Walker.FileItem.path entry in
-            if not (Int.equal (Fs.Walker.FileItem.depth entry) 0) then
-              match Path.strip_prefix path ~prefix:package_path with
-              | Error _ -> ()
-              | Ok rel_path -> (
-                  let rel_path_string = Path.to_string rel_path in
-                  let rel_path_components = path_components rel_path in
-                  match Fs.Walker.FileItem.kind entry with
-                  | Directory ->
-                      let () = visited_directories := !visited_directories + 1 in
-                      ()
-                  | File ->
-                      let () = visited_files := !visited_files + 1 in
-                      if
-                        not
-                          (should_skip_source_entry rel_path
-                           || should_skip_test_support_path rel_path
-                           || List.contains excluded_relpath_strings ~value:rel_path_string)
-                      then (
-                        match bucket_of_rel_path rel_path_components with
-                        | Some bucket when not (source_bucket_enabled enabled_buckets bucket) ->
-                            ()
-                        | Some Src
-                        | Some Tests
-                        | Some Examples
-                        | Some Bench
-                          when not (is_ocaml_module_file rel_path) ->
-                            ()
-                        | Some Src ->
-                            src := rel_path :: !src
-                        | Some Tests ->
-                            tests := rel_path :: !tests
-                        | Some Native ->
-                            native := rel_path :: !native
-                        | Some Examples ->
-                            examples := rel_path :: !examples
-                        | Some Bench ->
-                            bench := rel_path :: !bench
-                        | None ->
-                            ()
-                      )
-                  | Symlink
-                  | Other -> ()
-                ));
+          List.for_each entries
+            ~fn:(fun (entry: Fs.Walker.FileItem.t) ->
+              let () =
+                visited_entries := !visited_entries + 1
+              in
+              let path = Fs.Walker.FileItem.path entry in
+              if not (Int.equal (Fs.Walker.FileItem.depth entry) 0) then
+                match Path.strip_prefix path ~prefix:package_path with
+                | Error _ -> ()
+                | Ok rel_path -> (
+                    let rel_path_string = Path.to_string rel_path in
+                    let rel_path_components = path_components rel_path in
+                    match Fs.Walker.FileItem.kind entry with
+                    | Directory ->
+                        let () =
+                          visited_directories := !visited_directories + 1
+                        in
+                        ()
+                    | File ->
+                        let () =
+                          visited_files := !visited_files + 1
+                        in
+                        if
+                          not
+                            (should_skip_source_entry rel_path
+                            || should_skip_test_support_path rel_path
+                            || List.contains excluded_relpath_strings ~value:rel_path_string)
+                        then
+                          (
+                            match bucket_of_rel_path rel_path_components with
+                            | Some bucket when not (source_bucket_enabled enabled_buckets bucket) -> ()
+                            | Some Src
+                            | Some Tests
+                            | Some Examples
+                            | Some Bench when not (is_ocaml_module_file rel_path) -> ()
+                            | Some Src -> src := rel_path :: !src
+                            | Some Tests -> tests := rel_path :: !tests
+                            | Some Native -> native := rel_path :: !native
+                            | Some Examples -> examples := rel_path :: !examples
+                            | Some Bench -> bench := rel_path :: !bench
+                            | None -> ()
+                          )
+                    | Symlink
+                    | Other ->
+                        ()
+                  ));
           let sources = {
             src = List.reverse !src;
             tests = List.reverse !tests;
@@ -1533,23 +1536,25 @@ let scan_sources_for_intent ~(intent:realization_intent) ~(package_path:Path.t) 
           in
           sources
       | Error _ ->
-          let () =
-            trace_package
-              ("scan-sources-failed path="
-              ^ Path.to_string package_path
-              ^ " intent="
-              ^ string_of_realization_intent intent
-              ^ " total_us="
-              ^ Int.to_string (elapsed_us_since started_at))
-          in
+          let () = trace_package
+            ("scan-sources-failed path="
+            ^ Path.to_string package_path
+            ^ " intent="
+            ^ string_of_realization_intent intent
+            ^ " total_us="
+            ^ Int.to_string (elapsed_us_since started_at)) in
           empty_sources
 
-let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) (): sources =
-  scan_sources_for_intent ~intent:Dev ~package_path ~excluded_relpaths ()
+let scan_sources ~(package_path:Path.t) ?(excluded_relpaths = []) (): sources = scan_sources_for_intent
+  ~intent:Dev
+  ~package_path
+  ~excluded_relpaths
+  ()
 
 (** Autodiscover test binaries from test files ending in _tests.ml or -tests.ml *)
 let autodiscover_test_binaries: sources -> package_path:Path.t -> binary list = fun sources ~package_path ->
-  List.filter_map ~fn:(fun test_file ->
+  List.filter_map
+    ~fn:(fun test_file ->
       let filename = Path.basename test_file in
       if
         String.ends_with ~suffix:"_tests.ml" filename || String.ends_with ~suffix:"-tests.ml" filename
@@ -1564,15 +1569,17 @@ let autodiscover_test_binaries: sources -> package_path:Path.t -> binary list = 
 
 (** Autodiscover a default runtime binary from src/main.ml when no explicit [[bin]] exists. *)
 let autodiscover_main_binary: sources -> package_name:Package_name.t -> binary list = fun sources ~package_name ->
-  if List.any sources.src ~fn:(fun path ->
-      Path.equal path (Path.v "src/main.ml")) then
+  if List.any sources.src
+      ~fn:(fun path ->
+        Path.equal path (Path.v "src/main.ml")) then
     [ { name = Package_name.to_string package_name; path = Path.v "src/main.ml" } ]
   else
     []
 
 (** Autodiscover example binaries from any .ml file in examples/ directory *)
 let autodiscover_example_binaries: sources -> package_path:Path.t -> binary list = fun sources ~package_path ->
-  List.filter_map ~fn:(fun example_file ->
+  List.filter_map
+    ~fn:(fun example_file ->
       let filename = Path.basename example_file in
       if String.ends_with ~suffix:".ml" filename then
         let binary_name = Path.remove_extension (Path.v filename) |> Path.to_string in
@@ -1584,7 +1591,8 @@ let autodiscover_example_binaries: sources -> package_path:Path.t -> binary list
 
 (** Autodiscover benchmark binaries from bench files ending in _bench.ml *)
 let autodiscover_bench_binaries: sources -> package_path:Path.t -> binary list = fun sources ~package_path ->
-  List.filter_map ~fn:(fun bench_file ->
+  List.filter_map
+    ~fn:(fun bench_file ->
       let filename = Path.basename bench_file in
       if String.ends_with ~suffix:"_bench.ml" filename then
         let binary_name = Path.remove_extension (Path.v filename) |> Path.to_string in
@@ -1609,48 +1617,39 @@ let declared_binaries_for_intent = fun ~(intent:realization_intent) binaries ->
   let keep bucket =
     match intent with
     | Build -> false
-    | Runtime ->
-        bucket = Src
-    | Dev ->
-        true
-    | Run ->
-        bucket = Src || bucket = Examples
-    | Test ->
-        bucket = Tests
-    | Bench ->
-        bucket = Bench
+    | Runtime -> bucket = Src
+    | Dev -> true
+    | Run -> bucket = Src || bucket = Examples
+    | Test -> bucket = Tests
+    | Bench -> bucket = Bench
     | Doc
-    | Check ->
-        false
+    | Check -> false
   in
-  List.filter binaries ~fn:(fun bin ->
-    match binary_bucket bin with
-    | Some bucket -> keep bucket
-    | None -> false)
+  List.filter binaries
+    ~fn:(fun bin ->
+      match binary_bucket bin with
+      | Some bucket -> keep bucket
+      | None -> false)
 
 let autodiscovered_binaries_for_intent = fun ~(intent:realization_intent) ~(sources:sources) ~package_name ~package_path ->
   match intent with
   | Build -> []
   | Runtime -> autodiscover_main_binary sources ~package_name
-  | Dev ->
-      autodiscover_main_binary sources ~package_name
-      @ autodiscover_test_binaries sources ~package_path
-      @ autodiscover_example_binaries sources ~package_path
-      @ autodiscover_bench_binaries sources ~package_path
-  | Run ->
-      autodiscover_main_binary sources ~package_name
-      @ autodiscover_example_binaries sources ~package_path
-  | Test ->
-      autodiscover_test_binaries sources ~package_path
-  | Bench ->
-      autodiscover_bench_binaries sources ~package_path
+  | Dev -> autodiscover_main_binary sources ~package_name
+  @ autodiscover_test_binaries sources ~package_path
+  @ autodiscover_example_binaries sources ~package_path
+  @ autodiscover_bench_binaries sources ~package_path
+  | Run -> autodiscover_main_binary sources ~package_name @ autodiscover_example_binaries sources ~package_path
+  | Test -> autodiscover_test_binaries sources ~package_path
+  | Bench -> autodiscover_bench_binaries sources ~package_path
   | Doc
   | Check -> []
 
 let merge_binaries: declared:binary list -> autodiscovered:binary list -> binary list = fun ~declared ~autodiscovered ->
   let seen_paths = declared |> List.map ~fn:(fun (bin: binary) -> Path.to_string bin.path) in
   let _, discovered =
-    List.fold_left autodiscovered ~acc:(seen_paths, []) ~fn:(fun (seen_paths, acc) (bin: binary) ->
+    List.fold_left autodiscovered ~acc:(seen_paths, [])
+      ~fn:(fun (seen_paths, acc) (bin: binary) ->
         let path = Path.to_string bin.path in
         if List.contains seen_paths ~value:path then
           (seen_paths, acc)
@@ -1802,13 +1801,7 @@ let from_toml:
   path:Path.t ->
   relative_path:Path.t ->
   (t, string) result = fun toml ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~path ~relative_path ->
-  parse_manifest_spec
-    toml
-    ~workspace_deps
-    ~workspace_dev_deps
-    ~workspace_build_deps
-    ~path
-    ~relative_path
+  parse_manifest_spec toml ~workspace_deps ~workspace_dev_deps ~workspace_build_deps ~path ~relative_path
   |> Result.map ~fn:(realize_manifest_spec ~intent:Dev)
 
 let to_json: t -> Json.t = fun pkg ->
@@ -1879,11 +1872,7 @@ let to_json: t -> Json.t = fun pkg ->
 let from_json: Json.t -> (t, string) result = fun json ->
   match json with
   | Json.Object fields -> (
-      match (
-        Fields.get "name" fields,
-        Fields.get "path" fields,
-        Fields.get "relative_path" fields
-      ) with
+      match (Fields.get "name" fields, Fields.get "path" fields, Fields.get "relative_path" fields) with
       | (Some (Json.String name), Some (Json.String path_str), Some (Json.String rel_path_str)) -> (
           let* name = Package_name.from_string name in
           let parse_dependencies_field field_name =
@@ -1895,10 +1884,7 @@ let from_json: Json.t -> (t, string) result = fun json ->
                   | entry :: rest -> (
                       match entry with
                       | Json.Object dep_fields -> (
-                          match (
-                            Fields.get "name" dep_fields,
-                            Fields.get "source" dep_fields
-                          ) with
+                          match (Fields.get "name" dep_fields, Fields.get "source" dep_fields) with
                           | Some (Json.String dep_name), Some source_json -> (
                               let* dep_name = Package_name.from_string dep_name in
                               let* source = dependency_source_of_json source_json in
@@ -1930,7 +1916,8 @@ let from_json: Json.t -> (t, string) result = fun json ->
                               let binaries =
                                 match Fields.get "binaries" fields with
                                 | Some (Json.Array bins) ->
-                                    List.filter_map ~fn:(
+                                    List.filter_map
+                                      ~fn:(
                                         function
                                         | Json.Object bin_fields -> (
                                             match (
@@ -2214,13 +2201,11 @@ let hash_with = fun (type s) ((module H : Hash_writer with type state = s)) stat
     | None -> H.write_bool state false
   );
   (* Binaries metadata *)
-  List.for_each
-    pkg.binaries
+  List.for_each pkg.binaries
     ~fn:(fun (bin: binary) ->
       H.write state bin.name;
       H.write state (Path.to_string bin.path));
-  List.for_each
-    pkg.fix_providers
+  List.for_each pkg.fix_providers
     ~fn:(fun (provider: Fix_provider.t) ->
       H.write state provider.name;
       H.write state (Path.to_string provider.source_path);
@@ -2245,13 +2230,11 @@ let hash_with = fun (type s) ((module H : Hash_writer with type state = s)) stat
     hash_string_list_override override.cc_flags;
     hash_string_list_override override.ocamlc_flags;
   in
-  List.for_each
-    pkg.compiler.profile_overrides
+  List.for_each pkg.compiler.profile_overrides
     ~fn:(fun ((profile_name, override): string * profile_override) ->
       H.write state profile_name;
       hash_override override);
-  List.for_each
-    pkg.compiler.target_overrides
+  List.for_each pkg.compiler.target_overrides
     ~fn:(fun ((platform_name, target): string * target_override) ->
       H.write state platform_name;
       (
@@ -2286,19 +2269,20 @@ let hash_with = fun (type s) ((module H : Hash_writer with type state = s)) stat
   List.for_each pkg.sources.tests ~fn:hash_source_file;
   List.for_each pkg.sources.examples ~fn:hash_source_file;
   List.for_each pkg.sources.bench ~fn:hash_source_file;
-  List.for_each
-    pkg.binaries
+  List.for_each pkg.binaries
     ~fn:(fun (bin: binary) ->
       let path_str = Path.to_string bin.path in
       if String.ends_with ~suffix:".ml" path_str || String.ends_with ~suffix:".mli" path_str then
         hash_source_file bin.path);
   (* Foreign dependency sources *)
-  List.for_each pkg.foreign_dependencies ~fn:(fun (fdep: foreign_dependency) ->
+  List.for_each pkg.foreign_dependencies
+    ~fn:(fun (fdep: foreign_dependency) ->
       H.write state fdep.name;
       H.write state (Path.to_string fdep.path);
       List.for_each fdep.build_cmd ~fn:(H.write state);
       (* Hash all input files *)
-      List.for_each fdep.inputs ~fn:(fun input_path ->
+      List.for_each fdep.inputs
+        ~fn:(fun input_path ->
           let abs_path = Path.(fdep.path / input_path) in
           match Fs.read abs_path with
           | Ok content ->
@@ -2309,8 +2293,7 @@ let hash_with = fun (type s) ((module H : Hash_writer with type state = s)) stat
 let hash = fun state pkg -> hash_with (module Crypto.Sha256) state pkg
 
 module Tests = struct
-  let package_name value =
-    Package_name.from_string value |> Result.expect ~msg:"expected valid package name"
+  let package_name value = Package_name.from_string value |> Result.expect ~msg:"expected valid package name"
 
   let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
     {
@@ -2353,9 +2336,12 @@ fixme = { path = "../fixme" }
       ~relative_path:(Path.v "packages/example")
     |> Result.expect ~msg:"expected package manifest" in
     if
-      List.map pkg.dependencies ~fn:(fun (dep: dependency) -> dep.name) = [ package_name "std" ]
-      && List.map pkg.dev_dependencies ~fn:(fun (dep: dependency) -> dep.name) = [ package_name "propane" ]
-      && List.map pkg.build_dependencies ~fn:(fun (dep: dependency) -> dep.name) = [ package_name "fixme" ]
+      List.map pkg.dependencies ~fn:(fun (dep: dependency) -> dep.name)
+      = [ package_name "std" ]
+      && List.map pkg.dev_dependencies ~fn:(fun (dep: dependency) -> dep.name)
+      = [ package_name "propane" ]
+      && List.map pkg.build_dependencies ~fn:(fun (dep: dependency) -> dep.name)
+      = [ package_name "fixme" ]
     then
       Ok ()
     else
@@ -2420,9 +2406,10 @@ stdlib = "*"
       ~relative_path:(Path.v "packages/example")
     |> Result.expect ~msg:"expected package manifest" in
     match pkg.dependencies with
-    | [ { name; source={ builtin=true; version=Some requirement; _ } } ]
-      when Package_name.equal name (package_name "stdlib") && requirement_is_any
-      requirement -> Ok ()
+    | [ { name; source={ builtin=true; version=Some requirement; _ } } ] when Package_name.equal
+      name
+      (package_name "stdlib")
+    && requirement_is_any requirement -> Ok ()
     | _ -> Error "expected stdlib '*' to parse as a builtin dependency" [@test]
 
   let test_parse_github_dependency_shorthand (): (unit, string) result =
@@ -2447,12 +2434,9 @@ widgets = { github = "riot-tests/widgets" }
       ~relative_path:(Path.v "packages/example")
     |> Result.expect ~msg:"expected package manifest" in
     match pkg.dependencies with
-    | [
-      {
-        name;
-        source={ source_locator=Some "github.com/riot-tests/widgets"; ref_=None; _ }
-      }
-    ] when Package_name.equal name (package_name "widgets") -> Ok ()
+    | [ { name; source={ source_locator=Some "github.com/riot-tests/widgets"; ref_=None; _ } } ] when Package_name.equal
+      name
+      (package_name "widgets") -> Ok ()
     | _ -> Error "expected github shorthand to normalize into a source locator" [@test]
 
   let test_parse_source_dependency_with_ref_and_path (): (unit, string) result =
@@ -2687,16 +2671,17 @@ ppx = {}
       ~manifest_path:Path.(package.path / Path.v "riot.toml")
       ~materialized_root:package.path with
     | Ok resolved ->
-        if
-          List.length resolved.runtime_resolved = 1
-          && List.length resolved.build_resolved = 1
-          && (match List.get resolved.runtime_resolved ~at:0 with
-             | Some resolved_package -> Package_name.equal resolved_package.resolved_id.name (package_name "std")
-             | None -> false)
-          && (match List.get resolved.build_resolved ~at:0 with
-             | Some resolved_package -> resolved_package.resolved_id.version = Some "1.2.3"
-             | None -> false)
-        then
+        if List.length resolved.runtime_resolved = 1 && List.length resolved.build_resolved = 1 && (
+            match List.get resolved.runtime_resolved ~at:0 with
+            | Some resolved_package -> Package_name.equal
+              resolved_package.resolved_id.name
+              (package_name "std")
+            | None -> false
+          ) && (
+            match List.get resolved.build_resolved ~at:0 with
+            | Some resolved_package -> resolved_package.resolved_id.version = Some "1.2.3"
+            | None -> false
+          ) then
           Ok ()
         else
           Error "expected resolved package projection to preserve exact ids"
@@ -2745,7 +2730,9 @@ std = {}
       name = package_name "app";
       path = Path.v "/workspace/packages/app";
       relative_path = Path.v "packages/app";
-      dependencies = [ { name = package_name "stdlib"; source = source ~builtin:true ~version:Version.any () } ];
+      dependencies = [
+        { name = package_name "stdlib"; source = source ~builtin:true ~version:Version.any () }
+      ];
       dev_dependencies = [];
       build_dependencies = [];
       foreign_dependencies = [];
@@ -2808,7 +2795,8 @@ std = {}
       publish;
     }
     in
-    let build_graph = build_graph_dependencies pkg |> List.map ~fn:(fun (dep: dependency) -> dep.name) in
+    let build_graph = build_graph_dependencies pkg
+    |> List.map ~fn:(fun (dep: dependency) -> dep.name) in
     let all = all_dependencies pkg |> List.map ~fn:(fun (dep: dependency) -> dep.name) in
     if
       build_graph = [ package_name "std"; package_name "propane" ]

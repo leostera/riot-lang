@@ -12,10 +12,12 @@ let with_temp_dir = fun label fn ->
   | Ok () ->
       let result = fn temp_root in
       let cleanup = Fs.remove_dir_all temp_root in
-      (match result, cleanup with
-      | Error err, _ -> Error err
-      | Ok (), Ok () -> Ok ()
-      | Ok (), Error err -> Error ("failed to remove temp dir: " ^ IO.error_message err))
+      (
+        match result, cleanup with
+        | Error err, _ -> Error err
+        | Ok (), Ok () -> Ok ()
+        | Ok (), Error err -> Error ("failed to remove temp dir: " ^ IO.error_message err)
+      )
 
 let render_gzip_error = Gzip.error_to_string
 

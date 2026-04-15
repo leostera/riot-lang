@@ -1,5 +1,4 @@
 open Std
-
 module Buffer = IO.Buffer
 module Array = Collections.Array
 
@@ -23,8 +22,7 @@ let random_float = fun rnd bound -> sample (Random.float ~rng:rnd bound)
 
 let random_bool = fun rnd -> sample (Random.bool ~rng:rnd ())
 
-let random_int_range = fun rnd ~low ~high ->
-  sample (Random.int_range ~rng:rnd ~min:low ~max:high ())
+let random_int_range = fun rnd ~low ~high -> sample (Random.int_range ~rng:rnd ~min:low ~max:high ())
 
 let random_int32_range = fun rnd ~low ~high ->
   sample (Random.int32_range ~rng:rnd ~min:low ~max:high ())
@@ -238,18 +236,14 @@ let non_zero_int =
 
 (* Floats *)
 
-let float = { run = fun rnd _size -> random_float_range rnd ~low:(-.1_000_000.0) ~high:1_000_000.0 }
+let float = { run = fun rnd _size -> random_float_range rnd ~low:(-.1000000.0) ~high:1000000.0 }
 
 let float_range = fun low high ->
   if low > high then
     invalid_arg "Generator.float_range: low > high";
-  {
-    run =
-      fun rnd _size ->
-        random_float_range rnd ~low ~high;
-  }
+  { run = fun rnd _size -> random_float_range rnd ~low ~high }
 
-let float_positive = { run = fun rnd _size -> random_float_range rnd ~low:0.0 ~high:1_000_000.0 }
+let float_positive = { run = fun rnd _size -> random_float_range rnd ~low:0.0 ~high:1000000.0 }
 
 let float_negative =
   map (fun f -> -.f) float_positive
@@ -319,19 +313,18 @@ let rune_range = fun low high ->
         try_gen ();
   }
 
-let rune_printable =
-  {
-    run =
-      fun rnd _size ->
-        let rec try_gen () =
-          let candidate = rune.run rnd 0 in
-          if Unicode.Rune.is_print candidate then
-            candidate
-          else
-            try_gen ()
-        in
-        try_gen ();
-  }
+let rune_printable = {
+  run =
+    fun rnd _size ->
+      let rec try_gen () =
+        let candidate = rune.run rnd 0 in
+        if Unicode.Rune.is_print candidate then
+          candidate
+        else
+          try_gen ()
+      in
+      try_gen ();
+}
 
 (* Strings *)
 
@@ -444,32 +437,32 @@ let queue_size = fun size_gen gen -> map Collections.Queue.from_list (list_size 
 
 let deque = fun gen ->
   map
-      (fun lst ->
-        let d = Collections.Deque.create () in
+    (fun lst ->
+      let d = Collections.Deque.create () in
       List.for_each lst ~fn:(fun value -> Collections.Deque.push_back d ~value);
       d)
     (list gen)
 
 let deque_size = fun size_gen gen ->
   map
-      (fun lst ->
-        let d = Collections.Deque.create () in
+    (fun lst ->
+      let d = Collections.Deque.create () in
       List.for_each lst ~fn:(fun value -> Collections.Deque.push_back d ~value);
       d)
     (list_size size_gen gen)
 
 let heap = fun gen ->
   map
-      (fun lst ->
-        let h = Collections.Heap.create () in
+    (fun lst ->
+      let h = Collections.Heap.create () in
       List.for_each lst ~fn:(fun value -> Collections.Heap.push h ~value);
       h)
     (list gen)
 
 let heap_size = fun size_gen gen ->
   map
-      (fun lst ->
-        let h = Collections.Heap.create () in
+    (fun lst ->
+      let h = Collections.Heap.create () in
       List.for_each lst ~fn:(fun value -> Collections.Heap.push h ~value);
       h)
     (list_size size_gen gen)

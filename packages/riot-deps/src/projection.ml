@@ -23,12 +23,7 @@ let package_id_key = fun (id: Riot_model.Lockfile.package_id) ->
   registry ^ ":" ^ Riot_model.Package_name.to_string id.name ^ ":" ^ version
 
 let workspace_package_id_of_package = fun (package: Riot_model.Package_manifest.t) ->
-  Riot_model.Lockfile.{
-    registry = None;
-    name = package.name;
-    version = None;
-    sha256 = None
-  }
+  Riot_model.Lockfile.{ registry = None; name = package.name; version = None; sha256 = None }
 
 let find_lock_package_by_id = fun ~(package_id:Riot_model.Lockfile.package_id) ~(lockfile:Riot_model.Lockfile.t) ->
   List.find
@@ -46,10 +41,9 @@ let materialized_root_of_lock_package = fun ~materialize_emit ~registry ~workspa
       match lock_package.root with
       | Some root -> Ok Path.(workspace_root / root)
       | None -> Error (Error.ProjectionFailed {
-        error =
-          "workspace lock package '"
-          ^ Riot_model.Package_name.to_string lock_package.id.name
-          ^ "' is missing a portable root"
+        error = "workspace lock package '"
+        ^ Riot_model.Package_name.to_string lock_package.id.name
+        ^ "' is missing a portable root"
       })
     )
   | Riot_model.Lockfile.Path _ -> (
@@ -57,10 +51,7 @@ let materialized_root_of_lock_package = fun ~materialize_emit ~registry ~workspa
       | Some root when Path.is_absolute root -> Ok root
       | Some root -> Ok Path.(workspace_root / root)
       | None -> Error (Error.ProjectionFailed {
-        error =
-          "path lock package '"
-          ^ Riot_model.Package_name.to_string lock_package.id.name
-          ^ "' is missing a portable root"
+        error = "path lock package '" ^ Riot_model.Package_name.to_string lock_package.id.name ^ "' is missing a portable root"
       })
     )
   | Riot_model.Lockfile.Source { locator; ref_ } -> (
@@ -71,10 +62,9 @@ let materialized_root_of_lock_package = fun ~materialize_emit ~registry ~workspa
   | Riot_model.Lockfile.Registry { registry=registry_name } -> (
       match lock_package.id.version with
       | None -> Error (Error.ProjectionFailed {
-        error =
-          "registry lock package '"
-          ^ Riot_model.Package_name.to_string lock_package.id.name
-          ^ "' is missing an exact version"
+        error = "registry lock package '"
+        ^ Riot_model.Package_name.to_string lock_package.id.name
+        ^ "' is missing an exact version"
       })
       | Some version ->
           if not (String.equal registry_name (Pkgs_ml.Registry.name registry)) then
@@ -146,10 +136,12 @@ let load_external_package = fun ~emit ~materialize_emit ~registry ~workspace_roo
               | Some root -> root
               | None -> package_root
             )
-          |> Result.map ~fn:(fun manifest ->
+          |> Result.map
+            ~fn:(fun manifest ->
               emit_finished ();
               Riot_model.Package.of_manifest_spec manifest)
-          |> Result.map_err ~fn:(fun err ->
+          |> Result.map_err
+            ~fn:(fun err ->
               let err = Error.ProjectionFailed { error = err } in
               emit_failed err;
               err)
@@ -159,11 +151,8 @@ let load_package_for_lock_package = fun ~emit ~materialize_emit ~registry ~works
   | Riot_model.Lockfile.Workspace -> (
       match find_workspace_package_by_id ~package_id:lock_package.id ~packages with
       | Some package -> Ok (Riot_model.Package.of_manifest_spec package)
-    | None -> Error (Error.ProjectionFailed {
-        error =
-          "workspace package '"
-          ^ Riot_model.Package_name.to_string lock_package.id.name
-          ^ "' was not provided to projection"
+      | None -> Error (Error.ProjectionFailed {
+        error = "workspace package '" ^ Riot_model.Package_name.to_string lock_package.id.name ^ "' was not provided to projection"
       })
     )
   | Riot_model.Lockfile.Path _
@@ -176,9 +165,15 @@ let load_package_for_lock_package = fun ~emit ~materialize_emit ~registry ~works
     ~lock_package
 
 let resolve_dependency_ids = fun (resolved: Riot_model.Package.resolved) ->
-  List.map resolved.runtime_resolved ~fn:(fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id)
-  @ List.map resolved.build_resolved ~fn:(fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id)
-  @ List.map resolved.dev_resolved ~fn:(fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id)
+  List.map
+    resolved.runtime_resolved
+    ~fn:(fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id)
+  @ List.map
+    resolved.build_resolved
+    ~fn:(fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id)
+  @ List.map
+    resolved.dev_resolved
+    ~fn:(fun (dep: Riot_model.Package.resolved_dependency) -> dep.resolved_id)
 
 let rec resolve_package_graph = fun ~emit ~materialize_emit ~registry ~workspace_root ~(packages:Riot_model.Package_manifest.t list) ~(lockfile:Riot_model.Lockfile.t) seen acc pending ->
   match pending with
@@ -198,9 +193,10 @@ let rec resolve_package_graph = fun ~emit ~materialize_emit ~registry ~workspace
           rest
       else
         match find_lock_package_by_id ~package_id ~lockfile with
-      | None -> Error (Error.ProjectionFailed {
-          error =
-            "lockfile is missing package '" ^ Riot_model.Package_name.to_string package_id.name ^ "'"
+        | None -> Error (Error.ProjectionFailed {
+          error = "lockfile is missing package '"
+          ^ Riot_model.Package_name.to_string package_id.name
+          ^ "'"
         })
         | Some lock_package -> (
             match load_package_for_lock_package

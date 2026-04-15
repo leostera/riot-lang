@@ -22,31 +22,31 @@ let display_rule_id_text = fun rule_id ->
 let display_rule_id = fun rule -> display_rule_id_text (Rule.id rule)
 
 let sorted_rules = fun () ->
-  Pipeline.default_rules ()
-  |> List.sort ~compare:(fun left right ->
-    let left_package, left_local = split_rule_id (Rule.id left) in
-    let right_package, right_local = split_rule_id (Rule.id right) in
-    let package_cmp = compare_package_name left_package right_package in
-    if package_cmp != 0 then
-      package_cmp
-    else if String.equal left_package "riot" then
-      let left_category = Pipeline.builtin_rule_category left_local |> Option.unwrap_or ~default:"Other" in
-      let right_category = Pipeline.builtin_rule_category right_local
-      |> Option.unwrap_or ~default:"Other" in
-      let category_cmp = String.compare left_category right_category in
-      if category_cmp != 0 then
-        category_cmp
+  Pipeline.default_rules () |> List.sort
+    ~compare:(fun left right ->
+      let left_package, left_local = split_rule_id (Rule.id left) in
+      let right_package, right_local = split_rule_id (Rule.id right) in
+      let package_cmp = compare_package_name left_package right_package in
+      if package_cmp != 0 then
+        package_cmp
+      else if String.equal left_package "riot" then
+        let left_category = Pipeline.builtin_rule_category left_local |> Option.unwrap_or ~default:"Other" in
+        let right_category = Pipeline.builtin_rule_category right_local
+        |> Option.unwrap_or ~default:"Other" in
+        let category_cmp = String.compare left_category right_category in
+        if category_cmp != 0 then
+          category_cmp
+        else
+          String.compare left_local right_local
       else
-        String.compare left_local right_local
-    else
-      String.compare left_local right_local)
+        String.compare left_local right_local)
 
 let sorted_diagnostics = fun () ->
-  Explanations.all ()
-  |> List.sort ~compare:(fun left right ->
-    String.compare
-      (display_rule_id_text Explanation.(left.rule_id))
-      (display_rule_id_text Explanation.(right.rule_id)))
+  Explanations.all () |> List.sort
+    ~compare:(fun left right ->
+      String.compare
+        (display_rule_id_text Explanation.(left.rule_id))
+        (display_rule_id_text Explanation.(right.rule_id)))
 
 let rule_to_json = fun rule ->
   let open Data.Json in
@@ -119,8 +119,9 @@ let list_rules_text = fun rules ->
 let list_diagnostics_text = fun entries ->
   let bold text = "\027[1m" ^ text ^ "\027[0m" in
   entries
-  |> List.map ~fn:(fun entry ->
-    bold (display_rule_id_text Explanation.(entry.rule_id)) ^ " - " ^ Explanation.(entry.message))
+  |> List.map
+    ~fn:(fun entry ->
+      bold (display_rule_id_text Explanation.(entry.rule_id)) ^ " - " ^ Explanation.(entry.message))
   |> String.concat "\n"
 
 let list_rules_output = fun ~format ->

@@ -1,7 +1,11 @@
 open Std
 
 let get = fun key fields ->
-  match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name key) with
+  match
+    List.find fields
+      ~fn:(fun (field_name, _) ->
+        String.equal field_name key)
+  with
   | Some (_, value) -> Some value
   | None -> None
 

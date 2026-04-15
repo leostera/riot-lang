@@ -123,11 +123,7 @@ type bench_error =
     Use [package_filter] to restrict discovery to one package.
 *)
 val collect_suite_binaries:
-  Workspace.t ->
-  ?package_filter:Package_name.t ->
-  ?suite_filter:string ->
-  unit ->
-  suite_binary list
+  Workspace.t -> ?package_filter:Package_name.t -> ?suite_filter:string -> unit -> suite_binary list
 
 (** Render a user-facing error message for a benchmark failure. *)
 val bench_error_message: bench_error -> string

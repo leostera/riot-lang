@@ -39,16 +39,12 @@ type event =
     }
 
 let package_module_name = fun name ->
-  String.split ~by:"-" name
-  |> List.map ~fn:String.capitalize_ascii
-  |> String.concat ""
+  String.split ~by:"-" name |> List.map ~fn:String.capitalize_ascii |> String.concat ""
 
 let new_package = fun ~workspace:_ ~path ~name ~is_library ->
   let src_dir = Path.(path / Path.v "src") in
-  let* () =
-    Fs.create_dir_all src_dir
-    |> Result.map_err ~fn:(fun _ -> "Failed to create src directory")
-  in
+  let* () = Fs.create_dir_all src_dir
+  |> Result.map_err ~fn:(fun _ -> "Failed to create src directory") in
   let module_name = package_module_name name in
   let main_ml =
     if is_library then
@@ -70,33 +66,23 @@ let new_package = fun ~workspace:_ ~path ~name ~is_library ->
       None
   in
   let package_toml = Path.(path / Path.v "riot.toml") in
-  let toml_content =
-    "[package]\nname = \""
-    ^ name
-    ^ "\"\nversion = \"0.1.0\"\n\n"
-    ^ (
-        if is_library then
-          "[lib]\npath = \"src/" ^ module_name ^ ".ml\"\n\n"
-        else
-          "[[bin]]\nname = \"" ^ name ^ "\"\npath = \"src/main.ml\"\n\n"
-      )
-    ^ "[dependencies]\nstd = \"*\"\n# Add dependencies here\n\n"
+  let toml_content = "[package]\nname = \"" ^ name ^ "\"\nversion = \"0.1.0\"\n\n" ^ (
+    if is_library then
+      "[lib]\npath = \"src/" ^ module_name ^ ".ml\"\n\n"
+    else
+      "[[bin]]\nname = \"" ^ name ^ "\"\npath = \"src/main.ml\"\n\n"
+  ) ^ "[dependencies]\nstd = \"*\"\n# Add dependencies here\n\n"
   in
-  let* () =
-    Fs.write ml_content main_ml
-    |> Result.map_err ~fn:(fun _ -> "Failed to write package source file")
-  in
+  let* () = Fs.write ml_content main_ml
+  |> Result.map_err ~fn:(fun _ -> "Failed to write package source file") in
   let* () =
     match mli_content with
     | None -> Ok ()
-    | Some content ->
-        Fs.write content main_mli
-        |> Result.map_err ~fn:(fun _ -> "Failed to write package interface file")
+    | Some content -> Fs.write content main_mli
+    |> Result.map_err ~fn:(fun _ -> "Failed to write package interface file")
   in
-  let* () =
-    Fs.write toml_content package_toml
-    |> Result.map_err ~fn:(fun _ -> "Failed to write package manifest")
-  in
+  let* () = Fs.write toml_content package_toml
+  |> Result.map_err ~fn:(fun _ -> "Failed to write package manifest") in
   Ok (Path.to_string path, name)
 
 let package_hints = [
@@ -527,13 +513,7 @@ let run = fun ~on_event matches ->
       emit
         ~on_event
         (WorkspaceInitializationCompleted {
-          next_steps =
-            next_steps
-              ~cwd
-              ~target_dir
-              ~path_arg
-              ~is_library
-              ~workspace_name:validated_name_string;
+          next_steps = next_steps ~cwd ~target_dir ~path_arg ~is_library ~workspace_name:validated_name_string;
           package_hints
         });
       Ok ()

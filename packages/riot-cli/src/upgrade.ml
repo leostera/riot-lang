@@ -174,10 +174,11 @@ let extract_archive = fun ~archive_path ~into ->
   match Fs.File.open_read archive_path with
   | Error err -> Error (Fs.File.error_to_string err)
   | Ok file ->
-      protect ~finally:(fun () ->
-        match Fs.File.close file with
-        | Ok () -> ()
-        | Error err -> out ("warning: failed to close archive: " ^ Fs.File.error_to_string err))
+      protect
+        ~finally:(fun () ->
+          match Fs.File.close file with
+          | Ok () -> ()
+          | Error err -> out ("warning: failed to close archive: " ^ Fs.File.error_to_string err))
         (fun () ->
           let reader = Compress.Gzip.to_reader (Fs.File.to_reader file) in
           match Archive.Tar.extract reader ~into with
@@ -355,8 +356,9 @@ let run = fun matches ->
             )
       in
       let* latest_metadata = requested_metadata
-      |> Result.map ~fn:(
-        Option.map ~fn:(fun (metadata: Version_info.t) ->
+      |> Result.map
+        ~fn:(Option.map
+          ~fn:(fun (metadata: Version_info.t) ->
             {
               metadata
               with issues_url = Option.or_else

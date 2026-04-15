@@ -51,8 +51,8 @@ let print_run_label = fun (suite: Bench_runtime.suite_binary) ->
 
 let print_empty_hint = fun package_filter ->
   match package_filter with
-  | Some package_name ->
-      println ("No benchmark suites found in package '" ^ Package_name.to_string package_name ^ "'")
+  | Some package_name -> println
+    ("No benchmark suites found in package '" ^ Package_name.to_string package_name ^ "'")
   | None -> println "No benchmark binaries found"
 
 let print_empty_list_hint = fun package_filter query ->
@@ -76,7 +76,9 @@ let listed_suite_source_label = fun ~(workspace:Riot_model.Workspace.t) (
     )
   | None -> Package_name.to_string suite.suite.package_name ^ "/" ^ suite.suite.suite_name
 
-let listed_bench_selector = fun (suite: Bench_runtime.suite_binary) (item: Bench_runtime.listed_bench_item) ->
+let listed_bench_selector = fun (suite: Bench_runtime.suite_binary) (
+  item: Bench_runtime.listed_bench_item
+) ->
   Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name ^ ":" ^ item.name
 
 let listed_bench_item_json = fun (suite: Bench_runtime.suite_binary) (
@@ -165,12 +167,12 @@ let write_bench_list_completed_json = fun ~command_started_at ~suite_count ~benc
     ])
 
 let write_bench_list = fun ~(workspace:Riot_model.Workspace.t) suites ->
-  List.for_each suites ~fn:
-    (fun (suite: Bench_runtime.listed_bench_suite) ->
+  List.for_each suites
+    ~fn:(fun (suite: Bench_runtime.listed_bench_suite) ->
       println "";
       println (listed_suite_source_label ~workspace suite);
-      suite.benchmarks |> List.for_each ~fn:
-        (fun (item: Bench_runtime.listed_bench_item) ->
+      suite.benchmarks |> List.for_each
+        ~fn:(fun (item: Bench_runtime.listed_bench_item) ->
           let kind =
             match item.kind with
             | Bench_runtime.Benchmark -> "bench"
@@ -206,8 +208,8 @@ let print_bench_result = fun (result: Bench_runtime.bench_case_result) ->
 let print_comparison = fun (result: Bench_runtime.bench_comparison_result) ->
   println ("Comparison: " ^ result.description);
   println ("  Fastest: " ^ result.fastest);
-  result.case_results |> List.for_each ~fn:
-    (fun (case_result: Bench_runtime.bench_comparison_case_result) ->
+  result.case_results |> List.for_each
+    ~fn:(fun (case_result: Bench_runtime.bench_comparison_case_result) ->
       let stats = case_result.statistics in
       println ("  " ^ case_result.name ^ ":");
       println ("    iterations: " ^ Int.to_string stats.iterations);
@@ -218,8 +220,8 @@ let print_comparison = fun (result: Bench_runtime.bench_comparison_result) ->
   if not (result.speedup_ratios = []) then
     (
       println "  Relative speed:";
-      result.speedup_ratios |> List.for_each ~fn:
-        (fun (name, ratio) ->
+      result.speedup_ratios |> List.for_each
+        ~fn:(fun (name, ratio) ->
           if not (String.equal name result.fastest) then
             println
               ("    "
@@ -240,7 +242,11 @@ let print_summary = fun ~total ~completed ~skipped ~failed ->
   println ("  Failed: " ^ Int.to_string failed)
 
 let json_int_field = fun name fields ->
-  match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with
+  match
+    List.find fields
+      ~fn:(fun (field_name, _) ->
+        String.equal field_name name)
+  with
   | Some (_, Data.Json.Int value) -> Some value
   | _ -> None
 
@@ -354,21 +360,18 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let legacy_package =
     match ArgParser.get_one matches "package" with
     | None -> Ok None
-    | Some package_name ->
-        Package_name.from_string package_name
-        |> Result.map ~fn:Option.some
-        |> Result.map_err ~fn:(fun error -> Failure error)
+    | Some package_name -> Package_name.from_string package_name
+    |> Result.map ~fn:Option.some
+    |> Result.map_err ~fn:(fun error -> Failure error)
   in
   let profile = profile_of_matches matches in
   let* legacy_package = legacy_package in
-  let* request =
-    Test_selection.parse_request
-      ~pattern
-      ~legacy_package
-      ~size_filter:Test_selection.All
-      ~flaky_only:false
-    |> Result.map_err ~fn:(fun error -> Failure error)
-  in
+  let* request = Test_selection.parse_request
+    ~pattern
+    ~legacy_package
+    ~size_filter:Test_selection.All
+    ~flaky_only:false
+  |> Result.map_err ~fn:(fun error -> Failure error) in
   let extra_args = Test_selection.extra_args request extra_args in
   let command_started_at = Time.Instant.now () in
   if output_mode = Build.Json then
@@ -383,7 +386,9 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           listed_suite_count := !listed_suite_count + 1;
           listed_benchmark_count := !listed_benchmark_count + List.length suite.benchmarks;
           write_bench_suite_listed_json ~command_started_at ~workspace suite;
-          List.for_each suite.benchmarks ~fn:(write_bench_item_listed_json ~command_started_at suite.suite)
+          List.for_each
+            suite.benchmarks
+            ~fn:(write_bench_item_listed_json ~command_started_at suite.suite)
         )
     in
     let on_suite_error (suite: Bench_runtime.suite_binary) err =
@@ -414,8 +419,10 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
     with
     | Ok suites ->
         let suites =
-          List.filter suites ~fn:(fun (suite: Bench_runtime.listed_bench_suite) ->
-            not (List.is_empty suite.benchmarks))
+          List.filter
+            suites
+            ~fn:(fun (suite: Bench_runtime.listed_bench_suite) ->
+              not (List.is_empty suite.benchmarks))
         in
         (
           match output_mode with
@@ -446,7 +453,10 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
           | Build.Json -> Build.write_build_event_json build_event
           | Build.Human -> (
               match build_event with
-              | Riot_build.Event.Pm kind -> Build.write_pm_event ~mode:output_mode ~seen_registry_updates kind
+              | Riot_build.Event.Pm kind -> Build.write_pm_event
+                ~mode:output_mode
+                ~seen_registry_updates
+                kind
               | Riot_build.Event.BuildingTarget { target; host } -> Build.write_building_target_event
                 ~mode:output_mode
                 ~target
@@ -458,8 +468,8 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
       | _ -> (
           match output_mode with
           | Build.Json -> Bench_runtime.bench_event_to_json event
-          |> Option.for_each ~fn:
-            (fun json ->
+          |> Option.for_each
+            ~fn:(fun json ->
               write_json_event
                 ~command_started_at
                 ~duration_us:(summary_duration_us ~command_started_at event)

@@ -34,10 +34,8 @@ let test_starts_with_is_raw_prefix_not_path_segment_match = fun _ctx ->
 
 let tests = [
   Test.case "Std.String.equal matches only identical strings" test_equal_matches_only_identical_strings;
-  Test.case "Std.String.starts_with matches exact prefixes and descendants"
-    test_starts_with_matches_exact_prefix_and_descendants;
-  Test.case "Std.String.starts_with is raw prefix matching"
-    test_starts_with_is_raw_prefix_not_path_segment_match;
+  Test.case "Std.String.starts_with matches exact prefixes and descendants" test_starts_with_matches_exact_prefix_and_descendants;
+  Test.case "Std.String.starts_with is raw prefix matching" test_starts_with_is_raw_prefix_not_path_segment_match;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"std_string_tests" ~tests ~args

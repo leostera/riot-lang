@@ -66,26 +66,31 @@ let hash = fun action ->
     (* Helper to write a sorted list of paths *)
     let write_sorted_paths hasher paths =
       let sorted =
-        List.sort paths ~compare:(fun a b ->
-          String.compare (Path.to_string a) (Path.to_string b))
+        List.sort paths
+          ~compare:(fun a b ->
+            String.compare (Path.to_string a) (Path.to_string b))
       in
-      List.for_each sorted ~fn:(fun path ->
-        Sha256.write hasher (Path.to_string path))
+      List.for_each sorted
+        ~fn:(fun path ->
+          Sha256.write hasher (Path.to_string path))
     in
     let write_paths_in_order hasher paths =
-      List.for_each paths ~fn:(fun path ->
-        Sha256.write hasher (Path.to_string path))
+      List.for_each paths
+        ~fn:(fun path ->
+          Sha256.write hasher (Path.to_string path))
     in
     (* Helper to write sorted flags - use flags_to_string which returns string list *)
     let write_sorted_flags hasher flags =
       let flag_strings = Riot_toolchain.Ocamlc.flags_to_string flags in
       let sorted = List.sort flag_strings ~compare:String.compare in
-      List.for_each sorted ~fn:(fun s ->
-        Sha256.write hasher s)
+      List.for_each sorted
+        ~fn:(fun s ->
+          Sha256.write hasher s)
     in
     let write_strings_in_order hasher values =
-      List.for_each values ~fn:(fun value ->
-        Sha256.write hasher value)
+      List.for_each values
+        ~fn:(fun value ->
+          Sha256.write hasher value)
     in
     match action with
     | CompileInterface { source; outputs; includes; flags } ->
@@ -181,11 +186,13 @@ let hash = fun action ->
         List.for_each sorted_cmd ~fn:(Sha256.write hasher);
         write_sorted_paths hasher outputs;
         let sorted_env =
-          List.sort env ~compare:(fun (k1, _) (k2, _) ->
-            String.compare k1 k2)
+          List.sort env
+            ~compare:(fun (k1, _) (k2, _) ->
+              String.compare k1 k2)
         in
-        List.for_each sorted_env ~fn:(fun (k, v) ->
-          Sha256.write hasher (k ^ "=" ^ v));
+        List.for_each sorted_env
+          ~fn:(fun (k, v) ->
+            Sha256.write hasher (k ^ "=" ^ v));
         Sha256.finish hasher
 
 let to_string = function
@@ -415,11 +422,12 @@ let from_json = fun json ->
       match get_field field json with
       | Some (Array arr) ->
           Some (
-            List.filter_map arr ~fn:(
-              function
-              | String s -> Some (Path.v s)
-              | _ -> None
-            )
+            List.filter_map arr
+              ~fn:(
+                function
+                | String s -> Some (Path.v s)
+                | _ -> None
+              )
           )
       | _ -> None
     in
@@ -427,11 +435,12 @@ let from_json = fun json ->
       match get_field field json with
       | Some (Array arr) ->
           Some (
-            List.filter_map arr ~fn:(
-              function
-              | String s -> Some s
-              | _ -> None
-            )
+            List.filter_map arr
+              ~fn:(
+                function
+                | String s -> Some s
+                | _ -> None
+              )
           )
       | _ -> None
     in
@@ -581,21 +590,23 @@ let from_json = fun json ->
           match get_field "build_cmd" json with
           | Some (Array arr) ->
               Some (
-                List.filter_map arr ~fn:(
-                  function
-                  | String s -> Some s
-                  | _ -> None
-                )
+                List.filter_map arr
+                  ~fn:(
+                    function
+                    | String s -> Some s
+                    | _ -> None
+                  )
               )
           | _ -> None
         in
         let parse_env json =
           match get_field "env" json with
           | Some (Object fields) ->
-              List.filter_map fields ~fn:(fun (k, v) ->
-                match v with
-                | String s -> Some (k, s)
-                | _ -> None)
+              List.filter_map fields
+                ~fn:(fun (k, v) ->
+                  match v with
+                  | String s -> Some (k, s)
+                  | _ -> None)
           | _ -> []
         in
         match (
@@ -623,10 +634,9 @@ let from_json = fun json ->
         Error "type must be string"
 
 let equal = fun a1 a2 ->
-  let list_all2 = fun left right ~fn ->
+  let list_all2 left right ~fn =
     List.compare_lengths ~left ~right = 0
-    && List.all (List.zip left right) ~fn:(fun (left, right) -> fn left right)
-  in
+    && List.all (List.zip left right) ~fn:(fun (left, right) -> fn left right) in
   match (a1, a2) with
   | CompileInterface r1, CompileInterface r2 -> Path.equal r1.source r2.source
   && list_all2 r1.outputs r2.outputs ~fn:Path.equal

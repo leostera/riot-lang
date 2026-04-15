@@ -214,12 +214,12 @@ let test_mouse_sequences = fun _ctx ->
   ]
   in
   let errors =
-    List.filter_map tests ~fn:(fun ((name, actual, expected)) ->
-      if actual = expected then
-        None
-      else
-        Some (name ^ ": expected '" ^ expected ^ "', got '" ^ actual ^ "'")
-    )
+    List.filter_map tests
+      ~fn:(fun ((name, actual, expected)) ->
+        if actual = expected then
+          None
+        else
+          Some (name ^ ": expected '" ^ expected ^ "', got '" ^ actual ^ "'"))
   in
   match errors with
   | [] -> Ok ()
@@ -304,12 +304,12 @@ let test_text_attributes = fun _ctx ->
   ]
   in
   let errors =
-    List.filter_map tests ~fn:(fun ((name, actual, expected)) ->
-      if actual = expected then
-        None
-      else
-        Some (name ^ ": expected '" ^ expected ^ "', got '" ^ actual ^ "'")
-    )
+    List.filter_map tests
+      ~fn:(fun ((name, actual, expected)) ->
+        if actual = expected then
+          None
+        else
+          Some (name ^ ": expected '" ^ expected ^ "', got '" ^ actual ^ "'"))
   in
   match errors with
   | [] -> Ok ()

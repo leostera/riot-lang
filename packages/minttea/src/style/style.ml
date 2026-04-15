@@ -201,9 +201,7 @@ let do_render = fun t str ->
     (* Apply horizontal padding to each line *)
     let lines = Util.Ansi.split_lines str in
     let padded_lines =
-      List.map
-        ~fn:(fun line -> pad_left ^ line ^ pad_right)
-        lines
+      List.map ~fn:(fun line -> pad_left ^ line ^ pad_right) lines
     in
     let str_with_h_padding = String.concat "\n" padded_lines in
     (* Apply vertical padding (top and bottom) *)

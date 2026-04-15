@@ -46,12 +46,20 @@ let json_of_metadata = fun t ->
   ]
 
 let string_field = fun fields name ->
-  match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with
+  match
+    List.find fields
+      ~fn:(fun (field_name, _) ->
+        String.equal field_name name)
+  with
   | Some (_, Data.Json.String value) -> Ok value
   | _ -> Error ("missing or invalid '" ^ name ^ "' field")
 
 let optional_string_field = fun fields name ->
-  match List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name) with
+  match
+    List.find fields
+      ~fn:(fun (field_name, _) ->
+        String.equal field_name name)
+  with
   | None
   | Some (_, Data.Json.Null) -> Ok None
   | Some (_, Data.Json.String value) -> Ok (Some value)

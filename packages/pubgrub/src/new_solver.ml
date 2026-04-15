@@ -182,7 +182,8 @@ let compute_pending state: (package * version Ranges.t) list =
       | `Constrained _ranges ->
           (* Constrained packages will be picked up as dependencies of decided packages *)
           ()
-      | `Undecided -> ());
+      | `Undecided ->
+          ());
   (* Convert HashMap to list *)
   let result = ref [] in
   HashMap.for_each pending_map ~fn:(fun pkg ranges -> result := (pkg, ranges) :: !result);
@@ -198,8 +199,7 @@ let compute_pending state: (package * version Ranges.t) list =
       | Some incompats ->
           (* Check how many are simple 2-term conflicts with other pending packages *)
           let num_pending_conflicts =
-            List.fold_left incompats
-              ~acc:0
+            List.fold_left incompats ~acc:0
               ~fn:(fun count incompat ->
                 let terms = Incompatibility.terms incompat in
                 if List.length terms = 2 then
@@ -245,14 +245,10 @@ let compute_pending state: (package * version Ranges.t) list =
           Int.compare score2 score1)
   in
   Log.info "📊 Pending packages sorted by score:";
-  List.for_each sorted
+  List.for_each
+    sorted
     ~fn:(fun (pkg, ranges) ->
-      Log.info
-        ("   "
-        ^ pkg
-        ^ " (score: "
-        ^ Int.to_string (score_package (pkg, ranges))
-        ^ ")"));
+      Log.info ("   " ^ pkg ^ " (score: " ^ Int.to_string (score_package (pkg, ranges)) ^ ")"));
   sorted
 
 (* ============================================================================
@@ -541,66 +537,69 @@ let choose_version = fun provider state pkg ranges ->
     ("  💡 Found " ^ (Int.to_string (List.length incompats)) ^ " incompatibilities for " ^ pkg);
   (* Find effective ranges by checking which incompatibilities apply *)
   let effective_ranges = ref ranges in
-  List.for_each incompats ~fn:(fun incompat ->
-    let terms = Incompatibility.terms incompat in
-    Log.debug ("  Checking incompatibility with " ^ Int.to_string (List.length terms) ^ " terms");
-    (* Check if all OTHER terms are satisfied *)
-    let all_other_satisfied = ref true in
-    List.for_each terms ~fn:(fun term ->
-      let term_pkg = Term.package term in
-      if term_pkg != pkg then (
-        let constraint_status = Partial_solution.get_constraint state.solution term_pkg in
+  List.for_each incompats
+    ~fn:(fun incompat ->
+      let terms = Incompatibility.terms incompat in
+      Log.debug ("  Checking incompatibility with " ^ Int.to_string (List.length terms) ^ " terms");
+      (* Check if all OTHER terms are satisfied *)
+      let all_other_satisfied = ref true in
+      List.for_each terms
+        ~fn:(fun term ->
+          let term_pkg = Term.package term in
+          if term_pkg != pkg then
+            (
+              let constraint_status = Partial_solution.get_constraint state.solution term_pkg in
+              (
+                match constraint_status with
+                | `Undecided -> Log.info ("      Term pkg=" ^ term_pkg ^ " is Undecided")
+                | `Decided v -> Log.info
+                  ("      Term pkg=" ^ term_pkg ^ " is Decided@" ^ Version.to_string v)
+                | `Constrained _ -> Log.info ("      Term pkg=" ^ term_pkg ^ " is Constrained")
+              );
+              match constraint_status with
+              | `Undecided ->
+                  all_other_satisfied := false
+              | `Decided ver ->
+                  let in_range = Ranges.contains ~compare_v:version_compare (Term.ranges term) ver in
+                  let term_satisfied =
+                    (Term.is_positive term && in_range)
+                    || ((not (Term.is_positive term)) && not in_range) in
+                  if not term_satisfied then
+                    all_other_satisfied := false
+              | `Constrained constrained_ranges ->
+                  let term_satisfied =
+                    if Term.is_positive term then
+                      Ranges.subset_of
+                        ~compare_v:version_compare
+                        constrained_ranges
+                        (Term.ranges term)
+                    else
+                      Ranges.is_disjoint
+                        ~compare_v:version_compare
+                        constrained_ranges
+                        (Term.ranges term)
+                  in
+                  if not term_satisfied then
+                    all_other_satisfied := false
+            ));
+      (* If all other terms satisfied, constrain by this incompatibility *)
+      if !all_other_satisfied then
         (
-          match constraint_status with
-          | `Undecided -> Log.info ("      Term pkg=" ^ term_pkg ^ " is Undecided")
-          | `Decided v ->
-              Log.info ("      Term pkg=" ^ term_pkg ^ " is Decided@" ^ Version.to_string v)
-          | `Constrained _ -> Log.info ("      Term pkg=" ^ term_pkg ^ " is Constrained")
-        );
-        match constraint_status with
-        | `Undecided ->
-            all_other_satisfied := false
-        | `Decided ver ->
-            let in_range = Ranges.contains ~compare_v:version_compare (Term.ranges term) ver in
-            let term_satisfied =
-              (Term.is_positive term && in_range)
-              || ((not (Term.is_positive term)) && not in_range)
-            in
-            if not term_satisfied then
-              all_other_satisfied := false
-        | `Constrained constrained_ranges ->
-            let term_satisfied =
-              if Term.is_positive term then
-                Ranges.subset_of
-                  ~compare_v:version_compare
-                  constrained_ranges
-                  (Term.ranges term)
-              else
-                Ranges.is_disjoint
-                  ~compare_v:version_compare
-                  constrained_ranges
-                  (Term.ranges term)
-            in
-            if not term_satisfied then
-              all_other_satisfied := false
-      ));
-    (* If all other terms satisfied, constrain by this incompatibility *)
-    if !all_other_satisfied then (
-      Log.info ("    ✨ All other terms satisfied for " ^ pkg ^ "!");
-      match Incompatibility.get_term incompat pkg with
-      | Some term when Term.is_positive term ->
-          Log.info "    ➕ Positive term - EXCLUDE these ranges to avoid conflict";
-          let complement_ranges = Ranges.complement ~compare_v:version_compare (Term.ranges term) in
-          effective_ranges := Ranges.intersection ~compare_v:version_compare !effective_ranges complement_ranges
-      | Some term ->
-          Log.info "    ➖ Negative term - INCLUDE only these ranges";
-          effective_ranges := Ranges.intersection
-            ~compare_v:version_compare
-            !effective_ranges
-            (Term.ranges term)
-      | None ->
-          ()
-    ));
+          Log.info ("    ✨ All other terms satisfied for " ^ pkg ^ "!");
+          match Incompatibility.get_term incompat pkg with
+          | Some term when Term.is_positive term ->
+              Log.info "    ➕ Positive term - EXCLUDE these ranges to avoid conflict";
+              let complement_ranges = Ranges.complement ~compare_v:version_compare (Term.ranges term) in
+              effective_ranges := Ranges.intersection ~compare_v:version_compare !effective_ranges complement_ranges
+          | Some term ->
+              Log.info "    ➖ Negative term - INCLUDE only these ranges";
+              effective_ranges := Ranges.intersection
+                ~compare_v:version_compare
+                !effective_ranges
+                (Term.ranges term)
+          | None ->
+              ()
+        ));
   Log.debug "  Effective ranges computed";
   (* Ask provider for a version in the effective ranges *)
   match provider.Provider.choose_version pkg !effective_ranges with
@@ -856,7 +855,9 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                                   let new_state = { propagated_state with solution = new_solution } in
                                   (* Add dependencies to graph *)
                                   let dep_list =
-                                    List.map pkg_deps ~fn:(fun (dep_pkg, dep_ranges) -> (dep_pkg, dep_ranges))
+                                    List.map
+                                      pkg_deps
+                                      ~fn:(fun (dep_pkg, dep_ranges) -> (dep_pkg, dep_ranges))
                                   in
                                   let new_dep_graph = DependencyGraph.add_dependencies
                                     new_state.dependency_graph

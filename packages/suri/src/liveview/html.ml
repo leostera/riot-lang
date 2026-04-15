@@ -40,9 +40,7 @@ let body = fun ?(children = []) () -> El { tag = "body"; attrs = []; children }
 let div = fun ?(attrs = []) ?id ?(children = []) () ->
   El {
     tag = "div";
-    attrs =
-      optional_attr id attr_id
-    @ List.map ~fn:(fun ((k, v)) -> `attr (k, v)) attrs;
+    attrs = optional_attr id attr_id @ List.map ~fn:(fun ((k, v)) -> `attr (k, v)) attrs;
     children
   }
 
@@ -65,10 +63,7 @@ let p = fun ?(children = []) () -> El { tag = "p"; attrs = []; children }
 let script = fun ?src ?id ?type_ ?(children = []) () ->
   El {
     tag = "script";
-    attrs =
-      optional_attr id attr_id
-      @ optional_attr type_ attr_type
-      @ optional_attr src attr_src;
+    attrs = optional_attr id attr_id @ optional_attr type_ attr_type @ optional_attr src attr_src;
     children
   }
 
@@ -92,11 +87,12 @@ let rec to_string = fun (t: 'msg t) ->
 
 and attrs_to_string = fun attrs ->
   List.map
-    ~fn:(function
+    ~fn:(
+      function
       | `attr (k, v) -> k ^ "=" ^ "\"" ^ v ^ "\""
-      | _ -> "")
-    attrs
-  |> String.concat " "
+      | _ -> ""
+    )
+    attrs |> String.concat " "
 
 let event_handlers = fun attrs ->
   List.filter_map
@@ -113,7 +109,7 @@ let rec map_action = fun fn t ->
   | Splat els ->
       Splat (List.map ~fn:(map_action fn) els)
   | El { tag; children; attrs } ->
-  let children = List.map ~fn:(map_action fn) children in
+      let children = List.map ~fn:(map_action fn) children in
       let attrs =
         List.map
           ~fn:(fun attr ->

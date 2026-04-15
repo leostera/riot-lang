@@ -1,5 +1,4 @@
 open Std
-
 module Test = Std.Test
 
 let read_opened_file = fun file ->
@@ -7,9 +6,7 @@ let read_opened_file = fun file ->
   let _ = Fs.File.close file |> Result.expect ~msg:"close should succeed" in
   content
 
-let namespace = fun parts ->
-  Contentstore.Namespace.from_parts parts
-  |> Result.expect ~msg:"invalid test namespace"
+let namespace = fun parts -> Contentstore.Namespace.from_parts parts |> Result.expect ~msg:"invalid test namespace"
 
 let make_store = fun tmpdir parts ->
   Contentstore.create
@@ -18,13 +15,11 @@ let make_store = fun tmpdir parts ->
     ~policy:Contentstore.Policy.default
 
 let with_store = fun prefix parts fn ->
-  Fs.with_tempdir ~prefix
-    (fun tmpdir -> fn ~tmpdir ~store:(make_store tmpdir parts))
+  Fs.with_tempdir ~prefix (fun tmpdir -> fn ~tmpdir ~store:(make_store tmpdir parts))
   |> Result.unwrap_or ~default:(Error "tempdir creation failed")
 
 let open_object_to_string = fun store ~hash ->
-  Contentstore.open_object store ~hash
-  |> Result.map ~fn:read_opened_file
+  Contentstore.open_object store ~hash |> Result.map ~fn:read_opened_file
 
 let object_namespace_dir = fun store ->
   Path.(Contentstore.root store / Path.v "objects" / Path.v "typ" / Path.v "modules")
@@ -44,8 +39,7 @@ let test_save_empty_object_roundtrip = fun _ctx ->
   with_store "contentstore-object-empty" [ "typ"; "modules" ]
     (fun ~tmpdir:_ ~store ->
       let hash = Crypto.hash_string "empty-object" in
-      let _ = Contentstore.save_object store ~hash ~content:""
-      |> Result.expect ~msg:"save_object should succeed" in
+      let _ = Contentstore.save_object store ~hash ~content:"" |> Result.expect ~msg:"save_object should succeed" in
       match open_object_to_string store ~hash with
       | Ok "" -> Ok ()
       | Ok _ -> Error "expected opened empty object to stay empty"
@@ -56,8 +50,7 @@ let test_save_small_ascii_object_roundtrip = fun _ctx ->
     (fun ~tmpdir:_ ~store ->
       let hash = Crypto.hash_string "ascii-object" in
       let content = "hello world" in
-      let _ = Contentstore.save_object store ~hash ~content
-      |> Result.expect ~msg:"save_object should succeed" in
+      let _ = Contentstore.save_object store ~hash ~content |> Result.expect ~msg:"save_object should succeed" in
       match open_object_to_string store ~hash with
       | Ok loaded when String.equal loaded content -> Ok ()
       | Ok _ -> Error "expected opened ASCII object to match saved content"
@@ -68,11 +61,11 @@ let test_save_large_object_roundtrip = fun _ctx ->
     (fun ~tmpdir:_ ~store ->
       let hash = Crypto.hash_string "large-object" in
       let content =
-        String.init ~len:1_000_000 ~fn:(fun index ->
-          Char.from_int_unchecked (Char.to_int 'a' + (index mod 26)))
+        String.init
+          ~len:1_000_000
+          ~fn:(fun index -> Char.from_int_unchecked (Char.to_int 'a' + (index mod 26)))
       in
-      let _ = Contentstore.save_object store ~hash ~content
-      |> Result.expect ~msg:"save_object should succeed" in
+      let _ = Contentstore.save_object store ~hash ~content |> Result.expect ~msg:"save_object should succeed" in
       match Contentstore.open_object store ~hash |> Result.map ~fn:read_opened_file with
       | Ok loaded when String.length loaded = String.length content && String.equal loaded content -> Ok ()
       | Ok _ -> Error "expected opened large object to match saved content"
@@ -94,10 +87,8 @@ let test_save_object_same_content_is_idempotent = fun _ctx ->
     (fun ~tmpdir:_ ~store ->
       let hash = Crypto.hash_string "same-content" in
       let content = "same content" in
-      let _ = Contentstore.save_object store ~hash ~content
-      |> Result.expect ~msg:"first save_object should succeed" in
-      let _ = Contentstore.save_object store ~hash ~content
-      |> Result.expect ~msg:"second save_object should succeed" in
+      let _ = Contentstore.save_object store ~hash ~content |> Result.expect ~msg:"first save_object should succeed" in
+      let _ = Contentstore.save_object store ~hash ~content |> Result.expect ~msg:"second save_object should succeed" in
       match open_object_to_string store ~hash with
       | Ok loaded when String.equal loaded content -> Ok ()
       | Ok _ -> Error "expected duplicate save_object to preserve content"
@@ -121,7 +112,10 @@ let test_save_object_creates_namespace_dir = fun _ctx ->
     (fun ~tmpdir:_ ~store ->
       let namespace_dir = object_namespace_dir store in
       let exists_before = Fs.exists namespace_dir |> Result.expect ~msg:"exists should succeed" in
-      let _ = Contentstore.save_object store ~hash:(Crypto.hash_string "creates-namespace") ~content:"payload"
+      let _ = Contentstore.save_object
+        store
+        ~hash:(Crypto.hash_string "creates-namespace")
+        ~content:"payload"
       |> Result.expect ~msg:"save_object should succeed" in
       let exists_after = Fs.exists namespace_dir |> Result.expect ~msg:"exists should succeed" in
       if (not exists_before) && exists_after then
@@ -134,11 +128,13 @@ let test_different_hashes_in_same_namespace_are_isolated = fun _ctx ->
     (fun ~tmpdir:_ ~store ->
       let left_hash = Crypto.hash_string "left-object" in
       let right_hash = Crypto.hash_string "right-object" in
-      let _ = Contentstore.save_object store ~hash:left_hash ~content:"left"
-      |> Result.expect ~msg:"save left object should succeed" in
+      let _ = Contentstore.save_object store ~hash:left_hash ~content:"left" |> Result.expect ~msg:"save left object should succeed" in
       let _ = Contentstore.save_object store ~hash:right_hash ~content:"right"
       |> Result.expect ~msg:"save right object should succeed" in
-      match (open_object_to_string store ~hash:left_hash, open_object_to_string store ~hash:right_hash) with
+      match (
+        open_object_to_string store ~hash:left_hash,
+        open_object_to_string store ~hash:right_hash
+      ) with
       | (Ok "left", Ok "right") -> Ok ()
       | _ -> Error "expected different hashes in one namespace to stay isolated")
 
@@ -173,20 +169,17 @@ let test_many_objects_in_one_namespace_remain_readable = fun _ctx ->
 let test_unicode_namespace_roundtrip = fun _ctx ->
   Fs.with_tempdir ~prefix:"contentstore-object-unicode-namespace"
     (fun tmpdir ->
-      let store =
-        Contentstore.create
-          ~root:Path.(tmpdir / Path.v "cache")
-          ~ns:(namespace [ "módulos"; "東京" ])
-          ~policy:Contentstore.Policy.default
-      in
+      let store = Contentstore.create
+        ~root:Path.(tmpdir / Path.v "cache")
+        ~ns:(namespace [ "módulos"; "東京" ])
+        ~policy:Contentstore.Policy.default in
       let hash = Crypto.hash_string "unicode-namespace" in
-      let _ = Contentstore.save_object store ~hash ~content:"payload"
-      |> Result.expect ~msg:"save_object should succeed" in
+      let _ = Contentstore.save_object store ~hash ~content:"payload" |> Result.expect ~msg:"save_object should succeed" in
       match open_object_to_string store ~hash with
       | Ok "payload" -> Ok ()
       | Ok _ -> Error "expected object in a unicode namespace to roundtrip"
-      | Error err -> Error (Contentstore.Store.error_message err))
-  |> Result.unwrap_or ~default:(Error "tempdir creation failed")
+      | Error err -> Error (Contentstore.Store.error_message err)) |> Result.unwrap_or
+    ~default:(Error "tempdir creation failed")
 
 let test_open_object_missing_is_structured = fun _ctx ->
   with_store "contentstore-open-object-missing" [ "typ" ]
@@ -203,7 +196,10 @@ let test_save_file_rejects_directory_source = fun _ctx ->
       let source = Path.(tmpdir / Path.v "source-dir") in
       let _ = Fs.create_dir_all source |> Result.expect ~msg:"create source dir should succeed" in
       match Contentstore.save_file store ~hash:(Crypto.hash_string "source-dir") ~source with
-      | Error (Contentstore.Store.Invalid_source_path { reason = Contentstore.Store.Source_not_file; _ }) -> Ok ()
+      | Error (Contentstore.Store.Invalid_source_path {
+        reason=Contentstore.Store.Source_not_file;
+        _
+      }) -> Ok ()
       | Error err -> Error ("unexpected error: " ^ Contentstore.Store.error_message err)
       | Ok () -> Error "expected save_file to reject a directory source")
 

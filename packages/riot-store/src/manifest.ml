@@ -66,7 +66,9 @@ let of_json = fun json ->
         match json with
         | Object fields -> (
             let get_field name =
-              List.find fields ~fn:(fun (field_name, _) -> String.equal field_name name)
+              List.find fields
+                ~fn:(fun (field_name, _) ->
+                  String.equal field_name name)
               |> Option.map ~fn:(fun (_, value) -> value)
             in
             let version =
@@ -96,7 +98,9 @@ let of_json = fun json ->
                   let parse_entry = function
                     | Object entry_fields -> (
                         let get_entry_field name =
-                          List.find entry_fields ~fn:(fun (field_name, _) -> String.equal field_name name)
+                          List.find entry_fields
+                            ~fn:(fun (field_name, _) ->
+                              String.equal field_name name)
                           |> Option.map ~fn:(fun (_, value) -> value)
                         in
                         match (
@@ -113,28 +117,24 @@ let of_json = fun json ->
                       )
                     | _ -> Error "File entry must be an object"
                   in
-                  List.fold_left entries
-                    ~acc:(Ok [])
+                  List.fold_left entries ~acc:(Ok [])
                     ~fn:(fun acc entry ->
                       match (acc, parse_entry entry) with
                       | Ok entries, Ok e -> Ok (e :: entries)
                       | (Error e, _)
-                      | (_, Error e) -> Error e)
-                  |> Result.map ~fn:List.reverse
+                      | (_, Error e) -> Error e) |> Result.map ~fn:List.reverse
               | _ -> Error "Invalid or missing files"
             in
             let ocamlc_warnings =
               match get_field "ocamlc_warnings" with
               | None -> Ok []
               | Some (Array entries) ->
-                  List.fold_left entries
-                    ~acc:(Ok [])
+                  List.fold_left entries ~acc:(Ok [])
                     ~fn:(fun acc entry ->
                       match (acc, entry) with
                       | Ok messages, String msg -> Ok (msg :: messages)
                       | Ok _, _ -> Error "Invalid ocamlc warning entry"
-                      | Error e, _ -> Error e)
-                  |> Result.map ~fn:List.reverse
+                      | Error e, _ -> Error e) |> Result.map ~fn:List.reverse
               | Some _ -> Error "Invalid ocamlc_warnings"
             in
             let exports =
@@ -145,7 +145,9 @@ let of_json = fun json ->
                   let parse_entry = function
                     | Object entry_fields -> (
                         let get_entry_field name =
-                          List.find entry_fields ~fn:(fun (field_name, _) -> String.equal field_name name)
+                          List.find entry_fields
+                            ~fn:(fun (field_name, _) ->
+                              String.equal field_name name)
                           |> Option.map ~fn:(fun (_, value) -> value)
                         in
                         match (
@@ -162,14 +164,12 @@ let of_json = fun json ->
                       )
                     | _ -> Error "Export entry must be an object"
                   in
-                  List.fold_left entries
-                    ~acc:(Ok [])
+                  List.fold_left entries ~acc:(Ok [])
                     ~fn:(fun acc entry ->
                       match (acc, parse_entry entry) with
                       | Ok parsed, Ok export -> Ok (export :: parsed)
                       | (Error e, _)
-                      | (_, Error e) -> Error e)
-                  |> Result.map ~fn:List.reverse
+                      | (_, Error e) -> Error e) |> Result.map ~fn:List.reverse
               | Some _ ->
                   Error "Invalid exports"
             in

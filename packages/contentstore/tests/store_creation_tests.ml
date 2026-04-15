@@ -1,23 +1,16 @@
 open Std
-
 module Test = Std.Test
 
-let namespace = fun parts ->
-  Contentstore.Namespace.from_parts parts
-  |> Result.expect ~msg:"invalid test namespace"
+let namespace = fun parts -> Contentstore.Namespace.from_parts parts |> Result.expect ~msg:"invalid test namespace"
 
 let make_store = fun root parts ->
-  Contentstore.create
-    ~root
-    ~ns:(namespace parts)
-    ~policy:Contentstore.Policy.default
+  Contentstore.create ~root ~ns:(namespace parts) ~policy:Contentstore.Policy.default
 
 let with_root = fun prefix fn ->
   Fs.with_tempdir ~prefix
     (fun tmpdir ->
       let root = Path.(tmpdir / Path.v "cache") in
-      fn ~tmpdir ~root)
-  |> Result.unwrap_or ~default:(Error "tempdir creation failed")
+      fn ~tmpdir ~root) |> Result.unwrap_or ~default:(Error "tempdir creation failed")
 
 let dir_entries = fun path ->
   match Fs.read_dir path with
@@ -104,10 +97,8 @@ let test_exists_is_true_after_commit_dir = fun _ctx ->
       let hash = Crypto.hash_string "committed-tree" in
       let source_dir = Path.(tmpdir / Path.v "source") in
       let _ = Fs.create_dir_all source_dir |> Result.expect ~msg:"create source dir should succeed" in
-      let _ = Fs.write "payload" Path.(source_dir / Path.v "payload.txt")
-      |> Result.expect ~msg:"write payload should succeed" in
-      let _ = Contentstore.commit_dir store ~hash ~source_dir
-      |> Result.expect ~msg:"commit_dir should succeed" in
+      let _ = Fs.write "payload" Path.(source_dir / Path.v "payload.txt") |> Result.expect ~msg:"write payload should succeed" in
+      let _ = Contentstore.commit_dir store ~hash ~source_dir |> Result.expect ~msg:"commit_dir should succeed" in
       if Contentstore.exists store hash then
         Ok ()
       else
@@ -119,13 +110,17 @@ let test_first_write_creates_missing_root = fun _ctx ->
       let store = make_store root [ "modules" ] in
       let hash = Crypto.hash_string "first-write" in
       let hex = Crypto.Digest.hex hash in
-      let _ = Contentstore.save_object store ~hash ~content:"payload"
-      |> Result.expect ~msg:"save_object should succeed" in
+      let _ = Contentstore.save_object store ~hash ~content:"payload" |> Result.expect ~msg:"save_object should succeed" in
       let exists = Fs.exists root |> Result.expect ~msg:"exists should succeed" in
       if not exists then
         Error "expected the first write to materialize the missing root"
       else
-        match Fs.read_to_string Path.(root / Path.v "objects" / Path.v "modules" / Path.v (String.sub hex ~offset:0 ~len:2) / Path.v hex) with
+        match Fs.read_to_string
+          Path.(root
+          / Path.v "objects"
+          / Path.v "modules"
+          / Path.v (String.sub hex ~offset:0 ~len:2)
+          / Path.v hex) with
         | Ok "payload" -> Ok ()
         | Ok _ -> Error "expected the first write to create a readable object under the root"
         | Error _ -> Error "expected the first write to materialize the saved object")
@@ -135,20 +130,16 @@ let test_reserved_like_namespace_parts_are_isolated = fun _ctx ->
     (fun ~tmpdir:_ ~root ->
       let store = make_store root [ "objects"; "__named"; "ab" ] in
       let hash = Crypto.hash_string "reserved-like" in
-      let _ = Contentstore.save_object store ~hash ~content:"payload"
-      |> Result.expect ~msg:"save_object should succeed" in
+      let _ = Contentstore.save_object store ~hash ~content:"payload" |> Result.expect ~msg:"save_object should succeed" in
       let hex = Crypto.Digest.hex hash in
       let object_path =
-        Path.(
-          root
-          / Path.v "objects"
-          / Path.v "objects"
-          / Path.v "__named"
-          / Path.v "ab"
-          / Path.v (String.sub hex ~offset:0 ~len:2)
-          / Path.v hex
-        )
-      in
+        Path.(root
+        / Path.v "objects"
+        / Path.v "objects"
+        / Path.v "__named"
+        / Path.v "ab"
+        / Path.v (String.sub hex ~offset:0 ~len:2)
+        / Path.v hex) in
       let tree_path = Contentstore.hash_dir_of store hash in
       let object_exists = Fs.exists object_path |> Result.expect ~msg:"exists should succeed" in
       let tree_exists = Fs.exists tree_path |> Result.expect ~msg:"exists should succeed" in

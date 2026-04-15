@@ -98,8 +98,7 @@ let run_file = fun ?pipeline ?pipeline_for_file ?on_progress ~mode file ->
     )
 
 let summarize = fun files ->
-  List.fold_left
-    files
+  List.fold_left files
     ~acc:{
       total_files = 0;
       changed_files = 0;
@@ -128,8 +127,7 @@ let summarize = fun files ->
 
 let run_files = fun ?pipeline ?pipeline_for_file ~mode files ->
   let files =
-    List.sort
-      files
+    List.sort files
       ~compare:(fun a b ->
         String.compare (Path.to_string a) (Path.to_string b))
   in

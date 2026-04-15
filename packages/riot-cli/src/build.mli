@@ -65,6 +65,7 @@ val build_command:
   ?profile:string ->
   ?mode:output_mode ->
   ?show_finished_summary:bool ->
+  ?requested_parallelism:int option ->
   Riot_model.Package_name.t option ->
   string option ->
   (unit, exn) result

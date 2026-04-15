@@ -27,7 +27,8 @@ let test_cache_store_creation_is_lazy_until_first_save = fun _ctx ->
           / Path.v (Riot_model.Target.to_string (Riot_model.Riot_dirs.host_target ()))
           / Path.v "cache") in
         match Fs.exists cache_dir with
-        | Ok true -> Error "cache directory should stay lazy before first save"
+        | Ok true ->
+            Error "cache directory should stay lazy before first save"
         | Ok false ->
             let sandbox = Path.(tmpdir / Path.v "sandbox") in
             Result.expect (Fs.create_dir_all sandbox) ~msg:"Create sandbox failed";
@@ -35,7 +36,12 @@ let test_cache_store_creation_is_lazy_until_first_save = fun _ctx ->
             Result.expect (Fs.write "test content" output) ~msg:"Write failed";
             let hash = Crypto.hash_string "test_action" in
             let _ = Result.expect
-              (Riot_store.Store.save store ~package:"test" ~hash ~sandbox_dir:sandbox ~outs:[ output ])
+              (Riot_store.Store.save
+                store
+                ~package:"test"
+                ~hash
+                ~sandbox_dir:sandbox
+                ~outs:[ output ])
               ~msg:"Save failed" in
             (
               match Fs.exists cache_dir with
@@ -43,7 +49,8 @@ let test_cache_store_creation_is_lazy_until_first_save = fun _ctx ->
               | Ok false -> Error "cache directory should be created on first save"
               | Error _ -> Error "Failed to check cache directory after save"
             )
-        | Error _ -> Error "Failed to check cache directory")
+        | Error _ ->
+            Error "Failed to check cache directory")
   with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"

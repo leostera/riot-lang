@@ -123,17 +123,13 @@ let test_add_bootstraps_empty_workspace_outside_workspace = fun _ctx ->
 
 let test_remove_outside_workspace_message = fun _ctx ->
   let* matches = parse_remove [ "rm"; "hello" ] in
-  let* () = Result.map_err
-    (Riot_cli.Remove.run_without_workspace matches)
-    ~fn:Kernel.Exception.to_string in
+  let* () = Result.map_err (Riot_cli.Remove.run_without_workspace matches) ~fn:Kernel.Exception.to_string in
   Test.assert_equal ~expected:"No riot.toml, so nothing to remove" ~actual:Riot_cli.Remove.no_workspace_message;
   Ok ()
 
 let test_update_outside_workspace_message = fun _ctx ->
   let* matches = parse_update [ "update" ] in
-  let* () = Result.map_err
-    (Riot_cli.Update_cmd.run_without_workspace matches)
-    ~fn:Kernel.Exception.to_string in
+  let* () = Result.map_err (Riot_cli.Update_cmd.run_without_workspace matches) ~fn:Kernel.Exception.to_string in
   Test.assert_equal ~expected:"No riot.toml, so nothing to update" ~actual:Riot_cli.Update_cmd.no_workspace_message;
   Ok ()
 

@@ -4,14 +4,11 @@ module Test = Std.Test
 module Package_manifest = Package_manifest
 
 let package_name = fun name ->
-  Package_name.from_string name
-  |> Result.expect ~msg:("Expected valid package name: " ^ name)
+  Package_name.from_string name |> Result.expect ~msg:("Expected valid package name: " ^ name)
 
-let workspace_manager = fun () ->
-  Workspace_manager.create ()
+let workspace_manager = fun () -> Workspace_manager.create ()
 
-let dependency = fun name source: Package.dependency ->
-  { name = package_name name; source }
+let dependency = fun name source : Package.dependency -> { name = package_name name; source }
 
 let has_name = fun expected actual ->
   Package_name.equal actual (package_name expected)
@@ -137,8 +134,7 @@ let workspace_package = fun ~workspace_root (pkg: Package.t) ->
     ()
   | Error _ -> pkg
 
-let manifests_of_packages = fun packages ->
-  List.map packages ~fn:Package_manifest.of_package
+let manifests_of_packages = fun packages -> List.map packages ~fn:Package_manifest.of_package
 
 let make_workspace_manifest = fun ?(workspace_root = Path.v "/workspace") ?(dependencies = []) ?(dev_dependencies = []) ?(build_dependencies = []) packages ->
   let packages = List.map packages ~fn:(workspace_package ~workspace_root) in
@@ -331,9 +327,7 @@ let test_publisher_allows_path_with_version_runtime_dependencies = fun _ctx ->
   let package = make_package
     ~name:"demo"
     ~path:(Path.v "/workspace/packages/demo")
-    ~dependencies:[
-      dependency "std" (source ~path:(Path.v "../std") ~version:Std.Version.any ())
-    ]
+    ~dependencies:[ dependency "std" (source ~path:(Path.v "../std") ~version:Std.Version.any ()) ]
     () in
   match Riot_deps.Publisher.validate_runtime_dependencies ~package with
   | Ok () -> Ok ()
@@ -372,9 +366,7 @@ public = true
           | Error _ as err -> err
           | Ok entries ->
               let entries = List.sort entries ~compare:String.compare in
-              let expected =
-                List.sort [ "README.md"; "src/demo.ml"; "riot.toml" ] ~compare:String.compare
-              in
+              let expected = List.sort [ "README.md"; "src/demo.ml"; "riot.toml" ] ~compare:String.compare in
               if entries = expected then
                 Ok ()
               else
@@ -557,9 +549,7 @@ let test_publisher_workspace_publish_order_uses_runtime_local_dependencies = fun
   let app = make_package
     ~name:"app"
     ~path:(Path.v "packages/app")
-    ~dependencies:[
-      dependency "util" (source ~path:(Path.v "../util") ~version:Std.Version.any ())
-    ]
+    ~dependencies:[ dependency "util" (source ~path:(Path.v "../util") ~version:Std.Version.any ()) ]
     () in
   match Riot_deps.Publisher.workspace_publish_order ~packages:[ app; util; core ] with
   | Error err -> Error ("expected publish order to succeed: " ^ Riot_deps.Publisher.message err)
@@ -612,9 +602,7 @@ let test_publisher_validate_registry_dependencies_skips_workspace_publish_set = 
   let app = make_package
     ~name:"app"
     ~path:(Path.v "packages/app")
-    ~dependencies:[
-      dependency "core" (source ~path:(Path.v "../core") ~version:Std.Version.any ())
-    ]
+    ~dependencies:[ dependency "core" (source ~path:(Path.v "../core") ~version:Std.Version.any ()) ]
     () in
   let registry = make_registry [] in
   match Riot_deps.Publisher.validate_registry_dependencies
@@ -871,8 +859,8 @@ let test_lock_deps_projects_workspace_packages = fun _ctx ->
         && std_lock.root = Some (Path.v "packages/std")
         && List.length app_lock.dependencies = 1
         && List.length app_lock.build_dependencies = 1
-        && (List.head app_lock.dependencies
-            |> Option.expect ~msg:"expected app dependency").package.name |> has_name "std"
+        && (List.head app_lock.dependencies |> Option.expect ~msg:"expected app dependency").package.name
+        |> has_name "std"
       then
         Ok ()
       else
@@ -896,14 +884,22 @@ version = "1.2.3"
       match run_lock_deps ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
       | Error err -> Error ("expected path dependency locking to succeed: " ^ pm_error_message err)
       | Ok lockfile -> (
-          let app_lock = List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name) in
-          let foo_lock = List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "foo" pkg.id.name) in
+          let app_lock =
+            List.find
+              lockfile.packages
+              ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name)
+          in
+          let foo_lock =
+            List.find
+              lockfile.packages
+              ~fn:(fun (pkg: Lockfile.package) -> has_name "foo" pkg.id.name)
+          in
           match app_lock, foo_lock with
           | Some app_lock, Some foo_lock ->
               if
                 List.length lockfile.packages = 2
-                && (List.head app_lock.dependencies
-                    |> Option.expect ~msg:"expected app dependency").package.name |> has_name "foo"
+                && (List.head app_lock.dependencies |> Option.expect ~msg:"expected app dependency").package.name
+                |> has_name "foo"
                 && foo_lock.root = Some (Path.v "vendor/foo")
                 && foo_lock.provenance = Riot_model.Lockfile.Path (Path.v "../../vendor/foo")
               then
@@ -941,14 +937,22 @@ version = "2.0.0"
       match run_lock_deps ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
       | Error err -> Error ("expected transitive path dependencies to resolve: " ^ pm_error_message err)
       | Ok lockfile -> (
-          let foo_lock = List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "foo" pkg.id.name) in
-          let bar_lock = List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "bar" pkg.id.name) in
+          let foo_lock =
+            List.find
+              lockfile.packages
+              ~fn:(fun (pkg: Lockfile.package) -> has_name "foo" pkg.id.name)
+          in
+          let bar_lock =
+            List.find
+              lockfile.packages
+              ~fn:(fun (pkg: Lockfile.package) -> has_name "bar" pkg.id.name)
+          in
           match foo_lock, bar_lock with
           | Some foo_lock, Some bar_lock ->
               if
                 List.length lockfile.packages = 3
-                && (List.head foo_lock.dependencies
-                    |> Option.expect ~msg:"expected foo dependency").package.name |> has_name "bar"
+                && (List.head foo_lock.dependencies |> Option.expect ~msg:"expected foo dependency").package.name
+                |> has_name "bar"
                 && bar_lock.root = Some (Path.v "vendor/bar")
                 && bar_lock.provenance = Riot_model.Lockfile.Path (Path.v "../bar")
               then
@@ -983,22 +987,28 @@ let test_lock_deps_falls_back_to_registry_when_path_dependency_is_missing = fun 
       | Error err -> Error ("expected missing path+version dependency to fall back to registry: "
       ^ pm_error_message err)
       | Ok lockfile -> (
-          let app_lock = List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name) in
+          let app_lock =
+            List.find
+              lockfile.packages
+              ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name)
+          in
           let registry_std =
-            List.find lockfile.packages
+            List.find
+              lockfile.packages
               ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
                 has_name "std" pkg.id.name && pkg.id.registry = Some "pkgs.ml")
           in
           let local_std =
-            List.find lockfile.packages
+            List.find
+              lockfile.packages
               ~fn:(fun (pkg: Lockfile.package) -> has_name "std" pkg.id.name && pkg.id.registry = None)
           in
           match app_lock, registry_std, local_std with
           | Some app_lock, Some registry_std, None ->
               if
                 List.length lockfile.packages = 2
-                && (List.head app_lock.dependencies
-                    |> Option.expect ~msg:"expected app dependency").package = registry_std.id
+                && (List.head app_lock.dependencies |> Option.expect ~msg:"expected app dependency").package
+                = registry_std.id
               then
                 Ok ()
               else
@@ -1017,8 +1027,12 @@ let test_lock_deps_collapses_workspace_path_dependencies = fun _ctx ->
   | Error err -> Error ("expected workspace path dependency to collapse to workspace package: "
   ^ pm_error_message err)
   | Ok lockfile -> (
-      let app_lock = List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name) in
-      let std_lock = List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "std" pkg.id.name) in
+      let app_lock =
+        List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name)
+      in
+      let std_lock =
+        List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "std" pkg.id.name)
+      in
       match app_lock, std_lock with
       | Some app_lock, Some std_lock ->
           if
@@ -1027,7 +1041,12 @@ let test_lock_deps_collapses_workspace_path_dependencies = fun _ctx ->
             = [
               Riot_model.Lockfile.{
                 name = package_name "std";
-                package = { registry = None; name = package_name "std"; version = None; sha256 = None }
+                package = {
+                  registry = None;
+                  name = package_name "std";
+                  version = None;
+                  sha256 = None
+                }
               }
             ]
             && std_lock.provenance = Riot_model.Lockfile.Workspace
@@ -1062,14 +1081,18 @@ let test_lock_deps_resolves_registry_dependencies_to_exact_versions = fun _ctx -
   match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
   | Error err -> Error ("expected registry dependency locking to succeed: " ^ pm_error_message err)
   | Ok lockfile -> (
-      let app_lock = List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name) in
+      let app_lock =
+        List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name)
+      in
       let std_lock =
-        List.find lockfile.packages
+        List.find
+          lockfile.packages
           ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
             has_name "std" pkg.id.name && pkg.id.version = Some "0.2.0")
       in
       let kernel_lock =
-        List.find lockfile.packages
+        List.find
+          lockfile.packages
           ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
             has_name "kernel" pkg.id.name && pkg.id.version = Some "1.0.0")
       in
@@ -1085,20 +1108,15 @@ let test_lock_deps_resolves_registry_dependencies_to_exact_versions = fun _ctx -
             | [ dep ] -> Some dep.package
             | _ -> None
           in
-          if
-            List.length lockfile.packages = 3
-            && (match app_dependency with
-               | Some dependency ->
-                   has_name "std" dependency.name
-                   && dependency.version = Some "0.2.0"
-               | None -> false)
-            && std_lock.id.version = Some "0.2.0"
-            && std_lock.root = None
-            && (match std_dependency with
-               | Some dependency -> has_name "kernel" dependency.name
-               | None -> false)
-            && kernel_lock.id.version = Some "1.0.0"
-          then
+          if List.length lockfile.packages = 3 && (
+              match app_dependency with
+              | Some dependency -> has_name "std" dependency.name && dependency.version = Some "0.2.0"
+              | None -> false
+            ) && std_lock.id.version = Some "0.2.0" && std_lock.root = None && (
+              match std_dependency with
+              | Some dependency -> has_name "kernel" dependency.name
+              | None -> false
+            ) && kernel_lock.id.version = Some "1.0.0" then
             Ok ()
           else
             Error "expected registry dependency to resolve to exact external lock packages"
@@ -1189,11 +1207,9 @@ let test_lock_deps_supports_major_minor_prefix_requirements = fun _ctx ->
   match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
   | Error err -> Error ("expected 0.2 requirement to resolve: " ^ pm_error_message err)
   | Ok lockfile -> (
-      match
-        List.find lockfile.packages
-          ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
-            has_name "minttea" pkg.id.name)
-      with
+      match List.find
+        lockfile.packages
+        ~fn:(fun (pkg: Riot_model.Lockfile.package) -> has_name "minttea" pkg.id.name) with
       | Some pkg when pkg.id.version = Some "0.2.3" -> Ok ()
       | Some pkg -> Error ("expected 0.2 requirement to pick highest 0.2.x release, got "
       ^ Option.unwrap_or ~default:"<none>" pkg.id.version)
@@ -1223,11 +1239,9 @@ let test_lock_deps_supports_major_prefix_requirements = fun _ctx ->
   match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
   | Error err -> Error ("expected 0 requirement to resolve: " ^ pm_error_message err)
   | Ok lockfile -> (
-      match
-        List.find lockfile.packages
-          ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
-            has_name "minttea" pkg.id.name)
-      with
+      match List.find
+        lockfile.packages
+        ~fn:(fun (pkg: Riot_model.Lockfile.package) -> has_name "minttea" pkg.id.name) with
       | Some pkg when pkg.id.version = Some "0.9.9" -> Ok ()
       | Some pkg -> Error ("expected 0 requirement to pick highest 0.x.y release, got "
       ^ Option.unwrap_or ~default:"<none>" pkg.id.version)
@@ -1248,8 +1262,12 @@ let test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names =
   | Error err -> Error ("expected workspace package to satisfy matching registry requirement locally: "
   ^ pm_error_message err)
   | Ok lockfile -> (
-      let app_lock = List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name) in
-      let std_lock = List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "std" pkg.id.name) in
+      let app_lock =
+        List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name)
+      in
+      let std_lock =
+        List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "std" pkg.id.name)
+      in
       match app_lock, std_lock with
       | Some app_lock, Some std_lock ->
           if
@@ -1258,7 +1276,12 @@ let test_lock_deps_prefers_workspace_packages_over_registry_for_matching_names =
             = [
               Riot_model.Lockfile.{
                 name = package_name "std";
-                package = { registry = None; name = package_name "std"; version = None; sha256 = None }
+                package = {
+                  registry = None;
+                  name = package_name "std";
+                  version = None;
+                  sha256 = None
+                }
               }
             ]
             && std_lock.id.registry = None
@@ -1321,25 +1344,28 @@ std = "*"
       ^ pm_error_message err)
       | Ok lockfile -> (
           let local_std =
-            List.find lockfile.packages
+            List.find
+              lockfile.packages
               ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
                 has_name "std" pkg.id.name && pkg.id.registry = None)
           in
           let registry_std =
-            List.find lockfile.packages
+            List.find
+              lockfile.packages
               ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
                 has_name "std" pkg.id.name && pkg.id.registry = Some "pkgs.ml")
           in
           let model_lock =
-            List.find lockfile.packages
+            List.find
+              lockfile.packages
               ~fn:(fun (pkg: Lockfile.package) -> has_name "model" pkg.id.name)
           in
           match local_std, registry_std, model_lock with
           | Some local_std, None, Some model_lock ->
               if
                 List.length model_lock.dependencies = 1
-                && (List.head model_lock.dependencies
-                    |> Option.expect ~msg:"expected model dependency").package = local_std.id
+                && (List.head model_lock.dependencies |> Option.expect ~msg:"expected model dependency").package
+                = local_std.id
               then
                 Ok ()
               else
@@ -1385,7 +1411,8 @@ let test_lock_deps_ignores_builtin_registry_release_dependencies = fun _ctx ->
   | Error err -> Error ("expected builtin registry dependencies to be ignored: " ^ pm_error_message err)
   | Ok lockfile -> (
       let std_lock =
-        List.find lockfile.packages
+        List.find
+          lockfile.packages
           ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
             has_name "std" pkg.id.name && pkg.id.version = Some "0.1.0")
       in
@@ -1422,12 +1449,14 @@ let test_lock_deps_handles_cyclic_registry_dependencies = fun _ctx ->
   | Error err -> Error ("expected cyclic registry dependencies to resolve: " ^ pm_error_message err)
   | Ok lockfile -> (
       let foo_lock =
-        List.find lockfile.packages
+        List.find
+          lockfile.packages
           ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
             has_name "foo" pkg.id.name && pkg.id.version = Some "1.0.0")
       in
       let bar_lock =
-        List.find lockfile.packages
+        List.find
+          lockfile.packages
           ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
             has_name "bar" pkg.id.name && pkg.id.version = Some "2.0.0")
       in
@@ -1443,19 +1472,15 @@ let test_lock_deps_handles_cyclic_registry_dependencies = fun _ctx ->
             | [ dep ] -> Some dep.package
             | _ -> None
           in
-          if
-            List.length lockfile.packages = 3
-            && (match foo_dependency with
-               | Some dependency ->
-                   has_name "bar" dependency.name
-                   && dependency.version = Some "2.0.0"
-               | None -> false)
-            && (match bar_dependency with
-               | Some dependency ->
-                   has_name "foo" dependency.name
-                   && dependency.version = Some "1.0.0"
-               | None -> false)
-          then
+          if List.length lockfile.packages = 3 && (
+              match foo_dependency with
+              | Some dependency -> has_name "bar" dependency.name && dependency.version = Some "2.0.0"
+              | None -> false
+            ) && (
+              match bar_dependency with
+              | Some dependency -> has_name "foo" dependency.name && dependency.version = Some "1.0.0"
+              | None -> false
+            ) then
             Ok ()
           else
             Error "expected cyclic registry dependencies to terminate with exact cross-links"
@@ -1494,9 +1519,14 @@ std = { path = "../std" }
       | Error err -> Error ("expected cyclic local path dependencies to resolve: "
       ^ pm_error_message err)
       | Ok lockfile -> (
-          let std_lock = List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "std" pkg.id.name) in
+          let std_lock =
+            List.find
+              lockfile.packages
+              ~fn:(fun (pkg: Lockfile.package) -> has_name "std" pkg.id.name)
+          in
           let fixme_lock =
-            List.find lockfile.packages
+            List.find
+              lockfile.packages
               ~fn:(fun (pkg: Lockfile.package) -> has_name "fixme" pkg.id.name)
           in
           match std_lock, fixme_lock with
@@ -1504,11 +1534,11 @@ std = { path = "../std" }
               if
                 List.length lockfile.packages = 3
                 && List.length std_lock.build_dependencies = 1
-                && (List.head std_lock.build_dependencies
-                    |> Option.expect ~msg:"expected std build dependency").package.name |> has_name "fixme"
+                && (List.head std_lock.build_dependencies |> Option.expect ~msg:"expected std build dependency").package.name
+                |> has_name "fixme"
                 && List.length fixme_lock.dependencies = 1
-                && (List.head fixme_lock.dependencies
-                    |> Option.expect ~msg:"expected fixme dependency").package.name |> has_name "std"
+                && (List.head fixme_lock.dependencies |> Option.expect ~msg:"expected fixme dependency").package.name
+                |> has_name "std"
               then
                 Ok ()
               else
@@ -1546,7 +1576,12 @@ let test_lock_refresh_preserves_existing_registry_version = fun _ctx ->
             build_dependencies = [];
             dev_dependencies = [];
           }; {
-            id = { registry = Some "pkgs.ml"; name = package_name "std"; version = Some "0.1.0"; sha256 = None };
+            id = {
+              registry = Some "pkgs.ml";
+              name = package_name "std";
+              version = Some "0.1.0";
+              sha256 = None
+            };
             root = None;
             provenance = Registry { registry = "pkgs.ml" };
             dependencies = [];
@@ -1569,9 +1604,10 @@ let test_lock_refresh_preserves_existing_registry_version = fun _ctx ->
       let app_lock = List.head lockfile.packages |> Option.expect ~msg:"expected app lock package" in
       if
         List.length lockfile.packages = 2
-        && (List.head app_lock.dependencies
-            |> Option.expect ~msg:"expected app dependency").package.version = Some "0.1.0"
-        && ((List.get lockfile.packages ~at:1 |> Option.expect ~msg:"expected std lock package").id.version = Some "0.1.0")
+        && (List.head app_lock.dependencies |> Option.expect ~msg:"expected app dependency").package.version
+        = Some "0.1.0"
+        && ((List.get lockfile.packages ~at:1 |> Option.expect ~msg:"expected std lock package").id.version
+        = Some "0.1.0")
       then
         Ok ()
       else
@@ -1592,7 +1628,12 @@ let test_lock_refresh_preserves_existing_external_nodes = fun _ctx ->
             build_dependencies = [];
             dev_dependencies = [];
           }; {
-            id = { registry = Some "pkgs.ml"; name = package_name "std"; version = Some "0.1.0"; sha256 = None };
+            id = {
+              registry = Some "pkgs.ml";
+              name = package_name "std";
+              version = Some "0.1.0";
+              sha256 = None
+            };
             root = None;
             provenance = Registry { registry = "pkgs.ml" };
             dependencies = [];
@@ -1607,8 +1648,9 @@ let test_lock_refresh_preserves_existing_external_nodes = fun _ctx ->
       if
         List.length lockfile.packages = 2
         && ((List.get lockfile.packages ~at:1 |> Option.expect ~msg:"expected std lock package").id.name
-            |> has_name "std")
-        && ((List.get lockfile.packages ~at:1 |> Option.expect ~msg:"expected std lock package").id.version = Some "0.1.0")
+        |> has_name "std")
+        && ((List.get lockfile.packages ~at:1 |> Option.expect ~msg:"expected std lock package").id.version
+        = Some "0.1.0")
       then
         Ok ()
       else
@@ -1622,7 +1664,12 @@ let test_unlock_discards_existing_external_nodes = fun _ctx ->
       dependency_hash = "test";
       packages =
         [ {
-            id = { registry = Some "pkgs.ml"; name = package_name "std"; version = Some "0.1.0"; sha256 = None };
+            id = {
+              registry = Some "pkgs.ml";
+              name = package_name "std";
+              version = Some "0.1.0";
+              sha256 = None
+            };
             root = None;
             provenance = Registry { registry = "pkgs.ml" };
             dependencies = [];
@@ -1637,7 +1684,7 @@ let test_unlock_discards_existing_external_nodes = fun _ctx ->
       if
         List.length lockfile.packages = 1
         && ((List.head lockfile.packages |> Option.expect ~msg:"expected app lock package").id.name
-            |> has_name "app")
+        |> has_name "app")
       then
         Ok ()
       else
@@ -1733,7 +1780,7 @@ let test_lockfile_store_roundtrips = fun _ctx ->
                 && String.equal reloaded.dependency_hash "deadbeef"
                 && List.length reloaded.packages = 1
                 && ((List.head reloaded.packages |> Option.expect ~msg:"expected reloaded app package").id.name
-                    |> has_name "app")
+                |> has_name "app")
               then
                 Ok ()
               else
@@ -1829,38 +1876,45 @@ version = "0.0.1"
       let workspace_manager = Riot_model.Workspace_manager.create () in
       Riot_model.Workspace_manager.scan workspace_manager workspace_root
       |> Result.map_err ~fn:(fun err -> "expected workspace scan to succeed: " ^ err)
-      |> Result.and_then ~fn:(fun (workspace, load_errors) ->
-        if not (List.is_empty load_errors) then
-          Error "expected workspace scan to have no load errors"
-        else
-          Riot_deps.add
-            ~workspace
-            ~cwd:app_root
-            ~request:Riot_deps.{ selection = Current; scope = Runtime; dependency = "../lib" }
-            ()
-          |> Result.map_err ~fn:Riot_deps.package_error_message
-          |> Result.and_then ~fn:(fun () ->
-            Fs.read_to_string Path.(app_root / Path.v "riot.toml")
-            |> Result.map_err ~fn:IO.error_message
-            |> Result.and_then ~fn:(fun manifest_source ->
-              Riot_deps.Lockfile_store.read ~workspace_root
-              |> Result.map_err ~fn:(fun err -> "expected lockfile read to succeed: " ^ err)
-              |> Result.and_then ~fn:(fun maybe_lockfile ->
-                match maybe_lockfile with
-                | None -> Error "expected add to rewrite riot.lock"
-                | Some (lockfile: Riot_model.Lockfile.t) ->
-                    let app_lock =
-                      List.find lockfile.packages
-                        ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name)
-                    in
-                    if
-                      String.contains manifest_source "widgets = { path = \"../lib\" }"
-                      && Option.is_some app_lock
-                      && List.any lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "widgets" pkg.id.name)
-                    then
-                      Ok ()
-                    else
-                      Error "expected path add to write discovered package name and refresh riot.lock")))))
+      |> Result.and_then
+        ~fn:(fun (workspace, load_errors) ->
+          if not (List.is_empty load_errors) then
+            Error "expected workspace scan to have no load errors"
+          else
+            Riot_deps.add
+              ~workspace
+              ~cwd:app_root
+              ~request:Riot_deps.{ selection = Current; scope = Runtime; dependency = "../lib" }
+              ()
+            |> Result.map_err ~fn:Riot_deps.package_error_message
+            |> Result.and_then
+              ~fn:(fun () ->
+                Fs.read_to_string Path.(app_root / Path.v "riot.toml")
+                |> Result.map_err ~fn:IO.error_message
+                |> Result.and_then
+                  ~fn:(fun manifest_source ->
+                    Riot_deps.Lockfile_store.read ~workspace_root
+                    |> Result.map_err ~fn:(fun err -> "expected lockfile read to succeed: " ^ err)
+                    |> Result.and_then
+                      ~fn:(fun maybe_lockfile ->
+                        match maybe_lockfile with
+                        | None -> Error "expected add to rewrite riot.lock"
+                        | Some (lockfile: Riot_model.Lockfile.t) ->
+                            let app_lock =
+                              List.find
+                                lockfile.packages
+                                ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name)
+                            in
+                            if
+                              String.contains manifest_source "widgets = { path = \"../lib\" }"
+                              && Option.is_some app_lock
+                              && List.any
+                                lockfile.packages
+                                ~fn:(fun (pkg: Lockfile.package) -> has_name "widgets" pkg.id.name)
+                            then
+                              Ok ()
+                            else
+                              Error "expected path add to write discovered package name and refresh riot.lock")))))
 
 let test_git_dependency_parse_spec_normalizes_github_source = fun _ctx ->
   match Riot_deps.Git_dependency.parse_spec "https://github.com/riot-tests/widgets-add#main" with
@@ -1877,39 +1931,42 @@ let test_git_dependency_sync_checkout_clones_local_repo = fun _ctx ->
     (fun root ->
       let origin = Path.(root / Path.v "origin") in
       let checkout = Path.(root / Path.v "checkout") in
-      prepare_local_git_repo ~root:origin ~package_name:"widgets" ()
-      |> Result.and_then ~fn:(fun _repo_root ->
-        Riot_deps.Git_dependency.sync_checkout
-          ~repo_dir:checkout
-          ~remote_url:(Path.to_string origin)
-          ~ref_:"main"
-          ()
-        |> Result.map_err ~fn:Riot_deps.Git_dependency.message
-        |> Result.and_then ~fn:(fun _ ->
-          Fs.read_to_string Path.(checkout / Path.v "riot.toml")
-          |> Result.map_err ~fn:IO.error_message
-          |> Result.and_then ~fn:(fun manifest_source ->
-            if String.contains manifest_source "name = \"widgets\"" then
-              Ok ()
-            else
-              Error "expected git dependency checkout to clone the local repository"))))
+      prepare_local_git_repo ~root:origin ~package_name:"widgets" () |> Result.and_then
+        ~fn:(fun _repo_root ->
+          Riot_deps.Git_dependency.sync_checkout
+            ~repo_dir:checkout
+            ~remote_url:(Path.to_string origin)
+            ~ref_:"main"
+            ()
+          |> Result.map_err ~fn:Riot_deps.Git_dependency.message
+          |> Result.and_then
+            ~fn:(fun _ ->
+              Fs.read_to_string Path.(checkout / Path.v "riot.toml")
+              |> Result.map_err ~fn:IO.error_message
+              |> Result.and_then
+                ~fn:(fun manifest_source ->
+                  if String.contains manifest_source "name = \"widgets\"" then
+                    Ok ()
+                  else
+                    Error "expected git dependency checkout to clone the local repository"))))
 
 let test_git_dependency_sync_checkout_skips_fetch_without_update = fun _ctx ->
   with_tempdir "riot_deps_git_checkout_no_update"
     (fun root ->
       let origin = Path.(root / Path.v "origin") in
       let checkout = Path.(root / Path.v "checkout") in
-      prepare_local_git_repo ~root:origin ~package_name:"widgets" ()
-      |> Result.and_then ~fn:(fun _repo_root ->
-        Riot_deps.Git_dependency.sync_checkout
-          ~repo_dir:checkout
-          ~remote_url:(Path.to_string origin)
-          ~ref_:"main"
-          ()
-        |> Result.map_err ~fn:Riot_deps.Git_dependency.message
-        |> Result.and_then ~fn:(fun _ ->
-          write_file Path.(origin / Path.v "riot.toml")
-            {|
+      prepare_local_git_repo ~root:origin ~package_name:"widgets" () |> Result.and_then
+        ~fn:(fun _repo_root ->
+          Riot_deps.Git_dependency.sync_checkout
+            ~repo_dir:checkout
+            ~remote_url:(Path.to_string origin)
+            ~ref_:"main"
+            ()
+          |> Result.map_err ~fn:Riot_deps.Git_dependency.message
+          |> Result.and_then
+            ~fn:(fun _ ->
+              write_file Path.(origin / Path.v "riot.toml")
+                {|
 [package]
 name = "widgets-next"
 version = "0.0.2"
@@ -1917,25 +1974,28 @@ description = "widgets-next"
 license = "Apache-2.0"
 public = true
 |};
-          run_git_steps ~cwd:origin [ [ "add"; "." ]; [ "commit"; "-m"; "update" ]; ]
-          |> Result.and_then ~fn:(fun _ ->
-            Riot_deps.Git_dependency.sync_checkout
-              ~update:false
-              ~repo_dir:checkout
-              ~remote_url:(Path.to_string origin)
-              ~ref_:"main"
-              ()
-            |> Result.map_err ~fn:Riot_deps.Git_dependency.message
-            |> Result.and_then ~fn:(fun _ ->
-              Fs.read_to_string Path.(checkout / Path.v "riot.toml")
-              |> Result.map_err ~fn:IO.error_message
-              |> Result.and_then ~fn:(fun manifest_source ->
-                if String.contains manifest_source "name = \"widgets\"" then
-                  Ok ()
-                else if String.contains manifest_source "name = \"widgets-next\"" then
-                  Error "expected sync_checkout ~update:false to keep the cached checkout without fetching upstream changes"
-                else
-                  Error "expected cached checkout to preserve the original manifest contents"))))))
+              run_git_steps ~cwd:origin [ [ "add"; "." ]; [ "commit"; "-m"; "update" ]; ]
+              |> Result.and_then
+                ~fn:(fun _ ->
+                  Riot_deps.Git_dependency.sync_checkout
+                    ~update:false
+                    ~repo_dir:checkout
+                    ~remote_url:(Path.to_string origin)
+                    ~ref_:"main"
+                    ()
+                  |> Result.map_err ~fn:Riot_deps.Git_dependency.message
+                  |> Result.and_then
+                    ~fn:(fun _ ->
+                      Fs.read_to_string Path.(checkout / Path.v "riot.toml")
+                      |> Result.map_err ~fn:IO.error_message
+                      |> Result.and_then
+                        ~fn:(fun manifest_source ->
+                          if String.contains manifest_source "name = \"widgets\"" then
+                            Ok ()
+                          else if String.contains manifest_source "name = \"widgets-next\"" then
+                            Error "expected sync_checkout ~update:false to keep the cached checkout without fetching upstream changes"
+                          else
+                            Error "expected cached checkout to preserve the original manifest contents"))))))
 
 let test_add_rejects_unsupported_source_dependency_specs = fun _ctx ->
   with_tempdir "riot_deps_add_source_invalid"
@@ -1956,26 +2016,27 @@ version = "0.0.1"
       let workspace_manager = Riot_model.Workspace_manager.create () in
       Riot_model.Workspace_manager.scan workspace_manager workspace_root
       |> Result.map_err ~fn:(fun err -> "expected workspace scan to succeed: " ^ err)
-      |> Result.and_then ~fn:(fun (workspace, load_errors) ->
-        if not (List.is_empty load_errors) then
-          Error "expected workspace scan to have no load errors"
-        else
-          match Riot_deps.add
-            ~workspace
-            ~cwd:app_root
-            ~request:Riot_deps.{
-              selection = Current;
-              scope = Runtime;
-              dependency = "https://gitlab.com/leostera/widgets"
-            }
-            () with
-          | Ok () -> Error "expected unsupported non-github source dependency add to fail"
-          | Error (Riot_deps.DependencySpecInvalid { dependency; _ }) ->
-              if String.equal dependency "https://gitlab.com/leostera/widgets" then
-                Ok ()
-              else
-                Error "unexpected unsupported source dependency payload"
-          | Error err -> Error ("unexpected add error: " ^ Riot_deps.package_error_message err)))
+      |> Result.and_then
+        ~fn:(fun (workspace, load_errors) ->
+          if not (List.is_empty load_errors) then
+            Error "expected workspace scan to have no load errors"
+          else
+            match Riot_deps.add
+              ~workspace
+              ~cwd:app_root
+              ~request:Riot_deps.{
+                selection = Current;
+                scope = Runtime;
+                dependency = "https://gitlab.com/leostera/widgets"
+              }
+              () with
+            | Ok () -> Error "expected unsupported non-github source dependency add to fail"
+            | Error (Riot_deps.DependencySpecInvalid { dependency; _ }) ->
+                if String.equal dependency "https://gitlab.com/leostera/widgets" then
+                  Ok ()
+                else
+                  Error "unexpected unsupported source dependency payload"
+            | Error err -> Error ("unexpected add error: " ^ Riot_deps.package_error_message err)))
 
 let test_package_error_message_lists_search_suggestions = fun _ctx ->
   let message = Riot_deps.package_error_message
@@ -2269,7 +2330,10 @@ let test_ensure_workspace_projects_materialized_registry_packages = fun _ctx ->
         ~fix_providers:app_pkg.fix_providers
         ~publish:app_pkg.publish
         () in
-      let workspace = Riot_model.Workspace_manifest.make_realized ~root:workspace_root ~packages:[ app_pkg ] () in
+      let workspace = Riot_model.Workspace_manifest.make_realized
+        ~root:workspace_root
+        ~packages:[ app_pkg ]
+        () in
       let registry = Pkgs_ml.Registry.in_memory ~cache:registry_cache ~packages:[
         make_registry_document
           ~name:"std"
@@ -2291,13 +2355,18 @@ version = "0.2.0"
         ()
       in
       let workspace_manager = workspace_manager () in
-      match Riot_deps.ensure_workspace ~workspace_manager ~mode:Riot_deps.Dep_solver.Refresh ~registry ~workspace () with
+      match Riot_deps.ensure_workspace
+        ~workspace_manager
+        ~mode:Riot_deps.Dep_solver.Refresh
+        ~registry
+        ~workspace
+        () with
       | Error err -> Error ("expected ensure_workspace to succeed: " ^ pm_error_message err)
       | Ok resolved_workspace ->
           let std_pkg =
-            List.find resolved_workspace.packages
-              ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
-                has_name "std" pkg.name)
+            List.find
+              resolved_workspace.packages
+              ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> has_name "std" pkg.name)
           in
           let expected_std_root = Pkgs_ml.Registry_cache.package_src_dir
             registry_cache
@@ -2307,8 +2376,7 @@ version = "0.2.0"
           | Some std_pkg ->
               if
                 List.map resolved_workspace.packages ~fn:(fun (pkg: Package_manifest.t) -> pkg.name)
-                = [ package_name "app"; package_name "std" ]
-                && Path.equal std_pkg.path expected_std_root
+                = [ package_name "app"; package_name "std" ] && Path.equal std_pkg.path expected_std_root
               then
                 Ok ()
               else
@@ -2348,7 +2416,10 @@ let test_ensure_workspace_preserves_declared_external_binaries = fun _ctx ->
         ~fix_providers:app_pkg.fix_providers
         ~publish:app_pkg.publish
         () in
-      let workspace = Riot_model.Workspace_manifest.make_realized ~root:workspace_root ~packages:[ app_pkg ] () in
+      let workspace = Riot_model.Workspace_manifest.make_realized
+        ~root:workspace_root
+        ~packages:[ app_pkg ]
+        () in
       let registry = Pkgs_ml.Registry.in_memory ~cache:registry_cache ~packages:[
         make_registry_document
           ~name:"std"
@@ -2378,17 +2449,22 @@ path = "tests/std_tests.ml"
         ()
       in
       let workspace_manager = workspace_manager () in
-      match Riot_deps.ensure_workspace ~workspace_manager ~mode:Riot_deps.Dep_solver.Refresh ~registry ~workspace () with
+      match Riot_deps.ensure_workspace
+        ~workspace_manager
+        ~mode:Riot_deps.Dep_solver.Refresh
+        ~registry
+        ~workspace
+        () with
       | Error err -> Error ("expected ensure_workspace to succeed: " ^ pm_error_message err)
       | Ok resolved_workspace -> (
-          match List.find resolved_workspace.packages ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> has_name "std" pkg.name) with
+          match List.find
+            resolved_workspace.packages
+            ~fn:(fun (pkg: Riot_model.Package_manifest.t) -> has_name "std" pkg.name) with
           | None -> Error "expected ensure_workspace to project std into the workspace"
           | Some std_pkg ->
-              let binary_names =
-                std_pkg.declared_binaries
-                |> List.map ~fn:(fun (bin: Riot_model.Package.binary) -> bin.name)
-                |> List.sort ~compare:String.compare
-              in
+              let binary_names = std_pkg.declared_binaries
+              |> List.map ~fn:(fun (bin: Riot_model.Package.binary) -> bin.name)
+              |> List.sort ~compare:String.compare in
               if binary_names = [ "std-example"; "std-tests" ] then
                 Ok ()
               else
@@ -2419,8 +2495,8 @@ let test_projection_resolves_workspace_packages = fun _ctx ->
         List.length resolved = 2
         && has_name "app" app.id.name
         && List.length app.runtime_resolved = 1
-        && (List.head app.runtime_resolved
-            |> Option.expect ~msg:"expected resolved runtime dependency").resolved_id.name |> has_name "std"
+        && (List.head app.runtime_resolved |> Option.expect ~msg:"expected resolved runtime dependency").resolved_id.name
+        |> has_name "std"
       then
         Ok ()
       else
@@ -2569,17 +2645,20 @@ version = "0.5.0"
       | Error err -> Error ("expected projection to load external manifests: " ^ pm_error_message err)
       | Ok (resolved, event_names) ->
           let std_resolved =
-            List.find resolved
+            List.find
+              resolved
               ~fn:(fun (pkg: Riot_model.Package.resolved) ->
                 has_name "std" pkg.id.name && pkg.id.version = Some "0.2.0")
           in
           let kernel_resolved =
-            List.find resolved
+            List.find
+              resolved
               ~fn:(fun (pkg: Riot_model.Package.resolved) ->
                 has_name "kernel" pkg.id.name && pkg.id.version = Some "1.0.0")
           in
           let fixme_resolved =
-            List.find resolved
+            List.find
+              resolved
               ~fn:(fun (pkg: Riot_model.Package.resolved) ->
                 has_name "fixme" pkg.id.name && pkg.id.version = Some "0.5.0")
           in
@@ -2593,10 +2672,10 @@ version = "0.5.0"
                 && Path.to_string std_resolved.materialized_root = Path.to_string std_root
                 && List.length std_resolved.runtime_resolved = 1
                 && List.length std_resolved.build_resolved = 1
-                && (List.head std_resolved.runtime_resolved
-                    |> Option.expect ~msg:"expected resolved std runtime dependency").resolved_id.name |> has_name "kernel"
-                && (List.head std_resolved.build_resolved
-                    |> Option.expect ~msg:"expected resolved std build dependency").resolved_id.name |> has_name "fixme"
+                && (List.head std_resolved.runtime_resolved |> Option.expect ~msg:"expected resolved std runtime dependency").resolved_id.name
+                |> has_name "kernel"
+                && (List.head std_resolved.build_resolved |> Option.expect ~msg:"expected resolved std build dependency").resolved_id.name
+                |> has_name "fixme"
                 && Path.to_string kernel_resolved.materialized_root = Path.to_string kernel_root
                 && Path.to_string fixme_resolved.materialized_root = Path.to_string fixme_root
               then
@@ -2708,8 +2787,8 @@ let test_git_dependency_parse_source_locator_accepts_github_shorthand = fun _ctx
         String.equal locator.host "github.com"
         && String.equal locator.owner "leostera"
         && String.equal locator.repo "riot"
-        && Option.map locator.subdir ~fn:Path.to_string = Some "packages/riot-cli"
-        && Riot_deps.Git_dependency.looks_like_remote_spec "leostera/riot/packages/riot-cli"
+        && Option.map locator.subdir ~fn:Path.to_string
+        = Some "packages/riot-cli" && Riot_deps.Git_dependency.looks_like_remote_spec "leostera/riot/packages/riot-cli"
       then
         Ok ()
       else
@@ -2744,7 +2823,11 @@ public = true
           } ]
         ()
       in
-      match Riot_deps.load_registry_workspace ~registry ~workspace_manager:(workspace_manager ()) ~spec:"demo" () with
+      match Riot_deps.load_registry_workspace
+        ~registry
+        ~workspace_manager:(workspace_manager ())
+        ~spec:"demo"
+        () with
       | Ok loaded ->
           if
             has_name "demo" loaded.package_name
@@ -2778,7 +2861,11 @@ let test_load_registry_workspace_rejects_yanked_release = fun _ctx ->
             ()
         ]
         () in
-      match Riot_deps.load_registry_workspace ~registry ~workspace_manager:(workspace_manager ()) ~spec:"demo@0.1.0" () with
+      match Riot_deps.load_registry_workspace
+        ~registry
+        ~workspace_manager:(workspace_manager ())
+        ~spec:"demo@0.1.0"
+        () with
       | Error (Riot_deps.RegistryReleaseYanked { package; version; registry }) ->
           if
             String.equal package "demo" && String.equal version "0.1.0" && String.equal registry "pkgs.ml"
@@ -2797,9 +2884,8 @@ let test_registry_package_spec_roundtrips_bare_name = fun _ctx ->
         Ok ()
       else
         Error "expected bare registry package spec to render without @*"
-  | Error err ->
-      Error ("expected bare registry package spec to parse: "
-      ^ Riot_deps.Registry_package_spec.error_message err)
+  | Error err -> Error ("expected bare registry package spec to parse: "
+  ^ Riot_deps.Registry_package_spec.error_message err)
 
 let test_registry_package_spec_preserves_explicit_requirement = fun _ctx ->
   match Riot_deps.Registry_package_spec.from_string "demo@>= 1.2.3" with
@@ -2808,9 +2894,8 @@ let test_registry_package_spec_preserves_explicit_requirement = fun _ctx ->
         Ok ()
       else
         Error "expected explicit registry requirement to roundtrip"
-  | Error err ->
-      Error ("expected explicit registry package spec to parse: "
-      ^ Riot_deps.Registry_package_spec.error_message err)
+  | Error err -> Error ("expected explicit registry package spec to parse: "
+  ^ Riot_deps.Registry_package_spec.error_message err)
 
 let tests =
   Test.[

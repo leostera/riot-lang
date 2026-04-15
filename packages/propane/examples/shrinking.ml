@@ -7,7 +7,9 @@ open Propane
 let failing_list_prop =
   property "DEMO: list sum is always positive (FALSE - will find counter-example)" Arbitrary.(list int)
     (fun lst ->
-      let sum = List.fold_left lst ~acc:0 ~fn:(fun acc value -> acc + value) in
+      let sum =
+        List.fold_left lst ~acc:0 ~fn:(fun acc value -> acc + value)
+      in
       sum >= 0)
 
 (* This is false when list contains negative numbers *)

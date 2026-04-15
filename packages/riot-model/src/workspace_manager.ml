@@ -20,13 +20,11 @@ type t = {
   scans: (string, ((Workspace_manifest.t * load_error list), string) result) HashMap.t;
 }
 
-let create = fun () ->
-  { workspace_roots = HashMap.create (); scans = HashMap.create () }
+let create = fun () -> { workspace_roots = HashMap.create (); scans = HashMap.create () }
 
 let path_key = fun path -> Path.to_string path
 
-let elapsed_us_since = fun started_at ->
-  Time.Instant.elapsed started_at |> Time.Duration.to_micros
+let elapsed_us_since = fun started_at -> Time.Instant.elapsed started_at |> Time.Duration.to_micros
 
 let trace_workspace_manager = fun message ->
   let _ = message in
@@ -203,9 +201,25 @@ let rec load_external_package:
               seen := dep.name :: !seen;
               match load_riot_toml t toml_path with
               | Error err when String.starts_with ~prefix:"failed to read" err ->
-                  ([], [ PackageTomlReadFailed { package = Package_name.to_string dep.name; path = path_str } ])
+                  (
+                    [],
+                    [
+                      PackageTomlReadFailed {
+                        package = Package_name.to_string dep.name;
+                        path = path_str
+                      }
+                    ]
+                  )
               | Error _ ->
-                  ([], [ PackageTomlParseFailed { package = Package_name.to_string dep.name; path = path_str } ])
+                  (
+                    [],
+                    [
+                      PackageTomlParseFailed {
+                        package = Package_name.to_string dep.name;
+                        path = path_str
+                      }
+                    ]
+                  )
               | Ok toml -> (
                   let rel_path =
                     let abs_str = Path.to_string abs_path in
@@ -228,25 +242,23 @@ let rec load_external_package:
                     ~relative_path with
                   | Ok pkg ->
                       let pkg_name = Package_name.to_string pkg.name in
-                      let transitive_results =
-                        List.map
-                          (Package_manifest.all_dependencies pkg)
-                          ~fn:(load_external_package
-                            t
-                            workspace_root
-                            ~declared_from:abs_path
-                            ~seen
-                            ~workspace_deps
-                            ~workspace_dev_deps
-                            ~workspace_build_deps
-                            ~dependant:(Some pkg_name))
-                      in
-                      let transitive_pkgs =
-                        transitive_results |> List.map ~fn:(fun (packages, _) -> packages) |> List.concat
-                      in
-                      let transitive_errs =
-                        transitive_results |> List.map ~fn:(fun (_, errors) -> errors) |> List.concat
-                      in
+                      let transitive_results = List.map
+                        (Package_manifest.all_dependencies pkg)
+                        ~fn:(load_external_package
+                          t
+                          workspace_root
+                          ~declared_from:abs_path
+                          ~seen
+                          ~workspace_deps
+                          ~workspace_dev_deps
+                          ~workspace_build_deps
+                          ~dependant:(Some pkg_name)) in
+                      let transitive_pkgs = transitive_results
+                      |> List.map ~fn:(fun (packages, _) -> packages)
+                      |> List.concat in
+                      let transitive_errs = transitive_results
+                      |> List.map ~fn:(fun (_, errors) -> errors)
+                      |> List.concat in
                       (pkg :: transitive_pkgs, transitive_errs)
                   | Error error -> (
                     [],
@@ -254,7 +266,7 @@ let rec load_external_package:
                       PackageFromTomlFailed {
                         package = Package_name.to_string dep.name;
                         path = path_str;
-                        error;
+                        error
                       }
                     ]
                   )
@@ -262,100 +274,97 @@ let rec load_external_package:
             )
           | _ ->
               seen := dep.name :: !seen;
-              ([], [ PackageNotFound { dependant; package = Package_name.to_string dep.name; path = path_str } ])
+              (
+                [],
+                [
+                  PackageNotFound {
+                    dependant;
+                    package = Package_name.to_string dep.name;
+                    path = path_str
+                  }
+                ]
+              )
         )
 
-let build_workspace: t -> Path.t -> Workspace_manifest.manifest -> (Workspace_manifest.t * load_error list) = fun t workspace_root workspace_manifest ->
+let build_workspace:
+  t -> Path.t -> Workspace_manifest.manifest -> (Workspace_manifest.t * load_error list) = fun t workspace_root workspace_manifest ->
   let started_at = Time.Instant.now () in
   let member_started_at = Time.Instant.now () in
   let member_results =
-    List.map workspace_manifest.members ~fn:(fun member ->
-      load_member_package
-        t
-        workspace_root
-        (Path.to_string member)
-        ~workspace_deps:workspace_manifest.dependencies
-        ~workspace_dev_deps:workspace_manifest.dev_dependencies
-        ~workspace_build_deps:workspace_manifest.build_dependencies)
+    List.map
+      workspace_manifest.members
+      ~fn:(fun member ->
+        load_member_package
+          t
+          workspace_root
+          (Path.to_string member)
+          ~workspace_deps:workspace_manifest.dependencies
+          ~workspace_dev_deps:workspace_manifest.dev_dependencies
+          ~workspace_build_deps:workspace_manifest.build_dependencies)
   in
-  let () =
-    trace_workspace_manager
-      ("member-results-us=" ^ Int.to_string (elapsed_us_since member_started_at))
-  in
+  let () = trace_workspace_manager
+    ("member-results-us=" ^ Int.to_string (elapsed_us_since member_started_at)) in
   let member_packages =
     List.filter_map member_results ~fn:(fun (pkg, _) -> pkg)
   in
-  let member_errors =
-    member_results |> List.map ~fn:(fun (_, errors) -> errors) |> List.concat
+  let member_errors = member_results |> List.map ~fn:(fun (_, errors) -> errors) |> List.concat in
+  let seen =
+    Cell.create (List.map member_packages ~fn:(fun (p: Package_manifest.t) -> p.name))
   in
-  let seen = Cell.create (List.map member_packages ~fn:(fun (p: Package_manifest.t) -> p.name)) in
   (* Load workspace-level dependencies first *)
   let workspace_deps_started_at = Time.Instant.now () in
-  let workspace_results =
-    List.map
-      (workspace_manifest.dependencies @ workspace_manifest.dev_dependencies @ workspace_manifest.build_dependencies)
-      ~fn:(load_external_package
-        t
-        workspace_root
-        ~declared_from:workspace_root
-        ~seen
-        ~workspace_deps:workspace_manifest.dependencies
-        ~workspace_dev_deps:workspace_manifest.dev_dependencies
-        ~workspace_build_deps:workspace_manifest.build_dependencies
-        ~dependant:None)
-  in
-  let () =
-    trace_workspace_manager
-      ("workspace-deps-us=" ^ Int.to_string (elapsed_us_since workspace_deps_started_at))
-  in
-  let workspace_packages =
-    workspace_results |> List.map ~fn:(fun (packages, _) -> packages) |> List.concat
-  in
-  let workspace_errors =
-    workspace_results |> List.map ~fn:(fun (_, errors) -> errors) |> List.concat
-  in
+  let workspace_results = List.map
+    (workspace_manifest.dependencies @ workspace_manifest.dev_dependencies @ workspace_manifest.build_dependencies)
+    ~fn:(load_external_package
+      t
+      workspace_root
+      ~declared_from:workspace_root
+      ~seen
+      ~workspace_deps:workspace_manifest.dependencies
+      ~workspace_dev_deps:workspace_manifest.dev_dependencies
+      ~workspace_build_deps:workspace_manifest.build_dependencies
+      ~dependant:None) in
+  let () = trace_workspace_manager
+    ("workspace-deps-us=" ^ Int.to_string (elapsed_us_since workspace_deps_started_at)) in
+  let workspace_packages = workspace_results
+  |> List.map ~fn:(fun (packages, _) -> packages)
+  |> List.concat in
+  let workspace_errors = workspace_results |> List.map ~fn:(fun (_, errors) -> errors) |> List.concat in
   (* Then load any additional dependencies from member packages *)
   let external_started_at = Time.Instant.now () in
   let external_results =
     member_packages
-    |> List.map ~fn:(fun (pkg: Package_manifest.t) ->
-      let pkg_name = Package_name.to_string pkg.name in
-      List.map
-        (Package_manifest.all_dependencies pkg)
-        ~fn:(load_external_package
-          t
-          workspace_root
-          ~declared_from:pkg.path
-          ~seen
-          ~workspace_deps:workspace_manifest.dependencies
-          ~workspace_dev_deps:workspace_manifest.dev_dependencies
-          ~workspace_build_deps:workspace_manifest.build_dependencies
-          ~dependant:(Some pkg_name)))
+    |> List.map
+      ~fn:(fun (pkg: Package_manifest.t) ->
+        let pkg_name = Package_name.to_string pkg.name in
+        List.map
+          (Package_manifest.all_dependencies pkg)
+          ~fn:(load_external_package
+            t
+            workspace_root
+            ~declared_from:pkg.path
+            ~seen
+            ~workspace_deps:workspace_manifest.dependencies
+            ~workspace_dev_deps:workspace_manifest.dev_dependencies
+            ~workspace_build_deps:workspace_manifest.build_dependencies
+            ~dependant:(Some pkg_name)))
     |> List.concat
   in
-  let () =
-    trace_workspace_manager
-      ("member-external-deps-us=" ^ Int.to_string (elapsed_us_since external_started_at))
-  in
-  let external_packages =
-    external_results |> List.map ~fn:(fun (packages, _) -> packages) |> List.concat
-  in
-  let external_errors =
-    external_results |> List.map ~fn:(fun (_, errors) -> errors) |> List.concat
-  in
+  let () = trace_workspace_manager
+    ("member-external-deps-us=" ^ Int.to_string (elapsed_us_since external_started_at)) in
+  let external_packages = external_results |> List.map ~fn:(fun (packages, _) -> packages) |> List.concat in
+  let external_errors = external_results |> List.map ~fn:(fun (_, errors) -> errors) |> List.concat in
   let all_packages = member_packages @ workspace_packages @ external_packages in
   let all_errors = member_errors @ workspace_errors @ external_errors in
-  let () =
-    trace_workspace_manager
-      ("build-workspace-total-us="
-      ^ Int.to_string (elapsed_us_since started_at)
-      ^ " members="
-      ^ Int.to_string (List.length member_packages)
-      ^ " externals="
-      ^ Int.to_string (List.length workspace_packages + List.length external_packages)
-      ^ " errors="
-      ^ Int.to_string (List.length all_errors))
-  in
+  let () = trace_workspace_manager
+    ("build-workspace-total-us="
+    ^ Int.to_string (elapsed_us_since started_at)
+    ^ " members="
+    ^ Int.to_string (List.length member_packages)
+    ^ " externals="
+    ^ Int.to_string (List.length workspace_packages + List.length external_packages)
+    ^ " errors="
+    ^ Int.to_string (List.length all_errors)) in
   (
     Workspace_manifest.make
       ?name:workspace_manifest.name
@@ -389,25 +398,23 @@ let build_single_package_workspace: t -> Path.t -> (Workspace_manifest.t * load_
       | Ok package ->
           let package_name = Package_name.to_string package.name in
           let seen = Cell.create [ package.name ] in
-          let external_results =
-            List.map
-              (Package_manifest.all_dependencies package)
-              ~fn:(load_external_package
-                t
-                package_root
-                ~declared_from:package_root
-                ~seen
-                ~workspace_deps:[]
-                ~workspace_dev_deps:[]
-                ~workspace_build_deps:[]
-                ~dependant:(Some package_name))
-          in
-          let external_packages =
-            external_results |> List.map ~fn:(fun (packages, _) -> packages) |> List.concat
-          in
-          let external_errors =
-            external_results |> List.map ~fn:(fun (_, errors) -> errors) |> List.concat
-          in
+          let external_results = List.map
+            (Package_manifest.all_dependencies package)
+            ~fn:(load_external_package
+              t
+              package_root
+              ~declared_from:package_root
+              ~seen
+              ~workspace_deps:[]
+              ~workspace_dev_deps:[]
+              ~workspace_build_deps:[]
+              ~dependant:(Some package_name)) in
+          let external_packages = external_results
+          |> List.map ~fn:(fun (packages, _) -> packages)
+          |> List.concat in
+          let external_errors = external_results
+          |> List.map ~fn:(fun (_, errors) -> errors)
+          |> List.concat in
           Ok (
             Workspace_manifest.make ~root:package_root ~packages:(package :: external_packages) (),
             external_errors
@@ -419,10 +426,8 @@ let scan: t -> Path.t -> ((Workspace_manifest.t * load_error list), string) resu
     let started_at = Time.Instant.now () in
     let find_roots_started_at = Time.Instant.now () in
     let roots = find_scan_roots t path ~package_root:None in
-    let () =
-      trace_workspace_manager
-        ("find-scan-roots-us=" ^ Int.to_string (elapsed_us_since find_roots_started_at))
-    in
+    let () = trace_workspace_manager
+      ("find-scan-roots-us=" ^ Int.to_string (elapsed_us_since find_roots_started_at)) in
     match roots with
     | Some workspace_root, _ ->
         let key = path_key workspace_root in
@@ -442,20 +447,16 @@ let scan: t -> Path.t -> ((Workspace_manifest.t * load_error list), string) resu
                     match Workspace_manifest.of_toml toml with
                     | Error msg -> Error ("Failed to parse workspace manifest: " ^ msg)
                     | Ok workspace_manifest ->
-                        let () =
-                          trace_workspace_manager
-                            ("workspace-of-toml-us="
-                            ^ Int.to_string (elapsed_us_since workspace_of_toml_started_at))
-                        in
+                        let () = trace_workspace_manager
+                          ("workspace-of-toml-us="
+                          ^ Int.to_string (elapsed_us_since workspace_of_toml_started_at)) in
                         let (workspace, errors) = build_workspace t workspace_root workspace_manifest in
                         Ok (workspace, errors)
                   )
               in
               let _ = HashMap.insert t.scans ~key ~value:result in
-              let () =
-                trace_workspace_manager
-                  ("scan-total-us=" ^ Int.to_string (elapsed_us_since started_at))
-              in
+              let () = trace_workspace_manager
+                ("scan-total-us=" ^ Int.to_string (elapsed_us_since started_at)) in
               result
         )
     | None, Some package_root ->
@@ -466,10 +467,8 @@ let scan: t -> Path.t -> ((Workspace_manifest.t * load_error list), string) resu
           | None ->
               let result = build_single_package_workspace t package_root in
               let _ = HashMap.insert t.scans ~key ~value:result in
-              let () =
-                trace_workspace_manager
-                  ("scan-total-us=" ^ Int.to_string (elapsed_us_since started_at))
-              in
+              let () = trace_workspace_manager
+                ("scan-total-us=" ^ Int.to_string (elapsed_us_since started_at)) in
               result
         )
     | None, None ->

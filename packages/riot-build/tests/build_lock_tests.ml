@@ -6,11 +6,9 @@ type Message.t +=
   | BuildLockAcquired of Time.Duration.t
   | BuildLockAcquireFailed of string
 
-let make_workspace = fun root ->
-  Riot_model.Workspace.make_realized ~root ~packages:[] ()
+let make_workspace = fun root -> Riot_model.Workspace.make_realized ~root ~packages:[] ()
 
-let target_dir_root = fun workspace ->
-  workspace.Riot_model.Workspace.target_dir_root
+let target_dir_root = fun workspace -> workspace.Riot_model.Workspace.target_dir_root
 
 let target = fun triple ->
   Riot_model.Target.from_string triple
@@ -34,10 +32,7 @@ let test_reentrant_acquire_in_same_process = fun _ctx ->
               (fun () ->
                 let start = Time.Instant.now () in
                 match
-                  BuildLock.acquire
-                    ~target_dir_root:(target_dir_root workspace)
-                    ~profile:"debug"
-                    ~target:host_target
+                  BuildLock.acquire ~target_dir_root:(target_dir_root workspace) ~profile:"debug" ~target:host_target
                     (fun () ->
                       let waited = Time.Instant.elapsed start in
                       send parent (BuildLockAcquired waited);
@@ -107,10 +102,7 @@ let test_different_targets_do_not_block_each_other = fun _ctx ->
               (fun () ->
                 let start = Time.Instant.now () in
                 match
-                  BuildLock.acquire
-                    ~target_dir_root:(target_dir_root workspace)
-                    ~profile:"debug"
-                    ~target:linux_target
+                  BuildLock.acquire ~target_dir_root:(target_dir_root workspace) ~profile:"debug" ~target:linux_target
                     (fun () ->
                       let waited = Time.Instant.elapsed start in
                       send parent (BuildLockAcquired waited);

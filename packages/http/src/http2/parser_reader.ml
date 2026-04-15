@@ -45,11 +45,13 @@ type parse_result =
   | Need_more
   | Error of parse_error
 
-let byte_at = fun data offset ->
-  data |> String.get_unchecked ~at:offset |> Char.to_int
+let byte_at = fun data offset -> data |> String.get_unchecked ~at:offset |> Char.to_int
 
 let create = fun ?(config = default_config) () ->
-  { config; phase = Cell.create (ReadingFrameHeader { buffer = Buffer.create ~size:9; bytes_read = 0 }) }
+  {
+    config;
+    phase = Cell.create (ReadingFrameHeader { buffer = Buffer.create ~size:9; bytes_read = 0 })
+  }
 
 let reset = fun state ->
   Cell.set state.phase (ReadingFrameHeader { buffer = Buffer.create ~size:9; bytes_read = 0 })

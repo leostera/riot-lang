@@ -1,34 +1,31 @@
 open Std
 open Std.Result.Syntax
-
 module Test = Std.Test
 
 let sample_metadata: Parquet.file_metadata = {
   version = 1;
-  schema = [
-    {
-      type_ = None;
-      type_length = None;
-      repetition_type = None;
-      name = "schema";
-      num_children = Some 1;
-      converted_type = None;
-      scale = None;
-      precision = None;
-      field_id = None;
-    };
-    {
-      type_ = Some Parquet.Int32;
-      type_length = None;
-      repetition_type = Some Parquet.Required;
-      name = "pirate_count";
-      num_children = None;
-      converted_type = None;
-      scale = None;
-      precision = None;
-      field_id = Some 7;
-    };
-  ];
+  schema =
+    [ {
+        type_ = None;
+        type_length = None;
+        repetition_type = None;
+        name = "schema";
+        num_children = Some 1;
+        converted_type = None;
+        scale = None;
+        precision = None;
+        field_id = None;
+      }; {
+        type_ = Some Parquet.Int32;
+        type_length = None;
+        repetition_type = Some Parquet.Required;
+        name = "pirate_count";
+        num_children = None;
+        converted_type = None;
+        scale = None;
+        precision = None;
+        field_id = Some 7;
+      }; ];
   num_rows = 0L;
   row_groups = [];
   key_value_metadata = Some [ { key = "series"; value = Some "One Piece" } ];
@@ -36,10 +33,7 @@ let sample_metadata: Parquet.file_metadata = {
   column_orders = Some [ Parquet.Type_defined_order ];
 }
 
-let sample_file: Parquet.t = {
-  body = "";
-  metadata = sample_metadata;
-}
+let sample_file: Parquet.t = { body = ""; metadata = sample_metadata }
 
 let test_decodes_footer_tail_from_encoded_file = fun _ctx ->
   let* encoded =
@@ -49,7 +43,8 @@ let test_decodes_footer_tail_from_encoded_file = fun _ctx ->
   in
   let footer = String.sub encoded ~offset:(String.length encoded - 8) ~len:8 in
   match Parquet.decode_footer_tail footer with
-  | Ok decoded when Int.equal decoded.metadata_length (String.length encoded - 12) && Bool.equal decoded.encrypted_footer false -> Ok ()
+  | Ok decoded when Int.equal decoded.metadata_length (String.length encoded - 12)
+  && Bool.equal decoded.encrypted_footer false -> Ok ()
   | Ok _ -> Error "expected parquet footer tail to report the metadata length"
   | Error err -> Error ("parquet footer decode failed: " ^ Parquet.Error.to_string err)
 

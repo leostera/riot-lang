@@ -212,7 +212,9 @@ let parse_single_quoted = fun text line_number start ->
       if Int.compare index length >= 0 then
         fail_line line_number "unterminated single-quoted string"
       else if Char.equal (String.unsafe_get text index) '\'' then
-        if Int.compare (index + 1) length < 0 && Char.equal (String.unsafe_get text (index + 1)) '\'' then
+        if
+          Int.compare (index + 1) length < 0 && Char.equal (String.unsafe_get text (index + 1)) '\''
+        then
           (
             IO.Buffer.add_char buffer '\'';
             loop (index + 2)
@@ -242,7 +244,9 @@ let find_mapping_separator = fun text line_number ->
           scan (index + 1) true false
       else if in_single then
         if Char.equal current '\'' then
-          if Int.compare (index + 1) length < 0 && Char.equal (String.unsafe_get text (index + 1)) '\'' then
+          if
+            Int.compare (index + 1) length < 0 && Char.equal (String.unsafe_get text (index + 1)) '\''
+          then
             scan (index + 2) false true
           else
             scan (index + 1) false false
@@ -256,7 +260,9 @@ let find_mapping_separator = fun text line_number ->
         let next = index + 1 in
         if Int.compare next length >= 0 then
           Some index
-        else if Char.equal (String.unsafe_get text next) ' ' || Char.equal (String.unsafe_get text next) '\t' then
+        else if
+          Char.equal (String.unsafe_get text next) ' ' || Char.equal (String.unsafe_get text next) '\t'
+        then
           Some index
         else
           scan (index + 1) false false

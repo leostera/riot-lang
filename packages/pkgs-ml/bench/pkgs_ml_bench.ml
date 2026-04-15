@@ -21,12 +21,9 @@ let make_scratch_dir = fun prefix ->
   let nanos = Time.SystemTime.duration_since_epoch () |> Time.Duration.to_nanos |> Int64.to_string in
   let counter = Sync.Atomic.fetch_and_add scratch_counter 1 |> Int.to_string in
   let path =
-    Path.(
-      temp_root ()
-      / Path.v "pkgs-ml-bench"
-      / Path.v (prefix ^ "-" ^ pid ^ "-" ^ nanos ^ "-" ^ counter)
-    )
-  in
+    Path.(temp_root ()
+    / Path.v "pkgs-ml-bench"
+    / Path.v (prefix ^ "-" ^ pid ^ "-" ^ nanos ^ "-" ^ counter)) in
   let _ = Fs.create_dir_all path |> Result.expect ~msg:"create bench scratch dir should succeed" in
   path
 
@@ -58,8 +55,7 @@ let make_package_document = fun ~name ~latest ~description ->
     latest;
     updated_at = "2026-03-27T15:27:35Z";
     releases =
-      [
-        {
+      [ {
           Pkgs_ml.Sparse_index.version = latest;
           published_at = "2026-03-27T15:27:35Z";
           canonical_locator = "github.com/leostera/riot/packages/" ^ name;
@@ -79,8 +75,7 @@ let make_package_document = fun ~name ~latest ~description ->
           yanked = false;
           yanked_at = None;
           yanked_by_github_login = None;
-        };
-      ];
+        }; ];
   }
 
 let bench_package_relpath = fun () ->
@@ -98,14 +93,15 @@ let make_bench_search_packages = fun () ->
     ()
   |> Result.expect ~msg:"create registry cache should succeed" in
   let packages =
-    List.init ~count:256 ~fn:(fun index ->
-      let name =
-        if Int.rem index 8 = 0 then
-          "riot-" ^ Int.to_string index
-        else
-          "pkg-" ^ Int.to_string index
-      in
-      make_package_document ~name ~latest:"0.1.0" ~description:("package " ^ name))
+    List.init ~count:256
+      ~fn:(fun index ->
+        let name =
+          if Int.rem index 8 = 0 then
+            "riot-" ^ Int.to_string index
+          else
+            "pkg-" ^ Int.to_string index
+        in
+        make_package_document ~name ~latest:"0.1.0" ~description:("package " ^ name))
   in
   let registry = Pkgs_ml.Registry.in_memory ~cache ~packages () in
   fun () ->
@@ -118,11 +114,10 @@ let make_release_source = fun version ->
     Pkgs_ml.Registry.package_name = "std";
     version;
     manifest_toml = "[package]\nname = \"std\"\nversion = \"" ^ version ^ "\"\n";
-    files =
-      [
-        { Pkgs_ml.Registry.path = Path.v "src/std.ml"; contents = "let answer = 42\n" };
-        { Pkgs_ml.Registry.path = Path.v "README.md"; contents = "# std\n" };
-      ];
+    files = [
+      { Pkgs_ml.Registry.path = Path.v "src/std.ml"; contents = "let answer = 42\n" };
+      { Pkgs_ml.Registry.path = Path.v "README.md"; contents = "# std\n" };
+    ]
   }
 
 let make_bench_materialize_release_miss = fun () ->
@@ -139,8 +134,7 @@ let make_bench_materialize_release_miss = fun () ->
       ~cache
       ~packages:[]
       ~releases:[ make_release_source version ]
-      ()
-    in
+      () in
     let _ = Pkgs_ml.Registry.materialize_release registry ~package_name:"std" ~version
     |> Result.expect ~msg:"materialize_release miss should succeed" in
     ()
@@ -156,8 +150,7 @@ let make_bench_materialize_release_hit = fun () ->
     ~cache
     ~packages:[]
     ~releases:[ make_release_source version ]
-    ()
-  in
+    () in
   let _ = Pkgs_ml.Registry.materialize_release registry ~package_name:"std" ~version
   |> Result.expect ~msg:"initial materialize_release should succeed" in
   fun () ->
@@ -166,16 +159,28 @@ let make_bench_materialize_release_hit = fun () ->
     ()
 
 let small = { iterations = 500; warmup = 50 }
+
 let medium = { iterations = 150; warmup = 20 }
+
 let heavy = { iterations = 40; warmup = 5 }
 
-let benchmarks = Bench.[
-  with_config ~config:small "pkgs-ml sparse-index package_relpath" bench_package_relpath;
-  with_config ~config:medium "pkgs-ml sparse-index package_document_of_string" bench_package_document_parse;
-  with_config ~config:medium "pkgs-ml registry search_packages in-memory" (make_bench_search_packages ());
-  with_config ~config:heavy "pkgs-ml registry materialize_release miss" (make_bench_materialize_release_miss ());
-  with_config ~config:medium "pkgs-ml registry materialize_release hit" (make_bench_materialize_release_hit ());
-]
+let benchmarks =
+  Bench.[
+    with_config ~config:small "pkgs-ml sparse-index package_relpath" bench_package_relpath;
+    with_config ~config:medium "pkgs-ml sparse-index package_document_of_string" bench_package_document_parse;
+    with_config
+      ~config:medium
+      "pkgs-ml registry search_packages in-memory"
+      (make_bench_search_packages ());
+    with_config
+      ~config:heavy
+      "pkgs-ml registry materialize_release miss"
+      (make_bench_materialize_release_miss ());
+    with_config
+      ~config:medium
+      "pkgs-ml registry materialize_release hit"
+      (make_bench_materialize_release_hit ());
+  ]
 
 let () =
   Actors.run

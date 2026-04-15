@@ -136,14 +136,16 @@ let normalize_registry_name = fun name ->
 
 let rec collect_registries = fun ~path acc fields ->
   let has_registry_fields =
-    List.any fields ~fn:(fun (name, _value) ->
-      String.equal name "api_token")
+    List.any fields
+      ~fn:(fun (name, _value) ->
+        String.equal name "api_token")
   in
   let has_nested_tables =
-    List.any fields ~fn:(fun (_name, value) ->
-      match value with
-      | Toml.Table _ -> true
-      | _ -> false)
+    List.any fields
+      ~fn:(fun (_name, value) ->
+        match value with
+        | Toml.Table _ -> true
+        | _ -> false)
   in
   if List.length path > 0 && (has_registry_fields || not has_nested_tables) then
     let registry_name = String.concat "." (List.reverse path) |> normalize_registry_name in
@@ -224,8 +226,7 @@ let upsert_registry = fun config ~registry_name ~update ->
 
 let api_token = fun config ~registry_name ->
   match
-    List.find
-      config.registries
+    List.find config.registries
       ~fn:(fun (name, _registry) ->
         String.equal name registry_name)
   with

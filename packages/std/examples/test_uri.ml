@@ -18,8 +18,7 @@ let () =
               println ("  host: " ^ (Option.unwrap_or ~default:"none" (Net.Uri.host uri)));
               println ("  path: " ^ (Net.Uri.path uri));
               println ("  query: " ^ (Option.unwrap_or ~default:"none" (Net.Uri.query uri)));
-          | Error _ ->
-              println "  ERROR - Parse failed");
+          | Error _ -> println "  ERROR - Parse failed");
       Ok ())
     ~args:Env.args
     ()

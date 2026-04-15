@@ -26,7 +26,8 @@ end
 module Result_type = struct
   type t = Value_type.t list
 
-  let to_string = fun result_type -> result_type |> List.map ~fn:Value_type.to_string |> String.concat " "
+  let to_string = fun result_type ->
+    result_type |> List.map ~fn:Value_type.to_string |> String.concat " "
 
   let to_json = fun result_type -> Json.array (List.map result_type ~fn:Value_type.to_json)
 end

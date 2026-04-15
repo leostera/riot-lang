@@ -57,7 +57,7 @@ let env_sysroot = fun () ->
   | None -> from_env "SYSROOT"
 
 let first_existing = fun paths ->
-  let rec loop = fun remaining ->
+  let rec loop remaining =
     match remaining with
     | [] -> None
     | path :: rest -> (

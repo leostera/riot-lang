@@ -2,8 +2,7 @@ open Std
 module Test = Std.Test
 
 let rec flatten_entries = fun entries ->
-  List.flat_map
-    entries
+  List.flat_map entries
     ~fn:(
       function
       | Riot_planner.Module_scanner.ML _ as entry -> [ entry ]
@@ -27,8 +26,7 @@ let test_scan_tags_c_and_h_files = fun _ctx ->
         let entries = Riot_planner.Module_scanner.scan ~root:tmpdir ~source_dir:(Path.v "src") in
         let flat = flatten_entries entries in
         let has_c =
-          List.any
-            flat
+          List.any flat
             ~fn:(
               function
               | Riot_planner.Module_scanner.C (name, path) -> String.equal name "stubs.c"
@@ -37,8 +35,7 @@ let test_scan_tags_c_and_h_files = fun _ctx ->
             )
         in
         let has_h =
-          List.any
-            flat
+          List.any flat
             ~fn:(
               function
               | Riot_planner.Module_scanner.H (name, path) -> String.equal name "stubs.h"

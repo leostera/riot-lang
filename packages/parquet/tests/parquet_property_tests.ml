@@ -1,6 +1,5 @@
 open Std
 open Propane
-
 module Test = Std.Test
 
 let primitive_examples = 100_000
@@ -21,7 +20,8 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.for_each bufs ~fn:(fun { IO.Iovec.buffer = chunk; offset; length } ->
+      IO.Iovec.for_each bufs
+        ~fn:(fun { IO.Iovec.buffer=chunk; offset; length } ->
           IO.Buffer.add_subbytes buffer chunk offset length;
           written := !written + length);
       Ok !written
@@ -106,8 +106,7 @@ let string_of_compression_codec = function
   | Parquet.Lz4 -> "Lz4"
   | Parquet.Zstd -> "Zstd"
   | Parquet.Lz4_raw -> "Lz4_raw"
-  | Parquet.Unknown_compression_codec value ->
-      "Unknown_compression_codec(" ^ Int.to_string value ^ ")"
+  | Parquet.Unknown_compression_codec value -> "Unknown_compression_codec(" ^ Int.to_string value ^ ")"
 
 let string_of_page_type = function
   | Parquet.Data_page -> "Data_page"
@@ -120,7 +119,8 @@ let print_column_order = function
   | Parquet.Type_defined_order -> "Type_defined_order"
 
 let print_key_value = fun (value: Parquet.key_value) ->
-  String.concat ""
+  String.concat
+    ""
     [
       "{ key = ";
       Printer.string value.key;
@@ -154,7 +154,8 @@ let print_schema_element = fun (value: Parquet.schema_element) ->
     ]
 
 let print_sorting_column = fun (value: Parquet.sorting_column) ->
-  String.concat ""
+  String.concat
+    ""
     [
       "{ column_idx = ";
       Printer.int value.column_idx;
@@ -166,7 +167,8 @@ let print_sorting_column = fun (value: Parquet.sorting_column) ->
     ]
 
 let print_page_encoding_stats = fun (value: Parquet.page_encoding_stats) ->
-  String.concat ""
+  String.concat
+    ""
     [
       "{ page_type = ";
       string_of_page_type value.page_type;
@@ -274,7 +276,8 @@ let print_file_metadata = fun (value: Parquet.file_metadata) ->
     ]
 
 let print_file = fun (value: Parquet.t) ->
-  String.concat ""
+  String.concat
+    ""
     [
       "{ body = ";
       Printer.string value.body;
@@ -365,11 +368,7 @@ let column_order_gen = Generator.return Parquet.Type_defined_order
 
 let key_value_gen =
   Generator.map2
-    (fun key value ->
-      ({
-          key;
-          value;
-        }: Parquet.key_value))
+    (fun key value -> ({ key; value }: Parquet.key_value))
     small_string_gen
     (Generator.option small_string_gen)
 
@@ -407,11 +406,7 @@ let schema_element_arb = Arbitrary.make ~print:print_schema_element schema_eleme
 let sorting_column_gen =
   Generator.map3
     (fun column_idx descending nulls_first ->
-      ({
-          column_idx;
-          descending;
-          nulls_first;
-        }: Parquet.sorting_column))
+      ({ column_idx; descending; nulls_first }: Parquet.sorting_column))
     small_int32_gen
     Generator.bool
     Generator.bool
@@ -420,12 +415,7 @@ let sorting_column_arb = Arbitrary.make ~print:print_sorting_column sorting_colu
 
 let page_encoding_stats_gen =
   Generator.map3
-    (fun page_type encoding count ->
-      ({
-          page_type;
-          encoding;
-          count;
-        }: Parquet.page_encoding_stats))
+    (fun page_type encoding count -> ({ page_type; encoding; count }: Parquet.page_encoding_stats))
     page_type_gen
     encoding_gen
     small_int32_gen
@@ -474,14 +464,18 @@ let column_metadata_gen =
       (Generator.pair small_int64_gen small_int64_gen))
     (Generator.map3
       (fun (key_value_metadata, index_page_offset) (dictionary_page_offset, encoding_stats) (bloom_filter_offset, bloom_filter_length) ->
-        ( key_value_metadata,
+        (
+          key_value_metadata,
           index_page_offset,
           dictionary_page_offset,
           encoding_stats,
           bloom_filter_offset,
-          bloom_filter_length ))
+          bloom_filter_length
+        ))
       (Generator.pair (Generator.option key_value_list_gen) (Generator.option small_int64_gen))
-      (Generator.pair (Generator.option small_int64_gen) (Generator.option page_encoding_stats_list_gen))
+      (Generator.pair
+        (Generator.option small_int64_gen)
+        (Generator.option page_encoding_stats_list_gen))
       (Generator.pair (Generator.option small_int64_gen) (Generator.option small_int32_gen)))
 
 let column_metadata_arb = Arbitrary.make ~print:print_column_metadata column_metadata_gen
@@ -499,7 +493,10 @@ let column_chunk_gen =
           column_index_length;
           encrypted_column_metadata;
         }: Parquet.column_chunk))
-    (Generator.triple (Generator.option small_string_gen) small_int64_gen (Generator.option column_metadata_gen))
+    (Generator.triple
+      (Generator.option small_string_gen)
+      small_int64_gen
+      (Generator.option column_metadata_gen))
     (Generator.pair (Generator.option small_int64_gen) (Generator.option small_int32_gen))
     (Generator.triple
       (Generator.option small_int64_gen)
@@ -551,14 +548,7 @@ let file_metadata_gen =
 let file_metadata_arb = Arbitrary.make ~print:print_file_metadata file_metadata_gen
 
 let file_gen =
-  Generator.map2
-    (fun body metadata ->
-      ({
-          body;
-          metadata;
-        }: Parquet.t))
-    body_string_gen
-    file_metadata_gen
+  Generator.map2 (fun body metadata -> ({ body; metadata }: Parquet.t)) body_string_gen file_metadata_gen
 
 let file_arb = Arbitrary.make ~print:print_file file_gen
 
@@ -635,70 +625,29 @@ let base_metadata: Parquet.file_metadata = {
 }
 
 let file_metadata_with_key_value = fun value ->
-  {
-    base_metadata with
-    key_value_metadata = Some [ value ];
-  }
+  { base_metadata with key_value_metadata = Some [ value ] }
 
 let file_metadata_with_schema_element = fun value ->
-  {
-    base_metadata with
-    schema = [ base_schema_root; value ];
-  }
+  { base_metadata with schema = [ base_schema_root; value ] }
 
 let file_metadata_with_page_encoding_stats = fun value ->
-  let column_metadata = {
-    base_column_metadata with
-    encoding_stats = Some [ value ];
-  } in
-  let column_chunk = {
-    base_column_chunk with
-    meta_data = Some column_metadata;
-  } in
-  let row_group = {
-    base_row_group with
-    columns = [ column_chunk ];
-  } in
-  {
-    base_metadata with
-    row_groups = [ row_group ];
-  }
+  let column_metadata = { base_column_metadata with encoding_stats = Some [ value ] } in
+  let column_chunk = { base_column_chunk with meta_data = Some column_metadata } in
+  let row_group = { base_row_group with columns = [ column_chunk ] } in
+  { base_metadata with row_groups = [ row_group ] }
 
 let file_metadata_with_column_metadata = fun value ->
-  let column_chunk = {
-    base_column_chunk with
-    meta_data = Some value;
-  } in
-  let row_group = {
-    base_row_group with
-    columns = [ column_chunk ];
-  } in
-  {
-    base_metadata with
-    row_groups = [ row_group ];
-  }
+  let column_chunk = { base_column_chunk with meta_data = Some value } in
+  let row_group = { base_row_group with columns = [ column_chunk ] } in
+  { base_metadata with row_groups = [ row_group ] }
 
 let file_metadata_with_column_chunk = fun value ->
-  let row_group = {
-    base_row_group with
-    columns = [ value ];
-  } in
-  {
-    base_metadata with
-    row_groups = [ row_group ];
-  }
+  let row_group = { base_row_group with columns = [ value ] } in
+  { base_metadata with row_groups = [ row_group ] }
 
-let file_metadata_with_row_group = fun value ->
-  {
-    base_metadata with
-    row_groups = [ value ];
-  }
+let file_metadata_with_row_group = fun value -> { base_metadata with row_groups = [ value ] }
 
-let file_of_metadata = fun metadata : Parquet.t ->
-  {
-    body = "";
-    metadata;
-  }
+let file_of_metadata = fun metadata : Parquet.t -> { body = ""; metadata }
 
 let run_property = fun ?(examples = primitive_examples) name arb predicate ->
   let config = { Property.default_config with test_count = examples } in
@@ -741,7 +690,8 @@ let file_io_roundtrip = fun value ->
   let buffer = IO.Buffer.create ~size:256 in
   match Parquet.to_writer (io_writer_of_buffer buffer) value with
   | Ok () -> (
-      match Parquet.from_reader (String.to_reader ~chunk_size:io_chunk_size (IO.Buffer.contents buffer)) with
+      match Parquet.from_reader
+        (String.to_reader ~chunk_size:io_chunk_size (IO.Buffer.contents buffer)) with
       | Ok decoded -> decoded = value
       | Error err -> Property.fail ("reader decode failed: " ^ Parquet.Error.to_string err)
     )
@@ -834,18 +784,16 @@ let row_group_roundtrip_prop = run_property
   row_group_arb
   (metadata_roundtrip file_metadata_with_row_group extract_only_row_group)
 
-let file_metadata_roundtrip_prop = run_property
-  ~examples:composite_examples
-  "parquet property file_metadata roundtrips"
-  file_metadata_arb
-  (fun value ->
-    match Parquet.encode_metadata value with
-    | Ok encoded -> (
-        match Parquet.decode_metadata encoded with
-        | Ok decoded -> decoded = value
-        | Error err -> Property.fail ("metadata decode failed: " ^ Parquet.Error.to_string err)
-      )
-    | Error err -> Property.fail ("metadata encode failed: " ^ Parquet.Error.to_string err))
+let file_metadata_roundtrip_prop =
+  run_property ~examples:composite_examples "parquet property file_metadata roundtrips" file_metadata_arb
+    (fun value ->
+      match Parquet.encode_metadata value with
+      | Ok encoded -> (
+          match Parquet.decode_metadata encoded with
+          | Ok decoded -> decoded = value
+          | Error err -> Property.fail ("metadata decode failed: " ^ Parquet.Error.to_string err)
+        )
+      | Error err -> Property.fail ("metadata encode failed: " ^ Parquet.Error.to_string err))
 
 let file_roundtrip_prop = run_property
   ~examples:composite_examples

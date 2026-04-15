@@ -92,8 +92,10 @@ let parse_max_size = fun raw ->
       match String.get_unchecked normalized ~at:idx with
       | '0' .. '9'
       | '.' -> split (idx + 1)
-      | _ ->
-          (String.sub normalized ~offset:0 ~len:idx, String.sub normalized ~offset:idx ~len:(len - idx))
+      | _ -> (
+        String.sub normalized ~offset:0 ~len:idx,
+        String.sub normalized ~offset:idx ~len:(len - idx)
+      )
   in
   let number_str, unit_str = split 0 in
   if String.equal number_str "" then
@@ -181,8 +183,10 @@ let parse_duration = fun raw ->
       match String.get_unchecked normalized ~at:idx with
       | '0' .. '9'
       | '.' -> split (idx + 1)
-      | _ ->
-          (String.sub normalized ~offset:0 ~len:idx, String.sub normalized ~offset:idx ~len:(len - idx))
+      | _ -> (
+        String.sub normalized ~offset:0 ~len:idx,
+        String.sub normalized ~offset:idx ~len:(len - idx)
+      )
   in
   let number_str, unit_str = split 0 in
   if String.equal number_str "" then

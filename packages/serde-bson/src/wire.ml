@@ -25,7 +25,8 @@ let hex_char = function
   | value -> Char.chr (Char.code 'A' + value - 10)
 
 let hex_byte = fun value ->
-  String.init ~len:2 ~fn:(fun index ->
+  String.init ~len:2
+    ~fn:(fun index ->
       if Int.equal index 0 then
         hex_char ((value lsr 4) land 0x0f)
       else
@@ -146,7 +147,8 @@ and encode_element = fun (key, value) ->
 
 and encode_document = fun fields ->
   let* encoded_fields =
-    List.fold_left fields ~acc:(Ok []) ~fn:(fun acc field ->
+    List.fold_left fields ~acc:(Ok [])
+      ~fn:(fun acc field ->
         let* acc = acc in
         let* encoded = encode_element field in
         Ok (encoded :: acc))

@@ -52,9 +52,7 @@ let ensure_trailing_new_removed = fun path ->
   let rendered = Path.to_string path in
   if String.ends_with ~suffix:".new" rendered then
     let len = String.length rendered - 4 in
-    String.sub rendered ~offset:0 ~len
-    |> Path.from_string
-    |> Result.expect ~msg:"pending snapshot path should stay valid UTF-8"
+    String.sub rendered ~offset:0 ~len |> Path.from_string |> Result.expect ~msg:"pending snapshot path should stay valid UTF-8"
   else
     path
 
@@ -115,9 +113,8 @@ let discover_pending_snapshots = fun ~workspace_root ?query () ->
   | Error err -> Error err
   | Ok snapshots ->
       Ok (
-        snapshots
-        |> List.filter ~fn:(matches_query ?query)
-        |> List.sort ~compare:(fun left right ->
+        snapshots |> List.filter ~fn:(matches_query ?query) |> List.sort
+          ~compare:(fun left right ->
             String.compare (Path.to_string left.pending) (Path.to_string right.pending))
       )
 

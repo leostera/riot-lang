@@ -30,8 +30,7 @@ let to_snake_case = fun text ->
     pieces := piece :: !pieces
   in
   let prev_was_lower_or_digit = ref false in
-  String.for_each
-    text
+  String.for_each text
     ~fn:(fun ch ->
       if is_upper ch then
         (
@@ -77,13 +76,15 @@ let diagnostic_for_decl type_declaration =
 let diagnostics_for_items = fun source_file ->
   match source_file with
   | Syn.Cst.Implementation { items; _ } ->
-      items |> List.filter_map ~fn:(
+      items |> List.filter_map
+        ~fn:(
           function
           | Syn.Cst.StructureItem.TypeDeclaration decl -> diagnostic_for_decl decl
           | _ -> None
         )
   | Syn.Cst.Interface { items; _ } ->
-      items |> List.filter_map ~fn:(
+      items |> List.filter_map
+        ~fn:(
           function
           | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostic_for_decl decl
           | _ -> None

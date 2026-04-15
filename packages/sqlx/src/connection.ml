@@ -24,8 +24,7 @@ type config =
       config: 'config;
     } -> config
 
-let sample_random_int = fun () ->
-  Random.int 1_000_000 |> Result.expect ~msg:"failed to generate random connection id"
+let sample_random_int = fun () -> Random.int 1_000_000 |> Result.expect ~msg:"failed to generate random connection id"
 
 let gen_id = fun () ->
   "conn_" ^ string_of_int (sample_random_int ()) ^ "_" ^ string_of_int (sample_random_int ())

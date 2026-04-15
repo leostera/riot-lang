@@ -28,15 +28,13 @@ let from_parts = fun parts ->
     let rec loop acc parts =
       match parts with
       | [] -> Ok { parts = List.reverse acc }
-      | part :: _ when String.is_empty part ->
-          Error Empty_part
-      | part :: _ when is_invalid_part part ->
-          Error (Invalid_part part)
-      | part :: rest ->
-          loop (part :: acc) rest
+      | part :: _ when String.is_empty part -> Error Empty_part
+      | part :: _ when is_invalid_part part -> Error (Invalid_part part)
+      | part :: rest -> loop (part :: acc) rest
     in
     loop [] parts
 
-let to_string = fun value -> String.concat "/" value.parts
+let to_string = fun value ->
+  String.concat "/" value.parts
 
 let parts = fun value -> value.parts

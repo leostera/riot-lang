@@ -114,9 +114,11 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.for_each ~fn:(fun { buffer = chunk; offset; length } ->
+      IO.Iovec.for_each
+        ~fn:(fun { buffer=chunk; offset; length } ->
           IO.Buffer.add_subbytes buffer chunk offset length;
-          written := !written + length) bufs;
+          written := !written + length)
+        bufs;
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -403,7 +405,9 @@ let build_batch = fun batch_index ->
     Vector.push items ~value:(build_primitive_record batch_index item_index)
   done;
   let mirrors =
-    Array.init ~count:6 ~fn:(fun mirror_index -> build_primitive_record batch_index (mirror_index + 32))
+    Array.init
+      ~count:6
+      ~fn:(fun mirror_index -> build_primitive_record batch_index (mirror_index + 32))
   in
   ({
       batch_id = batch_index;

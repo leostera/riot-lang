@@ -30,9 +30,7 @@ let with_tempdir = fun prefix fn ->
   | Error err -> Error (IO.error_message err)
 
 let diagnostic_rule_ids = fun diagnostics ->
-  diagnostics
-  |> List.map ~fn:Riot_fix.Diagnostic.rule_id
-  |> List.sort ~compare:String.compare
+  diagnostics |> List.map ~fn:Riot_fix.Diagnostic.rule_id |> List.sort ~compare:String.compare
 
 let assert_explanation_contains = fun ~rule_id ~snippet ->
   match Riot_fix.Explanations.explain rule_id with
@@ -984,12 +982,10 @@ let solve total feedback_ref =
       let source = "let render = function | x -> x + 1\n" in
       let pipeline = Riot_fix.Pipeline.make ~rules:[ Riot_fix.Rules.No_function_shorthand.make () ] () in
       let result = Riot_fix.Pipeline.run pipeline source in
-      let fix =
-        result.diagnostics
-        |> List.filter_map ~fn:Riot_fix.Diagnostic.fix
-        |> List.head
-        |> Option.expect ~msg:"expected no-function-shorthand fix"
-      in
+      let fix = result.diagnostics
+      |> List.filter_map ~fn:Riot_fix.Diagnostic.fix
+      |> List.head
+      |> Option.expect ~msg:"expected no-function-shorthand fix" in
       let rewritten = Riot_fix.Fix.apply_fix ~source fix |> Result.expect ~msg:"expected no-function-shorthand fix to apply" in
       Test.assert_equal
         ~expected:"let render = fun value -> match value with | x -> x + 1\n"
@@ -2354,8 +2350,9 @@ let render x y z =
       let source = "let map_result value = match value with | Ok x -> Ok (x + 1) | Error e -> Error (wrap e)\n" in
       let rules =
         Riot_fix.Pipeline.default_rules ()
-        |> List.filter ~fn:(fun rule ->
-             String.equal (Riot_fix.Rule.id rule) "std:prefer-result-map-over-manual-match")
+        |> List.filter
+          ~fn:(fun rule ->
+            String.equal (Riot_fix.Rule.id rule) "std:prefer-result-map-over-manual-match")
       in
       let pipeline = Riot_fix.Pipeline.make ~rules () in
       let result = Riot_fix.Pipeline.run pipeline source in
@@ -2375,27 +2372,17 @@ let render x y z =
       Ok ());
   Test.case "rule explanations explain record-destructuring parameters"
     (fun _ctx ->
-      let _ =
-        assert_explanation_contains
-          ~rule_id:"prefer-record-destructuring-parameters"
-          ~snippet:"let { ... } = value in ..."
-      in
+      let _ = assert_explanation_contains
+        ~rule_id:"prefer-record-destructuring-parameters"
+        ~snippet:"let { ... } = value in ..." in
       Ok ());
   Test.case "rule explanations explain ignored map traversal"
     (fun _ctx ->
-      let _ =
-        assert_explanation_contains
-          ~rule_id:"std:prefer-iter-over-ignored-map"
-          ~snippet:"List.iter"
-      in
+      let _ = assert_explanation_contains ~rule_id:"std:prefer-iter-over-ignored-map" ~snippet:"List.iter" in
       Ok ());
   Test.case "rule explanations explain List.is_empty preference"
     (fun _ctx ->
-      let _ =
-        assert_explanation_contains
-          ~rule_id:"std:prefer-list-is-empty"
-          ~snippet:"List.is_empty"
-      in
+      let _ = assert_explanation_contains ~rule_id:"std:prefer-list-is-empty" ~snippet:"List.is_empty" in
       Ok ());
 ]
 

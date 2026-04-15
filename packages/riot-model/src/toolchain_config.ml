@@ -22,9 +22,7 @@ let default = {
 }
 
 let sort_compare_target = fun left right ->
-  String.compare
-    (System.TargetTriple.to_string left)
-    (System.TargetTriple.to_string right)
+  String.compare (System.TargetTriple.to_string left) (System.TargetTriple.to_string right)
 
 let normalize_targets = fun targets ->
   let rec dedupe acc = function
@@ -36,9 +34,7 @@ let normalize_targets = fun targets ->
         else
           dedupe (left :: acc) rest
   in
-  targets
-  |> List.sort ~compare:sort_compare_target
-  |> dedupe []
+  targets |> List.sort ~compare:sort_compare_target |> dedupe []
 
 let from_root = fun ~root ->
   let toolchain_file = Path.(root / Path.v "ocaml-toolchain.toml") in
@@ -59,13 +55,16 @@ let from_root = fun ~root ->
                     (
                       match Fields.get "targets" toolchain_items with
                       | Some (Data.Toml.Array arr) ->
-                          List.filter_map arr ~fn:(function
-                            | Data.Toml.String s -> (
-                                match System.TargetTriple.from_string s with
-                                | Ok target -> Some target
-                                | Error _ -> None
-                              )
-                            | _ -> None)
+                          List.filter_map arr
+                            ~fn:(
+                              function
+                              | Data.Toml.String s -> (
+                                  match System.TargetTriple.from_string s with
+                                  | Ok target -> Some target
+                                  | Error _ -> None
+                                )
+                              | _ -> None
+                            )
                       | _ -> []
                     )
                     |> normalize_targets

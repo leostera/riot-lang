@@ -64,14 +64,14 @@ let handle = fun config conn ->
             && List.mem Multipart config.parsers
           then
             let parts = String.split_on_char ';' content_type in
-                let boundary_opt =
-                  List.filter_map
-                    ~fn:(fun part ->
-                      let trimmed = String.trim part in
-                      if String.starts_with ~prefix:"boundary=" trimmed then
+            let boundary_opt =
+              List.filter_map
+                ~fn:(fun part ->
+                  let trimmed = String.trim part in
+                  if String.starts_with ~prefix:"boundary=" trimmed then
                     Some (String.sub trimmed ~offset:9 ~len:(String.length trimmed - 9))
-                    else
-                      None)
+                  else
+                    None)
                 parts
               |> List.head
             in

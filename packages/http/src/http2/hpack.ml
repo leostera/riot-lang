@@ -347,7 +347,8 @@ let encode_indexed_header = fun index ->
   Bytes.set_unchecked
     result
     ~at:0
-    ~char:(Char.from_int_unchecked (prefix_byte lor Char.to_int (Bytes.get_unchecked index_bytes ~at:0)));
+    ~char:(Char.from_int_unchecked
+      (prefix_byte lor Char.to_int (Bytes.get_unchecked index_bytes ~at:0)));
   Bytes.blit_unchecked
     index_bytes
     ~src_offset:1
@@ -366,8 +367,11 @@ let encode_literal_with_indexing = fun ~name_index ~value ->
       let index_bytes = Integer.encode 6 index in
       Buffer.add_char
         buf
-        (Char.from_int_unchecked (prefix_byte lor Char.to_int (Bytes.get_unchecked index_bytes ~at:0)));
-      Buffer.add_bytes buf (Bytes.sub_unchecked index_bytes ~offset:1 ~len:(Bytes.length index_bytes - 1));
+        (Char.from_int_unchecked
+          (prefix_byte lor Char.to_int (Bytes.get_unchecked index_bytes ~at:0)));
+      Buffer.add_bytes
+        buf
+        (Bytes.sub_unchecked index_bytes ~offset:1 ~len:(Bytes.length index_bytes - 1));
       Buffer.add_bytes buf (String_.encode value);
       Bytes.from_string (Buffer.contents buf)
   | None ->
@@ -400,8 +404,11 @@ let encode_literal_never_indexed = fun ~name_index ~value ->
       let index_bytes = Integer.encode 4 index in
       Buffer.add_char
         buf
-        (Char.from_int_unchecked (prefix_byte lor Char.to_int (Bytes.get_unchecked index_bytes ~at:0)));
-      Buffer.add_bytes buf (Bytes.sub_unchecked index_bytes ~offset:1 ~len:(Bytes.length index_bytes - 1));
+        (Char.from_int_unchecked
+          (prefix_byte lor Char.to_int (Bytes.get_unchecked index_bytes ~at:0)));
+      Buffer.add_bytes
+        buf
+        (Bytes.sub_unchecked index_bytes ~offset:1 ~len:(Bytes.length index_bytes - 1));
       Buffer.add_bytes buf (String_.encode value);
       Bytes.from_string (Buffer.contents buf)
   | None ->

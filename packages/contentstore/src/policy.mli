@@ -4,5 +4,4 @@
     current store only provides immutable object storage and mutable named
     values without generation tracking. *)
 type t
-
 val default: t

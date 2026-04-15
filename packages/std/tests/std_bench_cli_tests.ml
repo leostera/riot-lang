@@ -21,7 +21,11 @@ let run_sample_capture = fun args ->
 let parse_json_output = fun stdout -> Data.Json.of_string stdout |> Result.expect ~msg:"failed to parse json output"
 
 let assoc_value = fun key entries ->
-  match List.find entries ~fn:(fun (entry_key, _) -> String.equal entry_key key) with
+  match
+    List.find entries
+      ~fn:(fun (entry_key, _) ->
+        String.equal entry_key key)
+  with
   | Some (_, value) -> Some value
   | None -> None
 
@@ -29,7 +33,8 @@ let bench_names_from_json = fun stdout ->
   let json = parse_json_output stdout in
   match Data.Json.get_field "benchmarks" json with
   | Some (Data.Json.Array benchmarks) ->
-      benchmarks |> List.filter_map ~fn:(fun benchmark_json ->
+      benchmarks |> List.filter_map
+        ~fn:(fun benchmark_json ->
           match Data.Json.get_field "name" benchmark_json with
           | Some (Data.Json.String name) -> Some name
           | _ -> None)
@@ -39,10 +44,11 @@ let listed_benchmark_fields_from_json = fun stdout ->
   let json = parse_json_output stdout in
   match Data.Json.get_field "benchmarks" json with
   | Some (Data.Json.Array benchmarks) ->
-      benchmarks
-      |> List.filter_map ~fn:(function
-        | Data.Json.Object fields -> Some fields
-        | _ -> None
+      benchmarks |> List.filter_map
+        ~fn:(
+          function
+          | Data.Json.Object fields -> Some fields
+          | _ -> None
         )
   | _ -> []
 
@@ -55,9 +61,7 @@ let test_list_benchmarks_lists_all_cases = fun _ctx ->
     |> String.split ~by:"\n"
     |> List.filter ~fn:(fun line -> not (String.equal line ""))
     |> List.sort ~compare:String.compare in
-    let expected =
-      [ "alpha_long"; "beta"; "middle_long_case" ] |> List.sort ~compare:String.compare
-    in
+    let expected = [ "alpha_long"; "beta"; "middle_long_case" ] |> List.sort ~compare:String.compare in
     if lines = expected then
       Ok ()
     else
@@ -90,9 +94,7 @@ let test_list_benchmarks_respects_pattern = fun _ctx ->
     Error ("expected filtered list-benchmarks --json to succeed, got " ^ Int.to_string output.status)
   else
     let names = bench_names_from_json output.stdout |> List.sort ~compare:String.compare in
-    let expected =
-      [ "alpha_long"; "middle_long_case" ] |> List.sort ~compare:String.compare
-    in
+    let expected = [ "alpha_long"; "middle_long_case" ] |> List.sort ~compare:String.compare in
     if names = expected then
       Ok ()
     else
@@ -130,9 +132,7 @@ let test_run_benchmarks_json_flag_filters_results = fun _ctx ->
     Error ("expected filtered benchmark json run to succeed, got " ^ Int.to_string output.status)
   else
     let names = bench_names_from_json output.stdout |> List.sort ~compare:String.compare in
-    let expected =
-      [ "alpha_long"; "middle_long_case" ] |> List.sort ~compare:String.compare
-    in
+    let expected = [ "alpha_long"; "middle_long_case" ] |> List.sort ~compare:String.compare in
     if names = expected then
       Ok ()
     else

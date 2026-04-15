@@ -163,4 +163,7 @@ val remove:
   (unit, package_error) result
 
 val update:
-  ?on_event:event_sink -> workspace:Riot_model.Workspace_manifest.t -> unit -> (unit, package_error) result
+  ?on_event:event_sink ->
+  workspace:Riot_model.Workspace_manifest.t ->
+  unit ->
+  (unit, package_error) result

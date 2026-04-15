@@ -34,8 +34,10 @@ let token_width = fun (token: ('kind, 'text) token) -> token.width
 
 let token_full_width = fun (token: ('kind, 'text) token) ->
   token.width
-  + List.fold_left token.leading_trivia ~acc:0
-      ~fn:(fun acc (trivia: ('kind, 'text) trivia) -> acc + trivia.width)
+  + List.fold_left
+    token.leading_trivia
+    ~acc:0
+    ~fn:(fun acc (trivia: ('kind, 'text) trivia) -> acc + trivia.width)
 
 let make_token = fun ~leading_trivia ~kind ~text ~width -> { kind; text; width; leading_trivia }
 
@@ -115,8 +117,7 @@ let rec to_json = fun ~kind_to_json ~text_to_json elem ->
     ("full_width", Data.Json.Int (token_full_width tok));
     (
       "leading_trivia",
-      Data.Json.Array
-        (List.map tok.leading_trivia ~fn:(trivia_to_json ~kind_to_json ~text_to_json))
+      Data.Json.Array (List.map tok.leading_trivia ~fn:(trivia_to_json ~kind_to_json ~text_to_json))
     )
   ]
   | Node node -> Data.Json.Object [

@@ -93,8 +93,7 @@ let add_derivation = fun solution pkg incompat ->
     next_global_index = global_index + 1
   }
 
-let get_decision = fun solution pkg ->
-  Collections.HashMap.get solution.decisions ~key:pkg
+let get_decision = fun solution pkg -> Collections.HashMap.get solution.decisions ~key:pkg
 
 (* Get the effective constraint for a package, considering both decisions and derivations *)
 
@@ -275,7 +274,7 @@ let relation = fun solution incompat ->
           ^ " terms' constraints unmet, pkg="
           ^ pkg
           ^ ")");
-      `Contradicted pkg
+        `Contradicted pkg
     | None -> `Unknown
   else (
     Log.debug
@@ -366,7 +365,8 @@ let satisfier_search = fun solution incompat ->
         panic
           (
             "No satisfier found in satisfier_search for " ^ (
-              Incompatibility.terms incompat |> List.map ~fn:(fun term ->
+              Incompatibility.terms incompat |> List.map
+                ~fn:(fun term ->
                   let prefix =
                     if Term.is_positive term then
                       ""

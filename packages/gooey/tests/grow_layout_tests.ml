@@ -32,8 +32,7 @@ let test_three_column_with_grow = fun _ctx ->
   let commands = Gooey.layout ~config ui in
   (* Find the bounding boxes for each container *)
   let rectangles =
-    List.filter_map
-      commands
+    List.filter_map commands
       ~fn:(fun cmd ->
         match cmd.Render.command_type with
         | Render.Rectangle _ -> Some cmd.bounding_box

@@ -18,8 +18,7 @@ Keep constructors boring and consistent: `GuestUser`, `RegisteredUser`, `Closed`
 `WaitingForInput`.
 |}
 
-let contains_underscore = fun text ->
-  String.exists ~fn:(fun ch -> ch = '_') text
+let contains_underscore = fun text -> String.exists ~fn:(fun ch -> ch = '_') text
 
 let starts_upper = fun text ->
   String.length text > 0 && let ch = String.get_unchecked text ~at:0 in
@@ -29,9 +28,7 @@ let capitalize_piece = fun piece ->
   if String.equal piece "" then
     ""
   else
-    let first =
-      String.make ~len:1 ~char:(String.get_unchecked piece ~at:0 |> Char.uppercase_ascii)
-    in
+    let first = String.make ~len:1 ~char:(String.get_unchecked piece ~at:0 |> Char.uppercase_ascii) in
     let rest =
       if String.length piece = 1 then
         ""
@@ -68,7 +65,8 @@ let make_diagnostic = fun token ->
 let diagnostics_for_decl type_declaration =
   match type_declaration with
   | Syn.Cst.TypeDeclaration.{ type_definition=Syn.Cst.TypeDefinition.Variant { constructors; _ }; _ } ->
-      constructors |> List.filter_map ~fn:(fun constructor ->
+      constructors |> List.filter_map
+        ~fn:(fun constructor ->
           let name = Syn.Cst.VariantConstructor.name constructor in
           if should_flag_constructor_name name then
             let token = Syn.Cst.VariantConstructor.constructor_name_token constructor
@@ -81,21 +79,19 @@ let diagnostics_for_decl type_declaration =
 let diagnostics_for_items = fun source_file ->
   match source_file with
   | Syn.Cst.Implementation { items; _ } ->
-      items
-      |> List.map ~fn:(
+      items |> List.map
+        ~fn:(
           function
           | Syn.Cst.StructureItem.TypeDeclaration decl -> diagnostics_for_decl decl
           | _ -> []
-        )
-      |> List.concat
+        ) |> List.concat
   | Syn.Cst.Interface { items; _ } ->
-      items
-      |> List.map ~fn:(
+      items |> List.map
+        ~fn:(
           function
           | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostics_for_decl decl
           | _ -> []
-        )
-      |> List.concat
+        ) |> List.concat
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in

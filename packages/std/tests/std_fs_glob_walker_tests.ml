@@ -21,8 +21,7 @@ let find_index = fun items ~f ->
 
 let sorted = fun items -> List.sort items ~compare:String.compare
 
-let packages_root_skipped_directories =
-  [ "_build"; ".git"; ".riot"; ".tmp"; ".worktrees"; "dist" ]
+let packages_root_skipped_directories = [ "_build"; ".git"; ".riot"; ".tmp"; ".worktrees"; "dist" ]
 
 let should_skip_packages_subtree = fun ~root path ->
   (not (Path.equal root path))
@@ -54,16 +53,16 @@ let collect_file_paths = fun ~root ~sort ->
     ~f:(fun entry ->
       let path = Fs.Walker.FileItem.path entry in
       match Fs.Walker.FileItem.kind entry with
-      | Fs.Walker.Directory when should_skip_packages_subtree ~root path -> Fs.Walker.Skip_subtree
+      | Fs.Walker.Directory when should_skip_packages_subtree ~root path ->
+          Fs.Walker.Skip_subtree
       | Fs.Walker.File ->
           seen := Fs.Walker.FileItem.path_string entry :: !seen;
           Fs.Walker.Continue
       | Fs.Walker.Directory
       | Fs.Walker.Symlink
-      | Fs.Walker.Other -> Fs.Walker.Continue)
-    ()
-  |> Result.map_err ~fn:IO.error_message
-  |> Result.map ~fn:(fun () -> !seen |> sorted)
+      | Fs.Walker.Other ->
+          Fs.Walker.Continue)
+    () |> Result.map_err ~fn:IO.error_message |> Result.map ~fn:(fun () -> !seen |> sorted)
 
 let compare_labeled_sets = fun labeled_sets ->
   match labeled_sets with
@@ -77,34 +76,35 @@ let compare_labeled_sets = fun labeled_sets ->
             else
               let mismatch =
                 match baseline, paths with
-                | expected :: _, actual :: _ when not (String.equal expected actual) ->
-                    "first mismatch: expected " ^ expected ^ " but got " ^ actual
-                | [], actual :: _ ->
-                    "baseline was empty but " ^ label ^ " produced " ^ actual
-                | expected :: _, [] ->
-                    label ^ " was empty but baseline produced " ^ expected
-                | _ ->
-                    "same length=" ^ Int.to_string (List.length baseline) ^ " but different ordering or contents"
+                | expected :: _, actual :: _ when not (String.equal expected actual) -> "first mismatch: expected "
+                ^ expected
+                ^ " but got "
+                ^ actual
+                | [], actual :: _ -> "baseline was empty but " ^ label ^ " produced " ^ actual
+                | expected :: _, [] -> label ^ " was empty but baseline produced " ^ expected
+                | _ -> "same length=" ^ Int.to_string (List.length baseline) ^ " but different ordering or contents"
               in
-              Error
-                (label ^ " did not match " ^ baseline_label
-               ^ " (" ^ mismatch
-               ^ "; baseline_count=" ^ Int.to_string (List.length baseline)
-               ^ "; actual_count=" ^ Int.to_string (List.length paths)
-               ^ ")")
+              Error (label
+              ^ " did not match "
+              ^ baseline_label
+              ^ " ("
+              ^ mismatch
+              ^ "; baseline_count="
+              ^ Int.to_string (List.length baseline)
+              ^ "; actual_count="
+              ^ Int.to_string (List.length paths)
+              ^ ")")
       in
       loop rest
 
-let tests = [
-  Test.case "fs walker rejects invalid depth ranges"
+let tests = [ Test.case "fs walker rejects invalid depth ranges"
     (fun _ctx ->
       match Fs.Walker.create ~roots:[ Path.v "." ] ~min_depth:3 ~max_depth:1 () with
       | Error (Fs.Walker.MinDepthCannotBeMoreThanMaxDepth { min_depth; max_depth }) ->
           Test.assert_equal ~expected:3 ~actual:min_depth;
           Test.assert_equal ~expected:1 ~actual:max_depth;
           Ok ()
-      | Ok _ -> Error "expected invalid depth range");
-  Test.case "fs walker can prune subtrees"
+      | Ok _ -> Error "expected invalid depth range"); Test.case "fs walker can prune subtrees"
     (fun _ctx ->
       with_tempdir "std_fs_walker"
         (fun root ->
@@ -126,15 +126,10 @@ let tests = [
             () |> Result.expect ~msg:"walk";
           let seen = List.reverse !seen in
           Test.assert_true
-            (List.any
-              seen
-              ~fn:(String.equal (Path.to_string Path.(keep_dir / Path.v "a.ml"))));
+            (List.any seen ~fn:(String.equal (Path.to_string Path.(keep_dir / Path.v "a.ml"))));
           Test.assert_false
-            (List.any
-              seen
-              ~fn:(String.equal (Path.to_string Path.(skip_dir / Path.v "b.ml"))));
-          Ok ()));
-  Test.case "fs walker filter_entry skips directories lazily"
+            (List.any seen ~fn:(String.equal (Path.to_string Path.(skip_dir / Path.v "b.ml"))));
+          Ok ())); Test.case "fs walker filter_entry skips directories lazily"
     (fun _ctx ->
       with_tempdir "std_fs_walker_filter"
         (fun root ->
@@ -156,21 +151,17 @@ let tests = [
           let rec collect iter acc =
             match Iter.Iterator.next iter with
             | None, _ -> List.reverse acc
-            | Some (Ok (entry: Fs.Walker.FileItem.t)), iter' ->
-                collect iter' (Fs.Walker.FileItem.path_string entry :: acc)
+            | Some (Ok (entry: Fs.Walker.FileItem.t)), iter' -> collect
+              iter'
+              (Fs.Walker.FileItem.path_string entry :: acc)
             | Some (Error _err), iter' -> collect iter' acc
           in
           let seen = collect iter [] in
           Test.assert_true
-            (List.any
-              seen
-              ~fn:(String.equal (Path.to_string Path.(keep_dir / Path.v "a.ml"))));
+            (List.any seen ~fn:(String.equal (Path.to_string Path.(keep_dir / Path.v "a.ml"))));
           Test.assert_false
-            (List.any
-              seen
-              ~fn:(String.equal (Path.to_string Path.(skip_dir / Path.v "b.ml"))));
-          Ok ()));
-  Test.case "fs walker contents_first emits directories after descendants"
+            (List.any seen ~fn:(String.equal (Path.to_string Path.(skip_dir / Path.v "b.ml"))));
+          Ok ())); Test.case "fs walker contents_first emits directories after descendants"
     (fun _ctx ->
       with_tempdir "std_fs_walker_contents_first"
         (fun root ->
@@ -183,21 +174,19 @@ let tests = [
             |> Result.expect ~msg:"create walker"
             |> Fs.Walker.into_iter
             |> Iter.Iterator.to_list
-            |> List.filter_map ~fn:(function
+            |> List.filter_map
+              ~fn:(
+                function
                 | Ok (entry: Fs.Walker.FileItem.t) -> Some (Fs.Walker.FileItem.path_string entry)
-                | Error _ -> None)
+                | Error _ -> None
+              )
           in
-          let file_index =
-            find_index entries ~f:(String.equal (Path.to_string nested_file))
-            |> Option.expect ~msg:"expected nested file in walker output"
-          in
-          let dir_index =
-            find_index entries ~f:(String.equal (Path.to_string nested_dir))
-            |> Option.expect ~msg:"expected nested dir in walker output"
-          in
+          let file_index = find_index entries ~f:(String.equal (Path.to_string nested_file))
+          |> Option.expect ~msg:"expected nested file in walker output" in
+          let dir_index = find_index entries ~f:(String.equal (Path.to_string nested_dir))
+          |> Option.expect ~msg:"expected nested dir in walker output" in
           Test.assert_true (file_index < dir_index);
-          Ok ()));
-  Test.case "fs walker to_list can omit directories"
+          Ok ())); Test.case "fs walker to_list can omit directories"
     (fun _ctx ->
       with_tempdir "std_fs_walker_files_only"
         (fun root ->
@@ -205,40 +194,35 @@ let tests = [
           let nested_file = Path.(nested_dir / Path.v "a.ml") in
           Fs.create_dir_all nested_dir |> Result.expect ~msg:"mkdir nested";
           Fs.write "let x = 1\n" nested_file |> Result.expect ~msg:"write nested";
-          let entries =
-            Fs.Walker.to_list ~roots:[ root ] ~sort:true ~include_directories:false ()
-            |> Result.expect ~msg:"to_list"
-            |> List.map ~fn:Fs.Walker.FileItem.path_string
-          in
+          let entries = Fs.Walker.to_list ~roots:[ root ] ~sort:true ~include_directories:false ()
+          |> Result.expect ~msg:"to_list"
+          |> List.map ~fn:Fs.Walker.FileItem.path_string in
           Test.assert_equal ~expected:[ Path.to_string nested_file ] ~actual:entries;
-          Ok ()));
-  Test.case "fs walker unsorted multiple roots keep complete file set"
+          Ok ())); Test.case "fs walker unsorted multiple roots keep complete file set"
     (fun _ctx ->
       with_tempdir "std_fs_walker_multiple_roots"
         (fun root ->
           let src_dir = Path.(root / Path.v "src") in
           let net_dir = Path.(src_dir / Path.v "net") in
           let native_dir = Path.(root / Path.v "native") in
-          let expected =
-            [
-              Path.to_string Path.(net_dir / Path.v "udp_socket.mli");
-              Path.to_string Path.(net_dir / Path.v "udp_socket.ml");
-              Path.to_string Path.(net_dir / Path.v "udp_server.mli");
-              Path.to_string Path.(net_dir / Path.v "udp_server.ml");
-              Path.to_string Path.(native_dir / Path.v "shim.c");
-            ]
-            |> sorted
-          in
+          let expected = [
+            Path.to_string Path.(net_dir / Path.v "udp_socket.mli");
+            Path.to_string Path.(net_dir / Path.v "udp_socket.ml");
+            Path.to_string Path.(net_dir / Path.v "udp_server.mli");
+            Path.to_string Path.(net_dir / Path.v "udp_server.ml");
+            Path.to_string Path.(native_dir / Path.v "shim.c");
+          ]
+          |> sorted in
           Fs.create_dir_all net_dir |> Result.expect ~msg:"mkdir net";
           Fs.create_dir_all native_dir |> Result.expect ~msg:"mkdir native";
-          Fs.write "type t\n" Path.(net_dir / Path.v "udp_socket.mli")
-          |> Result.expect ~msg:"write udp_socket.mli";
-          Fs.write "type t = unit\n" Path.(net_dir / Path.v "udp_socket.ml")
-          |> Result.expect ~msg:"write udp_socket.ml";
-          Fs.write "type handler = socket:Udp_socket.t -> bytes -> unit\n"
+          Fs.write "type t\n" Path.(net_dir / Path.v "udp_socket.mli") |> Result.expect ~msg:"write udp_socket.mli";
+          Fs.write "type t = unit\n" Path.(net_dir / Path.v "udp_socket.ml") |> Result.expect ~msg:"write udp_socket.ml";
+          Fs.write
+            "type handler = socket:Udp_socket.t -> bytes -> unit\n"
             Path.(net_dir / Path.v "udp_server.mli")
           |> Result.expect ~msg:"write udp_server.mli";
-          Fs.write "type handler = socket:Udp_socket.t -> bytes -> unit\n"
+          Fs.write
+            "type handler = socket:Udp_socket.t -> bytes -> unit\n"
             Path.(net_dir / Path.v "udp_server.ml")
           |> Result.expect ~msg:"write udp_server.ml";
           Fs.write "int shim(void) { return 1; }\n" Path.(native_dir / Path.v "shim.c")
@@ -247,16 +231,14 @@ let tests = [
             if iteration = 0 then
               Ok ()
             else
-              let actual =
-                Fs.Walker.to_list
-                  ~roots:[ src_dir; native_dir ]
-                  ~sort:false
-                  ~include_directories:false
-                  ()
-                |> Result.expect ~msg:"to_list"
-                |> List.map ~fn:Fs.Walker.FileItem.path_string
-                |> sorted
-              in
+              let actual = Fs.Walker.to_list
+                ~roots:[ src_dir; native_dir ]
+                ~sort:false
+                ~include_directories:false
+                ()
+              |> Result.expect ~msg:"to_list"
+              |> List.map ~fn:Fs.Walker.FileItem.path_string
+              |> sorted in
               if actual = expected then
                 run (iteration - 1)
               else
@@ -266,8 +248,7 @@ let tests = [
                 ^ String.concat ", " actual
                 ^ "]")
           in
-          run 25));
-  Test.case "fs walker packages file set is stable across sort modes"
+          run 25)); Test.case "fs walker packages file set is stable across sort modes"
     (fun _ctx ->
       let* packages_root = find_packages_root () in
       let configs = [ ("sort=true", true); ("sort=false", false) ] in
@@ -278,8 +259,7 @@ let tests = [
             collect ((label, paths) :: acc) rest
       in
       let* labeled_sets = collect [] configs in
-      compare_labeled_sets labeled_sets);
-]
+      compare_labeled_sets labeled_sets); ]
 
 let main = fun ~args -> Test.Cli.main ~name:"std_fs_walker_tests" ~tests ~args
 

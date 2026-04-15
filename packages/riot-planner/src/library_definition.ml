@@ -59,9 +59,10 @@ let make_relative = fun ~base ~path ->
     - Basename collisions: a.ml binary shouldn't exclude src/utils/a.ml *)
 let is_binary_module = fun ~package_path ~binaries path ->
   let bin_rel = make_relative ~base:package_path ~path in
-  List.any binaries ~fn:(fun (bin: Package.binary) ->
-    let bin_abs_rel = make_relative ~base:package_path ~path:bin.path in
-    Path.equal bin_rel bin_abs_rel)
+  List.any binaries
+    ~fn:(fun (bin: Package.binary) ->
+      let bin_abs_rel = make_relative ~base:package_path ~path:bin.path in
+      Path.equal bin_rel bin_abs_rel)
 
 (** Analyze directory entries to build a library definition.
 
@@ -90,120 +91,119 @@ let from_entries = fun ~namespace ~library_name ~package_path ~concrete_library_
   let library_module_name = Module_name.of_string library_name |> Module_name.to_string in
   let explicit_concrete_ml_path =
     match concrete_library_path with
-    | Some path when Path.extension path = Some ".ml" ->
-        Some (make_relative ~base:package_path ~path)
+    | Some path when Path.extension path = Some ".ml" -> Some (make_relative ~base:package_path ~path)
     | _ -> None
   in
   let explicit_concrete_mli_path =
     match concrete_library_path with
-    | Some path when Path.extension path = Some ".mli" ->
-        Some (make_relative ~base:package_path ~path)
-    | Some path when Path.extension path = Some ".ml" ->
-        Some (make_relative ~base:package_path ~path |> Path.replace_extension ~ext:"mli")
+    | Some path when Path.extension path = Some ".mli" -> Some (make_relative ~base:package_path ~path)
+    | Some path when Path.extension path = Some ".ml" -> Some (make_relative ~base:package_path ~path
+    |> Path.replace_extension ~ext:"mli")
     | _ -> None
   in
   let path_matches expected actual =
     match expected with
     | Some expected ->
-        let normalize_for_library_match path =
-          path
-          |> Path.normalize
-          |> Path.to_string
-          |> String.lowercase_ascii
-        in
+        let normalize_for_library_match path = path |> Path.normalize |> Path.to_string |> String.lowercase_ascii in
         Path.equal expected actual
-        || String.equal
-          (normalize_for_library_match expected)
-          (normalize_for_library_match actual)
+        || String.equal (normalize_for_library_match expected) (normalize_for_library_match actual)
     | None -> false
   in
   let is_explicit_library_path path =
-    path_matches explicit_concrete_ml_path path || path_matches explicit_concrete_mli_path path
-  in
+    path_matches explicit_concrete_ml_path path || path_matches explicit_concrete_mli_path path in
   let is_library_source_file ~file_module_name ~path =
-    file_module_name = library_module_name || is_explicit_library_path path
-  in
+    file_module_name = library_module_name || is_explicit_library_path path in
   let child_files =
-    List.filter_map children ~fn:(fun e ->
-      match e with
-      | Module_scanner.ML (n, p)
-      | Module_scanner.MLI (n, p) ->
-          let file_module_name = Path.remove_extension (Path.v n)
-          |> Path.to_string
-          |> Module_name.of_string
-          |> Module_name.to_string in
-          if is_library_source_file ~file_module_name ~path:p then
-            None
-          else if not (is_binary_module ~package_path ~binaries p) then
-            Some (Module.make ~namespace ~filename:p)
-          else
-            None
-      | _ -> None)
+    List.filter_map children
+      ~fn:(fun e ->
+        match e with
+        | Module_scanner.ML (n, p)
+        | Module_scanner.MLI (n, p) ->
+            let file_module_name = Path.remove_extension (Path.v n)
+            |> Path.to_string
+            |> Module_name.of_string
+            |> Module_name.to_string in
+            if is_library_source_file ~file_module_name ~path:p then
+              None
+            else if not (is_binary_module ~package_path ~binaries p) then
+              Some (Module.make ~namespace ~filename:p)
+            else
+              None
+        | _ -> None)
   in
   let child_dirs =
-    List.filter_map children ~fn:(fun e ->
-      match e with
-      | Module_scanner.Dir (n, p, _) ->
-          let module_name = Module_name.of_string n in
-          let module_name_str = Module_name.to_string module_name in
-          let has_file =
-            List.any child_files ~fn:(fun m ->
-              Module_name.to_string (Module.module_name m) = module_name_str)
-          in
-          if has_file then
-            None
-          else
-            Some (Module.make ~namespace ~filename:Path.(p / Path.v (n ^ ".ml")))
-      | _ -> None)
+    List.filter_map children
+      ~fn:(fun e ->
+        match e with
+        | Module_scanner.Dir (n, p, _) ->
+            let module_name = Module_name.of_string n in
+            let module_name_str = Module_name.to_string module_name in
+            let has_file =
+              List.any
+                child_files
+                ~fn:(fun m -> Module_name.to_string (Module.module_name m) = module_name_str)
+            in
+            if has_file then
+              None
+            else
+              Some (Module.make ~namespace ~filename:Path.(p / Path.v (n ^ ".ml")))
+        | _ -> None)
   in
   let child_modules = child_files @ child_dirs in
   let concrete_ml_path =
-    match List.find children ~fn:(fun e ->
-      match e with
-      | Module_scanner.ML (n, p) ->
-          let file_module_name = Path.remove_extension (Path.v n)
-          |> Path.to_string
-          |> Module_name.of_string
-          |> Module_name.to_string in
-          (
-            match explicit_concrete_ml_path with
-            | Some explicit_path -> path_matches (Some explicit_path) p
-            | None -> file_module_name = library_module_name
-          )
-      | _ -> false) with
+    match
+      List.find children
+        ~fn:(fun e ->
+          match e with
+          | Module_scanner.ML (n, p) ->
+              let file_module_name = Path.remove_extension (Path.v n)
+              |> Path.to_string
+              |> Module_name.of_string
+              |> Module_name.to_string in
+              (
+                match explicit_concrete_ml_path with
+                | Some explicit_path -> path_matches (Some explicit_path) p
+                | None -> file_module_name = library_module_name
+              )
+          | _ -> false)
+    with
     | Some (Module_scanner.ML (_, p)) -> Some p
     | _ -> None
   in
   let concrete_mli_path =
-    match List.find children ~fn:(fun e ->
-      match e with
-      | Module_scanner.MLI (n, p) ->
-          let file_module_name = Path.remove_extension (Path.v n)
-          |> Path.to_string
-          |> Module_name.of_string
-          |> Module_name.to_string in
-          (
-            match explicit_concrete_mli_path with
-            | Some explicit_path -> path_matches (Some explicit_path) p
-            | None -> file_module_name = library_module_name
-          )
-      | _ -> false) with
+    match
+      List.find children
+        ~fn:(fun e ->
+          match e with
+          | Module_scanner.MLI (n, p) ->
+              let file_module_name = Path.remove_extension (Path.v n)
+              |> Path.to_string
+              |> Module_name.of_string
+              |> Module_name.to_string in
+              (
+                match explicit_concrete_mli_path with
+                | Some explicit_path -> path_matches (Some explicit_path) p
+                | None -> file_module_name = library_module_name
+              )
+          | _ -> false)
+    with
     | Some (Module_scanner.MLI (_, p)) -> Some p
     | _ -> None
   in
   let has_concrete_ml = concrete_ml_path != None in
   let has_concrete_mli = concrete_mli_path != None in
   let children_without_lib =
-    List.filter children ~fn:(fun e ->
-      match e with
-      | Module_scanner.ML (n, p)
-      | Module_scanner.MLI (n, p) ->
-          let file_module_name = Path.remove_extension (Path.v n)
-          |> Path.to_string
-          |> Module_name.of_string
-          |> Module_name.to_string in
-          not (is_library_source_file ~file_module_name ~path:p)
-      | _ -> true)
+    List.filter children
+      ~fn:(fun e ->
+        match e with
+        | Module_scanner.ML (n, p)
+        | Module_scanner.MLI (n, p) ->
+            let file_module_name = Path.remove_extension (Path.v n)
+            |> Path.to_string
+            |> Module_name.of_string
+            |> Module_name.to_string in
+            not (is_library_source_file ~file_module_name ~path:p)
+        | _ -> true)
   in
   {
     library_module_name;

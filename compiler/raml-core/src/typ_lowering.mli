@@ -4,11 +4,7 @@ open Typ.Model
 
 type error =
   | UnsupportedSourceKind of { kind: Source_unit.kind }
-  | UnsupportedItem of {
-      item_id: int;
-      kind: string;
-      scope_path: Surface_path.t
-    }
+  | UnsupportedItem of { item_id: int; kind: string; scope_path: Surface_path.t }
   | MissingBinding of { binding_id: Binding_id.t }
   | MissingExpr of { expr_id: int }
   | MissingPattern of { pattern_id: int }
@@ -19,7 +15,4 @@ type error =
   | InvalidFloatLiteral of { expr_id: int; literal: string }
 val error_to_json: error -> Json.t
 
-val lower_file:
-  source_unit:Source_unit.t ->
-  unit ->
-  (Core_ir.Compilation_unit.t, error list) result
+val lower_file: source_unit:Source_unit.t -> unit -> (Core_ir.Compilation_unit.t, error list) result

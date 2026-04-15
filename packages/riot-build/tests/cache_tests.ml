@@ -1,10 +1,12 @@
 open Std
 open Riot_build
+
+module Package_builder = Riot_build.Internal.Package_builder
+
 module Test = Std.Test
 
 let package_name = fun name ->
-  Riot_model.Package_name.from_string name
-  |> Result.expect ~msg:("invalid package name: " ^ name)
+  Riot_model.Package_name.from_string name |> Result.expect ~msg:("invalid package name: " ^ name)
 
 let make_test_build_ctx = fun () ->
   let session_id = Riot_model.Session_id.make () in
@@ -73,8 +75,7 @@ let test_fresh_build_no_cache = fun _ctx ->
         | Package_builder.Built _ -> Ok ()
         | Package_builder.Cached _ -> Error "Fresh build should not be cached"
         | Package_builder.Skipped { reason } -> Error ("Build skipped: " ^ reason)
-        | Package_builder.Failed err -> Error ("Build failed: "
-        ^ package_error_message err))
+        | Package_builder.Failed err -> Error ("Build failed: " ^ package_error_message err))
   with
   | Ok r -> r
   | Error _ -> Error "Tempdir creation failed"

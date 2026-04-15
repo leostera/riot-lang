@@ -1,6 +1,9 @@
 open Std
 open Riot_build
 open Riot_model
+
+module Action_queue = Riot_build.Internal.Action_queue
+
 module Test = Std.Test
 module G = Graph.SimpleGraph
 

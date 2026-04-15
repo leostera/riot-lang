@@ -91,7 +91,8 @@ let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list
           []
         else
           let action_hash_hex = Crypto.Digest.hex (Action_node.get_hash node) in
-          List.map node.value.outs
+          List.map
+            node.value.outs
             ~fn:(fun out_path ->
               Riot_store.Store.{
                 name = Path.basename out_path;
@@ -129,11 +130,9 @@ let collect_package_artifact_outputs = fun ~sandbox_dir ~outputs ->
 
 let collect_ocamlc_warnings = fun completed_actions ->
   let seen = HashSet.create () in
-  HashMap.to_list completed_actions |> List.fold_left
-    ~acc:[]
+  HashMap.to_list completed_actions |> List.fold_left ~acc:[]
     ~fn:(fun acc ((_id, result): Graph.SimpleGraph.Node_id.t * Action_executor.execution_result) ->
-      List.fold_left result.Action_executor.ocamlc_warnings
-        ~acc
+      List.fold_left result.Action_executor.ocamlc_warnings ~acc
         ~fn:(fun acc warning ->
           if HashSet.contains seen ~value:warning then
             acc
@@ -156,8 +155,7 @@ let emit_package_ocamlc_warnings = fun ~session_id ~package ~target ~source ocam
 
 let summarize_results = fun ~package_graph (results: Package_builder.build_result list) ->
   let cached_count, built_count, failed_count =
-    List.fold_left results
-      ~acc:(0, 0, 0)
+    List.fold_left results ~acc:(0, 0, 0)
       ~fn:(fun (cached, built, failed) result ->
         match result.Package_builder.status with
         | Cached _ -> (cached + 1, built, failed)
@@ -250,12 +248,10 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
     ~target_dir:runtime.target_dir
   |> Result.expect ~msg:("Failed to materialize package exports for " ^ runtime_package_name);
   let sandbox_dir = Sandbox.get_dir runtime.sandbox in
-  let package_outputs =
-    collect_package_artifact_outputs
-      ~sandbox_dir
-      ~outputs:(Action_graph.nodes runtime.action_graph
-        |> List.flat_map ~fn:(fun (node: Action_node.t) -> node.value.outs))
-  in
+  let package_outputs = collect_package_artifact_outputs
+    ~sandbox_dir
+    ~outputs:(Action_graph.nodes runtime.action_graph
+    |> List.flat_map ~fn:(fun (node: Action_node.t) -> node.value.outs)) in
   let artifact = Riot_store.Store.save
     store
     ~package:runtime_package_name
@@ -290,13 +286,13 @@ let finalize_package_success = fun ~session_id ~store ~runtime ->
     ocamlc_warnings;
   Telemetry.emit
     (
-        BuildCompleted {
-          session_id;
-          package = runtime.package;
-          target = Workspace_planner.Package runtime.package.name;
-          status;
-          duration = Time.Duration.zero;
-        }
+      BuildCompleted {
+        session_id;
+        package = runtime.package;
+        target = Workspace_planner.Package runtime.package.name;
+        status;
+        duration = Time.Duration.zero;
+      }
     );
   match status with
   | `Cached -> (Package_builder.Cached artifact, ocamlc_warnings)
@@ -382,23 +378,13 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
       plan_bundle_decode_duration = breakdown.Riot_planner.Package_planner.plan_bundle_decode_duration;
       plan_bundle_cache_hit = breakdown.Riot_planner.Package_planner.plan_bundle_cache_hit;
       module_plan_duration = breakdown.Riot_planner.Package_planner.module_plan_duration;
-    } in
-    Telemetry.emit
-      (
-        PackagePlanningBreakdown {
-          session_id;
-          package;
-          target;
-          breakdown;
-        }
-      )
+    }
+    in
+    Telemetry.emit (PackagePlanningBreakdown { session_id; package; target; breakdown })
   in
   let target_triplet = Build_ctx.target_triplet build_ctx in
   let target_dir_for package_name =
-    Path.(Riot_dirs.out_dir_in_workspace
-      ~workspace
-      ~profile:profile_name
-      ~target:target_triplet
+    Path.(Riot_dirs.out_dir_in_workspace ~workspace ~profile:profile_name ~target:target_triplet
     / Path.v (Package_name.to_string package_name)) in
   let finalize_cached_package ~package_key ~(package:Package.t) ~hash ~artifact ~depset ~exports =
     let materialized = Ok () in
@@ -459,13 +445,11 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
       ~profile:profile_name
       ~target:target_triplet
       ()
-      ~package_name:package.name
-    in
+      ~package_name:package.name in
     Sandbox.prepare ~sandbox ~package ~inputs ~depset ~store;
     let action_queue = Action_queue.create () in
     let action_nodes = Action_graph.nodes action_graph in
-    List.for_each action_nodes
-      ~fn:(Action_queue.queue action_queue);
+    List.for_each action_nodes ~fn:(Action_queue.queue action_queue);
     let runtime = {
       package_key;
       package;
@@ -547,8 +531,8 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 ~package
                 ~reason:(Some ("Missing dependencies: "
                 ^ (missing
-                  |> List.map ~fn:(fun p -> Package_name.to_string p.Package.name)
-                  |> String.concat ", ")));
+                |> List.map ~fn:(fun p -> Package_name.to_string p.Package.name)
+                |> String.concat ", ")));
               Vector.push still_pending ~value:package_node
           | Ok (FailedDependencies { failed; breakdown; _ }) ->
               emit_package_planning_breakdown package breakdown;
@@ -559,8 +543,8 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 ~package
                 ~reason:(Some ("Failed dependencies: "
                 ^ (failed
-                  |> List.map ~fn:(fun p -> Package_name.to_string p.Package.name)
-                  |> String.concat ", ")));
+                |> List.map ~fn:(fun p -> Package_name.to_string p.Package.name)
+                |> String.concat ", ")));
               Vector.push still_pending ~value:package_node
           | Ok (Cached {
             package_key;
@@ -639,8 +623,8 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                 List.filter_map dep_keys
                   ~fn:(fun dep_key ->
                     match HashMap.get package_results ~key:dep_key with
-                    | Some result when result_is_failed result ->
-                        Some (Package_name.to_string result.package.Package.name)
+                    | Some result when result_is_failed result -> Some (Package_name.to_string
+                      result.package.Package.name)
                     | _ -> None)
               in
               update_planning_progress
@@ -705,8 +689,8 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                     ~package
                     ~reason:(Some ("Missing dependencies: "
                     ^ (missing
-                      |> List.map ~fn:(fun p -> Package_name.to_string p.Package.name)
-                      |> String.concat ", ")));
+                    |> List.map ~fn:(fun p -> Package_name.to_string p.Package.name)
+                    |> String.concat ", ")));
                   ()
               | Ok (FailedDependencies { failed; breakdown; _ }) ->
                   emit_package_planning_breakdown package breakdown;
@@ -719,8 +703,8 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                     ~package
                     ~reason:(Some ("Failed dependencies: "
                     ^ (failed
-                      |> List.map ~fn:(fun p -> Package_name.to_string p.Package.name)
-                      |> String.concat ", ")));
+                    |> List.map ~fn:(fun p -> Package_name.to_string p.Package.name)
+                    |> String.concat ", ")));
                   let names =
                     List.map failed ~fn:(fun p -> Package_name.to_string p.Package.name)
                   in
@@ -779,7 +763,6 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                   stage_runtime ~package_key ~package ~hash ~depset ~module_graph ~action_graph;
                   let _ = HashMap.remove pending_planning ~key:package_key in
                   ())
-      
   in
   let activate_ready_packages () =
     try_plan_pending_packages ();
@@ -816,19 +799,18 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
                   | Some result -> result_is_success result
                   | None -> false)
             in
-	            if deps_satisfied then
-	              (
-	                runtime.active <- true;
-	                Telemetry.emit
-	                  (BuildStarted {
-	                    session_id;
-	                    package = runtime.package;
-	                    target = Workspace_planner.Package runtime.package.name
-	                  });
-	                enqueue_all_ready_actions ~package_key runtime enqueue_ready
-	              )
-	      );
-	  in
+            if deps_satisfied then
+              (
+                runtime.active <- true;
+                Telemetry.emit
+                  (BuildStarted {
+                    session_id;
+                    package = runtime.package;
+                    target = Workspace_planner.Package runtime.package.name
+                  });
+                enqueue_all_ready_actions ~package_key runtime enqueue_ready
+              ));
+  in
   let finalize_if_complete package_key runtime =
     if
       Option.is_none (HashMap.get package_results ~key:package_key)
@@ -900,7 +882,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
           Sandbox.cleanup runtime.sandbox
   in
   let total_packages = List.length nodes in
-  let worker_count = max 1 build_ctx.Build_ctx.available_parallelism in
+  let worker_count = build_ctx.Build_ctx.parallelism in
   let rec workspace_worker_loop () =
     match receive_any () with
     | WorkspaceAssignAction { package_key; runtime; node } ->
@@ -920,8 +902,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
     List.init ~count:worker_count ~fn:(fun _ -> spawn workspace_worker_loop)
   in
   let idle_workers: Pid.t Queue.t = Queue.create () in
-  List.for_each workers
-    ~fn:(fun pid -> Queue.push idle_workers ~value:pid);
+  List.for_each workers ~fn:(fun pid -> Queue.push idle_workers ~value:pid);
   let busy_workers: (Pid.t, Package.key) HashMap.t = HashMap.create () in
   let rec drain_work_queue () =
     match Queue.pop idle_workers with
@@ -1019,8 +1000,7 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
   let planning_counts () =
     HashMap.iter planning_results
     |> Iter.Iterator.to_list
-    |> List.fold_left
-      ~acc:(0, 0, 0)
+    |> List.fold_left ~acc:(0, 0, 0)
       ~fn:(fun (planned, missing, failed) (_, status) ->
         match status with
         | `Planned -> (planned + 1, missing, failed)
@@ -1047,74 +1027,79 @@ let build_workspace_actions = fun ~(workspace:Workspace.t) ~toolchain ~store ~pa
   |> Iter.Iterator.to_list
   |> List.map ~fn:(fun (_, result) -> result)
 
-let build_workspace = fun ~workspace ~toolchain ~store ~target ~scope ~concurrency ~build_ctx ~session_id ->
+let build_workspace = fun ~workspace ~toolchain ~store ~target ~scope ~build_ctx ~session_id ->
   let start = Time.Instant.now () in
   let workspace_package_count = List.length workspace.Riot_model.Workspace.packages in
   let planning_started_at = Time.Instant.now () in
-  Telemetry.emit (WorkspacePlanStarted {
-    session_id;
-    target;
-    workspace_package_count;
-  });
+  Telemetry.emit (WorkspacePlanStarted { session_id; target; workspace_package_count });
   match Riot_planner.plan_workspace ~workspace ~target ~scope ~load_errors:[] with
   | Error err -> Error err
-  | Ok { packages; nodes; package_graph; breakdown; _ } -> (
-      let planning_duration =
-        Time.Instant.duration_since ~earlier:planning_started_at (Time.Instant.now ())
-      in
-      Telemetry.emit (WorkspaceManifestFilterCompleted {
-        session_id;
-        target;
-        filtered_workspace_package_count = breakdown.filtered_workspace_package_count;
-        duration = breakdown.manifest_filter_duration;
-      });
-      Telemetry.emit (WorkspaceGraphCreated {
-        session_id;
-        target;
-        node_count = breakdown.package_graph_node_count;
-        breakdown = {
-          Telemetry_events.build_node_realization_count =
-            breakdown.package_graph_create_breakdown.build_node_realization_count;
-          build_node_realization_duration =
-            breakdown.package_graph_create_breakdown.build_node_realization_duration;
-          runtime_node_realization_count =
-            breakdown.package_graph_create_breakdown.runtime_node_realization_count;
-          runtime_node_realization_duration =
-            breakdown.package_graph_create_breakdown.runtime_node_realization_duration;
-          dev_node_realization_count =
-            breakdown.package_graph_create_breakdown.dev_node_realization_count;
-          dev_node_realization_duration =
-            breakdown.package_graph_create_breakdown.dev_node_realization_duration;
-          edge_wiring_duration =
-            breakdown.package_graph_create_breakdown.edge_wiring_duration;
-        };
-        duration = breakdown.package_graph_duration;
-      });
-      Telemetry.emit (WorkspaceTargetGraphFiltered {
-        session_id;
-        target;
-        node_count = breakdown.target_graph_node_count;
-        duration = breakdown.target_graph_filter_duration;
-      });
-      Telemetry.emit (WorkspaceTopologicalSortCompleted {
-        session_id;
-        target;
-        sorted_package_count = breakdown.sorted_package_count;
-        duration = breakdown.topological_sort_duration;
-      });
-      Telemetry.emit (WorkspacePlanCompleted {
-        session_id;
-        target;
-        workspace_package_count;
-        planned_package_count = List.length packages;
-        duration = planning_duration;
-      });
+  | Ok {
+    packages;
+    nodes;
+    package_graph;
+    breakdown;
+    _
+  } -> (
+      let planning_duration = Time.Instant.duration_since
+        ~earlier:planning_started_at
+        (Time.Instant.now ()) in
+      Telemetry.emit
+        (WorkspaceManifestFilterCompleted {
+          session_id;
+          target;
+          filtered_workspace_package_count = breakdown.filtered_workspace_package_count;
+          duration = breakdown.manifest_filter_duration
+        });
+      Telemetry.emit
+        (
+          WorkspaceGraphCreated {
+            session_id;
+            target;
+            node_count = breakdown.package_graph_node_count;
+            breakdown =
+              {
+                Telemetry_events.build_node_realization_count = breakdown.package_graph_create_breakdown.build_node_realization_count;
+                build_node_realization_duration = breakdown.package_graph_create_breakdown.build_node_realization_duration;
+                runtime_node_realization_count = breakdown.package_graph_create_breakdown.runtime_node_realization_count;
+                runtime_node_realization_duration = breakdown.package_graph_create_breakdown.runtime_node_realization_duration;
+                dev_node_realization_count = breakdown.package_graph_create_breakdown.dev_node_realization_count;
+                dev_node_realization_duration = breakdown.package_graph_create_breakdown.dev_node_realization_duration;
+                edge_wiring_duration = breakdown.package_graph_create_breakdown.edge_wiring_duration;
+              };
+            duration = breakdown.package_graph_duration;
+          }
+        );
+      Telemetry.emit
+        (WorkspaceTargetGraphFiltered {
+          session_id;
+          target;
+          node_count = breakdown.target_graph_node_count;
+          duration = breakdown.target_graph_filter_duration
+        });
+      Telemetry.emit
+        (WorkspaceTopologicalSortCompleted {
+          session_id;
+          target;
+          sorted_package_count = breakdown.sorted_package_count;
+          duration = breakdown.topological_sort_duration
+        });
+      Telemetry.emit
+        (
+          WorkspacePlanCompleted {
+            session_id;
+            target;
+            workspace_package_count;
+            planned_package_count = List.length packages;
+            duration = planning_duration;
+          }
+        );
       Telemetry.emit (WorkspaceStarted { session_id; target; package_count = List.length packages });
       Log.info
         ("Building "
         ^ Int.to_string (List.length packages)
         ^ " packages with action-level concurrency budget "
-        ^ Int.to_string concurrency);
+        ^ Int.to_string build_ctx.Build_ctx.parallelism);
       let results = build_workspace_actions
         ~workspace
         ~toolchain
@@ -1133,9 +1118,9 @@ let build_workspace = fun ~workspace ~toolchain ~store ~target ~scope ~concurren
             target;
             total_duration;
             cached_count = result.cached_count;
-                built_count = result.built_count;
-                failed_count = result.failed_count;
-              }
-            );
-          Ok { result with total_duration }
+            built_count = result.built_count;
+            failed_count = result.failed_count;
+          }
+        );
+      Ok { result with total_duration }
     )

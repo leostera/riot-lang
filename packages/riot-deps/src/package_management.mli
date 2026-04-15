@@ -119,4 +119,5 @@ val remove:
 val search:
   ?registry:Pkgs_ml.Registry.t -> request:search_request -> unit -> (suggested_package list, error) result
 
-val update: ?on_event:event_sink -> workspace:Riot_model.Workspace_manifest.t -> unit -> (unit, error) result
+val update:
+  ?on_event:event_sink -> workspace:Riot_model.Workspace_manifest.t -> unit -> (unit, error) result

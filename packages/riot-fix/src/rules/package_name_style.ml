@@ -63,15 +63,18 @@ let package_name = fun path ->
               None
           | Ok (Toml.Table fields) -> (
               match
-                List.find fields ~fn:(fun (field_name, _) -> String.equal field_name "package")
-                |> Option.map ~fn:(fun (_, value) -> value)
+                List.find fields
+                  ~fn:(fun (field_name, _) ->
+                    String.equal field_name "package") |> Option.map ~fn:(fun (_, value) -> value)
               with
               | Some package_value -> (
                   match get_table package_value with
                   | Some package_fields -> (
                       match
-                        List.find package_fields ~fn:(fun (field_name, _) -> String.equal field_name "name")
-                        |> Option.map ~fn:(fun (_, value) -> value)
+                        List.find package_fields
+                          ~fn:(fun (field_name, _) ->
+                            String.equal field_name "name") |> Option.map
+                          ~fn:(fun (_, value) -> value)
                       with
                       | Some name_value -> get_string name_value
                       | None -> None

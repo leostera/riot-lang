@@ -32,8 +32,7 @@ let test_layout_row = fun _ctx ->
     Error ("Expected 3 commands, got " ^ Int.to_string (List.length commands))
   else
     let texts =
-      List.map
-        commands
+      List.map commands
         ~fn:(fun cmd ->
           match cmd.Render.command_type with
           | Text { content; _ } -> content
@@ -48,8 +47,7 @@ let test_layout_column = fun _ctx ->
   let elem = Element.column [ Element.text "A"; Element.text "B" ] in
   let commands = layout ~config:(make_config ()) elem in
   let texts =
-    List.map
-      commands
+    List.map commands
       ~fn:(fun cmd ->
         match cmd.Render.command_type with
         | Text { content; _ } -> content
@@ -83,23 +81,18 @@ let test_layout_with_child_gap = fun _ctx ->
   let elem = Element.row ~style:Style.(empty |> child_gap 5) [ Element.text "A"; Element.text "B" ] in
   let commands = layout ~config:(make_config ()) elem in
   let positions =
-    List.filter_map
-      commands
+    List.filter_map commands
       ~fn:(fun cmd ->
         match cmd.Render.command_type with
         | Text _ -> Some cmd.bounding_box.x
         | _ -> None)
   in
   (* First at 0.0, second at width(A)=40.0 + gap=5.0 = 45.0 *)
-  if
-    List.length positions = 2
-    && List.head positions = Some 0.0
-    && (
+  if List.length positions = 2 && List.head positions = Some 0.0 && (
       match List.get positions ~at:1 with
       | Some value -> value > 5.0
       | None -> false
-    )
-  then
+    ) then
     Ok ()
   else
     Error ("Expected positions starting at 0.0 with gap, got ["
@@ -143,8 +136,7 @@ let test_nested_layout = fun _ctx ->
     ] in
   let commands = layout ~config:(make_config ()) elem in
   let texts =
-    List.filter_map
-      commands
+    List.filter_map commands
       ~fn:(fun cmd ->
         match cmd.Render.command_type with
         | Text { content; _ } -> Some content

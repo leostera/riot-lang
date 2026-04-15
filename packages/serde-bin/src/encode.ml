@@ -156,7 +156,9 @@ let variant_uses_u8 = fun cases -> int_le (Array.length cases) 0x100
 
 let rec list_backend: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
   write_uint32_le state (encode_u32 "list" (Vector.len values));
-  Vector.for_each values ~fn:(fun value -> encode.run backend state value)
+  Vector.for_each values
+    ~fn:(fun value ->
+      encode.run backend state value)
 
 and array_backend: 'value. state -> 'value Serde.Ser.t -> 'value array -> unit = fun state encode values ->
   let len = Array.length values in
@@ -230,7 +232,9 @@ and backend: state Serde.Ser.backend = {
 
 let rec size_list_backend: 'value. size_state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
   state.bytes_written <- state.bytes_written + 4;
-  Vector.for_each values ~fn:(fun value -> encode.run size_backend state value)
+  Vector.for_each values
+    ~fn:(fun value ->
+      encode.run size_backend state value)
 
 and size_array_backend: 'value. size_state -> 'value Serde.Ser.t -> 'value array -> unit = fun state encode values ->
   state.bytes_written <- state.bytes_written + 4;

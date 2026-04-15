@@ -409,7 +409,10 @@ let parse_sandbox_path = fun path ->
                 | Some dash_pos -> String.sub pkg_with_hash ~offset:0 ~len:dash_pos
               in
               let after_slash = slash_pos + 1 in
-              let relative_path = String.sub rest ~offset:after_slash ~len:(String.length rest - after_slash) in
+              let relative_path = String.sub
+                rest
+                ~offset:after_slash
+                ~len:(String.length rest - after_slash) in
               Some { package_name; relative_path }
         )
 
@@ -423,10 +426,16 @@ let get_package_sources = fun package_name ->
       match Riot_model.Package_name.from_string package_name with
       | Result.Error _ -> None
       | Result.Ok package_name_t -> (
-          match List.find_opt (fun (manifest: Riot_model.Package_manifest.t) -> Riot_model.Package_name.equal manifest.name package_name_t) workspace.packages with
+          match
+            List.find_opt
+              (fun (manifest: Riot_model.Package_manifest.t) ->
+                Riot_model.Package_name.equal manifest.name package_name_t)
+              workspace.packages
+          with
           | None -> None
           | Some manifest ->
-              let package = Riot_model.Workspace_manifest.realize_package ~intent:Riot_model.Package.Build manifest in
+              let package = Riot_model.Workspace_manifest.realize_package
+                ~intent:Riot_model.Package.Build manifest in
               let sources = package.sources.src
               @ package.sources.tests
               @ package.sources.examples
@@ -731,7 +740,11 @@ let extract_module_from_function = fun func_name ->
         in
         (* If all components start with uppercase, it's canonical form *)
         let all_capitalized =
-          List.for_all (fun s -> String.length s > 0 && String.get_unchecked s ~at:0 >= 'A' && String.get_unchecked s ~at:0 <= 'Z') non_empty
+          List.for_all
+            (fun s ->
+              String.length s > 0
+              && String.get_unchecked s ~at:0 >= 'A' && String.get_unchecked s ~at:0 <= 'Z')
+            non_empty
         in
         if all_capitalized then
           Some (String.concat "." non_empty)
@@ -1465,7 +1478,8 @@ let debugger = fun ~conn ~next ->
   try next conn with
   | exn ->
       (* Capture backtrace immediately *)
-      let backtrace = Kernel.Exception.raw_backtrace_to_string (Kernel.Exception.get_raw_backtrace ()) in
+      let backtrace = Kernel.Exception.raw_backtrace_to_string
+        (Kernel.Exception.get_raw_backtrace ()) in
       let exception_str = Kernel.Exception.to_string exn in
       let method_str = Conn.method_ conn |> Net.Http.Method.to_string in
       let path = Conn.path conn in

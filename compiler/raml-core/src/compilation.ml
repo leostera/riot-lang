@@ -141,8 +141,7 @@ let codegen_to_json = to_json
 
 let frontend_diagnostics = fun compilation -> compilation.frontend_diagnostics
 
-let has_frontend_errors = fun compilation ->
-  not (List.is_empty compilation.frontend_diagnostics)
+let has_frontend_errors = fun compilation -> not (List.is_empty compilation.frontend_diagnostics)
 
 let render_codegen_error = fun error ->
   match json_field_string "kind" error with

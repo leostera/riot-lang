@@ -69,7 +69,9 @@ and list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode 
   List.iter
     (fun value ->
       Vector.push result
-        ~value:(with_current state value (fun () -> decode.run backend state)))
+        ~value:(with_current state value
+          (fun () ->
+            decode.run backend state)))
     values;
   result
 

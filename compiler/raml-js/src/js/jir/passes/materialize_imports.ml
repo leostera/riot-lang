@@ -1,8 +1,8 @@
 open Std
 module Jir = Types
 
-  let rec lower_expr = fun expr ->
-    match expr with
+let rec lower_expr = fun expr ->
+  match expr with
   | Jir.Expr.Literal _
   | Jir.Expr.Global _
   | Jir.Expr.Identifier _ -> expr
@@ -52,7 +52,7 @@ and lower_object_field = fun (field: Jir.Expr.object_field) ->
   Jir.Expr.{ field with value = lower_expr field.value }
 
 and lower_statement = fun statement ->
-    match statement with
+  match statement with
   | Jir.Statement.Declaration declaration -> Jir.Statement.Declaration Jir.Declaration.{
     declaration
     with init = Option.map declaration.init ~fn:lower_expr

@@ -24,14 +24,9 @@ let absolute_path = fun path ->
     | Error _ -> Path.normalize path
 
 let create = fun ~workspace ?(profile = "debug") ?(target = Riot_model.Riot_dirs.host_target ()) () ~package_name ->
-  let sandbox_dir =
-    Path.(Riot_model.Riot_dirs.sandbox_dir_in_workspace
-      ~workspace
-      ~profile
-      ~target
-    / sandbox_id ~package_name)
-    |> absolute_path
-  in
+  let sandbox_dir = Path.(Riot_model.Riot_dirs.sandbox_dir_in_workspace ~workspace ~profile ~target
+  / sandbox_id ~package_name)
+  |> absolute_path in
   Fs.create_dir_all sandbox_dir
   |> Result.expect ~msg:("Failed to create sandbox dir: " ^ (Path.to_string sandbox_dir));
   { dir = sandbox_dir; workspace }
@@ -88,14 +83,7 @@ let cleanup = fun sandbox ->
   ()
 
 let with_sandbox = fun ~workspace ?(profile = "debug") ?(target = Riot_model.Riot_dirs.host_target ()) ~package ~inputs ~depset ~store ~expected_outputs f ->
-  let sandbox =
-    create
-      ~workspace
-      ~profile
-      ~target
-      ()
-      ~package_name:package.Package.name
-  in
+  let sandbox = create ~workspace ~profile ~target () ~package_name:package.Package.name in
   let _ = expected_outputs in
   prepare ~sandbox ~package ~inputs ~depset ~store;
   let result = f sandbox in

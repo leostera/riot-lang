@@ -2,8 +2,7 @@ open Std
 
 (* Helper to create pre-allocated keys to avoid hash instability *)
 
-let make_keys = fun n ->
-  Collections.Array.init ~count:n ~fn:(fun i -> "key" ^ string_of_int i)
+let make_keys = fun n -> Collections.Array.init ~count:n ~fn:(fun i -> "key" ^ string_of_int i)
 
 let tests = [
   Test.case "zero capacity"

@@ -138,9 +138,12 @@ Replace direct `Pervasives` references with `Std`.
         let diagnostic_for_open_stmt node =
           let non_trivia_children =
             SyntaxNode.children node
-            |> List.filter ~fn:(function
-                 | Token token -> not (Api.Traversal.is_trivia (SyntaxToken.kind token))
-                 | Node _ -> true)
+            |> List.filter
+              ~fn:(
+                function
+                | Token token -> not (Api.Traversal.is_trivia (SyntaxToken.kind token))
+                | Node _ -> true
+              )
           in
           match non_trivia_children with
           | _open_kw :: Node module_path :: _ ->
@@ -207,10 +210,12 @@ let fixture_filter = fun path ->
       let name = Path.basename path in
       if
         String.length name >= 4
-        && String.get name ~at:0 |> Option.is_some_and ~fn:is_digit
-        && String.get name ~at:1 |> Option.is_some_and ~fn:is_digit
-        && String.get name ~at:2 |> Option.is_some_and ~fn:is_digit
-        && String.get name ~at:3 |> Option.is_some_and ~fn:is_digit
+        && String.get name ~at:0
+        |> Option.is_some_and ~fn:is_digit
+        && String.get name ~at:1
+        |> Option.is_some_and ~fn:is_digit
+        && String.get name ~at:2
+        |> Option.is_some_and ~fn:is_digit && String.get name ~at:3 |> Option.is_some_and ~fn:is_digit
       then
         `keep
       else
@@ -218,13 +223,9 @@ let fixture_filter = fun path ->
   | _ -> `skip
 
 let append_snapshot_suffix = fun path suffix ->
-  Path.to_string path
-  ^ suffix
-  |> Path.from_string
-  |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
+  Path.to_string path ^ suffix |> Path.from_string |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
 
-let approved_snapshot_path = fun path ->
-  append_snapshot_suffix path ".expected"
+let approved_snapshot_path = fun path -> append_snapshot_suffix path ".expected"
 
 let relativize_path = fun ~workspace_root path ->
   match Path.strip_prefix path ~prefix:workspace_root with
@@ -245,7 +246,10 @@ let file_result_to_json = fun ~workspace_root result ->
         | Some err -> String err
         | None -> Null
       );
-      ("applied_fixes", Array (List.map Riot_fix.Runner.(result.applied_fixes) ~fn:Riot_fix.Fix.to_json));
+      (
+        "applied_fixes",
+        Array (List.map Riot_fix.Runner.(result.applied_fixes) ~fn:Riot_fix.Fix.to_json)
+      );
       (
         "parse_diagnostics",
         Array (List.map Riot_fix.Runner.(result.parse_diagnostics) ~fn:Syn.Diagnostic.to_json)

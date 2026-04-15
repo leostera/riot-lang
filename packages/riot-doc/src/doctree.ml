@@ -80,14 +80,12 @@ let rec flatten_modules = fun (modules: module_doc list) ->
     ~fn:(fun acc (module_doc: module_doc) -> acc @ [ module_doc ] @ flatten_modules module_doc.modules)
 
 let rec flatten_items = fun (modules: module_doc list) ->
-  modules |> List.fold_left
-    ~acc:[]
+  modules |> List.fold_left ~acc:[]
     ~fn:(fun acc (module_doc: module_doc) ->
       let own_items = module_doc.items |> List.map ~fn:(fun item -> (module_doc, item)) in
       acc @ own_items @ flatten_items module_doc.modules)
 
-let items_of_kind = fun kind items ->
-  List.filter items ~fn:(fun item -> item.kind = kind)
+let items_of_kind = fun kind items -> List.filter items ~fn:(fun item -> item.kind = kind)
 
 let rec drop_common_prefix = fun left right ->
   match left, right with
@@ -131,8 +129,7 @@ let is_safe_file_char = function
   | _ -> false
 
 let sanitize_file_component = fun text ->
-  String.map
-    text
+  String.map text
     ~fn:(fun ch ->
       if is_safe_file_char ch then
         ch

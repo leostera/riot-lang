@@ -186,8 +186,7 @@ let components = fun t ->
 
 let rec normalize = fun path ->
   let parts = String.split ~by:"/" path in
-  let rec process acc =
-    function
+  let rec process acc = function
     | [] ->
         List.reverse acc
     | "." :: rest ->
@@ -232,18 +231,15 @@ let strip_prefix = fun path ~prefix ->
   let prefix_components = components prefix in
   let rec consume path_parts prefix_parts =
     match (path_parts, prefix_parts) with
-    | _, [] ->
-        Result.ok path_parts
-    | [], _ :: _ ->
-        Result.err
-          (SystemError ("Path " ^ to_string path ^ " does not start with prefix " ^ to_string prefix))
+    | _, [] -> Result.ok path_parts
+    | [], _ :: _ -> Result.err
+      (SystemError ("Path " ^ to_string path ^ " does not start with prefix " ^ to_string prefix))
     | p :: path_rest, pre :: prefix_rest ->
         if to_string p = to_string pre then
           consume path_rest prefix_rest
         else
           Result.err
-            (SystemError
-               ("Path " ^ to_string path ^ " does not start with prefix " ^ to_string prefix))
+            (SystemError ("Path " ^ to_string path ^ " does not start with prefix " ^ to_string prefix))
   in
   match consume path_components prefix_components with
   | Ok [] ->

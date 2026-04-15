@@ -34,10 +34,7 @@ let make_package = fun ?(dependencies = []) ?(dev_dependencies = []) ?(build_dep
     ()
 
 let make_workspace = fun packages ->
-  Workspace.make_realized
-    ~root:(Path.v "/tmp/workspace_like_graph_tests")
-    ~packages
-    ()
+  Workspace.make_realized ~root:(Path.v "/tmp/workspace_like_graph_tests") ~packages ()
 
 let node_for = fun graph package_name scope ->
   Package_graph.package_key ~package_name scope
@@ -67,18 +64,14 @@ let runtime_scope_wires_workspace_like_graph = fun _ctx ->
     make_package ~dependencies:[ "std"; "actors" ] "riot-model";
     make_package ~dependencies:[ "std"; "riot-model" ] "riot-planner";
     make_package ~dependencies:[ "std"; "riot-model"; "riot-planner" ] "riot-store";
-    make_package
-      ~dependencies:[ "std"; "riot-model"; "riot-planner"; "riot-store" ]
-      "riot-build";
+    make_package ~dependencies:[ "std"; "riot-model"; "riot-planner"; "riot-store" ] "riot-build";
   ] in
   let workspace = make_workspace packages in
   let graph = Package_graph.create ~scope:Runtime workspace |> Result.expect ~msg:"expected runtime graph" in
   Test.assert_equal ~expected:(List.length packages) ~actual:(Package_graph.size graph);
   let server_runtime = node_for graph "riot-build" Runtime in
   assert_same_keys
-    ~expected:(package_keys_for_scope
-      Runtime
-      [ "std"; "riot-model"; "riot-planner"; "riot-store" ])
+    ~expected:(package_keys_for_scope Runtime [ "std"; "riot-model"; "riot-planner"; "riot-store" ])
     ~actual:(dependency_keys_for_node graph server_runtime);
   Ok ()
 
@@ -111,12 +104,10 @@ let missing_workspace_dependencies_are_reported = fun _ctx ->
   match Package_graph.create ~scope:Runtime workspace with
   | Ok _ -> Error "expected missing dependency error"
   | Error (Package_graph.MissingPackages { missing }) ->
-      let missing_pairs =
-        List.map
-          missing
-          ~fn:(fun (item: Package_graph.missing_dependency) -> item.package ^ "->" ^ item.dependency)
-        |> List.sort ~compare:String.compare
-      in
+      let missing_pairs = List.map
+        missing
+        ~fn:(fun (item: Package_graph.missing_dependency) -> item.package ^ "->" ^ item.dependency)
+      |> List.sort ~compare:String.compare in
       Test.assert_equal ~expected:[ "left->missing_a"; "right->missing_b" ] ~actual:missing_pairs;
       Ok ()
 
@@ -134,9 +125,7 @@ let filter_for_package_keeps_only_transitive_dependencies = fun _ctx ->
   let package_names = Package_graph.packages filtered
   |> List.map ~fn:(fun (pkg: Package.t) -> pkg.name)
   |> List.unique ~compare:Package_name.compare in
-  Test.assert_equal
-    ~expected:(List.map [ "a"; "app"; "kernel"; "std" ] ~fn:package_name)
-    ~actual:package_names;
+  Test.assert_equal ~expected:(List.map [ "a"; "app"; "kernel"; "std" ] ~fn:package_name) ~actual:package_names;
   Ok ()
 
 let topological_sort_places_dependencies_before_dependents = fun _ctx ->
@@ -151,7 +140,9 @@ let topological_sort_places_dependencies_before_dependents = fun _ctx ->
   let sorted = Package_graph.topological_sort graph |> List.map ~fn:Package_graph.get_key in
   let position_of key =
     List.enumerate sorted
-    |> List.find ~fn:(fun (_, current) -> Package.key_equal key current)
+    |> List.find
+      ~fn:(fun (_, current) ->
+        Package.key_equal key current)
     |> Option.map ~fn:(fun (index, _) -> index)
     |> Option.expect ~msg:("missing key in topo sort: " ^ Package.key_to_string key)
   in

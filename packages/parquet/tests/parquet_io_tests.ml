@@ -1,6 +1,5 @@
 open Std
 open Std.Result.Syntax
-
 module Test = Std.Test
 
 let io_writer_of_buffer =
@@ -15,7 +14,8 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.for_each bufs ~fn:(fun { IO.Iovec.buffer = chunk; offset; length } ->
+      IO.Iovec.for_each bufs
+        ~fn:(fun { IO.Iovec.buffer=chunk; offset; length } ->
           IO.Buffer.add_subbytes buffer chunk offset length;
           written := !written + length);
       Ok !written
@@ -27,30 +27,28 @@ let io_writer_of_buffer =
 
 let sample_metadata: Parquet.file_metadata = {
   version = 1;
-  schema = [
-    {
-      type_ = None;
-      type_length = None;
-      repetition_type = None;
-      name = "schema";
-      num_children = Some 1;
-      converted_type = None;
-      scale = None;
-      precision = None;
-      field_id = None;
-    };
-    {
-      type_ = Some Parquet.Int32;
-      type_length = None;
-      repetition_type = Some Parquet.Required;
-      name = "pirate_count";
-      num_children = None;
-      converted_type = None;
-      scale = None;
-      precision = None;
-      field_id = Some 7;
-    };
-  ];
+  schema =
+    [ {
+        type_ = None;
+        type_length = None;
+        repetition_type = None;
+        name = "schema";
+        num_children = Some 1;
+        converted_type = None;
+        scale = None;
+        precision = None;
+        field_id = None;
+      }; {
+        type_ = Some Parquet.Int32;
+        type_length = None;
+        repetition_type = Some Parquet.Required;
+        name = "pirate_count";
+        num_children = None;
+        converted_type = None;
+        scale = None;
+        precision = None;
+        field_id = Some 7;
+      }; ];
   num_rows = 0L;
   row_groups = [];
   key_value_metadata = Some [ { key = "series"; value = Some "One Piece" } ];
@@ -58,15 +56,9 @@ let sample_metadata: Parquet.file_metadata = {
   column_orders = Some [ Parquet.Type_defined_order ];
 }
 
-let empty_file: Parquet.t = {
-  body = "";
-  metadata = sample_metadata;
-}
+let empty_file: Parquet.t = { body = ""; metadata = sample_metadata }
 
-let buffered_file: Parquet.t = {
-  body = "\001\002\003\004";
-  metadata = sample_metadata;
-}
+let buffered_file: Parquet.t = { body = "\001\002\003\004"; metadata = sample_metadata }
 
 let test_roundtrips_empty_file = fun _ctx ->
   let* encoded =

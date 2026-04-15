@@ -162,23 +162,12 @@ type event =
   (** No data available, try again *)
   | `End
 ]
-
 module Token: sig
   type control =
     | Escape
-    | Csi of {
-      raw: string;
-      body: string;
-    }
-    | Ss3 of {
-      raw: string;
-      body: string;
-    }
-    | Osc of {
-      raw: string;
-      body: string;
-    }
-
+    | Csi of { raw: string; body: string }
+    | Ss3 of { raw: string; body: string }
+    | Osc of { raw: string; body: string }
   type t =
     | Text of string
     | Control of control
@@ -187,7 +176,6 @@ end
 
 module Tokenizer: sig
   type t
-
   val create: unit -> t
 
   val feed: t -> string -> t * Token.t list
@@ -197,7 +185,6 @@ end
 
 module Parser: sig
   type t
-
   val create: unit -> t
 
   val feed: t -> string -> t * event list

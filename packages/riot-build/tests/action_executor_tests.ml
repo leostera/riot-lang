@@ -2,14 +2,16 @@ open Std
 open Riot_build
 open Std.Collections
 open Riot_model
+
+module Action_executor = Riot_build.Internal.Action_executor
+
 module Test = Std.Test
 
 let package_name = fun value ->
   Package_name.from_string value |> Result.expect ~msg:("expected valid package name: " ^ value)
 
 let test_toolchain = fun () ->
-  Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
-  |> Result.expect ~msg:"failed to initialize toolchain"
+  Riot_toolchain.init ~config:Riot_model.Toolchain_config.default |> Result.expect ~msg:"failed to initialize toolchain"
 
 let make_workspace = fun root ->
   Riot_model.Workspace.{
@@ -36,7 +38,9 @@ let make_package = fun ~root ~name ->
 
 let make_node = fun ~package ?(dep_nodes = []) ~actions ~outs () ->
   let graph = Riot_planner.Action_graph.create () in
-  let deps = List.map dep_nodes ~fn:(fun (node: Riot_planner.Action_node.t) -> node.id) in
+  let deps =
+    List.map dep_nodes ~fn:(fun (node: Riot_planner.Action_node.t) -> node.id)
+  in
   let spec =
     Riot_planner.Action_node.make
       ~actions
@@ -49,8 +53,9 @@ let make_node = fun ~package ?(dep_nodes = []) ~actions ~outs () ->
   in
   let node = Riot_planner.Action_graph.add_node graph spec in
   let _ =
-    List.for_each dep_nodes ~fn:(fun dep_node ->
-      Riot_planner.Action_graph.add_dependency graph node ~depends_on:dep_node)
+    List.for_each
+      dep_nodes
+      ~fn:(fun dep_node -> Riot_planner.Action_graph.add_dependency graph node ~depends_on:dep_node)
   in
   node
 
@@ -81,8 +86,7 @@ let test_execute_node_writes_file = fun _ctx ->
           ~package
           ~actions:[ Riot_planner.Action.WriteFile { destination = output; content = "hello" }; ]
           ~outs:[ output ]
-          ()
-        in
+          () in
         let completed = HashMap.create () in
         let result = Action_executor.execute_node
           ~completed
@@ -90,8 +94,7 @@ let test_execute_node_writes_file = fun _ctx ->
           ~session_id:(Riot_model.Session_id.make ())
           (test_toolchain ())
           sandbox
-          node
-        in
+          node in
         match result.status with
         | Action_executor.Executed -> (
             let output_path = Path.(sandbox / output) in
@@ -121,13 +124,9 @@ let test_execute_node_copies_file = fun _ctx ->
         let destination = Path.v "copied.txt" in
         let node = make_node
           ~package
-          ~actions:[ Riot_planner.Action.CopyFile {
-            source = Path.v "source.txt";
-            destination
-          }; ]
+          ~actions:[ Riot_planner.Action.CopyFile { source = Path.v "source.txt"; destination }; ]
           ~outs:[ destination ]
-          ()
-        in
+          () in
         let completed = HashMap.create () in
         let result = Action_executor.execute_node
           ~completed
@@ -135,8 +134,7 @@ let test_execute_node_copies_file = fun _ctx ->
           ~session_id:(Riot_model.Session_id.make ())
           (test_toolchain ())
           sandbox
-          node
-        in
+          node in
         match result.status with
         | Action_executor.Executed -> (
             let destination_path = Path.(sandbox / destination) in
@@ -164,13 +162,11 @@ let test_execute_node_fails_when_declared_output_is_missing = fun _ctx ->
         let declared_output = Path.v "declared.txt" in
         let node = make_node
           ~package
-          ~actions:[ Riot_planner.Action.WriteFile {
-            destination = Path.v "actual.txt";
-            content = "hello"
-          }; ]
+          ~actions:[
+            Riot_planner.Action.WriteFile { destination = Path.v "actual.txt"; content = "hello" };
+          ]
           ~outs:[ declared_output ]
-          ()
-        in
+          () in
         let completed = HashMap.create () in
         let result = Action_executor.execute_node
           ~completed
@@ -178,19 +174,22 @@ let test_execute_node_fails_when_declared_output_is_missing = fun _ctx ->
           ~session_id:(Riot_model.Session_id.make ())
           (test_toolchain ())
           sandbox
-          node
-        in
+          node in
         match result.status with
         | Action_executor.Failed (OutputsNotCreated { missing }) ->
             let expected = Path.to_string Path.(sandbox / declared_output) in
-            if List.any missing ~fn:(fun path -> String.equal (Path.to_string path) expected) then
+            if List.any missing
+                ~fn:(fun path ->
+                  String.equal (Path.to_string path) expected) then
               Ok ()
             else
               Error "expected missing declared output to be reported"
-        | Action_executor.Failed _ -> Error "expected output verification failure"
+        | Action_executor.Failed _ ->
+            Error "expected output verification failure"
         | Action_executor.Cached _
         | Action_executor.Executed
-        | Action_executor.Skipped -> Error "expected missing output failure")
+        | Action_executor.Skipped ->
+            Error "expected missing output failure")
   with
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
@@ -206,37 +205,31 @@ let test_execute_node_skips_when_dependency_failed = fun _ctx ->
         let package = make_package ~root:tmpdir ~name:"pkg" in
         let dependency = make_node
           ~package
-          ~actions:[ Riot_planner.Action.WriteFile {
-            destination = Path.v "dep.txt";
-            content = "dependency"
-          }; ]
+          ~actions:[
+            Riot_planner.Action.WriteFile { destination = Path.v "dep.txt"; content = "dependency" };
+          ]
           ~outs:[ Path.v "dep.txt" ]
-          ()
-        in
+          () in
         let node = make_node
           ~package
           ~dep_nodes:[ dependency ]
-          ~actions:[ Riot_planner.Action.WriteFile {
-            destination = Path.v "out.txt";
-            content = "child"
-          }; ]
+          ~actions:[
+            Riot_planner.Action.WriteFile { destination = Path.v "out.txt"; content = "child" };
+          ]
           ~outs:[ Path.v "out.txt" ]
-          ()
-        in
+          () in
         let completed = HashMap.create () in
         let _ = HashMap.insert
           completed
           ~key:(node_id dependency)
-          ~value:(failed_result (node_id dependency))
-        in
+          ~value:(failed_result (node_id dependency)) in
         let result = Action_executor.execute_node
           ~completed
           ~store
           ~session_id:(Riot_model.Session_id.make ())
           (test_toolchain ())
           sandbox
-          node
-        in
+          node in
         match result.status with
         | Action_executor.Skipped -> Ok ()
         | Action_executor.Cached _

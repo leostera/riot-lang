@@ -32,10 +32,7 @@ let positional_parameter_name_token = function
   | _ -> None
 
 let single_positional_parameter_name = fun binding ->
-  let positional_names =
-    Syn.Cst.LetBinding.parameters binding
-    |> List.filter_map ~fn:positional_parameter_name_token
-  in
+  let positional_names = Syn.Cst.LetBinding.parameters binding |> List.filter_map ~fn:positional_parameter_name_token in
   match positional_names with
   | [ token ] -> Some token
   | _ -> None
@@ -67,8 +64,7 @@ let merge_usage = fun left right ->
     has_whole_value_use = left.has_whole_value_use || right.has_whole_value_use
   }
 
-let merge_all = fun usages ->
-  List.fold_left usages ~acc:empty_usage ~fn:merge_usage
+let merge_all = fun usages -> List.fold_left usages ~acc:empty_usage ~fn:merge_usage
 
 let whole_value_use = fun expected_name ->
   function
@@ -96,10 +92,7 @@ let direct_field_access_name = fun expected_name ->
 let rec usage_in_function_body = fun expected_name ->
   function
   | Syn.Cst.Expression expression -> usage_in_expression expected_name expression
-  | Syn.Cst.Cases { cases; _ } ->
-      cases
-      |> List.map ~fn:(usage_in_match_case expected_name)
-      |> merge_all
+  | Syn.Cst.Cases { cases; _ } -> cases |> List.map ~fn:(usage_in_match_case expected_name) |> merge_all
 
 and usage_in_apply_argument = fun expected_name ->
   function
@@ -204,8 +197,9 @@ and usage_in_expression = fun expected_name expr ->
       elements |> List.map ~fn:(usage_in_expression expected_name) |> merge_all
   | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Literal { fields; _ }) ->
       fields
-      |> List.map ~fn:(fun (field: Syn.Cst.record_expression_field) ->
-        usage_in_expression expected_name field.value)
+      |> List.map
+        ~fn:(fun (field: Syn.Cst.record_expression_field) ->
+          usage_in_expression expected_name field.value)
       |> merge_all
   | Syn.Cst.Expression.Record (Syn.Cst.RecordExpression.Update { base; fields; _ }) ->
       merge_all
@@ -257,11 +251,9 @@ and usage_in_expression = fun expected_name expr ->
 
 let should_prefer_destructuring = fun expected_name expr ->
   let usage = usage_in_expression expected_name expr in
-  let distinct_fields =
-    usage.field_names
-    |> List.sort ~compare:String.compare
-    |> List.unique ~compare:String.compare
-  in
+  let distinct_fields = usage.field_names
+  |> List.sort ~compare:String.compare
+  |> List.unique ~compare:String.compare in
   List.length distinct_fields >= 2 && not usage.has_whole_value_use
 
 let is_immediate_record_destructure = fun expected_name ->

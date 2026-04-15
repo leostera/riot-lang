@@ -169,8 +169,7 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
       | _ -> false
   and redundant_paren_child node =
     let has_comment_like =
-      List.any
-        (Syn.Ceibo.Green.children node)
+      List.any (Syn.Ceibo.Green.children node)
         ~fn:(
           function
           | Syn.Ceibo.Green.Token token ->
@@ -184,7 +183,8 @@ let syntax_hash = fun (result: Syn.Parser.parse_result) ->
     else
       let meaningful_children =
         Syn.Ceibo.Green.children node
-        |> List.filter ~fn:(
+        |> List.filter
+          ~fn:(
             function
             | Syn.Ceibo.Green.Token token ->
                 let token_kind = Syn.Ceibo.Green.kind (Syn.Ceibo.Green.Token token) in
@@ -460,19 +460,17 @@ let start_dispatcher = fun ~owner ~run_ref ~concurrency ~roots ~should_ignore ~c
   dispatch_loop state
 
 let summarize = fun ~duration files ->
-  List.fold_left
-    files
-    ~acc:(
-      {
-        total_files = 0;
-        already_formatted = 0;
-        needs_formatting = 0;
-        would_reformat = 0;
-        unsafe_to_format = 0;
-        formatted_files = 0;
-        failed_files = 0;
-        duration;
-      })
+  List.fold_left files
+    ~acc:{
+      total_files = 0;
+      already_formatted = 0;
+      needs_formatting = 0;
+      would_reformat = 0;
+      unsafe_to_format = 0;
+      formatted_files = 0;
+      failed_files = 0;
+      duration;
+    }
     ~fn:(fun acc result ->
       match result.status with
       | Failed -> { acc with total_files = acc.total_files + 1; failed_files = acc.failed_files + 1 }
@@ -555,15 +553,10 @@ let run_batch = fun ~mode ?(concurrency = Thread.available_parallelism) ?(should
     | Verify -> verify_file
     | Format -> format_file ~mode:Format
   in
-  let files =
-    files
-    |> List.filter ~fn:(fun path -> not (should_ignore path))
-    |> List.sort ~compare:compare_paths
-  in
+  let files = files |> List.filter ~fn:(fun path -> not (should_ignore path)) |> List.sort ~compare:compare_paths in
   let results = WorkerPool.SimpleWorkerPool.run ~concurrency ~tasks:files ~fn:check_fn ()
   |> List.map ~fn:(fun (_, result) -> result)
-  |> List.sort ~compare:(fun left right -> compare_paths left.file right.file)
-  in
+  |> List.sort ~compare:(fun left right -> compare_paths left.file right.file) in
   let duration = Time.Instant.elapsed start in
   { files = results; summary = summarize ~duration results }
 

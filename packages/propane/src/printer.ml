@@ -1,5 +1,4 @@
 open Std
-
 module Buffer = IO.Buffer
 
 type 'value t = 'value -> string
@@ -21,8 +20,7 @@ let escape_char_fragment = fun c ->
   | '\t' -> "\\t"
   | '\b' -> "\\b"
   | '\012' -> "\\f"
-  | c when Char.code c < 0x20 || Char.code c = 0x7f ->
-      hex_escape (Char.code c)
+  | c when Char.code c < 0x20 || Char.code c = 0x7f -> hex_escape (Char.code c)
   | c -> String.make ~len:1 ~char:c
 
 let escape_string = fun value ->
@@ -73,19 +71,15 @@ let vector = fun elem_printer vec ->
 
 let hashmap = fun key_printer value_printer hm ->
   let pairs = Collections.HashMap.iter hm |> Iter.Iterator.to_list in
-  let pair_strs =
-    List.map pairs ~fn:(fun ((k, v)) -> key_printer k ^ " => " ^ value_printer v)
-    |> List.sort ~compare:String.compare
-  in
+  let pair_strs = List.map pairs ~fn:(fun ((k, v)) -> key_printer k ^ " => " ^ value_printer v)
+  |> List.sort ~compare:String.compare in
   "map{" ^ String.concat "; " pair_strs ^ "}"
 
 let hashset = fun elem_printer hs ->
-  let elements =
-    Collections.HashSet.iter hs
-    |> Iter.Iterator.to_list
-    |> List.map ~fn:elem_printer
-    |> List.sort ~compare:String.compare
-  in
+  let elements = Collections.HashSet.iter hs
+  |> Iter.Iterator.to_list
+  |> List.map ~fn:elem_printer
+  |> List.sort ~compare:String.compare in
   "set{" ^ String.concat "; " elements ^ "}"
 
 let queue = fun elem_printer q ->

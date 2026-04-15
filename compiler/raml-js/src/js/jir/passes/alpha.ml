@@ -20,11 +20,9 @@ module String_set = struct
 
   let empty = Storage.empty
 
-  let add = fun name set ->
-    Storage.insert set ~key:name ~value:()
+  let add = fun name set -> Storage.insert set ~key:name ~value:()
 
-  let mem = fun name set ->
-    Storage.has_key set ~key:name
+  let mem = fun name set -> Storage.has_key set ~key:name
 end
 
 type env = {
@@ -68,9 +66,7 @@ let bind_binder = fun env (binder: Jir.Binder.t) ->
 
 let bind_binders = fun env binders ->
   let (env, lowered_rev) =
-    List.fold_left
-      binders
-      ~acc:(env, [])
+    List.fold_left binders ~acc:(env, [])
       ~fn:(fun (env, lowered_rev) binder ->
         let (env, binder) = bind_binder env binder in
         (env, binder :: lowered_rev))
@@ -177,9 +173,7 @@ and lower_scoped_block = fun env statements ->
 
 let program = fun ~context:_ (program: Jir.Program.t) ->
   let (imports, env) =
-    List.fold_left
-      program.imports
-      ~acc:([], empty)
+    List.fold_left program.imports ~acc:([], empty)
       ~fn:(fun (imports_rev, env) import ->
         let (import, env) = lower_import env import in
         (import :: imports_rev, env))

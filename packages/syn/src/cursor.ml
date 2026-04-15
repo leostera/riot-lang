@@ -39,5 +39,4 @@ let take_while = fun t f ->
   let len = t.pos - start in
   String.sub t.source ~offset:start ~len
 
-let slice = fun t start len ->
-  String.sub t.source ~offset:start ~len
+let slice = fun t start len -> String.sub t.source ~offset:start ~len

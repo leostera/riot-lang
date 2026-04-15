@@ -78,9 +78,8 @@ let render_section_lines = fun ~section dependencies ->
 let is_section_header = fun line ->
   let trimmed = String.trim line in
   match String.length trimmed with
-  | len when len >= 3 ->
-      Char.equal (String.get_unchecked trimmed ~at:0) '['
-      && Char.equal (String.get_unchecked trimmed ~at:(len - 1)) ']'
+  | len when len >= 3 -> Char.equal (String.get_unchecked trimmed ~at:0) '['
+  && Char.equal (String.get_unchecked trimmed ~at:(len - 1)) ']'
   | _ -> false
 
 let replace_section_lines = fun ~source ~section dependencies ->
@@ -96,9 +95,9 @@ let replace_section_lines = fun ~source ~section dependencies ->
   let rec find_header index =
     if index >= len then
       None
-    else if Option.is_some_and
-        (line_at index lines)
-        ~fn:(fun line -> String.equal (String.trim line) header) then
+    else if Option.is_some_and (line_at index lines)
+        ~fn:(fun line ->
+          String.equal (String.trim line) header) then
       Some index
     else
       find_header (index + 1)
@@ -122,7 +121,9 @@ let replace_section_lines = fun ~source ~section dependencies ->
       let rec find_end index =
         if index >= len then
           len
-        else if index > start_index && Option.is_some_and (line_at index lines) ~fn:is_section_header then
+        else if
+          index > start_index && Option.is_some_and (line_at index lines) ~fn:is_section_header
+        then
           index
         else
           find_end (index + 1)

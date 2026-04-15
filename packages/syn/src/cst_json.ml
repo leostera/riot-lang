@@ -956,8 +956,8 @@ and expression_to_json = fun expression ->
     Option.is_some rec_token
     || match Ceibo.Red.SyntaxNode.parent syntax_node with
     | Some parent ->
-        Ceibo.Red.SyntaxNode.direct_tokens parent
-        |> List.any ~fn:(fun token ->
+        Ceibo.Red.SyntaxNode.direct_tokens parent |> List.any
+          ~fn:(fun token ->
             String.equal (Ceibo.Red.SyntaxToken.text token) "rec")
     | None -> false
   in
@@ -1939,8 +1939,8 @@ and class_expression_to_json =
     Option.is_some rec_token
     || match Ceibo.Red.SyntaxNode.parent syntax_node with
     | Some parent ->
-        Ceibo.Red.SyntaxNode.direct_tokens parent
-        |> List.any ~fn:(fun token ->
+        Ceibo.Red.SyntaxNode.direct_tokens parent |> List.any
+          ~fn:(fun token ->
             String.equal (Ceibo.Red.SyntaxToken.text token) "rec")
     | None -> false
   in

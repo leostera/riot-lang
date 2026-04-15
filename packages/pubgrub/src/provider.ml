@@ -53,7 +53,8 @@ let to_provider: offline -> string t = fun offline ->
     | None -> Ok None
     | Some entries ->
         let matching =
-          List.filter entries
+          List.filter
+            entries
             ~fn:(fun entry -> Ranges.contains ~compare_v:version_compare ranges entry.version)
         in
         let sorted =
@@ -70,7 +71,8 @@ let to_provider: offline -> string t = fun offline ->
     | None -> Ok 0
     | Some entries ->
         let matching =
-          List.filter entries
+          List.filter
+            entries
             ~fn:(fun entry -> Ranges.contains ~compare_v:version_compare ranges entry.version)
         in
         Ok (List.length matching)

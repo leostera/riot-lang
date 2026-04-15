@@ -1,6 +1,5 @@
 open Std
 open Std.Collections
-
 module Array = Collections.Array
 
 (* A shrinker is a function that takes a value and returns a list of smaller values *)
@@ -113,8 +112,7 @@ let towards = fun target ->
 
 let int = towards 0
 
-let int_towards = fun target ->
-  towards target
+let int_towards = fun target -> towards target
 
 let int32 = fun value ->
   if value = 0l then
@@ -132,8 +130,7 @@ let int32 = fun value ->
       | _original :: rest -> List.reverse rest
       | [] -> []
     in
-    0l
-    :: List.map smaller_steps
+    0l :: List.map smaller_steps
       ~fn:(fun step ->
         if value > 0l then
           step
@@ -156,8 +153,7 @@ let int64 = fun value ->
       | _original :: rest -> List.reverse rest
       | [] -> []
     in
-    0L
-    :: List.map smaller_steps
+    0L :: List.map smaller_steps
       ~fn:(fun step ->
         if value > 0L then
           step
@@ -180,8 +176,7 @@ let float = fun value ->
       | _original :: rest -> List.reverse rest
       | [] -> []
     in
-    0.0
-    :: List.map smaller_steps
+    0.0 :: List.map smaller_steps
       ~fn:(fun step ->
         if value > 0.0 then
           step
@@ -235,9 +230,7 @@ let rune = fun value ->
       | _original :: rest -> List.reverse rest
       | [] -> []
     in
-    let candidates =
-      0 :: smaller_steps
-    in
+    let candidates = 0 :: smaller_steps in
     List.filter_map candidates ~fn:Unicode.Rune.from_int
 
 let string = fun value ->
@@ -266,7 +259,9 @@ let string = fun value ->
       else
         let current_char = String.get_unchecked value ~at:index in
         let shrunk =
-          List.map (char current_char) ~fn:(fun char' -> string_replace_at value ~at:index ~char:char')
+          List.map
+            (char current_char)
+            ~fn:(fun char' -> string_replace_at value ~at:index ~char:char')
         in
         shrink_chars (index + 1) (List.reverse_append shrunk acc)
     in
@@ -309,7 +304,8 @@ let list = fun elem_shrinker ->
         | None -> acc
         | Some value ->
             let shrunk =
-              List.map (elem_shrinker value)
+              List.map
+                (elem_shrinker value)
                 ~fn:(fun value' -> replace_nth lst ~at:index ~value:value')
             in
             shrink_elements (index + 1) (List.reverse_append shrunk acc)
@@ -353,7 +349,7 @@ let vector = fun elem_shrinker ->
 let hashmap = fun key_shrinker value_shrinker ->
   fun hm ->
     let lst = HashMap.to_list hm in
-    let entry_shrinker = fun ((key, value)) ->
+    let entry_shrinker ((key, value)) =
       let shrunk_keys =
         List.map (key_shrinker key) ~fn:(fun key' -> (key', value))
       in
@@ -443,9 +439,7 @@ let map = fun f f_inv shrinker ->
     let a = f_inv b in
     List.map (shrinker a) ~fn:f
 
-let filter = fun pred shrinker ->
-  fun value ->
-    List.filter (shrinker value) ~fn:pred
+let filter = fun pred shrinker -> fun value -> List.filter (shrinker value) ~fn:pred
 
 (* === LOW-LEVEL INTERFACE === *)
 

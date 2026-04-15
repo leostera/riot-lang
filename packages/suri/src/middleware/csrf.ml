@@ -19,7 +19,10 @@ let bytes_to_hex = fun bytes ->
   for i = 0 to len - 1 do
     let byte = Char.code (String.get_unchecked bytes ~at:i) in
     IO.Bytes.set_unchecked hex ~at:(i * 2) ~char:(String.get_unchecked hex_chars ~at:(byte lsr 4));
-    IO.Bytes.set_unchecked hex ~at:(i * 2 + 1) ~char:(String.get_unchecked hex_chars ~at:(byte land 0x0f))
+    IO.Bytes.set_unchecked
+      hex
+      ~at:(i * 2 + 1)
+      ~char:(String.get_unchecked hex_chars ~at:(byte land 0x0f))
   done;
   IO.Bytes.to_string hex
 
@@ -40,8 +43,14 @@ let hex_to_bytes = fun hex ->
     let valid = ref true in
     for i = 0 to (len / 2) - 1 do
       if !valid then
-        match (hex_value (String.get_unchecked hex ~at:(i * 2)), hex_value (String.get_unchecked hex ~at:(i * 2 + 1))) with
-        | (Option.Some hi, Option.Some lo) -> IO.Bytes.set_unchecked bytes ~at:i ~char:(Char.chr ((hi lsl 4) lor lo))
+        match (
+          hex_value (String.get_unchecked hex ~at:(i * 2)),
+          hex_value (String.get_unchecked hex ~at:(i * 2 + 1))
+        ) with
+        | (Option.Some hi, Option.Some lo) -> IO.Bytes.set_unchecked
+          bytes
+          ~at:i
+          ~char:(Char.chr ((hi lsl 4) lor lo))
         | _ -> valid := false
     done;
     if !valid then

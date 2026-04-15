@@ -39,8 +39,7 @@ let write_workspace_cache_config = fun tmpdir ~keep_generations ~max_size ->
     Path.(riot_dir / Path.v "config.toml")
   |> Result.expect ~msg:"write .riot/config.toml should succeed"
 
-let make_hash = fun ch ->
-  String.make ~len:64 ~char:ch
+let make_hash = fun ch -> String.make ~len:64 ~char:ch
 
 let host_target = Riot_model.Riot_dirs.host_target ()
 
@@ -49,27 +48,27 @@ let count_generation_receipts = fun ~(workspace:Riot_model.Workspace.t) ->
   match Fs.read_dir generations_dir with
   | Error _ -> 0
   | Ok reader ->
-      Std.Iter.MutIterator.to_list reader
-      |> List.filter
+      Std.Iter.MutIterator.to_list reader |> List.filter
         ~fn:(fun path ->
           let basename = Path.basename path in
-          String.ends_with ~suffix:".json" basename)
-      |> List.length
+          String.ends_with ~suffix:".json" basename) |> List.length
 
 let read_cache_state_generation_hashes = fun ~(workspace:Riot_model.Workspace.t) ->
   let path = Path.(workspace.target_dir_root / Path.v "cache" / Path.v "state.json") in
   let content = Fs.read_to_string path |> Result.expect ~msg:"failed to read cache state" in
   let json = Data.Json.of_string content |> Result.expect ~msg:"failed to parse cache state json" in
   match Data.Json.get_field "generation_hashes" json with
-  | Some (Data.Json.Array hashes) ->
-      List.map hashes
-        ~fn:(fun value ->
-          Data.Json.get_string value |> Option.expect ~msg:"generation hash should be a string")
+  | Some (Data.Json.Array hashes) -> List.map
+    hashes
+    ~fn:(fun value -> Data.Json.get_string value |> Option.expect ~msg:"generation hash should be a string")
   | _ -> []
 
 let read_generation_lane_hashes = fun ~(workspace:Riot_model.Workspace.t) generation_hash ->
   let path =
-    Path.(workspace.target_dir_root / Path.v "cache" / Path.v "generations" / Path.v (generation_hash ^ ".json")) in
+    Path.(workspace.target_dir_root
+    / Path.v "cache"
+    / Path.v "generations"
+    / Path.v (generation_hash ^ ".json")) in
   let content = Fs.read_to_string path |> Result.expect ~msg:"failed to read generation payload" in
   let json = Data.Json.of_string content |> Result.expect ~msg:"failed to parse generation payload" in
   match Data.Json.get_field "lanes" json with
@@ -77,26 +76,22 @@ let read_generation_lane_hashes = fun ~(workspace:Riot_model.Workspace.t) genera
       List.map lanes
         ~fn:(fun lane ->
           match Data.Json.get_field "hashes" lane with
-          | Some (Data.Json.Array hashes) ->
-              List.map hashes
-                ~fn:(fun value ->
-                  Data.Json.get_string value |> Option.expect ~msg:"generation lane hash should be a string")
+          | Some (Data.Json.Array hashes) -> List.map
+            hashes
+            ~fn:(fun value -> Data.Json.get_string value |> Option.expect ~msg:"generation lane hash should be a string")
           | _ -> panic "generation lane payload is missing hashes")
   | _ -> panic "generation payload is missing lanes"
 
 let write_cache_entry = fun ~(workspace:Riot_model.Workspace.t) ~profile ~target ~hash ~size ->
   let entry_dir =
-    Path.(
-      workspace.target_dir_root
-      / Path.v profile
-      / Path.v (Riot_model.Target.to_string target)
-      / Path.v "cache"
-      / Path.v hash)
-  in
+    Path.(workspace.target_dir_root
+    / Path.v profile
+    / Path.v (Riot_model.Target.to_string target)
+    / Path.v "cache"
+    / Path.v hash) in
   let payload = Path.(entry_dir / Path.v "artifact.bin") in
   let _ = Fs.create_dir_all entry_dir |> Result.expect ~msg:"create cache entry should succeed" in
-  let _ = Fs.write (String.make ~len:size ~char:'x') payload
-  |> Result.expect ~msg:"write cache payload should succeed" in
+  let _ = Fs.write (String.make ~len:size ~char:'x') payload |> Result.expect ~msg:"write cache payload should succeed" in
   entry_dir
 
 let test_save_and_promote_nested_outputs = fun _ctx ->
@@ -155,7 +150,9 @@ let test_get_preserves_relative_paths = fun _ctx ->
         match Riot_store.Store.get store hash with
         | None -> Error "expected cached artifact"
         | Some artifact ->
-            if List.any artifact.files ~fn:(fun path -> Path.equal path (Path.v "deep/dir/x.cmxa")) then
+            if List.any artifact.files
+                ~fn:(fun path ->
+                  Path.equal path (Path.v "deep/dir/x.cmxa")) then
               Ok ()
             else
               Error "artifact paths should keep nested relative paths")
@@ -190,8 +187,7 @@ let test_save_and_promote_self_host_style_outputs = fun _ctx ->
         let target = Path.(tmpdir / Path.v "out") in
         let _ = Riot_store.Store.promote store hash ~target_dir:target |> Result.expect ~msg:"promote should succeed for self-host-style outputs" in
         let promoted_ok =
-          List.all
-            outputs
+          List.all outputs
             ~fn:(fun (name, content) ->
               let path = Path.(target / Path.v name) in
               String.equal (read_file path) content)
@@ -269,7 +265,7 @@ let test_concurrent_same_hash_saves_share_cache_safely = fun _ctx ->
         let left_output = write_output left_sandbox (Path.v "pkg.cmx") "shared-artifact" in
         let right_output = write_output right_sandbox (Path.v "pkg.cmx") "shared-artifact" in
         let parent = self () in
-        let spawn_worker = fun name sandbox output ->
+        let spawn_worker name sandbox output =
           spawn
             (fun () ->
               let selector msg =
@@ -278,15 +274,13 @@ let test_concurrent_same_hash_saves_share_cache_safely = fun _ctx ->
                 | _ -> `skip
               in
               let _ = receive ~selector () in
-              let result =
-                Riot_store.Store.save
-                  store
-                  ~package:"pkg"
-                  ~hash
-                  ~sandbox_dir:sandbox
-                  ~outs:[ output ]
-                |> Result.map ~fn:(fun _ -> ())
-              in
+              let result = Riot_store.Store.save
+                store
+                ~package:"pkg"
+                ~hash
+                ~sandbox_dir:sandbox
+                ~outs:[ output ]
+              |> Result.map ~fn:(fun _ -> ()) in
               send parent (ConcurrentSaveComplete (name, result));
               Ok ())
         in
@@ -304,8 +298,7 @@ let test_concurrent_same_hash_saves_share_cache_safely = fun _ctx ->
         match (result1, result2) with
         | ConcurrentSaveComplete (_, Ok ()), ConcurrentSaveComplete (_, Ok ()) ->
             let target = Path.(tmpdir / Path.v "out") in
-            let _ = Riot_store.Store.promote store hash ~target_dir:target
-            |> Result.expect ~msg:"promote should succeed after concurrent saves" in
+            let _ = Riot_store.Store.promote store hash ~target_dir:target |> Result.expect ~msg:"promote should succeed after concurrent saves" in
             if String.equal (read_file Path.(target / Path.v "pkg.cmx")) "shared-artifact" then
               Ok ()
             else
@@ -448,7 +441,10 @@ let test_export_source_path_round_trip = fun _ctx ->
           ~outs:[ Path.(sandbox / rel_path) ]
         |> Result.expect ~msg:"save should succeed" in
         let expected = Path.(Riot_store.Store.hash_dir_of store hash / rel_path) in
-        match Riot_store.Store.export_source_path store (List.head exports |> Option.expect ~msg:"expected export entry") with
+        match
+          Riot_store.Store.export_source_path store
+            (List.head exports |> Option.expect ~msg:"expected export entry")
+        with
         | None -> Error "expected to resolve package export path"
         | Some resolved ->
             if Path.to_string resolved = Path.to_string expected then
@@ -485,7 +481,10 @@ let test_export_source_path_rejects_absolute_export_paths = fun _ctx ->
           ~sandbox_dir:sandbox
           ~outs:[ output ]
         |> Result.expect ~msg:"save should succeed" in
-        match Riot_store.Store.export_source_path store (List.head exports |> Option.expect ~msg:"expected export entry") with
+        match
+          Riot_store.Store.export_source_path store
+            (List.head exports |> Option.expect ~msg:"expected export entry")
+        with
         | None -> Ok ()
         | Some _ -> Error "absolute export paths should be rejected when resolving immutable path")
   with
@@ -612,8 +611,7 @@ let test_save_and_promote_preserves_executable_permissions = fun _ctx ->
         let _ = Fs.create_dir_all sandbox |> Result.expect ~msg:"create sandbox should succeed" in
         let output = Path.(sandbox / Path.v "kernel_new_addr_tests") in
         let _ = Fs.write "#!/bin/sh\nexit 0\n" output |> Result.expect ~msg:"write sandbox output should succeed" in
-        let _ = Fs.set_permissions output Fs.Permissions.executable
-        |> Result.expect ~msg:"mark sandbox output executable should succeed" in
+        let _ = Fs.set_permissions output Fs.Permissions.executable |> Result.expect ~msg:"mark sandbox output executable should succeed" in
         let hash = Crypto.hash_string "promote-preserves-executable-permissions" in
         let _ = Riot_store.Store.save
           store
@@ -623,17 +621,14 @@ let test_save_and_promote_preserves_executable_permissions = fun _ctx ->
           ~outs:[ output ]
         |> Result.expect ~msg:"save should succeed" in
         let target_dir = Path.(tmpdir / Path.v "sandbox-target") in
-        let _ = Riot_store.Store.promote store hash ~target_dir
-        |> Result.expect ~msg:"promote should preserve executable permissions" in
+        let _ = Riot_store.Store.promote store hash ~target_dir |> Result.expect ~msg:"promote should preserve executable permissions" in
         let promoted = Path.(target_dir / Path.v "kernel_new_addr_tests") in
-        let source_mode =
-          Fs.metadata output
-          |> Result.expect ~msg:"read source metadata should succeed"
-          |> Fs.Metadata.mode in
-        let promoted_mode =
-          Fs.metadata promoted
-          |> Result.expect ~msg:"read promoted metadata should succeed"
-          |> Fs.Metadata.mode in
+        let source_mode = Fs.metadata output
+        |> Result.expect ~msg:"read source metadata should succeed"
+        |> Fs.Metadata.mode in
+        let promoted_mode = Fs.metadata promoted
+        |> Result.expect ~msg:"read promoted metadata should succeed"
+        |> Fs.Metadata.mode in
         if source_mode = promoted_mode then
           Ok ()
         else
@@ -652,8 +647,7 @@ let test_save_preserves_executable_permissions_in_cache = fun _ctx ->
         let _ = Fs.create_dir_all sandbox |> Result.expect ~msg:"create sandbox should succeed" in
         let output = Path.(sandbox / Path.v "std_archive_tar_tests") in
         let _ = Fs.write "#!/bin/sh\nexit 0\n" output |> Result.expect ~msg:"write sandbox output should succeed" in
-        let _ = Fs.set_permissions output Fs.Permissions.executable
-        |> Result.expect ~msg:"mark sandbox output executable should succeed" in
+        let _ = Fs.set_permissions output Fs.Permissions.executable |> Result.expect ~msg:"mark sandbox output executable should succeed" in
         let hash = Crypto.hash_string "save-preserves-executable-permissions-in-cache" in
         let _ = Riot_store.Store.save
           store
@@ -663,14 +657,12 @@ let test_save_preserves_executable_permissions_in_cache = fun _ctx ->
           ~outs:[ output ]
         |> Result.expect ~msg:"save should succeed" in
         let cached = Path.(Riot_store.Store.hash_dir_of store hash / Path.v "std_archive_tar_tests") in
-        let source_mode =
-          Fs.metadata output
-          |> Result.expect ~msg:"read source metadata should succeed"
-          |> Fs.Metadata.mode in
-        let cached_mode =
-          Fs.metadata cached
-          |> Result.expect ~msg:"read cached metadata should succeed"
-          |> Fs.Metadata.mode in
+        let source_mode = Fs.metadata output
+        |> Result.expect ~msg:"read source metadata should succeed"
+        |> Fs.Metadata.mode in
+        let cached_mode = Fs.metadata cached
+        |> Result.expect ~msg:"read cached metadata should succeed"
+        |> Fs.Metadata.mode in
         if source_mode = cached_mode then
           Ok ()
         else
@@ -744,8 +736,12 @@ let test_cache_gc_drops_unreferenced_entries_after_generation_overflow = fun _ct
           ~size:16 in
         let _ = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] } ]
-          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a } ]
+          ~lanes:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] }
+          ]
+          ~new_entries:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a }
+          ]
         |> Result.expect ~msg:"first generation should record" in
         let summary =
           let _ = Riot_store.Cache_gc.record_successful_build
@@ -791,13 +787,21 @@ let test_record_successful_build_tracks_generation_count_in_state = fun _ctx ->
           ~size:16 in
         let first_summary = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] } ]
-          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a } ]
+          ~lanes:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] }
+          ]
+          ~new_entries:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a }
+          ]
         |> Result.expect ~msg:"first generation should record" in
         let second_summary = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] } ]
-          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_b } ]
+          ~lanes:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] }
+          ]
+          ~new_entries:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_b }
+          ]
         |> Result.expect ~msg:"second generation should record" in
         if first_summary.kept_generations = 1 && second_summary.kept_generations = 2 then
           Ok ()
@@ -825,12 +829,18 @@ let test_record_successful_build_dedupes_identical_warm_generation = fun _ctx ->
           ~size:16 in
         let first_summary = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] } ]
-          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a } ]
+          ~lanes:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] }
+          ]
+          ~new_entries:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a }
+          ]
         |> Result.expect ~msg:"first generation should record" in
         let second_summary = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] } ]
+          ~lanes:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] }
+          ]
           ~new_entries:[]
         |> Result.expect ~msg:"identical warm generation should be accepted" in
         let receipt_count = count_generation_receipts ~workspace in
@@ -839,18 +849,19 @@ let test_record_successful_build_dedupes_identical_warm_generation = fun _ctx ->
           first_summary.kept_generations = 1
           && second_summary.kept_generations = 1
           && receipt_count = 1
-          && generation_hashes |> List.length |> Int.equal 1
+          && generation_hashes
+          |> List.length
+          |> Int.equal 1
         then
           Ok ()
         else
-          Error
-            ("expected identical warm generation to keep one receipt, got summaries "
-            ^ Int.to_string first_summary.kept_generations
-            ^ " and "
-            ^ Int.to_string second_summary.kept_generations
-            ^ " with "
-            ^ Int.to_string receipt_count
-            ^ " receipts"))
+          Error ("expected identical warm generation to keep one receipt, got summaries "
+          ^ Int.to_string first_summary.kept_generations
+          ^ " and "
+          ^ Int.to_string second_summary.kept_generations
+          ^ " with "
+          ^ Int.to_string receipt_count
+          ^ " receipts"))
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -877,12 +888,18 @@ let test_record_successful_build_keeps_new_warm_generation_when_closure_changes 
           ~size:16 in
         let _ = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] } ]
-          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a } ]
+          ~lanes:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] }
+          ]
+          ~new_entries:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a }
+          ]
         |> Result.expect ~msg:"first generation should record" in
         let second_summary = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] } ]
+          ~lanes:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] }
+          ]
           ~new_entries:[]
         |> Result.expect ~msg:"distinct warm generation should record" in
         let receipt_count = count_generation_receipts ~workspace in
@@ -897,14 +914,12 @@ let test_record_successful_build_keeps_new_warm_generation_when_closure_changes 
             then
               Ok ()
             else
-              Error
-                ("expected changed warm generation to keep two receipts, got summary "
-                ^ Int.to_string second_summary.kept_generations
-                ^ " with "
-                ^ Int.to_string receipt_count
-                ^ " receipts")
-        | _ ->
-            Error "expected state.json to keep exactly two generation hashes in recency order")
+              Error ("expected changed warm generation to keep two receipts, got summary "
+              ^ Int.to_string second_summary.kept_generations
+              ^ " with "
+              ^ Int.to_string receipt_count
+              ^ " receipts")
+        | _ -> Error "expected state.json to keep exactly two generation hashes in recency order")
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -931,17 +946,25 @@ let test_record_successful_build_reorders_existing_cached_generation_to_front = 
           ~size:16 in
         let _ = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] } ]
-          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a } ]
+          ~lanes:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] }
+          ]
+          ~new_entries:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a }
+          ]
         |> Result.expect ~msg:"generation A should record" in
         let _ = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] } ]
+          ~lanes:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] }
+          ]
           ~new_entries:[]
         |> Result.expect ~msg:"generation B should record without new entries" in
         let third_summary = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] } ]
+          ~lanes:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] }
+          ]
           ~new_entries:[]
         |> Result.expect ~msg:"generation A should move back to the front" in
         let receipt_count = count_generation_receipts ~workspace in
@@ -957,8 +980,7 @@ let test_record_successful_build_reorders_existing_cached_generation_to_front = 
               Ok ()
             else
               Error "expected cached rollback generation to reorder state without writing a third payload"
-        | _ ->
-            Error "expected state.json to keep exactly two generation hashes after rollback reorder")
+        | _ -> Error "expected state.json to keep exactly two generation hashes after rollback reorder")
   with
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
@@ -980,8 +1002,12 @@ let test_cache_gc_shrinks_retained_generations_to_meet_max_size = fun _ctx ->
           ~size:64 in
         let _ = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] } ]
-          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a } ]
+          ~lanes:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_a ] }
+          ]
+          ~new_entries:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_a }
+          ]
         |> Result.expect ~msg:"generation A should record" in
         let entry_b = write_cache_entry
           ~workspace
@@ -991,8 +1017,12 @@ let test_cache_gc_shrinks_retained_generations_to_meet_max_size = fun _ctx ->
           ~size:64 in
         let _ = Riot_store.Cache_gc.record_successful_build
           ~workspace
-          ~lanes:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] } ]
-          ~new_entries:[ Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_b } ]
+          ~lanes:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hashes = [ hash_b ] }
+          ]
+          ~new_entries:[
+            Riot_store.Cache_gc.{ profile = "debug"; target = host_target; hash = hash_b }
+          ]
         |> Result.expect ~msg:"generation B should record" in
         let entry_c = write_cache_entry
           ~workspace

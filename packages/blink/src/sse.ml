@@ -33,9 +33,10 @@ module SSEIterator = struct
     | None -> None
     | Some pos ->
         let before = String.sub str ~offset:0 ~len:pos in
-        let after =
-          String.sub str ~offset:(pos + pattern_len) ~len:(String.length str - pos - pattern_len)
-        in
+        let after = String.sub
+          str
+          ~offset:(pos + pattern_len)
+          ~len:(String.length str - pos - pattern_len) in
         Some (before, after)
 
   (* Parse one complete SSE event from buffer *)
@@ -70,8 +71,7 @@ module SSEIterator = struct
               ()
               (* Comment line, ignore *)
             else
-              ())
-        ;
+              ());
         let data = String.concat "\n" (List.reverse !data_lines) in
         (* Check for [DONE] marker *)
         if data = "[DONE]" then
@@ -108,8 +108,7 @@ module SSEIterator = struct
                   | Connection.Data chunk -> state.buffer <- state.buffer ^ chunk
                   | Connection.Done -> state.done_ <- true
                   | Connection.Status _
-                  | Connection.Headers _ -> ())
-              ;
+                  | Connection.Headers _ -> ());
               if state.done_ && state.buffer = "" then
                 None
               else

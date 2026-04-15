@@ -55,13 +55,16 @@ let selection_of_matches = fun ?(default_selection = Riot_deps.Current) matches 
   let package = ArgParser.get_one matches "package" in
   let workspace = ArgParser.get_flag matches "workspace" in
   match package, workspace with
-  | Some _, true -> Error ConflictingTarget
+  | Some _, true ->
+      Error ConflictingTarget
   | Some package, false ->
       let* package_name = Package_name.from_string package
       |> Result.map_err ~fn:(fun error -> InvalidPackageName error) in
       Ok (Riot_deps.Package package_name)
-  | None, true -> Ok Riot_deps.Workspace
-  | None, false -> Ok default_selection
+  | None, true ->
+      Ok Riot_deps.Workspace
+  | None, false ->
+      Ok default_selection
 
 let scope_of_matches = fun matches ->
   let build = ArgParser.get_flag matches "build" in

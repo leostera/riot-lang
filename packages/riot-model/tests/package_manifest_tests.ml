@@ -37,9 +37,7 @@ let test_manifest_from_toml_keeps_declared_metadata_only = fun _ctx ->
       Result.expect (Fs.create_dir_all tests_dir) ~msg:"Failed to create tests directory";
       Result.expect (Fs.write "let () = ()\n" Path.(src_dir / Path.v "main.ml")) ~msg:"Failed to write runtime source";
       Result.expect (Fs.write "let () = ()\n" Path.(tests_dir / Path.v "demo_tests.ml")) ~msg:"Failed to write test source";
-      let manifest = parse_manifest
-        ~path:tmpdir
-        ~relative_path:(Path.v "packages/demo")
+      let manifest = parse_manifest ~path:tmpdir ~relative_path:(Path.v "packages/demo")
         {|
 [package]
 name = "demo"
@@ -52,7 +50,8 @@ path = "examples/custom.ml"
       in
       if
         Riot_model.Package_name.equal manifest.name (package_name "demo")
-        && manifest.declared_binaries = [ Riot_model.Package.{ name = "custom"; path = Path.v "examples/custom.ml" } ]
+        && manifest.declared_binaries
+        = [ Riot_model.Package.{ name = "custom"; path = Path.v "examples/custom.ml" } ]
       then
         Ok ()
       else
@@ -72,12 +71,12 @@ let test_manifest_realize_runtime_discovers_runtime_inputs_only = fun _ctx ->
       Result.expect (Fs.create_dir_all bench_dir) ~msg:"Failed to create bench directory";
       Result.expect (Fs.write "let () = ()\n" Path.(src_dir / Path.v "main.ml")) ~msg:"Failed to write runtime source";
       Result.expect (Fs.write "let () = ()\n" Path.(tests_dir / Path.v "demo_tests.ml")) ~msg:"Failed to write test source";
-      Result.expect (Fs.write "fixture\n" Path.(tests_dir / Path.v "fixtures" / Path.v "sample.txt")) ~msg:"Failed to write fixture source";
+      Result.expect
+        (Fs.write "fixture\n" Path.(tests_dir / Path.v "fixtures" / Path.v "sample.txt"))
+        ~msg:"Failed to write fixture source";
       Result.expect (Fs.write "let () = ()\n" Path.(examples_dir / Path.v "example.ml")) ~msg:"Failed to write example source";
       Result.expect (Fs.write "let () = ()\n" Path.(bench_dir / Path.v "demo_bench.ml")) ~msg:"Failed to write bench source";
-      let manifest = parse_manifest
-        ~path:tmpdir
-        ~relative_path:(Path.v "packages/demo")
+      let manifest = parse_manifest ~path:tmpdir ~relative_path:(Path.v "packages/demo")
         {|
 [package]
 name = "demo"
@@ -107,14 +106,16 @@ let test_manifest_realize_runtime_keeps_nested_runtime_modules = fun _ctx ->
       Result.expect (Fs.write "type t\n" Path.(net_dir / Path.v "udp_socket.mli")) ~msg:"Failed to write udp_socket interface";
       Result.expect (Fs.write "type t = unit\n" Path.(net_dir / Path.v "udp_socket.ml")) ~msg:"Failed to write udp_socket implementation";
       Result.expect
-        (Fs.write "type handler = socket:Udp_socket.t -> bytes -> unit\n" Path.(net_dir / Path.v "udp_server.mli"))
+        (Fs.write
+          "type handler = socket:Udp_socket.t -> bytes -> unit\n"
+          Path.(net_dir / Path.v "udp_server.mli"))
         ~msg:"Failed to write udp_server interface";
       Result.expect
-        (Fs.write "type handler = socket:Udp_socket.t -> bytes -> unit\n" Path.(net_dir / Path.v "udp_server.ml"))
+        (Fs.write
+          "type handler = socket:Udp_socket.t -> bytes -> unit\n"
+          Path.(net_dir / Path.v "udp_server.ml"))
         ~msg:"Failed to write udp_server implementation";
-      let manifest = parse_manifest
-        ~path:tmpdir
-        ~relative_path:(Path.v "packages/demo")
+      let manifest = parse_manifest ~path:tmpdir ~relative_path:(Path.v "packages/demo")
         {|
 [package]
 name = "demo"
@@ -124,16 +125,14 @@ version = "0.1.0"
 path = "src/demo.ml"
 |}
       in
-      let expected =
-        [
-          Path.v "src/demo.ml";
-          Path.v "src/net/udp_server.ml";
-          Path.v "src/net/udp_server.mli";
-          Path.v "src/net/udp_socket.ml";
-          Path.v "src/net/udp_socket.mli";
-        ]
-        |> List.sort ~compare:Path.compare
-      in
+      let expected = [
+        Path.v "src/demo.ml";
+        Path.v "src/net/udp_server.ml";
+        Path.v "src/net/udp_server.mli";
+        Path.v "src/net/udp_socket.ml";
+        Path.v "src/net/udp_socket.mli";
+      ]
+      |> List.sort ~compare:Path.compare in
       let rec run iteration =
         if iteration = 0 then
           Ok ()
@@ -163,53 +162,49 @@ let test_manifest_realize_runtime_stays_complete_across_repeated_parallel_scans 
       Result.expect (Fs.create_dir_all unicode_dir) ~msg:"Failed to create nested unicode source directory";
       Result.expect (Fs.create_dir_all worker_pool_dir) ~msg:"Failed to create nested worker_pool source directory";
       Result.expect (Fs.create_dir_all native_dir) ~msg:"Failed to create native source directory";
-      let runtime_files =
-        [
-          (Path.v "src/main.ml", "let () = ()\n");
-          (Path.v "src/app.ml", "let version = 1\n");
-          (Path.v "src/net/udp_socket.mli", "type t\n");
-          (Path.v "src/net/udp_socket.ml", "type t = unit\n");
-          (Path.v "src/net/udp_server.mli", "type handler = socket:Udp_socket.t -> bytes -> unit\n");
-          (Path.v "src/net/udp_server.ml", "type handler = socket:Udp_socket.t -> bytes -> unit\n");
-          (Path.v "src/unicode/utf8.mli", "val decode : string -> string\n");
-          (Path.v "src/unicode/utf8.ml", "let decode value = value\n");
-          (Path.v "src/unicode/utf16.mli", "val encode : string -> string\n");
-          (Path.v "src/unicode/utf16.ml", "let encode value = value\n");
-          (Path.v "src/unicode/segmentation.mli", "val words : string -> string list\n");
-          (Path.v "src/unicode/segmentation.ml", "let words value = [value]\n");
-          (Path.v "src/worker_pool/coordinator.mli", "type t\n");
-          (Path.v "src/worker_pool/coordinator.ml", "type t = unit\n");
-          (Path.v "src/worker_pool/dynamic.mli", "val create : unit -> Coordinator.t\n");
-          (Path.v "src/worker_pool/dynamic.ml", "let create () = Coordinator\n");
-          (Path.v "native/runtime.c", "int runtime(void) { return 1; }\n");
-          (Path.v "native/runtime_stubs.c", "int runtime_stubs(void) { return 1; }\n");
-          (Path.v "native/runtime.h", "#pragma once\n");
-        ]
+      let runtime_files = [
+        (Path.v "src/main.ml", "let () = ()\n");
+        (Path.v "src/app.ml", "let version = 1\n");
+        (Path.v "src/net/udp_socket.mli", "type t\n");
+        (Path.v "src/net/udp_socket.ml", "type t = unit\n");
+        (Path.v "src/net/udp_server.mli", "type handler = socket:Udp_socket.t -> bytes -> unit\n");
+        (Path.v "src/net/udp_server.ml", "type handler = socket:Udp_socket.t -> bytes -> unit\n");
+        (Path.v "src/unicode/utf8.mli", "val decode : string -> string\n");
+        (Path.v "src/unicode/utf8.ml", "let decode value = value\n");
+        (Path.v "src/unicode/utf16.mli", "val encode : string -> string\n");
+        (Path.v "src/unicode/utf16.ml", "let encode value = value\n");
+        (Path.v "src/unicode/segmentation.mli", "val words : string -> string list\n");
+        (Path.v "src/unicode/segmentation.ml", "let words value = [value]\n");
+        (Path.v "src/worker_pool/coordinator.mli", "type t\n");
+        (Path.v "src/worker_pool/coordinator.ml", "type t = unit\n");
+        (Path.v "src/worker_pool/dynamic.mli", "val create : unit -> Coordinator.t\n");
+        (Path.v "src/worker_pool/dynamic.ml", "let create () = Coordinator\n");
+        (Path.v "native/runtime.c", "int runtime(void) { return 1; }\n");
+        (Path.v "native/runtime_stubs.c", "int runtime_stubs(void) { return 1; }\n");
+        (Path.v "native/runtime.h", "#pragma once\n");
+      ]
       in
-      List.for_each runtime_files ~fn:(fun (rel_path, contents) ->
-        Result.expect (Fs.write contents Path.(tmpdir / rel_path))
-          ~msg:("Failed to write runtime file " ^ Path.to_string rel_path));
-      let manifest = parse_manifest
-        ~path:tmpdir
-        ~relative_path:(Path.v "packages/demo")
+      List.for_each
+        runtime_files
+        ~fn:(fun (rel_path, contents) ->
+          Result.expect
+            (Fs.write contents Path.(tmpdir / rel_path))
+            ~msg:("Failed to write runtime file " ^ Path.to_string rel_path));
+      let manifest = parse_manifest ~path:tmpdir ~relative_path:(Path.v "packages/demo")
         {|
 [package]
 name = "demo"
 version = "0.1.0"
 |}
       in
-      let expected_src =
-        runtime_files
-        |> List.map ~fn:(fun (path, _) -> path)
-        |> List.filter ~fn:(fun path -> String.starts_with ~prefix:"src/" (Path.to_string path))
-        |> sort_paths
-      in
-      let expected_native =
-        runtime_files
-        |> List.map ~fn:(fun (path, _) -> path)
-        |> List.filter ~fn:(fun path -> String.starts_with ~prefix:"native/" (Path.to_string path))
-        |> sort_paths
-      in
+      let expected_src = runtime_files
+      |> List.map ~fn:(fun (path, _) -> path)
+      |> List.filter ~fn:(fun path -> String.starts_with ~prefix:"src/" (Path.to_string path))
+      |> sort_paths in
+      let expected_native = runtime_files
+      |> List.map ~fn:(fun (path, _) -> path)
+      |> List.filter ~fn:(fun path -> String.starts_with ~prefix:"native/" (Path.to_string path))
+      |> sort_paths in
       let rec run iteration =
         if iteration = 0 then
           Ok ()
@@ -244,9 +239,7 @@ let test_manifest_realize_build_skips_source_loading = fun _ctx ->
       Result.expect (Fs.write "let () = ()\n" Path.(src_dir / Path.v "main.ml")) ~msg:"Failed to write runtime source";
       Result.expect (Fs.write "let () = ()\n" Path.(tests_dir / Path.v "demo_tests.ml")) ~msg:"Failed to write test source";
       Result.expect (Fs.write "let () = ()\n" Path.(examples_dir / Path.v "example.ml")) ~msg:"Failed to write example source";
-      let manifest = parse_manifest
-        ~path:tmpdir
-        ~relative_path:(Path.v "packages/demo")
+      let manifest = parse_manifest ~path:tmpdir ~relative_path:(Path.v "packages/demo")
         {|
 [package]
 name = "demo"
@@ -285,9 +278,7 @@ let test_manifest_realize_test_discovers_test_binaries_without_fixtures = fun _c
       Result.expect (Fs.write "let () = ()\n" Path.(tests_dir / Path.v "demo_tests.ml")) ~msg:"Failed to write test source";
       Result.expect (Fs.write "let fixture = 1\n" Path.(fixtures_dir / Path.v "ignored.ml")) ~msg:"Failed to write fixture source";
       Result.expect (Fs.write "let () = ()\n" Path.(examples_dir / Path.v "example.ml")) ~msg:"Failed to write example source";
-      let manifest = parse_manifest
-        ~path:tmpdir
-        ~relative_path:(Path.v "packages/demo")
+      let manifest = parse_manifest ~path:tmpdir ~relative_path:(Path.v "packages/demo")
         {|
 [package]
 name = "demo"
@@ -318,9 +309,7 @@ let test_manifest_to_package_preserves_declared_binaries_without_loading_sources
       Result.expect (Fs.create_dir_all tests_dir) ~msg:"Failed to create tests directory";
       Result.expect (Fs.write "let () = ()\n" Path.(src_dir / Path.v "main.ml")) ~msg:"Failed to write runtime source";
       Result.expect (Fs.write "let () = ()\n" Path.(tests_dir / Path.v "demo_tests.ml")) ~msg:"Failed to write test source";
-      let manifest = parse_manifest
-        ~path:tmpdir
-        ~relative_path:(Path.v "packages/demo")
+      let manifest = parse_manifest ~path:tmpdir ~relative_path:(Path.v "packages/demo")
         {|
 [package]
 name = "demo"
@@ -349,27 +338,13 @@ path = "tests/demo_tests.ml"
         Error "expected manifest conversion to preserve declared binaries without scanning sources")
 
 let tests = [
-  Test.case
-    "package manifest: from_toml keeps declared metadata only"
-    test_manifest_from_toml_keeps_declared_metadata_only;
-  Test.case
-    "package manifest: runtime realization discovers runtime inputs only"
-    test_manifest_realize_runtime_discovers_runtime_inputs_only;
-  Test.case
-    "package manifest: runtime realization keeps nested runtime modules"
-    test_manifest_realize_runtime_keeps_nested_runtime_modules;
-  Test.case
-    "package manifest: runtime realization stays complete across repeated parallel scans"
-    test_manifest_realize_runtime_stays_complete_across_repeated_parallel_scans;
-  Test.case
-    "package manifest: build realization skips source loading"
-    test_manifest_realize_build_skips_source_loading;
-  Test.case
-    "package manifest: test realization ignores fixture support entries"
-    test_manifest_realize_test_discovers_test_binaries_without_fixtures;
-  Test.case
-    "package manifest: to package preserves declared binaries without loading sources"
-    test_manifest_to_package_preserves_declared_binaries_without_loading_sources;
+  Test.case "package manifest: from_toml keeps declared metadata only" test_manifest_from_toml_keeps_declared_metadata_only;
+  Test.case "package manifest: runtime realization discovers runtime inputs only" test_manifest_realize_runtime_discovers_runtime_inputs_only;
+  Test.case "package manifest: runtime realization keeps nested runtime modules" test_manifest_realize_runtime_keeps_nested_runtime_modules;
+  Test.case "package manifest: runtime realization stays complete across repeated parallel scans" test_manifest_realize_runtime_stays_complete_across_repeated_parallel_scans;
+  Test.case "package manifest: build realization skips source loading" test_manifest_realize_build_skips_source_loading;
+  Test.case "package manifest: test realization ignores fixture support entries" test_manifest_realize_test_discovers_test_binaries_without_fixtures;
+  Test.case "package manifest: to package preserves declared binaries without loading sources" test_manifest_to_package_preserves_declared_binaries_without_loading_sources;
 ]
 
 let name = "Riot Model Package Manifest Tests"

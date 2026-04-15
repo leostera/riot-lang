@@ -197,22 +197,20 @@ let normalize_lane = fun (lane: generation_lane) ->
   { lane with hashes = sort_uniq_strings lane.hashes }
 
 let normalize_lanes: generation_lane list -> generation_lane list = fun lanes ->
-  lanes
-  |> List.map ~fn:normalize_lane
-  |> List.sort
+  lanes |> List.map ~fn:normalize_lane |> List.sort
     ~compare:(fun (left: generation_lane) (right: generation_lane) ->
       match String.compare left.profile right.profile with
-      | 0 ->
-          String.compare
-            (Riot_model.Target.to_string left.target)
-            (Riot_model.Target.to_string right.target)
+      | 0 -> String.compare
+        (Riot_model.Target.to_string left.target)
+        (Riot_model.Target.to_string right.target)
       | order -> order)
 
-let lane_to_json = fun (lane: generation_lane) -> Data.Json.Object [
-  ("profile", Data.Json.String lane.profile);
-  ("target", Data.Json.String (Riot_model.Target.to_string lane.target));
-  ("hashes", Data.Json.Array (List.map lane.hashes ~fn:Data.Json.string));
-]
+let lane_to_json = fun (lane: generation_lane) ->
+  Data.Json.Object [
+    ("profile", Data.Json.String lane.profile);
+    ("target", Data.Json.String (Riot_model.Target.to_string lane.target));
+    ("hashes", Data.Json.Array (List.map lane.hashes ~fn:Data.Json.string));
+  ]
 
 let generation_hash_of_lanes = fun lanes ->
   Data.Json.Array (List.map lanes ~fn:lane_to_json)
@@ -228,20 +226,20 @@ let receipt_to_json = fun receipt ->
   ]
 
 let cache_state_to_json = fun (state: cache_state) ->
-  Data.Json.Object
-    ([
-       ("schema_version", Data.Json.Int 2);
-       ("tracked_size_bytes", Data.Json.String (Int64.to_string state.tracked_size_bytes));
-     ]
-    @
-    match state.generation_hashes with
-    | Some generation_hashes ->
-        [ ("generation_hashes", Data.Json.Array (List.map generation_hashes ~fn:Data.Json.string)) ]
-    | None -> []
-    @
-    match state.receipt_count with
-    | Some receipt_count -> [ ("receipt_count", Data.Json.Int receipt_count) ]
-    | None -> [])
+  Data.Json.Object (
+    [
+      ("schema_version", Data.Json.Int 2);
+      ("tracked_size_bytes", Data.Json.String (Int64.to_string state.tracked_size_bytes));
+    ]
+    @ match state.generation_hashes with
+    | Some generation_hashes -> [
+      ("generation_hashes", Data.Json.Array (List.map generation_hashes ~fn:Data.Json.string))
+    ]
+    | None ->
+        [] @ match state.receipt_count with
+        | Some receipt_count -> [ ("receipt_count", Data.Json.Int receipt_count) ]
+        | None -> []
+  )
 
 let generation_lane_of_json = fun json ->
   let* profile =
@@ -374,9 +372,7 @@ let is_hash_dir_name = fun name ->
   len = 64 && loop 0
 
 let receipt_paths_desc = fun ~(workspace:Workspace.t) ->
-  list_children (generations_root ~workspace)
-  |> List.filter ~fn:is_json_file
-  |> List.sort
+  list_children (generations_root ~workspace) |> List.filter ~fn:is_json_file |> List.sort
     ~compare:(fun left right ->
       String.compare (Path.basename right) (Path.basename left))
 
@@ -452,24 +448,22 @@ let load_receipts = fun ~(workspace:Workspace.t) ->
   loop [] paths
 
 let write_canonical_receipts = fun ~(workspace:Workspace.t) receipts ->
-  List.fold_left receipts
-    ~acc:(Ok ())
+  List.fold_left receipts ~acc:(Ok ())
     ~fn:(fun acc_result (receipt_file: receipt_file) ->
       let* () = acc_result in
       write_receipt ~workspace receipt_file.receipt)
 
 let generation_hashes_of_receipts = fun receipts ->
   let seen = HashSet.create () in
-  List.fold_left receipts
-    ~acc:[]
+  List.fold_left receipts ~acc:[]
     ~fn:(fun acc (receipt_file: receipt_file) ->
       if HashSet.contains seen ~value:receipt_file.receipt.hash then
         acc
-      else (
-        let _ = HashSet.insert seen ~value:receipt_file.receipt.hash in
-        receipt_file.receipt.hash :: acc
-      ))
-  |> List.reverse
+      else
+        (
+          let _ = HashSet.insert seen ~value:receipt_file.receipt.hash in
+          receipt_file.receipt.hash :: acc
+        )) |> List.reverse
 
 let rebuild_generation_hashes = fun ~(workspace:Workspace.t) ->
   let* receipts = load_receipts ~workspace in
@@ -486,7 +480,9 @@ let path_size_bytes = fun root ->
         match Fs.Walker.FileItem.kind item with
         | Fs.Walker.File ->
             let path = Fs.Walker.FileItem.path item in
-            let len = Fs.metadata path |> Result.map ~fn:Fs.Metadata.len |> Result.unwrap_or ~default:0 in
+            let len = Fs.metadata path
+            |> Result.map ~fn:Fs.Metadata.len
+            |> Result.unwrap_or ~default:0 in
             total := Int64.add !total (Int64.from_int len);
             Fs.Walker.Continue
         | Fs.Walker.Directory
@@ -510,8 +506,7 @@ let collect_cache_entries = fun ~(workspace:Workspace.t) ->
         let hash_dirs = list_subdirectories cache_dir
         |> List.filter ~fn:(fun dir -> is_hash_dir_name (Path.basename dir)) in
         let* acc =
-          List.fold_left hash_dirs
-            ~acc:(Ok acc)
+          List.fold_left hash_dirs ~acc:(Ok acc)
             ~fn:(fun acc_result dir ->
               let* acc = acc_result in
               let* size_bytes = path_size_bytes dir in
@@ -522,8 +517,7 @@ let collect_cache_entries = fun ~(workspace:Workspace.t) ->
   collect_profiles [] profile_dirs
 
 let total_size = fun entries ->
-  List.fold_left entries
-    ~acc:0L
+  List.fold_left entries ~acc:0L
     ~fn:(fun acc (entry: cache_entry) ->
       Int64.add acc entry.size_bytes)
 
@@ -535,24 +529,30 @@ let load_or_rebuild_tracked_size = fun ~(workspace:Workspace.t) ->
         | Some generation_hashes -> Ok generation_hashes
         | None ->
             let* generation_hashes = rebuild_generation_hashes ~workspace in
-            let* () = write_state ~workspace {
-              tracked_size_bytes = state.tracked_size_bytes;
-              generation_hashes = Some generation_hashes;
-              receipt_count = Some (List.length generation_hashes);
-            } in
+            let* () = write_state
+              ~workspace
+              {
+                tracked_size_bytes = state.tracked_size_bytes;
+                generation_hashes = Some generation_hashes;
+                receipt_count = Some (List.length generation_hashes)
+              } in
             Ok generation_hashes
       in
-      Ok ({ tracked_size_bytes = state.tracked_size_bytes; generation_hashes; rebuilt = false }: tracked_size_snapshot)
+      Ok (
+        { tracked_size_bytes = state.tracked_size_bytes; generation_hashes; rebuilt = false }: tracked_size_snapshot
+      )
   | Ok None
   | Error _ ->
       let* entries = collect_cache_entries ~workspace in
       let tracked_size_bytes = total_size entries in
       let* generation_hashes = rebuild_generation_hashes ~workspace in
-      let* () = write_state ~workspace {
-        tracked_size_bytes;
-        generation_hashes = Some generation_hashes;
-        receipt_count = Some (List.length generation_hashes);
-      } in
+      let* () = write_state
+        ~workspace
+        {
+          tracked_size_bytes;
+          generation_hashes = Some generation_hashes;
+          receipt_count = Some (List.length generation_hashes)
+        } in
       Ok ({ tracked_size_bytes; generation_hashes; rebuilt = true }: tracked_size_snapshot)
 
 let take = fun n list ->
@@ -591,9 +591,7 @@ let evaluate_retention = fun ~policy receipts entries ->
   let rec loop kept =
     let live = live_hashes kept in
     let retained_entries =
-      List.filter entries
-        ~fn:(fun (entry: cache_entry) ->
-          HashSet.contains live ~value:entry.hash)
+      List.filter entries ~fn:(fun (entry: cache_entry) -> HashSet.contains live ~value:entry.hash)
     in
     let retained_size = total_size retained_entries in
     if Int64.compare retained_size policy.max_size_bytes <= 0 || kept = [] then
@@ -609,11 +607,13 @@ let delete_path = fun path ~kind ->
   else if String.equal kind "directory" then
     Fs.remove_dir_all path
     |> Result.map_err
-      ~fn:(fun err -> "failed to remove " ^ kind ^ " " ^ Path.to_string path ^ ": " ^ IO.error_message err)
+      ~fn:(fun err ->
+        "failed to remove " ^ kind ^ " " ^ Path.to_string path ^ ": " ^ IO.error_message err)
   else
     Fs.remove_file path
     |> Result.map_err
-      ~fn:(fun err -> "failed to remove " ^ kind ^ " " ^ Path.to_string path ^ ": " ^ IO.error_message err)
+      ~fn:(fun err ->
+        "failed to remove " ^ kind ^ " " ^ Path.to_string path ^ ": " ^ IO.error_message err)
 
 let load_receipts_for_hashes = fun ~(workspace:Workspace.t) hashes ->
   let rec loop acc = function
@@ -632,39 +632,43 @@ let run_gc = fun ~(workspace:Workspace.t) ~policy ~generation_hashes ->
   let* entries = collect_cache_entries ~workspace in
   let size_before_bytes = total_size entries in
   let kept_receipts, live, size_after_bytes = evaluate_retention ~policy receipts entries in
-  let kept_hashes = List.map kept_receipts ~fn:(fun (receipt: receipt_file) -> receipt.receipt.hash) in
+  let kept_hashes =
+    List.map kept_receipts ~fn:(fun (receipt: receipt_file) -> receipt.receipt.hash)
+  in
   let kept_paths = HashSet.create () in
   List.for_each kept_hashes
     ~fn:(fun hash ->
       let _ = HashSet.insert kept_paths ~value:(Path.to_string (receipt_path ~workspace hash)) in
       ());
   let deleted_entries =
-    List.filter entries ~fn:(fun (entry: cache_entry) -> not (HashSet.contains live ~value:entry.hash))
+    List.filter
+      entries
+      ~fn:(fun (entry: cache_entry) -> not (HashSet.contains live ~value:entry.hash))
   in
   let deleted_receipts =
-    List.filter (receipt_paths_desc ~workspace)
-      ~fn:(fun path ->
-        not (HashSet.contains kept_paths ~value:(Path.to_string path)))
+    List.filter
+      (receipt_paths_desc ~workspace)
+      ~fn:(fun path -> not (HashSet.contains kept_paths ~value:(Path.to_string path)))
   in
   let* () =
-    List.fold_left deleted_entries
-      ~acc:(Ok ())
+    List.fold_left deleted_entries ~acc:(Ok ())
       ~fn:(fun acc (entry: cache_entry) ->
         let* () = acc in
         delete_path entry.dir ~kind:"directory")
   in
   let* () =
-    List.fold_left deleted_receipts
-      ~acc:(Ok ())
+    List.fold_left deleted_receipts ~acc:(Ok ())
       ~fn:(fun acc receipt_path ->
         let* () = acc in
         delete_path receipt_path ~kind:"file")
   in
-  let* () = write_state ~workspace {
-    tracked_size_bytes = size_after_bytes;
-    generation_hashes = Some kept_hashes;
-    receipt_count = Some (List.length kept_hashes);
-  } in
+  let* () = write_state
+    ~workspace
+    {
+      tracked_size_bytes = size_after_bytes;
+      generation_hashes = Some kept_hashes;
+      receipt_count = Some (List.length kept_hashes)
+    } in
   Ok {
     ran_gc = true;
     kept_generations = List.length kept_hashes;
@@ -758,8 +762,7 @@ let new_entry_dir = fun ~(workspace:Workspace.t) (entry: new_cache_entry) ->
 
 let added_size_for_new_entries = fun ~(workspace:Workspace.t) new_entries ->
   let seen = HashSet.create () in
-  List.fold_left new_entries
-    ~acc:(Ok 0L)
+  List.fold_left new_entries ~acc:(Ok 0L)
     ~fn:(fun acc_result (entry: new_cache_entry) ->
       let* acc = acc_result in
       let dir = new_entry_dir ~workspace entry in
@@ -800,11 +803,13 @@ let record_successful_build_with_events = fun ~(workspace:Workspace.t) ~on_event
         if Int64.equal tracked_size_bytes tracked_size.tracked_size_bytes then
           Ok ()
         else
-          write_state ~workspace {
-            tracked_size_bytes;
-            generation_hashes = Some current_hashes;
-            receipt_count = Some (List.length current_hashes);
-          }
+          write_state
+            ~workspace
+            {
+              tracked_size_bytes;
+              generation_hashes = Some current_hashes;
+              receipt_count = Some (List.length current_hashes)
+            }
       in
       Ok {
         ran_gc = false;
@@ -815,16 +820,16 @@ let record_successful_build_with_events = fun ~(workspace:Workspace.t) ~on_event
         size_after_bytes = tracked_size_bytes;
       }
   | _ ->
-      let next_hashes =
-        generation_hash
-        :: List.filter current_hashes ~fn:(fun hash -> not (String.equal hash generation_hash))
-      in
+      let next_hashes = generation_hash
+      :: List.filter current_hashes ~fn:(fun hash -> not (String.equal hash generation_hash)) in
       let* () =
-        match write_state ~workspace {
-          tracked_size_bytes;
-          generation_hashes = Some next_hashes;
-          receipt_count = Some (List.length next_hashes);
-        } with
+        match write_state
+          ~workspace
+          {
+            tracked_size_bytes;
+            generation_hashes = Some next_hashes;
+            receipt_count = Some (List.length next_hashes)
+          } with
         | Ok () -> Ok ()
         | Error error -> report_error error
       in

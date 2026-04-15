@@ -94,8 +94,7 @@ let tags_of_count = fun count ->
   done;
   tags
 
-let scores_of_count = fun count ->
-  Array.init ~count ~fn:(fun index -> (index * 97) mod 1_000_000)
+let scores_of_count = fun count -> Array.init ~count ~fn:(fun index -> (index * 97) mod 1_000_000)
 
 let status_decode = De.variant
   [
@@ -266,9 +265,10 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.for_each bufs ~fn:(fun { buffer = chunk; offset; length } ->
-        IO.Buffer.add_subbytes buffer chunk offset length;
-        written := !written + length);
+      IO.Iovec.for_each bufs
+        ~fn:(fun { buffer=chunk; offset; length } ->
+          IO.Buffer.add_subbytes buffer chunk offset length;
+          written := !written + length);
       Ok !written
 
     let flush = fun _buffer -> Ok ()

@@ -1,10 +1,12 @@
 open Std
 
-type error = [ `Msg of string | `Io_error of IO.error ]
-
+type error =
+[
+  `Msg of string
+  | `Io_error of IO.error
+]
 module Error: sig
   type t = error
-
   val to_string: t -> string
 end
 
@@ -18,7 +20,6 @@ type physical_type =
   | Byte_array
   | Fixed_len_byte_array
   | Unknown_physical_type of int
-
 type converted_type =
   | Utf8
   | Map
@@ -43,13 +44,11 @@ type converted_type =
   | Bson
   | Interval
   | Unknown_converted_type of int
-
 type field_repetition_type =
   | Required
   | Optional
   | Repeated
   | Unknown_repetition_type of int
-
 type encoding =
   | Plain
   | Plain_dictionary
@@ -61,7 +60,6 @@ type encoding =
   | Rle_dictionary
   | Byte_stream_split
   | Unknown_encoding of int
-
 type compression_codec =
   | Uncompressed
   | Snappy
@@ -72,22 +70,18 @@ type compression_codec =
   | Zstd
   | Lz4_raw
   | Unknown_compression_codec of int
-
 type page_type =
   | Data_page
   | Index_page
   | Dictionary_page
   | Data_page_v2
   | Unknown_page_type of int
-
 type column_order =
   | Type_defined_order
-
 type key_value = {
   key: string;
   value: string option;
 }
-
 type schema_element = {
   type_: physical_type option;
   type_length: int option;
@@ -99,19 +93,16 @@ type schema_element = {
   precision: int option;
   field_id: int option;
 }
-
 type sorting_column = {
   column_idx: int;
   descending: bool;
   nulls_first: bool;
 }
-
 type page_encoding_stats = {
   page_type: page_type;
   encoding: encoding;
   count: int;
 }
-
 type column_metadata = {
   type_: physical_type;
   encodings: encoding list;
@@ -128,7 +119,6 @@ type column_metadata = {
   bloom_filter_offset: int64 option;
   bloom_filter_length: int option;
 }
-
 type column_chunk = {
   file_path: string option;
   file_offset: int64;
@@ -139,7 +129,6 @@ type column_chunk = {
   column_index_length: int option;
   encrypted_column_metadata: string option;
 }
-
 type row_group = {
   columns: column_chunk list;
   total_byte_size: int64;
@@ -149,7 +138,6 @@ type row_group = {
   total_compressed_size: int64 option;
   ordinal: int option;
 }
-
 type file_metadata = {
   version: int;
   schema: schema_element list;
@@ -159,17 +147,14 @@ type file_metadata = {
   created_by: string option;
   column_orders: column_order list option;
 }
-
 type footer = {
   metadata_length: int;
   encrypted_footer: bool;
 }
-
 type t = {
   body: string;
   metadata: file_metadata;
 }
-
 val decode_footer_tail: string -> (footer, error) result
 
 val decode_metadata: string -> (file_metadata, error) result

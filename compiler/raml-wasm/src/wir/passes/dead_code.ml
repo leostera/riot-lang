@@ -27,18 +27,12 @@ let create_env = fun (program: Types.Compilation_unit.t) ->
   let init_global_keys = HashSet.create () in
   List.iter
     (fun (function_: Types.Function.t) ->
-      let _ = HashMap.insert
-        functions_by_key
-        ~key:(entity_key function_.entity_id)
-        ~value:function_ in
+      let _ = HashMap.insert functions_by_key ~key:(entity_key function_.entity_id) ~value:function_ in
       ())
     program.functions;
   List.iter
     (fun (global: Types.Global.t) ->
-      let _ = HashMap.insert
-        globals_by_key
-        ~key:(entity_key global.entity_id)
-        ~value:global in
+      let _ = HashMap.insert globals_by_key ~key:(entity_key global.entity_id) ~value:global in
       ())
     program.globals;
   List.iter

@@ -1,5 +1,4 @@
 open Std
-
 module Test = Std.Test
 
 let test_namespace_rejects_invalid_parts = fun _ctx ->
@@ -27,17 +26,15 @@ let test_namespace_rejects_dotdot_part = fun _ctx ->
   | Ok _ -> Error "expected dotdot namespace part to be rejected"
 
 let test_namespace_roundtrips_parts = fun _ctx ->
-  let ns = Contentstore.Namespace.from_parts [ "typ"; "modules" ]
-  |> Result.expect ~msg:"namespace should be valid" in
+  let ns = Contentstore.Namespace.from_parts [ "typ"; "modules" ] |> Result.expect ~msg:"namespace should be valid" in
   match Contentstore.Namespace.parts ns with
-  | [ "typ"; "modules" ] -> Ok ()
+  | ["typ";"modules"] -> Ok ()
   | _ -> Error "expected namespace to preserve its validated parts"
 
 let test_namespace_accepts_unicode_parts = fun _ctx ->
-  let ns = Contentstore.Namespace.from_parts [ "módulos"; "東京" ]
-  |> Result.expect ~msg:"unicode namespace should be valid" in
+  let ns = Contentstore.Namespace.from_parts [ "módulos"; "東京" ] |> Result.expect ~msg:"unicode namespace should be valid" in
   match Contentstore.Namespace.parts ns with
-  | [ "módulos"; "東京" ] -> Ok ()
+  | ["módulos";"東京"] -> Ok ()
   | _ -> Error "expected namespace to preserve unicode parts"
 
 let tests = [

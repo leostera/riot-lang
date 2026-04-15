@@ -17,7 +17,6 @@ type package_planning_status =
   | `FailedDependencies
   | `Failed
 ]
-
 type package_planning_breakdown = {
   dependency_count: int;
   dependency_check_duration: Time.Duration.t;
@@ -29,7 +28,6 @@ type package_planning_breakdown = {
   plan_bundle_cache_hit: bool;
   module_plan_duration: Time.Duration.t;
 }
-
 type workspace_graph_breakdown = {
   build_node_realization_count: int;
   build_node_realization_duration: Time.Duration.t;

@@ -35,7 +35,9 @@ let test_softline_disappears_in_flat_mode = fun _ctx ->
 let test_join_interleaves_separator = fun _ctx ->
   Test.assert_equal
     ~expected:"alpha, beta, gamma"
-    ~actual:(format ~width:32 [ join (concat [ str ","; brk ]) [ str "alpha"; str "beta"; str "gamma" ] ]);
+    ~actual:(format
+      ~width:32
+      [ join (concat [ str ","; brk ]) [ str "alpha"; str "beta"; str "gamma" ] ]);
   Ok ()
 
 let test_multiline_text_honors_indent_after_break = fun _ctx ->

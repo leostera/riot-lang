@@ -39,8 +39,7 @@ module Import_set = struct
 
   let empty = Storage.empty
 
-  let add = fun import set ->
-    Storage.insert set ~key:import ~value:()
+  let add = fun import set -> Storage.insert set ~key:import ~value:()
 
   let mem = Storage.has_key
 end

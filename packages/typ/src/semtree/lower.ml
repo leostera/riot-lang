@@ -168,11 +168,10 @@ let lower_type_declaration = fun state (declaration: Cst.TypeDeclaration.t) ->
           id = fresh_binding_id state ~name;
           span = span_of_syntax_node syntax_node;
           name;
-          params =
-            Cst.TypeDeclaration.type_params declaration |> List.filter_map ~fn:(
-              fun type_parameter ->
-                Option.map (Cst.TypeParameter.type_variable type_parameter) ~fn:Cst.TypeVariable.text
-            );
+          params = Cst.TypeDeclaration.type_params declaration
+          |> List.filter_map
+            ~fn:(fun type_parameter ->
+              Option.map (Cst.TypeParameter.type_variable type_parameter) ~fn:Cst.TypeVariable.text);
           manifest =
             (
               match Cst.TypeDeclaration.manifest_alias declaration with
@@ -195,8 +194,8 @@ let lower_type_declaration = fun state (declaration: Cst.TypeDeclaration.t) ->
 let lower_let_binding = fun state (binding: Cst.LetBinding.t) ->
   let bindings = binding :: Cst.LetBinding.and_bindings binding in
   let recursive = Cst.LetBinding.is_recursive binding in
-  bindings |> List.for_each ~fn:(
-    fun binding ->
+  bindings |> List.for_each
+    ~fn:(fun binding ->
       match Cst.LetBinding.binding_name_token binding with
       | Some name_token ->
           let name = Cst.Token.text name_token in
@@ -212,12 +211,7 @@ let lower_let_binding = fun state (binding: Cst.LetBinding.t) ->
                 annotation = annotation_of_expression state (Cst.LetBinding.value binding);
               }
             )
-      | None ->
-          push_unsupported
-            state
-            (Cst.LetBinding.syntax_node binding)
-            "let_pattern"
-  )
+      | None -> push_unsupported state (Cst.LetBinding.syntax_node binding) "let_pattern")
 
 let lower_module_structure = fun state (declaration: Cst.ModuleStructure.t) ->
   let rec loop declaration =

@@ -4,8 +4,7 @@ open Riot_model
 module Test = Std.Test
 
 let package_name = fun name ->
-  Package_name.from_string name
-  |> Result.expect ~msg:("Expected valid package name: " ^ name)
+  Package_name.from_string name |> Result.expect ~msg:("Expected valid package name: " ^ name)
 
 let source = fun ?(workspace = false) ?(builtin = false) ?path ?source_locator ?ref_ ?version () ->
   Riot_model.Package.{
@@ -37,7 +36,8 @@ let make_package = fun () ->
       license = Some "Apache-2.0";
       is_public = Some true
     } in
-  Package.make ~name:(package_name "minttea") ~path:(Path.v "packages/minttea") ~relative_path:(Path.v "packages/minttea") ~dependencies:[
+  Package.make ~name:(package_name "minttea") ~path:(Path.v "packages/minttea") ~relative_path:(Path.v
+    "packages/minttea") ~dependencies:[
     { name = package_name "std"; source = source ~workspace:true () }
   ] ~dev_dependencies:[ { name = package_name "propane"; source = source ~workspace:true () } ] ~build_dependencies:[
     { name = package_name "std"; source = source ~workspace:true () }
@@ -95,23 +95,16 @@ let test_dev_scope_keeps_only_dev_outputs = fun _ctx ->
   let no_library = projected.library = None in
   let no_commands = projected.commands = [] in
   let no_runtime_sources = projected.sources.src = [] && projected.sources.native = [] in
-  let kept_dev_deps =
-    projected.dev_dependencies
-    |> List.map ~fn:(fun (dep: Package.dependency) -> dep.name)
-    = [ package_name "propane" ]
-  in
-  let kept_runtime_deps =
-    projected.dependencies
-    |> List.map ~fn:(fun (dep: Package.dependency) -> dep.name)
-    = [ package_name "std" ]
-  in
-  let no_normal_binaries =
-    projected.binaries
-    |> List.all ~fn:(fun (bin: Riot_model.Package.binary) ->
-        String.starts_with ~prefix:"tests/" (Path.to_string bin.path)
-        || String.starts_with ~prefix:"examples/" (Path.to_string bin.path)
-        || String.starts_with ~prefix:"bench/" (Path.to_string bin.path))
-  in
+  let kept_dev_deps = projected.dev_dependencies
+  |> List.map ~fn:(fun (dep: Package.dependency) -> dep.name) = [ package_name "propane" ] in
+  let kept_runtime_deps = projected.dependencies
+  |> List.map ~fn:(fun (dep: Package.dependency) -> dep.name) = [ package_name "std" ] in
+  let no_normal_binaries = projected.binaries
+  |> List.all
+    ~fn:(fun (bin: Riot_model.Package.binary) ->
+      String.starts_with ~prefix:"tests/" (Path.to_string bin.path)
+      || String.starts_with ~prefix:"examples/" (Path.to_string bin.path)
+      || String.starts_with ~prefix:"bench/" (Path.to_string bin.path)) in
   if
     no_library && no_commands && no_runtime_sources && kept_dev_deps && kept_runtime_deps && no_normal_binaries
   then
@@ -320,9 +313,10 @@ path = "src/demo.ml"
         ~path:tmpdir
         ~relative_path:(Path.v "packages/demo")
       |> Result.expect ~msg:"Expected package manifest to parse" in
-      let expected_tests =
-        [ Path.v "tests/demo_tests.ml"; Path.v "tests/fixtures-generated/keep.ml" ]
-      in
+      let expected_tests = [
+        Path.v "tests/demo_tests.ml";
+        Path.v "tests/fixtures-generated/keep.ml"
+      ] in
       if pkg.sources.tests = expected_tests then
         Ok ()
       else
@@ -337,9 +331,7 @@ let test_scan_sources_respects_package_root_gitignore = fun _ctx ->
       Result.expect (Fs.create_dir_all generated_dir) ~msg:"Failed to create generated directory";
       Result.expect (Fs.write "generated/\n" gitignore) ~msg:"Failed to write gitignore";
       Result.expect (Fs.write "let version = 1\n" Path.(src_dir / Path.v "demo.ml")) ~msg:"Failed to write visible source";
-      Result.expect
-        (Fs.write "let generated = 1\n" Path.(generated_dir / Path.v "skip.ml"))
-        ~msg:"Failed to write ignored generated source";
+      Result.expect (Fs.write "let generated = 1\n" Path.(generated_dir / Path.v "skip.ml")) ~msg:"Failed to write ignored generated source";
       let manifest =
         Std.Data.Toml.parse
           {|
@@ -386,7 +378,9 @@ let test_scan_sources_ignores_non_ocaml_files = fun _ctx ->
       Result.expect (Fs.write "#!/bin/sh\n" Path.(examples_dir / Path.v "demo.sh")) ~msg:"Failed to write example non-ocaml file";
       Result.expect (Fs.write "let () = ()\n" Path.(bench_dir / Path.v "demo_bench.ml")) ~msg:"Failed to write bench source";
       Result.expect (Fs.write "#!/bin/sh\n" Path.(bench_dir / Path.v "bench.sh")) ~msg:"Failed to write bench non-ocaml file";
-      Result.expect (Fs.write "int demo(void) { return 1; }\n" Path.(native_dir / Path.v "demo.c")) ~msg:"Failed to write native source";
+      Result.expect
+        (Fs.write "int demo(void) { return 1; }\n" Path.(native_dir / Path.v "demo.c"))
+        ~msg:"Failed to write native source";
       let manifest =
         Std.Data.Toml.parse
           {|
@@ -428,8 +422,12 @@ let test_scan_sources_ignores_deps_fixture_support_entries = fun _ctx ->
       Result.expect (Fs.create_dir_all deps_fixtures_dir) ~msg:"Failed to create deps_fixtures directory";
       Result.expect (Fs.write "let version = 1\n" Path.(src_dir / Path.v "demo.ml")) ~msg:"Failed to write src source";
       Result.expect (Fs.write "let () = ()\n" Path.(tests_dir / Path.v "demo_tests.ml")) ~msg:"Failed to write test source";
-      Result.expect (Fs.write "let fixture = 1\n" Path.(deps_fixtures_dir / Path.v "sample.ml")) ~msg:"Failed to write deps fixture source";
-      Result.expect (Fs.write "module Sample : sig end\n" Path.(deps_fixtures_dir / Path.v "sample.mli")) ~msg:"Failed to write deps fixture interface";
+      Result.expect
+        (Fs.write "let fixture = 1\n" Path.(deps_fixtures_dir / Path.v "sample.ml"))
+        ~msg:"Failed to write deps fixture source";
+      Result.expect
+        (Fs.write "module Sample : sig end\n" Path.(deps_fixtures_dir / Path.v "sample.mli"))
+        ~msg:"Failed to write deps fixture interface";
       Result.expect (Fs.write "fixture\n" Path.(deps_fixtures_dir / Path.v "sample.expected")) ~msg:"Failed to write deps fixture support file";
       let manifest =
         Std.Data.Toml.parse
@@ -626,11 +624,10 @@ stdlib = "*"
     ~relative_path:(Path.v "packages/demo")
   |> Result.expect ~msg:"expected package manifest to parse" in
   match pkg.dependencies with
-  | [ { Riot_model.Package.name; source={ builtin=true; version=Some requirement; _ } } ]
-    when Package_name.equal name (package_name "stdlib")
-         && String.equal
-           (Std.Version.requirement_to_string requirement)
-           "*" -> Ok ()
+  | [ { Riot_model.Package.name; source={ builtin=true; version=Some requirement; _ } } ] when Package_name.equal
+    name
+    (package_name "stdlib")
+  && String.equal (Std.Version.requirement_to_string requirement) "*" -> Ok ()
   | _ -> Error "expected stdlib '*' to parse as a builtin dependency"
 
 let test_package_builtin_dependency_rejects_version_constraints = fun _ctx ->
@@ -664,9 +661,7 @@ let test_package_json_roundtrips_registry_requirement = fun _ctx ->
     ~relative_path:(Path.v "packages/demo")
     ~dependencies:[ { name = package_name "std"; source = source ~version:requirement () } ]
     () in
-  let decoded = Package.to_json package
-  |> Package.from_json
-  |> Result.expect ~msg:"expected package JSON to roundtrip" in
+  let decoded = Package.to_json package |> Package.from_json |> Result.expect ~msg:"expected package JSON to roundtrip" in
   match decoded.dependencies with
   | [
     {
@@ -695,10 +690,7 @@ std = ">= 1.2.3"
 |}
     |> Result.expect ~msg:"expected workspace TOML to parse"
   in
-  let workspace_manifest =
-    Riot_model.Workspace_manifest.of_toml manifest
-    |> Result.expect ~msg:"expected workspace manifest to parse"
-  in
+  let workspace_manifest = Riot_model.Workspace_manifest.of_toml manifest |> Result.expect ~msg:"expected workspace manifest to parse" in
   match workspace_manifest.dependencies with
   | [
     {
@@ -727,10 +719,7 @@ std = "*"
 |}
     |> Result.expect ~msg:"expected workspace TOML to parse"
   in
-  let workspace_manifest =
-    Riot_model.Workspace_manifest.of_toml manifest
-    |> Result.expect ~msg:"expected workspace manifest to parse"
-  in
+  let workspace_manifest = Riot_model.Workspace_manifest.of_toml manifest |> Result.expect ~msg:"expected workspace manifest to parse" in
   match workspace_manifest.dependencies with
   | [
     {
@@ -792,7 +781,9 @@ version = "0.1.0"
       | Ok (workspace, errors) ->
           if errors != [] then
             Error ("expected no workspace loading errors, got: "
-            ^ String.concat "; " (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
+            ^ String.concat
+              "; "
+              (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
           else
             let names = workspace.Riot_model.Workspace_manifest.packages
             |> List.map ~fn:(fun (p: Riot_model.Package_manifest.t) -> p.name)
@@ -864,11 +855,13 @@ std = { path = "../std", version = "*" }
       match Riot_model.Workspace_manager.scan workspace_manager root with
       | Error err -> Error err
       | Ok (workspace, errors) ->
-        if not (List.is_empty errors) then
-          Error ("expected missing path+version dependency to defer to later resolution, got: "
-            ^ String.concat "; " (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
-        else
-          let names = workspace.Riot_model.Workspace_manifest.packages
+          if not (List.is_empty errors) then
+            Error ("expected missing path+version dependency to defer to later resolution, got: "
+            ^ String.concat
+              "; "
+              (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
+          else
+            let names = workspace.Riot_model.Workspace_manifest.packages
             |> List.map ~fn:(fun (p: Riot_model.Package_manifest.t) -> p.name)
             |> List.sort ~compare:Riot_model.Package_name.compare
             |> List.map ~fn:Riot_model.Package_name.to_string in
@@ -907,7 +900,9 @@ path = "src/demo.ml"
         | Ok (workspace, errors) ->
             if not (List.is_empty errors) then
               Error ("expected no standalone package load errors, got: "
-              ^ String.concat "; " (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
+              ^ String.concat
+                "; "
+                (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
             else
               match workspace.Riot_model.Workspace_manifest.packages with
               | [ package ] ->
@@ -928,10 +923,12 @@ path = "src/demo.ml"
               ^ " root="
               ^ Path.to_string workspace.root
               ^ " names="
-              ^ String.concat ", "
-                  (List.map packages
-                    ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
-                      Riot_model.Package_name.to_string pkg.name)))
+              ^ String.concat
+                ", "
+                (List.map
+                  packages
+                  ~fn:(fun (pkg: Riot_model.Package_manifest.t) ->
+                    Riot_model.Package_name.to_string pkg.name)))
       in
       let _ =
         match original_dir with
@@ -1006,8 +1003,7 @@ api_token = "publish-token"
   | Error err -> Error (Riot_model.User_config.message err)
   | Ok config -> (
       match
-        List.find
-          config.Riot_model.User_config.registries
+        List.find config.Riot_model.User_config.registries
           ~fn:(fun (name, _registry) ->
             String.equal name "pkgs.ml")
       with
@@ -1148,18 +1144,10 @@ let tests =
     case "package: src/main.ml autodiscovers runtime binary" test_src_main_autodiscovers_runtime_binary;
     case "package: source scan ignores hidden entries" test_scan_sources_ignores_hidden_entries;
     case "package: source scan ignores test support entries" test_scan_sources_ignores_test_support_entries;
-    case
-      "package: source scan keeps similarly named test directories"
-      test_scan_sources_keeps_similarly_named_test_directories;
-    case
-      "package: source scan respects package-root gitignore"
-      test_scan_sources_respects_package_root_gitignore;
-    case
-      "package: source scan ignores non-ocaml files"
-      test_scan_sources_ignores_non_ocaml_files;
-    case
-      "package: source scan ignores deps fixture support entries"
-      test_scan_sources_ignores_deps_fixture_support_entries;
+    case "package: source scan keeps similarly named test directories" test_scan_sources_keeps_similarly_named_test_directories;
+    case "package: source scan respects package-root gitignore" test_scan_sources_respects_package_root_gitignore;
+    case "package: source scan ignores non-ocaml files" test_scan_sources_ignores_non_ocaml_files;
+    case "package: source scan ignores deps fixture support entries" test_scan_sources_ignores_deps_fixture_support_entries;
     case "fmt config: workspace ignore parses" test_workspace_fmt_ignore_parses;
     case "fmt config: package ignore loads" test_package_fmt_ignore_loads;
     case "fmt config: legacy top-level fmt still loads" test_legacy_fmt_ignore_still_loads;

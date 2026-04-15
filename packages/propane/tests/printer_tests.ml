@@ -61,16 +61,17 @@ let test_hashset_printer_is_stable = fun _ctx ->
   else
     Error ("hashset printer should sort elements for stable reports, got: " ^ printed)
 
-let tests = Test.[
-  case "char escapes quotes and backslashes" test_char_escapes_quotes_and_backslashes;
-  case "char escapes control characters" test_char_escapes_control_characters;
-  case "string escapes quotes backslashes and controls" test_string_escapes_quotes_backslashes_and_controls;
-  case "list and array formatting" test_list_and_array_formatting;
-  case "pair and triple formatting" test_pair_and_triple_formatting;
-  case "option and result formatting" test_option_and_result_formatting;
-  case "hashmap printer is stable" test_hashmap_printer_is_stable;
-  case "hashset printer is stable" test_hashset_printer_is_stable;
-]
+let tests =
+  Test.[
+    case "char escapes quotes and backslashes" test_char_escapes_quotes_and_backslashes;
+    case "char escapes control characters" test_char_escapes_control_characters;
+    case "string escapes quotes backslashes and controls" test_string_escapes_quotes_backslashes_and_controls;
+    case "list and array formatting" test_list_and_array_formatting;
+    case "pair and triple formatting" test_pair_and_triple_formatting;
+    case "option and result formatting" test_option_and_result_formatting;
+    case "hashmap printer is stable" test_hashmap_printer_is_stable;
+    case "hashset printer is stable" test_hashset_printer_is_stable;
+  ]
 
 let () =
   Actors.run

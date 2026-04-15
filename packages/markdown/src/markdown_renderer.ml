@@ -3,8 +3,7 @@ open Markdown_parser
 
 let escape_html = fun text ->
   let buffer = IO.Buffer.create ~size:(String.length text) in
-  String.for_each
-    text
+  String.for_each text
     ~fn:(fun char ->
       match char with
       | '&' -> IO.Buffer.add_string buffer "&amp;"
@@ -16,8 +15,7 @@ let escape_html = fun text ->
 
 let escape_attribute = fun text ->
   let buffer = IO.Buffer.create ~size:(String.length text) in
-  String.for_each
-    text
+  String.for_each text
     ~fn:(fun char ->
       match char with
       | '&' -> IO.Buffer.add_string buffer "&amp;"

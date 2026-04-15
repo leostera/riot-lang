@@ -73,6 +73,8 @@ let main = fun ~args:_ ->
 
 let () =
   System.exit
-    (match main ~args:Env.args with
-     | Ok () -> 0
-     | Error _ -> 1)
+    (
+      match main ~args:Env.args with
+      | Ok () -> 0
+      | Error _ -> 1
+    )

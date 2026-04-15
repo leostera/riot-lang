@@ -1,5 +1,4 @@
 open Std
-
 module Test = Std.Test
 
 let test_color_make_long_hex = fun _ctx ->
@@ -81,7 +80,7 @@ let test_color_ansi256_accepts_bounds = fun _ctx ->
   | _ -> Error "Expected ansi256 bounds 0 and 255 to be accepted"
 
 let test_color_of_rgb_clamps = fun _ctx ->
-  match Tty.Color.of_rgb (300, -10, 128) with
+  match Tty.Color.of_rgb (300, (-10), 128) with
   | Tty.Color.RGB (255, 0, 128) -> Ok ()
   | value -> Error ("Expected clamped RGB(255,0,128), got " ^ Tty.Color.to_string value)
 
@@ -147,13 +146,11 @@ let test_style_default_is_noop = fun _ctx ->
     Error ("Expected default style to leave text unchanged, got " ^ styled)
 
 let test_style_styled_wraps_text = fun _ctx ->
-  let style =
-    Tty.Style.default
-    |> Tty.Style.bold
-    |> Tty.Style.underline
-    |> Tty.Style.fg (Tty.Color.make "#FF0000")
-    |> Tty.Style.bg (Tty.Color.ansi 4)
-  in
+  let style = Tty.Style.default
+  |> Tty.Style.bold
+  |> Tty.Style.underline
+  |> Tty.Style.fg (Tty.Color.make "#FF0000")
+  |> Tty.Style.bg (Tty.Color.ansi 4) in
   let seq = Tty.Style.to_escape_seq style in
   let styled = Tty.Style.styled style "hi" in
   if seq = "1;4;38;2;255;0;0;44" && styled = "\x1b[1;4;38;2;255;0;0;44mhi\x1b[0m" then
@@ -162,12 +159,7 @@ let test_style_styled_wraps_text = fun _ctx ->
     Error ("Unexpected styled rendering: seq=" ^ seq ^ " styled=" ^ styled)
 
 let test_style_attribute_order_is_deterministic = fun _ctx ->
-  let style =
-    Tty.Style.default
-    |> Tty.Style.underline
-    |> Tty.Style.italic
-    |> Tty.Style.bold
-  in
+  let style = Tty.Style.default |> Tty.Style.underline |> Tty.Style.italic |> Tty.Style.bold in
   let seq = Tty.Style.to_escape_seq style in
   if seq = "1;3;4" then
     Ok ()
@@ -176,7 +168,10 @@ let test_style_attribute_order_is_deterministic = fun _ctx ->
 
 let test_style_fg_no_color_is_noop = fun _ctx ->
   let style = Tty.Style.default |> Tty.Style.fg Tty.Color.no_color in
-  if String.equal (Tty.Style.to_escape_seq style) "" && String.equal (Tty.Style.styled style "hello") "hello" then
+  if
+    String.equal (Tty.Style.to_escape_seq style) ""
+    && String.equal (Tty.Style.styled style "hello") "hello"
+  then
     Ok ()
   else
     Error "Expected no_color foreground style to be a no-op"
@@ -198,11 +193,9 @@ let test_style_ansi_background_render = fun _ctx ->
     Error ("Expected ANSI background rendering, got " ^ styled)
 
 let test_style_ansi256_render = fun _ctx ->
-  let style =
-    Tty.Style.default
-    |> Tty.Style.fg (Tty.Color.ansi256 196)
-    |> Tty.Style.bg (Tty.Color.ansi256 46)
-  in
+  let style = Tty.Style.default
+  |> Tty.Style.fg (Tty.Color.ansi256 196)
+  |> Tty.Style.bg (Tty.Color.ansi256 46) in
   let styled = Tty.Style.styled style "hi" in
   if styled = "\x1b[38;5;196;48;5;46mhi\x1b[0m" then
     Ok ()
@@ -226,11 +219,7 @@ let test_style_nested_policy = fun _ctx ->
 
 let test_style_preserves_unicode_width = fun _ctx ->
   let plain = "Cafe\u{0301} 🙂" in
-  let style =
-    Tty.Style.default
-    |> Tty.Style.bold
-    |> Tty.Style.fg (Tty.Color.make "#FF0000")
-  in
+  let style = Tty.Style.default |> Tty.Style.bold |> Tty.Style.fg (Tty.Color.make "#FF0000") in
   let styled = Tty.Style.styled style plain in
   if Int.equal (Tty.Escape_seq.width styled) (String.width plain) then
     Ok ()
@@ -257,57 +246,59 @@ let test_input_parse_ss3_function_key = fun _ctx ->
 
 let test_input_parse_focus_events = fun _ctx ->
   match (Tty.Input.parse_escape "\x1b[I", Tty.Input.parse_escape "\x1b[O") with
-  | Some focus_in, Some focus_out
-    when Tty.Input.event_to_string focus_in = "focus-gained" && Tty.Input.event_to_string focus_out = "focus-lost" ->
-      Ok ()
-  | _ ->
-      Error "Expected focus gained and focus lost events"
+  | Some focus_in, Some focus_out when Tty.Input.event_to_string focus_in = "focus-gained"
+  && Tty.Input.event_to_string focus_out = "focus-lost" -> Ok ()
+  | _ -> Error "Expected focus gained and focus lost events"
 
 let test_input_parse_mouse_press = fun _ctx ->
   match Tty.Input.parse_escape "\x1b[<0;10;20M" with
-  | Some (`Mouse { button = Tty.Input.Left; action = Tty.Input.Mouse_press; x = 10; y = 20; modifiers = [] }) ->
-      Ok ()
+  | Some (`Mouse {
+    button=Tty.Input.Left;
+    action=Tty.Input.Mouse_press;
+    x=10;
+    y=20;
+    modifiers=[]
+  }) -> Ok ()
   | Some event -> Error ("Expected left mouse press, got " ^ Tty.Input.event_to_string event)
   | None -> Error "Expected parsed mouse press event"
 
 let test_input_parse_mouse_release_with_modifiers = fun _ctx ->
   match Tty.Input.parse_escape "\x1b[<20;7;9m" with
-  | Some (`Mouse { button = Tty.Input.Left; action = Tty.Input.Mouse_release; x = 7; y = 9; modifiers = [ Tty.Input.Shift; Tty.Input.Ctrl ] }) ->
-      Ok ()
+  | Some (`Mouse {
+    button=Tty.Input.Left;
+    action=Tty.Input.Mouse_release;
+    x=7;
+    y=9;
+    modifiers=[Tty.Input.Shift;Tty.Input.Ctrl]
+  }) -> Ok ()
   | Some event -> Error ("Expected modified mouse release, got " ^ Tty.Input.event_to_string event)
   | None -> Error "Expected parsed mouse release event"
 
 let test_input_parse_home_end_variants = fun _ctx ->
-  match
-    ( Tty.Input.parse_escape "\x1b[H",
-      Tty.Input.parse_escape "\x1b[F",
-      Tty.Input.parse_escape "\x1b[1~",
-      Tty.Input.parse_escape "\x1b[4~" )
-  with
-  | Some home, Some ending, Some legacy_home, Some legacy_end
-    when Tty.Input.event_to_string home = "home"
-      && Tty.Input.event_to_string ending = "end"
-      && Tty.Input.event_to_string legacy_home = "home"
-      && Tty.Input.event_to_string legacy_end = "end" ->
-      Ok ()
-  | _ ->
-      Error "Expected home/end variants to parse"
+  match (
+    Tty.Input.parse_escape "\x1b[H",
+    Tty.Input.parse_escape "\x1b[F",
+    Tty.Input.parse_escape "\x1b[1~",
+    Tty.Input.parse_escape "\x1b[4~"
+  ) with
+  | Some home, Some ending, Some legacy_home, Some legacy_end when Tty.Input.event_to_string home = "home"
+  && Tty.Input.event_to_string ending = "end"
+  && Tty.Input.event_to_string legacy_home = "home"
+  && Tty.Input.event_to_string legacy_end = "end" -> Ok ()
+  | _ -> Error "Expected home/end variants to parse"
 
 let test_input_parse_insert_delete_paging = fun _ctx ->
-  match
-    ( Tty.Input.parse_escape "\x1b[2~",
-      Tty.Input.parse_escape "\x1b[3~",
-      Tty.Input.parse_escape "\x1b[5~",
-      Tty.Input.parse_escape "\x1b[6~" )
-  with
-  | Some insert, Some delete, Some page_up, Some page_down
-    when Tty.Input.event_to_string insert = "insert"
-      && Tty.Input.event_to_string delete = "delete"
-      && Tty.Input.event_to_string page_up = "pageup"
-      && Tty.Input.event_to_string page_down = "pagedown" ->
-      Ok ()
-  | _ ->
-      Error "Expected insert/delete/page navigation variants to parse"
+  match (
+    Tty.Input.parse_escape "\x1b[2~",
+    Tty.Input.parse_escape "\x1b[3~",
+    Tty.Input.parse_escape "\x1b[5~",
+    Tty.Input.parse_escape "\x1b[6~"
+  ) with
+  | Some insert, Some delete, Some page_up, Some page_down when Tty.Input.event_to_string insert = "insert"
+  && Tty.Input.event_to_string delete = "delete"
+  && Tty.Input.event_to_string page_up = "pageup"
+  && Tty.Input.event_to_string page_down = "pagedown" -> Ok ()
+  | _ -> Error "Expected insert/delete/page navigation variants to parse"
 
 let test_input_event_to_string_text = fun _ctx ->
   let rendered = Tty.Input.event_to_string (`Text "🙂") in
@@ -317,7 +308,11 @@ let test_input_event_to_string_text = fun _ctx ->
     Error ("Expected text event rendering, got " ^ rendered)
 
 let test_input_event_to_string_repeat = fun _ctx ->
-  let event = `Key { Tty.Input.code = Tty.Input.Char 'x'; modifiers = [ Tty.Input.Alt ]; kind = Tty.Input.Repeat } in
+  let event = `Key {
+    Tty.Input.code = Tty.Input.Char 'x';
+    modifiers = [ Tty.Input.Alt ];
+    kind = Tty.Input.Repeat
+  } in
   let rendered = Tty.Input.event_to_string event in
   if rendered = "alt+x:repeat" then
     Ok ()
@@ -331,8 +326,7 @@ let test_tty_make_self_equal = fun _ctx ->
         Ok ()
       else
         Error "Expected a tty value to be equal to itself"
-  | Error _ ->
-      Ok ()
+  | Error _ -> Ok ()
 
 let test_tty_to_string_has_prefix = fun _ctx ->
   match Tty.make () with
@@ -342,8 +336,7 @@ let test_tty_to_string_has_prefix = fun _ctx ->
         Ok ()
       else
         Error ("Expected tty string representation, got " ^ rendered)
-  | Error _ ->
-      Ok ()
+  | Error _ -> Ok ()
 
 let test_size_to_string = fun _ctx ->
   let rendered = Tty.Size.to_string Tty.Size.{ rows = 20; cols = 80 } in
@@ -400,4 +393,7 @@ let tests =
   ]
 
 let () =
-  Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"tty_pure_modules" ~tests ~args) ~args:Env.args ()
+  Actors.run
+    ~main:(fun ~args -> Test.Cli.main ~name:"tty_pure_modules" ~tests ~args)
+    ~args:Env.args
+    ()

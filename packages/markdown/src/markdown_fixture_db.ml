@@ -244,10 +244,10 @@ let spec_fixture_cache: fixture list = load_spec_fixtures ()
 
 let fixture_index: (string, fixture) HashMap.t =
   let table = HashMap.create () in
-  spec_fixture_cache
-  |> List.for_each ~fn:(fun fixture ->
-    let _ = HashMap.insert table ~key:fixture.markdown ~value:fixture in
-    ());
+  spec_fixture_cache |> List.for_each
+    ~fn:(fun fixture ->
+      let _ = HashMap.insert table ~key:fixture.markdown ~value:fixture in
+      ());
   table
 
 let all_spec_fixtures = fun () -> spec_fixture_cache

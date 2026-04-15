@@ -42,16 +42,18 @@ module SyntaxNode = struct
   let fold_children = fun (node: ('kind, 'text) syntax_node) init f ->
     let acc = ref init in
     let running_offset = ref node.offset in
-    Green.children (green node)
-    |> List.for_each ~fn:(fun elem ->
+    Green.children (green node) |> List.for_each
+      ~fn:(fun elem ->
         let child =
           match elem with
           | Green.Token token -> Token {
             green_token = token;
             parent = Some node;
             offset = !running_offset
-            + List.fold_left (Green.leading_trivia token) ~acc:0
-                ~fn:(fun acc trivia -> acc + Green.trivia_width trivia)
+            + List.fold_left
+              (Green.leading_trivia token)
+              ~acc:0
+              ~fn:(fun acc trivia -> acc + Green.trivia_width trivia)
           }
           | Green.Node child_node -> Node {
             green_node = child_node;
@@ -74,8 +76,10 @@ module SyntaxNode = struct
               green_token = token;
               parent = Some node;
               offset = running_offset
-              + List.fold_left (Green.leading_trivia token) ~acc:0
-                  ~fn:(fun acc trivia -> acc + Green.trivia_width trivia)
+              + List.fold_left
+                (Green.leading_trivia token)
+                ~acc:0
+                ~fn:(fun acc trivia -> acc + Green.trivia_width trivia)
             }
             | Green.Node child_node -> Node {
               green_node = child_node;
@@ -233,12 +237,14 @@ module SyntaxToken = struct
   let leading_trivia = fun (token: ('kind, 'text) syntax_token) ->
     let green_token = green token in
     let total_width =
-      List.fold_left (Green.leading_trivia green_token) ~acc:0
+      List.fold_left
+        (Green.leading_trivia green_token)
+        ~acc:0
         ~fn:(fun acc trivia -> acc + Green.trivia_width trivia)
     in
     let running_offset = ref (token.offset - total_width) in
-    Green.leading_trivia green_token
-    |> List.map ~fn:(fun green_trivia ->
+    Green.leading_trivia green_token |> List.map
+      ~fn:(fun green_trivia ->
         let syntax_trivia = { green_trivia; offset = !running_offset } in
         running_offset := !running_offset + Green.trivia_width green_trivia;
         syntax_trivia)
@@ -262,9 +268,9 @@ let rec to_json = fun ~kind_to_json ~text_to_json elem ->
     ("span", Span.to_json (SyntaxToken.span tok));
     (
       "leading_trivia",
-      Data.Json.Array
-        (List.map (SyntaxToken.leading_trivia tok)
-           ~fn:(syntax_trivia_to_json ~kind_to_json ~text_to_json))
+      Data.Json.Array (List.map
+        (SyntaxToken.leading_trivia tok)
+        ~fn:(syntax_trivia_to_json ~kind_to_json ~text_to_json))
     )
   ]
   | Node node -> Data.Json.Object [
@@ -273,7 +279,6 @@ let rec to_json = fun ~kind_to_json ~text_to_json elem ->
     ("span", Span.to_json (SyntaxNode.span node));
     (
       "children",
-      Data.Json.Array
-        (List.map (SyntaxNode.children node) ~fn:(to_json ~kind_to_json ~text_to_json))
+      Data.Json.Array (List.map (SyntaxNode.children node) ~fn:(to_json ~kind_to_json ~text_to_json))
     )
   ]

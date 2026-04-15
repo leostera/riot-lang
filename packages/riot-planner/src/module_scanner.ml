@@ -68,7 +68,8 @@ let rec scan_directory = fun ~from_dir ~rel_path ->
   | Ok iter ->
       let entries = Std.Iter.MutIterator.to_list iter in
       let scanned =
-        List.map entries ~fn:(fun entry ->
+        List.map entries
+          ~fn:(fun entry ->
             let source_path = Path.(from_dir / entry) in
             let entry_rel_path = Path.(rel_path / entry) in
             let name = Path.basename entry in

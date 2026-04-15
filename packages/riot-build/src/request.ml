@@ -13,8 +13,15 @@ type t = {
   requested_parallelism: int option;
 }
 
-let make = fun ~workspace ~packages ~targets ~scope ~profile ?requested_parallelism () ->
-  { workspace; packages; targets; scope; profile; requested_parallelism }
+let make = fun ~workspace ~packages ~targets ~scope ~profile ?(requested_parallelism = None) () ->
+  {
+    workspace;
+    packages;
+    targets;
+    scope;
+    profile;
+    requested_parallelism;
+  }
 
 module Internal = struct
   let workspace = fun t -> t.workspace

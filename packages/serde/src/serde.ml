@@ -75,7 +75,9 @@ module Fields = struct
     let rec loop index =
       if Int.equal index limit then
         index
-      else if Char.equal (String.get_unchecked left ~at:index) (String.get_unchecked right ~at:index) then
+      else if
+        Char.equal (String.get_unchecked left ~at:index) (String.get_unchecked right ~at:index)
+      then
         loop (index + 1)
       else
         index
@@ -85,9 +87,7 @@ module Fields = struct
   let longest_common_prefix_length = function
     | [] -> 0
     | first :: rest ->
-        List.fold_left
-          rest
-          ~acc:(String.length first.suffix)
+        List.fold_left rest ~acc:(String.length first.suffix)
           ~fn:(fun prefix_length entry ->
             let shared = common_prefix_length first.suffix entry.suffix in
             if shared < prefix_length then
@@ -107,9 +107,7 @@ module Fields = struct
 
   let rec build_node: 'tag. 'tag pending list -> 'tag node = fun entries ->
     let (tag, non_empty_entries) =
-      List.fold_left
-        entries
-        ~acc:(None, [])
+      List.fold_left entries ~acc:(None, [])
         ~fn:(fun (tag, non_empty_entries) entry ->
           if Int.equal (String.length entry.suffix) 0 then
             match tag with
@@ -124,12 +122,7 @@ module Fields = struct
         ~fn:(fun (_first, group) ->
           let group = List.reverse group in
           let prefix_length = longest_common_prefix_length group in
-          let label =
-            String.sub
-              (List.get_unchecked group ~at:0).suffix
-              ~offset:0
-              ~len:prefix_length
-          in
+          let label = String.sub (List.get_unchecked group ~at:0).suffix ~offset:0 ~len:prefix_length in
           let next_entries =
             List.map
               group
@@ -146,9 +139,11 @@ module Fields = struct
       let rec loop index =
         if Int.equal index length then
           true
-        else if Char.equal
-          (String.get_unchecked source ~at:(offset + index))
-          (String.get_unchecked other ~at:index) then
+        else if
+          Char.equal
+            (String.get_unchecked source ~at:(offset + index))
+            (String.get_unchecked other ~at:index)
+        then
           loop (index + 1)
         else
           false
@@ -162,9 +157,11 @@ module Fields = struct
       let rec loop index =
         if Int.equal index length then
           true
-        else if Char.equal
-          (IO.Bytes.get_unchecked source ~at:(offset + index))
-          (String.get_unchecked other ~at:index) then
+        else if
+          Char.equal
+            (IO.Bytes.get_unchecked source ~at:(offset + index))
+            (String.get_unchecked other ~at:index)
+        then
           loop (index + 1)
         else
           false
@@ -178,9 +175,11 @@ module Fields = struct
       let rec loop index =
         if Int.equal index length then
           true
-        else if Char.equal
-          (IO.Buffer.get_unchecked buffer ~at:(offset + index))
-          (String.get_unchecked other ~at:index) then
+        else if
+          Char.equal
+            (IO.Buffer.get_unchecked buffer ~at:(offset + index))
+            (String.get_unchecked other ~at:index)
+        then
           loop (index + 1)
         else
           false
@@ -272,8 +271,7 @@ module Fields = struct
     else
       Some (Array.get_unchecked fields.tags ~at:index)
 
-  let tag_at_unchecked = fun fields index ->
-    Array.get_unchecked fields.tags ~at:index
+  let tag_at_unchecked = fun fields index -> Array.get_unchecked fields.tags ~at:index
 end
 
 type 'value t = {

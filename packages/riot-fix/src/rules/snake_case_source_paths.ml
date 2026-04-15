@@ -71,7 +71,8 @@ let check_tree = fun (ctx: Rule.context) _red_root ->
   then
     []
   else
-    path_segments path |> List.filter_map ~fn:(fun name ->
+    path_segments path |> List.filter_map
+      ~fn:(fun name ->
         if is_snake_case name then
           None
         else

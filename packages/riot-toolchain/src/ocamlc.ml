@@ -150,7 +150,8 @@ module Diagnostic = struct
                     | Some idx -> idx
                     | None -> String.length suffix
                   in
-                  let line_no = parse_int_opt (String.sub suffix ~offset:line_start ~len:(line_stop - line_start)) in
+                  let line_no = parse_int_opt
+                    (String.sub suffix ~offset:line_start ~len:(line_stop - line_start)) in
                   let start_char, end_char =
                     match find_substring suffix ", characters " with
                     | None -> (None, None)
@@ -171,7 +172,10 @@ module Diagnostic = struct
                         let end_char =
                           if dash_idx < chars_end then
                             parse_int_opt
-                              (String.sub suffix ~offset:(dash_idx + 1) ~len:(chars_end - dash_idx - 1))
+                              (String.sub
+                                suffix
+                                ~offset:(dash_idx + 1)
+                                ~len:(chars_end - dash_idx - 1))
                           else
                             None
                         in
@@ -668,7 +672,7 @@ let is_success = function
 let get_output = function
   | Success { message; _ } -> message
   | Failed { message; diagnostics } ->
-  let rendered = Diagnostic.render_all diagnostics in
+      let rendered = Diagnostic.render_all diagnostics in
       if String.equal rendered "" then
         message
       else

@@ -151,11 +151,30 @@ type kind =
   | PackageVersionUpdated of { package: Package_name.t; from_version: string; to_version: string }
   | PackageManifestFetchStarted of { package: Package_name.t; version: string }
   | PackageManifestFetchFinished of { package: Package_name.t; version: string; duration_ms: int }
-  | PackageManifestFetchFailed of { package: Package_name.t; version: string option; error: Pm_error.t }
+  | PackageManifestFetchFailed of {
+      package: Package_name.t;
+      version: string option;
+      error: Pm_error.t
+    }
   | PackageDownloadStarted of { package: Package_name.t; version: string; path: string }
-  | PackageDownloadFinished of { package: Package_name.t; version: string; path: string; duration_ms: int }
-  | PackageDownloadFailed of { package: Package_name.t; version: string; path: string; error: Pm_error.t }
-  | PackageDownloadSkipped of { package: Package_name.t; version: string; path: string; reason: string }
+  | PackageDownloadFinished of {
+      package: Package_name.t;
+      version: string;
+      path: string;
+      duration_ms: int
+    }
+  | PackageDownloadFailed of {
+      package: Package_name.t;
+      version: string;
+      path: string;
+      error: Pm_error.t
+    }
+  | PackageDownloadSkipped of {
+      package: Package_name.t;
+      version: string;
+      path: string;
+      reason: string
+    }
   | PackageCacheHit of { package: Package_name.t; version: string; path: string }
   | PackageMaterializationStarted of { package: Package_name.t; version: string; path: string }
   | PackageMaterializationFinished of {

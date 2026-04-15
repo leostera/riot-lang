@@ -90,9 +90,8 @@ let nest = fun amount docs ->
 let join = fun separator docs ->
   match docs with
   | [] -> Empty
-  | first :: rest ->
-      concat
-        (first :: (rest |> List.map ~fn:(fun doc -> [ separator; doc ]) |> List.concat))
+  | first :: rest -> concat
+    (first :: (rest |> List.map ~fn:(fun doc -> [ separator; doc ]) |> List.concat))
 
 type mode =
   | Flat
@@ -111,8 +110,8 @@ let solve = fun ~width doc ->
   let rec push_many indent mode docs rest =
     match List.reverse docs with
     | [] -> rest
-    | reversed ->
-        reversed |> List.fold_left ~acc:rest ~fn:(fun acc item -> (indent, mode, item) :: acc)
+    | reversed -> reversed
+    |> List.fold_left ~acc:rest ~fn:(fun acc item -> (indent, mode, item) :: acc)
   in
   let rec fits remaining = function
     | _ when remaining < 0 -> false

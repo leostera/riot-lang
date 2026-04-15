@@ -84,7 +84,8 @@ let requeue_with_deps = fun t (node: action_node) ~(missing_deps:Graph.SimpleGra
     ~fn:(fun dep_id ->
       match
         List.find all_nodes
-          ~fn:(fun (n: action_node) -> Graph.SimpleGraph.Node_id.eq n.id dep_id)
+          ~fn:(fun (n: action_node) ->
+            Graph.SimpleGraph.Node_id.eq n.id dep_id)
       with
       | Some dep_node -> queue t dep_node
       | None -> Log.warn
@@ -105,8 +106,7 @@ let next = fun t ->
   let rec find_ready checked =
     match Queue.pop t.ready_queue with
     | None ->
-        List.for_each checked
-          ~fn:(fun node -> Queue.push t.later_queue ~value:node);
+        List.for_each checked ~fn:(fun node -> Queue.push t.later_queue ~value:node);
         None
     | Some node ->
         if has_failed_dependencies t node then
@@ -122,14 +122,12 @@ let next = fun t ->
             }
             in
             let _ = HashMap.insert t.completed ~key:node.id ~value:skip_result in
-            List.for_each checked
-              ~fn:(fun n -> Queue.push t.ready_queue ~value:n);
+            List.for_each checked ~fn:(fun n -> Queue.push t.ready_queue ~value:n);
             find_ready []
           )
         else if dependencies_satisfied t node then
           (
-            List.for_each checked
-              ~fn:(fun n -> Queue.push t.ready_queue ~value:n);
+            List.for_each checked ~fn:(fun n -> Queue.push t.ready_queue ~value:n);
             let _ = HashMap.insert t.busy_tasks ~key:node.id ~value:node in
             Some node
           )
@@ -165,8 +163,7 @@ let mark_failed = fun t ~node_id ~error ->
   let _ = HashMap.insert t.completed ~key:node_id ~value:failed_result in
   ()
 
-let get_result = fun t node_id ->
-  HashMap.get t.completed ~key:node_id
+let get_result = fun t node_id -> HashMap.get t.completed ~key:node_id
 
 let stats = fun t ->
   let ready = Queue.length t.ready_queue in

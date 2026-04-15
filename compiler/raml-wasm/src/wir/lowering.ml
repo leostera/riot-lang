@@ -58,8 +58,9 @@ let rec lower_expr = fun (expr: Core.Expr.t) ->
         index = tuple_get.index
       }
   | Core.Expr.Record record ->
-      Wasm_types.Expr.Tuple (List.map record ~fn:(fun (field: Core.Expr.record_field) ->
-        lower_expr field.value))
+      Wasm_types.Expr.Tuple (List.map
+        record
+        ~fn:(fun (field: Core.Expr.record_field) -> lower_expr field.value))
   | Core.Expr.Record_get record_get ->
       Wasm_types.Expr.Tuple_get Wasm_types.Expr.{
         tuple = lower_expr record_get.record;
@@ -176,12 +177,14 @@ let trace_to_json = fun trace ->
       (
         "passes",
         Json.array
-          (List.map trace.passes ~fn:(fun pass ->
-            Json.obj
-              [
-                ("name", Json.string pass.name);
-                ("program", Wasm_types.Compilation_unit.to_json pass.program);
-              ]))
+          (List.map
+            trace.passes
+            ~fn:(fun pass ->
+              Json.obj
+                [
+                  ("name", Json.string pass.name);
+                  ("program", Wasm_types.Compilation_unit.to_json pass.program);
+                ]))
       );
       ("final", Wasm_types.Compilation_unit.to_json trace.final);
     ]

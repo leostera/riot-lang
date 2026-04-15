@@ -143,8 +143,7 @@ let resume = fun t ->
       t.Terminal.resume_mode <- None;
       set_raw t
   | Some LineBuffered
-  | None ->
-      t.Terminal.resume_mode <- None
+  | None -> t.Terminal.resume_mode <- None
 
 type read =
   | Read of string
@@ -161,8 +160,8 @@ let read_from_input = fun input_fd bytes ~offset ~len ->
   else
     match Platform.read input_fd bytes ~offset ~len with
     | Ok count -> `Ok count
-      | Error error when Kernel.SystemError.would_block error -> `Would_block
-      | Error _ -> `Error
+    | Error error when Kernel.SystemError.would_block error -> `Would_block
+    | Error _ -> `Error
 
 let read_utf8 = fun t ->
   match Utf8_reader.read t.Terminal.input_buffer ~read:(read_from_input t.Terminal.input_fd) with

@@ -37,8 +37,7 @@ let parse_gfm = fun source ->
   let blocks = Markdown_lower.lower ~flavor:Markdown_parser.Gfm parsed.tree in
   { root = parsed.tree; source = parsed.source; diagnostics = parsed.diagnostics; blocks }
 
-let all_spec_fixtures = fun () ->
-  List.map (Fixture_db.all_spec_fixtures ()) ~fn:cast_fixture
+let all_spec_fixtures = fun () -> List.map (Fixture_db.all_spec_fixtures ()) ~fn:cast_fixture
 
 let to_html = fun parse_result -> Markdown_renderer.render parse_result.blocks
 

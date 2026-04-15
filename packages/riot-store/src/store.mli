@@ -16,11 +16,7 @@ type error =
   | CreateParentDirFailed of { path: Std.Path.t; cause: Std.Fs.error }
   | ReadSourceMetadataFailed of { path: Std.Path.t; cause: Std.Fs.error }
   | CopyArtifactFailed of { src: Std.Path.t; dst: Std.Path.t; cause: Std.Fs.error }
-  | SetCopiedArtifactPermissionsFailed of {
-      src: Std.Path.t;
-      dst: Std.Path.t;
-      cause: Std.Fs.error;
-    }
+  | SetCopiedArtifactPermissionsFailed of { src: Std.Path.t; dst: Std.Path.t; cause: Std.Fs.error }
   | CreateTempDirFailed of { path: Std.Path.t; cause: Std.Fs.error }
   | CheckSourceExistsFailed of { path: Std.Path.t; cause: Std.Fs.error }
   | MetadataReadFailed of { path: Std.Path.t; cause: Std.Fs.error }

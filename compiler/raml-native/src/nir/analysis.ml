@@ -20,26 +20,23 @@ let add_name = fun names name ->
       { names with ordered_rev = name :: names.ordered_rev }
     )
 
-let add_names = fun names more ->
-  List.fold_left more ~acc:names ~fn:add_name
+let add_names = fun names more -> List.fold_left more ~acc:names ~fn:add_name
 
-let merge_names = fun left right ->
-  List.fold_left (ordered_names right) ~acc:left ~fn:add_name
+let merge_names = fun left right -> List.fold_left (ordered_names right) ~acc:left ~fn:add_name
 
 let bound_of_list = HashSet.from_list
 
 let extend_bound = fun bound names ->
   let bound = HashSet.from_list (HashSet.to_list bound) in
-  List.for_each
-    names
+  List.for_each names
     ~fn:(fun name ->
       let _ = HashSet.insert bound ~value:name in
       ())
-  bound
+    bound
+
 let bound_has = fun set value -> HashSet.contains set ~value
 
-let param_names = fun params ->
-  List.map ~fn:(fun (param: Core.Expr.param) -> param.name) params
+let param_names = fun params -> List.map ~fn:(fun (param: Core.Expr.param) -> param.name) params
 
 let rec collect_free_vars = fun ~name_of_entity ~bound expr ->
   match expr with
@@ -54,7 +51,8 @@ let rec collect_free_vars = fun ~name_of_entity ~bound expr ->
       List.fold_left
         arguments
         ~acc:(empty_names ())
-        ~fn:(fun names argument -> merge_names names (collect_free_vars ~name_of_entity ~bound argument))
+        ~fn:(fun names argument ->
+          merge_names names (collect_free_vars ~name_of_entity ~bound argument))
   | Core.Expr.Apply { callee=Core.Expr.Indirect callee; arguments } ->
       List.fold_left
         arguments

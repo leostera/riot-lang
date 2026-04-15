@@ -21,7 +21,8 @@ let expect_value = fun state kind ->
 
 let rec encode_list: 'value. state -> 'value Ser.t -> 'value vec -> unit = fun state encode values ->
   let items = ref [] in
-  Vector.for_each values ~fn:(fun value ->
+  Vector.for_each values
+    ~fn:(fun value ->
       let child = child_state () in
       encode.run backend child value;
       items := expect_value child "array element" :: !items);

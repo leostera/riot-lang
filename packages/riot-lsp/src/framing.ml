@@ -2,6 +2,7 @@ open Std
 open Std.Result.Syntax
 
 type reader = (unit, IO.error) IO.Reader.t
+
 type writer = (unit, IO.error) IO.Writer.t
 
 let strip_line_ending = fun line ->
@@ -56,21 +57,17 @@ let decode_one = fun framed ->
       |> List.map ~fn:strip_line_ending
       |> List.filter ~fn:(fun line -> not (String.equal line "")) in
       let payload_start = header_end + separator_len in
-      let body =
-        String.sub framed ~offset:payload_start ~len:(String.length framed - payload_start)
-      in
+      let body = String.sub framed ~offset:payload_start ~len:(String.length framed - payload_start) in
       let* content_length = parse_content_length headers in
       if String.length body < content_length then
         Error "payload shorter than Content-Length"
       else
         let payload = String.sub body ~offset:0 ~len:content_length in
-        let rest =
-          String.sub body ~offset:content_length ~len:(String.length body - content_length)
-        in
+        let rest = String.sub body ~offset:content_length ~len:(String.length body - content_length) in
         Ok (payload, rest)
 
 let read = fun input ->
-  let read_line = fun () ->
+  let read_line () =
     let chunk = IO.Bytes.create ~size:1 in
     let buffer = IO.Buffer.create ~size:256 in
     let rec loop () =
@@ -79,17 +76,19 @@ let read = fun input ->
         Ok (IO.Buffer.contents buffer)
       else if not (Int.equal read 1) then
         Error "unexpected short read while reading LSP headers"
-      else (
-        let char = IO.Bytes.get_unchecked chunk ~at:0 in
-        IO.Buffer.add_char buffer char;
-        if Char.equal char '\n' then
-          Ok (IO.Buffer.contents buffer)
-        else
-          loop ())
+      else
+        (
+          let char = IO.Bytes.get_unchecked chunk ~at:0 in
+          IO.Buffer.add_char buffer char;
+          if Char.equal char '\n' then
+            Ok (IO.Buffer.contents buffer)
+          else
+            loop ()
+        )
     in
     loop ()
   in
-  let read_exact = fun content_length ->
+  let read_exact content_length =
     let buffer = IO.Bytes.create ~size:content_length in
     let chunk_size = 4_096 in
     let rec loop offset remaining =
@@ -101,10 +100,10 @@ let read = fun input ->
         let* read = IO.Reader.read input chunk |> Result.map_err ~fn:IO.error_message in
         if read = 0 then
           Error "unexpected EOF while reading LSP payload"
-        else
-          (
-            IO.Bytes.blit_unchecked chunk ~src_offset:0 ~dst:buffer ~dst_offset:offset ~len:read;
-            loop (offset + read) (remaining - read))
+        else (
+          IO.Bytes.blit_unchecked chunk ~src_offset:0 ~dst:buffer ~dst_offset:offset ~len:read;
+          loop (offset + read) (remaining - read)
+        )
     in
     let* () = loop 0 content_length in
     Ok (IO.Bytes.to_string buffer)
@@ -112,10 +111,10 @@ let read = fun input ->
   let rec read_headers acc =
     let* raw_line = read_line () in
     if String.equal raw_line "" then
-        if List.is_empty acc then
-          Ok None
-        else
-          Error "unexpected EOF while reading LSP headers"
+      if List.is_empty acc then
+        Ok None
+      else
+        Error "unexpected EOF while reading LSP headers"
     else
       let line = strip_line_ending raw_line in
       if String.equal line "" then
@@ -127,9 +126,9 @@ let read = fun input ->
   match headers_opt with
   | None -> Ok None
   | Some headers ->
-  let* content_length = parse_content_length headers in
-  let* payload = read_exact content_length in
-  Ok (Some payload)
+      let* content_length = parse_content_length headers in
+      let* payload = read_exact content_length in
+      Ok (Some payload)
 
 let write = fun output payload ->
   IO.Writer.write_all output (encode payload) |> Result.map_err ~fn:IO.error_message

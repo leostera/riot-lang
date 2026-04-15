@@ -68,7 +68,10 @@ let make = fun str ->
           ansi256 i
     | None -> raise (Invalid_color str)
 
-let to_escape_seq : mode:[> `bg | `fg ] -> t -> string = fun ~mode t ->
+let to_escape_seq: mode:[>
+    `bg
+    | `fg
+  ] -> t -> string = fun ~mode t ->
   match t with
   | RGB (r, g, b) ->
       let prefix =

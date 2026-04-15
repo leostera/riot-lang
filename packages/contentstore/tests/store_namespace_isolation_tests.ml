@@ -1,5 +1,4 @@
 open Std
-
 module Test = Std.Test
 
 let read_opened_file = fun file ->
@@ -7,9 +6,7 @@ let read_opened_file = fun file ->
   let _ = Fs.File.close file |> Result.expect ~msg:"close should succeed" in
   content
 
-let namespace = fun parts ->
-  Contentstore.Namespace.from_parts parts
-  |> Result.expect ~msg:"invalid test namespace"
+let namespace = fun parts -> Contentstore.Namespace.from_parts parts |> Result.expect ~msg:"invalid test namespace"
 
 let with_stores = fun prefix fn ->
   Fs.with_tempdir ~prefix
@@ -17,16 +14,13 @@ let with_stores = fun prefix fn ->
       let root = Path.(tmpdir / Path.v "cache") in
       let left = Contentstore.create ~root ~ns:(namespace [ "left" ]) ~policy:Contentstore.Policy.default in
       let right = Contentstore.create ~root ~ns:(namespace [ "right" ]) ~policy:Contentstore.Policy.default in
-      fn ~left ~right)
-  |> Result.unwrap_or ~default:(Error "tempdir creation failed")
+      fn ~left ~right) |> Result.unwrap_or ~default:(Error "tempdir creation failed")
 
 let open_object_to_string = fun store ~hash ->
-  Contentstore.open_object store ~hash
-  |> Result.map ~fn:read_opened_file
+  Contentstore.open_object store ~hash |> Result.map ~fn:read_opened_file
 
 let open_named_object_to_string = fun store ~key ->
-  Contentstore.open_named_object store ~key
-  |> Result.map ~fn:read_opened_file
+  Contentstore.open_named_object store ~key |> Result.map ~fn:read_opened_file
 
 let test_hash_addressed_objects_are_namespaced = fun _ctx ->
   with_stores "contentstore-namespace-objects"
@@ -41,9 +35,14 @@ let test_hash_addressed_objects_are_namespaced = fun _ctx ->
 let test_named_objects_are_namespaced = fun _ctx ->
   with_stores "contentstore-namespace-named"
     (fun ~left ~right ->
-      let _ = Contentstore.save_named_object left ~key:"current" ~content:"left" |> Result.expect ~msg:"left save should succeed" in
-      let _ = Contentstore.save_named_object right ~key:"current" ~content:"right" |> Result.expect ~msg:"right save should succeed" in
-      match (open_named_object_to_string left ~key:"current", open_named_object_to_string right ~key:"current") with
+      let _ = Contentstore.save_named_object left ~key:"current" ~content:"left"
+      |> Result.expect ~msg:"left save should succeed" in
+      let _ = Contentstore.save_named_object right ~key:"current" ~content:"right"
+      |> Result.expect ~msg:"right save should succeed" in
+      match (
+        open_named_object_to_string left ~key:"current",
+        open_named_object_to_string right ~key:"current"
+      ) with
       | (Ok "left", Ok "right") -> Ok ()
       | _ -> Error "expected namespaced stores to isolate named objects")
 

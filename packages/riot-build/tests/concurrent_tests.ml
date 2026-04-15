@@ -1,10 +1,12 @@
 open Std
 open Riot_build
+
+module Package_builder = Riot_build.Internal.Package_builder
+
 module Test = Std.Test
 
 let package_name = fun name ->
-  Riot_model.Package_name.from_string name
-  |> Result.expect ~msg:("invalid package name: " ^ name)
+  Riot_model.Package_name.from_string name |> Result.expect ~msg:("invalid package name: " ^ name)
 
 let make_test_build_ctx = fun () ->
   let session_id = Riot_model.Session_id.make () in
@@ -44,13 +46,11 @@ let test_concurrent_builds_different_packages = fun _ctx ->
       (fun tmpdir ->
         let pkg1 = make_package tmpdir "pkg-1" "let x = 1" in
         let pkg2 = make_package tmpdir "pkg-2" "let x = 2" in
-        let workspace =
-          Riot_model.Workspace.make_realized
-            ~root:tmpdir
-            ~packages:[ pkg1; pkg2 ]
-            ~target_dir:(Path.to_string Path.(Path.v "target"))
-            ()
-        in
+        let workspace = Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ pkg1; pkg2 ]
+          ~target_dir:(Path.to_string Path.(Path.v "target"))
+          () in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"Failed to initialize toolchain" in
         let store = Riot_store.Store.create ~workspace in
@@ -145,13 +145,11 @@ let test_concurrent_builds_same_package = fun _ctx ->
     Fs.with_tempdir ~prefix:"concurrent_test"
       (fun tmpdir ->
         let package = make_package tmpdir "test-pkg" "let x = 42" in
-        let workspace =
-          Riot_model.Workspace.make_realized
-            ~root:tmpdir
-            ~packages:[ package ]
-            ~target_dir:(Path.to_string Path.(Path.v "target"))
-            ()
-        in
+        let workspace = Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ package ]
+          ~target_dir:(Path.to_string Path.(Path.v "target"))
+          () in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"Failed to initialize toolchain" in
         let store = Riot_store.Store.create ~workspace in
@@ -242,13 +240,11 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
     Fs.with_tempdir ~prefix:"concurrent_test"
       (fun tmpdir ->
         let package = make_package tmpdir "test-pkg" "let x = 42" in
-        let workspace =
-          Riot_model.Workspace.make_realized
-            ~root:tmpdir
-            ~packages:[ package ]
-            ~target_dir:(Path.to_string Path.(Path.v "target"))
-            ()
-        in
+        let workspace = Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ package ]
+          ~target_dir:(Path.to_string Path.(Path.v "target"))
+          () in
         let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
         |> Result.expect ~msg:"Failed to initialize toolchain" in
         let store = Riot_store.Store.create ~workspace in

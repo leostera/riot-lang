@@ -288,11 +288,12 @@ let many_ops_equivalence_prop =
       (* Remove half *)
       let keys_to_remove =
         List.enumerate pairs
-        |> List.filter_map ~fn:(fun (index, pair) ->
-          if index mod 2 = 0 then
-            Some pair
-          else
-            None)
+        |> List.filter_map
+          ~fn:(fun (index, pair) ->
+            if index mod 2 = 0 then
+              Some pair
+            else
+              None)
       in
       List.iter
         (fun ((k, _)) ->
@@ -320,10 +321,10 @@ let resize_equivalence_prop =
         ()
       done;
       (* Verify all entries match *)
-      let all_match =
-        List.init ~count:101 ~fn:(fun i -> Swisstable.get swiss i = Collections.HashMap.get hash ~key:i)
-        |> List.for_all (fun x -> x)
-      in
+      let all_match = List.init
+        ~count:101
+        ~fn:(fun i -> Swisstable.get swiss i = Collections.HashMap.get hash ~key:i)
+      |> List.for_all (fun x -> x) in
       if not all_match then
         fail "Entries differ after resize";
       Swisstable.len swiss = Collections.HashMap.length hash)

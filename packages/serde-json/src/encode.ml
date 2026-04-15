@@ -138,7 +138,8 @@ let float_to_json = fun value ->
 let rec list_backend: 'value. state -> 'value Serde.Ser.t -> 'value vec -> unit = fun state encode values ->
   write_char state '[';
   let first = ref true in
-  Vector.for_each values ~fn:(fun value ->
+  Vector.for_each values
+    ~fn:(fun value ->
       if !first then
         first := false
       else

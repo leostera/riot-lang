@@ -388,7 +388,11 @@ module Document_symbol_item = struct
     ] in
     let fields = Encode.field_opt "detail" Json.string detail fields in
     let fields =
-      Encode.field_opt "children" (fun children -> Json.array (List.map children ~fn:to_json)) children fields
+      Encode.field_opt
+        "children"
+        (fun children -> Json.array (List.map children ~fn:to_json))
+        children
+        fields
     in
     Json.obj (List.rev fields)
 
@@ -554,8 +558,7 @@ module Workspace_edit = struct
   let to_json = fun { changes } ->
     let changes = changes
     |> List.map
-      ~fn:(fun (uri, edits) -> (Uri.to_string uri, Json.array (List.map edits ~fn:Text_edit.to_json)))
-    in
+      ~fn:(fun (uri, edits) -> (Uri.to_string uri, Json.array (List.map edits ~fn:Text_edit.to_json))) in
     Json.obj [ ("changes", Json.obj changes) ]
 
   let of_json = fun value ->
@@ -1052,7 +1055,7 @@ module Initialize = struct
       let fields =
         Encode.field_opt
           "codeActionKinds"
-        (fun kinds -> Json.array (List.map kinds ~fn:Action_kind.to_json))
+          (fun kinds -> Json.array (List.map kinds ~fn:Action_kind.to_json))
           code_action_kinds
           fields
       in
@@ -1636,7 +1639,11 @@ module Text_document_requests = struct
     let context_to_json = fun { diagnostics; only; trigger_kind } ->
       let fields = [ ("diagnostics", Json.array (List.map diagnostics ~fn:Diagnostic.to_json)) ] in
       let fields =
-        Encode.field_opt "only" (fun kinds -> Json.array (List.map kinds ~fn:Action_kind.to_json)) only fields
+        Encode.field_opt
+          "only"
+          (fun kinds -> Json.array (List.map kinds ~fn:Action_kind.to_json))
+          only
+          fields
       in
       let fields = Encode.field_opt "triggerKind" Json.int trigger_kind fields in
       Json.obj (List.rev fields)

@@ -832,7 +832,7 @@
                 "syntax_node": {
                   "kind": "MATCH_CASE",
                   "span": {
-                    "start": 380,
+                    "start": 376,
                     "end": 394
                   }
                 },
@@ -1139,7 +1139,7 @@
                 "syntax_node": {
                   "kind": "MATCH_CASE",
                   "span": {
-                    "start": 523,
+                    "start": 519,
                     "end": 555
                   }
                 },
@@ -1538,7 +1538,7 @@
                 "syntax_node": {
                   "kind": "MATCH_CASE",
                   "span": {
-                    "start": 659,
+                    "start": 655,
                     "end": 674
                   }
                 },

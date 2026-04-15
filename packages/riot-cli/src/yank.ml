@@ -77,12 +77,7 @@ let parse_request = fun matches ->
   | Some value -> parse_package_spec value
 
 let prompt_confirmation = fun ~package_name ~version ->
-  eprint
-    ("Yank "
-    ^ Package_name.to_string package_name
-    ^ "@"
-    ^ version
-    ^ " from pkgs.ml? [y/N]: ");
+  eprint ("Yank " ^ Package_name.to_string package_name ^ "@" ^ version ^ " from pkgs.ml? [y/N]: ");
   match Tty.make () with
   | Error Tty.NoTtyConnected ->
       Error (PromptFailed "no tty connected")
@@ -119,21 +114,15 @@ let run = fun matches ->
                   match Pkgs_ml.Registry.create_filesystem ~registry_name () with
                   | Error err -> fail (YankFailed err)
                   | Ok registry -> (
-                      match
-                        Pkgs_ml.Registry.yank_release
-                          registry
-                          ~api_token
-                          ~package_name:(Package_name.to_string package_name)
-                          ~version
-                      with
+                      match Pkgs_ml.Registry.yank_release
+                        registry
+                        ~api_token
+                        ~package_name:(Package_name.to_string package_name)
+                        ~version with
                       | Error err -> fail (YankFailed err)
                       | Ok _ ->
                           eprintln
-                            ("Yanked "
-                            ^ Package_name.to_string package_name
-                            ^ "@"
-                            ^ version
-                            ^ " from pkgs.ml");
+                            ("Yanked " ^ Package_name.to_string package_name ^ "@" ^ version ^ " from pkgs.ml");
                           Ok ()
                     )
                 )

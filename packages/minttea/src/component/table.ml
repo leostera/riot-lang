@@ -57,8 +57,7 @@ let set_rows = fun t ~rows ->
   in
   { t with rows; cursor }
 
-let selected_row = fun t ->
-  List.get t.rows ~at:t.cursor
+let selected_row = fun t -> List.get t.rows ~at:t.cursor
 
 let selected_index = fun t ->
   if List.length t.rows = 0 then
@@ -153,10 +152,7 @@ let render_cell = fun content width ->
 
 let render_separator = fun (columns: column list) ->
   let parts =
-    List.map
-      ~fn:(fun (col: column) ->
-        String.make ~len:col.width ~char:'-')
-      columns
+    List.map ~fn:(fun (col: column) -> String.make ~len:col.width ~char:'-') columns
   in
   String.concat "  " parts
 
@@ -174,9 +170,7 @@ let render_row = fun (columns: column list) (row_data: string list) is_selected 
       String.make ~len:(String.length cursor_char) ~char:' '
   in
   let cells =
-    List.map
-      (List.zip columns row_data)
-      ~fn:(fun (col, cell) -> render_cell cell col.width)
+    List.map (List.zip columns row_data) ~fn:(fun (col, cell) -> render_cell cell col.width)
   in
   prefix ^ String.concat "  " cells
 
@@ -215,9 +209,7 @@ let view = fun tbl ->
                 let col_count = List.length tbl.columns in
                 let row_len = List.length row_data in
                 if row_len < col_count then
-                  let padding =
-                    Array.to_list (Array.make ~count:(col_count - row_len) ~value:"")
-                  in
+                  let padding = Array.to_list (Array.make ~count:(col_count - row_len) ~value:"") in
                   row_data @ padding
                 else if row_len > col_count then
                   List.take row_data ~len:col_count

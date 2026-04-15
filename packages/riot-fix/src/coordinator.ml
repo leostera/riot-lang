@@ -177,15 +177,12 @@ let init = fun config () ->
   let discovery_complete =
     match config.input with
     | Files files ->
-      List.for_each files ~fn:(fun f ->
-          Queue.push file_queue ~value:f);
+        List.for_each files ~fn:(fun f -> Queue.push file_queue ~value:f);
         true
     | Roots roots ->
-        let _ =
-          File_scanner.start
-            ~owner:(self ())
-            (File_scanner.create_many ~roots ~should_ignore:(should_ignore_file config.scope) ())
-        in
+        let _ = File_scanner.start
+          ~owner:(self ())
+          (File_scanner.create_many ~roots ~should_ignore:(should_ignore_file config.scope) ()) in
         false
   in
   for _ = 1 to config.concurrency do

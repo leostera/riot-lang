@@ -11,7 +11,7 @@ let sign = fun ~secret ~data ->
 (* Constant-time string comparison to prevent timing attacks *)
 
 let secure_compare = fun s1 s2 ->
-    if not (String.length s1 = String.length s2) then
+  if not (String.length s1 = String.length s2) then
     false
   else
     let mismatch = ref 0 in

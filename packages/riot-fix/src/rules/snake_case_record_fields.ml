@@ -30,8 +30,7 @@ let to_snake_case = fun text ->
     pieces := piece :: !pieces
   in
   let prev_was_lower_or_digit = ref false in
-  String.for_each
-    text
+  String.for_each text
     ~fn:(fun ch ->
       if is_upper ch then
         (
@@ -67,7 +66,8 @@ let make_diagnostic = fun token ->
 let diagnostics_for_decl type_declaration =
   match type_declaration with
   | Syn.Cst.TypeDeclaration.{ type_definition=Syn.Cst.TypeDefinition.Record { fields; _ }; _ } ->
-      fields |> List.filter_map ~fn:(fun field ->
+      fields |> List.filter_map
+        ~fn:(fun field ->
           let name = Syn.Cst.RecordField.name field in
           if should_flag_field_name name then
             let token = Syn.Cst.RecordField.field_name_token field |> Syn.Cst.Token.syntax_token in
@@ -79,21 +79,19 @@ let diagnostics_for_decl type_declaration =
 let diagnostics_for_items = fun source_file ->
   match source_file with
   | Syn.Cst.Implementation { items; _ } ->
-      items
-      |> List.map ~fn:(
+      items |> List.map
+        ~fn:(
           function
           | Syn.Cst.StructureItem.TypeDeclaration decl -> diagnostics_for_decl decl
           | _ -> []
-        )
-      |> List.concat
+        ) |> List.concat
   | Syn.Cst.Interface { items; _ } ->
-      items
-      |> List.map ~fn:(
+      items |> List.map
+        ~fn:(
           function
           | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostics_for_decl decl
           | _ -> []
-        )
-      |> List.concat
+        ) |> List.concat
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in

@@ -256,9 +256,7 @@ let create = fun ~config ->
         config;
       }
   | Error err ->
-      eprintln
-        ("[Scheduler] ERROR: Failed to create Async.Poll: "
-        ^ Async.error_to_string err);
+      eprintln ("[Scheduler] ERROR: Failed to create Async.Poll: " ^ Async.error_to_string err);
       panic "Failed to create I/O polling system"
 
 let get_context = fun () ->
@@ -1097,10 +1095,7 @@ let deregister_io_in_reactor = fun t source ~context ->
   match Async.Poll.deregister t.io_poll source with
   | Ok () -> ()
   | Error err -> eprintln
-    ("[Scheduler] WARN: Failed to deregister I/O "
-    ^ context
-    ^ ": "
-    ^ Async.error_to_string err)
+    ("[Scheduler] WARN: Failed to deregister I/O " ^ context ^ ": " ^ Async.error_to_string err)
 
 let process_timers = fun t ->
   if Timer_wheel.size t.timer_wheel = 0 then
@@ -1167,8 +1162,7 @@ let handle_reactor_command = fun t cmd ->
       match Async.Poll.deregister t.io_poll source with
       | Ok () -> ()
       | Error err -> eprintln
-        ("[Scheduler] WARN: Failed to deregister I/O source: "
-        ^ Async.error_to_string err)
+        ("[Scheduler] WARN: Failed to deregister I/O source: " ^ Async.error_to_string err)
     )
 
 let poll_io = fun t ->
@@ -1177,9 +1171,7 @@ let poll_io = fun t ->
     match Async.Poll.poll t.io_poll ~timeout:timeout_nanos with
     | Ok events -> events
     | Error err ->
-        eprintln
-          ("[Scheduler] ERROR: Failed to poll I/O: "
-          ^ Async.error_to_string err);
+        eprintln ("[Scheduler] ERROR: Failed to poll I/O: " ^ Async.error_to_string err);
         []
   in
   List.for_each events

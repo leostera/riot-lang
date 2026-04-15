@@ -37,12 +37,13 @@ let parse_selector = fun pattern ->
   | Some (package_name, rest) when has_text package_name && has_text rest -> (
       let* package_name = Riot_model.Package_name.from_string package_name in
       match split_once rest ':' with
-      | Some (suite_name, query) when has_text suite_name && has_text query ->
-          Ok (Some package_name, Some suite_name, Some query)
-      | None ->
-          Ok (Some package_name, Some rest, None)
-      | _ ->
-          Error "invalid suite selector"
+      | Some (suite_name, query) when has_text suite_name && has_text query -> Ok (
+        Some package_name,
+        Some suite_name,
+        Some query
+      )
+      | None -> Ok (Some package_name, Some rest, None)
+      | _ -> Error "invalid suite selector"
     )
   | _ -> Error "invalid suite selector"
 

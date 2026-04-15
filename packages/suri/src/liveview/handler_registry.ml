@@ -13,8 +13,7 @@ let register = fun t handler ->
   let _ = Std.Collections.HashMap.insert t.handlers ~key:id ~value:handler in
   id
 
-let find = fun t id ->
-  Std.Collections.HashMap.get t.handlers ~key:id
+let find = fun t id -> Std.Collections.HashMap.get t.handlers ~key:id
 
 let clear = fun t ->
   Std.Collections.HashMap.clear t.handlers;

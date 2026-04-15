@@ -13,9 +13,7 @@ let test_list_concat_preserves_input_order = fun _ctx ->
     ^ String.concat ", " actual
     ^ "]")
 
-let tests = Test.[
-  case "List.concat preserves input order" test_list_concat_preserves_input_order;
-]
+let tests = Test.[ case "List.concat preserves input order" test_list_concat_preserves_input_order; ]
 
 let name = "Std List Tests"
 

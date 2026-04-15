@@ -75,9 +75,15 @@ let serialize = fun frame ->
     (
       let mask = Frame.generate_mask () in
       (* Write mask (4 bytes) *)
-      Buffer.add_char header (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 24) 0xffl)));
-      Buffer.add_char header (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 16) 0xffl)));
-      Buffer.add_char header (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 8) 0xffl)));
+      Buffer.add_char
+        header
+        (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 24) 0xffl)));
+      Buffer.add_char
+        header
+        (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 16) 0xffl)));
+      Buffer.add_char
+        header
+        (Char.from_int_unchecked Int32.(to_int (logand (shift_right mask 8) 0xffl)));
       Buffer.add_char header (Char.from_int_unchecked Int32.(to_int (logand mask 0xffl)));
       (* Apply mask to payload *)
       let masked_payload = Frame.apply_mask mask payload in

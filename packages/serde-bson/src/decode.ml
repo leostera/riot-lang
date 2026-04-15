@@ -69,12 +69,10 @@ and list_backend: 'value. state -> 'value De.t -> 'value vec = fun state decode 
   let result = Vector.with_capacity ~size:(List.length values) in
   List.iter
     (fun value ->
-      Vector.push result ~value:
-        (
-          with_current state value
-            (fun () ->
-              decode.run backend state)
-        ))
+      Vector.push result
+        ~value:(with_current state value
+          (fun () ->
+            decode.run backend state)))
     values;
   result
 

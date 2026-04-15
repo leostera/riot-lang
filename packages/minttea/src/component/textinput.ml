@@ -95,12 +95,7 @@ let set_cursor_position = fun t ~pos ->
 
 let insert_at_cursor = fun t text ->
   let before = String.sub t.value ~offset:0 ~len:t.cursor_pos in
-  let after =
-    String.sub
-      t.value
-      ~offset:t.cursor_pos
-      ~len:(String.length t.value - t.cursor_pos)
-  in
+  let after = String.sub t.value ~offset:t.cursor_pos ~len:(String.length t.value - t.cursor_pos) in
   let new_value = before ^ text ^ after in
   (* Check char limit *)
   let new_value =
@@ -119,12 +114,7 @@ let delete_char_backward = fun t ->
     t
   else
     let before = String.sub t.value ~offset:0 ~len:(t.cursor_pos - 1) in
-    let after =
-      String.sub
-        t.value
-        ~offset:t.cursor_pos
-        ~len:(String.length t.value - t.cursor_pos)
-    in
+    let after = String.sub t.value ~offset:t.cursor_pos ~len:(String.length t.value - t.cursor_pos) in
     validate { t with value = before ^ after; cursor_pos = t.cursor_pos - 1 }
 
 (* Helper: delete character after cursor *)
@@ -134,23 +124,16 @@ let delete_char_forward = fun t ->
     t
   else
     let before = String.sub t.value ~offset:0 ~len:t.cursor_pos in
-    let after =
-      String.sub
-        t.value
-        ~offset:(t.cursor_pos + 1)
-        ~len:(String.length t.value - t.cursor_pos - 1)
-    in
+    let after = String.sub
+      t.value
+      ~offset:(t.cursor_pos + 1)
+      ~len:(String.length t.value - t.cursor_pos - 1) in
     validate { t with value = before ^ after }
 
 (* Helper: clear before cursor *)
 
 let clear_before_cursor = fun t ->
-  let after =
-    String.sub
-      t.value
-      ~offset:t.cursor_pos
-      ~len:(String.length t.value - t.cursor_pos)
-  in
+  let after = String.sub t.value ~offset:t.cursor_pos ~len:(String.length t.value - t.cursor_pos) in
   validate { t with value = after; cursor_pos = 0 }
 
 (* Helper: clear after cursor *)
@@ -176,12 +159,7 @@ let delete_word_backward = fun t ->
     in
     let word_start = find_word_start t.cursor_pos in
     let before = String.sub t.value ~offset:0 ~len:word_start in
-    let after =
-      String.sub
-        t.value
-        ~offset:t.cursor_pos
-        ~len:(String.length t.value - t.cursor_pos)
-    in
+    let after = String.sub t.value ~offset:t.cursor_pos ~len:(String.length t.value - t.cursor_pos) in
     validate { t with value = before ^ after; cursor_pos = word_start }
 
 let handle_paste = fun t text ->
@@ -229,7 +207,7 @@ let view = fun t ->
   in
   (* Handle width limiting / horizontal scrolling *)
   let visible_content =
-      if t.width > 0 && String.length content > t.width then
+    if t.width > 0 && String.length content > t.width then
       let offset =
         if t.cursor_pos < t.offset then
           t.cursor_pos
@@ -238,10 +216,7 @@ let view = fun t ->
         else
           t.offset
       in
-      String.sub
-        content
-        ~offset
-        ~len:(Int.min t.width (String.length content - offset))
+      String.sub content ~offset ~len:(Int.min t.width (String.length content - offset))
     else
       content
   in

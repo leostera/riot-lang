@@ -56,11 +56,14 @@ let test_list_shrinker_uses_the_element_shrinker = fun _ctx ->
 let test_hashmap_shrinker_shrinks_keys_and_values = fun _ctx ->
   let original = Collections.HashMap.from_list [ (10, 20) ] in
   let shrunk = Shrinker.shrink (Shrinker.hashmap (Shrinker.towards 0) (Shrinker.towards 0)) original in
-  if List.any shrunk
-       ~fn:(fun candidate ->
-         Collections.HashMap.get candidate ~key:0 = Some 20
-         || Collections.HashMap.get candidate ~key:10 = Some 0
-         || Collections.HashMap.get candidate ~key:0 = Some 0)
+  if
+    List.any
+      shrunk
+      ~fn:(fun candidate ->
+        Collections.HashMap.get candidate ~key:0
+        = Some 20
+        || Collections.HashMap.get candidate ~key:10
+        = Some 0 || Collections.HashMap.get candidate ~key:0 = Some 0)
   then
     Ok ()
   else
@@ -73,16 +76,17 @@ let test_option_shrinker_can_drop_the_payload = fun _ctx ->
   else
     Error "option shrinker did not produce None"
 
-let tests = Test.[
-  case "towards target only moves closer" test_towards_target_only_moves_closer;
-  case "int shrinking is finite" test_int_shrinking_is_finite;
-  case "string shrinker never returns longer values" test_string_shrinker_never_returns_longer_values;
-  case "string shrinker can simplify characters" test_string_shrinker_can_simplify_characters;
-  case "list shrinker removes elements" test_list_shrinker_removes_elements;
-  case "list shrinker uses the element shrinker" test_list_shrinker_uses_the_element_shrinker;
-  case "hashmap shrinker shrinks keys and values" test_hashmap_shrinker_shrinks_keys_and_values;
-  case "option shrinker can drop the payload" test_option_shrinker_can_drop_the_payload;
-]
+let tests =
+  Test.[
+    case "towards target only moves closer" test_towards_target_only_moves_closer;
+    case "int shrinking is finite" test_int_shrinking_is_finite;
+    case "string shrinker never returns longer values" test_string_shrinker_never_returns_longer_values;
+    case "string shrinker can simplify characters" test_string_shrinker_can_simplify_characters;
+    case "list shrinker removes elements" test_list_shrinker_removes_elements;
+    case "list shrinker uses the element shrinker" test_list_shrinker_uses_the_element_shrinker;
+    case "hashmap shrinker shrinks keys and values" test_hashmap_shrinker_shrinks_keys_and_values;
+    case "option shrinker can drop the payload" test_option_shrinker_can_drop_the_payload;
+  ]
 
 let () =
   Actors.run

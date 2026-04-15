@@ -58,8 +58,7 @@ let with_env_var = fun name value_opt f ->
       raise exn
 
 let target = fun value ->
-  Riot_model.Target.from_string value
-  |> Result.expect ~msg:("invalid target triple: " ^ value)
+  Riot_model.Target.from_string value |> Result.expect ~msg:("invalid target triple: " ^ value)
 
 let target_strings = fun targets ->
   List.map targets ~fn:Riot_model.Target.to_string |> List.sort ~compare:String.compare
@@ -71,8 +70,7 @@ let first_distinct_target = fun host ->
     "aarch64-unknown-linux-gnu";
   ] in
   candidates
-  |> List.find ~fn:(fun candidate ->
-         not (Riot_model.Target.equal host (target candidate)))
+  |> List.find ~fn:(fun candidate -> not (Riot_model.Target.equal host (target candidate)))
   |> Option.map ~fn:target
   |> Option.expect ~msg:"expected at least one distinct target fixture"
 
@@ -333,20 +331,27 @@ let test_get_host_triple_matches_std_host_triple = fun _ctx ->
 let test_list_toolchains_returns_typed_targets = fun _ctx ->
   let host = Riot_toolchain.get_host_triple () in
   let cross = first_distinct_target host in
-  let config = Riot_model.Toolchain_config.{
-    version = "5.5.0-riot.2";
-    source = Version "5.5.0-riot.2";
-    targets = [ host; cross ];
-  } in
+  let config =
+    Riot_model.Toolchain_config.{
+      version = "5.5.0-riot.2";
+      source = Version "5.5.0-riot.2";
+      targets = [ host; cross ]
+    } in
   let toolchains = Riot_toolchain.list_toolchains ~config in
-  let targets = List.map toolchains ~fn:(fun info -> info.Riot_toolchain.target) in
+  let targets =
+    List.map toolchains ~fn:(fun info -> info.Riot_toolchain.target)
+  in
   let rendered = target_strings targets in
   let expected = target_strings [ host; cross ] in
   let host_info =
-    List.find toolchains ~fn:(fun info -> Riot_model.Target.equal info.target host)
+    List.find toolchains
+      ~fn:(fun info ->
+        Riot_model.Target.equal info.target host)
   in
   let cross_info =
-    List.find toolchains ~fn:(fun info -> Riot_model.Target.equal info.target cross)
+    List.find toolchains
+      ~fn:(fun info ->
+        Riot_model.Target.equal info.target cross)
   in
   if not (String.equal (String.concat "," rendered) (String.concat "," expected)) then
     Error "expected list_toolchains to preserve typed target triples"
@@ -359,8 +364,7 @@ let test_list_toolchains_returns_typed_targets = fun _ctx ->
           Error "expected non-host target to not be marked as host"
         else
           Ok ()
-    | _ ->
-        Error "expected host and cross targets to both be present"
+    | _ -> Error "expected host and cross targets to both be present"
 
 let tests =
   Test.[

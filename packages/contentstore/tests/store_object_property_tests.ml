@@ -1,51 +1,39 @@
 open Std
 open Propane
-
 module Test = Std.Test
 
 let examples = 500
 
-let property_config = {
-  Property.default_config with
-  test_count = examples;
-}
+let property_config = { Property.default_config with test_count = examples }
 
 let assert_property = fun name property ->
   match Property.check ~config:property_config property with
   | Property.Success -> Ok ()
-  | Property.Failure { counter_example; shrink_steps } ->
-      Error (
-        name
-        ^ " failed\nCounter-example:\n"
-        ^ counter_example
-        ^ "\nShrink steps: "
-        ^ Int.to_string shrink_steps
-      )
-  | Property.Error { exception_ = _; backtrace } ->
-      Error (name ^ " raised an unexpected exception\n" ^ backtrace)
-  | Property.Assumption_violated ->
-      Error (name ^ " exhausted assumptions")
+  | Property.Failure { counter_example; shrink_steps } -> Error (name
+  ^ " failed\nCounter-example:\n"
+  ^ counter_example
+  ^ "\nShrink steps: "
+  ^ Int.to_string shrink_steps)
+  | Property.Error { exception_=_; backtrace } -> Error (name
+  ^ " raised an unexpected exception\n"
+  ^ backtrace)
+  | Property.Assumption_violated -> Error (name ^ " exhausted assumptions")
 
 let read_opened_file = fun file ->
   let content = Fs.File.read_to_end file |> Result.expect ~msg:"read_to_end should succeed" in
   let _ = Fs.File.close file |> Result.expect ~msg:"close should succeed" in
   content
 
-let namespace = fun parts ->
-  Contentstore.Namespace.from_parts parts
-  |> Result.expect ~msg:"invalid test namespace"
+let namespace = fun parts -> Contentstore.Namespace.from_parts parts |> Result.expect ~msg:"invalid test namespace"
 
 let with_store = fun prefix parts fn ->
   Fs.with_tempdir ~prefix
     (fun tmpdir ->
-      let store =
-        Contentstore.create
-          ~root:Path.(tmpdir / Path.v "cache")
-          ~ns:(namespace parts)
-          ~policy:Contentstore.Policy.default
-      in
-      fn ~tmpdir ~store)
-  |> Result.unwrap_or ~default:false
+      let store = Contentstore.create
+        ~root:Path.(tmpdir / Path.v "cache")
+        ~ns:(namespace parts)
+        ~policy:Contentstore.Policy.default in
+      fn ~tmpdir ~store) |> Result.unwrap_or ~default:false
 
 let save_object_roundtrip =
   Property.for_all Arbitrary.string
@@ -91,12 +79,10 @@ let object_roundtrip_survives_reopen =
           let hash = Crypto.hash_string ("reopen:" ^ content) in
           let root = Contentstore.root store in
           let _ = Contentstore.save_object store ~hash ~content |> Result.expect ~msg:"save_object should succeed" in
-          let reopened =
-            Contentstore.create
-              ~root
-              ~ns:(namespace [ "objects" ])
-              ~policy:Contentstore.Policy.default
-          in
+          let reopened = Contentstore.create
+            ~root
+            ~ns:(namespace [ "objects" ])
+            ~policy:Contentstore.Policy.default in
           match Contentstore.open_object reopened ~hash |> Result.map ~fn:read_opened_file with
           | Ok loaded -> String.equal loaded content
           | Error _ -> false))
@@ -125,15 +111,25 @@ let successful_object_writes_leave_no_temp_files =
           writes_ok && List.is_empty entries))
 
 let tests = [
-  Test.property "save_object/open_object roundtrip" ~examples
+  Test.property
+    "save_object/open_object roundtrip"
+    ~examples
     (fun _ctx -> assert_property "save_object/open_object roundtrip" save_object_roundtrip);
-  Test.property "save_file/open_object roundtrip" ~examples
+  Test.property
+    "save_file/open_object roundtrip"
+    ~examples
     (fun _ctx -> assert_property "save_file/open_object roundtrip" save_file_roundtrip);
-  Test.property "save_object is idempotent for the same hash and content" ~examples
+  Test.property
+    "save_object is idempotent for the same hash and content"
+    ~examples
     (fun _ctx -> assert_property "save_object is idempotent for the same hash and content" save_object_is_idempotent);
-  Test.property "object roundtrip survives reopen" ~examples
+  Test.property
+    "object roundtrip survives reopen"
+    ~examples
     (fun _ctx -> assert_property "object roundtrip survives reopen" object_roundtrip_survives_reopen);
-  Test.property "successful object writes leave no temp files" ~examples
+  Test.property
+    "successful object writes leave no temp files"
+    ~examples
     (fun _ctx -> assert_property "successful object writes leave no temp files" successful_object_writes_leave_no_temp_files);
 ]
 

@@ -95,7 +95,6 @@ module Writer = Writer
 
 module Stdin: sig
   type nonrec error = error
-
   val read: ?offset:int -> ?len:int -> Bytes.t -> (int, error) result
 
   val read_vectored: Iovec.t -> (int, error) result
@@ -103,7 +102,6 @@ end
 
 module Stdout: sig
   type nonrec error = error
-
   val write: ?offset:int -> ?len:int -> Bytes.t -> (int, error) result
 
   val write_vectored: Iovec.t -> (int, error) result
@@ -113,7 +111,6 @@ end
 
 module Stderr: sig
   type nonrec error = error
-
   val write: ?offset:int -> ?len:int -> Bytes.t -> (int, error) result
 
   val write_vectored: Iovec.t -> (int, error) result

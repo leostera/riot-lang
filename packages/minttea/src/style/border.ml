@@ -16,8 +16,7 @@ let utf8_len = fun str ->
 
 let split_lines = fun text ->
   (* Split on \n, handling optional \r before it *)
-  String.split_on_char '\n' text
-  |> List.map
+  String.split_on_char '\n' text |> List.map
     ~fn:(fun line ->
       if String.length line > 0 && String.get line ~at:(String.length line - 1) = Some '\r' then
         String.sub line ~offset:0 ~len:(String.length line - 1)
@@ -25,9 +24,7 @@ let split_lines = fun text ->
         line)
 
 let get_width = fun text ->
-  List.fold_left
-    (split_lines text)
-    ~acc:0
+  List.fold_left (split_lines text) ~acc:0
     ~fn:(fun acc line ->
       let len = utf8_len (remove_color_sequences line) in
       if acc < len then

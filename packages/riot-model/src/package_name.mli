@@ -1,7 +1,6 @@
 open Std
 
 type t
-
 val from_string: string -> (t, string) result
 
 val to_string: t -> string

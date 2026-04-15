@@ -223,49 +223,46 @@ let child_entry = fun config ~dir_path ~depth (raw: Fs.ReadDir.entry) ->
   let name = Path.to_string path in
   let path_string = join_path_string dir_path name in
   match kind with
-  | Fs.ReadDir.RegularFile -> Ok (Fs.Walker.FileItem.make
-    ~path_string
-    ~name
-    ~depth
-    ~kind:Fs.Walker.File)
-  | Fs.ReadDir.Directory -> Ok (Fs.Walker.FileItem.make
-    ~path_string
-    ~name
-    ~depth
-    ~kind:Fs.Walker.Directory)
+  | Fs.ReadDir.RegularFile -> Ok (Fs.Walker.FileItem.make ~path_string ~name ~depth ~kind:Fs.Walker.File)
+  | Fs.ReadDir.Directory -> Ok (Fs.Walker.FileItem.make ~path_string ~name ~depth ~kind:Fs.Walker.Directory)
   | Fs.ReadDir.SymbolicLink ->
       if config.follow_symlinks then
         metadata_for_path_string config path_string
         |> fun result ->
-          Result.map result ~fn:(fun metadata ->
-            Fs.Walker.FileItem.make ~path_string ~name ~depth ~kind:(entry_kind_of_metadata metadata))
+          Result.map
+            result
+            ~fn:(fun metadata ->
+              Fs.Walker.FileItem.make
+                ~path_string
+                ~name
+                ~depth
+                ~kind:(entry_kind_of_metadata metadata))
       else
         Ok (Fs.Walker.FileItem.make ~path_string ~name ~depth ~kind:Fs.Walker.Symlink)
   | Fs.ReadDir.CharacterDevice
   | Fs.ReadDir.BlockDevice
   | Fs.ReadDir.NamedPipe
-  | Fs.ReadDir.Socket -> Ok (Fs.Walker.FileItem.make
-    ~path_string
-    ~name
-    ~depth
-    ~kind:Fs.Walker.Other)
-  | Fs.ReadDir.Unknown ->
-      metadata_for_path_string config path_string
-      |> fun result ->
-        Result.map result ~fn:(fun metadata ->
-          Fs.Walker.FileItem.make ~path_string ~name ~depth ~kind:(entry_kind_of_metadata metadata))
+  | Fs.ReadDir.Socket -> Ok (Fs.Walker.FileItem.make ~path_string ~name ~depth ~kind:Fs.Walker.Other)
+  | Fs.ReadDir.Unknown -> metadata_for_path_string config path_string
+  |> fun result ->
+    Result.map
+      result
+      ~fn:(fun metadata ->
+        Fs.Walker.FileItem.make ~path_string ~name ~depth ~kind:(entry_kind_of_metadata metadata))
 
 let root_entry = fun _config root ->
   let path_string = Path.to_string root in
   Fs.symlink_metadata root
   |> fun result ->
-    Result.map result ~fn:(fun metadata ->
-      Fs.Walker.FileItem.make
-        ~path_string
-        ~name:(Path.basename root)
-        ~depth:0
-        ~kind:(entry_kind_of_metadata metadata))
-  |> fun result -> Result.map_err result ~fn:(fun cause -> File_system { path = Some root; cause })
+    Result.map
+      result
+      ~fn:(fun metadata ->
+        Fs.Walker.FileItem.make
+          ~path_string
+          ~name:(Path.basename root)
+          ~depth:0
+          ~kind:(entry_kind_of_metadata metadata))
+    |> fun result -> Result.map_err result ~fn:(fun cause -> File_system { path = Some root; cause })
 
 let should_descend_root = fun entry ->
   match Fs.Walker.FileItem.kind entry with
@@ -281,8 +278,7 @@ let read_child_entries = fun config entry ->
   let dir_path = Fs.Walker.FileItem.path_string entry in
   let dir = Fs.Walker.FileItem.path entry in
   match Fs.ReadDir.open_dir dir with
-  | Error cause ->
-      Error (File_system { path = Some dir; cause })
+  | Error cause -> Error (File_system { path = Some dir; cause })
   | Ok handle ->
       let rec loop acc =
         match Fs.ReadDir.next handle with
@@ -396,7 +392,10 @@ let process_directory_task = fun config task f ->
                     | Error err -> Error err
                     | Ok frame -> (
                         match f entry with
-                        | Fs.Walker.Stop -> Ok { child_tasks = List.reverse child_tasks; stop = true }
+                        | Fs.Walker.Stop -> Ok {
+                          child_tasks = List.reverse child_tasks;
+                          stop = true
+                        }
                         | Fs.Walker.Skip_subtree -> loop child_tasks rest
                         | Fs.Walker.Continue -> loop
                           ({ dir = entry; frames = task.frames @ [ frame ] } :: child_tasks)
@@ -478,8 +477,9 @@ let enqueue_root_task = fun config state ~f root ->
                 match f entry with
                 | Fs.Walker.Stop -> state.stop <- true
                 | Fs.Walker.Skip_subtree -> ()
-                | Fs.Walker.Continue ->
-                    Queue.push state.pending_tasks ~value:{ dir = entry; frames = [ frame ] }
+                | Fs.Walker.Continue -> Queue.push
+                  state.pending_tasks
+                  ~value:{ dir = entry; frames = [ frame ] }
               )
           else
             match f entry with
@@ -583,5 +583,4 @@ let to_list = fun config ->
             Sync.Mutex.unlock lock;
             raise exn
       end;
-      Fs.Walker.Continue)
-  |> fun result -> Result.map result ~fn:(fun () -> List.reverse !items)
+      Fs.Walker.Continue) |> fun result -> Result.map result ~fn:(fun () -> List.reverse !items)

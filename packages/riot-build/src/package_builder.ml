@@ -151,11 +151,9 @@ let summarize_package_names = fun names ->
 
 let collect_ocamlc_warnings = fun completed_actions ->
   let seen = HashSet.create () in
-  HashMap.to_list completed_actions |> List.fold_left
-    ~acc:[]
+  HashMap.to_list completed_actions |> List.fold_left ~acc:[]
     ~fn:(fun acc ((_id, result): Graph.SimpleGraph.Node_id.t * Action_executor.execution_result) ->
-      List.fold_left result.Action_executor.ocamlc_warnings
-        ~acc
+      List.fold_left result.Action_executor.ocamlc_warnings ~acc
         ~fn:(fun acc warning ->
           if HashSet.contains seen ~value:warning then
             acc
@@ -188,7 +186,8 @@ let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list
           []
         else
           let action_hash_hex = Crypto.Digest.hex (Action_node.get_hash node) in
-          List.map node.value.outs
+          List.map
+            node.value.outs
             ~fn:(fun out_path ->
               Riot_store.Store.{
                 name = Path.basename out_path;
@@ -232,10 +231,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
   let package_name = package.Package.name in
   let package_name_string = Package_name.to_string package_name in
   let target_dir =
-    Path.(Riot_model.Riot_dirs.out_dir_in_workspace
-      ~workspace
-      ~profile:profile_name
-      ~target:target_triplet
+    Path.(Riot_model.Riot_dirs.out_dir_in_workspace ~workspace ~profile:profile_name ~target:target_triplet
     / Path.v package_name_string) in
   Log.info ("Package " ^ package_name_string ^ ": computing content hash with dependencies");
   let package_scope =
@@ -355,12 +351,12 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
             if emit_visible_progress && List.length artifact.ocamlc_warnings > 0 then
               Telemetry.emit
                 (
-                    PackageOcamlcWarnings {
-                      session_id;
-                      package;
-                      target = Workspace_planner.Package package_name;
-                      source = `Cached;
-                      messages = artifact.ocamlc_warnings;
+                  PackageOcamlcWarnings {
+                    session_id;
+                    package;
+                    target = Workspace_planner.Package package_name;
+                    source = `Cached;
+                    messages = artifact.ocamlc_warnings;
                   }
                 );
             if emit_visible_progress then
@@ -447,10 +443,8 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
       );
       let inputs = List.concat
         [ package.sources.src; package.sources.native; package.sources.tests; ] in
-      let outputs =
-        Action_graph.nodes action_graph
-        |> List.flat_map ~fn:(fun (node: Action_node.t) -> node.value.outs)
-      in
+      let outputs = Action_graph.nodes action_graph
+      |> List.flat_map ~fn:(fun (node: Action_node.t) -> node.value.outs) in
       let do_build sandbox =
         let exec_result = Action_executor.execute
           ~action_graph
@@ -458,7 +452,7 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
           ~store
           ~session_id
           toolchain
-          ~concurrency:build_ctx.Build_ctx.available_parallelism in
+          ~concurrency:build_ctx.Build_ctx.parallelism in
         (* Check if any actions failed *)
         let failed_actions =
           HashMap.to_list exec_result.completed

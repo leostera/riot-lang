@@ -16,8 +16,8 @@ let checker_test = fun (ctx: Test.FixtureRunner.ctx) ->
   let* file = Fs.read ctx.fixture_path |> Result.map_err ~fn:IO.error_message in
   let parse_result = Syn.parse ~filename:ctx.fixture_path file in
   let* cst =
-    Syn.build_cst parse_result |> Result.map_err ~fn:
-      (
+    Syn.build_cst parse_result |> Result.map_err
+      ~fn:(
         function
         | Syn.Parse_diagnostics diagnostics -> diagnostics
         |> List.map ~fn:Syn.Diagnostic.to_string

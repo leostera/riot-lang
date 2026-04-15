@@ -23,9 +23,9 @@ let parse_matches = fun argv ->
   | Ok matches -> Ok matches
 
 let json_field = fun fields name ->
-  fields
-  |> List.find ~fn:(fun (field_name, _) -> String.equal field_name name)
-  |> Option.map ~fn:(fun (_, value) -> value)
+  fields |> List.find
+    ~fn:(fun (field_name, _) ->
+      String.equal field_name name) |> Option.map ~fn:(fun (_, value) -> value)
 
 let tests = [ Test.case "fix_request_of_matches parses explicit check requests"
     (fun _ctx ->

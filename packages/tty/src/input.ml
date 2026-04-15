@@ -1,5 +1,4 @@
 open Std
-
 module Rune = Kernel.Unicode.Rune
 
 type media_key =
@@ -153,8 +152,8 @@ let key_to_string = function
       "menu"
   | KeypadBegin ->
       "keypadbegin"
-  | Media key ->
-      (match key with
+  | Media key -> (
+      match key with
       | Play -> "media-play"
       | Pause_media -> "media-pause"
       | PlayPause -> "media-playpause"
@@ -166,7 +165,8 @@ let key_to_string = function
       | Record -> "media-record"
       | LowerVolume -> "media-lowervolume"
       | RaiseVolume -> "media-raisevolume"
-      | MuteVolume -> "media-mutevolume")
+      | MuteVolume -> "media-mutevolume"
+    )
 
 let modifier_to_string = function
   | Shift -> "shift"
@@ -204,7 +204,13 @@ let event_to_string = function
       base ^ kind_str
   | `Text value ->
       "text(\"" ^ String.escaped value ^ "\")"
-  | `Mouse { button; action; x; y; modifiers = _ } ->
+  | `Mouse {
+    button;
+    action;
+    x;
+    y;
+    modifiers=_
+  } ->
       let act =
         match action with
         | Mouse_press -> "press"
@@ -249,18 +255,9 @@ let make_key = fun ?(kind = Press) ?(mods = []) code -> `Key { code; modifiers =
 module Token = struct
   type control =
     | Escape
-    | Csi of {
-      raw: string;
-      body: string;
-    }
-    | Ss3 of {
-      raw: string;
-      body: string;
-    }
-    | Osc of {
-      raw: string;
-      body: string;
-    }
+    | Csi of { raw: string; body: string }
+    | Ss3 of { raw: string; body: string }
+    | Osc of { raw: string; body: string }
 
   type t =
     | Text of string
@@ -308,7 +305,9 @@ module Tokenizer = struct
       if Char.equal char '\x07' then
         Some (from, from + 1)
       else if Char.equal char '\x1b' then
-        if from + 1 < String.length input && Char.equal (String.get_unchecked input ~at:(from + 1)) '\\' then
+        if
+          from + 1 < String.length input && Char.equal (String.get_unchecked input ~at:(from + 1)) '\\'
+        then
           Some (from, from + 2)
         else
           find_osc_end input ~from:(from + 1)
@@ -330,8 +329,7 @@ module Tokenizer = struct
         match String.get_unchecked input ~at:(at + 1) with
         | '[' -> (
             match find_csi_end input ~from:(at + 2) with
-            | None ->
-                (reverse [] acc, String.sub input ~offset:at ~len:(String.length input - at))
+            | None -> (reverse [] acc, String.sub input ~offset:at ~len:(String.length input - at))
             | Some end_at ->
                 let raw = String.sub input ~offset:at ~len:(end_at - at + 1) in
                 let body = String.sub input ~offset:(at + 2) ~len:(end_at - at - 1) in
@@ -346,8 +344,7 @@ module Tokenizer = struct
               scan input ~at:(at + 3) (Token.Control (Token.Ss3 { raw; body }) :: acc)
         | ']' -> (
             match find_osc_end input ~from:(at + 2) with
-            | None ->
-                (reverse [] acc, String.sub input ~offset:at ~len:(String.length input - at))
+            | None -> (reverse [] acc, String.sub input ~offset:at ~len:(String.length input - at))
             | Some (terminator_at, next_at) ->
                 let raw = String.sub input ~offset:at ~len:(next_at - at) in
                 let body = String.sub input ~offset:(at + 2) ~len:(terminator_at - at - 2) in
@@ -383,12 +380,8 @@ module Parser = struct
     paste_buffer: string;
   }
 
-  let create = fun () -> {
-    tokenizer = Tokenizer.create ();
-    pending_escape = false;
-    in_paste = false;
-    paste_buffer = "";
-  }
+  let create = fun () ->
+    { tokenizer = Tokenizer.create (); pending_escape = false; in_paste = false; paste_buffer = "" }
 
   let clear_pending_escape = fun state -> { state with pending_escape = false }
 
@@ -397,10 +390,9 @@ module Parser = struct
 
   let raw_of_control = function
     | Token.Escape -> "\x1b"
-    | Token.Csi { raw; body = _ }
-    | Token.Ss3 { raw; body = _ }
-    | Token.Osc { raw; body = _ } ->
-        raw
+    | Token.Csi { raw; body=_ }
+    | Token.Ss3 { raw; body=_ }
+    | Token.Osc { raw; body=_ } -> raw
 
   let parse_mouse = fun body ->
     match String.length body with
@@ -427,9 +419,21 @@ module Parser = struct
                 in
                 let modifiers =
                   []
-                  |> (fun acc -> if code land 4 != 0 then Shift :: acc else acc)
-                  |> (fun acc -> if code land 8 != 0 then Meta :: acc else acc)
-                  |> (fun acc -> if code land 16 != 0 then Ctrl :: acc else acc)
+                  |> (fun acc ->
+                    if code land 4 != 0 then
+                      Shift :: acc
+                    else
+                      acc)
+                  |> (fun acc ->
+                    if code land 8 != 0 then
+                      Meta :: acc
+                    else
+                      acc)
+                  |> (fun acc ->
+                    if code land 16 != 0 then
+                      Ctrl :: acc
+                    else
+                      acc)
                   |> List.reverse
                 in
                 let is_motion = code land 32 != 0 in
@@ -444,22 +448,24 @@ module Parser = struct
                   else
                     Mouse_press
                 in
-                Some (`Mouse { button; action; x; y; modifiers })
-            | _ ->
-                None
+                Some (`Mouse {
+                  button;
+                  action;
+                  x;
+                  y;
+                  modifiers;
+                })
+            | _ -> None
           )
-        | _ ->
-            None
+        | _ -> None
       )
-    | _ ->
-        None
+    | _ -> None
 
   let parse_modified_csi = fun body ->
     match String.split ~by:";" body with
     | [_;mod_key] when String.length mod_key >= 2 -> (
         match Int.parse (String.sub mod_key ~offset:0 ~len:(String.length mod_key - 1)) with
-        | None ->
-            None
+        | None -> None
         | Some mod_num ->
             let key_char = String.get_unchecked mod_key ~at:(String.length mod_key - 1) in
             let modifiers =
@@ -473,17 +479,18 @@ module Parser = struct
               | 8 -> [ Ctrl; Alt; Shift ]
               | _ -> []
             in
-            (match key_char with
-            | 'A' -> Some (make_key ~mods:modifiers Up)
-            | 'B' -> Some (make_key ~mods:modifiers Down)
-            | 'C' -> Some (make_key ~mods:modifiers Right)
-            | 'D' -> Some (make_key ~mods:modifiers Left)
-            | 'H' -> Some (make_key ~mods:modifiers Home)
-            | 'F' -> Some (make_key ~mods:modifiers End)
-            | _ -> None)
+            (
+              match key_char with
+              | 'A' -> Some (make_key ~mods:modifiers Up)
+              | 'B' -> Some (make_key ~mods:modifiers Down)
+              | 'C' -> Some (make_key ~mods:modifiers Right)
+              | 'D' -> Some (make_key ~mods:modifiers Left)
+              | 'H' -> Some (make_key ~mods:modifiers Home)
+              | 'F' -> Some (make_key ~mods:modifiers End)
+              | _ -> None
+            )
       )
-    | _ ->
-        None
+    | _ -> None
 
   let parse_csi = fun body ->
     match body with
@@ -495,47 +502,27 @@ module Parser = struct
     | "F" -> Some (make_key End)
     | "Z" -> Some (make_key ~mods:[ Shift ] BackTab)
     | "1~"
-    | "7~" ->
-        Some (make_key Home)
+    | "7~" -> Some (make_key Home)
     | "4~"
-    | "8~" ->
-        Some (make_key End)
-    | "2~" ->
-        Some (make_key Insert)
-    | "3~" ->
-        Some (make_key Delete)
-    | "5~" ->
-        Some (make_key PageUp)
-    | "6~" ->
-        Some (make_key PageDown)
-    | "11~" ->
-        Some (make_key (F 1))
-    | "12~" ->
-        Some (make_key (F 2))
-    | "13~" ->
-        Some (make_key (F 3))
-    | "14~" ->
-        Some (make_key (F 4))
-    | "15~" ->
-        Some (make_key (F 5))
-    | "17~" ->
-        Some (make_key (F 6))
-    | "18~" ->
-        Some (make_key (F 7))
-    | "19~" ->
-        Some (make_key (F 8))
-    | "20~" ->
-        Some (make_key (F 9))
-    | "21~" ->
-        Some (make_key (F 10))
-    | "23~" ->
-        Some (make_key (F 11))
-    | "24~" ->
-        Some (make_key (F 12))
-    | "I" ->
-        Some `FocusGained
-    | "O" ->
-        Some `FocusLost
+    | "8~" -> Some (make_key End)
+    | "2~" -> Some (make_key Insert)
+    | "3~" -> Some (make_key Delete)
+    | "5~" -> Some (make_key PageUp)
+    | "6~" -> Some (make_key PageDown)
+    | "11~" -> Some (make_key (F 1))
+    | "12~" -> Some (make_key (F 2))
+    | "13~" -> Some (make_key (F 3))
+    | "14~" -> Some (make_key (F 4))
+    | "15~" -> Some (make_key (F 5))
+    | "17~" -> Some (make_key (F 6))
+    | "18~" -> Some (make_key (F 7))
+    | "19~" -> Some (make_key (F 8))
+    | "20~" -> Some (make_key (F 9))
+    | "21~" -> Some (make_key (F 10))
+    | "23~" -> Some (make_key (F 11))
+    | "24~" -> Some (make_key (F 12))
+    | "I" -> Some `FocusGained
+    | "O" -> Some `FocusLost
     | _ ->
         if String.starts_with ~prefix:"<" body then
           parse_mouse body
@@ -631,7 +618,7 @@ module Parser = struct
     | control -> (
         let raw = raw_of_control control in
         match control with
-        | Token.Csi { raw = _; body } ->
+        | Token.Csi { raw=_; body } ->
             if state.in_paste && not (String.equal body "201~") then
               (append_paste state raw, [])
             else if String.equal body "200~" then
@@ -641,24 +628,27 @@ module Parser = struct
               ({ (clear_pending_escape state) with in_paste = false; paste_buffer = "" }, [ event ])
             else
               let state = clear_pending_escape state in
-              (match parse_csi body with
-              | Some event -> (state, [ event ])
-              | None -> (state, [ `Unknown raw ]))
-        | Token.Ss3 { raw = _; body } ->
+              (
+                match parse_csi body with
+                | Some event -> (state, [ event ])
+                | None -> (state, [ `Unknown raw ])
+              )
+        | Token.Ss3 { raw=_; body } ->
             if state.in_paste then
               (append_paste state raw, [])
             else
               let state = clear_pending_escape state in
-              (match parse_ss3 body with
-              | Some event -> (state, [ event ])
-              | None -> (state, [ `Unknown raw ]))
-        | Token.Osc { raw = _; body = _ } ->
+              (
+                match parse_ss3 body with
+                | Some event -> (state, [ event ])
+                | None -> (state, [ `Unknown raw ])
+              )
+        | Token.Osc { raw=_; body=_ } ->
             if state.in_paste then
               (append_paste state raw, [])
             else
               (clear_pending_escape state, [ `Unknown raw ])
-        | Token.Escape ->
-            (state, [])
+        | Token.Escape -> (state, [])
       )
 
   let handle_unknown = fun state raw ->
@@ -669,8 +659,7 @@ module Parser = struct
 
   let rec handle_tokens = fun state tokens acc ->
     match tokens with
-    | [] ->
-        (state, Tokenizer.reverse [] acc)
+    | [] -> (state, Tokenizer.reverse [] acc)
     | token :: rest ->
         let state, events =
           match token with
@@ -731,16 +720,14 @@ let parse_escape = fun seq ->
 
 let emit_or_retry = fun events ->
   match events with
-  | [] ->
-      `Retry
+  | [] -> `Retry
   | event :: rest ->
       enqueue rest;
       event
 
 let read_event = fun () ->
   match dequeue () with
-  | Some event ->
-      event
+  | Some event -> event
   | None -> (
       match Stdin.read_utf8 () with
       | `End ->
@@ -763,7 +750,5 @@ let read_event = fun () ->
 let try_read = fun () ->
   match read_event () with
   | `Retry
-  | `End ->
-      None
-  | event ->
-      Some event
+  | `End -> None
+  | event -> Some event

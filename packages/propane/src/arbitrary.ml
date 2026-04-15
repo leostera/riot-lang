@@ -240,8 +240,7 @@ let pair = fun arb_a arb_b ->
     small =
       (
         match arb_a.small, arb_b.small with
-        | Some small_a, Some small_b ->
-            Some (fun ((a, b)) -> small_a a + small_b b)
+        | Some small_a, Some small_b -> Some (fun ((a, b)) -> small_a a + small_b b)
         | _ -> None
       );
   }
@@ -270,8 +269,8 @@ let triple = fun arb_a arb_b arb_c ->
     small =
       (
         match arb_a.small, arb_b.small, arb_c.small with
-        | Some small_a, Some small_b, Some small_c ->
-            Some (fun ((a, b, c)) -> small_a a + small_b b + small_c c)
+        | Some small_a, Some small_b, Some small_c -> Some (fun ((a, b, c)) ->
+          small_a a + small_b b + small_c c)
         | _ -> None
       );
   }
@@ -297,11 +296,10 @@ let option = fun elem_arb ->
       (
         match elem_arb.small with
         | Some small_elem ->
-            Some
-              (fun option_value ->
-                match option_value with
-                | None -> 0
-                | Some value -> 1 + small_elem value)
+            Some (fun option_value ->
+              match option_value with
+              | None -> 0
+              | Some value -> 1 + small_elem value)
         | None -> None
       );
   }
@@ -325,11 +323,10 @@ let result = fun ok_arb err_arb ->
       (
         match ok_arb.small, err_arb.small with
         | Some small_ok, Some small_error ->
-            Some
-              (fun result_value ->
-                match result_value with
-                | Ok value -> 1 + small_ok value
-                | Error error -> 1 + small_error error)
+            Some (fun result_value ->
+              match result_value with
+              | Ok value -> 1 + small_ok value
+              | Error error -> 1 + small_error error)
         | _ -> None
       );
   }

@@ -1,7 +1,7 @@
 open Std
 open Std.Result.Syntax
-
 module Install_runtime = Riot_install
+
 let out = eprintln
 
 let command =
@@ -20,14 +20,14 @@ type target =
   | Local of {
       package_name: Riot_model.Package_name.t option;
       binary_name: string;
-      registry_fallback: Riot_deps.Registry_package_spec.t option;
+      registry_fallback: Riot_deps.Registry_package_spec.t option
     }
   | External of Install_runtime.external_spec * string
 
 let parse_package_name = fun package_name ->
   Riot_model.Package_name.from_string package_name
-  |> Result.map_err ~fn:(fun error ->
-      Failure ("invalid package name '" ^ package_name ^ "': " ^ error))
+  |> Result.map_err
+    ~fn:(fun error -> Failure ("invalid package name '" ^ package_name ^ "': " ^ error))
 
 let display_path = fun ~workspace_root path ->
   match Path.strip_prefix path ~prefix:workspace_root with
@@ -67,13 +67,11 @@ let parse_local_target = fun ?package_filter name ->
       let* package_name = parse_package_name package_name in
       let* () =
         match package_filter with
-        | Some expected_package when not (Riot_model.Package_name.equal expected_package package_name) ->
-            Error
-              (Failure
-                 ( "conflicting package filters: got --package "
-                 ^ Riot_model.Package_name.to_string expected_package
-                 ^ " and binary target "
-                 ^ name ))
+        | Some expected_package when not
+          (Riot_model.Package_name.equal expected_package package_name) -> Error (Failure ("conflicting package filters: got --package "
+        ^ Riot_model.Package_name.to_string expected_package
+        ^ " and binary target "
+        ^ name))
         | _ -> Ok ()
       in
       Ok (Local { package_name = Some package_name; binary_name; registry_fallback = None })
@@ -97,14 +95,10 @@ let parse_target = fun ?package_filter raw ->
         match split_remote_binary raw with
         | Ok (source_spec, binary_name) -> (
             match Riot_deps.Git_dependency.parse_spec source_spec with
-            | Ok source_spec ->
-                Ok (External (
-                  Install_runtime.Source {
-                    spec = source_spec;
-                    update = false;
-                  },
-                  Option.unwrap_or ~default:(default_remote_binary_name source_spec) binary_name
-                ))
+            | Ok source_spec -> Ok (External (
+              Install_runtime.Source { spec = source_spec; update = false },
+              Option.unwrap_or ~default:(default_remote_binary_name source_spec) binary_name
+            ))
             | Error err -> Error (Failure (Riot_deps.Git_dependency.message err))
           )
         | Error _ as err -> err
@@ -138,16 +132,18 @@ let write_workspace_error = fun message -> out ("\027[1;31mError\027[0m: " ^ mes
 
 let local_install = fun ~on_event ~workspace ~package_name ~binary_name ~local_only ->
   Install_runtime.install ~on_event
-    (Install_runtime.Workspace {
-      workspace;
-      package_name;
-      binary_name;
-      destination =
-        if local_only then
-          Install_runtime.Local
-        else
-          Install_runtime.Global;
-    })
+    (
+      Install_runtime.Workspace {
+        workspace;
+        package_name;
+        binary_name;
+        destination =
+          if local_only then
+            Install_runtime.Local
+          else
+            Install_runtime.Global;
+      }
+    )
 
 let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
   let open ArgParser in
@@ -169,7 +165,10 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
       match event with
       | Install_runtime.Build build_event -> (
           match build_event with
-          | Riot_build.Event.Pm kind -> Build.write_pm_event ~mode:Build.Human ~seen_registry_updates kind
+          | Riot_build.Event.Pm kind -> Build.write_pm_event
+            ~mode:Build.Human
+            ~seen_registry_updates
+            kind
           | Riot_build.Event.BuildingTarget { target; host } -> Build.write_building_target_event
             ~mode:Build.Human
             ~target
@@ -186,7 +185,8 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
         | None -> (
             match workspace with
             | Some workspace -> Run.resolve_implicit_local_target ?package_filter workspace
-            |> Result.map ~fn:(fun (Run.{ package_name; binary_name }) ->
+            |> Result.map
+              ~fn:(fun (Run.{ package_name; binary_name }) ->
                 Local { package_name = Some package_name; binary_name; registry_fallback = None })
             |> Result.map_err ~fn:(fun err -> Failure err)
             | None -> Error (Failure (Option.unwrap_or ~default:"Not in a riot workspace" workspace_error))
@@ -202,16 +202,10 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
           else
             let spec =
               match spec with
-              | Install_runtime.Source { spec; update = _ } ->
-                  Install_runtime.Source { spec; update }
+              | Install_runtime.Source { spec; update=_ } -> Install_runtime.Source { spec; update }
               | Install_runtime.Registry _ as spec -> spec
             in
-            Install_runtime.install
-              ~on_event
-              (Install_runtime.External {
-                spec;
-                binary_name;
-              })
+            Install_runtime.install ~on_event (Install_runtime.External { spec; binary_name })
             |> Result.map_err ~fn:(fun err -> `Install err)
       | Ok (Local { package_name; binary_name; registry_fallback }) -> (
           match workspace with
@@ -225,7 +219,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
                     ~on_event
                     (Install_runtime.External {
                       spec = Install_runtime.Registry package_spec;
-                      binary_name = "main";
+                      binary_name = "main"
                     })
                   |> Result.map_err ~fn:(fun err -> `Install err)
                   | None -> Error (`Install (Install_runtime.BinaryNotFound { binary_name }))
@@ -243,11 +237,10 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
                     ~on_event
                     (Install_runtime.External {
                       spec = Install_runtime.Registry package_spec;
-                      binary_name = "main";
+                      binary_name = "main"
                     })
                   |> Result.map_err ~fn:(fun err -> `Install err)
-                  | None ->
-                      Error (`Cli ("'" ^ binary_name ^ "' is not a valid registry package spec outside a riot workspace"))
+                  | None -> Error (`Cli ("'" ^ binary_name ^ "' is not a valid registry package spec outside a riot workspace"))
                 )
         )
     in

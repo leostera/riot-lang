@@ -23,9 +23,11 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.for_each ~fn:(fun { buffer = chunk; offset; length } ->
+      IO.Iovec.for_each
+        ~fn:(fun { buffer=chunk; offset; length } ->
           IO.Buffer.add_subbytes buffer chunk offset length;
-          written := !written + length) bufs;
+          written := !written + length)
+        bufs;
       Ok !written
 
     let flush = fun _buffer -> Ok ()
@@ -296,7 +298,7 @@ let print_sample = fun (value: sample) ->
       " }";
     ]
 
-let finite_float_limit = 1.0e12
+let finite_float_limit = 1.0e 12
 
 let finite_float_gen = Generator.float_range (-.finite_float_limit) finite_float_limit
 

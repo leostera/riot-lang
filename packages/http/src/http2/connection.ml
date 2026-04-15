@@ -191,8 +191,7 @@ let create_stream = fun conn ->
     let _ = HashMap.insert conn.streams ~key:stream_id ~value:stream in
     Ok stream_id
 
-let get_stream = fun conn stream_id ->
-  HashMap.get conn.streams ~key:stream_id
+let get_stream = fun conn stream_id -> HashMap.get conn.streams ~key:stream_id
 
 let send_headers = fun conn ~stream_id ~headers ~end_stream ->
   match get_stream conn stream_id with

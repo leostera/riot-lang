@@ -29,8 +29,7 @@ let to_snake_case = fun text ->
     pieces := piece :: !pieces
   in
   let prev_was_lower_or_digit = ref false in
-  String.for_each
-    text
+  String.for_each text
     ~fn:(fun ch ->
       if is_upper ch then
         (
@@ -76,8 +75,8 @@ let diagnostic_for_parameter = fun parameter ->
 let check_tree = fun (ctx: Rule.context) _red_root ->
   Rule_query.let_bindings ctx
   |> List.filter ~fn:Syn.Cst.LetBinding.is_function
-  |> List.map ~fn:(fun binding ->
-    Syn.Cst.LetBinding.parameters binding |> List.filter_map ~fn:diagnostic_for_parameter)
+  |> List.map
+    ~fn:(fun binding -> Syn.Cst.LetBinding.parameters binding |> List.filter_map ~fn:diagnostic_for_parameter)
   |> List.concat
 
 let make = fun () ->

@@ -22,12 +22,7 @@ let status_string: t -> string = fun cmd ->
   else
     "not built"
 
-let parse_from_toml:
-  Toml.value list ->
-  package_name:Package_name.t ->
-  package_path:Path.t ->
-  t list =
-fun toml_entries ~package_name ~package_path ->
+let parse_from_toml: Toml.value list -> package_name:Package_name.t -> package_path:Path.t -> t list = fun toml_entries ~package_name ~package_path ->
   List.filter_map toml_entries
     ~fn:(fun cmd_toml ->
       match cmd_toml with
@@ -52,13 +47,11 @@ fun toml_entries ~package_name ~package_path ->
               in
               (* Command binary name is the command name from TOML *)
               let command_binary =
-                Path.(
-                  v "_build"
-                  / v "debug"
-                  / v "out"
-                  / v (Package_name.to_string package_name)
-                  / v name)
-              in
+                Path.(v "_build"
+                / v "debug"
+                / v "out"
+                / v (Package_name.to_string package_name)
+                / v name) in
               Some {
                 name;
                 description;

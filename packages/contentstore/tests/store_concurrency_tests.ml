@@ -1,5 +1,4 @@
 open Std
-
 module Test = Std.Test
 
 type Runtime.Message.t +=
@@ -7,9 +6,7 @@ type Runtime.Message.t +=
   | Contentstore_worker_done of (unit, string) result
   | Contentstore_reader_done of (unit, string) result
 
-let namespace = fun parts ->
-  Contentstore.Namespace.from_parts parts
-  |> Result.expect ~msg:"invalid test namespace"
+let namespace = fun parts -> Contentstore.Namespace.from_parts parts |> Result.expect ~msg:"invalid test namespace"
 
 let make_store = fun tmpdir parts ->
   Contentstore.create
@@ -18,8 +15,7 @@ let make_store = fun tmpdir parts ->
     ~policy:Contentstore.Policy.default
 
 let with_store = fun prefix parts fn ->
-  Fs.with_tempdir ~prefix
-    (fun tmpdir -> fn ~tmpdir ~store:(make_store tmpdir parts))
+  Fs.with_tempdir ~prefix (fun tmpdir -> fn ~tmpdir ~store:(make_store tmpdir parts))
   |> Result.unwrap_or ~default:(Error "tempdir creation failed")
 
 let read_opened_file = fun file ->
@@ -128,11 +124,10 @@ let test_concurrent_same_hash_commit_dir_writers_converge = fun _ctx ->
     (fun ~tmpdir ~store ->
       let hash = Crypto.hash_string "shared-tree" in
       let parent = self () in
-      let make_source = fun name payload ->
+      let make_source name payload =
         let source_dir = Path.(tmpdir / Path.v name) in
         let _ = Fs.create_dir_all source_dir |> Result.expect ~msg:"create source dir should succeed" in
-        let _ = Fs.write payload Path.(source_dir / Path.v "payload.txt")
-        |> Result.expect ~msg:"write payload should succeed" in
+        let _ = Fs.write payload Path.(source_dir / Path.v "payload.txt") |> Result.expect ~msg:"write payload should succeed" in
         source_dir
       in
       let left_dir = make_source "left" "left-tree" in
@@ -170,8 +165,7 @@ let test_readers_see_old_or_new_named_values_during_overwrite = fun _ctx ->
       let left = "left-value!" in
       let right = "right-value" in
       let done_writing = ref false in
-      let _ = Contentstore.save_named_object store ~key ~content:left
-      |> Result.expect ~msg:"initial save_named_object should succeed" in
+      let _ = Contentstore.save_named_object store ~key ~content:left |> Result.expect ~msg:"initial save_named_object should succeed" in
       let _writer =
         spawn
           (fun () ->
@@ -180,7 +174,12 @@ let test_readers_see_old_or_new_named_values_during_overwrite = fun _ctx ->
               if remaining = 0 then
                 Ok ()
               else
-                let next = if String.equal current left then right else left in
+                let next =
+                  if String.equal current left then
+                    right
+                  else
+                    left
+                in
                 match Contentstore.save_named_object store ~key ~content:next with
                 | Ok () ->
                     yield ();
@@ -209,7 +208,8 @@ let test_readers_see_old_or_new_named_values_during_overwrite = fun _ctx ->
                       loop (remaining - 1)
                     )
                 | Ok value ->
-                    Error ("reader observed a partial named value during overwrite: " ^ String.escaped value)
+                    Error ("reader observed a partial named value during overwrite: "
+                    ^ String.escaped value)
                 | Error (Contentstore.Store.Missing _) ->
                     Error "reader observed a missing named value during overwrite"
                 | Error err ->
@@ -231,8 +231,7 @@ let test_mixed_workload_does_not_cross_corrupt = fun _ctx ->
       let tree_hash = Crypto.hash_string "tree" in
       let source_dir = Path.(tmpdir / Path.v "tree") in
       let _ = Fs.create_dir_all source_dir |> Result.expect ~msg:"create source dir should succeed" in
-      let _ = Fs.write "tree" Path.(source_dir / Path.v "payload.txt")
-      |> Result.expect ~msg:"write tree payload should succeed" in
+      let _ = Fs.write "tree" Path.(source_dir / Path.v "payload.txt") |> Result.expect ~msg:"write tree payload should succeed" in
       let object_pid =
         spawn
           (fun () ->
@@ -275,11 +274,11 @@ let test_mixed_workload_does_not_cross_corrupt = fun _ctx ->
       match collect_results 3 with
       | Error err -> Error err
       | Ok () -> (
-          match
-            ( Contentstore.open_object store ~hash:object_hash |> Result.map ~fn:read_opened_file
-            , Contentstore.open_named_object store ~key:"current" |> Result.map ~fn:read_opened_file
-            , Fs.read_to_string Path.(Contentstore.hash_dir_of store tree_hash / Path.v "payload.txt") )
-          with
+          match (
+            Contentstore.open_object store ~hash:object_hash |> Result.map ~fn:read_opened_file,
+            Contentstore.open_named_object store ~key:"current" |> Result.map ~fn:read_opened_file,
+            Fs.read_to_string Path.(Contentstore.hash_dir_of store tree_hash / Path.v "payload.txt")
+          ) with
           | (Ok "object", Ok "named", Ok "tree") -> Ok ()
           | _ -> Error "expected mixed object/named/tree workload to stay isolated"
         ))

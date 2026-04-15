@@ -240,7 +240,7 @@ module Cache = struct
             | [h;m;s] -> (Int.of_string h, Int.of_string m, Int.of_string s)
             | _ -> (0, 0, 0)
           in
-          let tm : Kernel.Time.tm = {
+          let tm: Kernel.Time.tm = {
             tm_sec = sec;
             tm_min = min;
             tm_hour = hour;
@@ -362,7 +362,10 @@ module Directory = struct
                   } in
                   entries := entry :: !entries
               | Error _ -> ());
-        List.sort ~compare:(fun a b -> String.compare a.name b.name) !entries
+        List.sort
+          ~compare:(fun a b ->
+            String.compare a.name b.name)
+          !entries
 
   let entry_row = fun request_path entry ->
     (* Build absolute path by appending entry name to request path *)
@@ -458,8 +461,7 @@ end
 
 (** Core file serving logic *)
 let find_index_file = fun config path ->
-  config.index_files
-  |> List.filter_map
+  config.index_files |> List.filter_map
     ~fn:(fun index_name ->
       let index_path = Path.join path (Path.v index_name) in
       match Fs.exists index_path with
@@ -468,8 +470,7 @@ let find_index_file = fun config path ->
           | Ok meta when Fs.Metadata.is_file meta -> Some index_path
           | _ -> None
         )
-      | _ -> None)
-  |> List.head
+      | _ -> None) |> List.head
 
 let rec serve_file = fun config root requested_path conn ->
   (* Normalize and validate path *)
@@ -551,9 +552,7 @@ and serve_regular_file = fun config path meta conn ->
         (* Send response *)
         let conn = Conn.respond conn ~status:Net.Http.Status.Ok ~body:content in
         let conn =
-          List.fold_left
-            headers
-            ~acc:conn
+          List.fold_left headers ~acc:conn
             ~fn:(fun c ((name, value)) ->
               Conn.with_header name value c)
         in

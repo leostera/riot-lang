@@ -88,7 +88,9 @@ module Driver = struct
         ); ("message", Data.Json.string (error_to_string err)) ]
 
   let connect: config -> (connection, error) result = fun config ->
-    let id = "sqlite_" ^ string_of_int (Random.int 1_000_000 |> Result.expect ~msg:"failed to generate sqlite id") in
+    let id = "sqlite_" ^ string_of_int
+      (Random.int 1_000_000 |> Result.expect ~msg:"failed to generate sqlite id")
+    in
     Ok { id; path = config.path; handle = (); closed = false }
 
   let close = fun conn -> conn.closed <- true

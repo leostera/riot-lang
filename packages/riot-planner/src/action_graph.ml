@@ -34,8 +34,7 @@ let to_action_list = fun t ->
 let hash_action_node = fun _t (node: Action_node.t) -> node.value.hash
 
 let opens = fun mods ->
-  List.filter_map
-    mods
+  List.filter_map mods
     ~fn:(fun (node: Module_node.t G.node) ->
       match node.value.kind with
       | ML mod_
@@ -46,8 +45,7 @@ let opens = fun mods ->
 let stdlib_flags = fun (package: Package.t) ->
   (* Check if this package has stdlib as a dependency *)
   let has_stdlib_dep =
-    List.any
-      (Package.build_graph_dependencies package)
+    List.any (Package.build_graph_dependencies package)
       ~fn:(fun (dep: Package.dependency) ->
         Package_name.equal dep.name
           (Package_name.from_string "stdlib" |> Result.expect ~msg:"expected valid package name"))
@@ -102,12 +100,15 @@ let profile_compile_flags = fun (profile: Profile.t) ->
     else
       flags @ [ Riot_toolchain.Ocamlc.WarnError profile.errors ]
   in
-  let compare_compiler_flag = fun left right ->
-    let rec compare_flag_parts = fun left right ->
+  let compare_compiler_flag left right =
+    let rec compare_flag_parts left right =
       match (left, right) with
-      | ([], []) -> 0
-      | ([], _) -> -1
-      | (_, []) -> 1
+      | ([], []) ->
+          0
+      | ([], _) ->
+          (-1)
+      | (_, []) ->
+          1
       | (left :: left_rest, right :: right_rest) ->
           let compared = String.compare left right in
           if compared = 0 then
@@ -213,15 +214,17 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
         ^ ": "
         ^ String.concat " " ccflags);
       let actions =
-        List.map c_files ~fn:(fun c_file ->
-          let obj_file = Path.remove_extension c_file |> Path.add_extension ~ext:"o" in
-          let output_name = Path.basename obj_file |> Path.v in
-          Action.CompileC { source = c_file; outputs = [ output_name ]; ccflags })
+        List.map c_files
+          ~fn:(fun c_file ->
+            let obj_file = Path.remove_extension c_file |> Path.add_extension ~ext:"o" in
+            let output_name = Path.basename obj_file |> Path.v in
+            Action.CompileC { source = c_file; outputs = [ output_name ]; ccflags })
       in
       let outputs =
-        List.map c_files ~fn:(fun c_file ->
-          let obj_file = Path.remove_extension c_file |> Path.add_extension ~ext:"o" in
-          Path.basename obj_file |> Path.v)
+        List.map c_files
+          ~fn:(fun c_file ->
+            let obj_file = Path.remove_extension c_file |> Path.add_extension ~ext:"o" in
+            Path.basename obj_file |> Path.v)
       in
       (actions, outputs, files)
   | { kind=C; file=Concrete _; _ }
@@ -235,24 +238,26 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
       let archive_name = Module_name.(of_string name |> a) in
       let sources = [] in
       let objects_with_duplicates =
-        List.map deps ~fn:(fun dep_id ->
-          let dep_outputs = get_dep_outputs dep_id in
-          match get_dep_kind dep_id with
-          | Some (Module_node.Native _) ->
-              List.filter dep_outputs ~fn:(fun output -> Path.extension output = Some ".o")
-          | _ ->
-              List.filter dep_outputs ~fn:(fun output -> Path.extension output = Some ".cmx"))
+        List.map deps
+          ~fn:(fun dep_id ->
+            let dep_outputs = get_dep_outputs dep_id in
+            match get_dep_kind dep_id with
+            | Some (Module_node.Native _) -> List.filter
+              dep_outputs
+              ~fn:(fun output -> Path.extension output = Some ".o")
+            | _ -> List.filter dep_outputs ~fn:(fun output -> Path.extension output = Some ".cmx"))
         |> List.concat
       in
       (* Deduplicate objects without reordering them: OCaml link order must stay
          topological, with dependencies before dependents. *)
       let seen_objects = HashSet.create () in
       let objects =
-        List.filter_map objects_with_duplicates ~fn:(fun object_path ->
-          if HashSet.insert seen_objects ~value:object_path then
-            Some object_path
-          else
-            None)
+        List.filter_map objects_with_duplicates
+          ~fn:(fun object_path ->
+            if HashSet.insert seen_objects ~value:object_path then
+              Some object_path
+            else
+              None)
       in
       (* Create static library metadata (.cmxa). *)
       let create_lib = Action.CreateLibrary {
@@ -274,9 +279,10 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
       } in
       (* Collect foreign library outputs for linking *)
       let cclibs =
-        List.map package.foreign_dependencies ~fn:(fun (fdep: Package.foreign_dependency) ->
-          (* Make foreign outputs absolute by joining with foreign dep path and normalizing *)
-          List.map fdep.outputs ~fn:(fun out -> Path.normalize (Path.join fdep.path out)))
+        List.map package.foreign_dependencies
+          ~fn:(fun (fdep: Package.foreign_dependency) ->
+            (* Make foreign outputs absolute by joining with foreign dep path and normalizing *)
+            List.map fdep.outputs ~fn:(fun out -> Path.normalize (Path.join fdep.path out)))
         |> List.concat
       in
       let binary_output = Path.v name in
@@ -291,21 +297,23 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
          which can only be determined at link-time based on the depset. *)
       let transitive_deps = Dependency.transitive_closure depset in
       let dep_ldflags =
-        List.map transitive_deps ~fn:(fun (dep: Dependency.t) ->
-          match
-            List.find dep.package.compiler.target_overrides
-              ~fn:(fun (platform, _) -> String.equal platform target_platform)
-          with
-          | Some (_, target_override) -> (
-              match target_override.profile_override with
-              | Some override -> (
-                  match override.ld_flags with
-                  | Profile.Override flags -> flags
-                  | Inherit -> []
-                )
-              | None -> []
-            )
-          | None -> [])
+        List.map transitive_deps
+          ~fn:(fun (dep: Dependency.t) ->
+            match
+              List.find dep.package.compiler.target_overrides
+                ~fn:(fun (platform, _) ->
+                  String.equal platform target_platform)
+            with
+            | Some (_, target_override) -> (
+                match target_override.profile_override with
+                | Some override -> (
+                    match override.ld_flags with
+                    | Profile.Override flags -> flags
+                    | Inherit -> []
+                  )
+                | None -> []
+              )
+            | None -> [])
         |> List.concat
       in
       (* Combine: current package + dependencies *)
@@ -409,12 +417,13 @@ let from_module_graph ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_un
     | None -> []
   in
   let module_kinds = HashMap.create () in
-  List.for_each sorted_modules ~fn:(fun (module_node: Module_node.t G.node) ->
+  List.for_each sorted_modules
+    ~fn:(fun (module_node: Module_node.t G.node) ->
       let _ = HashMap.insert module_kinds ~key:module_node.id ~value:module_node.value.kind in
-      ())
-  ;
+      ());
   let get_dep_kind dep_id = HashMap.get module_kinds ~key:dep_id in
-  List.for_each sorted_modules ~fn:(fun (module_node: Module_node.t G.node) ->
+  List.for_each sorted_modules
+    ~fn:(fun (module_node: Module_node.t G.node) ->
       let actions, outputs, sources = module_to_actions
         ~package
         ~profile
@@ -443,15 +452,14 @@ let from_module_graph ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_un
           ~dependency_hashes:get_dep_hash
           ~deps:module_node.deps in
         let action_node = add_node action_graph action_spec in
-        List.for_each module_node.deps ~fn:(fun dep_id ->
+        List.for_each module_node.deps
+          ~fn:(fun dep_id ->
             match HashMap.get node_mapping ~key:dep_id with
             | Some dep_action_node -> add_dependency action_graph action_node ~depends_on:dep_action_node
-            | None -> ())
-        ;
+            | None -> ());
         let _ = HashMap.insert node_mapping ~key:module_node.id ~value:action_node in
         let _ = HashMap.insert action_spec_hashes ~key:module_node.id ~value:action_spec.hash in
-        Cell.set all_outputs (outputs @ Cell.get all_outputs))
-  ;
+        Cell.set all_outputs (outputs @ Cell.get all_outputs));
   (action_graph, Cell.get all_outputs)
 
 let to_json = fun t ->
@@ -460,7 +468,8 @@ let to_json = fun t ->
     let sorted_nodes =
       List.sort
         all_nodes
-        ~compare:(fun (a: Action_node.t) (b: Action_node.t) -> G.Node_id.to_int a.id - G.Node_id.to_int b.id)
+        ~compare:(fun (a: Action_node.t) (b: Action_node.t) ->
+          G.Node_id.to_int a.id - G.Node_id.to_int b.id)
     in
     obj [ ("nodes", array (List.map sorted_nodes ~fn:Action_node.to_json)) ]
 
@@ -489,12 +498,10 @@ let from_json = fun json ->
               if i >= len then
                 Ok (Crypto.Hash.of_bytes out)
               else
-                match
-                  (
-                    hex |> String.get_unchecked ~at:i |> hex_value,
-                    hex |> String.get_unchecked ~at:(i + 1) |> hex_value
-                  )
-                with
+                match (
+                  hex |> String.get_unchecked ~at:i |> hex_value,
+                  hex |> String.get_unchecked ~at:(i + 1) |> hex_value
+                ) with
                 | Some hi, Some lo ->
                     let byte = Char.from_int_unchecked ((hi lsl 4) lor lo) in
                     let _ = Byte_buf.set out ~at:(i / 2) ~char:byte in
@@ -514,9 +521,7 @@ let from_json = fun json ->
         let parse_actions actions_json =
           match actions_json with
           | Array action_jsons ->
-              List.fold_left
-                action_jsons
-                ~acc:(Ok [])
+              List.fold_left action_jsons ~acc:(Ok [])
                 ~fn:(fun acc action_json ->
                   match acc with
                   | Error _ -> acc
@@ -524,16 +529,14 @@ let from_json = fun json ->
                       match Action.from_json action_json with
                       | Ok action -> Ok (action :: actions)
                       | Error err -> Error err
-                    ))
-              |> Result.map ~fn:List.reverse
+                    )) |> Result.map ~fn:List.reverse
           | _ -> Error "actions must be array"
         in
         let parse_paths paths_json =
           match paths_json with
           | Array path_jsons ->
               Ok (
-                List.filter_map
-                  path_jsons
+                List.filter_map path_jsons
                   ~fn:(
                     function
                     | String s -> Some (Path.v s)
@@ -545,21 +548,16 @@ let from_json = fun json ->
         let parse_dependencies deps_json =
           match deps_json with
           | Array dep_jsons ->
-              List.fold_left
-                dep_jsons
-                ~acc:(Ok [])
+              List.fold_left dep_jsons ~acc:(Ok [])
                 ~fn:(fun acc dep_json ->
                   match (acc, dep_json) with
                   | Error e, _ -> Error e
                   | Ok deps, Int dep_id -> Ok (dep_id :: deps)
-                  | Ok _, _ -> Error "dependencies must be int array")
-              |> Result.map ~fn:List.reverse
+                  | Ok _, _ -> Error "dependencies must be int array") |> Result.map ~fn:List.reverse
           | _ -> Error "dependencies must be array"
         in
         match
-          List.fold_left
-            node_jsons
-            ~acc:(Ok ())
+          List.fold_left node_jsons ~acc:(Ok ())
             ~fn:(fun acc node_json ->
               match acc with
               | Error _ -> acc
@@ -632,12 +630,13 @@ let from_json = fun json ->
         with
         | Error err -> Error err
         | Ok () ->
-            Vector.iter dependencies_to_wire |> Iterator.to_list |> List.for_each ~fn:(fun (node, dependency_ids) ->
-                List.for_each (List.reverse dependency_ids) ~fn:(fun dep_id ->
+            Vector.iter dependencies_to_wire |> Iterator.to_list |> List.for_each
+              ~fn:(fun (node, dependency_ids) ->
+                List.for_each (List.reverse dependency_ids)
+                  ~fn:(fun dep_id ->
                     match HashMap.get id_to_node ~key:dep_id with
                     | Some dep_node -> add_dependency graph node ~depends_on:dep_node
-                    | None -> ())
-              );
+                    | None -> ()));
             Ok graph
       )
     | Some _ ->
@@ -646,5 +645,6 @@ let from_json = fun json ->
 let equal = fun g1 g2 ->
   let nodes1 = topo_sort g1 in
   let nodes2 = topo_sort g2 in
-  List.compare_lengths ~left:nodes1 ~right:nodes2 = 0
-  && List.all (List.zip nodes1 nodes2) ~fn:(fun (left, right) -> Action_node.equal left right)
+  List.compare_lengths ~left:nodes1 ~right:nodes2 = 0 && List.all (List.zip nodes1 nodes2)
+    ~fn:(fun (left, right) ->
+      Action_node.equal left right)

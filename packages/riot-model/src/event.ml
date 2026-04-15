@@ -184,11 +184,30 @@ type kind =
   | PackageVersionUpdated of { package: Package_name.t; from_version: string; to_version: string }
   | PackageManifestFetchStarted of { package: Package_name.t; version: string }
   | PackageManifestFetchFinished of { package: Package_name.t; version: string; duration_ms: int }
-  | PackageManifestFetchFailed of { package: Package_name.t; version: string option; error: Pm_error.t }
+  | PackageManifestFetchFailed of {
+      package: Package_name.t;
+      version: string option;
+      error: Pm_error.t
+    }
   | PackageDownloadStarted of { package: Package_name.t; version: string; path: string }
-  | PackageDownloadFinished of { package: Package_name.t; version: string; path: string; duration_ms: int }
-  | PackageDownloadFailed of { package: Package_name.t; version: string; path: string; error: Pm_error.t }
-  | PackageDownloadSkipped of { package: Package_name.t; version: string; path: string; reason: string }
+  | PackageDownloadFinished of {
+      package: Package_name.t;
+      version: string;
+      path: string;
+      duration_ms: int
+    }
+  | PackageDownloadFailed of {
+      package: Package_name.t;
+      version: string;
+      path: string;
+      error: Pm_error.t
+    }
+  | PackageDownloadSkipped of {
+      package: Package_name.t;
+      version: string;
+      path: string;
+      reason: string
+    }
   | PackageCacheHit of { package: Package_name.t; version: string; path: string }
   | PackageMaterializationStarted of { package: Package_name.t; version: string; path: string }
   | PackageMaterializationFinished of {
@@ -329,9 +348,8 @@ let display = function
   | PackageSkipped { package; reason } ->
       let reason_str =
         match reason with
-        | DependenciesFailed deps ->
-            "dependencies failed: "
-            ^ String.concat ", " (List.map deps ~fn:Package_name.to_string)
+        | DependenciesFailed deps -> "dependencies failed: "
+        ^ String.concat ", " (List.map deps ~fn:Package_name.to_string)
       in
       "⊘ Skipped " ^ Package_name.to_string package ^ " (" ^ reason_str ^ ")"
   | CompileError { package; error } ->
@@ -363,20 +381,13 @@ let display = function
   | CacheMiss { package; _ } ->
       "Cache miss for " ^ Package_name.to_string package
   | CacheStored { package; artifacts; _ } ->
-      "Cached "
-      ^ Package_name.to_string package
-      ^ " ("
-      ^ Int.to_string (List.length artifacts)
-      ^ " artifacts)"
+      "Cached " ^ Package_name.to_string package ^ " (" ^ Int.to_string (List.length artifacts) ^ " artifacts)"
   | WorkerPoolStarted { workers } ->
       "Started worker pool with " ^ Int.to_string workers ^ " workers"
   | WorkerStarted { worker_id } ->
       "Worker " ^ Worker_id.to_string worker_id ^ " started"
   | WorkerAssigned { worker_id; package } ->
-      "Worker "
-      ^ Worker_id.to_string worker_id
-      ^ " assigned to "
-      ^ Package_name.to_string package
+      "Worker " ^ Worker_id.to_string worker_id ^ " assigned to " ^ Package_name.to_string package
   | WorkerIdle { worker_id } ->
       "Worker " ^ Worker_id.to_string worker_id ^ " idle"
   | ServerStarted { pid } ->
@@ -497,13 +508,7 @@ let display = function
   | PackageVersionsUnchanged { packages } ->
       "Dependencies are already up to date (" ^ Int.to_string packages ^ " locked packages unchanged)"
   | PackageVersionUpdated { package; from_version; to_version } ->
-      "Updated "
-      ^ Package_name.to_string package
-      ^ " ("
-      ^ from_version
-      ^ " -> "
-      ^ to_version
-      ^ ")"
+      "Updated " ^ Package_name.to_string package ^ " (" ^ from_version ^ " -> " ^ to_version ^ ")"
   | PackageManifestFetchStarted { package; version } ->
       "Fetching manifest for " ^ Package_name.to_string package ^ "@" ^ version
   | PackageManifestFetchFinished { package; version; duration_ms } ->
@@ -522,11 +527,10 @@ let display = function
       ^ version
       ^ ": "
       ^ Pm_error.message error
-      | None ->
-          "Failed to fetch manifest for "
-          ^ Package_name.to_string package
-          ^ ": "
-          ^ Pm_error.message error
+      | None -> "Failed to fetch manifest for "
+      ^ Package_name.to_string package
+      ^ ": "
+      ^ Pm_error.message error
     )
   | PackageDownloadStarted { package; version; _ } ->
       "Downloading " ^ Package_name.to_string package ^ "@" ^ version
@@ -548,20 +552,9 @@ let display = function
       ^ ": "
       ^ Pm_error.message error
   | PackageDownloadSkipped { package; version; reason; _ } ->
-      "Skipped download for "
-      ^ Package_name.to_string package
-      ^ "@"
-      ^ version
-      ^ " ("
-      ^ reason
-      ^ ")"
+      "Skipped download for " ^ Package_name.to_string package ^ "@" ^ version ^ " (" ^ reason ^ ")"
   | PackageCacheHit { package; version; path } ->
-      "Package cache hit for "
-      ^ Package_name.to_string package
-      ^ "@"
-      ^ version
-      ^ " at "
-      ^ path
+      "Package cache hit for " ^ Package_name.to_string package ^ "@" ^ version ^ " at " ^ path
   | PackageMaterializationStarted { package; version; _ } ->
       "Materializing " ^ Package_name.to_string package ^ "@" ^ version
   | PackageMaterializationFinished { package; version; path; duration_ms } ->
@@ -584,24 +577,14 @@ let display = function
   | PackageResolvedForBuild { package; version; path; workspace } -> (
       match version with
       | Some version ->
-          "Resolved "
-          ^ Package_name.to_string package
-          ^ "@"
-          ^ version
-          ^ " for build at "
-          ^ path
-          ^ (
+          "Resolved " ^ Package_name.to_string package ^ "@" ^ version ^ " for build at " ^ path ^ (
             if workspace then
               " (workspace)"
             else
               ""
           )
       | None ->
-          "Resolved "
-          ^ Package_name.to_string package
-          ^ " for build at "
-          ^ path
-          ^ (
+          "Resolved " ^ Package_name.to_string package ^ " for build at " ^ path ^ (
             if workspace then
               " (workspace)"
             else
@@ -698,8 +681,7 @@ let to_string = fun event ->
 
 let package_name_json = fun package -> Json.String (Package_name.to_string package)
 
-let package_names_json = fun packages ->
-  Json.Array (List.map packages ~fn:package_name_json)
+let package_names_json = fun packages -> Json.Array (List.map packages ~fn:package_name_json)
 
 let package_name_of_json = function
   | Json.String package -> Package_name.from_string package
@@ -945,9 +927,7 @@ let kind_to_json = function
   | RegistryIndexUpdating { registry } ->
       Json.Object [ ("registry", Json.String registry) ]
   | DependencyUniverseBuilding { packages } ->
-      Json.Object [
-        ("packages", package_names_json packages)
-      ]
+      Json.Object [ ("packages", package_names_json packages) ]
   | DependencyUniverseBuilt { runtime_packages; build_packages; dev_packages; duration_ms } ->
       Json.Object [
         ("runtime_packages", Json.Int runtime_packages);
@@ -1289,7 +1269,8 @@ let kind_from_json = fun json ->
                   let artifacts =
                     match Fields.get "artifacts" data_fields with
                     | Some (Json.Array arr) ->
-                        List.filter_map ~fn:(
+                        List.filter_map
+                          ~fn:(
                             function
                             | Json.String s -> Some s
                             | _ -> None
@@ -1665,9 +1646,9 @@ let kind_from_json = fun json ->
           | "riot.pm.resolution.finished" -> (
               match data with
               | Json.Object data_fields -> (
-                  match Fields.get "duration_ms" data_fields, Fields.get
-                    "resolved_packages"
-                    data_fields, Fields.get "resolved_edges" data_fields with
+                  match Fields.get "duration_ms" data_fields, Fields.get "resolved_packages" data_fields, Fields.get
+                    "resolved_edges"
+                    data_fields with
                   | Some (Json.Int duration_ms), Some (Json.Int resolved_packages), Some (Json.Int resolved_edges) -> Ok (DependencyResolutionFinished {
                     duration_ms;
                     resolved_packages;
@@ -1713,11 +1694,9 @@ let kind_from_json = fun json ->
           | "riot.pm.universe.built" -> (
               match data with
               | Json.Object data_fields -> (
-                  match Fields.get "runtime_packages" data_fields, Fields.get
-                    "build_packages"
-                    data_fields, Fields.get "dev_packages" data_fields, Fields.get
-                    "duration_ms"
-                    data_fields with
+                  match Fields.get "runtime_packages" data_fields, Fields.get "build_packages" data_fields, Fields.get
+                    "dev_packages"
+                    data_fields, Fields.get "duration_ms" data_fields with
                   | Some (Json.Int runtime_packages), Some (Json.Int build_packages), Some (Json.Int dev_packages), Some (Json.Int duration_ms) -> Ok (DependencyUniverseBuilt {
                     runtime_packages;
                     build_packages;
@@ -2115,7 +2094,10 @@ module Tests = struct
   let test_resolution_event_json_roundtrip (): (unit, string) result =
     let event = create
       ~session_id:(Session_id.of_string "test-session")
-      ~level:Info (DependencyResolutionStarted { packages = [ package_name "app"; package_name "std" ]; mode = `Unlock }) in
+      ~level:Info (DependencyResolutionStarted {
+        packages = [ package_name "app"; package_name "std" ];
+        mode = `Unlock
+      }) in
     match from_json (to_json event) with
     | Ok { kind=DependencyResolutionStarted { packages; mode=`Unlock }; _ } ->
         if packages = [ package_name "app"; package_name "std" ] then

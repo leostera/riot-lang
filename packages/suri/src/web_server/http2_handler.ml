@@ -95,9 +95,7 @@ let send_settings_ack = fun conn ->
 (** Send HTTP/2 HEADERS frame *)
 let send_headers = fun conn hpack_encoder stream_id headers end_stream ->
   let headers =
-    List.map
-      ~fn:(fun ((name, value)) -> { Http.Http2.Hpack.name = name; value })
-      headers
+    List.map ~fn:(fun ((name, value)) -> { Http.Http2.Hpack.name = name; value }) headers
   in
   let header_block = Http.Http2.Hpack.encode hpack_encoder ~sensitive_headers:[] () ~headers
   |> Bytes.to_string in
@@ -191,7 +189,8 @@ let process_frame = fun conn state frame ->
                   s
             in
             (* Add headers *)
-            Cell.set stream.headers (List.rev headers |> List.append (Cell.get stream.headers));
+            Cell.set stream.headers
+              (List.rev headers |> List.append (Cell.get stream.headers));
             (* Mark if stream ended *)
             if end_stream then
               begin

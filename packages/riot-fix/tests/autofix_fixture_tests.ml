@@ -10,13 +10,9 @@ let keep_ml = fun path ->
   | _ -> `skip
 
 let append_snapshot_suffix = fun path suffix ->
-  Path.to_string path
-  ^ suffix
-  |> Path.from_string
-  |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
+  Path.to_string path ^ suffix |> Path.from_string |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
 
-let approved_snapshot_path = fun path ->
-  Some (append_snapshot_suffix path ".expected")
+let approved_snapshot_path = fun path -> Some (append_snapshot_suffix path ".expected")
 
 let split_on_double_underscore = fun value ->
   let rec find idx =
@@ -46,17 +42,18 @@ let rule_id_of_fixture = fun path ->
   | _ -> Error ("invalid autofix fixture name: " ^ basename)
 
 let find_rule = fun rule_id ->
-  Riot_fix.Pipeline.default_rules ()
-  |> List.find ~fn:(fun rule ->
-    String.equal (Riot_fix.Rule.id rule) rule_id)
-  |> Option.ok_or ~error:("unknown rule fixture id: " ^ rule_id)
+  Riot_fix.Pipeline.default_rules () |> List.find
+    ~fn:(fun rule ->
+      String.equal (Riot_fix.Rule.id rule) rule_id) |> Option.ok_or
+    ~error:("unknown rule fixture id: " ^ rule_id)
 
 let result_to_json = fun result ->
   Json.obj
     [
       (
         "diagnostics",
-        Json.array (List.map result.Fixme.Rule_test.initial.diagnostics ~fn:Riot_fix.Diagnostic.to_json)
+        Json.array
+          (List.map result.Fixme.Rule_test.initial.diagnostics ~fn:Riot_fix.Diagnostic.to_json)
       );
       (
         "fixed_source",

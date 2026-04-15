@@ -127,9 +127,11 @@ let io_writer_of_buffer =
 
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
-      IO.Iovec.for_each ~fn:(fun { buffer = chunk; offset; length } ->
+      IO.Iovec.for_each
+        ~fn:(fun { buffer=chunk; offset; length } ->
           IO.Buffer.add_subbytes buffer chunk offset length;
-          written := !written + length) bufs;
+          written := !written + length)
+        bufs;
       Ok !written
 
     let flush = fun _buffer -> Ok ()

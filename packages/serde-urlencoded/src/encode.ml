@@ -84,8 +84,9 @@ let rec backend: state Ser.backend = {
     (fun state encode values ->
       match current_key state.context with
       | Some _ ->
-          Vector.for_each values ~fn:(fun value ->
-            encode.run backend state value)
+          Vector.for_each values
+            ~fn:(fun value ->
+              encode.run backend state value)
       | None -> unsupported_top_level "sequence");
   array =
     (fun state encode values ->

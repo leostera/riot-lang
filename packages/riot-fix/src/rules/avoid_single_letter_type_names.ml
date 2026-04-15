@@ -38,15 +38,19 @@ let diagnostic_for_decl = fun decl ->
 let diagnostics_for_items = fun source_file ->
   match source_file with
   | Syn.Cst.Implementation { items; _ } ->
-      items
-      |> List.filter_map ~fn:(function
-        | Syn.Cst.StructureItem.TypeDeclaration decl -> diagnostic_for_decl decl
-        | _ -> None)
+      items |> List.filter_map
+        ~fn:(
+          function
+          | Syn.Cst.StructureItem.TypeDeclaration decl -> diagnostic_for_decl decl
+          | _ -> None
+        )
   | Syn.Cst.Interface { items; _ } ->
-      items
-      |> List.filter_map ~fn:(function
-        | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostic_for_decl decl
-        | _ -> None)
+      items |> List.filter_map
+        ~fn:(
+          function
+          | Syn.Cst.SignatureItem.TypeDeclaration decl -> diagnostic_for_decl decl
+          | _ -> None
+        )
 
 let check_tree = fun (ctx: Rule.context) _red_root ->
   let source_file = ctx.cst in

@@ -24,8 +24,16 @@ type plan_result =
       depset: Dependency.t list;
       breakdown: planning_breakdown
     }
-  | MissingDependencies of { package: Package.t; missing: Package.t list; breakdown: planning_breakdown }
-  | FailedDependencies of { package: Package.t; failed: Package.t list; breakdown: planning_breakdown }
+  | MissingDependencies of {
+      package: Package.t;
+      missing: Package.t list;
+      breakdown: planning_breakdown
+    }
+  | FailedDependencies of {
+      package: Package.t;
+      failed: Package.t list;
+      breakdown: planning_breakdown
+    }
 
 and planning_breakdown = {
   dependency_count: int;
@@ -72,11 +80,7 @@ let file_of_json = fun json ->
   let open Std.Data.Json in
     match json with
     | Object _ -> (
-        match (
-          get_field "kind" json,
-          get_field "path" json,
-          get_field "contents" json
-        ) with
+        match (get_field "kind" json, get_field "path" json, get_field "contents" json) with
         | Some (String "concrete"), Some (String path), _ -> Ok (Module_node.Concrete (Path.v path))
         | Some (String "generated"), Some (String path), Some (String contents) -> Ok (Module_node.Generated {
           path = Path.v path;
@@ -133,15 +137,12 @@ let module_kind_to_json = fun (kind: Module_node.kind) ->
 
 let parse_string_array = function
   | Std.Data.Json.Array xs ->
-      List.fold_left
-        xs
-        ~acc:(Ok [])
+      List.fold_left xs ~acc:(Ok [])
         ~fn:(fun acc item ->
           match (acc, item) with
           | Error e, _ -> Error e
           | Ok items, Std.Data.Json.String s -> Ok (s :: items)
-          | Ok _, _ -> Error "expected string array")
-      |> Result.map ~fn:List.reverse
+          | Ok _, _ -> Error "expected string array") |> Result.map ~fn:List.reverse
   | _ -> Error "expected array"
 
 let module_kind_of_json = fun json ->
@@ -259,21 +260,16 @@ let module_graph_of_json = fun json ->
             let pending_deps: (Module_node.t G.node * int list) vec = vec [] in
             let parse_int_array = function
               | Array xs ->
-                  List.fold_left
-                    xs
-                    ~acc:(Ok [])
+                  List.fold_left xs ~acc:(Ok [])
                     ~fn:(fun acc item ->
                       match (acc, item) with
                       | Error e, _ -> Error e
                       | Ok items, Int i -> Ok (i :: items)
-                      | Ok _, _ -> Error "expected int array")
-                  |> Result.map ~fn:List.reverse
+                      | Ok _, _ -> Error "expected int array") |> Result.map ~fn:List.reverse
               | _ -> Error "expected int array"
             in
             let result =
-              List.fold_left
-                node_jsons
-                ~acc:(Ok ())
+              List.fold_left node_jsons ~acc:(Ok ())
                 ~fn:(fun acc node_json ->
                   match acc with
                   | Error _ -> acc
@@ -311,8 +307,10 @@ let module_graph_of_json = fun json ->
               match result with
               | Error e -> Error e
               | Ok () ->
-                  Vector.iter pending_deps |> Iterator.to_list |> List.for_each ~fn:(fun (node, dep_ids) ->
-                      List.for_each (List.reverse dep_ids) ~fn:(fun dep_id ->
+                  Vector.iter pending_deps |> Iterator.to_list |> List.for_each
+                    ~fn:(fun (node, dep_ids) ->
+                      List.for_each (List.reverse dep_ids)
+                        ~fn:(fun dep_id ->
                           match HashMap.get id_to_node ~key:dep_id with
                           | Some dep_node -> G.add_edge node ~depends_on:dep_node
                           | None -> ()));
@@ -340,8 +338,9 @@ let plan_bundle_of_json = fun ~(package:Package.t) json ->
           get_field "module_graph" json,
           get_field "action_graph" json
         ) with
-        | Some (Int 1), Some (String pkg_name), Some module_graph_json, Some action_graph_json when
-          String.equal pkg_name (Package_name.to_string package.name) -> (
+        | Some (Int 1), Some (String pkg_name), Some module_graph_json, Some action_graph_json when String.equal
+          pkg_name
+          (Package_name.to_string package.name) -> (
             match (module_graph_of_json module_graph_json, Action_graph.from_json action_graph_json) with
             | Ok module_graph, Ok action_graph -> Ok (module_graph, action_graph)
             | (Error e, _)
@@ -382,20 +381,17 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
   Package.hash state package;
   (* Add workspace-specific dependency info not captured in package metadata *)
   let sorted_deps =
-    List.sort
-      (Package.build_graph_dependencies package)
+    List.sort (Package.build_graph_dependencies package)
       ~compare:(fun (a: Package.dependency) (b: Package.dependency) ->
         Package_name.compare a.name b.name)
   in
-  List.for_each
-    sorted_deps
+  List.for_each sorted_deps
     ~fn:(fun (dep: Package.dependency) ->
       (* Package.hash already includes dep name and source, we just add workspace-specific details *)
       match dep.source with
       | { Package.workspace=true; _ } -> (
           match
-            List.find
-              workspace.Workspace.packages
+            List.find workspace.Workspace.packages
               ~fn:(fun (p: Package_manifest.t) ->
                 Package_name.equal p.name dep.name)
           with
@@ -415,7 +411,9 @@ let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~to
   let dep_hashes = depset
   |> List.map ~fn:(fun (dep: Dependency.t) -> dep.hash)
   |> List.sort ~compare:Std.Crypto.Hash.compare in
-  List.for_each dep_hashes ~fn:(fun hash -> H.write_hash state hash);
+  List.for_each dep_hashes
+    ~fn:(fun hash ->
+      H.write_hash state hash);
   H.finish state
 
 let check_dependencies_built = fun ~store ~package_graph ~package_key ->
@@ -515,47 +513,43 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
   let dependency_check_started_at = Time.Instant.now () in
   match check_dependencies_built ~store ~package_graph ~package_key with
   | Error (Failed failed) ->
-      let dependency_check_duration =
-        Time.Instant.duration_since ~earlier:dependency_check_started_at (Time.Instant.now ())
-      in
-      Ok (
-        FailedDependencies {
-          package;
-          failed;
-          breakdown = {
-            empty_breakdown with
-            dependency_count = List.length failed;
-            dependency_check_duration;
-          };
+      let dependency_check_duration = Time.Instant.duration_since
+        ~earlier:dependency_check_started_at
+        (Time.Instant.now ()) in
+      Ok (FailedDependencies {
+        package;
+        failed;
+        breakdown = {
+          empty_breakdown
+          with dependency_count = List.length failed;
+          dependency_check_duration
         }
-      )
+      })
   | Error (Missing missing) ->
-      let dependency_check_duration =
-        Time.Instant.duration_since ~earlier:dependency_check_started_at (Time.Instant.now ())
-      in
-      Ok (
-        MissingDependencies {
-          package;
-          missing;
-          breakdown = {
-            empty_breakdown with
-            dependency_count = List.length missing;
-            dependency_check_duration;
-          };
+      let dependency_check_duration = Time.Instant.duration_since
+        ~earlier:dependency_check_started_at
+        (Time.Instant.now ()) in
+      Ok (MissingDependencies {
+        package;
+        missing;
+        breakdown = {
+          empty_breakdown
+          with dependency_count = List.length missing;
+          dependency_check_duration
         }
-      )
+      })
   | Ok depset ->
-      let dependency_check_duration =
-        Time.Instant.duration_since ~earlier:dependency_check_started_at (Time.Instant.now ())
-      in
+      let dependency_check_duration = Time.Instant.duration_since
+        ~earlier:dependency_check_started_at
+        (Time.Instant.now ()) in
       (* Resolve profile for this package *)
       let base_profile = build_ctx.Build_ctx.profile in
       (* Apply package-level profile overrides based on current profile name *)
       (* Then apply target-specific overrides *)
-        let profile =
-          let profile = Profile.apply_overrides base_profile package.compiler.profile_overrides in
-          let target_platform = Build_ctx.target_platform_name build_ctx in
-          Log.info
+      let profile =
+        let profile = Profile.apply_overrides base_profile package.compiler.profile_overrides in
+        let target_platform = Build_ctx.target_platform_name build_ctx in
+        Log.info
           ("Package "
           ^ Package_name.to_string package.name
           ^ ": looking for target."
@@ -569,7 +563,8 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
           ^ "]");
         match
           List.find package.compiler.target_overrides
-            ~fn:(fun (target, _) -> String.equal target target_platform)
+            ~fn:(fun (target, _) ->
+              String.equal target target_platform)
         with
         | Some (_, target_override) -> (
             Log.info ("Found target." ^ target_platform ^ " override, applying...");
@@ -595,24 +590,22 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
       in
       let input_hash_started_at = Time.Instant.now () in
       let input_hash = compute_input_hash ~package ~depset ~workspace ~profile ~build_ctx ~toolchain in
-      let input_hash_duration =
-        Time.Instant.duration_since ~earlier:input_hash_started_at (Time.Instant.now ())
-      in
+      let input_hash_duration = Time.Instant.duration_since
+        ~earlier:input_hash_started_at
+        (Time.Instant.now ()) in
       let artifact_lookup_started_at = Time.Instant.now () in
       let cached_artifact =
         match Riot_store.Store.get store input_hash with
         | Some artifact -> Some (artifact, artifact.exports)
         | _ -> None
       in
-      let artifact_lookup_duration =
-        Time.Instant.duration_since ~earlier:artifact_lookup_started_at (Time.Instant.now ())
-      in
+      let artifact_lookup_duration = Time.Instant.duration_since
+        ~earlier:artifact_lookup_started_at
+        (Time.Instant.now ()) in
       match cached_artifact with
       | Some (artifact, exports) ->
           Log.info
-            ("Package "
-            ^ Package_name.to_string package.name
-            ^ ": cache hit via artifact + export metadata");
+            ("Package " ^ Package_name.to_string package.name ^ ": cache hit via artifact + export metadata");
           Ok (
             Cached {
               package_key;
@@ -621,23 +614,24 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
               artifact;
               depset;
               exports;
-              breakdown = {
-                empty_breakdown with
-                dependency_count = List.length depset;
-                dependency_check_duration;
-                input_hash_duration;
-                artifact_lookup_duration;
-                artifact_cache_hit = true;
-              };
+              breakdown =
+                {
+                  empty_breakdown
+                  with dependency_count = List.length depset;
+                  dependency_check_duration;
+                  input_hash_duration;
+                  artifact_lookup_duration;
+                  artifact_cache_hit = true;
+                };
             }
           )
       | None -> (
           let plan_bundle_lookup_started_at = Time.Instant.now () in
           match Riot_store.Store.load_plan_bundle store ~hash:input_hash with
           | Some json ->
-              let plan_bundle_lookup_duration =
-                Time.Instant.duration_since ~earlier:plan_bundle_lookup_started_at (Time.Instant.now ())
-              in
+              let plan_bundle_lookup_duration = Time.Instant.duration_since
+                ~earlier:plan_bundle_lookup_started_at
+                (Time.Instant.now ()) in
               let plan_bundle_decode_started_at = Time.Instant.now () in
               let parsed_bundle =
                 try plan_bundle_of_json ~package json with
@@ -650,16 +644,14 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                       ^ ")");
                     Error "plan bundle decode exception"
               in
-              let plan_bundle_decode_duration =
-                Time.Instant.duration_since ~earlier:plan_bundle_decode_started_at (Time.Instant.now ())
-              in
+              let plan_bundle_decode_duration = Time.Instant.duration_since
+                ~earlier:plan_bundle_decode_started_at
+                (Time.Instant.now ()) in
               (
                 match parsed_bundle with
                 | Ok (module_graph, action_graph) ->
                     Log.info
-                      ("Package "
-                      ^ Package_name.to_string package.name
-                      ^ ": plan bundle cache hit");
+                      ("Package " ^ Package_name.to_string package.name ^ ": plan bundle cache hit");
                     Ok (
                       Planned {
                         package_key;
@@ -668,23 +660,22 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                         action_graph;
                         hash = input_hash;
                         depset;
-                        breakdown = {
-                          empty_breakdown with
-                          dependency_count = List.length depset;
-                          dependency_check_duration;
-                          input_hash_duration;
-                          artifact_lookup_duration;
-                          plan_bundle_lookup_duration;
-                          plan_bundle_decode_duration;
-                          plan_bundle_cache_hit = true;
-                        };
+                        breakdown =
+                          {
+                            empty_breakdown
+                            with dependency_count = List.length depset;
+                            dependency_check_duration;
+                            input_hash_duration;
+                            artifact_lookup_duration;
+                            plan_bundle_lookup_duration;
+                            plan_bundle_decode_duration;
+                            plan_bundle_cache_hit = true;
+                          };
                       }
                     )
                 | Error _ ->
                     Log.warn
-                      ("Package "
-                      ^ Package_name.to_string package.name
-                      ^ ": plan bundle parse failed, rebuilding plan graph");
+                      ("Package " ^ Package_name.to_string package.name ^ ": plan bundle parse failed, rebuilding plan graph");
                     let module_plan_started_at = Time.Instant.now () in
                     let plan_input =
                       Module_planner.{
@@ -695,10 +686,9 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                         workspace;
                         planning_root = Path.v "src";
                         allowed_source_files = package.sources.src;
-                        root_mode =
-                          Module_graph.Library_root {
-                            library_name = Package_name.to_string package.name;
-                          };
+                        root_mode = Module_graph.Library_root {
+                          library_name = Package_name.to_string package.name
+                        };
                         depset;
                         store;
                       }
@@ -708,8 +698,7 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                     | Ok { sources; module_graph; analyzed_modules=_; action_graph } ->
                         (* Add foreign dependency build actions and make all other nodes depend on them *)
                         let foreign_nodes =
-                          List.map
-                            package.foreign_dependencies
+                          List.map package.foreign_dependencies
                             ~fn:(fun (fdep: Package.foreign_dependency) ->
                               Log.info
                                 ("[PACKAGE_PLANNER] Adding foreign dependency: "
@@ -752,17 +741,14 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                               ("[PACKAGE_PLANNER] Total action nodes (including foreign): "
                               ^ Int.to_string (List.length all_nodes));
                             let dep_count = ref 0 in
-                            List.for_each
-                              all_nodes
+                            List.for_each all_nodes
                               ~fn:(fun (node: Action_node.t) ->
                                 let is_foreign_node = List.contains foreign_node_ids ~value:node.id in
                                 if not is_foreign_node then
-                                  List.for_each
-                                    foreign_nodes
+                                  List.for_each foreign_nodes
                                     ~fn:(fun foreign_node ->
                                       Action_graph.add_dependency action_graph node ~depends_on:foreign_node;
-                                      dep_count := !dep_count + 1)
-                              );
+                                      dep_count := !dep_count + 1));
                             Log.info
                               ("[PACKAGE_PLANNER] Added " ^ Int.to_string !dep_count ^ " dependency edges to foreign nodes")
                           );
@@ -770,9 +756,9 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                           store
                           ~hash:input_hash
                           ~plan:(plan_bundle_to_json ~package ~module_graph ~action_graph) in
-                        let module_plan_duration =
-                          Time.Instant.duration_since ~earlier:module_plan_started_at (Time.Instant.now ())
-                        in
+                        let module_plan_duration = Time.Instant.duration_since
+                          ~earlier:module_plan_started_at
+                          (Time.Instant.now ()) in
                         Ok (
                           Planned {
                             package_key;
@@ -781,30 +767,28 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                             action_graph;
                             hash = input_hash;
                             depset;
-                            breakdown = {
-                              empty_breakdown with
-                              dependency_count = List.length depset;
-                              dependency_check_duration;
-                              input_hash_duration;
-                              artifact_lookup_duration;
-                              plan_bundle_lookup_duration;
-                              plan_bundle_decode_duration;
-                              module_plan_duration;
-                            };
+                            breakdown =
+                              {
+                                empty_breakdown
+                                with dependency_count = List.length depset;
+                                dependency_check_duration;
+                                input_hash_duration;
+                                artifact_lookup_duration;
+                                plan_bundle_lookup_duration;
+                                plan_bundle_decode_duration;
+                                module_plan_duration;
+                              };
                           }
                         )
               )
           | None ->
-              let plan_bundle_lookup_duration =
-                Time.Instant.duration_since ~earlier:plan_bundle_lookup_started_at (Time.Instant.now ())
-              in
+              let plan_bundle_lookup_duration = Time.Instant.duration_since
+                ~earlier:plan_bundle_lookup_started_at
+                (Time.Instant.now ()) in
               (* Always produce a concrete plan graph. The old fast path returned dummy
          empty graphs keyed off package-level artifact existence, which made
          planning correctness depend on execution-time cache state. *)
-              Log.info
-                ("Package "
-                ^ Package_name.to_string package.name
-                ^ ": computing plan graph");
+              Log.info ("Package " ^ Package_name.to_string package.name ^ ": computing plan graph");
               let module_plan_started_at = Time.Instant.now () in
               let plan_input =
                 Module_planner.{
@@ -815,10 +799,9 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                   workspace;
                   planning_root = Path.v "src";
                   allowed_source_files = package.sources.src;
-                  root_mode =
-                    Module_graph.Library_root {
-                      library_name = Package_name.to_string package.name;
-                    };
+                  root_mode = Module_graph.Library_root {
+                    library_name = Package_name.to_string package.name
+                  };
                   depset;
                   store;
                 }
@@ -828,8 +811,7 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
               | Ok { sources; module_graph; analyzed_modules=_; action_graph } ->
                   (* Add foreign dependency build actions and make all other nodes depend on them *)
                   let foreign_nodes =
-                    List.map
-                      package.foreign_dependencies
+                    List.map package.foreign_dependencies
                       ~fn:(fun (fdep: Package.foreign_dependency) ->
                         Log.info
                           ("[PACKAGE_PLANNER] Adding foreign dependency: "
@@ -872,21 +854,18 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                         ("[PACKAGE_PLANNER] Total action nodes (including foreign): "
                         ^ Int.to_string (List.length all_nodes));
                       let dep_count = ref 0 in
-                      List.for_each
-                        all_nodes
+                      List.for_each all_nodes
                         ~fn:(fun (node: Action_node.t) ->
                           (* Skip foreign dependency nodes themselves *)
                           let is_foreign_node = List.contains foreign_node_ids ~value:node.id in
                           if not is_foreign_node then
                             (
                               (* Make this node depend on all foreign nodes *)
-                              List.for_each
-                                foreign_nodes
+                              List.for_each foreign_nodes
                                 ~fn:(fun foreign_node ->
                                   Action_graph.add_dependency action_graph node ~depends_on:foreign_node;
                                   dep_count := !dep_count + 1)
-                            )
-                        );
+                            ));
                       Log.info
                         ("[PACKAGE_PLANNER] Added " ^ Int.to_string !dep_count ^ " dependency edges to foreign nodes")
                     );
@@ -894,9 +873,9 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                     store
                     ~hash:input_hash
                     ~plan:(plan_bundle_to_json ~package ~module_graph ~action_graph) in
-                  let module_plan_duration =
-                    Time.Instant.duration_since ~earlier:module_plan_started_at (Time.Instant.now ())
-                  in
+                  let module_plan_duration = Time.Instant.duration_since
+                    ~earlier:module_plan_started_at
+                    (Time.Instant.now ()) in
                   Ok (
                     Planned {
                       package_key;
@@ -905,15 +884,16 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
                       action_graph;
                       hash = input_hash;
                       depset;
-                      breakdown = {
-                        empty_breakdown with
-                        dependency_count = List.length depset;
-                        dependency_check_duration;
-                        input_hash_duration;
-                        artifact_lookup_duration;
-                        plan_bundle_lookup_duration;
-                        module_plan_duration;
-                      };
+                      breakdown =
+                        {
+                          empty_breakdown
+                          with dependency_count = List.length depset;
+                          dependency_check_duration;
+                          input_hash_duration;
+                          artifact_lookup_duration;
+                          plan_bundle_lookup_duration;
+                          module_plan_duration;
+                        };
                     }
                   )
-            )
+        )
