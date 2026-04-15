@@ -228,51 +228,23 @@ let run_lanes = fun context ~toolchain ->
   in
   List.for_each work_items ~fn:(fun work -> emit_target_build_started context (Build_work.target work));
   let results = Build_work.run context.build work_items in
-  let has_failures =
-    List.exists (fun (_, outcome) ->
-      match outcome with
-      | Error _ -> true
-      | Ok output -> Build_work.had_partial_failure output)
-      results
-  in
-  let all_errors =
-    List.filter_map results
-      ~fn:(fun (_, outcome) ->
-        match outcome with
-        | Error err -> Some (map_lane_error err)
-        | Ok _ -> None)
-  in
-  let lane_results =
-    List.filter_map results
-      ~fn:(fun (_, outcome) ->
-        match outcome with
-        | Ok output -> Build_work.lane_result output
-        | Error _ -> None)
-  in
+  let summary = Build_work.summarize results in
+  let all_errors = List.map summary.errors ~fn:map_lane_error in
+  let lane_results = summary.lane_results in
   let () =
-    List.for_each results ~fn:(fun (work, outcome) ->
-      let had_partial_failure =
-        match outcome with
-        | Ok output -> Build_work.had_partial_failure output
-        | Error _ -> true
-      in
-      let result_count =
-        match outcome with
-        | Ok output -> Build_work.result_count output
-        | Error _ -> 0
-      in
+    List.for_each summary.completions ~fn:(fun (completion: Build_work.completion) ->
       emit_target_build_finished
         context
-        ~target:(Build_work.target work)
-        ~result_count
-        ~had_partial_failure)
+        ~target:completion.target
+        ~result_count:completion.result_count
+        ~had_partial_failure:completion.had_partial_failure)
   in
   if List.length all_errors > 0 then
     match List.head all_errors with
     | Some err -> Error err
-    | None -> Ok (lane_results, has_failures)
+    | None -> Ok (lane_results, summary.had_failure)
   else
-    if has_failures && not context.allow_partial_failures then
+    if summary.had_failure && not context.allow_partial_failures then
       let failures =
         lane_results
         |> List.map ~fn:(fun lane_result -> failed_results (Lane_result.results lane_result))
@@ -280,7 +252,7 @@ let run_lanes = fun context ~toolchain ->
       in
       Error (BuildFailed { errors = failures })
     else
-      Ok (lane_results, has_failures)
+      Ok (lane_results, summary.had_failure)
 
 let do_build = fun context ->
   let targets = Riot_model.Target.Set.to_list (Resolved_build.targets context.resolved) in
