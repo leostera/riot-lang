@@ -1042,6 +1042,16 @@ let nested = [%foo let x = 1]
         ~ctx
         ~msg:"expression extensions should render structurally from the extension shell and payload"
         source);
+  Test.case "format atomic.loc extension keeps qualified name"
+    (fun _ctx ->
+      let source = {|let foo = fun t -> [%atomic.loc t.a]
+|}
+      in
+      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"atomic.loc extension should preserve qualified name and payload boundary" in
+      Test.assert_equal
+        ~expected:source
+        ~actual;
+      Ok ());
   Test.case "format unreachable expressions structurally"
     (fun _ctx ->
       let source = {|let absurd maybe =
@@ -1171,14 +1181,9 @@ module M = struct end
           Fs.write "val x : int\n" nested_mli |> Result.expect ~msg:"write nested";
           Fs.write "let hidden = 1\n" Path.(hidden_dir / Path.v "hidden.ml") |> Result.expect ~msg:"write hidden";
           Fs.write "let built = 1\n" Path.(build_dir / Path.v "built.ml") |> Result.expect ~msg:"write build";
-          let files =
-            Krasny.Runner.collect_ocaml_files ~roots:[ tmpdir ] ()
-            |> List.map ~fn:Path.to_string
-          in
-          let expected =
-            [ Path.to_string visible_ml; Path.to_string nested_mli ]
-            |> List.sort ~compare:String.compare
-          in
+          let files = Krasny.Runner.collect_ocaml_files ~roots:[ tmpdir ] () |> List.map ~fn:Path.to_string in
+          let expected = [ Path.to_string visible_ml; Path.to_string nested_mli ]
+          |> List.sort ~compare:String.compare in
           let actual = List.sort files ~compare:String.compare in
           Test.assert_equal ~expected ~actual;
           Ok ()));
@@ -1317,9 +1322,7 @@ module M = struct end
                 let json = capture_json_event ~root:tmpdir (Krasny.Report.File file_result)
                 |> Data.Json.of_string
                 |> Result.expect ~msg:"parse event json" in
-                let expected =
-                  Some (Data.Json.Array (List.map diagnostics ~fn:Syn.Diagnostic.to_json))
-                in
+                let expected = Some (Data.Json.Array (List.map diagnostics ~fn:Syn.Diagnostic.to_json)) in
                 Test.assert_equal ~expected ~actual:(Data.Json.get_field "diagnostics" json);
                 Ok ()
           | None -> Error "expected broken source to carry diagnostics"));
@@ -1363,10 +1366,8 @@ module M = struct end
               ()
           in
           let actual = List.sort !seen ~compare:String.compare in
-          let expected =
-            [ Path.to_string formatted; Path.to_string needs ]
-            |> List.sort ~compare:String.compare
-          in
+          let expected = [ Path.to_string formatted; Path.to_string needs ]
+          |> List.sort ~compare:String.compare in
           Test.assert_equal ~expected ~actual;
           Test.assert_equal ~expected:2 ~actual:result.summary.total_files;
           Test.assert_equal ~expected:2 ~actual:result.summary.already_formatted;

@@ -7,7 +7,8 @@ let expect_some = fun value ~msg ->
   | Some value -> Ok value
   | None -> Error msg
 
-let declaration_name_text = fun tokens -> tokens |> List.map ~fn:Syn.Cst.Token.text |> String.concat ""
+let declaration_name_text = fun tokens ->
+  tokens |> List.map ~fn:Syn.Cst.Token.text |> String.concat ""
 
 let token_sequence_text = fun tokens -> tokens |> List.map ~fn:Syn.Cst.Token.text |> String.concat ""
 
@@ -61,7 +62,9 @@ let structure_items = function
   | Syn.Cst.Interface _ -> []
 
 let ident_text = fun ident ->
-  Syn.Cst.Ident.last_segment ident |> Option.map ~fn:Syn.Cst.Token.text |> Option.unwrap_or ~default:""
+  Syn.Cst.Ident.last_segment ident
+  |> Option.map ~fn:Syn.Cst.Token.text
+  |> Option.unwrap_or ~default:""
 
 let signature_items = function
   | Syn.Cst.Interface { items; _ } -> items
@@ -73,11 +76,12 @@ let node_leading_trivia_texts = fun syntax_node ->
   node_leading_trivia syntax_node |> List.map ~fn:Syn.Cst.Trivia.text
 
 let top_level_let_bindings = fun cst ->
-  structure_items cst |> List.filter_map ~fn:(
-    function
-    | Syn.Cst.StructureItem.LetBinding binding -> Some binding
-    | _ -> None
-  )
+  structure_items cst |> List.filter_map
+    ~fn:(
+      function
+      | Syn.Cst.StructureItem.LetBinding binding -> Some binding
+      | _ -> None
+    )
 
 let token_trivia_kinds = fun token ->
   token.Syn.Token.leading_trivia
@@ -532,8 +536,8 @@ let tests = [
       |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
       let declarations =
         structure_items cst
-        |> List.filter_map ~fn:
-          (
+        |> List.filter_map
+          ~fn:(
             function
             | Syn.Cst.StructureItem.TypeDeclaration decl -> Some decl
             | _ -> None
@@ -564,8 +568,8 @@ let tests = [
       |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
       let declarations =
         structure_items cst
-        |> List.filter_map ~fn:
-          (
+        |> List.filter_map
+          ~fn:(
             function
             | Syn.Cst.StructureItem.TypeDeclaration decl -> Some decl
             | _ -> None
@@ -661,7 +665,8 @@ let tests = [
                       _
                     } -> Test.assert_equal
                       ~expected:[ "Outer"; "Inner"; "t" ]
-                      ~actual:(Syn.Cst.Ident.segments constructor_path |> List.map ~fn:Syn.Cst.Token.text)
+                      ~actual:(Syn.Cst.Ident.segments constructor_path
+                      |> List.map ~fn:Syn.Cst.Token.text)
                     | _ -> raise
                       (Failure "expected grouped alias declaration to keep the qualified type path")
                   );
@@ -771,11 +776,13 @@ let tests = [
       } :: _ ->
           let argument_names =
             arguments
-            |> List.map ~fn:(function
-              | Syn.Cst.CoreType.Constr { constructor_path; _ } ->
-                  Syn.Cst.Ident.name constructor_path |> Option.unwrap_or ~default:"<anonymous>"
-              | _ -> "<unexpected>"
-            )
+            |> List.map
+              ~fn:(
+                function
+                | Syn.Cst.CoreType.Constr { constructor_path; _ } -> Syn.Cst.Ident.name constructor_path
+                |> Option.unwrap_or ~default:"<anonymous>"
+                | _ -> "<unexpected>"
+              )
           in
           Test.assert_equal ~expected:(Some "result") ~actual:(Syn.Cst.Ident.name constructor_path);
           Test.assert_equal ~expected:[ "int"; "string" ] ~actual:argument_names;
@@ -792,19 +799,20 @@ let tests = [
           let params = Syn.Cst.TypeDeclaration.type_params decl in
           let variances =
             params
-            |> List.map ~fn:(fun param ->
+            |> List.map
+              ~fn:(fun param ->
                 match Syn.Cst.TypeParameter.variance param with
                 | Some (Syn.Cst.TypeParameterVariance.Covariant _) -> Some "covariant"
                 | Some (Syn.Cst.TypeParameterVariance.Contravariant _) -> Some "contravariant"
                 | None -> None)
           in
           let injectivity = params
-          |> List.map ~fn:(fun param -> Option.is_some (Syn.Cst.TypeParameter.injectivity_token param))
-          in
+          |> List.map
+            ~fn:(fun param -> Option.is_some (Syn.Cst.TypeParameter.injectivity_token param)) in
           let names = params
-          |> List.map ~fn:(fun param ->
-            Syn.Cst.TypeParameter.type_variable param |> Option.map ~fn:Syn.Cst.TypeVariable.text)
-          in
+          |> List.map
+            ~fn:(fun param ->
+              Syn.Cst.TypeParameter.type_variable param |> Option.map ~fn:Syn.Cst.TypeVariable.text) in
           Test.assert_equal
             ~expected:[ Some "covariant"; Some "contravariant"; None; None ]
             ~actual:variances;
@@ -823,7 +831,8 @@ let tests = [
           let constraints = Syn.Cst.TypeDeclaration.constraints decl in
           let sides =
             constraints
-            |> List.map ~fn:(fun ({ left; right; _ }: Syn.Cst.TypeConstraint.t) ->
+            |> List.map
+              ~fn:(fun ({ left; right; _ }: Syn.Cst.TypeConstraint.t) ->
                 let left_name =
                   match left with
                   | Syn.Cst.CoreType.Var { name_token; _ } -> Syn.Cst.Token.text name_token
@@ -855,8 +864,7 @@ let tests = [
           | Syn.Cst.TypeDefinition.Record { fields; _ } ->
               let names = fields |> List.map ~fn:Syn.Cst.RecordField.name in
               let mutability = fields
-              |> List.map ~fn:(fun field -> Option.is_some (Syn.Cst.RecordField.mutable_token field))
-              in
+              |> List.map ~fn:(fun field -> Option.is_some (Syn.Cst.RecordField.mutable_token field)) in
               Test.assert_equal ~expected:[ "userName"; "created_at" ] ~actual:names;
               Test.assert_equal ~expected:[ true; false ] ~actual:mutability;
               Ok ()
@@ -874,7 +882,8 @@ let tests = [
           match Syn.Cst.TypeDeclaration.type_definition decl with
           | Syn.Cst.TypeDefinition.Record { fields=[name_field;code_field]; _ } ->
               let attribute_name ({ name; _ }: Syn.Cst.attribute) = Syn.Cst.Ident.name name in
-              let attribute_names field = Syn.Cst.RecordField.attributes field |> List.filter_map ~fn:attribute_name in
+              let attribute_names field = Syn.Cst.RecordField.attributes field
+              |> List.filter_map ~fn:attribute_name in
               Test.assert_equal ~expected:[ "deprecated" ] ~actual:(attribute_names name_field);
               Test.assert_equal ~expected:[] ~actual:(attribute_names code_field);
               (
@@ -918,8 +927,7 @@ let tests = [
           | Syn.Cst.TypeDefinition.Variant { constructors; _ } ->
               let names = constructors
               |> List.map ~fn:Syn.Cst.VariantConstructor.name
-              |> List.sort ~compare:String.compare
-              in
+              |> List.sort ~compare:String.compare in
               Test.assert_equal ~expected:[ "Guest_user"; "RegisteredUser" ] ~actual:names;
               Ok ()
           | _ -> Error "expected variant type definition"
@@ -1057,7 +1065,8 @@ let tests = [
       | Syn.Cst.StructureItem.TypeDeclaration decl :: _ -> (
           match Syn.Cst.TypeDeclaration.type_definition decl with
           | Syn.Cst.TypeDefinition.PolyVariant poly_variant ->
-              let names = Syn.Cst.PolyVariant.tags poly_variant |> List.map ~fn:Syn.Cst.PolyVariantTag.name in
+              let names = Syn.Cst.PolyVariant.tags poly_variant
+              |> List.map ~fn:Syn.Cst.PolyVariantTag.name in
               Test.assert_equal ~expected:[ "guest_user"; "RegisteredUser" ] ~actual:names;
               Ok ()
           | _ -> Error "expected polyvariant type definition"
@@ -2861,6 +2870,17 @@ val decode : Outer.Inner (* c *).(request -> response)
             | _ -> Error "expected commented expression attribute payload"
           )
       | _ -> Error "expected let binding with commented expression attribute");
+  Test.case
+    "cst expression extensions preserve qualified name boundary"
+    (fun _ctx ->
+      let result = parse_ml "let _ = [%atomic.loc t.a]\n" in
+      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
+      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
+      match structure_items cst with
+      | Syn.Cst.StructureItem.LetBinding { value = Syn.Cst.Expression.Extension extension; _ } :: _ ->
+          Test.assert_equal ~expected:(Some "atomic.loc") ~actual:(Syn.Cst.Ident.name extension.name);
+          Ok ()
+      | _ -> Error "expected let binding with expression extension");
   Test.case
     "cst extensions keep typed `:` payloads opaque by default"
     (fun ctx -> assert_ml_cst_snapshot ~ctx "let _ = [%foo: int -> string]\n");

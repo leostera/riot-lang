@@ -2129,6 +2129,12 @@ let annotation_shell_and_payload = fun ~annotation_kind ~sigils node ->
       ~context:[ "annotation" ]
 
 let annotation_name_from_tokens = fun ~syntax_node ~sigils syntax_tokens ->
+  let rec skip_name_tail = function
+    | dot_token :: name_token :: rest when String.equal (Ceibo.Red.SyntaxToken.text dot_token) dot_text -> (
+        dot_token :: name_token :: skip_name_tail rest
+      )
+    | _ -> []
+  in
   let name_tokens =
     syntax_tokens
     |> List.filter
@@ -2139,7 +2145,14 @@ let annotation_name_from_tokens = fun ~syntax_node ~sigils syntax_tokens ->
           || String.equal text close_bracket_text
           || List.any sigils ~fn:(String.equal text)))
   in
-  module_path_from_tokens ~syntax_node name_tokens
+  match name_tokens with
+  | [] -> bail
+    ~message:"expected at least one path segment during Ceibo -> CST lifting"
+    ~syntax_node
+    ~context:[ "annotation_name" ]
+  | first_name_token :: rest ->
+      first_name_token :: skip_name_tail rest
+      |> module_path_from_tokens ~syntax_node
 
 type raw_annotation_payload_kind =
   | Unmarked
