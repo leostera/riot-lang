@@ -160,16 +160,27 @@ let new_entries_of_results = fun ~profile ~target results ->
       | Package_builder.Skipped _
       | Package_builder.Failed _ -> None)
 
+let generation_lane_of_result = fun context (lane_result: Lane_result.t) ->
+  generation_lane_of_results
+    ~profile:context.build.profile.name
+    ~target:(Lane_result.target lane_result)
+    (Lane_result.results lane_result)
+
+let new_entries_of_lane_result = fun context (lane_result: Lane_result.t) ->
+  new_entries_of_results
+    ~profile:context.build.profile.name
+    ~target:(Lane_result.target lane_result)
+    (Lane_result.results lane_result)
+
 let record_successful_build_cache_generation = fun context lane_results ->
   let lanes =
     List.map
       lane_results
-      ~fn:(fun (target, results) ->
-        generation_lane_of_results ~profile:context.build.profile.name ~target results)
+      ~fn:(generation_lane_of_result context)
   in
   let new_entries = List.map
     lane_results
-    ~fn:(fun (target, results) -> new_entries_of_results ~profile:context.build.profile.name ~target results)
+    ~fn:(new_entries_of_lane_result context)
   |> List.concat in
   match Riot_store.Cache_gc.record_successful_build ~workspace:context.build.workspace ~lanes ~new_entries with
   | Ok _ -> Ok ()
@@ -178,7 +189,7 @@ let record_successful_build_cache_generation = fun context lane_results ->
 let new_entry_count_of_lane_results = fun context lane_results ->
   List.map
     lane_results
-    ~fn:(fun (target, results) -> new_entries_of_results ~profile:context.build.profile.name ~target results)
+    ~fn:(new_entries_of_lane_result context)
   |> List.concat
   |> List.length
 
@@ -266,7 +277,7 @@ let run_lanes = fun context ~toolchain ->
     List.filter_map results
       ~fn:(fun (lane, outcome) ->
         match outcome with
-        | Ok (lane_outcome: Lane_result.t) -> Some (lane_outcome.target, lane_outcome.results)
+        | Ok (lane_outcome: Lane_result.t) -> Some lane_outcome
         | Error _ -> None)
   in
   let () =
@@ -295,7 +306,7 @@ let run_lanes = fun context ~toolchain ->
     if has_failures && not context.allow_partial_failures then
       let failures =
         lane_results
-        |> List.map ~fn:(fun (_, results) -> failed_results results)
+        |> List.map ~fn:(fun lane_result -> failed_results (Lane_result.results lane_result))
         |> List.concat
       in
       Error (BuildFailed { errors = failures })
@@ -313,7 +324,7 @@ let do_build = fun context ->
   emit_runtime_started context;
   let* (lane_results, had_partial_failure) = run_lanes context ~toolchain in
   let all_results =
-    List.map ~fn:(fun (_, results) -> results) lane_results
+    List.map ~fn:Lane_result.results lane_results
     |> List.concat
   in
   let* () = record_cache_generation_if_needed context lane_results had_partial_failure in
