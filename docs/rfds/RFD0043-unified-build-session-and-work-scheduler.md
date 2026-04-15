@@ -324,7 +324,9 @@ Requested parallelism is user intent, not the machine limit. If the request
 does not specify it, Riot should default the request to the available
 parallelism discovered from the host. If the request asks for more workers than
 the host exposes, Riot clamps the worker budget to the available parallelism.
-The clamped value is the only parallelism value stored in the build context.
+If the request asks for zero or a negative worker count, Riot clamps it back up
+to one. The final clamped value is the only parallelism value stored in the
+build context.
 
 ### Build context
 
@@ -351,7 +353,7 @@ parallelism:
 
 ```ocaml
 let requested = Request.parallelism request |> Option.value ~default:available in
-let parallelism = Int.min available requested
+let parallelism = Int.max 1 (Int.min available requested)
 ```
 
 After that point, scheduler code uses `Build_context.parallelism`. It should
