@@ -5,11 +5,23 @@ type build_event =
   | BuildingTarget of { target: Riot_model.Target.t; host: bool }
   | CacheGc of Riot_store.Cache_gc.event
   | Phase of Event.runtime_phase
-  | Streaming of Build_session.streaming_event
 type build_error =
   | ToolchainInstallFailed of { target: Riot_model.Target.t; error: string }
   | ToolchainInitializationFailed of { target: Riot_model.Target.t; error: string }
-  | BuildSessionError of Build_session.error
+  | InvalidRequestedParallelism of int
+  | PackageNotFound of {
+      package_name: Riot_model.Package_name.t;
+      available_packages: Riot_model.Package_name.t list
+    }
+  | PackagesNotFound of {
+      package_names: Riot_model.Package_name.t list;
+      available_packages: Riot_model.Package_name.t list
+    }
+  | BuildFailed of { errors: Package_builder.build_result list }
+  | PlanningFailed of { reason: string }
+  | CycleDetected of { cycle_nodes: string list }
+  | BuildAlreadyRunning of { lock_path: Path.t }
+  | UnexpectedError of { reason: string }
 val error_message: build_error -> string
 
 val execute:
