@@ -154,15 +154,7 @@ let map_runtime_error = function
   }
 
 let execute_raw = fun ?(allow_partial_failures = false) ?(record_cache_generation = true) ?on_event spec ->
-  let on_runtime_event =
-    Option.map on_event
-      ~fn:(fun emit ->
-        fun (event: Build_runtime.build_event) ->
-          match Event_bridge.of_build_runtime_event event with
-          | Some event -> emit event
-          | None -> ())
-  in
-  Build_runtime.execute ~allow_partial_failures ~record_cache_generation ?on_event:on_runtime_event spec
+  Build_runtime.execute ~allow_partial_failures ~record_cache_generation ?on_event spec
   |> Result.map_err ~fn:map_runtime_error
 
 let execute = fun ?on_event spec -> execute_raw ?on_event spec |> Result.map ~fn:Build_result.of_build_results
