@@ -551,8 +551,129 @@ let test_build_preserves_exact_target_subset = fun _ctx ->
                 Test.assert_equal ~expected:2 ~actual:!started_count;
                 Test.assert_equal ~expected:2 ~actual:!finished_count;
                 Ok ()
+              | None -> Error "expected targets_resolved event"
+            )
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
+let test_build_multi_target_outputs_and_events = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"riot_build_multi_target_runtime"
+      (fun tmpdir ->
+        let host_target = Riot_model.Target.current in
+        let secondary_target =
+          if String.equal (Riot_model.Target.to_string host_target) "x86_64-unknown-linux-gnu" then
+            target "aarch64-unknown-linux-gnu"
+          else
+            target "x86_64-unknown-linux-gnu"
+        in
+        let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
+        let expected_targets = Riot_model.Target.Set.to_list requested_targets in
+        let expected_target_count = List.length expected_targets in
+        let expected_target_names =
+          List.map expected_targets ~fn:(fun target -> Riot_model.Target.to_string target)
+          |> List.sort ~compare:String.compare
+        in
+        let expected_profile = Riot_model.Profile.debug in
+        let prepared_workspace =
+          make_valid_workspace
+            ~toolchain_targets:(expected_target_names)
+            tmpdir
+        in
+        let seen_target_count = ref None in
+        let started_targets = ref [] in
+        let finished_targets = ref [] in
+        let finished_counts = ref [] in
+        let any_partial_failure = ref false in
+        match
+          build_request
+            ~on_event:(
+              function
+              | Riot_build.Event.Phase (Riot_build.Event.TargetsResolved { target_count }) ->
+                  seen_target_count := Some target_count
+              | Riot_build.Event.Phase (Riot_build.Event.TargetBuildStarted { target }) ->
+                  started_targets := Riot_model.Target.to_string target :: !started_targets
+              | Riot_build.Event.Phase (Riot_build.Event.TargetBuildFinished {
+                target;
+                result_count;
+                had_partial_failure
+              }) ->
+                  finished_targets := Riot_model.Target.to_string target :: !finished_targets;
+                  finished_counts := result_count :: !finished_counts;
+                  any_partial_failure := !any_partial_failure || had_partial_failure
+              | _ -> ())
+            (make_request
+              ~workspace:prepared_workspace
+              ~targets:(Riot_model.Target.Exact requested_targets)
+              ())
+        with
+        | Error err -> Error ("expected multi-target build to succeed, got: "
+        ^ Riot_build.error_message err)
+        | Ok output ->
+            let sort_target_names = List.sort ~compare:String.compare in
+            match !seen_target_count with
             | None -> Error "expected targets_resolved event"
-          )
+            | Some count ->
+                Test.assert_equal ~expected:expected_target_count ~actual:count;
+                Test.assert_equal
+                  ~expected:expected_target_count
+                  ~actual:(List.length !started_targets);
+                Test.assert_equal
+                  ~expected:expected_target_count
+                  ~actual:(List.length !finished_targets);
+                let started_sorted = sort_target_names !started_targets in
+                let finished_sorted = sort_target_names !finished_targets in
+                Test.assert_equal ~expected:expected_target_names ~actual:started_sorted;
+                Test.assert_equal ~expected:expected_target_names ~actual:finished_sorted;
+                Test.assert_false !any_partial_failure;
+                let build_result_status =
+                  if
+                    not
+                      (List.all !finished_counts
+                        ~fn:(fun result_count -> result_count = 1))
+                  then
+                    Error
+                      ("expected each target lane to report one package result, got "
+                      ^ String.concat ", " (List.map !finished_counts ~fn:Int.to_string))
+                  else
+                    (match Riot_build.Build_result.find_package output (package_name "demo") with
+                    | None -> Error "expected output for package demo"
+                    | Some package_output -> (
+                        match Riot_build.Build_result.package_status package_output with
+                        | Riot_build.Build_result.Built _
+                        | Riot_build.Build_result.Cached _ -> Ok ()
+                        | Riot_build.Build_result.Skipped reason ->
+                            Error ("expected demo package to be built, got skipped: " ^ reason)
+                        | Riot_build.Build_result.Failed message ->
+                            Error ("expected demo package to be built, got failed: " ^ message)))
+                in
+                match build_result_status with
+                | Error err -> Error err
+                | Ok () ->
+                  let validate_output_dirs =
+                    List.map expected_targets
+                      ~fn:(fun target ->
+                        Riot_model.Riot_dirs.out_dir_in_workspace
+                          ~workspace:prepared_workspace
+                          ~profile:expected_profile.name
+                          ~target
+                        |> fun out_dir -> Path.(out_dir / Path.v "demo"))
+                  in
+                  let missing_dirs =
+                    List.filter validate_output_dirs
+                      ~fn:(fun output_dir ->
+                        not
+                          (Fs.exists output_dir
+                          |> Result.unwrap_or ~default:false))
+                  in
+                  if not (List.is_empty missing_dirs) then
+                    Error
+                      ("expected package output directories to exist for each target: "
+                      ^ String.concat ", "
+                        (List.map missing_dirs ~fn:Path.to_string))
+                  else
+                    Ok ())
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -654,6 +775,7 @@ let tests =
       case "build core: cached builds do not emit generation recording events" test_cached_build_does_not_emit_generation_recording_events;
       case "build core: build emits runtime phases in order" test_build_emits_runtime_phases_in_order;
       case "build core: build preserves exact target subsets" test_build_preserves_exact_target_subset;
+      case "build core: build emits multi-target lane outputs and events" test_build_multi_target_outputs_and_events;
       case "build core: rejects zero jobs requests" test_build_rejects_zero_jobs;
       case "build core: rejects zero jobs requests with clear message" test_build_rejects_zero_jobs_with_message;
       case "build core: rejects negative jobs requests" test_build_rejects_negative_jobs;
