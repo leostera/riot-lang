@@ -15,7 +15,7 @@ let sample_tests = [
         Ok ());
   Test.case "timeout_probe"
     (fun _ctx ->
-      sleep (Time.Duration.from_millis 20);
+      sleep (Time.Duration.from_millis 100);
       Ok ());
 ]
 

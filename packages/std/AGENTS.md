@@ -35,6 +35,8 @@
 29. `Std.System` owns raw target-triple parsing. Keep the public triple type on `Std.System.TargetTriple`, expose the current machine as `Std.System.host_triple`, and do not duplicate `arch-vendor-os[-abi]` parsing in higher layers.
 30. Keep `Std.Runtime` internal blocking coordination on `Kernel.Sync`, not `Std.Sync`, so public `Std.Sync` can evolve toward actor-level coordination without creating a bootstrap cycle in runtime internals.
 31. Keep `Std.Telemetry.emit` lock-free on the hot path. Use actor delivery plus atomic server-state reads instead of guarding every event emission with `Kernel.Sync.Mutex`.
+32. Keep public `Std.Sync.Mutex` and `Std.Sync.Condition` actor-backed. Code above the runtime should treat them as process-owned coordination primitives, not as aliases for `Kernel.Sync`.
+33. Keep low-level `std` helpers that only need local mutation off `Std.Sync`. Use plain mutable records for local accumulators, and reserve `Std.Sync` for shared actor-facing coordination.
 
 ## Validate
 

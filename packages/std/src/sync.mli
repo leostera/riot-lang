@@ -2,8 +2,8 @@
 
 (** Synchronization primitives owned by `std`.
 
-    These wrappers sit above the compiler/runtime-provided low-level mutable and
-    concurrency primitives. They are runtime substrate, not kernel surface. *)
+    Public `Std.Sync` primitives are actor-facing coordination tools. Low-level
+    domain/thread primitives live under `Kernel.Sync`. *)
 open Kernel
 
 module Atomic: sig
@@ -51,7 +51,7 @@ module Cell: sig
 end
 
 module Mutex: sig
-  type t = Kernel.Sync.Mutex.t
+  type t
   val create: unit -> t
 
   val lock: t -> unit
@@ -62,7 +62,7 @@ module Mutex: sig
 end
 
 module Condition: sig
-  type t = Kernel.Sync.Condition.t
+  type t
   val create: unit -> t
 
   val wait: t -> Mutex.t -> unit

@@ -1,9 +1,14 @@
-module Cell = Sync.Cell
 open Kernel
 
 let panic = Kernel.SystemError.panic
 
 module Array = Kernel.Array
+
+type 'a box = {
+  mutable value: 'a;
+}
+
+let box = fun value -> { value }
 
 type 'a t = {
   mutable data: 'a option array;
@@ -168,34 +173,34 @@ let for_each = fun deque ~fn ->
   done
 
 let fold_left = fun deque ~acc ~fn ->
-  let result = Cell.create acc in
+  let result = box acc in
   for i = 0 to deque.size - 1 do
     let index = (deque.front + i) mod Array.length deque.data in
     match get_slot deque index with
-    | Some value -> Cell.set result (fn (Cell.get result) value)
+    | Some value -> result.value <- fn result.value value
     | None -> ()
   done;
-  Cell.get result
+  result.value
 
 let to_list = fun deque ->
-  let result = Cell.create [] in
+  let result = box [] in
   for i = deque.size - 1 downto 0 do
     let index = (deque.front + i) mod Array.length deque.data in
     match get_slot deque index with
-    | Some value -> Cell.set result (value :: Cell.get result)
+    | Some value -> result.value <- value :: result.value
     | None -> ()
   done;
-  Cell.get result
+  result.value
 
 let contains = fun deque ~value ->
-  let found = Cell.create false in
+  let found = box false in
   for i = 0 to deque.size - 1 do
     let index = (deque.front + i) mod Array.length deque.data in
     match get_slot deque index with
-    | Some v when v = value -> Cell.set found true
+    | Some v when v = value -> found.value <- true
     | _ -> ()
   done;
-  Cell.get found
+  found.value
 
 let append = fun deque other ->
   for_each other ~fn:(fun value -> push_back deque ~value);

@@ -13,6 +13,7 @@
 7. Keep `ignore` parallelism actor-native. Coordinate directory tasks through `Std.WorkerPool.DynamicWorkerPool` instead of spawning raw domains inside the library.
 8. Keep parallel traversal semantics simple: callback order may be nondeterministic when concurrency is above one, pruning decisions must still happen before descending into child directories, and the callback contract is explicitly thread-safe-by-construction from the caller side.
 9. Keep `Ignore.Walker.to_list` as a convenience over the configured traversal, not as a separate sequential mode. If a walker is configured for parallel traversal, `to_list` should still traverse in parallel and collect safely.
+10. When `ignore` needs shared coordination inside actor-driven traversal, use public `Std.Sync` actor primitives rather than reaching down to `Kernel.Sync`.
 
 ## Validate
 

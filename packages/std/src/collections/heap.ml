@@ -1,6 +1,11 @@
-module Cell = Sync.Cell
 open Kernel
 module Array = Kernel.Array
+
+type 'a box = {
+  mutable value: 'a;
+}
+
+let box = fun value -> { value }
 
 type 'a t = {
   mutable data: 'a array;
@@ -58,24 +63,24 @@ let rec sift_up = fun heap i ->
 let rec sift_down = fun heap i ->
   let l = left i in
   let r = right i in
-  let smallest = Cell.create i in
+  let smallest = box i in
   if
     l < heap.size
     && heap.compare
       (Array.get_unchecked heap.data ~at:l)
-      (Array.get_unchecked heap.data ~at:(Cell.get smallest))
+      (Array.get_unchecked heap.data ~at:smallest.value)
     < 0
   then
-    Cell.set smallest l;
+    smallest.value <- l;
   if
     r < heap.size
     && heap.compare
       (Array.get_unchecked heap.data ~at:r)
-      (Array.get_unchecked heap.data ~at:(Cell.get smallest))
+      (Array.get_unchecked heap.data ~at:smallest.value)
     < 0
   then
-    Cell.set smallest r;
-  let smallest_val = Cell.get smallest in
+    smallest.value <- r;
+  let smallest_val = smallest.value in
   if smallest_val != i then
     (
       swap heap i smallest_val;
@@ -146,20 +151,20 @@ let from_list_with = fun ~compare list ->
 let from_list = fun list -> from_list_with ~compare list
 
 let to_list = fun heap ->
-  let result = Cell.create [] in
+  let result = box [] in
   while heap.size > 0 do
     match pop heap with
-    | Some x -> Cell.set result (x :: Cell.get result)
+    | Some x -> result.value <- x :: result.value
     | None -> ()
   done;
-  List.reverse (Cell.get result)
+  List.reverse result.value
 
 let to_list_unordered = fun heap ->
-  let result = Cell.create [] in
+  let result = box [] in
   for i = heap.size - 1 downto 0 do
-    Cell.set result (Array.get_unchecked heap.data ~at:i :: Cell.get result)
+    result.value <- Array.get_unchecked heap.data ~at:i :: result.value
   done;
-  Cell.get result
+  result.value
 
 let for_each = fun heap ~fn ->
   while heap.size > 0 do
@@ -169,13 +174,13 @@ let for_each = fun heap ~fn ->
   done
 
 let fold_left = fun heap ~acc ~fn ->
-  let result = Cell.create acc in
+  let result = box acc in
   while heap.size > 0 do
     match pop heap with
-    | Some x -> Cell.set result (fn (Cell.get result) x)
+    | Some x -> result.value <- fn result.value x
     | None -> ()
   done;
-  Cell.get result
+  result.value
 
 let iter: type item. item t -> item Iter.Iterator.t = fun heap ->
   let module HeapIter = struct
