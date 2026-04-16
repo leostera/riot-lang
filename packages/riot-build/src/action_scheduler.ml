@@ -116,6 +116,20 @@ let find_result = fun (result: t) (node: Action_node.t) ->
       else
         None)
 
+let summarize_completed = fun ~action_graph ~completed_results ->
+  let completed_actions =
+    Action_graph.nodes action_graph
+    |> List.filter_map ~fn:(fun (node: Action_node.t) ->
+      match HashMap.get completed_results ~key:node.id with
+      | Some result -> Some { node; result }
+      | None -> None)
+  in
+  {
+    completed_actions;
+    first_failure = first_failure_of_completed_actions completed_actions;
+    ocamlc_warnings = ocamlc_warnings_of_completed_actions completed_actions;
+  }
+
 let run = fun ~action_graph ~sandbox ~store ~session_id toolchain ~concurrency ->
   let completed_results: (Graph.SimpleGraph.Node_id.t, execution_result) HashMap.t = HashMap.create () in
   let sandbox_dir = Sandbox.get_dir sandbox in
@@ -141,15 +155,4 @@ let run = fun ~action_graph ~sandbox ~store ~session_id toolchain ~concurrency -
         Graph_scheduler.Handle.record graph (Remember_result { node = payload; result });
         Ok result)
   in
-  let completed_actions =
-    Action_graph.nodes action_graph
-    |> List.filter_map ~fn:(fun (node: Action_node.t) ->
-      match HashMap.get completed_results ~key:node.id with
-      | Some result -> Some { node; result }
-      | None -> None)
-  in
-  {
-    completed_actions;
-    first_failure = first_failure_of_completed_actions completed_actions;
-    ocamlc_warnings = ocamlc_warnings_of_completed_actions completed_actions;
-  }
+  summarize_completed ~action_graph ~completed_results

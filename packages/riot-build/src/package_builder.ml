@@ -129,6 +129,7 @@ type execution_plan = {
   hash: Std.Crypto.hash;
   depset: Dependency.t list;
   started_at: Instant.t;
+  emit_visible_progress: bool;
 }
 
 type plan_outcome =
@@ -473,25 +474,63 @@ let plan_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_key
         hash = package_hash;
         depset;
         started_at = start;
+        emit_visible_progress;
       }
     )
 
-let execute_detailed = fun ~workspace ~toolchain ~store ~package_graph ~execution_plan ~build_ctx ->
+type prepared_execution = {
+  execution_plan: execution_plan;
+  sandbox: Sandbox.t;
+  toolchain: Riot_toolchain.t;
+}
+
+let execution_inputs = fun (execution_plan: execution_plan) ->
+  let package = execution_plan.package in
+  List.concat [ package.sources.src; package.sources.native; package.sources.tests; ]
+
+let execution_outputs = fun (execution_plan: execution_plan) ->
+  Action_graph.nodes execution_plan.action_graph
+  |> List.flat_map ~fn:(fun (node: Action_node.t) -> node.value.outs)
+
+let failed_execution_result =
+  fun
+    ~session_id
+    ~(execution_plan: execution_plan)
+    ~(error: package_error)
+    ~graph_error ->
+  let package = execution_plan.package in
+  let package_name = package.Package.name in
+  let duration = Instant.duration_since ~earlier:execution_plan.started_at (Instant.now ()) in
+  Telemetry.emit
+    (BuildFailed {
+      session_id;
+      package;
+      target = Workspace_planner.Package package_name;
+      error;
+    });
+  {
+    result = {
+      package_key = execution_plan.package_key;
+      package;
+      status = Failed error;
+      ocamlc_warnings = [];
+      duration;
+    };
+    graph_update = Some (Failed_package {
+      hash = Some execution_plan.hash;
+      error = graph_error;
+    });
+  }
+
+let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_ctx ->
+  let _ = workspace in
   let session_id = build_ctx.Build_ctx.session_id in
   let profile_name = build_ctx.Build_ctx.profile.name in
   let target_triplet = Build_ctx.target_triplet build_ctx in
   let package = execution_plan.package in
   let package_name = package.Package.name in
   let package_name_string = Package_name.to_string package_name in
-  let target_dir =
-    Path.(Riot_model.Riot_dirs.out_dir_in_workspace ~workspace ~profile:profile_name ~target:target_triplet
-    / Path.v package_name_string)
-  in
-  let emit_visible_progress =
-    package_scope package_graph execution_plan.package_key
-    |> emits_visible_progress
-  in
-  if emit_visible_progress then
+  if execution_plan.emit_visible_progress then
     Telemetry.emit
       (BuildStarted {
         session_id;
@@ -505,147 +544,195 @@ let execute_detailed = fun ~workspace ~toolchain ~store ~package_graph ~executio
     ^ ": executing action graph with "
     ^ Int.to_string (List.length (Action_graph.nodes execution_plan.action_graph))
     ^ " nodes");
-  if emit_visible_progress && List.length (Action_graph.nodes execution_plan.action_graph) > 0 then
+  if execution_plan.emit_visible_progress
+     && List.length (Action_graph.nodes execution_plan.action_graph) > 0 then
     Telemetry.emit
       (CompilationStarted {
         session_id;
         package;
         target = Workspace_planner.Package package_name;
       });
-  let inputs = List.concat
-    [ package.sources.src; package.sources.native; package.sources.tests; ]
-  in
-  let outputs = Action_graph.nodes execution_plan.action_graph
-  |> List.flat_map ~fn:(fun (node: Action_node.t) -> node.value.outs)
-  in
-  let do_build sandbox =
-    let action_result = Action_scheduler.run
-      ~action_graph:execution_plan.action_graph
-      ~sandbox
-      ~store
-      ~session_id
-      toolchain
-      ~concurrency:build_ctx.Build_ctx.parallelism
+  let inputs = execution_inputs execution_plan in
+  let outputs = execution_outputs execution_plan in
+  try
+    let sandbox =
+      Sandbox.create
+        ~workspace
+        ~profile:profile_name
+        ~target:target_triplet
+        ()
+        ~package_name:package.Package.name
     in
-    match action_result.Action_scheduler.first_failure with
-    | Some first_error -> Error (convert_action_error first_error)
-    | None ->
-        let sandbox_dir = Sandbox.get_dir sandbox in
-        let export_entries = compute_export_entries execution_plan.action_graph in
-        let package_outputs = collect_package_artifact_outputs ~sandbox_dir ~outputs in
-        let ocamlc_warnings = action_result.Action_scheduler.ocamlc_warnings in
-        Ok (sandbox_dir, package_outputs, export_entries, ocamlc_warnings)
-  in
-  match Sandbox.with_sandbox
-    ~workspace
-    ~profile:profile_name
-    ~target:target_triplet
-    ~package
-    ~inputs
-    ~depset:execution_plan.depset
-    ~store
-    ~expected_outputs:outputs
-    do_build with
-  | exception exn ->
-      let duration = Instant.duration_since ~earlier:execution_plan.started_at (Instant.now ()) in
+    Sandbox.prepare
+      ~sandbox
+      ~package
+      ~inputs
+      ~depset:execution_plan.depset
+      ~store;
+    let _ = outputs in
+    Ok { execution_plan; sandbox; toolchain }
+  with
+  | exn ->
       let error_msg = "Exception: " ^ Kernel.Exception.to_string exn in
       let error = ExecutionFailed { message = error_msg } in
-      Telemetry.emit
-        (BuildFailed {
-          session_id;
-          package;
-          target = Workspace_planner.Package package_name;
-          error;
-        });
-      {
-        result = {
-          package_key = execution_plan.package_key;
-          package;
-          status = Failed error;
-          ocamlc_warnings = [];
-          duration;
-        };
-        graph_update = Some (Failed_package {
-          hash = Some execution_plan.hash;
-          error = error_msg;
-        });
-      }
-  | Ok (sandbox_dir, package_outputs, export_entries, ocamlc_warnings) ->
-      Riot_store.Store.materialize_package_exports store ~exports:export_entries ~target_dir
-      |> Result.expect ~msg:("Failed to materialize package exports for " ^ package_name_string);
-      let artifact = Riot_store.Store.save
-        store
-        ~package:package_name_string
-        ~ocamlc_warnings
-        ~exports:export_entries
-        ~hash:execution_plan.hash
-        ~sandbox_dir
-        ~outs:package_outputs
-      |> Result.expect ~msg:("Failed to save package hash artifact for " ^ package_name_string)
+      Error (failed_execution_result
+        ~session_id
+        ~execution_plan
+        ~error
+        ~graph_error:error_msg)
+
+let execute_action =
+  fun
+    ~store
+    ~(prepared_execution: prepared_execution)
+    ~build_ctx
+    ~completed
+    action ->
+    Action_executor.execute_node
+      ~completed
+      ~store
+      ~session_id:build_ctx.Build_ctx.session_id
+      prepared_execution.toolchain
+      (Sandbox.get_dir prepared_execution.sandbox)
+      action
+
+let finalize_execution =
+  fun
+    ~workspace
+    ~store
+    ~package_graph
+    ~(prepared_execution: prepared_execution)
+    ~completed
+    ~build_ctx ->
+    let execution_plan = prepared_execution.execution_plan in
+    let session_id = build_ctx.Build_ctx.session_id in
+    let profile_name = build_ctx.Build_ctx.profile.name in
+    let target_triplet = Build_ctx.target_triplet build_ctx in
+    let package = execution_plan.package in
+    let package_name = package.Package.name in
+    let package_name_string = Package_name.to_string package_name in
+    let target_dir =
+      Path.(Riot_model.Riot_dirs.out_dir_in_workspace ~workspace ~profile:profile_name ~target:target_triplet
+      / Path.v package_name_string)
+    in
+    let sandbox_dir = Sandbox.get_dir prepared_execution.sandbox in
+    let cleanup_and_return result =
+      Sandbox.cleanup prepared_execution.sandbox;
+      result
+    in
+    try
+      let action_result =
+        Action_scheduler.summarize_completed
+          ~action_graph:execution_plan.action_graph
+          ~completed_results:completed
       in
-      if emit_visible_progress && List.length ocamlc_warnings > 0 then
-        Telemetry.emit
-          (
-            PackageOcamlcWarnings {
-              session_id;
+      match action_result.Action_scheduler.first_failure with
+      | Some first_error ->
+          let error = convert_action_error first_error in
+          cleanup_and_return
+            (failed_execution_result
+              ~session_id
+              ~execution_plan
+              ~error
+              ~graph_error:(package_error_to_string error))
+      | None ->
+          let outputs = execution_outputs execution_plan in
+          let export_entries = compute_export_entries execution_plan.action_graph in
+          let package_outputs = collect_package_artifact_outputs ~sandbox_dir ~outputs in
+          let ocamlc_warnings = action_result.Action_scheduler.ocamlc_warnings in
+          Riot_store.Store.materialize_package_exports store ~exports:export_entries ~target_dir
+          |> Result.expect ~msg:("Failed to materialize package exports for " ^ package_name_string);
+          let artifact = Riot_store.Store.save
+            store
+            ~package:package_name_string
+            ~ocamlc_warnings
+            ~exports:export_entries
+            ~hash:execution_plan.hash
+            ~sandbox_dir
+            ~outs:package_outputs
+          |> Result.expect ~msg:("Failed to save package hash artifact for " ^ package_name_string)
+          in
+          if execution_plan.emit_visible_progress && List.length ocamlc_warnings > 0 then
+            Telemetry.emit
+              (
+                PackageOcamlcWarnings {
+                  session_id;
+                  package;
+                  target = Workspace_planner.Package package_name;
+                  source = `Fresh;
+                  messages = ocamlc_warnings;
+                }
+              );
+          let duration = Instant.duration_since ~earlier:execution_plan.started_at (Instant.now ()) in
+          if execution_plan.emit_visible_progress then
+            Telemetry.emit
+              (
+                BuildCompleted {
+                  session_id;
+                  package;
+                  target = Workspace_planner.Package package_name;
+                  status = `Fresh;
+                  duration;
+                }
+              );
+          cleanup_and_return {
+            result = {
+              package_key = execution_plan.package_key;
               package;
-              target = Workspace_planner.Package package_name;
-              source = `Fresh;
-              messages = ocamlc_warnings;
-            }
-          );
-      let duration = Instant.duration_since ~earlier:execution_plan.started_at (Instant.now ()) in
-      if emit_visible_progress then
-        Telemetry.emit
-          (
-            BuildCompleted {
-              session_id;
-              package;
-              target = Workspace_planner.Package package_name;
-              status = `Fresh;
+              status = Built artifact;
+              ocamlc_warnings;
               duration;
-            }
-          );
-      {
-        result = {
-          package_key = execution_plan.package_key;
-          package;
-          status = Built artifact;
-          ocamlc_warnings;
-          duration;
-        };
-        graph_update = Some (Built_package {
-          hash = execution_plan.hash;
-          artifact;
-          depset = execution_plan.depset;
-          module_graph = execution_plan.module_graph;
-          action_graph = execution_plan.action_graph;
-          status = Riot_planner.Package_graph.Fresh;
-        });
-      }
-  | Error err ->
-      let duration = Instant.duration_since ~earlier:execution_plan.started_at (Instant.now ()) in
-      let error_str = package_error_to_string err in
-      Telemetry.emit
-        (BuildFailed {
-          session_id;
-          package;
-          target = Workspace_planner.Package package_name;
-          error = err;
-        });
-      {
-        result = {
-          package_key = execution_plan.package_key;
-          package;
-          status = Failed err;
-          ocamlc_warnings = [];
-          duration;
-        };
-        graph_update = Some (Failed_package {
-          hash = Some execution_plan.hash;
-          error = error_str;
-        });
-      }
+            };
+            graph_update = Some (Built_package {
+              hash = execution_plan.hash;
+              artifact;
+              depset = execution_plan.depset;
+              module_graph = execution_plan.module_graph;
+              action_graph = execution_plan.action_graph;
+              status = Riot_planner.Package_graph.Fresh;
+            });
+          }
+    with
+    | exn ->
+        let error_msg = "Exception: " ^ Kernel.Exception.to_string exn in
+        let error = ExecutionFailed { message = error_msg } in
+        cleanup_and_return
+          (failed_execution_result
+            ~session_id
+            ~execution_plan
+            ~error
+            ~graph_error:error_msg)
+
+let execute_detailed = fun ~workspace ~toolchain ~store ~package_graph ~execution_plan ~build_ctx ->
+  match prepare_execution ~workspace ~toolchain ~store ~execution_plan ~build_ctx with
+  | Error detailed_result ->
+      detailed_result
+  | Ok prepared_execution ->
+      let action_result = Action_scheduler.run
+        ~action_graph:execution_plan.action_graph
+        ~sandbox:prepared_execution.sandbox
+        ~store
+        ~session_id:build_ctx.Build_ctx.session_id
+        prepared_execution.toolchain
+        ~concurrency:build_ctx.Build_ctx.parallelism
+      in
+      let completed: (Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) HashMap.t =
+        HashMap.create ()
+      in
+      List.for_each action_result.completed_actions ~fn:(fun completed_action ->
+        let _ = HashMap.insert
+          completed
+          ~key:completed_action.node.id
+          ~value:completed_action.result
+        in
+        ());
+      finalize_execution
+        ~workspace
+        ~store
+        ~package_graph
+        ~prepared_execution
+        ~completed
+        ~build_ctx
 
 let build_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx ->
   match plan_detailed ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx with

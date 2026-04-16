@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 open Riot_model
 open Riot_planner
 
@@ -72,11 +73,18 @@ type execution_plan = {
   hash: Std.Crypto.hash;
   depset: Dependency.t list;
   started_at: Time.Instant.t;
+  emit_visible_progress: bool;
 }
 
 type plan_outcome =
   | Final_result of detailed_result
   | Execution_required of execution_plan
+
+type prepared_execution = {
+  execution_plan: execution_plan;
+  sandbox: Sandbox.t;
+  toolchain: Riot_toolchain.t;
+}
 
 val planned_graph_update: execution_plan -> graph_update
 
@@ -123,6 +131,31 @@ val execute_detailed:
   store:Riot_store.Store.t ->
   package_graph:Package_graph.t ->
   execution_plan:execution_plan ->
+  build_ctx:Build_ctx.t ->
+  detailed_result
+
+val prepare_execution:
+  workspace:Workspace.t ->
+  toolchain:Riot_toolchain.t ->
+  store:Riot_store.Store.t ->
+  execution_plan:execution_plan ->
+  build_ctx:Build_ctx.t ->
+  (prepared_execution, detailed_result) result
+
+val execute_action:
+  store:Riot_store.Store.t ->
+  prepared_execution:prepared_execution ->
+  build_ctx:Build_ctx.t ->
+  completed:(Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) HashMap.t ->
+  Action_node.t ->
+  Action_executor.execution_result
+
+val finalize_execution:
+  workspace:Workspace.t ->
+  store:Riot_store.Store.t ->
+  package_graph:Package_graph.t ->
+  prepared_execution:prepared_execution ->
+  completed:(Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) HashMap.t ->
   build_ctx:Build_ctx.t ->
   detailed_result
 

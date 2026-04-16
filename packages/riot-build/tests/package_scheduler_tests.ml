@@ -154,18 +154,6 @@ let status_label = function
   | Package_builder.Skipped { reason } -> "skipped(" ^ reason ^ ")"
   | Package_builder.Failed err -> "failed(" ^ Package_builder.package_error_to_string err ^ ")"
 
-let planning_round_signatures = fun events ->
-  events
-  |> List.filter_map ~fn:(function
-    | Package_scheduler.PlanningRoundFinished {
-      package_count;
-      deferred_count;
-      execution_required_count;
-      finalized_count;
-      _;
-    } -> Some (package_count, deferred_count, execution_required_count + finalized_count)
-    | _ -> None)
-
 let planning_round_counts = fun events ->
   events
   |> List.filter_map ~fn:(function
@@ -238,9 +226,14 @@ let test_package_scheduler_follows_finalized_dependency_frontiers = fun _ctx ->
       else if summary.had_failure then
         Error "expected dependency frontier scheduling to succeed"
       else
-        let actual = planning_round_signatures events in
-        let expected = [ (3, 2, 1); (2, 1, 1); (1, 0, 1) ] in
-        Test.assert_equal ~expected ~actual;
+        let planning_counts = planning_round_counts events in
+        let execution_counts = execution_round_counts events in
+        Test.assert_equal
+          ~expected:[ (3, 2, 3, 0, 0, 0, 0, 0) ]
+          ~actual:planning_counts;
+        Test.assert_equal
+          ~expected:[ (3, 3, 3, 0, 0) ]
+          ~actual:execution_counts;
         Ok ())
   with
   | Ok result -> result
@@ -320,20 +313,11 @@ let test_package_scheduler_skips_dependents_after_failed_dependency = fun _ctx -
         let lane_result = lane_result summary in
         let statuses = result_statuses lane_result in
         let planning_counts = planning_round_counts events in
-        let first_round_ok =
-          match planning_counts with
-          | (2, 1, _, _, _, _, _, _) :: _ -> true
-          | _ -> false
-        in
-        let last_round_ok =
-          match List.reverse planning_counts with
-          | (_, 0, _, 1, _, 1, _, 0) :: _ -> true
-          | _ -> false
-        in
-        if not first_round_ok then
-          Error "expected first planning round to defer the dependent package"
-        else if not last_round_ok then
-          Error "expected final planning round to skip the dependent package"
+        let execution_counts = execution_round_counts events in
+        if planning_counts != [ (2, 1, 1, 1, 0, 1, 0, 0) ] then
+          Error "expected unified planning summary to report one skipped dependent and one executing dependency"
+        else if execution_counts != [ (1, 1, 0, 1, 0) ] then
+          Error "expected unified execution summary to report one failed executed package"
         else
           match statuses with
           | [ Package_builder.Failed _; Package_builder.Skipped _ ] ->
@@ -381,8 +365,8 @@ let test_package_scheduler_round_events_have_consistent_counts = fun _ctx ->
             failed_count,
             error_count
           ) ->
-            package_count
-            = deferred_count + execution_required_count + finalized_count + error_count
+            package_count = execution_required_count + finalized_count + error_count
+            && deferred_count <= package_count
             && cached_count <= finalized_count
             && skipped_count <= finalized_count
             && failed_count <= finalized_count)
@@ -503,11 +487,11 @@ let test_package_scheduler_rerun_uses_cached_dependency_frontiers = fun _ctx ->
         Error "expected initial build to avoid internal scheduler errors"
       else if second_summary.errors != [] then
         Error "expected cached rerun to avoid internal scheduler errors"
-      else if second_summary.had_failure then
-        Error "expected cached rerun to finish without failures"
+        else if second_summary.had_failure then
+          Error "expected cached rerun to finish without failures"
       else
         let statuses = result_statuses (lane_result second_summary) in
-        let planning = planning_round_signatures second_events in
+        let planning = planning_round_counts second_events in
         let execution_rounds = execution_round_counts second_events in
         let all_cached =
           List.all statuses ~fn:(function
@@ -521,7 +505,9 @@ let test_package_scheduler_rerun_uses_cached_dependency_frontiers = fun _ctx ->
         else if execution_rounds != [] then
           Error "expected cached rerun to skip package execution rounds"
         else (
-          Test.assert_equal ~expected:[ (2, 1, 1); (1, 0, 1) ] ~actual:planning;
+          Test.assert_equal
+            ~expected:[ (2, 1, 0, 2, 2, 0, 0, 0) ]
+            ~actual:planning;
           Ok ()
         ))
   with

@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 open Riot_planner
 
 type action_error = Action_executor.action_error =
@@ -31,6 +32,11 @@ type t = {
   first_failure: action_error option;
   ocamlc_warnings: string list;
 }
+
+val summarize_completed:
+  action_graph:Action_graph.t ->
+  completed_results:(Graph.SimpleGraph.Node_id.t, execution_result) HashMap.t ->
+  t
 
 val run:
   action_graph:Action_graph.t ->
