@@ -1,11 +1,11 @@
 open Collections
-open Sync
 module Runtime_pid = Pid
 module Runtime_process = Process
 module Runtime_scheduler_id = Scheduler_id
 module Runtime_timer = Timer
 module Runtime_mutex = Kernel.Sync.Mutex
 module Runtime_condition = Kernel.Sync.Condition
+module Runtime_atomic = Kernel.Sync.Atomic
 
 type io_registration_error =
   | Closed
@@ -29,14 +29,14 @@ type process_slot = {
      queue membership live here so workers can transfer slots without mutating
      process internals. *)
   placement: placement;
-  owner_worker: Runtime_scheduler_id.t Sync.Atomic.t;
+  owner_worker: Runtime_scheduler_id.t Runtime_atomic.t;
   mutable blocking_lane: blocking_lane option;
-  queued: bool Sync.Atomic.t;
+  queued: bool Runtime_atomic.t;
   (* A slot can be requested again while a worker is already stepping its
      continuation. Preserve that wakeup so it can be re-enqueued once the
      current step finishes instead of dropping or double-running the process. *)
-  executing: bool Sync.Atomic.t;
-  pending: bool Sync.Atomic.t;
+  executing: bool Runtime_atomic.t;
+  pending: bool Runtime_atomic.t;
 }
 
 type worker = {
@@ -76,19 +76,19 @@ type process_shard = {
 
 type process_registry = {
   shards: process_shard array;
-  size: int Sync.Atomic.t;
+  size: int Runtime_atomic.t;
 }
 
 type runtime_counters = {
-  steals: int Sync.Atomic.t;
-  failed_steals: int Sync.Atomic.t;
-  remote_wakeups: int Sync.Atomic.t;
-  duplicate_enqueue_races: int Sync.Atomic.t;
+  steals: int Runtime_atomic.t;
+  failed_steals: int Runtime_atomic.t;
+  remote_wakeups: int Runtime_atomic.t;
+  duplicate_enqueue_races: int Runtime_atomic.t;
 }
 
 type t = {
-  stop: bool Sync.Atomic.t;
-  status: int Sync.Atomic.t;
+  stop: bool Runtime_atomic.t;
+  status: int Runtime_atomic.t;
   workers: worker array;
   processes: process_registry;
   counters: runtime_counters;

@@ -1,6 +1,6 @@
 open Kernel
-open Sync
 open Scheduler_types
+module Runtime_atomic = Kernel.Sync.Atomic
 
 let loop = fun ~(pop_local:worker -> process_slot option) ~(step_process:t ->
 domain_context ->
@@ -10,7 +10,7 @@ unit) ~(attempt_steal:t -> worker -> bool) ~(wait_for_local_work:t -> worker -> 
 ) (worker: worker) ->
   let ctx = { scheduler = runtime; worker_id = Some worker.id; current_process = None } in
   Thread.DLS.set current_context (Some ctx);
-  while not (Atomic.get runtime.stop) do
+  while not (Runtime_atomic.get runtime.stop) do
     match pop_local worker with
     | Some slot -> step_process runtime ctx slot
     | None ->

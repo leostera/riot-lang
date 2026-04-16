@@ -1,14 +1,15 @@
 open Kernel
+module Runtime_atomic = Kernel.Sync.Atomic
 
 type t = int64
 
-let next_id = Sync.Atomic.make 0L
+let next_id = Runtime_atomic.make 0L
 
 let make (): t =
   let rec try_increment () =
-    let current = Sync.Atomic.get next_id in
+    let current = Runtime_atomic.get next_id in
     let next = Int64.add current 1L in
-    if Sync.Atomic.compare_and_set next_id current next then
+    if Runtime_atomic.compare_and_set next_id current next then
       next
     else
       try_increment ()

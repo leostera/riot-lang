@@ -1,5 +1,4 @@
 open Collections
-open Sync
 open Scheduler_types
 
 type deps = {
@@ -31,4 +30,4 @@ let run = fun deps ~config ~main ->
   Array.for_each worker_domains ~fn:Kernel.Thread.join;
   Kernel.Thread.join reactor_domain;
   deps.join_blocking_lanes t;
-  Sync.Atomic.get t.status
+  Kernel.Sync.Atomic.get t.status

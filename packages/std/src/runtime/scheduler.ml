@@ -2,13 +2,12 @@ module Runtime_process = Process
 module Runtime_pid = Pid
 module Runtime_scheduler_id = Scheduler_id
 module Runtime_timer = Timer
-module Cell = Sync.Cell
-module Runtime_mutex = Kernel.Sync.Mutex
-module Runtime_condition = Kernel.Sync.Condition
+module Sync = Kernel.Sync
+module Runtime_mutex = Sync.Mutex
+module Runtime_condition = Sync.Condition
 open Kernel
 open Collections
 open Sync
-open Cell
 open Scheduler_types
 
 let panic = Kernel.SystemError.panic
@@ -41,7 +40,7 @@ let io_registration_error_message = function
 
 let current_context = Scheduler_types.current_context
 
-let has_run = Cell.create false
+let has_run = Atomic.make false
 
 let trace_enabled = Atomic.make false
 
@@ -97,11 +96,10 @@ let reset_trace_counters = fun t ->
   Atomic.set t.counters.duplicate_enqueue_races 0
 
 let ensure_can_run_once = fun () ->
-  if !has_run then
+  if not (Atomic.compare_and_set has_run false true) then
     panic
       "Actors.run can only be called once per process. Each test should be \
-       in a separate executable.";
-  has_run := true
+       in a separate executable."
 
 let make_response = fun () -> { lock = Runtime_mutex.create (); cond = Runtime_condition.create (); value = None }
 

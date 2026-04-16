@@ -1,7 +1,7 @@
 open Kernel
-open Sync
 open Collections
 module Runtime_mutex = Kernel.Sync.Mutex
+module Runtime_atomic = Kernel.Sync.Atomic
 
 type exit_reason = exn
 
@@ -11,7 +11,7 @@ type monitor_ref =
 type flag =
   TrapExit of bool
 
-type 'a atomic_ref = 'a Sync.Atomic.t
+type 'a atomic_ref = 'a Runtime_atomic.t
 
 module Messages = struct
   type Message.t +=
@@ -59,13 +59,13 @@ type t = {
   mutable reductions_remaining: int;
 }
 
-let monitor_ref_counter = Sync.Atomic.make 0
+let monitor_ref_counter = Runtime_atomic.make 0
 
 let make_monitor_ref = fun () ->
   let rec next_id () =
-    let current = Sync.Atomic.get monitor_ref_counter in
+    let current = Runtime_atomic.get monitor_ref_counter in
     let next = current + 1 in
-    if Sync.Atomic.compare_and_set monitor_ref_counter current next then
+    if Runtime_atomic.compare_and_set monitor_ref_counter current next then
       Monitor_ref current
     else
       next_id ()
@@ -78,10 +78,10 @@ let make = fun fn ->
     pid;
     cont = None;
     fn = Some fn;
-    state = Sync.Atomic.make Uninitialized;
-    exit_request = Sync.Atomic.make None;
-    receive_timeout_fired = Sync.Atomic.make false;
-    syscall_timeout_fired = Sync.Atomic.make false;
+    state = Runtime_atomic.make Uninitialized;
+    exit_request = Runtime_atomic.make None;
+    receive_timeout_fired = Runtime_atomic.make false;
+    syscall_timeout_fired = Runtime_atomic.make false;
     lock = Runtime_mutex.create ();
     mailbox = Mailbox.create ();
     save_queue = Queue.create ();
@@ -92,7 +92,7 @@ let make = fun fn ->
     links = [];
     monitors = [];
     monitored_by = [];
-    trap_exit = Sync.Atomic.make false;
+    trap_exit = Runtime_atomic.make false;
     reductions_remaining = default_reduction_budget;
   }
 
@@ -105,7 +105,7 @@ let init = fun t ->
   t.cont <- Some (Proc_state.make fn Proc_effect.Yield);
   t.fn <- None;
   t.reductions_remaining <- default_reduction_budget;
-  Sync.Atomic.set t.state Runnable
+  Runtime_atomic.set t.state Runnable
 
 let reset_reductions = fun t remaining ->
   t.reductions_remaining <- if remaining <= 0 then
@@ -138,7 +138,7 @@ let with_lock = fun t f ->
 
 let pid = fun t -> t.pid
 
-let state = fun t -> Sync.Atomic.get t.state
+let state = fun t -> Runtime_atomic.get t.state
 
 let is_alive = fun t ->
   match state t with
@@ -173,14 +173,14 @@ let try_set_runnable_if_waiting = fun t ->
   let current = state t in
   match current with
   | Waiting_message
-  | Waiting_io _ -> Sync.Atomic.compare_and_set t.state current Runnable
+  | Waiting_io _ -> Runtime_atomic.compare_and_set t.state current Runnable
   | _ -> false
 
 let try_mark_awaiting_message = fun t ->
-  Sync.Atomic.compare_and_set t.state Running Waiting_message
+  Runtime_atomic.compare_and_set t.state Running Waiting_message
 
 let try_mark_runnable_from_waiting_message = fun t ->
-  Sync.Atomic.compare_and_set t.state Waiting_message Runnable
+  Runtime_atomic.compare_and_set t.state Waiting_message Runnable
 
 let has_empty_mailbox = fun t ->
   with_lock t (fun () -> Int.equal t.save_queue_size 0 && Mailbox.is_empty t.mailbox)
@@ -195,29 +195,29 @@ let save_queue_count = fun t -> with_lock t (fun () -> t.save_queue_size)
 
 let mark_as_running = fun t ->
   if is_alive t then
-    Sync.Atomic.set t.state Running
+    Runtime_atomic.set t.state Running
 
 let mark_as_runnable = fun t ->
   if is_alive t then
-    Sync.Atomic.set t.state Runnable
+    Runtime_atomic.set t.state Runnable
 
 let mark_as_awaiting_message = fun t ->
   if is_alive t then
-    Sync.Atomic.set t.state Waiting_message
+    Runtime_atomic.set t.state Waiting_message
 
 let mark_as_exited = fun t reason ->
   if not (is_exited t) then
-    Sync.Atomic.set t.state (Exited reason)
+    Runtime_atomic.set t.state (Exited reason)
 
 let request_exit = fun t reason ->
   if is_alive t then
-    Sync.Atomic.set t.exit_request (Some reason)
+    Runtime_atomic.set t.exit_request (Some reason)
 
 let take_exit_request = fun t ->
-  Sync.Atomic.exchange t.exit_request None
+  Runtime_atomic.exchange t.exit_request None
 
 let mark_as_finalized = fun t ->
-  Sync.Atomic.set t.state Finalized
+  Runtime_atomic.set t.state Finalized
 
 let cont = fun t ->
   match t.cont with
@@ -259,7 +259,7 @@ let send_message = fun t msg ->
 
 let mark_as_awaiting_io = fun t ~name token source ->
   if is_alive t then
-    Sync.Atomic.set t.state (Waiting_io { name; token; source })
+    Runtime_atomic.set t.state (Waiting_io { name; token; source })
 
 let add_ready_token = fun t token source ->
   with_lock t (fun () -> t.ready_tokens <- (token, source) :: t.ready_tokens)
@@ -284,21 +284,21 @@ let has_no_ready_tokens = fun t -> with_lock t (fun () -> List.is_empty t.ready_
 (* Timer timeout management *)
 
 let set_receive_timeout = fun t timer_id ->
-  Sync.Atomic.set t.receive_timeout_fired false;
+  Runtime_atomic.set t.receive_timeout_fired false;
   with_lock t (fun () -> t.receive_timeout <- Some timer_id)
 
 let clear_receive_timeout = fun t ->
-  Sync.Atomic.set t.receive_timeout_fired false;
+  Runtime_atomic.set t.receive_timeout_fired false;
   with_lock t (fun () -> t.receive_timeout <- None)
 
 let receive_timeout = fun t -> with_lock t (fun () -> t.receive_timeout)
 
 let set_syscall_timeout = fun t timer_id ->
-  Sync.Atomic.set t.syscall_timeout_fired false;
+  Runtime_atomic.set t.syscall_timeout_fired false;
   with_lock t (fun () -> t.syscall_timeout <- Some timer_id)
 
 let clear_syscall_timeout = fun t ->
-  Sync.Atomic.set t.syscall_timeout_fired false;
+  Runtime_atomic.set t.syscall_timeout_fired false;
   with_lock t (fun () -> t.syscall_timeout <- None)
 
 let syscall_timeout = fun t -> with_lock t (fun () -> t.syscall_timeout)
@@ -318,16 +318,16 @@ let has_syscall_timeout_id = fun t timer_id ->
       | None -> false)
 
 let mark_receive_timeout_fired = fun t ->
-  Sync.Atomic.set t.receive_timeout_fired true
+  Runtime_atomic.set t.receive_timeout_fired true
 
 let mark_syscall_timeout_fired = fun t ->
-  Sync.Atomic.set t.syscall_timeout_fired true
+  Runtime_atomic.set t.syscall_timeout_fired true
 
 let take_receive_timeout_fired = fun t ->
-  Sync.Atomic.exchange t.receive_timeout_fired false
+  Runtime_atomic.exchange t.receive_timeout_fired false
 
 let take_syscall_timeout_fired = fun t ->
-  Sync.Atomic.exchange t.syscall_timeout_fired false
+  Runtime_atomic.exchange t.syscall_timeout_fired false
 
 (* Process links and monitors *)
 
@@ -379,9 +379,9 @@ let set_flags = fun proc flags ->
       List.for_each flags
         ~fn:(fun flag ->
           match flag with
-          | TrapExit value -> Sync.Atomic.set proc.trap_exit value))
+          | TrapExit value -> Runtime_atomic.set proc.trap_exit value))
 
-let get_trap_exit = fun proc -> Sync.Atomic.get proc.trap_exit
+let get_trap_exit = fun proc -> Runtime_atomic.get proc.trap_exit
 
 let get_links = fun proc -> with_lock proc (fun () -> proc.links)
 

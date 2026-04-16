@@ -1,7 +1,23 @@
-module Cell = Sync.Cell
-open Cell
 open Kernel
 open Collections
+
+module Cell = struct
+  type 'a t = {
+    mutable value: 'a;
+  }
+
+  let create = fun value -> { value }
+
+  let get = fun cell -> cell.value
+
+  let set = fun cell value -> cell.value <- value
+
+  let ( ! ) = get
+
+  let ( := ) = set
+end
+
+open Cell
 
 (* Simple timing wheel implementation
    

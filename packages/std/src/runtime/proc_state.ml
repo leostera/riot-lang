@@ -1,5 +1,16 @@
-module Cell = Sync.Cell
 open Kernel
+
+module Cell = struct
+  type 'a t = {
+    mutable value: 'a;
+  }
+
+  let create = fun value -> { value }
+
+  let get = fun cell -> cell.value
+
+  let set = fun cell value -> cell.value <- value
+end
 
 exception Unwind
 
