@@ -4,6 +4,7 @@ open Std.Bench
 open Std.Collections
 open Riot_model
 module Action_executor = Riot_build.Internal.Action_executor
+module Action_scheduler = Riot_build.Internal.Action_scheduler
 module Action_queue = Riot_build.Internal.Action_queue
 module Sandbox = Riot_build.Internal.Sandbox
 module Action_graph = Riot_planner.Action_graph
@@ -351,7 +352,7 @@ let make_execute_graph_miss_bench = fun root ~count ~concurrency ->
     let graph = Action_graph.create () in
     let nodes = make_execute_graph_nodes graph ~package ~count ~seed:(iteration * count) in
     let sandbox = Sandbox.create ~workspace () ~package_name:package.Package.name in
-    let result = Action_executor.execute
+    let result = Action_scheduler.run
       ~action_graph:graph
       ~sandbox
       ~store
@@ -359,7 +360,7 @@ let make_execute_graph_miss_bench = fun root ~count ~concurrency ->
       test_toolchain
       ~concurrency in
     Sandbox.cleanup sandbox;
-    if HashMap.length result.completed = List.length nodes then
+    if List.length (Action_scheduler.results result) = List.length nodes then
       ()
     else
       panic "execute graph miss bench expected all nodes to complete"
@@ -372,7 +373,7 @@ let make_execute_graph_cache_hit_bench = fun root ~count ~concurrency ->
   let graph = Action_graph.create () in
   let _ = make_execute_graph_nodes graph ~package ~count ~seed:0 in
   let warm_sandbox = Sandbox.create ~workspace () ~package_name:package.Package.name in
-  let warm_result = Action_executor.execute
+  let warm_result = Action_scheduler.run
     ~action_graph:graph
     ~sandbox:warm_sandbox
     ~store
@@ -380,12 +381,12 @@ let make_execute_graph_cache_hit_bench = fun root ~count ~concurrency ->
     test_toolchain
     ~concurrency in
   Sandbox.cleanup warm_sandbox;
-  let all_warm = HashMap.length warm_result.completed = count in
+  let all_warm = List.length (Action_scheduler.results warm_result) = count in
   if not all_warm then
     panic "execute graph cache fixture expected all nodes to complete";
   fun () ->
     let sandbox = Sandbox.create ~workspace () ~package_name:package.Package.name in
-    let result = Action_executor.execute
+    let result = Action_scheduler.run
       ~action_graph:graph
       ~sandbox
       ~store
@@ -393,7 +394,7 @@ let make_execute_graph_cache_hit_bench = fun root ~count ~concurrency ->
       test_toolchain
       ~concurrency in
     Sandbox.cleanup sandbox;
-    if HashMap.length result.completed = count then
+    if List.length (Action_scheduler.results result) = count then
       ()
     else
       panic "execute graph cache hit bench expected all nodes to complete"

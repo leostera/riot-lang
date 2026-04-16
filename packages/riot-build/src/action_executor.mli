@@ -24,10 +24,6 @@ type execution_result = Action_queue.execution_result = {
   started_at: Time.Instant.t;
   completed_at: Time.Instant.t;
 }
-(** Collection of execution results *)
-type t = {
-  completed: (G.Node_id.t, execution_result) HashMap.t;
-}
 
 (** Execute a single planned action node.
 
@@ -48,19 +44,3 @@ val execute_node:
   Path.t ->
   Action_node.t ->
   execution_result
-
-(** Execute an action graph with dependency-aware parallelism.
-
-    Passing `concurrency = 1` uses the same code path with serialized
-    execution.
-
-    The executor performs cache lookup/save per action node hash and emits
-    action telemetry events scoped to the provided `session_id`. *)
-val execute:
-  action_graph:Action_graph.t ->
-  sandbox:Sandbox.t ->
-  store:Riot_store.Store.t ->
-  session_id:Riot_model.Session_id.t ->
-  Riot_toolchain.t ->
-  concurrency:int ->
-  t

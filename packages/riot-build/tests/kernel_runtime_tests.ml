@@ -3,7 +3,7 @@ open Riot_build
 open Std.Collections
 open Riot_model
 
-module Action_executor = Riot_build.Internal.Action_executor
+module Action_scheduler = Riot_build.Internal.Action_scheduler
 module Sandbox = Riot_build.Internal.Sandbox
 
 module Test = Std.Test
@@ -112,47 +112,26 @@ let action_label = fun (node: Riot_planner.Action_node.t) ->
   let actions = node.value.actions |> List.map ~fn:Riot_planner.Action.to_string |> String.concat " ; " in
   G.Node_id.to_string node.id ^ " => " ^ actions
 
-let summarize_execution_failures = fun ~(action_graph:Riot_planner.Action_graph.t) ~sandbox_dir result ->
-  let nodes_by_id =
-    Riot_planner.Action_graph.nodes action_graph
-    |> List.fold_left ~acc:(HashMap.create ())
-      ~fn:(fun acc (node: Riot_planner.Action_node.t) ->
-        let _ = HashMap.insert acc ~key:node.id ~value:node in
-        acc)
-  in
+let summarize_execution_failures = fun ~sandbox_dir result ->
   let failures =
-    HashMap.to_list result.Action_executor.completed
+    Action_scheduler.results result
     |> List.filter_map
-      ~fn:(fun (node_id, execution_result) ->
-        match execution_result.Action_executor.status with
-        | Action_executor.Failed (Action_executor.ExecutionFailed { message }) ->
-            let action =
-              match HashMap.get nodes_by_id ~key:node_id with
-              | Some node -> action_label node
-              | None -> G.Node_id.to_string node_id
-            in
+      ~fn:(fun completed_action ->
+        let action = action_label completed_action.Action_scheduler.node in
+        match completed_action.result.status with
+        | Action_scheduler.Failed (Action_scheduler.ExecutionFailed { message }) ->
             Some (action ^ "\n" ^ message)
-        | Action_executor.Failed (Action_executor.OutputsNotCreated { missing }) ->
-            let action =
-              match HashMap.get nodes_by_id ~key:node_id with
-              | Some node -> action_label node
-              | None -> G.Node_id.to_string node_id
-            in
+        | Action_scheduler.Failed (Action_scheduler.OutputsNotCreated { missing }) ->
             Some (action
             ^ "\nmissing outputs: "
             ^ String.concat ", " (List.map missing ~fn:Path.to_string))
-        | Action_executor.Failed (Action_executor.DependenciesFailed { failed }) ->
-            let action =
-              match HashMap.get nodes_by_id ~key:node_id with
-              | Some node -> action_label node
-              | None -> G.Node_id.to_string node_id
-            in
+        | Action_scheduler.Failed (Action_scheduler.DependenciesFailed { failed }) ->
             Some (action
             ^ "\nfailed deps: "
             ^ String.concat ", " (List.map failed ~fn:G.Node_id.to_string))
-        | Action_executor.Cached _
-        | Action_executor.Executed
-        | Action_executor.Skipped ->
+        | Action_scheduler.Cached _
+        | Action_scheduler.Executed
+        | Action_scheduler.Skipped ->
             None)
   in
   "sandbox: " ^ Path.to_string sandbox_dir ^ "\nfailures:\n" ^ String.concat "\n\n" failures
@@ -183,24 +162,24 @@ let execute_kernel_runtime_graph = fun ~concurrency ->
                   ~package_name:package.name in
                 Sandbox.prepare ~sandbox ~package ~inputs ~depset ~store;
                 let sandbox_dir = Sandbox.get_dir sandbox in
-                let result = Action_executor.execute
+                let result = Action_scheduler.run
                   ~action_graph
                   ~sandbox
                   ~store
                   ~session_id
                   test_toolchain
                   ~concurrency in
-                let summary = summarize_execution_failures ~action_graph ~sandbox_dir result in
+                let summary = summarize_execution_failures ~sandbox_dir result in
                 Sandbox.cleanup sandbox;
                 let failures =
-                  HashMap.to_list result.Action_executor.completed
+                  Action_scheduler.results result
                   |> List.filter
-                    ~fn:(fun (_, execution_result) ->
-                      match execution_result.Action_executor.status with
-                      | Action_executor.Failed _ -> true
-                      | Action_executor.Cached _
-                      | Action_executor.Executed
-                      | Action_executor.Skipped -> false)
+                    ~fn:(fun completed_action ->
+                      match completed_action.Action_scheduler.result.status with
+                      | Action_scheduler.Failed _ -> true
+                      | Action_scheduler.Cached _
+                      | Action_scheduler.Executed
+                      | Action_scheduler.Skipped -> false)
                 in
                 if List.is_empty failures then
                   Ok ()

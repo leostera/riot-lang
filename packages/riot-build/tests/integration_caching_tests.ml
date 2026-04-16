@@ -3,7 +3,7 @@ open Riot_build
 open Std.Collections
 open Riot_model
 
-module Action_executor = Riot_build.Internal.Action_executor
+module Action_scheduler = Riot_build.Internal.Action_scheduler
 module Package_builder = Riot_build.Internal.Package_builder
 module Sandbox = Riot_build.Internal.Sandbox
 
@@ -90,11 +90,9 @@ let make_graph_with_write = fun ~package ~content ->
   let node = Riot_planner.Action_graph.add_node graph spec in
   (graph, node)
 
-let node_id = fun (node: Riot_planner.Action_node.t) -> node.id
-
 let execute_graph = fun ~workspace ~store ~package ~graph ->
   let sandbox = Sandbox.create ~workspace () ~package_name:package.Riot_model.Package.name in
-  let result = Action_executor.execute
+  let result = Action_scheduler.run
     ~action_graph:graph
     ~sandbox
     ~store
@@ -148,7 +146,7 @@ let execute_planned_package = fun ~workspace ~store ~package ~package_graph ->
         @ package.Riot_model.Package.sources.tests)
         ~depset
         ~store;
-      let result = Action_executor.execute
+      let result = Action_scheduler.run
         ~action_graph
         ~sandbox
         ~store
@@ -170,12 +168,12 @@ let test_execute_reuses_cache_for_equivalent_graph = fun _ctx ->
         let graph2, node2 = make_graph_with_write ~package ~content:"cached output" in
         let result2, exists2, content2, _sandbox2 = execute_graph ~workspace ~store ~package ~graph:graph2 in
         match (
-          HashMap.get result1.Action_executor.completed ~key:(node_id node1),
-          HashMap.get result2.Action_executor.completed ~key:(node_id node2),
+          Action_scheduler.find_result result1 node1,
+          Action_scheduler.find_result result2 node2,
           content1,
           content2
         ) with
-        | Some { status=Action_executor.Executed; _ }, Some { status=Action_executor.Cached _; _ }, Ok first_content, Ok second_content ->
+        | Some { status=Action_scheduler.Executed; _ }, Some { status=Action_scheduler.Cached _; _ }, Ok first_content, Ok second_content ->
             if
               exists1
               && exists2
@@ -202,11 +200,11 @@ let test_execute_cache_misses_when_action_changes = fun _ctx ->
         let graph2, node2 = make_graph_with_write ~package ~content:"v2" in
         let result2, exists2, content2, _sandbox2 = execute_graph ~workspace ~store ~package ~graph:graph2 in
         match (
-          HashMap.get result1.Action_executor.completed ~key:(node_id node1),
-          HashMap.get result2.Action_executor.completed ~key:(node_id node2),
+          Action_scheduler.find_result result1 node1,
+          Action_scheduler.find_result result2 node2,
           content2
         ) with
-        | Some { status=Action_executor.Executed; _ }, Some { status=Action_executor.Executed; _ }, Ok second_content ->
+        | Some { status=Action_scheduler.Executed; _ }, Some { status=Action_scheduler.Executed; _ }, Ok second_content ->
             if exists1 && exists2 && String.equal second_content "v2" then
               Ok ()
             else
@@ -261,16 +259,16 @@ let test_dependency_change_invalidates_cached_compile_actions = fun _ctx ->
                     match execute_planned_package ~workspace ~store ~package:app ~package_graph:second_graph with
                     | Error _ as err -> err
                     | Ok second_app_result ->
-                        let statuses = HashMap.to_list second_app_result.Action_executor.completed
-                        |> List.map ~fn:(fun (_, result) -> result.Action_executor.status) in
+                        let statuses = Action_scheduler.results second_app_result
+                        |> List.map ~fn:(fun completed_action -> completed_action.Action_scheduler.result.status) in
                         let cached_count =
                           List.fold_left statuses ~acc:0
                             ~fn:(fun count status ->
                               match status with
-                              | Action_executor.Cached _ -> count + 1
-                              | Action_executor.Executed
-                              | Action_executor.Failed _
-                              | Action_executor.Skipped -> count)
+                              | Action_scheduler.Cached _ -> count + 1
+                              | Action_scheduler.Executed
+                              | Action_scheduler.Failed _
+                              | Action_scheduler.Skipped -> count)
                         in
                         if Int.equal cached_count 0 then
                           Ok ()
