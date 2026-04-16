@@ -3,6 +3,8 @@ open Std
 module Test = Std.Test
 module Build_context = Riot_build.Internal.Build_context
 module Build_work = Riot_build.Internal.Build_work
+module Lane_result = Riot_build.Internal.Lane_result
+module Package_builder = Riot_build.Internal.Package_builder
 module Resolved_build = Riot_build.Internal.Resolved_build
 module Package_graph = Riot_planner.Package_graph
 
@@ -82,7 +84,36 @@ let prepare_work = fun request ->
   Build_work.prepare_lanes context resolved ~toolchain
   |> Result.expect ~msg:"expected initial build work preparation to succeed"
 
+let run_work = fun request ->
+  let context = Build_context.make request
+    |> Result.expect ~msg:"expected build context creation to succeed" in
+  let resolved = Resolved_build.resolve context request
+    |> Result.expect ~msg:"expected build resolution to succeed" in
+  let toolchain = Riot_toolchain.init ~config:context.toolchain_config
+    |> Result.expect ~msg:"expected toolchain initialization to succeed" in
+  let lanes = Build_work.prepare_lanes context resolved ~toolchain
+    |> Result.expect ~msg:"expected initial build work preparation to succeed" in
+  Build_work.run context lanes |> Build_work.summarize
+
 let package_key_string = fun key -> Riot_model.Package.key_to_string key
+
+let lane_results = fun summary -> summary.Build_work.lane_results
+
+let lane_result = fun summary ->
+  match lane_results summary with
+  | [ lane_result ] -> lane_result
+  | results ->
+      panic ("expected exactly one lane result, got " ^ Int.to_string (List.length results))
+
+let result_statuses = fun lane_result ->
+  Lane_result.results lane_result
+  |> List.map ~fn:(fun (result: Package_builder.build_result) -> result.status)
+
+let status_label = function
+  | Package_builder.Built _ -> "built"
+  | Package_builder.Cached _ -> "cached"
+  | Package_builder.Skipped { reason } -> "skipped(" ^ reason ^ ")"
+  | Package_builder.Failed err -> "failed(" ^ Package_builder.package_error_to_string err ^ ")"
 
 let test_initial_plan_packages_follow_topological_order = fun _ctx ->
   match Fs.with_tempdir ~prefix:"riot_build_work_plan_packages"
@@ -125,12 +156,96 @@ let test_initial_plan_packages_follow_topological_order = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
+let test_run_builds_dependency_chain = fun _ctx ->
+  match Fs.with_tempdir ~prefix:"riot_build_work_run_success"
+    (fun tmpdir ->
+      let lib = make_package ~root:tmpdir ~name:"lib" ~source:"let value = 1\n" () in
+      let app = make_package
+        ~root:tmpdir
+        ~name:"app"
+        ~dependencies:[ package_dependency "lib" ]
+        ~source:"let value = Lib.value\n"
+        ()
+      in
+      let workspace = make_workspace ~root:tmpdir ~packages:[ lib; app ] in
+      let summary = run_work (make_request ~workspace ~packages:[ package_name "app" ]) in
+      if summary.errors != [] then
+        Error "expected package scheduler run to avoid internal errors"
+      else
+        let lane_result = lane_result summary in
+        let result_keys =
+          Lane_result.results lane_result
+          |> List.map ~fn:(fun (result: Package_builder.build_result) ->
+            package_key_string result.package_key)
+        in
+        let expected_keys = [
+          Package_graph.package_key ~package_name:"lib" Package_graph.Runtime |> package_key_string;
+          Package_graph.package_key ~package_name:"app" Package_graph.Runtime |> package_key_string;
+        ] in
+        let built_all =
+          result_statuses lane_result
+          |> List.all ~fn:(function
+            | Package_builder.Built _ -> true
+            | Package_builder.Cached _
+            | Package_builder.Skipped _
+            | Package_builder.Failed _ -> false)
+        in
+        if not built_all then
+          Error "expected dependency chain packages to build successfully"
+        else if summary.had_failure then
+          Error "expected successful package scheduler run to avoid failure summary"
+        else (
+          Test.assert_equal ~expected:expected_keys ~actual:result_keys;
+          Ok ()
+        ))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
+let test_run_skips_dependents_after_failure = fun _ctx ->
+  match Fs.with_tempdir ~prefix:"riot_build_work_run_failure"
+    (fun tmpdir ->
+      let lib = make_package ~root:tmpdir ~name:"lib" ~source:"let value =\n" () in
+      let app = make_package
+        ~root:tmpdir
+        ~name:"app"
+        ~dependencies:[ package_dependency "lib" ]
+        ~source:"let value = Lib.value\n"
+        ()
+      in
+      let workspace = make_workspace ~root:tmpdir ~packages:[ lib; app ] in
+      let summary = run_work (make_request ~workspace ~packages:[ package_name "app" ]) in
+      if summary.errors != [] then
+        Error "expected failing package build to stay in package results, not internal scheduler errors"
+      else
+        let lane_result = lane_result summary in
+        let statuses = result_statuses lane_result in
+        match statuses with
+        | [ Package_builder.Failed _; Package_builder.Skipped _ ] ->
+            if summary.had_failure && Lane_result.had_partial_failure lane_result then
+              Ok ()
+            else
+              Error "expected failing dependency lane to report partial failure"
+        | _ ->
+            Error
+              ("expected dependency failure to produce failed then skipped package results, got "
+              ^ String.concat ", " (List.map statuses ~fn:status_label)))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
 let tests =
   let open Test in
   [
     case
       "build work: initial plan packages preserve dependency-first order"
       test_initial_plan_packages_follow_topological_order;
+    case
+      "build work: run builds dependency chain"
+      test_run_builds_dependency_chain;
+    case
+      "build work: run skips dependents after failure"
+      test_run_skips_dependents_after_failure;
   ]
 
 let name = "Riot Build Work Tests"
