@@ -15,7 +15,7 @@ let sample_tests = [
         Ok ());
   Test.case "timeout_probe"
     (fun _ctx ->
-      sleep (Time.Duration.from_millis 100);
+      sleep (Time.Duration.from_secs 2);
       Ok ());
 ]
 
@@ -254,7 +254,7 @@ let test_run_tests_json_includes_reliability_metadata = fun _ctx ->
 
 let test_run_tests_small_timeout_reports_timed_out = fun _ctx ->
   let output = run_sample_capture
-    [ "run-tests"; "timeout_probe"; "--json"; "--small-timeout-ms"; "1" ] in
+    [ "run-tests"; "timeout_probe"; "--json"; "--small-timeout-ms"; "10" ] in
   if Int.equal output.status 0 then
     Error "expected timeout probe to fail"
   else
@@ -262,7 +262,7 @@ let test_run_tests_small_timeout_reports_timed_out = fun _ctx ->
     match Data.Json.get_field "tests" json with
     | Some (Data.Json.Array [ Data.Json.Object fields ]) ->
         let has name value = assoc_value name fields = Some value in
-        if has "status" (Data.Json.String "timed_out") && has "timeout_ms" (Data.Json.Int 1) then
+        if has "status" (Data.Json.String "timed_out") && has "timeout_ms" (Data.Json.Int 10) then
           Ok ()
         else
           Error "expected timeout probe json output to report a timeout"
