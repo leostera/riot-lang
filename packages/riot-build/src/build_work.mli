@@ -9,7 +9,6 @@ type t =
   | BuildPackage of plan_package
 
 type output =
-  | PackagePending
   | PackageCompleted of {
       lane: Build_lane.locked Build_lane.t;
       detailed_result: Package_builder.detailed_result;
@@ -51,8 +50,6 @@ val prepare_lanes:
   Resolved_build.t ->
   toolchain:Riot_toolchain.t ->
   (Build_lane.locked Build_lane.t list, string) result
-
-val execute: t -> (output, error) result
 
 val run: Build_context.t -> Build_lane.locked Build_lane.t list -> run_result
 

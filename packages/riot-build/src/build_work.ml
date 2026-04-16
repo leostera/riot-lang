@@ -10,8 +10,15 @@ type plan_package = {
 type t =
   | BuildPackage of plan_package
 
+type mutation =
+  | Apply_graph_update of {
+      lane: Build_lane.locked Build_lane.t;
+      package_key: Riot_model.Package.key;
+      package: Riot_model.Package.t;
+      graph_update: Package_builder.graph_update option;
+    }
+
 type output =
-  | PackagePending
   | PackageCompleted of {
       lane: Build_lane.locked Build_lane.t;
       detailed_result: Package_builder.detailed_result;
@@ -67,18 +74,6 @@ let dependency_keys = fun lane package_key ->
   dependency_nodes lane package_key
   |> List.map ~fn:Riot_planner.Package_graph.get_key
 
-let root_plan_packages = fun lane ->
-  initial_plan_packages lane
-  |> List.filter ~fn:(fun plan -> dependency_keys lane plan.package_key = [])
-
-let is_success_node = function
-  | Riot_planner.Package_graph.Cached _
-  | Riot_planner.Package_graph.Built _ -> true
-  | Riot_planner.Package_graph.Unplanned _
-  | Riot_planner.Package_graph.Planned _
-  | Riot_planner.Package_graph.Failed _
-  | Riot_planner.Package_graph.Skipped _ -> false
-
 let is_failed_node = function
   | Riot_planner.Package_graph.Failed _
   | Riot_planner.Package_graph.Skipped _ -> true
@@ -86,14 +81,6 @@ let is_failed_node = function
   | Riot_planner.Package_graph.Planned _
   | Riot_planner.Package_graph.Cached _
   | Riot_planner.Package_graph.Built _ -> false
-
-let is_finished_node = function
-  | Riot_planner.Package_graph.Cached _
-  | Riot_planner.Package_graph.Built _
-  | Riot_planner.Package_graph.Failed _
-  | Riot_planner.Package_graph.Skipped _ -> true
-  | Riot_planner.Package_graph.Unplanned _
-  | Riot_planner.Package_graph.Planned _ -> false
 
 let skipped_reason = fun failed_nodes ->
   let failed_names =
@@ -167,7 +154,18 @@ let prepare_lanes = fun context spec ~toolchain ->
   in
   loop [] targets
 
-let execute = function
+let record_graph_update = fun handle lane (detailed_result: Package_builder.detailed_result) ->
+  Graph_scheduler.Handle.record
+    handle
+    (Apply_graph_update {
+      lane;
+      package_key = detailed_result.result.package_key;
+      package = detailed_result.result.package;
+      graph_update = detailed_result.graph_update;
+    })
+
+let execute = fun ~graph ~node:_ ~payload ->
+  match payload with
   | BuildPackage ({ lane; package_key } as work) -> (
       match Riot_planner.Package_graph.get_node_by_key (Build_lane.package_graph lane) package_key with
       | None ->
@@ -176,86 +174,109 @@ let execute = function
             reason = "package graph missing node for " ^ package_key_id work.package_key;
           }
       | Some node ->
-          if is_finished_node node.value then
-            Ok PackagePending
-          else
-            let failed_dependencies =
-              dependency_nodes lane package_key
-              |> List.filter ~fn:is_failed_node
-            in
+          let failed_dependencies =
+            dependency_nodes lane package_key
+            |> List.filter ~fn:is_failed_node
+          in
+          let detailed_result =
             if failed_dependencies != [] then
               let package = Riot_planner.Package_graph.get_package node.value in
               let reason = skipped_reason failed_dependencies in
-              Ok (PackageCompleted {
-                lane;
-                detailed_result = {
-                  result = Package_builder.{
-                    package_key;
-                    package;
-                    status = Skipped { reason };
-                    ocamlc_warnings = [];
-                    duration = Time.Duration.zero;
-                  };
-                  graph_update = Some (Skipped_package { reason });
+              Package_builder.{
+                result = {
+                  package_key;
+                  package;
+                  status = Skipped { reason };
+                  ocamlc_warnings = [];
+                  duration = Time.Duration.zero;
                 };
-              })
+                graph_update = Some (Skipped_package { reason });
+              }
             else
-              let dependencies_ready =
-                dependency_nodes lane package_key
-                |> List.all ~fn:is_success_node
-              in
-              if not dependencies_ready then
-                Ok PackagePending
-              else
-                let package = Riot_planner.Package_graph.get_package node.value in
-                Ok (PackageCompleted {
-                  lane;
-                  detailed_result =
-                    Package_builder.build_detailed
-                      ~workspace:(Build_lane.workspace lane)
-                      ~toolchain:(Build_lane.toolchain lane)
-                      ~store:(Build_lane.store lane)
-                      ~package_graph:(Build_lane.package_graph lane)
-                      ~package_key
-                      ~package
-                      ~build_ctx:(Build_lane.build_ctx lane);
-                })
+              let package = Riot_planner.Package_graph.get_package node.value in
+              Package_builder.build_detailed
+                ~workspace:(Build_lane.workspace lane)
+                ~toolchain:(Build_lane.toolchain lane)
+                ~store:(Build_lane.store lane)
+                ~package_graph:(Build_lane.package_graph lane)
+                ~package_key
+                ~package
+                ~build_ctx:(Build_lane.build_ctx lane)
+          in
+          record_graph_update graph lane detailed_result;
+          Ok (PackageCompleted {
+            lane;
+            detailed_result;
+          })
     )
-
-let dependents_of = fun lane completed_key ->
-  Build_lane.package_keys lane
-  |> List.filter ~fn:(fun package_key ->
-    dependency_keys lane package_key
-    |> List.any ~fn:(fun dependency_key -> dependency_key = completed_key))
-  |> List.map ~fn:(plan_package lane)
-  |> List.map ~fn:(fun package -> BuildPackage package)
 
 let release_lanes = fun lanes ->
   List.for_each lanes ~fn:Build_lane.release
 
-let run = fun context lanes ->
-  let initial_tasks =
-    lanes
-    |> List.flat_map ~fn:root_plan_packages
-    |> List.map ~fn:(fun plan -> BuildPackage plan)
+let lane_package_graph_key = fun lane package_key ->
+  lane_id lane ^ "#" ^ package_key_id package_key
+
+let make_graph = fun lanes ->
+  let graph =
+    Graph_scheduler.Graph.create
+      ~apply_mutation:(fun _ mutation ->
+        match mutation with
+        | Apply_graph_update { lane; package_key; package; graph_update } ->
+            apply_graph_update lane package_key package graph_update)
+      ()
   in
+  let node_ids: (string, Graph_scheduler.Node_id.t) HashMap.t = HashMap.create () in
+  List.for_each lanes
+    ~fn:(fun lane ->
+      initial_plan_packages lane
+      |> List.for_each ~fn:(fun plan ->
+        let node_id =
+          Graph_scheduler.Graph.add_node graph ~payload:(BuildPackage plan)
+        in
+        let _ = HashMap.insert
+          node_ids
+          ~key:(lane_package_graph_key lane plan.package_key)
+          ~value:node_id
+        in
+        ()));
+  List.for_each lanes
+    ~fn:(fun lane ->
+      initial_plan_packages lane
+      |> List.for_each ~fn:(fun plan ->
+        let node_key = lane_package_graph_key lane plan.package_key in
+        let node_id =
+          HashMap.get node_ids ~key:node_key
+          |> Option.expect ~msg:("missing graph node for " ^ node_key)
+        in
+        dependency_keys lane plan.package_key
+        |> List.for_each ~fn:(fun dependency_key ->
+          let dependency_node_key = lane_package_graph_key lane dependency_key in
+          let dependency_node_id =
+            HashMap.get node_ids ~key:dependency_node_key
+            |> Option.expect ~msg:("missing graph node for " ^ dependency_node_key)
+          in
+          Graph_scheduler.Graph.add_dependency
+            graph
+            ~node:node_id
+            ~depends_on:dependency_node_id)));
+  graph
+
+let run = fun context lanes ->
   let task_results =
     try
-      Build_scheduler.run
-        ~concurrency:context.Build_context.parallelism
-        ~tasks:initial_tasks
-        ~fn:execute
-        ~on_result:(fun ~task:_ ~outcome ->
-          match outcome with
-          | Error _ -> []
-          | Ok PackagePending -> []
-          | Ok (PackageCompleted { lane; detailed_result }) ->
-              apply_graph_update
-                lane
-                detailed_result.result.package_key
-                detailed_result.result.package
-                detailed_result.graph_update;
-              dependents_of lane detailed_result.result.package_key)
+      let graph = make_graph lanes in
+      Graph_scheduler.run
+        ~config:(Graph_scheduler.Run_config.make
+          ~parallelism:context.Build_context.parallelism
+          ~mode:Graph_scheduler.Run_config.Continue_on_failure
+          ())
+        ~on_event:(fun () -> ())
+        ~graph
+        ~execute
+      |> fun results ->
+        List.map results.results
+          ~fn:(fun (result: (t, output, error) Graph_scheduler.node_result) ->
+            result.payload, result.outcome)
     with
     | exn ->
         release_lanes lanes;
@@ -302,7 +323,6 @@ let summarize = fun run_result ->
     |> List.filter_map ~fn:(fun (_, outcome) ->
       match outcome with
       | Error err -> Some err
-      | Ok PackagePending -> None
       | Ok (PackageCompleted { lane; detailed_result }) ->
           remember_result lane detailed_result.result;
           None)
