@@ -38,6 +38,10 @@ name = "build_scheduler_tests"
 path = "tests/build_scheduler_tests.ml"
 
 [[bin]]
+name = "graph_scheduler_tests"
+path = "tests/graph_scheduler_tests.ml"
+
+[[bin]]
 name = "build_runtime_kernel_tests"
 path = "tests/build_runtime_kernel_tests.ml"
 
