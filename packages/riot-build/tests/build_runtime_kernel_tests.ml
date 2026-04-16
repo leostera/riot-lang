@@ -48,6 +48,7 @@ let render_build_event = fun (event: Riot_build.Event.t) ->
   ^ Bool.to_string host
   ^ ")"
   | Riot_build.Event.CacheGc _ -> "CacheGc"
+  | Riot_build.Event.Telemetry _ -> "Telemetry"
   | Riot_build.Event.Phase _ -> "Phase"
 
 let phase_name = function
@@ -73,6 +74,7 @@ let public_phase_names = fun events ->
       | Riot_build.Event.Phase phase -> Some (phase_name phase)
       | Riot_build.Event.Pm _
       | Riot_build.Event.BuildingTarget _
+      | Riot_build.Event.Telemetry _
       | Riot_build.Event.CacheGc _ -> None
     )
 

@@ -14,7 +14,26 @@ type build_context = {
   record_cache_generation: bool;
 }
 
-let emit_runtime_phase = fun context phase -> context.build.on_event (Event.Phase phase)
+let telemetry_handler_id = fun context ->
+  "riot-build:"
+  ^ Riot_model.Session_id.to_string context.build.Build_context.session_id
+
+let with_telemetry_bridge = fun context fn ->
+  let _ = Std.Telemetry.start () in
+  let handler_id = telemetry_handler_id context in
+  Std.Telemetry.attach handler_id (Build_context.forward_telemetry_event context.build);
+  try
+    let result = fn () in
+    Build_context.flush_events context.build;
+    Std.Telemetry.detach handler_id;
+    result
+  with
+  | exn ->
+      Build_context.flush_events context.build;
+      Std.Telemetry.detach handler_id;
+      raise exn
+
+let emit_runtime_phase = fun context phase -> Build_context.emit_phase context.build phase
 
 let emit_targets_resolved = fun context targets ->
   emit_runtime_phase context (Event.TargetsResolved { target_count = List.length targets })
@@ -31,7 +50,7 @@ let emit_runtime_started = fun context -> emit_runtime_phase context Event.Runti
 
 let emit_target_build_started = fun context target ->
   let host = Riot_model.Target.equal target context.build.host in
-  context.build.on_event (Event.BuildingTarget { target; host });
+  Build_context.emit_building_target context.build ~target ~host;
   emit_runtime_phase context (Event.TargetBuildStarted { target; host })
 
 let emit_target_build_finished = fun context ~target ~result_count ~had_partial_failure ->
@@ -277,4 +296,4 @@ let do_build = fun context ->
 
 let execute = fun ?(allow_partial_failures = false) ?(record_cache_generation = true) build spec ->
   let* context = make_context ~allow_partial_failures ~record_cache_generation build spec in
-  do_build context
+  with_telemetry_bridge context (fun () -> do_build context)

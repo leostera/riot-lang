@@ -492,7 +492,8 @@ let run_request = fun (request: request) ->
     ~mode:request.output_mode
     ~seen_registry_updates
     (Riot_model.Event.create ~session_id:pm_session_id ~level:Riot_model.Event.Info kind) in
-  let on_build_event = function
+  let on_build_event event =
+    match event with
     | Riot_build.Event.Pm kind ->
         emit_pm_kind kind.kind
     | Riot_build.Event.BuildingTarget { target; host } ->
@@ -501,6 +502,11 @@ let run_request = fun (request: request) ->
     | Riot_build.Event.CacheGc event ->
         attempted_build := true;
         write_cache_gc_event ~mode:request.output_mode event
+    | Riot_build.Event.Telemetry event ->
+        attempted_build := true;
+        (match request.output_mode with
+        | Json -> write_build_event_json (Riot_build.Event.Telemetry event)
+        | Human -> ())
     | Riot_build.Event.Phase phase ->
         attempted_build := true;
         write_build_phase_event ~mode:request.output_mode phase

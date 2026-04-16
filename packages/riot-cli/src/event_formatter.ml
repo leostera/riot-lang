@@ -14,5 +14,6 @@ let format = fun ~displayed_packages:_ (event: Riot_build.Event.t) ->
       in
       "building " ^ kind ^ " " ^ Riot_model.Target.to_string target
   | Riot_build.Event.CacheGc _
+  | Riot_build.Event.Telemetry _
   | Riot_build.Event.Phase _ ->
       ""

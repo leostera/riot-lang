@@ -462,6 +462,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
                 ~target
                 ~host
               | Riot_build.Event.CacheGc event -> Build.write_cache_gc_event ~mode:output_mode event
+              | Riot_build.Event.Telemetry _ -> ()
               | Riot_build.Event.Phase _ -> ()
             )
         )

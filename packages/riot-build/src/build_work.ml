@@ -106,8 +106,9 @@ let run = fun context lanes ->
       Package_scheduler.run
         ~parallelism:context.Build_context.parallelism
         ~on_event:(fun event ->
-          context.Build_context.on_event
-            (Event.Phase (runtime_phase_of_package_scheduler_event event)))
+          Build_context.emit_phase
+            context
+            (runtime_phase_of_package_scheduler_event event))
         lanes
     in
     release_lanes lanes;

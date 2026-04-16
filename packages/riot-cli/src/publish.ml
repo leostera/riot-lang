@@ -219,6 +219,7 @@ let write_publish_event = fun ~workspace_root ~seen_registry_updates ~displayed_
     ~host
   | Riot_publish.Build (Riot_build.Event.CacheGc event) -> Build.write_cache_gc_event
     ~mode:Build.Human event
+  | Riot_publish.Build (Riot_build.Event.Telemetry _) -> ()
   | Riot_publish.Build (Riot_build.Event.Phase _) -> ()
   | Riot_publish.CheckStarted { package; version; stage=`fmt } -> out
     (render_formatting ~package:(Package_name.to_string package) ~version:(version_label version))

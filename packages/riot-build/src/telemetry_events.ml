@@ -690,6 +690,33 @@ let to_json: Telemetry.event -> Data.Json.t option = function
   | _ ->
       None
 
+let event_session_id: Telemetry.event -> Session_id.t option = function
+  | BuildStarted { session_id; _ }
+  | WorkspacePlanStarted { session_id; _ }
+  | WorkspacePlanCompleted { session_id; _ }
+  | WorkspaceManifestFilterCompleted { session_id; _ }
+  | WorkspaceGraphCreated { session_id; _ }
+  | WorkspaceTargetGraphFiltered { session_id; _ }
+  | WorkspaceTopologicalSortCompleted { session_id; _ }
+  | PlanningWorkspaceStarted { session_id; _ }
+  | PlanningWorkspaceCompleted { session_id; _ }
+  | PackagePlanningResult { session_id; _ }
+  | PackagePlanningBreakdown { session_id; _ }
+  | CompilationStarted { session_id; _ }
+  | PackageOcamlcWarnings { session_id; _ }
+  | BuildCompleted { session_id; _ }
+  | BuildFailed { session_id; _ }
+  | BuildSkipped { session_id; _ }
+  | ActionStarted { session_id; _ }
+  | ActionCommandStarted { session_id; _ }
+  | ActionCompleted { session_id; _ }
+  | ActionFailed { session_id; _ }
+  | CacheHit { session_id; _ }
+  | CacheMiss { session_id; _ }
+  | WorkspaceStarted { session_id; _ }
+  | WorkspaceCompleted { session_id; _ } -> Some session_id
+  | _ -> None
+
 let from_json: Data.Json.t -> (Telemetry.event, Data.Json.t) result = fun json ->
   let get_field fields ~name =
     List.find fields

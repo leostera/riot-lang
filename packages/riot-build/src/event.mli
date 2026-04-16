@@ -9,6 +9,7 @@ type t =
   | Pm of Riot_model.Event.t
   | BuildingTarget of { target: Riot_model.Target.t; host: bool }
   | CacheGc of Riot_store.Cache_gc.event
+  | Telemetry of Std.Telemetry.event
   | Phase of runtime_phase
 
 and runtime_phase =

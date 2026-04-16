@@ -34,6 +34,7 @@
 27. Public build events should expose package-scheduler progress as build-domain phases. Keep package planning/execution visibility in `Event.Phase`, but avoid leaking generic graph-scheduler node or mutation details through the public API.
 28. `package_scheduler` planning rounds should only schedule packages whose dependencies are already finalized. Packages still blocked on planned/executing dependencies should stay out of the planning graph and surface through round-level deferred counts instead of retry-only node outcomes.
 29. Keep test suites aligned with ownership boundaries. `package_scheduler` behavior belongs in `package_scheduler_tests`; `build_work` tests should stay narrow and cover lane preparation / helper shaping instead of package-scheduler semantics.
+30. Funnel public build events and detailed build telemetry through the same `Std.Telemetry` delivery path before calling the external `on_event` callback. Do not reintroduce mixed direct-callback and telemetry-backed event emission from different runtime threads.
 
 ## Validate
 

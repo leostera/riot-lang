@@ -45,7 +45,7 @@ let resolve_include_paths = fun sandbox_dir includes ->
 
 let emit_action_command = fun ~session_id ~package ~node command ->
   Telemetry.emit
-    Telemetry_events.(ActionCommandStarted { session_id; package; action = node; command })
+    (Telemetry_events.ActionCommandStarted { session_id; package; action = node; command })
 
 let ocamlc_success = fun message -> Riot_toolchain.Ocamlc.Success { message; diagnostics = [] }
 
@@ -421,7 +421,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
       match Riot_store.Store.get store action_hash with
       | Some artifact ->
           Telemetry.emit
-            Telemetry_events.(CacheHit {
+            (Telemetry_events.CacheHit {
               session_id;
               package = node.value.package;
               action = node;
@@ -433,16 +433,14 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
           let completed_at = Instant.now () in
           let duration = Instant.duration_since ~earlier:start completed_at in
           Telemetry.emit
-            Telemetry_events.(
-              ActionCompleted {
-                session_id;
-                package = node.value.package;
-                action = node;
-                artifact;
-                status = `Cached;
-                duration;
-              }
-            );
+            (Telemetry_events.ActionCompleted {
+              session_id;
+              package = node.value.package;
+              action = node;
+              artifact;
+              status = `Cached;
+              duration;
+            });
           {
             node_id = node.id;
             status = Cached action_hash;
@@ -453,7 +451,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
           }
       | None ->
           Telemetry.emit
-            Telemetry_events.(CacheMiss {
+            (Telemetry_events.CacheMiss {
               session_id;
               package = node.value.package;
               action = node;
@@ -463,7 +461,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
           let outputs = node.value.outs in
           let sources = node.value.srcs in
           Telemetry.emit
-            Telemetry_events.(ActionStarted {
+            (Telemetry_events.ActionStarted {
               session_id;
               package = node.value.package;
               action = node
@@ -514,7 +512,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
               match execute_actions ~session_id ~node toolchain sandbox_dir actions with
               | Error msg ->
                   Telemetry.emit
-                    Telemetry_events.(ActionFailed {
+                    (Telemetry_events.ActionFailed {
                       session_id;
                       package = node.value.package;
                       action = node;
@@ -556,16 +554,14 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                         }
                     | Ok artifact ->
                         Telemetry.emit
-                          Telemetry_events.(
-                            ActionCompleted {
-                              session_id;
-                              package = node.value.package;
-                              action = node;
-                              artifact;
-                              status = `Fresh;
-                              duration;
-                            }
-                          );
+                          (Telemetry_events.ActionCompleted {
+                            session_id;
+                            package = node.value.package;
+                            action = node;
+                            artifact;
+                            status = `Fresh;
+                            duration;
+                          });
                         {
                           node_id = node.id;
                           status = Executed;
@@ -605,16 +601,14 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
                             }
                         | Ok artifact ->
                             Telemetry.emit
-                              Telemetry_events.(
-                                ActionCompleted {
-                                  session_id;
-                                  package = node.value.package;
-                                  action = node;
-                                  artifact;
-                                  status = `Fresh;
-                                  duration;
-                                }
-                              );
+                              (Telemetry_events.ActionCompleted {
+                                session_id;
+                                package = node.value.package;
+                                action = node;
+                                artifact;
+                                status = `Fresh;
+                                duration;
+                              });
                             {
                               node_id = node.id;
                               status = Executed;

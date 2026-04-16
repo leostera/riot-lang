@@ -1,5 +1,6 @@
 open Std
 module Test = Std.Test
+module Telemetry_events = Riot_build.Internal.Telemetry_events
 
 let package_name = fun name ->
   Result.expect (Riot_model.Package_name.from_string name) ~msg:("package name " ^ name)
@@ -83,12 +84,34 @@ let test_package_planning_phase_event_to_json = fun _ctx ->
     ~actual;
   Ok ()
 
+let test_telemetry_event_to_json = fun _ctx ->
+  let session_id = Riot_model.Session_id.make () in
+  let package = Riot_model.Package.make
+    ~name:(package_name "demo")
+    ~path:(Path.v "/tmp/demo")
+    ~relative_path:(Path.v "packages/demo")
+    ~library:{ path = Path.v "src/lib.ml" }
+    ()
+  in
+  let telemetry_event =
+    Telemetry_events.BuildStarted {
+      session_id;
+      package;
+      target = Riot_planner.Workspace_planner.Package package.name;
+    }
+  in
+  let actual = Riot_build.Event.to_json (Riot_build.Event.Telemetry telemetry_event) in
+  let expected = Telemetry_events.to_json telemetry_event in
+  Test.assert_equal ~expected ~actual;
+  Ok ()
+
 let tests =
   let open Test in [
     case "event: building target json" test_building_target_event_to_json;
     case "event: pm events reuse riot-model json" test_pm_event_to_json_reuses_riot_model_event_shape;
     case "event: build phase json" test_build_phase_event_to_json;
     case "event: package planning phase json" test_package_planning_phase_event_to_json;
+    case "event: telemetry json" test_telemetry_event_to_json;
   ]
 
 let name = "Riot Build Event Tests"

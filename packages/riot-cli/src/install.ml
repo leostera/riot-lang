@@ -174,6 +174,7 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
             ~target
             ~host
           | Riot_build.Event.CacheGc event -> Build.write_cache_gc_event ~mode:Build.Human event
+          | Riot_build.Event.Telemetry _ -> ()
           | Riot_build.Event.Phase _ -> ()
         )
       | _ -> write_install_event ~workspace_root:workspace_root_for_output event

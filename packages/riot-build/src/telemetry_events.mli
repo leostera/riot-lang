@@ -210,6 +210,9 @@ type Telemetry.event +=
     or [None] if it's a different type of event. *)
 val to_json: Telemetry.event -> Data.Json.t option
 
+(** Return the session id for build telemetry events. *)
+val event_session_id: Telemetry.event -> Riot_model.Session_id.t option
+
 (** Parse a telemetry event from JSON.
 
     Note: Action-related events (ActionStarted, ActionCompleted, etc.) can be

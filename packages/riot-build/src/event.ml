@@ -4,6 +4,7 @@ type t =
   | Pm of Riot_model.Event.t
   | BuildingTarget of { target: Riot_model.Target.t; host: bool }
   | CacheGc of Riot_store.Cache_gc.event
+  | Telemetry of Std.Telemetry.event
   | Phase of runtime_phase
 
 and runtime_phase =
@@ -133,6 +134,7 @@ let to_json = function
     ("host", Data.Json.Bool host);
   ])
   | CacheGc event -> Some (Riot_store.Cache_gc.event_to_json event)
+  | Telemetry event -> Telemetry_events.to_json event
   | Phase phase -> Some (Data.Json.Object ([
     ("type", Data.Json.String "BuildPhase");
     ("phase", Data.Json.String (phase_name_of_runtime_phase phase));
