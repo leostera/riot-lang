@@ -211,6 +211,9 @@ let package_plan = fun (lane: 'a t) -> lane.package_plan
 
 let package_graph = fun (lane: 'a t) -> lane.package_graph
 
+let package_keys = fun (lane: 'a t) ->
+  List.map lane.package_plan.nodes ~fn:Riot_planner.Package_graph.get_key
+
 let release: locked t -> unit = fun lane -> Build_lock.release lane.lock
 
 let execute: locked t -> (Lane_result.t, error) result = fun lane ->

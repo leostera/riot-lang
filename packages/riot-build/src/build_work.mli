@@ -10,6 +10,11 @@ type error = Build_lane.error
 
 type run_result = (t * (output, error) result) list
 
+type plan_package = {
+  lane: Build_lane.locked Build_lane.t;
+  package_key: Riot_model.Package.key;
+}
+
 type completion = {
   target: Riot_model.Target.t;
   result_count: int;
@@ -26,6 +31,12 @@ type summary = {
 val lane: Build_lane.locked Build_lane.t -> t
 
 val target: t -> Riot_model.Target.t
+
+val initial_plan_packages: t -> plan_package list
+
+val plan_package_key: plan_package -> Riot_model.Package.key
+
+val plan_package_target: plan_package -> Riot_model.Target.t
 
 val release: t -> unit
 

@@ -11,6 +11,11 @@ type error = Build_lane.error
 
 type run_result = (t * (output, error) result) list
 
+type plan_package = {
+  lane: Build_lane.locked Build_lane.t;
+  package_key: Riot_model.Package.key;
+}
+
 type completion = {
   target: Riot_model.Target.t;
   result_count: int;
@@ -28,6 +33,20 @@ let lane = fun lane -> BuildLane lane
 
 let target = function
   | BuildLane lane -> Build_lane.target lane
+
+let plan_package = fun lane package_key -> {
+  lane;
+  package_key;
+}
+
+let initial_plan_packages = function
+  | BuildLane lane ->
+      Build_lane.package_keys lane
+      |> List.map ~fn:(plan_package lane)
+
+let plan_package_key = fun plan_package -> plan_package.package_key
+
+let plan_package_target = fun plan_package -> Build_lane.target plan_package.lane
 
 let release = function
   | BuildLane lane -> Build_lane.release lane

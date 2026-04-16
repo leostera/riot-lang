@@ -34,6 +34,8 @@ val package_plan: 'a t -> Riot_planner.Workspace_planner.package_plan
 
 val package_graph: 'a t -> Riot_planner.Package_graph.t
 
+val package_keys: 'a t -> Riot_model.Package.key list
+
 val prepare:
   Build_context.t ->
   Resolved_build.t ->
