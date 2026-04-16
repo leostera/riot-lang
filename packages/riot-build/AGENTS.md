@@ -35,6 +35,7 @@
 28. `package_scheduler` should express package dependency readiness through `FinalizePackage(dep) -> PlanPackage(pkg)` graph edges. Keep blocked dependents waiting in scheduler state instead of retry-only package work, and keep any public `deferred_count` fields build-domain progress summaries rather than generic scheduler internals.
 29. Keep test suites aligned with ownership boundaries. `package_scheduler` behavior belongs in `package_scheduler_tests`; `build_work` tests should stay narrow and cover lane preparation / helper shaping instead of package-scheduler semantics.
 30. Funnel public build events and detailed build telemetry through the same `Std.Telemetry` delivery path before calling the external `on_event` callback. Do not reintroduce mixed direct-callback and telemetry-backed event emission from different runtime threads.
+31. Local build-session coordination that only runs under the actor runtime can experiment with actor-owned synchronization inside `riot-build`, but do not promote those primitives to `Std.Sync` until the runtime-facing contract is proven by real builds.
 
 ## Validate
 

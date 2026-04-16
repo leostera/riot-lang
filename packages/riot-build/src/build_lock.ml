@@ -5,9 +5,9 @@ type t = {
   file: Fs.File.t;
 }
 
-let reentrant_counts = Collections.HashMap.create ()
+let in_process_lock_counts = Collections.HashMap.create ()
 
-let reentrant_counts_lock = Sync.Mutex.create ()
+let in_process_lock_counts_lock = Actor_mutex.create ()
 
 let retry_interval = Time.Duration.from_millis 500
 
@@ -16,45 +16,45 @@ let path = fun ~target_dir_root ~profile ~target ->
 
 let path_key = fun path -> Path.to_string path
 
-let increment_reentrant = fun path ->
+let increment_in_process_lock_count = fun path ->
   let key = path_key path in
-  Sync.Mutex.lock reentrant_counts_lock;
+  Actor_mutex.lock in_process_lock_counts_lock;
   let count =
-    match Collections.HashMap.get reentrant_counts ~key with
+    match Collections.HashMap.get in_process_lock_counts ~key with
     | Some count ->
         let next = count + 1 in
-        let _ = Collections.HashMap.insert reentrant_counts ~key ~value:next in
+        let _ = Collections.HashMap.insert in_process_lock_counts ~key ~value:next in
         next
     | None ->
-        let _ = Collections.HashMap.insert reentrant_counts ~key ~value:1 in
+        let _ = Collections.HashMap.insert in_process_lock_counts ~key ~value:1 in
         1
   in
-  Sync.Mutex.unlock reentrant_counts_lock;
+  Actor_mutex.unlock in_process_lock_counts_lock;
   count
 
-let decrement_reentrant = fun path ->
+let decrement_in_process_lock_count = fun path ->
   let key = path_key path in
-  Sync.Mutex.lock reentrant_counts_lock;
+  Actor_mutex.lock in_process_lock_counts_lock;
   let remaining =
-    match Collections.HashMap.get reentrant_counts ~key with
+    match Collections.HashMap.get in_process_lock_counts ~key with
     | Some count when count > 1 ->
         let next = count - 1 in
-        let _ = Collections.HashMap.insert reentrant_counts ~key ~value:next in
+        let _ = Collections.HashMap.insert in_process_lock_counts ~key ~value:next in
         next
     | Some _ ->
-        let _ = Collections.HashMap.remove reentrant_counts ~key in
+        let _ = Collections.HashMap.remove in_process_lock_counts ~key in
         0
     | None ->
         0
   in
-  Sync.Mutex.unlock reentrant_counts_lock;
+  Actor_mutex.unlock in_process_lock_counts_lock;
   remaining
 
-let is_reentrant = fun path ->
+let has_in_process_lock = fun path ->
   let key = path_key path in
-  Sync.Mutex.lock reentrant_counts_lock;
-  let held = Collections.HashMap.has_key reentrant_counts ~key in
-  Sync.Mutex.unlock reentrant_counts_lock;
+  Actor_mutex.lock in_process_lock_counts_lock;
+  let held = Collections.HashMap.has_key in_process_lock_counts ~key in
+  Actor_mutex.unlock in_process_lock_counts_lock;
   held
 
 let release = fun t ->
@@ -101,30 +101,30 @@ let wait = fun ~target_dir_root ~profile ~target ->
 
 let acquire = fun ~target_dir_root ~profile ~target fn ->
   let lock_path = path ~target_dir_root ~profile ~target in
-  if is_reentrant lock_path then
+  if has_in_process_lock lock_path then
     (
-      let _ = increment_reentrant lock_path in
+      let _ = increment_in_process_lock_count lock_path in
       try
         let result = fn () in
-        let _ = decrement_reentrant lock_path in
+        let _ = decrement_in_process_lock_count lock_path in
         result
       with
       | exn ->
-          let _ = decrement_reentrant lock_path in
+          let _ = decrement_in_process_lock_count lock_path in
           raise exn
     )
   else
     match wait ~target_dir_root ~profile ~target with
     | Error err -> Error err
     | Ok t ->
-        let _ = increment_reentrant lock_path in
+        let _ = increment_in_process_lock_count lock_path in
         try
           let result = fn () in
-          let _ = decrement_reentrant lock_path in
+          let _ = decrement_in_process_lock_count lock_path in
           release t;
           result
         with
         | exn ->
-            let _ = decrement_reentrant lock_path in
+            let _ = decrement_in_process_lock_count lock_path in
             release t;
             raise exn
