@@ -98,14 +98,6 @@ let plan_error_to_string = function
       in
       "package load failed: " ^ String.concat "; " (List.map errors ~fn:format_load_error)
 
-let has_failed_packages = fun results ->
-  List.exists
-    (fun (result: Package_builder.build_result) ->
-      match result.status with
-      | Package_builder.Failed _ -> true
-      | _ -> false)
-    results
-
 let make_lane_plan = fun lane_target workspace scope ->
   Riot_planner.plan_workspace
     ~workspace
@@ -215,27 +207,3 @@ let package_keys = fun (lane: 'a t) ->
   List.map lane.package_plan.nodes ~fn:Riot_planner.Package_graph.get_key
 
 let release: locked t -> unit = fun lane -> Build_lock.release lane.lock
-
-let execute: locked t -> (Lane_result.t, error) result = fun lane ->
-  let result =
-    try
-      Coordinator.build_workspace
-        ~workspace:lane.workspace
-        ~toolchain:lane.toolchain
-        ~store:lane.store
-        ~target:lane.planner_target
-        ~scope:(planner_scope lane.scope)
-        ~build_ctx:lane.build_ctx
-        ~session_id:lane.session_id
-      |> Result.map_err ~fn:(fun reason -> Failure (plan_error_to_string reason))
-      |> Result.map_err ~fn:Kernel.Exception.to_string
-    with
-    | exn -> Error (Kernel.Exception.to_string exn)
-  in
-  release lane;
-  let* (workspace_result: Coordinator.workspace_result) = result in
-  Ok Lane_result.{
-    target = lane.target;
-    results = workspace_result.results;
-    had_partial_failure = has_failed_packages workspace_result.results;
-  }

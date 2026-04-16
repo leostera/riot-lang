@@ -5,18 +5,18 @@ open Riot_planner
 open Riot_store
 module G = Graph.SimpleGraph
 
-type action_error = Action_queue.action_error =
+type action_error =
   | ExecutionFailed of { message: string }
   | OutputsNotCreated of { missing: Path.t list }
   | DependenciesFailed of { failed: G.Node_id.t list }
 
-type action_status = Action_queue.action_status =
+type action_status =
   | Cached of Crypto.hash
   | Executed
   | Failed of action_error
   | Skipped
 
-type execution_result = Action_queue.execution_result = {
+type execution_result = {
   node_id: G.Node_id.t;
   status: action_status;
   ocamlc_warnings: string list;

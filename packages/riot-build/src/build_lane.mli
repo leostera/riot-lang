@@ -46,7 +46,3 @@ val prepare:
 val release:
   locked t ->
   unit
-
-val execute:
-  locked t ->
-  (Lane_result.t, error) result

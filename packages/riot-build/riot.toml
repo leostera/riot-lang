@@ -34,10 +34,6 @@ name = "build_runtime_tests"
 path = "tests/build_runtime_tests.ml"
 
 [[bin]]
-name = "build_scheduler_tests"
-path = "tests/build_scheduler_tests.ml"
-
-[[bin]]
 name = "graph_scheduler_tests"
 path = "tests/graph_scheduler_tests.ml"
 
@@ -66,16 +62,8 @@ name = "action_scheduler_tests"
 path = "tests/action_scheduler_tests.ml"
 
 [[bin]]
-name = "action_queue_workspace_graph_tests"
-path = "tests/action_queue_workspace_graph_tests.ml"
-
-[[bin]]
 name = "caching_tests"
 path = "tests/caching_tests.ml"
-
-[[bin]]
-name = "coordinator_tests"
-path = "tests/coordinator_tests.ml"
 
 [[bin]]
 name = "diagnostic_rewrite_tests"

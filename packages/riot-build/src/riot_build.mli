@@ -10,10 +10,8 @@ module BuildLock = Build_lock
 module Internal : sig
   module Action_scheduler = Action_scheduler
   module Action_executor = Action_executor
-  module Action_queue = Action_queue
   module Build_context = Build_context
   module Build_core = Build_core
-  module Build_scheduler = Build_scheduler
   module Graph_scheduler = Graph_scheduler
   module Package_scheduler = Package_scheduler
   module Build_work = Build_work
@@ -21,7 +19,6 @@ module Internal : sig
   module Package_builder = Package_builder
   module Build_runtime = Build_runtime
   module Resolved_build = Resolved_build
-  module Coordinator = Coordinator
   module Diagnostic_rewrite = Diagnostic_rewrite
   module Sandbox = Sandbox
   module Telemetry_events = Telemetry_events
