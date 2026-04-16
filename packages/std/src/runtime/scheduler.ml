@@ -3,6 +3,8 @@ module Runtime_pid = Pid
 module Runtime_scheduler_id = Scheduler_id
 module Runtime_timer = Timer
 module Cell = Sync.Cell
+module Runtime_mutex = Kernel.Sync.Mutex
+module Runtime_condition = Kernel.Sync.Condition
 open Kernel
 open Collections
 open Sync
@@ -101,24 +103,24 @@ let ensure_can_run_once = fun () ->
        in a separate executable.";
   has_run := true
 
-let make_response = fun () -> { lock = Mutex.create (); cond = Condition.create (); value = None }
+let make_response = fun () -> { lock = Runtime_mutex.create (); cond = Runtime_condition.create (); value = None }
 
 let with_response = fun (response: 'a response) f ->
-  Mutex.lock response.lock;
+  Runtime_mutex.lock response.lock;
   try
     let result = f () in
-    Mutex.unlock response.lock;
+    Runtime_mutex.unlock response.lock;
     result
   with
   | exn ->
-      Mutex.unlock response.lock;
+      Runtime_mutex.unlock response.lock;
       raise exn
 
 let resolve_response = fun response value ->
   with_response response
     (fun () ->
       response.value <- Some value;
-      Condition.signal response.cond)
+      Runtime_condition.signal response.cond)
 
 let await_response = fun response ->
   with_response response
@@ -127,24 +129,24 @@ let await_response = fun response ->
         match response.value with
         | Some value -> value
         | None ->
-            Condition.wait response.cond response.lock;
+            Runtime_condition.wait response.cond response.lock;
             wait ()
       in
       wait ())
 
 let with_reactor_commands = fun t f ->
-  Mutex.lock t.reactor_lock;
+  Runtime_mutex.lock t.reactor_lock;
   try
     let result = f () in
-    Mutex.unlock t.reactor_lock;
+    Runtime_mutex.unlock t.reactor_lock;
     result
   with
   | exn ->
-      Mutex.unlock t.reactor_lock;
+      Runtime_mutex.unlock t.reactor_lock;
       raise exn
 
 let create_worker = fun id ->
-  { id; queue = Queue.create (); lock = Mutex.create (); cond = Condition.create () }
+  { id; queue = Queue.create (); lock = Runtime_mutex.create (); cond = Runtime_condition.create () }
 
 let default_worker_count = fun config ->
   let requested = Config.worker_count config in
@@ -168,7 +170,7 @@ let create_process_registry = fun worker_count ->
   let shards =
     Array.init
       ~count:shard_count
-      ~fn:(fun _ -> { lock = Mutex.create (); processes = HashMap.with_capacity ~size:64 })
+      ~fn:(fun _ -> { lock = Runtime_mutex.create (); processes = HashMap.with_capacity ~size:64 })
   in
   { shards; size = Atomic.make 0 }
 
@@ -220,14 +222,14 @@ let shard_for_pid = fun registry pid ->
 
 let with_process_shard = fun registry pid f ->
   let shard = shard_for_pid registry pid in
-  Mutex.lock shard.lock;
+  Runtime_mutex.lock shard.lock;
   try
     let result = f shard in
-    Mutex.unlock shard.lock;
+    Runtime_mutex.unlock shard.lock;
     result
   with
   | exn ->
-      Mutex.unlock shard.lock;
+      Runtime_mutex.unlock shard.lock;
       raise exn
 
 let create = fun ~config ->
@@ -246,12 +248,12 @@ let create = fun ~config ->
         workers;
         processes = create_process_registry worker_count;
         counters = create_counters ();
-        relations_lock = Mutex.create ();
+        relations_lock = Runtime_mutex.create ();
         reactor_commands = Queue.create ();
-        reactor_lock = Mutex.create ();
+        reactor_lock = Runtime_mutex.create ();
         io_poll;
         timer_wheel;
-        blocking_lanes_lock = Mutex.create ();
+        blocking_lanes_lock = Runtime_mutex.create ();
         blocking_lanes = [];
         config;
       }
@@ -289,14 +291,14 @@ let pick_spawn_worker = fun t ->
     Runtime_scheduler_id.of_int (Atomic.get t.processes.size mod total)
 
 let with_relations_lock = fun t f ->
-  Mutex.lock t.relations_lock;
+  Runtime_mutex.lock t.relations_lock;
   try
     let result = f () in
-    Mutex.unlock t.relations_lock;
+    Runtime_mutex.unlock t.relations_lock;
     result
   with
   | exn ->
-      Mutex.unlock t.relations_lock;
+      Runtime_mutex.unlock t.relations_lock;
       raise exn
 
 let request_shutdown = fun t ~status ->
@@ -324,16 +326,16 @@ let request_shutdown = fun t ~status ->
       );
   Array.for_each t.workers
     ~fn:(fun (worker: worker) ->
-      Mutex.lock worker.lock;
-      Condition.broadcast worker.cond;
-      Mutex.unlock worker.lock);
-  Mutex.lock t.blocking_lanes_lock;
+      Runtime_mutex.lock worker.lock;
+      Runtime_condition.broadcast worker.cond;
+      Runtime_mutex.unlock worker.lock);
+  Runtime_mutex.lock t.blocking_lanes_lock;
   List.for_each t.blocking_lanes
     ~fn:(fun (lane: blocking_lane) ->
-      Mutex.lock lane.lock;
-      Condition.broadcast lane.cond;
-      Mutex.unlock lane.lock);
-  Mutex.unlock t.blocking_lanes_lock
+      Runtime_mutex.lock lane.lock;
+      Runtime_condition.broadcast lane.cond;
+      Runtime_mutex.unlock lane.lock);
+  Runtime_mutex.unlock t.blocking_lanes_lock
 
 let shutdown = fun t ~status -> request_shutdown t ~status
 
@@ -344,10 +346,10 @@ let enqueue_on_worker = fun t worker_id slot ->
     if try_mark_slot_queued slot then
       (
         let worker = worker_by_id t worker_id in
-        Mutex.lock worker.lock;
+        Runtime_mutex.lock worker.lock;
         Queue.push worker.queue ~value:slot;
-        Condition.signal worker.cond;
-        Mutex.unlock worker.lock
+        Runtime_condition.signal worker.cond;
+        Runtime_mutex.unlock worker.lock
       )
     else if Runtime_process.is_runnable (slot_process slot) then
       (
@@ -363,9 +365,9 @@ let enqueue_on_blocking_lane = fun t slot ->
     match slot.blocking_lane with
     | None -> panic "blocking slot is missing its lane"
     | Some lane ->
-        Mutex.lock lane.lock;
-        Condition.signal lane.cond;
-        Mutex.unlock lane.lock
+        Runtime_mutex.lock lane.lock;
+        Runtime_condition.signal lane.cond;
+        Runtime_mutex.unlock lane.lock
   else if Runtime_process.is_runnable (slot_process slot) then
     (
       increment t.counters.duplicate_enqueue_races;
@@ -558,14 +560,14 @@ let spawn_pinned = fun ?worker_id t fn ->
   spawn_on_worker_with_placement t ~worker_id ~placement:Pinned fn
 
 let with_blocking_lanes_lock = fun t f ->
-  Mutex.lock t.blocking_lanes_lock;
+  Runtime_mutex.lock t.blocking_lanes_lock;
   try
     let result = f () in
-    Mutex.unlock t.blocking_lanes_lock;
+    Runtime_mutex.unlock t.blocking_lanes_lock;
     result
   with
   | exn ->
-      Mutex.unlock t.blocking_lanes_lock;
+      Runtime_mutex.unlock t.blocking_lanes_lock;
       raise exn
 
 let add_blocking_lane = fun t lane ->
@@ -576,13 +578,13 @@ let wait_for_blocking_work = fun t slot ->
   | None -> None
   | Some lane ->
       let proc = slot_process slot in
-      Mutex.lock lane.lock;
+      Runtime_mutex.lock lane.lock;
       while (not (Atomic.get t.stop))
       && Runtime_process.is_alive proc
       && not (Atomic.get slot.queued) do
-        Condition.wait lane.cond lane.lock
+        Runtime_condition.wait lane.cond lane.lock
       done;
-      Mutex.unlock lane.lock;
+      Runtime_mutex.unlock lane.lock;
       if Atomic.get t.stop || not (Runtime_process.is_alive proc) then
         None
       else if Atomic.compare_and_set slot.queued true false then
@@ -964,7 +966,7 @@ let step_process = fun t ctx slot ->
 let spawn_blocked = fun t fn ->
   let proc = Runtime_process.make fn in
   let slot = create_process_slot proc ~owner_worker:Runtime_scheduler_id.zero ~placement:Blocking in
-  let lane = { lock = Mutex.create (); cond = Condition.create (); domain = None } in
+  let lane = { lock = Runtime_mutex.create (); cond = Runtime_condition.create (); domain = None } in
   let ctx = { scheduler = t; worker_id = None; current_process = None } in
   let rec blocking_loop () =
     Thread.DLS.set current_context (Some ctx);
@@ -990,9 +992,9 @@ let spawn_blocked = fun t fn ->
   slot_pid slot
 
 let pop_local = fun (worker: worker) ->
-  Mutex.lock worker.lock;
+  Runtime_mutex.lock worker.lock;
   let slot = Queue.pop worker.queue in
-  Mutex.unlock worker.lock;
+  Runtime_mutex.unlock worker.lock;
   match slot with
   | None -> None
   | Some slot ->
@@ -1000,9 +1002,9 @@ let pop_local = fun (worker: worker) ->
       Some slot
 
 let wait_for_local_work = fun t (worker: worker) ->
-  Mutex.lock worker.lock;
+  Runtime_mutex.lock worker.lock;
   while Queue.is_empty worker.queue && not (Atomic.get t.stop) do
-    Condition.wait worker.cond worker.lock
+    Runtime_condition.wait worker.cond worker.lock
   done;
   let slot =
     if Atomic.get t.stop then
@@ -1010,7 +1012,7 @@ let wait_for_local_work = fun t (worker: worker) ->
     else
       Queue.pop worker.queue
   in
-  Mutex.unlock worker.lock;
+  Runtime_mutex.unlock worker.lock;
   match slot with
   | None -> None
   | Some slot ->
@@ -1018,7 +1020,7 @@ let wait_for_local_work = fun t (worker: worker) ->
       Some slot
 
 let steal_batch = fun (victim: worker) ->
-  Mutex.lock victim.lock;
+  Runtime_mutex.lock victim.lock;
   let available = Queue.length victim.queue in
   let steal_goal = min 32 (available / 2) in
   let rec scan remaining wanted stolen kept =
@@ -1035,16 +1037,16 @@ let steal_batch = fun (victim: worker) ->
   in
   let batch, kept = scan available steal_goal [] [] in
   List.for_each kept ~fn:(fun slot -> Queue.push victim.queue ~value:slot);
-  Mutex.unlock victim.lock;
+  Runtime_mutex.unlock victim.lock;
   batch
 
 let push_batch = fun (worker: worker) batch ->
   if not (List.is_empty batch) then
     (
-      Mutex.lock worker.lock;
+      Runtime_mutex.lock worker.lock;
       List.for_each batch ~fn:(fun slot -> Queue.push worker.queue ~value:slot);
-      Condition.signal worker.cond;
-      Mutex.unlock worker.lock
+      Runtime_condition.signal worker.cond;
+      Runtime_mutex.unlock worker.lock
     )
 
 let attempt_steal = fun t (worker: worker) ->

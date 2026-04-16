@@ -1,22 +1,23 @@
 open Kernel
 open Collections
 open Sync
+module Runtime_mutex = Kernel.Sync.Mutex
 
 type t = {
-  producer_lock: Mutex.t;
+  producer_lock: Runtime_mutex.t;
   mutable inbox_rev: Message.envelope list;
   mutable outbox: Message.envelope list;
   size: int Atomic.t;
 }
 
 let create = fun () ->
-  { producer_lock = Mutex.create (); inbox_rev = []; outbox = []; size = Atomic.make 0 }
+  { producer_lock = Runtime_mutex.create (); inbox_rev = []; outbox = []; size = Atomic.make 0 }
 
 let queue = fun t msg ->
-  Mutex.lock t.producer_lock;
+  Runtime_mutex.lock t.producer_lock;
   t.inbox_rev <- msg :: t.inbox_rev;
   let _ = Atomic.fetch_and_add t.size 1 in
-  Mutex.unlock t.producer_lock
+  Runtime_mutex.unlock t.producer_lock
 
 let pop_outbox = fun t ->
   match t.outbox with
@@ -30,10 +31,10 @@ let next = fun t ->
   match pop_outbox t with
   | Some _ as msg -> msg
   | None ->
-      Mutex.lock t.producer_lock;
+      Runtime_mutex.lock t.producer_lock;
       let drained = t.inbox_rev in
       t.inbox_rev <- [];
-      Mutex.unlock t.producer_lock;
+      Runtime_mutex.unlock t.producer_lock;
       if List.is_empty drained then
         None
       else (

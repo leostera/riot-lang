@@ -1,6 +1,7 @@
 open Kernel
 open Sync
 open Collections
+module Runtime_mutex = Kernel.Sync.Mutex
 
 type exit_reason = exn
 
@@ -39,7 +40,7 @@ type t = {
   exit_request: (unit, exit_reason) result option atomic_ref;
   receive_timeout_fired: bool atomic_ref;
   syscall_timeout_fired: bool atomic_ref;
-  lock: Mutex.t;
+  lock: Runtime_mutex.t;
   mutable cont: (unit, exit_reason) result Proc_state.t option;
   mutable fn: (unit -> (unit, exit_reason) result) option;
   mailbox: Mailbox.t;
@@ -81,7 +82,7 @@ let make = fun fn ->
     exit_request = Sync.Atomic.make None;
     receive_timeout_fired = Sync.Atomic.make false;
     syscall_timeout_fired = Sync.Atomic.make false;
-    lock = Mutex.create ();
+    lock = Runtime_mutex.create ();
     mailbox = Mailbox.create ();
     save_queue = Queue.create ();
     save_queue_size = 0;
@@ -125,14 +126,14 @@ let use_reduction = fun t ->
   )
 
 let with_lock = fun t f ->
-  Mutex.lock t.lock;
+  Runtime_mutex.lock t.lock;
   try
     let result = f () in
-    Mutex.unlock t.lock;
+    Runtime_mutex.unlock t.lock;
     result
   with
   | exn ->
-      Mutex.unlock t.lock;
+      Runtime_mutex.unlock t.lock;
       raise exn
 
 let pid = fun t -> t.pid

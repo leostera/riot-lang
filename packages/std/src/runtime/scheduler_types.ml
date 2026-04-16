@@ -4,6 +4,8 @@ module Runtime_pid = Pid
 module Runtime_process = Process
 module Runtime_scheduler_id = Scheduler_id
 module Runtime_timer = Timer
+module Runtime_mutex = Kernel.Sync.Mutex
+module Runtime_condition = Kernel.Sync.Condition
 
 type io_registration_error =
   | Closed
@@ -15,8 +17,8 @@ type placement =
   | Blocking
 
 type blocking_lane = {
-  lock: Sync.Mutex.t;
-  cond: Sync.Condition.t;
+  lock: Runtime_mutex.t;
+  cond: Runtime_condition.t;
   mutable domain: unit Kernel.Thread.t option;
 }
 
@@ -40,13 +42,13 @@ type process_slot = {
 type worker = {
   id: Runtime_scheduler_id.t;
   queue: process_slot Queue.t;
-  lock: Sync.Mutex.t;
-  cond: Sync.Condition.t;
+  lock: Runtime_mutex.t;
+  cond: Runtime_condition.t;
 }
 
 type 'a response = {
-  lock: Sync.Mutex.t;
-  cond: Sync.Condition.t;
+  lock: Runtime_mutex.t;
+  cond: Runtime_condition.t;
   mutable value: 'a option;
 }
 
@@ -68,7 +70,7 @@ type reactor_command =
   | Deregister_io of Kernel.Async.Source.t
 
 type process_shard = {
-  lock: Sync.Mutex.t;
+  lock: Runtime_mutex.t;
   processes: (Runtime_pid.t, process_slot) HashMap.t;
 }
 
@@ -90,12 +92,12 @@ type t = {
   workers: worker array;
   processes: process_registry;
   counters: runtime_counters;
-  relations_lock: Sync.Mutex.t;
+  relations_lock: Runtime_mutex.t;
   reactor_commands: reactor_command Queue.t;
-  reactor_lock: Sync.Mutex.t;
+  reactor_lock: Runtime_mutex.t;
   io_poll: Kernel.Async.Poll.t;
   timer_wheel: Timer_wheel.t;
-  blocking_lanes_lock: Sync.Mutex.t;
+  blocking_lanes_lock: Runtime_mutex.t;
   mutable blocking_lanes: blocking_lane list;
   config: Config.t;
 }
