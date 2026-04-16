@@ -89,6 +89,11 @@ type build_result = {
 }
 
 type graph_update =
+  | Planned_package of {
+      hash: Std.Crypto.hash;
+      module_graph: Module_node.t Graph.SimpleGraph.t;
+      action_graph: Action_graph.t;
+    }
   | Cached_package of {
       hash: Std.Crypto.hash;
       artifact: Riot_store.Artifact.t;
@@ -116,7 +121,78 @@ type detailed_result = {
   graph_update: graph_update option;
 }
 
-let build_result_to_json = fun result ->
+type execution_plan = {
+  package_key: Package.key;
+  package: Package.t;
+  module_graph: Module_node.t Graph.SimpleGraph.t;
+  action_graph: Action_graph.t;
+  hash: Std.Crypto.hash;
+  depset: Dependency.t list;
+  started_at: Instant.t;
+}
+
+type plan_outcome =
+  | Final_result of detailed_result
+  | Execution_required of execution_plan
+
+let planned_graph_update = fun (execution_plan: execution_plan) ->
+  Planned_package {
+    hash = execution_plan.hash;
+    module_graph = execution_plan.module_graph;
+    action_graph = execution_plan.action_graph;
+  }
+
+let apply_graph_update = fun package_graph package_key package graph_update ->
+  match Riot_planner.Package_graph.get_node_by_key package_graph package_key with
+  | None -> ()
+  | Some node ->
+      let scope = Riot_planner.Package_graph.get_scope node.value in
+      match graph_update with
+      | None -> ()
+      | Some (Planned_package { hash; module_graph; action_graph }) ->
+          node.value <- Riot_planner.Package_graph.Planned {
+            package;
+            scope;
+            module_graph;
+            action_graph;
+            hash;
+          }
+      | Some (Cached_package { hash; artifact; depset; exports }) ->
+          node.value <- Riot_planner.Package_graph.Cached {
+            package;
+            scope;
+            hash;
+            artifact;
+            depset;
+            exports;
+          }
+      | Some (Built_package { hash; artifact; depset; module_graph; action_graph; status }) ->
+          node.value <- Riot_planner.Package_graph.Built {
+            package;
+            scope;
+            module_graph;
+            action_graph;
+            hash;
+            artifact;
+            status;
+            depset;
+          }
+      | Some (Failed_package { hash = Some hash; error }) ->
+          node.value <- Riot_planner.Package_graph.Failed {
+            package;
+            scope;
+            hash;
+            error;
+          }
+      | Some (Failed_package { hash = None; _ }) -> ()
+      | Some (Skipped_package { reason }) ->
+          node.value <- Riot_planner.Package_graph.Skipped {
+            package;
+            scope;
+            reason;
+          }
+
+let build_result_to_json = fun (result: build_result) ->
   Std.Data.Json.Object [
     ("package_key", Std.Data.Json.String (Package.key_to_string result.package_key));
     ("package", Package.to_json result.package);
@@ -251,27 +327,25 @@ let collect_package_artifact_outputs = fun ~sandbox_dir ~outputs ->
             )
       | Error _ -> None)
 
-let build_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(package:Package.t) ~build_ctx ->
+let package_scope = fun package_graph package_key ->
+  match Riot_planner.Package_graph.get_node_by_key package_graph package_key with
+  | Some node -> Riot_planner.Package_graph.get_scope node.value
+  | None -> Riot_planner.Package_graph.Runtime
+
+let emits_visible_progress = function
+  | Riot_planner.Package_graph.Build -> false
+  | Riot_planner.Package_graph.Runtime
+  | Riot_planner.Package_graph.Dev -> true
+
+let plan_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(package:Package.t) ~build_ctx ->
   let start = Instant.now () in
   let session_id = build_ctx.Build_ctx.session_id in
-  let profile_name = build_ctx.Build_ctx.profile.name in
-  let target_triplet = Build_ctx.target_triplet build_ctx in
   let package_name = package.Package.name in
   let package_name_string = Package_name.to_string package_name in
-  let target_dir =
-    Path.(Riot_model.Riot_dirs.out_dir_in_workspace ~workspace ~profile:profile_name ~target:target_triplet
-    / Path.v package_name_string) in
   Log.info ("Package " ^ package_name_string ^ ": computing content hash with dependencies");
-  let package_scope =
-    match Riot_planner.Package_graph.get_node_by_key package_graph package_key with
-    | Some node -> Riot_planner.Package_graph.get_scope node.value
-    | None -> Riot_planner.Package_graph.Runtime
-  in
   let emit_visible_progress =
-    match package_scope with
-    | Riot_planner.Package_graph.Build -> false
-    | Riot_planner.Package_graph.Runtime
-    | Riot_planner.Package_graph.Dev -> true
+    package_scope package_graph package_key
+    |> emits_visible_progress
   in
   match Riot_planner.plan_package_with_graph
     ~workspace
@@ -291,7 +365,7 @@ let build_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_ke
           target = Workspace_planner.Package package_name;
           error = PlanningFailed err
         });
-      {
+      Final_result {
         result = {
           package_key;
           package;
@@ -316,7 +390,7 @@ let build_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_ke
           target = Workspace_planner.Package package_name;
           error = error_variant
         });
-      {
+      Final_result {
         result = {
           package_key;
           package;
@@ -333,16 +407,6 @@ let build_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_ke
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
       let reason = "needs " ^ summarize_package_names failed_names in
       Log.info ("Package " ^ package_name_string ^ ": SKIPPED (" ^ reason ^ ")");
-      (* Mark as Skipped in graph so dependents see it as failed *)
-      (
-        match Riot_planner.Package_graph.get_node_by_key package_graph package_key with
-        | Some node -> node.value <- Riot_planner.Package_graph.Skipped {
-          package;
-          scope = Riot_planner.Package_graph.get_scope node.value;
-          reason
-        }
-        | None -> ()
-      );
       Telemetry.emit
         (BuildSkipped {
           session_id;
@@ -350,7 +414,7 @@ let build_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_ke
           target = Workspace_planner.Package package_name;
           reason
         });
-      {
+      Final_result {
         result = {
           package_key;
           package;
@@ -367,94 +431,44 @@ let build_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_ke
     depset;
     exports
   }) ->
-      let materialized = Ok () in
       let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
-      (
-        match materialized with
-        | Ok () ->
-            (
-              match Riot_planner.Package_graph.get_node_by_key package_graph planned_key with
-              | Some node ->
-                  node.value <- Riot_planner.Package_graph.Cached {
-                    package;
-                    scope = Riot_planner.Package_graph.get_scope node.value;
-                    hash = package_hash;
-                    artifact;
-                    depset;
-                    exports;
-                  }
-              | None -> ()
-            );
-            if emit_visible_progress && List.length artifact.ocamlc_warnings > 0 then
-              Telemetry.emit
-                (
-                  PackageOcamlcWarnings {
-                    session_id;
-                    package;
-                    target = Workspace_planner.Package package_name;
-                    source = `Cached;
-                    messages = artifact.ocamlc_warnings;
-                  }
-                );
-            if emit_visible_progress then
-              Telemetry.emit
-                (
-                  BuildCompleted {
-                    session_id;
-                    package;
-                    target = Workspace_planner.Package package_name;
-                    status = `Cached;
-                    duration;
-                  }
-                );
-            {
-              result = {
-                package_key = planned_key;
-                package;
-                status = Cached artifact;
-                ocamlc_warnings = artifact.ocamlc_warnings;
-                duration;
-              };
-              graph_update = Some (Cached_package {
-                hash = package_hash;
-                artifact;
-                depset;
-                exports;
-              });
+      if emit_visible_progress && List.length artifact.ocamlc_warnings > 0 then
+        Telemetry.emit
+          (
+            PackageOcamlcWarnings {
+              session_id;
+              package;
+              target = Workspace_planner.Package package_name;
+              source = `Cached;
+              messages = artifact.ocamlc_warnings;
             }
-        | Error message ->
-            let error = ExecutionFailed { message } in
-            (
-              match Riot_planner.Package_graph.get_node_by_key package_graph planned_key with
-              | Some node -> node.value <- Riot_planner.Package_graph.Failed {
-                package;
-                scope = Riot_planner.Package_graph.get_scope node.value;
-                hash = package_hash;
-                error = message
-              }
-              | None -> ()
-            );
-            Telemetry.emit
-              (BuildFailed {
-                session_id;
-                package;
-                target = Workspace_planner.Package package_name;
-                error
-              });
-            {
-              result = {
-                package_key = planned_key;
-                package;
-                status = Failed error;
-                ocamlc_warnings = [];
-                duration;
-              };
-              graph_update = Some (Failed_package {
-                hash = Some package_hash;
-                error = message;
-              });
+          );
+      if emit_visible_progress then
+        Telemetry.emit
+          (
+            BuildCompleted {
+              session_id;
+              package;
+              target = Workspace_planner.Package package_name;
+              status = `Cached;
+              duration;
             }
-      )
+          );
+      Final_result {
+        result = {
+          package_key = planned_key;
+          package;
+          status = Cached artifact;
+          ocamlc_warnings = artifact.ocamlc_warnings;
+          duration;
+        };
+        graph_update = Some (Cached_package {
+          hash = package_hash;
+          artifact;
+          depset;
+          exports;
+        });
+      }
   | Ok (Planned {
     package_key=planned_key;
     hash=package_hash;
@@ -463,215 +477,211 @@ let build_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_ke
     action_graph
   }) -> (
       Log.info ("Package " ^ package_name_string ^ ": hash=" ^ Std.Crypto.Digest.hex package_hash);
-      if emit_visible_progress then
-        Telemetry.emit
-          (BuildStarted { session_id; package; target = Workspace_planner.Package package_name });
-      Log.info ("Package " ^ package_name_string ^ ": executing action graph");
-      Log.info
-        ("Package "
-        ^ package_name_string
-        ^ ": executing action graph with "
-        ^ Int.to_string (List.length (Action_graph.nodes action_graph))
-        ^ " nodes");
-      if emit_visible_progress && List.length (Action_graph.nodes action_graph) > 0 then
-        Telemetry.emit
-          (CompilationStarted {
-            session_id;
-            package;
-            target = Workspace_planner.Package package_name
-          });
-      (
-        match Riot_planner.Package_graph.get_node_by_key package_graph planned_key with
-        | Some node ->
-            node.value <- Riot_planner.Package_graph.Planned {
-              package;
-              scope = Riot_planner.Package_graph.get_scope node.value;
-              module_graph;
-              action_graph;
-              hash = package_hash;
-            }
-        | None -> ()
-      );
-      let inputs = List.concat
-        [ package.sources.src; package.sources.native; package.sources.tests; ] in
-      let outputs = Action_graph.nodes action_graph
-      |> List.flat_map ~fn:(fun (node: Action_node.t) -> node.value.outs) in
-      let do_build sandbox =
-        let exec_result = Action_executor.execute
-          ~action_graph
-          ~sandbox
-          ~store
-          ~session_id
-          toolchain
-          ~concurrency:build_ctx.Build_ctx.parallelism in
-        (* Check if any actions failed *)
-        let failed_actions =
-          HashMap.to_list exec_result.completed
-          |> List.filter_map
-            ~fn:(fun ((_id, result)) ->
-              match result.Action_executor.status with
-              | Action_executor.Failed err -> Some err
-              | _ -> None)
-        in
-        match failed_actions with
-        | first_error :: _ -> Error (convert_action_error first_error)
-        | [] ->
-            let sandbox_dir = Sandbox.get_dir sandbox in
-            let export_entries = compute_export_entries action_graph in
-            let package_outputs = collect_package_artifact_outputs ~sandbox_dir ~outputs in
-            let ocamlc_warnings = collect_ocamlc_warnings exec_result.completed in
-            Ok (sandbox_dir, package_outputs, export_entries, ocamlc_warnings)
-      in
-      match Sandbox.with_sandbox
-        ~workspace
-        ~profile:profile_name
-        ~target:target_triplet
-        ~package
-        ~inputs
-        ~depset
-        ~store
-        ~expected_outputs:outputs
-        do_build with
-      | exception exn ->
-          let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
-          let error_msg = "Exception: " ^ Kernel.Exception.to_string exn in
-          let error = ExecutionFailed { message = error_msg } in
-          (* Mark as Failed in package graph *)
-          (
-            match Riot_planner.Package_graph.get_node_by_key package_graph planned_key with
-            | Some node -> node.value <- Riot_planner.Package_graph.Failed {
-              package;
-              scope = Riot_planner.Package_graph.get_scope node.value;
-              hash = package_hash;
-              error = error_msg
-            }
-            | None -> ()
-          );
-          Telemetry.emit
-            (BuildFailed {
-              session_id;
-              package;
-              target = Workspace_planner.Package package_name;
-              error
-            });
-          {
-            result = {
-              package_key = planned_key;
-              package;
-              status = Failed error;
-              ocamlc_warnings = [];
-              duration;
-            };
-            graph_update = Some (Failed_package {
-              hash = Some package_hash;
-              error = error_msg;
-            });
-          }
-      | Ok (sandbox_dir, package_outputs, export_entries, ocamlc_warnings) ->
-          Riot_store.Store.materialize_package_exports store ~exports:export_entries ~target_dir
-          |> Result.expect ~msg:("Failed to materialize package exports for " ^ package_name_string);
-          let artifact = Riot_store.Store.save
-            store
-            ~package:package_name_string
-            ~ocamlc_warnings
-            ~exports:export_entries
-            ~hash:package_hash
-            ~sandbox_dir
-            ~outs:package_outputs
-          |> Result.expect ~msg:("Failed to save package hash artifact for " ^ package_name_string) in
-          if emit_visible_progress && List.length ocamlc_warnings > 0 then
-            Telemetry.emit
-              (
-                PackageOcamlcWarnings {
-                  session_id;
-                  package;
-                  target = Workspace_planner.Package package_name;
-                  source = `Fresh;
-                  messages = ocamlc_warnings;
-                }
-              );
-          (
-            match Riot_planner.Package_graph.get_node_by_key package_graph planned_key with
-            | Some node ->
-                node.value <- Riot_planner.Package_graph.Built {
-                  package;
-                  scope = Riot_planner.Package_graph.get_scope node.value;
-                  module_graph;
-                  action_graph;
-                  hash = package_hash;
-                  artifact;
-                  status = Riot_planner.Package_graph.Fresh;
-                  depset;
-                }
-            | None -> ()
-          );
-          let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
-          if emit_visible_progress then
-            Telemetry.emit
-              (
-                BuildCompleted {
-                  session_id;
-                  package;
-                  target = Workspace_planner.Package package_name;
-                  status = `Fresh;
-                  duration;
-                }
-              );
-          {
-            result = {
-              package_key = planned_key;
-              package;
-              status = Built artifact;
-              ocamlc_warnings;
-              duration;
-            };
-            graph_update = Some (Built_package {
-              hash = package_hash;
-              artifact;
-              depset;
-              module_graph;
-              action_graph;
-              status = Riot_planner.Package_graph.Fresh;
-            });
-          }
-      | Error err ->
-          let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
-          let error_str = package_error_to_string err in
-          (* Mark as Failed in package graph *)
-          (
-            match Riot_planner.Package_graph.get_node_by_key package_graph planned_key with
-            | Some node -> node.value <- Riot_planner.Package_graph.Failed {
-              package;
-              scope = Riot_planner.Package_graph.get_scope node.value;
-              hash = package_hash;
-              error = error_str
-            }
-            | None -> ()
-          );
-          Telemetry.emit
-            (BuildFailed {
-              session_id;
-              package;
-              target = Workspace_planner.Package package_name;
-              error = err
-            });
-          {
-            result = {
-              package_key = planned_key;
-              package;
-              status = Failed err;
-              ocamlc_warnings = [];
-              duration;
-            };
-            graph_update = Some (Failed_package {
-              hash = Some package_hash;
-              error = error_str;
-            });
-          }
+      Execution_required {
+        package_key = planned_key;
+        package;
+        module_graph;
+        action_graph;
+        hash = package_hash;
+        depset;
+        started_at = start;
+      }
     )
 
+let execute_detailed = fun ~workspace ~toolchain ~store ~package_graph ~execution_plan ~build_ctx ->
+  let session_id = build_ctx.Build_ctx.session_id in
+  let profile_name = build_ctx.Build_ctx.profile.name in
+  let target_triplet = Build_ctx.target_triplet build_ctx in
+  let package = execution_plan.package in
+  let package_name = package.Package.name in
+  let package_name_string = Package_name.to_string package_name in
+  let target_dir =
+    Path.(Riot_model.Riot_dirs.out_dir_in_workspace ~workspace ~profile:profile_name ~target:target_triplet
+    / Path.v package_name_string)
+  in
+  let emit_visible_progress =
+    package_scope package_graph execution_plan.package_key
+    |> emits_visible_progress
+  in
+  if emit_visible_progress then
+    Telemetry.emit
+      (BuildStarted {
+        session_id;
+        package;
+        target = Workspace_planner.Package package_name;
+      });
+  Log.info ("Package " ^ package_name_string ^ ": executing action graph");
+  Log.info
+    ("Package "
+    ^ package_name_string
+    ^ ": executing action graph with "
+    ^ Int.to_string (List.length (Action_graph.nodes execution_plan.action_graph))
+    ^ " nodes");
+  if emit_visible_progress && List.length (Action_graph.nodes execution_plan.action_graph) > 0 then
+    Telemetry.emit
+      (CompilationStarted {
+        session_id;
+        package;
+        target = Workspace_planner.Package package_name;
+      });
+  let inputs = List.concat
+    [ package.sources.src; package.sources.native; package.sources.tests; ]
+  in
+  let outputs = Action_graph.nodes execution_plan.action_graph
+  |> List.flat_map ~fn:(fun (node: Action_node.t) -> node.value.outs)
+  in
+  let do_build sandbox =
+    let exec_result = Action_executor.execute
+      ~action_graph:execution_plan.action_graph
+      ~sandbox
+      ~store
+      ~session_id
+      toolchain
+      ~concurrency:build_ctx.Build_ctx.parallelism
+    in
+    let failed_actions =
+      HashMap.to_list exec_result.completed
+      |> List.filter_map
+        ~fn:(fun ((_id, result)) ->
+          match result.Action_executor.status with
+          | Action_executor.Failed err -> Some err
+          | _ -> None)
+    in
+    match failed_actions with
+    | first_error :: _ -> Error (convert_action_error first_error)
+    | [] ->
+        let sandbox_dir = Sandbox.get_dir sandbox in
+        let export_entries = compute_export_entries execution_plan.action_graph in
+        let package_outputs = collect_package_artifact_outputs ~sandbox_dir ~outputs in
+        let ocamlc_warnings = collect_ocamlc_warnings exec_result.completed in
+        Ok (sandbox_dir, package_outputs, export_entries, ocamlc_warnings)
+  in
+  match Sandbox.with_sandbox
+    ~workspace
+    ~profile:profile_name
+    ~target:target_triplet
+    ~package
+    ~inputs
+    ~depset:execution_plan.depset
+    ~store
+    ~expected_outputs:outputs
+    do_build with
+  | exception exn ->
+      let duration = Instant.duration_since ~earlier:execution_plan.started_at (Instant.now ()) in
+      let error_msg = "Exception: " ^ Kernel.Exception.to_string exn in
+      let error = ExecutionFailed { message = error_msg } in
+      Telemetry.emit
+        (BuildFailed {
+          session_id;
+          package;
+          target = Workspace_planner.Package package_name;
+          error;
+        });
+      {
+        result = {
+          package_key = execution_plan.package_key;
+          package;
+          status = Failed error;
+          ocamlc_warnings = [];
+          duration;
+        };
+        graph_update = Some (Failed_package {
+          hash = Some execution_plan.hash;
+          error = error_msg;
+        });
+      }
+  | Ok (sandbox_dir, package_outputs, export_entries, ocamlc_warnings) ->
+      Riot_store.Store.materialize_package_exports store ~exports:export_entries ~target_dir
+      |> Result.expect ~msg:("Failed to materialize package exports for " ^ package_name_string);
+      let artifact = Riot_store.Store.save
+        store
+        ~package:package_name_string
+        ~ocamlc_warnings
+        ~exports:export_entries
+        ~hash:execution_plan.hash
+        ~sandbox_dir
+        ~outs:package_outputs
+      |> Result.expect ~msg:("Failed to save package hash artifact for " ^ package_name_string)
+      in
+      if emit_visible_progress && List.length ocamlc_warnings > 0 then
+        Telemetry.emit
+          (
+            PackageOcamlcWarnings {
+              session_id;
+              package;
+              target = Workspace_planner.Package package_name;
+              source = `Fresh;
+              messages = ocamlc_warnings;
+            }
+          );
+      let duration = Instant.duration_since ~earlier:execution_plan.started_at (Instant.now ()) in
+      if emit_visible_progress then
+        Telemetry.emit
+          (
+            BuildCompleted {
+              session_id;
+              package;
+              target = Workspace_planner.Package package_name;
+              status = `Fresh;
+              duration;
+            }
+          );
+      {
+        result = {
+          package_key = execution_plan.package_key;
+          package;
+          status = Built artifact;
+          ocamlc_warnings;
+          duration;
+        };
+        graph_update = Some (Built_package {
+          hash = execution_plan.hash;
+          artifact;
+          depset = execution_plan.depset;
+          module_graph = execution_plan.module_graph;
+          action_graph = execution_plan.action_graph;
+          status = Riot_planner.Package_graph.Fresh;
+        });
+      }
+  | Error err ->
+      let duration = Instant.duration_since ~earlier:execution_plan.started_at (Instant.now ()) in
+      let error_str = package_error_to_string err in
+      Telemetry.emit
+        (BuildFailed {
+          session_id;
+          package;
+          target = Workspace_planner.Package package_name;
+          error = err;
+        });
+      {
+        result = {
+          package_key = execution_plan.package_key;
+          package;
+          status = Failed err;
+          ocamlc_warnings = [];
+          duration;
+        };
+        graph_update = Some (Failed_package {
+          hash = Some execution_plan.hash;
+          error = error_str;
+        });
+      }
+
+let build_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx ->
+  match plan_detailed ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx with
+  | Final_result detailed_result -> detailed_result
+  | Execution_required execution_plan ->
+      execute_detailed
+        ~workspace
+        ~toolchain
+        ~store
+        ~package_graph
+        ~execution_plan
+        ~build_ctx
+
 let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx ->
-  build_detailed
+  let detailed_result =
+    build_detailed
     ~workspace
     ~toolchain
     ~store
@@ -679,4 +689,10 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~packag
     ~package_key
     ~package
     ~build_ctx
-  |> fun detailed -> detailed.result
+  in
+  apply_graph_update
+    package_graph
+    detailed_result.result.package_key
+    detailed_result.result.package
+    detailed_result.graph_update;
+  detailed_result.result

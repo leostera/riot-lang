@@ -5,39 +5,25 @@ type plan_package = {
   package_key: Riot_model.Package.key;
 }
 
-type t =
-  | BuildPackage of plan_package
-
-type output =
-  | PackageCompleted of {
-      lane: Build_lane.locked Build_lane.t;
-      detailed_result: Package_builder.detailed_result;
-    }
-
-type error = {
+type error = Package_scheduler.error = {
   lane: Build_lane.locked Build_lane.t;
   reason: string;
 }
 
-type run_result = {
-  lanes: Build_lane.locked Build_lane.t list;
-  task_results: (t * (output, error) result) list;
-}
-
-type completion = {
+type completion = Package_scheduler.completion = {
   target: Riot_model.Target.t;
   result_count: int;
   had_partial_failure: bool;
 }
 
-type summary = {
+type summary = Package_scheduler.summary = {
   completions: completion list;
   lane_results: Lane_result.t list;
   errors: error list;
   had_failure: bool;
 }
 
-val target: t -> Riot_model.Target.t
+type run_result = summary
 
 val initial_plan_packages: Build_lane.locked Build_lane.t -> plan_package list
 

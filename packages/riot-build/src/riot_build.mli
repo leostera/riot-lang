@@ -14,6 +14,7 @@ module Internal : sig
   module Build_core = Build_core
   module Build_scheduler = Build_scheduler
   module Graph_scheduler = Graph_scheduler
+  module Package_scheduler = Package_scheduler
   module Build_work = Build_work
   module Lane_result = Lane_result
   module Package_builder = Package_builder

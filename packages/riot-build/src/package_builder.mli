@@ -32,6 +32,11 @@ type build_result = {
 val build_result_to_json: build_result -> Std.Data.Json.t
 
 type graph_update =
+  | Planned_package of {
+      hash: Std.Crypto.hash;
+      module_graph: Module_node.t Graph.SimpleGraph.t;
+      action_graph: Action_graph.t;
+    }
   | Cached_package of {
       hash: Std.Crypto.hash;
       artifact: Riot_store.Artifact.t;
@@ -59,6 +64,22 @@ type detailed_result = {
   graph_update: graph_update option;
 }
 
+type execution_plan = {
+  package_key: Package.key;
+  package: Package.t;
+  module_graph: Module_node.t Graph.SimpleGraph.t;
+  action_graph: Action_graph.t;
+  hash: Std.Crypto.hash;
+  depset: Dependency.t list;
+  started_at: Time.Instant.t;
+}
+
+type plan_outcome =
+  | Final_result of detailed_result
+  | Execution_required of execution_plan
+
+val planned_graph_update: execution_plan -> graph_update
+
 (** Collect all source files (.ml, .mli, .c, .h) from a package's src directory.
     
     @param package The package to scan
@@ -85,6 +106,25 @@ val build:
   package:Package.t ->
   build_ctx:Build_ctx.t ->
   build_result
+
+val plan_detailed:
+  workspace:Workspace.t ->
+  toolchain:Riot_toolchain.t ->
+  store:Riot_store.Store.t ->
+  package_graph:Package_graph.t ->
+  package_key:Package.key ->
+  package:Package.t ->
+  build_ctx:Build_ctx.t ->
+  plan_outcome
+
+val execute_detailed:
+  workspace:Workspace.t ->
+  toolchain:Riot_toolchain.t ->
+  store:Riot_store.Store.t ->
+  package_graph:Package_graph.t ->
+  execution_plan:execution_plan ->
+  build_ctx:Build_ctx.t ->
+  detailed_result
 
 val build_detailed:
   workspace:Workspace.t ->

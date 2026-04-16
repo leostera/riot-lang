@@ -26,6 +26,7 @@
 19. Keep the root `Riot_build` facade as build-focused as possible. Build entrypoints, typed build requests, `Build_result`, build events, build errors, and the build lock surface belong at the top level. Do not reintroduce command-runtime modules or other transport-shaped internals through `Riot_build`.
 20. Package/workspace scaffolding does not belong here. `riot-build` must not expose package creation helpers; `riot-init` owns that API.
 21. Generic incremental dependency-graph execution belongs in `graph_scheduler`. Keep build-domain package/action semantics in `build_work` and related modules instead of re-growing scheduler policy there.
+22. Keep `graph_scheduler` behind domain facades. Package build orchestration should flow through `package_scheduler` with package-specific types/results, and action execution should eventually do the same instead of leaking generic scheduler node variants through build-domain modules.
 
 ## Validate
 
