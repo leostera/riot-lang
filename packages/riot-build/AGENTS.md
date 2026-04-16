@@ -32,6 +32,7 @@
 25. `action_scheduler.run` should return an action-domain summary (completed actions, first failure, warnings) instead of exposing generic scheduler state or raw worker tables.
 26. The legacy `coordinator`, `action_queue`, and `build_scheduler` path has been deleted. Do not reintroduce parallel package/action orchestration outside `package_scheduler`, `action_scheduler`, and `graph_scheduler`.
 27. Public build events should expose package-scheduler progress as build-domain phases. Keep package planning/execution visibility in `Event.Phase`, but avoid leaking generic graph-scheduler node or mutation details through the public API.
+28. `package_scheduler` planning rounds should only schedule packages whose dependencies are already finalized. Packages still blocked on planned/executing dependencies should stay out of the planning graph and surface through round-level deferred counts instead of retry-only node outcomes.
 
 ## Validate
 

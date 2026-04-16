@@ -25,7 +25,6 @@ type mutation =
     }
 
 type planning_output =
-  | PlanningDeferred of package_work
   | PlanningRequiresExecution of {
       lane: Build_lane.locked Build_lane.t;
       execution_plan: Package_builder.execution_plan;
@@ -227,6 +226,36 @@ let awaiting_plan_work = fun lanes package_states ->
       | Some (Finalized _)
       | None -> None))
 
+let dependency_pending = fun package_states lane package_key ->
+  dependency_keys lane package_key
+  |> List.any ~fn:(fun dependency_key ->
+    match get_package_state package_states lane dependency_key with
+    | Some AwaitingPlan
+    | Some (AwaitingExecution _) -> true
+    | Some (Finalized _)
+    | None -> false)
+
+type planning_round_work = {
+  ready: package_work list;
+  deferred_count: int;
+  package_count: int;
+}
+
+let planning_round_work = fun lanes package_states ->
+  let ready, deferred_count =
+    awaiting_plan_work lanes package_states
+    |> List.fold_left ~acc:([], 0) ~fn:(fun (ready, deferred_count) (work: package_work) ->
+      if dependency_pending package_states work.lane work.package_key then
+        (ready, deferred_count + 1)
+      else
+        (work :: ready, deferred_count))
+  in
+  {
+    ready = List.reverse ready;
+    deferred_count;
+    package_count = List.length ready + deferred_count;
+  }
+
 let awaiting_execution_work = fun lanes package_states ->
   lanes
   |> List.flat_map ~fn:(fun lane ->
@@ -241,15 +270,6 @@ let awaiting_execution_work = fun lanes package_states ->
       | Some AwaitingPlan
       | Some (Finalized _)
       | None -> None))
-
-let pending_dependencies = fun package_states lane package_key ->
-  dependency_keys lane package_key
-  |> List.filter ~fn:(fun dependency_key ->
-    match get_package_state package_states lane dependency_key with
-    | Some AwaitingPlan
-    | Some (AwaitingExecution _) -> true
-    | Some (Finalized _)
-    | None -> false)
 
 let skipped_result_if_failed_dependencies =
   fun
@@ -297,50 +317,46 @@ let plan_package_work =
   fun
     ~package_states
     ~graph
-    ({ lane; package_key } as work: package_work) ->
+    ({ lane; package_key }: package_work) ->
     match Riot_planner.Package_graph.get_node_by_key (Build_lane.package_graph lane) package_key with
     | None ->
         Error {
           lane;
-          reason = "package graph missing node for " ^ package_key_id work.package_key;
+          reason = "package graph missing node for " ^ package_key_id package_key;
         }
     | Some (package_node: Riot_planner.Package_graph.package_node Graph.SimpleGraph.node) ->
-        let waiting_on_dependencies = pending_dependencies package_states lane package_key in
-        if waiting_on_dependencies != [] then
-          Ok (PlanningDeferred work)
-        else
-          (
-            match skipped_result_if_failed_dependencies package_states lane package_key package_node with
-            | Some detailed_result ->
-                finalize_result graph lane detailed_result;
-                Ok (PlanningFinalized { lane; detailed_result })
-            | None ->
-                let package = Riot_planner.Package_graph.get_package package_node.value in
-                match Package_builder.plan_detailed
-                  ~workspace:(Build_lane.workspace lane)
-                  ~toolchain:(Build_lane.toolchain lane)
-                  ~store:(Build_lane.store lane)
-                  ~package_graph:(Build_lane.package_graph lane)
-                  ~package_key
-                  ~package
-                  ~build_ctx:(Build_lane.build_ctx lane) with
-                | Package_builder.Final_result detailed_result ->
-                    finalize_result graph lane detailed_result;
-                    Ok (PlanningFinalized { lane; detailed_result })
-                | Package_builder.Execution_required execution_plan ->
-                    record_graph_update
-                      graph
-                      lane
-                      ~package_key
-                      ~package
-                      (Some (Package_builder.planned_graph_update execution_plan));
-                    record_package_state
-                      graph
-                      lane
-                      package_key
-                      (AwaitingExecution execution_plan);
-                    Ok (PlanningRequiresExecution { lane; execution_plan })
-          )
+        (
+          match skipped_result_if_failed_dependencies package_states lane package_key package_node with
+          | Some detailed_result ->
+              finalize_result graph lane detailed_result;
+              Ok (PlanningFinalized { lane; detailed_result })
+          | None ->
+              let package = Riot_planner.Package_graph.get_package package_node.value in
+              match Package_builder.plan_detailed
+                ~workspace:(Build_lane.workspace lane)
+                ~toolchain:(Build_lane.toolchain lane)
+                ~store:(Build_lane.store lane)
+                ~package_graph:(Build_lane.package_graph lane)
+                ~package_key
+                ~package
+                ~build_ctx:(Build_lane.build_ctx lane) with
+              | Package_builder.Final_result detailed_result ->
+                  finalize_result graph lane detailed_result;
+                  Ok (PlanningFinalized { lane; detailed_result })
+              | Package_builder.Execution_required execution_plan ->
+                  record_graph_update
+                    graph
+                    lane
+                    ~package_key
+                    ~package
+                    (Some (Package_builder.planned_graph_update execution_plan));
+                  record_package_state
+                    graph
+                    lane
+                    package_key
+                    (AwaitingExecution execution_plan);
+                  Ok (PlanningRequiresExecution { lane; execution_plan })
+        )
 
 let execute_package_work =
   fun
@@ -414,17 +430,9 @@ let make_graph = fun ~package_states ~work_items ~dependency_selector ->
         | None -> ()));
   graph
 
-let make_planning_graph = fun ~package_states lanes ->
-  let work_items = awaiting_plan_work lanes package_states in
-  let dependency_selector = fun ({ lane; package_key }: package_work) ->
-    dependency_keys lane package_key
-    |> List.filter ~fn:(fun dependency_key ->
-      match get_package_state package_states lane dependency_key with
-      | Some AwaitingPlan -> true
-      | Some (AwaitingExecution _)
-      | Some (Finalized _)
-      | None -> false)
-  in
+let make_planning_graph = fun ~package_states planning_round ->
+  let work_items = planning_round.ready in
+  let dependency_selector = fun (_: package_work) -> [] in
   (work_items, make_graph ~package_states ~work_items ~dependency_selector)
 
 let make_execution_graph = fun ~package_states lanes ->
@@ -433,7 +441,6 @@ let make_execution_graph = fun ~package_states lanes ->
   (work_items, make_graph ~package_states ~work_items ~dependency_selector)
 
 type planning_round_counts = {
-  deferred_count: int;
   execution_required_count: int;
   finalized_count: int;
   cached_count: int;
@@ -452,7 +459,6 @@ type execution_round_counts = {
 let summarize_planning_round = fun results ->
   List.fold_left results
     ~acc:{
-      deferred_count = 0;
       execution_required_count = 0;
       finalized_count = 0;
       cached_count = 0;
@@ -463,7 +469,6 @@ let summarize_planning_round = fun results ->
     ~fn:(fun counts (result: (package_work, planning_output, error) Graph_scheduler.node_result) ->
       match result.outcome with
       | Error _ -> { counts with error_count = counts.error_count + 1 }
-      | Ok (PlanningDeferred _) -> { counts with deferred_count = counts.deferred_count + 1 }
       | Ok (PlanningRequiresExecution _) -> {
         counts
         with execution_required_count = counts.execution_required_count + 1
@@ -496,31 +501,35 @@ let summarize_execution_round = fun results ->
           | Package_builder.Skipped _ -> counts))
 
 let run_planning_round = fun ~parallelism ~package_states ~on_event lanes ->
-  let work_items, graph = make_planning_graph ~package_states lanes in
-  if work_items = [] then
+  let planning_round = planning_round_work lanes package_states in
+  let work_items, graph = make_planning_graph ~package_states planning_round in
+  if planning_round.package_count = 0 then
     []
   else (
     on_event (PlanningRoundStarted {
       lane_count = List.length lanes;
-      package_count = List.length work_items;
+      package_count = planning_round.package_count;
     });
     let results =
-      Graph_scheduler.run
-      ~config:(Graph_scheduler.Run_config.make
-        ~parallelism
-        ~mode:Graph_scheduler.Run_config.Continue_on_failure
-        ())
-      ~on_event:(fun () -> ())
-      ~graph
-      ~execute:(fun ~graph ~node:_ ~payload ->
-        plan_package_work ~package_states ~graph payload)
-      |> fun results -> results.results
+      if work_items = [] then
+        []
+      else
+        Graph_scheduler.run
+        ~config:(Graph_scheduler.Run_config.make
+          ~parallelism
+          ~mode:Graph_scheduler.Run_config.Continue_on_failure
+          ())
+        ~on_event:(fun () -> ())
+        ~graph
+        ~execute:(fun ~graph ~node:_ ~payload ->
+          plan_package_work ~package_states ~graph payload)
+        |> fun results -> results.results
     in
     let counts = summarize_planning_round results in
     on_event (PlanningRoundFinished {
       lane_count = List.length lanes;
-      package_count = List.length work_items;
-      deferred_count = counts.deferred_count;
+      package_count = planning_round.package_count;
+      deferred_count = planning_round.deferred_count;
       execution_required_count = counts.execution_required_count;
       finalized_count = counts.finalized_count;
       cached_count = counts.cached_count;

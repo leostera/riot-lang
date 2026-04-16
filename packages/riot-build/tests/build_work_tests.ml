@@ -185,13 +185,13 @@ let test_run_builds_dependency_chain = fun _ctx ->
         let built_all =
           result_statuses lane_result
           |> List.all ~fn:(function
-            | Package_builder.Built _ -> true
-            | Package_builder.Cached _
+            | Package_builder.Built _
+            | Package_builder.Cached _ -> true
             | Package_builder.Skipped _
             | Package_builder.Failed _ -> false)
         in
         if not built_all then
-          Error "expected dependency chain packages to build successfully"
+          Error "expected dependency chain packages to complete successfully"
         else if summary.had_failure then
           Error "expected successful package scheduler run to avoid failure summary"
         else (
