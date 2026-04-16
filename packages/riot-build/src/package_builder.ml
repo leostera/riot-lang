@@ -527,13 +527,13 @@ let execute_detailed = fun ~workspace ~toolchain ~store ~package_graph ~executio
       toolchain
       ~concurrency:build_ctx.Build_ctx.parallelism
     in
-    match Action_scheduler.first_failure action_result with
+    match action_result.Action_scheduler.first_failure with
     | Some first_error -> Error (convert_action_error first_error)
     | None ->
         let sandbox_dir = Sandbox.get_dir sandbox in
         let export_entries = compute_export_entries execution_plan.action_graph in
         let package_outputs = collect_package_artifact_outputs ~sandbox_dir ~outputs in
-        let ocamlc_warnings = Action_scheduler.ocamlc_warnings action_result in
+        let ocamlc_warnings = action_result.Action_scheduler.ocamlc_warnings in
         Ok (sandbox_dir, package_outputs, export_entries, ocamlc_warnings)
   in
   match Sandbox.with_sandbox

@@ -114,7 +114,7 @@ let action_label = fun (node: Riot_planner.Action_node.t) ->
 
 let summarize_execution_failures = fun ~sandbox_dir result ->
   let failures =
-    Action_scheduler.results result
+    result.Action_scheduler.completed_actions
     |> List.filter_map
       ~fn:(fun completed_action ->
         let action = action_label completed_action.Action_scheduler.node in
@@ -172,7 +172,7 @@ let execute_kernel_runtime_graph = fun ~concurrency ->
                 let summary = summarize_execution_failures ~sandbox_dir result in
                 Sandbox.cleanup sandbox;
                 let failures =
-                  Action_scheduler.results result
+                  result.Action_scheduler.completed_actions
                   |> List.filter
                     ~fn:(fun completed_action ->
                       match completed_action.Action_scheduler.result.status with

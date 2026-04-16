@@ -29,7 +29,8 @@
 22. Keep `graph_scheduler` behind domain facades. Package build orchestration should flow through `package_scheduler` with package-specific types/results, and action execution should eventually do the same instead of leaking generic scheduler node variants through build-domain modules.
 23. `package_scheduler` may use separate planning and execution graph runs internally. Keep that split package-domain specific; callers should consume package results and build events, not generic graph node outcomes.
 24. `package_builder` and other build-domain modules should talk to `action_scheduler`, not to `action_executor`'s raw completed-action tables or worker-level result maps. Keep `action_executor` as the low-level execution primitive behind the domain facade.
-25. The legacy `coordinator`, `action_queue`, and `build_scheduler` path has been deleted. Do not reintroduce parallel package/action orchestration outside `package_scheduler`, `action_scheduler`, and `graph_scheduler`.
+25. `action_scheduler.run` should return an action-domain summary (completed actions, first failure, warnings) instead of exposing generic scheduler state or raw worker tables.
+26. The legacy `coordinator`, `action_queue`, and `build_scheduler` path has been deleted. Do not reintroduce parallel package/action orchestration outside `package_scheduler`, `action_scheduler`, and `graph_scheduler`.
 
 ## Validate
 

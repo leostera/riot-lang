@@ -188,7 +188,7 @@ let make_execute_graph_miss_bench = fun root ~count ~concurrency ->
       test_toolchain
       ~concurrency in
     Sandbox.cleanup sandbox;
-    if List.length (Action_scheduler.results result) = List.length nodes then
+    if List.length result.Action_scheduler.completed_actions = List.length nodes then
       ()
     else
       panic "execute graph miss bench expected all nodes to complete"
@@ -209,7 +209,7 @@ let make_execute_graph_cache_hit_bench = fun root ~count ~concurrency ->
     test_toolchain
     ~concurrency in
   Sandbox.cleanup warm_sandbox;
-  let all_warm = List.length (Action_scheduler.results warm_result) = count in
+  let all_warm = List.length warm_result.Action_scheduler.completed_actions = count in
   if not all_warm then
     panic "execute graph cache fixture expected all nodes to complete";
   fun () ->
@@ -222,7 +222,7 @@ let make_execute_graph_cache_hit_bench = fun root ~count ~concurrency ->
       test_toolchain
       ~concurrency in
     Sandbox.cleanup sandbox;
-    if List.length (Action_scheduler.results result) = count then
+    if List.length result.Action_scheduler.completed_actions = count then
       ()
     else
       panic "execute graph cache hit bench expected all nodes to complete"

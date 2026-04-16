@@ -26,7 +26,11 @@ type completed_action = {
   result: execution_result;
 }
 
-type t
+type t = {
+  completed_actions: completed_action list;
+  first_failure: action_error option;
+  ocamlc_warnings: string list;
+}
 
 val run:
   action_graph:Action_graph.t ->
@@ -37,10 +41,4 @@ val run:
   concurrency:int ->
   t
 
-val results: t -> completed_action list
-
 val find_result: t -> Action_node.t -> execution_result option
-
-val first_failure: t -> action_error option
-
-val ocamlc_warnings: t -> string list

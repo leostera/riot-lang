@@ -259,7 +259,7 @@ let test_dependency_change_invalidates_cached_compile_actions = fun _ctx ->
                     match execute_planned_package ~workspace ~store ~package:app ~package_graph:second_graph with
                     | Error _ as err -> err
                     | Ok second_app_result ->
-                        let statuses = Action_scheduler.results second_app_result
+                        let statuses = second_app_result.Action_scheduler.completed_actions
                         |> List.map ~fn:(fun completed_action -> completed_action.Action_scheduler.result.status) in
                         let cached_count =
                           List.fold_left statuses ~acc:0

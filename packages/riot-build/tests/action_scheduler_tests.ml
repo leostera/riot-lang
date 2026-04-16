@@ -64,10 +64,10 @@ let test_action_scheduler_returns_empty_results_for_empty_graph = fun _ctx ->
           ~concurrency:2
         in
         let _ = Sandbox.cleanup sandbox in
-        if List.length (Action_scheduler.results result) != 0 then
+        if List.length result.Action_scheduler.completed_actions != 0 then
           Error "expected empty graph to produce no action results"
         else
-          match Action_scheduler.first_failure result with
+          match result.Action_scheduler.first_failure with
           | None -> Ok ()
           | Some _ -> Error "expected empty graph to have no action failures")
   with
@@ -136,7 +136,7 @@ let test_action_scheduler_reports_first_failure_and_keeps_other_results = fun _c
           Action_scheduler.find_result result failing_node,
           Action_scheduler.find_result result dependent_node,
           Action_scheduler.find_result result success_node,
-          Action_scheduler.first_failure result
+          result.Action_scheduler.first_failure
         ) with
         | Some { status=Action_scheduler.Failed _; _ }, Some { status=Action_scheduler.Skipped; _ }, Some {
           status=Action_scheduler.Executed;

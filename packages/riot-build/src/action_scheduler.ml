@@ -31,7 +31,9 @@ type mutation =
   | Remember_result of completed_action
 
 type t = {
-  completed: completed_action list;
+  completed_actions: completed_action list;
+  first_failure: action_error option;
+  ocamlc_warnings: string list;
 }
 
 let remember_result = fun completed_results (completed_action: completed_action) ->
@@ -76,6 +78,44 @@ let make_graph = fun completed_results action_graph ->
         ~depends_on:dependency_node_id));
   graph
 
+let rec find_first_map = fun items ~fn ->
+  match items with
+  | [] -> None
+  | item :: rest -> (
+      match fn item with
+      | Some _ as result -> result
+      | None -> find_first_map rest ~fn
+    )
+
+let first_failure_of_completed_actions = fun completed_actions ->
+  find_first_map completed_actions ~fn:(fun completed_action ->
+    match completed_action.result.status with
+    | Failed err -> Some err
+    | Cached _
+    | Executed
+    | Skipped -> None)
+
+let ocamlc_warnings_of_completed_actions = fun completed_actions ->
+  let seen = HashSet.create () in
+  completed_actions |> List.fold_left ~acc:[]
+    ~fn:(fun acc completed_action ->
+      List.fold_left completed_action.result.ocamlc_warnings ~acc
+        ~fn:(fun acc warning ->
+          if HashSet.contains seen ~value:warning then
+            acc
+          else
+            let _ = HashSet.insert seen ~value:warning in
+            acc @ [ warning ]))
+
+let find_result = fun (result: t) (node: Action_node.t) ->
+  find_first_map
+    result.completed_actions
+    ~fn:(fun completed_action ->
+      if Graph.SimpleGraph.Node_id.eq completed_action.node.id node.id then
+        Some completed_action.result
+      else
+        None)
+
 let run = fun ~action_graph ~sandbox ~store ~session_id toolchain ~concurrency ->
   let completed_results: (Graph.SimpleGraph.Node_id.t, execution_result) HashMap.t = HashMap.create () in
   let sandbox_dir = Sandbox.get_dir sandbox in
@@ -101,51 +141,15 @@ let run = fun ~action_graph ~sandbox ~store ~session_id toolchain ~concurrency -
         Graph_scheduler.Handle.record graph (Remember_result { node = payload; result });
         Ok result)
   in
-  let completed =
+  let completed_actions =
     Action_graph.nodes action_graph
     |> List.filter_map ~fn:(fun (node: Action_node.t) ->
       match HashMap.get completed_results ~key:node.id with
       | Some result -> Some { node; result }
       | None -> None)
   in
-  { completed }
-
-let results = fun (result: t) -> result.completed
-
-let rec find_first_map = fun items ~fn ->
-  match items with
-  | [] -> None
-  | item :: rest -> (
-      match fn item with
-      | Some _ as result -> result
-      | None -> find_first_map rest ~fn
-    )
-
-let find_result = fun (result: t) (node: Action_node.t) ->
-  find_first_map
-    result.completed
-    ~fn:(fun completed_action ->
-      if Graph.SimpleGraph.Node_id.eq completed_action.node.id node.id then
-        Some completed_action.result
-      else
-        None)
-
-let first_failure = fun (result: t) ->
-  find_first_map result.completed ~fn:(fun completed_action ->
-    match completed_action.result.status with
-    | Failed err -> Some err
-    | Cached _
-    | Executed
-    | Skipped -> None)
-
-let ocamlc_warnings = fun (result: t) ->
-  let seen = HashSet.create () in
-  result.completed |> List.fold_left ~acc:[]
-    ~fn:(fun acc completed_action ->
-      List.fold_left completed_action.result.ocamlc_warnings ~acc
-        ~fn:(fun acc warning ->
-          if HashSet.contains seen ~value:warning then
-            acc
-          else
-            let _ = HashSet.insert seen ~value:warning in
-            acc @ [ warning ]))
+  {
+    completed_actions;
+    first_failure = first_failure_of_completed_actions completed_actions;
+    ocamlc_warnings = ocamlc_warnings_of_completed_actions completed_actions;
+  }

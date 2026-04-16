@@ -69,7 +69,7 @@ let test_execute_empty_graph_returns_no_results = fun _ctx ->
           (test_toolchain ())
           ~concurrency:2 in
         let _ = Sandbox.cleanup sandbox in
-        if List.length (Action_scheduler.results result) = 0 then
+        if List.length result.Action_scheduler.completed_actions = 0 then
           Ok ()
         else
           Error "expected empty graph to produce no execution results")
