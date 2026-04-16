@@ -56,6 +56,10 @@ let phase_name = function
   | Riot_build.Event.ToolchainsValidated _ -> "toolchains_validated"
   | Riot_build.Event.RuntimeStarting -> "runtime_starting"
   | Riot_build.Event.RuntimeStarted -> "runtime_started"
+  | Riot_build.Event.PackagePlanningStarted _ -> "package_planning_started"
+  | Riot_build.Event.PackagePlanningFinished _ -> "package_planning_finished"
+  | Riot_build.Event.PackageExecutionStarted _ -> "package_execution_started"
+  | Riot_build.Event.PackageExecutionFinished _ -> "package_execution_finished"
   | Riot_build.Event.TargetBuildStarted _ -> "target_build_started"
   | Riot_build.Event.TargetBuildFinished _ -> "target_build_finished"
   | Riot_build.Event.CacheGenerationRecordingStarted _ -> "cache_generation_recording_started"
@@ -81,6 +85,10 @@ let expect_public_phase_subsequence = fun events ->
     "runtime_starting";
     "runtime_started";
     "target_build_started";
+    "package_planning_started";
+    "package_planning_finished";
+    "package_execution_started";
+    "package_execution_finished";
     "target_build_finished";
     "returning_results";
   ] in

@@ -12,6 +12,27 @@ and runtime_phase =
   | ToolchainsValidated of { target_count: int }
   | RuntimeStarting
   | RuntimeStarted
+  | PackagePlanningStarted of { lane_count: int; package_count: int }
+  | PackagePlanningFinished of {
+      lane_count: int;
+      package_count: int;
+      deferred_count: int;
+      execution_required_count: int;
+      finalized_count: int;
+      cached_count: int;
+      skipped_count: int;
+      failed_count: int;
+      error_count: int;
+    }
+  | PackageExecutionStarted of { lane_count: int; package_count: int }
+  | PackageExecutionFinished of {
+      lane_count: int;
+      package_count: int;
+      finalized_count: int;
+      built_count: int;
+      failed_count: int;
+      error_count: int;
+    }
   | TargetBuildStarted of { target: Riot_model.Target.t; host: bool }
   | TargetBuildFinished of {
       target: Riot_model.Target.t;
@@ -28,6 +49,10 @@ let phase_name_of_runtime_phase = function
   | ToolchainsValidated _ -> "toolchains_validated"
   | RuntimeStarting -> "runtime_starting"
   | RuntimeStarted -> "runtime_started"
+  | PackagePlanningStarted _ -> "package_planning_started"
+  | PackagePlanningFinished _ -> "package_planning_finished"
+  | PackageExecutionStarted _ -> "package_execution_started"
+  | PackageExecutionFinished _ -> "package_execution_finished"
   | TargetBuildStarted _ -> "target_build_started"
   | TargetBuildFinished _ -> "target_build_finished"
   | CacheGenerationRecordingStarted _ -> "cache_generation_recording_started"
@@ -38,6 +63,47 @@ let runtime_phase_fields = function
   | TargetsResolved { target_count }
   | ToolchainsEnsured { target_count }
   | ToolchainsValidated { target_count } -> [ ("target_count", Data.Json.Int target_count) ]
+  | PackagePlanningStarted { lane_count; package_count }
+  | PackageExecutionStarted { lane_count; package_count } -> [
+    ("lane_count", Data.Json.Int lane_count);
+    ("package_count", Data.Json.Int package_count);
+  ]
+  | PackagePlanningFinished {
+    lane_count;
+    package_count;
+    deferred_count;
+    execution_required_count;
+    finalized_count;
+    cached_count;
+    skipped_count;
+    failed_count;
+    error_count;
+  } -> [
+    ("lane_count", Data.Json.Int lane_count);
+    ("package_count", Data.Json.Int package_count);
+    ("deferred_count", Data.Json.Int deferred_count);
+    ("execution_required_count", Data.Json.Int execution_required_count);
+    ("finalized_count", Data.Json.Int finalized_count);
+    ("cached_count", Data.Json.Int cached_count);
+    ("skipped_count", Data.Json.Int skipped_count);
+    ("failed_count", Data.Json.Int failed_count);
+    ("error_count", Data.Json.Int error_count);
+  ]
+  | PackageExecutionFinished {
+    lane_count;
+    package_count;
+    finalized_count;
+    built_count;
+    failed_count;
+    error_count;
+  } -> [
+    ("lane_count", Data.Json.Int lane_count);
+    ("package_count", Data.Json.Int package_count);
+    ("finalized_count", Data.Json.Int finalized_count);
+    ("built_count", Data.Json.Int built_count);
+    ("failed_count", Data.Json.Int failed_count);
+    ("error_count", Data.Json.Int error_count);
+  ]
   | RuntimeStarting
   | RuntimeStarted -> []
   | TargetBuildStarted { target; host } -> [

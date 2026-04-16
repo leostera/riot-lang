@@ -17,6 +17,27 @@ and runtime_phase =
   | ToolchainsValidated of { target_count: int }
   | RuntimeStarting
   | RuntimeStarted
+  | PackagePlanningStarted of { lane_count: int; package_count: int }
+  | PackagePlanningFinished of {
+      lane_count: int;
+      package_count: int;
+      deferred_count: int;
+      execution_required_count: int;
+      finalized_count: int;
+      cached_count: int;
+      skipped_count: int;
+      failed_count: int;
+      error_count: int;
+    }
+  | PackageExecutionStarted of { lane_count: int; package_count: int }
+  | PackageExecutionFinished of {
+      lane_count: int;
+      package_count: int;
+      finalized_count: int;
+      built_count: int;
+      failed_count: int;
+      error_count: int;
+    }
   | TargetBuildStarted of { target: Riot_model.Target.t; host: bool }
   | TargetBuildFinished of {
       target: Riot_model.Target.t;

@@ -26,6 +26,48 @@ type summary = Package_scheduler.summary = {
 
 type run_result = summary
 
+let runtime_phase_of_package_scheduler_event = function
+  | Package_scheduler.PlanningRoundStarted { lane_count; package_count } ->
+      Event.PackagePlanningStarted { lane_count; package_count }
+  | Package_scheduler.PlanningRoundFinished {
+    lane_count;
+    package_count;
+    deferred_count;
+    execution_required_count;
+    finalized_count;
+    cached_count;
+    skipped_count;
+    failed_count;
+    error_count;
+  } -> Event.PackagePlanningFinished {
+    lane_count;
+    package_count;
+    deferred_count;
+    execution_required_count;
+    finalized_count;
+    cached_count;
+    skipped_count;
+    failed_count;
+    error_count;
+  }
+  | Package_scheduler.ExecutionRoundStarted { lane_count; package_count } ->
+      Event.PackageExecutionStarted { lane_count; package_count }
+  | Package_scheduler.ExecutionRoundFinished {
+    lane_count;
+    package_count;
+    finalized_count;
+    built_count;
+    failed_count;
+    error_count;
+  } -> Event.PackageExecutionFinished {
+    lane_count;
+    package_count;
+    finalized_count;
+    built_count;
+    failed_count;
+    error_count;
+  }
+
 let plan_package = fun lane package_key -> { lane; package_key }
 
 let initial_plan_packages = fun lane ->
@@ -60,7 +102,12 @@ let prepare_lanes = fun context spec ~toolchain ->
 let run = fun context lanes ->
   try
     let summary =
-      Package_scheduler.run ~parallelism:context.Build_context.parallelism lanes
+      Package_scheduler.run
+        ~parallelism:context.Build_context.parallelism
+        ~on_event:(fun event ->
+          context.Build_context.on_event
+            (Event.Phase (runtime_phase_of_package_scheduler_event event)))
+        lanes
     in
     List.for_each lanes ~fn:Build_lane.release;
     summary

@@ -59,6 +59,35 @@ type summary = {
   had_failure: bool;
 }
 
+type event =
+  | PlanningRoundStarted of {
+      lane_count: int;
+      package_count: int;
+    }
+  | PlanningRoundFinished of {
+      lane_count: int;
+      package_count: int;
+      deferred_count: int;
+      execution_required_count: int;
+      finalized_count: int;
+      cached_count: int;
+      skipped_count: int;
+      failed_count: int;
+      error_count: int;
+    }
+  | ExecutionRoundStarted of {
+      lane_count: int;
+      package_count: int;
+    }
+  | ExecutionRoundFinished of {
+      lane_count: int;
+      package_count: int;
+      finalized_count: int;
+      built_count: int;
+      failed_count: int;
+      error_count: int;
+    }
+
 let lane_id = fun lane -> Riot_model.Target.to_string (Build_lane.target lane)
 
 let package_key_id = fun package_key -> Riot_model.Package.key_to_string package_key
@@ -403,12 +432,80 @@ let make_execution_graph = fun ~package_states lanes ->
   let dependency_selector = fun (_: package_work) -> [] in
   (work_items, make_graph ~package_states ~work_items ~dependency_selector)
 
-let run_planning_round = fun ~parallelism ~package_states lanes ->
+type planning_round_counts = {
+  deferred_count: int;
+  execution_required_count: int;
+  finalized_count: int;
+  cached_count: int;
+  skipped_count: int;
+  failed_count: int;
+  error_count: int;
+}
+
+type execution_round_counts = {
+  finalized_count: int;
+  built_count: int;
+  failed_count: int;
+  error_count: int;
+}
+
+let summarize_planning_round = fun results ->
+  List.fold_left results
+    ~acc:{
+      deferred_count = 0;
+      execution_required_count = 0;
+      finalized_count = 0;
+      cached_count = 0;
+      skipped_count = 0;
+      failed_count = 0;
+      error_count = 0;
+    }
+    ~fn:(fun counts (result: (package_work, planning_output, error) Graph_scheduler.node_result) ->
+      match result.outcome with
+      | Error _ -> { counts with error_count = counts.error_count + 1 }
+      | Ok (PlanningDeferred _) -> { counts with deferred_count = counts.deferred_count + 1 }
+      | Ok (PlanningRequiresExecution _) -> {
+        counts
+        with execution_required_count = counts.execution_required_count + 1
+      }
+      | Ok (PlanningFinalized { detailed_result; _ }) ->
+          let counts = { counts with finalized_count = counts.finalized_count + 1 } in
+          (match detailed_result.result.status with
+          | Package_builder.Cached _ -> { counts with cached_count = counts.cached_count + 1 }
+          | Package_builder.Skipped _ -> { counts with skipped_count = counts.skipped_count + 1 }
+          | Package_builder.Failed _ -> { counts with failed_count = counts.failed_count + 1 }
+          | Package_builder.Built _ -> counts))
+
+let summarize_execution_round = fun results ->
+  List.fold_left results
+    ~acc:{
+      finalized_count = 0;
+      built_count = 0;
+      failed_count = 0;
+      error_count = 0;
+    }
+    ~fn:(fun counts (result: (package_work, execution_output, error) Graph_scheduler.node_result) ->
+      match result.outcome with
+      | Error _ -> { counts with error_count = counts.error_count + 1 }
+      | Ok (ExecutionFinalized { detailed_result; _ }) ->
+          let counts = { counts with finalized_count = counts.finalized_count + 1 } in
+          (match detailed_result.result.status with
+          | Package_builder.Built _ -> { counts with built_count = counts.built_count + 1 }
+          | Package_builder.Failed _ -> { counts with failed_count = counts.failed_count + 1 }
+          | Package_builder.Cached _
+          | Package_builder.Skipped _ -> counts))
+
+let run_planning_round = fun ~parallelism ~package_states ~on_event lanes ->
   let work_items, graph = make_planning_graph ~package_states lanes in
   if work_items = [] then
     []
-  else
-    Graph_scheduler.run
+  else (
+    on_event (PlanningRoundStarted {
+      lane_count = List.length lanes;
+      package_count = List.length work_items;
+    });
+    let results =
+      Graph_scheduler.run
       ~config:(Graph_scheduler.Run_config.make
         ~parallelism
         ~mode:Graph_scheduler.Run_config.Continue_on_failure
@@ -417,14 +514,34 @@ let run_planning_round = fun ~parallelism ~package_states lanes ->
       ~graph
       ~execute:(fun ~graph ~node:_ ~payload ->
         plan_package_work ~package_states ~graph payload)
-    |> fun results -> results.results
+      |> fun results -> results.results
+    in
+    let counts = summarize_planning_round results in
+    on_event (PlanningRoundFinished {
+      lane_count = List.length lanes;
+      package_count = List.length work_items;
+      deferred_count = counts.deferred_count;
+      execution_required_count = counts.execution_required_count;
+      finalized_count = counts.finalized_count;
+      cached_count = counts.cached_count;
+      skipped_count = counts.skipped_count;
+      failed_count = counts.failed_count;
+      error_count = counts.error_count;
+    });
+    results
+  )
 
-let run_execution_round = fun ~parallelism ~package_states lanes ->
+let run_execution_round = fun ~parallelism ~package_states ~on_event lanes ->
   let work_items, graph = make_execution_graph ~package_states lanes in
   if work_items = [] then
     []
-  else
-    Graph_scheduler.run
+  else (
+    on_event (ExecutionRoundStarted {
+      lane_count = List.length lanes;
+      package_count = List.length work_items;
+    });
+    let results =
+      Graph_scheduler.run
       ~config:(Graph_scheduler.Run_config.make
         ~parallelism
         ~mode:Graph_scheduler.Run_config.Continue_on_failure
@@ -433,7 +550,19 @@ let run_execution_round = fun ~parallelism ~package_states lanes ->
       ~graph
       ~execute:(fun ~graph ~node:_ ~payload ->
         execute_package_work ~package_states ~graph payload)
-    |> fun results -> results.results
+      |> fun results -> results.results
+    in
+    let counts = summarize_execution_round results in
+    on_event (ExecutionRoundFinished {
+      lane_count = List.length lanes;
+      package_count = List.length work_items;
+      finalized_count = counts.finalized_count;
+      built_count = counts.built_count;
+      failed_count = counts.failed_count;
+      error_count = counts.error_count;
+    });
+    results
+  )
 
 let collect_errors = fun results ->
   List.filter_map results ~fn:(fun (result: (_, _, error) Graph_scheduler.node_result) ->
@@ -574,7 +703,7 @@ let summarize = fun lanes package_states errors ->
     had_failure;
   }
 
-let run = fun ~parallelism lanes ->
+let run = fun ~parallelism ?(on_event = fun (_: event) -> ()) lanes ->
   let state = make_state lanes in
   let rec loop errors =
     let before = pending_counts lanes state.package_states in
@@ -583,14 +712,24 @@ let run = fun ~parallelism lanes ->
     else if errors != [] then
       summarize lanes state.package_states errors
     else
-      let planning_results = run_planning_round ~parallelism ~package_states:state.package_states lanes in
+      let planning_results =
+        run_planning_round
+          ~parallelism
+          ~package_states:state.package_states
+          ~on_event
+          lanes
+      in
       let planning_errors = collect_errors planning_results in
       let errors = errors @ planning_errors in
       if errors != [] then
         summarize lanes state.package_states errors
       else
         let execution_results =
-          run_execution_round ~parallelism ~package_states:state.package_states lanes
+          run_execution_round
+            ~parallelism
+            ~package_states:state.package_states
+            ~on_event
+            lanes
         in
         let execution_errors = collect_errors execution_results in
         let errors = errors @ execution_errors in

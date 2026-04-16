@@ -53,11 +53,42 @@ let test_build_phase_event_to_json = fun _ctx ->
     ~actual;
   Ok ()
 
+let test_package_planning_phase_event_to_json = fun _ctx ->
+  let actual = Riot_build.Event.to_json
+    (Riot_build.Event.Phase (Riot_build.Event.PackagePlanningFinished {
+      lane_count = 2;
+      package_count = 5;
+      deferred_count = 1;
+      execution_required_count = 2;
+      finalized_count = 2;
+      cached_count = 1;
+      skipped_count = 1;
+      failed_count = 0;
+      error_count = 0;
+    })) in
+  Test.assert_equal
+    ~expected:(Some (Data.Json.Object [
+      ("type", Data.Json.String "BuildPhase");
+      ("phase", Data.Json.String "package_planning_finished");
+      ("lane_count", Data.Json.Int 2);
+      ("package_count", Data.Json.Int 5);
+      ("deferred_count", Data.Json.Int 1);
+      ("execution_required_count", Data.Json.Int 2);
+      ("finalized_count", Data.Json.Int 2);
+      ("cached_count", Data.Json.Int 1);
+      ("skipped_count", Data.Json.Int 1);
+      ("failed_count", Data.Json.Int 0);
+      ("error_count", Data.Json.Int 0);
+    ]))
+    ~actual;
+  Ok ()
+
 let tests =
   let open Test in [
     case "event: building target json" test_building_target_event_to_json;
     case "event: pm events reuse riot-model json" test_pm_event_to_json_reuses_riot_model_event_shape;
     case "event: build phase json" test_build_phase_event_to_json;
+    case "event: package planning phase json" test_package_planning_phase_event_to_json;
   ]
 
 let name = "Riot Build Event Tests"
