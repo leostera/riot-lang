@@ -2,10 +2,7 @@ open Std
 
 module Waiters = Collections.Queue
 
-type t = {
-  init_lock: Kernel.Sync.Mutex.t;
-  mutable server: Pid.t option;
-}
+type t = { pid: Pid.t }
 
 type request_id = int
 
@@ -37,17 +34,6 @@ let request_ids = Kernel.Sync.Atomic.make 0
 
 let next_request_id = fun () ->
   Kernel.Sync.Atomic.fetch_and_add request_ids 1 + 1
-
-let with_init_lock = fun t f ->
-  Kernel.Sync.Mutex.lock t.init_lock;
-  try
-    let result = f () in
-    Kernel.Sync.Mutex.unlock t.init_lock;
-    result
-  with
-  | exn ->
-      Kernel.Sync.Mutex.unlock t.init_lock;
-      raise exn
 
 module Server = struct
   type state = {
@@ -117,21 +103,8 @@ module Server = struct
         loop { owner = None; waiters = Waiters.create () })
 end
 
-let create = fun () ->
-  {
-    init_lock = Kernel.Sync.Mutex.create ();
-    server = None;
-  }
-
-let ensure_server = fun t ->
-  with_init_lock t
-    (fun () ->
-      match t.server with
-      | Some server -> server
-      | None ->
-          let server = Server.start () in
-          t.server <- Some server;
-          server)
+let create = fun () : t ->
+  { pid = Server.start () }
 
 let await = fun request_id expected ->
   let selector msg =
@@ -146,18 +119,16 @@ let await = fun request_id expected ->
   in
   receive ~selector ()
 
-let lock = fun t ->
-  let server = ensure_server t in
+let lock = fun (t : t) ->
   let request_id = next_request_id () in
-  send server (Riot_build_actor_mutex_request (Acquire { reply_to = self (); request_id }));
+  send t.pid (Riot_build_actor_mutex_request (Acquire { reply_to = self (); request_id }));
   match await request_id `acquired with
   | Ok () -> ()
   | Error reason -> raise (Failure reason)
 
-let unlock = fun t ->
-  let server = ensure_server t in
+let unlock = fun (t : t) ->
   let request_id = next_request_id () in
-  send server (Riot_build_actor_mutex_request (Release { reply_to = self (); request_id }));
+  send t.pid (Riot_build_actor_mutex_request (Release { reply_to = self (); request_id }));
   match await request_id `released with
   | Ok () -> ()
   | Error reason -> raise (Failure reason)

@@ -7,7 +7,19 @@ type t = {
 
 let in_process_lock_counts = Collections.HashMap.create ()
 
-let in_process_lock_counts_lock = Actor_mutex.create ()
+let in_process_lock_counts_lock = Sync.LazyCell.create Actor_mutex.create
+
+let with_in_process_lock_counts_lock = fun f ->
+  let lock = Sync.LazyCell.force in_process_lock_counts_lock in
+  Actor_mutex.lock lock;
+  try
+    let result = f () in
+    Actor_mutex.unlock lock;
+    result
+  with
+  | exn ->
+      Actor_mutex.unlock lock;
+      raise exn
 
 let retry_interval = Time.Duration.from_millis 500
 
@@ -18,44 +30,37 @@ let path_key = fun path -> Path.to_string path
 
 let increment_in_process_lock_count = fun path ->
   let key = path_key path in
-  Actor_mutex.lock in_process_lock_counts_lock;
-  let count =
-    match Collections.HashMap.get in_process_lock_counts ~key with
-    | Some count ->
-        let next = count + 1 in
-        let _ = Collections.HashMap.insert in_process_lock_counts ~key ~value:next in
-        next
-    | None ->
-        let _ = Collections.HashMap.insert in_process_lock_counts ~key ~value:1 in
-        1
-  in
-  Actor_mutex.unlock in_process_lock_counts_lock;
-  count
+  with_in_process_lock_counts_lock
+    (fun () ->
+      match Collections.HashMap.get in_process_lock_counts ~key with
+      | Some count ->
+          let next = count + 1 in
+          let _ = Collections.HashMap.insert in_process_lock_counts ~key ~value:next in
+          next
+      | None ->
+          let _ = Collections.HashMap.insert in_process_lock_counts ~key ~value:1 in
+          1)
 
 let decrement_in_process_lock_count = fun path ->
   let key = path_key path in
-  Actor_mutex.lock in_process_lock_counts_lock;
-  let remaining =
-    match Collections.HashMap.get in_process_lock_counts ~key with
-    | Some count when count > 1 ->
-        let next = count - 1 in
-        let _ = Collections.HashMap.insert in_process_lock_counts ~key ~value:next in
-        next
-    | Some _ ->
-        let _ = Collections.HashMap.remove in_process_lock_counts ~key in
-        0
-    | None ->
-        0
-  in
-  Actor_mutex.unlock in_process_lock_counts_lock;
-  remaining
+  with_in_process_lock_counts_lock
+    (fun () ->
+      match Collections.HashMap.get in_process_lock_counts ~key with
+      | Some count when count > 1 ->
+          let next = count - 1 in
+          let _ = Collections.HashMap.insert in_process_lock_counts ~key ~value:next in
+          next
+      | Some _ ->
+          let _ = Collections.HashMap.remove in_process_lock_counts ~key in
+          0
+      | None ->
+          0)
 
 let has_in_process_lock = fun path ->
   let key = path_key path in
-  Actor_mutex.lock in_process_lock_counts_lock;
-  let held = Collections.HashMap.has_key in_process_lock_counts ~key in
-  Actor_mutex.unlock in_process_lock_counts_lock;
-  held
+  with_in_process_lock_counts_lock
+    (fun () ->
+      Collections.HashMap.has_key in_process_lock_counts ~key)
 
 let release = fun t ->
   let _ = Fs.File.unlock t.file in
