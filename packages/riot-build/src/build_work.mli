@@ -1,18 +1,28 @@
 open Std
 
-type t =
-  | BuildLane of Build_lane.locked Build_lane.t
-
-type output =
-  | LaneCompleted of Lane_result.t
-
-type error = Build_lane.error
-
-type run_result = (t * (output, error) result) list
-
 type plan_package = {
   lane: Build_lane.locked Build_lane.t;
   package_key: Riot_model.Package.key;
+}
+
+type t =
+  | BuildPackage of plan_package
+
+type output =
+  | PackagePending
+  | PackageCompleted of {
+      lane: Build_lane.locked Build_lane.t;
+      detailed_result: Package_builder.detailed_result;
+    }
+
+type error = {
+  lane: Build_lane.locked Build_lane.t;
+  reason: string;
+}
+
+type run_result = {
+  lanes: Build_lane.locked Build_lane.t list;
+  task_results: (t * (output, error) result) list;
 }
 
 type completion = {
@@ -28,32 +38,22 @@ type summary = {
   had_failure: bool;
 }
 
-val lane: Build_lane.locked Build_lane.t -> t
-
 val target: t -> Riot_model.Target.t
 
-val initial_plan_packages: t -> plan_package list
+val initial_plan_packages: Build_lane.locked Build_lane.t -> plan_package list
 
 val plan_package_key: plan_package -> Riot_model.Package.key
 
 val plan_package_target: plan_package -> Riot_model.Target.t
 
-val release: t -> unit
-
 val prepare_lanes:
   Build_context.t ->
   Resolved_build.t ->
   toolchain:Riot_toolchain.t ->
-  (t list, error) result
+  (Build_lane.locked Build_lane.t list, string) result
 
-val lane_result: output -> Lane_result.t option
+val execute: t -> (output, error) result
 
-val had_partial_failure: output -> bool
-
-val result_count: output -> int
-
-val execute: t -> (output * t list, error) result
-
-val run: Build_context.t -> t list -> run_result
+val run: Build_context.t -> Build_lane.locked Build_lane.t list -> run_result
 
 val summarize: run_result -> summary

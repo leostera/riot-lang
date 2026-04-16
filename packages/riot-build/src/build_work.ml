@@ -1,19 +1,30 @@
 open Std
+open Std.Collections
 open Std.Result.Syntax
-
-type t =
-  | BuildLane of Build_lane.locked Build_lane.t
-
-type output =
-  | LaneCompleted of Lane_result.t
-
-type error = Build_lane.error
-
-type run_result = (t * (output, error) result) list
 
 type plan_package = {
   lane: Build_lane.locked Build_lane.t;
   package_key: Riot_model.Package.key;
+}
+
+type t =
+  | BuildPackage of plan_package
+
+type output =
+  | PackagePending
+  | PackageCompleted of {
+      lane: Build_lane.locked Build_lane.t;
+      detailed_result: Package_builder.detailed_result;
+    }
+
+type error = {
+  lane: Build_lane.locked Build_lane.t;
+  reason: string;
+}
+
+type run_result = {
+  lanes: Build_lane.locked Build_lane.t list;
+  task_results: (t * (output, error) result) list;
 }
 
 type completion = {
@@ -29,113 +40,316 @@ type summary = {
   had_failure: bool;
 }
 
-let lane = fun lane -> BuildLane lane
-
 let target = function
-  | BuildLane lane -> Build_lane.target lane
+  | BuildPackage { lane; _ } -> Build_lane.target lane
 
-let plan_package = fun lane package_key -> {
-  lane;
-  package_key;
-}
+let plan_package = fun lane package_key -> { lane; package_key }
 
-let initial_plan_packages = function
-  | BuildLane lane ->
-      Build_lane.package_keys lane
-      |> List.map ~fn:(plan_package lane)
+let initial_plan_packages = fun lane ->
+  Build_lane.package_keys lane
+  |> List.map ~fn:(plan_package lane)
 
-let plan_package_key = fun plan_package -> plan_package.package_key
+let plan_package_key = fun (plan_package: plan_package) -> plan_package.package_key
 
-let plan_package_target = fun plan_package -> Build_lane.target plan_package.lane
+let plan_package_target = fun (plan_package: plan_package) -> Build_lane.target plan_package.lane
 
-let release = function
-  | BuildLane lane -> Build_lane.release lane
+let lane_id = fun lane -> Riot_model.Target.to_string (Build_lane.target lane)
+
+let package_key_id = fun package_key -> Riot_model.Package.key_to_string package_key
+
+let dependency_nodes = fun lane package_key ->
+  match Riot_planner.Package_graph.get_node_by_key (Build_lane.package_graph lane) package_key with
+  | None -> []
+  | Some node ->
+      Riot_planner.Package_graph.get_dependencies_for_node (Build_lane.package_graph lane) node
+
+let dependency_keys = fun lane package_key ->
+  dependency_nodes lane package_key
+  |> List.map ~fn:Riot_planner.Package_graph.get_key
+
+let root_plan_packages = fun lane ->
+  initial_plan_packages lane
+  |> List.filter ~fn:(fun plan -> dependency_keys lane plan.package_key = [])
+
+let is_success_node = function
+  | Riot_planner.Package_graph.Cached _
+  | Riot_planner.Package_graph.Built _ -> true
+  | Riot_planner.Package_graph.Unplanned _
+  | Riot_planner.Package_graph.Planned _
+  | Riot_planner.Package_graph.Failed _
+  | Riot_planner.Package_graph.Skipped _ -> false
+
+let is_failed_node = function
+  | Riot_planner.Package_graph.Failed _
+  | Riot_planner.Package_graph.Skipped _ -> true
+  | Riot_planner.Package_graph.Unplanned _
+  | Riot_planner.Package_graph.Planned _
+  | Riot_planner.Package_graph.Cached _
+  | Riot_planner.Package_graph.Built _ -> false
+
+let is_finished_node = function
+  | Riot_planner.Package_graph.Cached _
+  | Riot_planner.Package_graph.Built _
+  | Riot_planner.Package_graph.Failed _
+  | Riot_planner.Package_graph.Skipped _ -> true
+  | Riot_planner.Package_graph.Unplanned _
+  | Riot_planner.Package_graph.Planned _ -> false
+
+let skipped_reason = fun failed_nodes ->
+  let failed_names =
+    failed_nodes
+    |> List.map ~fn:Riot_planner.Package_graph.get_package
+    |> List.map ~fn:(fun (package: Riot_model.Package.t) ->
+      Riot_model.Package_name.to_string package.name)
+  in
+  "needs " ^ String.concat ", " failed_names
+
+let apply_graph_update = fun lane package_key package graph_update ->
+  match Riot_planner.Package_graph.get_node_by_key (Build_lane.package_graph lane) package_key with
+  | None -> ()
+  | Some node ->
+      let scope = Riot_planner.Package_graph.get_scope node.value in
+      match graph_update with
+      | None -> ()
+      | Some (Package_builder.Cached_package { hash; artifact; depset; exports }) ->
+          node.value <- Riot_planner.Package_graph.Cached {
+            package;
+            scope;
+            hash;
+            artifact;
+            depset;
+            exports;
+          }
+      | Some (Package_builder.Built_package { hash; artifact; depset; module_graph; action_graph; status }) ->
+          node.value <- Riot_planner.Package_graph.Built {
+            package;
+            scope;
+            module_graph;
+            action_graph;
+            hash;
+            artifact;
+            status;
+            depset;
+          }
+      | Some (Package_builder.Failed_package { hash = Some hash; error }) ->
+          node.value <- Riot_planner.Package_graph.Failed {
+            package;
+            scope;
+            hash;
+            error;
+          }
+      | Some (Package_builder.Failed_package { hash = None; _ }) -> ()
+      | Some (Package_builder.Skipped_package { reason }) ->
+          node.value <- Riot_planner.Package_graph.Skipped {
+            package;
+            scope;
+            reason;
+          }
 
 let prepare_lane = fun context spec ~toolchain target ->
-  Build_lane.prepare
-    context
-    spec
-    ~target
-    ~toolchain
-  |> Result.map ~fn:lane
+  Build_lane.prepare context spec ~target ~toolchain
 
 let prepare_lanes = fun context spec ~toolchain ->
   let targets =
     Riot_model.Target.Set.to_list (Resolved_build.targets spec)
     |> List.sort ~compare:Riot_model.Target.compare
   in
-  let release_items = fun items -> List.for_each items ~fn:release in
+  let release_lanes = fun lanes -> List.for_each lanes ~fn:Build_lane.release in
   let rec loop prepared = function
     | [] -> Ok (List.reverse prepared)
     | target :: rest -> (
         match prepare_lane context spec ~toolchain target with
-        | Ok item -> loop (item :: prepared) rest
+        | Ok lane -> loop (lane :: prepared) rest
         | Error _ as error ->
-            release_items prepared;
+            release_lanes prepared;
             error
       )
   in
   loop [] targets
 
-let lane_result = function
-  | LaneCompleted result -> Some result
-
-let had_partial_failure = function
-  | LaneCompleted result -> Lane_result.had_partial_failure result
-
-let result_count = function
-  | LaneCompleted result -> List.length (Lane_result.results result)
-
 let execute = function
-  | BuildLane lane ->
-      let* result = Build_lane.execute lane in
-      Ok (LaneCompleted result, [])
+  | BuildPackage ({ lane; package_key } as work) -> (
+      match Riot_planner.Package_graph.get_node_by_key (Build_lane.package_graph lane) package_key with
+      | None ->
+          Error {
+            lane;
+            reason = "package graph missing node for " ^ package_key_id work.package_key;
+          }
+      | Some node ->
+          if is_finished_node node.value then
+            Ok PackagePending
+          else
+            let failed_dependencies =
+              dependency_nodes lane package_key
+              |> List.filter ~fn:is_failed_node
+            in
+            if failed_dependencies != [] then
+              let package = Riot_planner.Package_graph.get_package node.value in
+              let reason = skipped_reason failed_dependencies in
+              Ok (PackageCompleted {
+                lane;
+                detailed_result = {
+                  result = Package_builder.{
+                    package_key;
+                    package;
+                    status = Skipped { reason };
+                    ocamlc_warnings = [];
+                    duration = Time.Duration.zero;
+                  };
+                  graph_update = Some (Skipped_package { reason });
+                };
+              })
+            else
+              let dependencies_ready =
+                dependency_nodes lane package_key
+                |> List.all ~fn:is_success_node
+              in
+              if not dependencies_ready then
+                Ok PackagePending
+              else
+                let package = Riot_planner.Package_graph.get_package node.value in
+                Ok (PackageCompleted {
+                  lane;
+                  detailed_result =
+                    Package_builder.build_detailed
+                      ~workspace:(Build_lane.workspace lane)
+                      ~toolchain:(Build_lane.toolchain lane)
+                      ~store:(Build_lane.store lane)
+                      ~package_graph:(Build_lane.package_graph lane)
+                      ~package_key
+                      ~package
+                      ~build_ctx:(Build_lane.build_ctx lane);
+                })
+    )
 
-let run = fun context work_items ->
-  Build_scheduler.run
-    ~concurrency:context.Build_context.parallelism
-    ~tasks:work_items
-    ~fn:execute
+let dependents_of = fun lane completed_key ->
+  Build_lane.package_keys lane
+  |> List.filter ~fn:(fun package_key ->
+    dependency_keys lane package_key
+    |> List.any ~fn:(fun dependency_key -> dependency_key = completed_key))
+  |> List.map ~fn:(plan_package lane)
+  |> List.map ~fn:(fun package -> BuildPackage package)
 
-let completion_of_result = fun work outcome ->
+let release_lanes = fun lanes ->
+  List.for_each lanes ~fn:Build_lane.release
+
+let run = fun context lanes ->
+  let initial_tasks =
+    lanes
+    |> List.flat_map ~fn:root_plan_packages
+    |> List.map ~fn:(fun plan -> BuildPackage plan)
+  in
+  let task_results =
+    try
+      Build_scheduler.run
+        ~concurrency:context.Build_context.parallelism
+        ~tasks:initial_tasks
+        ~fn:execute
+        ~on_result:(fun ~task:_ ~outcome ->
+          match outcome with
+          | Error _ -> []
+          | Ok PackagePending -> []
+          | Ok (PackageCompleted { lane; detailed_result }) ->
+              apply_graph_update
+                lane
+                detailed_result.result.package_key
+                detailed_result.result.package
+                detailed_result.graph_update;
+              dependents_of lane detailed_result.result.package_key)
+    with
+    | exn ->
+        release_lanes lanes;
+        raise exn
+  in
+  release_lanes lanes;
   {
-    target = target work;
-    result_count =
-      (match outcome with
-      | Ok output -> result_count output
-      | Error _ -> 0);
-    had_partial_failure =
-      (match outcome with
-      | Ok output -> had_partial_failure output
-      | Error _ -> true);
+    lanes;
+    task_results;
   }
 
-let summarize = fun results ->
-  let completions =
-    List.map results
-      ~fn:(fun (work, outcome) -> completion_of_result work outcome)
+let lane_result_of_results = fun lane package_results ->
+  let lane_had_partial_failure =
+    List.any package_results ~fn:(fun (result: Package_builder.build_result) ->
+      match result.status with
+      | Package_builder.Failed _ -> true
+      | Package_builder.Built _
+      | Package_builder.Cached _
+      | Package_builder.Skipped _ -> false)
   in
-  let lane_results =
-    List.filter_map results
-      ~fn:(fun (_, outcome) ->
-        match outcome with
-        | Ok output -> lane_result output
-        | Error _ -> None)
+  Lane_result.{
+    target = Build_lane.target lane;
+    results = package_results;
+    had_partial_failure = lane_had_partial_failure;
+  }
+
+let summarize = fun run_result ->
+  let lane_results_by_id: (string, (string, Package_builder.build_result) HashMap.t) HashMap.t = HashMap.create () in
+  let remember_result = fun lane (result: Package_builder.build_result) ->
+    let key = lane_id lane in
+    let lane_results =
+      match HashMap.get lane_results_by_id ~key with
+      | Some lane_results -> lane_results
+      | None ->
+          let lane_results = HashMap.create () in
+          let _ = HashMap.insert lane_results_by_id ~key ~value:lane_results in
+          lane_results
+    in
+    let _ = HashMap.insert lane_results ~key:(package_key_id result.package_key) ~value:result in
+    ()
   in
   let errors =
-    List.filter_map results
-      ~fn:(fun (_, outcome) ->
-        match outcome with
-        | Error err -> Some err
-        | Ok _ -> None)
+    run_result.task_results
+    |> List.filter_map ~fn:(fun (_, outcome) ->
+      match outcome with
+      | Error err -> Some err
+      | Ok PackagePending -> None
+      | Ok (PackageCompleted { lane; detailed_result }) ->
+          remember_result lane detailed_result.result;
+          None)
+  in
+  let lane_results =
+    run_result.lanes
+    |> List.filter_map ~fn:(fun lane ->
+      let ordered_results =
+        match HashMap.get lane_results_by_id ~key:(lane_id lane) with
+        | None -> []
+        | Some results_by_key ->
+            Build_lane.package_keys lane
+            |> List.filter_map ~fn:(fun package_key ->
+              HashMap.get results_by_key ~key:(package_key_id package_key))
+      in
+      if ordered_results = [] then
+        None
+      else
+        Some (lane_result_of_results lane ordered_results))
+  in
+  let lane_had_error = fun lane ->
+    List.any errors ~fn:(fun error ->
+      Riot_model.Target.equal (Build_lane.target lane) (Build_lane.target error.lane))
+  in
+  let completions =
+    run_result.lanes
+    |> List.map ~fn:(fun lane ->
+      let lane_result =
+        List.find lane_results ~fn:(fun result ->
+          Riot_model.Target.equal (Lane_result.target result) (Build_lane.target lane))
+      in
+      {
+        target = Build_lane.target lane;
+        result_count =
+          (match lane_result with
+          | Some result -> List.length (Lane_result.results result)
+          | None -> 0);
+        had_partial_failure =
+          lane_had_error lane
+          || match lane_result with
+          | Some result -> Lane_result.had_partial_failure result
+          | None -> false;
+      })
   in
   let had_failure =
-    List.exists
-      (fun (_, outcome) ->
-        match outcome with
-        | Error _ -> true
-        | Ok output -> had_partial_failure output)
-      results
+    errors != []
+    || List.any lane_results ~fn:Lane_result.had_partial_failure
   in
   {
     completions;

@@ -219,15 +219,18 @@ let failed_results = fun results ->
       | Package_builder.Skipped _ -> false)
 
 let map_lane_error = fun error ->
-  UnexpectedError { reason = error }
+  UnexpectedError { reason = error.Build_work.reason }
+
+let map_prepare_error = fun reason ->
+  UnexpectedError { reason }
 
 let run_lanes = fun context ~toolchain ->
-  let* work_items =
+  let* lanes =
     Build_work.prepare_lanes context.build context.resolved ~toolchain
-    |> Result.map_err ~fn:map_lane_error
+    |> Result.map_err ~fn:map_prepare_error
   in
-  List.for_each work_items ~fn:(fun work -> emit_target_build_started context (Build_work.target work));
-  let results = Build_work.run context.build work_items in
+  List.for_each lanes ~fn:(fun lane -> emit_target_build_started context (Build_lane.target lane));
+  let results = Build_work.run context.build lanes in
   let summary = Build_work.summarize results in
   let all_errors = List.map summary.errors ~fn:map_lane_error in
   let lane_results = summary.lane_results in

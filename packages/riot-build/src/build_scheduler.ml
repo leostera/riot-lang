@@ -9,7 +9,6 @@ type ('task, 'result, 'error) task_result = {
   id: int;
   task: 'task;
   outcome: ('result, 'error) result;
-  more: 'task list;
 }
 
 type Message.t +=
@@ -23,6 +22,7 @@ type ('task, 'result, 'error) state = {
   task_queue: (int * 'task) Queue.t;
   idle_workers: (int * 'task) DynamicWorkerPool.worker Queue.t;
   result_ref: ('task, 'result, 'error) task_result Ref.t;
+  on_result: task:'task -> outcome:('result, 'error) result -> 'task list;
   mutable next_id: int;
   mutable tasks_in_flight: int;
   mutable results: (int * ('task * ('result, 'error) result)) list;
@@ -96,15 +96,16 @@ let rec loop:
     | `TaskResult result ->
         state.tasks_in_flight <- state.tasks_in_flight - 1;
         state.results <- (result.id, (result.task, result.outcome)) :: state.results;
-        enqueue_tasks state result.more;
+        enqueue_tasks state (state.on_result ~task:result.task ~outcome:result.outcome);
         loop state
 
 let run:
   concurrency:int ->
   tasks:'task list ->
-  fn:('task -> ('result * 'task list, 'error) result) ->
+  fn:('task -> ('result, 'error) result) ->
+  on_result:(task:'task -> outcome:('result, 'error) result -> 'task list) ->
   ('task, 'result, 'error) run_result
-  = fun ~concurrency ~tasks ~fn ->
+  = fun ~concurrency ~tasks ~fn ~on_result ->
   if tasks = [] then
     []
   else
@@ -112,11 +113,7 @@ let run:
     let result_ref = Ref.make () in
     let owner = self () in
     let worker_fn ~owner ~task:(id, task) =
-      let result =
-        match fn task with
-        | Ok (result, more) -> { id; task; outcome = Ok result; more }
-        | Error error -> { id; task; outcome = Error error; more = [] }
-      in
+      let result = { id; task; outcome = fn task } in
       send owner (SchedulerTaskResult { result; result_ref })
     in
     let pool = DynamicWorkerPool.start ~concurrency ~owner ~worker_fn () in
@@ -125,6 +122,7 @@ let run:
       task_queue = Queue.create ();
       idle_workers = Queue.create ();
       result_ref;
+      on_result;
       next_id = 0;
       tasks_in_flight = 0;
       results = [];

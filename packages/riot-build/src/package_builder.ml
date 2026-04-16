@@ -88,6 +88,34 @@ type build_result = {
   duration: Duration.t;
 }
 
+type graph_update =
+  | Cached_package of {
+      hash: Std.Crypto.hash;
+      artifact: Riot_store.Artifact.t;
+      depset: Dependency.t list;
+      exports: Riot_store.Store.export_entry list;
+    }
+  | Built_package of {
+      hash: Std.Crypto.hash;
+      artifact: Riot_store.Artifact.t;
+      depset: Dependency.t list;
+      module_graph: Module_node.t Graph.SimpleGraph.t;
+      action_graph: Action_graph.t;
+      status: Package_graph.build_status;
+    }
+  | Failed_package of {
+      hash: Std.Crypto.hash option;
+      error: string;
+    }
+  | Skipped_package of {
+      reason: string;
+    }
+
+type detailed_result = {
+  result: build_result;
+  graph_update: graph_update option;
+}
+
 let build_result_to_json = fun result ->
   Std.Data.Json.Object [
     ("package_key", Std.Data.Json.String (Package.key_to_string result.package_key));
@@ -223,7 +251,7 @@ let collect_package_artifact_outputs = fun ~sandbox_dir ~outputs ->
             )
       | Error _ -> None)
 
-let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(package:Package.t) ~build_ctx ->
+let build_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(package:Package.t) ~build_ctx ->
   let start = Instant.now () in
   let session_id = build_ctx.Build_ctx.session_id in
   let profile_name = build_ctx.Build_ctx.profile.name in
@@ -264,11 +292,14 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
           error = PlanningFailed err
         });
       {
-        package_key;
-        package;
-        status = Failed (PlanningFailed err);
-        ocamlc_warnings = [];
-        duration;
+        result = {
+          package_key;
+          package;
+          status = Failed (PlanningFailed err);
+          ocamlc_warnings = [];
+          duration;
+        };
+        graph_update = None;
       }
   | Ok (MissingDependencies { missing; _ }) ->
       let missing_names =
@@ -286,11 +317,14 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
           error = error_variant
         });
       {
-        package_key;
-        package;
-        status = Failed error_variant;
-        ocamlc_warnings = [];
-        duration;
+        result = {
+          package_key;
+          package;
+          status = Failed error_variant;
+          ocamlc_warnings = [];
+          duration;
+        };
+        graph_update = None;
       }
   | Ok (FailedDependencies { failed; _ }) ->
       let failed_names =
@@ -317,11 +351,14 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
           reason
         });
       {
-        package_key;
-        package;
-        status = Skipped { reason };
-        ocamlc_warnings = [];
-        duration;
+        result = {
+          package_key;
+          package;
+          status = Skipped { reason };
+          ocamlc_warnings = [];
+          duration;
+        };
+        graph_update = Some (Skipped_package { reason });
       }
   | Ok (Riot_planner.Package_planner.Cached {
     package_key=planned_key;
@@ -371,11 +408,19 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
                   }
                 );
             {
-              package_key = planned_key;
-              package;
-              status = Cached artifact;
-              ocamlc_warnings = artifact.ocamlc_warnings;
-              duration;
+              result = {
+                package_key = planned_key;
+                package;
+                status = Cached artifact;
+                ocamlc_warnings = artifact.ocamlc_warnings;
+                duration;
+              };
+              graph_update = Some (Cached_package {
+                hash = package_hash;
+                artifact;
+                depset;
+                exports;
+              });
             }
         | Error message ->
             let error = ExecutionFailed { message } in
@@ -397,11 +442,17 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
                 error
               });
             {
-              package_key = planned_key;
-              package;
-              status = Failed error;
-              ocamlc_warnings = [];
-              duration;
+              result = {
+                package_key = planned_key;
+                package;
+                status = Failed error;
+                ocamlc_warnings = [];
+                duration;
+              };
+              graph_update = Some (Failed_package {
+                hash = Some package_hash;
+                error = message;
+              });
             }
       )
   | Ok (Planned {
@@ -504,11 +555,17 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
               error
             });
           {
-            package_key = planned_key;
-            package;
-            status = Failed error;
-            ocamlc_warnings = [];
-            duration;
+            result = {
+              package_key = planned_key;
+              package;
+              status = Failed error;
+              ocamlc_warnings = [];
+              duration;
+            };
+            graph_update = Some (Failed_package {
+              hash = Some package_hash;
+              error = error_msg;
+            });
           }
       | Ok (sandbox_dir, package_outputs, export_entries, ocamlc_warnings) ->
           Riot_store.Store.materialize_package_exports store ~exports:export_entries ~target_dir
@@ -561,11 +618,21 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
                 }
               );
           {
-            package_key = planned_key;
-            package;
-            status = Built artifact;
-            ocamlc_warnings;
-            duration;
+            result = {
+              package_key = planned_key;
+              package;
+              status = Built artifact;
+              ocamlc_warnings;
+              duration;
+            };
+            graph_update = Some (Built_package {
+              hash = package_hash;
+              artifact;
+              depset;
+              module_graph;
+              action_graph;
+              status = Riot_planner.Package_graph.Fresh;
+            });
           }
       | Error err ->
           let duration = Instant.duration_since ~earlier:start (Instant.now ()) in
@@ -589,10 +656,27 @@ let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~(packa
               error = err
             });
           {
-            package_key = planned_key;
-            package;
-            status = Failed err;
-            ocamlc_warnings = [];
-            duration;
+            result = {
+              package_key = planned_key;
+              package;
+              status = Failed err;
+              ocamlc_warnings = [];
+              duration;
+            };
+            graph_update = Some (Failed_package {
+              hash = Some package_hash;
+              error = error_str;
+            });
           }
     )
+
+let build = fun ~workspace ~toolchain ~store ~package_graph ~package_key ~package ~build_ctx ->
+  build_detailed
+    ~workspace
+    ~toolchain
+    ~store
+    ~package_graph
+    ~package_key
+    ~package
+    ~build_ctx
+  |> fun detailed -> detailed.result
