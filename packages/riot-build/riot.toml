@@ -62,6 +62,10 @@ name = "action_scheduler_tests"
 path = "tests/action_scheduler_tests.ml"
 
 [[bin]]
+name = "build_work_prepare_tests"
+path = "tests/build_work_prepare_tests.ml"
+
+[[bin]]
 name = "caching_tests"
 path = "tests/caching_tests.ml"
 
@@ -84,6 +88,10 @@ path = "tests/kernel_runtime_tests.ml"
 [[bin]]
 name = "package_builder_tests"
 path = "tests/package_builder_tests.ml"
+
+[[bin]]
+name = "package_scheduler_tests"
+path = "tests/package_scheduler_tests.ml"
 
 [[bin]]
 name = "sandbox_tests"

@@ -5,6 +5,7 @@ module Build_context = Riot_build.Internal.Build_context
 module Build_work = Riot_build.Internal.Build_work
 module Lane_result = Riot_build.Internal.Lane_result
 module Package_builder = Riot_build.Internal.Package_builder
+module Package_scheduler = Riot_build.Internal.Package_scheduler
 module Resolved_build = Riot_build.Internal.Resolved_build
 module Package_graph = Riot_planner.Package_graph
 
@@ -74,33 +75,35 @@ let make_request = fun ~workspace ~packages ->
     ~profile:Riot_model.Profile.debug
     ()
 
-let prepare_work = fun request ->
+let with_prepared_lanes = fun request fn ->
   let context = Build_context.make request
     |> Result.expect ~msg:"expected build context creation to succeed" in
   let resolved = Resolved_build.resolve context request
     |> Result.expect ~msg:"expected build resolution to succeed" in
   let toolchain = Riot_toolchain.init ~config:context.toolchain_config
     |> Result.expect ~msg:"expected toolchain initialization to succeed" in
-  Build_work.prepare_lanes context resolved ~toolchain
-  |> Result.expect ~msg:"expected initial build work preparation to succeed"
+  let lanes =
+    Build_work.prepare_lanes context resolved ~toolchain
+    |> Result.expect ~msg:"expected lane preparation to succeed"
+  in
+  fn lanes
 
-let run_work = fun request ->
-  let context = Build_context.make request
-    |> Result.expect ~msg:"expected build context creation to succeed" in
-  let resolved = Resolved_build.resolve context request
-    |> Result.expect ~msg:"expected build resolution to succeed" in
-  let toolchain = Riot_toolchain.init ~config:context.toolchain_config
-    |> Result.expect ~msg:"expected toolchain initialization to succeed" in
-  let lanes = Build_work.prepare_lanes context resolved ~toolchain
-    |> Result.expect ~msg:"expected initial build work preparation to succeed" in
-  Build_work.run context lanes |> Build_work.summarize
+let run_package_scheduler = fun request ->
+  with_prepared_lanes request
+    (fun lanes ->
+      let events = ref [] in
+      let summary =
+        Package_scheduler.run
+          ~parallelism:1
+          ~on_event:(fun event -> events := event :: !events)
+          lanes
+      in
+      (summary, List.reverse !events))
 
 let package_key_string = fun key -> Riot_model.Package.key_to_string key
 
-let lane_results = fun summary -> summary.Build_work.lane_results
-
 let lane_result = fun summary ->
-  match lane_results summary with
+  match summary.Package_scheduler.lane_results with
   | [ lane_result ] -> lane_result
   | results ->
       panic ("expected exactly one lane result, got " ^ Int.to_string (List.length results))
@@ -115,49 +118,81 @@ let status_label = function
   | Package_builder.Skipped { reason } -> "skipped(" ^ reason ^ ")"
   | Package_builder.Failed err -> "failed(" ^ Package_builder.package_error_to_string err ^ ")"
 
-let test_initial_plan_packages_follow_topological_order = fun _ctx ->
-  match Fs.with_tempdir ~prefix:"riot_build_work_plan_packages"
+let planning_round_signatures = fun events ->
+  events
+  |> List.filter_map ~fn:(function
+    | Package_scheduler.PlanningRoundFinished {
+      package_count;
+      deferred_count;
+      execution_required_count;
+      finalized_count;
+      _;
+    } -> Some (package_count, deferred_count, execution_required_count + finalized_count)
+    | _ -> None)
+
+let planning_round_counts = fun events ->
+  events
+  |> List.filter_map ~fn:(function
+    | Package_scheduler.PlanningRoundFinished {
+      package_count;
+      deferred_count;
+      execution_required_count;
+      finalized_count;
+      cached_count;
+      skipped_count;
+      failed_count;
+      error_count;
+      _;
+    } ->
+        Some (
+          package_count,
+          deferred_count,
+          execution_required_count,
+          finalized_count,
+          cached_count,
+          skipped_count,
+          failed_count,
+          error_count
+        )
+    | _ -> None)
+
+let test_package_scheduler_follows_finalized_dependency_frontiers = fun _ctx ->
+  match Fs.with_tempdir ~prefix:"riot_package_scheduler_frontiers"
     (fun tmpdir ->
       let lib = make_package ~root:tmpdir ~name:"lib" ~source:"let value = 1\n" () in
-      let app = make_package
+      let mid = make_package
         ~root:tmpdir
-        ~name:"app"
+        ~name:"mid"
         ~dependencies:[ package_dependency "lib" ]
         ~source:"let value = Lib.value\n"
         ()
       in
-      let workspace = make_workspace ~root:tmpdir ~packages:[ lib; app ] in
-      let work_items = prepare_work (make_request ~workspace ~packages:[ package_name "app" ]) in
-      match work_items with
-      | [ work_item ] ->
-          let planned_keys =
-            Build_work.initial_plan_packages work_item
-            |> List.map ~fn:(fun planned -> Build_work.plan_package_key planned |> package_key_string)
-          in
-          let expected_keys = [
-            Package_graph.package_key ~package_name:"lib" Package_graph.Runtime |> package_key_string;
-            Package_graph.package_key ~package_name:"app" Package_graph.Runtime |> package_key_string;
-          ] in
-          let host_target = Riot_model.Target.current in
-          let all_targets_match =
-            Build_work.initial_plan_packages work_item
-            |> List.all ~fn:(fun planned ->
-              Riot_model.Target.equal host_target (Build_work.plan_package_target planned))
-          in
-          if not all_targets_match then
-            Error "expected initial planned package work to stay on the host target"
-          else (
-            Test.assert_equal ~expected:expected_keys ~actual:planned_keys;
-            Ok ()
-          )
-      | items ->
-          Error ("expected one initial host work item, got " ^ Int.to_string (List.length items)))
+      let app = make_package
+        ~root:tmpdir
+        ~name:"app"
+        ~dependencies:[ package_dependency "mid" ]
+        ~source:"let value = Mid.value\n"
+        ()
+      in
+      let workspace = make_workspace ~root:tmpdir ~packages:[ lib; mid; app ] in
+      let summary, events =
+        run_package_scheduler (make_request ~workspace ~packages:[ package_name "app" ])
+      in
+      if summary.errors != [] then
+        Error "expected dependency frontier scheduling to avoid internal errors"
+      else if summary.had_failure then
+        Error "expected dependency frontier scheduling to succeed"
+      else
+        let actual = planning_round_signatures events in
+        let expected = [ (3, 2, 1); (2, 1, 1); (1, 0, 1) ] in
+        Test.assert_equal ~expected ~actual;
+        Ok ())
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
-let test_run_builds_dependency_chain = fun _ctx ->
-  match Fs.with_tempdir ~prefix:"riot_build_work_run_success"
+let test_package_scheduler_succeeds_for_dependency_chain = fun _ctx ->
+  match Fs.with_tempdir ~prefix:"riot_package_scheduler_success"
     (fun tmpdir ->
       let lib = make_package ~root:tmpdir ~name:"lib" ~source:"let value = 1\n" () in
       let app = make_package
@@ -168,7 +203,9 @@ let test_run_builds_dependency_chain = fun _ctx ->
         ()
       in
       let workspace = make_workspace ~root:tmpdir ~packages:[ lib; app ] in
-      let summary = run_work (make_request ~workspace ~packages:[ package_name "app" ]) in
+      let summary, _events =
+        run_package_scheduler (make_request ~workspace ~packages:[ package_name "app" ])
+      in
       if summary.errors != [] then
         Error "expected package scheduler run to avoid internal errors"
       else
@@ -182,7 +219,7 @@ let test_run_builds_dependency_chain = fun _ctx ->
           Package_graph.package_key ~package_name:"lib" Package_graph.Runtime |> package_key_string;
           Package_graph.package_key ~package_name:"app" Package_graph.Runtime |> package_key_string;
         ] in
-        let built_all =
+        let completed_all =
           result_statuses lane_result
           |> List.all ~fn:(function
             | Package_builder.Built _
@@ -190,7 +227,7 @@ let test_run_builds_dependency_chain = fun _ctx ->
             | Package_builder.Skipped _
             | Package_builder.Failed _ -> false)
         in
-        if not built_all then
+        if not completed_all then
           Error "expected dependency chain packages to complete successfully"
         else if summary.had_failure then
           Error "expected successful package scheduler run to avoid failure summary"
@@ -202,10 +239,15 @@ let test_run_builds_dependency_chain = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
-let test_run_skips_dependents_after_failure = fun _ctx ->
-  match Fs.with_tempdir ~prefix:"riot_build_work_run_failure"
+let test_package_scheduler_skips_dependents_after_failed_dependency = fun _ctx ->
+  match Fs.with_tempdir ~prefix:"riot_package_scheduler_failure"
     (fun tmpdir ->
-      let lib = make_package ~root:tmpdir ~name:"lib" ~source:"let value =\n" () in
+      let lib = make_package
+        ~root:tmpdir
+        ~name:"lib"
+        ~source:"let value = Missing_module.value\n"
+        ()
+      in
       let app = make_package
         ~root:tmpdir
         ~name:"app"
@@ -214,22 +256,40 @@ let test_run_skips_dependents_after_failure = fun _ctx ->
         ()
       in
       let workspace = make_workspace ~root:tmpdir ~packages:[ lib; app ] in
-      let summary = run_work (make_request ~workspace ~packages:[ package_name "app" ]) in
+      let summary, events =
+        run_package_scheduler (make_request ~workspace ~packages:[ package_name "app" ])
+      in
       if summary.errors != [] then
         Error "expected failing package build to stay in package results, not internal scheduler errors"
       else
         let lane_result = lane_result summary in
         let statuses = result_statuses lane_result in
-        match statuses with
-        | [ Package_builder.Failed _; Package_builder.Skipped _ ] ->
-            if summary.had_failure && Lane_result.had_partial_failure lane_result then
-              Ok ()
-            else
-              Error "expected failing dependency lane to report partial failure"
-        | _ ->
-            Error
-              ("expected dependency failure to produce failed then skipped package results, got "
-              ^ String.concat ", " (List.map statuses ~fn:status_label)))
+        let planning_counts = planning_round_counts events in
+        let first_round_ok =
+          match planning_counts with
+          | (2, 1, _, _, _, _, _, _) :: _ -> true
+          | _ -> false
+        in
+        let last_round_ok =
+          match List.reverse planning_counts with
+          | (_, 0, _, 1, _, 1, _, 0) :: _ -> true
+          | _ -> false
+        in
+        if not first_round_ok then
+          Error "expected first planning round to defer the dependent package"
+        else if not last_round_ok then
+          Error "expected final planning round to skip the dependent package"
+        else
+          match statuses with
+          | [ Package_builder.Failed _; Package_builder.Skipped _ ] ->
+              if summary.had_failure && Lane_result.had_partial_failure lane_result then
+                Ok ()
+              else
+                Error "expected failing dependency lane to report partial failure"
+          | _ ->
+              Error
+                ("expected dependency failure to produce failed then skipped package results, got "
+                ^ String.concat ", " (List.map statuses ~fn:status_label)))
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -238,16 +298,16 @@ let tests =
   let open Test in
   [
     case
-      "build work: initial plan packages preserve dependency-first order"
-      test_initial_plan_packages_follow_topological_order;
+      "package scheduler: follows finalized dependency frontiers"
+      test_package_scheduler_follows_finalized_dependency_frontiers;
     case
-      "build work: run builds dependency chain"
-      test_run_builds_dependency_chain;
+      "package scheduler: succeeds for dependency chain"
+      test_package_scheduler_succeeds_for_dependency_chain;
     case
-      "build work: run skips dependents after failure"
-      test_run_skips_dependents_after_failure;
+      "package scheduler: skips dependents after failed dependency"
+      test_package_scheduler_skips_dependents_after_failed_dependency;
   ]
 
-let name = "Riot Build Work Tests"
+let name = "Riot Package Scheduler Tests"
 
 let () = Actors.run ~main:(Test.Cli.main ~name ~tests) ~args:Env.args ()
