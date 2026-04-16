@@ -523,7 +523,6 @@ let failed_execution_result =
   }
 
 let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_ctx ->
-  let _ = workspace in
   let session_id = build_ctx.Build_ctx.session_id in
   let profile_name = build_ctx.Build_ctx.profile.name in
   let target_triplet = Build_ctx.target_triplet build_ctx in
@@ -553,7 +552,6 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
         target = Workspace_planner.Package package_name;
       });
   let inputs = execution_inputs execution_plan in
-  let outputs = execution_outputs execution_plan in
   try
     let sandbox =
       Sandbox.create
@@ -569,7 +567,6 @@ let prepare_execution = fun ~workspace ~toolchain ~store ~execution_plan ~build_
       ~inputs
       ~depset:execution_plan.depset
       ~store;
-    let _ = outputs in
     Ok { execution_plan; sandbox; toolchain }
   with
   | exn ->
@@ -600,7 +597,6 @@ let finalize_execution =
   fun
     ~workspace
     ~store
-    ~package_graph
     ~(prepared_execution: prepared_execution)
     ~completed
     ~build_ctx ->
@@ -703,7 +699,7 @@ let finalize_execution =
             ~error
             ~graph_error:error_msg)
 
-let execute_detailed = fun ~workspace ~toolchain ~store ~package_graph ~execution_plan ~build_ctx ->
+let execute_detailed = fun ~workspace ~toolchain ~store ~execution_plan ~build_ctx ->
   match prepare_execution ~workspace ~toolchain ~store ~execution_plan ~build_ctx with
   | Error detailed_result ->
       detailed_result
@@ -729,7 +725,6 @@ let execute_detailed = fun ~workspace ~toolchain ~store ~package_graph ~executio
       finalize_execution
         ~workspace
         ~store
-        ~package_graph
         ~prepared_execution
         ~completed
         ~build_ctx
@@ -742,7 +737,6 @@ let build_detailed = fun ~workspace ~toolchain ~store ~package_graph ~package_ke
         ~workspace
         ~toolchain
         ~store
-        ~package_graph
         ~execution_plan
         ~build_ctx
 

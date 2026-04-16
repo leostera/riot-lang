@@ -27,9 +27,9 @@ type summary = Package_scheduler.summary = {
 type run_result = summary
 
 let runtime_phase_of_package_scheduler_event = function
-  | Package_scheduler.PlanningRoundStarted { lane_count; package_count } ->
+  | Package_scheduler.PlanningStarted { lane_count; package_count } ->
       Event.PackagePlanningStarted { lane_count; package_count }
-  | Package_scheduler.PlanningRoundFinished {
+  | Package_scheduler.PlanningFinished {
     lane_count;
     package_count;
     deferred_count;
@@ -50,9 +50,9 @@ let runtime_phase_of_package_scheduler_event = function
     failed_count;
     error_count;
   }
-  | Package_scheduler.ExecutionRoundStarted { lane_count; package_count } ->
+  | Package_scheduler.ExecutionStarted { lane_count; package_count } ->
       Event.PackageExecutionStarted { lane_count; package_count }
-  | Package_scheduler.ExecutionRoundFinished {
+  | Package_scheduler.ExecutionFinished {
     lane_count;
     package_count;
     finalized_count;

@@ -104,11 +104,11 @@ type summary = {
 }
 
 type event =
-  | PlanningRoundStarted of {
+  | PlanningStarted of {
       lane_count: int;
       package_count: int;
     }
-  | PlanningRoundFinished of {
+  | PlanningFinished of {
       lane_count: int;
       package_count: int;
       deferred_count: int;
@@ -119,11 +119,11 @@ type event =
       failed_count: int;
       error_count: int;
     }
-  | ExecutionRoundStarted of {
+  | ExecutionStarted of {
       lane_count: int;
       package_count: int;
     }
-  | ExecutionRoundFinished of {
+  | ExecutionFinished of {
       lane_count: int;
       package_count: int;
       finalized_count: int;
@@ -228,56 +228,6 @@ let remember_package_state = fun package_states lane package_key state ->
 
 let get_package_state = fun package_states lane package_key ->
   HashMap.get package_states ~key:(package_state_key lane package_key)
-
-let apply_graph_update = fun lane package_key package graph_update ->
-  match Riot_planner.Package_graph.get_node_by_key (Build_lane.package_graph lane) package_key with
-  | None -> ()
-  | Some node ->
-      let scope = Riot_planner.Package_graph.get_scope node.value in
-      match graph_update with
-      | None -> ()
-      | Some (Package_builder.Planned_package { hash; module_graph; action_graph }) ->
-          node.value <- Riot_planner.Package_graph.Planned {
-            package;
-            scope;
-            module_graph;
-            action_graph;
-            hash;
-          }
-      | Some (Package_builder.Cached_package { hash; artifact; depset; exports }) ->
-          node.value <- Riot_planner.Package_graph.Cached {
-            package;
-            scope;
-            hash;
-            artifact;
-            depset;
-            exports;
-          }
-      | Some (Package_builder.Built_package { hash; artifact; depset; module_graph; action_graph; status }) ->
-          node.value <- Riot_planner.Package_graph.Built {
-            package;
-            scope;
-            module_graph;
-            action_graph;
-            hash;
-            artifact;
-            status;
-            depset;
-          }
-      | Some (Package_builder.Failed_package { hash = Some hash; error }) ->
-          node.value <- Riot_planner.Package_graph.Failed {
-            package;
-            scope;
-            hash;
-            error;
-          }
-      | Some (Package_builder.Failed_package { hash = None; _ }) -> ()
-      | Some (Package_builder.Skipped_package { reason }) ->
-          node.value <- Riot_planner.Package_graph.Skipped {
-            package;
-            scope;
-            reason;
-          }
 
 let remember_action_result = fun package_states lane package_key action_id result ->
   match get_package_state package_states lane package_key with
@@ -531,7 +481,6 @@ let finalize_package_work =
           Package_builder.finalize_execution
             ~workspace:(Build_lane.workspace lane)
             ~store:(Build_lane.store lane)
-            ~package_graph:(Build_lane.package_graph lane)
             ~prepared_execution:execution_state.prepared_execution
             ~completed:execution_state.completed_actions
             ~build_ctx:(Build_lane.build_ctx lane)
@@ -564,7 +513,11 @@ let make_graph = fun state lanes ->
       ~apply_mutation:(fun _ mutation ->
         match mutation with
         | Apply_graph_update { lane; package_key; package; graph_update } ->
-            apply_graph_update lane package_key package graph_update
+            Package_builder.apply_graph_update
+              (Build_lane.package_graph lane)
+              package_key
+              package
+              graph_update
         | Set_package_state { lane; package_key; state = next_state } ->
             remember_package_state state.package_states lane package_key next_state
         | Remember_action_result { lane; package_key; action_id; result } ->
@@ -829,7 +782,7 @@ let run = fun ~parallelism ?(on_event = fun (_: event) -> ()) lanes ->
     summarize lanes state.package_states []
   else
     let graph, node_ids = make_graph state lanes in
-    on_event (PlanningRoundStarted {
+    on_event (PlanningStarted {
       lane_count;
       package_count;
     });
@@ -853,7 +806,7 @@ let run = fun ~parallelism ?(on_event = fun (_: event) -> ()) lanes ->
         |> fun run_result -> run_result.results
       in
       let planning_counts = summarize_planning_results results in
-      on_event (PlanningRoundFinished {
+      on_event (PlanningFinished {
         lane_count;
         package_count;
         deferred_count = deferred_package_count lanes;
@@ -866,11 +819,11 @@ let run = fun ~parallelism ?(on_event = fun (_: event) -> ()) lanes ->
       });
       if planning_counts.execution_required_count > 0 then (
         let execution_counts = summarize_execution_results results in
-        on_event (ExecutionRoundStarted {
+        on_event (ExecutionStarted {
           lane_count;
           package_count = planning_counts.execution_required_count;
         });
-        on_event (ExecutionRoundFinished {
+        on_event (ExecutionFinished {
           lane_count;
           package_count = planning_counts.execution_required_count;
           finalized_count = execution_counts.finalized_count;

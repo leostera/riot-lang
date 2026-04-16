@@ -154,10 +154,10 @@ let status_label = function
   | Package_builder.Skipped { reason } -> "skipped(" ^ reason ^ ")"
   | Package_builder.Failed err -> "failed(" ^ Package_builder.package_error_to_string err ^ ")"
 
-let planning_round_counts = fun events ->
+let planning_phase_counts = fun events ->
   events
   |> List.filter_map ~fn:(function
-    | Package_scheduler.PlanningRoundFinished {
+    | Package_scheduler.PlanningFinished {
       package_count;
       deferred_count;
       execution_required_count;
@@ -180,10 +180,10 @@ let planning_round_counts = fun events ->
         )
     | _ -> None)
 
-let execution_round_counts = fun events ->
+let execution_phase_counts = fun events ->
   events
   |> List.filter_map ~fn:(function
-    | Package_scheduler.ExecutionRoundFinished {
+    | Package_scheduler.ExecutionFinished {
       package_count;
       finalized_count;
       built_count;
@@ -226,8 +226,8 @@ let test_package_scheduler_follows_finalized_dependency_frontiers = fun _ctx ->
       else if summary.had_failure then
         Error "expected dependency frontier scheduling to succeed"
       else
-        let planning_counts = planning_round_counts events in
-        let execution_counts = execution_round_counts events in
+        let planning_counts = planning_phase_counts events in
+        let execution_counts = execution_phase_counts events in
         Test.assert_equal
           ~expected:[ (3, 2, 3, 0, 0, 0, 0, 0) ]
           ~actual:planning_counts;
@@ -312,8 +312,8 @@ let test_package_scheduler_skips_dependents_after_failed_dependency = fun _ctx -
       else
         let lane_result = lane_result summary in
         let statuses = result_statuses lane_result in
-        let planning_counts = planning_round_counts events in
-        let execution_counts = execution_round_counts events in
+        let planning_counts = planning_phase_counts events in
+        let execution_counts = execution_phase_counts events in
         if planning_counts != [ (2, 1, 1, 1, 0, 1, 0, 0) ] then
           Error "expected unified planning summary to report one skipped dependent and one executing dependency"
         else if execution_counts != [ (1, 1, 0, 1, 0) ] then
@@ -333,7 +333,7 @@ let test_package_scheduler_skips_dependents_after_failed_dependency = fun _ctx -
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
-let test_package_scheduler_round_events_have_consistent_counts = fun _ctx ->
+let test_package_scheduler_phase_events_have_consistent_counts = fun _ctx ->
   match Fs.with_tempdir ~prefix:"riot_package_scheduler_event_counts"
     (fun tmpdir ->
       let lib = make_package ~root:tmpdir ~name:"lib" ~source:"let value = 1\n" () in
@@ -351,8 +351,8 @@ let test_package_scheduler_round_events_have_consistent_counts = fun _ctx ->
       if summary.errors != [] then
         Error "expected event count validation run to avoid internal errors"
       else
-        let planning_counts = planning_round_counts events in
-        let execution_counts = execution_round_counts events in
+        let planning_counts = planning_phase_counts events in
+        let execution_counts = execution_phase_counts events in
         let planning_ok =
           planning_counts
           |> List.all ~fn:(fun (
@@ -385,9 +385,9 @@ let test_package_scheduler_round_events_have_consistent_counts = fun _ctx ->
             && failed_count <= finalized_count)
         in
         if not planning_ok then
-          Error "expected planning round counts to account for every scheduled package"
+          Error "expected planning phase counts to account for every scheduled package"
         else if not execution_ok then
-          Error "expected execution round counts to account for every scheduled package"
+          Error "expected execution phase counts to account for every scheduled package"
         else
           Ok ())
   with
@@ -448,10 +448,10 @@ let test_package_scheduler_keeps_multi_lane_results_isolated = fun _ctx ->
         let lane_count_events_ok =
           events
           |> List.filter_map ~fn:(function
-            | Package_scheduler.PlanningRoundStarted { lane_count; _ }
-            | Package_scheduler.PlanningRoundFinished { lane_count; _ }
-            | Package_scheduler.ExecutionRoundStarted { lane_count; _ }
-            | Package_scheduler.ExecutionRoundFinished { lane_count; _ } -> Some lane_count)
+            | Package_scheduler.PlanningStarted { lane_count; _ }
+            | Package_scheduler.PlanningFinished { lane_count; _ }
+            | Package_scheduler.ExecutionStarted { lane_count; _ }
+            | Package_scheduler.ExecutionFinished { lane_count; _ } -> Some lane_count)
           |> List.all ~fn:(fun lane_count -> lane_count = 2)
         in
         if actual_targets != expected_targets then
@@ -491,8 +491,8 @@ let test_package_scheduler_rerun_uses_cached_dependency_frontiers = fun _ctx ->
           Error "expected cached rerun to finish without failures"
       else
         let statuses = result_statuses (lane_result second_summary) in
-        let planning = planning_round_counts second_events in
-        let execution_rounds = execution_round_counts second_events in
+        let planning = planning_phase_counts second_events in
+        let execution_rounds = execution_phase_counts second_events in
         let all_cached =
           List.all statuses ~fn:(function
             | Package_builder.Cached _ -> true
@@ -565,7 +565,7 @@ let test_package_scheduler_cached_rerun_preserves_multi_lane_isolation = fun _ct
           Riot_model.Target.Set.to_list requested_targets
           |> List.sort ~compare:Riot_model.Target.compare
         in
-        let execution_rounds = execution_round_counts second_events in
+        let execution_rounds = execution_phase_counts second_events in
         let all_cached =
           second_summary.Package_scheduler.lane_results
           |> List.all ~fn:(fun lane_result ->
@@ -632,8 +632,8 @@ let test_package_scheduler_reports_stalled_pending_work = fun _ctx ->
                   lanes
               in
               let events = List.reverse !events in
-              let planning_rounds = planning_round_counts events in
-              let execution_rounds = execution_round_counts events in
+              let planning_counts = planning_phase_counts events in
+              let execution_rounds = execution_phase_counts events in
               let stalled_errors =
                 summary.Package_scheduler.errors
                 |> List.all ~fn:(fun (error: Package_scheduler.error) ->
@@ -660,7 +660,7 @@ let test_package_scheduler_reports_stalled_pending_work = fun _ctx ->
               else (
                 Test.assert_equal
                   ~expected:[ (2, 2, 0, 0, 0, 0, 0, 0) ]
-                  ~actual:planning_rounds;
+                  ~actual:planning_counts;
                 Ok ()
               )
           | _ ->
@@ -683,8 +683,8 @@ let tests =
       "package scheduler: skips dependents after failed dependency"
       test_package_scheduler_skips_dependents_after_failed_dependency;
     case
-      "package scheduler: round events have consistent counts"
-      test_package_scheduler_round_events_have_consistent_counts;
+      "package scheduler: phase events have consistent counts"
+      test_package_scheduler_phase_events_have_consistent_counts;
     case
       "package scheduler: keeps multi-lane results isolated"
       test_package_scheduler_keeps_multi_lane_results_isolated;

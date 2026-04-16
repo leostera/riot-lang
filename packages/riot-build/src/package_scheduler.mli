@@ -19,11 +19,11 @@ type summary = {
 }
 
 type event =
-  | PlanningRoundStarted of {
+  | PlanningStarted of {
       lane_count: int;
       package_count: int;
     }
-  | PlanningRoundFinished of {
+  | PlanningFinished of {
       lane_count: int;
       package_count: int;
       deferred_count: int;
@@ -34,11 +34,11 @@ type event =
       failed_count: int;
       error_count: int;
     }
-  | ExecutionRoundStarted of {
+  | ExecutionStarted of {
       lane_count: int;
       package_count: int;
     }
-  | ExecutionRoundFinished of {
+  | ExecutionFinished of {
       lane_count: int;
       package_count: int;
       finalized_count: int;

@@ -86,6 +86,13 @@ type prepared_execution = {
   toolchain: Riot_toolchain.t;
 }
 
+val apply_graph_update:
+  Package_graph.t ->
+  Package.key ->
+  Package.t ->
+  graph_update option ->
+  unit
+
 val planned_graph_update: execution_plan -> graph_update
 
 (** Collect all source files (.ml, .mli, .c, .h) from a package's src directory.
@@ -125,15 +132,6 @@ val plan_detailed:
   build_ctx:Build_ctx.t ->
   plan_outcome
 
-val execute_detailed:
-  workspace:Workspace.t ->
-  toolchain:Riot_toolchain.t ->
-  store:Riot_store.Store.t ->
-  package_graph:Package_graph.t ->
-  execution_plan:execution_plan ->
-  build_ctx:Build_ctx.t ->
-  detailed_result
-
 val prepare_execution:
   workspace:Workspace.t ->
   toolchain:Riot_toolchain.t ->
@@ -153,18 +151,7 @@ val execute_action:
 val finalize_execution:
   workspace:Workspace.t ->
   store:Riot_store.Store.t ->
-  package_graph:Package_graph.t ->
   prepared_execution:prepared_execution ->
   completed:(Graph.SimpleGraph.Node_id.t, Action_executor.execution_result) HashMap.t ->
-  build_ctx:Build_ctx.t ->
-  detailed_result
-
-val build_detailed:
-  workspace:Workspace.t ->
-  toolchain:Riot_toolchain.t ->
-  store:Riot_store.Store.t ->
-  package_graph:Package_graph.t ->
-  package_key:Package.key ->
-  package:Package.t ->
   build_ctx:Build_ctx.t ->
   detailed_result
