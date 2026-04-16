@@ -12,6 +12,9 @@ module Package_graph = Riot_planner.Package_graph
 let package_name = fun name ->
   Riot_model.Package_name.from_string name |> Result.expect ~msg:("invalid package name: " ^ name)
 
+let target = fun value ->
+  Riot_model.Target.from_string value |> Result.expect ~msg:("invalid target triple: " ^ value)
+
 let package_dependency = fun name ->
   Riot_model.Package.{
     name = package_name name;
@@ -34,6 +37,21 @@ let write_workspace_manifest = fun ~root ~members ->
   let content = "[workspace]\nmembers = [\n" ^ members ^ "\n]\n" in
   Fs.write content Path.(root / Path.v "riot.toml")
   |> Result.expect ~msg:"write workspace riot.toml failed"
+
+let write_toolchain_config = fun ~root ~targets ->
+  let target_lines =
+    targets
+    |> List.map ~fn:(fun target -> "\"" ^ target ^ "\"")
+    |> String.concat ", "
+  in
+  Fs.write
+    ("[toolchain]\nversion = \""
+    ^ Riot_model.Toolchain_config.default_ocaml_version
+    ^ "\"\ntargets = ["
+    ^ target_lines
+    ^ "]\n")
+    Path.(root / Path.v "ocaml-toolchain.toml")
+  |> Result.expect ~msg:"write ocaml-toolchain.toml failed"
 
 let make_package = fun ~root ~name ~source ?(dependencies = []) () ->
   let pkg_dir = Path.(root / Path.v name) in
@@ -60,19 +78,29 @@ let make_package = fun ~root ~name ~source ?(dependencies = []) () ->
     }
     ()
 
-let make_workspace = fun ~root ~packages ->
+let make_workspace = fun ?toolchain_targets ~root ~packages () ->
   write_workspace_manifest
     ~root
     ~members:(List.map packages ~fn:(fun (pkg: Riot_model.Package.t) -> pkg.relative_path));
+  (match toolchain_targets with
+  | Some targets -> write_toolchain_config ~root ~targets
+  | None -> ());
   Riot_model.Workspace.make_realized ~root ~packages ()
 
-let make_request = fun ~workspace ~packages ->
+let make_request =
+  fun
+    ~workspace
+    ~packages
+    ?(targets = Riot_model.Target.Host)
+    ?(requested_parallelism = None)
+    () ->
   Riot_build.Request.make
     ~workspace
     ~packages
-    ~targets:Riot_model.Target.Host
+    ~targets
     ~scope:Riot_build.Request.Runtime
     ~profile:Riot_model.Profile.debug
+    ~requested_parallelism
     ()
 
 let with_prepared_lanes = fun request fn ->
@@ -156,6 +184,25 @@ let planning_round_counts = fun events ->
         )
     | _ -> None)
 
+let execution_round_counts = fun events ->
+  events
+  |> List.filter_map ~fn:(function
+    | Package_scheduler.ExecutionRoundFinished {
+      package_count;
+      finalized_count;
+      built_count;
+      failed_count;
+      error_count;
+      _;
+    } ->
+        Some (package_count, finalized_count, built_count, failed_count, error_count)
+    | _ -> None)
+
+let lane_targets = fun summary ->
+  summary.Package_scheduler.lane_results
+  |> List.map ~fn:Lane_result.target
+  |> List.sort ~compare:Riot_model.Target.compare
+
 let test_package_scheduler_follows_finalized_dependency_frontiers = fun _ctx ->
   match Fs.with_tempdir ~prefix:"riot_package_scheduler_frontiers"
     (fun tmpdir ->
@@ -174,9 +221,9 @@ let test_package_scheduler_follows_finalized_dependency_frontiers = fun _ctx ->
         ~source:"let value = Mid.value\n"
         ()
       in
-      let workspace = make_workspace ~root:tmpdir ~packages:[ lib; mid; app ] in
+      let workspace = make_workspace ~root:tmpdir ~packages:[ lib; mid; app ] () in
       let summary, events =
-        run_package_scheduler (make_request ~workspace ~packages:[ package_name "app" ])
+        run_package_scheduler (make_request ~workspace ~packages:[ package_name "app" ] ())
       in
       if summary.errors != [] then
         Error "expected dependency frontier scheduling to avoid internal errors"
@@ -202,9 +249,9 @@ let test_package_scheduler_succeeds_for_dependency_chain = fun _ctx ->
         ~source:"let value = Lib.value\n"
         ()
       in
-      let workspace = make_workspace ~root:tmpdir ~packages:[ lib; app ] in
+      let workspace = make_workspace ~root:tmpdir ~packages:[ lib; app ] () in
       let summary, _events =
-        run_package_scheduler (make_request ~workspace ~packages:[ package_name "app" ])
+        run_package_scheduler (make_request ~workspace ~packages:[ package_name "app" ] ())
       in
       if summary.errors != [] then
         Error "expected package scheduler run to avoid internal errors"
@@ -255,9 +302,9 @@ let test_package_scheduler_skips_dependents_after_failed_dependency = fun _ctx -
         ~source:"let value = Lib.value\n"
         ()
       in
-      let workspace = make_workspace ~root:tmpdir ~packages:[ lib; app ] in
+      let workspace = make_workspace ~root:tmpdir ~packages:[ lib; app ] () in
       let summary, events =
-        run_package_scheduler (make_request ~workspace ~packages:[ package_name "app" ])
+        run_package_scheduler (make_request ~workspace ~packages:[ package_name "app" ] ())
       in
       if summary.errors != [] then
         Error "expected failing package build to stay in package results, not internal scheduler errors"
@@ -288,8 +335,143 @@ let test_package_scheduler_skips_dependents_after_failed_dependency = fun _ctx -
                 Error "expected failing dependency lane to report partial failure"
           | _ ->
               Error
-                ("expected dependency failure to produce failed then skipped package results, got "
-                ^ String.concat ", " (List.map statuses ~fn:status_label)))
+              ("expected dependency failure to produce failed then skipped package results, got "
+              ^ String.concat ", " (List.map statuses ~fn:status_label)))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
+let test_package_scheduler_round_events_have_consistent_counts = fun _ctx ->
+  match Fs.with_tempdir ~prefix:"riot_package_scheduler_event_counts"
+    (fun tmpdir ->
+      let lib = make_package ~root:tmpdir ~name:"lib" ~source:"let value = 1\n" () in
+      let app = make_package
+        ~root:tmpdir
+        ~name:"app"
+        ~dependencies:[ package_dependency "lib" ]
+        ~source:"let value = Lib.value\n"
+        ()
+      in
+      let workspace = make_workspace ~root:tmpdir ~packages:[ lib; app ] () in
+      let summary, events =
+        run_package_scheduler (make_request ~workspace ~packages:[ package_name "app" ] ())
+      in
+      if summary.errors != [] then
+        Error "expected event count validation run to avoid internal errors"
+      else
+        let planning_counts = planning_round_counts events in
+        let execution_counts = execution_round_counts events in
+        let planning_ok =
+          planning_counts
+          |> List.all ~fn:(fun (
+            package_count,
+            deferred_count,
+            execution_required_count,
+            finalized_count,
+            cached_count,
+            skipped_count,
+            failed_count,
+            error_count
+          ) ->
+            package_count
+            = deferred_count + execution_required_count + finalized_count + error_count
+            && cached_count <= finalized_count
+            && skipped_count <= finalized_count
+            && failed_count <= finalized_count)
+        in
+        let execution_ok =
+          execution_counts
+          |> List.all ~fn:(fun (
+            package_count,
+            finalized_count,
+            built_count,
+            failed_count,
+            error_count
+          ) ->
+            package_count = finalized_count + error_count
+            && built_count <= finalized_count
+            && failed_count <= finalized_count)
+        in
+        if not planning_ok then
+          Error "expected planning round counts to account for every scheduled package"
+        else if not execution_ok then
+          Error "expected execution round counts to account for every scheduled package"
+        else
+          Ok ())
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
+let test_package_scheduler_keeps_multi_lane_results_isolated = fun _ctx ->
+  match Fs.with_tempdir ~prefix:"riot_package_scheduler_multi_lane"
+    (fun tmpdir ->
+      let host_target = Riot_model.Target.current in
+      let secondary_target =
+        if String.equal (Riot_model.Target.to_string host_target) "x86_64-unknown-linux-gnu" then
+          target "aarch64-unknown-linux-gnu"
+        else
+          target "x86_64-unknown-linux-gnu"
+      in
+      let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
+      let workspace =
+        make_workspace
+          ~root:tmpdir
+          ~toolchain_targets:(
+            Riot_model.Target.Set.to_list requested_targets
+            |> List.map ~fn:Riot_model.Target.to_string
+          )
+          ~packages:[ make_package ~root:tmpdir ~name:"demo" ~source:"let value = 42\n" () ]
+          ()
+      in
+      let summary, events =
+        run_package_scheduler
+          (make_request
+            ~workspace
+            ~packages:[ package_name "demo" ]
+            ~targets:(Riot_model.Target.Exact requested_targets)
+            ~requested_parallelism:(Some 1)
+            ())
+      in
+      if summary.errors != [] then
+        Error "expected multi-lane package scheduler run to avoid internal errors"
+      else if List.length summary.Package_scheduler.lane_results != 2 then
+        Error "expected one lane result per requested target"
+      else if List.length summary.Package_scheduler.completions != 2 then
+        Error "expected one completion per requested target"
+      else
+        let actual_targets = lane_targets summary in
+        let expected_targets =
+          Riot_model.Target.Set.to_list requested_targets
+          |> List.sort ~compare:Riot_model.Target.compare
+        in
+        let all_result_counts_are_one =
+          summary.Package_scheduler.completions
+          |> List.all ~fn:(fun (completion: Package_scheduler.completion) ->
+            completion.result_count = 1)
+        in
+        let all_lane_results_are_singletons =
+          summary.Package_scheduler.lane_results
+          |> List.all ~fn:(fun lane_result -> List.length (Lane_result.results lane_result) = 1)
+        in
+        let lane_count_events_ok =
+          events
+          |> List.filter_map ~fn:(function
+            | Package_scheduler.PlanningRoundStarted { lane_count; _ }
+            | Package_scheduler.PlanningRoundFinished { lane_count; _ }
+            | Package_scheduler.ExecutionRoundStarted { lane_count; _ }
+            | Package_scheduler.ExecutionRoundFinished { lane_count; _ } -> Some lane_count)
+          |> List.all ~fn:(fun lane_count -> lane_count = 2)
+        in
+        if actual_targets != expected_targets then
+          Error "expected multi-lane scheduler results to preserve requested targets"
+        else if not all_result_counts_are_one then
+          Error "expected each multi-lane completion to report one package result"
+        else if not all_lane_results_are_singletons then
+          Error "expected each multi-lane lane result to stay isolated to one package"
+        else if not lane_count_events_ok then
+          Error "expected multi-lane events to report both lanes"
+        else
+          Ok ())
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -306,6 +488,12 @@ let tests =
     case
       "package scheduler: skips dependents after failed dependency"
       test_package_scheduler_skips_dependents_after_failed_dependency;
+    case
+      "package scheduler: round events have consistent counts"
+      test_package_scheduler_round_events_have_consistent_counts;
+    case
+      "package scheduler: keeps multi-lane results isolated"
+      test_package_scheduler_keeps_multi_lane_results_isolated;
   ]
 
 let name = "Riot Package Scheduler Tests"
