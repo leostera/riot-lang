@@ -27,24 +27,84 @@ type completed_action = {
   result: execution_result;
 }
 
+type mutation =
+  | Remember_result of completed_action
+
 type t = {
   completed: completed_action list;
 }
 
+let remember_result = fun completed_results (completed_action: completed_action) ->
+  let _ = HashMap.insert
+    completed_results
+    ~key:completed_action.node.id
+    ~value:completed_action.result
+  in
+  ()
+
+let make_graph = fun completed_results action_graph ->
+  let graph =
+    Graph_scheduler.Graph.create
+      ~apply_mutation:(fun _ mutation ->
+        match mutation with
+        | Remember_result completed_action ->
+            remember_result completed_results completed_action)
+      ()
+  in
+  let node_ids: (Graph.SimpleGraph.Node_id.t, Graph_scheduler.Node_id.t) HashMap.t = HashMap.create () in
+  Action_graph.nodes action_graph
+  |> List.for_each ~fn:(fun (node: Action_node.t) ->
+    let node_id = Graph_scheduler.Graph.add_node graph ~payload:node in
+    let _ = HashMap.insert node_ids ~key:node.id ~value:node_id in
+    ());
+  Action_graph.nodes action_graph
+  |> List.for_each ~fn:(fun (node: Action_node.t) ->
+    let node_id =
+      HashMap.get node_ids ~key:node.id
+      |> Option.expect ~msg:("missing scheduler node for action " ^ Graph.SimpleGraph.Node_id.to_string node.id)
+    in
+    List.for_each node.deps ~fn:(fun dependency_id ->
+      let dependency_node_id =
+        HashMap.get node_ids ~key:dependency_id
+        |> Option.expect
+          ~msg:("missing scheduler dependency node for action "
+          ^ Graph.SimpleGraph.Node_id.to_string dependency_id)
+      in
+      Graph_scheduler.Graph.add_dependency
+        graph
+        ~node:node_id
+        ~depends_on:dependency_node_id));
+  graph
+
 let run = fun ~action_graph ~sandbox ~store ~session_id toolchain ~concurrency ->
-  let low_level_result =
-    Action_executor.execute
-      ~action_graph
-      ~sandbox
-      ~store
-      ~session_id
-      toolchain
-      ~concurrency
+  let completed_results: (Graph.SimpleGraph.Node_id.t, execution_result) HashMap.t = HashMap.create () in
+  let sandbox_dir = Sandbox.get_dir sandbox in
+  let graph = make_graph completed_results action_graph in
+  let _ =
+    Graph_scheduler.run
+      ~config:(Graph_scheduler.Run_config.make
+        ~parallelism:concurrency
+        ~mode:Graph_scheduler.Run_config.Continue_on_failure
+        ())
+      ~on_event:(fun () -> ())
+      ~graph
+      ~execute:(fun ~graph ~node:_ ~payload ->
+        let result =
+          Action_executor.execute_node
+            ~completed:completed_results
+            ~store
+            ~session_id
+            toolchain
+            sandbox_dir
+            payload
+        in
+        Graph_scheduler.Handle.record graph (Remember_result { node = payload; result });
+        Ok result)
   in
   let completed =
     Action_graph.nodes action_graph
     |> List.filter_map ~fn:(fun (node: Action_node.t) ->
-      match HashMap.get low_level_result.completed ~key:node.id with
+      match HashMap.get completed_results ~key:node.id with
       | Some result -> Some { node; result }
       | None -> None)
   in
