@@ -13,11 +13,11 @@ type package_error = Telemetry_events.package_error =
   | ActionDependenciesFailed of { failed: Graph.SimpleGraph.Node_id.t list }
 
 let convert_action_error = function
-  | Action_executor.ExecutionFailed { message } -> Telemetry_events.ActionExecutionFailed { message }
-  | Action_executor.OutputsNotCreated { missing } -> Telemetry_events.ActionOutputsNotCreated {
+  | Action_scheduler.ExecutionFailed { message } -> Telemetry_events.ActionExecutionFailed { message }
+  | Action_scheduler.OutputsNotCreated { missing } -> Telemetry_events.ActionOutputsNotCreated {
     missing
   }
-  | Action_executor.DependenciesFailed { failed } -> Telemetry_events.ActionDependenciesFailed {
+  | Action_scheduler.DependenciesFailed { failed } -> Telemetry_events.ActionDependenciesFailed {
     failed
   }
 
@@ -252,18 +252,6 @@ let summarize_package_names = fun names ->
           Int.to_string hidden_count ^ " more pkgs"
       in
       shown_str ^ ", and " ^ hidden_label
-
-let collect_ocamlc_warnings = fun completed_actions ->
-  let seen = HashSet.create () in
-  HashMap.to_list completed_actions |> List.fold_left ~acc:[]
-    ~fn:(fun acc ((_id, result): Graph.SimpleGraph.Node_id.t * Action_executor.execution_result) ->
-      List.fold_left result.Action_executor.ocamlc_warnings ~acc
-        ~fn:(fun acc warning ->
-          if HashSet.contains seen ~value:warning then
-            acc
-          else
-            let _ = HashSet.insert seen ~value:warning in
-            acc @ [ warning ]))
 
 let compute_export_entries: Action_graph.t -> Riot_store.Store.export_entry list = fun action_graph ->
   let entries =
@@ -531,7 +519,7 @@ let execute_detailed = fun ~workspace ~toolchain ~store ~package_graph ~executio
   |> List.flat_map ~fn:(fun (node: Action_node.t) -> node.value.outs)
   in
   let do_build sandbox =
-    let exec_result = Action_executor.execute
+    let action_result = Action_scheduler.run
       ~action_graph:execution_plan.action_graph
       ~sandbox
       ~store
@@ -539,21 +527,13 @@ let execute_detailed = fun ~workspace ~toolchain ~store ~package_graph ~executio
       toolchain
       ~concurrency:build_ctx.Build_ctx.parallelism
     in
-    let failed_actions =
-      HashMap.to_list exec_result.completed
-      |> List.filter_map
-        ~fn:(fun ((_id, result)) ->
-          match result.Action_executor.status with
-          | Action_executor.Failed err -> Some err
-          | _ -> None)
-    in
-    match failed_actions with
-    | first_error :: _ -> Error (convert_action_error first_error)
-    | [] ->
+    match Action_scheduler.first_failure action_result with
+    | Some first_error -> Error (convert_action_error first_error)
+    | None ->
         let sandbox_dir = Sandbox.get_dir sandbox in
         let export_entries = compute_export_entries execution_plan.action_graph in
         let package_outputs = collect_package_artifact_outputs ~sandbox_dir ~outputs in
-        let ocamlc_warnings = collect_ocamlc_warnings exec_result.completed in
+        let ocamlc_warnings = Action_scheduler.ocamlc_warnings action_result in
         Ok (sandbox_dir, package_outputs, export_entries, ocamlc_warnings)
   in
   match Sandbox.with_sandbox

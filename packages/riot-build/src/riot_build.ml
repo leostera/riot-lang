@@ -6,6 +6,7 @@ module Build_result = Build_result
 module BuildLock = Build_lock
 
 module Internal = struct
+  module Action_scheduler = Action_scheduler
   module Action_executor = Action_executor
   module Action_queue = Action_queue
   module Build_context = Build_context

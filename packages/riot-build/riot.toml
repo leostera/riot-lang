@@ -62,6 +62,10 @@ name = "action_executor_tests"
 path = "tests/action_executor_tests.ml"
 
 [[bin]]
+name = "action_scheduler_tests"
+path = "tests/action_scheduler_tests.ml"
+
+[[bin]]
 name = "action_queue_workspace_graph_tests"
 path = "tests/action_queue_workspace_graph_tests.ml"
 
