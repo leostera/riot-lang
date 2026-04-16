@@ -1,6 +1,7 @@
 open Std
 
 module Test = Std.Test
+module Build_lane = Riot_build.Internal.Build_lane
 module Build_context = Riot_build.Internal.Build_context
 module Build_work = Riot_build.Internal.Build_work
 module Lane_result = Riot_build.Internal.Lane_result
@@ -608,6 +609,81 @@ let test_package_scheduler_cached_rerun_preserves_multi_lane_isolation = fun _ct
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
+let test_package_scheduler_reports_stalled_pending_work = fun _ctx ->
+  match Fs.with_tempdir ~prefix:"riot_package_scheduler_stall"
+    (fun tmpdir ->
+      let lib = make_package ~root:tmpdir ~name:"lib" ~source:"let value = 1\n" () in
+      let app = make_package
+        ~root:tmpdir
+        ~name:"app"
+        ~dependencies:[ package_dependency "lib" ]
+        ~source:"let value = Lib.value\n"
+        ()
+      in
+      let workspace = make_workspace ~root:tmpdir ~packages:[ lib; app ] () in
+      let request = make_request ~workspace ~packages:[ package_name "app" ] () in
+      with_prepared_lanes request
+        (fun lanes ->
+          match lanes with
+          | [ lane ] ->
+              let package_graph = Build_lane.package_graph lane in
+              let lib_key = Package_graph.package_key ~package_name:"lib" Package_graph.Runtime in
+              let app_key = Package_graph.package_key ~package_name:"app" Package_graph.Runtime in
+              let lib_node =
+                Package_graph.get_node_by_key package_graph lib_key
+                |> Option.expect ~msg:"expected lib node in prepared package graph"
+              in
+              let app_node =
+                Package_graph.get_node_by_key package_graph app_key
+                |> Option.expect ~msg:"expected app node in prepared package graph"
+              in
+              Graph.SimpleGraph.add_edge lib_node ~depends_on:app_node;
+              let events = ref [] in
+              let summary =
+                Package_scheduler.run
+                  ~parallelism:1
+                  ~on_event:(fun event -> events := event :: !events)
+                  lanes
+              in
+              let events = List.reverse !events in
+              let planning_rounds = planning_round_counts events in
+              let execution_rounds = execution_round_counts events in
+              let stalled_errors =
+                summary.Package_scheduler.errors
+                |> List.all ~fn:(fun (error: Package_scheduler.error) ->
+                  String.contains error.reason "made no progress"
+                  && String.contains error.reason "awaiting plan")
+              in
+              let completion_ok =
+                match summary.Package_scheduler.completions with
+                | [ completion ] -> completion.result_count = 0 && completion.had_partial_failure
+                | _ -> false
+              in
+              if not summary.Package_scheduler.had_failure then
+                Error "expected stalled package scheduler run to report failure"
+              else if summary.Package_scheduler.errors = [] then
+                Error "expected stalled package scheduler run to report internal errors"
+              else if summary.Package_scheduler.lane_results != [] then
+                Error "expected stalled package scheduler run to produce no finalized lane results"
+              else if not stalled_errors then
+                Error "expected stalled package scheduler errors to describe pending work"
+              else if not completion_ok then
+                Error "expected stalled package scheduler completion to report partial failure with zero results"
+              else if execution_rounds != [] then
+                Error "expected stalled package scheduler run to avoid execution rounds"
+              else (
+                Test.assert_equal
+                  ~expected:[ (2, 2, 0, 0, 0, 0, 0, 0) ]
+                  ~actual:planning_rounds;
+                Ok ()
+              )
+          | _ ->
+              Error "expected single-lane scheduler test setup")
+    )
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
 let tests =
   let open Test in
   [
@@ -632,6 +708,9 @@ let tests =
     case
       "package scheduler: cached rerun preserves multi-lane isolation"
       test_package_scheduler_cached_rerun_preserves_multi_lane_isolation;
+    case
+      "package scheduler: reports stalled pending work"
+      test_package_scheduler_reports_stalled_pending_work;
   ]
 
 let name = "Riot Package Scheduler Tests"

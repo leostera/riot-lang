@@ -8,6 +8,7 @@ module BuildLock = Build_lock
 module Internal = struct
   module Action_scheduler = Action_scheduler
   module Action_executor = Action_executor
+  module Build_lane = Build_lane
   module Build_context = Build_context
   module Build_core = Build_core
   module Graph_scheduler = Graph_scheduler
