@@ -34,6 +34,7 @@
 28. `Std.Runtime` owns the actor runtime implementation. Keep scheduler, mailbox, timer, and process internals under `std/src/runtime`, and treat the `actors` package as a compatibility facade during the migration.
 29. `Std.System` owns raw target-triple parsing. Keep the public triple type on `Std.System.TargetTriple`, expose the current machine as `Std.System.host_triple`, and do not duplicate `arch-vendor-os[-abi]` parsing in higher layers.
 30. Keep `Std.Runtime` internal blocking coordination on `Kernel.Sync`, not `Std.Sync`, so public `Std.Sync` can evolve toward actor-level coordination without creating a bootstrap cycle in runtime internals.
+31. Keep `Std.Telemetry.emit` lock-free on the hot path. Use actor delivery plus atomic server-state reads instead of guarding every event emission with `Kernel.Sync.Mutex`.
 
 ## Validate
 

@@ -13,6 +13,8 @@ type handler = {
   fn: event -> unit;
 }
 
+type server_ref = { pid: Pid.t }
+
 open Sync
 open Collections
 
@@ -79,70 +81,72 @@ module Server = struct
   let start = fun () -> spawn init
 end
 
-let pid: Pid.t option Cell.t = cell None
-
-let lock = Mutex.create ()
+let pid: server_ref option Atomic.t = Atomic.make None
 
 let request_counter = Atomic.make 0
 
-let with_lock = fun f ->
-  Mutex.lock lock;
-  try
-    let result = f () in
-    Mutex.unlock lock;
-    result
-  with
-  | exn ->
-      Mutex.unlock lock;
-      raise exn
-
-let read_pid = fun () -> with_lock (fun () -> !pid)
-
 let clear_pid_if_matches = fun candidate ->
-  with_lock
-    (fun () ->
-      match !pid with
-      | Some current when Pid.equal current candidate -> pid := None
-      | _ -> ())
+  match Atomic.get pid with
+  | Some current when Pid.equal current.pid candidate ->
+      let _ = Atomic.compare_and_set pid (Some current) None in
+      ()
+  | _ -> ()
 
 let next_request_id = fun () -> Atomic.fetch_and_add request_counter 1 + 1
 
-let start = fun () ->
-  with_lock
-    (fun () ->
-      match !pid with
-      | None ->
-          let server_pid = Server.start () in
-          pid := Some server_pid;
-          server_pid
-      | Some pid -> pid)
+let await_stopped = fun pid ->
+  let request_id = next_request_id () in
+  send pid Server.(Telemetry (Stop { reply_to = self (); request_id }));
+  let selector msg =
+    match msg with
+    | Server.Stopped { request_id=got } when Kernel.Int.equal got request_id -> `select ()
+    | _ -> `skip
+  in
+  (
+    try receive ~selector ~timeout:(Time.Duration.from_millis 200) () with
+    | Receive_timeout -> ()
+  )
+
+let rec start = fun () ->
+  match Atomic.get pid with
+  | Some current ->
+      current.pid
+  | None ->
+      let current = { pid = Server.start () } in
+      if Atomic.compare_and_set pid None (Some current) then
+        current.pid
+      else
+        (
+          await_stopped current.pid;
+          start ()
+        )
 
 let emit = fun event ->
-  match read_pid () with
+  match Atomic.get pid with
   | None -> ()
-  | Some pid -> send pid Server.(Telemetry (Emit event))
+  | Some current -> send current.pid Server.(Telemetry (Emit event))
 
 let attach = fun id fn ->
-  match read_pid () with
+  match Atomic.get pid with
   | None -> ()
-  | Some pid -> send pid Server.(Telemetry (AttachHandler { id; fn }))
+  | Some current -> send current.pid Server.(Telemetry (AttachHandler { id; fn }))
 
 let detach = fun id ->
-  match read_pid () with
+  match Atomic.get pid with
   | None -> ()
-  | Some pid -> send pid Server.(Telemetry (DetachHandler id))
+  | Some current -> send current.pid Server.(Telemetry (DetachHandler id))
 
 let detach_all = fun () ->
-  match read_pid () with
+  match Atomic.get pid with
   | None -> ()
-  | Some pid -> send pid Server.(Telemetry DetachAll)
+  | Some current -> send current.pid Server.(Telemetry DetachAll)
 
 let list_handlers = fun () ->
-  match read_pid () with
+  match Atomic.get pid with
   | None -> []
-  | Some pid ->
+  | Some current ->
       let request_id = next_request_id () in
-      send pid Server.(Telemetry (ListHandlers { reply_to = self (); request_id }));
+      send current.pid Server.(Telemetry (ListHandlers { reply_to = self (); request_id }));
       let selector msg =
         match msg with
         | Server.HandlerList { request_id=got; ids } when Kernel.Int.equal got request_id -> `select ids
@@ -151,29 +155,12 @@ let list_handlers = fun () ->
       (
         try receive ~selector ~timeout:(Time.Duration.from_millis 100) () with
         | Receive_timeout ->
-            clear_pid_if_matches pid;
+            clear_pid_if_matches current.pid;
             []
       )
 
 let stop = fun () ->
-  let current_pid =
-    with_lock
-      (fun () ->
-        let current = !pid in
-        pid := None;
-        current)
-  in
-  match current_pid with
+  match Atomic.exchange pid None with
   | None -> ()
-  | Some pid ->
-      let request_id = next_request_id () in
-      send pid Server.(Telemetry (Stop { reply_to = self (); request_id }));
-      let selector msg =
-        match msg with
-        | Server.Stopped { request_id=got } when Kernel.Int.equal got request_id -> `select ()
-        | _ -> `skip
-      in
-      (
-        try receive ~selector ~timeout:(Time.Duration.from_millis 200) () with
-        | Receive_timeout -> ()
-      )
+  | Some current ->
+      await_stopped current.pid
