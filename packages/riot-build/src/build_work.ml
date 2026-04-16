@@ -81,12 +81,13 @@ let plan_package_target = fun (plan_package: plan_package) -> Build_lane.target 
 let prepare_lane = fun context spec ~toolchain target ->
   Build_lane.prepare context spec ~target ~toolchain
 
+let release_lanes = fun lanes -> List.for_each lanes ~fn:Build_lane.release
+
 let prepare_lanes = fun context spec ~toolchain ->
   let targets =
     Riot_model.Target.Set.to_list (Resolved_build.targets spec)
     |> List.sort ~compare:Riot_model.Target.compare
   in
-  let release_lanes = fun lanes -> List.for_each lanes ~fn:Build_lane.release in
   let rec loop prepared = function
     | [] -> Ok (List.reverse prepared)
     | target :: rest -> (
@@ -109,11 +110,11 @@ let run = fun context lanes ->
             (Event.Phase (runtime_phase_of_package_scheduler_event event)))
         lanes
     in
-    List.for_each lanes ~fn:Build_lane.release;
+    release_lanes lanes;
     summary
   with
   | exn ->
-      List.for_each lanes ~fn:Build_lane.release;
+      release_lanes lanes;
       raise exn
 
 let summarize = fun run_result -> run_result

@@ -114,7 +114,14 @@ let with_prepared_lanes = fun request fn ->
     Build_work.prepare_lanes context resolved ~toolchain
     |> Result.expect ~msg:"expected lane preparation to succeed"
   in
-  fn lanes
+  try
+    let result = fn lanes in
+    Build_work.release_lanes lanes;
+    result
+  with
+  | exn ->
+      Build_work.release_lanes lanes;
+      raise exn
 
 let run_package_scheduler = fun request ->
   with_prepared_lanes request
@@ -476,6 +483,131 @@ let test_package_scheduler_keeps_multi_lane_results_isolated = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
 
+let test_package_scheduler_rerun_uses_cached_dependency_frontiers = fun _ctx ->
+  match Fs.with_tempdir ~prefix:"riot_package_scheduler_cached_rerun"
+    (fun tmpdir ->
+      let lib = make_package ~root:tmpdir ~name:"lib" ~source:"let value = 1\n" () in
+      let app = make_package
+        ~root:tmpdir
+        ~name:"app"
+        ~dependencies:[ package_dependency "lib" ]
+        ~source:"let value = Lib.value\n"
+        ()
+      in
+      let workspace = make_workspace ~root:tmpdir ~packages:[ lib; app ] () in
+      let request = make_request ~workspace ~packages:[ package_name "app" ] () in
+      let first_summary, _first_events = run_package_scheduler request in
+      let second_summary, second_events = run_package_scheduler request in
+      if first_summary.errors != [] then
+        Error "expected initial build to avoid internal scheduler errors"
+      else if second_summary.errors != [] then
+        Error "expected cached rerun to avoid internal scheduler errors"
+      else if second_summary.had_failure then
+        Error "expected cached rerun to finish without failures"
+      else
+        let statuses = result_statuses (lane_result second_summary) in
+        let planning = planning_round_signatures second_events in
+        let execution_rounds = execution_round_counts second_events in
+        let all_cached =
+          List.all statuses ~fn:(function
+            | Package_builder.Cached _ -> true
+            | Package_builder.Built _
+            | Package_builder.Skipped _
+            | Package_builder.Failed _ -> false)
+        in
+        if not all_cached then
+          Error "expected cached rerun to finalize every package from cache"
+        else if execution_rounds != [] then
+          Error "expected cached rerun to skip package execution rounds"
+        else (
+          Test.assert_equal ~expected:[ (2, 1, 1); (1, 0, 1) ] ~actual:planning;
+          Ok ()
+        ))
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
+let test_package_scheduler_cached_rerun_preserves_multi_lane_isolation = fun _ctx ->
+  match Fs.with_tempdir ~prefix:"riot_package_scheduler_cached_multi_lane"
+    (fun tmpdir ->
+      let host_target = Riot_model.Target.current in
+      let secondary_target =
+        if String.equal (Riot_model.Target.to_string host_target) "x86_64-unknown-linux-gnu" then
+          target "aarch64-unknown-linux-gnu"
+        else
+          target "x86_64-unknown-linux-gnu"
+      in
+      let requested_targets = Riot_model.Target.Set.of_list [ host_target; secondary_target ] in
+      let demo = make_package
+        ~root:tmpdir
+        ~name:"demo"
+        ~source:"let value = 42\n"
+        ()
+      in
+      let workspace =
+        make_workspace
+          ~root:tmpdir
+          ~toolchain_targets:(
+            Riot_model.Target.Set.to_list requested_targets
+            |> List.map ~fn:Riot_model.Target.to_string
+          )
+          ~packages:[ demo ]
+          ()
+      in
+      let request =
+        make_request
+          ~workspace
+          ~packages:[ package_name "demo" ]
+          ~targets:(Riot_model.Target.Exact requested_targets)
+          ~requested_parallelism:(Some 1)
+          ()
+      in
+      let first_summary, _first_events = run_package_scheduler request in
+      let second_summary, second_events = run_package_scheduler request in
+      if first_summary.errors != [] then
+        Error "expected initial multi-lane build to avoid internal scheduler errors"
+      else if second_summary.errors != [] then
+        Error "expected cached multi-lane rerun to avoid internal scheduler errors"
+      else if second_summary.had_failure then
+        Error "expected cached multi-lane rerun to finish without failures"
+      else if List.length second_summary.Package_scheduler.lane_results != 2 then
+        Error "expected cached multi-lane rerun to keep one result per lane"
+      else
+        let actual_targets = lane_targets second_summary in
+        let expected_targets =
+          Riot_model.Target.Set.to_list requested_targets
+          |> List.sort ~compare:Riot_model.Target.compare
+        in
+        let execution_rounds = execution_round_counts second_events in
+        let all_cached =
+          second_summary.Package_scheduler.lane_results
+          |> List.all ~fn:(fun lane_result ->
+            result_statuses lane_result
+            |> List.all ~fn:(function
+              | Package_builder.Cached _ -> true
+              | Package_builder.Built _
+              | Package_builder.Skipped _
+              | Package_builder.Failed _ -> false))
+        in
+        let all_result_counts_are_one =
+          second_summary.Package_scheduler.completions
+          |> List.all ~fn:(fun (completion: Package_scheduler.completion) ->
+            completion.result_count = 1)
+        in
+        if actual_targets != expected_targets then
+          Error "expected cached multi-lane rerun to preserve requested targets"
+        else if not all_cached then
+          Error "expected cached multi-lane rerun to finalize every lane from cache"
+        else if execution_rounds != [] then
+          Error "expected cached multi-lane rerun to skip execution rounds"
+        else if not all_result_counts_are_one then
+          Error "expected cached multi-lane rerun completions to stay per-lane"
+        else
+          Ok ())
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
+
 let tests =
   let open Test in
   [
@@ -494,6 +626,12 @@ let tests =
     case
       "package scheduler: keeps multi-lane results isolated"
       test_package_scheduler_keeps_multi_lane_results_isolated;
+    case
+      "package scheduler: rerun uses cached dependency frontiers"
+      test_package_scheduler_rerun_uses_cached_dependency_frontiers;
+    case
+      "package scheduler: cached rerun preserves multi-lane isolation"
+      test_package_scheduler_cached_rerun_preserves_multi_lane_isolation;
   ]
 
 let name = "Riot Package Scheduler Tests"
