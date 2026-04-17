@@ -1,10 +1,16 @@
-(** FIXME: turn sync.ml into ./std/src/sync/* so each submodule can be a separate file *)
+open Kernel
 
 (** Synchronization primitives owned by `std`.
 
-    Public `Std.Sync` primitives are actor-facing coordination tools. Low-level
-    domain/thread primitives live under `Kernel.Sync`. *)
-open Kernel
+    Public `Std.Sync` primitives are actor-friendly: they do not block an OCaml
+    domain and are safe to use from code running inside {!Std.Runtime}.
+
+    The contract here is:
+    - coordination primitives like {!Mutex} and {!Condition} cooperate with the
+      actor runtime instead of blocking the scheduler;
+    - low-level atomics stay non-blocking;
+    - mutable wrapper modules such as {!Cell}, {!OnceCell}, {!LazyCell}, and
+      {!RefCell} remain non-blocking local state helpers. *)
 
 module Atomic: sig
   type 'value t = 'value Kernel.Sync.Atomic.t
