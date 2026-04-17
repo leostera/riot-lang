@@ -38,7 +38,7 @@
 32. Keep public `Std.Sync.Mutex` and `Std.Sync.Condition` actor-backed. Code above the runtime should treat them as process-owned coordination primitives, not as aliases for `Kernel.Sync`.
 33. Keep low-level `std` helpers that only need local mutation off `Std.Sync`. Use plain mutable records for local accumulators, and reserve `Std.Sync` for shared actor-facing coordination.
 34. Keep `std` test binaries module-scoped. Prefer one suite file per public module or tight nested module surface (for example `std_io_reader_tests.ml`, `std_net_uri_tests.ml`) instead of broad mixed suites that exercise unrelated APIs together.
-35. Keep `Std.Global.print` / `println` on the narrowest native write path available. Human-mode CLI rendering calls them per line, so avoid iovec-array construction and richer writer abstractions in that hot path.
+35. Keep `Std.Global.print*` delegating to `Kernel.IO`'s blocking whole-write stdio helpers. Human-mode CLI rendering calls them per line, so keep that path narrow and avoid iovec-array construction or richer writer abstractions in the hot loop.
 36. Keep `Std.Log` actor-friendly and serialized through handler processes. Application-level logging should flow through handlers with explicit drain semantics such as `Log.flush`; reserve `Std.Global.print*` for low-level terminal output where blocking writes are acceptable.
 
 ## Validate

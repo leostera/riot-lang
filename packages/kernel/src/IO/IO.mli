@@ -49,16 +49,11 @@ module Stdout: sig
 
   val write: ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
 
-  val write_pair:
-    ?left_pos:int ->
-    ?left_len:int ->
-    bytes ->
-    ?right_pos:int ->
-    ?right_len:int ->
-    bytes ->
-    (int, error) Result.t
-
   val write_vectored: Iovec.t -> (int, error) Result.t
+
+  val print: string -> (unit, error) Result.t
+
+  val println: string -> (unit, error) Result.t
 
   val flush: unit -> (unit, error) Result.t
 
@@ -73,18 +68,21 @@ module Stderr: sig
 
   val write: ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
 
-  val write_pair:
-    ?left_pos:int ->
-    ?left_len:int ->
-    bytes ->
-    ?right_pos:int ->
-    ?right_len:int ->
-    bytes ->
-    (int, error) Result.t
-
   val write_vectored: Iovec.t -> (int, error) Result.t
+
+  val print: string -> (unit, error) Result.t
+
+  val println: string -> (unit, error) Result.t
 
   val flush: unit -> (unit, error) Result.t
 
   val to_source: unit -> Async.Source.t
 end
+
+val print: string -> (unit, Stdout.error) Result.t
+
+val println: string -> (unit, Stdout.error) Result.t
+
+val eprint: string -> (unit, Stderr.error) Result.t
+
+val eprintln: string -> (unit, Stderr.error) Result.t

@@ -1,3 +1,4 @@
+(** Scatter/gather buffer segments for narrow kernel I/O paths. *)
 type segment = {
   buffer: bytes;
   offset: int;

@@ -145,79 +145,25 @@ let ref = fun value -> Sync.Cell.create value
 
 let cell = fun value -> Sync.Cell.create value
 
-external bytes_unsafe_of_string: string -> bytes = "%bytes_of_string"
-
-let newline = bytes_unsafe_of_string "\n"
-
-external fd_write_all_raw_int:
-  int -> bytes -> int -> int -> int
-  = "kernel_new_fs_file_write_all_raw"
-
-external fd_write_pair_all_raw_int:
-  int -> bytes -> int -> int -> bytes -> int -> int -> int
-  = "kernel_new_fs_file_write_pair_all_raw_bytecode" "kernel_new_fs_file_write_pair_all_raw"
-
-let panic_write_error = fun code -> panic (Kernel.SystemError.to_string (Kernel.SystemError.from_code code))
-
-let write_stdout_bytes = fun bytes ~len ->
-  let written = fd_write_all_raw_int 1 bytes 0 len in
-  if written = len then
-    ()
-  else if written = 0 then
-    panic "stdout write returned 0 bytes"
-  else
-    panic_write_error (-written)
-
-let write_stdout_pair = fun left ~left_len right ~right_len ->
-  let total_len = left_len + right_len in
-  let written = fd_write_pair_all_raw_int 1 left 0 left_len right 0 right_len in
-  if written = total_len then
-    ()
-  else if written = 0 then
-    panic "stdout write_pair returned 0 bytes"
-  else
-    panic_write_error (-written)
-
-let write_stderr_bytes = fun bytes ~len ->
-  let written = fd_write_all_raw_int 2 bytes 0 len in
-  if written = len then
-    ()
-  else if written = 0 then
-    panic "stderr write returned 0 bytes"
-  else
-    panic_write_error (-written)
-
-let write_stderr_pair = fun left ~left_len right ~right_len ->
-  let total_len = left_len + right_len in
-  let written = fd_write_pair_all_raw_int 2 left 0 left_len right 0 right_len in
-  if written = total_len then
-    ()
-  else if written = 0 then
-    panic "stderr write_pair returned 0 bytes"
-  else
-    panic_write_error (-written)
-
 let print = fun message ->
-  let bytes = bytes_unsafe_of_string message in
-  let len = String.length message in
-  write_stdout_bytes bytes ~len
+  match Kernel.IO.print message with
+  | Ok () -> ()
+  | Error error -> panic (Kernel.IO.Stdout.error_to_string error)
 
 let eprint = fun message ->
-  let bytes = bytes_unsafe_of_string message in
-  let len = String.length message in
-  write_stderr_bytes bytes ~len
+  match Kernel.IO.eprint message with
+  | Ok () -> ()
+  | Error error -> panic (Kernel.IO.Stderr.error_to_string error)
 
 let println = fun message ->
-  let bytes = bytes_unsafe_of_string message in
-  let len = String.length message in
-  (* Human-mode renderers call this per line, so keep it on the raw native path and
-     avoid the richer iovec-building IO surface here. *)
-  write_stdout_pair bytes ~left_len:len newline ~right_len:1
+  match Kernel.IO.println message with
+  | Ok () -> ()
+  | Error error -> panic (Kernel.IO.Stdout.error_to_string error)
 
 let eprintln = fun message ->
-  let bytes = bytes_unsafe_of_string message in
-  let len = String.length message in
-  write_stderr_pair bytes ~left_len:len newline ~right_len:1
+  match Kernel.IO.eprintln message with
+  | Ok () -> ()
+  | Error error -> panic (Kernel.IO.Stderr.error_to_string error)
 
 let todo = fun msg -> panic ("TODO: " ^ msg)
 
