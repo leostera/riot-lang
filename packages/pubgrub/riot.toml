@@ -6,7 +6,7 @@ license = "Apache-2.0"
 public = true
 
 [lib]
-path = "src/pubgrub.ml"
+path = "src/Pubgrub.ml"
 
 [dependencies]
 std = { path = "../std", version = "*" }

@@ -14,4 +14,4 @@
 ## Validate
 
 `timeout 30 riot build pubgrub`
-`timeout 180 riot run -p pubgrub solver_tests -- run-tests`
+`timeout 180 riot test -p pubgrub --json`

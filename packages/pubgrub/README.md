@@ -53,15 +53,15 @@ let () =
 
 ```
 src/
-├── main.ml                  # Test binary
-├── Pubgrub.ml/.mli         # Main module, re-exports everything
-├── ranges.ml/.mli          # Version range operations
-├── term.ml/.mli            # Package + version constraints  
-├── provider.ml/.mli        # Dependency provider interface
-├── incompatibility.ml/.mli # Conflict tracking
-├── partial_solution.ml/.mli # Solution state
-├── solver.ml/.mli          # Core algorithm
-└── report.ml/.mli          # Error reporting
+├── Pubgrub.ml/.mli          # Main module, re-exports everything
+├── ranges.ml/.mli           # Version range operations
+├── term.ml/.mli             # Package + version constraints
+├── provider.ml/.mli         # Dependency provider interface
+├── incompatibility.ml/.mli  # Conflict tracking
+├── partial_solution.ml/.mli # Solution state and satisfier search
+├── new_solver.ml/.mli       # Core solver loop
+├── trace.ml/.mli            # Structured debugging surface
+└── report.ml/.mli           # Conflict explanation
 ```
 
 ## Testing
@@ -69,25 +69,7 @@ src/
 Run the built-in tests:
 
 ```bash
-riot run pubgrub
-```
-
-Output:
-```
-PubGrub Solver Tests
-
-=== Test: Simple dependency resolution ===
-✓ Solution found with 2 packages:
-  • root@1.0.0
-  • foo@2.0.0
-
-=== Test: Transitive dependencies ===
-✓ Solution found with 3 packages:
-  • bar@1.0.0
-  • root@1.0.0
-  • foo@1.0.0
-
-✅ All tests completed
+riot test -p pubgrub
 ```
 
 ## Core Types
@@ -148,21 +130,21 @@ add_package provider "my-pkg" (v 1 0 0) [
 
 ## Algorithm Overview
 
-The solver implements a simplified version of PubGrub:
+The solver follows the core PubGrub loop:
 
 1. **Decision Making**: Pick a package and version to add to the solution
 2. **Unit Propagation**: Derive consequences from current decisions
 3. **Conflict Detection**: Identify when constraints can't be satisfied
-4. **Backtracking**: Revert decisions when conflicts occur
+4. **Conflict Resolution**: Learn a prior cause when a conflict is satisfied
+5. **Backtracking**: Revert decisions to the appropriate decision level
 
-Current implementation is a straightforward breadth-first search that:
-- Chooses the highest version for each package
-- Adds dependencies to the work queue
-- Detects when no version is available
+The implementation keeps structured traces in `Pubgrub.Trace` and produces
+human-readable conflict reports through `Pubgrub.Report`.
 
 ## Status
 
-**Beta** - Full PubGrub algorithm implemented and tested. Performance optimizations and advanced features coming soon.
+**Beta** - core solving, tracing, and explanation are implemented; deeper
+performance work and API tightening are still in progress.
 
 ### What's Working ✅
 
@@ -175,7 +157,8 @@ Current implementation is a straightforward breadth-first search that:
 - **Derivation Trees**: Build trees showing why conflicts occur
 - **Error Reporting**: Human-readable explanations of solving failures
 - **Offline Provider**: In-memory dependency provider for testing
-- **Comprehensive Tests**: 109 tests covering simple to massive dependency graphs
+- **Comprehensive Tests**: smoke and reference coverage across simple,
+  transitive, conflict-heavy, and generated dependency graphs
 
 ### TODO 🚧
 
@@ -203,7 +186,8 @@ Current implementation is a straightforward breadth-first search that:
 
 ## Architecture
 
-See [DESIGN.md](./DESIGN.md) for detailed design documentation.
+See [DESIGN.md](./DESIGN.md) for package structure, solver flow, and key
+invariants.
 
 ## References
 
