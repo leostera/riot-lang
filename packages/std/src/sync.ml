@@ -434,6 +434,15 @@ module LazyCell = struct
 end
 
 module RefCell = struct
+  let protect = fun ~finally f ->
+    match f () with
+    | value ->
+        finally ();
+        value
+    | exception error ->
+        finally ();
+        raise error
+
   type borrow_state =
     | Available
     | Borrowed of int
@@ -498,18 +507,17 @@ module RefCell = struct
 
   let with_borrow = fun cell f ->
     let borrow = borrow cell in
-    let _, value = borrow in
-    let result = f value in
-    release_borrow borrow;
-    result
+    protect
+      ~finally:(fun () -> release_borrow borrow)
+      (fun () ->
+        let _, value = borrow in
+        f value)
 
   let with_borrow_mut = fun cell f ->
     let borrow = borrow_mut cell in
-    let result =
-      f (fun () -> get_mut borrow) (fun value -> set_mut borrow value)
-    in
-    release_borrow_mut borrow;
-    result
+    protect
+      ~finally:(fun () -> release_borrow_mut borrow)
+      (fun () -> f (fun () -> get_mut borrow) (fun value -> set_mut borrow value))
 
   let try_borrow = fun cell ->
     try Ok (borrow cell) with

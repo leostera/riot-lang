@@ -137,6 +137,7 @@ module SimpleWorkerPool: sig
       - [tasks]: List of tasks to execute
       - [fn]: Function to execute on each task
       - Returns: Results in the same order as input tasks
+      - Raises: Any exception raised by [fn], re-raised in the caller
 
       The operation blocks until all tasks complete. Workers automatically pull
       from the task queue as they become ready. *)
