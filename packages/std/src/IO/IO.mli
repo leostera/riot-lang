@@ -1,6 +1,6 @@
 open Prelude
 
-type error =
+type error = Error.t =
   | End_of_file
   | Timeout
   | Closed

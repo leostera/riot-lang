@@ -1,15 +1,6 @@
 open Prelude
-module Buffer = Buffer
-module Bytes = Bytes
-module Iovec = Kernel.IO.Iovec
-module Reader = Reader
-module Writer = Writer
-module Error_ = Error
-module Stdin_ = Stdin
-module Stdout_ = Stdout
-module Stderr_ = Stderr
 
-type error = Error_.t =
+type t =
   | End_of_file
   | Timeout
   | Closed
@@ -78,43 +69,8 @@ type error = Error_.t =
   | Operation_now_in_progress
   | Unknown_error of string
 
-type nonrec 'value io_result = ('value, error) result
+val of_system_error: Kernel.SystemError.t -> t
 
-type file_kind =
-  | Regular
-  | Directory
-  | Symlink
-  | Block
-  | Character
-  | Fifo
-  | Socket
+val of_async_error: Kernel.Async.error -> t
 
-let of_system_error = Error_.of_system_error
-
-let of_async_error = Error_.of_async_error
-
-let error_message = Error_.message
-
-module Stdin = Stdin_
-
-let stdin = Stdin.open_
-
-module Stdout = Stdout_
-
-module Stderr = Stderr_
-
-let read = Reader.read
-
-let read_vectored = Reader.read_vectored
-
-let read_to_end = Reader.read_to_end
-
-let write = Writer.write
-
-let write_all = Writer.write_all
-
-let write_owned_vectored = Writer.write_owned_vectored
-
-let write_all_vectored = Writer.write_all_vectored
-
-let flush = Writer.flush
+val message: t -> string
