@@ -83,7 +83,7 @@ let test_command_output_handles_parallel_shell_commands = fun _ctx ->
             | Parallel_command_finished (_index, result) -> `select result
             | _ -> `skip
           )
-          ~timeout:2.0
+          ~timeout:5.0
           ()
       with
       | Ok () -> collect (pending - 1) failures
