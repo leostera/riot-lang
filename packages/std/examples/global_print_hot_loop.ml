@@ -8,6 +8,8 @@ type mode =
   | Noop
   | StdPrint
   | StdPrintln
+  | LogCompact
+  | LogFull
   | RawWrite
   | RawPair
   | FfiWrite
@@ -44,6 +46,8 @@ let mode_of_string = function
   | "noop" -> Noop
   | "std-print" -> StdPrint
   | "std-println" -> StdPrintln
+  | "log-compact" -> LogCompact
+  | "log-full" -> LogFull
   | "raw-write" -> RawWrite
   | "raw-pair" -> RawPair
   | "ffi-write" -> FfiWrite
@@ -58,6 +62,8 @@ let mode_to_string = function
   | Noop -> "noop"
   | StdPrint -> "std-print"
   | StdPrintln -> "std-println"
+  | LogCompact -> "log-compact"
+  | LogFull -> "log-full"
   | RawWrite -> "raw-write"
   | RawPair -> "raw-pair"
   | FfiWrite -> "ffi-write"
@@ -273,11 +279,23 @@ let write_stdout_pair_raw_native = fun left ~left_len right ~right_len ->
   else
     panic (Kernel.SystemError.to_string (Kernel.SystemError.from_code (-written)))
 
+let configure_log = fun format_name ->
+  Config.load_string
+    (format Format.[
+       str "[[log.handler]]\n";
+       str "type = \"stdout\"\n";
+       str "format = \""; str format_name; str "\"\n";
+     ]);
+  Log.set_level Log.Info;
+  ignore (Log.start_link ())
+
 let run_mode = fun mode message message_bytes message_len ->
   match mode with
   | Noop -> ignore message_len
   | StdPrint -> print message
   | StdPrintln -> println message
+  | LogCompact -> Log.info message
+  | LogFull -> Log.info message
   | RawWrite -> write_stdout_bytes message_bytes ~len:message_len
   | RawPair -> write_stdout_pair message_bytes ~left_len:message_len newline ~right_len:1
   | FfiWrite -> write_stdout_bytes_ffi message_bytes ~len:message_len
@@ -302,9 +320,13 @@ let main = fun ~args ->
   match parse_args args with
   | Error () ->
       eprintln
-        "usage: global_print_hot_loop [--iterations N] [--warmup N] [--mode noop|std-print|std-println|raw-write|raw-pair|ffi-write|ffi-pair|rawint-write|rawint-pair|raw-native-write|raw-native-pair] [--message small|medium]";
+        "usage: global_print_hot_loop [--iterations N] [--warmup N] [--mode noop|std-print|std-println|log-compact|log-full|raw-write|raw-pair|ffi-write|ffi-pair|rawint-write|rawint-pair|raw-native-write|raw-native-pair] [--message small|medium]";
       Ok ()
   | Ok config ->
+      (match config.mode with
+       | LogCompact -> configure_log "compact"
+       | LogFull -> configure_log "full"
+       | _ -> ());
       let message = message_for_kind config.message_kind in
       let message_bytes = bytes_unsafe_of_string message in
       let message_len = String.length message in
