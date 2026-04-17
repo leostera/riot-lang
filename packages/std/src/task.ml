@@ -47,42 +47,54 @@ let await: type res. res t -> (res, exn) result = fun t ->
 
 (** Await multiple tasks efficiently, collecting results as they arrive *)
 let rec await_all: type res. res t list -> (res, exn) result list = fun tasks ->
-  let find_task_by_ref tasks ref =
-    List.find tasks
-      ~fn:(fun t ->
-        Ref.equal t.ref ref)
-  in
-  let is_one_of_our_refs tasks ref =
-    List.any tasks
-      ~fn:(fun t ->
-        Ref.equal t.ref ref)
-  in
-  let remove_task tasks task =
-    List.filter tasks ~fn:(fun t -> not (Ref.equal t.ref task.ref))
-  in
-  let selector: Message.t -> [
-      `select of (res, exn) result * res t
-      | `skip
-    ] = fun msg ->
-    match msg with
-    | Crash (ref', exn) when is_one_of_our_refs tasks ref' -> (
-        match find_task_by_ref tasks ref' with
-        | Some task -> `select (Error exn, task)
-        | None -> panic "task awaited but no matching task found"
-      )
-    | Reply (ref', res) when is_one_of_our_refs tasks ref' -> (
-        match find_task_by_ref tasks ref' with
-        | None -> panic "task awaited but no matching task found"
-        | Some task -> (
-            match Ref.type_equal task.ref ref' with
-            | Some Type.Equal -> `select (Ok res, task)
-            | None -> panic "bad message"
-          )
-      )
-    | _ ->
-        `skip
-  in
-  let result, task = receive ~selector () in
-  match remove_task tasks task with
-  | [] -> [ result ]
-  | tasks' -> result :: await_all tasks'
+  match tasks with
+  | [] ->
+      []
+  | _ ->
+      let pending = List.enumerate tasks in
+      let results = Array.make ~count:(List.length tasks) ~value:None in
+      let find_task_by_ref pending ref =
+        List.find pending
+          ~fn:(fun (_index, task) ->
+            Ref.equal task.ref ref)
+      in
+      let is_one_of_our_refs pending ref =
+        List.any pending
+          ~fn:(fun (_index, task) ->
+            Ref.equal task.ref ref)
+      in
+      let remove_task pending task =
+        List.filter pending ~fn:(fun (_index, pending_task) -> not (Ref.equal pending_task.ref task.ref))
+      in
+      let rec collect = fun remaining pending ->
+        if remaining = 0 then
+          Array.to_list (Array.map results ~fn:Option.unwrap)
+        else (
+          let selector: Message.t -> [
+              `select of (res, exn) result * int * res t
+              | `skip
+            ] = fun msg ->
+            match msg with
+            | Crash (ref', exn) when is_one_of_our_refs pending ref' -> (
+                match find_task_by_ref pending ref' with
+                | Some (index, task) -> `select (Error exn, index, task)
+                | None -> panic "task awaited but no matching task found"
+              )
+            | Reply (ref', res) when is_one_of_our_refs pending ref' -> (
+                match find_task_by_ref pending ref' with
+                | None -> panic "task awaited but no matching task found"
+                | Some (index, task) -> (
+                    match Ref.type_equal task.ref ref' with
+                    | Some Type.Equal -> `select (Ok res, index, task)
+                    | None -> panic "bad message"
+                  )
+              )
+            | _ ->
+                `skip
+          in
+          let result, index, task = receive ~selector () in
+          Array.set results ~at:index ~value:(Some result);
+          collect (remaining - 1) (remove_task pending task)
+        )
+      in
+      collect (List.length tasks) pending

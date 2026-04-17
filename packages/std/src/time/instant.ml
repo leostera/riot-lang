@@ -1,5 +1,7 @@
 open Kernel
 
+let panic = Kernel.SystemError.panic
+
 type timespec = {
   secs: int;
   nanos: int;
@@ -21,7 +23,9 @@ let now = fun () ->
 let duration_since = fun ~earlier later ->
   let secs_diff = later.secs - earlier.secs in
   let nanos_diff = later.nanos - earlier.nanos in
-  if nanos_diff < 0 then
+  if secs_diff < 0 || (secs_diff = 0 && nanos_diff < 0) then
+    panic "Instant.duration_since called with earlier > later"
+  else if nanos_diff < 0 then
     Duration.make ~secs:(secs_diff - 1) ~nanos:(nanos_diff + 1_000_000_000)
   else
     Duration.make ~secs:secs_diff ~nanos:nanos_diff
