@@ -37,6 +37,7 @@
 31. Keep `Std.Telemetry.emit` lock-free on the hot path. Use actor delivery plus atomic server-state reads instead of guarding every event emission with `Kernel.Sync.Mutex`.
 32. Keep public `Std.Sync.Mutex` and `Std.Sync.Condition` actor-backed. Code above the runtime should treat them as process-owned coordination primitives, not as aliases for `Kernel.Sync`.
 33. Keep low-level `std` helpers that only need local mutation off `Std.Sync`. Use plain mutable records for local accumulators, and reserve `Std.Sync` for shared actor-facing coordination.
+34. Keep `std` test binaries module-scoped. Prefer one suite file per public module or tight nested module surface (for example `std_io_reader_tests.ml`, `std_net_uri_tests.ml`) instead of broad mixed suites that exercise unrelated APIs together.
 
 ## Validate
 
