@@ -311,6 +311,12 @@ let run_loop = fun mode message message_bytes message_len iterations ->
     run_mode mode message message_bytes message_len
   done
 
+let flush_mode = function
+  | LogCompact
+  | LogFull ->
+      Log.flush ()
+  | _ -> ()
+
 let main = fun ~args ->
   let args =
     match args with
@@ -330,10 +336,13 @@ let main = fun ~args ->
       let message = message_for_kind config.message_kind in
       let message_bytes = bytes_unsafe_of_string message in
       let message_len = String.length message in
-      if config.warmup > 0 then
+      if config.warmup > 0 then (
         run_loop config.mode message message_bytes message_len config.warmup;
+        flush_mode config.mode
+      );
       let started = Time.Instant.now () in
       run_loop config.mode message message_bytes message_len config.iterations;
+      flush_mode config.mode;
       let duration = Time.Instant.elapsed started in
       let total_nanos = Time.Duration.to_nanos duration in
       let per_iteration_nanos =

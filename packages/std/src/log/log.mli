@@ -49,6 +49,10 @@ val detach_all: unit -> unit
 (** List all registered handler IDs *)
 val list_handlers: unit -> string list
 
+val flush: unit -> unit
+
+(** Wait until the stdout log handler has drained events emitted before this call. *)
+
 (** {1 Supervision} *)
 val start_link: unit -> Pid.t
 

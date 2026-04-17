@@ -49,6 +49,8 @@ let detach_all = Handler.detach_all
 
 let list_handlers = Handler.list
 
+let flush = StdoutHandler.flush
+
 let start_link = fun () ->
   let sup = Supervisor.start_link ~strategy:OneForOne ~children:[ StdoutHandler.child_spec () ] () in
   Supervisor.to_pid sup

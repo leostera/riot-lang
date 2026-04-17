@@ -17,6 +17,9 @@ val attach: unit -> unit
 (** Attach the stdout handler callback.
     
     This is called automatically by the child_spec when the handler process starts. *)
+val flush: unit -> unit
+
+(** Wait until the stdout handler has written all queued log events submitted before this call. *)
 val detach: unit -> unit
 
 (** Detach the stdout handler callback *)
