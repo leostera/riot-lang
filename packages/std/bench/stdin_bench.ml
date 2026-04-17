@@ -11,6 +11,7 @@ type worker_mode =
   | Std_read_to_string
   | Kernel_chars
   | Std_chars
+  | Std_buffered_chars
   | Std_lines
 
 type payload_kind =
@@ -31,6 +32,7 @@ let mode_to_string = function
   | Std_read_to_string -> "std-read-to-string"
   | Kernel_chars -> "kernel-chars"
   | Std_chars -> "std-chars"
+  | Std_buffered_chars -> "std-buffered-chars"
   | Std_lines -> "std-lines"
 
 let mode_of_string = function
@@ -40,6 +42,7 @@ let mode_of_string = function
   | "std-read-to-string" -> Std_read_to_string
   | "kernel-chars" -> Kernel_chars
   | "std-chars" -> Std_chars
+  | "std-buffered-chars" -> Std_buffered_chars
   | "std-lines" -> Std_lines
   | value -> panic ("unknown stdin bench worker mode: " ^ value)
 
@@ -85,7 +88,8 @@ let payload_for_mode = function
   | Std_read_to_string ->
       payload_for_kind Chunk_payload
   | Kernel_chars
-  | Std_chars ->
+  | Std_chars
+  | Std_buffered_chars ->
       payload_for_kind Char_payload
   | Std_lines ->
       payload_for_kind Line_payload
@@ -293,7 +297,7 @@ let run_kernel_chunks = fun expected_bytes ->
        ])
 
 let run_std_chunks = fun expected_bytes ->
-  let stdin = IO.stdin () in
+  let stdin = IO.Stdin.open_ () in
   let buffer = Bytes.create ~size:4096 in
   let rec loop total =
     match IO.Stdin.read stdin ~len:4096 buffer with
@@ -312,7 +316,7 @@ let run_std_chunks = fun expected_bytes ->
        ])
 
 let run_std_reader_chunks = fun expected_bytes ->
-  let reader = IO.stdin () |> IO.Stdin.to_reader in
+  let reader = IO.stdin () in
   let buffer = Bytes.create ~size:4096 in
   let rec loop total =
     match IO.read reader buffer with
@@ -331,8 +335,8 @@ let run_std_reader_chunks = fun expected_bytes ->
        ])
 
 let run_std_read_to_string = fun expected_bytes ->
-  let stdin = IO.stdin () in
-  match IO.Stdin.read_to_string stdin ~len:expected_bytes with
+  let reader = IO.stdin () |> IO.buffered () in
+  match IO.read_to_string reader ~len:expected_bytes with
   | Ok data ->
       if String.length data != expected_bytes then
         panic
@@ -363,10 +367,10 @@ let run_kernel_chars = fun expected_bytes ->
        ])
 
 let run_std_chars = fun expected_bytes ->
-  let stdin = IO.stdin () in
+  let reader = IO.stdin () in
   let buffer = Bytes.create ~size:1 in
   let rec loop total =
-    match IO.Stdin.read stdin ~len:1 buffer with
+    match IO.read reader ~len:1 buffer with
     | Ok 0 -> total
     | Ok count -> loop (total + count)
     | Error error -> panic (IO.error_message error)
@@ -381,10 +385,29 @@ let run_std_chars = fun expected_bytes ->
          str (Int.to_string total);
        ])
 
+let run_std_buffered_chars = fun expected_bytes ->
+  let reader = IO.stdin () |> IO.buffered () in
+  let buffer = Bytes.create ~size:1 in
+  let rec loop total =
+    match IO.read reader ~len:1 buffer with
+    | Ok 0 -> total
+    | Ok count -> loop (total + count)
+    | Error error -> panic (IO.error_message error)
+  in
+  let total = loop 0 in
+  if total != expected_bytes then
+    panic
+      (format Format.[
+         str "std buffered char worker expected ";
+         str (Int.to_string expected_bytes);
+         str " bytes but read ";
+         str (Int.to_string total);
+       ])
+
 let run_std_lines = fun expected_bytes expected_lines ->
-  let stdin = IO.stdin () in
+  let reader = IO.stdin () |> IO.buffered () in
   let rec loop byte_count line_count =
-    match IO.Stdin.read_line stdin with
+    match IO.read_line reader with
     | Ok "" -> (byte_count, line_count)
     | Ok line -> loop (byte_count + String.length line) (line_count + 1)
     | Error error -> panic (IO.error_message error)
@@ -412,6 +435,7 @@ let run_worker = fun mode ~expected_bytes ~expected_lines ->
   | Std_read_to_string -> run_std_read_to_string expected_bytes
   | Kernel_chars -> run_kernel_chars expected_bytes
   | Std_chars -> run_std_chars expected_bytes
+  | Std_buffered_chars -> run_std_buffered_chars expected_bytes
   | Std_lines -> run_std_lines expected_bytes expected_lines
 
 let parse_worker_args = function
@@ -452,6 +476,10 @@ let benchmarks =
       ~config:{ iterations = 3; warmup = 1 }
       "stdin std read chars: 48 KiB"
       (run_case Std_chars);
+    with_config
+      ~config:{ iterations = 3; warmup = 1 }
+      "stdin std buffered read chars: 48 KiB"
+      (run_case Std_buffered_chars);
     with_config
       ~config:{ iterations = 3; warmup = 1 }
       "stdin std read_line: 5k piped lines"

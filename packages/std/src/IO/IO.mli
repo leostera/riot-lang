@@ -90,6 +90,7 @@ module Bytes: module type of Bytes
 module Iovec = Kernel.IO.Iovec
 
 module Reader = Reader
+module BufferedReader = Buffered_reader
 
 module Writer = Writer
 
@@ -109,7 +110,13 @@ module Stdin: sig
   val to_reader: t -> (t, error) Reader.t
 end
 
-val stdin: ?chunk_size:int -> unit -> Stdin.t
+val stdin: ?chunk_size:int -> unit -> (Stdin.t, error) Reader.t
+
+val buffered:
+  ?chunk_size:int ->
+  unit ->
+  ('src, 'err) Reader.t ->
+  ('src, 'err) BufferedReader.t
 
 module Stdout: sig
   type nonrec error = error
@@ -129,9 +136,21 @@ module Stderr: sig
   val flush: unit -> (unit, error) result
 end
 
-val read: ('src, 'err) Reader.t -> ?timeout:int64 -> bytes -> (int, 'err) result
+val read:
+  ('src, 'err) Reader.t ->
+  ?timeout:int64 ->
+  ?offset:int ->
+  ?len:int ->
+  bytes ->
+  (int, 'err) result
 
 val read_vectored: ('src, 'err) Reader.t -> Iovec.t -> (int, 'err) result
+
+val read_char: ('src, 'err) Reader.t -> (char option, 'err) result
+
+val read_line: ('src, 'err) Reader.t -> (string, 'err) result
+
+val read_to_string: ('src, 'err) Reader.t -> len:int -> (string, 'err) result
 
 val read_to_end: ('src, 'err) Reader.t -> buf:Buffer.t -> (int, 'err) result
 

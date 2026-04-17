@@ -1,15 +1,17 @@
 open Prelude
+let panic = Kernel.SystemError.panic
 module Buffer = Buffer
 module Bytes = Bytes
 module Iovec = Kernel.IO.Iovec
 module Reader = Reader
+module BufferedReader = Buffered_reader
 module Writer = Writer
-module Error_ = Error
-module Stdin_ = Stdin
-module Stdout_ = Stdout
-module Stderr_ = Stderr
+module Error = Error
+module Stdin = Stdin
+module Stdout = Stdout
+module Stderr = Stderr
 
-type error = Error_.t =
+type error = Error.t =
   | End_of_file
   | Timeout
   | Closed
@@ -89,23 +91,50 @@ type file_kind =
   | Fifo
   | Socket
 
-let of_system_error = Error_.of_system_error
+let of_system_error = Error.of_system_error
 
-let of_async_error = Error_.of_async_error
+let of_async_error = Error.of_async_error
 
-let error_message = Error_.message
+let error_message = Error.message
 
-module Stdin = Stdin_
+let stdin = fun ?chunk_size () ->
+  Stdin.open_ ?chunk_size () |> Stdin.to_reader
 
-let stdin = Stdin.open_
+let buffered = fun ?chunk_size () reader ->
+  BufferedReader.of_reader ?chunk_size reader
 
-module Stdout = Stdout_
-
-module Stderr = Stderr_
-
-let read = Reader.read
+let read = fun reader ?timeout ?(offset = 0) ?len buffer ->
+  let buffer_len = Bytes.length buffer in
+  let len =
+    match len with
+    | Some len -> len
+    | None -> buffer_len - offset
+  in
+  if offset < 0 || len < 0 || offset + len > buffer_len then
+    panic "Std.IO.read: invalid buffer slice";
+  if offset = 0 && len = buffer_len then
+    Reader.read reader ?timeout buffer
+  else
+    match timeout with
+    | Some timeout ->
+        let tmp = Bytes.create ~size:len in
+        (
+          match Reader.read reader ~timeout tmp with
+          | Ok count ->
+              Bytes.blit_unchecked tmp ~src_offset:0 ~dst:buffer ~dst_offset:offset ~len:count;
+              Ok count
+          | Error _ as error -> error
+        )
+    | None ->
+        Reader.read_vectored reader (Iovec.sub ~pos:offset ~len (Iovec.from_bytes buffer))
 
 let read_vectored = Reader.read_vectored
+
+let read_char = Reader.read_char
+
+let read_line = Reader.read_line
+
+let read_to_string = Reader.read_to_string
 
 let read_to_end = Reader.read_to_end
 

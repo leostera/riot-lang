@@ -11,6 +11,55 @@ module FailingReader = struct
   let read_vectored = fun () _ -> Error "boom"
 end
 
+module CountingReader = struct
+  type write_state = {
+    mutable written: int;
+  }
+
+  type t = {
+    data: Bytes.t;
+    mutable offset: int;
+    mutable reads: int;
+  }
+
+  type err = unit
+
+  let create = fun input ->
+    {
+      data = Bytes.from_string input;
+      offset = 0;
+      reads = 0;
+    }
+
+  let read = fun t ?timeout:_ buffer ->
+    t.reads <- t.reads + 1;
+    let remaining = Bytes.length t.data - t.offset in
+    let len = min remaining (Bytes.length buffer) in
+    if len > 0 then
+      Bytes.blit_unchecked t.data ~src_offset:t.offset ~dst:buffer ~dst_offset:0 ~len;
+    t.offset <- t.offset + len;
+    Ok len
+
+  let read_vectored = fun t bufs ->
+    t.reads <- t.reads + 1;
+    let remaining = Bytes.length t.data - t.offset in
+    let total = min remaining (Iovec.length bufs) in
+    let state: write_state = { written = 0 } in
+    Iovec.for_each bufs ~fn:(fun { Iovec.buffer; offset; length } ->
+      if state.written < total then (
+        let chunk_len = min length (total - state.written) in
+        Bytes.blit_unchecked
+          t.data
+          ~src_offset:(t.offset + state.written)
+          ~dst:buffer
+          ~dst_offset:offset
+          ~len:chunk_len;
+        state.written <- state.written + chunk_len
+      ));
+    t.offset <- t.offset + total;
+    Ok total
+end
+
 let test_empty_reader_returns_zero = fun _ctx ->
   let buffer = IO.Bytes.create ~size:4 in
   match IO.read IO.Reader.empty buffer with
@@ -84,6 +133,37 @@ let test_zero_length_read_buffer_returns_zero = fun _ctx ->
   | Ok _ -> Error "reading into a zero-length buffer should return 0"
   | Error () -> Error "reading into a zero-length buffer should not fail"
 
+let test_buffered_reader_amortizes_char_reads = fun _ctx ->
+  let src = CountingReader.create "hello" in
+  let reader =
+    IO.Reader.of_read_src (module CountingReader) src
+    |> IO.buffered ~chunk_size:4 ()
+  in
+  let rec loop acc =
+    match IO.read_char reader with
+    | Ok None -> Ok (String.concat "" (List.reverse acc))
+    | Ok (Some char) -> loop (String.make 1 char :: acc)
+    | Error () -> Error "buffered readers should not fail for counting reader"
+  in
+  match loop [] with
+  | Ok actual when String.equal actual "hello" && src.reads <= 3 -> Ok ()
+  | Ok _ -> Error "buffered readers should serve small char reads from local chunks"
+  | Error err -> Error err
+
+let test_buffered_reader_read_line_uses_generic_io_surface = fun _ctx ->
+  let reader =
+    IO.Reader.from_string "alpha\nbeta"
+    |> IO.buffered ()
+  in
+  match IO.read_line reader with
+  | Ok "alpha\n" -> (
+      match IO.read_line reader with
+      | Ok "beta" -> Ok ()
+      | Ok _ -> Error "buffered readers should preserve remaining line content"
+      | Error () -> Error "buffered readers should not fail for in-memory strings")
+  | Ok _ -> Error "buffered readers should preserve newline-terminated lines"
+  | Error () -> Error "buffered readers should not fail for in-memory strings"
+
 let tests = Test.[
   case "empty readers return EOF immediately" test_empty_reader_returns_zero;
   case "from_string reads small buffers sequentially" test_from_string_reads_small_buffers_sequentially;
@@ -92,6 +172,8 @@ let tests = Test.[
   case "map_err transforms reader errors" test_map_err_transforms_reader_errors;
   case "from_string returns zero after EOF" test_from_string_returns_zero_after_eof;
   case "reading into a zero-length buffer returns zero" test_zero_length_read_buffer_returns_zero;
+  case "buffered readers amortize char reads" test_buffered_reader_amortizes_char_reads;
+  case "buffered readers expose line reads through Std.IO" test_buffered_reader_read_line_uses_generic_io_surface;
 ]
 
 let () =

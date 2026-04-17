@@ -1,5 +1,6 @@
 open Prelude
 module String = Kernel.String
+let panic = Kernel.SystemError.panic
 
 module type Read = sig
   type t
@@ -11,60 +12,27 @@ end
 
 type ('src, 'err) read = (module Read with type t = 'src and type err = 'err)
 
+type ('src, 'err) ops = {
+  read: 'src -> ?timeout:int64 -> bytes -> (int, 'err) result;
+  read_vectored: 'src -> Iovec.t -> (int, 'err) result;
+  read_char: 'src -> (char option, 'err) result;
+  read_line: 'src -> (string, 'err) result;
+  read_to_string: 'src -> len:int -> (string, 'err) result;
+}
+
 type ('src, 'err) t =
-  | Reader of (('src, 'err) read * 'src)
+  | Reader of {
+      ops: ('src, 'err) ops;
+      src: 'src;
+    }
 
-let of_read_src = fun read src -> Reader (read, src)
-
-let read: type src err. (src, err) t -> ?timeout:int64 -> bytes -> (int, err) result = fun (Reader ((module R), src)) ?timeout buf ->
-  R.read src ?timeout buf
-
-let read_vectored: type src err. (src, err) t -> Iovec.t -> (int, err) result = fun (Reader ((module R), src)) bufs ->
-  R.read_vectored src bufs
-
-let read_to_end: type src err. (src, err) t -> buf:Buffer.t -> (int, err) result = fun (Reader ((module R), src)) ~buf:out ->
-  let chunk = Bytes.create ~size:1_024 in
-  let rec loop total =
-    match R.read src chunk with
-    | Ok 0 ->
-        Ok total
-    | Ok len ->
-        Buffer.add_subbytes out chunk 0 len;
-        loop (total + len)
-    | Error err ->
-        Error err
-  in
-  loop 0
-
-let map_err: type src a b. (src, a) t -> fn:(a -> b) -> (src, b) t = fun (Reader ((module R), src)) ~fn ->
-  let module Mapped = struct
-    type t = R.t
-
-    type err = b
-
-    let read = fun value ?timeout buf ->
-      match R.read value ?timeout buf with
-      | Ok read -> Ok read
-      | Error err -> Error (fn err)
-
-    let read_vectored = fun value bufs ->
-      match R.read_vectored value bufs with
-      | Ok read -> Ok read
-      | Error err -> Error (fn err)
-  end in
-  Reader ((module Mapped), src)
-
-let empty =
-  let module Empty = struct
-    type t = unit
-
-    type err = unit
-
-    let read = fun () ?timeout:_ _ -> Ok 0
-
-    let read_vectored = fun () _ -> Ok 0
-  end in
-  of_read_src (module Empty) ()
+type ('src, 'err) buffered = {
+  reader: ('src, 'err) t;
+  chunk: bytes;
+  mutable offset: int;
+  mutable length: int;
+  mutable eof: bool;
+}
 
 type offset_state = {
   mutable offset: int;
@@ -75,11 +43,323 @@ type read_state = {
   mutable continue: bool;
 }
 
+let default_chunk_size = 4_096
+
+let normalize_chunk_size = fun chunk_size ->
+  if chunk_size <= 0 then
+    default_chunk_size
+  else
+    chunk_size
+
+let default_read_char =
+ fun
+   (read : 'src -> ?timeout:int64 -> bytes -> (int, 'err) result)
+   (src : 'src)
+ ->
+  let buf = Bytes.create ~size:1 in
+  match read src buf with
+  | Ok 0 -> Ok None
+  | Ok _ -> Ok (Some (Bytes.get_unchecked buf ~at:0))
+  | Error err -> Error err
+
+let default_read_line = fun read_char src ->
+  let buffer = Buffer.create ~size:128 in
+  let rec loop () =
+    match read_char src with
+    | Ok None -> Ok (Buffer.contents buffer)
+    | Ok (Some char) ->
+        Buffer.add_char buffer char;
+        if char = '\n' then
+          Ok (Buffer.contents buffer)
+        else
+          loop ()
+    | Error err -> Error err
+  in
+  loop ()
+
+let default_read_to_string =
+ fun
+   (read : 'src -> ?timeout:int64 -> bytes -> (int, 'err) result)
+   (src : 'src)
+   ~len
+ ->
+  if len < 0 then
+    panic "Reader.read_to_string: negative length";
+  if len = 0 then
+    Ok ""
+  else
+    let out = Bytes.create ~size:len in
+    let rec loop total =
+      if total = len then
+        Ok (Bytes.to_string out)
+      else
+        let segment = Iovec.sub ~pos:total ~len:(len - total) (Iovec.from_bytes out) in
+        match read src (Iovec.to_bytes segment) with
+        | Ok 0 -> Ok (Bytes.to_string (Bytes.sub_unchecked out ~offset:0 ~len:total))
+        | Ok count ->
+            Bytes.blit_unchecked
+              (Iovec.to_bytes segment)
+              ~src_offset:0
+              ~dst:out
+              ~dst_offset:total
+              ~len:count;
+            loop (total + count)
+        | Error err -> Error err
+    in
+    loop 0
+
+let make =
+ fun
+   ~(read : 'src -> ?timeout:int64 -> bytes -> (int, 'err) result)
+   ~(read_vectored : 'src -> Iovec.t -> (int, 'err) result)
+   (src : 'src)
+ ->
+  let read_char = fun src -> default_read_char read src in
+  let read_line = fun src -> default_read_line read_char src in
+  let read_to_string = fun src ~len -> default_read_to_string read src ~len in
+  Reader { ops = { read; read_vectored; read_char; read_line; read_to_string }; src }
+
+let of_read_src: type src err. (src, err) read -> src -> (src, err) t = fun (module R) src ->
+  make
+    ~read:(fun src ?timeout buf -> R.read src ?timeout buf)
+    ~read_vectored:R.read_vectored
+    src
+
+let read: type src err. (src, err) t -> ?timeout:int64 -> bytes -> (int, err) result =
+ fun (Reader { ops; src }) ?timeout buf -> ops.read src ?timeout buf
+
+let read_vectored: type src err. (src, err) t -> Iovec.t -> (int, err) result =
+ fun (Reader { ops; src }) bufs -> ops.read_vectored src bufs
+
+let read_char: type src err. (src, err) t -> (char option, err) result =
+ fun (Reader { ops; src }) -> ops.read_char src
+
+let read_line: type src err. (src, err) t -> (string, err) result =
+ fun (Reader { ops; src }) -> ops.read_line src
+
+let read_to_string: type src err. (src, err) t -> len:int -> (string, err) result =
+ fun (Reader { ops; src }) ~len -> ops.read_to_string src ~len
+
+let buffered_available = fun state -> state.length - state.offset
+
+let buffered_consume = fun state buffer ~dst_offset ~len ->
+  let available = buffered_available state in
+  let copied = min len available in
+  if copied > 0 then
+    Bytes.blit_unchecked state.chunk ~src_offset:state.offset ~dst:buffer ~dst_offset ~len:copied;
+  state.offset <- state.offset + copied;
+  copied
+
+let buffered_consume_vectored = fun state bufs ->
+  let progress: read_state = { total = 0; continue = true } in
+  Iovec.for_each bufs
+    ~fn:(fun { Iovec.buffer; offset; length } ->
+      let available = buffered_available state in
+      if available > 0 then
+        let chunk_len = min length available in
+        Bytes.blit_unchecked
+          state.chunk
+          ~src_offset:state.offset
+          ~dst:buffer
+          ~dst_offset:offset
+          ~len:chunk_len;
+        state.offset <- state.offset + chunk_len;
+        progress.total <- progress.total + chunk_len);
+  progress.total
+
+let buffered_refill = fun state ?timeout () ->
+  if buffered_available state > 0 then
+    Ok (buffered_available state)
+  else if state.eof then
+    Ok 0
+  else
+    match read state.reader ?timeout state.chunk with
+    | Ok 0 ->
+        state.offset <- 0;
+        state.length <- 0;
+        state.eof <- true;
+        Ok 0
+    | Ok count ->
+        state.offset <- 0;
+        state.length <- count;
+        Ok count
+    | Error err -> Error err
+
+let find_newline = fun bytes ~offset ~len ->
+  let rec loop index =
+    if index >= offset + len then
+      None
+    else if Bytes.get_unchecked bytes ~at:index = '\n' then
+      Some index
+    else
+      loop (index + 1)
+  in
+  loop offset
+
+let buffered_read_raw = fun state ?timeout buffer ->
+  let requested = Bytes.length buffer in
+  if requested = 0 then
+    Ok 0
+  else
+    let copied = buffered_consume state buffer ~dst_offset:0 ~len:requested in
+    if copied > 0 then
+      Ok copied
+    else if requested >= Bytes.length state.chunk then
+      read state.reader ?timeout buffer
+    else
+      match buffered_refill state ?timeout () with
+      | Ok available ->
+          if available = 0 then
+            Ok 0
+          else
+            Ok (buffered_consume state buffer ~dst_offset:0 ~len:requested)
+      | Error err -> Error err
+
+let buffered_read_vectored_raw = fun state bufs ->
+  if Iovec.length bufs = 0 then
+    Ok 0
+  else
+    let copied = buffered_consume_vectored state bufs in
+    if copied > 0 then
+      Ok copied
+    else if Iovec.length bufs >= Bytes.length state.chunk then
+      read_vectored state.reader bufs
+    else
+      match buffered_refill state () with
+      | Ok available ->
+          if available = 0 then
+            Ok 0
+          else
+            Ok (buffered_consume_vectored state bufs)
+      | Error err -> Error err
+
+let buffered_read_char_raw = fun state ->
+  match buffered_refill state () with
+  | Ok available ->
+      if available = 0 then
+        Ok None
+      else
+        let char = Bytes.get_unchecked state.chunk ~at:state.offset in
+        state.offset <- state.offset + 1;
+        Ok (Some char)
+  | Error err -> Error err
+
+let buffered_read_line_raw = fun state ->
+  let out = Buffer.create ~size:(Bytes.length state.chunk) in
+  let rec loop () =
+    let available = buffered_available state in
+    if available = 0 then
+      match buffered_refill state () with
+      | Ok refilled ->
+          if refilled = 0 then
+            Ok (Buffer.contents out)
+          else
+            loop ()
+      | Error err -> Error err
+    else
+      match find_newline state.chunk ~offset:state.offset ~len:available with
+      | Some newline_index ->
+          let line_len = newline_index - state.offset + 1 in
+          Buffer.add_subbytes out state.chunk state.offset line_len;
+          state.offset <- newline_index + 1;
+          Ok (Buffer.contents out)
+      | None ->
+          Buffer.add_subbytes out state.chunk state.offset available;
+          state.offset <- state.length;
+          loop ()
+  in
+  loop ()
+
+let buffered_read_to_string_raw = fun state ~len ->
+  if len < 0 then
+    panic "Reader.read_to_string: negative length";
+  if len = 0 then
+    Ok ""
+  else
+    let out = Bytes.create ~size:len in
+    let rec loop total =
+      if total = len then
+        Ok (Bytes.to_string out)
+      else
+        let segment = Iovec.sub ~pos:total ~len:(len - total) (Iovec.from_bytes out) in
+        match buffered_read_vectored_raw state segment with
+        | Ok 0 -> Ok (Bytes.to_string (Bytes.sub_unchecked out ~offset:0 ~len:total))
+        | Ok count -> loop (total + count)
+        | Error err -> Error err
+    in
+    loop 0
+
+let buffered = fun ?(chunk_size = default_chunk_size) reader ->
+  let state =
+    {
+      reader;
+      chunk = Bytes.create ~size:(normalize_chunk_size chunk_size);
+      offset = 0;
+      length = 0;
+      eof = false;
+    }
+  in
+  make
+    ~read:(fun state ?timeout buffer -> buffered_read_raw state ?timeout buffer)
+    ~read_vectored:buffered_read_vectored_raw
+    state
+
+let read_to_end: type src err. (src, err) t -> buf:Buffer.t -> (int, err) result =
+ fun reader ~buf:out ->
+  let chunk = Bytes.create ~size:1_024 in
+  let rec loop total =
+    match read reader chunk with
+    | Ok 0 ->
+        Ok total
+    | Ok len ->
+        Buffer.add_subbytes out chunk 0 len;
+        loop (total + len)
+    | Error err ->
+        Error err
+  in
+  loop 0
+
+let map_err: type src a b. (src, a) t -> fn:(a -> b) -> (src, b) t =
+ fun (Reader { ops; src }) ~fn ->
+  let ops =
+    {
+      read = (fun value ?timeout buf ->
+        match ops.read value ?timeout buf with
+        | Ok read -> Ok read
+        | Error err -> Error (fn err));
+      read_vectored = (fun value bufs ->
+        match ops.read_vectored value bufs with
+        | Ok read -> Ok read
+        | Error err -> Error (fn err));
+      read_char = (fun value ->
+        match ops.read_char value with
+        | Ok value -> Ok value
+        | Error err -> Error (fn err));
+      read_line = (fun value ->
+        match ops.read_line value with
+        | Ok value -> Ok value
+        | Error err -> Error (fn err));
+      read_to_string = (fun value ~len ->
+        match ops.read_to_string value ~len with
+        | Ok value -> Ok value
+        | Error err -> Error (fn err));
+    }
+  in
+  Reader { ops; src }
+
+let empty =
+  let module Empty = struct
+    type t = unit
+    type err = unit
+    let read = fun () ?timeout:_ _ -> Ok 0
+    let read_vectored = fun () _ -> Ok 0
+  end in
+  of_read_src (module Empty) ()
+
 let from_bytes = fun data ->
   let state = { offset = 0 } in
   let module Bytes_read = struct
     type t = bytes
-
     type err = unit
 
     let read = fun source ?timeout:_ buf ->
@@ -118,7 +398,6 @@ let from_string = fun source ->
   let state = { offset = 0 } in
   let module String_read = struct
     type t = string
-
     type err = unit
 
     let read = fun value ?timeout:_ buf ->

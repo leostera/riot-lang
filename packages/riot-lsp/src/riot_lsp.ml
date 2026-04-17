@@ -102,7 +102,7 @@ let rec loop = fun logger ->
             | None -> loop logger input output outcome.state
 
 let run = fun ?log_path () ->
-  let input = IO.stdin () |> IO.Stdin.to_reader in
+  let input = IO.stdin () in
   let output =
     let module Stdout_writer = struct
       type t = unit

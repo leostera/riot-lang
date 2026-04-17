@@ -32,7 +32,7 @@ let stdin = fun () ->
   match stdin_handle.current with
   | Some stdin -> stdin
   | None ->
-      let stdin = IO.stdin () in
+      let stdin = IO.Stdin.open_ () in
       stdin_handle.current <- Some stdin;
       stdin
 
