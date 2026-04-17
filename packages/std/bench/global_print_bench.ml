@@ -2,6 +2,22 @@ open Std
 
 external bytes_unsafe_of_string: string -> bytes = "%bytes_of_string"
 
+external fd_write_raw_int:
+  Kernel.Fs.File.t -> bytes -> int -> int -> int
+  = "kernel_new_fs_file_write_raw"
+
+external fd_write_all_raw_int:
+  Kernel.Fs.File.t -> bytes -> int -> int -> int
+  = "kernel_new_fs_file_write_all_raw"
+
+external fd_write_pair_raw_int:
+  Kernel.Fs.File.t -> bytes -> int -> int -> bytes -> int -> int -> int
+  = "kernel_new_fs_file_write_pair_raw_bytecode" "kernel_new_fs_file_write_pair_raw"
+
+external fd_write_pair_all_raw_int:
+  Kernel.Fs.File.t -> bytes -> int -> int -> bytes -> int -> int -> int
+  = "kernel_new_fs_file_write_pair_all_raw_bytecode" "kernel_new_fs_file_write_pair_all_raw"
+
 let dev_null =
   match Kernel.Fs.File.open_write (Kernel.Path.from_string "/dev/null") with
   | Result.Ok file -> file
@@ -17,6 +33,19 @@ let write_all = fun bytes ~len ->
           else
             loop (pos + written) (remaining - written)
       | Result.Error error -> panic (Kernel.Fs.File.error_to_string error)
+  in
+  loop 0 len
+
+let write_all_raw_int = fun bytes ~len ->
+  let rec loop pos remaining =
+    if remaining > 0 then
+      let written = fd_write_raw_int dev_null bytes pos remaining in
+      if written > 0 then
+        loop (pos + written) (remaining - written)
+      else if written = 0 then
+        panic "dev_null raw-int write returned 0 bytes"
+      else
+        panic (Kernel.SystemError.to_string (Kernel.SystemError.from_code (-written)))
   in
   loop 0 len
 
@@ -68,6 +97,52 @@ let write_all_pair = fun left ~left_len right ~right_len ->
   in
   loop 0 left_len 0 right_len
 
+let write_all_pair_raw_int = fun left ~left_len right ~right_len ->
+  let rec loop left_pos left_remaining right_pos right_remaining =
+    let remaining = left_remaining + right_remaining in
+    if remaining > 0 then
+      let written =
+        fd_write_pair_raw_int dev_null left left_pos left_remaining right right_pos right_remaining
+      in
+      if written > 0 then
+        let left_written =
+          if written < left_remaining then
+            written
+          else
+            left_remaining
+        in
+        let right_written = written - left_written in
+        loop
+          (left_pos + left_written)
+          (left_remaining - left_written)
+          (right_pos + right_written)
+          (right_remaining - right_written)
+      else if written = 0 then
+        panic "dev_null raw-int write_pair returned 0 bytes"
+      else
+        panic (Kernel.SystemError.to_string (Kernel.SystemError.from_code (-written)))
+  in
+  loop 0 left_len 0 right_len
+
+let write_all_raw_native = fun bytes ~len ->
+  let written = fd_write_all_raw_int dev_null bytes 0 len in
+  if written = len then
+    ()
+  else if written = 0 then
+    panic "dev_null raw-native write returned 0 bytes"
+  else
+    panic (Kernel.SystemError.to_string (Kernel.SystemError.from_code (-written)))
+
+let write_all_pair_raw_native = fun left ~left_len right ~right_len ->
+  let total_len = left_len + right_len in
+  let written = fd_write_pair_all_raw_int dev_null left 0 left_len right 0 right_len in
+  if written = total_len then
+    ()
+  else if written = 0 then
+    panic "dev_null raw-native write_pair returned 0 bytes"
+  else
+    panic (Kernel.SystemError.to_string (Kernel.SystemError.from_code (-written)))
+
 let newline = bytes_unsafe_of_string "\n"
 
 let small_message = "test case passed"
@@ -83,6 +158,14 @@ let bench_zero_copy_write = fun message () ->
   let bytes = bytes_unsafe_of_string message in
   write_all bytes ~len:(String.length message)
 
+let bench_zero_copy_write_raw_int = fun message () ->
+  let bytes = bytes_unsafe_of_string message in
+  write_all_raw_int bytes ~len:(String.length message)
+
+let bench_zero_copy_write_raw_native = fun message () ->
+  let bytes = bytes_unsafe_of_string message in
+  write_all_raw_native bytes ~len:(String.length message)
+
 let bench_zero_copy_line_split = fun message () ->
   let bytes = bytes_unsafe_of_string message in
   write_all bytes ~len:(String.length message);
@@ -97,20 +180,45 @@ let bench_zero_copy_line_pair = fun message () ->
   let bytes = bytes_unsafe_of_string message in
   write_all_pair bytes ~left_len:(String.length message) newline ~right_len:1
 
+let bench_zero_copy_line_pair_raw_int = fun message () ->
+  let bytes = bytes_unsafe_of_string message in
+  write_all_pair_raw_int bytes ~left_len:(String.length message) newline ~right_len:1
+
+let bench_zero_copy_line_pair_raw_native = fun message () ->
+  let bytes = bytes_unsafe_of_string message in
+  write_all_pair_raw_native bytes ~left_len:(String.length message) newline ~right_len:1
+
 let config = { Bench.iterations = 20_000; warmup = 5 }
 
 let benchmarks =
   Bench.[
     with_config ~config "copy write: small" (bench_copy_write small_message);
     with_config ~config "zero-copy write: small" (bench_zero_copy_write small_message);
+    with_config ~config "zero-copy write raw-int: small" (bench_zero_copy_write_raw_int small_message);
+    with_config ~config "zero-copy write raw-native: small" (bench_zero_copy_write_raw_native small_message);
     with_config ~config "zero-copy line split: small" (bench_zero_copy_line_split small_message);
     with_config ~config "zero-copy line writev: small" (bench_zero_copy_line_writev small_message);
     with_config ~config "zero-copy line pair: small" (bench_zero_copy_line_pair small_message);
+    with_config ~config "zero-copy line pair raw-int: small" (bench_zero_copy_line_pair_raw_int small_message);
+    with_config
+      ~config
+      "zero-copy line pair raw-native: small"
+      (bench_zero_copy_line_pair_raw_native small_message);
     with_config ~config "copy write: medium" (bench_copy_write medium_message);
     with_config ~config "zero-copy write: medium" (bench_zero_copy_write medium_message);
+    with_config ~config "zero-copy write raw-int: medium" (bench_zero_copy_write_raw_int medium_message);
+    with_config
+      ~config
+      "zero-copy write raw-native: medium"
+      (bench_zero_copy_write_raw_native medium_message);
     with_config ~config "zero-copy line split: medium" (bench_zero_copy_line_split medium_message);
     with_config ~config "zero-copy line writev: medium" (bench_zero_copy_line_writev medium_message);
     with_config ~config "zero-copy line pair: medium" (bench_zero_copy_line_pair medium_message);
+    with_config ~config "zero-copy line pair raw-int: medium" (bench_zero_copy_line_pair_raw_int medium_message);
+    with_config
+      ~config
+      "zero-copy line pair raw-native: medium"
+      (bench_zero_copy_line_pair_raw_native medium_message);
   ]
 
 let () =

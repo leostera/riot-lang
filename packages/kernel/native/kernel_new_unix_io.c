@@ -246,6 +246,60 @@ CAMLprim value kernel_new_fs_file_write(value fd_val, value buffer_val, value po
   CAMLreturn(kernel_new_result_ok(Val_int(result)));
 }
 
+CAMLprim value kernel_new_fs_file_write_raw(value fd_val, value buffer_val, value pos_val, value len_val) {
+  CAMLparam4(fd_val, buffer_val, pos_val, len_val);
+
+  ssize_t result;
+  caml_enter_blocking_section();
+  result = write(
+    Int_val(fd_val),
+    Bytes_val(buffer_val) + Int_val(pos_val),
+    (size_t)Int_val(len_val));
+  caml_leave_blocking_section();
+
+  if (result == -1) {
+    CAMLreturn(Val_int(-errno));
+  }
+
+  CAMLreturn(Val_int((int)result));
+}
+
+CAMLprim value kernel_new_fs_file_write_all_raw(
+  value fd_val,
+  value buffer_val,
+  value pos_val,
+  value len_val) {
+  CAMLparam4(fd_val, buffer_val, pos_val, len_val);
+
+  int fd = Int_val(fd_val);
+  int pos = Int_val(pos_val);
+  int remaining = Int_val(len_val);
+
+  while (remaining > 0) {
+    ssize_t result;
+
+    caml_enter_blocking_section();
+    result = write(
+      fd,
+      Bytes_val(buffer_val) + pos,
+      (size_t)remaining);
+    caml_leave_blocking_section();
+
+    if (result == -1) {
+      CAMLreturn(Val_int(-errno));
+    }
+
+    if (result == 0) {
+      CAMLreturn(Val_int(0));
+    }
+
+    pos += (int)result;
+    remaining -= (int)result;
+  }
+
+  CAMLreturn(len_val);
+}
+
 CAMLprim value kernel_new_fs_file_write_pair(
   value fd_val,
   value left_buffer_val,
@@ -276,9 +330,124 @@ CAMLprim value kernel_new_fs_file_write_pair(
   CAMLreturn(kernel_new_result_ok(Val_int(result)));
 }
 
+CAMLprim value kernel_new_fs_file_write_pair_raw(
+  value fd_val,
+  value left_buffer_val,
+  value left_pos_val,
+  value left_len_val,
+  value right_buffer_val,
+  value right_pos_val,
+  value right_len_val) {
+  CAMLparam5(fd_val, left_buffer_val, left_pos_val, left_len_val, right_buffer_val);
+  CAMLxparam2(right_pos_val, right_len_val);
+
+  struct iovec iovecs[2];
+  ssize_t result;
+
+  iovecs[0].iov_base = Bytes_val(left_buffer_val) + Int_val(left_pos_val);
+  iovecs[0].iov_len = (size_t)Int_val(left_len_val);
+  iovecs[1].iov_base = Bytes_val(right_buffer_val) + Int_val(right_pos_val);
+  iovecs[1].iov_len = (size_t)Int_val(right_len_val);
+
+  caml_enter_blocking_section();
+  result = writev(Int_val(fd_val), iovecs, 2);
+  caml_leave_blocking_section();
+
+  if (result == -1) {
+    CAMLreturn(Val_int(-errno));
+  }
+
+  CAMLreturn(Val_int((int)result));
+}
+
+CAMLprim value kernel_new_fs_file_write_pair_all_raw(
+  value fd_val,
+  value left_buffer_val,
+  value left_pos_val,
+  value left_len_val,
+  value right_buffer_val,
+  value right_pos_val,
+  value right_len_val) {
+  CAMLparam5(fd_val, left_buffer_val, left_pos_val, left_len_val, right_buffer_val);
+  CAMLxparam2(right_pos_val, right_len_val);
+
+  int fd = Int_val(fd_val);
+  int left_pos = Int_val(left_pos_val);
+  int left_remaining = Int_val(left_len_val);
+  int right_pos = Int_val(right_pos_val);
+  int right_remaining = Int_val(right_len_val);
+
+  while ((left_remaining + right_remaining) > 0) {
+    struct iovec iovecs[2];
+    int iovecs_len = 0;
+    ssize_t result;
+
+    if (left_remaining > 0) {
+      iovecs[iovecs_len].iov_base = Bytes_val(left_buffer_val) + left_pos;
+      iovecs[iovecs_len].iov_len = (size_t)left_remaining;
+      iovecs_len += 1;
+    }
+
+    if (right_remaining > 0) {
+      iovecs[iovecs_len].iov_base = Bytes_val(right_buffer_val) + right_pos;
+      iovecs[iovecs_len].iov_len = (size_t)right_remaining;
+      iovecs_len += 1;
+    }
+
+    caml_enter_blocking_section();
+    result = writev(fd, iovecs, iovecs_len);
+    caml_leave_blocking_section();
+
+    if (result == -1) {
+      CAMLreturn(Val_int(-errno));
+    }
+
+    if (result == 0) {
+      CAMLreturn(Val_int(0));
+    }
+
+    if (result < left_remaining) {
+      left_pos += (int)result;
+      left_remaining -= (int)result;
+    } else {
+      int right_written = (int)result - left_remaining;
+      left_pos += left_remaining;
+      left_remaining = 0;
+      right_pos += right_written;
+      right_remaining -= right_written;
+    }
+  }
+
+  CAMLreturn(Val_int(Int_val(left_len_val) + Int_val(right_len_val)));
+}
+
 CAMLprim value kernel_new_fs_file_write_pair_bytecode(value *argv, int argn) {
   (void)argn;
   return kernel_new_fs_file_write_pair(
+    argv[0],
+    argv[1],
+    argv[2],
+    argv[3],
+    argv[4],
+    argv[5],
+    argv[6]);
+}
+
+CAMLprim value kernel_new_fs_file_write_pair_raw_bytecode(value *argv, int argn) {
+  (void)argn;
+  return kernel_new_fs_file_write_pair_raw(
+    argv[0],
+    argv[1],
+    argv[2],
+    argv[3],
+    argv[4],
+    argv[5],
+    argv[6]);
+}
+
+CAMLprim value kernel_new_fs_file_write_pair_all_raw_bytecode(value *argv, int argn) {
+  (void)argn;
+  return kernel_new_fs_file_write_pair_all_raw(
     argv[0],
     argv[1],
     argv[2],
