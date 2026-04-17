@@ -103,22 +103,7 @@ let rec loop = fun logger ->
 
 let run = fun ?log_path () ->
   let input = IO.stdin () in
-  let output =
-    let module Stdout_writer = struct
-      type t = unit
-
-      type err = IO.error
-
-      let write = fun () ~buf ->
-        let bytes = IO.Bytes.from_string buf in
-        IO.Stdout.write bytes
-
-      let write_owned_vectored = fun () ~bufs -> IO.Stdout.write_vectored bufs
-
-      let flush = fun () -> IO.Stdout.flush ()
-    end in
-    IO.Writer.of_write_src (module Stdout_writer) ()
-  in
+  let output = IO.stdout () in
   match File_log.open_sink ?path:log_path () with
   | Error _ -> loop None input output Session.empty
   | Ok logger ->

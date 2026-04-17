@@ -1,7 +1,7 @@
 open Std
 
 let input_buffer = Utf8_reader.create ()
-type stdin_cell = { mutable current: IO.Stdin.t option }
+type stdin_cell = { mutable current: (IO.Stdin.t, IO.error) IO.Reader.t option }
 
 let stdin_handle = { current = None }
 
@@ -9,14 +9,14 @@ let stdin = fun () ->
   match stdin_handle.current with
   | Some stdin -> stdin
   | None ->
-      let stdin = IO.Stdin.open_ () in
+      let stdin = IO.stdin () in
       stdin_handle.current <- Some stdin;
       stdin
 
 let read_utf8 = fun () ->
   Utf8_reader.read input_buffer
     ~read:(fun bytes ~offset ~len ->
-      match IO.Stdin.read (stdin ()) ~offset ~len bytes with
+      match IO.read (stdin ()) ~offset ~len bytes with
       | Ok count -> `Ok count
       | Error _ -> `Error)
 

@@ -112,6 +112,10 @@ end
 
 val stdin: ?chunk_size:int -> unit -> (Stdin.t, error) Reader.t
 
+val stdout: unit -> (Stdout.t, error) Writer.t
+
+val stderr: unit -> (Stderr.t, error) Writer.t
+
 val buffered:
   ?chunk_size:int ->
   unit ->

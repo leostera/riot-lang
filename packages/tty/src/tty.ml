@@ -24,7 +24,7 @@ type mode = Terminal.mode =
   | Immediate
 
 type t = Terminal.t
-type stdin_cell = { mutable current: IO.Stdin.t option }
+type stdin_cell = { mutable current: (IO.Stdin.t, IO.error) IO.Reader.t option }
 
 let stdin_handle = { current = None }
 
@@ -32,7 +32,7 @@ let stdin = fun () ->
   match stdin_handle.current with
   | Some stdin -> stdin
   | None ->
-      let stdin = IO.Stdin.open_ () in
+      let stdin = IO.stdin () in
       stdin_handle.current <- Some stdin;
       stdin
 
@@ -164,7 +164,7 @@ type read =
 
 let read_from_input = fun input_fd bytes ~offset ~len ->
   if Platform.fd_equal input_fd (Platform.stdin_fd ()) then
-    match IO.Stdin.read (stdin ()) ~offset ~len bytes with
+    match IO.read (stdin ()) ~offset ~len bytes with
     | Ok count -> `Ok count
     | Error _ -> `Error
   else

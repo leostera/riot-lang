@@ -100,6 +100,12 @@ let error_message = Error.message
 let stdin = fun ?chunk_size () ->
   Stdin.open_ ?chunk_size () |> Stdin.to_reader
 
+let stdout = fun () ->
+  Stdout.to_writer ()
+
+let stderr = fun () ->
+  Stderr.to_writer ()
+
 let buffered = fun ?chunk_size () reader ->
   BufferedReader.of_reader ?chunk_size reader
 

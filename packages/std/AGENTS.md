@@ -41,6 +41,7 @@
 35. Keep `Std.Global.print*` delegating to `Kernel.IO`'s blocking whole-write stdio helpers. Human-mode CLI rendering calls them per line, so keep that path narrow and avoid iovec-array construction or richer writer abstractions in the hot loop.
 36. Keep `Std.Log` actor-friendly and serialized through handler processes. Application-level logging should flow through handlers with explicit drain semantics such as `Log.flush`; reserve `Std.Global.print*` for low-level terminal output where blocking writes are acceptable.
 37. Keep `Std.IO.Stdin.open_` handle-backed and brokered through `Runtime.spawn_blocked`, but make `Std.IO.stdin ()` return a `Reader.t` for the common case. Kernel stdin reads stay blocking; `std` owns the broker, `Reader` adaptation, and local buffering through `Std.IO.buffered ()` without flipping stdio descriptors into nonblocking mode.
+38. Keep `Std.IO.stdout ()` and `Std.IO.stderr ()` returning `Writer.t` values layered over the existing stdio modules. That symmetry is the base for future reader/writer composition like `pipe`, so do not force callers back into ad hoc writer wrappers for common stdout/stderr flows.
 
 ## Validate
 
