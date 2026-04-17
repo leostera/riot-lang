@@ -24,6 +24,17 @@ type mode = Terminal.mode =
   | Immediate
 
 type t = Terminal.t
+type stdin_cell = { mutable current: IO.Stdin.t option }
+
+let stdin_handle = { current = None }
+
+let stdin = fun () ->
+  match stdin_handle.current with
+  | Some stdin -> stdin
+  | None ->
+      let stdin = IO.stdin () in
+      stdin_handle.current <- Some stdin;
+      stdin
 
 let io_error_of_system_error = fun error -> IO.of_system_error error
 
@@ -153,9 +164,8 @@ type read =
 
 let read_from_input = fun input_fd bytes ~offset ~len ->
   if Platform.fd_equal input_fd (Platform.stdin_fd ()) then
-    match IO.Stdin.read ~offset ~len bytes with
+    match IO.Stdin.read (stdin ()) ~offset ~len bytes with
     | Ok count -> `Ok count
-    | Error IO.Operation_would_block -> `Would_block
     | Error _ -> `Error
   else
     match Platform.read input_fd bytes ~offset ~len with

@@ -102,18 +102,7 @@ let rec loop = fun logger ->
             | None -> loop logger input output outcome.state
 
 let run = fun ?log_path () ->
-  let input =
-    let module Stdin_reader = struct
-      type t = unit
-
-      type err = IO.error
-
-      let read = fun () ?timeout:_ bytes -> IO.Stdin.read bytes
-
-      let read_vectored = fun () bufs -> IO.Stdin.read_vectored bufs
-    end in
-    IO.Reader.of_read_src (module Stdin_reader) ()
-  in
+  let input = IO.stdin () |> IO.Stdin.to_reader in
   let output =
     let module Stdout_writer = struct
       type t = unit
