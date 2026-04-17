@@ -115,7 +115,10 @@ let normalize_terms = fun terms ->
       | Some existing ->
           let merged = Term.intersection existing term in
           let acc_without_pkg =
-            List.filter acc ~fn:(fun existing -> Term.package existing != Term.package term)
+            List.filter
+              acc
+              ~fn:(fun existing ->
+                not (String.equal (Term.package existing) (Term.package term)))
           in
           if Term.is_any merged then
             acc_without_pkg
@@ -159,52 +162,52 @@ let prior_cause = fun ?extra_term incompat satisfier_cause package ->
   match incompat with
   | External _
   | Derived _ ->
-      (* Find the term for the package in both incompatibilities and merge them *)
-      let incompat_term =
-        List.find incompat_terms ~fn:(fun t -> Term.package t = package)
-      in
-      let satisfier_term =
-        List.find satisfier_terms ~fn:(fun t -> Term.package t = package)
-      in
-      let merged_term =
+      let incompat_term = List.find incompat_terms ~fn:(fun t -> Term.package t = package) in
+      let satisfier_term = List.find satisfier_terms ~fn:(fun t -> Term.package t = package) in
+      let resolved_package_term =
         match (incompat_term, satisfier_term) with
-        | Some it, Some st -> Term.intersection it st
-        | Some it, None -> it
-        | None, Some st -> st
+        | Some left, Some right -> Some (Term.union left right)
+        | Some left, None -> Some left
+        | None, Some right -> Some right
         | None, None -> panic "Package not found in either incompatibility"
       in
-      let other_incompat_terms =
-        List.filter incompat_terms ~fn:(fun t -> Term.package t != package)
-      in
-      let other_satisfier_terms =
-        List.filter satisfier_terms ~fn:(fun t -> Term.package t != package)
-      in
-      let merged_other_terms =
-        List.fold_left other_incompat_terms ~acc:[]
-          ~fn:(fun acc incompat_t ->
-            let pkg = Term.package incompat_t in
-            match List.find other_satisfier_terms ~fn:(fun t -> Term.package t = pkg) with
-            | Some satisfier_t -> Term.intersection incompat_t satisfier_t :: acc
-            | None -> incompat_t :: acc)
-      in
-      let remaining_satisfier_terms =
-        List.filter
-          other_satisfier_terms
-          ~fn:(fun t ->
-            not (List.any other_incompat_terms ~fn:(fun it -> Term.package it = Term.package t)))
+      let add_or_merge_term = fun acc term ->
+        let pkg = Term.package term in
+        match List.find acc ~fn:(fun existing -> Term.package existing = pkg) with
+        | Some existing ->
+            let merged = Term.intersection existing term in
+            merged
+            :: List.filter acc ~fn:(fun existing ->
+                 not (String.equal (Term.package existing) pkg))
+        | None -> term :: acc
       in
       let all_terms =
-        if Term.is_any merged_term then
-          merged_other_terms @ remaining_satisfier_terms
-        else
-          (merged_term :: merged_other_terms) @ remaining_satisfier_terms
+        List.fold_left incompat_terms ~acc:[]
+          ~fn:(fun acc term ->
+            if String.equal (Term.package term) package then
+              acc
+            else
+              add_or_merge_term acc term)
+      in
+      let all_terms =
+        List.fold_left satisfier_terms ~acc:all_terms
+          ~fn:(fun acc term ->
+            if String.equal (Term.package term) package then
+              acc
+            else
+              add_or_merge_term acc term)
+      in
+      let all_terms =
+        match resolved_package_term with
+        | Some term when not (Term.is_any term) -> term :: all_terms
+        | _ -> all_terms
       in
       let all_terms =
         match extra_term with
         | Some term -> term :: all_terms
         | None -> all_terms
       in
-      let all_terms = normalize_terms all_terms in
+      let all_terms = normalize_terms (List.reverse all_terms) in
       Log.info ("prior_cause: all_terms has " ^ Int.to_string (List.length all_terms) ^ " terms");
       (* Even if all_terms is empty, create a derived incompatibility *)
       (* An empty incompatibility is terminal (fundamental contradiction) *)

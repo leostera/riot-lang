@@ -53,29 +53,26 @@ let union = fun t1 t2 ->
         }
     | (true, false)
     | (false, true) ->
-        let pos_ranges =
+        let positive_ranges =
           if t1.positive then
             t1.ranges
           else
             t2.ranges
         in
-        let neg_ranges =
+        let negative_ranges =
           if t1.positive then
             t2.ranges
           else
             t1.ranges
         in
-        if Ranges.subset_of ~compare_v:version_compare pos_ranges neg_ranges then
-          { package = t1.package; ranges = Ranges.empty; positive = true }
-        else
-          {
-            package = t1.package;
-            ranges = Ranges.union
-              ~compare_v:version_compare
-              pos_ranges
-              (Ranges.complement ~compare_v:version_compare neg_ranges);
-            positive = true
-          }
+        {
+          package = t1.package;
+          ranges = Ranges.intersection
+            ~compare_v:version_compare
+            negative_ranges
+            (Ranges.complement ~compare_v:version_compare positive_ranges);
+          positive = false
+        }
 
 let intersection = fun t1 t2 ->
   if not (String.equal t1.package t2.package) then
