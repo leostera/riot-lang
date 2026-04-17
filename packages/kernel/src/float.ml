@@ -59,7 +59,11 @@ let abs = fun value ->
 
 let sqrt = Caml_runtime.sqrt_float
 
-external cbrt: float -> float = "caml_cbrt_float" "caml_cbrt"
+let cbrt = fun value ->
+  let exponent = Caml_runtime.div_float 1.0 3.0 in
+  match Int.compare (compare value 0.0) 0 with
+  | -1 -> Caml_runtime.neg_float (Caml_runtime.pow_float (abs value) exponent)
+  | _ -> Caml_runtime.pow_float value exponent
 
 let floor = Caml_runtime.floor_float
 
