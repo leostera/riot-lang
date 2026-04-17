@@ -103,7 +103,7 @@ let () =
       println ("Body length: " ^ (Int.to_string (String.length body)) ^ " bytes");
       let preview =
         if String.length body > 200 then
-          String.sub body 0 200 ^ "..."
+          String.sub body ~offset:0 ~len:200 ^ "..."
         else
           body
       in

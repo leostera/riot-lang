@@ -9,13 +9,13 @@ type live_set = string HashSet.t
 let empty = HashSet.create
 
 let mem = fun live name ->
-  HashSet.contains live name
+  HashSet.contains live ~value:name
 
-let copy = fun live -> HashSet.of_list (HashSet.to_list live)
+let copy = fun live -> HashSet.from_list (HashSet.to_list live)
 
 let add = fun live name ->
   let next = copy live in
-  let _ = HashSet.insert next name in
+  let _ = HashSet.insert next ~value:name in
   next
 
 let remove = fun live name ->
@@ -28,7 +28,7 @@ let union = fun left right ->
 
 let of_operand = fun operand ->
   match operand with
-  | Operand.Register name -> HashSet.of_list [ name ]
+  | Operand.Register name -> HashSet.from_list [ name ]
   | Operand.Global _
   | Operand.Symbol_address _
   | Operand.Literal _ -> empty ()
@@ -39,7 +39,7 @@ let of_callee = fun callee ->
   | Callee.Indirect operand -> of_operand operand
 
 let of_operands = fun operands ->
-  List.fold_left (fun live operand -> union live (of_operand operand)) (empty ()) operands
+  List.fold_left operands ~acc:(empty ()) ~fn:(fun live operand -> union live (of_operand operand))
 
 let rec before_instruction = fun ~after instruction ->
   match instruction with
@@ -75,6 +75,6 @@ let rec before_instruction = fun ~after instruction ->
 
 and before_instructions = fun ~after instructions ->
   List.fold_right
-    (fun instruction live_after -> before_instruction ~after:live_after instruction)
     instructions
-    after
+    ~acc:after
+    ~fn:(fun instruction live_after -> before_instruction ~after:live_after instruction)

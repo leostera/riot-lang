@@ -1169,7 +1169,7 @@ module Reader = struct
             else
               Char.chr (87 + n)
           in
-          String.make 1 (to_hex_char h) ^ String.make 1 (to_hex_char l)
+          String.make ~len:1 ~char:(to_hex_char h) ^ String.make ~len:1 ~char:(to_hex_char l)
         in
-        panic ("Unknown message type: '" ^ String.make 1 c ^ "' (0x" ^ hex ^ ")")
+        panic ("Unknown message type: '" ^ String.make ~len:1 ~char:c ^ "' (0x" ^ hex ^ ")")
 end

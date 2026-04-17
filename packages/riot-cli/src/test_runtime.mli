@@ -66,7 +66,23 @@ type test_suite_summary = {
 type test_event =
   | Build of Riot_build.Event.t
   | NoSuitesFound of { package_name: Package_name.t option; suite_name: string option }
+  | TestSuitesCollected of {
+      package_name: Package_name.t option;
+      suite_name: string option;
+      suite_count: int
+    }
+  | ResolvingSuiteBinary of suite_binary
+  | SuiteBinaryResolved of { suite: suite_binary; binary_path: Path.t }
   | RunningSuite of suite_binary
+  | ExecutingSuiteBinary of { suite: suite_binary; binary_path: Path.t; args: string list }
+  | SuiteBinaryFinished of {
+      suite: suite_binary;
+      binary_path: Path.t;
+      status: int;
+      stdout_bytes: int;
+      stderr_bytes: int
+    }
+  | ParsingSuiteOutput of { suite: suite_binary; binary_path: Path.t }
   | SuiteCompleted of {
       suite: suite_binary;
       status: int;

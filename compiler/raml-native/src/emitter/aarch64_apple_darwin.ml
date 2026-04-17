@@ -1,12 +1,11 @@
 open Std
 open Std.Data
+open Std.Result.Syntax
 module Asm = Asm.AArch64
 module Doc = Asm.Doc
 module HashSet = Collections.HashSet
 module Compiler_target = Raml_core.Target
 module Target_profile = Target_profile
-
-let ( let* ) = Result.and_then
 
 let profile = Target_profile.of_target Compiler_target.aarch64_apple_darwin |> Option.expect ~msg:"missing aarch64-apple-darwin native target profile"
 
@@ -116,8 +115,8 @@ let hex_digit = fun value ->
     Char.chr (Char.code 'a' + (value - 10))
 
 let hex_escape = fun code ->
-  String.init 2
-    (fun index ->
+  String.init ~len:2
+    ~fn:(fun index ->
       if index = 0 then
         hex_digit (code lsr 4)
       else
@@ -128,12 +127,16 @@ let encode_symbol_name = fun name ->
     if index = String.length name then
       String.concat "" (List.rev parts)
     else
-      loop (index + 1) (hex_escape (Char.code name.[index]) :: parts)
+      let char =
+        String.get name ~at:index
+        |> Option.expect ~msg:(format Format.[ str "missing symbol char at "; int index ])
+      in
+      loop (index + 1) (hex_escape (Char.code char) :: parts)
   in
   loop 0 []
 
 let mangle_symbol = fun name ->
-  if String.for_all is_macho_symbol_char name then
+  if String.for_all name ~fn:is_macho_symbol_char then
     format Format.[ str "_"; str name ]
   else
     format Format.[ str "_raml$"; str (encode_symbol_name name) ]
@@ -152,8 +155,8 @@ let register_of_home = fun home ->
   let parse_index name =
     if String.length name < 2 then
       None
-    else if name.[0] = 'x' then
-      String.sub name 1 (String.length name - 1) |> int_of_string_opt
+    else if String.get name ~at:0 = Some 'x' then
+      String.sub name ~offset:1 ~len:(String.length name - 1) |> Int.of_string_opt
     else
       None
   in
@@ -184,7 +187,7 @@ let escape_string = fun value ->
     if index = String.length value then
       String.concat "" (List.rev parts)
     else
-      let char = String.get value index in
+      let char = String.get value ~at:index |> Option.expect ~msg:"index within string bounds" in
       let escaped =
         match char with
         | '"' ->
@@ -201,7 +204,7 @@ let escape_string = fun value ->
             let code = Char.code char in
             if code >= 32 then
               if code < 127 then
-                String.make 1 char
+                String.make ~len:1 ~char
               else
                 octal_escape code
             else
@@ -239,8 +242,7 @@ let move_int64_into = fun register value ->
   | Some (first_shift, first_imm) ->
       instruction (Asm.Instruction.Movz { dst = register; imm = first_imm; shift = first_shift })
       :: (
-        parts |> List.filter_map
-          (fun (shift, imm) ->
+        parts |> List.filter_map ~fn:(fun (shift, imm) ->
             if shift = first_shift then
               None
             else if imm = 0 then
@@ -302,13 +304,8 @@ and materialize_literal = fun _layout strings register literal ->
   match literal with
   | Lir.Literal.String value -> (
       match
-        List.find_map
-          (fun constant ->
-            if String.equal constant.value value then
-              Some constant.label
-            else
-              None)
-          strings
+        List.find strings ~fn:(fun constant -> String.equal constant.value value)
+        |> Option.map ~fn:(fun constant -> constant.label)
       with
       | Some label -> Ok (load_symbol_address register label)
       | None -> Ok (load_symbol_address register (mangle_symbol "__missing_string_literal"))
@@ -536,12 +533,12 @@ let emit_procedure = fun strings (procedure: Lir.Procedure.t) ->
   let* prologue = emit_prologue layout in
   let* body =
     List.fold_left
-      (fun acc instruction_ ->
+      procedure.body
+      ~acc:(Ok [])
+      ~fn:(fun acc instruction_ ->
         let* acc = acc in
         let* emitted = emit_instruction layout strings procedure instruction_ in
         Ok (acc @ emitted))
-      (Ok [])
-      procedure.body
   in
   let symbol = procedure_symbol procedure in
   let* default_return =
@@ -577,13 +574,7 @@ let emit_poll_stub = fun () ->
 
 let add_string_constant = fun constants value ->
   match
-    List.find_map
-      (fun constant ->
-        if String.equal constant.value value then
-          Some constant
-        else
-          None)
-      constants
+    List.find constants ~fn:(fun constant -> String.equal constant.value value)
   with
   | Some _ -> constants
   | None -> constants
@@ -617,20 +608,20 @@ let collect_instruction_strings = fun constants instruction_ ->
         | Lir.Callee.Direct _ -> constants
         | Lir.Callee.Indirect operand -> collect_operand_strings constants operand
       in
-      List.fold_left collect_operand_strings constants arguments
+      List.fold_left arguments ~acc:constants ~fn:collect_operand_strings
   | Lir.Instruction.Branch_if_zero { operand; _ } ->
       collect_operand_strings constants operand
   | Lir.Instruction.Jump _ ->
       constants
   | Lir.Instruction.Return operand ->
-      Option.map (collect_operand_strings constants) operand |> Option.unwrap_or ~default:constants
+      Option.map operand ~fn:(collect_operand_strings constants) |> Option.unwrap_or ~default:constants
 
 let string_constants_of_program = fun (program: Lir.Program.t) ->
   List.fold_left
-    (fun constants (procedure: Lir.Procedure.t) ->
-      List.fold_left collect_instruction_strings constants procedure.body)
-    []
     program.procedures
+    ~acc:[]
+    ~fn:(fun constants (procedure: Lir.Procedure.t) ->
+      List.fold_left procedure.body ~acc:constants ~fn:collect_instruction_strings)
 
 type ordered_names = {
   seen: string HashSet.t;
@@ -652,23 +643,23 @@ let ordered_names = fun names -> List.rev names.ordered_rev
 
 let global_symbols_of_program = fun (program: Lir.Program.t) ->
   List.fold_left
-    (fun symbols (procedure: Lir.Procedure.t) ->
+    program.procedures
+    ~acc:(empty_names ())
+    ~fn:(fun symbols (procedure: Lir.Procedure.t) ->
       List.fold_left
-        (fun symbols instruction_ ->
+        procedure.body
+        ~acc:symbols
+        ~fn:(fun symbols instruction_ ->
           match instruction_ with
           | Lir.Instruction.Store_global { symbol; _ } -> add_name symbols symbol
-          | _ -> symbols)
-        symbols
-        procedure.body)
-    (empty_names ())
-    program.procedures |> ordered_names
+          | _ -> symbols))
+  |> ordered_names
 
 let emit_string_constants = fun strings ->
   match strings with
   | [] -> []
   | _ -> [ directive ".section" ~args:[ "__TEXT"; "__cstring"; "cstring_literals" ] (); ]
-  @ List.concat_map
-    (fun constant ->
+  @ List.flat_map strings ~fn:(fun constant ->
       [
         directive ".p2align" ~args:[ "0" ] ();
         label constant.label;
@@ -677,33 +668,30 @@ let emit_string_constants = fun strings ->
           ~args:[ format Format.[ str "\""; str (escape_string constant.value); str "\"" ] ]
           ();
       ])
-    strings
   @ [ blank ]
 
 let emit_global_data = fun globals ->
   match globals with
   | [] -> []
   | _ ->
-      [ directive ".data" () ] @ List.concat_map
-        (fun symbol ->
+      [ directive ".data" () ] @ List.flat_map globals ~fn:(fun symbol ->
           let symbol = mangle_symbol symbol in
           [
             directive ".globl" ~args:[ symbol ] ();
             directive ".p2align" ~args:[ "3" ] ();
             label symbol;
             directive ".quad" ~args:[ "0" ] ();
-          ])
-        globals @ [ blank ]
+          ]) @ [ blank ]
 
 let emit_text = fun strings (program: Lir.Program.t) ->
   let* procedures =
     List.fold_left
-      (fun acc procedure ->
+      program.procedures
+      ~acc:(Ok [])
+      ~fn:(fun acc procedure ->
         let* acc = acc in
         let* emitted = emit_procedure strings procedure in
         Ok (acc @ emitted))
-      (Ok [])
-      program.procedures
   in
   let poll_stub =
     if program_uses_poll_stub program then

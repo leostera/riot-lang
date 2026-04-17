@@ -32,11 +32,11 @@ and normalize_call = fun (call: Expr.call) ->
   in
   let argument_bindings, arguments =
     List.fold_left
-      (fun (bindings_acc, arguments_acc) argument ->
+      call.arguments
+      ~acc:([], [])
+      ~fn:(fun (bindings_acc, arguments_acc) argument ->
         let bindings, argument = normalize_expr argument |> lift_let in
         (bindings_acc @ bindings, arguments_acc @ [ argument ]))
-      ([], [])
-      call.arguments
   in
   make_let (callee_bindings @ argument_bindings) (Expr.Call Expr.{ callee; arguments })
 
@@ -57,7 +57,7 @@ and normalize_binding = fun (binding: Expr.binding) ->
   (bindings @ [ binding ])
 
 and normalize_let = fun (let_: Expr.let_) ->
-  let bindings = List.concat_map normalize_binding let_.bindings in
+  let bindings = List.flat_map let_.bindings ~fn:normalize_binding in
   let body = normalize_expr let_.body in
   let body_bindings, body = lift_let body in
   make_let (bindings @ body_bindings) body
@@ -85,6 +85,6 @@ let normalize_entry_item = fun entry_item ->
 let program = fun (program: Program.t) ->
   {
     program
-    with functions = List.map normalize_function program.functions;
-    entry = List.map normalize_entry_item program.entry
+    with functions = List.map program.functions ~fn:normalize_function;
+    entry = List.map program.entry ~fn:normalize_entry_item
   }

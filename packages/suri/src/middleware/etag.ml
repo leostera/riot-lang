@@ -9,7 +9,7 @@ let generate_etag = fun ?(weak = false) body ->
     let hash = Crypto.Sha256.hash_string body in
     let hash_hex = Crypto.Digest.hex hash in
     (* Take first 16 chars of hex for reasonable ETag length *)
-    let etag_value = String.sub hash_hex 0 (min 16 (String.length hash_hex)) in
+    let etag_value = String.sub hash_hex ~offset:0 ~len:(min 16 (String.length hash_hex)) in
     (* Format as ETag *)
     let etag =
       if weak then

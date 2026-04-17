@@ -131,4 +131,4 @@ let read = fun input ->
       Ok (Some payload)
 
 let write = fun output payload ->
-  IO.Writer.write_all output (encode payload) |> Result.map_err ~fn:IO.error_message
+  IO.Writer.write_all output ~buf:(encode payload) |> Result.map_err ~fn:IO.error_message

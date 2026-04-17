@@ -15,11 +15,11 @@ type slots = {
 let empty_slots = fun () -> { seen = HashSet.create (); ordered_rev = [] }
 
 let add_slot = fun slots name ->
-  if HashSet.contains slots.seen name then
+  if HashSet.contains slots.seen ~value:name then
     slots
   else
     (
-      let _ = HashSet.insert slots.seen name in
+      let _ = HashSet.insert slots.seen ~value:name in
       { slots with ordered_rev = name :: slots.ordered_rev }
     )
 
@@ -56,7 +56,9 @@ let collect_instruction = fun (contains_calls, virtual_names) instruction ->
       (contains_calls, collect_operand_registers virtual_names src)
   | Lir.Instruction.Call { dst; callee; arguments } ->
       let virtual_names = collect_callee_registers virtual_names callee in
-      let virtual_names = List.fold_left collect_operand_registers virtual_names arguments in
+      let virtual_names =
+        List.fold_left arguments ~acc:virtual_names ~fn:collect_operand_registers
+      in
       let virtual_names =
         match dst with
         | Some (Lir.Destination.Register name) -> add_slot virtual_names name
@@ -69,13 +71,16 @@ let collect_instruction = fun (contains_calls, virtual_names) instruction ->
   | Lir.Instruction.Return operand ->
       (
         contains_calls,
-        Option.map (collect_operand_registers virtual_names) operand |> Option.unwrap_or ~default:virtual_names
+        Option.map operand ~fn:(collect_operand_registers virtual_names)
+        |> Option.unwrap_or ~default:virtual_names
       )
 
 let analyze_procedure = fun (procedure: Lir.Procedure.t) ->
-  let contains_calls, virtual_names = List.fold_left
-    collect_instruction
-    (false, List.fold_left add_slot (empty_slots ()) procedure.params)
-    procedure.body in
+  let initial_slots =
+    List.fold_left procedure.params ~acc:(empty_slots ()) ~fn:add_slot
+  in
+  let contains_calls, virtual_names =
+    List.fold_left procedure.body ~acc:(false, initial_slots) ~fn:collect_instruction
+  in
   let virtual_names = ordered_slots virtual_names in
   { contains_calls; virtual_names }

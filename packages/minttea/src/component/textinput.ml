@@ -202,7 +202,7 @@ let view = fun t ->
       (* Show actual value with echo mode *)
       match t.echo_mode with
       | Normal -> t.value
-      | Password -> String.make (String.length t.value) t.echo_char
+      | Password -> String.make ~len:(String.length t.value) ~char:t.echo_char
       | None -> ""
   in
   (* Handle width limiting / horizontal scrolling *)

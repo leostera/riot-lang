@@ -145,7 +145,7 @@ val app:
   'model App.t
 
 (** Run the application *)
-val run: ?config:Config.t -> 'model -> 'model App.t -> (unit, Process.exit_reason) result
+val run: ?config:Config.t -> 'model -> 'model App.t -> (unit, exn) result
 
 (** Start the application with Actors runtime *)
 val start: ?config:Config.t -> 'model App.t -> 'model -> unit

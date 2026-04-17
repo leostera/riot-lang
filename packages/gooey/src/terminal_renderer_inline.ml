@@ -166,7 +166,7 @@ let render_to_string = fun commands ->
             | _ -> None)
       in
       (* Convert grid to string line-by-line *)
-      let buf = Buffer.create (height * width * 2) in
+      let buf = Buffer.create ~size:(height * width * 2) in
       for row = 0 to height - 1 do
         if row > 0 then
           Buffer.add_char buf '\n';

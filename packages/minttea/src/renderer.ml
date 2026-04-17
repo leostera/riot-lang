@@ -7,7 +7,7 @@ open Tty
 
 let max_fps = 120
 
-let cap = fun fps -> Int.max 1 (Int.min fps max_fps) |> Int.to_float
+let cap = fun fps -> float_of_int (Int.max 1 (Int.min fps max_fps))
 
 let fps_to_secs = fun fps -> 1. /. cap fps
 
@@ -86,7 +86,7 @@ let log_frame = fun _frame_num _frame ->
   ()
 
 let restore_screen = fun t ->
-  let output = Buffer.create 64 in
+  let output = Buffer.create ~size:64 in
   if t.cursor_visibility = `hidden then
     Buffer.add_string output Tty.Escape_seq.show_cursor_seq;
   if t.mouse_enabled then
@@ -135,7 +135,7 @@ let paint_frame = fun state ->
   Gooey.Terminal_renderer_inline.render_to_string commands
 
 let print_frame = fun state frame ->
-  let output = Buffer.create 256 in
+  let output = Buffer.create ~size:256 in
   (* Start synchronized update for flicker-free rendering *)
   (* TEMPORARILY DISABLED: Some terminals don't support this *)
   (* Buffer.add_string output "\x1b[?2026h"; *)
@@ -236,18 +236,6 @@ let rec loop = fun state ->
       loop state
 
 and handle_shutdown = fun state ->
-  (* Make output blocking temporarily for shutdown to avoid Sys_blocked_io *)
-  (
-    try
-      let fd =
-        match state.output_target with
-        | Conf.Stdout -> IO.stdout
-        | Conf.Stderr -> IO.stderr
-      in
-      Kernel.Fd.set_blocking fd
-    with
-    | _ -> ()
-  );
   (* Clear the last rendered content in inline mode *)
   (
     try

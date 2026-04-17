@@ -311,20 +311,11 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
   else
     let on_event (event: Run_runtime.run_event) =
       match event with
-      | Run_runtime.Build build_event -> (
-          match build_event with
-          | Riot_build.Event.Pm kind -> Build.write_pm_event
+      | Run_runtime.Build build_event ->
+          Build.write_build_event
             ~mode:output_mode
             ~seen_registry_updates
-            kind
-          | Riot_build.Event.BuildingTarget { target; host } -> Build.write_building_target_event
-            ~mode:output_mode
-            ~target
-            ~host
-          | Riot_build.Event.CacheGc event -> Build.write_cache_gc_event ~mode:output_mode event
-          | Riot_build.Event.Telemetry _ -> ()
-          | Riot_build.Event.Phase _ -> ()
-        )
+            build_event
       | _ -> write_run_event ~mode:output_mode event
     in
     let resolved_target =

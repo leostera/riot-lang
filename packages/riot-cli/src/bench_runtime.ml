@@ -614,14 +614,20 @@ let find_suite_binary_path_in_output = fun ~(store:Riot_store.Store.t) ~(suite:s
       })
     )
 
-let run_suite_binary_capture = fun ~extra_args binary_path ->
+let run_suite_binary_capture = fun ~suite ~extra_args binary_path ->
   let extra_args = remove_json_args extra_args @ [ "--json" ] in
-  let cmd = Command.make (Path.to_string binary_path) ~args:("run-benchmarks" :: extra_args) in
+  let cmd = Command.make
+    (Path.to_string binary_path)
+    ~env:[ ("RIOT_PACKAGE_NAME", Package_name.to_string suite.package_name) ]
+    ~args:("run-benchmarks" :: extra_args) in
   Command.output cmd
 
-let list_suite_binary_capture = fun ~extra_args binary_path ->
+let list_suite_binary_capture = fun ~suite ~extra_args binary_path ->
   let extra_args = remove_list_args extra_args @ [ "--json" ] in
-  let cmd = Command.make (Path.to_string binary_path) ~args:("list-benchmarks" :: extra_args) in
+  let cmd = Command.make
+    (Path.to_string binary_path)
+    ~env:[ ("RIOT_PACKAGE_NAME", Package_name.to_string suite.package_name) ]
+    ~args:("list-benchmarks" :: extra_args) in
   Command.output cmd
 
 let parse_listed_benchmarks_output = fun stdout ->
@@ -639,7 +645,7 @@ let parse_listed_benchmarks_output = fun stdout ->
   loop [] benchmarks
 
 let list_suite = fun ~(workspace:Workspace.t) ~suite ~extra_args binary_path ->
-  match list_suite_binary_capture ~extra_args binary_path with
+  match list_suite_binary_capture ~suite ~extra_args binary_path with
   | Error (Command.SystemError reason) -> Error (SuiteExecutionError { suite; reason })
   | Ok output -> (
       match parse_listed_benchmarks_output output.stdout with
@@ -827,7 +833,7 @@ let bench = fun ?(on_event = no_event) (request: bench_request) ->
               | Error _ as err -> err
               | Ok binary_path ->
                   on_event (RunningSuite suite);
-                  match run_suite_binary_capture ~extra_args:request.extra_args binary_path with
+                  match run_suite_binary_capture ~suite ~extra_args:request.extra_args binary_path with
                   | Error (Command.SystemError reason) -> Error (SuiteExecutionError {
                     suite;
                     reason

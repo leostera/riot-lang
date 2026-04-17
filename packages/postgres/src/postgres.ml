@@ -612,7 +612,7 @@ module Driver = struct
                                   in
                                   ("col_" ^ string_of_int index, value))
                           in
-                          Collections.Queue.push result_set.rows row;
+                          Collections.Queue.push result_set.rows ~value:row;
                           read_extended_results ()
                       | Protocol.CommandComplete tag ->
                           Log.debug ("Command complete: " ^ tag);
@@ -680,7 +680,7 @@ module Driver = struct
                                   in
                                   ("col_" ^ string_of_int index, value))
                           in
-                          Collections.Queue.push result_set.rows row;
+                          Collections.Queue.push result_set.rows ~value:row;
                           read_query_results ()
                       | Protocol.CommandComplete tag ->
                           Log.debug ("Command complete: " ^ tag);

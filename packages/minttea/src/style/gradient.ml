@@ -24,6 +24,6 @@ let make ~start ~finish ~steps : color array =
         Float.of_int i /. Float.of_int (steps - 1)
     in
     let (`rgb (r, g, b)) = Colors.RGB.blend start finish ~mix:p in
-    colors.(i) <- Tty.Color.of_rgb (r, g, b)
+    Array.set colors ~at:i ~value:(Tty.Color.of_rgb (r, g, b))
   done;
   colors

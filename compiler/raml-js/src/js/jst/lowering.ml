@@ -92,11 +92,11 @@ and lower_expr = fun expr ->
     left = lower_expr binary.left;
     right = lower_expr binary.right
   }
-  | Source.Expr.Array array -> Target.Expr.Array (List.map lower_array_element array)
-  | Source.Expr.Object object_ -> Target.Expr.Object (List.map lower_object_field object_)
+  | Source.Expr.Array array -> Target.Expr.Array (List.map array ~fn:lower_array_element)
+  | Source.Expr.Object object_ -> Target.Expr.Object (List.map object_ ~fn:lower_object_field)
   | Source.Expr.Function function_ -> Target.Expr.Function Target.Expr.{
-    params = List.map lower_binder function_.params;
-    body = List.map lower_statement function_.body
+    params = List.map function_.params ~fn:lower_binder;
+    body = List.map function_.body ~fn:lower_statement
   }
   | Source.Expr.Member member -> Target.Expr.Member Target.Expr.{
     object_ = lower_expr member.object_;
@@ -108,7 +108,7 @@ and lower_expr = fun expr ->
   }
   | Source.Expr.Call { callee; arguments } -> Target.Expr.Call Target.Expr.{
     callee = lower_expr callee;
-    arguments = List.map lower_expr arguments
+    arguments = List.map arguments ~fn:lower_expr
   }
   | Source.Expr.Conditional conditional -> Target.Expr.Conditional Target.Expr.{
     condition = lower_expr conditional.condition;
@@ -127,19 +127,19 @@ and lower_declaration = fun (declaration: Source.Declaration.t) ->
     | Source.Declaration.Let -> Target.Declaration.Let
     | Source.Declaration.Var -> Target.Declaration.Var
   in
-  let init = Option.map lower_expr declaration.init in
+  let init = Option.map declaration.init ~fn:lower_expr in
   Target.Declaration.{ kind; binder = lower_binder declaration.binder; init }
 
 and lower_statement = fun statement ->
   match statement with
   | Source.Statement.Declaration declaration -> Target.Statement.Declaration (lower_declaration declaration)
-  | Source.Statement.Block statements -> Target.Statement.Block (List.map lower_statement statements)
+  | Source.Statement.Block statements -> Target.Statement.Block (List.map statements ~fn:lower_statement)
   | Source.Statement.Expression expr -> Target.Statement.Expression (lower_expr expr)
   | Source.Statement.Return expr -> Target.Statement.Return (lower_expr expr)
   | Source.Statement.If if_ -> Target.Statement.If Target.Statement.{
     condition = lower_expr if_.condition;
-    then_ = List.map lower_statement if_.then_;
-    else_ = List.map lower_statement if_.else_
+    then_ = List.map if_.then_ ~fn:lower_statement;
+    else_ = List.map if_.else_ ~fn:lower_statement
   }
 
 let lower_export = fun (export: Source.Export.t) ->
@@ -147,15 +147,15 @@ let lower_export = fun (export: Source.Export.t) ->
 
 let lower_program = fun ~context:_ (program: Source.Program.t) ->
   let import_items = program.imports
-  |> List.map lower_import
-  |> List.map (fun import -> Target.Module_item.Import import) in
+  |> List.map ~fn:lower_import
+  |> List.map ~fn:(fun import -> Target.Module_item.Import import) in
   let statement_items = program.body
-  |> List.map lower_statement
-  |> List.map (fun statement -> Target.Module_item.Statement statement) in
+  |> List.map ~fn:lower_statement
+  |> List.map ~fn:(fun statement -> Target.Module_item.Statement statement) in
   let export_items =
     match program.exports with
     | [] -> []
-    | exports -> [ Target.Module_item.Export (List.map lower_export exports) ]
+    | exports -> [ Target.Module_item.Export (List.map exports ~fn:lower_export) ]
   in
   Target.Program.{
     module_name = program.module_name;

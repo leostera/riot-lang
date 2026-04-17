@@ -28,7 +28,7 @@ let is_inside_scissor = fun x y scissor ->
         fx >= rect.x && fx < rect.x +. rect.width && fy >= rect.y && fy < rect.y +. rect.height
 
 let render_to_string = fun commands ->
-  let buf = Buffer.create 1_024 in
+  let buf = Buffer.create ~size:1_024 in
   let scissor_box = Cell.create None in
   List.iter
     (fun cmd ->
@@ -86,7 +86,7 @@ let render_to_string = fun commands ->
                 in
                 let num_middle = max 0 (col_end - col_start - 2) in
                 let top_middle =
-                  String.concat "" (List.init num_middle (fun _ -> "─"))
+                  String.concat "" (List.init ~count:num_middle ~fn:(fun _ -> "─"))
                 in
                 let top_right =
                   if width.right > 0 then
@@ -122,7 +122,7 @@ let render_to_string = fun commands ->
                 in
                 let num_middle = max 0 (col_end - col_start - 2) in
                 let bottom_middle =
-                  String.concat "" (List.init num_middle (fun _ -> "─"))
+                  String.concat "" (List.init ~count:num_middle ~fn:(fun _ -> "─"))
                 in
                 let bottom_right =
                   if width.right > 0 then

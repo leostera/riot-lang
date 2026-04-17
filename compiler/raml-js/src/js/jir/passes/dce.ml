@@ -12,7 +12,11 @@ type lowered_block = {
 let is_dead_local_store = fun ~protected ~used_after target ->
   match Core.Entity_id.binding_id target with
   | None -> false
-  | Some _ -> not (Entity_set.mem target protected) && not (Entity_set.mem target used_after)
+  | Some _ ->
+      if not (Entity_set.mem target protected) then
+        not (Entity_set.mem target used_after)
+      else
+        false
 
 let forget_binding = fun entities binding_id ->
   Entity_set.filter
@@ -48,9 +52,9 @@ let rec lower_expr = fun ~assigned expr ->
       let lowered_body = lower_block ~protected:Entity_set.empty ~assigned function_.body in
       let used =
         List.fold_left
-          (fun used (binder: Jir.Binder.t) -> forget_binding used binder.binding_id)
-          lowered_body.used
           function_.params
+          ~acc:lowered_body.used
+          ~fn:(fun used (binder: Jir.Binder.t) -> forget_binding used binder.binding_id)
       in
       (Jir.Expr.Function Jir.Expr.{ function_ with body = lowered_body.statements }, used)
   | Jir.Expr.Member member ->
@@ -134,8 +138,22 @@ and lower_statement = fun ~protected ~assigned used_after statement ->
       let (condition, condition_used) = lower_expr ~assigned if_.condition in
       let then_ = lower_block ~protected:Entity_set.empty ~assigned if_.then_ in
       let else_ = lower_block ~protected:Entity_set.empty ~assigned if_.else_ in
-      if List.is_empty then_.statements && List.is_empty else_.statements then
-        lower_effect_expr_statement ~protected used_after condition condition_used
+      if List.is_empty then_.statements then
+        if List.is_empty else_.statements then
+          lower_effect_expr_statement ~protected used_after condition condition_used
+        else
+          {
+            statements = [
+              Jir.Statement.If Jir.Statement.{
+                condition;
+                then_ = then_.statements;
+                else_ = else_.statements
+              }
+            ];
+            used = Entity_set.union used_after condition_used
+            |> Entity_set.union then_.used
+            |> Entity_set.union else_.used
+          }
       else
         {
           statements = [
@@ -160,16 +178,22 @@ and lower_declaration = fun ~protected ~assigned used_after (declaration: Jir.De
         (Some init, used)
   in
   match (declaration.kind, init) with
-  | (Jir.Declaration.Const, Some init) when not (Entity_set.mem binder_entity protected)
-  && not (Entity_set.mem binder_entity used_after)
-  && Analysis.is_pure_expr init -> { statements = []; used = used_after }
-  | (Jir.Declaration.Let, None) when not (Entity_set.mem binder_entity protected)
-  && not (Entity_set.mem binder_entity used_after)
-  && not (Entity_set.mem binder_entity assigned) -> { statements = []; used = used_after }
-  | (Jir.Declaration.Let, Some init) when not (Entity_set.mem binder_entity protected)
-  && not (Entity_set.mem binder_entity used_after)
-  && not (Entity_set.mem binder_entity assigned)
-  && Analysis.is_pure_expr init -> { statements = []; used = used_after }
+  | (Jir.Declaration.Const, Some init)
+    when not (Entity_set.mem binder_entity protected)
+         && not (Entity_set.mem binder_entity used_after)
+         && Analysis.is_pure_expr init ->
+      { statements = []; used = used_after }
+  | (Jir.Declaration.Let, None)
+    when not (Entity_set.mem binder_entity protected)
+         && not (Entity_set.mem binder_entity used_after)
+         && not (Entity_set.mem binder_entity assigned) ->
+      { statements = []; used = used_after }
+  | (Jir.Declaration.Let, Some init)
+    when not (Entity_set.mem binder_entity protected)
+         && not (Entity_set.mem binder_entity used_after)
+         && not (Entity_set.mem binder_entity assigned)
+         && Analysis.is_pure_expr init ->
+      { statements = []; used = used_after }
   | _ -> {
     statements = [ Jir.Statement.Declaration Jir.Declaration.{ declaration with init } ];
     used = Entity_set.union (forget_binding used_after declaration.binder.binding_id) init_used
@@ -205,10 +229,9 @@ and lower_block = fun ~protected ~assigned statements ->
 let program = fun ~context:_ (program: Jir.Program.t) ->
   let protected =
     List.fold_left
-      (fun set (export: Jir.Export.t) ->
-        Entity_set.add export.local set)
-      Entity_set.empty
       program.exports
+      ~acc:Entity_set.empty
+      ~fn:(fun set (export: Jir.Export.t) -> Entity_set.add export.local set)
   in
   let assigned = Analysis.program_assigned_entities program in
   let lowered_body = lower_block ~protected ~assigned program.body in

@@ -47,15 +47,39 @@ let reserved_binding_identifiers = [
 let is_reserved_binding_identifier = fun name ->
   List.exists (String.equal name) reserved_binding_identifiers
 
-let is_ascii_uppercase = fun char -> char >= 'A' && char <= 'Z'
+let is_ascii_uppercase = fun char ->
+  if char >= 'A' then
+    char <= 'Z'
+  else
+    false
 
-let is_ascii_lowercase = fun char -> char >= 'a' && char <= 'z'
+let is_ascii_lowercase = fun char ->
+  if char >= 'a' then
+    char <= 'z'
+  else
+    false
 
-let is_ascii_letter = fun char -> is_ascii_lowercase char || is_ascii_uppercase char
+let is_ascii_letter = fun char ->
+  if is_ascii_lowercase char then
+    true
+  else
+    is_ascii_uppercase char
 
-let is_identifier_start = fun char -> is_ascii_letter char || char = '_' || char = '$'
+let is_identifier_start = fun char ->
+  if is_ascii_letter char then
+    true
+  else if char = '_' then
+    true
+  else
+    char = '$'
 
-let is_identifier_continue = fun char -> is_identifier_start char || (char >= '0' && char <= '9')
+let is_identifier_continue = fun char ->
+  if is_identifier_start char then
+    true
+  else if char >= '0' then
+    char <= '9'
+  else
+    false
 
 let is_valid_identifier = fun name ->
   let length = String.length name in
@@ -75,7 +99,10 @@ let is_valid_identifier = fun name ->
     loop 1
 
 let is_valid_binding_identifier = fun name ->
-  is_valid_identifier name && not (is_reserved_binding_identifier name)
+  if is_valid_identifier name then
+    not (is_reserved_binding_identifier name)
+  else
+    false
 
 let sanitize_binding_identifier = fun name ->
   let length = String.length name in
@@ -83,11 +110,19 @@ let sanitize_binding_identifier = fun name ->
   let push_valid_start char =
     if is_identifier_start char then
       IO.Buffer.add_char buffer char
-    else if char >= '0' && char <= '9' then
-      begin
-        IO.Buffer.add_char buffer '_';
-        IO.Buffer.add_char buffer char
-      end
+    else if char >= '0' then
+      if char <= '9' then
+        begin
+          IO.Buffer.add_char buffer '_';
+          IO.Buffer.add_char buffer char
+        end
+      else if char = '\'' then
+        begin
+          IO.Buffer.add_char buffer '_';
+          IO.Buffer.add_char buffer '$'
+        end
+      else
+        IO.Buffer.add_char buffer '_'
     else if char = '\'' then
       begin
         IO.Buffer.add_char buffer '_';

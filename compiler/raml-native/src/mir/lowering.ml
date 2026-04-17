@@ -33,26 +33,24 @@ let lower_literal = fun literal ->
   | Source.Literal.String value -> Target.Literal.String value
 
 let operand_of_symbol = fun ~env name ->
-  env |> List.find_map
-    (fun (bound_name, operand) ->
-      if String.equal bound_name name then
-        Some operand
-      else
-        None) |> Option.unwrap_or ~default:(Target.Operand.Global name)
+  env
+  |> List.find ~fn:(fun (bound_name, _operand) -> String.equal bound_name name)
+  |> Option.map ~fn:(fun (_bound_name, operand) -> operand)
+  |> Option.unwrap_or ~default:(Target.Operand.Global name)
 
 let bind_env = fun env bindings ->
-  List.fold_right (fun binding env -> binding :: env) bindings env
+  List.fold_right bindings ~acc:env ~fn:(fun binding env -> binding :: env)
 
 let env_of_params = fun params ->
-  List.map (fun name -> (name, Target.Operand.Register name)) params
+  List.map params ~fn:(fun name -> (name, Target.Operand.Register name))
 
 let rec lower_operand_list = fun ~env state values ->
   List.fold_left
-    (fun (instructions, operands, state) value ->
+    values
+    ~acc:([], [], state)
+    ~fn:(fun (instructions, operands, state) value ->
       let next_instructions, operand, state = lower_expr ~env state value in
       (instructions @ next_instructions, operands @ [ operand ], state))
-    ([], [], state)
-    values
 
 and lower_callee = fun ~env state callee ->
   match callee with
@@ -82,23 +80,23 @@ and lower_if_then_else = fun ~env state (if_then_else: Source.Expr.if_then_else)
 and lower_let = fun ~env state (let_: Source.Expr.let_) ->
   let binding_instructions, binding_values, state =
     List.fold_left
-      (fun (instructions, binding_values, state) (binding: Source.Expr.binding) ->
+      let_.bindings
+      ~acc:([], [], state)
+      ~fn:(fun (instructions, binding_values, state) (binding: Source.Expr.binding) ->
         let next_instructions, operand, state = lower_expr ~env state binding.expr in
         (instructions @ next_instructions, binding_values @ [ (binding.name, operand) ], state))
-      ([], [], state)
-      let_.bindings
   in
   let storage_instructions, bound_locals, state =
     List.fold_left
-      (fun (instructions, bound_locals, state) (name, operand) ->
+      binding_values
+      ~acc:([], [], state)
+      ~fn:(fun (instructions, bound_locals, state) (name, operand) ->
         let dst, state = fresh_temp state in
         (
           instructions @ [ Target.Instruction.Move { dst; src = operand } ],
           bound_locals @ [ (name, Target.Operand.Register dst) ],
           state
         ))
-      ([], [], state)
-      binding_values
   in
   let body_instructions, body_operand, state = lower_expr
     ~env:(bind_env env bound_locals)
@@ -150,11 +148,11 @@ let lower_entry_item = fun state item ->
 let lower_entry = fun items ->
   let body, _ =
     List.fold_left
-      (fun (body, state) item ->
+      items
+      ~acc:([], { next_temp = 0 })
+      ~fn:(fun (body, state) item ->
         let instructions, state = lower_entry_item state item in
         (body @ instructions, state))
-      ([], { next_temp = 0 })
-      items
   in
   if body = [] then
     None
@@ -184,7 +182,7 @@ let trace_to_json = fun trace ->
       (
         "passes",
         Json.obj
-          (List.map (fun pass -> (pass.name, Target.Program.to_json pass.program)) trace.passes)
+          (List.map trace.passes ~fn:(fun pass -> (pass.name, Target.Program.to_json pass.program)))
       );
       ("program", Target.Program.to_json trace.final);
     ]
@@ -208,12 +206,14 @@ let trace_program = fun initial ->
   }
 
 let lower_program_with_trace = fun (program: Source.Program.t) ->
-  let procedures = List.map lower_function program.functions
-  @ (lower_entry program.entry |> Option.map List.singleton |> Option.unwrap_or ~default:[]) in
+  let procedures = List.map program.functions ~fn:lower_function
+  @ (lower_entry program.entry
+    |> Option.map ~fn:(fun entry -> [ entry ])
+    |> Option.unwrap_or ~default:[]) in
   Target.Program.{
     module_name = program.module_name;
     procedures;
-    exports = List.map lower_export program.exports
+    exports = List.map program.exports ~fn:lower_export
   }
   |> trace_program
 

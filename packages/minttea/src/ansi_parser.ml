@@ -196,7 +196,7 @@ let parse_byte = fun p byte ->
   | (CsiEntry, '<')
   | (CsiEntry, '>')
   | (CsiEntry, '?') ->
-      p.intermediate <- String.make 1 c;
+      p.intermediate <- String.make ~len:1 ~char:c;
       p.state <- CsiParam;
       None
   | CsiEntry, ('0' .. '9' | ';' | ':') ->
@@ -204,7 +204,7 @@ let parse_byte = fun p byte ->
       p.state <- CsiParam;
       None
   | CsiEntry, (' ' .. '/' | '<' .. '?') ->
-      p.intermediate <- String.make 1 c;
+      p.intermediate <- String.make ~len:1 ~char:c;
       p.state <- CsiIntermediate;
       None
   | CsiEntry, ('@' .. '~') ->
@@ -219,7 +219,7 @@ let parse_byte = fun p byte ->
       parse_param p c;
       None
   | CsiParam, (' ' .. '/' | '<' .. '?') ->
-      p.intermediate <- p.intermediate ^ String.make 1 c;
+      p.intermediate <- p.intermediate ^ String.make ~len:1 ~char:c;
       p.state <- CsiIntermediate;
       None
   | CsiParam, ('@' .. '~') ->
@@ -231,7 +231,7 @@ let parse_byte = fun p byte ->
       reset p;
       None
   | CsiIntermediate, (' ' .. '/' | '<' .. '?') ->
-      p.intermediate <- p.intermediate ^ String.make 1 c;
+      p.intermediate <- p.intermediate ^ String.make ~len:1 ~char:c;
       None
   | CsiIntermediate, ('@' .. '~') ->
       p.final_char <- Some c;
@@ -248,7 +248,9 @@ let parse_byte = fun p byte ->
       reset p;
       (* Parse OSC commands *)
       if String.starts_with ~prefix:"2;" str && String.length str > 2 then
-        Some (Event.Custom (WindowTitleChange (String.sub str 2 (String.length str - 2))))
+        Some
+          (Event.Custom
+             (WindowTitleChange (String.sub str ~offset:2 ~len:(String.length str - 2))))
       else
         None
   | OscString, c ->
@@ -288,6 +290,6 @@ let parse_char = fun c ->
   | c when Char.code c >= 1 && Char.code c <= 26 ->
       (* Ctrl+A through Ctrl+Z *)
       let letter = Char.chr (Char.code c + 96) in
-      Event.Key (String.make 1 letter)
+      Event.Key (String.make ~len:1 ~char:letter)
   | c ->
-      Event.Key (String.make 1 c)
+      Event.Key (String.make ~len:1 ~char:c)

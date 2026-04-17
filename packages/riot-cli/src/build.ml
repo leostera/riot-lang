@@ -3,6 +3,7 @@ open Std.Collections
 open Std.Result.Syntax
 open Riot_model
 open Riot_build
+module Build_telemetry = Riot_build.Internal.Telemetry_events
 
 type build_scope = Riot_build.Request.scope =
   Runtime
@@ -101,10 +102,122 @@ let write_build_event_json = fun event ->
   | Some json -> write_json_event json
   | None -> ()
 
+let package_name = fun (package: Riot_model.Package.t) -> Riot_model.Package_name.to_string package.name
+
+let out_prefixed_payload = fun ~prefix payload ->
+  match String.split payload ~by:"\n" with
+  | [] -> ()
+  | first_line :: rest ->
+      out (prefix ^ first_line);
+      rest |> List.for_each ~fn:out
+
+let telemetry_package_error_message = function
+  | Build_telemetry.PlanningFailed planning_error -> Riot_planner.Planning_error.to_string planning_error
+  | Build_telemetry.ExecutionFailed { message }
+  | Build_telemetry.ActionExecutionFailed { message } -> message
+  | Build_telemetry.ActionOutputsNotCreated { missing } -> "missing outputs: "
+  ^ String.concat ", " (List.map missing ~fn:Path.to_string)
+  | Build_telemetry.ActionDependenciesFailed { failed } -> "failed dependencies: "
+  ^ String.concat ", " (List.map failed ~fn:Graph.SimpleGraph.Node_id.to_string)
+
+let write_build_telemetry_event = fun ~mode event ->
+  match mode with
+  | Json -> write_build_event_json (Riot_build.Event.Telemetry event)
+  | Human -> (
+      match event with
+      | Build_telemetry.CompilationStarted { package; _ } -> out
+        ("    \027[1;32mBuilding\027[0m " ^ package_name package)
+      | Build_telemetry.BuildCompleted { package; status=`Fresh; _ } -> out
+        ("       \027[1;32mBuilt\027[0m " ^ package_name package)
+      | Build_telemetry.BuildCompleted { package; status=`Cached; _ } -> out
+        ("      \027[1;34mCached\027[0m " ^ package_name package)
+      | Build_telemetry.BuildSkipped { package; reason; _ } -> out
+        ("      \027[1;33mSkipped\027[0m " ^ package_name package ^ ": " ^ reason)
+      | Build_telemetry.BuildFailed { package; error; _ } -> out
+        ("      \027[1;31mFailed\027[0m "
+        ^ package_name package
+        ^ ": "
+        ^ telemetry_package_error_message error)
+      | Build_telemetry.PackageOcamlcWarnings { package; messages; _ } -> messages
+      |> List.for_each
+        ~fn:(fun message ->
+          out_prefixed_payload
+            ~prefix:("     \027[1;33mWarning\027[0m " ^ package_name package ^ ": ")
+            message)
+      | Build_telemetry.BuildStarted _
+      | Build_telemetry.WorkspacePlanStarted _
+      | Build_telemetry.WorkspacePlanCompleted _
+      | Build_telemetry.WorkspaceManifestFilterCompleted _
+      | Build_telemetry.WorkspaceGraphCreated _
+      | Build_telemetry.WorkspaceTargetGraphFiltered _
+      | Build_telemetry.WorkspaceTopologicalSortCompleted _
+      | Build_telemetry.PlanningWorkspaceStarted _
+      | Build_telemetry.PlanningWorkspaceCompleted _
+      | Build_telemetry.PackagePlanningResult _
+      | Build_telemetry.PackagePlanningBreakdown _
+      | Build_telemetry.ActionStarted _
+      | Build_telemetry.ActionCommandStarted _
+      | Build_telemetry.ActionCompleted _
+      | Build_telemetry.ActionFailed _
+      | Build_telemetry.CacheHit _
+      | Build_telemetry.CacheMiss _
+      | Build_telemetry.WorkspaceStarted _
+      | Build_telemetry.WorkspaceCompleted _ -> ()
+      | _ -> ()
+    )
+
 let write_build_phase_event = fun ~mode phase ->
   match mode with
   | Json -> write_build_event_json (Riot_build.Event.Phase phase)
-  | Human -> ()
+  | Human -> (
+      match phase with
+      | Riot_build.Event.TargetsResolved { target_count } ->
+          out ("    Resolved " ^ Int.to_string target_count ^ " target(s)")
+      | Riot_build.Event.ToolchainsEnsured { target_count } ->
+          out ("    Ensured toolchains for " ^ Int.to_string target_count ^ " target(s)")
+      | Riot_build.Event.ToolchainsValidated { target_count } ->
+          out ("    Validated toolchains for " ^ Int.to_string target_count ^ " target(s)")
+      | Riot_build.Event.RuntimeStarting ->
+          out "    Starting build runtime"
+      | Riot_build.Event.RuntimeStarted ->
+          out "    Build runtime ready"
+      | Riot_build.Event.PackagePlanningStarted { package_count; _ } ->
+          out ("    Planning " ^ Int.to_string package_count ^ " package(s)")
+      | Riot_build.Event.PackagePlanningFinished {
+        execution_required_count;
+        cached_count;
+        skipped_count;
+        failed_count;
+        error_count;
+        _
+      } ->
+          let parts = [
+            Some (Int.to_string execution_required_count ^ " to build");
+            Some (Int.to_string cached_count ^ " cached");
+            Some (Int.to_string skipped_count ^ " skipped");
+            Some (Int.to_string failed_count ^ " failed");
+            Some (Int.to_string error_count ^ " errored");
+          ]
+          |> List.filter_map ~fn:(fun value -> value) in
+          out ("    Planned packages (" ^ String.concat ", " parts ^ ")")
+      | Riot_build.Event.PackageExecutionStarted { package_count; _ } ->
+          out ("    Executing " ^ Int.to_string package_count ^ " package(s)")
+      | Riot_build.Event.PackageExecutionFinished { built_count; failed_count; error_count; _ } ->
+          out
+            ("    Package execution finished ("
+            ^ Int.to_string built_count
+            ^ " built, "
+            ^ Int.to_string failed_count
+            ^ " failed, "
+            ^ Int.to_string error_count
+            ^ " errored)")
+      | Riot_build.Event.TargetBuildStarted _
+      | Riot_build.Event.TargetBuildFinished _
+      | Riot_build.Event.CacheGenerationRecordingStarted _
+      | Riot_build.Event.CacheGenerationRecorded _
+      | Riot_build.Event.ReturningResults _ ->
+          ()
+    )
 
 let command_error_event_to_json = fun kind details ->
   Data.Json.Object (("type", Data.Json.String kind) :: details)
@@ -348,6 +461,14 @@ let write_cache_gc_event = fun ~mode event ->
         ^ error)
     )
 
+let write_build_event = fun ~mode ~seen_registry_updates event ->
+  match event with
+  | Riot_build.Event.Pm event -> write_pm_event ~mode ~seen_registry_updates event
+  | Riot_build.Event.BuildingTarget { target; host } -> write_building_target_event ~mode ~target ~host
+  | Riot_build.Event.CacheGc event -> write_cache_gc_event ~mode event
+  | Riot_build.Event.Telemetry event -> write_build_telemetry_event ~mode event
+  | Riot_build.Event.Phase phase -> write_build_phase_event ~mode phase
+
 let write_package_not_found_error = fun ~mode ~package_name ~available_packages ->
   let package_name = Riot_model.Package_name.to_string package_name in
   let available_packages = List.map available_packages ~fn:Riot_model.Package_name.to_string in
@@ -494,22 +615,10 @@ let run_request = fun (request: request) ->
     (Riot_model.Event.create ~session_id:pm_session_id ~level:Riot_model.Event.Info kind) in
   let on_build_event event =
     match event with
-    | Riot_build.Event.Pm kind ->
-        emit_pm_kind kind.kind
-    | Riot_build.Event.BuildingTarget { target; host } ->
+    | Riot_build.Event.Pm kind -> emit_pm_kind kind.kind
+    | _ ->
         attempted_build := true;
-        write_building_target_event ~mode:request.output_mode ~target ~host
-    | Riot_build.Event.CacheGc event ->
-        attempted_build := true;
-        write_cache_gc_event ~mode:request.output_mode event
-    | Riot_build.Event.Telemetry event ->
-        attempted_build := true;
-        (match request.output_mode with
-        | Json -> write_build_event_json (Riot_build.Event.Telemetry event)
-        | Human -> ())
-    | Riot_build.Event.Phase phase ->
-        attempted_build := true;
-        write_build_phase_event ~mode:request.output_mode phase
+        write_build_event ~mode:request.output_mode ~seen_registry_updates event
   in
   let result =
     Riot_build.build

@@ -25,10 +25,10 @@ let rec insert_instruction = fun instruction ->
   | instruction -> [ instruction ]
 
 and insert_instructions = fun instructions ->
-  List.concat_map insert_instruction instructions
+  List.flat_map instructions ~fn:insert_instruction
 
 let insert_polls_procedure = fun (procedure: Procedure.t) ->
   { procedure with body = insert_instructions procedure.body }
 
 let program = fun (program: Program.t) ->
-  { program with procedures = List.map insert_polls_procedure program.procedures }
+  { program with procedures = List.map program.procedures ~fn:insert_polls_procedure }

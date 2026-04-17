@@ -55,6 +55,7 @@
 47. `riot info --json` is the canonical editor-facing workspace introspection surface. Keep it workspace-root scoped, include the resolved workspace manifest plus each package manifest, and encode workspace-load failures as structured stdout payloads in JSON mode.
 48. `riot test --list --json` and `riot bench --list --json` should stream discovery as JSONL so large workspaces can populate editor UIs incrementally. Preserve partial results when some suites fail to build or list, and surface suite-list failures as structured events instead of aborting the whole listing pass.
 49. `riot run --list --json` should identify whether each runnable is a normal binary or an example. Keep that metadata in the machine-readable payload so editors do not have to infer it from paths.
+50. `riot test --json` should expose explicit post-build progress between build completion and suite results. Emit structured events for suite collection, suite-binary resolution, suite process execution, and output parsing so hangs and long gaps are diagnosable from the JSONL stream alone.
 
 ## Validate
 

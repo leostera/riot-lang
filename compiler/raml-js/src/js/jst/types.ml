@@ -211,7 +211,7 @@ let rec expr_call_to_json = fun (call: expr_call) ->
   Json.obj
     [
       ("callee", expr_to_json call.callee);
-      ("arguments", Json.array (List.map expr_to_json call.arguments));
+      ("arguments", Json.array (List.map call.arguments ~fn:expr_to_json));
     ]
 
 and expr_global_to_json = fun (global: expr_global) -> Json.obj [ ("name", Json.string global.name) ]
@@ -233,18 +233,18 @@ and expr_array_element_to_json = fun element ->
   | Item expr -> Json.obj [ ("kind", Json.string "item"); ("expr", expr_to_json expr) ]
   | Spread expr -> Json.obj [ ("kind", Json.string "spread"); ("expr", expr_to_json expr) ]
 
-and expr_array_to_json = fun array -> Json.array (List.map expr_array_element_to_json array)
+and expr_array_to_json = fun array -> Json.array (List.map array ~fn:expr_array_element_to_json)
 
 and expr_object_field_to_json = fun (field: expr_object_field) ->
   Json.obj [ ("name", Json.string field.name); ("value", expr_to_json field.value); ]
 
-and expr_object_to_json = fun object_ -> Json.array (List.map expr_object_field_to_json object_)
+and expr_object_to_json = fun object_ -> Json.array (List.map object_ ~fn:expr_object_field_to_json)
 
 and expr_function_to_json = fun (function_: expr_function) ->
   Json.obj
     [
-      ("params", Json.array (List.map Binder.to_json function_.params));
-      ("body", Json.array (List.map statement_to_json function_.body));
+      ("params", Json.array (List.map function_.params ~fn:Binder.to_json));
+      ("body", Json.array (List.map function_.body ~fn:statement_to_json));
     ]
 
 and expr_member_to_json = fun (member: expr_member) ->
@@ -298,15 +298,15 @@ and declaration_to_json = fun (declaration: declaration) ->
     [
       ("kind", declaration_kind_to_json declaration.kind);
       ("binder", Binder.to_json declaration.binder);
-      ("init", Option.map expr_to_json declaration.init |> Option.unwrap_or ~default:Json.null);
+      ("init", Option.map declaration.init ~fn:expr_to_json |> Option.unwrap_or ~default:Json.null);
     ]
 
 and statement_if_to_json = fun (if_: statement_if) ->
   Json.obj
     [
       ("condition", expr_to_json if_.condition);
-      ("then", Json.array (List.map statement_to_json if_.then_));
-      ("else", Json.array (List.map statement_to_json if_.else_));
+      ("then", Json.array (List.map if_.then_ ~fn:statement_to_json));
+      ("else", Json.array (List.map if_.else_ ~fn:statement_to_json));
     ]
 
 and statement_to_json = fun statement ->
@@ -314,7 +314,7 @@ and statement_to_json = fun statement ->
   | Declaration declaration -> Json.obj
     [ ("kind", Json.string "declaration"); ("declaration", declaration_to_json declaration) ]
   | Block statements -> Json.obj
-    [ ("kind", Json.string "block"); ("body", Json.array (List.map statement_to_json statements)) ]
+    [ ("kind", Json.string "block"); ("body", Json.array (List.map statements ~fn:statement_to_json)) ]
   | Expression expr -> Json.obj
     [ ("kind", Json.string "expression"); ("expression", expr_to_json expr) ]
   | Return expr -> Json.obj [ ("kind", Json.string "return"); ("expression", expr_to_json expr) ]
@@ -329,14 +329,14 @@ let module_ref_to_json = fun (module_ref: module_ref) ->
       ("kind", Jir.Types.Modules.kind_to_json module_ref.kind);
       ("unit_name", Json.string module_ref.unit_name);
       ("import_path", Json.string module_ref.import_path);
-      ("namespace", Json.array (List.map Json.string module_ref.namespace));
+      ("namespace", Json.array (List.map module_ref.namespace ~fn:Json.string));
     ]
 
 let import_to_json = fun (import: import) ->
   let fields = [
     ("from", module_ref_to_json import.from);
-    ("default", Option.map Binder.to_json import.default |> Option.unwrap_or ~default:Json.null);
-    ("names", Json.array (List.map import_named_to_json import.names));
+    ("default", Option.map import.default ~fn:Binder.to_json |> Option.unwrap_or ~default:Json.null);
+    ("names", Json.array (List.map import.names ~fn:import_named_to_json));
   ] in
   match import.namespace with
   | None -> Json.obj fields
@@ -564,7 +564,7 @@ module Module_item = struct
     | Statement statement -> Json.obj
       [ ("kind", Json.string "statement"); ("statement", Statement.to_json statement) ]
     | Export exports -> Json.obj
-      [ ("kind", Json.string "export"); ("exports", Json.array (List.map Export.to_json exports)) ]
+      [ ("kind", Json.string "export"); ("exports", Json.array (List.map exports ~fn:Export.to_json)) ]
 end
 
 module Program = struct
@@ -579,6 +579,6 @@ module Program = struct
     Json.obj
       [
         ("module_name", Json.string program.module_name);
-        ("items", Json.array (List.map Module_item.to_json program.items));
+        ("items", Json.array (List.map program.items ~fn:Module_item.to_json));
       ]
 end

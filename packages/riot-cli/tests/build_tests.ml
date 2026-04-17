@@ -168,7 +168,7 @@ let test_build_rejects_zero_jobs_runtime = fun _ctx ->
                 Error ("unexpected failure message: " ^ message)
             | Ok () -> Error "expected zero jobs to be rejected"
             | Error err ->
-                Error ("expected Failure: " ^ Kernel.Exception.to_string err)))
+                Error ("expected Failure: " ^ Kernel.Exception.to_string err))
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)
@@ -190,7 +190,7 @@ let test_build_rejects_negative_jobs_runtime = fun _ctx ->
                 Error ("unexpected failure message: " ^ message)
             | Ok () -> Error "expected negative jobs to be rejected"
             | Error err ->
-                Error ("expected Failure: " ^ Kernel.Exception.to_string err)))
+                Error ("expected Failure: " ^ Kernel.Exception.to_string err))
   with
   | Ok result -> result
   | Error err -> Error ("tempdir failed: " ^ IO.error_message err)

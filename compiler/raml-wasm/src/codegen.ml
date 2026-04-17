@@ -291,7 +291,7 @@ let value_instructions = fun value ->
     ])
 
 let find_string_data = fun layout value ->
-  match Collections.HashMap.get layout value with
+  match Collections.HashMap.get layout ~key:value with
   | Some info -> Ok info
   | None -> Error [
     Unsupported_expr {
@@ -301,7 +301,7 @@ let find_string_data = fun layout value ->
   ]
 
 let find_binding = fun env entity_id context expr ->
-  match Collections.HashMap.get env (entity_key entity_id) with
+  match Collections.HashMap.get env ~key:(entity_key entity_id) with
   | Some value -> Ok value
   | None -> Error [ Unsupported_expr { context; expr } ]
 
@@ -315,11 +315,11 @@ let find_import_binding = fun imports callee expr ->
             | Some _ -> false
             | None ->
                 let import_name = Core.Surface_path.last_name (Core.Entity_id.surface_path callee) in
-                import_name = Some binding.import_.name
+                import_name = binding.import_.name
           )
         | None ->
             let import_name = Core.Surface_path.last_name (Core.Entity_id.surface_path callee) in
-            import_name = Some binding.import_.name)
+            import_name = binding.import_.name)
       imports
   in
   match found with
@@ -367,11 +367,12 @@ let rec compile_expr = fun ~layout ~imports ~env expr ->
       | Core.Rec_flag.Recursive -> Error [ Unsupported_expr { context = "recursive_let"; expr } ]
       | Core.Rec_flag.Nonrecursive ->
           let env' = Collections.HashMap.create () in
-          Collections.HashMap.iter
-            (fun key value ->
-              let _ = Collections.HashMap.insert env' key value in
+          List.for_each
+            (Collections.HashMap.to_list env)
+            ~fn:(fun (key, value) ->
+              let _ = Collections.HashMap.insert env' ~key ~value in
               ())
-            env;
+          ;
           let instructions_rev = ref [] in
           let errors_rev = ref [] in
           List.iter
@@ -379,16 +380,21 @@ let rec compile_expr = fun ~layout ~imports ~env expr ->
               match compile_expr ~layout ~imports ~env:env' binding.expr with
               | Ok compiled ->
                   instructions_rev := compiled.instructions :: !instructions_rev;
-                  let _ = Collections.HashMap.insert env' (entity_key binding.entity_id) compiled.value in
+                  let _ =
+                    Collections.HashMap.insert
+                      env'
+                      ~key:(entity_key binding.entity_id)
+                      ~value:compiled.value
+                  in
                   ()
-              | Error errors -> errors_rev := List.rev_append errors !errors_rev)
+              | Error errors -> errors_rev := List.reverse_append errors !errors_rev)
             let_.bindings;
           match List.rev !errors_rev with
           | [] ->
               let* body = compile_expr ~layout ~imports ~env:env' let_.body in
               Ok {
                 instructions = Binary.concat
-                  (List.rev_append !instructions_rev [ body.instructions ]);
+                  (List.reverse_append !instructions_rev [ body.instructions ]);
                 value = body.value
               }
           | errors -> Error errors
@@ -467,7 +473,12 @@ let compile_init_item = fun ~layout ~imports ~env item ->
       Ok compiled.instructions
   | Types.Init_item.Global global ->
       let* compiled = compile_expr ~layout ~imports ~env global.expr in
-      let _ = Collections.HashMap.insert env (entity_key global.entity_id) compiled.value in
+      let _ =
+        Collections.HashMap.insert
+          env
+          ~key:(entity_key global.entity_id)
+          ~value:compiled.value
+      in
       Ok compiled.instructions
 
 let compile_start = fun ~layout ~imports (linked_program: Artifacts.Linked_program.t) ->
@@ -480,7 +491,7 @@ let compile_start = fun ~layout ~imports (linked_program: Artifacts.Linked_progr
         (fun item ->
           match compile_init_item ~layout ~imports ~env item with
           | Ok instructions -> instructions_rev := instructions :: !instructions_rev
-          | Error errors -> errors_rev := List.rev_append errors !errors_rev)
+          | Error errors -> errors_rev := List.reverse_append errors !errors_rev)
         object_.program.init)
     linked_program.objects;
   match List.rev !errors_rev with
@@ -532,7 +543,8 @@ let encode_module = fun ~memory_pages ~imports ~start_body ~layout ->
       ] in
     let function_imports =
       List.map
-        (fun (binding: import_binding) ->
+        imports
+        ~fn:(fun (binding: import_binding) ->
           Binary.concat
             [
               Binary.encode_name binding.import_.module_name;
@@ -540,7 +552,6 @@ let encode_module = fun ~memory_pages ~imports ~start_body ~layout ->
               Binary.byte 0x00;
               Binary.encode_u32 (type_index_of_signature binding.signature);
             ])
-        imports
     in
     Binary.vec (memory_import :: function_imports)
   in
@@ -604,7 +615,7 @@ let node_runner = fun ~wasm_base64 ~memory_pages ->
 let emit_linked_program = fun (linked_program: Artifacts.Linked_program.t) ->
   if linked_program.needs_closure_runtime then
     Error [ Unsupported_closure_runtime ]
-  else if linked_program.function_table_elements <> [] then
+  else if not (List.is_empty linked_program.function_table_elements) then
     Error [ Unsupported_indirect_calls ]
   else
     let functions = linked_program.objects
@@ -618,7 +629,8 @@ let emit_linked_program = fun (linked_program: Artifacts.Linked_program.t) ->
     |> List.concat in
     let unsupported_globals =
       List.filter_map
-        (fun (global: Types.Global.t) ->
+        globals
+        ~fn:(fun (global: Types.Global.t) ->
           match global.expr with
           | Types.Expr.Constant _
           | Types.Expr.Var _
@@ -627,7 +639,6 @@ let emit_linked_program = fun (linked_program: Artifacts.Linked_program.t) ->
           | Types.Expr.Direct_call _
           | Types.Expr.If_then_else _ -> None
           | _ -> Some (Unsupported_global global))
-        globals
     in
     let layout, string_errors = collect_strings linked_program in
     let imports, import_errors = imported_function_bindings linked_program.imports in

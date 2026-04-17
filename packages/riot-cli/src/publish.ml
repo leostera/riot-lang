@@ -209,18 +209,10 @@ let write_publish_event = fun ~workspace_root ~seen_registry_updates ~displayed_
   | Riot_publish.Fix (Riot_fix.Event.FileProgress _) -> ()
   | Riot_publish.Fix (Riot_fix.Event.FileResult _) -> ()
   | Riot_publish.Fix (Riot_fix.Event.Summary _) -> ()
-  | Riot_publish.Build (Riot_build.Event.Pm event) -> Build.write_pm_event
+  | Riot_publish.Build build_event -> Build.write_build_event
     ~mode:Build.Human
     ~seen_registry_updates
-    event
-  | Riot_publish.Build (Riot_build.Event.BuildingTarget { target; host }) -> Build.write_building_target_event
-    ~mode:Build.Human
-    ~target
-    ~host
-  | Riot_publish.Build (Riot_build.Event.CacheGc event) -> Build.write_cache_gc_event
-    ~mode:Build.Human event
-  | Riot_publish.Build (Riot_build.Event.Telemetry _) -> ()
-  | Riot_publish.Build (Riot_build.Event.Phase _) -> ()
+    build_event
   | Riot_publish.CheckStarted { package; version; stage=`fmt } -> out
     (render_formatting ~package:(Package_name.to_string package) ~version:(version_label version))
   | Riot_publish.CheckStarted { package; version; stage=`fix } -> out

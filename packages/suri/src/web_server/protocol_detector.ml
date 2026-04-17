@@ -45,7 +45,7 @@ let http2_handler =
 let is_http2 = fun data ->
   let preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n" in
   if String.length data >= String.length preface then
-    Some (String.sub data 0 (String.length preface) = preface)
+    Some (String.sub data ~offset:0 ~len:(String.length preface) = preface)
   else
     None
 

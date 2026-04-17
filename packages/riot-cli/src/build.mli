@@ -38,6 +38,13 @@ val reset_json_clock: started_at:Std.Time.Instant.t -> unit
 (** Emit a build event as JSON. *)
 val write_build_event_json: Riot_build.Event.t -> unit
 
+(** Render a build event in the selected output mode. *)
+val write_build_event:
+  mode:output_mode ->
+  seen_registry_updates:string Std.Collections.HashSet.t ->
+  Riot_build.Event.t ->
+  unit
+
 (** Render a package-manager event in the selected output mode. *)
 val write_pm_event:
   mode:output_mode ->

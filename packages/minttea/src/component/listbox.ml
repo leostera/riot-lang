@@ -171,7 +171,7 @@ let handle_key = fun t (key: Event.key) modifier ->
         let query = t.filter_query in
         let len = String.length query in
         if len > 0 then
-          let new_query = String.sub query 0 (len - 1) in
+          let new_query = String.sub query ~offset:0 ~len:(len - 1) in
           apply_filter t new_query |> fun t -> { t with filtering_active = true }
         else
           t
@@ -197,7 +197,7 @@ let handle_key = fun t (key: Event.key) modifier ->
 
 let view = fun t ->
   let open Buffer in
-    let buf = create 256 in
+    let buf = create ~size:256 in
     let items = t.filtered_items in
     let total = List.length items in
     if total = 0 then
@@ -226,12 +226,12 @@ let view = fun t ->
                   if is_selected then
                     t.cursor_char
                   else
-                    String.make (String.length t.cursor_char) ' '
+                    String.make ~len:(String.length t.cursor_char) ~char:' '
                 in
                 let text = t.render item in
                 let line =
                   if t.width > 0 && String.length text > t.width then
-                    String.sub text 0 t.width
+                    String.sub text ~offset:0 ~len:t.width
                   else
                     text
                 in

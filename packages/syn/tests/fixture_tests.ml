@@ -78,7 +78,7 @@ let load_modified_fixture_paths = fun () ->
             let () =
               match Path.from_string relpath with
               | Ok relpath ->
-                  let _ = HashSet.insert modified (Path.join cwd relpath) in
+                  let _ = HashSet.insert modified ~value:(Path.join cwd relpath) in
                   ()
               | Error _ -> ()
             in
@@ -89,7 +89,7 @@ let load_modified_fixture_paths = fun () ->
       HashSet.create ()
 
 let is_locally_modified_fixture = fun modified_fixture_paths path ->
-  HashSet.contains modified_fixture_paths path
+  HashSet.contains modified_fixture_paths ~value:path
 
 let has_lossless_snapshot = fun modified_fixture_paths path ->
   match Path.extension path with

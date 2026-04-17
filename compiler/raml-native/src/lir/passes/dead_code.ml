@@ -26,13 +26,13 @@ let rewrite_point = fun (point: Liveness.point) ->
   match point.instruction with
   | Lir.Instruction.Move { dst; _ } -> (
       match destination_name dst with
-      | Some name when not (HashSet.contains point.live_after name) -> None
+      | Some name when not (HashSet.contains point.live_after ~value:name) -> None
       | Some _
       | None -> Some point.instruction
     )
   | Lir.Instruction.Call { dst=Some dst; callee; arguments } -> (
       match destination_name dst with
-      | Some name when not (HashSet.contains point.live_after name) -> Some (Lir.Instruction.Call {
+      | Some name when not (HashSet.contains point.live_after ~value:name) -> Some (Lir.Instruction.Call {
         dst = None;
         callee;
         arguments
@@ -44,8 +44,8 @@ let rewrite_point = fun (point: Liveness.point) ->
       Some point.instruction
 
 let rewrite_procedure = fun (procedure: Lir.Procedure.t) ->
-  let body = Liveness.points_of_procedure procedure |> List.filter_map rewrite_point in
+  let body = Liveness.points_of_procedure procedure |> List.filter_map ~fn:rewrite_point in
   { procedure with body }
 
 let program = fun (program: Lir.Program.t) ->
-  { program with procedures = List.map rewrite_procedure program.procedures }
+  { program with procedures = List.map program.procedures ~fn:rewrite_procedure }

@@ -146,14 +146,14 @@ let chunk_roundtrip_prop =
       assume (String.length full_data > 0);
       (* Take a substring of the specified size *)
       let actual_size = min size (String.length full_data) in
-      let data = String.sub full_data 0 actual_size in
+      let data = String.sub full_data ~offset:0 ~len:actual_size in
       (* Convert to hex manually for small numbers *)
       let hex_size =
         let n = String.length data in
         if n < 10 then
           Int.to_string n
         else if n < 16 then
-          String.make 1 (Char.chr (Char.code 'a' + n - 10))
+          String.make ~len:1 ~char:(Char.chr (Char.code 'a' + n - 10))
         else
           Int.to_string n
       in

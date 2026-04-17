@@ -41,13 +41,14 @@ let total_lines = fun t ->
   | `None -> List.length t.lines
   | `Soft ->
       (* Count wrapped lines *)
-      t.lines |> List.fold_left
-        (fun acc line ->
+      List.fold_left
+        t.lines
+        ~acc:0
+        ~fn:(fun acc line ->
           if line = "" then
             acc + 1
           else
             acc + List.length (Util.Ansi.word_wrap ~width:t.width line))
-        0
 
 let max_y_offset = fun t ->
   let effective_lines =
@@ -55,13 +56,15 @@ let max_y_offset = fun t ->
     | `None -> List.length t.lines
     | `Soft ->
         (* Count wrapped lines *)
-        t.lines |> List.fold_left
-          (fun acc line ->
+        List.fold_left
+          t.lines
+          ~acc:0
+          ~fn:(fun acc line ->
             if line = "" then
               acc + 1
             else
-              acc + List.length (Util.Ansi.word_wrap ~width:t.width line))
-          0
+            acc + List.length (Util.Ansi.word_wrap ~width:t.width line))
+          
   in
   Int.max 0 (effective_lines - t.height)
 
@@ -124,7 +127,12 @@ let scroll_percent = fun t ->
     let h = float_of_int t.height in
     let total = float_of_int (List.length t.lines) in
     let percent = y /. (total -. h) in
-    Float.max 0.0 (Float.min 1.0 percent)
+    if percent < 0.0 then
+      0.0
+    else if percent > 1.0 then
+      1.0
+    else
+      percent
 
 let set_mouse_wheel_enabled = fun t ~enabled -> { t with mouse_wheel_enabled = enabled }
 
@@ -149,14 +157,20 @@ let view = fun t ->
   let start_idx = t.y_offset in
   let end_idx = Int.min (start_idx + t.height) (List.length display_lines) in
   let visible =
-    List.filteri (fun i _ -> i >= start_idx && i < end_idx) display_lines
+    List.filter_map
+      (List.enumerate display_lines)
+      ~fn:(fun (i, line) ->
+        if i >= start_idx && i < end_idx then
+          Some line
+        else
+          None)
   in
   (* Pad with blank lines if content is shorter than viewport height *)
   let visible_count = List.length visible in
   let padded_visible =
     if visible_count < t.height then
       let blank_lines =
-        List.init (t.height - visible_count) (fun _ -> "")
+        List.init ~count:(t.height - visible_count) ~fn:(fun _ -> "")
       in
       visible @ blank_lines
     else

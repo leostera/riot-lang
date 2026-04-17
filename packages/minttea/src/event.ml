@@ -136,7 +136,7 @@ let to_string = function
   | Paste content ->
       let preview =
         if String.length content > 20 then
-          String.sub content 0 17 ^ "..."
+          String.sub content ~offset:0 ~len:17 ^ "..."
         else
           content
       in

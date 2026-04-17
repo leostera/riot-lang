@@ -27,23 +27,28 @@ let layout_of_procedure = fun (analysis: Frame_analysis.result) ->
   }
 
 let analyze_program = fun (program: Lir.Program.t) ->
-  let analysis = HashMap.with_capacity (List.length program.procedures) in
+  let analysis = HashMap.with_capacity ~size:(List.length program.procedures) in
   List.iter
     (fun (procedure: Lir.Procedure.t) ->
-      let _ = HashMap.insert analysis procedure.name (Frame_analysis.analyze_procedure procedure) in
+      let _ =
+        HashMap.insert
+          analysis
+          ~key:procedure.name
+          ~value:(Frame_analysis.analyze_procedure procedure)
+      in
       ())
     program.procedures;
   analysis
 
 let frame_for_procedure = fun analysis (procedure: Lir.Procedure.t) ->
-  HashMap.get analysis procedure.name
-  |> Option.map layout_of_procedure
+  HashMap.get analysis ~key:procedure.name
+  |> Option.map ~fn:layout_of_procedure
   |> Option.expect
     ~msg:(format Format.[ str "missing frame analysis for procedure "; str procedure.name ])
 
 let virtual_names_for_procedure = fun analysis ~procedure_name ->
-  HashMap.get analysis procedure_name
-  |> Option.map (fun (result: Frame_analysis.result) -> result.virtual_names)
+  HashMap.get analysis ~key:procedure_name
+  |> Option.map ~fn:(fun (result: Frame_analysis.result) -> result.virtual_names)
   |> Option.expect
     ~msg:(format Format.[ str "missing frame analysis for procedure "; str procedure_name ])
 
@@ -53,11 +58,13 @@ let program_with_analysis = fun (program: Lir.Program.t) ->
     {
       program
       with procedures = List.map
-        (fun (procedure: Lir.Procedure.t) ->
-          { procedure with frame = frame_for_procedure analysis procedure })
         program.procedures
+        ~fn:(fun (procedure: Lir.Procedure.t) ->
+          { procedure with frame = frame_for_procedure analysis procedure })
     },
     analysis
   )
 
-let program = fun program -> fst (program_with_analysis program)
+let program = fun program ->
+  let program, _analysis = program_with_analysis program in
+  program

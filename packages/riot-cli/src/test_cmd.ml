@@ -261,6 +261,12 @@ let stamp_json_event = fun ~command_started_at ~duration_us (event: Test_runtime
         |> upsert_int_field "completed_at_us" elapsed_us
         | Test_runtime.NoSuitesFound _ -> upsert_int_field "completed_at_us" elapsed_us fields
         | Test_runtime.Build _ -> fields
+        | Test_runtime.TestSuitesCollected _
+        | Test_runtime.ResolvingSuiteBinary _
+        | Test_runtime.SuiteBinaryResolved _
+        | Test_runtime.ExecutingSuiteBinary _
+        | Test_runtime.SuiteBinaryFinished _
+        | Test_runtime.ParsingSuiteOutput _ -> upsert_int_field "emitted_at_us" elapsed_us fields
       in
       Data.Json.Object fields
   | other -> other
@@ -274,79 +280,57 @@ let summary_duration_us = fun ~command_started_at (event: Test_runtime.test_even
   | Test_runtime.Summary _ -> Some (Time.Instant.elapsed command_started_at |> Time.Duration.to_micros)
   | _ -> None
 
-let write_test_event_json = fun ~command_started_at ?(pending_suite = None) (
-  event: Test_runtime.test_event
-) ->
-  match event with
-  | Test_runtime.RunningSuite suite ->
-      Some (Some suite)
-  | Test_runtime.SuiteCompleted { summary; _ } ->
-      if summary.total > 0 then
-        (
-          pending_suite
-          |> Option.for_each
-            ~fn:(fun suite ->
-              Test_runtime.test_event_to_json (Test_runtime.RunningSuite suite)
-              |> Option.for_each
-                ~fn:(fun json ->
-                  write_json_event
-                    ~command_started_at
-                    ~duration_us:None (Test_runtime.RunningSuite suite)
-                    json));
-          Test_runtime.test_event_to_json event
-          |> Option.for_each
-            ~fn:(fun json ->
-              write_json_event
-                ~command_started_at
-                ~duration_us:(summary_duration_us ~command_started_at event)
-                event
-                json);
-          Some None
-        )
-      else
-        Some None
-  | _ ->
-      Test_runtime.test_event_to_json event
-      |> Option.for_each
-        ~fn:(fun json ->
-          write_json_event
-            ~command_started_at
-            ~duration_us:(summary_duration_us ~command_started_at event)
-            event
-            json);
-      Some None
+let write_test_event_json = fun ~command_started_at (event: Test_runtime.test_event) ->
+  Test_runtime.test_event_to_json event
+  |> Option.for_each
+    ~fn:(fun json ->
+      write_json_event
+        ~command_started_at
+        ~duration_us:(summary_duration_us ~command_started_at event)
+        event
+        json)
 
-let find_suite_source_path = fun ~(workspace:Riot_model.Workspace.t) (
-  suite: Test_runtime.suite_binary
-) ->
-  Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Test workspace |> List.find
+type suite_source_label_entry = {
+  package_name: Riot_model.Package_name.t;
+  suite_name: string;
+  label: string;
+}
+
+let source_path_label = fun ~(workspace:Riot_model.Workspace.t) path ->
+  match Path.strip_prefix path ~prefix:workspace.root with
+  | Ok relative_path -> Path.to_string relative_path
+  | Error _ -> Path.to_string path
+
+let suite_source_labels = fun ~(workspace:Riot_model.Workspace.t) ->
+  Riot_model.Workspace.realize_packages ~intent:Riot_model.Package.Test workspace
+  |> List.flat_map
     ~fn:(fun (pkg: Riot_model.Package.t) ->
-      Riot_model.Package_name.equal pkg.name suite.package_name) |> Option.and_then
-    ~fn:(fun (pkg: Riot_model.Package.t) ->
-      pkg.binaries |> List.find
+      pkg.binaries
+      |> List.filter_map
         ~fn:(fun (bin: Riot_model.Package.binary) ->
-          String.equal bin.name suite.suite_name) |> Option.map
-        ~fn:(fun (bin: Riot_model.Package.binary) -> Path.(pkg.path / bin.path)))
+          if String.ends_with ~suffix:"_tests" bin.name || String.ends_with ~suffix:"-tests" bin.name then
+            Some {
+              package_name = pkg.name;
+              suite_name = bin.name;
+              label = source_path_label ~workspace Path.(pkg.path / bin.path)
+            }
+          else
+            None))
 
-let suite_source_label = fun ~(workspace:Riot_model.Workspace.t) (suite: Test_runtime.suite_binary) ->
-  match find_suite_source_path ~workspace suite with
-  | Some path -> (
-      match Path.strip_prefix path ~prefix:workspace.root with
-      | Ok relative_path -> Path.to_string relative_path
-      | Error _ -> Path.to_string path
-    )
+let suite_source_label = fun ~(suite_labels: suite_source_label_entry list) (suite: Test_runtime.suite_binary) ->
+  match suite_labels |> List.find
+    ~fn:(fun (entry: suite_source_label_entry) ->
+      Riot_model.Package_name.equal entry.package_name suite.package_name
+      && String.equal entry.suite_name suite.suite_name) with
+  | Some entry -> entry.label
   | None -> Riot_model.Package_name.to_string suite.package_name ^ "/" ^ suite.suite_name
 
-let listed_suite_source_label = fun ~(workspace:Riot_model.Workspace.t) (
+let listed_suite_source_label = fun ~(workspace:Riot_model.Workspace.t) ~(suite_labels: suite_source_label_entry list) (
   suite: Test_runtime.listed_test_suite
 ) ->
   match suite.source_path with
-  | Some path -> (
-      match Path.strip_prefix path ~prefix:workspace.root with
-      | Ok relative_path -> Path.to_string relative_path
-      | Error _ -> Path.to_string path
-    )
-  | None -> suite_source_label ~workspace suite.suite
+  | Some path -> source_path_label ~workspace path
+  | None -> suite_source_label ~suite_labels suite.suite
 
 let listed_test_selector = fun (suite: Test_runtime.suite_binary) (
   test: Test_runtime.listed_test_case
@@ -452,11 +436,11 @@ let write_test_list_completed_json = fun ~command_started_at ~suite_count ~test_
       ("completed_at_us", Data.Json.Int (event_elapsed_us ~command_started_at));
     ])
 
-let write_test_list = fun ~(workspace:Riot_model.Workspace.t) suites ->
+let write_test_list = fun ~(workspace:Riot_model.Workspace.t) ~(suite_labels: suite_source_label_entry list) suites ->
   List.for_each suites
     ~fn:(fun (suite: Test_runtime.listed_test_suite) ->
       println "";
-      println (listed_suite_source_label ~workspace suite);
+      println (listed_suite_source_label ~workspace ~suite_labels suite);
       suite.tests |> List.for_each
         ~fn:(fun (test: Test_runtime.listed_test_case) ->
           let metadata = metadata_suffix test.size test.reliability in
@@ -474,9 +458,9 @@ let write_test_list = fun ~(workspace:Riot_model.Workspace.t) suites ->
           println
             ("  [" ^ Int.to_string test.index ^ "] " ^ type_prefix ^ " " ^ test.name ^ metadata ^ skip_suffix)))
 
-let print_suite_header = fun ~(workspace:Riot_model.Workspace.t) (suite: Test_runtime.suite_binary) total ->
+let print_suite_header = fun ~(suite_labels: suite_source_label_entry list) (suite: Test_runtime.suite_binary) total ->
   println "";
-  println ("     Running " ^ suite_source_label ~workspace suite);
+  println ("     Running " ^ suite_source_label ~suite_labels suite);
   println "";
   println ("running " ^ Int.to_string total ^ " tests")
 
@@ -532,19 +516,19 @@ let print_suite_footer = fun (summary: Test_runtime.test_suite_summary) ->
     ^ Int.to_string summary.skipped
     ^ " skipped")
 
-let print_suite_results = fun ~(workspace:Riot_model.Workspace.t) ~verbose ~(suite:Test_runtime.suite_binary) ~stdout ~stderr (
+let print_suite_results = fun ~(suite_labels: suite_source_label_entry list) ~verbose ~(suite:Test_runtime.suite_binary) ~stdout ~stderr (
   summary: Test_runtime.test_suite_summary
 ) ->
   if summary.total > 0 then
     (
-      print_suite_header ~workspace suite summary.total;
+      print_suite_header ~suite_labels suite summary.total;
       summary.results |> List.for_each ~fn:print_test_result;
       print_suite_footer summary;
       if verbose > 0 then
         print_command_output Command.{ stdout; stderr; status = 0 }
     )
 
-let write_test_event = fun ~(workspace:Riot_model.Workspace.t) ~(timing:timing_summary) ~verbose (
+let write_test_event = fun ~(suite_labels: suite_source_label_entry list) ~(timing:timing_summary) ~verbose (
   event: Test_runtime.test_event
 ) ->
   match event with
@@ -552,8 +536,14 @@ let write_test_event = fun ~(workspace:Riot_model.Workspace.t) ~(timing:timing_s
       ()
   | Test_runtime.NoSuitesFound { package_name; suite_name } ->
       print_empty_hint package_name suite_name
+  | Test_runtime.TestSuitesCollected _
+  | Test_runtime.ResolvingSuiteBinary _
+  | Test_runtime.SuiteBinaryResolved _
   | Test_runtime.RunningSuite _ ->
       ()
+  | Test_runtime.ExecutingSuiteBinary _
+  | Test_runtime.SuiteBinaryFinished _
+  | Test_runtime.ParsingSuiteOutput _ -> ()
   | Test_runtime.SuiteCompleted {
     suite;
     stdout;
@@ -562,8 +552,8 @@ let write_test_event = fun ~(workspace:Riot_model.Workspace.t) ~(timing:timing_s
     _
   } ->
       if summary.total > 0 then
-        record_suite_timing timing ~suite_label:(suite_source_label ~workspace suite) summary;
-      print_suite_results ~workspace ~verbose ~suite ~stdout ~stderr summary
+        record_suite_timing timing ~suite_label:(suite_source_label ~suite_labels suite) summary;
+      print_suite_results ~suite_labels ~verbose ~suite ~stdout ~stderr summary
   | Test_runtime.Summary {
     total;
     passed;
@@ -642,6 +632,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
         );
         Error (Failure message)
     | Ok operational_config ->
+        let suite_labels = suite_source_labels ~workspace in
         let size_filter =
           if small_only then
             Test_selection.Small
@@ -716,7 +707,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
                     if List.is_empty suites then
                       print_empty_list_hint request.package_filter request.suite_filter request.query
                     else
-                      write_test_list ~workspace suites
+                      write_test_list ~workspace ~suite_labels suites
               );
               Ok ()
           | Error err ->
@@ -727,38 +718,18 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
               );
               Error (Failure (Test_runtime.test_error_message err))
         else
-          let pending_json_suite = ref None in
           let timing = empty_timing_summary () in
           let on_event (event: Test_runtime.test_event) =
             match event with
-            | Test_runtime.Build build_event -> (
-                match output_mode with
-                | Build.Json -> Build.write_build_event_json build_event
-                | Build.Human -> (
-                    match build_event with
-                    | Riot_build.Event.Pm kind -> Build.write_pm_event
-                      ~mode:output_mode
-                      ~seen_registry_updates
-                      kind
-                    | Riot_build.Event.BuildingTarget { target; host } -> Build.write_building_target_event
-                      ~mode:output_mode
-                      ~target
-                      ~host
-                    | Riot_build.Event.CacheGc event -> Build.write_cache_gc_event
-                      ~mode:output_mode
-                      event
-                    | Riot_build.Event.Telemetry _ -> ()
-                    | Riot_build.Event.Phase _ -> ()
-                  )
-              )
+            | Test_runtime.Build build_event ->
+                Build.write_build_event
+                  ~mode:output_mode
+                  ~seen_registry_updates
+                  build_event
             | _ -> (
                 match output_mode with
-                | Build.Json -> pending_json_suite := write_test_event_json
-                  ~command_started_at
-                  ~pending_suite:!pending_json_suite
-                  event
-                |> Option.unwrap_or ~default:None
-                | Build.Human -> write_test_event ~workspace ~timing ~verbose event
+                | Build.Json -> write_test_event_json ~command_started_at event
+                | Build.Human -> write_test_event ~suite_labels ~timing ~verbose event
               )
           in
           match

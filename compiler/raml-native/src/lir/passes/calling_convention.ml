@@ -25,12 +25,10 @@ let register_destination = fun name -> Lir.Destination.Home (register_home name)
 let register_operand = fun name -> Lir.Operand.Home (register_home name)
 
 let home_of_name = fun (frame: Lir.Frame.t) name ->
-  frame.homes |> List.find_map
-    (fun (binding: Lir.Home_binding.t) ->
-      if String.equal binding.name name then
-        Some binding.home
-      else
-        None) |> Option.expect ~msg:(format Format.[ str "missing home for "; str name ])
+  frame.homes
+  |> List.find ~fn:(fun (binding: Lir.Home_binding.t) -> String.equal binding.name name)
+  |> Option.map ~fn:(fun (binding: Lir.Home_binding.t) -> binding.home)
+  |> Option.expect ~msg:(format Format.[ str "missing home for "; str name ])
 
 let destination_matches_operand = fun dst src ->
   match (dst, src) with
@@ -55,8 +53,8 @@ let rec zip_prefix left right =
 
 let parameter_moves = fun profile (procedure: Lir.Procedure.t) ->
   zip_prefix profile.Target_profile.argument_registers procedure.params
-  |> List.concat_map
-    (fun (register, name) ->
+  |> List.flat_map
+    ~fn:(fun (register, name) ->
       move_if_needed
         ~dst:(Lir.Destination.Home (home_of_name procedure.frame name))
         ~src:(register_operand register))
@@ -64,12 +62,12 @@ let parameter_moves = fun profile (procedure: Lir.Procedure.t) ->
 let rewrite_call = fun profile dst callee arguments ->
   let argument_pairs = zip_prefix profile.Target_profile.argument_registers arguments in
   let argument_moves = argument_pairs
-  |> List.concat_map
-    (fun (register, argument) -> move_if_needed ~dst:(register_destination register) ~src:argument) in
+  |> List.flat_map
+    ~fn:(fun (register, argument) -> move_if_needed ~dst:(register_destination register) ~src:argument) in
   let rewritten_call = Lir.Instruction.Call {
     dst = None;
     callee;
-    arguments = List.map (fun (register, _) -> register_operand register) argument_pairs
+    arguments = List.map argument_pairs ~fn:(fun (register, _) -> register_operand register)
   } in
   let result_moves =
     match dst with
@@ -90,7 +88,7 @@ let rewrite_instruction = fun profile instruction ->
   | Lir.Instruction.Return _ -> [ instruction ]
 
 let rewrite_body = fun profile (procedure: Lir.Procedure.t) ->
-  let body = List.concat_map (rewrite_instruction profile) procedure.body in
+  let body = List.flat_map procedure.body ~fn:(rewrite_instruction profile) in
   match body with
   | Lir.Instruction.Label entry :: rest when String.equal entry procedure.name -> Lir.Instruction.Label entry
   :: parameter_moves profile procedure
@@ -105,5 +103,5 @@ let program = fun ~ctx (program: Lir.Program.t) ->
   | None -> program
   | Some profile -> {
     program
-    with procedures = List.map (rewrite_procedure profile) program.procedures
+    with procedures = List.map program.procedures ~fn:(rewrite_procedure profile)
   }

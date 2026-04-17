@@ -49,7 +49,9 @@ let rec rewrite_instruction = fun live_after instruction ->
 
 and rewrite_instructions = fun instructions live_after ->
   List.fold_right
-    (fun instruction (kept, live_after) ->
+    instructions
+    ~acc:([], live_after)
+    ~fn:(fun instruction (kept, live_after) ->
       let rewritten, live_before = rewrite_instruction live_after instruction in
       let kept =
         match rewritten with
@@ -57,12 +59,10 @@ and rewrite_instructions = fun instructions live_after ->
         | None -> kept
       in
       (kept, live_before))
-    instructions
-    ([], live_after)
 
 let rewrite_procedure = fun (procedure: Procedure.t) ->
   let body, _ = rewrite_instructions procedure.body (Liveness.empty ()) in
   { procedure with body }
 
 let program = fun (program: Program.t) ->
-  { program with procedures = List.map rewrite_procedure program.procedures }
+  { program with procedures = List.map program.procedures ~fn:rewrite_procedure }

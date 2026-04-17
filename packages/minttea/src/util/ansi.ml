@@ -68,7 +68,7 @@ let contains_substring = fun haystack needle ->
         let rec match_at j =
           if j = n_len then
             true
-          else if haystack.[i + j] = needle.[j] then
+          else if Option.unwrap (String.get haystack ~at:(i + j)) = Option.unwrap (String.get needle ~at:j) then
             match_at (j + 1)
           else
             false

@@ -16,7 +16,7 @@ let compile = fun ~config ~(frontend:Frontend_pipeline.t) ->
         | Ok program -> Pipeline_stage.ok ~key:"program" ~render:Js.Jir.Program.to_json program
         | Error errors -> Pipeline_stage.error
           ~stage:"jir"
-          (List.map Js.Jir.Lowering.error_to_json errors)
+          (List.map errors ~fn:Js.Jir.Lowering.error_to_json)
       in
       let js =
         match jir.value with

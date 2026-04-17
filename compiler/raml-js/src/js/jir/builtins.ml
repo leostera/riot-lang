@@ -31,8 +31,11 @@ let can_classify_entity = fun entity_id ->
 let rec equal_segments = fun left right ->
   match (left, right) with
   | ([], []) -> true
-  | (left_head :: left_tail, right_head :: right_tail) -> String.equal left_head right_head
-  && equal_segments left_tail right_tail
+  | (left_head :: left_tail, right_head :: right_tail) ->
+      if String.equal left_head right_head then
+        equal_segments left_tail right_tail
+      else
+        false
   | _ -> false
 
 let matches_surface_path = fun entity_id expected ->
@@ -83,12 +86,16 @@ let specs = [
 ]
 
 let classify_with = fun entity_id ->
-  specs |> List.find_map
-    (fun spec ->
-      if matches_any_surface_path entity_id spec.paths then
-        Some spec.callee
-      else
-        None)
+  let rec loop = fun specs ->
+    match specs with
+    | [] -> None
+    | spec :: rest ->
+        if matches_any_surface_path entity_id spec.paths then
+          Some spec.callee
+        else
+          loop rest
+  in
+  loop specs
 
 let classify_direct_callee = fun entity_id ->
   if not (can_classify_entity entity_id) then

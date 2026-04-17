@@ -32,7 +32,7 @@ let () =
       println ("Body length: " ^ (Int.to_string (String.length body)) ^ " bytes");
       let preview =
         if String.length body > 300 then
-          String.sub body 0 300 ^ "..."
+          String.sub body ~offset:0 ~len:300 ^ "..."
         else
           body
       in

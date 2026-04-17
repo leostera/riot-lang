@@ -92,7 +92,7 @@ let compile = fun ~config ~(frontend:Frontend_pipeline.t) ->
               )
             | Error errors -> Pipeline_stage.error
               ~stage:"wasm_codegen"
-              (List.map Codegen.error_to_json errors)
+              (List.map errors ~fn:Codegen.error_to_json)
           )
       in
       Backend_result.make ~lowered_fields:[

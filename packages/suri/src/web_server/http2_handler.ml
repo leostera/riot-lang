@@ -249,7 +249,9 @@ let handle_data = fun data conn state ->
             begin
               Cell.set state.preface_verified true;
               (* Remove preface from buffer *)
-              Cell.set state.buffer (String.sub buffer_data 24 (String.length buffer_data - 24));
+              Cell.set
+                state.buffer
+                (String.sub buffer_data ~offset:24 ~len:(String.length buffer_data - 24));
               (* Send SETTINGS *)
               match send_settings conn with
               | Error e -> Socket_pool.Handler.Error (state, e)

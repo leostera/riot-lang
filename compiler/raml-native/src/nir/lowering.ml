@@ -84,9 +84,9 @@ let validation_map3 = fun first second third f ->
 
 let map_results = fun items f ->
   List.fold_right
-    (fun item acc -> validation_map2 (f item) acc (fun item acc -> item :: acc))
     items
-    (Ok [])
+    ~acc:(Ok [])
+    ~fn:(fun item acc -> validation_map2 (f item) acc (fun item acc -> item :: acc))
 
 let source_kind_to_string = fun kind ->
   match kind with
@@ -100,7 +100,7 @@ let trace_to_json = fun trace ->
       ("initial", Nir.Program.to_json trace.initial);
       (
         "passes",
-        Json.obj (List.map (fun pass -> (pass.name, Nir.Program.to_json pass.program)) trace.passes)
+        Json.obj (List.map trace.passes ~fn:(fun pass -> (pass.name, Nir.Program.to_json pass.program)))
       );
       ("program", Nir.Program.to_json trace.final);
     ]
@@ -160,7 +160,7 @@ let local_entity_name = fun entity_id ->
   | None -> None
 
 let param_names = fun params ->
-  List.map (fun (param: Core.Expr.param) -> param.name) params
+  List.map params ~fn:(fun (param: Core.Expr.param) -> param.name)
 
 let has_name = fun names name ->
   List.exists (String.equal name) names
@@ -172,31 +172,24 @@ let add_unique_name = fun names name ->
     names @ [ name ]
 
 let find_local_function = fun env name ->
-  env.local_functions |> List.find_map
-    (fun (local_function: local_function) ->
-      if String.equal local_function.source_name name then
-        Some local_function
-      else
-        None)
+  env.local_functions
+  |> List.find ~fn:(fun (local_function: local_function) -> String.equal local_function.source_name name)
 
 let find_top_level_function_arity = fun env name ->
-  env.top_level_functions |> List.find_map
-    (fun (function_name, arity) ->
-      if String.equal function_name name then
-        Some arity
-      else
-        None)
+  env.top_level_functions
+  |> List.find ~fn:(fun (function_name, _) -> String.equal function_name name)
+  |> Option.map ~fn:(fun (_function_name, arity) -> arity)
 
 let lowered_expr = fun expr -> { expr; lifted_functions = [] }
 
 let collect_lowered_exprs = fun lowered_exprs ->
   (
-    List.map (fun (lowered_expr: lowered_expr) -> lowered_expr.expr) lowered_exprs,
-    List.concat_map (fun (lowered_expr: lowered_expr) -> lowered_expr.lifted_functions) lowered_exprs
+    List.map lowered_exprs ~fn:(fun (lowered_expr: lowered_expr) -> lowered_expr.expr),
+    List.flat_map lowered_exprs ~fn:(fun (lowered_expr: lowered_expr) -> lowered_expr.lifted_functions)
   )
 
 let extend_bound_values = fun env names ->
-  { env with bound_values = List.fold_left add_unique_name env.bound_values names }
+  { env with bound_values = List.fold_left names ~acc:env.bound_values ~fn:add_unique_name }
 
 let extend_local_functions = fun env local_functions ->
   { env with local_functions = local_functions @ env.local_functions }
@@ -257,7 +250,7 @@ let rec build_partial_application_functions = fun ~prefix ~bound_argument_count 
   let closure = Nir.Expr.Symbol closure_name in
   let original = closure_slot closure 1 in
   let bound_arguments =
-    List.init bound_argument_count (fun index -> closure_slot closure (index + 2))
+    List.init ~count:bound_argument_count ~fn:(fun index -> closure_slot closure (index + 2))
   in
   let body =
     if Int.equal remaining_arity 1 then
@@ -283,7 +276,8 @@ let rec build_partial_application_functions = fun ~prefix ~bound_argument_count 
 
 let lower_partial_application = fun env ~function_name ~original_symbol ~bound_arguments ~remaining_arity ->
   Result.map
-    (fun prefix ->
+    (fresh_partial_application_prefix env function_name)
+    ~fn:(fun prefix ->
       let entrypoint = partial_application_wrapper_name prefix remaining_arity in
       {
         expr = partial_application_closure
@@ -295,7 +289,6 @@ let lower_partial_application = fun env ~function_name ~original_symbol ~bound_a
           ~bound_argument_count:(List.length bound_arguments)
           ~remaining_arity
       })
-    (fresh_partial_application_prefix env function_name)
 
 let overapplied_direct_call_error = fun ~name ~expected_arity ~actual_arity ->
   UnsupportedExpr {
@@ -340,10 +333,11 @@ let lower_direct_call = fun env name lowered_arguments ->
   let arguments, lifted_functions = collect_lowered_exprs lowered_arguments in
   match find_local_function env name with
   | Some local_function ->
-      Result.and_then (map_results
-        local_function.captures
-        (lower_capture_argument env local_function))
-        (fun lowered_captures ->
+      Result.and_then
+        (map_results
+          local_function.captures
+          (lower_capture_argument env local_function))
+        ~fn:(fun lowered_captures ->
           let captures, capture_functions = collect_lowered_exprs lowered_captures in
           let expected_arity = List.length local_function.params in
           let actual_arity = List.length arguments in
@@ -361,17 +355,17 @@ let lower_direct_call = fun env name lowered_arguments ->
               }
           else
             Result.map
-              (fun (partial: lowered_expr) ->
-                {
-                  partial
-                  with lifted_functions = capture_functions @ lifted_functions @ partial.lifted_functions
-                })
               (lower_partial_application
                 env
                 ~function_name:local_function.source_name
                 ~original_symbol:local_function.lifted_name
                 ~bound_arguments:(captures @ arguments)
-                ~remaining_arity:(expected_arity - actual_arity)))
+                ~remaining_arity:(expected_arity - actual_arity))
+              ~fn:(fun (partial: lowered_expr) ->
+                {
+                  partial
+                  with lifted_functions = capture_functions @ lifted_functions @ partial.lifted_functions
+                }))
   | None -> (
       match find_top_level_function_arity env name with
       | Some expected_arity ->
@@ -383,14 +377,14 @@ let lower_direct_call = fun env name lowered_arguments ->
               { expr = Nir.Expr.Call Nir.Expr.{ callee = Direct name; arguments }; lifted_functions }
           else
             Result.map
-              (fun (partial: lowered_expr) ->
-                { partial with lifted_functions = lifted_functions @ partial.lifted_functions })
               (lower_partial_application
                 env
                 ~function_name:name
                 ~original_symbol:name
                 ~bound_arguments:arguments
                 ~remaining_arity:(expected_arity - actual_arity))
+              ~fn:(fun (partial: lowered_expr) ->
+                { partial with lifted_functions = lifted_functions @ partial.lifted_functions })
       | None -> ok
         { expr = Nir.Expr.Call Nir.Expr.{ callee = Direct name; arguments }; lifted_functions }
     )
@@ -399,7 +393,8 @@ let local_function_of_binding = fun env ~escaping_names (binding: Core.Expr.bind
   match binding.expr with
   | Core.Expr.Lambda lambda ->
       Result.map
-        (fun lifted_name ->
+        (fresh_lifted_name env binding.name)
+        ~fn:(fun lifted_name ->
           Some {
             source_name = binding.name;
             lifted_name;
@@ -411,7 +406,6 @@ let local_function_of_binding = fun env ~escaping_names (binding: Core.Expr.bind
             params = param_names lambda.params;
             escapes = has_name escaping_names binding.name;
           })
-        (fresh_lifted_name env binding.name)
   | _ -> ok None
 
 let lower_var = fun env entity_id ->
@@ -420,10 +414,11 @@ let lower_var = fun env entity_id ->
       match find_local_function env name with
       | Some local_function ->
           if local_function.escapes then
-            Result.and_then (map_results
-              local_function.captures
-              (lower_capture_argument env local_function))
-              (fun lowered_captures ->
+            Result.and_then
+              (map_results
+                local_function.captures
+                (lower_capture_argument env local_function))
+              ~fn:(fun lowered_captures ->
                 let captures, lifted_functions = collect_lowered_exprs lowered_captures in
                 ok
                   {
@@ -461,8 +456,9 @@ let rec lower_expr = fun env expr ->
   | Core.Expr.Var name ->
       lower_var env name
   | Core.Expr.Apply { callee=Core.Expr.Direct name; arguments } ->
-      Result.and_then (map_results arguments (lower_expr env))
-        (
+      Result.and_then
+        (map_results arguments (lower_expr env))
+        ~fn:(
           match local_entity_name name with
           | Some local_name -> lower_direct_call env local_name
           | None -> lower_direct_call env (entity_name name)
@@ -487,47 +483,46 @@ let rec lower_expr = fun env expr ->
           })
   | Core.Expr.Tuple tuple ->
       Result.map
-        (fun lowered_arguments ->
+        (map_results tuple (lower_expr env))
+        ~fn:(fun lowered_arguments ->
           let arguments, lifted_functions = collect_lowered_exprs lowered_arguments in
           {
             expr = runtime_call (tuple_make_helper ~arity:(List.length tuple)) arguments;
             lifted_functions
           })
-        (map_results tuple (lower_expr env))
   | Core.Expr.Tuple_get tuple_get ->
       Result.map
-        (fun tuple ->
+        (lower_expr env tuple_get.tuple)
+        ~fn:(fun tuple ->
           {
             expr = runtime_call
               tuple_get_helper
               [ tuple.expr; Nir.Expr.Literal (Nir.Literal.Int tuple_get.index) ];
             lifted_functions = tuple.lifted_functions
           })
-        (lower_expr env tuple_get.tuple)
   | Core.Expr.Record record ->
       Result.map
-        (fun lowered_fields ->
-          let values = List.map snd lowered_fields in
+        (map_results
+          record
+          (fun (field: Core.Expr.record_field) ->
+            Result.map (lower_expr env field.value) ~fn:(fun value -> (field.label, value))))
+        ~fn:(fun lowered_fields ->
+          let values = List.map lowered_fields ~fn:(fun (_label, value) -> value) in
           let arguments, lifted_functions = collect_lowered_exprs values in
           {
             expr = runtime_call (tuple_make_helper ~arity:(List.length record)) arguments;
             lifted_functions
           })
-        (
-          map_results record
-            (fun (field: Core.Expr.record_field) ->
-              Result.map (fun value -> (field.label, value)) (lower_expr env field.value))
-        )
   | Core.Expr.Record_get record_get ->
       Result.map
-        (fun record ->
+        (lower_expr env record_get.record)
+        ~fn:(fun record ->
           {
             expr = runtime_call
               tuple_get_helper
               [ record.expr; Nir.Expr.Literal (Nir.Literal.Int record_get.index) ];
             lifted_functions = record.lifted_functions
           })
-        (lower_expr env record_get.record)
   | Core.Expr.If_then_else if_then_else ->
       validation_map3
         (lower_expr env if_then_else.condition)
@@ -554,7 +549,7 @@ let rec lower_expr = fun env expr ->
         let escaping_names =
           let_.bindings
           |> List.filter_map
-            (fun (binding: Core.Expr.binding) ->
+            ~fn:(fun (binding: Core.Expr.binding) ->
               match binding.expr with
               | Core.Expr.Lambda _ ->
                   if
@@ -569,40 +564,42 @@ let rec lower_expr = fun env expr ->
                     None
               | _ -> None)
         in
-        Result.and_then (map_results let_.bindings (local_function_of_binding env ~escaping_names))
-          (fun local_functions ->
+        Result.and_then
+          (map_results let_.bindings (local_function_of_binding env ~escaping_names))
+          ~fn:(fun local_functions ->
             let local_functions =
-              List.filter_map (fun local_function -> local_function) local_functions
+              List.filter_map local_functions ~fn:(fun local_function -> local_function)
             in
             let value_binding_names =
               let_.bindings
               |> List.filter_map
-                (fun (binding: Core.Expr.binding) ->
+                ~fn:(fun (binding: Core.Expr.binding) ->
                   match binding.expr with
                   | Core.Expr.Lambda _ -> None
                   | _ -> Some binding.name)
             in
             let env_for_body = extend_local_functions (extend_bound_values env value_binding_names) local_functions in
-            Result.and_then (map_results let_.bindings (lower_let_binding env local_functions))
-              (fun lowered_bindings ->
+            Result.and_then
+              (map_results let_.bindings (lower_let_binding env local_functions))
+              ~fn:(fun lowered_bindings ->
                 Result.map
-                  (fun (body: lowered_expr) ->
+                  (lower_expr env_for_body let_.body)
+                  ~fn:(fun (body: lowered_expr) ->
                     let bindings = lowered_bindings
                     |> List.filter_map
-                      (fun (lowered_binding: lowered_let_binding) -> lowered_binding.binding) in
-                    let lifted_functions = List.concat_map
-                      (fun (lowered_binding: lowered_let_binding) -> lowered_binding.lifted_functions)
+                      ~fn:(fun (lowered_binding: lowered_let_binding) -> lowered_binding.binding) in
+                    let lifted_functions = List.flat_map
                       lowered_bindings
+                      ~fn:(fun (lowered_binding: lowered_let_binding) -> lowered_binding.lifted_functions)
                     @ body.lifted_functions in
                     {
                       expr =
                         if bindings = [] then
                           body.expr
-                        else
+                      else
                           Nir.Expr.Let Nir.Expr.{ bindings; body = body.expr };
                       lifted_functions;
-                    })
-                  (lower_expr env_for_body let_.body)))
+                    })))
   | Core.Expr.Sequence sequence ->
       validation_map2
         (lower_expr env sequence.first)
@@ -619,10 +616,10 @@ let rec lower_expr = fun env expr ->
       match primitive_helper primitive.primitive with
       | Some helper ->
           Result.map
-            (fun lowered_arguments ->
+            (map_results primitive.arguments (lower_expr env))
+            ~fn:(fun lowered_arguments ->
               let arguments, lifted_functions = collect_lowered_exprs lowered_arguments in
               { expr = runtime_call helper arguments; lifted_functions })
-            (map_results primitive.arguments (lower_expr env))
       | None -> error
         (UnsupportedExpr {
           reason = format
@@ -635,8 +632,9 @@ let rec lower_expr = fun env expr ->
     )
 
 and lower_nested_lambda = fun env (lambda: Core.Expr.lambda) ->
-  Result.and_then (fresh_lifted_name env "lambda")
-    (fun lifted_name ->
+  Result.and_then
+    (fresh_lifted_name env "lambda")
+    ~fn:(fun lifted_name ->
       let closure_name = format Format.[ str lifted_name; str "__closure" ] in
       let capture_names = Analysis.captures_of_lambda
         ~name_of_entity:local_entity_name
@@ -651,10 +649,14 @@ and lower_nested_lambda = fun env (lambda: Core.Expr.lambda) ->
         lowering_state = env.lowering_state;
       }
       in
-      Result.and_then (lower_expr lambda_env lambda.body)
-        (fun (lowered_body: lowered_expr) ->
+      Result.and_then
+        (lower_expr lambda_env lambda.body)
+        ~fn:(fun (lowered_body: lowered_expr) ->
           Result.map
-            (fun lowered_captures ->
+            (map_results
+              capture_names
+              (fun capture_name -> lower_var env (Core.Entity_id.of_name capture_name)))
+            ~fn:(fun lowered_captures ->
               let capture_values, capture_functions = collect_lowered_exprs lowered_captures in
               let closure_param = "__closure__" in
               let closure_function =
@@ -664,15 +666,16 @@ and lower_nested_lambda = fun env (lambda: Core.Expr.lambda) ->
                   body = Nir.Expr.Call Nir.Expr.{
                     callee = Direct lifted_name;
                     arguments = (capture_names
-                    |> List.mapi
-                      (fun index _ ->
+                    |> List.enumerate
+                    |> List.map
+                      ~fn:(fun (index, _) ->
                         runtime_call
                           tuple_get_helper
                           [
                             Nir.Expr.Symbol closure_param;
                             Nir.Expr.Literal (Nir.Literal.Int (index + 1));
                           ]))
-                    @ List.map (fun param -> Nir.Expr.Symbol param) params
+                    @ List.map params ~fn:(fun param -> Nir.Expr.Symbol param)
                   }
                 } in
               {
@@ -689,10 +692,7 @@ and lower_nested_lambda = fun env (lambda: Core.Expr.lambda) ->
                     body = lowered_body.expr
                   };
                 ]
-              })
-            (map_results
-              capture_names
-              (fun capture_name -> lower_var env (Core.Entity_id.of_name capture_name)))))
+              })))
 
 and lower_let_binding = fun env local_functions (binding: Core.Expr.binding) ->
   match binding.expr with
@@ -714,7 +714,8 @@ and lower_let_binding = fun env local_functions (binding: Core.Expr.binding) ->
           }
           in
           Result.map
-            (fun (lowered_body: lowered_expr) ->
+            (lower_expr lambda_env lambda.body)
+            ~fn:(fun (lowered_body: lowered_expr) ->
               let closure_param = "__closure__" in
               let closure_functions =
                 if local_function.escapes then
@@ -725,15 +726,16 @@ and lower_let_binding = fun env local_functions (binding: Core.Expr.binding) ->
                       body = Nir.Expr.Call Nir.Expr.{
                         callee = Direct local_function.lifted_name;
                         arguments = (local_function.captures
-                        |> List.mapi
-                          (fun index _ ->
+                        |> List.enumerate
+                        |> List.map
+                          ~fn:(fun (index, _) ->
                             runtime_call
                               tuple_get_helper
                               [
                                 Nir.Expr.Symbol closure_param;
                                 Nir.Expr.Literal (Nir.Literal.Int (index + 1));
                               ]))
-                        @ List.map (fun param -> Nir.Expr.Symbol param) local_function.params
+                        @ List.map local_function.params ~fn:(fun param -> Nir.Expr.Symbol param)
                       }
                     }
                   ]
@@ -752,15 +754,14 @@ and lower_let_binding = fun env local_functions (binding: Core.Expr.binding) ->
                   }
                 ]
               })
-            (lower_expr lambda_env lambda.body)
     )
   | expr -> Result.map
-    (fun (lowered_expr: lowered_expr) ->
+    (lower_expr env expr)
+    ~fn:(fun (lowered_expr: lowered_expr) ->
       {
         binding = Some Nir.Expr.{ name = binding.name; expr = lowered_expr.expr };
         lifted_functions = lowered_expr.lifted_functions
       })
-    (lower_expr env expr)
 
 let env_for_function = fun state ~top_level_functions ~current_function ~bound_values ->
   {
@@ -775,10 +776,6 @@ let lower_binding = fun state ~top_level_functions (binding: Core.Binding.t) ->
   match binding.expr with
   | Core.Expr.Lambda lambda ->
       Result.map
-        (fun (body: lowered_expr) ->
-          let params = param_names lambda.params in
-          List.map (fun function_ -> LoweredFunction function_) body.lifted_functions
-          @ [ LoweredFunction Nir.Function.{ name = binding.name; params; body = body.expr } ])
         (lower_expr
           (env_for_function
             state
@@ -786,29 +783,33 @@ let lower_binding = fun state ~top_level_functions (binding: Core.Binding.t) ->
             ~current_function:binding.name
             ~bound_values:(param_names lambda.params))
           lambda.body)
+        ~fn:(fun (body: lowered_expr) ->
+          let params = param_names lambda.params in
+          List.map body.lifted_functions ~fn:(fun function_ -> LoweredFunction function_)
+          @ [ LoweredFunction Nir.Function.{ name = binding.name; params; body = body.expr } ])
   | expr -> Result.map
-    (fun (lowered_expr: lowered_expr) ->
-      List.map (fun function_ -> LoweredFunction function_) lowered_expr.lifted_functions
+    (lower_expr
+      (env_for_function state ~top_level_functions ~current_function:binding.name ~bound_values:[])
+      expr)
+    ~fn:(fun (lowered_expr: lowered_expr) ->
+      List.map lowered_expr.lifted_functions ~fn:(fun function_ -> LoweredFunction function_)
       @ [
         LoweredEntry (Nir.Entry_item.Binding Nir.Binding.{
           name = binding.name;
           expr = lowered_expr.expr
         })
       ])
-    (lower_expr
-      (env_for_function state ~top_level_functions ~current_function:binding.name ~bound_values:[])
-      expr)
 
 let lower_item = fun state ~top_level_functions item ->
   match item with
   | Core.Init_item.Binding binding -> lower_binding state ~top_level_functions binding
   | Core.Init_item.Eval expr -> Result.map
-    (fun (lowered_expr: lowered_expr) ->
-      List.map (fun function_ -> LoweredFunction function_) lowered_expr.lifted_functions
-      @ [ LoweredEntry (Nir.Entry_item.Eval lowered_expr.expr) ])
     (lower_expr
       (env_for_function state ~top_level_functions ~current_function:"__entry__" ~bound_values:[])
       expr)
+    ~fn:(fun (lowered_expr: lowered_expr) ->
+      List.map lowered_expr.lifted_functions ~fn:(fun function_ -> LoweredFunction function_)
+      @ [ LoweredEntry (Nir.Entry_item.Eval lowered_expr.expr) ])
 
 let recursive_group_is_function_only = fun (group: Core.Binding_group.t) ->
   List.for_all
@@ -822,25 +823,26 @@ let lower_group = fun state ~top_level_functions group_index (group: Core.Bindin
   match group.rec_flag with
   | Core.Rec_flag.Recursive ->
       if recursive_group_is_function_only group then
-        Result.map List.flatten (map_results group.items (lower_item state ~top_level_functions))
+        Result.map (map_results group.items (lower_item state ~top_level_functions)) ~fn:List.concat
       else
         error
           (UnsupportedGroup {
             group_index;
             reason = "recursive groups are only supported when every item is a top-level lambda binding"
           })
-  | Core.Rec_flag.Nonrecursive -> Result.map
-    List.flatten
-    (map_results group.items (lower_item state ~top_level_functions))
+  | Core.Rec_flag.Nonrecursive ->
+      Result.map
+        (map_results group.items (lower_item state ~top_level_functions))
+        ~fn:List.concat
 
 let lower_export = fun (export: Core.Export.t) ->
   Nir.Export.{ name = export.name; symbol = entity_name export.symbol }
 
 let top_level_functions_of_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
-  compilation_unit.init |> List.concat_map
-    (fun (group: Core.Binding_group.t) ->
+  compilation_unit.init |> List.flat_map
+    ~fn:(fun (group: Core.Binding_group.t) ->
       group.items |> List.filter_map
-        (fun item ->
+        ~fn:(fun item ->
           match item with
           | Core.Init_item.Binding { name; expr=Core.Expr.Lambda lambda } -> Some (
             name,
@@ -901,7 +903,7 @@ let rec collect_expr_runtime_helpers = fun helpers expr ->
           )
         | Nir.Expr.Indirect callee -> collect_expr_runtime_helpers helpers callee
       in
-      List.fold_left collect_expr_runtime_helpers helpers arguments
+      List.fold_left arguments ~acc:helpers ~fn:collect_expr_runtime_helpers
   | Nir.Expr.If_then_else if_then_else ->
       let helpers = collect_expr_runtime_helpers helpers if_then_else.condition in
       let helpers = collect_expr_runtime_helpers helpers if_then_else.then_ in
@@ -909,32 +911,32 @@ let rec collect_expr_runtime_helpers = fun helpers expr ->
   | Nir.Expr.Let let_ ->
       let helpers =
         List.fold_left
-          (fun helpers (binding: Nir.Expr.binding) -> collect_expr_runtime_helpers helpers binding.expr)
-          helpers
           let_.bindings
+          ~acc:helpers
+          ~fn:(fun helpers (binding: Nir.Expr.binding) -> collect_expr_runtime_helpers helpers binding.expr)
       in
       collect_expr_runtime_helpers helpers let_.body
 
 let runtime_helpers_of_program = fun (program: Nir.Program.t) ->
   let helpers =
     List.fold_left
-      (fun helpers (function_: Nir.Function.t) -> collect_expr_runtime_helpers helpers function_.body)
-      []
       program.functions
+      ~acc:[]
+      ~fn:(fun helpers (function_: Nir.Function.t) -> collect_expr_runtime_helpers helpers function_.body)
   in
   List.fold_left
-    (fun helpers entry_item ->
+    program.entry
+    ~acc:helpers
+    ~fn:(fun helpers entry_item ->
       match entry_item with
       | Nir.Entry_item.Binding binding -> collect_expr_runtime_helpers helpers binding.expr
       | Nir.Entry_item.Eval expr -> collect_expr_runtime_helpers helpers expr)
-    helpers
-    program.entry
 
 let imports_of_runtime_helpers = fun helpers ->
   List.map
-    (fun (helper: Nir.Runtime_helper.t) ->
-      Imports.make ~linkage:Imports.Runtime ~symbol:helper.symbol ())
     helpers
+    ~fn:(fun (helper: Nir.Runtime_helper.t) ->
+      Imports.make ~linkage:Imports.Runtime ~symbol:helper.symbol ())
 
 let trace_program = fun initial ->
   let normalize = Passes.Normalize.program initial in
@@ -960,19 +962,23 @@ let lower_compilation_unit_with_trace = fun (compilation_unit: Core.Compilation_
       } in
       let top_level_functions = top_level_functions_of_compilation_unit compilation_unit in
       let groups =
-        List.mapi (fun index group -> (index + 1, group)) compilation_unit.init
+        List.enumerate compilation_unit.init
+        |> List.map ~fn:(fun (index, group) -> (index + 1, group))
       in
       Result.map
-        (fun groups ->
-          let items = List.flatten groups in
+        (map_results
+          groups
+          (fun (group_index, group) -> lower_group lowering_state ~top_level_functions group_index group))
+        ~fn:(fun groups ->
+          let items = List.concat groups in
           let functions, entry =
             List.fold_left
-              (fun (functions, entry) item ->
+              items
+              ~acc:([], [])
+              ~fn:(fun (functions, entry) item ->
                 match item with
                 | LoweredFunction function_ -> (functions @ [ function_ ], entry)
                 | LoweredEntry entry_item -> (functions, entry @ [ entry_item ]))
-              ([], [])
-              items
           in
           let runtime_helpers = runtime_helpers_of_program
             Nir.Program.{
@@ -981,7 +987,7 @@ let lower_compilation_unit_with_trace = fun (compilation_unit: Core.Compilation_
               runtime_helpers = [];
               functions;
               entry;
-              exports = List.map lower_export compilation_unit.exports;
+              exports = List.map compilation_unit.exports ~fn:lower_export;
             }
           in
           let imports = imports_of_runtime_helpers runtime_helpers in
@@ -991,11 +997,8 @@ let lower_compilation_unit_with_trace = fun (compilation_unit: Core.Compilation_
             runtime_helpers;
             functions;
             entry;
-            exports = List.map lower_export compilation_unit.exports;
+            exports = List.map compilation_unit.exports ~fn:lower_export;
           } |> trace_program)
-        (map_results
-          groups
-          (fun (group_index, group) -> lower_group lowering_state ~top_level_functions group_index group))
 
 let lower_compilation_unit = fun compilation_unit ->
-  Result.map (fun trace -> trace.final) (lower_compilation_unit_with_trace compilation_unit)
+  Result.map (lower_compilation_unit_with_trace compilation_unit) ~fn:(fun trace -> trace.final)

@@ -44,7 +44,7 @@ let rewrite_targets = fun aliases instructions ->
     | Instruction.Jump target -> Instruction.Jump (resolve_label aliases target)
     | instruction -> instruction
   in
-  List.map rewrite instructions
+  List.map instructions ~fn:rewrite
 
 let remove_unreachable = fun instructions ->
   let rec loop reachable acc instructions =
@@ -75,18 +75,18 @@ let remove_fallthrough_jumps = fun instructions ->
 
 let used_labels = fun instructions ->
   List.fold_left
-    (fun used instruction ->
+    instructions
+    ~acc:(HashSet.create ())
+    ~fn:(fun used instruction ->
       match instruction with
       | Instruction.Branch_if_zero branch ->
-          let _ = HashSet.insert used branch.target in
+          let _ = HashSet.insert used ~value:branch.target in
           used
       | Instruction.Jump target ->
-          let _ = HashSet.insert used target in
+          let _ = HashSet.insert used ~value:target in
           used
       | _ ->
           used)
-    (HashSet.create ())
-    instructions
 
 let remove_unused_labels = fun instructions ->
   let used = used_labels instructions in
@@ -94,7 +94,7 @@ let remove_unused_labels = fun instructions ->
     match instructions with
     | [] -> List.rev acc
     | Instruction.Label name as instruction :: rest ->
-        if is_first_label || HashSet.contains used name then
+        if is_first_label || HashSet.contains used ~value:name then
           loop false (instruction :: acc) rest
         else
           loop false acc rest
@@ -115,4 +115,4 @@ let schedule_procedure = fun (procedure: Procedure.t) ->
   { procedure with body = schedule_body procedure.body }
 
 let program = fun (program: Program.t) ->
-  { program with procedures = List.map schedule_procedure program.procedures }
+  { program with procedures = List.map program.procedures ~fn:schedule_procedure }

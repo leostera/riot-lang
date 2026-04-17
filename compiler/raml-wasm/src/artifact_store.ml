@@ -4,7 +4,7 @@ module Compiler_config = Raml_core.Config
 module Compiler_target = Raml_core.Target
 module Artifacts = Wir.Artifacts
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 type t = {
   store: Contentstore.t;
@@ -76,7 +76,7 @@ module Module_summary = struct
       | Some value -> Ok value
       | None -> Error ("missing or invalid '" ^ name ^ "'")
     in
-    let ( let* ) = Result.and_then in
+    let ( let* ) value fn = Result.and_then value ~fn in
     let* unit_name =
       match json_string_field "unit_name" json with
       | Some value -> Ok value
@@ -127,7 +127,7 @@ module Object_artifact = struct
       ]
 
   let of_json = fun json ->
-    let ( let* ) = Result.and_then in
+    let ( let* ) value fn = Result.and_then value ~fn in
     let* id =
       match json_string_field "id" json with
       | Some value -> Ok value
@@ -166,9 +166,11 @@ module Linked_program_artifact = struct
     let id = payload |> Json.to_string |> Crypto.hash_string |> Crypto.Digest.hex in
     {
       id;
-      unit_names = List.map (fun (object_: Artifacts.Object.t) -> object_.unit_name) linked_program.objects;
-      imports = List.map Wir.Types.Import.key linked_program.imports;
-      exports = List.map (fun (export: Raml_core.Core_ir.Export.t) -> export.name) linked_program.exports;
+      unit_names =
+        List.map linked_program.objects ~fn:(fun (object_: Artifacts.Object.t) -> object_.unit_name);
+      imports = List.map linked_program.imports ~fn:Wir.Types.Import.key;
+      exports =
+        List.map linked_program.exports ~fn:(fun (export: Raml_core.Core_ir.Export.t) -> export.name);
       needs_closure_runtime = linked_program.needs_closure_runtime;
       payload;
     }
@@ -178,9 +180,9 @@ module Linked_program_artifact = struct
       [
         ("schema", Json.string "raml-wasm/linked-program-v1");
         ("id", Json.string artifact.id);
-        ("unit_names", Json.array (List.map Json.string artifact.unit_names));
-        ("imports", Json.array (List.map Json.string artifact.imports));
-        ("exports", Json.array (List.map Json.string artifact.exports));
+        ("unit_names", Json.array (List.map artifact.unit_names ~fn:Json.string));
+        ("imports", Json.array (List.map artifact.imports ~fn:Json.string));
+        ("exports", Json.array (List.map artifact.exports ~fn:Json.string));
         ("needs_closure_runtime", Json.bool artifact.needs_closure_runtime);
         ("payload", artifact.payload);
       ]
@@ -201,7 +203,7 @@ module Linked_program_artifact = struct
           in
           loop values []
     in
-    let ( let* ) = Result.and_then in
+    let ( let* ) value fn = Result.and_then value ~fn in
     let* id =
       match json_string_field "id" json with
       | Some value -> Ok value
@@ -261,7 +263,7 @@ module Module_artifact = struct
         ("id", Json.string artifact.id);
         (
           "unit_name",
-          Option.map Json.string artifact.unit_name |> Option.unwrap_or ~default:Json.null
+          Option.map artifact.unit_name ~fn:Json.string |> Option.unwrap_or ~default:Json.null
         );
         ("size_bytes", Json.int artifact.size_bytes);
         ("memory_pages", Json.int artifact.memory_pages);
@@ -271,7 +273,7 @@ module Module_artifact = struct
       ]
 
   let of_json = fun json ->
-    let ( let* ) = Result.and_then in
+    let ( let* ) value fn = Result.and_then value ~fn in
     let* id =
       match json_string_field "id" json with
       | Some value -> Ok value
@@ -355,12 +357,24 @@ let error_to_json = fun error ->
     ]
 
 let save_named_json = fun store ~namespace ~key ~json ->
-  match Contentstore.Store.save_named_json_bundle store.store ~namespace ~key ~json with
+  match Contentstore.Store.save_named_object store.store ~key:(namespace ^ "/" ^ key) ~content:(Json.to_string json) with
   | Ok () -> Ok ()
-  | Error message -> Error (Save_failed { namespace; key; message })
+  | Error err ->
+      Error (Save_failed {
+        namespace;
+        key;
+        message = Contentstore.Store.error_message err
+      })
 
 let load_named_json = fun store ~namespace ~key ->
-  Contentstore.Store.load_named_json_bundle store.store ~namespace ~key
+  match Contentstore.Store.open_named_object store.store ~key:(namespace ^ "/" ^ key) with
+  | Error _ -> None
+  | Ok file -> (
+      match Fs.File.read_to_end file with
+      | Error _ -> None
+      | Ok content ->
+          Data.Json.of_string content |> Result.to_option
+    )
 
 let save_object = fun store ~(object_:Artifacts.Object.t) ->
   let artifact = Object_artifact.of_object object_ in
@@ -404,14 +418,14 @@ let save_linked_program = fun store ~(linked_program:Artifacts.Linked_program.t)
     ~json:(Linked_program_artifact.to_json artifact) in
   let* () =
     artifact.unit_names |> List.fold_left
-      (fun result unit_name ->
+      ~acc:(Ok ())
+      ~fn:(fun result unit_name ->
         let* () = result in
         save_named_json
           store
           ~namespace:(linked_program_index_namespace store)
           ~key:unit_name
           ~json:(Json.obj [ ("id", Json.string artifact.id) ]))
-      (Ok ())
   in
   Ok artifact
 

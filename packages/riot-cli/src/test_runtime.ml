@@ -75,10 +75,37 @@ type test_suite_summary = {
   results: test_case_result list;
 }
 
+type suite_run_output = {
+  suite: suite_binary;
+  status: int;
+  stdout: string;
+  stderr: string;
+  started_at_us: int option;
+  completed_at_us: int option;
+  duration_us: int option;
+  summary: test_suite_summary;
+}
+
 type test_event =
   | Build of Riot_build.Event.t
   | NoSuitesFound of { package_name: Package_name.t option; suite_name: string option }
+  | TestSuitesCollected of {
+      package_name: Package_name.t option;
+      suite_name: string option;
+      suite_count: int
+    }
+  | ResolvingSuiteBinary of suite_binary
+  | SuiteBinaryResolved of { suite: suite_binary; binary_path: Path.t }
   | RunningSuite of suite_binary
+  | ExecutingSuiteBinary of { suite: suite_binary; binary_path: Path.t; args: string list }
+  | SuiteBinaryFinished of {
+      suite: suite_binary;
+      binary_path: Path.t;
+      status: int;
+      stdout_bytes: int;
+      stderr_bytes: int
+    }
+  | ParsingSuiteOutput of { suite: suite_binary; binary_path: Path.t }
   | SuiteCompleted of {
       suite: suite_binary;
       status: int;
@@ -455,6 +482,12 @@ let empty_suite_summary = {
 let is_blank = fun s ->
   String.equal (String.trim s) ""
 
+let suite_event_fields = fun (suite: suite_binary) ->
+  [
+    ("package", Data.Json.String (Package_name.to_string suite.package_name));
+    ("suite", Data.Json.String suite.suite_name);
+  ]
+
 let summarize_output = fun value ->
   let trimmed = String.trim value in
   if String.equal trimmed "" then
@@ -499,12 +532,59 @@ let test_event_to_json = function
             | None -> Data.Json.Null
           ); ]
       )
+  | TestSuitesCollected { package_name; suite_name; suite_count } ->
+      Some (
+        Data.Json.Object [
+          ("type", Data.Json.String "TestSuitesCollected");
+          (
+            "package_name",
+            match package_name with
+            | Some name -> Data.Json.String (Riot_model.Package_name.to_string name)
+            | None -> Data.Json.Null
+          );
+          (
+            "suite_name",
+            match suite_name with
+            | Some name -> Data.Json.String name
+            | None -> Data.Json.Null
+          );
+          ("suite_count", Data.Json.Int suite_count);
+        ]
+      )
+  | ResolvingSuiteBinary suite ->
+      Some (Data.Json.Object ([
+        ("type", Data.Json.String "ResolvingSuiteBinary");
+      ] @ suite_event_fields suite))
+  | SuiteBinaryResolved { suite; binary_path } ->
+      Some (Data.Json.Object ([
+        ("type", Data.Json.String "SuiteBinaryResolved");
+        ("binary_path", Data.Json.String (Path.to_string binary_path));
+      ] @ suite_event_fields suite))
   | RunningSuite { package_name; suite_name } ->
       Some (Data.Json.Object [
         ("type", Data.Json.String "RunningSuite");
         ("package", Data.Json.String (Riot_model.Package_name.to_string package_name));
         ("suite", Data.Json.String suite_name);
       ])
+  | ExecutingSuiteBinary { suite; binary_path; args } ->
+      Some (Data.Json.Object ([
+        ("type", Data.Json.String "ExecutingSuiteBinary");
+        ("binary_path", Data.Json.String (Path.to_string binary_path));
+        ("args", Data.Json.Array (List.map args ~fn:(fun arg -> Data.Json.String arg)));
+      ] @ suite_event_fields suite))
+  | SuiteBinaryFinished { suite; binary_path; status; stdout_bytes; stderr_bytes } ->
+      Some (Data.Json.Object ([
+        ("type", Data.Json.String "SuiteBinaryFinished");
+        ("binary_path", Data.Json.String (Path.to_string binary_path));
+        ("status", Data.Json.Int status);
+        ("stdout_bytes", Data.Json.Int stdout_bytes);
+        ("stderr_bytes", Data.Json.Int stderr_bytes);
+      ] @ suite_event_fields suite))
+  | ParsingSuiteOutput { suite; binary_path } ->
+      Some (Data.Json.Object ([
+        ("type", Data.Json.String "ParsingSuiteOutput");
+        ("binary_path", Data.Json.String (Path.to_string binary_path));
+      ] @ suite_event_fields suite))
   | SuiteCompleted {
     suite;
     status;
@@ -676,16 +756,60 @@ let find_suite_binary_path_in_output = fun ~(workspace:Workspace.t) ~profile ~(s
       | None -> ensure_materialized_fallback ()
     )
 
-let run_suite_binary_capture = fun ~workspace_root ~(suite:suite_binary) ~extra_args binary_path ->
-  let extra_args = remove_json_args extra_args @ [ "--json" ] in
+let run_suite_args = fun extra_args ->
+  "run-tests" :: remove_json_args extra_args @ [ "--json" ]
+
+let run_suite_binary_capture = fun ~workspace_root ~(suite:suite_binary) ~args binary_path ->
   let cmd = Command.make
     (Path.to_string binary_path)
     ~env:[
       ("RIOT_PACKAGE_NAME", Package_name.to_string suite.package_name);
       ("RIOT_WORKSPACE_ROOT", Path.to_string workspace_root);
     ]
-    ~args:("run-tests" :: extra_args) in
+    ~args in
   Command.output cmd
+
+let run_suite = fun ~on_event ~workspace_root ~suite ~extra_args binary_path ->
+  let args = run_suite_args extra_args in
+  on_event (ExecutingSuiteBinary { suite; binary_path; args });
+  match run_suite_binary_capture ~workspace_root ~suite ~args binary_path with
+  | Error (Command.SystemError reason) ->
+      Error (SuiteExecutionError { suite; reason })
+  | Ok output -> (
+      on_event
+        (SuiteBinaryFinished {
+          suite;
+          binary_path;
+          status = output.status;
+          stdout_bytes = String.length output.stdout;
+          stderr_bytes = String.length output.stderr;
+        });
+      on_event (ParsingSuiteOutput { suite; binary_path });
+      let parsed_output =
+        match parse_test_suite_output output.stdout with
+        | Ok parsed -> Ok parsed
+        | Error _reason when Int.equal output.status 0
+        && is_blank output.stdout
+        && is_blank output.stderr -> Ok ("", None, None, None, empty_suite_summary)
+        | Error reason -> Error reason
+      in
+      match parsed_output with
+      | Error reason -> Error (SuiteExecutionError {
+        suite;
+        reason = parse_failure_reason ~suite ~output reason
+      })
+      | Ok (stdout, started_at_us, completed_at_us, duration_us, summary) ->
+          Ok {
+            suite;
+            status = output.status;
+            stdout;
+            stderr = output.stderr;
+            started_at_us;
+            completed_at_us;
+            duration_us;
+            summary;
+          }
+    )
 
 let list_suite_binary_capture = fun ~workspace_root ~(suite:suite_binary) ~extra_args binary_path ->
   let extra_args = remove_list_args extra_args @ [ "--json" ] in
@@ -858,6 +982,14 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
       Ok ()
     )
   else
+    let () =
+      on_event
+        (TestSuitesCollected {
+          package_name = request.package_filter;
+          suite_name = request.suite_filter;
+          suite_count = List.length suites;
+        })
+    in
     match build_output
       ~workspace:request.workspace
       ~packages:(requested_packages suites)
@@ -889,6 +1021,7 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
               else
                 Ok ()
           | suite :: rest -> (
+              on_event (ResolvingSuiteBinary suite);
               match find_suite_binary_path_in_output
                 ~workspace:request.workspace
                 ~profile:request.profile
@@ -897,71 +1030,55 @@ let test = fun ?(on_event = no_event) (request: test_request) ->
                 output with
               | Error _ as err -> err
               | Ok binary_path ->
+                  on_event (SuiteBinaryResolved { suite; binary_path });
                   on_event (RunningSuite suite);
-                  match run_suite_binary_capture
+                  match run_suite
+                    ~on_event
                     ~workspace_root:request.workspace.root
                     ~suite
                     ~extra_args:request.extra_args
                     binary_path with
-                  | Error (Command.SystemError reason) -> Error (SuiteExecutionError {
-                    suite;
-                    reason
-                  })
-                  | Ok output -> (
-                      let parsed_output =
-                        match parse_test_suite_output output.stdout with
-                        | Ok parsed -> Ok parsed
-                        | Error reason when Int.equal output.status 0
-                        && is_blank output.stdout
-                        && is_blank output.stderr -> Ok ("", None, None, None, empty_suite_summary)
-                        | Error reason -> Error reason
-                      in
-                      match parsed_output with
-                      | Error reason -> Error (SuiteExecutionError {
-                        suite;
-                        reason = parse_failure_reason ~suite ~output reason
-                      })
-                      | Ok (stdout, started_at_us, completed_at_us, duration_us, summary) ->
-                          total := !total + summary.total;
-                          passed := !passed + summary.passed;
-                          failed := !failed + summary.failed;
-                          skipped := !skipped + summary.skipped;
-                          failed_tests := List.reverse_append
-                            (
-                              summary.results |> List.filter_map
-                                ~fn:(fun (result: test_case_result) ->
-                                  match result.result with
-                                  | Failed message -> Some {
-                                    suite;
-                                    name = result.name;
-                                    message;
-                                    duration_us = result.duration_us
-                                  }
-                                  | Timed_out { timeout_ms } -> Some {
-                                    suite;
-                                    name = result.name;
-                                    message = "timed out after " ^ Int.to_string timeout_ms ^ "ms";
-                                    duration_us = result.duration_us
-                                  }
-                                  | Passed
-                                  | Skipped -> None)
-                            )
-                            !failed_tests;
-                          on_event
-                            (
-                              SuiteCompleted {
-                                suite;
-                                status = output.status;
-                                stdout;
-                                stderr = output.stderr;
-                                started_at_us;
-                                completed_at_us;
-                                duration_us;
-                                summary;
+                  | Error _ as err -> err
+                  | Ok suite_output ->
+                      total := !total + suite_output.summary.total;
+                      passed := !passed + suite_output.summary.passed;
+                      failed := !failed + suite_output.summary.failed;
+                      skipped := !skipped + suite_output.summary.skipped;
+                      failed_tests := List.reverse_append
+                        (
+                          suite_output.summary.results |> List.filter_map
+                            ~fn:(fun (result: test_case_result) ->
+                              match result.result with
+                              | Failed message -> Some {
+                                suite = suite_output.suite;
+                                name = result.name;
+                                message;
+                                duration_us = result.duration_us
                               }
-                            );
-                          loop rest
-                    )
+                              | Timed_out { timeout_ms } -> Some {
+                                suite = suite_output.suite;
+                                name = result.name;
+                                message = "timed out after " ^ Int.to_string timeout_ms ^ "ms";
+                                duration_us = result.duration_us
+                              }
+                              | Passed
+                              | Skipped -> None)
+                        )
+                        !failed_tests;
+                      on_event
+                        (
+                          SuiteCompleted {
+                            suite = suite_output.suite;
+                            status = suite_output.status;
+                            stdout = suite_output.stdout;
+                            stderr = suite_output.stderr;
+                            started_at_us = suite_output.started_at_us;
+                            completed_at_us = suite_output.completed_at_us;
+                            duration_us = suite_output.duration_us;
+                            summary = suite_output.summary;
+                          }
+                        );
+                      loop rest
             )
         in
         loop suites

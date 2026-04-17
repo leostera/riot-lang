@@ -16,7 +16,7 @@ let error_to_json = fun error ->
     [
       ("kind", Json.string "unsupported_target_architecture");
       ("target", Compiler_target.to_json target);
-      ("supported_targets", Json.array Compiler_target.to_json supported_targets);
+      ("supported_targets", Json.array (List.map supported_targets ~fn:Compiler_target.to_json));
     ]
   | Aarch64_apple_darwin error -> Json.obj
     [
@@ -26,9 +26,10 @@ let error_to_json = fun error ->
 
 let emit_program = fun ~host:_ ~target program ->
   match Target_profile.of_target target with
-  | Some { kind=Target_profile.Aarch64_apple_darwin; _ } -> Result.map_error
-    (fun error -> Aarch64_apple_darwin error)
-    (Aarch64_apple_darwin.emit_program program)
+  | Some { kind=Target_profile.Aarch64_apple_darwin; _ } ->
+      Result.map_err
+        (Aarch64_apple_darwin.emit_program program)
+        ~fn:(fun error -> Aarch64_apple_darwin error)
   | None -> Error (UnsupportedTargetArchitecture {
     target;
     supported_targets = Target_profile.supported_targets ()

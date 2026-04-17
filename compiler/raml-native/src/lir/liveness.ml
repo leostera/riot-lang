@@ -26,16 +26,16 @@ type bounds = {
 
 let empty = HashSet.create
 
-let copy = fun live -> HashSet.of_list (HashSet.to_list live)
+let copy = fun live -> HashSet.from_list (HashSet.to_list live)
 
 let add = fun live name ->
   let next = copy live in
-  let _ = HashSet.insert next name in
+  let _ = HashSet.insert next ~value:name in
   next
 
 let remove = fun live name ->
   let next = copy live in
-  let _ = HashSet.remove next name in
+  let _ = HashSet.remove next ~value:name in
   next
 
 let union = HashSet.union
@@ -43,8 +43,8 @@ let union = HashSet.union
 let difference = HashSet.difference
 
 let equal = fun left right ->
-  Int.equal (HashSet.len left) (HashSet.len right)
-  && List.for_all (HashSet.contains right) (HashSet.to_list left)
+  Int.equal (HashSet.length left) (HashSet.length right)
+  && List.for_all (fun value -> HashSet.contains right ~value) (HashSet.to_list left)
 
 let add_operand_uses = fun live operand ->
   match operand with
@@ -75,7 +75,7 @@ let uses_of_instruction = fun instruction ->
         | Lir.Callee.Direct _ -> empty ()
         | Lir.Callee.Indirect operand -> add_operand_uses (empty ()) operand
       in
-      List.fold_left add_operand_uses live arguments
+      List.fold_left arguments ~acc:live ~fn:add_operand_uses
   | Lir.Instruction.Branch_if_zero { operand; _ } ->
       add_operand_uses (empty ()) operand
   | Lir.Instruction.Return operand -> (
@@ -103,14 +103,14 @@ let defs_of_instruction = fun instruction ->
 
 let label_index_map = fun instructions ->
   let labels = HashMap.create () in
-  Array.iteri
-    (fun index instruction ->
-      match instruction with
-      | Lir.Instruction.Label name ->
-          let _ = HashMap.insert labels name index in
-          ()
-      | _ -> ())
-    instructions;
+  for index = 0 to Array.length instructions - 1 do
+    match Array.get_unchecked instructions ~at:index with
+    | Lir.Instruction.Label name ->
+        let _ = HashMap.insert labels ~key:name ~value:index in
+        ()
+    | _ ->
+        ()
+  done;
   labels
 
 let successors_of_instruction = fun ~label_indices instructions index instruction ->
@@ -122,7 +122,7 @@ let successors_of_instruction = fun ~label_indices instructions index instructio
   in
   match instruction with
   | Lir.Instruction.Jump target -> (
-      match HashMap.get label_indices target with
+      match HashMap.get label_indices ~key:target with
       | Some target_index -> [ target_index ]
       | None -> []
     )
@@ -133,7 +133,7 @@ let successors_of_instruction = fun ~label_indices instructions index instructio
         | None -> []
       in
       (
-        match HashMap.get label_indices target with
+        match HashMap.get label_indices ~key:target with
         | Some target_index -> target_index :: fallthrough
         | None -> fallthrough
       )
@@ -156,7 +156,7 @@ let live_across_call_names = fun instruction live_after ->
   | _ -> empty ()
 
 let update_bounds = fun bounds_map name position ->
-  match HashMap.get bounds_map name with
+  match HashMap.get bounds_map ~key:name with
   | Some bounds ->
       let start =
         if position < bounds.start then
@@ -170,10 +170,15 @@ let update_bounds = fun bounds_map name position ->
         else
           bounds.finish
       in
-      let _ = HashMap.insert bounds_map name { start; finish } in
+      let _ = HashMap.insert bounds_map ~key:name ~value:{ start; finish } in
       ()
   | None ->
-      let _ = HashMap.insert bounds_map name { start = position; finish = position } in
+      let _ =
+        HashMap.insert
+          bounds_map
+          ~key:name
+          ~value:{ start = position; finish = position }
+      in
       ()
 
 type analysis = {
@@ -187,29 +192,33 @@ let analyze_procedure = fun (procedure: Lir.Procedure.t) ->
   let instruction_count = Array.length instructions in
   let label_indices = label_index_map instructions in
   let live_before =
-    Array.init instruction_count (fun _ -> empty ())
+    Array.init ~count:instruction_count ~fn:(fun _ -> empty ())
   in
   let live_after =
-    Array.init instruction_count (fun _ -> empty ())
+    Array.init ~count:instruction_count ~fn:(fun _ -> empty ())
   in
   let changed = ref true in
   while !changed do
     changed := false;
     for index = instruction_count - 1 downto 0 do
-      let instruction = instructions.(index) in
+      let instruction = Array.get_unchecked instructions ~at:index in
       let next_live_after = successors_of_instruction ~label_indices instructions index instruction
-      |> List.fold_left (fun live successor -> union live live_before.(successor)) (empty ()) in
+      |> List.fold_left
+           ~acc:(empty ())
+           ~fn:(fun live successor ->
+             union live (Array.get_unchecked live_before ~at:successor))
+      in
       let next_live_before = union
         (uses_of_instruction instruction)
         (difference next_live_after (defs_of_instruction instruction)) in
-      if not (equal live_after.(index) next_live_after) then
+      if not (equal (Array.get_unchecked live_after ~at:index) next_live_after) then
         (
-          live_after.(index) <- next_live_after;
+          Array.set_unchecked live_after ~at:index ~value:next_live_after;
           changed := true
         );
-      if not (equal live_before.(index) next_live_before) then
+      if not (equal (Array.get_unchecked live_before ~at:index) next_live_before) then
         (
-          live_before.(index) <- next_live_before;
+          Array.set_unchecked live_before ~at:index ~value:next_live_before;
           changed := true
         )
     done
@@ -218,41 +227,44 @@ let analyze_procedure = fun (procedure: Lir.Procedure.t) ->
 
 let points_of_procedure = fun procedure ->
   let analysis = analyze_procedure procedure in
-  Array.mapi
-    (fun index instruction ->
-      {
-        instruction;
-        live_before = analysis.live_before.(index);
-        live_after = analysis.live_after.(index)
-      })
-    analysis.instructions
-  |> Array.to_list
+  let points = ref [] in
+  for index = Array.length analysis.instructions - 1 downto 0 do
+    let instruction = Array.get_unchecked analysis.instructions ~at:index in
+    let live_before = Array.get_unchecked analysis.live_before ~at:index in
+    let live_after = Array.get_unchecked analysis.live_after ~at:index in
+    points := { instruction; live_before; live_after } :: !points
+  done;
+  !points
 
 let intervals_of_procedure = fun procedure ->
   let analysis = analyze_procedure procedure in
   let bounds = HashMap.create () in
   let live_across_calls = HashSet.create () in
-  Array.iteri
-    (fun index instruction ->
-      let mentioned = union
-        (union analysis.live_before.(index) analysis.live_after.(index))
-        (union (uses_of_instruction instruction) (defs_of_instruction instruction)) in
-      HashSet.iter mentioned ~fn:(fun name -> update_bounds bounds name index);
-      HashSet.iter (live_across_call_names instruction analysis.live_after.(index))
-        ~fn:(fun name ->
-          let _ = HashSet.insert live_across_calls name in
-          ()))
-    analysis.instructions;
+  for index = 0 to Array.length analysis.instructions - 1 do
+    let instruction = Array.get_unchecked analysis.instructions ~at:index in
+    let live_before = Array.get_unchecked analysis.live_before ~at:index in
+    let live_after = Array.get_unchecked analysis.live_after ~at:index in
+    let mentioned =
+      union
+        (union live_before live_after)
+        (union (uses_of_instruction instruction) (defs_of_instruction instruction))
+    in
+    HashSet.for_each mentioned ~fn:(fun name -> update_bounds bounds name index);
+    HashSet.for_each (live_across_call_names instruction live_after)
+      ~fn:(fun name ->
+        let _ = HashSet.insert live_across_calls ~value:name in
+        ())
+  done;
   HashMap.keys bounds
-  |> List.sort String.compare
+  |> List.sort ~compare:String.compare
   |> List.filter_map
-    (fun name ->
-      HashMap.get bounds name
+    ~fn:(fun name ->
+      HashMap.get bounds ~key:name
       |> Option.map
-        (fun bounds ->
+        ~fn:(fun bounds ->
           {
             name;
             start = bounds.start;
             finish = bounds.finish;
-            live_across_call = HashSet.contains live_across_calls name
+            live_across_call = HashSet.contains live_across_calls ~value:name
           }))

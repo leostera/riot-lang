@@ -523,7 +523,7 @@ let embed = fun (type a) ((module C : Component with type args = a)) (args_value
     let element_id = "liveview-" ^ C.id in
     let ws_path = "/suri/live/" ^ C.id in
     (* JavaScript variable names can't contain hyphens, replace with underscores *)
-    let js_var_name = "lv_" ^ String.map
+    let js_var_name = "lv_" ^ String.map ~fn:
       (fun c ->
         if c = '-' then
           '_'

@@ -16,15 +16,18 @@ module Entity_set = struct
   let add = fun entity set -> Storage.insert set ~key:entity ~value:()
 
   let singleton = fun entity ->
-    Storage.singleton entity ()
+    Storage.singleton ~key:entity ~value:()
 
-  let mem = Storage.mem
+  let mem = fun entity set -> Storage.has_key set ~key:entity
 
   let union = fun left right ->
-    Storage.union (fun _ () () -> Some ()) left right
+    Storage.union
+      ~left
+      ~right
+      ~fn:(fun ~key:_ ~left:() ~right:() -> Some ())
 
   let filter = fun predicate set ->
-    Storage.filter (fun entity () -> predicate entity) set
+    Storage.filter set ~fn:(fun entity () -> predicate entity)
 end
 
 let rec is_pure_expr = fun expr ->
@@ -163,10 +166,9 @@ and statements_read_entities = fun statements used ->
 let program_read_entities = fun (program: Jir.Program.t) ->
   let used = statements_read_entities program.body Entity_set.empty in
   List.fold_left
-    (fun used (export: Jir.Export.t) ->
-      Entity_set.add export.local used)
-    used
     program.exports
+    ~acc:used
+    ~fn:(fun used (export: Jir.Export.t) -> Entity_set.add export.local used)
 
 let rec expr_assigned_entities = fun expr entities ->
   match expr with
@@ -230,7 +232,7 @@ and object_fields_assigned_entities = fun fields entities ->
 and statement_assigned_entities = fun statement entities ->
   match statement with
   | Jir.Statement.Declaration declaration ->
-      Option.map (fun init -> expr_assigned_entities init entities) declaration.init
+      Option.map declaration.init ~fn:(fun init -> expr_assigned_entities init entities)
       |> Option.unwrap_or ~default:entities
   | Jir.Statement.Block statements ->
       statements_assigned_entities statements entities

@@ -16,15 +16,12 @@ module Literal = Types.Literal
 type env = (string * Operand.t) list
 
 let find = fun env name ->
-  env |> List.find_opt
-    (fun (bound_name, operand) ->
-      if String.equal bound_name name then
-        Some operand
-      else
-        None) |> Option.map
+  env
+  |> List.find ~fn:(fun (bound_name, _) -> String.equal bound_name name)
+  |> Option.map ~fn:(fun (_, operand) -> operand)
 
 let remove = fun env name ->
-  List.filter (fun (bound_name, _) -> not (String.equal bound_name name)) env
+  List.filter env ~fn:(fun (bound_name, _) -> not (String.equal bound_name name))
 
 let add = fun env name operand -> (name, operand) :: remove env name
 
@@ -56,7 +53,7 @@ let rec depends_on = fun env target operand ->
   | Operand.Literal _ -> false
 
 let invalidate = fun env name ->
-  remove env name |> List.filter (fun (_, operand) -> not (depends_on env name operand))
+  remove env name |> List.filter ~fn:(fun (_, operand) -> not (depends_on env name operand))
 
 let resolve_operand = fun env operand ->
   let rec loop seen operand =
@@ -82,7 +79,7 @@ let rewrite_callee = fun env callee ->
   | Callee.Indirect operand -> Callee.Indirect (resolve_operand env operand)
 
 let rewrite_operands = fun env operands ->
-  List.map (resolve_operand env) operands
+  List.map operands ~fn:(resolve_operand env)
 
 let rec rewrite_instruction = fun env instruction ->
   match instruction with
@@ -124,22 +121,23 @@ let rec rewrite_instruction = fun env instruction ->
         | _ -> (env, [ Instruction.If_then_else Instruction.{ condition; then_; else_ } ])
       )
   | Instruction.Return operand ->
-      let operand = Option.map (resolve_operand env) operand in
+      let operand = Option.map operand ~fn:(resolve_operand env) in
       (env, [ Instruction.Return operand ])
   | Instruction.Comment _ ->
       (env, [])
 
 and rewrite_instructions = fun env instructions ->
   List.fold_left
-    (fun (env, acc) instruction ->
+    instructions
+    ~acc:(env, [])
+    ~fn:(fun (env, acc) instruction ->
       let env, rewritten = rewrite_instruction env instruction in
       (env, acc @ rewritten))
-    (env, [])
-    instructions
 
 and merge_env = fun left right ->
-  left |> List.filter_map
-    (fun (name, _) ->
+  left
+  |> List.filter_map
+    ~fn:(fun (name, _) ->
       let left_resolved = resolve_operand left (Operand.Register name) in
       match resolve_operand right (Operand.Register name) with
       | right_resolved when operand_equal left_resolved right_resolved ->
@@ -154,4 +152,4 @@ let rewrite_procedure = fun (procedure: Procedure.t) ->
   { procedure with body }
 
 let program = fun (program: Program.t) ->
-  { program with procedures = List.map rewrite_procedure program.procedures }
+  { program with procedures = List.map program.procedures ~fn:rewrite_procedure }

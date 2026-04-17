@@ -8,12 +8,10 @@ open Std
 module Lir = Types
 
 let home_of_name = fun (frame: Lir.Frame.t) name ->
-  frame.homes |> List.find_map
-    (fun (binding: Lir.Home_binding.t) ->
-      if String.equal binding.name name then
-        Some binding.home
-      else
-        None) |> Option.expect ~msg:(format Format.[ str "missing home for register "; str name ])
+  frame.homes
+  |> List.find ~fn:(fun (binding: Lir.Home_binding.t) -> String.equal binding.name name)
+  |> Option.map ~fn:(fun (binding: Lir.Home_binding.t) -> binding.home)
+  |> Option.expect ~msg:(format Format.[ str "missing home for register "; str name ])
 
 let rewrite_operand = fun frame operand ->
   match operand with
@@ -45,17 +43,17 @@ let rewrite_instruction = fun frame instruction ->
         | Lir.Callee.Indirect operand -> Lir.Callee.Indirect (rewrite_operand frame operand)
       in
       Lir.Instruction.Call {
-        dst = Option.map (rewrite_destination frame) dst;
+        dst = Option.map dst ~fn:(rewrite_destination frame);
         callee;
-        arguments = List.map (rewrite_operand frame) arguments
+        arguments = List.map arguments ~fn:(rewrite_operand frame)
       }
   | Lir.Instruction.Branch_if_zero { operand; target } ->
       Lir.Instruction.Branch_if_zero { operand = rewrite_operand frame operand; target }
   | Lir.Instruction.Return operand ->
-      Lir.Instruction.Return (Option.map (rewrite_operand frame) operand)
+      Lir.Instruction.Return (Option.map operand ~fn:(rewrite_operand frame))
 
 let rewrite_procedure = fun (procedure: Lir.Procedure.t) ->
-  { procedure with body = List.map (rewrite_instruction procedure.frame) procedure.body }
+  { procedure with body = List.map procedure.body ~fn:(rewrite_instruction procedure.frame) }
 
 let program = fun (program: Lir.Program.t) ->
-  { program with procedures = List.map rewrite_procedure program.procedures }
+  { program with procedures = List.map program.procedures ~fn:rewrite_procedure }

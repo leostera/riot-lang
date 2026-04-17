@@ -53,7 +53,7 @@ let register_policy_of_context = fun ~ctx ->
       let () =
         List.iter
           (fun register ->
-            let _ = HashSet.insert callee_saved_register_set register in
+            let _ = HashSet.insert callee_saved_register_set ~value:register in
             ())
           profile.callee_saved_allocatable_registers
       in
@@ -75,11 +75,11 @@ let names_for_procedure = fun analysis procedure_name ->
 let slot = fun index -> Lir.Slot.{ index; offset = index * pointer_width }
 
 let expire_finished = fun active ~before ->
-  active |> List.filter (fun interval -> interval.finish >= before)
+  active |> List.filter ~fn:(fun interval -> interval.finish >= before)
 
 let available_registers = fun register_pool active ->
   register_pool |> List.filter
-    (fun register ->
+    ~fn:(fun register ->
       not
         (
           List.exists
@@ -93,16 +93,16 @@ let allocation_for_procedure = fun register_policy analysis (procedure: Lir.Proc
   let intervals_by_name =
     Liveness.intervals_of_procedure procedure
     |> List.fold_left
-      (fun intervals (interval: Liveness.interval) ->
-        let _ = HashMap.insert intervals interval.name interval in
+      ~acc:(HashMap.create ())
+      ~fn:(fun intervals (interval: Liveness.interval) ->
+        let _ = HashMap.insert intervals ~key:interval.name ~value:interval in
         intervals)
-      (HashMap.create ())
   in
   let sorted_intervals =
     virtual_names
-    |> List.filter_map (HashMap.get intervals_by_name)
+    |> List.filter_map ~fn:(fun name -> HashMap.get intervals_by_name ~key:name)
     |> List.sort
-      (fun (left: Liveness.interval) (right: Liveness.interval) ->
+      ~compare:(fun (left: Liveness.interval) (right: Liveness.interval) ->
         match Int.compare left.start right.start with
         | 0 -> String.compare left.name right.name
         | order -> order)
@@ -110,7 +110,9 @@ let allocation_for_procedure = fun register_policy analysis (procedure: Lir.Proc
   let assignments = HashMap.create () in
   let _, assignments =
     List.fold_left
-      (fun (active, assignments) (interval: Liveness.interval) ->
+      sorted_intervals
+      ~acc:([], assignments)
+      ~fn:(fun (active, assignments) (interval: Liveness.interval) ->
         let active = expire_finished active ~before:interval.start in
         let register_pool =
           if interval.live_across_call then
@@ -120,13 +122,11 @@ let allocation_for_procedure = fun register_policy analysis (procedure: Lir.Proc
         in
         match available_registers register_pool active with
         | register :: _ ->
-            let _ = HashMap.insert assignments interval.name (Register register) in
+            let _ = HashMap.insert assignments ~key:interval.name ~value:(Register register) in
             ({ finish = interval.finish; register } :: active, assignments)
         | [] ->
-            let _ = HashMap.insert assignments interval.name Stack in
+            let _ = HashMap.insert assignments ~key:interval.name ~value:Stack in
             (active, assignments))
-      ([], assignments)
-      sorted_intervals
   in
   (virtual_names, intervals_by_name, assignments)
 
@@ -142,13 +142,13 @@ let stack_slots_for_spills = fun virtual_names intervals_by_name assignments ->
   let spill_intervals =
     virtual_names
     |> List.filter_map
-      (fun name ->
-        match HashMap.get assignments name with
-        | Some Stack -> HashMap.get intervals_by_name name
+      ~fn:(fun name ->
+        match HashMap.get assignments ~key:name with
+        | Some Stack -> HashMap.get intervals_by_name ~key:name
         | Some (Register _)
         | None -> None)
     |> List.sort
-      (fun (left: Liveness.interval) (right: Liveness.interval) ->
+      ~compare:(fun (left: Liveness.interval) (right: Liveness.interval) ->
         match Int.compare left.start right.start with
         | 0 -> String.compare left.name right.name
         | order -> order)
@@ -170,34 +170,41 @@ let stack_slots_for_spills = fun virtual_names intervals_by_name assignments ->
   List.iter
     (fun (interval: Liveness.interval) ->
       let still_active, expired =
-        List.partition (fun active -> active.finish >= interval.start) !active
+        List.fold_left
+          ~acc:([], [])
+          !active
+          ~fn:(fun (still_active, expired) active_interval ->
+            if active_interval.finish >= interval.start then
+              (active_interval :: still_active, expired)
+            else
+              (still_active, active_interval :: expired))
       in
       active := still_active;
       free_slots := List.sort
-        compare_slot
-        (!free_slots @ List.map (fun active -> active.slot) expired);
+        (!free_slots @ List.map expired ~fn:(fun active -> active.slot))
+        ~compare:compare_slot;
       let slot = allocate_slot () in
-      let _ = HashMap.insert stack_slots interval.name slot in
+      let _ = HashMap.insert stack_slots ~key:interval.name ~value:slot in
       active := { finish = interval.finish; slot } :: !active)
     spill_intervals;
   let rec allocate_fallback_slots = function
     | [] -> ()
     | name :: rest ->
         let needs_slot =
-          match HashMap.get assignments name with
+          match HashMap.get assignments ~key:name with
           | Some Stack -> true
           | None -> true
           | Some (Register _) -> false
         in
         let has_slot =
-          match HashMap.get stack_slots name with
+          match HashMap.get stack_slots ~key:name with
           | Some _ -> true
           | None -> false
         in
         let () =
           if needs_slot && not has_slot then
             (
-              let _ = HashMap.insert stack_slots name (slot !next_slot_index) in
+              let _ = HashMap.insert stack_slots ~key:name ~value:(slot !next_slot_index) in
               next_slot_index := !next_slot_index + 1
             )
         in
@@ -216,32 +223,39 @@ let homes_for_procedure = fun register_policy analysis (procedure: Lir.Procedure
   let homes =
     virtual_names
     |> List.map
-      (fun name ->
+      ~fn:(fun name ->
         let home =
-          match HashMap.get assignments name with
+          match HashMap.get assignments ~key:name with
           | Some (Register register) ->
               let () =
-                if HashSet.contains register_policy.callee_saved_register_set register then
-                  let _ = HashSet.insert used_callee_saved register in
+                if HashSet.contains register_policy.callee_saved_register_set ~value:register then
+                  let _ = HashSet.insert used_callee_saved ~value:register in
                   ()
               in
               Lir.Home.Register register
           | Some Stack
-          | None -> HashMap.get stack_slots name
-          |> Option.map (fun slot -> Lir.Home.Stack_slot slot)
+          | None -> HashMap.get stack_slots ~key:name
+          |> Option.map ~fn:(fun slot -> Lir.Home.Stack_slot slot)
           |> Option.expect ~msg:(format Format.[ str "missing spill slot for "; str name ])
         in
         Lir.Home_binding.{ name; home })
   in
-  let saved_registers = List.filter (HashSet.contains used_callee_saved) register_policy.callee_saved_registers in
-  let slots = List.init slot_count slot in
+  let saved_registers =
+    List.filter register_policy.callee_saved_registers ~fn:(fun register ->
+      HashSet.contains used_callee_saved ~value:register)
+  in
+  let slots = List.init ~count:slot_count ~fn:slot in
   (homes, slots, saved_registers)
 
 let rewrite_procedure = fun register_policy analysis (procedure: Lir.Procedure.t) ->
   let homes, slots, saved_registers = homes_for_procedure register_policy analysis procedure in
   let frame_bytes = (List.length slots + List.length saved_registers) * pointer_width in
   let frame_size = align_to frame_bytes ~alignment:16 in
-  let frame_required = procedure.frame.contains_calls || slots <> [] || saved_registers <> [] in
+  let frame_required =
+    procedure.frame.contains_calls
+    || not (List.is_empty slots)
+    || not (List.is_empty saved_registers)
+  in
   {
     procedure
     with frame =
@@ -262,5 +276,5 @@ let program:
   let register_policy = register_policy_of_context ~ctx in
   {
     program
-    with procedures = List.map (rewrite_procedure register_policy analysis) program.procedures
+    with procedures = List.map program.procedures ~fn:(rewrite_procedure register_policy analysis)
   }

@@ -573,7 +573,7 @@ let middleware = fun ?(config = default_config) ~at root () ->
         if at_len >= path_len then
           ""
         else
-          String.sub request_path at_len (path_len - at_len)
+          String.sub request_path ~offset:at_len ~len:(path_len - at_len)
       in
       (* Handle empty or root path *)
       let requested_path =
@@ -583,7 +583,7 @@ let middleware = fun ?(config = default_config) ~at root () ->
           (* Remove leading slash if present *)
           let relative =
             if String.length relative > 0 && String.get_unchecked relative ~at:0 = '/' then
-              String.sub relative 1 (String.length relative - 1)
+              String.sub relative ~offset:1 ~len:(String.length relative - 1)
             else
               relative
           in

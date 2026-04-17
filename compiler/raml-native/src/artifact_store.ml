@@ -3,7 +3,7 @@ open Std.Data
 module Compiler_config = Raml_core.Config
 module Compiler_target = Raml_core.Target
 
-let ( let* ) = Result.and_then
+let ( let* ) value fn = Result.and_then value ~fn
 
 type t = {
   store: Contentstore.t;
@@ -56,7 +56,7 @@ module Assembly_artifact = struct
       ]
 
   let of_json = fun json ->
-    let ( let* ) = Result.and_then in
+    let ( let* ) value fn = Result.and_then value ~fn in
     let* id =
       match json_string_field "id" json with
       | Some value -> Ok value
@@ -116,7 +116,7 @@ module Link_plan_artifact = struct
       ]
 
   let of_json = fun json ->
-    let ( let* ) = Result.and_then in
+    let ( let* ) value fn = Result.and_then value ~fn in
     let* id =
       match json_string_field "id" json with
       | Some value -> Ok value
@@ -175,12 +175,24 @@ let error_to_json = fun error ->
     ]
 
 let save_named_json = fun store ~namespace ~key ~json ->
-  match Contentstore.Store.save_named_json_bundle store.store ~namespace ~key ~json with
+  match Contentstore.Store.save_named_object store.store ~key:(namespace ^ "/" ^ key) ~content:(Json.to_string json) with
   | Ok () -> Ok ()
-  | Error message -> Error (Save_failed { namespace; key; message })
+  | Error err ->
+      Error (Save_failed {
+        namespace;
+        key;
+        message = Contentstore.Store.error_message err
+      })
 
 let load_named_json = fun store ~namespace ~key ->
-  Contentstore.Store.load_named_json_bundle store.store ~namespace ~key
+  match Contentstore.Store.open_named_object store.store ~key:(namespace ^ "/" ^ key) with
+  | Error _ -> None
+  | Ok file -> (
+      match Fs.File.read_to_end file with
+      | Error _ -> None
+      | Ok content ->
+          Data.Json.of_string content |> Result.to_option
+    )
 
 let save_assembly = fun store ~unit_name ~assembly ->
   let artifact = Assembly_artifact.create

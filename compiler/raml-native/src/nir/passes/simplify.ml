@@ -54,7 +54,7 @@ let rec simplify_expr = fun expr ->
   | Nir.Expr.Call call ->
       Nir.Expr.Call {
         callee = simplify_callee call.callee;
-        arguments = List.map simplify_expr call.arguments
+        arguments = List.map call.arguments ~fn:simplify_expr
       }
   | Nir.Expr.If_then_else if_then_else ->
       let condition = simplify_expr if_then_else.condition in
@@ -78,16 +78,16 @@ and simplify_binding = fun (binding: Nir.Expr.binding) ->
   Nir.Expr.{ binding with expr = simplify_expr binding.expr }
 
 and simplify_let = fun (let_: Nir.Expr.let_) ->
-  let bindings = List.map simplify_binding let_.bindings in
+  let bindings = List.map let_.bindings ~fn:simplify_binding in
   let body = simplify_expr let_.body in
   let bindings =
     List.filter
-      (fun (binding: Nir.Expr.binding) ->
+      bindings
+      ~fn:(fun (binding: Nir.Expr.binding) ->
         if expr_uses_name binding.name body then
           true
         else
           not (expr_is_pure binding.expr))
-      bindings
   in
   match (bindings, body) with
   | ([], body) -> body
@@ -113,6 +113,6 @@ let simplify_entry_item = fun entry_item ->
 let program = fun (program: Nir.Program.t) ->
   {
     program
-    with functions = List.map simplify_function program.functions;
-    entry = List.filter_map simplify_entry_item program.entry
+    with functions = List.map program.functions ~fn:simplify_function;
+    entry = List.filter_map program.entry ~fn:simplify_entry_item
   }

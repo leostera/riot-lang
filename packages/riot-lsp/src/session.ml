@@ -837,8 +837,8 @@ let splice_text = fun text ->
       if start_offset > end_offset then
         Error "invalid text edit range"
       else
-        let prefix = String.sub text 0 start_offset in
-        let suffix = String.sub text end_offset (String.length text - end_offset) in
+        let prefix = String.sub text ~offset:0 ~len:start_offset in
+        let suffix = String.sub text ~offset:end_offset ~len:(String.length text - end_offset) in
         Ok (prefix ^ replacement ^ suffix)
 
 let apply_change = fun text ->

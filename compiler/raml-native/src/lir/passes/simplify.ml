@@ -63,4 +63,4 @@ let rewrite_procedure = fun (procedure: Procedure.t) ->
   { procedure with body = rewrite_instructions procedure.body }
 
 let program = fun (program: Program.t) ->
-  { program with procedures = List.map rewrite_procedure program.procedures }
+  { program with procedures = List.map program.procedures ~fn:rewrite_procedure }

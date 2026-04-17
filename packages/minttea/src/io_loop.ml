@@ -6,9 +6,9 @@ type t = Pid.t
 
 type state = {
   parent: Pid.t;
-  sigwinch_handler: int -> unit;
   termios: Tty.t;
   parser: Ansi_parser.parser;
+  window: Tty.size;
 }
 
 type Message.t +=
@@ -30,6 +30,23 @@ let translate = fun key ->
   | key -> Key key
 
 let rec loop = fun state ->
+  let state =
+    Tty.refresh_size state.termios;
+    let size = Tty.size state.termios in
+    if Int.equal size.cols state.window.cols then
+      if Int.equal size.rows state.window.rows then
+        state
+      else
+        (
+          send state.parent (Input (Event.Resize { width = size.cols; height = size.rows }));
+          { state with window = size }
+        )
+    else
+      (
+        send state.parent (Input (Event.Resize { width = size.cols; height = size.rows }));
+        { state with window = size }
+      )
+  in
   (* Check for shutdown message with timeout *)
   let timeout = Time.Duration.from_millis 100 in
   let should_shutdown =
@@ -77,25 +94,14 @@ let rec loop = fun state ->
           loop state
     )
 
-let sigwinch_handler = fun tty parent _signum ->
-  Log.trace "[IO_LOOP] SIGWINCH received - terminal resized";
-  let size = Tty.size tty in
-  send parent (Input (Event.Resize { width = size.cols; height = size.rows }))
-
 let init = fun ~parent ~tty ->
   Log.trace ("[IO_LOOP] Starting IO loop, parent=" ^ Pid.to_string parent);
   let state = {
     parent;
     termios = tty;
-    sigwinch_handler = sigwinch_handler tty parent;
-    parser = Ansi_parser.create ()
+    parser = Ansi_parser.create ();
+    window = Tty.size tty;
   } in
-  (* Set up SIGWINCH handler for terminal resize *)
-  (* SIGWINCH is signal 28 on macOS/Linux *)
-  let _ =
-    let sigwinch = 28 in
-    System.set_signal sigwinch (Signal_handle state.sigwinch_handler)
-  in
   send state.parent (IoStarted (self ()));
   loop state;
   Ok ()

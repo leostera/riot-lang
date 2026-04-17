@@ -206,10 +206,10 @@ let do_render = fun t str ->
     let str_with_h_padding = String.concat "\n" padded_lines in
     (* Apply vertical padding (top and bottom) *)
     let pad_top =
-      String.concat "\n" (List.init t.padding_top (fun _ -> ""))
+      String.concat "\n" (List.init ~count:t.padding_top ~fn:(fun _ -> ""))
     in
     let pad_bottom =
-      String.concat "\n" (List.init t.padding_bottom (fun _ -> ""))
+      String.concat "\n" (List.init ~count:t.padding_bottom ~fn:(fun _ -> ""))
     in
     let result = (
       if t.padding_top > 0 then
@@ -247,12 +247,12 @@ let do_render = fun t str ->
         let lines = Util.Ansi.split_lines str in
         let aligned_lines =
           List.map
-            (fun line ->
+            lines
+            ~fn:(fun line ->
               match align with
               | `Left -> Util.Ansi.pad_right ~width:w ' ' line
               | `Right -> Util.Ansi.pad_left ~width:w ' ' line
               | `Center -> Util.Ansi.pad_center ~width:w ' ' line)
-            lines
         in
         String.concat "\n" aligned_lines
     | None -> str
@@ -265,7 +265,7 @@ let do_render = fun t str ->
         let lines = Util.Ansi.split_lines str in
         let current_height = List.length lines in
         if current_height >= h then
-          let lines = List.take h lines in
+          let lines = List.take lines ~len:h in
           String.concat "\n" lines
         else
           let padding_needed = h - current_height in
@@ -278,15 +278,15 @@ let do_render = fun t str ->
           (
             match align with
             | `Top ->
-                lines @ List.make ~len:padding_needed ~fn:(fun _ -> empty_line)
+                lines @ List.init ~count:padding_needed ~fn:(fun _ -> empty_line)
             | `Bottom ->
-                List.make ~len:padding_needed ~fn:(fun _ -> empty_line) @ lines
+                List.init ~count:padding_needed ~fn:(fun _ -> empty_line) @ lines
             | `Center ->
                 let top_pad = padding_needed / 2 in
                 let bottom_pad = padding_needed - top_pad in
-                List.make ~len:top_pad ~fn:(fun _ -> empty_line)
+                List.init ~count:top_pad ~fn:(fun _ -> empty_line)
                 @ lines
-                @ List.make ~len:bottom_pad ~fn:(fun _ -> empty_line)
+                @ List.init ~count:bottom_pad ~fn:(fun _ -> empty_line)
           ) |> String.concat "\n"
     | None -> str
   in
@@ -338,15 +338,16 @@ let do_render = fun t str ->
         | Some color -> [ Background color ]
         | None -> []
       ); ]
-    |> List.flatten
+    |> List.concat
   in
   (* render core text *)
   let str =
     let lines = String.split_on_char '\n' str in
     List.map
-      (fun line ->
+      lines
+      ~fn:(fun line ->
         Formatter.format_string format_seq line)
-      lines |> String.concat "\n"
+      |> String.concat "\n"
   in
   (* handle border *)
   let str =
@@ -368,7 +369,7 @@ let do_render = fun t str ->
     match t.constraints.max_height with
     | Some max_height when max_height > 0 ->
         let lines = String.split_on_char '\n' (Cell.get str) in
-        let lines = List.take max_height lines in
+        let lines = List.take lines ~len:max_height in
         Cell.set str (String.concat "\n" lines)
     | _ -> ()
   );
@@ -378,12 +379,12 @@ let do_render = fun t str ->
         let lines = Util.Ansi.split_lines (Cell.get str) in
         let truncated =
           List.map
-            (fun line ->
+            lines
+            ~fn:(fun line ->
               if Util.Ansi.width line > max_width then
                 Util.Ansi.truncate ~width:max_width ~ellipsis:"…" line
               else
                 line)
-            lines
         in
         Cell.set str (String.concat "\n" truncated)
     | _ -> ()
@@ -396,7 +397,7 @@ let do_render = fun t str ->
           match target_height with
           | Some h ->
               let lines = String.split_on_char '\n' (Cell.get str) in
-              let lines = List.take h lines in
+              let lines = List.take lines ~len:h in
               Cell.set str (String.concat "\n" lines)
           | None -> ()
         );
@@ -406,12 +407,12 @@ let do_render = fun t str ->
               let lines = Util.Ansi.split_lines (Cell.get str) in
               let clipped =
                 List.map
-                  (fun line ->
+                  lines
+                  ~fn:(fun line ->
                     if Util.Ansi.width line > w then
                       Util.Ansi.truncate ~width:w line
                     else
                       line)
-                  lines
               in
               Cell.set str (String.concat "\n" clipped)
           | None -> ()

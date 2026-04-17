@@ -54,7 +54,13 @@ let reset = fun t ->
   t
 
 let set_progress = fun t ~progress ->
-  t.percent <- Float.min 1.0 progress;
+  t.percent <-
+    if progress < 0.0 then
+      0.0
+    else if progress > 1.0 then
+      1.0
+    else
+      progress;
   if t.percent = 1.0 then
     t.finished <- true;
   t
@@ -69,8 +75,15 @@ let increment = fun t ~delta:amount ->
   t
 
 let view = fun t ->
-  let percent = Float.max 0. (Float.min 1. t.percent) in
-  let full_size = Int.of_float (Float.floor (Float.of_int t.width *. t.percent)) in
+  let percent =
+    if t.percent < 0.0 then
+      0.0
+    else if t.percent > 1.0 then
+      1.0
+    else
+      t.percent
+  in
+  let full_size = Int.from_float (Float.floor (Float.of_int t.width *. t.percent)) in
   (* Build progress bar as a pre-rendered string with ANSI codes using old Style module *)
   let color char =
     match t.color with
@@ -83,9 +96,13 @@ let view = fun t ->
           )
     | `Gradient color_ramp ->
         fun i ->
+          let shade =
+            Array.get color_ramp ~at:i
+            |> Option.expect ~msg:"gradient color index out of bounds"
+          in
           Style.(
             render
-              (default |> fg color_ramp.(i))
+              (default |> fg shade)
               char
           )
   in
@@ -93,7 +110,7 @@ let view = fun t ->
     if String.length t.full_char = 0 then
       ""
     else
-      List.make ~len:full_size ~fn:(color t.full_char) |> String.concat ""
+      List.init ~count:full_size ~fn:(color t.full_char) |> String.concat ""
   in
   (* Only show trail if we're not at 100% and have space remaining *)
   let has_trail = full_size < t.width && String.length t.trail_char > 0 in
@@ -118,7 +135,9 @@ let view = fun t ->
     if String.length t.empty_char = 0 then
       ""
     else
-      String.make empty_size t.empty_char.[0]
+      String.make
+        ~len:empty_size
+        ~char:(String.get t.empty_char ~at:0 |> Option.expect ~msg:"empty progress char")
   in
   let percentage_part =
     if t.show_percentage then

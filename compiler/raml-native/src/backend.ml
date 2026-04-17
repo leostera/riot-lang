@@ -26,7 +26,7 @@ let compile = fun ~config ~(frontend:Frontend_pipeline.t) ->
           trace.final
         | Error errors -> Pipeline_stage.error
           ~stage:"nir"
-          (List.map Native.Nir.Lowering.error_to_json errors)
+          (List.map ~fn:Native.Nir.Lowering.error_to_json errors)
       in
       let mir =
         match nir.value with

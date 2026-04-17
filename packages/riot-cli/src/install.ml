@@ -163,20 +163,11 @@ let run_with_workspace_info = fun ~workspace ~workspace_error matches ->
     in
     let on_event (event: Install_runtime.install_event) =
       match event with
-      | Install_runtime.Build build_event -> (
-          match build_event with
-          | Riot_build.Event.Pm kind -> Build.write_pm_event
+      | Install_runtime.Build build_event ->
+          Build.write_build_event
             ~mode:Build.Human
             ~seen_registry_updates
-            kind
-          | Riot_build.Event.BuildingTarget { target; host } -> Build.write_building_target_event
-            ~mode:Build.Human
-            ~target
-            ~host
-          | Riot_build.Event.CacheGc event -> Build.write_cache_gc_event ~mode:Build.Human event
-          | Riot_build.Event.Telemetry _ -> ()
-          | Riot_build.Event.Phase _ -> ()
-        )
+            build_event
       | _ -> write_install_event ~workspace_root:workspace_root_for_output event
     in
     let result =

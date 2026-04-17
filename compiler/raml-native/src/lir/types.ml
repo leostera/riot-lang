@@ -111,9 +111,9 @@ module Instruction = struct
     | Call { dst; callee; arguments } -> Json.obj
       [
         ("kind", Json.string "call");
-        ("dst", Option.map Destination.to_json dst |> Option.unwrap_or ~default:Json.null);
+        ("dst", Option.map dst ~fn:Destination.to_json |> Option.unwrap_or ~default:Json.null);
         ("callee", Callee.to_json callee);
-        ("arguments", Json.array (List.map Operand.to_json arguments));
+        ("arguments", Json.array (List.map arguments ~fn:Operand.to_json));
       ]
     | Branch_if_zero { operand; target } -> Json.obj
       [
@@ -125,7 +125,7 @@ module Instruction = struct
     | Return operand -> Json.obj
       [
         ("kind", Json.string "return");
-        ("operand", Option.map Operand.to_json operand |> Option.unwrap_or ~default:Json.null);
+        ("operand", Option.map operand ~fn:Operand.to_json |> Option.unwrap_or ~default:Json.null);
       ]
     | Comment text -> Json.obj [ ("kind", Json.string "comment"); ("text", Json.string text); ]
 end
@@ -164,9 +164,9 @@ module Frame = struct
       [
         ("contains_calls", Json.bool frame.contains_calls);
         ("frame_required", Json.bool frame.frame_required);
-        ("slots", Json.array (List.map Slot.to_json frame.slots));
-        ("homes", Json.array (List.map Home_binding.to_json frame.homes));
-        ("saved_registers", Json.array (List.map Json.string frame.saved_registers));
+        ("slots", Json.array (List.map frame.slots ~fn:Slot.to_json));
+        ("homes", Json.array (List.map frame.homes ~fn:Home_binding.to_json));
+        ("saved_registers", Json.array (List.map frame.saved_registers ~fn:Json.string));
         ("frame_size", Json.int frame.frame_size);
       ]
 end
@@ -194,9 +194,9 @@ module Procedure = struct
       [
         ("name", Json.string procedure.name);
         ("kind", kind_to_json procedure.kind);
-        ("params", Json.array (List.map Json.string procedure.params));
+        ("params", Json.array (List.map procedure.params ~fn:Json.string));
         ("frame", Frame.to_json procedure.frame);
-        ("body", Json.array (List.map Instruction.to_json procedure.body));
+        ("body", Json.array (List.map procedure.body ~fn:Instruction.to_json));
       ]
 end
 
@@ -223,7 +223,7 @@ module Program = struct
     Json.obj
       [
         ("module_name", Json.string program.module_name);
-        ("procedures", Json.array (List.map Procedure.to_json program.procedures));
-        ("exports", Json.array (List.map Export.to_json program.exports));
+        ("procedures", Json.array (List.map program.procedures ~fn:Procedure.to_json));
+        ("exports", Json.array (List.map program.exports ~fn:Export.to_json));
       ]
 end

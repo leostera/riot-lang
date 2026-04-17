@@ -37,10 +37,10 @@ and canonicalize_if_then_else = fun (if_then_else: Instruction.if_then_else) ->
   ]
 
 and canonicalize_instructions = fun instructions ->
-  List.concat_map canonicalize_instruction instructions
+  List.flat_map instructions ~fn:canonicalize_instruction
 
 let canonicalize_procedure = fun (procedure: Procedure.t) ->
   { procedure with body = canonicalize_instructions procedure.body }
 
 let program = fun (program: Program.t) ->
-  { program with procedures = List.map canonicalize_procedure program.procedures }
+  { program with procedures = List.map program.procedures ~fn:canonicalize_procedure }

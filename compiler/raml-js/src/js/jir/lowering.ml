@@ -97,16 +97,16 @@ let rec lower_expr = fun expr ->
   | Core.Expr.Var entity_id ->
       References.entity entity_id
   | Core.Expr.Apply { callee=Core.Expr.Direct function_name; arguments } ->
-      let arguments = List.map lower_expr arguments in
+      let arguments = List.map arguments ~fn:lower_expr in
       Calls.direct function_name arguments
   | Core.Expr.Apply { callee=Core.Expr.Indirect callee; arguments } ->
       let callee = lower_expr callee in
-      let arguments = List.map lower_expr arguments in
+      let arguments = List.map arguments ~fn:lower_expr in
       Jir.Expr.Call Jir.Expr.{ callee; arguments }
   | Core.Expr.Lambda lambda ->
       lower_curried_function
         Jir.Expr.{
-          params = List.map binder_of_param lambda.params;
+          params = List.map lambda.params ~fn:binder_of_param;
           body = lower_tail_expr lambda.body
         }
   | Core.Expr.Let let_ ->
@@ -118,13 +118,13 @@ let rec lower_expr = fun expr ->
           Jir.Statement.Return (lower_expr sequence.second);
         ]
   | Core.Expr.Tuple tuple ->
-      Intrinsics.array (List.map lower_expr tuple)
+      Intrinsics.array (List.map tuple ~fn:lower_expr)
   | Core.Expr.Tuple_get tuple_get ->
       Intrinsics.index
         (lower_expr tuple_get.tuple)
         (Jir.Expr.Literal (Jir.Literal.Number (Jir.Literal.Int tuple_get.index)))
   | Core.Expr.Record record ->
-      Objects.literal (List.map lower_record_field record)
+      Objects.literal (List.map record ~fn:lower_record_field)
   | Core.Expr.Record_get record_get ->
       References.named_property_access (lower_expr record_get.record) record_get.label
   | Core.Expr.If_then_else if_then_else ->
@@ -134,7 +134,7 @@ let rec lower_expr = fun expr ->
         else_ = lower_expr if_then_else.else_
       }
   | Core.Expr.Primitive primitive ->
-      Primitives.lower primitive.primitive (List.map lower_expr primitive.arguments)
+      Primitives.lower primitive.primitive (List.map primitive.arguments ~fn:lower_expr)
 
 and lower_record_field = fun (field: Core.Expr.record_field) ->
   Objects.field field.label (lower_expr field.value)
@@ -167,32 +167,33 @@ and lower_effect_expr = fun expr ->
 and lower_let_binding_statements = fun (let_: Core.Expr.let_) ->
   match let_.rec_flag with
   | Core.Rec_flag.Nonrecursive -> List.map
-    (fun (binding: Core.Expr.binding) ->
+    let_.bindings
+    ~fn:(fun (binding: Core.Expr.binding) ->
       Jir.Statement.Declaration Jir.Declaration.{
         kind = Jir.Declaration.Const;
         binder = binder_of_binding binding;
         init = Some (lower_expr binding.expr)
       })
-    let_.bindings
   | Core.Rec_flag.Recursive ->
       let prelude =
         List.map
-          (fun (binding: Core.Expr.binding) ->
+          let_.bindings
+          ~fn:(fun (binding: Core.Expr.binding) ->
             Jir.Statement.Declaration Jir.Declaration.{
               kind = Jir.Declaration.Let;
               binder = binder_of_binding binding;
               init = None
             })
-          let_.bindings
       in
       let assignments =
         List.map
-          (fun (binding: Core.Expr.binding) ->
+          let_.bindings
+          ~fn:(fun (binding: Core.Expr.binding) ->
             Jir.Statement.Expression (Jir.Expr.Assignment Jir.Expr.{
               target = binding.entity_id;
               value = lower_expr binding.expr
             }))
-          let_.bindings
+          
       in
       prelude @ assignments
 
@@ -217,7 +218,7 @@ let lower_recursive_group = fun (group: Core.Binding_group.t) ->
   let prelude =
     group.items
     |> List.filter_map
-      (fun item ->
+      ~fn:(fun item ->
         match item with
         | Core.Init_item.Binding binding -> Some (Jir.Statement.Declaration Jir.Declaration.{
           kind = Jir.Declaration.Let;
@@ -228,20 +229,20 @@ let lower_recursive_group = fun (group: Core.Binding_group.t) ->
   in
   let body =
     List.map
-      (fun item ->
+      group.items
+      ~fn:(fun item ->
         match item with
         | Core.Init_item.Binding binding -> Jir.Statement.Expression (Jir.Expr.Assignment Jir.Expr.{
           target = binding.entity_id;
           value = lower_expr binding.expr
         })
         | Core.Init_item.Eval expr -> Jir.Statement.Expression (lower_expr expr))
-      group.items
   in
   prelude @ body
 
 let lower_group = fun (_group_index: int) (group: Core.Binding_group.t) ->
   match group.rec_flag with
-  | Core.Rec_flag.Nonrecursive -> List.map lower_item group.items
+  | Core.Rec_flag.Nonrecursive -> List.map group.items ~fn:lower_item
   | Core.Rec_flag.Recursive -> lower_recursive_group group
 
 let lower_compilation_unit = fun ~context (compilation_unit: Core.Compilation_unit.t) ->
@@ -250,17 +251,18 @@ let lower_compilation_unit = fun ~context (compilation_unit: Core.Compilation_un
     (UnsupportedModuleKind { kind = compilation_unit.unit_id.kind })
   | Raml_core.Source_unit.Implementation ->
       let groups =
-        List.mapi (fun index group -> (index + 1, group)) compilation_unit.init
+        List.enumerate compilation_unit.init
+        |> List.map ~fn:(fun (index, group) -> (index + 1, group))
       in
       let body = groups
-      |> List.map (fun (group_index, group) -> lower_group group_index group)
-      |> List.flatten in
+      |> List.map ~fn:(fun (group_index, group) -> lower_group group_index group)
+      |> List.concat in
       let program =
         Jir.Program.{
           module_name = compilation_unit.unit_id.unit_name;
           imports = [];
           body;
-          exports = List.map lower_export compilation_unit.exports
+          exports = List.map compilation_unit.exports ~fn:lower_export
         } in
       (* Pass order is intentionally explicit:
          - Normalize establishes a canonical structural baseline and recollects

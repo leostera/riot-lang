@@ -1216,7 +1216,7 @@ let parse_int_generic = fun state ->
   if negative then
     !acc
   else
-    -!acc
+    - !acc
 
 let parse_int_reader = fun state reader ->
   let fallback () =
@@ -1318,7 +1318,7 @@ let parse_int_reader = fun state reader ->
     if negative then
       !acc
     else
-      -!acc
+      - !acc
   with
   | Use_slow_number_path ->
       reader.Input.pos <- !start;

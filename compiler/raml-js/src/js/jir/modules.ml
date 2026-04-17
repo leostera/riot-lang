@@ -1,3 +1,4 @@
+open Std
 module Core = Raml_core.Core_ir
 module Syntax = Syntax
 
@@ -22,7 +23,12 @@ type entity_reference = {
 }
 
 let is_module_segment = fun segment ->
-  String.length segment > 0 && Syntax.is_ascii_uppercase segment.[0]
+  match String.length segment with
+  | 0 -> false
+  | _ ->
+      match String.get segment ~at:0 with
+      | Some c -> Syntax.is_ascii_uppercase c
+      | None -> false
 
 let sibling_unit = Types.Modules.sibling_unit
 
@@ -33,12 +39,17 @@ let entity_reference = fun entity_id ->
   match parts with
   | [] -> { root = Identifier entity_id; properties = [] }
   | head :: tail ->
-      if not (List.is_empty tail) && is_module_segment head then
-        { root = Namespace (sibling_unit head); properties = tail }
-      else if Option.is_some (Core.Entity_id.binding_id entity_id) && List.is_empty tail then
-        { root = Identifier entity_id; properties = [] }
-      else
-        { root = Identifier (Core.Entity_id.of_name head); properties = tail }
+      match tail with
+      | _ :: _ ->
+          if is_module_segment head then
+            { root = Namespace (sibling_unit head); properties = tail }
+          else
+            { root = Identifier (Core.Entity_id.of_name head); properties = tail }
+      | [] ->
+          if Option.is_some (Core.Entity_id.binding_id entity_id) then
+            { root = Identifier entity_id; properties = [] }
+          else
+            { root = Identifier (Core.Entity_id.of_name head); properties = tail }
 
 let namespace_binder = Types.Modules.namespace_binder
 

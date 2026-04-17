@@ -448,24 +448,11 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   else
     let on_event (event: Bench_runtime.bench_event) =
       match event with
-      | Bench_runtime.Build build_event -> (
-          match output_mode with
-          | Build.Json -> Build.write_build_event_json build_event
-          | Build.Human -> (
-              match build_event with
-              | Riot_build.Event.Pm kind -> Build.write_pm_event
-                ~mode:output_mode
-                ~seen_registry_updates
-                kind
-              | Riot_build.Event.BuildingTarget { target; host } -> Build.write_building_target_event
-                ~mode:output_mode
-                ~target
-                ~host
-              | Riot_build.Event.CacheGc event -> Build.write_cache_gc_event ~mode:output_mode event
-              | Riot_build.Event.Telemetry _ -> ()
-              | Riot_build.Event.Phase _ -> ()
-            )
-        )
+      | Bench_runtime.Build build_event ->
+          Build.write_build_event
+            ~mode:output_mode
+            ~seen_registry_updates
+            build_event
       | _ -> (
           match output_mode with
           | Build.Json -> Bench_runtime.bench_event_to_json event

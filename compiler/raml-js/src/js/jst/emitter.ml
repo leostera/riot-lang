@@ -13,10 +13,10 @@ end)
 type env = string Binding_map.t
 
 let indent = fun level ->
-  String.make (level * 2) ' '
+  String.make ~len:(level * 2) ~char:' '
 
 let lookup_binding_name = fun env binding_id ->
-  Binding_map.find_opt binding_id env
+  Binding_map.get env ~key:binding_id
   |> Option.unwrap_or ~default:(Syntax.sanitize_binding_identifier (Core.Binding_id.name binding_id))
 
 let emit_entity = fun env entity_id ->
@@ -25,7 +25,7 @@ let emit_entity = fun env entity_id ->
   | None -> Core.Entity_id.to_string entity_id
 
 let remember_binding = fun env (binder: Types.Binder.t) ->
-  Binding_map.add binder.binding_id binder.name env
+  Binding_map.insert env ~key:binder.binding_id ~value:binder.name
 
 let emit_number = fun number ->
   match number with
@@ -86,8 +86,10 @@ and emit_object_field = fun ~level env (field: Types.Expr.object_field) ->
       Json.to_string (Json.string field.name)
   in
   match field.value with
-  | Types.Expr.Identifier entity_id when Syntax.can_use_unquoted_object_key field.name
-  && String.equal field.name (emit_entity env entity_id) -> field.name
+  | Types.Expr.Identifier entity_id
+    when Syntax.can_use_unquoted_object_key field.name
+         && String.equal field.name (emit_entity env entity_id) ->
+      field.name
   | _ -> format Format.[ str key; str ": "; str emitted_value ]
 
 and emit_expr = fun ~level env expr ->
@@ -121,14 +123,14 @@ and emit_expr = fun ~level env expr ->
       format
         Format.[
           str "[";
-          str (String.concat ", " (List.map (emit_array_element ~level env) elements));
+          str (String.concat ", " (List.map elements ~fn:(emit_array_element ~level env)));
           str "]";
         ]
   | Types.Expr.Object fields ->
       format
         Format.[
           str "{";
-          str (String.concat ", " (List.map (emit_object_field ~level env) fields));
+          str (String.concat ", " (List.map fields ~fn:(emit_object_field ~level env)));
           str "}";
         ]
   | Types.Expr.Function function_ ->
@@ -145,7 +147,7 @@ and emit_expr = fun ~level env expr ->
           str "]";
         ]
   | Types.Expr.Call { callee; arguments } ->
-      let arguments = arguments |> List.map (emit_expr ~level env) |> String.concat ", " in
+      let arguments = arguments |> List.map ~fn:(emit_expr ~level env) |> String.concat ", " in
       format Format.[ str (emit_call_callee ~level env callee); str "("; str arguments; str ")" ]
   | Types.Expr.Conditional conditional ->
       format
@@ -169,7 +171,7 @@ and emit_expr = fun ~level env expr ->
         ]
 
 and emit_function = fun ~level env function_ ->
-  let env = List.fold_left remember_binding env function_.params in
+  let env = List.fold_left function_.params ~acc:env ~fn:remember_binding in
   let body =
     match function_.body with
     | [] -> ""
@@ -181,7 +183,7 @@ and emit_function = fun ~level env function_ ->
     Format.[
       str "(function(";
       str
-        (String.concat ", " (List.map (fun (binder: Types.Binder.t) -> binder.name) function_.params));
+        (String.concat ", " (List.map function_.params ~fn:(fun (binder: Types.Binder.t) -> binder.name)));
       str ") {";
       str body;
       str "})";
@@ -298,9 +300,9 @@ let emit_import = fun ~module_format env (import: Types.Import.t) ->
       | Some binder -> remember_binding env binder)
     |> (fun env ->
       List.fold_left
-        (fun env (named: Types.Import.named) -> remember_binding env named.local)
-        env
-        import.names)
+        import.names
+        ~acc:env
+        ~fn:(fun env (named: Types.Import.named) -> remember_binding env named.local))
   in
   let line =
     match module_format with
@@ -321,7 +323,7 @@ let emit_import = fun ~module_format env (import: Types.Import.t) ->
               | names -> Some (format
                 Format.[
                   str "{ ";
-                  str (String.concat ", " (List.map emit_named_import names));
+                  str (String.concat ", " (List.map names ~fn:emit_named_import));
                   str " }"
                 ])
             in
@@ -356,7 +358,7 @@ let emit_export = fun env (export: Types.Export.t) ->
 let emit_exports = fun ~module_format env exports ->
   match module_format with
   | Module_format.Esm ->
-      let lines = exports |> List.map (emit_export env) |> String.concat ",\n" in
+      let lines = exports |> List.map ~fn:(emit_export env) |> String.concat ",\n" in
       format Format.[ str "export {\n"; str lines; str "\n};" ]
 
 let emit_module_item = fun ~module_format env item ->
@@ -369,14 +371,14 @@ let emit_program = fun ~context (program: Types.Program.t) ->
   let module_format = Module_format.of_context context in
   let (sections_rev, _) =
     List.fold_left
-      (fun (sections_rev, env) item ->
+      program.items
+      ~acc:([], Binding_map.empty)
+      ~fn:(fun (sections_rev, env) item ->
         let (section, env) = emit_module_item ~module_format env item in
         if String.equal section "" then
           (sections_rev, env)
         else
           (section :: sections_rev, env))
-      ([], Binding_map.empty)
-      program.items
   in
   match List.rev sections_rev with
   | [] -> ""

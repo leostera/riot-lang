@@ -89,7 +89,7 @@ let read_float32 = fun reader ->
   | Some bits -> Some (Int32.float_of_bits (Int32.of_int bits))
 
 let read_string = fun reader ->
-  let buf = Buffer.create 64 in
+  let buf = Buffer.create ~size:64 in
   let rec loop () =
     if is_eof reader then
       None

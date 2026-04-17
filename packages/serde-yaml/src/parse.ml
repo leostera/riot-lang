@@ -41,7 +41,7 @@ let strip_trailing_cr = fun value ->
 
 let strip_comment = fun line ->
   let length = String.length line in
-  let buffer = IO.Buffer.create length in
+  let buffer = IO.Buffer.create ~size:length in
   let in_double = ref false in
   let in_single = ref false in
   let escaped = ref false in
@@ -295,8 +295,11 @@ let split_mapping_head = fun line ->
   match find_mapping_separator line.text line.number with
   | None -> None
   | Some index ->
-      let key = parse_key (String.sub line.text 0 index) line.number in
-      let rest = String.sub line.text (index + 1) (String.length line.text - index - 1) |> String.trim in
+      let key = parse_key (String.sub line.text ~offset:0 ~len:index) line.number in
+      let rest =
+        String.sub line.text ~offset:(index + 1) ~len:(String.length line.text - index - 1)
+        |> String.trim
+      in
       Some (key, rest)
 
 let parse_float = fun line_number value ->
@@ -373,14 +376,14 @@ and parse_tagged = fun lines line index head parent_indent ->
       | _ -> scan (tag_end + 1)
   in
   let tag_end = scan 1 in
-  let tag = String.sub head 1 (tag_end - 1) in
+  let tag = String.sub head ~offset:1 ~len:(tag_end - 1) in
   if String.equal tag "" then
     fail_line line.number "expected tag name after '!'";
   let rest =
     if Int.equal tag_end length then
       ""
     else
-      String.sub head tag_end (length - tag_end) |> String.trim
+      String.sub head ~offset:tag_end ~len:(length - tag_end) |> String.trim
   in
   if String.equal rest "" then
     let payload, next = parse_nested_or_null lines index parent_indent in
@@ -410,7 +413,7 @@ and parse_sequence = fun lines start_index indent ->
       items := value :: !items;
       index := next
     else if String.starts_with ~prefix:"- " line.text then
-      let head = String.sub line.text 2 (String.length line.text - 2) in
+      let head = String.sub line.text ~offset:2 ~len:(String.length line.text - 2) in
       let value, next = parse_value_head lines line (!index + 1) head indent in
       items := value :: !items;
       index := next

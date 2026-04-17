@@ -93,8 +93,8 @@ let unmask_token = fun masked_b64 ->
         end
       else
         (* Split into pad and masked parts (32 bytes each) *)
-        let pad = String.sub decoded 0 32 in
-        let masked = String.sub decoded 32 32 in
+        let pad = String.sub decoded ~offset:0 ~len:32 in
+        let masked = String.sub decoded ~offset:32 ~len:32 in
         (* XOR to recover original bytes *)
         let raw_bytes = IO.Bytes.create ~size:32 in
         for i = 0 to 31 do

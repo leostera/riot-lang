@@ -257,10 +257,10 @@ let handle_data_waiting_body = fun data conn state http_req expected_length accu
   let new_body = accumulated_body ^ data in
   let body_length = String.length new_body in
   if body_length >= expected_length then
-    let complete_body = String.sub new_body 0 expected_length in
+    let complete_body = String.sub new_body ~offset:0 ~len:expected_length in
     let remaining_data =
       if body_length > expected_length then
-        String.sub new_body expected_length (body_length - expected_length)
+        String.sub new_body ~offset:expected_length ~len:(body_length - expected_length)
       else
         ""
     in

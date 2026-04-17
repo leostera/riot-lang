@@ -1,11 +1,11 @@
 [workspace]
 members = [
-  "compiler/raml",
-  "compiler/raml-core",
-  "compiler/raml-native",
-  "compiler/raml-js",
-  "compiler/raml-wasm",
-  "compiler/raml-cli",
+  # "compiler/raml",
+  # "compiler/raml-core",
+  # "compiler/raml-native",
+  # "compiler/raml-js",
+  # "compiler/raml-wasm",
+  # "compiler/raml-cli",
   "packages/blink",
   "packages/markdown",
   "packages/ceibo",

@@ -28,11 +28,13 @@ let bound_of_list = HashSet.from_list
 
 let extend_bound = fun bound names ->
   let bound = HashSet.from_list (HashSet.to_list bound) in
-  List.for_each names
+  let () =
+    List.for_each names
     ~fn:(fun name ->
       let _ = HashSet.insert bound ~value:name in
       ())
-    bound
+  in
+  bound
 
 let bound_has = fun set value -> HashSet.contains set ~value
 

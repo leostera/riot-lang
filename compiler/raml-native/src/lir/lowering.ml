@@ -44,11 +44,11 @@ let fresh_label = fun state prefix ->
 
 let rec lower_instruction_list = fun state instructions ->
   List.fold_left
-    (fun (body, state) instruction ->
+    instructions
+    ~acc:([], state)
+    ~fn:(fun (body, state) instruction ->
       let lowered, state = lower_instruction state instruction in
       (body @ lowered, state))
-    ([], state)
-    instructions
 
 and lower_instruction = fun state instruction ->
   match instruction with
@@ -65,9 +65,9 @@ and lower_instruction = fun state instruction ->
       (
         [
           Target.Instruction.Call {
-            dst = Option.map (fun dst -> Target.Destination.Register dst) dst;
+            dst = Option.map dst ~fn:(fun dst -> Target.Destination.Register dst);
             callee = lower_callee callee;
-            arguments = List.map lower_operand arguments
+            arguments = List.map arguments ~fn:lower_operand
           }
         ],
         state
@@ -91,7 +91,7 @@ and lower_instruction = fun state instruction ->
         state
       )
   | Source.Instruction.Return operand ->
-      ([ Target.Instruction.Return (Option.map lower_operand operand) ], state)
+      ([ Target.Instruction.Return (Option.map operand ~fn:lower_operand) ], state)
   | Source.Instruction.Comment text ->
       ([ Target.Instruction.Comment text ], state)
 
@@ -121,7 +121,7 @@ let trace_to_json = fun trace ->
       (
         "passes",
         Json.obj
-          (List.map (fun pass -> (pass.name, Target.Program.to_json pass.program)) trace.passes)
+          (List.map trace.passes ~fn:(fun pass -> (pass.name, Target.Program.to_json pass.program)))
       );
       ("program", Target.Program.to_json trace.final);
     ]
@@ -153,8 +153,8 @@ let trace_program = fun ~ctx initial ->
 let lower_program_with_trace = fun ~ctx (program: Source.Program.t) ->
   Target.Program.{
     module_name = program.module_name;
-    procedures = List.map lower_procedure program.procedures;
-    exports = List.map lower_export program.exports
+    procedures = List.map program.procedures ~fn:lower_procedure;
+    exports = List.map program.exports ~fn:lower_export
   }
   |> trace_program ~ctx
 
