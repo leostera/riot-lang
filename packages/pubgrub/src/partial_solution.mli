@@ -5,7 +5,7 @@ type version = Version.t
 type decision_level = int
 type assignment =
   | Decision of package * version * decision_level * int
-  | Derivation of package * version Ranges.t * Incompatibility.t * decision_level * int
+  | Derivation of package * version Ranges.t * bool * Incompatibility.t * decision_level * int
 type t
 type same_decision_levels = {
   cause: Incompatibility.t;
