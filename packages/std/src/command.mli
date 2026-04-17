@@ -104,7 +104,7 @@ val to_string: t -> string
     structured command value and does not invoke a shell. *)
 (** # Execution *)
 
-val output: t -> (output, error) result
+val output: ?on_stdout_line:(string -> unit) -> t -> (output, error) result
 
 (** Executes command and captures its output.
 

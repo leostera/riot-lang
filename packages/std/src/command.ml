@@ -2,6 +2,7 @@ open Global
 open Collections
 
 type Runtime.Message.t +=
+  | Reader_stdout_line of { reader: Runtime.Pid.t; line: string }
   | Reader_finished of { reader: Runtime.Pid.t; stream: 
         [
           `stdout
@@ -97,23 +98,34 @@ let to_string = fun t ->
   | Some cwd -> "cd " ^ shell_quote cwd ^ " && " ^ command
   | None -> command
 
-let spawn_reader = fun ~parent ~stream file ->
+let spawn_reader = fun ?(line_mode = false) ~parent ~stream file ->
   spawn
     (fun () ->
       let reader = self () in
       let result =
-        match Fs.File.read_to_end file with
-        | Ok _ as ok ->
-            let _ = Fs.File.close file in
-            ok
-        | Error _ as err ->
-            let _ = Fs.File.close file in
-            err
+        match stream, line_mode with
+        | `stdout, true ->
+            let buffer = IO.Buffer.create ~size:4096 in
+            let rec loop () =
+              match Fs.File.read_line file with
+              | Ok line when String.equal line "" ->
+                  Ok (IO.Buffer.contents buffer)
+              | Ok line ->
+                  IO.Buffer.add_string buffer line;
+                  send parent (Reader_stdout_line { reader; line });
+                  loop ()
+              | Error _ as err ->
+                  err
+            in
+            loop ()
+        | _ ->
+            Fs.File.read_to_end file
       in
+      let _ = Fs.File.close file in
       send parent (Reader_finished { reader; stream; result });
       Ok ())
 
-let wait_for_reader_output = fun ~stdout_reader ~stderr_reader ->
+let wait_for_reader_output = fun ~on_stdout_line ~stdout_reader ~stderr_reader ->
   let stdout_result = ref None in
   let stderr_result = ref None in
   let rec loop () =
@@ -123,6 +135,9 @@ let wait_for_reader_output = fun ~stdout_reader ~stderr_reader ->
       receive
         ~selector:(
           function
+          | Reader_stdout_line { reader; line } when Runtime.Pid.equal reader stdout_reader ->
+              Option.for_each on_stdout_line ~fn:(fun on_stdout_line -> on_stdout_line line);
+              `select ()
           | Reader_finished { reader; stream=`stdout; result } when Runtime.Pid.equal reader stdout_reader ->
               stdout_result := Some result;
               `select ()
@@ -197,7 +212,7 @@ let cwd_path = fun cwd ->
   | None -> Ok None
   | Some cwd -> Ok (Some (Kernel.Path.from_string cwd))
 
-let output = fun t ->
+let output = fun ?on_stdout_line t ->
   match t.state with
   | Exited out ->
       Ok out
@@ -225,9 +240,13 @@ let output = fun t ->
               (* Update state to Running *)
               t.state <- Running { proc; stdout = Some stdout_fd; stderr = Some stderr_fd };
               let parent = self () in
-              let stdout_reader = spawn_reader ~parent ~stream:`stdout stdout_fd in
+              let stdout_reader =
+                spawn_reader ~line_mode:(Option.is_some on_stdout_line) ~parent ~stream:`stdout stdout_fd
+              in
               let stderr_reader = spawn_reader ~parent ~stream:`stderr stderr_fd in
-              let stdout_result, stderr_result = wait_for_reader_output ~stdout_reader ~stderr_reader in
+              let stdout_result, stderr_result =
+                wait_for_reader_output ~on_stdout_line ~stdout_reader ~stderr_reader
+              in
               match unwrap_reader_result ~stream:"stdout" ~cmd:t.cmd stdout_result, unwrap_reader_result
                 ~stream:"stderr"
                 ~cmd:t.cmd

@@ -6,6 +6,7 @@ let stderr_payload_size = 256 * 1_024
 let stderr_payload = String.make ~len:stderr_payload_size ~char:'e'
 
 let stdout_payload = "stdout-finished"
+let streamed_stdout_payload = "first line\nsecond line\nthird line\n"
 
 type Runtime.Message.t +=
   | Parallel_command_finished of (int * (unit, string) result)
@@ -40,6 +41,37 @@ let test_command_output_handles_delayed_shell_stdout = fun _ctx ->
         Error ("expected shell command to exit 0, got " ^ Int.to_string output.status)
       else if not (String.equal output.stdout "delayed-output") then
         Error ("unexpected delayed stdout payload: " ^ output.stdout)
+      else if not (String.equal output.stderr "") then
+        Error ("expected empty stderr, got: " ^ output.stderr)
+      else
+        Ok ()
+
+let test_command_output_streams_stdout_lines = fun _ctx ->
+  let seen_lines = ref [] in
+  let cmd = Command.make (self_executable ()) ~args:[ "capture-stdout-lines" ] in
+  match
+    Command.output
+      ~on_stdout_line:(fun line -> seen_lines := line :: !seen_lines)
+      cmd
+  with
+  | Error (Command.SystemError message) ->
+      Error ("expected streamed stdout helper to succeed, got: " ^ message)
+  | Ok output ->
+      let actual_lines = List.reverse !seen_lines in
+      let expected_lines = [ "first line\n"; "second line\n"; "third line\n" ] in
+      let same_lines =
+        if not (Int.equal (List.length actual_lines) (List.length expected_lines)) then
+          false
+        else
+          List.zip actual_lines expected_lines
+          |> List.for_all (fun (actual, expected) -> String.equal actual expected)
+      in
+      if not (Int.equal output.status 0) then
+        Error ("expected streamed helper to exit 0, got " ^ Int.to_string output.status)
+      else if not same_lines then
+        Error ("unexpected streamed lines: " ^ String.concat "" actual_lines)
+      else if not (String.equal output.stdout streamed_stdout_payload) then
+        Error ("unexpected streamed stdout payload: " ^ output.stdout)
       else if not (String.equal output.stderr "") then
         Error ("expected empty stderr, got: " ^ output.stderr)
       else
@@ -148,6 +180,7 @@ let test_command_output_handles_parallel_fast_exit_commands = fun _ctx ->
 let meta_tests = [
   Test.case "command output drains stdout and stderr without deadlock" test_command_output_drains_stdout_and_stderr;
   Test.case "command output handles delayed shell stdout" test_command_output_handles_delayed_shell_stdout;
+  Test.case "command output streams stdout lines" test_command_output_streams_stdout_lines;
   Test.case "command output handles parallel shell commands" test_command_output_handles_parallel_shell_commands;
   Test.case "command output handles parallel fast exit commands" test_command_output_handles_parallel_fast_exit_commands;
 ]
@@ -155,6 +188,12 @@ let meta_tests = [
 let capture_main = fun () ->
   eprint stderr_payload;
   print stdout_payload;
+  Ok ()
+
+let capture_stdout_lines_main = fun () ->
+  print "first line\n";
+  print "second line\n";
+  print "third line\n";
   Ok ()
 
 let meta_main = fun ~args ->
@@ -168,6 +207,7 @@ let meta_main = fun ~args ->
 let main = fun ~args ->
   match args with
   | _ :: "capture-both-streams" :: _ -> capture_main ()
+  | _ :: "capture-stdout-lines" :: _ -> capture_stdout_lines_main ()
   | _ -> meta_main ~args
 
 let () = Runtime.run ~main ~args:Env.args ()
