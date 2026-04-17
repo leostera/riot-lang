@@ -6,6 +6,12 @@ Root
 ML(Kernel__Aliases)
   deps: []
 
+ML(Kernel__IO__Aliases)
+  deps: []
+
+ML(Kernel__IO__Iovec__Aliases)
+  deps: []
+
 ML(Kernel__Async__Aliases)
   deps: []
 
@@ -28,12 +34,6 @@ ML(Kernel__Fs__File__Aliases)
   deps: []
 
 ML(Kernel__Fs__Read_dir__Aliases)
-  deps: []
-
-ML(Kernel__Io__Aliases)
-  deps: []
-
-ML(Kernel__Io__Iovec__Aliases)
   deps: []
 
 ML(Kernel__Net__Aliases)
@@ -156,6 +156,10 @@ MLI(Kernel__System_error)
   deps:
     - ML(Kernel__Aliases)
 
+MLI(Kernel__IO__Iovec)
+  deps:
+    - ML(Kernel__IO__Iovec__Aliases)
+
 MLI(Kernel__Async__Libc)
   deps:
     - ML(Kernel__Async__Aliases)
@@ -170,10 +174,6 @@ MLI(Kernel__Async__Token)
   deps:
     - ML(Kernel__Async__Aliases)
     - ML(Kernel__Aliases)
-
-MLI(Kernel__Io__Iovec)
-  deps:
-    - ML(Kernel__Io__Iovec__Aliases)
 
 MLI(Kernel__Sync__Atomic)
   deps:
@@ -463,15 +463,15 @@ MLI(Kernel__Time__System_time__Unix)
     - ML(Kernel__Time__Aliases)
     - ML(Kernel__Aliases)
 
-ML(Kernel__Io__Iovec)
+ML(Kernel__IO__Iovec)
   deps:
     - ML(Kernel__System_error)
     - ML(Kernel__Prelude)
     - ML(Kernel__Caml_runtime)
     - ML(Kernel__Bytes)
     - ML(Kernel__Array)
-    - MLI(Kernel__Io__Iovec)
-    - ML(Kernel__Io__Iovec__Aliases)
+    - MLI(Kernel__IO__Iovec)
+    - ML(Kernel__IO__Iovec__Aliases)
 
 ML(Kernel__Unicode__Rune)
   deps:
@@ -1121,6 +1121,19 @@ MLI(Kernel__Net__Addr)
     - MLI(Kernel__Net__Addr__Unix)
     - ML(Kernel__Net__Addr__Aliases)
 
+ML(Kernel__IO__Stdio)
+  deps:
+    - ML(Kernel__System_error)
+    - ML(Kernel__String)
+    - ML(Kernel__Result)
+    - ML(Kernel__Prelude)
+    - ML(Kernel__IO__Iovec)
+    - ML(Kernel__Int)
+    - ML(Kernel__Bytes)
+    - ML(Kernel__Async)
+    - ML(Kernel__IO__Aliases)
+    - ML(Kernel__Aliases)
+
 MLI(Kernel__Fs__Events__Unix)
   deps:
     - ML(Kernel__System_error)
@@ -1130,13 +1143,6 @@ MLI(Kernel__Fs__Events__Unix)
     - ML(Kernel__Fs__Events__Aliases)
     - ML(Kernel__Fs__Aliases)
     - ML(Kernel__Aliases)
-
-MLI(Kernel__Io)
-  deps:
-    - ML(Kernel__System_error)
-    - ML(Kernel__Result)
-    - ML(Kernel__Async)
-    - ML(Kernel__Io__Aliases)
 
 MLI(Kernel__Net__Udp_socket__Unix)
   deps:
@@ -1165,6 +1171,14 @@ ML(Kernel__Net__Addr)
     - MLI(Kernel__Net__Addr)
     - ML(Kernel__Net__Addr__Aliases)
 
+MLI(Kernel__IO)
+  deps:
+    - ML(Kernel__System_error)
+    - ML(Kernel__Result)
+    - ML(Kernel__Async)
+    - ML(Kernel__IO__Stdio)
+    - ML(Kernel__IO__Aliases)
+
 ML(Kernel__Fs__Events__Unix)
   deps:
     - ML(Kernel__System_error)
@@ -1178,20 +1192,6 @@ ML(Kernel__Fs__Events__Unix)
     - ML(Kernel__Fs__Aliases)
     - ML(Kernel__Aliases)
     - MLI(Kernel__Fs__Events__Unix)
-
-ML(Kernel__Io)
-  deps:
-    - ML(Kernel__System_error)
-    - ML(Kernel__String)
-    - ML(Kernel__Result)
-    - ML(Kernel__Prelude)
-    - ML(Kernel__Option)
-    - ML(Kernel__Io__Iovec)
-    - ML(Kernel__Int)
-    - ML(Kernel__Bytes)
-    - ML(Kernel__Async)
-    - MLI(Kernel__Io)
-    - ML(Kernel__Io__Aliases)
 
 ML(Kernel__Net__Udp_socket__Unix)
   deps:
@@ -1219,6 +1219,15 @@ ML(Kernel__Time__Timer)
     - MLI(Kernel__Time__Timer)
     - ML(Kernel__Time__Timer__Aliases)
 
+ML(Kernel__IO)
+  deps:
+    - ML(Kernel__IO__Stdio)
+    - ML(Kernel__IO__Iovec)
+    - ML(Kernel__IO__Stdio)
+    - ML(Kernel__IO__Stdio)
+    - MLI(Kernel__IO)
+    - ML(Kernel__IO__Aliases)
+
 MLI(Kernel__Fs__Events)
   deps:
     - ML(Kernel__Fs__Events__Unix)
@@ -1228,28 +1237,6 @@ MLI(Kernel__Fs__Events)
     - ML(Kernel__Fs__Events__Unix)
     - MLI(Kernel__Fs__Events__Unix)
     - ML(Kernel__Fs__Events__Aliases)
-
-MLI(Kernel__Fs__File__Unix)
-  deps:
-    - ML(Kernel__System_error)
-    - ML(Kernel__Result)
-    - ML(Kernel__Path)
-    - ML(Kernel__Io)
-    - ML(Kernel__Async)
-    - ML(Kernel__Fs__File__Aliases)
-    - ML(Kernel__Fs__Aliases)
-    - ML(Kernel__Aliases)
-
-MLI(Kernel__Net__Tcp_stream__Unix)
-  deps:
-    - ML(Kernel__System_error)
-    - ML(Kernel__Net__Socket_addr)
-    - ML(Kernel__Result)
-    - ML(Kernel__Io)
-    - ML(Kernel__Async)
-    - ML(Kernel__Net__Tcp_stream__Aliases)
-    - ML(Kernel__Net__Aliases)
-    - ML(Kernel__Aliases)
 
 MLI(Kernel__Net__Udp_socket)
   deps:
@@ -1276,6 +1263,28 @@ MLI(Kernel__Time)
     - MLI(Kernel__Time__Common)
     - ML(Kernel__Time__Aliases)
 
+MLI(Kernel__Fs__File__Unix)
+  deps:
+    - ML(Kernel__System_error)
+    - ML(Kernel__Result)
+    - ML(Kernel__Path)
+    - ML(Kernel__IO)
+    - ML(Kernel__Async)
+    - ML(Kernel__Fs__File__Aliases)
+    - ML(Kernel__Fs__Aliases)
+    - ML(Kernel__Aliases)
+
+MLI(Kernel__Net__Tcp_stream__Unix)
+  deps:
+    - ML(Kernel__System_error)
+    - ML(Kernel__Net__Socket_addr)
+    - ML(Kernel__Result)
+    - ML(Kernel__IO)
+    - ML(Kernel__Async)
+    - ML(Kernel__Net__Tcp_stream__Aliases)
+    - ML(Kernel__Net__Aliases)
+    - ML(Kernel__Aliases)
+
 ML(Kernel__Fs__Events)
   deps:
     - ML(Kernel__Fs__Events__Unix)
@@ -1286,40 +1295,6 @@ ML(Kernel__Fs__Events)
     - ML(Kernel__Fs__Events__Unix)
     - MLI(Kernel__Fs__Events)
     - ML(Kernel__Fs__Events__Aliases)
-
-ML(Kernel__Fs__File__Unix)
-  deps:
-    - ML(Kernel__System_error)
-    - ML(Kernel__String)
-    - ML(Kernel__Result)
-    - ML(Kernel__Prelude)
-    - ML(Kernel__Path)
-    - ML(Kernel__Io)
-    - ML(Kernel__Int)
-    - ML(Kernel__Bytes)
-    - ML(Kernel__Async)
-    - ML(Kernel__Fs__File__Aliases)
-    - ML(Kernel__Fs__Aliases)
-    - ML(Kernel__Aliases)
-    - MLI(Kernel__Fs__File__Unix)
-
-ML(Kernel__Net__Tcp_stream__Unix)
-  deps:
-    - ML(Kernel__System_error)
-    - ML(Kernel__String)
-    - ML(Kernel__Net__Socket_addr)
-    - ML(Kernel__Result)
-    - ML(Kernel__Prelude)
-    - ML(Kernel__Option)
-    - ML(Kernel__Net__Ip_addr)
-    - ML(Kernel__Io)
-    - ML(Kernel__Int)
-    - ML(Kernel__Bytes)
-    - ML(Kernel__Async)
-    - ML(Kernel__Net__Tcp_stream__Aliases)
-    - ML(Kernel__Net__Aliases)
-    - ML(Kernel__Aliases)
-    - MLI(Kernel__Net__Tcp_stream__Unix)
 
 ML(Kernel__Net__Udp_socket)
   deps:
@@ -1345,6 +1320,40 @@ ML(Kernel__Time)
     - MLI(Kernel__Time)
     - ML(Kernel__Time__Aliases)
 
+ML(Kernel__Fs__File__Unix)
+  deps:
+    - ML(Kernel__System_error)
+    - ML(Kernel__String)
+    - ML(Kernel__Result)
+    - ML(Kernel__Prelude)
+    - ML(Kernel__Path)
+    - ML(Kernel__Int)
+    - ML(Kernel__IO)
+    - ML(Kernel__Bytes)
+    - ML(Kernel__Async)
+    - ML(Kernel__Fs__File__Aliases)
+    - ML(Kernel__Fs__Aliases)
+    - ML(Kernel__Aliases)
+    - MLI(Kernel__Fs__File__Unix)
+
+ML(Kernel__Net__Tcp_stream__Unix)
+  deps:
+    - ML(Kernel__System_error)
+    - ML(Kernel__String)
+    - ML(Kernel__Net__Socket_addr)
+    - ML(Kernel__Result)
+    - ML(Kernel__Prelude)
+    - ML(Kernel__Option)
+    - ML(Kernel__Net__Ip_addr)
+    - ML(Kernel__Int)
+    - ML(Kernel__IO)
+    - ML(Kernel__Bytes)
+    - ML(Kernel__Async)
+    - ML(Kernel__Net__Tcp_stream__Aliases)
+    - ML(Kernel__Net__Aliases)
+    - ML(Kernel__Aliases)
+    - MLI(Kernel__Net__Tcp_stream__Unix)
+
 MLI(Kernel__Fs__File)
   deps:
     - ML(Kernel__Fs__File__Unix)
@@ -1360,7 +1369,7 @@ MLI(Kernel__Net__Tcp_stream)
     - ML(Kernel__System_error)
     - ML(Kernel__Net__Socket_addr)
     - ML(Kernel__Result)
-    - ML(Kernel__Io)
+    - ML(Kernel__IO)
     - ML(Kernel__Async)
     - MLI(Kernel__Net__Tcp_stream__Unix)
     - ML(Kernel__Net__Tcp_stream__Unix)
@@ -1590,10 +1599,10 @@ MLI(Kernel)
     - ML(Kernel__Option)
     - ML(Kernel__Net)
     - ML(Kernel__List)
-    - ML(Kernel__Io)
     - ML(Kernel__Int64)
     - ML(Kernel__Int32)
     - ML(Kernel__Int)
+    - ML(Kernel__IO)
     - ML(Kernel__Fs)
     - ML(Kernel__Float)
     - ML(Kernel__Exception)
@@ -1731,10 +1740,10 @@ ML(Kernel)
     - ML(Kernel__Option)
     - ML(Kernel__Net)
     - ML(Kernel__List)
-    - ML(Kernel__Io)
     - ML(Kernel__Int64)
     - ML(Kernel__Int32)
     - ML(Kernel__Int)
+    - ML(Kernel__IO)
     - ML(Kernel__Fs)
     - ML(Kernel__Float)
     - ML(Kernel__Exception)
@@ -1857,6 +1866,8 @@ ML(Kernel)
 Library(kernel)
   deps:
     - ML(Kernel__Aliases)
+    - ML(Kernel__IO__Aliases)
+    - ML(Kernel__IO__Iovec__Aliases)
     - ML(Kernel__Async__Aliases)
     - ML(Kernel__Async__Adapter__Aliases)
     - ML(Kernel__Domain__Aliases)
@@ -1865,8 +1876,6 @@ Library(kernel)
     - ML(Kernel__Fs__Events__Aliases)
     - ML(Kernel__Fs__File__Aliases)
     - ML(Kernel__Fs__Read_dir__Aliases)
-    - ML(Kernel__Io__Aliases)
-    - ML(Kernel__Io__Iovec__Aliases)
     - ML(Kernel__Net__Aliases)
     - ML(Kernel__Net__Addr__Aliases)
     - ML(Kernel__Net__Ip_addr__Aliases)
@@ -1902,10 +1911,10 @@ Library(kernel)
     - MLI(Kernel__Prelude)
     - MLI(Kernel__Ptr)
     - MLI(Kernel__System_error)
+    - MLI(Kernel__IO__Iovec)
     - MLI(Kernel__Async__Libc)
     - MLI(Kernel__Async__Non_zero_int)
     - MLI(Kernel__Async__Token)
-    - MLI(Kernel__Io__Iovec)
     - MLI(Kernel__Sync__Atomic)
     - MLI(Kernel__Sync__Mutex)
     - MLI(Kernel__Thread__Unix)
@@ -1948,7 +1957,7 @@ Library(kernel)
     - MLI(Kernel__Time__Common)
     - MLI(Kernel__Time__Monotonic__Unix)
     - MLI(Kernel__Time__System_time__Unix)
-    - ML(Kernel__Io__Iovec)
+    - ML(Kernel__IO__Iovec)
     - ML(Kernel__Unicode__Rune)
     - MLI(Kernel__Async__Event)
     - ML(Kernel__Async__Interest)
@@ -2005,25 +2014,26 @@ Library(kernel)
     - ML(Kernel__Net__Addr__Unix)
     - ML(Kernel__Async)
     - MLI(Kernel__Net__Addr)
+    - ML(Kernel__IO__Stdio)
     - MLI(Kernel__Fs__Events__Unix)
-    - MLI(Kernel__Io)
     - MLI(Kernel__Net__Udp_socket__Unix)
     - MLI(Kernel__Time__Timer)
     - ML(Kernel__Net__Addr)
+    - MLI(Kernel__IO)
     - ML(Kernel__Fs__Events__Unix)
-    - ML(Kernel__Io)
     - ML(Kernel__Net__Udp_socket__Unix)
     - ML(Kernel__Time__Timer)
+    - ML(Kernel__IO)
     - MLI(Kernel__Fs__Events)
-    - MLI(Kernel__Fs__File__Unix)
-    - MLI(Kernel__Net__Tcp_stream__Unix)
     - MLI(Kernel__Net__Udp_socket)
     - MLI(Kernel__Time)
+    - MLI(Kernel__Fs__File__Unix)
+    - MLI(Kernel__Net__Tcp_stream__Unix)
     - ML(Kernel__Fs__Events)
-    - ML(Kernel__Fs__File__Unix)
-    - ML(Kernel__Net__Tcp_stream__Unix)
     - ML(Kernel__Net__Udp_socket)
     - ML(Kernel__Time)
+    - ML(Kernel__Fs__File__Unix)
+    - ML(Kernel__Net__Tcp_stream__Unix)
     - MLI(Kernel__Fs__File)
     - MLI(Kernel__Net__Tcp_stream)
     - ML(Kernel__Fs__File)
@@ -2050,6 +2060,8 @@ Library(kernel)
 CREATE LIBRARY OBJECTS
 
 - Kernel__Aliases.cmx
+- Kernel__IO__Aliases.cmx
+- Kernel__IO__Iovec__Aliases.cmx
 - Kernel__Async__Aliases.cmx
 - Kernel__Async__Adapter__Aliases.cmx
 - Kernel__Domain__Aliases.cmx
@@ -2058,8 +2070,6 @@ CREATE LIBRARY OBJECTS
 - Kernel__Fs__Events__Aliases.cmx
 - Kernel__Fs__File__Aliases.cmx
 - Kernel__Fs__Read_dir__Aliases.cmx
-- Kernel__Io__Aliases.cmx
-- Kernel__Io__Iovec__Aliases.cmx
 - Kernel__Net__Aliases.cmx
 - Kernel__Net__Addr__Aliases.cmx
 - Kernel__Net__Ip_addr__Aliases.cmx
@@ -2115,7 +2125,7 @@ CREATE LIBRARY OBJECTS
 - Kernel__Char.cmx
 - Kernel__List.cmx
 - Kernel__Async__Token.cmx
-- Kernel__Io__Iovec.cmx
+- Kernel__IO__Iovec.cmx
 - Kernel__Unicode__Rune.cmx
 - Kernel__Async__Interest.cmx
 - Kernel__Regex.cmx
@@ -2151,16 +2161,17 @@ CREATE LIBRARY OBJECTS
 - Kernel__Async__Poll.cmx
 - Kernel__Net__Addr__Unix.cmx
 - Kernel__Async.cmx
+- Kernel__IO__Stdio.cmx
 - Kernel__Net__Addr.cmx
 - Kernel__Fs__Events__Unix.cmx
-- Kernel__Io.cmx
 - Kernel__Net__Udp_socket__Unix.cmx
 - Kernel__Time__Timer.cmx
+- Kernel__IO.cmx
 - Kernel__Fs__Events.cmx
-- Kernel__Fs__File__Unix.cmx
-- Kernel__Net__Tcp_stream__Unix.cmx
 - Kernel__Net__Udp_socket.cmx
 - Kernel__Time.cmx
+- Kernel__Fs__File__Unix.cmx
+- Kernel__Net__Tcp_stream__Unix.cmx
 - Kernel__Fs__File.cmx
 - Kernel__Net__Tcp_stream.cmx
 - Kernel__Fs__Read_dir.cmx

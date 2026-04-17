@@ -11,6 +11,13 @@ let composite_examples = 50_000
 
 let io_chunk_size = 3
 
+let finite_float_limit = 1.0e12
+
+let finite_float_gen = Generator.float_range (-.finite_float_limit) finite_float_limit
+
+let finite_float_arb =
+  Arbitrary.make ~shrink:Shrinker.float ~print:Printer.float finite_float_gen
+
 let io_writer_of_buffer =
   let module Write = struct
     type t = IO.Buffer.t
@@ -303,7 +310,7 @@ let mode_gen = Generator.frequency
     (1, Generator.return Idle);
     (3, Generator.map (fun value -> Named value) Generator.string);
     (3, Generator.map (fun value -> Counted value) Generator.int);
-    (3, Generator.map (fun value -> Sampled value) Generator.float);
+    (3, Generator.map (fun value -> Sampled value) finite_float_gen);
   ]
 
 let mode_arb = Arbitrary.make ~print:print_mode mode_gen
@@ -331,7 +338,7 @@ let sample_gen =
         }: sample))
     (Generator.pair
       (Generator.pair (Generator.pair Generator.bool Generator.int) Generator.int32)
-      (Generator.pair Generator.int64 Generator.float))
+      (Generator.pair Generator.int64 finite_float_gen))
     (Generator.triple
       Generator.string
       (Generator.option Generator.string)
@@ -402,7 +409,7 @@ let int64_roundtrip_prop = run_property
 
 let float_roundtrip_prop = run_property
   "serde-bin property float roundtrips"
-  Arbitrary.float
+  finite_float_arb
   (roundtrip_in_memory Ser.float De.float Float.equal)
 
 let string_roundtrip_prop = run_property

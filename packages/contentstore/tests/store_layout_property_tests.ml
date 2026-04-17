@@ -6,6 +6,18 @@ let examples = 500
 
 let property_config = { Property.default_config with test_count = examples }
 
+let distinct_string_pair_arb =
+  let gen =
+    Generator.map
+      (fun (left, right) ->
+        if String.equal left right then
+          (left, right ^ "\x00")
+        else
+          (left, right))
+      (Generator.pair Generator.string Generator.string)
+  in
+  Arbitrary.make ~print:(Printer.pair Printer.string Printer.string) gen
+
 let assert_property = fun name property ->
   match Property.check ~config:property_config property with
   | Property.Success -> Ok ()
@@ -55,9 +67,8 @@ let hash_dir_is_deterministic =
           Path.equal (Contentstore.hash_dir_of store hash) (Contentstore.hash_dir_of store hash)))
 
 let distinct_hashes_have_distinct_tree_paths =
-  Property.for_all Arbitrary.(pair string string)
+  Property.for_all distinct_string_pair_arb
     (fun (left, right) ->
-      Property.assume (not (String.equal left right));
       with_store "contentstore-prop-layout-distinct" [ "objects" ]
         (fun ~tmpdir:_ ~store ->
           let left_hash = Crypto.hash_string left in

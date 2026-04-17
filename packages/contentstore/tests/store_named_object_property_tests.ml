@@ -6,6 +6,26 @@ let examples = 500
 
 let property_config = { Property.default_config with test_count = examples }
 
+let distinct_string_triple_arb =
+  let gen =
+    Generator.map
+      (fun (left_key, right_key, content) ->
+        if String.equal left_key right_key then
+          (left_key, right_key ^ "\x00", content)
+        else
+          (left_key, right_key, content))
+      (Generator.triple Generator.string Generator.string Generator.string)
+  in
+  Arbitrary.make ~print:(Printer.triple Printer.string Printer.string Printer.string) gen
+
+let string_non_empty_list_pair_arb =
+  let gen =
+    Generator.pair Generator.string (Generator.non_empty_list Generator.string)
+  in
+  Arbitrary.make
+    ~print:(Printer.pair Printer.string (Printer.list Printer.string))
+    gen
+
 let assert_property = fun name property ->
   match Property.check ~config:property_config property with
   | Property.Success -> Ok ()
@@ -59,9 +79,8 @@ let save_named_object_roundtrip =
           | Error _ -> false))
 
 let distinct_named_keys_are_isolated =
-  Property.for_all Arbitrary.(triple string string string)
+  Property.for_all distinct_string_triple_arb
     (fun (left_key, right_key, content) ->
-      Property.assume (not (String.equal left_key right_key));
       with_store "contentstore-prop-named-keys" [ "named" ]
         (fun ~tmpdir:_ ~store ->
           let left_content = "left:" ^ content in
@@ -79,9 +98,8 @@ let distinct_named_keys_are_isolated =
           | _ -> false))
 
 let named_writes_survive_reopen =
-  Property.for_all Arbitrary.(pair string (list string))
+  Property.for_all string_non_empty_list_pair_arb
     (fun (key, contents) ->
-      Property.assume (not (List.is_empty contents));
       with_store "contentstore-prop-named-reopen" [ "named" ]
         (fun ~tmpdir:_ ~store ->
           let root = Contentstore.root store in
