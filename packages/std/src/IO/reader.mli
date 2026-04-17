@@ -12,6 +12,15 @@ type ('src, 'err) read = (module Read with type t = 'src and type err = 'err)
 type ('src, 'err) buffered
 type ('src, 'err) t
 
+val make:
+  read:('src -> ?timeout:int64 -> bytes -> (int, 'err) result) ->
+  read_vectored:('src -> Kernel.IO.Iovec.t -> (int, 'err) result) ->
+  ?read_char:('src -> (char option, 'err) result) ->
+  ?read_line:('src -> (string, 'err) result) ->
+  ?read_to_string:('src -> len:int -> (string, 'err) result) ->
+  'src ->
+  ('src, 'err) t
+
 val of_read_src: ('src, 'err) read -> 'src -> ('src, 'err) t
 
 val buffered:

@@ -112,11 +112,26 @@ let make =
  fun
    ~(read : 'src -> ?timeout:int64 -> bytes -> (int, 'err) result)
    ~(read_vectored : 'src -> Iovec.t -> (int, 'err) result)
+   ?read_char
+   ?read_line
+   ?read_to_string
    (src : 'src)
  ->
-  let read_char = fun src -> default_read_char read src in
-  let read_line = fun src -> default_read_line read_char src in
-  let read_to_string = fun src ~len -> default_read_to_string read src ~len in
+  let read_char =
+    match read_char with
+    | Some read_char -> read_char
+    | None -> (fun src -> default_read_char read src)
+  in
+  let read_line =
+    match read_line with
+    | Some read_line -> read_line
+    | None -> (fun src -> default_read_line read_char src)
+  in
+  let read_to_string =
+    match read_to_string with
+    | Some read_to_string -> read_to_string
+    | None -> (fun src ~len -> default_read_to_string read src ~len)
+  in
   Reader { ops = { read; read_vectored; read_char; read_line; read_to_string }; src }
 
 let of_read_src: type src err. (src, err) read -> src -> (src, err) t = fun (module R) src ->

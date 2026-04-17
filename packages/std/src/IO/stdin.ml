@@ -333,10 +333,9 @@ let read_to_string = fun (t : t) ~len ->
 
 let to_reader = fun stdin ->
   let read_bytes = read in
-  let module Read = struct
-    type nonrec t = t
-    type err = error
-    let read = fun stdin ?timeout:_ buf -> read_bytes stdin buf
-    let read_vectored = fun stdin bufs -> read_vectored stdin bufs
-  end in
-  Reader.of_read_src (module Read) stdin
+  Reader.make
+    ~read:(fun stdin ?timeout:_ buf -> read_bytes stdin buf)
+    ~read_vectored:(fun stdin bufs -> read_vectored stdin bufs)
+    ~read_line
+    ~read_to_string
+    stdin

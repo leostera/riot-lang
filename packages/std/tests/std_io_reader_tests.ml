@@ -142,7 +142,7 @@ let test_buffered_reader_amortizes_char_reads = fun _ctx ->
   let rec loop acc =
     match IO.read_char reader with
     | Ok None -> Ok (String.concat "" (List.reverse acc))
-    | Ok (Some char) -> loop (String.make 1 char :: acc)
+    | Ok (Some char) -> loop (String.make ~len:1 ~char :: acc)
     | Error () -> Error "buffered readers should not fail for counting reader"
   in
   match loop [] with
@@ -164,6 +164,46 @@ let test_buffered_reader_read_line_uses_generic_io_surface = fun _ctx ->
   | Ok _ -> Error "buffered readers should preserve newline-terminated lines"
   | Error () -> Error "buffered readers should not fail for in-memory strings"
 
+let test_reader_make_uses_custom_line_and_string_readers = fun _ctx ->
+  let source = () in
+  let reader =
+    IO.Reader.make
+      ~read:(fun () ?timeout:_ buffer ->
+        if Bytes.length buffer = 0 then
+          Ok 0
+        else (
+          Bytes.set_unchecked buffer ~at:0 ~char:'x';
+          Ok 1
+        ))
+      ~read_vectored:(fun () bufs ->
+        if Iovec.length bufs = 0 then
+          Ok 0
+        else (
+          let buffer = Iovec.to_bytes bufs in
+          if Bytes.length buffer = 0 then
+            Ok 0
+          else (
+            Bytes.set_unchecked buffer ~at:0 ~char:'y';
+            Ok 1
+          )
+        ))
+      ~read_line:(fun () -> Ok "custom-line\n")
+      ~read_to_string:(fun () ~len ->
+        if Int.equal len 4 then
+          Ok "text"
+        else
+          Error ())
+      source
+  in
+  match IO.read_line reader with
+  | Ok "custom-line\n" -> (
+      match IO.read_to_string reader ~len:4 with
+      | Ok "text" -> Ok ()
+      | Ok _ -> Error "Reader.make should use the provided read_to_string override"
+      | Error () -> Error "Reader.make should use the provided read_to_string override")
+  | Ok _ -> Error "Reader.make should use the provided read_line override"
+  | Error () -> Error "Reader.make should use the provided read_line override"
+
 let tests = Test.[
   case "empty readers return EOF immediately" test_empty_reader_returns_zero;
   case "from_string reads small buffers sequentially" test_from_string_reads_small_buffers_sequentially;
@@ -174,6 +214,7 @@ let tests = Test.[
   case "reading into a zero-length buffer returns zero" test_zero_length_read_buffer_returns_zero;
   case "buffered readers amortize char reads" test_buffered_reader_amortizes_char_reads;
   case "buffered readers expose line reads through Std.IO" test_buffered_reader_read_line_uses_generic_io_surface;
+  case "Reader.make accepts custom line and string readers" test_reader_make_uses_custom_line_and_string_readers;
 ]
 
 let () =
