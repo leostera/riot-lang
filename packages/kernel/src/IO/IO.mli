@@ -49,6 +49,15 @@ module Stdout: sig
 
   val write: ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
 
+  val write_pair:
+    ?left_pos:int ->
+    ?left_len:int ->
+    bytes ->
+    ?right_pos:int ->
+    ?right_len:int ->
+    bytes ->
+    (int, error) Result.t
+
   val write_vectored: Iovec.t -> (int, error) Result.t
 
   val flush: unit -> (unit, error) Result.t
@@ -63,6 +72,15 @@ module Stderr: sig
   val error_to_string: error -> string
 
   val write: ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
+
+  val write_pair:
+    ?left_pos:int ->
+    ?left_len:int ->
+    bytes ->
+    ?right_pos:int ->
+    ?right_len:int ->
+    bytes ->
+    (int, error) Result.t
 
   val write_vectored: Iovec.t -> (int, error) Result.t
 

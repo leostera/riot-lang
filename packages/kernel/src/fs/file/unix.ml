@@ -148,6 +148,10 @@ module FFI = struct
 
   external write: t -> bytes -> int -> int -> (int, int) Result.t = "kernel_new_fs_file_write"
 
+  external write_pair:
+    t -> bytes -> int -> int -> bytes -> int -> int -> (int, int) Result.t
+    = "kernel_new_fs_file_write_pair_bytecode" "kernel_new_fs_file_write_pair"
+
   external readv: t -> IO.Iovec.t -> (int, int) Result.t = "kernel_new_fs_file_readv"
 
   external writev: t -> IO.Iovec.t -> (int, int) Result.t = "kernel_new_fs_file_writev"
@@ -269,6 +273,22 @@ let write = fun fd ?(pos = 0) ?len buf ->
   in
   let* () = validate_slice buf ~pos ~len in
   FFI.write fd buf pos len |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+
+let write_pair = fun fd ?(left_pos = 0) ?left_len left ?(right_pos = 0) ?right_len right ->
+  let left_len =
+    match left_len with
+    | Some len -> len
+    | None -> Bytes.length left - left_pos
+  in
+  let right_len =
+    match right_len with
+    | Some len -> len
+    | None -> Bytes.length right - right_pos
+  in
+  let* () = validate_slice left ~pos:left_pos ~len:left_len in
+  let* () = validate_slice right ~pos:right_pos ~len:right_len in
+  FFI.write_pair fd left left_pos left_len right right_pos right_len
+  |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
 let read_vectored = fun fd iovecs ->
   FFI.readv fd iovecs |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))

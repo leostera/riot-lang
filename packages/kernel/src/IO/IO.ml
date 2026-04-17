@@ -18,6 +18,10 @@ module FFI = struct
 
   external write: int -> bytes -> int -> int -> (int, int) Result.t = "kernel_new_fs_file_write"
 
+  external write_pair:
+    int -> bytes -> int -> int -> bytes -> int -> int -> (int, int) Result.t
+    = "kernel_new_fs_file_write_pair_bytecode" "kernel_new_fs_file_write_pair"
+
   external readv: int -> Iovec.t -> (int, int) Result.t = "kernel_new_fs_file_readv"
 
   external writev: int -> Iovec.t -> (int, int) Result.t = "kernel_new_fs_file_writev"
@@ -107,6 +111,29 @@ module Stdout = struct
     |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
     | Result.Error { pos; len; buffer_len } -> Result.Error (InvalidSlice { pos; len; buffer_len })
 
+  let write_pair = fun ?left_pos ?left_len left ?right_pos ?right_len right ->
+    let left_pos = Option.unwrap_or left_pos ~default:0 in
+    let left_len =
+      match left_len with
+      | Some len -> len
+      | None -> Bytes.length left - left_pos
+    in
+    let right_pos = Option.unwrap_or right_pos ~default:0 in
+    let right_len =
+      match right_len with
+      | Some len -> len
+      | None -> Bytes.length right - right_pos
+    in
+    match validate_slice left ~pos:left_pos ~len:left_len with
+    | Result.Ok () -> (
+        match validate_slice right ~pos:right_pos ~len:right_len with
+        | Result.Ok () ->
+            FFI.write_pair 1 left left_pos left_len right right_pos right_len
+            |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+        | Result.Error { pos; len; buffer_len } -> Result.Error (InvalidSlice { pos; len; buffer_len })
+      )
+    | Result.Error { pos; len; buffer_len } -> Result.Error (InvalidSlice { pos; len; buffer_len })
+
   let write_vectored = fun iovec ->
     FFI.writev 1 iovec |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
 
@@ -144,6 +171,29 @@ module Stderr = struct
     match validate_slice buffer ~pos ~len with
     | Result.Ok () -> FFI.write 2 buffer pos len
     |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+    | Result.Error { pos; len; buffer_len } -> Result.Error (InvalidSlice { pos; len; buffer_len })
+
+  let write_pair = fun ?left_pos ?left_len left ?right_pos ?right_len right ->
+    let left_pos = Option.unwrap_or left_pos ~default:0 in
+    let left_len =
+      match left_len with
+      | Some len -> len
+      | None -> Bytes.length left - left_pos
+    in
+    let right_pos = Option.unwrap_or right_pos ~default:0 in
+    let right_len =
+      match right_len with
+      | Some len -> len
+      | None -> Bytes.length right - right_pos
+    in
+    match validate_slice left ~pos:left_pos ~len:left_len with
+    | Result.Ok () -> (
+        match validate_slice right ~pos:right_pos ~len:right_len with
+        | Result.Ok () ->
+            FFI.write_pair 2 left left_pos left_len right right_pos right_len
+            |> Result.map_err ~fn:(fun code -> System (System_error.from_code code))
+        | Result.Error { pos; len; buffer_len } -> Result.Error (InvalidSlice { pos; len; buffer_len })
+      )
     | Result.Error { pos; len; buffer_len } -> Result.Error (InvalidSlice { pos; len; buffer_len })
 
   let write_vectored = fun iovec ->

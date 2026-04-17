@@ -246,6 +246,48 @@ CAMLprim value kernel_new_fs_file_write(value fd_val, value buffer_val, value po
   CAMLreturn(kernel_new_result_ok(Val_int(result)));
 }
 
+CAMLprim value kernel_new_fs_file_write_pair(
+  value fd_val,
+  value left_buffer_val,
+  value left_pos_val,
+  value left_len_val,
+  value right_buffer_val,
+  value right_pos_val,
+  value right_len_val) {
+  CAMLparam5(fd_val, left_buffer_val, left_pos_val, left_len_val, right_buffer_val);
+  CAMLxparam2(right_pos_val, right_len_val);
+
+  struct iovec iovecs[2];
+  ssize_t result;
+
+  iovecs[0].iov_base = Bytes_val(left_buffer_val) + Int_val(left_pos_val);
+  iovecs[0].iov_len = (size_t)Int_val(left_len_val);
+  iovecs[1].iov_base = Bytes_val(right_buffer_val) + Int_val(right_pos_val);
+  iovecs[1].iov_len = (size_t)Int_val(right_len_val);
+
+  caml_enter_blocking_section();
+  result = writev(Int_val(fd_val), iovecs, 2);
+  caml_leave_blocking_section();
+
+  if (result == -1) {
+    CAMLreturn(kernel_new_result_errno());
+  }
+
+  CAMLreturn(kernel_new_result_ok(Val_int(result)));
+}
+
+CAMLprim value kernel_new_fs_file_write_pair_bytecode(value *argv, int argn) {
+  (void)argn;
+  return kernel_new_fs_file_write_pair(
+    argv[0],
+    argv[1],
+    argv[2],
+    argv[3],
+    argv[4],
+    argv[5],
+    argv[6]);
+}
+
 CAMLprim value kernel_new_fs_file_readv(value fd_val, value segments_val) {
   CAMLparam2(fd_val, segments_val);
 

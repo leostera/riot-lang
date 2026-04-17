@@ -145,31 +145,117 @@ let ref = fun value -> Sync.Cell.create value
 
 let cell = fun value -> Sync.Cell.create value
 
-let print = fun message ->
-  let bytes = Kernel.Bytes.from_string message in
-  (
-    match Kernel.IO.Stdout.write bytes with
-    | Result.Ok _written -> ()
-    | Result.Error error -> panic (Kernel.IO.Stdout.error_to_string error)
-  );
-  match Kernel.IO.Stdout.flush () with
-  | Result.Ok () -> ()
-  | Result.Error error -> panic (Kernel.IO.Stdout.error_to_string error)
+external bytes_unsafe_of_string: string -> bytes = "%bytes_of_string"
 
-let println = fun message -> print (message ^ "\n")
+let newline = bytes_unsafe_of_string "\n"
+
+let write_stdout_bytes = fun bytes ~len ->
+  let rec loop pos remaining =
+    if remaining > 0 then
+      match Kernel.IO.Stdout.write ~pos ~len:remaining bytes with
+      | Result.Ok written ->
+          if written <= 0 then
+            panic "stdout write returned 0 bytes"
+          else
+            loop (pos + written) (remaining - written)
+      | Result.Error error -> panic (Kernel.IO.Stdout.error_to_string error)
+  in
+  loop 0 len
+
+let write_stdout_pair = fun left ~left_len right ~right_len ->
+  let rec loop left_pos left_remaining right_pos right_remaining =
+    let remaining = left_remaining + right_remaining in
+    if remaining > 0 then
+      match
+        Kernel.IO.Stdout.write_pair
+          ~left_pos
+          ~left_len:left_remaining
+          left
+          ~right_pos
+          ~right_len:right_remaining
+          right
+      with
+      | Result.Ok written ->
+          if written <= 0 then
+            panic "stdout write_pair returned 0 bytes"
+          else
+            let left_written =
+              if written < left_remaining then
+                written
+              else
+                left_remaining
+            in
+            let right_written = written - left_written in
+            loop
+              (left_pos + left_written)
+              (left_remaining - left_written)
+              (right_pos + right_written)
+              (right_remaining - right_written)
+      | Result.Error error -> panic (Kernel.IO.Stdout.error_to_string error)
+  in
+  loop 0 left_len 0 right_len
+
+let write_stderr_bytes = fun bytes ~len ->
+  let rec loop pos remaining =
+    if remaining > 0 then
+      match Kernel.IO.Stderr.write ~pos ~len:remaining bytes with
+      | Result.Ok written ->
+          if written <= 0 then
+            panic "stderr write returned 0 bytes"
+          else
+            loop (pos + written) (remaining - written)
+      | Result.Error error -> panic (Kernel.IO.Stderr.error_to_string error)
+  in
+  loop 0 len
+
+let write_stderr_pair = fun left ~left_len right ~right_len ->
+  let rec loop left_pos left_remaining right_pos right_remaining =
+    let remaining = left_remaining + right_remaining in
+    if remaining > 0 then
+      match
+        Kernel.IO.Stderr.write_pair
+          ~left_pos
+          ~left_len:left_remaining
+          left
+          ~right_pos
+          ~right_len:right_remaining
+          right
+      with
+      | Result.Ok written ->
+          if written <= 0 then
+            panic "stderr write_pair returned 0 bytes"
+          else
+            let left_written =
+              if written < left_remaining then
+                written
+              else
+                left_remaining
+            in
+            let right_written = written - left_written in
+            loop
+              (left_pos + left_written)
+              (left_remaining - left_written)
+              (right_pos + right_written)
+              (right_remaining - right_written)
+      | Result.Error error -> panic (Kernel.IO.Stderr.error_to_string error)
+  in
+  loop 0 left_len 0 right_len
+
+let print = fun message ->
+  let bytes = bytes_unsafe_of_string message in
+  write_stdout_bytes bytes ~len:(String.length message)
 
 let eprint = fun message ->
-  let bytes = Kernel.Bytes.from_string message in
-  (
-    match Kernel.IO.Stderr.write bytes with
-    | Result.Ok _written -> ()
-    | Result.Error error -> panic (Kernel.IO.Stderr.error_to_string error)
-  );
-  match Kernel.IO.Stderr.flush () with
-  | Result.Ok () -> ()
-  | Result.Error error -> panic (Kernel.IO.Stderr.error_to_string error)
+  let bytes = bytes_unsafe_of_string message in
+  write_stderr_bytes bytes ~len:(String.length message)
 
-let eprintln = fun message -> eprint (message ^ "\n")
+let println = fun message ->
+  let bytes = bytes_unsafe_of_string message in
+  write_stdout_pair bytes ~left_len:(String.length message) newline ~right_len:1
+
+let eprintln = fun message ->
+  let bytes = bytes_unsafe_of_string message in
+  write_stderr_pair bytes ~left_len:(String.length message) newline ~right_len:1
 
 let todo = fun msg -> panic ("TODO: " ^ msg)
 
