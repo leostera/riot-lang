@@ -82,6 +82,7 @@ type test_event =
       stdout_bytes: int;
       stderr_bytes: int
     }
+  | SuiteProgress of { suite: suite_binary; event: Data.Json.t }
   | ParsingSuiteOutput of { suite: suite_binary; binary_path: Path.t }
   | SuiteCompleted of {
       suite: suite_binary;

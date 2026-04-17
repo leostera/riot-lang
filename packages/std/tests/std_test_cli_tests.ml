@@ -1,4 +1,5 @@
 open Std
+open Propane
 module Test = Std.Test
 
 let flaky_counter = Sync.Atomic.make 0
@@ -6,7 +7,9 @@ let flaky_counter = Sync.Atomic.make 0
 let sample_tests = [
   Test.case ~size:Test.Large "alpha_large" (fun _ctx -> Ok ());
   Test.case "beta" (fun _ctx -> Ok ());
-  Test.property "gamma_property" ~examples:7 (fun _ctx -> Ok ());
+  Propane.property "gamma_property" Arbitrary.int (fun _ -> true);
+  Test.case "inline_snapshot_probe"
+    (fun ctx -> Test.Snapshot.assert_inline_text ~ctx ~actual:"inline snapshot\n" ~expected:"inline snapshot\n");
   Test.case ~size:Test.Large "middle_large_case" (fun _ctx -> Ok ());
   Test.case ~reliability:Test.(Flaky { retry_attempts = 2 }) "flaky_then_ok"
     (fun _ctx ->
@@ -79,7 +82,12 @@ let listed_test_fields_from_json = fun stdout ->
   | _ -> []
 
 let run_sample_capture = fun args ->
-  let cmd = Command.make (self_executable ()) ~args:("sample" :: args) in
+  let cmd =
+    Command.make
+      (self_executable ())
+      ~env:[ ("PROPANE_TESTS", "7") ]
+      ~args:("sample" :: args)
+  in
   Command.output cmd |> Result.expect ~msg:"failed to run sample test cli"
 
 let test_list_tests_lists_all_cases = fun _ctx ->
@@ -89,7 +97,16 @@ let test_list_tests_lists_all_cases = fun _ctx ->
   else
     let names = split_lines output.stdout |> List.sort ~compare:String.compare in
     let expected =
-      [ "alpha_large"; "beta"; "gamma_property"; "middle_large_case"; "flaky_then_ok"; "timeout_probe"; "after_timeout" ]
+      [
+        "alpha_large";
+        "beta";
+        "gamma_property";
+        "inline_snapshot_probe";
+        "middle_large_case";
+        "flaky_then_ok";
+        "timeout_probe";
+        "after_timeout"
+      ]
     |> List.sort ~compare:String.compare in
     if names = expected then
       Ok ()
@@ -188,7 +205,7 @@ let test_run_tests_small_flag_filters_small_tests = fun _ctx ->
   else
     let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
     let expected =
-      [ "beta"; "gamma_property"; "flaky_then_ok"; "timeout_probe"; "after_timeout" ]
+      [ "beta"; "gamma_property"; "inline_snapshot_probe"; "flaky_then_ok"; "timeout_probe"; "after_timeout" ]
       |> List.sort ~compare:String.compare in
     if names = expected then
       Ok ()
@@ -319,6 +336,43 @@ let test_run_tests_json_emits_property_metadata = fun _ctx ->
         Error "expected property test metadata in TestCaseStarted event"
   | _ -> Error "expected a TestCaseStarted event for gamma_property"
 
+let test_run_tests_json_emits_property_progress = fun _ctx ->
+  let events = parse_json_lines (run_sample_capture [ "run-tests"; "gamma_property"; "--json" ]).stdout in
+  let progress_events =
+    events
+    |> List.filter_map
+      ~fn:(fun json ->
+        match (json_type json, Data.Json.get_field "progress_type" json) with
+        | (Some "TestCaseProgress", Some (Data.Json.String progress_type)) -> Some progress_type
+        | _ -> None)
+  in
+  let property_passes =
+    List.filter progress_events ~fn:(fun progress_type ->
+      String.equal progress_type "property_iteration_passed")
+  in
+  if Int.equal (List.length property_passes) 7 then
+    Ok ()
+  else
+    Error ("expected 7 property progress events, got: " ^ String.concat ", " progress_events)
+
+let test_run_tests_json_emits_snapshot_progress = fun _ctx ->
+  let events = parse_json_lines (run_sample_capture [ "run-tests"; "inline_snapshot_probe"; "--json" ]).stdout in
+  let progress_events =
+    events
+    |> List.filter_map
+      ~fn:(fun json ->
+        match (json_type json, Data.Json.get_field "progress_type" json) with
+        | (Some "TestCaseProgress", Some (Data.Json.String progress_type)) -> Some progress_type
+        | _ -> None)
+  in
+  if
+    List.contains progress_events ~value:"snapshot_assertion_started"
+    && List.contains progress_events ~value:"snapshot_assertion_matched"
+  then
+    Ok ()
+  else
+    Error ("expected snapshot progress events, got: " ^ String.concat ", " progress_events)
+
 let test_run_tests_json_emits_heartbeat_for_long_tests = fun _ctx ->
   let events = parse_json_lines (run_sample_capture [ "run-tests"; "timeout_probe"; "--json" ]).stdout in
   if List.exists (fun json -> json_type json = Some "TestCaseHeartbeat") events then
@@ -334,7 +388,7 @@ let test_run_tests_timeout_does_not_abort_suite = fun _ctx ->
   else
     let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
     let expected =
-      [ "beta"; "gamma_property"; "flaky_then_ok"; "timeout_probe"; "after_timeout" ]
+      [ "beta"; "gamma_property"; "inline_snapshot_probe"; "flaky_then_ok"; "timeout_probe"; "after_timeout" ]
       |> List.sort ~compare:String.compare in
     if not (names = expected) then
       Error ("expected suite to continue after timeout, got: " ^ String.concat ", " names)
@@ -373,6 +427,8 @@ let meta_tests = [
   Test.case "run-tests --small-timeout-ms reports timed out tests" test_run_tests_small_timeout_reports_timed_out;
   Test.case "run-tests --json emits lifecycle events" test_run_tests_json_emits_lifecycle_events;
   Test.case "run-tests --json emits property metadata" test_run_tests_json_emits_property_metadata;
+  Test.case "run-tests --json emits property progress" test_run_tests_json_emits_property_progress;
+  Test.case "run-tests --json emits snapshot progress" test_run_tests_json_emits_snapshot_progress;
   Test.case "run-tests --json emits heartbeat for long tests" test_run_tests_json_emits_heartbeat_for_long_tests;
   Test.case "run-tests timeout does not abort suite" test_run_tests_timeout_does_not_abort_suite;
 ]

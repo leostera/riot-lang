@@ -244,17 +244,21 @@ let stamp_json_event = fun ~command_started_at ~duration_us (event: Test_runtime
   match json with
   | Data.Json.Object fields ->
       let elapsed_us = event_elapsed_us ~command_started_at in
-      let duration_us =
+      let normalized_duration_us =
         match duration_us with
         | Some duration_us -> duration_us
         | None -> Option.unwrap_or ~default:0 (json_int_field "duration_us" fields)
       in
-      let fields = upsert_int_field "duration_us" duration_us fields in
+      let fields =
+        match event with
+        | Test_runtime.SuiteProgress _ -> upsert_int_field "command_emitted_at_us" elapsed_us fields
+        | _ -> upsert_int_field "duration_us" normalized_duration_us fields
+      in
       let fields =
         match event with
         | Test_runtime.RunningSuite _ -> upsert_int_field "started_at_us" elapsed_us fields
         | Test_runtime.SuiteCompleted _ -> fields
-        |> upsert_int_field "started_at_us" (Int.max 0 (elapsed_us - duration_us))
+        |> upsert_int_field "started_at_us" (Int.max 0 (elapsed_us - normalized_duration_us))
         |> upsert_int_field "completed_at_us" elapsed_us
         | Test_runtime.Summary _ -> fields
         |> upsert_int_field "started_at_us" 0
@@ -267,6 +271,7 @@ let stamp_json_event = fun ~command_started_at ~duration_us (event: Test_runtime
         | Test_runtime.ExecutingSuiteBinary _
         | Test_runtime.SuiteBinaryFinished _
         | Test_runtime.ParsingSuiteOutput _ -> upsert_int_field "emitted_at_us" elapsed_us fields
+        | Test_runtime.SuiteProgress _ -> fields
       in
       Data.Json.Object fields
   | other -> other
@@ -543,7 +548,8 @@ let write_test_event = fun ~(suite_labels: suite_source_label_entry list) ~(timi
       ()
   | Test_runtime.ExecutingSuiteBinary _
   | Test_runtime.SuiteBinaryFinished _
-  | Test_runtime.ParsingSuiteOutput _ -> ()
+  | Test_runtime.ParsingSuiteOutput _
+  | Test_runtime.SuiteProgress _ -> ()
   | Test_runtime.SuiteCompleted {
     suite;
     stdout;

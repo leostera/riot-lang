@@ -36,6 +36,76 @@ let descriptor_fields = fun (test: Runner.test_descriptor) ->
   @ event_test_type_fields test.test_type
   @ reliability_fields test.reliability
 
+let snapshot_mode_to_json = function
+  | Test_context.External -> Data.Json.String "external"
+  | Test_context.Inline -> Data.Json.String "inline"
+
+let snapshot_format_to_json = function
+  | Test_context.Text -> Data.Json.String "text"
+  | Test_context.Json -> Data.Json.String "json"
+
+let snapshot_reason_to_json = function
+  | Test_context.Missing_approved -> Data.Json.String "missing_approved"
+  | Test_context.Pending_exists -> Data.Json.String "pending_exists"
+  | Test_context.Mismatch -> Data.Json.String "mismatch"
+
+let optional_path_fields = fun name value ->
+  match value with
+  | Some path -> [ (name, Data.Json.String (Path.to_string path)) ]
+  | None -> []
+
+let progress_fields = function
+  | Test_context.PropertyIterationPassed { current; total; size } -> [
+    ("progress_type", Data.Json.String "property_iteration_passed");
+    ("current", Data.Json.Int current);
+    ("total", Data.Json.Int total);
+    ("size_value", Data.Json.Int size);
+  ]
+  | Test_context.PropertyAssumptionRejected { current; total; size; rejected_count } -> [
+    ("progress_type", Data.Json.String "property_assumption_rejected");
+    ("current", Data.Json.Int current);
+    ("total", Data.Json.Int total);
+    ("size_value", Data.Json.Int size);
+    ("rejected_count", Data.Json.Int rejected_count);
+  ]
+  | Test_context.PropertyCounterExampleFound { current; total; size } -> [
+    ("progress_type", Data.Json.String "property_counter_example_found");
+    ("current", Data.Json.Int current);
+    ("total", Data.Json.Int total);
+    ("size_value", Data.Json.Int size);
+  ]
+  | Test_context.PropertyShrinkStep { current; total; step; max_steps } -> [
+    ("progress_type", Data.Json.String "property_shrink_step");
+    ("current", Data.Json.Int current);
+    ("total", Data.Json.Int total);
+    ("step", Data.Json.Int step);
+    ("max_steps", Data.Json.Int max_steps);
+  ]
+  | Test_context.SnapshotAssertionStarted { mode; format; approved_path; pending_path } ->
+      [
+        ("progress_type", Data.Json.String "snapshot_assertion_started");
+        ("snapshot_mode", snapshot_mode_to_json mode);
+        ("snapshot_format", snapshot_format_to_json format);
+      ]
+      @ optional_path_fields "approved_path" approved_path
+      @ optional_path_fields "pending_path" pending_path
+  | Test_context.SnapshotAssertionMatched { mode; format; approved_path } ->
+      [
+        ("progress_type", Data.Json.String "snapshot_assertion_matched");
+        ("snapshot_mode", snapshot_mode_to_json mode);
+        ("snapshot_format", snapshot_format_to_json format);
+      ]
+      @ optional_path_fields "approved_path" approved_path
+  | Test_context.SnapshotAssertionMismatch { mode; format; approved_path; pending_path; reason } ->
+      [
+        ("progress_type", Data.Json.String "snapshot_assertion_mismatch");
+        ("snapshot_mode", snapshot_mode_to_json mode);
+        ("snapshot_format", snapshot_format_to_json format);
+        ("reason", snapshot_reason_to_json reason);
+      ]
+      @ optional_path_fields "approved_path" approved_path
+      @ optional_path_fields "pending_path" pending_path
+
 let single_result_fields = function
   | Test_result.Passed -> [ ("status", Data.Json.String "passed") ]
   | Test_result.Skipped -> [ ("status", Data.Json.String "skipped") ]
@@ -75,6 +145,15 @@ let event_to_json = function
             ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
           ]
         @ descriptor_fields test)
+  | Runner.TestProgress { test; attempt; progress } ->
+      Data.Json.Object
+        ([
+            ("type", Data.Json.String "TestCaseProgress");
+            ("attempt", Data.Json.Int attempt);
+            ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
+          ]
+        @ descriptor_fields test
+        @ progress_fields progress)
   | Runner.TestAttemptStarted { test; attempt; timeout } ->
       let timeout_fields =
         match timeout with

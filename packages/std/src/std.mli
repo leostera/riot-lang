@@ -184,6 +184,12 @@ module Diff = Diff
     - Undo/redo systems *)
 module Env = Env
 
+(** **When to use:** Exception rendering and backtrace capture
+
+    Use Exception from packages above `std` when you need exception text or
+    raw backtrace formatting without reaching into `Kernel`. *)
+module Exception = Exception
+
 (** **When to use:** Environment variables and system info
     
     Use Env for reading configuration from environment, detecting OS/arch.

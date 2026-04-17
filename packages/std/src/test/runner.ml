@@ -100,6 +100,11 @@ type test_descriptor = {
 type event =
   | SuiteStarted of { suite_name: string; total: int }
   | TestStarted of test_descriptor
+  | TestProgress of {
+      test: test_descriptor;
+      attempt: int;
+      progress: Test_context.progress
+    }
   | TestAttemptStarted of {
       test: test_descriptor;
       attempt: int;
@@ -154,6 +159,7 @@ let make_ctx = fun ~(suite_info:Reporter.suite_info) ~index (test: Test_case.t) 
     workspace_root = derive_workspace_root ~current_dir ~binary_path:suite_info.binary_path;
     package_name = derive_package_name suite_info.binary_path;
     fixture = None;
+    progress_handler = Test_context.no_progress_handler;
   }
 
 let filter_tests = fun target tests ->
@@ -197,8 +203,8 @@ let shuffle_list = fun lst ->
   Array.fold_right arr ~acc:[] ~fn:(fun item acc -> item :: acc)
 
 let render_exception_failure = fun exn ->
-  let exn = Kernel.Exception.to_string exn in
-  let bt = Kernel.Exception.raw_backtrace_to_string (Kernel.Exception.get_raw_backtrace ()) in
+  let exn = Exception.to_string exn in
+  let bt = Exception.raw_backtrace_to_string (Exception.get_raw_backtrace ()) in
   exn ^ "\n\n" ^ bt
 
 let test_timeout_for = fun policy (test: Test_case.t) ->
@@ -243,6 +249,11 @@ let wait_for_start = fun () ->
 
 let run_single_attempt = fun ~ctx ~on_event ~test_info (test: Test_case.t) ~attempt ~timeout ->
   on_event (TestAttemptStarted { test = test_info; attempt; timeout });
+  let ctx =
+    Test_context.with_progress_handler
+      ctx
+      (fun progress -> on_event (TestProgress { test = test_info; attempt; progress }))
+  in
   let outcome: ((unit, string) result option) Sync.Atomic.t = Sync.Atomic.make None in
   let child =
     spawn
@@ -371,7 +382,7 @@ let run_single_test = fun reporter ~suite_info ~policy ~on_event index (test: Te
   result
 
 let run_tests = fun ~config tests ->
-  Kernel.Exception.record_backtrace true;
+  Exception.record_backtrace true;
   let filtered_tests = filter_tests config.target tests in
   let tests_to_run =
     match config.mode with

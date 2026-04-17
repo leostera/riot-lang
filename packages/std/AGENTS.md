@@ -44,6 +44,8 @@
 38. Keep `Std.IO.stdout ()` and `Std.IO.stderr ()` returning `Writer.t` values layered over the existing stdio modules. That symmetry is the base for future reader/writer composition like `pipe`, so do not force callers back into ad hoc writer wrappers for common stdout/stderr flows.
 39. Keep `Std.IO.Reader` source ops limited to `read` and `read_vectored`. Higher-level reads such as `read_char`, `read_line`, and `read_to_string` should derive uniformly from those base ops instead of letting individual readers invent private semantics. Buffered stdio adapters should still treat empty vectored writes as no-ops so the top-level `Writer` surface behaves consistently across in-memory and stdio-backed sinks.
 40. `Std.Test.Cli run-tests --json` is a JSONL lifecycle stream, not a single JSON object. Emit per-suite and per-case progress before the final `TestSummary` line, reserve the top-level `"type"` field for event names, keep per-case metadata under fields like `"test_type"`, and treat timed out tests as ordinary case results so the harness continues running the rest of the suite.
+41. Keep `Std.Test` case-level progress structured. Property runners and snapshot helpers should emit shared `Test.Context.progress` values so `Std.Test.Cli` can stream `TestCaseProgress` events uniformly instead of package-specific ad hoc logs.
+42. Code above `std/src/runtime` should use `Std.Exception`, not `Kernel.Exception`. Keep the public backtrace/exception helpers in `Std` so higher layers stay off the kernel boundary.
 
 ## Validate
 

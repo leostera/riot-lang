@@ -15,6 +15,7 @@ let dummy_ctx: Test.ctx = {
   workspace_root = None;
   package_name = Some "propane";
   fixture = None;
+  progress_handler = Test.Context.no_progress_handler;
 }
 
 let point_arb =

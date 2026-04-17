@@ -10,6 +10,7 @@ type ctx = Test_context.t = {
   workspace_root: Path.t option;
   package_name: string option;
   fixture: Test_context.fixture option;
+  progress_handler: Test_context.progress_handler;
 }
 
 (** Helpers for working with test contexts and fixtures. *)
@@ -21,9 +22,63 @@ module Context: sig
     name: string;
     snapshot_path: Path.t option;
   }
+  type snapshot_mode = Test_context.snapshot_mode =
+    | External
+    | Inline
+  type snapshot_format = Test_context.snapshot_format =
+    | Text
+    | Json
+  type snapshot_mismatch_reason = Test_context.snapshot_mismatch_reason =
+    | Missing_approved
+    | Pending_exists
+    | Mismatch
+  type progress = Test_context.progress =
+    | PropertyIterationPassed of {
+        current: int;
+        total: int;
+        size: int;
+      }
+    | PropertyAssumptionRejected of {
+        current: int;
+        total: int;
+        size: int;
+        rejected_count: int;
+      }
+    | PropertyCounterExampleFound of {
+        current: int;
+        total: int;
+        size: int;
+      }
+    | PropertyShrinkStep of {
+        current: int;
+        total: int;
+        step: int;
+        max_steps: int;
+      }
+    | SnapshotAssertionStarted of {
+        mode: snapshot_mode;
+        format: snapshot_format;
+        approved_path: Path.t option;
+        pending_path: Path.t option;
+      }
+    | SnapshotAssertionMatched of {
+        mode: snapshot_mode;
+        format: snapshot_format;
+        approved_path: Path.t option;
+      }
+    | SnapshotAssertionMismatch of {
+        mode: snapshot_mode;
+        format: snapshot_format;
+        approved_path: Path.t option;
+        pending_path: Path.t option;
+        reason: snapshot_mismatch_reason;
+      }
 
   (** Attach fixture metadata to a test context. *)
   val with_fixture: t -> fixture -> t
+  val with_progress_handler: t -> Test_context.progress_handler -> t
+  val emit_progress: t -> progress -> unit
+  val no_progress_handler: Test_context.progress_handler
 end
 
 (** Snapshot assertions for golden-file and inline snapshots. *)
@@ -47,7 +102,7 @@ type test_case = Test_case.t
 
 (** [case name fn] creates a regular unit test. *)
 val case:
-  ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) Kernel.result) -> test_case
+  ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) result) -> test_case
 
 (** [property name ~examples fn] creates a property test.
     Use this for property-based tests to show the number of examples tested.
@@ -65,12 +120,12 @@ val property:
   ?reliability:reliability ->
   string ->
   examples:int ->
-  (ctx -> (unit, string) Kernel.result) ->
+  (ctx -> (unit, string) result) ->
   test_case
 
 (** [skip name fn] creates a skipped test. *)
 val skip:
-  ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) Kernel.result) -> test_case
+  ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) result) -> test_case
 
 (** [todo name] creates a placeholder test marked as todo. *)
 val todo: ?size:size -> ?reliability:reliability -> string -> test_case
@@ -79,13 +134,13 @@ val todo: ?size:size -> ?reliability:reliability -> string -> test_case
 val assert_equal: expected:'a -> actual:'a -> unit
 
 (** Assert that a result is [Error _]. Raises on success. *)
-val assert_error: ('a, 'b) Kernel.result -> unit
+val assert_error: ('a, 'b) result -> unit
 
 (** Assert that a boolean is [false]. Raises otherwise. *)
 val assert_false: bool -> unit
 
 (** Assert that a result is [Ok _]. Raises on error. *)
-val assert_ok: ('a, 'b) Kernel.result -> unit
+val assert_ok: ('a, 'b) result -> unit
 
 (** Assert that a boolean is [true]. Raises otherwise. *)
 val assert_true: bool -> unit
@@ -97,5 +152,5 @@ module Cli: sig
     name:string ->
     tests:test_case list ->
     args:string list ->
-    (unit, Runtime.Actor.exit_reason) Kernel.result
+    (unit, Runtime.Actor.exit_reason) result
 end

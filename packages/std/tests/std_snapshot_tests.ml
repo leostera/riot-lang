@@ -15,9 +15,15 @@ let make_ctx = fun ?fixture ?(test_name = "snapshot_test") workspace_root ->
     workspace_root = Some workspace_root;
     package_name = Some "std";
     fixture;
+    progress_handler = Test.Context.no_progress_handler;
   }
   in
   ctx
+
+let make_progress_ctx = fun ?fixture ?test_name workspace_root progress_handler ->
+  Test.Context.with_progress_handler
+    (make_ctx ?fixture ?test_name workspace_root)
+    progress_handler
 
 let snapshot_path = fun workspace_root test_name ->
   Path.(workspace_root
@@ -160,6 +166,71 @@ let test_inline_json_snapshot_canonicalizes_object_keys =
         ~actual:(Data.Json.obj [ ("b", Data.Json.int 2); ("a", Data.Json.int 1) ])
         ~expected:(Data.Json.obj [ ("a", Data.Json.int 1); ("b", Data.Json.int 2) ]))
 
+let test_json_snapshot_emits_json_progress =
+  Test.case "json snapshot emits json progress"
+    (fun _ctx ->
+      with_tempdir_result "snapshot_json_progress"
+        (fun workspace_root ->
+          let approved = snapshot_path workspace_root "json_progress" in
+          match Fs.create_dir_all (Path.dirname approved) with
+          | Error err -> Error (IO.error_message err)
+          | Ok () -> (
+              match
+                Fs.write
+                  (Data.Json.obj [ ("a", Data.Json.int 1); ("b", Data.Json.int 2) ] |> Data.Json.to_string_pretty)
+                  approved
+              with
+              | Error err -> Error (IO.error_message err)
+              | Ok () ->
+                  let events = ref [] in
+                  let ctx =
+                    make_progress_ctx
+                      ~test_name:"json_progress"
+                      workspace_root
+                      (fun progress -> events := progress :: !events)
+                  in
+                  match
+                    Test.Snapshot.assert_json
+                      ~ctx
+                      ~actual:(Data.Json.obj [ ("b", Data.Json.int 2); ("a", Data.Json.int 1) ])
+                  with
+                  | Error msg -> Error msg
+                  | Ok () ->
+                      match List.reverse !events with
+                      | [
+                       Test.Context.SnapshotAssertionStarted { format = Test.Context.Json; _ };
+                       Test.Context.SnapshotAssertionMatched { format = Test.Context.Json; _ };
+                      ] -> Ok ()
+                      | _ -> Error "expected external JSON snapshot progress events to use json format"
+            )))
+
+let test_inline_json_snapshot_emits_json_progress =
+  Test.case "inline json snapshot emits json progress"
+    (fun _ctx ->
+      with_tempdir_result "snapshot_inline_json_progress"
+        (fun workspace_root ->
+          let events = ref [] in
+          let ctx =
+            make_progress_ctx
+              ~test_name:"inline_json_progress"
+              workspace_root
+              (fun progress -> events := progress :: !events)
+          in
+          match
+            Test.Snapshot.assert_inline_json
+              ~ctx
+              ~actual:(Data.Json.obj [ ("b", Data.Json.int 2); ("a", Data.Json.int 1) ])
+              ~expected:(Data.Json.obj [ ("a", Data.Json.int 1); ("b", Data.Json.int 2) ])
+          with
+          | Error msg -> Error msg
+          | Ok () ->
+              match List.reverse !events with
+              | [
+               Test.Context.SnapshotAssertionStarted { format = Test.Context.Json; _ };
+               Test.Context.SnapshotAssertionMatched { format = Test.Context.Json; _ };
+              ] -> Ok ()
+              | _ -> Error "expected inline JSON snapshot progress events to use json format"))
+
 let test_fixture_snapshot_uses_explicit_snapshot_path =
   Test.case "fixture snapshot uses explicit snapshot path"
     (fun _ctx ->
@@ -192,6 +263,8 @@ let tests = [
   test_inline_snapshot_mismatch_reports_error;
   test_json_snapshot_canonicalizes_object_keys;
   test_inline_json_snapshot_canonicalizes_object_keys;
+  test_json_snapshot_emits_json_progress;
+  test_inline_json_snapshot_emits_json_progress;
   test_fixture_snapshot_uses_explicit_snapshot_path;
 ]
 

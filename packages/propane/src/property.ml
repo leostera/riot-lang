@@ -79,7 +79,7 @@ let size_for_test = fun config index ->
 
 (* Shrink a counter-example to find minimal failing value *)
 
-let shrink_counter_example = fun arb value predicate max_steps ->
+let shrink_counter_example = fun ?on_progress ~iteration ~total arb value predicate max_steps ->
   match arb.Arbitrary.shrink with
   | None -> (value, 0)
   | Some shrinker ->
@@ -102,7 +102,16 @@ let shrink_counter_example = fun arb value predicate max_steps ->
                   | _ -> true
                 in
                 if fails then
-                  shrink_loop candidate (steps_taken + 1)
+                  let next_step = steps_taken + 1 in
+                  Option.for_each on_progress
+                    ~fn:(fun on_progress ->
+                      on_progress (Test.Context.PropertyShrinkStep {
+                        current = iteration;
+                        total;
+                        step = next_step;
+                        max_steps;
+                      }));
+                  shrink_loop candidate next_step
                 else
                   (* This candidate passes, try next one *)
                   try_candidates rest
@@ -111,7 +120,7 @@ let shrink_counter_example = fun arb value predicate max_steps ->
       in
       shrink_loop value 0
 
-let check = fun ?(config = default_config) (Prop prop) ->
+let check = fun ?(config = default_config) ?(on_progress = fun _ -> ()) (Prop prop) ->
   let rnd =
     match config.seed with
     | Some seed -> Random.Rng.standard ~seed:(Int.to_string seed) () |> Result.expect ~msg:"failed to build propane rng"
@@ -142,12 +151,18 @@ let check = fun ?(config = default_config) (Prop prop) ->
         with
         | Assumption_failed ->
             assumptions_failed := !assumptions_failed + 1;
+            on_progress (Test.Context.PropertyAssumptionRejected {
+              current = n + 1;
+              total = config.test_count;
+              size;
+              rejected_count = !assumptions_failed;
+            });
             None
         | Property_failed msg ->
             Some (`Failed_with_msg (value, msg))
         | exn ->
-            let backtrace = Kernel.Exception.raw_backtrace_to_string
-              (Kernel.Exception.get_raw_backtrace ()) in
+            let backtrace = Exception.raw_backtrace_to_string
+              (Exception.get_raw_backtrace ()) in
             Some (`Exception (value, exn, backtrace))
       in
       match test_result with
@@ -156,6 +171,11 @@ let check = fun ?(config = default_config) (Prop prop) ->
           test_loop n
       | Some `Passed ->
           tests_run := !tests_run + 1;
+          on_progress (Test.Context.PropertyIterationPassed {
+            current = n + 1;
+            total = config.test_count;
+            size;
+          });
           if config.verbose then
             println
               ("Test "
@@ -168,7 +188,15 @@ let check = fun ?(config = default_config) (Prop prop) ->
           test_loop (n + 1)
       | Some (`Failed value) ->
           (* Property failed! Shrink to find minimal counter-example *)
+          on_progress (Test.Context.PropertyCounterExampleFound {
+            current = n + 1;
+            total = config.test_count;
+            size;
+          });
           let (minimal_value, shrink_steps) = shrink_counter_example
+            ~on_progress
+            ~iteration:(n + 1)
+            ~total:config.test_count
             arbitrary
             value
             predicate
@@ -180,7 +208,15 @@ let check = fun ?(config = default_config) (Prop prop) ->
           in
           Failure { counter_example; shrink_steps }
       | Some (`Failed_with_msg (value, msg)) ->
+          on_progress (Test.Context.PropertyCounterExampleFound {
+            current = n + 1;
+            total = config.test_count;
+            size;
+          });
           let (minimal_value, shrink_steps) = shrink_counter_example
+            ~on_progress
+            ~iteration:(n + 1)
+            ~total:config.test_count
             arbitrary
             value
             predicate
@@ -193,8 +229,18 @@ let check = fun ?(config = default_config) (Prop prop) ->
           let counter_example = value_str ^ "\nMessage: " ^ msg in
           Failure { counter_example; shrink_steps }
       | Some (`Exception (value, exn, backtrace)) ->
+          on_progress (Test.Context.PropertyCounterExampleFound {
+            current = n + 1;
+            total = config.test_count;
+            size;
+          });
           let (minimal_value, shrink_steps) =
-            shrink_counter_example arbitrary value
+            shrink_counter_example
+              ~on_progress
+              ~iteration:(n + 1)
+              ~total:config.test_count
+              arbitrary
+              value
               (fun v ->
                 try
                   let _ = predicate v in
@@ -231,8 +277,8 @@ let property = fun name arbitrary predicate ->
   let config = { default_config with test_count; max_size; seed } in
   let prop = Prop { name; arbitrary; predicate } in
   Test.property name ~examples:test_count
-    (fun _ctx ->
-      let result = check ~config prop in
+    (fun ctx ->
+      let result = check ~config ~on_progress:(Test.Context.emit_progress ctx) prop in
       match result with
       | Success ->
           Ok ()
@@ -248,7 +294,7 @@ let property = fun name arbitrary predicate ->
       | Error { exception_; backtrace } ->
           let msg = String.concat
             "\n"
-            [ "Exception raised:"; Kernel.Exception.to_string exception_; backtrace ] in
+            [ "Exception raised:"; Exception.to_string exception_; backtrace ] in
           Error msg
       | Assumption_violated ->
           Error "Too many test cases violated assumptions (>10x test count)")

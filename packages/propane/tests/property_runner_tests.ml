@@ -10,6 +10,7 @@ let dummy_ctx: Test.ctx = {
   workspace_root = None;
   package_name = Some "propane";
   fixture = None;
+  progress_handler = Test.Context.no_progress_handler;
 }
 
 let with_env_bindings = fun bindings fn ->
@@ -99,7 +100,7 @@ let test_check_reports_exceptions = fun _ctx ->
   match Property.check prop with
   | Property.Error { exception_; backtrace } ->
       if
-        String.contains (Kernel.Exception.to_string exception_) "boom" && String.contains backtrace "Backtrace:"
+        String.contains (Exception.to_string exception_) "boom" && String.contains backtrace "Backtrace:"
       then
         Ok ()
       else

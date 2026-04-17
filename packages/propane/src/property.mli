@@ -109,7 +109,8 @@ val fail: string -> 'value
     - [Failure _] when a counter-example is found.
     - [Error _] when the property function raises.
 *)
-val check: ?config:config -> test_property -> property_result
+val check:
+  ?config:config -> ?on_progress:(Test.Context.progress -> unit) -> test_property -> property_result
 
 (** Return the display name of a property.
 

@@ -56,6 +56,7 @@
 48. `riot test --list --json` and `riot bench --list --json` should stream discovery as JSONL so large workspaces can populate editor UIs incrementally. Preserve partial results when some suites fail to build or list, and surface suite-list failures as structured events instead of aborting the whole listing pass.
 49. `riot run --list --json` should identify whether each runnable is a normal binary or an example. Keep that metadata in the machine-readable payload so editors do not have to infer it from paths.
 50. `riot test --json` should expose explicit post-build progress between build completion and suite results. Emit structured events for suite collection, suite-binary resolution, suite process execution, and output parsing so hangs and long gaps are diagnosable from the JSONL stream alone.
+51. When suite binaries emit their own JSONL lifecycle stream, `riot test --json` should forward those non-summary child events as suite-scoped progress instead of hiding them in raw stdout. Strip forwarded child progress lines back out of `SuiteCompleted.stdout` so consumers do not have to deduplicate them.
 
 ## Validate
 

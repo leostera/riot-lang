@@ -20,6 +20,7 @@ type ctx = Test_context.t = {
   workspace_root: Path.t option;
   package_name: string option;
   fixture: Test_context.fixture option;
+  progress_handler: Test_context.progress_handler;
 }
 
 type test_type =

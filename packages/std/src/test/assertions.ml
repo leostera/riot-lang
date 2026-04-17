@@ -4,9 +4,9 @@ let assert_equal = fun ~expected ~actual ->
   if expected != actual then
     panic
       ("Expected "
-      ^ (Kernel.Exception.to_string (Failure "expected"))
+      ^ (Exception.to_string (Failure "expected"))
       ^ " but got "
-      ^ (Kernel.Exception.to_string (Failure "actual")))
+      ^ (Exception.to_string (Failure "actual")))
 
 let assert_ok = function
   | Ok _ -> ()

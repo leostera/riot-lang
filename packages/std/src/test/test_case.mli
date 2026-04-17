@@ -29,14 +29,14 @@ type t = {
   (** Reliability metadata used by the runner. *)
   reliability: reliability;
   (** Test implementation. *)
-  fn: ctx -> (unit, string) Kernel.result;
+  fn: ctx -> (unit, string) result;
   (** Whether the test should be skipped. *)
   skip: bool;
 }
 
 (** [case name fn] creates a regular unit test. *)
 val case:
-  ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) Kernel.result) -> t
+  ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) result) -> t
 
 (** [property name ~examples fn] creates a property test that ran [examples]
     test cases. *)
@@ -45,12 +45,12 @@ val property:
   ?reliability:reliability ->
   string ->
   examples:int ->
-  (ctx -> (unit, string) Kernel.result) ->
+  (ctx -> (unit, string) result) ->
   t
 
 (** [skip name fn] creates a skipped test. *)
 val skip:
-  ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) Kernel.result) -> t
+  ?size:size -> ?reliability:reliability -> string -> (ctx -> (unit, string) result) -> t
 
 (** [todo name] creates a placeholder test marked as todo. *)
 val todo: ?size:size -> ?reliability:reliability -> string -> t

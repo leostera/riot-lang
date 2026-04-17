@@ -18,6 +18,7 @@ module Date = Date
 module DateTime = DateTime
 module Diff = Diff
 module Env = Env
+module Exception = Exception
 module Encoding = Encoding
 module Float = Float
 module Fs = Fs
