@@ -42,6 +42,7 @@
 36. Keep `Std.Log` actor-friendly and serialized through handler processes. Application-level logging should flow through handlers with explicit drain semantics such as `Log.flush`; reserve `Std.Global.print*` for low-level terminal output where blocking writes are acceptable.
 37. Keep `Std.IO.Stdin.open_` handle-backed and brokered through `Runtime.spawn_blocked`, but make `Std.IO.stdin ()` return a `Reader.t` for the common case. Kernel stdin reads stay blocking; `std` owns the broker, `Reader` adaptation, and local buffering through `Std.IO.buffered ()` without flipping stdio descriptors into nonblocking mode. Keep high-level line/string reads on `Reader`/`BufferedReader`; `Std.IO.Stdin` itself should stay a thin raw-read handle plus `to_reader`.
 38. Keep `Std.IO.stdout ()` and `Std.IO.stderr ()` returning `Writer.t` values layered over the existing stdio modules. That symmetry is the base for future reader/writer composition like `pipe`, so do not force callers back into ad hoc writer wrappers for common stdout/stderr flows.
+39. Keep `Std.IO.Reader` source ops limited to `read` and `read_vectored`. Higher-level reads such as `read_char`, `read_line`, and `read_to_string` should derive uniformly from those base ops instead of letting individual readers invent private semantics. Buffered stdio adapters should still treat empty vectored writes as no-ops so the top-level `Writer` surface behaves consistently across in-memory and stdio-backed sinks.
 
 ## Validate
 
