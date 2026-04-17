@@ -167,6 +167,7 @@ let phase_name = function
   | Riot_build.Event.ToolchainsValidated _ -> "toolchains_validated"
   | Riot_build.Event.RuntimeStarting -> "runtime_starting"
   | Riot_build.Event.RuntimeStarted -> "runtime_started"
+  | Riot_build.Event.BuildLockWaiting _ -> "build_lock_waiting"
   | Riot_build.Event.PackagePlanningStarted _ -> "package_planning_started"
   | Riot_build.Event.PackagePlanningFinished _ -> "package_planning_finished"
   | Riot_build.Event.PackageExecutionStarted _ -> "package_execution_started"

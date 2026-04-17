@@ -7,9 +7,15 @@ val path: target_dir_root:Path.t -> profile:string -> target:Riot_model.Target.t
 
 val release: t -> unit
 
-val wait: target_dir_root:Path.t -> profile:string -> target:Riot_model.Target.t -> (t, exn) result
+val wait:
+  on_waiting:(Path.t -> unit) ->
+  target_dir_root:Path.t ->
+  profile:string ->
+  target:Riot_model.Target.t ->
+  (t, exn) result
 
 val acquire:
+  on_waiting:(Path.t -> unit) ->
   target_dir_root:Path.t ->
   profile:string ->
   target:Riot_model.Target.t ->

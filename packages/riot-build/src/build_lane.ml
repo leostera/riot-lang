@@ -131,10 +131,12 @@ let prepare:
   let planner_scope = planner_scope scope in
   let* lock =
     Build_lock.wait
+      ~on_waiting:(fun lock_path ->
+        Build_context.emit_phase context (Event.BuildLockWaiting { lock_path }))
       ~target_dir_root:workspace.target_dir_root
       ~profile:profile.name
       ~target
-    |> Result.map_err ~fn:Kernel.Exception.to_string
+    |> Result.map_err ~fn:Exception.to_string
   in
   let lane =
     try
@@ -173,7 +175,7 @@ let prepare:
         package_graph = plan.package_graph;
       }
     with
-    | exn -> Error (Kernel.Exception.to_string exn)
+    | exn -> Error (Exception.to_string exn)
   in
   release_on_error lock lane
 

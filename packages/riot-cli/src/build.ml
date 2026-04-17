@@ -181,6 +181,8 @@ let write_build_phase_event = fun ~mode phase ->
           out "    Starting build runtime"
       | Riot_build.Event.RuntimeStarted ->
           out "    Build runtime ready"
+      | Riot_build.Event.BuildLockWaiting _ ->
+          out "    Build lock is taken, waiting..."
       | Riot_build.Event.PackagePlanningStarted { package_count; _ } ->
           out ("    Planning " ^ Int.to_string package_count ^ " package(s)")
       | Riot_build.Event.PackagePlanningFinished {

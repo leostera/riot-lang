@@ -13,6 +13,7 @@ and runtime_phase =
   | ToolchainsValidated of { target_count: int }
   | RuntimeStarting
   | RuntimeStarted
+  | BuildLockWaiting of { lock_path: Path.t }
   | PackagePlanningStarted of { lane_count: int; package_count: int }
   | PackagePlanningFinished of {
       lane_count: int;
@@ -50,6 +51,7 @@ let phase_name_of_runtime_phase = function
   | ToolchainsValidated _ -> "toolchains_validated"
   | RuntimeStarting -> "runtime_starting"
   | RuntimeStarted -> "runtime_started"
+  | BuildLockWaiting _ -> "build_lock_waiting"
   | PackagePlanningStarted _ -> "package_planning_started"
   | PackagePlanningFinished _ -> "package_planning_finished"
   | PackageExecutionStarted _ -> "package_execution_started"
@@ -107,6 +109,9 @@ let runtime_phase_fields = function
   ]
   | RuntimeStarting
   | RuntimeStarted -> []
+  | BuildLockWaiting { lock_path } -> [
+    ("lock_path", Data.Json.String (Path.to_string lock_path));
+  ]
   | TargetBuildStarted { target; host } -> [
     ("target", Data.Json.String (Riot_model.Target.to_string target));
     ("host", Data.Json.Bool host);

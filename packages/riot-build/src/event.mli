@@ -18,6 +18,7 @@ and runtime_phase =
   | ToolchainsValidated of { target_count: int }
   | RuntimeStarting
   | RuntimeStarted
+  | BuildLockWaiting of { lock_path: Path.t }
   | PackagePlanningStarted of { lane_count: int; package_count: int }
   | PackagePlanningFinished of {
       lane_count: int;

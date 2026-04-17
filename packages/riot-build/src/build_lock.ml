@@ -71,20 +71,20 @@ let lock_failure = fun action path ->
   Failure (format
     Format.[ str "Failed to "; str action; str " build lock file at "; str (Path.to_string path) ])
 
-let rec retry = fun ?(announced = false) t ->
+let rec retry = fun ~on_waiting ?(announced = false) t ->
   if not announced then
-    eprintln "build lock is taken, waiting...";
+    on_waiting t.path;
   sleep retry_interval;
   match Fs.File.try_lock_exclusive t.file with
   | Ok true ->
       Ok t
   | Ok false ->
-      retry ~announced:true t
+      retry ~on_waiting ~announced:true t
   | Error _ ->
       release t;
       raise (lock_failure "lock" t.path)
 
-let wait = fun ~target_dir_root ~profile ~target ->
+let wait = fun ~on_waiting ~target_dir_root ~profile ~target ->
   let build_dir =
     Path.(target_dir_root / Path.v profile / Path.v (Riot_model.Target.to_string target)) in
   let _ = Fs.create_dir_all build_dir |> Result.expect ~msg:"Failed to create build directory" in
@@ -99,12 +99,12 @@ let wait = fun ~target_dir_root ~profile ~target ->
   | Ok true ->
       Ok t
   | Ok false ->
-      retry t
+      retry ~on_waiting t
   | Error _ ->
       release t;
       raise (lock_failure "lock" path)
 
-let acquire = fun ~target_dir_root ~profile ~target fn ->
+let acquire = fun ~on_waiting ~target_dir_root ~profile ~target fn ->
   let lock_path = path ~target_dir_root ~profile ~target in
   if has_in_process_lock lock_path then
     (
@@ -119,7 +119,7 @@ let acquire = fun ~target_dir_root ~profile ~target fn ->
           raise exn
     )
   else
-    match wait ~target_dir_root ~profile ~target with
+    match wait ~on_waiting ~target_dir_root ~profile ~target with
     | Error err -> Error err
     | Ok t ->
         let _ = increment_in_process_lock_count lock_path in
