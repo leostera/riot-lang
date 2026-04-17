@@ -412,7 +412,7 @@
         ]
       },
       "package": "shared",
-      "previous_level": 5,
+      "previous_level": 4,
       "type": "conflict_resolved_different_levels"
     },
     {
@@ -466,6 +466,15 @@
         {
           "end": {
             "kind": "excluded",
+            "version": "1.0.0"
+          },
+          "start": {
+            "kind": "unbounded"
+          }
+        },
+        {
+          "end": {
+            "kind": "excluded",
             "version": "2.0.0"
           },
           "start": {
@@ -479,6 +488,15 @@
     {
       "package": "shared",
       "ranges": [
+        {
+          "end": {
+            "kind": "excluded",
+            "version": "1.0.0"
+          },
+          "start": {
+            "kind": "unbounded"
+          }
+        },
         {
           "end": {
             "kind": "excluded",
@@ -543,6 +561,15 @@
               {
                 "end": {
                   "kind": "excluded",
+                  "version": "1.0.0"
+                },
+                "start": {
+                  "kind": "unbounded"
+                }
+              },
+              {
+                "end": {
+                  "kind": "excluded",
                   "version": "2.0.0"
                 },
                 "start": {
@@ -558,148 +585,6 @@
       "prior": {
         "terms": [
           {
-            "package": "shared",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "1.0.0"
-                },
-                "start": {
-                  "kind": "unbounded"
-                }
-              },
-              {
-                "end": {
-                  "kind": "unbounded"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "2.0.0"
-                }
-              }
-            ]
-          },
-          {
-            "package": "target",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "2.0.0"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "type": "conflict_resolved_same_level"
-    },
-    {
-      "cause": {
-        "terms": [
-          {
-            "package": "left",
-            "positive": true,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          },
-          {
-            "package": "shared",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "unbounded"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "incompatibility": {
-        "terms": [
-          {
-            "package": "shared",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "1.0.0"
-                },
-                "start": {
-                  "kind": "unbounded"
-                }
-              },
-              {
-                "end": {
-                  "kind": "unbounded"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "2.0.0"
-                }
-              }
-            ]
-          },
-          {
-            "package": "target",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "2.0.0"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "package": "shared",
-      "prior": {
-        "terms": [
-          {
-            "package": "shared",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "unbounded"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "2.0.0"
-                }
-              }
-            ]
-          },
-          {
             "package": "target",
             "positive": false,
             "ranges": [
@@ -716,200 +601,6 @@
             ]
           },
           {
-            "package": "left",
-            "positive": true,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "type": "conflict_resolved_same_level"
-    },
-    {
-      "incompatibility": {
-        "terms": [
-          {
-            "package": "shared",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "unbounded"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "2.0.0"
-                }
-              }
-            ]
-          },
-          {
-            "package": "target",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "2.0.0"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          },
-          {
-            "package": "left",
-            "positive": true,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "package": "left",
-      "previous_level": 4,
-      "type": "conflict_resolved_different_levels"
-    },
-    {
-      "incompatibility": {
-        "terms": [
-          {
-            "package": "shared",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "unbounded"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "2.0.0"
-                }
-              }
-            ]
-          },
-          {
-            "package": "target",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "2.0.0"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          },
-          {
-            "package": "left",
-            "positive": true,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "package": "left",
-      "type": "learned_incompatibility"
-    },
-    {
-      "package": "shared",
-      "ranges": [
-        {
-          "end": {
-            "kind": "excluded",
-            "version": "2.0.0"
-          },
-          "start": {
-            "kind": "unbounded"
-          }
-        }
-      ],
-      "type": "picked_package"
-    },
-    {
-      "package": "shared",
-      "ranges": [
-        {
-          "end": {
-            "kind": "excluded",
-            "version": "1.0.0"
-          },
-          "start": {
-            "kind": "unbounded"
-          }
-        }
-      ],
-      "type": "no_version_available"
-    },
-    {
-      "iteration": 7,
-      "next_package": "shared",
-      "type": "iteration"
-    },
-    {
-      "changed": true,
-      "incompatibility": {
-        "terms": [
-          {
-            "package": "shared",
-            "positive": true,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "1.0.0"
-                },
-                "start": {
-                  "kind": "unbounded"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "package": "shared",
-      "type": "derived_constraint"
-    },
-    {
-      "changed": true,
-      "incompatibility": {
-        "terms": [
-          {
             "package": "shared",
             "positive": true,
             "ranges": [
@@ -919,215 +610,7 @@
                   "version": "2.0.0"
                 },
                 "start": {
-                  "kind": "excluded",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "package": "shared",
-      "type": "derived_constraint"
-    },
-    {
-      "cause": {
-        "terms": [
-          {
-            "package": "shared",
-            "positive": true,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "2.0.0"
-                },
-                "start": {
-                  "kind": "excluded",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "incompatibility": {
-        "terms": [
-          {
-            "package": "shared",
-            "positive": true,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          },
-          {
-            "package": "target",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "2.0.0"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "package": "shared",
-      "prior": {
-        "terms": [
-          {
-            "package": "shared",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "1.0.0"
-                },
-                "start": {
                   "kind": "unbounded"
-                }
-              },
-              {
-                "end": {
-                  "kind": "unbounded"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "2.0.0"
-                }
-              }
-            ]
-          },
-          {
-            "package": "target",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "2.0.0"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "type": "conflict_resolved_same_level"
-    },
-    {
-      "cause": {
-        "terms": [
-          {
-            "package": "shared",
-            "positive": true,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "1.0.0"
-                },
-                "start": {
-                  "kind": "unbounded"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "incompatibility": {
-        "terms": [
-          {
-            "package": "shared",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "1.0.0"
-                },
-                "start": {
-                  "kind": "unbounded"
-                }
-              },
-              {
-                "end": {
-                  "kind": "unbounded"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "2.0.0"
-                }
-              }
-            ]
-          },
-          {
-            "package": "target",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "2.0.0"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "package": "shared",
-      "prior": {
-        "terms": [
-          {
-            "package": "shared",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "unbounded"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "2.0.0"
-                }
-              }
-            ]
-          },
-          {
-            "package": "target",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "2.0.0"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "1.0.0"
                 }
               }
             ]
@@ -1175,21 +658,6 @@
       "incompatibility": {
         "terms": [
           {
-            "package": "shared",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "unbounded"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "2.0.0"
-                }
-              }
-            ]
-          },
-          {
             "package": "target",
             "positive": false,
             "ranges": [
@@ -1201,6 +669,21 @@
                 "start": {
                   "kind": "included",
                   "version": "1.0.0"
+                }
+              }
+            ]
+          },
+          {
+            "package": "shared",
+            "positive": true,
+            "ranges": [
+              {
+                "end": {
+                  "kind": "excluded",
+                  "version": "2.0.0"
+                },
+                "start": {
+                  "kind": "unbounded"
                 }
               }
             ]
@@ -1328,121 +811,6 @@
       "type": "learned_incompatibility"
     },
     {
-      "changed": true,
-      "incompatibility": {
-        "terms": [
-          {
-            "package": "shared",
-            "positive": true,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "1.0.0"
-                },
-                "start": {
-                  "kind": "unbounded"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "package": "shared",
-      "type": "derived_constraint"
-    },
-    {
-      "changed": true,
-      "incompatibility": {
-        "terms": [
-          {
-            "package": "shared",
-            "positive": true,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "2.0.0"
-                },
-                "start": {
-                  "kind": "excluded",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "package": "shared",
-      "type": "derived_constraint"
-    },
-    {
-      "changed": true,
-      "incompatibility": {
-        "terms": [
-          {
-            "package": "shared",
-            "positive": true,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          },
-          {
-            "package": "target",
-            "positive": false,
-            "ranges": [
-              {
-                "end": {
-                  "kind": "excluded",
-                  "version": "2.0.0"
-                },
-                "start": {
-                  "kind": "included",
-                  "version": "1.0.0"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "package": "shared",
-      "type": "derived_constraint"
-    },
-    {
-      "package": "shared",
-      "ranges": [
-        {
-          "end": {
-            "kind": "unbounded"
-          },
-          "start": {
-            "kind": "included",
-            "version": "2.0.0"
-          }
-        }
-      ],
-      "type": "picked_package"
-    },
-    {
-      "package": "shared",
-      "type": "chose_version",
-      "version": "2.0.0"
-    },
-    {
-      "iteration": 8,
-      "next_package": "shared",
-      "type": "iteration"
-    },
-    {
       "package": "right",
       "ranges": [
         {
@@ -1475,7 +843,7 @@
       "type": "no_version_available"
     },
     {
-      "iteration": 9,
+      "iteration": 7,
       "next_package": "right",
       "type": "iteration"
     },
@@ -1540,32 +908,24 @@
       "prior": {
         "terms": [
           {
-            "package": "right",
+            "package": "target",
             "positive": false,
             "ranges": [
               {
                 "end": {
                   "kind": "excluded",
-                  "version": "1.0.0"
-                },
-                "start": {
-                  "kind": "unbounded"
-                }
-              },
-              {
-                "end": {
-                  "kind": "unbounded"
+                  "version": "2.0.0"
                 },
                 "start": {
                   "kind": "included",
-                  "version": "2.0.0"
+                  "version": "1.0.0"
                 }
               }
             ]
           },
           {
-            "package": "target",
-            "positive": false,
+            "package": "right",
+            "positive": true,
             "ranges": [
               {
                 "end": {
@@ -1623,32 +983,24 @@
       "incompatibility": {
         "terms": [
           {
-            "package": "right",
+            "package": "target",
             "positive": false,
             "ranges": [
               {
                 "end": {
                   "kind": "excluded",
-                  "version": "1.0.0"
-                },
-                "start": {
-                  "kind": "unbounded"
-                }
-              },
-              {
-                "end": {
-                  "kind": "unbounded"
+                  "version": "2.0.0"
                 },
                 "start": {
                   "kind": "included",
-                  "version": "2.0.0"
+                  "version": "1.0.0"
                 }
               }
             ]
           },
           {
-            "package": "target",
-            "positive": false,
+            "package": "right",
+            "positive": true,
             "ranges": [
               {
                 "end": {
@@ -1741,7 +1093,7 @@
         ]
       },
       "package": "foo",
-      "previous_level": 2,
+      "previous_level": 1,
       "type": "conflict_resolved_different_levels"
     },
     {
@@ -1785,6 +1137,173 @@
       "type": "learned_incompatibility"
     },
     {
+      "package": "target",
+      "ranges": [
+        {
+          "end": {
+            "kind": "excluded",
+            "version": "3.0.0"
+          },
+          "start": {
+            "kind": "included",
+            "version": "2.0.0"
+          }
+        }
+      ],
+      "type": "picked_package"
+    },
+    {
+      "package": "target",
+      "type": "chose_version",
+      "version": "2.0.0"
+    },
+    {
+      "iteration": 8,
+      "next_package": "target",
+      "type": "iteration"
+    },
+    {
+      "changed": true,
+      "incompatibility": {
+        "terms": [
+          {
+            "package": "target",
+            "positive": false,
+            "ranges": [
+              {
+                "end": {
+                  "kind": "excluded",
+                  "version": "2.0.0"
+                },
+                "start": {
+                  "kind": "included",
+                  "version": "1.0.0"
+                }
+              }
+            ]
+          },
+          {
+            "package": "right",
+            "positive": true,
+            "ranges": [
+              {
+                "end": {
+                  "kind": "included",
+                  "version": "1.0.0"
+                },
+                "start": {
+                  "kind": "included",
+                  "version": "1.0.0"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "package": "right",
+      "type": "derived_constraint"
+    },
+    {
+      "changed": true,
+      "incompatibility": {
+        "terms": [
+          {
+            "package": "shared",
+            "positive": true,
+            "ranges": [
+              {
+                "end": {
+                  "kind": "included",
+                  "version": "1.0.0"
+                },
+                "start": {
+                  "kind": "included",
+                  "version": "1.0.0"
+                }
+              }
+            ]
+          },
+          {
+            "package": "target",
+            "positive": false,
+            "ranges": [
+              {
+                "end": {
+                  "kind": "excluded",
+                  "version": "2.0.0"
+                },
+                "start": {
+                  "kind": "included",
+                  "version": "1.0.0"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "package": "shared",
+      "type": "derived_constraint"
+    },
+    {
+      "changed": true,
+      "incompatibility": {
+        "terms": [
+          {
+            "package": "shared",
+            "positive": true,
+            "ranges": [
+              {
+                "end": {
+                  "kind": "excluded",
+                  "version": "1.0.0"
+                },
+                "start": {
+                  "kind": "unbounded"
+                }
+              },
+              {
+                "end": {
+                  "kind": "excluded",
+                  "version": "2.0.0"
+                },
+                "start": {
+                  "kind": "excluded",
+                  "version": "1.0.0"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "package": "shared",
+      "type": "derived_constraint"
+    },
+    {
+      "changed": true,
+      "incompatibility": {
+        "terms": [
+          {
+            "package": "right",
+            "positive": true,
+            "ranges": [
+              {
+                "end": {
+                  "kind": "excluded",
+                  "version": "2.0.0"
+                },
+                "start": {
+                  "kind": "excluded",
+                  "version": "1.0.0"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "package": "right",
+      "type": "derived_constraint"
+    },
+    {
       "package": "foo",
       "ranges": [
         {
@@ -1816,23 +1335,23 @@
       "version": "1.0.0"
     },
     {
-      "iteration": 10,
+      "iteration": 9,
       "next_package": "foo",
       "type": "iteration"
     },
     {
       "solution": [
         {
-          "package": "target",
-          "version": "2.0.0"
+          "package": "foo",
+          "version": "1.0.0"
         },
         {
           "package": "root",
           "version": "1.0.0"
         },
         {
-          "package": "foo",
-          "version": "1.0.0"
+          "package": "target",
+          "version": "2.0.0"
         }
       ],
       "type": "solved"
