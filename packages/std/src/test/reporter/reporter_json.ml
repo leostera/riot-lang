@@ -72,6 +72,7 @@ let finalize = fun (summary: Test_result.summary) ->
       ] in
     let output = obj
       [
+        ("type", string "TestSummary");
         ("tests", array test_results);
         ("summary", summary_json);
         ("started_at_us", int 0);

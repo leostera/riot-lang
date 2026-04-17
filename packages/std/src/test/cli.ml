@@ -9,6 +9,13 @@ let test_type_fields = function
     ("examples", Data.Json.Int examples);
   ]
 
+let event_test_type_fields = function
+  | Test_case.UnitTest -> [ ("test_type", Data.Json.String "test") ]
+  | Test_case.Property { examples } -> [
+    ("test_type", Data.Json.String "property");
+    ("examples", Data.Json.Int examples);
+  ]
+
 let size_to_json = function
   | Test_case.Small -> Data.Json.String "small"
   | Test_case.Large -> Data.Json.String "large"
@@ -19,6 +26,105 @@ let reliability_fields = function
     ("reliability", Data.Json.String "flaky");
     ("retry_attempts", Data.Json.Int retry_attempts);
   ]
+
+let descriptor_fields = fun (test: Runner.test_descriptor) ->
+  [
+    ("index", Data.Json.Int test.index);
+    ("name", Data.Json.String test.name);
+    ("size", size_to_json test.size);
+  ]
+  @ event_test_type_fields test.test_type
+  @ reliability_fields test.reliability
+
+let single_result_fields = function
+  | Test_result.Passed -> [ ("status", Data.Json.String "passed") ]
+  | Test_result.Skipped -> [ ("status", Data.Json.String "skipped") ]
+  | Test_result.Failed message -> [
+    ("status", Data.Json.String "failed");
+    ("message", Data.Json.String message);
+  ]
+  | Test_result.Timed_out { timeout } -> [
+    ("status", Data.Json.String "timed_out");
+    ("timeout_ms", Data.Json.Int (Time.Duration.to_millis timeout));
+  ]
+
+let event_started_at = ref None
+
+let event_elapsed_us = fun () ->
+  match !event_started_at with
+  | Some started_at -> Time.Instant.elapsed started_at |> Time.Duration.to_micros
+  | None -> 0
+
+let write_json_line = fun json ->
+  print (Data.Json.to_string json);
+  print "\n"
+
+let event_to_json = function
+  | Runner.SuiteStarted { suite_name; total } ->
+      event_started_at := Some (Time.Instant.now ());
+      Data.Json.Object [
+        ("type", Data.Json.String "TestSuiteStarted");
+        ("suite", Data.Json.String suite_name);
+        ("total", Data.Json.Int total);
+        ("started_at_us", Data.Json.Int 0);
+      ]
+  | Runner.TestStarted test ->
+      Data.Json.Object
+        ([
+            ("type", Data.Json.String "TestCaseStarted");
+            ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
+          ]
+        @ descriptor_fields test)
+  | Runner.TestAttemptStarted { test; attempt; timeout } ->
+      let timeout_fields =
+        match timeout with
+        | Some timeout -> [ ("timeout_ms", Data.Json.Int (Time.Duration.to_millis timeout)) ]
+        | None -> []
+      in
+      Data.Json.Object
+        ([
+            ("type", Data.Json.String "TestCaseAttemptStarted");
+            ("attempt", Data.Json.Int attempt);
+            ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
+          ]
+        @ descriptor_fields test
+        @ timeout_fields)
+  | Runner.TestHeartbeat { test; attempt; elapsed } ->
+      Data.Json.Object
+        ([
+            ("type", Data.Json.String "TestCaseHeartbeat");
+            ("attempt", Data.Json.Int attempt);
+            ("elapsed_us", Data.Json.Int (Time.Duration.to_micros elapsed));
+            ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
+          ]
+        @ descriptor_fields test)
+  | Runner.TestAttemptFinished { test; attempt; result; duration } ->
+      Data.Json.Object
+        ([
+            ("type", Data.Json.String "TestCaseAttemptFinished");
+            ("attempt", Data.Json.Int attempt);
+            ("duration_us", Data.Json.Int (Time.Duration.to_micros duration));
+            ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
+          ]
+        @ descriptor_fields test
+        @ single_result_fields result)
+  | Runner.TestFinished result ->
+      Data.Json.Object
+        ([
+            ("type", Data.Json.String "TestCaseCompleted");
+            ("index", Data.Json.Int result.index);
+            ("name", Data.Json.String result.name);
+            ("attempts", Data.Json.Int result.attempts);
+            ("duration_us", Data.Json.Int (Time.Duration.to_micros result.duration));
+            ("emitted_at_us", Data.Json.Int (event_elapsed_us ()));
+          ]
+        @ event_test_type_fields result.test_type
+        @ [ ("size", size_to_json result.size) ]
+        @ reliability_fields result.reliability
+        @ single_result_fields result.result)
+
+let json_event_handler = fun event ->
+  event_to_json event |> write_json_line
 
 let matches_query = fun query (test: Test_case.t) ->
   match query with
@@ -195,6 +301,11 @@ let main = fun ~name ~tests ~args ->
                     target;
                     policy = { small_test_timeout; flaky_max_retries };
                     suite_info;
+                    event_handler =
+                      if String.equal format_str "json" then
+                        json_event_handler
+                      else
+                        Runner.no_event_handler;
                   }
                 in
                 let summary = Runner.run_tests ~config tests in
@@ -214,6 +325,7 @@ let main = fun ~name ~tests ~args ->
               target = { query = None; size_filter = All_sizes; flaky_only = false };
               policy = default_policy;
               suite_info;
+              event_handler = Runner.no_event_handler;
             }
           in
           let summary = Runner.run_tests ~config tests in

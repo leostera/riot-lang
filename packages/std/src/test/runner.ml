@@ -89,6 +89,37 @@ type target = {
   flaky_only: bool;
 }
 
+type test_descriptor = {
+  index: int;
+  name: string;
+  test_type: Test_case.test_type;
+  size: Test_case.size;
+  reliability: Test_case.reliability;
+}
+
+type event =
+  | SuiteStarted of { suite_name: string; total: int }
+  | TestStarted of test_descriptor
+  | TestAttemptStarted of {
+      test: test_descriptor;
+      attempt: int;
+      timeout: Time.Duration.t option
+    }
+  | TestHeartbeat of {
+      test: test_descriptor;
+      attempt: int;
+      elapsed: Time.Duration.t
+    }
+  | TestAttemptFinished of {
+      test: test_descriptor;
+      attempt: int;
+      result: Test_result.single_result;
+      duration: Time.Duration.t
+    }
+  | TestFinished of Test_result.t
+
+type event_handler = event -> unit
+
 type policy = {
   small_test_timeout: Time.Duration.t option;
   flaky_max_retries: int;
@@ -101,11 +132,16 @@ type config = {
   target: target;
   policy: policy;
   suite_info: Reporter.suite_info;
+  event_handler: event_handler;
 }
 
 type run_summary = Test_result.summary
 
 let default_policy = { small_test_timeout = None; flaky_max_retries = 0 }
+
+let no_event_handler: event_handler = fun _ -> ()
+
+let heartbeat_interval = Time.Duration.from_secs 1
 
 let make_ctx = fun ~(suite_info:Reporter.suite_info) ~index (test: Test_case.t) ->
   let current_dir = Env.current_dir () |> Result.to_option in
@@ -179,6 +215,15 @@ let retry_budget = fun policy (test: Test_case.t) ->
       else
         retry_attempts
 
+let test_descriptor_of_case = fun index (test: Test_case.t) ->
+  {
+    index;
+    name = test.name;
+    test_type = test.test_type;
+    size = test.size;
+    reliability = test.reliability;
+  }
+
 let wait_for_exit = fun pid ?timeout () ->
   receive
     ~selector:(fun (msg: Runtime.Message.t) ->
@@ -196,7 +241,8 @@ let wait_for_start = fun () ->
       | _ -> `skip)
     ()
 
-let run_single_attempt = fun ~ctx (test: Test_case.t) ~timeout ->
+let run_single_attempt = fun ~ctx ~on_event ~test_info (test: Test_case.t) ~attempt ~timeout ->
+  on_event (TestAttemptStarted { test = test_info; attempt; timeout });
   let outcome: ((unit, string) result option) Sync.Atomic.t = Sync.Atomic.make None in
   let child =
     spawn
@@ -214,16 +260,38 @@ let run_single_attempt = fun ~ctx (test: Test_case.t) ~timeout ->
   let monitor_ref = Runtime.Actor.monitor child in
   let started = Time.Instant.now () in
   send child Test_runner_start;
-  let exit_reason =
-    match timeout with
-    | None -> wait_for_exit child ()
-    | Some timeout -> (
-        try wait_for_exit child ~timeout () with
-        | Receive_timeout ->
+  let rec wait_loop () =
+    let elapsed = Time.Instant.elapsed started in
+    let wait_timeout =
+      match timeout with
+      | None -> heartbeat_interval
+      | Some timeout ->
+          let remaining = Time.Duration.sub timeout elapsed in
+          if Time.Duration.is_zero remaining then
+            Time.Duration.zero
+          else
+            Time.Duration.min remaining heartbeat_interval
+    in
+    if Time.Duration.is_zero wait_timeout then
+      (
+        match timeout with
+        | Some timeout ->
             Runtime.Actor.kill child ~reason:(Test_timeout timeout);
             wait_for_exit child ()
+        | None ->
+            wait_for_exit child ()
       )
+    else
+      try wait_for_exit child ~timeout:wait_timeout () with
+      | Receive_timeout ->
+          on_event (TestHeartbeat {
+            test = test_info;
+            attempt;
+            elapsed = Time.Instant.elapsed started;
+          });
+          wait_loop ()
   in
+  let exit_reason = wait_loop () in
   Runtime.Actor.demonitor monitor_ref;
   let duration = Time.Instant.elapsed started in
   let result =
@@ -239,6 +307,7 @@ let run_single_attempt = fun ~ctx (test: Test_case.t) ~timeout ->
         | Error exn -> Failed (render_exception_failure exn)
       )
   in
+  on_event (TestAttemptFinished { test = test_info; attempt; result; duration });
   (result, duration)
 
 let should_retry = fun policy (test: Test_case.t) attempts (result: Test_result.single_result) ->
@@ -248,10 +317,12 @@ let should_retry = fun policy (test: Test_case.t) attempts (result: Test_result.
   | Test_result.Failed _
   | Test_result.Timed_out _ -> true
 
-let run_single_test = fun reporter ~suite_info ~policy index (test: Test_case.t) ->
+let run_single_test = fun reporter ~suite_info ~policy ~on_event index (test: Test_case.t) ->
   let name = test.name in
   let test_type = test.test_type in
   let ctx = make_ctx ~suite_info ~index test in
+  let test_info = test_descriptor_of_case index test in
+  on_event (TestStarted test_info);
   let result =
     if test.skip then
       Test_result.{
@@ -268,7 +339,14 @@ let run_single_test = fun reporter ~suite_info ~policy index (test: Test_case.t)
       (
         let timeout = test_timeout_for policy test in
         let rec loop attempts total_duration =
-          let attempt_result, attempt_duration = run_single_attempt ~ctx test ~timeout in
+          let attempt_result, attempt_duration =
+            run_single_attempt
+              ~ctx
+              ~on_event
+              ~test_info
+              test
+              ~attempt:attempts
+              ~timeout in
           let total_duration = Time.Duration.add total_duration attempt_duration in
           if should_retry policy test attempts attempt_result then
             loop (attempts + 1) total_duration
@@ -289,6 +367,7 @@ let run_single_test = fun reporter ~suite_info ~policy index (test: Test_case.t)
   in
   let module R = (val reporter : Reporter.Intf) in
   R.on_result index result;
+  on_event (TestFinished result);
   result
 
 let run_tests = fun ~config tests ->
@@ -301,12 +380,17 @@ let run_tests = fun ~config tests ->
   in
   let module R = (val config.reporter : Reporter.Intf) in
   R.init config.suite_info (List.length tests_to_run);
+  config.event_handler (SuiteStarted {
+    suite_name = config.suite_info.name;
+    total = List.length tests_to_run;
+  });
   let rec run_all index = function
     | [] -> []
     | test :: rest -> run_single_test
       config.reporter
       ~suite_info:config.suite_info
       ~policy:config.policy
+      ~on_event:config.event_handler
       index
       test
     :: run_all (index + 1) rest

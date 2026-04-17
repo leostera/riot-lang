@@ -6,6 +6,7 @@ let flaky_counter = Sync.Atomic.make 0
 let sample_tests = [
   Test.case ~size:Test.Large "alpha_large" (fun _ctx -> Ok ());
   Test.case "beta" (fun _ctx -> Ok ());
+  Test.property "gamma_property" ~examples:7 (fun _ctx -> Ok ());
   Test.case ~size:Test.Large "middle_large_case" (fun _ctx -> Ok ());
   Test.case ~reliability:Test.(Flaky { retry_attempts = 2 }) "flaky_then_ok"
     (fun _ctx ->
@@ -17,6 +18,7 @@ let sample_tests = [
     (fun _ctx ->
       sleep (Time.Duration.from_secs 2);
       Ok ());
+  Test.case "after_timeout" (fun _ctx -> Ok ());
 ]
 
 let self_executable = fun () ->
@@ -29,6 +31,21 @@ let split_lines = fun output ->
 
 let parse_json_output = fun stdout -> Data.Json.of_string stdout |> Result.expect ~msg:"failed to parse json output"
 
+let parse_json_lines = fun stdout ->
+  split_lines stdout
+  |> List.map ~fn:(fun line -> Data.Json.of_string line |> Result.expect ~msg:"failed to parse jsonl line")
+
+let json_type = fun json ->
+  match Data.Json.get_field "type" json with
+  | Some (Data.Json.String value) -> Some value
+  | _ -> None
+
+let last_summary_json = fun stdout ->
+  parse_json_lines stdout
+  |> List.reverse
+  |> List.find ~fn:(fun json -> json_type json = Some "TestSummary")
+  |> Option.expect ~msg:"expected a final TestSummary json line"
+
 let assoc_value = fun key entries ->
   match
     List.find entries
@@ -39,7 +56,7 @@ let assoc_value = fun key entries ->
   | None -> None
 
 let test_names_from_json = fun stdout ->
-  let json = parse_json_output stdout in
+  let json = last_summary_json stdout in
   match Data.Json.get_field "tests" json with
   | Some (Data.Json.Array tests) ->
       tests |> List.filter_map
@@ -71,7 +88,8 @@ let test_list_tests_lists_all_cases = fun _ctx ->
     Error ("expected list-tests to succeed, got " ^ Int.to_string output.status)
   else
     let names = split_lines output.stdout |> List.sort ~compare:String.compare in
-    let expected = [ "alpha_large"; "beta"; "middle_large_case"; "flaky_then_ok"; "timeout_probe" ]
+    let expected =
+      [ "alpha_large"; "beta"; "gamma_property"; "middle_large_case"; "flaky_then_ok"; "timeout_probe"; "after_timeout" ]
     |> List.sort ~compare:String.compare in
     if names = expected then
       Ok ()
@@ -169,7 +187,9 @@ let test_run_tests_small_flag_filters_small_tests = fun _ctx ->
     Error ("expected --small run to succeed, got " ^ Int.to_string output.status)
   else
     let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
-    let expected = [ "beta"; "flaky_then_ok"; "timeout_probe" ] |> List.sort ~compare:String.compare in
+    let expected =
+      [ "beta"; "gamma_property"; "flaky_then_ok"; "timeout_probe"; "after_timeout" ]
+      |> List.sort ~compare:String.compare in
     if names = expected then
       Ok ()
     else
@@ -202,7 +222,7 @@ let test_run_tests_json_includes_timing_fields = fun _ctx ->
   if not (Int.equal output.status 0) then
     Error ("expected --json run to succeed, got " ^ Int.to_string output.status)
   else
-    let json = parse_json_output output.stdout in
+    let json = last_summary_json output.stdout in
     let has_int_field name json =
       match Data.Json.get_field name json with
       | Some (Data.Json.Int _) -> true
@@ -236,7 +256,7 @@ let test_run_tests_json_includes_reliability_metadata = fun _ctx ->
   if not (Int.equal output.status 0) then
     Error ("expected flaky --json run to succeed, got " ^ Int.to_string output.status)
   else
-    let json = parse_json_output output.stdout in
+    let json = last_summary_json output.stdout in
     match Data.Json.get_field "tests" json with
     | Some (Data.Json.Array [ Data.Json.Object fields ]) ->
         let has name value = assoc_value name fields = Some value in
@@ -258,7 +278,7 @@ let test_run_tests_small_timeout_reports_timed_out = fun _ctx ->
   if Int.equal output.status 0 then
     Error "expected timeout probe to fail"
   else
-    let json = parse_json_output output.stdout in
+    let json = last_summary_json output.stdout in
     match Data.Json.get_field "tests" json with
     | Some (Data.Json.Array [ Data.Json.Object fields ]) ->
         let has name value = assoc_value name fields = Some value in
@@ -267,6 +287,75 @@ let test_run_tests_small_timeout_reports_timed_out = fun _ctx ->
         else
           Error "expected timeout probe json output to report a timeout"
     | _ -> Error "expected exactly one timeout probe test in json output"
+
+let test_run_tests_json_emits_lifecycle_events = fun _ctx ->
+  let events = parse_json_lines (run_sample_capture [ "run-tests"; "gamma_property"; "--json" ]).stdout in
+  let event_types = events |> List.filter_map ~fn:json_type in
+  let has_event name = List.contains event_types ~value:name in
+  if
+    has_event "TestSuiteStarted"
+    && has_event "TestCaseStarted"
+    && has_event "TestCaseAttemptStarted"
+    && has_event "TestCaseAttemptFinished"
+    && has_event "TestCaseCompleted"
+    && has_event "TestSummary"
+  then
+    Ok ()
+  else
+    Error ("expected lifecycle json events, got: " ^ String.concat ", " event_types)
+
+let test_run_tests_json_emits_property_metadata = fun _ctx ->
+  let events = parse_json_lines (run_sample_capture [ "run-tests"; "gamma_property"; "--json" ]).stdout in
+  match List.find events ~fn:(fun json -> json_type json = Some "TestCaseStarted") with
+  | Some (Data.Json.Object fields) ->
+      let has name value = assoc_value name fields = Some value in
+      if
+        has "name" (Data.Json.String "gamma_property")
+        && has "test_type" (Data.Json.String "property")
+        && has "examples" (Data.Json.Int 7)
+      then
+        Ok ()
+      else
+        Error "expected property test metadata in TestCaseStarted event"
+  | _ -> Error "expected a TestCaseStarted event for gamma_property"
+
+let test_run_tests_json_emits_heartbeat_for_long_tests = fun _ctx ->
+  let events = parse_json_lines (run_sample_capture [ "run-tests"; "timeout_probe"; "--json" ]).stdout in
+  if List.exists (fun json -> json_type json = Some "TestCaseHeartbeat") events then
+    Ok ()
+  else
+    Error "expected a TestCaseHeartbeat event for a long-running test"
+
+let test_run_tests_timeout_does_not_abort_suite = fun _ctx ->
+  let output =
+    run_sample_capture [ "run-tests"; "--small"; "--json"; "--small-timeout-ms"; "10" ] in
+  if Int.equal output.status 0 then
+    Error "expected timed out small-test run to fail overall"
+  else
+    let names = test_names_from_json output.stdout |> List.sort ~compare:String.compare in
+    let expected =
+      [ "beta"; "gamma_property"; "flaky_then_ok"; "timeout_probe"; "after_timeout" ]
+      |> List.sort ~compare:String.compare in
+    if not (names = expected) then
+      Error ("expected suite to continue after timeout, got: " ^ String.concat ", " names)
+    else
+      let json = last_summary_json output.stdout in
+      match Data.Json.get_field "tests" json with
+      | Some (Data.Json.Array tests) ->
+          let find_status name =
+            tests
+            |> List.filter_map ~fn:(fun test_json ->
+              match (Data.Json.get_field "name" test_json, Data.Json.get_field "status" test_json) with
+              | (Some (Data.Json.String test_name), Some (Data.Json.String status))
+                when String.equal test_name name -> Some status
+              | _ -> None)
+            |> List.head
+          in
+          if find_status "timeout_probe" = Some "timed_out" && find_status "after_timeout" = Some "passed" then
+            Ok ()
+          else
+            Error "expected timeout_probe to time out and after_timeout to still run"
+      | _ -> Error "expected tests array in final TestSummary"
 
 let meta_tests = [
   Test.case "list-tests lists all sample cases" test_list_tests_lists_all_cases;
@@ -282,6 +371,10 @@ let meta_tests = [
   Test.case "run-tests --json includes timing fields" test_run_tests_json_includes_timing_fields;
   Test.case "run-tests --json includes reliability metadata" test_run_tests_json_includes_reliability_metadata;
   Test.case "run-tests --small-timeout-ms reports timed out tests" test_run_tests_small_timeout_reports_timed_out;
+  Test.case "run-tests --json emits lifecycle events" test_run_tests_json_emits_lifecycle_events;
+  Test.case "run-tests --json emits property metadata" test_run_tests_json_emits_property_metadata;
+  Test.case "run-tests --json emits heartbeat for long tests" test_run_tests_json_emits_heartbeat_for_long_tests;
+  Test.case "run-tests timeout does not abort suite" test_run_tests_timeout_does_not_abort_suite;
 ]
 
 let sample_main = fun ~args ->
