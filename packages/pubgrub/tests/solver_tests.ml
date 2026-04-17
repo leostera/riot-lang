@@ -21,6 +21,141 @@ let assert_conflict = fun result ->
   | Ok (Pubgrub.Solver.Success _) -> Error "Expected conflict but found solution"
   | Error err -> Error ("Error: " ^ err)
 
+let rec equal_string_lists = fun left right ->
+  match (left, right) with
+  | [], [] -> true
+  | left :: left_rest, right :: right_rest ->
+      String.equal left right && equal_string_lists left_rest right_rest
+  | _ -> false
+
+let assert_solution_packages = fun expected result ->
+  match result with
+  | Ok (Pubgrub.Solver.Success solution) ->
+      let actual = List.map solution ~fn:(fun (pkg, _ver) -> pkg) in
+      if equal_string_lists expected actual then
+        Ok ()
+      else
+        Error
+          (
+            "Wrong solution order: got ["
+            ^ String.concat ", " actual
+            ^ "], expected ["
+            ^ String.concat ", " expected
+            ^ "]"
+          )
+  | Ok (Pubgrub.Solver.Failure incompat) ->
+      Error ("Unexpected conflict: " ^ Pubgrub.explain_conflict incompat)
+  | Error err -> Error ("Error: " ^ err)
+
+let assert_raises = fun message fn ->
+  try
+    let _ = fn () in
+    Error message
+  with
+  | _ -> Ok ()
+
+let test_term_positive_full_is_any =
+  Test.case "Term: positive full is tautological"
+    (fun _ctx ->
+      if Pubgrub.Term.is_any (Pubgrub.Term.positive "pkg" Pubgrub.full) then
+        Ok ()
+      else
+        Error "Expected positive full term to be tautological")
+
+let test_term_negative_empty_is_any =
+  Test.case "Term: negative empty is tautological"
+    (fun _ctx ->
+      if Pubgrub.Term.is_any (Pubgrub.Term.negative "pkg" Pubgrub.empty) then
+        Ok ()
+      else
+        Error "Expected negative empty term to be tautological")
+
+let test_term_positive_empty_is_not_any =
+  Test.case "Term: positive empty is not tautological"
+    (fun _ctx ->
+      if Pubgrub.Term.is_any (Pubgrub.Term.positive "pkg" Pubgrub.empty) then
+        Error "Expected positive empty term to remain a contradiction"
+      else
+        Ok ())
+
+let test_term_negative_full_is_not_any =
+  Test.case "Term: negative full is not tautological"
+    (fun _ctx ->
+      if Pubgrub.Term.is_any (Pubgrub.Term.negative "pkg" Pubgrub.full) then
+        Error "Expected negative full term to remain a contradiction"
+      else
+        Ok ())
+
+let test_term_structural_package_equality =
+  Test.case "Term: equal package strings compare structurally"
+    (fun _ctx ->
+      let dynamic_pkg = String.concat "" [ "sha"; "red" ] in
+      try
+        let term = Pubgrub.Term.intersection
+          (Pubgrub.Term.positive dynamic_pkg Pubgrub.full)
+          (Pubgrub.Term.positive "shared" (Pubgrub.singleton (v 1 0 0)))
+        in
+        if
+          String.equal (Pubgrub.Term.package term) "shared"
+          && Pubgrub.Term.is_positive term
+          && Pubgrub.Ranges.contains
+            ~compare_v:Pubgrub.version_compare
+            (Pubgrub.Term.ranges term)
+            (v 1 0 0)
+        then
+          Ok ()
+        else
+          Error "Expected structural package equality to preserve term intersection"
+      with
+      | _ -> Error "Term.intersection raised for equal package names with distinct allocations")
+
+let test_term_mixed_union_can_be_tautological =
+  Test.case "Term: mixed union preserves tautologies"
+    (fun _ctx ->
+      let term = Pubgrub.Term.union
+        (Pubgrub.Term.positive "pkg" Pubgrub.full)
+        (Pubgrub.Term.negative "pkg" Pubgrub.full) in
+      if Pubgrub.Term.is_any term then
+        Ok ()
+      else
+        Error "Expected positive full union negative full to be tautological")
+
+let test_partial_solution_missing_derivation_package_raises =
+  Test.case "Partial_solution: add_derivation requires matching package term"
+    (fun _ctx ->
+      let solution = Pubgrub.Partial_solution.empty () in
+      let incompat = Pubgrub.Incompatibility.no_versions "foo" Pubgrub.full in
+      assert_raises
+        "Expected add_derivation to raise when the package is absent from the incompatibility"
+        (fun () -> Pubgrub.Partial_solution.add_derivation solution "bar" incompat))
+
+let test_solution_order_is_deterministic =
+  Test.case "Solve: returned solution order is deterministic"
+    (fun _ctx ->
+      let provider = Pubgrub.create_offline () in
+      Pubgrub.add_package provider "root" (v 1 0 0) [ ("zeta", Pubgrub.full); ("alpha", Pubgrub.full) ];
+      Pubgrub.add_package provider "zeta" (v 1 0 0) [];
+      Pubgrub.add_package provider "alpha" (v 1 0 0) [];
+      assert_solution_packages
+        [ "alpha"; "root"; "zeta" ]
+        (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
+
+let test_conflicting_root_constraints_fail =
+  Test.case "Solve: conflicting root constraints fail"
+    (fun _ctx ->
+      let provider = Pubgrub.create_offline () in
+      Pubgrub.add_package
+        provider
+        "root"
+        (v 1 0 0)
+        [
+          ("foo", Pubgrub.singleton (v 1 0 0));
+          ("foo", Pubgrub.singleton (v 2 0 0));
+        ];
+      Pubgrub.add_package provider "foo" (v 1 0 0) [];
+      Pubgrub.add_package provider "foo" (v 2 0 0) [];
+      assert_conflict (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
+
 let test_derivations_are_created =
   Test.case "Derivations are created"
     (fun _ctx ->
@@ -1055,6 +1190,15 @@ let test_ref_confusing_with_holes =
 
 let all_tests =
   let base_tests = [
+    test_term_positive_full_is_any;
+    test_term_negative_empty_is_any;
+    test_term_positive_empty_is_not_any;
+    test_term_negative_full_is_not_any;
+    test_term_structural_package_equality;
+    test_term_mixed_union_can_be_tautological;
+    test_partial_solution_missing_derivation_package_raises;
+    test_solution_order_is_deterministic;
+    test_conflicting_root_constraints_fail;
     test_derivations_are_created;
     test_empty_root;
     test_single_dependency;
@@ -1344,7 +1488,7 @@ let test_new_solver_on_failing_tests () =
   Log.info "NEW solver failing tests complete"
 
 let run_all_tests_with_new_solver () =
-  Log.info "=== Running ALL 121 tests with NEW solver ===";
+  Log.info "=== Running ALL package tests with NEW solver ===";
   let passed = ref 0 in
   let failed = ref 0 in
 
