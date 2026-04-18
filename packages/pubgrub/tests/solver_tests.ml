@@ -180,6 +180,9 @@ let assert_raises = fun message fn ->
   with
   | _ -> Ok ()
 
+let assert_inline_text = fun ~ctx ~expected ~actual ->
+  Test.Snapshot.assert_inline_text ~ctx ~expected ~actual
+
 let test_ranges_empty_contains_nothing =
   Test.case "Ranges: empty contains nothing"
     (fun _ctx ->
@@ -962,6 +965,52 @@ let test_solution_order_is_deterministic =
       assert_solution_packages
         [ "alpha"; "root"; "zeta" ]
         (Pubgrub.solve (Pubgrub.to_provider provider) "root" (v 1 0 0)))
+
+let test_report_no_versions_includes_requested_range =
+  Test.case "Report: no_versions explanation includes requested range"
+    (fun ctx ->
+      let incompat = Pubgrub.Incompatibility.no_versions
+        "foo"
+        (Pubgrub.between (v 1 0 0) (v 2 0 0)) in
+      assert_inline_text
+        ~ctx
+        ~expected:
+          "Conflict:\nno versions of foo match [1.0.0, 2.0.0).\n\nTherefore, version solving failed."
+        ~actual:(Pubgrub.Report.explain_conflict incompat))
+
+let test_report_from_dependency_includes_dependency_range =
+  Test.case "Report: dependency explanation includes dependency range"
+    (fun ctx ->
+      let incompat = Pubgrub.Incompatibility.from_dependency
+        "root"
+        (v 1 0 0)
+        ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0)) in
+      assert_inline_text
+        ~ctx
+        ~expected:
+          "Conflict:\nroot@1.0.0 depends on foo in [1.0.0, 2.0.0).\n\nTherefore, version solving failed."
+        ~actual:(Pubgrub.Report.explain_conflict incompat))
+
+let test_report_derived_explanations_are_readable =
+  Test.case "Report: derived explanations stay readable"
+    (fun ctx ->
+      let dep = Pubgrub.Incompatibility.from_dependency
+        "root"
+        (v 1 0 0)
+        ("foo", Pubgrub.between (v 1 0 0) (v 2 0 0)) in
+      let no_versions = Pubgrub.Incompatibility.no_versions
+        "foo"
+        (Pubgrub.between (v 1 0 0) (v 2 0 0)) in
+      let incompat = Pubgrub.Incompatibility.create_derived
+        [ Pubgrub.Term.positive "root" (Pubgrub.singleton (v 1 0 0)) ]
+        dep
+        no_versions
+        None in
+      assert_inline_text
+        ~ctx
+        ~expected:
+          "Conflict:\nBecause:\n  root@1.0.0 depends on foo in [1.0.0, 2.0.0).\nAnd because:\n  no versions of foo match [1.0.0, 2.0.0).\nSo root in [1.0.0, 1.0.0].\n\nTherefore, version solving failed."
+        ~actual:(Pubgrub.Report.explain_conflict incompat))
 
 let test_conflicting_root_constraints_fail =
   Test.case "Solve: conflicting root constraints fail"
@@ -2074,6 +2123,9 @@ let all_tests =
     test_relation_constrained_negative_subset_is_contradicted;
     test_partial_solution_missing_derivation_package_raises;
     test_solution_order_is_deterministic;
+    test_report_no_versions_includes_requested_range;
+    test_report_from_dependency_includes_dependency_range;
+    test_report_derived_explanations_are_readable;
     test_conflicting_root_constraints_fail;
     test_derivations_are_created;
     test_empty_root;
