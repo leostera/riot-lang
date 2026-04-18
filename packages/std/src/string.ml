@@ -339,11 +339,11 @@ let to_reader = fun ?chunk_size value ->
               else
                 let segment_length = IO.Iovec.IoSlice.length segment in
                 let to_read = min chunk_size (min remaining segment_length) in
-                IO.Iovec.IoSlice.blit_from_bytes
+                IO.Iovec.IoSlice.blit_from_bytes_unchecked
                   source_bytes
-                  ~src_offset:(Sync.Cell.get offset)
-                  ~dst:segment
-                  ~dst_offset:0
+                  ~src_off:(Sync.Cell.get offset)
+                  segment
+                  ~dst_off:0
                   ~len:to_read;
                 Sync.Cell.set offset (Sync.Cell.get offset + to_read);
                 Sync.Cell.set total (Sync.Cell.get total + to_read);

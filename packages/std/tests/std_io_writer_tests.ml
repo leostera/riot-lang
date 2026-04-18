@@ -64,7 +64,7 @@ let test_write_all_handles_partial_writes = fun _ctx ->
 let test_write_owned_vectored_appends_segment_content = fun _ctx ->
   let sink = create_sink () in
   let writer = IO.Writer.of_write_src (module CollectWriter) sink in
-  let iov = Iovec.from_string_array [| "ab"; "cd"; "ef" |] in
+  let iov = Iovec.from_string_array [| "ab"; "cd"; "ef" |] |> Result.unwrap in
   match IO.write_owned_vectored writer ~bufs:iov with
   | Ok written when Int.equal written 6 && String.equal (sink_contents sink) "abcdef" -> Ok ()
   | Ok _ -> Error "IO.Writer.write_owned_vectored should append all segments"
@@ -73,7 +73,7 @@ let test_write_owned_vectored_appends_segment_content = fun _ctx ->
 let test_write_all_vectored_handles_partial_writes = fun _ctx ->
   let sink = create_sink ~max_chunk:2 () in
   let writer = IO.Writer.of_write_src (module CollectWriter) sink in
-  let iov = Iovec.from_string_array [| "ab"; "cd"; "ef" |] in
+  let iov = Iovec.from_string_array [| "ab"; "cd"; "ef" |] |> Result.unwrap in
   match IO.write_all_vectored writer ~bufs:iov with
   | Ok () when String.equal (sink_contents sink) "abcdef" -> Ok ()
   | Ok () -> Error "IO.Writer.write_all_vectored should keep writing until completion"

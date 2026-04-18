@@ -50,7 +50,7 @@ let write_all_vectored = fun iovecs ->
           if written <= 0 then
             panic "dev_null vectored write returned 0 bytes"
           else if written < remaining then
-            loop (Kernel.IO.Iovec.sub iovecs ~pos:written ~len:(remaining - written))
+            loop (Kernel.IO.Iovec.sub iovecs ~pos:written ~len:(remaining - written) |> Result.unwrap)
       | Result.Error error -> panic (Kernel.Fs.File.error_to_string error)
   in
   loop iovecs
@@ -94,7 +94,7 @@ let bench_zero_copy_line_split = fun message () ->
 
 let bench_zero_copy_line_writev = fun message () ->
   let bytes = bytes_unsafe_of_string message in
-  let iovecs = Kernel.IO.Iovec.from_bytes_array [| bytes; newline |] in
+  let iovecs = Kernel.IO.Iovec.from_bytes_array [| bytes; newline |] |> Result.unwrap in
   write_all_vectored iovecs
 
 let config = { Bench.iterations = 20_000; warmup = 5 }

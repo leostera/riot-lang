@@ -157,11 +157,11 @@ let buffered_consume_vectored = fun state bufs ->
       let available = buffered_available state in
       if available > 0 then
         let chunk_len = min length available in
-        Iovec.IoSlice.blit_from_bytes
+        Iovec.IoSlice.blit_from_bytes_unchecked
           state.chunk
-          ~src_offset:state.offset
-          ~dst:segment
-          ~dst_offset:0
+          ~src_off:state.offset
+          segment
+          ~dst_off:0
           ~len:chunk_len;
         state.offset <- state.offset + chunk_len;
         progress.total <- progress.total + chunk_len);
@@ -304,11 +304,11 @@ let from_bytes = fun data ->
             else
               let length = Iovec.IoSlice.length segment in
               let to_read = min length remaining in
-              Iovec.IoSlice.blit_from_bytes
+              Iovec.IoSlice.blit_from_bytes_unchecked
                 source
-                ~src_offset:state.offset
-                ~dst:segment
-                ~dst_offset:0
+                ~src_off:state.offset
+                segment
+                ~dst_off:0
                 ~len:to_read;
               state.offset <- state.offset + to_read;
               progress.total <- progress.total + to_read);
@@ -343,11 +343,11 @@ let from_string = fun source ->
             else
               let length = Iovec.IoSlice.length segment in
               let to_read = min length remaining in
-              Iovec.IoSlice.blit_from_string
+              Iovec.IoSlice.blit_from_string_unchecked
                 value
-                ~src_offset:state.offset
-                ~dst:segment
-                ~dst_offset:0
+                ~src_off:state.offset
+                segment
+                ~dst_off:0
                 ~len:to_read;
               state.offset <- state.offset + to_read;
               progress.total <- progress.total + to_read);

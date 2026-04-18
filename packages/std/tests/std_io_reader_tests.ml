@@ -42,21 +42,21 @@ module CountingReader = struct
 
   let read_vectored = fun t bufs ->
     t.reads <- t.reads + 1;
-  let remaining = Bytes.length t.data - t.offset in
-  let total = min remaining (Iovec.length bufs) in
-  let state: write_state = { written = 0 } in
-  Iovec.for_each bufs ~fn:(fun segment ->
-    if state.written < total then (
-      let length = Iovec.IoSlice.length segment in
-      let chunk_len = min length (total - state.written) in
-      Iovec.IoSlice.blit_from_bytes
-        t.data
-        ~src_offset:(t.offset + state.written)
-        ~dst:segment
-        ~dst_offset:0
-        ~len:chunk_len;
-      state.written <- state.written + chunk_len
-    ));
+    let remaining = Bytes.length t.data - t.offset in
+    let total = min remaining (Iovec.length bufs) in
+    let state: write_state = { written = 0 } in
+    Iovec.for_each bufs ~fn:(fun segment ->
+      if state.written < total then (
+        let length = Iovec.IoSlice.length segment in
+        let chunk_len = min length (total - state.written) in
+        Iovec.IoSlice.blit_from_bytes_unchecked
+          t.data
+          ~src_off:(t.offset + state.written)
+          segment
+          ~dst_off:0
+          ~len:chunk_len;
+        state.written <- state.written + chunk_len
+      ));
     t.offset <- t.offset + total;
     Ok total
 end
@@ -94,7 +94,7 @@ let test_from_bytes_read_to_end_copies_entire_content = fun _ctx ->
 
 let test_read_vectored_fills_segments_in_order = fun _ctx ->
   let reader = IO.Reader.from_string "hello" in
-  let iov = Iovec.create ~count:2 ~size:5 () in
+  let iov = Iovec.create ~count:2 ~size:5 () |> Result.unwrap in
   match IO.read_vectored reader iov with
   | Ok read when Int.equal read 5 && String.equal (Iovec.to_string iov) "hello" ->
       Ok ()

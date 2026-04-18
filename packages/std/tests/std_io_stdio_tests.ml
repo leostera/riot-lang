@@ -10,7 +10,7 @@ let test_stdin_reader_zero_length_read_is_a_noop = fun _ctx ->
 
 let test_stdout_writer_handles_empty_operations = fun _ctx ->
   let writer = IO.stdout () in
-  let empty_iov = IO.Iovec.from_string_array [||] in
+  let empty_iov = IO.Iovec.from_string_array [||] |> Result.unwrap in
   match IO.write writer ~buf:"" with
   | Ok 0 -> (
       match IO.write_all writer ~buf:"" with
@@ -31,7 +31,7 @@ let test_stdout_writer_handles_empty_operations = fun _ctx ->
 
 let test_stderr_writer_handles_empty_operations = fun _ctx ->
   let writer = IO.stderr () in
-  let empty_iov = IO.Iovec.from_string_array [||] in
+  let empty_iov = IO.Iovec.from_string_array [||] |> Result.unwrap in
   match IO.write writer ~buf:"" with
   | Ok 0 -> (
       match IO.write_all writer ~buf:"" with

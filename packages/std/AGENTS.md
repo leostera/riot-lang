@@ -49,6 +49,8 @@
 43. `Std.Command.output` may stream line-oriented stdout callbacks and idle heartbeats while a child process is still running. Keep that idle callback optional and low-overhead when unused so CLI wrappers can expose long silent subprocess work without penalizing ordinary command calls.
 44. `Std.Command` child stdout/stderr readers must stay on the blocking lane. Pipe and file reads inside command wrappers should use `Runtime.spawn_blocked`, not normal actors, so child-process I/O does not stall schedulers.
 45. Keep off-heap syscall-facing byte storage owned by `kernel`, and re-export it from `Std.IO` under explicit names such as `IoBuffer` and `StringView`. Code above `std` should not reach into `Kernel.IO` directly for parsing or buffering primitives.
+46. Keep `Std.IO` explicit about copy boundaries. Off-heap buffers and views should flow through `IoSlice`, `Iovec`, `IoBuffer`, and `StringView`; heap conversions should stay on `from_*` / `to_*` names rather than hiding allocations behind generic helpers.
+47. Keep shared reader and writer internals on the checked kernel I/O surface. Bounds-sensitive calls should use `Result`-returning `Kernel.IO` operations by default, and only drop to `_unchecked` helpers after a local invariant has been established in the hot path.
 
 ## Validate
 

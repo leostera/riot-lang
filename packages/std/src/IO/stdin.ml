@@ -91,15 +91,15 @@ let consume_leftover_vectored = fun state bufs ->
         ~fn:(fun segment ->
           let remaining = available - copied.copied in
           if remaining > 0 then
-            let length = Iovec.IoSlice.length segment in
-            let chunk_len = min length remaining in
-            Iovec.IoSlice.blit_from_bytes
-              leftover
-              ~src_offset:copied.copied
-              ~dst:segment
-              ~dst_offset:0
-              ~len:chunk_len;
-            copied.copied <- copied.copied + chunk_len);
+                let length = Iovec.IoSlice.length segment in
+                let chunk_len = min length remaining in
+                Iovec.IoSlice.blit_from_bytes_unchecked
+                  leftover
+                  ~src_off:copied.copied
+                  segment
+                  ~dst_off:0
+                  ~len:chunk_len;
+                copied.copied <- copied.copied + chunk_len);
       store_leftover state leftover ~offset:copied.copied ~len:(available - copied.copied);
       copied.copied
 

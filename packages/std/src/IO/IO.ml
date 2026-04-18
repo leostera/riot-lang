@@ -134,7 +134,12 @@ let read = fun reader ?timeout ?(offset = 0) ?len buffer ->
           | Error _ as error -> error
         )
     | None ->
-        let tmp = Iovec.with_capacity len in
+        let tmp =
+          match Iovec.with_capacity len with
+          | Ok tmp -> tmp
+          | Error error ->
+              Kernel.SystemError.panic ("Std.IO.read: " ^ Kernel.IO.Error.message error)
+        in
         (
           match Reader.read_vectored reader tmp with
           | Ok count ->

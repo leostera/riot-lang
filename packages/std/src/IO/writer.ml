@@ -46,7 +46,12 @@ let write_all_vectored: type dst err. (dst, err) t -> bufs:Iovec.t -> (unit, err
       Ok ()
     else
       match W.write_owned_vectored dst ~bufs:remaining with
-      | Ok written -> loop (Iovec.sub remaining ~pos:written ~len:(Iovec.length remaining - written))
+      | Ok written -> (
+          match Iovec.sub remaining ~pos:written ~len:(Iovec.length remaining - written) with
+          | Ok next -> loop next
+          | Error error ->
+              SystemError.panic ("Std.IO.Writer.write_all_vectored: " ^ Kernel.IO.Error.message error)
+        )
       | Error err -> Error err
   in
   loop bufs

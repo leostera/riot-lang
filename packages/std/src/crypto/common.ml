@@ -102,7 +102,10 @@ let rec reverse_append left right =
 
 let finish_iovec = fun digest state ->
   let buffers = Array.from_list (reverse_append state.buffers_rev []) in
-  digest (Iovec.from_bytes_array buffers)
+  match Iovec.from_bytes_array buffers with
+  | Ok iovec -> digest iovec
+  | Error error ->
+      SystemError.panic ("Std.Crypto.Common.finish_iovec: " ^ Kernel.IO.Error.message error)
 
 let hash_string_with = fun digest value ->
   let state = create_state () in
@@ -110,4 +113,7 @@ let hash_string_with = fun digest value ->
   finish_iovec digest state
 
 let hash_bytes_with = fun digest value ->
-  digest (Iovec.from_bytes (Bytes.sub_unchecked value ~offset:0 ~len:(Bytes.length value)))
+  match Iovec.from_bytes (Bytes.sub_unchecked value ~offset:0 ~len:(Bytes.length value)) with
+  | Ok iovec -> digest iovec
+  | Error error ->
+      SystemError.panic ("Std.Crypto.Common.hash_bytes_with: " ^ Kernel.IO.Error.message error)

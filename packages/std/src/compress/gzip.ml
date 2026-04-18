@@ -229,11 +229,11 @@ let to_reader:
               if remaining > 0 then
                 let length = Iovec.IoSlice.length segment in
                 let chunk_len = min length remaining in
-                Iovec.IoSlice.blit_from_bytes
+                Iovec.IoSlice.blit_from_bytes_unchecked
                   scratch
-                  ~src_offset:!copied
-                  ~dst:segment
-                  ~dst_offset:0
+                  ~src_off:!copied
+                  segment
+                  ~dst_off:0
                   ~len:chunk_len;
                 copied := !copied + chunk_len)
             bufs;
