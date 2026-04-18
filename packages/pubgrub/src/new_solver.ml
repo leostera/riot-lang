@@ -204,16 +204,82 @@ module DependencyGraph = struct
     | None -> []
 end
 
+type incompatibility_store = {
+  arena: (int, Incompatibility.t) HashMap.t;
+  ids_by_key: (string, int) HashMap.t;
+  by_package: (package, int list) HashMap.t;
+  mutable next_id: int;
+}
+
+let create_incompatibility_store = fun () ->
+  {
+    arena = HashMap.create ();
+    ids_by_key = HashMap.create ();
+    by_package = HashMap.create ();
+    next_id = 0
+  }
+
+let incompatibility_key = fun incompat ->
+  let render_term term =
+    let sign =
+      if Term.is_positive term then
+        "+"
+      else
+        "-"
+    in
+    sign
+    ^ Term.package term
+    ^ ":"
+    ^ Ranges.to_string ~to_string_v:Version.to_string (Term.ranges term)
+  in
+  Incompatibility.terms incompat
+  |> List.map ~fn:render_term
+  |> List.sort ~compare:String.compare
+  |> String.concat "|"
+
+let get_incompatibility_ids = fun store pkg ->
+  match HashMap.get store.by_package ~key:pkg with
+  | Some ids -> ids
+  | None -> []
+
+let get_incompatibility = fun store id ->
+  match HashMap.get store.arena ~key:id with
+  | Some incompat -> incompat
+  | None -> panic ("Missing incompatibility id " ^ Int.to_string id)
+
+let get_incompatibilities = fun store pkg ->
+  List.map (get_incompatibility_ids store pkg) ~fn:(get_incompatibility store)
+
+let add_incompatibility_to_store = fun store package incompat ->
+  let key = incompatibility_key incompat in
+  let id =
+    match HashMap.get store.ids_by_key ~key with
+    | Some id -> id
+    | None ->
+        let id = store.next_id in
+        store.next_id <- id + 1;
+        let _ = HashMap.insert store.arena ~key:id ~value:incompat in
+        let _ = HashMap.insert store.ids_by_key ~key ~value:id in
+        id
+  in
+  let existing = get_incompatibility_ids store package in
+  if not (List.contains existing ~value:id) then
+    let _ = HashMap.insert store.by_package ~key:package ~value:(id :: existing) in
+    ()
+
 (* State type - notice NO pending field! *)
 
 type state = {
   solution: Partial_solution.t;
-  incompatibilities: (package, Incompatibility.t list) HashMap.t;
+  incompatibilities: incompatibility_store;
   dependency_graph: DependencyGraph.t;
   (* Track which incompatibilities are already contradicted at which decision level.
      We skip these during unit propagation until we backtrack past their level. *)
   contradicted: (Incompatibility.t, int) HashMap.t;
 }
+
+let add_incompatibility = fun state package incompat ->
+  add_incompatibility_to_store state.incompatibilities package incompat
 
 (* ============================================================================
    Compute Pending - The Key Innovation
@@ -255,7 +321,7 @@ let compute_pending state: (package * version Ranges.t) list =
   (* For now, we'll work around by iterating through incompatibilities *)
   (* which contain dependency information *)
   (* Alternative: iterate through incompatibilities to find dependencies *)
-  HashMap.for_each state.incompatibilities
+  HashMap.for_each state.incompatibilities.by_package
     ~fn:(fun pkg _incompats ->
       match Partial_solution.get_constraint state.solution pkg with
       | `Decided ver ->
@@ -285,8 +351,9 @@ let compute_pending state: (package * version Ranges.t) list =
   in
   let score_package ((pkg, ranges)) =
     let num_incompats =
-      match HashMap.get state.incompatibilities ~key:pkg with
-      | Some incompats ->
+      let incompats = get_incompatibilities state.incompatibilities pkg in
+      match incompats with
+      | _ :: _ ->
           (* Check how many are simple 2-term conflicts with other pending packages *)
                   let num_pending_conflicts =
             List.fold_left incompats ~acc:0
@@ -310,7 +377,7 @@ let compute_pending state: (package * version Ranges.t) list =
                   count)
           in
           (List.length incompats, num_pending_conflicts)
-      | None -> (0, 0)
+      | [] -> (0, 0)
     in
     let total_incompats, pending_conflicts = num_incompats in
     let is_constrained =
@@ -347,15 +414,6 @@ let compute_pending state: (package * version Ranges.t) list =
 (* ============================================================================
    Helper Functions
    ============================================================================ *)
-
-let add_incompatibility = fun state package incompat ->
-  let existing =
-    match HashMap.get state.incompatibilities ~key:package with
-    | Some incompats -> incompats
-    | None -> []
-  in
-  let _ = HashMap.insert state.incompatibilities ~key:package ~value:(incompat :: existing) in
-  ()
 
 (* ============================================================================
    Conflict Resolution
@@ -467,11 +525,12 @@ let unit_propagation = fun ~stats ~emit root_package root_version state changed_
         Ok state
     | pkg :: rest -> (
         Log.info ("🔄 Processing package: " ^ pkg);
-        match HashMap.get state.incompatibilities ~key:pkg with
-        | None ->
+        let incompats = get_incompatibilities state.incompatibilities pkg in
+        match incompats with
+        | [] ->
             Log.info ("🔄 No incompatibilities for " ^ pkg ^ ", skipping");
             process_packages state rest
-        | Some incompats -> (
+        | _ -> (
             Log.info
               ("  💡 Found "
               ^ (Int.to_string (List.length incompats))
@@ -628,11 +687,7 @@ let unit_propagation = fun ~stats ~emit root_package root_version state changed_
 let choose_version = fun stats provider state pkg ranges ->
   Log.debug ("Choosing version for " ^ pkg);
   (* Get incompatibilities for this package to constrain the search *)
-  let incompats =
-    match HashMap.get state.incompatibilities ~key:pkg with
-    | Some incompats -> incompats
-    | None -> []
-  in
+  let incompats = get_incompatibilities state.incompatibilities pkg in
   Log.info
     ("  💡 Found " ^ (Int.to_string (List.length incompats)) ^ " incompatibilities for " ^ pkg);
   (* Find effective ranges by checking which incompatibilities apply *)
@@ -732,7 +787,7 @@ let solve_with_stats = fun ?trace_ctx ?(options = default_options) provider root
   (* NOTE: Unlike some implementations, we don't add a not_root incompatibility
      because root is already decided. Adding it would cause unit_propagation
      to immediately detect a conflict. *)
-  let incompats = HashMap.create () in
+  let incompats = create_incompatibility_store () in
   let solution = Partial_solution.empty () in
   let solution = Partial_solution.add_decision solution root_package root_version in
   record_decision stats solution;
@@ -843,9 +898,7 @@ let solve_with_stats = fun ?trace_ctx ?(options = default_options) provider root
                       (* Pick next highest priority package *)
                       let prioritizer pkg ranges =
                         let num_incompats =
-                          match HashMap.get state.incompatibilities ~key:pkg with
-                          | Some incompats -> List.length incompats
-                          | None -> 0
+                          List.length (get_incompatibility_ids state.incompatibilities pkg)
                         in
                         let matching_versions =
                           match provider_count_versions stats provider pkg ranges with
