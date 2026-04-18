@@ -1,16 +1,24 @@
 # Colors
 
-Advanced color science library for OCaml providing color space conversions and perceptually uniform color blending.
+`colors` covers the small set of color operations this repo actually needs:
 
-## Features
+- ANSI 256-color palette lookup and nearest-color matching
+- byte-domain sRGB to linear RGB / XYZ / normalized LUV conversion
+- perceptual RGB blending and gradients
+- small RGB utilities such as hex codecs, luminance, contrast, and distance
 
-- **Multiple Color Spaces**: ANSI, RGB, Linear RGB, XYZ, LUV, UV
-- **Hex Helpers**: Parse and render `#rrggbb` RGB strings
-- **Perceptually Uniform Blending**: Blend colors the way humans perceive them
-- **Distance and Accessibility Metrics**: Relative luminance, contrast ratio, and LUV distance
-- **Color Space Conversions**: Convenience helpers for `RGB`, `XYZ`, and `LUV`
-- **ANSI Support**: 256-color terminal palette with RGB conversion and nearest-color lookup
-- **Scientific Foundation**: Based on CIE color space mathematics
+It is a compact package with a narrow scope. The API is organized around a few
+modules rather than a large type hierarchy.
+
+## API Map
+
+- `ANSI`: terminal palette lookup and nearest ANSI entry
+- `RGB`: high-level helpers for ordinary display colors
+- `Linear_RGB`: transfer-curve removal and matrix conversion bridge
+- `XYZ`: device-independent color-space conversions
+- `LUV`: normalized perceptual color-space operations
+- `White_reference`: named white points for XYZ and LUV conversions
+- `Colors.to_string`: debug formatting for any public color variant
 
 ## Quick Start
 
@@ -18,230 +26,150 @@ Advanced color science library for OCaml providing color space conversions and p
 open Std
 open Colors
 
-(* Convert ANSI to RGB *)
-let red = ANSI.to_rgb (`ansi 9)
-(* Returns: `rgb (255, 0, 0) *)
+let blue = `rgb (0, 0, 255)
+let yellow = `rgb (255, 255, 0)
 
-(* Perceptually uniform color blending *)
-let blend = RGB.blend
-  (`rgb (0, 0, 255))    (* Blue *)
-  (`rgb (255, 255, 0))  (* Yellow *)
-  ~mix:0.5
-(* Returns the package's LUV-based midpoint as an RGB value *)
-
+let midpoint = RGB.blend blue yellow ~mix:0.5
 let contrast = RGB.contrast_ratio (`rgb (0, 0, 0)) (`rgb (255, 255, 255))
-(* Returns: 21.0 *)
+
+println (to_string ((midpoint:> color)))
+println (Float.to_string contrast)
 ```
 
-A runnable example is included:
+Runnable example:
 
 ```sh
 riot run -p colors blend_demo
 ```
 
-## Why Perceptual Color Blending Matters
+## Color Model
 
-### The Problem with Naive RGB Blending
+The package uses these public representations:
+
+- `ansi`: ANSI palette index
+- `rgb`: standard byte-domain sRGB, channels in `0..255`
+- `lrgb`: unit-domain linear RGB, channels in `0.0..1.0`
+- `xyz`: CIE 1931 XYZ
+- `luv`: normalized CIE LUV
+- `uv`: chromaticity coordinates derived from XYZ
+
+The main conversion pipeline is:
+
+```text
+ANSI -> RGB -> Linear_RGB -> XYZ -> LUV
+```
+
+Integer RGB roundtrips are approximate because the last step quantizes back to
+bytes. ANSI lookup is one-way unless you explicitly choose the nearest palette
+entry with `ANSI.nearest`.
+
+## Normalized LUV
+
+This package exposes **normalized** LUV rather than conventional CIELUV units:
+
+- `l` is `0.0..1.0` instead of `0..100`
+- `u` and `v` are scaled to match that normalized lightness
+
+That keeps the public representation compact and works well for interpolation
+and distance, but it is not a drop-in interchange format for APIs expecting
+standard `L*`, `u*`, and `v*` units.
+
+## Common Tasks
+
+### Terminal Colors
 
 ```ocaml
-(* Naive approach: average RGB values *)
-let blue = (0, 0, 255) in
-let yellow = (255, 255, 0) in
-let naive_blend = ((0+255)/2, (0+255)/2, (255+0)/2)
-(* Result: (127, 127, 127) - Gray! This looks wrong! *)
-```
-
-### The Solution: LUV Color Space
-
-```ocaml
-(* Perceptually uniform blending in LUV space *)
-let blend = RGB.blend (`rgb (0, 0, 255)) (`rgb (255, 255, 0)) ~mix:0.5
-(* Result: a midpoint computed by converting through LUV space *)
-```
-
-The difference: LUV is **perceptually uniform**. Equal numeric distances in LUV correspond to equal perceived color differences by humans.
-
-## Color Space Pipeline
-
-```
-ANSI (256 colors)
-  ↓ lookup table
-RGB (0-255)
-  ↓ gamma correction (2.4)
-Linear RGB (0.0-1.0)
-  ↓ matrix transformation
-XYZ (device-independent)
-  ↓ with white point reference (D65)
-LUV (normalized, perceptually uniform)
-```
-
-Most of the pipeline composes cleanly for round-trip conversions, but integer
-RGB round-trips are approximate because the final step quantizes back to bytes,
-and ANSI conversion is one-way.
-
-## Usage Examples
-
-### Creating Smooth Gradients
-
-```ocaml
-let gradient = RGB.gradient
-  (`rgb (255, 0, 0))
-  (`rgb (0, 0, 255))
-  ~steps:10
-```
-
-### Manual Color Space Conversions
-
-```ocaml
-let rgb = `rgb (200, 150, 100) in
-let luv = RGB.to_luv rgb in
-
-println (to_string luv)
-(* Output: LUV(0.6532,0.1234,0.3456) *)
-
-let rgb' = LUV.to_rgb luv in
-(* rgb' ≈ rgb (within 1 byte per channel after quantization) *)
-```
-
-### Working with Terminal Colors
-
-```ocaml
-(* Convert ANSI colors to RGB for manipulation *)
-let ansi_colors = List.init 16 (fun i -> `ansi i) in
-let rgb_colors = List.map ANSI.to_rgb ansi_colors in
-
-(* Blend two terminal colors *)
-let ansi_red = ANSI.to_rgb (`ansi 9) in
-let ansi_blue = ANSI.to_rgb (`ansi 12) in
-let blend = RGB.blend ansi_red ansi_blue ~mix:0.5
-
-(* Map an RGB color back to the nearest palette entry *)
+let red = ANSI.to_rgb (`ansi 9)
 let nearest = ANSI.nearest (`rgb (250, 10, 10))
-(* Returns: `ansi 9 *)
 ```
 
-### Working with Hex Colors
+### Hex RGB
 
 ```ocaml
 let accent = RGB.of_hex "#ff8000"
-(* Returns: Ok (`rgb (255, 128, 0)) *)
-
 let css = RGB.to_hex (`rgb (255, 128, 0))
-(* Returns: "#ff8000" *)
 ```
 
-### Measuring Contrast and Distance
+`RGB.of_hex` accepts `#RRGGBB` and `RRGGBB`, case-insensitively.
+
+### Explicit Conversions
 
 ```ocaml
-let body_text = `rgb (32, 32, 32) in
-let page_bg = `rgb (255, 255, 255) in
+let rgb = `rgb (200, 150, 100)
+let linear = RGB.to_linear_rgb rgb
+let xyz = RGB.to_xyz rgb
+let luv = RGB.to_luv rgb
 
-let contrast = RGB.contrast_ratio body_text page_bg
-let luminance = RGB.relative_luminance body_text
+let rgb_from_xyz = XYZ.to_rgb xyz
+let rgb_from_luv = LUV.to_rgb luv
+```
+
+### Perceptual Blending
+
+```ocaml
+let start = `rgb (255, 0, 0)
+let finish = `rgb (0, 0, 255)
+
+let midpoint = RGB.blend start finish ~mix:0.5
+let gradient = RGB.gradient start finish ~steps:10
+```
+
+`RGB.blend` converts through normalized LUV so midpoints follow perceived color
+change more closely than naive per-channel RGB averaging.
+
+### Metrics
+
+```ocaml
+let luminance = RGB.relative_luminance (`rgb (32, 32, 32))
+let contrast = RGB.contrast_ratio (`rgb (32, 32, 32)) (`rgb (255, 255, 255))
 let distance = RGB.distance_luv (`rgb (255, 0, 0)) (`rgb (0, 0, 255))
 ```
 
-### Custom White Point References
+### White References
 
 ```ocaml
-(* Use custom white point for specific lighting *)
-let custom_white = `xyz (1.0, 1.0, 1.0) in
-
-let color = `rgb (200, 150, 100) in
-let lrgb = Linear_RGB.linearize color in
-let xyz = Linear_RGB.to_xyz lrgb in
-
-(* Convert with custom white point *)
-let luv = XYZ.to_luv_with_ref xyz ~wref:custom_white in
-let xyz' = LUV.to_xyz_with_ref luv ~wref:custom_white in
+let xyz = `xyz (0.4, 0.5, 0.2)
+let luv = XYZ.to_luv_with_ref xyz ~wref:White_reference.d50
+let xyz' = LUV.to_xyz_with_ref luv ~wref:White_reference.d50
 ```
 
-Custom white references must be finite and have a positive `Y` component.
-Named white references are available in `White_reference` for D50, D55, D65,
-D75, and equal-energy workflows.
+Named references:
 
-## Color Space Details
+- `White_reference.d50`
+- `White_reference.d55`
+- `White_reference.d65`
+- `White_reference.d75`
+- `White_reference.equal_energy`
 
-### RGB (Standard RGB)
-- Integer values: 0-255 per channel
-- Gamma-encoded for display
-- Common but not perceptually uniform
+Custom white references must be finite, have positive `Y`, and define valid UV
+chromaticity.
 
-### Linear RGB
-- Float values: 0.0-1.0
-- Gamma correction removed
-- Required for accurate color math
-
-### XYZ (CIE 1931)
-- Device-independent representation
-- Bridge between RGB and perceptual spaces
-- Based on human cone cell responses
-
-### LUV (CIE LUV)
-- Perceptually uniform color space
-- Equal numeric distances = equal perceived differences
-- Ideal for blending and interpolation
-- This package uses normalized units: `L` is `0.0..1.0` instead of `0..100`
-- `u` and `v` are scaled to match the normalized lightness range
-- `LUV.distance` measures Euclidean distance in this normalized representation
-
-### ANSI
-- 256-color terminal palette
-- Indices 0-15: standard colors
-- Indices 16-231: 6×6×6 RGB cube
-- Indices 232-255: grayscale
-
-## Mathematical Foundation
-
-This library implements standard CIE color space transformations:
-
-1. **sRGB Gamma Correction**
-   - Forward: v ≤ 0.04045 ? v/12.92 : ((v+0.055)/1.055)^2.4
-   - Inverse: v ≤ 0.0031308 ? 12.92v : 1.055v^(1/2.4) - 0.055
-
-2. **RGB to XYZ Matrix** (D65 illuminant)
-   ```
-   [X]   [0.4124 0.3576 0.1805]   [R]
-   [Y] = [0.2126 0.7152 0.0722] × [G]
-   [Z]   [0.0193 0.1192 0.9505]   [B]
-   ```
-
-3. **XYZ to LUV**
-   - Uses D65 white point reference by default
-   - L* calculation with cube root for perceptual uniformity
-   - u*, v* from chromaticity coordinates
-
-## Input and Range Semantics
+## Semantics and Edge Cases
 
 - ANSI indices are clamped to `0..255`
-- `ANSI.nearest` clamps RGB channels to `0..255` and breaks ties toward lower palette indices
-- RGB channels are treated as byte-domain sRGB values
-- `RGB.of_hex` accepts `#RRGGBB` and `RRGGBB`, case-insensitively
-- `RGB.to_hex` emits canonical lowercase `#rrggbb`
-- Linear RGB channels are clamped to `0.0..1.0` before conversion back to RGB
-- RGB quantization rounds to the nearest byte and clamps to `0..255`
-- Blend `mix` values are clamped to `0.0..1.0`
-- `RGB.blend_unclamped` and `LUV.blend_unclamped` preserve extrapolation semantics
-- `RGB.gradient` and `LUV.gradient` are inclusive; `steps <= 0` returns empty and `steps = 1` returns the first endpoint
+- `ANSI.nearest` clamps RGB channels and breaks ties toward the lowest index
+- RGB channels are always treated as byte-domain sRGB
+- `Linear_RGB.delinearize` clamps to `0.0..1.0`, rounds, then clamps to bytes
+- `RGB.blend` and `LUV.blend` clamp `mix` to `0.0..1.0`
+- `RGB.blend_unclamped` and `LUV.blend_unclamped` preserve extrapolation
+- `RGB.gradient` and `LUV.gradient` are inclusive
+- `steps <= 0` returns an empty array
+- `steps = 1` returns an array containing the first endpoint
 
-## References
+## Design Notes
 
-- Based on [go-colorful](https://github.com/lucasb-eyer/go-colorful)
-- [CIE LUV Color Space](https://en.wikipedia.org/wiki/CIELUV)
-- [CIE 1931 XYZ](https://en.wikipedia.org/wiki/CIE_1931_color_space)
-- [sRGB Standard](https://en.wikipedia.org/wiki/SRGB)
+- Table lookup is kept for `ANSI.to_rgb`; benchmarks show it is faster than
+  recomputing the palette mapping.
+- Channel-domain work is intentionally explicit: byte RGB, unit linear RGB,
+  then XYZ/LUV math.
+- The implementation is small enough to audit directly, and the test suite
+  leans on exhaustive checks for ANSI indices and 8-bit channel behavior.
 
-## When to Use This Library
+## Validation
 
-- **UI Gradients**: Create smooth, perceptually uniform color transitions
-- **Color Manipulation**: Blend colors naturally
-- **Terminal Applications**: Convert between ANSI and RGB
-- **Color Science**: Accurate device-independent color representation
-- **Display Pipelines**: Move between RGB, XYZ, and perceptual blending space
-
-## When NOT to Use This Library
-
-- Simple RGB color storage (use basic tuples)
-- HSL/HSV color space (not implemented here)
-- Color palette generation (use dedicated tools)
-- Performance-critical inner loops (conversions involve floating-point math)
+```sh
+timeout 30 riot build colors --json
+timeout 30 riot test -p colors --json
+timeout 30 riot run -p colors blend_demo
+timeout 30 riot bench -p colors --json
+```
