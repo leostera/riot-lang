@@ -2878,7 +2878,9 @@ val decode : Outer.Inner (* c *).(request -> response)
       |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
       match structure_items cst with
       | Syn.Cst.StructureItem.LetBinding { value = Syn.Cst.Expression.Extension extension; _ } :: _ ->
-          Test.assert_equal ~expected:(Some "atomic.loc") ~actual:(Syn.Cst.Ident.name extension.name);
+          Test.assert_equal
+            ~expected:[ "atomic"; "loc" ]
+            ~actual:(Syn.Cst.Ident.segments extension.name |> List.map ~fn:Syn.Cst.Token.text);
           Ok ()
       | _ -> Error "expected let binding with expression extension");
   Test.case
@@ -2890,12 +2892,14 @@ val decode : Outer.Inner (* c *).(request -> response)
       |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
       match structure_items cst with
       | Syn.Cst.StructureItem.LetBinding { value = Syn.Cst.Expression.Extension extension; _ } :: _ ->
-          Test.assert_equal ~expected:(Some "atomic.loc") ~actual:(Syn.Cst.Ident.name extension.name);
+          Test.assert_equal
+            ~expected:[ "atomic"; "loc" ]
+            ~actual:(Syn.Cst.Ident.segments extension.name |> List.map ~fn:Syn.Cst.Token.text);
           (match extension.payload with
           | Some (Syn.Cst.Payload.Opaque { tokens }) ->
               Test.assert_equal
                 ~expected:"t.aha_its_using_the_field_name"
-                ~actual:(List.map ~fn:Syn.Cst.Token.full_text tokens |> String.concat "");
+                ~actual:(List.map ~fn:Syn.Cst.Token.text tokens |> String.concat "");
               Ok ()
           | None -> Error "expected opaque extension payload")
       | _ -> Error "expected let binding with expression extension");
