@@ -191,6 +191,58 @@ CAMLprim value kernel_new_iovec_slice_create(value vlength) {
     caml_ba_alloc_dims(CAML_BA_CHAR | CAML_BA_C_LAYOUT | CAML_BA_MANAGED, 1, NULL, length));
 }
 
+CAMLprim value kernel_new_iovec_slice_blit(
+  value src_val,
+  value src_offset_val,
+  value dst_val,
+  value dst_offset_val,
+  value len_val) {
+  memmove(
+    (char *)Caml_ba_data_val(dst_val) + Long_val(dst_offset_val),
+    (char *)Caml_ba_data_val(src_val) + Long_val(src_offset_val),
+    (size_t)Long_val(len_val));
+  return Val_unit;
+}
+
+CAMLprim value kernel_new_iovec_slice_blit_from_bytes(
+  value src_val,
+  value src_offset_val,
+  value dst_val,
+  value dst_offset_val,
+  value len_val) {
+  memcpy(
+    (char *)Caml_ba_data_val(dst_val) + Long_val(dst_offset_val),
+    Bytes_val(src_val) + Long_val(src_offset_val),
+    (size_t)Long_val(len_val));
+  return Val_unit;
+}
+
+CAMLprim value kernel_new_iovec_slice_blit_from_string(
+  value src_val,
+  value src_offset_val,
+  value dst_val,
+  value dst_offset_val,
+  value len_val) {
+  memcpy(
+    (char *)Caml_ba_data_val(dst_val) + Long_val(dst_offset_val),
+    String_val(src_val) + Long_val(src_offset_val),
+    (size_t)Long_val(len_val));
+  return Val_unit;
+}
+
+CAMLprim value kernel_new_iovec_slice_blit_to_bytes(
+  value src_val,
+  value src_offset_val,
+  value dst_val,
+  value dst_offset_val,
+  value len_val) {
+  memcpy(
+    Bytes_val(dst_val) + Long_val(dst_offset_val),
+    (char *)Caml_ba_data_val(src_val) + Long_val(src_offset_val),
+    (size_t)Long_val(len_val));
+  return Val_unit;
+}
+
 static int kernel_new_write_all_bytes(int fd, const char *buffer, size_t len) {
   size_t offset = 0;
 

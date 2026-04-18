@@ -97,7 +97,7 @@ let test_stderr_write_rejects_invalid_slice = fun _ctx ->
     (Kernel.IO.Stderr.write ~pos:(-1) ~len:4 buffer)
 
 let test_stdin_read_vectored_len_zero_noop = fun _ctx ->
-  let iovec = Kernel.IO.Iovec.from_bytes_array [|Kernel.Bytes.create ~size:0|] in
+  let iovec = Kernel.IO.Iovec.from_bytes_array [|Kernel.Bytes.create ~size:0|] |> Result.unwrap in
   let* read = lift_stdin (Kernel.IO.Stdin.read_vectored iovec) in
   if read = 0 then
     Ok ()
@@ -105,7 +105,7 @@ let test_stdin_read_vectored_len_zero_noop = fun _ctx ->
     Error "expected stdin.read_vectored with empty segment to return 0"
 
 let test_stdout_write_vectored_len_zero_noop = fun _ctx ->
-  let iovec = Kernel.IO.Iovec.from_bytes_array [|Kernel.Bytes.create ~size:0|] in
+  let iovec = Kernel.IO.Iovec.from_bytes_array [|Kernel.Bytes.create ~size:0|] |> Result.unwrap in
   let* written = lift_stdout (Kernel.IO.Stdout.write_vectored iovec) in
   if written = 0 then
     Ok ()
@@ -113,7 +113,7 @@ let test_stdout_write_vectored_len_zero_noop = fun _ctx ->
     Error "expected stdout.write_vectored with empty segment to return 0"
 
 let test_stderr_write_vectored_len_zero_noop = fun _ctx ->
-  let iovec = Kernel.IO.Iovec.from_bytes_array [|Kernel.Bytes.create ~size:0|] in
+  let iovec = Kernel.IO.Iovec.from_bytes_array [|Kernel.Bytes.create ~size:0|] |> Result.unwrap in
   let* written = lift_stderr (Kernel.IO.Stderr.write_vectored iovec) in
   if written = 0 then
     Ok ()

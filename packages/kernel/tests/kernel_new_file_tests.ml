@@ -96,7 +96,7 @@ let test_file_vectored_write_roundtrips = fun _ctx ->
   with_temp_path "kernel_new_file" "vectored.bin"
     (fun path ->
       let* file = lift (Kernel.Fs.File.open_write path) in
-      let payload = Kernel.IO.Iovec.from_string_array [|"hello"; " "; "vectored"; " "; "world"|] in
+      let payload = Kernel.IO.Iovec.from_string_array [|"hello"; " "; "vectored"; " "; "world"|] |> Result.unwrap in
       let* () =
         with_file file
           (fun () ->
@@ -469,7 +469,7 @@ let test_read_vectored_roundtrips = fun _ctx ->
               Error "expected scalar write to seed vectored read fixture")
       in
       let* file = lift (Kernel.Fs.File.open_read path) in
-      let iov = Kernel.IO.Iovec.create ~count:3 ~size:(Kernel.Bytes.length payload) () in
+      let iov = Kernel.IO.Iovec.create ~count:3 ~size:(Kernel.Bytes.length payload) () |> Result.unwrap in
       let* actual =
         with_file file
           (fun () ->
@@ -642,8 +642,8 @@ let test_hard_link_rename_preserves_remaining_link_count = fun _ctx ->
 let test_vectored_write_subslice_roundtrips = fun _ctx ->
   with_temp_path "kernel_new_file" "vectored-subslice.bin"
     (fun path ->
-      let payload = Kernel.IO.Iovec.from_string_array [|"__"; "hello"; " "; "kernel"; "__"|] in
-      let slice = Kernel.IO.Iovec.sub ~pos:2 ~len:12 payload in
+      let payload = Kernel.IO.Iovec.from_string_array [|"__"; "hello"; " "; "kernel"; "__"|] |> Result.unwrap in
+      let slice = Kernel.IO.Iovec.sub ~pos:2 ~len:12 payload |> Result.unwrap in
       let* file = lift (Kernel.Fs.File.open_write path) in
       let* () =
         with_file file
@@ -876,7 +876,7 @@ let test_scalar_partial_io_slice_matrix_roundtrips = fun _ctx ->
 let test_vectored_partial_io_slice_matrix_roundtrips = fun _ctx ->
   with_tempdir "kernel_new_file"
     (fun tempdir ->
-      let payload = Kernel.IO.Iovec.from_string_array [|"__"; "alpha"; "-"; "beta"; "__"|] in
+      let payload = Kernel.IO.Iovec.from_string_array [|"__"; "alpha"; "-"; "beta"; "__"|] |> Result.unwrap in
       let flattened = Kernel.IO.Iovec.to_string payload in
       let cases = [ (2, 5); (2, 10); (4, 4); (7, 4); (2, 12) ] in
       let rec loop index cases =
@@ -885,7 +885,7 @@ let test_vectored_partial_io_slice_matrix_roundtrips = fun _ctx ->
         | (pos, len) :: rest ->
             let path = Kernel.Path.(tempdir
             / String.concat "" [ "vectored-slice-"; Int.to_string index; ".bin" ]) in
-            let slice = Kernel.IO.Iovec.sub ~pos ~len payload in
+            let slice = Kernel.IO.Iovec.sub ~pos ~len payload |> Result.unwrap in
             let* file = lift (Kernel.Fs.File.open_write path) in
             let* () =
               with_file file
@@ -1178,7 +1178,8 @@ let test_read_vectored_ignores_zero_length_segments = fun _ctx ->
           Kernel.Bytes.create ~size:2;
           Kernel.Bytes.create ~size:0;
           Kernel.Bytes.create ~size:2;
-        |] in
+        |]
+        |> Result.unwrap in
       let* actual =
         with_file file
           (fun () ->
@@ -1193,7 +1194,8 @@ let test_write_vectored_zero_total_length_is_a_no_op = fun _ctx ->
   with_temp_path "kernel_new_file" "write-vectored-zero.txt"
     (fun path ->
       let iov = Kernel.IO.Iovec.from_bytes_array
-        [|Kernel.Bytes.create ~size:0; Kernel.Bytes.create ~size:0|] in
+        [|Kernel.Bytes.create ~size:0; Kernel.Bytes.create ~size:0|]
+        |> Result.unwrap in
       let* file = lift (Kernel.Fs.File.open_write path) in
       let* written =
         with_file file (fun () -> lift (Kernel.Fs.File.write_vectored file iov))

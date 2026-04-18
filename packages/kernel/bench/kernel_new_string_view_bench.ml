@@ -14,16 +14,16 @@ let build_request = fun ~header_count ~body_len ->
   ^ "\r\n"
   ^ String.make ~len:body_len ~char:'x'
 
-let small_view = Kernel.IO.StringView.of_string (build_request ~header_count:4 ~body_len:128)
-let medium_view = Kernel.IO.StringView.of_string (build_request ~header_count:32 ~body_len:4_096)
-let large_view = Kernel.IO.StringView.of_string (build_request ~header_count:64 ~body_len:65_536)
+let small_view = Kernel.IO.StringView.from_string (build_request ~header_count:4 ~body_len:128) |> Result.unwrap
+let medium_view = Kernel.IO.StringView.from_string (build_request ~header_count:32 ~body_len:4_096) |> Result.unwrap
+let large_view = Kernel.IO.StringView.from_string (build_request ~header_count:64 ~body_len:65_536) |> Result.unwrap
 
 let bench_index_of_char = fun view needle () ->
-  let _ = Kernel.IO.StringView.index_of_char view needle in
+  let _ = Kernel.IO.StringView.index_char view needle in
   ()
 
 let bench_index_of_string = fun view needle () ->
-  let _ = Kernel.IO.StringView.index_of_string view needle in
+  let _ = Kernel.IO.StringView.index_string view needle in
   ()
 
 let bench_starts_with = fun view prefix () ->
@@ -33,8 +33,10 @@ let bench_starts_with = fun view prefix () ->
 let bench_sub_and_advance = fun view () ->
   let _ =
     view
-    |> Kernel.IO.StringView.advance ~by:5
-    |> Kernel.IO.StringView.sub ~offset:0 ~len:32
+    |> fun view -> Kernel.IO.StringView.shift view 5
+    |> Result.unwrap
+    |> Kernel.IO.StringView.sub ~off:0 ~len:32
+    |> Result.unwrap
   in
   ()
 

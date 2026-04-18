@@ -1,27 +1,36 @@
 module IoSlice = Iovec.IoSlice
 
 type t
+type error = Error.t
 
 val empty: t
 
-val of_slice: IoSlice.t -> t
+val from_slice: IoSlice.t -> t
 
-val of_string: string -> t
+val from_string: string -> (t, error) Result.t
 
-val of_buffer: Buffer.t -> t
+val from_buffer: Buffer.t -> t
+
+val to_slice: t -> IoSlice.t
 
 val length: t -> int
 
-val get: t -> at:int -> char
+val get: t -> at:int -> (char, error) Result.t
 
-val sub: t -> offset:int -> len:int -> t
+val get_unchecked: t -> at:int -> char
 
-val advance: t -> by:int -> t
+val sub: t -> off:int -> len:int -> (t, error) Result.t
+
+val shift: t -> int -> (t, error) Result.t
+
+val split_at: t -> int -> ((t * t), error) Result.t
 
 val starts_with: t -> prefix:string -> bool
 
-val index_of_char: t -> char -> int option
+val equal_string: t -> string -> bool
 
-val index_of_string: t -> string -> int option
+val index_char: t -> char -> int option
+
+val index_string: t -> string -> int option
 
 val to_string: t -> string

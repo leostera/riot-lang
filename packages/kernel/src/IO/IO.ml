@@ -1,3 +1,4 @@
+module Error = Error
 module Iovec = Iovec
 module Buffer = Buffer
 module StringView = String_view

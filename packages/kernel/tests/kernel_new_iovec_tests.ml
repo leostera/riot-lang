@@ -3,15 +3,15 @@ module Test = Std.Test
 module Kernel = Kernel
 
 let test_iovec_roundtrips_string_payload = fun _ctx ->
-  let iovec = Kernel.IO.Iovec.from_string_array [|"hello"; " "; "riot"|] in
+  let iovec = Kernel.IO.Iovec.from_string_array [|"hello"; " "; "riot"|] |> Result.unwrap in
   if Kernel.String.equal (Kernel.IO.Iovec.to_string iovec) "hello riot" then
     Ok ()
   else
     Error "expected iovec string roundtrip to preserve segment order"
 
 let test_iovec_sub_slices_segments = fun _ctx ->
-  let iovec = Kernel.IO.Iovec.from_string_array [|"hello"; " "; "riot"|] in
-  let actual = Kernel.IO.Iovec.sub ~pos:3 ~len:5 iovec |> Kernel.IO.Iovec.to_string in
+  let iovec = Kernel.IO.Iovec.from_string_array [|"hello"; " "; "riot"|] |> Result.unwrap in
+  let actual = Kernel.IO.Iovec.sub ~pos:3 ~len:5 iovec |> Result.unwrap |> Kernel.IO.Iovec.to_string in
   if Kernel.String.equal actual "lo ri" then
     Ok ()
   else

@@ -1,65 +1,133 @@
+module Error: module type of Error
+
 module Iovec: sig
   module IoSlice: sig
     type t
 
-    val create: size:int -> t
+    type error = Error.t
+
+    val empty: t
+
+    val create: size:int -> (t, error) Result.t
 
     val length: t -> int
 
-    val get: t -> at:int -> char
+    val sub: t -> off:int -> len:int -> (t, error) Result.t
 
-    val blit_from_bytes:
-      bytes ->
-      src_offset:int ->
-      dst:t ->
-      dst_offset:int ->
-      len:int ->
-      unit
+    val sub_unchecked: t -> off:int -> len:int -> t
+
+    val shift: t -> int -> (t, error) Result.t
+
+    val shift_unchecked: t -> int -> t
+
+    val split_at: t -> int -> ((t * t), error) Result.t
+
+    val split_at_unchecked: t -> int -> t * t
+
+    val get: t -> at:int -> (char, error) Result.t
+
+    val get_unchecked: t -> at:int -> char
+
+    val set: t -> at:int -> char -> (unit, error) Result.t
+
+    val set_unchecked: t -> at:int -> char -> unit
 
     val blit:
       src:t ->
-      src_offset:int ->
+      src_off:int ->
       dst:t ->
-      dst_offset:int ->
+      dst_off:int ->
+      len:int ->
+      (unit, error) Result.t
+
+    val blit_unchecked:
+      src:t ->
+      src_off:int ->
+      dst:t ->
+      dst_off:int ->
       len:int ->
       unit
 
-    val blit_to_bytes: t -> dst:bytes -> dst_offset:int -> unit
+    val blit_from_bytes:
+      bytes ->
+      src_off:int ->
+      t ->
+      dst_off:int ->
+      len:int ->
+      (unit, error) Result.t
+
+    val blit_from_bytes_unchecked:
+      bytes ->
+      src_off:int ->
+      t ->
+      dst_off:int ->
+      len:int ->
+      unit
+
+    val blit_to_bytes:
+      t ->
+      src_off:int ->
+      bytes ->
+      dst_off:int ->
+      len:int ->
+      (unit, error) Result.t
+
+    val blit_to_bytes_unchecked:
+      t ->
+      src_off:int ->
+      bytes ->
+      dst_off:int ->
+      len:int ->
+      unit
 
     val blit_from_string:
       string ->
-      src_offset:int ->
-      dst:t ->
-      dst_offset:int ->
+      src_off:int ->
+      t ->
+      dst_off:int ->
+      len:int ->
+      (unit, error) Result.t
+
+    val blit_from_string_unchecked:
+      string ->
+      src_off:int ->
+      t ->
+      dst_off:int ->
       len:int ->
       unit
 
-    val sub: t -> offset:int -> len:int -> t
+    val from_string: ?off:int -> ?len:int -> string -> (t, error) Result.t
+
+    val from_bytes: ?off:int -> ?len:int -> bytes -> (t, error) Result.t
 
     val to_string: t -> string
+
+    val to_bytes: t -> bytes
   end
 
   type segment = IoSlice.t
   type t
-  val create: ?count:int -> size:int -> unit -> t
+  type error = Error.t
+  val empty: t
+  val create: ?count:int -> size:int -> unit -> (t, error) Result.t
 
-  val with_capacity: int -> t
+  val with_capacity: int -> (t, error) Result.t
 
   val from_slices: segment array -> t
 
-  val from_bytes: bytes -> t
+  val from_bytes: bytes -> (t, error) Result.t
 
-  val from_string: string -> t
+  val from_string: string -> (t, error) Result.t
 
-  val from_bytes_array: bytes array -> t
+  val from_bytes_array: bytes array -> (t, error) Result.t
 
-  val from_string_array: string array -> t
+  val from_string_array: string array -> (t, error) Result.t
 
   val length: t -> int
 
   val for_each: fn:(segment -> unit) -> t -> unit
 
-  val sub: ?pos:int -> len:int -> t -> t
+  val sub: ?pos:int -> len:int -> t -> (t, error) Result.t
 
   val to_bytes: t -> bytes
 
@@ -70,28 +138,37 @@ module Buffer: sig
   module IoSlice = Iovec.IoSlice
 
   type t
+  type error = Error.t
 
-  val create: ?size:int -> unit -> t
+  val create: ?size:int -> unit -> (t, error) Result.t
 
   val length: t -> int
 
+  val readable_bytes: t -> int
+
   val capacity: t -> int
+
+  val writable_bytes: t -> int
 
   val clear: t -> unit
 
-  val append_string: t -> string -> unit
+  val compact: t -> unit
 
-  val append_bytes: t -> bytes -> unit
+  val ensure_free: t -> int -> (unit, error) Result.t
 
-  val append_slice: t -> IoSlice.t -> unit
+  val readable: t -> IoSlice.t
 
-  val writable_slice: ?size:int -> t -> IoSlice.t
+  val writable: t -> IoSlice.t
 
-  val commit_write: t -> len:int -> unit
+  val commit: t -> int -> (unit, error) Result.t
 
-  val consume: t -> len:int -> unit
+  val consume: t -> len:int -> (unit, error) Result.t
 
-  val readable_slice: t -> IoSlice.t
+  val append_string: t -> string -> (unit, error) Result.t
+
+  val append_bytes: t -> bytes -> (unit, error) Result.t
+
+  val append_slice: t -> IoSlice.t -> (unit, error) Result.t
 
   val to_iovec: t -> Iovec.t
 
@@ -104,28 +181,37 @@ module StringView: sig
   module IoSlice = Iovec.IoSlice
 
   type t
+  type error = Error.t
 
   val empty: t
 
-  val of_slice: IoSlice.t -> t
+  val from_slice: IoSlice.t -> t
 
-  val of_string: string -> t
+  val from_string: string -> (t, error) Result.t
 
-  val of_buffer: Buffer.t -> t
+  val from_buffer: Buffer.t -> t
+
+  val to_slice: t -> IoSlice.t
 
   val length: t -> int
 
-  val get: t -> at:int -> char
+  val get: t -> at:int -> (char, error) Result.t
 
-  val sub: t -> offset:int -> len:int -> t
+  val get_unchecked: t -> at:int -> char
 
-  val advance: t -> by:int -> t
+  val sub: t -> off:int -> len:int -> (t, error) Result.t
+
+  val shift: t -> int -> (t, error) Result.t
+
+  val split_at: t -> int -> ((t * t), error) Result.t
 
   val starts_with: t -> prefix:string -> bool
 
-  val index_of_char: t -> char -> int option
+  val equal_string: t -> string -> bool
 
-  val index_of_string: t -> string -> int option
+  val index_char: t -> char -> int option
+
+  val index_string: t -> string -> int option
 
   val to_string: t -> string
 end

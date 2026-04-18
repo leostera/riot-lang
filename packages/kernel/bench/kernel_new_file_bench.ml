@@ -36,6 +36,7 @@ let scalar_payload = Kernel.Bytes.from_string (Kernel.String.make ~len:4_096 ~ch
 let vectored_payload =
   Kernel.IO.Iovec.from_string_array
     (Kernel.Array.init ~count:4 ~fn:(fun _ -> Kernel.String.make ~len:1_024 ~char:'x'))
+  |> Result.unwrap
 
 let bench_scalar_write = fun () ->
   with_temp_path "kernel_new_file_bench" "scalar.bin"
@@ -135,7 +136,7 @@ let bench_vectored_read = fun () ->
       match Kernel.Fs.File.open_read path with
       | Kernel.Result.Error error -> panic_file error
       | Kernel.Result.Ok file ->
-          let iov = Kernel.IO.Iovec.create ~count:4 ~size:1_024 () in
+          let iov = Kernel.IO.Iovec.create ~count:4 ~size:1_024 () |> Result.unwrap in
           with_file file
             (fun file ->
               match Kernel.Fs.File.read_vectored file iov with

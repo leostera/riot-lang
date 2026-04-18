@@ -200,8 +200,8 @@ let test_path_join_does_not_duplicate_separators = fun _ctx ->
     Error "expected Path.join to avoid duplicate separators when the right side already starts with one"
 
 let test_iovec_with_capacity_matches_create_count_one = fun _ctx ->
-  let left = Kernel.IO.Iovec.with_capacity 7 in
-  let right = Kernel.IO.Iovec.create ~count:1 ~size:7 () in
+  let left = Kernel.IO.Iovec.with_capacity 7 |> Result.unwrap in
+  let right = Kernel.IO.Iovec.create ~count:1 ~size:7 () |> Result.unwrap in
   let count_segments iov =
     let seen = ref 0 in
     Kernel.IO.Iovec.for_each iov ~fn:(fun _ -> seen := !seen + 1);
@@ -217,7 +217,7 @@ let test_iovec_with_capacity_matches_create_count_one = fun _ctx ->
     Error "expected Iovec.with_capacity to match a single-segment create"
 
 let test_iovec_create_distributes_remainder_deterministically = fun _ctx ->
-  let iov = Kernel.IO.Iovec.create ~count:3 ~size:5 () in
+  let iov = Kernel.IO.Iovec.create ~count:3 ~size:5 () |> Result.unwrap in
   let lengths = ref [] in
   Kernel.IO.Iovec.for_each iov ~fn:(fun segment ->
     lengths := Kernel.IO.Iovec.IoSlice.length segment :: !lengths);
@@ -229,7 +229,7 @@ let test_iovec_create_distributes_remainder_deterministically = fun _ctx ->
 let test_iovec_of_bytes_array_copies_source_buffers = fun _ctx ->
   let left = Kernel.Bytes.from_string "ri" in
   let right = Kernel.Bytes.from_string "ot" in
-  let iov = Kernel.IO.Iovec.from_bytes_array [|left; right|] in
+  let iov = Kernel.IO.Iovec.from_bytes_array [|left; right|] |> Result.unwrap in
   let _ = Kernel.Bytes.set left ~at:0 ~char:'R' in
   if Kernel.IO.Iovec.to_string iov = "riot" then
     Ok ()
@@ -238,7 +238,7 @@ let test_iovec_of_bytes_array_copies_source_buffers = fun _ctx ->
 
 let test_iovec_into_bytes_returns_a_fresh_copy = fun _ctx ->
   let source = Kernel.Bytes.from_string "riot" in
-  let iov = Kernel.IO.Iovec.from_bytes_array [|source|] in
+  let iov = Kernel.IO.Iovec.from_bytes_array [|source|] |> Result.unwrap in
   let flattened = Kernel.IO.Iovec.to_bytes iov in
   let _ = Kernel.Bytes.set source ~at:0 ~char:'R' in
   if Kernel.Bytes.to_string flattened = "riot" then
@@ -250,7 +250,7 @@ let test_iovec_iter_reports_left_to_right_segment_metadata = fun _ctx ->
   let first = Kernel.Bytes.from_string "ab" in
   let second = Kernel.Bytes.from_string "" in
   let third = Kernel.Bytes.from_string "cde" in
-  let iov = Kernel.IO.Iovec.from_bytes_array [|first; second; third|] in
+  let iov = Kernel.IO.Iovec.from_bytes_array [|first; second; third|] |> Result.unwrap in
   let seen = ref [] in
   Kernel.IO.Iovec.for_each
     iov
@@ -263,8 +263,8 @@ let test_iovec_iter_reports_left_to_right_segment_metadata = fun _ctx ->
     Error "expected Iovec.for_each to preserve segment order and metadata"
 
 let test_iovec_sub_zero_length_is_empty = fun _ctx ->
-  let iov = Kernel.IO.Iovec.from_string_array [|"hello"; " "; "riot"|] in
-  let sub = Kernel.IO.Iovec.sub ~pos:3 ~len:0 iov in
+  let iov = Kernel.IO.Iovec.from_string_array [|"hello"; " "; "riot"|] |> Result.unwrap in
+  let sub = Kernel.IO.Iovec.sub ~pos:3 ~len:0 iov |> Result.unwrap in
   if Kernel.IO.Iovec.length sub = 0 then
     Ok ()
   else

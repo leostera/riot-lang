@@ -6,38 +6,48 @@ let small_chunk = String.make ~len:16 ~char:'x'
 let medium_chunk = String.make ~len:1_024 ~char:'y'
 
 let medium_slice =
-  let slice = Kernel.IO.Iovec.IoSlice.create ~size:(String.length medium_chunk) in
-  Kernel.IO.Iovec.IoSlice.blit_from_string medium_chunk ~src_offset:0 ~dst:slice ~dst_offset:0 ~len:(String.length medium_chunk);
+  let slice = Kernel.IO.Iovec.IoSlice.create ~size:(String.length medium_chunk) |> Result.unwrap in
+  Kernel.IO.Iovec.IoSlice.blit_from_string_unchecked
+    medium_chunk
+    ~src_off:0
+    slice
+    ~dst_off:0
+    ~len:(String.length medium_chunk);
   slice
 
 let bench_append_string = fun ~count ~chunk () ->
-  let buffer = Kernel.IO.Buffer.create () in
+  let buffer = Kernel.IO.Buffer.create () |> Result.unwrap in
   for _ = 1 to count do
-    Kernel.IO.Buffer.append_string buffer chunk
+    let _ = Kernel.IO.Buffer.append_string buffer chunk |> Result.unwrap in
+    ()
   done
 
 let bench_append_slice = fun ~count slice () ->
-  let buffer = Kernel.IO.Buffer.create () in
+  let buffer = Kernel.IO.Buffer.create () |> Result.unwrap in
   for _ = 1 to count do
-    Kernel.IO.Buffer.append_slice buffer slice
+    let _ = Kernel.IO.Buffer.append_slice buffer slice |> Result.unwrap in
+    ()
   done
 
 let bench_direct_write_commit = fun ~count ~chunk () ->
   let chunk_len = String.length chunk in
-  let buffer = Kernel.IO.Buffer.create () in
+  let buffer = Kernel.IO.Buffer.create () |> Result.unwrap in
   for _ = 1 to count do
-    let writable = Kernel.IO.Buffer.writable_slice ~size:chunk_len buffer in
-    Kernel.IO.Iovec.IoSlice.blit_from_string chunk ~src_offset:0 ~dst:writable ~dst_offset:0 ~len:chunk_len;
-    Kernel.IO.Buffer.commit_write buffer ~len:chunk_len
+    let _ = Kernel.IO.Buffer.ensure_free buffer chunk_len |> Result.unwrap in
+    let writable = Kernel.IO.Buffer.writable buffer in
+    Kernel.IO.Iovec.IoSlice.blit_from_string_unchecked chunk ~src_off:0 writable ~dst_off:0 ~len:chunk_len;
+    let _ = Kernel.IO.Buffer.commit buffer chunk_len |> Result.unwrap in
+    ()
   done
 
 let bench_consume_and_refill = fun ~count ~chunk () ->
   let chunk_len = String.length chunk in
-  let buffer = Kernel.IO.Buffer.create ~size:(chunk_len * 2) () in
+  let buffer = Kernel.IO.Buffer.create ~size:(chunk_len * 2) () |> Result.unwrap in
   for _ = 1 to count do
-    Kernel.IO.Buffer.append_string buffer chunk;
+    let _ = Kernel.IO.Buffer.append_string buffer chunk |> Result.unwrap in
     if Kernel.IO.Buffer.length buffer >= chunk_len * 2 then
-      Kernel.IO.Buffer.consume buffer ~len:chunk_len
+      let _ = Kernel.IO.Buffer.consume buffer ~len:chunk_len |> Result.unwrap in
+      ()
   done
 
 let benchmarks =
