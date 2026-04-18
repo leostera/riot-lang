@@ -10,3 +10,7 @@ path = "src/colors.ml"
 
 [dependencies]
 std = { path = "../std" , version = "*"}
+
+[[bin]]
+name = "colors_bench"
+path = "bench/colors_bench.ml"

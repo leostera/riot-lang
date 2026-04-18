@@ -60,6 +60,26 @@ let cie_epsilon = 216.0 /. 24389.0
 
 let cie_kappa = 24389.0 /. 27.0
 
+let d50_x = 0.964_22
+
+let d50_y = 1.000_00
+
+let d50_z = 0.825_21
+
+let d50_u = 0.209_160_052_820_386_27
+
+let d50_v = 0.488_073_384_544_885_14
+
+let d55_x = 0.956_82
+
+let d55_y = 1.000_00
+
+let d55_z = 0.921_49
+
+let d55_u = 0.204_434_630_305_924_43
+
+let d55_v = 0.480_736_103_121_099_05
+
 let d65_x = 0.950_47
 
 let d65_y = 1.000_00
@@ -70,9 +90,45 @@ let d65_u = 0.197_839_824_821_407_77
 
 let d65_v = 0.468_336_302_932_409_7
 
+let d75_x = 0.949_72
+
+let d75_y = 1.000_00
+
+let d75_z = 1.226_38
+
+let d75_u = 0.193_535_437_106_383_16
+
+let d75_v = 0.458_508_543_033_064_6
+
+let equal_energy_x = 1.000_00
+
+let equal_energy_y = 1.000_00
+
+let equal_energy_z = 1.000_00
+
+let equal_energy_u = 0.210_526_315_789_473_67
+
+let equal_energy_v = 0.473_684_210_526_315_76
+
+let d50_white = `xyz (d50_x, d50_y, d50_z)
+
+let d50_white_uv = `uv (d50_u, d50_v)
+
+let d55_white = `xyz (d55_x, d55_y, d55_z)
+
+let d55_white_uv = `uv (d55_u, d55_v)
+
 let d65_white = `xyz (d65_x, d65_y, d65_z)
 
 let d65_white_uv = `uv (d65_u, d65_v)
+
+let d75_white = `xyz (d75_x, d75_y, d75_z)
+
+let d75_white_uv = `uv (d75_u, d75_v)
+
+let equal_energy_white = `xyz (equal_energy_x, equal_energy_y, equal_energy_z)
+
+let equal_energy_white_uv = `uv (equal_energy_u, equal_energy_v)
 
 let clamp_int = fun ~min:low ~max:high value ->
   Int.min high (Int.max low value)
@@ -83,6 +139,10 @@ let clamp_rgb = fun (`rgb (r, g, b)) ->
     clamp_int ~min:rgb_channel_min ~max:rgb_channel_max g,
     clamp_int ~min:rgb_channel_min ~max:rgb_channel_max b
   )
+
+let normalize_rgb = fun rgb ->
+  let red, green, blue = clamp_rgb rgb in
+  `rgb (red, green, blue)
 
 let hex_digit_char = fun value ->
   if value < 10 then
@@ -133,11 +193,28 @@ let uv_of_xyz = fun x y z ->
   else
     `uv (4.0 *. x /. denom, 9.0 *. y /. denom)
 
+let white_uv = fun wref ->
+  if wref = d50_white then
+    d50_white_uv
+  else if wref = d55_white then
+    d55_white_uv
+  else if wref = d65_white then
+    d65_white_uv
+  else if wref = d75_white then
+    d75_white_uv
+  else if wref = equal_energy_white then
+    equal_energy_white_uv
+  else
+    match wref with
+    | `xyz (x, y, z) -> uv_of_xyz x y z
+
 let rgb_distance = fun (left_r, left_g, left_b) (right_r, right_g, right_b) ->
   let diff_r = left_r - right_r in
   let diff_g = left_g - right_g in
   let diff_b = left_b - right_b in
   (diff_r * diff_r) + (diff_g * diff_g) + (diff_b * diff_b)
+
+let lerp = fun left right mix -> left +. (mix *. (right -. left))
 
 let to_string = fun value ->
   match value with
@@ -189,7 +266,15 @@ module ANSI = struct
 end
 
 module White_reference = struct
+  let d50 = d50_white
+
+  let d55 = d55_white
+
   let d65 = d65_white
+
+  let d75 = d75_white
+
+  let equal_energy = equal_energy_white
 end
 
 module Linear_RGB = struct
@@ -259,12 +344,7 @@ module XYZ = struct
         (1.16 *. Float.cbrt y_ratio) -. 0.16
     in
     let (`uv (ubis, vbis)) = to_uv xyz in
-    let (`uv (un, vn)) =
-      if wref = d65_white then
-        d65_white_uv
-      else
-        to_uv wref
-    in
+    let (`uv (un, vn)) = white_uv wref in
     let u = 13.0 *. l *. (ubis -. un) in
     let v = 13.0 *. l *. (vbis -. vn) in
     `luv (l, u, v)
@@ -273,6 +353,12 @@ module XYZ = struct
 end
 
 module LUV = struct
+  let distance = fun (`luv (l1, u1, v1)) (`luv (l2, u2, v2)) ->
+    let diff_l = l2 -. l1 in
+    let diff_u = u2 -. u1 in
+    let diff_v = v2 -. v1 in
+    Float.sqrt ((diff_l *. diff_l) +. (diff_u *. diff_u) +. (diff_v *. diff_v))
+
   let to_xyz_with_ref = fun (`luv (l, u, v)) ~wref ->
     let (`xyz (_, wref_y, _) as wref) = validate_white_reference wref in
     let y =
@@ -282,12 +368,7 @@ module LUV = struct
         let cube_root = (l +. 0.16) /. 1.16 in
         wref_y *. cube_root *. cube_root *. cube_root
     in
-    let (`uv (un, vn)) =
-      if wref = d65_white then
-        d65_white_uv
-      else
-        XYZ.to_uv wref
-    in
+    let (`uv (un, vn)) = white_uv wref in
     if Float.equal l 0.0 then
       `xyz (0.0, 0.0, 0.0)
     else
@@ -301,12 +382,36 @@ module LUV = struct
 
   let to_rgb = fun luv -> to_xyz luv |> XYZ.to_rgb
 
-  let blend = fun (`luv (l1, u1, v1)) (`luv (l2, u2, v2)) ~mix ->
+  let blend_unclamped = fun (`luv (l1, u1, v1) as left) (`luv (l2, u2, v2) as right) ~mix ->
+    if Float.equal mix 0.0 then
+      left
+    else if Float.equal mix 1.0 then
+      right
+    else
+      let l = lerp l1 l2 mix in
+      let u = lerp u1 u2 mix in
+      let v = lerp v1 v2 mix in
+      `luv (l, u, v)
+
+  let blend = fun left right ~mix ->
     let mix = clamp_float ~min:0.0 ~max:1.0 mix in
-    let l = l1 +. (mix *. (l2 -. l1)) in
-    let u = u1 +. (mix *. (u2 -. u1)) in
-    let v = v1 +. (mix *. (v2 -. v1)) in
-    `luv (l, u, v)
+    blend_unclamped left right ~mix
+
+  let gradient = fun start finish ~steps ->
+    if steps <= 0 then
+      [||]
+    else if steps = 1 then
+      [|start|]
+    else
+      Array.init ~count:steps
+        ~fn:(fun index ->
+          if index = 0 then
+            start
+          else if index = steps - 1 then
+            finish
+          else
+            let mix = Float.from_int index /. Float.from_int (steps - 1) in
+            blend_unclamped start finish ~mix)
 end
 
 module RGB = struct
@@ -315,6 +420,21 @@ module RGB = struct
   let to_xyz = fun rgb -> to_linear_rgb rgb |> Linear_RGB.to_xyz
 
   let to_luv = fun rgb -> to_xyz rgb |> XYZ.to_luv
+
+  let distance_luv = fun left right ->
+    LUV.distance (to_luv left) (to_luv right)
+
+  let relative_luminance = fun rgb ->
+    match to_xyz rgb with
+    | `xyz (_, y, _) -> y
+
+  let contrast_ratio = fun left right ->
+    let left_luminance = relative_luminance left in
+    let right_luminance = relative_luminance right in
+    if left_luminance >= right_luminance then
+      (left_luminance +. 0.05) /. (right_luminance +. 0.05)
+    else
+      (right_luminance +. 0.05) /. (left_luminance +. 0.05)
 
   let of_hex = fun value ->
     let trimmed = String.trim value in
@@ -346,9 +466,39 @@ module RGB = struct
     in
     "#" ^ byte_to_hex red ^ byte_to_hex green ^ byte_to_hex blue
 
-  let blend = fun c1 c2 ~mix ->
+  let blend_unclamped = fun left right ~mix ->
+    let left = normalize_rgb left in
+    let right = normalize_rgb right in
+    if left = right then
+      left
+    else if Float.equal mix 0.0 then
+      left
+    else if Float.equal mix 1.0 then
+      right
+    else
+      let luv1 = to_luv left in
+      let luv2 = to_luv right in
+      LUV.blend_unclamped luv1 luv2 ~mix |> LUV.to_rgb
+
+  let blend = fun left right ~mix ->
     let mix = clamp_float ~min:0.0 ~max:1.0 mix in
-    let luv1 = to_luv c1 in
-    let luv2 = to_luv c2 in
-    LUV.blend luv1 luv2 ~mix |> LUV.to_rgb
+    blend_unclamped left right ~mix
+
+  let gradient = fun start finish ~steps ->
+    let start = normalize_rgb start in
+    let finish = normalize_rgb finish in
+    if steps <= 0 then
+      [||]
+    else if steps = 1 then
+      [|start|]
+    else
+      Array.init ~count:steps
+        ~fn:(fun index ->
+          if index = 0 then
+            start
+          else if index = steps - 1 then
+            finish
+          else
+            let mix = Float.from_int index /. Float.from_int (steps - 1) in
+            blend_unclamped start finish ~mix)
 end

@@ -1,4 +1,5 @@
 open Std
+open Std.Collections
 open Colors
 
 let ( let* ) = fun result next ->
@@ -24,6 +25,9 @@ let expect_int_equal = fun ~label ~expected ~actual ->
   expect
     (Int.equal expected actual)
     (label ^ ": expected " ^ Int.to_string expected ^ ", got " ^ Int.to_string actual)
+
+let expect_array_length = fun ~label ~expected ~actual ->
+  expect_int_equal ~label ~expected ~actual:(Array.length actual)
 
 let expect_ansi_equal = fun ~label ~expected ->
   function
@@ -467,6 +471,45 @@ let test_custom_white_reference_roundtrip_and_validation = fun _ctx ->
   with
   | Invalid_argument _ -> Ok ()
 
+let test_named_white_references_stay_stable = fun _ctx ->
+  let references = [
+    ("d50", White_reference.d50, (0.209_160_052_820_386_27, 0.488_073_384_544_885_14));
+    ("d55", White_reference.d55, (0.204_434_630_305_924_43, 0.480_736_103_121_099_05));
+    ("d65", White_reference.d65, (0.197_839_824_821_407_77, 0.468_336_302_932_409_7));
+    ("d75", White_reference.d75, (0.193_535_437_106_383_16, 0.458_508_543_033_064_6));
+    (
+      "equal_energy",
+      White_reference.equal_energy,
+      (0.210_526_315_789_473_67, 0.473_684_210_526_315_76)
+    );
+  ] in
+  let* () =
+    for_each
+      references
+      ~fn:(fun (label, wref, expected_uv) ->
+        XYZ.to_uv wref
+        |> expect_uv_close ~label:("white reference " ^ label) ~epsilon:1.e-12 ~expected:expected_uv)
+  in
+  let sample = RGB.to_xyz (`rgb (200, 150, 100)) in
+  let* () =
+    for_each references
+      ~fn:(fun (label, wref, _) ->
+        let luv = XYZ.to_luv_with_ref sample ~wref in
+        LUV.to_xyz_with_ref luv ~wref
+        |> expect_xyz_close ~label:("white reference roundtrip " ^ label) ~epsilon:1.e-7
+          ~expected:(
+            match sample with
+            | `xyz (x, y, z) -> (x, y, z)
+          ))
+  in
+  match (
+    XYZ.to_luv_with_ref sample ~wref:White_reference.d50,
+    XYZ.to_luv_with_ref sample ~wref:White_reference.d65
+  ) with
+  | (`luv (_, u50, v50), `luv (_, u65, v65)) -> expect
+    (not (Float.equal u50 u65 && Float.equal v50 v65))
+    "expected different white references to change LUV chromatic coordinates"
+
 let test_rgb_xyz_roundtrip_corpus = fun _ctx ->
   for_each edge_case_colors
     ~fn:(fun rgb ->
@@ -540,6 +583,60 @@ let test_rgb_hex_roundtrips_edge_case_corpus = fun _ctx ->
       | Ok parsed -> expect_rgb_equal ~label:"rgb hex roundtrip" ~expected parsed
       | Error message -> Error ("expected RGB hex roundtrip to parse successfully, got error: " ^ message))
 
+let test_metrics_and_distance_helpers = fun _ctx ->
+  let sample_luv_a = `luv (0.1, (-0.2), 0.3) in
+  let sample_luv_b = `luv (0.4, 0.2, (-0.1)) in
+  let* () = expect_float_close
+    ~label:"luv distance normalized lightness"
+    ~epsilon:1.e-12
+    ~expected:1.0
+    ~actual:(LUV.distance (`luv (0.0, 0.0, 0.0)) (`luv (1.0, 0.0, 0.0))) in
+  let* () = expect_float_close
+    ~label:"luv distance symmetry"
+    ~epsilon:1.e-12
+    ~expected:(LUV.distance sample_luv_a sample_luv_b)
+    ~actual:(LUV.distance sample_luv_b sample_luv_a) in
+  let* () = expect_float_close
+    ~label:"rgb distance_luv black white"
+    ~epsilon:1.e-6
+    ~expected:1.0
+    ~actual:(RGB.distance_luv (`rgb (0, 0, 0)) (`rgb (255, 255, 255))) in
+  let* () = expect_float_close
+    ~label:"relative luminance black"
+    ~epsilon:1.e-12
+    ~expected:0.0
+    ~actual:(RGB.relative_luminance (`rgb (0, 0, 0))) in
+  let* () = expect_float_close
+    ~label:"relative luminance white"
+    ~epsilon:1.e-12
+    ~expected:1.0
+    ~actual:(RGB.relative_luminance (`rgb (255, 255, 255))) in
+  let* () = expect_float_close
+    ~label:"relative luminance mid gray"
+    ~epsilon:1.e-10
+    ~expected:0.215_860_500_113_899_26
+    ~actual:(RGB.relative_luminance (`rgb (128, 128, 128))) in
+  let* () = expect_float_close
+    ~label:"relative luminance red"
+    ~epsilon:1.e-12
+    ~expected:0.212_639_005_871_510_36
+    ~actual:(RGB.relative_luminance (`rgb (255, 0, 0))) in
+  let* () = expect_float_close
+    ~label:"contrast ratio black white"
+    ~epsilon:1.e-10
+    ~expected:21.0
+    ~actual:(RGB.contrast_ratio (`rgb (0, 0, 0)) (`rgb (255, 255, 255))) in
+  let* () = expect_float_close
+    ~label:"contrast ratio identical"
+    ~epsilon:1.e-12
+    ~expected:1.0
+    ~actual:(RGB.contrast_ratio (`rgb (12, 34, 56)) (`rgb (12, 34, 56))) in
+  expect_float_close
+    ~label:"contrast ratio symmetry"
+    ~epsilon:1.e-12
+    ~expected:(RGB.contrast_ratio (`rgb (255, 255, 255)) (`rgb (0, 0, 255)))
+    ~actual:(RGB.contrast_ratio (`rgb (0, 0, 255)) (`rgb (255, 255, 255)))
+
 let test_blend_behavior_and_ranges = fun _ctx ->
   let luv_a = `luv (0.2, (-0.4), 0.8) in
   let luv_b = `luv (0.6, 0.2, (-0.4)) in
@@ -592,6 +689,69 @@ let test_blend_behavior_and_ranges = fun _ctx ->
   in
   check_pairs blend_corpus
 
+let test_blend_regressions_and_gradients = fun _ctx ->
+  let blue = `rgb (0, 0, 255) in
+  let yellow = `rgb (255, 255, 0) in
+  let red = `rgb (255, 0, 0) in
+  let magenta = `rgb (255, 0, 255) in
+  let green = `rgb (0, 255, 0) in
+  let gray_start = `rgb (32, 32, 32) in
+  let gray_finish = `rgb (224, 224, 224) in
+  let* () = LUV.blend_unclamped (`luv (0.2, (-0.4), 0.8)) (`luv (0.6, 0.2, (-0.4))) ~mix:(-0.5)
+  |> expect_luv_close
+    ~label:"luv blend_unclamped extrapolates below zero"
+    ~epsilon:1.e-12
+    ~expected:(0.0, (-0.7), 1.4) in
+  let* () = LUV.blend_unclamped (`luv (0.2, (-0.4), 0.8)) (`luv (0.6, 0.2, (-0.4))) ~mix:1.5
+  |> expect_luv_close
+    ~label:"luv blend_unclamped extrapolates above one"
+    ~epsilon:1.e-12
+    ~expected:(0.8, 0.5, (-1.0)) in
+  let* () = RGB.blend red blue ~mix:(-1.0)
+  |> expect_rgb_equal ~label:"rgb blend clamps below zero" ~expected:(255, 0, 0) in
+  let* () = RGB.blend red blue ~mix:2.0
+  |> expect_rgb_equal ~label:"rgb blend clamps above one" ~expected:(0, 0, 255) in
+  let* () = RGB.blend blue yellow ~mix:0.5
+  |> expect_rgb_equal ~label:"rgb blend blue yellow midpoint regression" ~expected:(156, 156, 171) in
+  let* () = RGB.blend red blue ~mix:0.5
+  |> expect_rgb_equal ~label:"rgb blend red blue midpoint regression" ~expected:(190, 0, 144) in
+  let* () = RGB.blend green magenta ~mix:0.5
+  |> expect_rgb_equal ~label:"rgb blend green magenta midpoint regression" ~expected:(183, 182, 183) in
+  let* () = expect_array_length
+    ~label:"luv gradient empty"
+    ~expected:0
+    ~actual:(LUV.gradient (`luv (0.1, 0.2, 0.3)) (`luv (0.4, 0.5, 0.6)) ~steps:0) in
+  let luv_single = LUV.gradient (`luv (0.1, 0.2, 0.3)) (`luv (0.4, 0.5, 0.6)) ~steps:1 in
+  let* () = expect_array_length ~label:"luv gradient single" ~expected:1 ~actual:luv_single in
+  let* () = Array.get_unchecked luv_single ~at:0
+  |> expect_luv_close ~label:"luv gradient single endpoint" ~epsilon:1.e-12 ~expected:(0.1, 0.2, 0.3) in
+  let rgb_empty = RGB.gradient blue yellow ~steps:0 in
+  let* () = expect_array_length ~label:"rgb gradient empty" ~expected:0 ~actual:rgb_empty in
+  let rgb_single = RGB.gradient blue yellow ~steps:1 in
+  let* () = expect_array_length ~label:"rgb gradient single" ~expected:1 ~actual:rgb_single in
+  let* () = Array.get_unchecked rgb_single ~at:0
+  |> expect_rgb_equal ~label:"rgb gradient single endpoint" ~expected:(0, 0, 255) in
+  let gradient = RGB.gradient gray_start gray_finish ~steps:10 in
+  let* () = expect_array_length ~label:"rgb gradient size" ~expected:10 ~actual:gradient in
+  let* () = Array.get_unchecked gradient ~at:0
+  |> expect_rgb_equal ~label:"rgb gradient first endpoint" ~expected:(32, 32, 32) in
+  let* () = Array.get_unchecked gradient ~at:9
+  |> expect_rgb_equal ~label:"rgb gradient last endpoint" ~expected:(224, 224, 224) in
+  let midpoint_gradient = RGB.gradient red blue ~steps:3 in
+  let* () = Array.get_unchecked midpoint_gradient ~at:1
+  |> expect_rgb_equal ~label:"rgb gradient midpoint matches blend" ~expected:(190, 0, 144) in
+  let rec check_gray_gradient index previous =
+    if index >= Array.length gradient then
+      Ok ()
+    else
+      match Array.get_unchecked gradient ~at:index with
+      | `rgb (red, green, blue) ->
+          let* () = expect (red = green && green = blue) "expected grayscale gradient to stay grayscale" in
+          let* () = expect (red >= previous) "expected grayscale gradient to stay monotone" in
+          check_gray_gradient (index + 1) red
+  in
+  check_gray_gradient 0 0
+
 let tests =
   Test.[
     case "to_string formats every public color variant" test_to_string_formats_public_variants;
@@ -606,12 +766,15 @@ let tests =
     case "XYZ conversions match known matrix values" test_xyz_known_conversions;
     case "UV and normalized LUV conversions match known values" test_uv_and_luv_known_values;
     case "custom white references roundtrip and invalid refs raise" test_custom_white_reference_roundtrip_and_validation;
+    case "named white references stay stable and roundtrip correctly" test_named_white_references_stay_stable;
     case "RGB XYZ RGB roundtrips stay within quantization tolerance" test_rgb_xyz_roundtrip_corpus;
     case "XYZ and LUV conversions stay finite on an edge-case corpus" test_xyz_luv_roundtrip_corpus_and_finite_values;
     case "RGB hex codecs handle known values and clamp output" test_rgb_hex_known_values_and_clamping;
     case "RGB hex parsing rejects invalid inputs" test_rgb_hex_rejects_invalid_inputs;
     case "RGB hex codecs roundtrip the edge-case corpus" test_rgb_hex_roundtrips_edge_case_corpus;
+    case "distance and accessibility helpers stay numerically stable" test_metrics_and_distance_helpers;
     case "blend behavior clamps endpoints and keeps outputs in range" test_blend_behavior_and_ranges;
+    case "blend regressions and gradient helpers stay stable" test_blend_regressions_and_gradients;
   ]
 
 let () =

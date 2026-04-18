@@ -7,6 +7,7 @@ Advanced color science library for OCaml providing color space conversions and p
 - **Multiple Color Spaces**: ANSI, RGB, Linear RGB, XYZ, LUV, UV
 - **Hex Helpers**: Parse and render `#rrggbb` RGB strings
 - **Perceptually Uniform Blending**: Blend colors the way humans perceive them
+- **Distance and Accessibility Metrics**: Relative luminance, contrast ratio, and LUV distance
 - **Color Space Conversions**: Convenience helpers for `RGB`, `XYZ`, and `LUV`
 - **ANSI Support**: 256-color terminal palette with RGB conversion and nearest-color lookup
 - **Scientific Foundation**: Based on CIE color space mathematics
@@ -27,6 +28,9 @@ let blend = RGB.blend
   (`rgb (255, 255, 0))  (* Yellow *)
   ~mix:0.5
 (* Returns the package's LUV-based midpoint as an RGB value *)
+
+let contrast = RGB.contrast_ratio (`rgb (0, 0, 0)) (`rgb (255, 255, 255))
+(* Returns: 21.0 *)
 ```
 
 A runnable example is included:
@@ -80,16 +84,10 @@ and ANSI conversion is one-way.
 ### Creating Smooth Gradients
 
 ```ocaml
-let create_gradient start_color end_color steps =
-  List.init steps (fun i ->
-    let mix = Float.of_int i /. Float.of_int (steps - 1) in
-    RGB.blend start_color end_color ~mix
-  )
-
-let gradient = create_gradient
-  (`rgb (255, 0, 0))    (* Red *)
-  (`rgb (0, 0, 255))    (* Blue *)
-  10
+let gradient = RGB.gradient
+  (`rgb (255, 0, 0))
+  (`rgb (0, 0, 255))
+  ~steps:10
 ```
 
 ### Manual Color Space Conversions
@@ -132,6 +130,17 @@ let css = RGB.to_hex (`rgb (255, 128, 0))
 (* Returns: "#ff8000" *)
 ```
 
+### Measuring Contrast and Distance
+
+```ocaml
+let body_text = `rgb (32, 32, 32) in
+let page_bg = `rgb (255, 255, 255) in
+
+let contrast = RGB.contrast_ratio body_text page_bg
+let luminance = RGB.relative_luminance body_text
+let distance = RGB.distance_luv (`rgb (255, 0, 0)) (`rgb (0, 0, 255))
+```
+
 ### Custom White Point References
 
 ```ocaml
@@ -148,6 +157,8 @@ let xyz' = LUV.to_xyz_with_ref luv ~wref:custom_white in
 ```
 
 Custom white references must be finite and have a positive `Y` component.
+Named white references are available in `White_reference` for D50, D55, D65,
+D75, and equal-energy workflows.
 
 ## Color Space Details
 
@@ -172,6 +183,7 @@ Custom white references must be finite and have a positive `Y` component.
 - Ideal for blending and interpolation
 - This package uses normalized units: `L` is `0.0..1.0` instead of `0..100`
 - `u` and `v` are scaled to match the normalized lightness range
+- `LUV.distance` measures Euclidean distance in this normalized representation
 
 ### ANSI
 - 256-color terminal palette
@@ -209,6 +221,8 @@ This library implements standard CIE color space transformations:
 - Linear RGB channels are clamped to `0.0..1.0` before conversion back to RGB
 - RGB quantization rounds to the nearest byte and clamps to `0..255`
 - Blend `mix` values are clamped to `0.0..1.0`
+- `RGB.blend_unclamped` and `LUV.blend_unclamped` preserve extrapolation semantics
+- `RGB.gradient` and `LUV.gradient` are inclusive; `steps <= 0` returns empty and `steps = 1` returns the first endpoint
 
 ## References
 
@@ -230,5 +244,4 @@ This library implements standard CIE color space transformations:
 - Simple RGB color storage (use basic tuples)
 - HSL/HSV color space (not implemented here)
 - Color palette generation (use dedicated tools)
-- Accessibility metrics such as contrast ratio or perceptual distance (not implemented here)
 - Performance-critical inner loops (conversions involve floating-point math)

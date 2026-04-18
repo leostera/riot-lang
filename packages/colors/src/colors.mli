@@ -97,12 +97,24 @@ end
 
 (** White-point definitions used by XYZ and LUV conversions. *)
 module White_reference: sig
+  (** Standard D50 white point. Useful for print-oriented workflows. *)
+  val d50: xyz
+
+  (** Standard D55 white point. *)
+  val d55: xyz
+
   (** Standard D65 white point.
 
       This is the default daylight white reference used by the package for the
       common XYZ/LUV conversions.
   *)
   val d65: xyz
+
+  (** Standard D75 white point. *)
+  val d75: xyz
+
+  (** Equal-energy white point. *)
+  val equal_energy: xyz
 end
 
 (** Helpers for working in linear RGB space.
@@ -181,6 +193,9 @@ end
     LUV is useful when you want distances and interpolation to track perceived
     color change more closely than raw RGB values do. *)
 module LUV: sig
+  (** Measure Euclidean distance in normalized LUV space. *)
+  val distance: luv -> luv -> float
+
   (** Convert LUV back to XYZ with an explicit white reference.
 
       The white reference should match the one used in the forward conversion.
@@ -193,6 +208,14 @@ module LUV: sig
 
   (** Convert LUV directly to display RGB. *)
   val to_rgb: luv -> rgb
+
+  (** Blend two LUV colors without clamping [`mix`].
+
+      Use this when you want interpolation outside the `[0.0, 1.0]` segment.
+      [`mix = 0.0`] returns the first color and [`mix = 1.0`] returns the
+      second color exactly.
+  *)
+  val blend_unclamped: luv -> luv -> mix:float -> luv
 
   (** Blend two LUV colors.
 
@@ -216,6 +239,14 @@ module LUV: sig
       ```
   *)
   val blend: luv -> luv -> mix:float -> luv
+
+  (** Build an inclusive LUV gradient.
+
+      - [`steps <= 0`] returns an empty array
+      - [`steps = 1`] returns an array containing only the first color
+      - otherwise the first and last entries match the endpoints exactly
+  *)
+  val gradient: luv -> luv -> steps:int -> luv array
 end
 
 (** High-level RGB helpers.
@@ -233,6 +264,18 @@ module RGB: sig
   (** Convert RGB directly to normalized LUV. *)
   val to_luv: rgb -> luv
 
+  (** Measure perceptual distance by converting both colors to normalized LUV. *)
+  val distance_luv: rgb -> rgb -> float
+
+  (** Compute relative luminance from display RGB.
+
+      This uses the standard sRGB transfer curve and luminance coefficients.
+  *)
+  val relative_luminance: rgb -> float
+
+  (** Compute WCAG contrast ratio between two RGB colors. *)
+  val contrast_ratio: rgb -> rgb -> float
+
   (** Parse a 6-digit RGB hex string.
 
       Accepts either `#RRGGBB` or `RRGGBB`, ignores ASCII case, and returns
@@ -246,6 +289,13 @@ module RGB: sig
       the `#rrggbb` form.
   *)
   val to_hex: rgb -> string
+
+  (** Blend two RGB colors through LUV without clamping [`mix`].
+
+      Endpoint colors are clamped to byte-domain RGB first, and exact
+      [`mix = 0.0`] and [`mix = 1.0`] return the normalized endpoints.
+  *)
+  val blend_unclamped: rgb -> rgb -> mix:float -> rgb
 
   (** Blend two RGB colors in perceptually uniform LUV space.
 
@@ -264,4 +314,13 @@ module RGB: sig
       ```
   *)
   val blend: rgb -> rgb -> mix:float -> rgb
+
+  (** Build an inclusive RGB gradient using perceptual LUV interpolation.
+
+      - [`steps <= 0`] returns an empty array
+      - [`steps = 1`] returns an array containing the normalized first color
+      - otherwise the first and last entries match the normalized endpoints
+        exactly
+  *)
+  val gradient: rgb -> rgb -> steps:int -> rgb array
 end
