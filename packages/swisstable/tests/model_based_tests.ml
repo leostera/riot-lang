@@ -7,6 +7,13 @@
 open Std
 open Propane
 
+let bounded_list_arb = fun ?(min = 0) max elem_arb ->
+  let list_arb = Arbitrary.list elem_arb in
+  { list_arb with gen = Generator.list_size (Generator.int_range min max) elem_arb.gen }
+
+let non_empty_bounded_list_arb = fun max elem_arb ->
+  bounded_list_arb ~min:1 max elem_arb
+
 (** {1 Test Strategy}
     
     We generate random sequences of operations and apply them to both
@@ -18,10 +25,9 @@ open Propane
 (* Property 1: Insert operations produce identical results *)
 
 let insert_equivalence_prop =
-  property "insert: swisstable matches hashmap" (Arbitrary.list
-    (Arbitrary.pair Arbitrary.int Arbitrary.int))
+  property "insert: swisstable matches hashmap"
+    (bounded_list_arb 100 Arbitrary.(pair int int))
     (fun pairs ->
-      assume (Collections.List.length pairs <= 100);
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Apply all inserts to both *)
@@ -42,10 +48,11 @@ let insert_equivalence_prop =
 (* Property 2: Get operations produce identical results *)
 
 let get_equivalence_prop =
-  property "get: swisstable matches hashmap" Arbitrary.(pair (list (pair int int)) (list int))
+  property "get: swisstable matches hashmap"
+    (Arbitrary.pair
+      (bounded_list_arb 50 Arbitrary.(pair int int))
+      (bounded_list_arb 50 Arbitrary.int))
     (fun ((insert_pairs, get_keys)) ->
-      assume (Collections.List.length insert_pairs <= 50);
-      assume (Collections.List.length get_keys <= 50);
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
@@ -61,10 +68,11 @@ let get_equivalence_prop =
 (* Property 3: Remove operations produce identical results *)
 
 let remove_equivalence_prop =
-  property "remove: swisstable matches hashmap" Arbitrary.(pair (list (pair int int)) (list int))
+  property "remove: swisstable matches hashmap"
+    (Arbitrary.pair
+      (bounded_list_arb 50 Arbitrary.(pair int int))
+      (bounded_list_arb 50 Arbitrary.int))
     (fun ((insert_pairs, remove_keys)) ->
-      assume (Collections.List.length insert_pairs <= 50);
-      assume (Collections.List.length remove_keys <= 50);
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
@@ -90,12 +98,11 @@ let remove_equivalence_prop =
 (* Property 4: Contains operations produce identical results *)
 
 let contains_equivalence_prop =
-  property "contains_key: swisstable matches hashmap" Arbitrary.(pair
-    (list (pair int int))
-    (list int))
+  property "contains_key: swisstable matches hashmap"
+    (Arbitrary.pair
+      (bounded_list_arb 50 Arbitrary.(pair int int))
+      (bounded_list_arb 50 Arbitrary.int))
     (fun ((insert_pairs, check_keys)) ->
-      assume (Collections.List.length insert_pairs <= 50);
-      assume (Collections.List.length check_keys <= 50);
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
@@ -113,10 +120,9 @@ let contains_equivalence_prop =
 (* Property 5: Clear produces identical results *)
 
 let clear_equivalence_prop =
-  property "clear: swisstable matches hashmap" (Arbitrary.list
-    (Arbitrary.pair Arbitrary.int Arbitrary.int))
+  property "clear: swisstable matches hashmap"
+    (bounded_list_arb 50 Arbitrary.(pair int int))
     (fun pairs ->
-      assume (Collections.List.length pairs <= 50);
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
@@ -137,10 +143,9 @@ let clear_equivalence_prop =
 (* Property 6: to_list produces same entries (modulo order) *)
 
 let to_list_equivalence_prop =
-  property "to_list: swisstable matches hashmap (unordered)" (Arbitrary.list
-    (Arbitrary.pair Arbitrary.int Arbitrary.int))
+  property "to_list: swisstable matches hashmap (unordered)"
+    (bounded_list_arb 50 Arbitrary.(pair int int))
     (fun pairs ->
-      assume (Collections.List.length pairs <= 50);
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
@@ -163,10 +168,9 @@ let to_list_equivalence_prop =
 (* Property 7: keys produce same keys (modulo order) *)
 
 let keys_equivalence_prop =
-  property "keys: swisstable matches hashmap (unordered)" (Arbitrary.list
-    (Arbitrary.pair Arbitrary.int Arbitrary.int))
+  property "keys: swisstable matches hashmap (unordered)"
+    (bounded_list_arb 50 Arbitrary.(pair int int))
     (fun pairs ->
-      assume (Collections.List.length pairs <= 50);
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
@@ -189,10 +193,9 @@ let keys_equivalence_prop =
 (* Property 8: values produce same values (modulo order) *)
 
 let values_equivalence_prop =
-  property "values: swisstable matches hashmap (unordered)" (Arbitrary.list
-    (Arbitrary.pair Arbitrary.int Arbitrary.int))
+  property "values: swisstable matches hashmap (unordered)"
+    (bounded_list_arb 50 Arbitrary.(pair int int))
     (fun pairs ->
-      assume (Collections.List.length pairs <= 50);
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
@@ -214,10 +217,9 @@ let values_equivalence_prop =
 (* Property 9: fold produces identical results *)
 
 let fold_equivalence_prop =
-  property "fold: swisstable matches hashmap" (Arbitrary.list
-    (Arbitrary.pair Arbitrary.int Arbitrary.int))
+  property "fold: swisstable matches hashmap"
+    (bounded_list_arb 50 Arbitrary.(pair int int))
     (fun pairs ->
-      assume (Collections.List.length pairs <= 50);
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
@@ -247,9 +249,9 @@ let fold_equivalence_prop =
 (* Property 10: or_insert produces identical results *)
 
 let or_insert_equivalence_prop =
-  property "or_insert: swisstable matches hashmap" Arbitrary.(triple int int (list (pair int int)))
+  property "or_insert: swisstable matches hashmap"
+    (Arbitrary.triple Arbitrary.int Arbitrary.int (bounded_list_arb 50 Arbitrary.(pair int int)))
     (fun ((key, default, pairs)) ->
-      assume (Collections.List.length pairs <= 50);
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Populate both *)
@@ -271,11 +273,9 @@ let or_insert_equivalence_prop =
 (* Property 11: Many operations maintain equivalence *)
 
 let many_ops_equivalence_prop =
-  property "many operations: swisstable matches hashmap" (Arbitrary.list
-    (Arbitrary.pair Arbitrary.int Arbitrary.int))
+  property "many operations: swisstable matches hashmap"
+    (non_empty_bounded_list_arb 200 Arbitrary.(pair int int))
     (fun pairs ->
-      assume (Collections.List.length pairs > 0);
-      assume (Collections.List.length pairs <= 200);
       let swiss = Swisstable.create () in
       let hash = Collections.HashMap.create () in
       (* Insert all *)

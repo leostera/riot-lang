@@ -126,8 +126,7 @@ let event_elapsed_us = fun () ->
   | None -> 0
 
 let write_json_line = fun json ->
-  print (Data.Json.to_string json);
-  print "\n"
+  println (Data.Json.to_string json)
 
 let event_to_json = function
   | Runner.SuiteStarted { suite_name; total } ->
@@ -244,8 +243,7 @@ let write_tests_json = fun tests ->
         :: to_json_items (index + 1) rest
   in
   let tests_json = to_json_items 1 tests in
-  print (Data.Json.to_string (Data.Json.Object [ ("tests", Data.Json.Array tests_json) ]));
-  print "\n"
+  println (Data.Json.to_string (Data.Json.Object [ ("tests", Data.Json.Array tests_json) ]))
 
 let list_tests = fun ~json tests ->
   if json then

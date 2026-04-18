@@ -6,6 +6,10 @@
 open Std
 open Propane
 
+let bounded_list_arb = fun ?(min = 0) max elem_arb ->
+  let list_arb = Arbitrary.list elem_arb in
+  { list_arb with gen = Generator.list_size (Generator.int_range min max) elem_arb.gen }
+
 (** {1 Custom Generators and Arbitraries} *)
 
 (* Small integers for better collision testing *)
@@ -247,10 +251,9 @@ let clear_all_none_prop =
 (* Property 18: Many insertions preserve all entries *)
 
 let many_insertions_prop =
-  property "many insertions preserve all entries" (Arbitrary.list
-    (Arbitrary.pair Arbitrary.int Arbitrary.int))
+  property "many insertions preserve all entries"
+    (bounded_list_arb 100 Arbitrary.(pair int int))
     (fun pairs ->
-      assume (Collections.List.length pairs <= 100);
       (* Limit test size *)
       let map = Swisstable.create () in
       (* Insert all pairs *)
@@ -276,10 +279,9 @@ let many_insertions_prop =
 (* Property 19: Length is correct after many operations *)
 
 let length_invariant_prop =
-  property "length invariant holds across operations" (Arbitrary.list
-    (Arbitrary.pair Arbitrary.int Arbitrary.int))
+  property "length invariant holds across operations"
+    (bounded_list_arb 50 Arbitrary.(pair int int))
     (fun pairs ->
-      assume (Collections.List.length pairs <= 50);
       let map = Swisstable.create () in
       (* Count unique keys using reference HashMap *)
       let ref_map = Collections.HashMap.create () in

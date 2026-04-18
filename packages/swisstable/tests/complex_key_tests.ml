@@ -11,6 +11,10 @@
 open Std
 open Propane
 
+let bounded_list_arb = fun ?(min = 0) max elem_arb ->
+  let list_arb = Arbitrary.list elem_arb in
+  { list_arb with gen = Generator.list_size (Generator.int_range min max) elem_arb.gen }
+
 (** {1 Complex Type Definitions} *)
 
 (* Record types *)
@@ -175,10 +179,9 @@ let user_key_insert_get_prop =
 (* Property 2: User record keys - multiple users *)
 
 let user_key_multiple_prop =
-  property "record keys (user): multiple distinct users" (Arbitrary.list
-    (Arbitrary.pair user_arb Arbitrary.int))
+  property "record keys (user): multiple distinct users"
+    (bounded_list_arb 50 (Arbitrary.pair user_arb Arbitrary.int))
     (fun pairs ->
-      assume (Collections.List.length pairs <= 50);
       let map = Swisstable.create () in
       (* Insert all users *)
       List.iter
@@ -244,10 +247,9 @@ let event_key_prop =
 (* Property 6: Multiple different events *)
 
 let event_key_multiple_prop =
-  property "variant keys (event): multiple distinct events" (Arbitrary.list
-    (Arbitrary.pair event_arb Arbitrary.int))
+  property "variant keys (event): multiple distinct events"
+    (bounded_list_arb 30 (Arbitrary.pair event_arb Arbitrary.int))
     (fun pairs ->
-      assume (Collections.List.length pairs <= 30);
       let map = Swisstable.create () in
       let ref_map = Collections.HashMap.create () in
       (* Insert all events *)
@@ -331,10 +333,9 @@ let customer_key_prop =
 (* Property 12: Multiple customers *)
 
 let customer_key_multiple_prop =
-  property "nested keys (customer): multiple distinct customers" (Arbitrary.list
-    (Arbitrary.pair customer_arb Arbitrary.int))
+  property "nested keys (customer): multiple distinct customers"
+    (bounded_list_arb 30 (Arbitrary.pair customer_arb Arbitrary.int))
     (fun pairs ->
-      assume (Collections.List.length pairs <= 30);
       let map = Swisstable.create () in
       let ref_map = Collections.HashMap.create () in
       (* Insert all *)
@@ -359,10 +360,9 @@ let customer_key_multiple_prop =
 (* Property 13: Small point range forces collisions *)
 
 let collision_point_prop =
-  property "hash collisions (small point range): correctness maintained" (Arbitrary.list
-    (Arbitrary.pair Arbitrary.int Arbitrary.int))
+  property "hash collisions (small point range): correctness maintained"
+    (bounded_list_arb 50 Arbitrary.(pair int int))
     (fun pairs ->
-      assume (Collections.List.length pairs <= 50);
       (* Use small point range (0-9) to force collisions *)
       let small_pairs =
         List.map pairs
