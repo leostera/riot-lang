@@ -2710,6 +2710,7 @@ and can_start_pattern = fun parser ->
   | Token.Underscore
   | Token.Literal _
   | Token.Ident _
+  | Token.Hash
   | Token.OpenDelim Token.Paren
   | Token.OpenDelim Token.Bracket
   | Token.OpenDelim Token.Array

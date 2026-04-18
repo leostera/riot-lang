@@ -8,19 +8,11 @@ open Propane
 (* Generator for valid HTTP header names (lowercase alphanumeric + hyphens) *)
 
 let header_name_gen =
-  Generator.(
-    map
-      (fun name ->
-        if String.length name = 0 then
-          "x-header"
-        else
-          name)
-      (string_of char_lowercase)
-  )
+  Generator.string_size (Generator.int_range 1 24) Generator.char_lowercase
 
 (* Generator for HTTP header values (printable ASCII) *)
 
-let header_value_gen = Generator.(string_of char_printable)
+let header_value_gen = Generator.string_size (Generator.int_range 1 64) Generator.char_printable
 
 (* Generator for HTTP headers *)
 
@@ -37,13 +29,10 @@ let header_arb =
 (* Property: HPACK encoding produces output *)
 
 let hpack_encode_prop =
-  property "HPACK encoding produces non-empty output for non-empty headers" Arbitrary.(list header_arb)
+  property
+    "HPACK encoding produces non-empty output for non-empty headers"
+    Arbitrary.(make (Generator.non_empty_list header_gen))
     (fun headers ->
-      assume (List.length headers > 0);
-      assume
-        (List.for_all
-          (fun h -> String.length h.Http2.Hpack.name > 0 && String.length h.Http2.Hpack.value > 0)
-          headers);
       let encoder = Http2.Hpack.create_encoder () in
       let encoded = Http2.Hpack.encode encoder ~sensitive_headers:[] () ~headers in
       IO.Bytes.length encoded > 0)
@@ -136,26 +125,31 @@ let frame_length_prop =
 
 let chunk_size_gen = Generator.int_range 0 100
 
+let int_to_hex = fun n ->
+  let digit = fun value ->
+    if value < 10 then
+      Char.chr (Char.code '0' + value)
+    else
+      Char.chr (Char.code 'a' + value - 10)
+  in
+  let rec loop acc value =
+    if value < 16 then
+      String.make ~len:1 ~char:(digit value) ^ acc
+    else
+      loop (String.make ~len:1 ~char:(digit (value mod 16)) ^ acc) (value / 16)
+  in
+  loop "" n
+
 (* Property: Chunk encoding/decoding round-trip *)
 
 let chunk_roundtrip_prop =
-  property "HTTP/1 chunk encode/decode preserves data" Arbitrary.(pair
-    (make (Generator.int_range 1 50))
-    string)
-    (fun ((size, full_data)) ->
-      assume (String.length full_data > 0);
-      (* Take a substring of the specified size *)
-      let actual_size = min size (String.length full_data) in
-      let data = String.sub full_data ~offset:0 ~len:actual_size in
+  property
+    "HTTP/1 chunk encode/decode preserves data"
+    Arbitrary.(make (Generator.string_size (Generator.int_range 1 50) Generator.char_printable))
+    (fun data ->
       (* Convert to hex manually for small numbers *)
       let hex_size =
-        let n = String.length data in
-        if n < 10 then
-          Int.to_string n
-        else if n < 16 then
-          String.make ~len:1 ~char:(Char.chr (Char.code 'a' + n - 10))
-        else
-          Int.to_string n
+        String.length data |> int_to_hex
       in
       let encoded = hex_size ^ "\r\n" ^ data ^ "\r\n" in
       (* Decode the chunk *)
