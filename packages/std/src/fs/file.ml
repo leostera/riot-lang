@@ -195,15 +195,16 @@ let to_reader = fun file ->
       | Ok read_len ->
           let copied = ref 0 in
           Iovec.for_each bufs
-            ~fn:(fun { Kernel.IO.Iovec.buffer; offset; length } ->
+            ~fn:(fun segment ->
               let remaining = read_len - !copied in
               if remaining > 0 then
+                let length = Iovec.IoSlice.length segment in
                 let chunk_len = min length remaining in
-                Bytes.blit_unchecked
+                Iovec.IoSlice.blit_from_bytes
                   scratch
                   ~src_offset:!copied
-                  ~dst:buffer
-                  ~dst_offset:offset
+                  ~dst:segment
+                  ~dst_offset:0
                   ~len:chunk_len;
                 copied := !copied + chunk_len);
           Ok read_len

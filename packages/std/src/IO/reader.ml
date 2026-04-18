@@ -152,15 +152,16 @@ let buffered_consume = fun state buffer ~dst_offset ~len ->
 let buffered_consume_vectored = fun state bufs ->
   let progress: read_state = { total = 0; continue = true } in
   Iovec.for_each bufs
-    ~fn:(fun { Iovec.buffer; offset; length } ->
+    ~fn:(fun segment ->
+      let length = Iovec.IoSlice.length segment in
       let available = buffered_available state in
       if available > 0 then
         let chunk_len = min length available in
-        Bytes.blit_unchecked
+        Iovec.IoSlice.blit_from_bytes
           state.chunk
           ~src_offset:state.offset
-          ~dst:buffer
-          ~dst_offset:offset
+          ~dst:segment
+          ~dst_offset:0
           ~len:chunk_len;
         state.offset <- state.offset + chunk_len;
         progress.total <- progress.total + chunk_len);
@@ -295,18 +296,19 @@ let from_bytes = fun data ->
     let read_vectored = fun source iov ->
       let progress = { total = 0; continue = true } in
       Iovec.for_each iov
-        ~fn:(fun { Iovec.buffer; offset; length } ->
+        ~fn:(fun segment ->
           if progress.continue then
             let remaining = Bytes.length source - state.offset in
             if remaining = 0 then
               progress.continue <- false
             else
+              let length = Iovec.IoSlice.length segment in
               let to_read = min length remaining in
-              Bytes.blit_unchecked
+              Iovec.IoSlice.blit_from_bytes
                 source
                 ~src_offset:state.offset
-                ~dst:buffer
-                ~dst_offset:offset
+                ~dst:segment
+                ~dst_offset:0
                 ~len:to_read;
               state.offset <- state.offset + to_read;
               progress.total <- progress.total + to_read);
@@ -333,14 +335,20 @@ let from_string = fun source ->
     let read_vectored = fun value iov ->
       let progress = { total = 0; continue = true } in
       Iovec.for_each iov
-        ~fn:(fun { Iovec.buffer; offset; length } ->
+        ~fn:(fun segment ->
           if progress.continue then
             let remaining = String.length value - state.offset in
             if remaining = 0 then
               progress.continue <- false
             else
+              let length = Iovec.IoSlice.length segment in
               let to_read = min length remaining in
-              Bytes.blit_string value ~src_offset:state.offset ~dst:buffer ~dst_offset:offset ~len:to_read;
+              Iovec.IoSlice.blit_from_string
+                value
+                ~src_offset:state.offset
+                ~dst:segment
+                ~dst_offset:0
+                ~len:to_read;
               state.offset <- state.offset + to_read;
               progress.total <- progress.total + to_read);
       Ok progress.total

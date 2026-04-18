@@ -1,4 +1,5 @@
 #include <caml/alloc.h>
+#include <caml/bigarray.h>
 #include <caml/fail.h>
 #include <caml/memory.h>
 #include <caml/mlvalues.h>
@@ -133,6 +134,11 @@ static int kernel_new_file_open_flags(int flags_mask) {
 
 static struct iovec *kernel_new_file_build_iovecs(value segments_val, int *count_out) {
   int count = Wosize_val(segments_val);
+  if (count == 0) {
+    *count_out = 0;
+    return NULL;
+  }
+
   struct iovec *iovecs = malloc(sizeof(struct iovec) * count);
   if (iovecs == NULL) {
     caml_raise_out_of_memory();
@@ -140,10 +146,8 @@ static struct iovec *kernel_new_file_build_iovecs(value segments_val, int *count
 
   for (int index = 0; index < count; index++) {
     value segment_val = Field(segments_val, index);
-    value buffer_val = Field(segment_val, 0);
-    int offset = Int_val(Field(segment_val, 1));
-    int length = Int_val(Field(segment_val, 2));
-    iovecs[index].iov_base = (void *)(Bytes_val(buffer_val) + offset);
+    int length = (int)Caml_ba_array_val(segment_val)->dim[0];
+    iovecs[index].iov_base = (void *)Caml_ba_data_val(segment_val);
     iovecs[index].iov_len = (size_t)length;
   }
 
@@ -173,6 +177,18 @@ static char *kernel_new_copy_ocaml_string_bytes(value string_val, mlsize_t *len_
 
   *len_out = len;
   return copy;
+}
+
+CAMLprim value kernel_new_iovec_slice_create(value vlength) {
+  CAMLparam1(vlength);
+  intnat length = Long_val(vlength);
+
+  if (length < 0) {
+    caml_invalid_argument("Kernel.IO.Iovec.IoSlice.create");
+  }
+
+  CAMLreturn(
+    caml_ba_alloc_dims(CAML_BA_CHAR | CAML_BA_C_LAYOUT | CAML_BA_MANAGED, 1, NULL, length));
 }
 
 static int kernel_new_write_all_bytes(int fd, const char *buffer, size_t len) {
@@ -442,6 +458,10 @@ CAMLprim value kernel_new_fs_file_readv(value fd_val, value segments_val) {
   struct iovec *iovecs = kernel_new_file_build_iovecs(segments_val, &count);
   ssize_t result;
 
+  if (count == 0) {
+    CAMLreturn(kernel_new_result_ok(Val_int(0)));
+  }
+
   caml_enter_blocking_section();
   result = readv(Int_val(fd_val), iovecs, count);
   caml_leave_blocking_section();
@@ -461,6 +481,10 @@ CAMLprim value kernel_new_fs_file_writev(value fd_val, value segments_val) {
   int count = 0;
   struct iovec *iovecs = kernel_new_file_build_iovecs(segments_val, &count);
   ssize_t result;
+
+  if (count == 0) {
+    CAMLreturn(kernel_new_result_ok(Val_int(0)));
+  }
 
   caml_enter_blocking_section();
   result = writev(Int_val(fd_val), iovecs, count);

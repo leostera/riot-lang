@@ -1,9 +1,35 @@
-(** Scatter/gather buffer segments for narrow kernel I/O paths. *)
-type segment = {
-  buffer: bytes;
-  offset: int;
-  length: int;
-}
+module IoSlice: sig
+  type t
+
+  val create: size:int -> t
+
+  val length: t -> int
+
+  val blit_from_bytes:
+    bytes ->
+    src_offset:int ->
+    dst:t ->
+    dst_offset:int ->
+    len:int ->
+    unit
+
+  val blit_to_bytes: t -> dst:bytes -> dst_offset:int -> unit
+
+  val blit_from_string:
+    string ->
+    src_offset:int ->
+    dst:t ->
+    dst_offset:int ->
+    len:int ->
+    unit
+
+  val sub: t -> offset:int -> len:int -> t
+
+  val to_string: t -> string
+end
+
+(** Scatter/gather byte slices for narrow kernel I/O paths. *)
+type segment = IoSlice.t
 type t
 val create: ?count:int -> size:int -> unit -> t
 

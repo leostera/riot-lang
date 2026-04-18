@@ -330,19 +330,20 @@ let to_reader = fun ?chunk_size value ->
       let continue = Sync.Cell.create true in
       let source_bytes = to_bytes source in
       IO.Iovec.for_each
-        ~fn:(fun { IO.Iovec.buffer; offset=segment_offset; length=segment_length } ->
+        ~fn:(fun segment ->
           if Sync.Cell.get continue then
             (
               let remaining = length source - Sync.Cell.get offset in
               if Int.equal remaining 0 then
                 Sync.Cell.set continue false
               else
+                let segment_length = IO.Iovec.IoSlice.length segment in
                 let to_read = min chunk_size (min remaining segment_length) in
-                Kernel.Bytes.blit_unchecked
+                IO.Iovec.IoSlice.blit_from_bytes
                   source_bytes
                   ~src_offset:(Sync.Cell.get offset)
-                  ~dst:buffer
-                  ~dst_offset:segment_offset
+                  ~dst:segment
+                  ~dst_offset:0
                   ~len:to_read;
                 Sync.Cell.set offset (Sync.Cell.get offset + to_read);
                 Sync.Cell.set total (Sync.Cell.get total + to_read);

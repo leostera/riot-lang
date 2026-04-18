@@ -1,8 +1,6 @@
-type segment = Kernel.IO.Iovec.segment = {
-  buffer: bytes;
-  offset: int;
-  length: int;
-}
+module IoSlice = Kernel.IO.Iovec.IoSlice
+
+type segment = Kernel.IO.Iovec.segment
 type t = Kernel.IO.Iovec.t
 val create: ?count:int -> size:int -> unit -> t
 

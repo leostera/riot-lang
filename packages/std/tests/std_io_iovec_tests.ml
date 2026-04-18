@@ -49,9 +49,8 @@ let test_from_string_array_concatenates_segments = fun _ctx ->
 let test_for_each_visits_segments_in_insertion_order = fun _ctx ->
   let iov = Iovec.from_string_array [| "ab"; "c"; "def" |] in
   let seen = Sync.Atomic.make [] in
-  Iovec.for_each iov ~fn:(fun { Iovec.buffer; offset; length } ->
-    let segment = Bytes.sub_string buffer ~offset ~len:length in
-    Sync.Atomic.set seen (segment :: Sync.Atomic.get seen));
+  Iovec.for_each iov ~fn:(fun segment ->
+    Sync.Atomic.set seen (Iovec.IoSlice.to_string segment :: Sync.Atomic.get seen));
   let segments = List.reverse (Sync.Atomic.get seen) in
   if segments = [ "ab"; "c"; "def" ] then
     Ok ()

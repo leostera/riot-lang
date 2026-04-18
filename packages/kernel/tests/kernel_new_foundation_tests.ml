@@ -219,21 +219,22 @@ let test_iovec_with_capacity_matches_create_count_one = fun _ctx ->
 let test_iovec_create_distributes_remainder_deterministically = fun _ctx ->
   let iov = Kernel.IO.Iovec.create ~count:3 ~size:5 () in
   let lengths = ref [] in
-  Kernel.IO.Iovec.for_each iov ~fn:(fun segment -> lengths := segment.length :: !lengths);
+  Kernel.IO.Iovec.for_each iov ~fn:(fun segment ->
+    lengths := Kernel.IO.Iovec.IoSlice.length segment :: !lengths);
   if List.reverse !lengths = [ 2; 2; 1 ] then
     Ok ()
   else
     Error "expected Iovec.create to distribute remainder bytes from left to right"
 
-let test_iovec_of_bytes_array_aliases_source_buffers = fun _ctx ->
+let test_iovec_of_bytes_array_copies_source_buffers = fun _ctx ->
   let left = Kernel.Bytes.from_string "ri" in
   let right = Kernel.Bytes.from_string "ot" in
   let iov = Kernel.IO.Iovec.from_bytes_array [|left; right|] in
   let _ = Kernel.Bytes.set left ~at:0 ~char:'R' in
-  if Kernel.IO.Iovec.to_string iov = "Riot" then
+  if Kernel.IO.Iovec.to_string iov = "riot" then
     Ok ()
   else
-    Error "expected Iovec.of_bytes_array to alias the original source buffers"
+    Error "expected Iovec.of_bytes_array to copy source buffers into owned storage"
 
 let test_iovec_into_bytes_returns_a_fresh_copy = fun _ctx ->
   let source = Kernel.Bytes.from_string "riot" in
@@ -254,8 +255,9 @@ let test_iovec_iter_reports_left_to_right_segment_metadata = fun _ctx ->
   Kernel.IO.Iovec.for_each
     iov
     ~fn:(fun segment ->
-      seen := (segment.offset, segment.length, Kernel.Bytes.length segment.buffer) :: !seen);
-  if List.reverse !seen = [ (0, 2, 2); (0, 0, 0); (0, 3, 3) ] then
+      let len = Kernel.IO.Iovec.IoSlice.length segment in
+      seen := (len, Kernel.IO.Iovec.IoSlice.to_string segment) :: !seen);
+  if List.reverse !seen = [ (2, "ab"); (0, ""); (3, "cde") ] then
     Ok ()
   else
     Error "expected Iovec.for_each to preserve segment order and metadata"
@@ -290,7 +292,7 @@ let tests = [
   Test.case "Path.join avoids duplicate separators" test_path_join_does_not_duplicate_separators;
   Test.case "Iovec.with_capacity matches create count one" test_iovec_with_capacity_matches_create_count_one;
   Test.case "Iovec.create distributes remainder deterministically" test_iovec_create_distributes_remainder_deterministically;
-  Test.case "Iovec.of_bytes_array aliases its source buffers" test_iovec_of_bytes_array_aliases_source_buffers;
+  Test.case "Iovec.of_bytes_array copies its source buffers" test_iovec_of_bytes_array_copies_source_buffers;
   Test.case "Iovec.into_bytes returns a fresh copy" test_iovec_into_bytes_returns_a_fresh_copy;
   Test.case "Iovec.iter preserves segment order and metadata" test_iovec_iter_reports_left_to_right_segment_metadata;
   Test.case "Iovec.sub with len=0 is empty" test_iovec_sub_zero_length_is_empty;

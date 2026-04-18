@@ -132,7 +132,15 @@ let read = fun reader ?timeout ?(offset = 0) ?len buffer ->
           | Error _ as error -> error
         )
     | None ->
-        Reader.read_vectored reader (Iovec.sub ~pos:offset ~len (Iovec.from_bytes buffer))
+        let tmp = Iovec.with_capacity len in
+        (
+          match Reader.read_vectored reader tmp with
+          | Ok count ->
+              let src = Iovec.to_bytes tmp in
+              Bytes.blit_unchecked src ~src_offset:0 ~dst:buffer ~dst_offset:offset ~len:count;
+              Ok count
+          | Error _ as error -> error
+        )
 
 let read_vectored = Reader.read_vectored
 

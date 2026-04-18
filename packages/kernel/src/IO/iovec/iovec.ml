@@ -1,20 +1,9 @@
 open Prelude
 
-type segment = {
-  buffer: bytes;
-  offset: int;
-  length: int;
-}
+module IoSlice = Io_slice
 
+type segment = IoSlice.t
 type t = segment array
-
-let validate_bounds = fun ~offset ~length ~buffer ->
-  if offset < 0 || length < 0 || offset + length > Bytes.length buffer then
-    System_error.panic "invalid iovec bounds"
-
-let make_segment = fun ~buffer ~offset ~length ->
-  validate_bounds ~offset ~length ~buffer;
-  { buffer; offset; length }
 
 let create = fun ?(count = 1) ~size () ->
   if count <= 0 then
@@ -31,21 +20,32 @@ let create = fun ?(count = 1) ~size () ->
         else
           base
       in
-      { buffer = Bytes.create ~size:chunk; offset = 0; length = chunk })
+      IoSlice.create ~size:chunk)
 
 let with_capacity = fun size -> create ~size ()
 
-let from_bytes = fun buffer -> [|make_segment ~buffer ~offset:0 ~length:(Bytes.length buffer)|]
+let copy_bytes = fun source ->
+  let len = Bytes.length source in
+  let copy = IoSlice.create ~size:len in
+  IoSlice.blit_from_bytes source ~src_offset:0 ~dst:copy ~dst_offset:0 ~len;
+  copy
 
-let from_string = fun value -> from_bytes (Bytes.from_string value)
+let copy_string = fun source ->
+  let len = String.length source in
+  let copy = IoSlice.create ~size:len in
+  IoSlice.blit_from_string source ~src_offset:0 ~dst:copy ~dst_offset:0 ~len;
+  copy
 
-let from_bytes_array = fun buffers ->
-  Array.map buffers ~fn:(fun buffer -> make_segment ~buffer ~offset:0 ~length:(Bytes.length buffer))
+let from_bytes = fun buffer -> [|copy_bytes buffer|]
 
-let from_string_array = fun values -> from_bytes_array (Array.map values ~fn:Bytes.from_string)
+let from_string = fun value -> [|copy_string value|]
+
+let from_bytes_array = fun buffers -> Array.map buffers ~fn:copy_bytes
+
+let from_string_array = fun values -> Array.map values ~fn:copy_string
 
 let length = fun segments ->
-  Array.fold_left segments ~fn:(fun total segment -> total + segment.length) ~acc:0
+  Array.fold_left segments ~fn:(fun total segment -> total + IoSlice.length segment) ~acc:0
 
 let for_each = fun ~fn segments -> Array.for_each segments ~fn
 
@@ -62,8 +62,9 @@ let sub = fun ?(pos = 0) ~len segments ->
       Array.from_list (reverse_append acc [])
     else
       let segment = Array.get_unchecked segments ~at:index in
+      let segment_length = IoSlice.length segment in
       let segment_start = cursor in
-      let segment_end = cursor + segment.length in
+      let segment_end = cursor + segment_length in
       if segment_end <= pos then
         loop (index + 1) segment_end acc
       else
@@ -73,7 +74,7 @@ let sub = fun ?(pos = 0) ~len segments ->
           else
             0
         in
-        let available = segment.length - start_offset in
+        let available = segment_length - start_offset in
         let remaining = pos + len - (segment_start + start_offset) in
         let take =
           if available < remaining then
@@ -81,10 +82,7 @@ let sub = fun ?(pos = 0) ~len segments ->
           else
             remaining
         in
-        let next = make_segment
-          ~buffer:segment.buffer
-          ~offset:(segment.offset + start_offset)
-          ~length:take in
+        let next = IoSlice.sub segment ~offset:start_offset ~len:take in
         loop (index + 1) segment_end (next :: acc)
   in
   loop 0 0 []
@@ -97,8 +95,8 @@ let to_bytes = fun segments ->
       out
     else
       let segment = Array.get_unchecked segments ~at:index in
-      Caml_runtime.bytes_blit segment.buffer segment.offset out cursor segment.length;
-      loop (index + 1) (cursor + segment.length)
+      IoSlice.blit_to_bytes segment ~dst:out ~dst_offset:cursor;
+      loop (index + 1) (cursor + IoSlice.length segment)
   in
   let _ = loop 0 0 in
   out

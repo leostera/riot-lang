@@ -224,15 +224,16 @@ let to_reader:
       | Ok read_len ->
           let copied = ref 0 in
           Iovec.for_each
-            ~fn:(fun { Kernel.IO.Iovec.buffer; offset; length } ->
+            ~fn:(fun segment ->
               let remaining = read_len - !copied in
               if remaining > 0 then
+                let length = Iovec.IoSlice.length segment in
                 let chunk_len = min length remaining in
-                Bytes.blit_unchecked
+                Iovec.IoSlice.blit_from_bytes
                   scratch
                   ~src_offset:!copied
-                  ~dst:buffer
-                  ~dst_offset:offset
+                  ~dst:segment
+                  ~dst_offset:0
                   ~len:chunk_len;
                 copied := !copied + chunk_len)
             bufs;
@@ -255,9 +256,9 @@ let buffer_writer =
     let write_owned_vectored = fun buffer ~bufs ->
       let written = ref 0 in
       Iovec.for_each
-        ~fn:(fun { Kernel.IO.Iovec.buffer=segment; offset; length } ->
-          Buffer.add_subbytes buffer segment offset length;
-          written := !written + length)
+        ~fn:(fun segment ->
+          Buffer.add_string buffer (Iovec.IoSlice.to_string segment);
+          written := !written + Iovec.IoSlice.length segment)
         bufs;
       Ok !written
 
