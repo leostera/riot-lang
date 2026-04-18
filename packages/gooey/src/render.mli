@@ -25,7 +25,9 @@ type text_data = {
   content: string;
   color: Colors.rgb;
   size: int;
+  (** Preserved as metadata. Built-in terminal renderers currently ignore it. *)
   weight: Style.font_weight;
+  decoration: Style.text_decoration;
 }
 (** Border render data *)
 type border_data = {
@@ -43,7 +45,8 @@ type command_type =
   | ScissorEnd
   (** End clipping region *)
   | Custom of { data: string }
-(** Custom render data *)
+(** Plain terminal text payload clipped to the command bounding box and active scissor.
+    Non-terminal backends may choose not to interpret it. *)
 (** A single render command *)
 type command = {
   bounding_box: Geometry.Rect.t;

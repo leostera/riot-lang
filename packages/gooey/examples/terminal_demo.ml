@@ -1,14 +1,10 @@
 open Std
 open Gooey
 
-(* Simple text measurer for terminal - measures in character cells *)
+(* Use Gooey's default terminal-cell text measurement and wrapping. *)
 
-let text_measurer = fun text _style ->
-  (* Width is just the string length in characters *)
-  let width = float_of_int (String.length text) in
-  (* Height is 1 line *)
-  let height = 1.0 in
-  Viewport.make ~width ~height
+let text_measurer = fun ~constraints text style ->
+  Config.default_text_measurer ~constraints text style
 
 let () =
   Actors.run

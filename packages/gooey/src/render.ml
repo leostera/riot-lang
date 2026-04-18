@@ -17,6 +17,7 @@ type text_data = {
   color: Colors.rgb;
   size: int;
   weight: Style.font_weight;
+  decoration: Style.text_decoration;
 }
 
 type border_data = {

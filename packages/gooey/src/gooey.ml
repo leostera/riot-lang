@@ -8,6 +8,4 @@ module Ansi_formatter = Ansi_formatter
 module Terminal_renderer_fullscreen = Terminal_renderer_fullscreen
 module Terminal_renderer_inline = Terminal_renderer_inline
 
-type text_measurer = Config.text_measurer
-
 let layout = fun ~config element -> Layout.compute ~config element

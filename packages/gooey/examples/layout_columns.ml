@@ -3,10 +3,8 @@ open Gooey
 
 (* Static layout example: Three columns with different colors *)
 
-let text_measurer = fun text _style ->
-  let width = float_of_int (String.length text) in
-  let height = 1.0 in
-  Viewport.make ~width ~height
+let text_measurer = fun ~constraints text style ->
+  Config.default_text_measurer ~constraints text style
 
 let () =
   Actors.run

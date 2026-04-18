@@ -1,144 +1,203 @@
 open Std
 open Std.IO
-open Sync
-open Sync.Cell
 
-(* Fullscreen renderer with absolute cursor positioning *)
+let start_cell = fun value -> Int.max 0 (Float.to_int (Float.floor value))
 
-let coords_to_cell = fun x y ->
-  let col = int_of_float (x +. 0.5) in
-  let row = int_of_float (y +. 0.5) in
-  (col, row)
+let end_cell = fun value -> Int.max 0 (Float.to_int (Float.ceil value))
 
 let rgb_to_color = fun (`rgb (r, g, b)) -> Tty.Color.of_rgb (r, g, b)
 
-let format_with_fg = fun color text ->
-  Ansi_formatter.format_string [ Ansi_formatter.Foreground color ] text
+let rect_col_start = fun (rect: Geometry.Rect.t) -> start_cell rect.x
 
-let format_with_bg = fun color text ->
-  Ansi_formatter.format_string [ Ansi_formatter.Background color ] text
+let rect_row_start = fun (rect: Geometry.Rect.t) -> start_cell rect.y
 
-let is_inside_scissor = fun x y scissor ->
+let rect_col_end = fun (rect: Geometry.Rect.t) -> end_cell (rect.x +. rect.width)
+
+let rect_row_end = fun (rect: Geometry.Rect.t) -> end_cell (rect.y +. rect.height)
+
+let is_inside_scissor = fun col row scissor ->
   match scissor with
   | None -> true
   | Some rect ->
-      let open Geometry.Rect in
-        let fx = float_of_int x in
-        let fy = float_of_int y in
-        fx >= rect.x && fx < rect.x +. rect.width && fy >= rect.y && fy < rect.y +. rect.height
+      col >= rect_col_start rect
+      && col < rect_col_end rect
+      && row >= rect_row_start rect
+      && row < rect_row_end rect
+
+let text_formats = fun color weight decoration ->
+  let formats = ref [ Ansi_formatter.Foreground (rgb_to_color color) ] in
+  (
+    match weight with
+    | Style.Bold -> formats := Ansi_formatter.Bold :: !formats
+    | Style.Normal -> ()
+  );
+  (
+    match decoration with
+    | Style.Underline -> formats := Ansi_formatter.Underline :: !formats
+    | Style.Strikethrough -> formats := Ansi_formatter.CrossOut :: !formats
+    | Style.NoDecoration -> ()
+  );
+  List.rev !formats
+
+let slice_text_by_cells = fun text ~skip ~take ->
+  if take <= 0 then
+    ""
+  else
+    let graphemes = String.into_grapheme_iter text |> Std.Iter.Iterator.to_list in
+    let rec loop col acc =
+      function
+      | [] -> List.rev acc |> String.concat ""
+      | grapheme :: rest ->
+          let grapheme_string = Std.Unicode.Grapheme.to_string grapheme in
+          let grapheme_width = Std.Unicode.Grapheme.width grapheme in
+          let next_col = col + grapheme_width in
+          if next_col <= skip then
+            loop next_col acc rest
+          else if col < skip then
+            loop next_col acc rest
+          else if next_col > skip + take then
+            List.rev acc |> String.concat ""
+          else
+            loop next_col (grapheme_string :: acc) rest
+    in
+    loop 0 [] graphemes
 
 let render_to_string = fun commands ->
   let buf = Buffer.create ~size:1_024 in
-  let scissor_box = Cell.create None in
+  let scissor_box = ref None in
   List.iter
-    (fun cmd ->
-      let open Render in
-        match cmd.command_type with
-        | Rectangle { color; _ } ->
-            let col_start, row_start = coords_to_cell cmd.bounding_box.x cmd.bounding_box.y in
-            let col_end, row_end = coords_to_cell
-              (cmd.bounding_box.x +. cmd.bounding_box.width)
-              (cmd.bounding_box.y +. cmd.bounding_box.height) in
-            let tty_color = rgb_to_color color in
-            let colored_space = format_with_bg tty_color " " in
-            for row = row_start to row_end - 1 do
-              for col = col_start to col_end - 1 do
-                if is_inside_scissor col row (Cell.get scissor_box) then
-                  begin
-                    Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq (row + 1) (col + 1));
-                    Buffer.add_string buf colored_space
-                  end
-              done
+    (fun command ->
+      match command.Render.command_type with
+      | Render.ScissorStart rect ->
+          scissor_box := Some rect
+      | Render.ScissorEnd ->
+          scissor_box := None
+      | Render.Rectangle { color; _ } ->
+          let tty_color = rgb_to_color color in
+          let colored_space = Ansi_formatter.format_string [ Ansi_formatter.Background tty_color ] " " in
+          let row_start = rect_row_start command.bounding_box in
+          let row_end = rect_row_end command.bounding_box in
+          let col_start = rect_col_start command.bounding_box in
+          let col_end = rect_col_end command.bounding_box in
+          for row = row_start to row_end - 1 do
+            for col = col_start to col_end - 1 do
+              if is_inside_scissor col row !scissor_box then
+                begin
+                  Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq (row + 1) (col + 1));
+                  Buffer.add_string buf colored_space
+                end
             done
-        | Text { content; color; _ } ->
-            let col, row = coords_to_cell cmd.bounding_box.x cmd.bounding_box.y in
-            if is_inside_scissor col row (Cell.get scissor_box) then
-              begin
-                let tty_color = rgb_to_color color in
-                Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq (row + 1) (col + 1));
-                let lines = String.split_on_char '\n' content in
-                List.iteri
-                  (fun i line ->
-                    if i > 0 then
-                      Buffer.add_string
-                        buf
-                        (Tty.Escape_seq.cursor_position_seq (row + i + 1) (col + 1));
-                    let colored_text = format_with_fg tty_color line in
-                    Buffer.add_string buf colored_text)
-                  lines
-              end
-        | Border { width; color; _ } ->
-            let col_start, row_start = coords_to_cell cmd.bounding_box.x cmd.bounding_box.y in
-            let col_end, row_end = coords_to_cell
-              (cmd.bounding_box.x +. cmd.bounding_box.width)
-              (cmd.bounding_box.y +. cmd.bounding_box.height) in
-            let tty_color = rgb_to_color color in
-            if width.top > 0 then
-              begin
-                Buffer.add_string
-                  buf
-                  (Tty.Escape_seq.cursor_position_seq (row_start + 1) (col_start + 1));
-                let top_left =
-                  if width.left > 0 then
-                    "┌"
-                  else
-                    "─"
-                in
-                let num_middle = max 0 (col_end - col_start - 2) in
-                let top_middle =
-                  String.concat "" (List.init ~count:num_middle ~fn:(fun _ -> "─"))
-                in
-                let top_right =
-                  if width.right > 0 then
-                    "┐"
-                  else
-                    "─"
-                in
-                let top_line = top_left ^ top_middle ^ top_right in
-                Buffer.add_string buf (format_with_fg tty_color top_line)
-              end;
-            for row = row_start + 1 to row_end - 2 do
-              if width.left > 0 && is_inside_scissor col_start row (Cell.get scissor_box) then
+          done
+      | Render.Border { width; color; _ } ->
+          let tty_color = rgb_to_color color in
+          let fmt = [ Ansi_formatter.Foreground tty_color ] in
+          let row_start = rect_row_start command.bounding_box in
+          let row_end = rect_row_end command.bounding_box in
+          let col_start = rect_col_start command.bounding_box in
+          let col_end = rect_col_end command.bounding_box in
+          if width.top > 0 then
+            for col = col_start to col_end - 1 do
+              if is_inside_scissor col row_start !scissor_box then
                 begin
-                  Buffer.add_string
-                    buf
-                    (Tty.Escape_seq.cursor_position_seq (row + 1) (col_start + 1));
-                  Buffer.add_string buf (format_with_fg tty_color "│")
-                end;
-              if width.right > 0 && is_inside_scissor (col_end - 1) row (Cell.get scissor_box) then
-                begin
-                  Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq (row + 1) col_end);
-                  Buffer.add_string buf (format_with_fg tty_color "│")
+                  let ch =
+                    if col = col_start && width.left > 0 then
+                      "┌"
+                    else if col = col_end - 1 && width.right > 0 then
+                      "┐"
+                    else
+                      "─"
+                  in
+                  Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq (row_start + 1) (col + 1));
+                  Buffer.add_string buf (Ansi_formatter.format_string fmt ch)
                 end
             done;
-            if width.bottom > 0 then
+          if width.bottom > 0 then
+            for col = col_start to col_end - 1 do
+              if is_inside_scissor col (row_end - 1) !scissor_box then
+                begin
+                  let ch =
+                    if col = col_start && width.left > 0 then
+                      "└"
+                    else if col = col_end - 1 && width.right > 0 then
+                      "┘"
+                    else
+                      "─"
+                  in
+                  Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq row_end (col + 1));
+                  Buffer.add_string buf (Ansi_formatter.format_string fmt ch)
+                end
+            done;
+          for row = row_start + 1 to row_end - 2 do
+            if width.left > 0 && is_inside_scissor col_start row !scissor_box then
               begin
-                Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq row_end (col_start + 1));
-                let bottom_left =
-                  if width.left > 0 then
-                    "└"
-                  else
-                    "─"
-                in
-                let num_middle = max 0 (col_end - col_start - 2) in
-                let bottom_middle =
-                  String.concat "" (List.init ~count:num_middle ~fn:(fun _ -> "─"))
-                in
-                let bottom_right =
-                  if width.right > 0 then
-                    "┘"
-                  else
-                    "─"
-                in
-                let bottom_line = bottom_left ^ bottom_middle ^ bottom_right in
-                Buffer.add_string buf (format_with_fg tty_color bottom_line)
+                Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq (row + 1) (col_start + 1));
+                Buffer.add_string buf (Ansi_formatter.format_string fmt "│")
+              end;
+            if width.right > 0 && is_inside_scissor (col_end - 1) row !scissor_box then
+              begin
+                Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq (row + 1) col_end);
+                Buffer.add_string buf (Ansi_formatter.format_string fmt "│")
               end
-        | ScissorStart rect ->
-            Cell.set scissor_box (Some rect)
-        | ScissorEnd ->
-            Cell.set scissor_box None
-        | Custom _ ->
-            ())
+          done
+      | Render.Text { content; color; weight; decoration; _ } ->
+          let lines = String.split_on_char '\n' content in
+          List.iteri
+            (fun line_index line ->
+              let row = rect_row_start command.bounding_box + line_index in
+              if row < rect_row_end command.bounding_box then
+                let col_start = rect_col_start command.bounding_box in
+                let col_end = rect_col_end command.bounding_box in
+                let visible_col_start =
+                  match !scissor_box with
+                  | Some rect -> Int.max col_start (rect_col_start rect)
+                  | None -> col_start
+                in
+                let visible_col_end =
+                  match !scissor_box with
+                  | Some rect -> Int.min col_end (rect_col_end rect)
+                  | None -> col_end
+                in
+                if visible_col_end > visible_col_start && is_inside_scissor visible_col_start row !scissor_box then
+                  let clipped = slice_text_by_cells line ~skip:(visible_col_start - col_start) ~take:(visible_col_end - visible_col_start) in
+                  if clipped != "" then
+                    begin
+                      Buffer.add_string
+                        buf
+                        (Tty.Escape_seq.cursor_position_seq (row + 1) (visible_col_start + 1));
+                      Buffer.add_string buf (Ansi_formatter.format_string (text_formats color weight decoration) clipped)
+                    end)
+            lines
+      | Render.Custom { data } ->
+          let lines = String.split_on_char '\n' data in
+          List.iteri
+            (fun line_index line ->
+              let row = rect_row_start command.bounding_box + line_index in
+              if row < rect_row_end command.bounding_box then
+                let col_start = rect_col_start command.bounding_box in
+                let col_end = rect_col_end command.bounding_box in
+                let visible_col_start =
+                  match !scissor_box with
+                  | Some rect -> Int.max col_start (rect_col_start rect)
+                  | None -> col_start
+                in
+                let visible_col_end =
+                  match !scissor_box with
+                  | Some rect -> Int.min col_end (rect_col_end rect)
+                  | None -> col_end
+                in
+                if visible_col_end > visible_col_start && is_inside_scissor visible_col_start row !scissor_box then
+                  let clipped =
+                    slice_text_by_cells
+                      line
+                      ~skip:(visible_col_start - col_start)
+                      ~take:(visible_col_end - visible_col_start)
+                  in
+                  if clipped != "" then
+                    begin
+                      Buffer.add_string buf (Tty.Escape_seq.cursor_position_seq (row + 1) (visible_col_start + 1));
+                      Buffer.add_string buf clipped
+                    end)
+            lines)
     commands;
   Buffer.contents buf
 

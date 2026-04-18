@@ -1,5 +1,7 @@
 open Std
 
+type color = Colors.rgb
+
 type direction =
   | LeftToRight
   | TopToBottom
@@ -48,6 +50,10 @@ type margin = {
   bottom: int;
 }
 
+type overflow =
+  | Visible
+  | Clip
+
 type text_wrap =
   | Words
   | NoWrap
@@ -77,14 +83,16 @@ type corner_radius = {
 type t = {
   direction: direction;
   sizing: sizing;
+  grow_weight: float;
   alignment: alignment;
   child_gap: int;
   padding: padding;
   margin: margin;
-  background: Colors.rgb option;
-  foreground: Colors.rgb option;
+  overflow: overflow;
+  background: color option;
+  foreground: color option;
   border_width: int;
-  border_color: Colors.rgb option;
+  border_color: color option;
   corner_radius: corner_radius;
   text_size: int;
   text_wrap: text_wrap;
@@ -105,10 +113,12 @@ let empty = {
       min_height = None;
       max_height = None;
     };
+  grow_weight = 1.0;
   alignment = { x = Left; y = Top };
   child_gap = 0;
   padding = { left = 0; right = 0; top = 0; bottom = 0 };
   margin = { left = 0; right = 0; top = 0; bottom = 0 };
+  overflow = Visible;
   background = None;
   foreground = None;
   border_width = 0;
@@ -144,6 +154,10 @@ let padding = fun p t -> { t with padding = p }
 
 let margin = fun m t -> { t with margin = m }
 
+let overflow = fun overflow t -> { t with overflow }
+
+let clip = fun t -> { t with overflow = Clip }
+
 let bg = fun color t -> { t with background = Some color }
 
 let fg = fun color t -> { t with foreground = Some color }
@@ -170,14 +184,29 @@ let align_center = fun t -> { t with alignment = { t.alignment with x = Center }
 
 let align_right = fun t -> { t with alignment = { t.alignment with x = Right } }
 
+let grow_weight = fun weight t ->
+  let weight =
+    if Float.compare weight 0.0 < 0 then
+      0.0
+    else
+      weight
+  in
+  { t with grow_weight = weight }
+
 let grow = fun t -> { t with sizing = { t.sizing with width = Grow; height = Grow } }
 
 let fixed = fun ~width ~height t ->
   { t with sizing = { t.sizing with width = Fixed width; height = Fixed height } }
 
+let text_wrap = fun wrap t -> { t with text_wrap = wrap }
+
+let text_align = fun align t -> { t with text_align = align }
+
 let child_gap = fun gap t -> { t with child_gap = gap }
 
 let z_index = fun z t -> { t with z_index = z }
+
+let strikethrough = fun t -> { t with text_decoration = Strikethrough }
 
 module Padding = struct
   let make ?(left = 0) ?(right = 0) ?(top = 0) ?(bottom = 0) (): padding = {
@@ -241,7 +270,7 @@ let color = fun hex_str ->
       let r_val = Int.of_string ("0x" ^ r) in
       let g_val = Int.of_string ("0x" ^ g) in
       let b_val = Int.of_string ("0x" ^ b) in
-      Tty.Color.of_rgb (r_val, g_val, b_val)
+      `rgb (r_val, g_val, b_val)
   | 6 ->
       (* Full form like "FF0000" *)
       let r = String.sub hex ~offset:0 ~len:2 in
@@ -250,6 +279,6 @@ let color = fun hex_str ->
       let r_val = Int.of_string ("0x" ^ r) in
       let g_val = Int.of_string ("0x" ^ g) in
       let b_val = Int.of_string ("0x" ^ b) in
-      Tty.Color.of_rgb (r_val, g_val, b_val)
+      `rgb (r_val, g_val, b_val)
   | _ ->
       raise (Invalid_argument ("Invalid hex color: " ^ hex_str ^ " (expected #RGB or #RRGGBB)"))

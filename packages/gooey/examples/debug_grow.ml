@@ -3,10 +3,8 @@ open Gooey
 
 (* Debug program to print layout widths *)
 
-let text_measurer = fun text _style ->
-  let width = float_of_int (String.length text) in
-  let height = 1.0 in
-  Viewport.make ~width ~height
+let text_measurer = fun ~constraints text style ->
+  Config.default_text_measurer ~constraints text style
 
 let () =
   (* Create UI: Three columns (Fixed 20, Grow, Fixed 15) *)

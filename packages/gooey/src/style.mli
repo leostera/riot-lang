@@ -1,6 +1,9 @@
 (** Style configuration for layout elements *)
 open Std
 
+type color = Colors.rgb
+(** Terminal RGB color used throughout Gooey's public API. *)
+
 (** Layout direction *)
 type direction =
   | LeftToRight
@@ -12,7 +15,7 @@ type sizing_type =
   | Grow
   (** Grow to fill available space *)
   | Fixed of float
-  (** Fixed size in pixels *)
+  (** Fixed size in terminal cells *)
   | Percent of float
 (** Percentage of parent (0.0-1.0) *)
 (** Sizing configuration *)
@@ -53,6 +56,10 @@ type margin = {
   top: int;
   bottom: int;
 }
+(** Overflow behavior for child content *)
+type overflow =
+  | Visible
+  | Clip
 (** Text wrapping mode *)
 type text_wrap =
   | Words
@@ -87,15 +94,17 @@ type t = {
   (* Layout properties *)
   direction: direction;
   sizing: sizing;
+  grow_weight: float;
   alignment: alignment;
   child_gap: int;
   padding: padding;
   margin: margin;
+  overflow: overflow;
   (* Visual properties *)
-  background: Colors.rgb option;
-  foreground: Colors.rgb option;
+  background: color option;
+  foreground: color option;
   border_width: int;
-  border_color: Colors.rgb option;
+  border_color: color option;
   corner_radius: corner_radius;
   (* Text properties *)
   text_size: int;
@@ -138,16 +147,22 @@ val padding: padding -> t -> t
 
 val margin: margin -> t -> t
 
-val bg: Colors.rgb -> t -> t
+val overflow: overflow -> t -> t
+
+val clip: t -> t
+
+val bg: color -> t -> t
 
 (** Set background color *)
-val fg: Colors.rgb -> t -> t
+val fg: color -> t -> t
 
 (** Set foreground color *)
-val border: ?width:int -> ?color:Colors.rgb -> ?radius:corner_radius -> unit -> t -> t
+val border: ?width:int -> ?color:color -> ?radius:corner_radius -> unit -> t -> t
 
 (** Set border properties *)
 val text_size: int -> t -> t
+
+(** Terminal renderers currently treat text_size as metadata only. *)
 
 val bold: t -> t
 
@@ -161,15 +176,25 @@ val align_center: t -> t
 
 val align_right: t -> t
 
+val grow_weight: float -> t -> t
+
+(** Set the weight used when distributing remaining space to Grow children *)
+
 val grow: t -> t
 
 (** Set both width and height to Grow *)
 val fixed: width:float -> height:float -> t -> t
 
 (** Set both width and height to Fixed *)
+val text_wrap: text_wrap -> t -> t
+
+val text_align: text_align -> t -> t
+
 val child_gap: int -> t -> t
 
 val z_index: int -> t -> t
+
+val strikethrough: t -> t
 
 (** {1 Padding Helpers} *)
 
@@ -207,9 +232,9 @@ module CornerRadius: sig
 end
 
 (** {1 Color Helpers} *)
-val color: string -> Tty.Color.t
+val color: string -> color
 
-(** [color hex] parses a hex color string like "#FF0000" or "#F00" into a Tty.Color.t.
+(** [color hex] parses a hex color string like "#FF0000" or "#F00" into an RGB color.
     
     Examples:
     - [color "#FF0000"] returns a red color

@@ -8,17 +8,121 @@ type layout_node = {
   mutable computed_size: Viewport.t;
   mutable computed_position: Geometry.Point.t;
   mutable final_box: Geometry.Rect.t;
+  mutable measured_text: Super.Config.text_measurement option;
 }
 
-(* Helper: Get style from element *)
+type layout_constraints = {
+  max_width: float option;
+  max_height: float option;
+  forced_width: float option;
+  forced_height: float option;
+}
+
+type annotated_command = {
+  command: Render.command;
+  clip_stack: Geometry.Rect.t list;
+}
+
+let zero_viewport = Viewport.make ~width:0.0 ~height:0.0
+
+let zero_constraints = {
+  max_width = None;
+  max_height = None;
+  forced_width = None;
+  forced_height = None;
+}
+
+let map_option = fun value fn ->
+  match value with
+  | Some value -> Some (fn value)
+  | None -> None
+
+let float_max = fun left right ->
+  if Float.compare left right >= 0 then
+    left
+  else
+    right
+
+let float_min = fun left right ->
+  if Float.compare left right <= 0 then
+    left
+  else
+    right
+
+let clamp_non_negative = fun value ->
+  if Float.compare value 0.0 < 0 then
+    0.0
+  else
+    value
+
+let clamp_option = fun value min_opt max_opt ->
+  let value =
+    match min_opt with
+    | Some min -> float_max value min
+    | None -> value
+  in
+  match max_opt with
+  | Some max -> float_min value max
+  | None -> value
+
+let option_subtract = fun value delta ->
+  map_option value (fun value -> clamp_non_negative (value -. delta))
+
+let option_default = fun value default ->
+  match value with
+  | Some value -> value
+  | None -> default
+
+let measurement_constraints = fun ?available_width ?available_height () ->
+  Super.Config.constraints ?available_width ?available_height ()
+
+let list_last_index = fun values ->
+  let len = List.length values in
+  Int.max 0 (len - 1)
+
+let border_thickness = fun (style: Style.t) ->
+  if style.border_width > 0 then
+    1
+  else
+    0
+
+let horizontal_inset = fun (style: Style.t) ->
+  let border = border_thickness style in
+  Float.of_int (style.padding.left + style.padding.right + border + border)
+
+let vertical_inset = fun (style: Style.t) ->
+  let border = border_thickness style in
+  Float.of_int (style.padding.top + style.padding.bottom + border + border)
+
+let content_origin = fun (rect: Geometry.Rect.t) (style: Style.t) ->
+  let border = Float.of_int (border_thickness style) in
+  Geometry.Point.make
+    ~x:(rect.x +. border +. Float.of_int style.padding.left)
+    ~y:(rect.y +. border +. Float.of_int style.padding.top)
+
+let content_box = fun (rect: Geometry.Rect.t) (style: Style.t) ->
+  let inset_x = horizontal_inset style in
+  let inset_y = vertical_inset style in
+  let origin = content_origin rect style in
+  Geometry.Rect.make
+    ~x:origin.x
+    ~y:origin.y
+    ~width:(clamp_non_negative (rect.width -. inset_x))
+    ~height:(clamp_non_negative (rect.height -. inset_y))
+
+let margin_horizontal = fun (margin: Style.margin) -> Float.of_int (margin.left + margin.right)
+
+let margin_vertical = fun (margin: Style.margin) -> Float.of_int (margin.top + margin.bottom)
+
+let outer_width = fun node -> node.computed_size.width +. margin_horizontal node.style.margin
+
+let outer_height = fun node -> node.computed_size.height +. margin_vertical node.style.margin
 
 let get_element_style = function
   | Element.Text { style; _ } -> style
   | Element.Container { style; _ } -> style
   | Element.Empty -> Style.empty
   | Element.Custom { style; _ } -> style
-
-(* Phase 1: Build layout tree from element tree *)
 
 let rec build_layout_tree: Element.t -> layout_node = fun element ->
   let style = get_element_style element in
@@ -33,320 +137,629 @@ let rec build_layout_tree: Element.t -> layout_node = fun element ->
     element;
     style;
     children;
-    computed_size = Viewport.make ~width:0.0 ~height:0.0;
+    computed_size = zero_viewport;
     computed_position = Geometry.Point.zero;
     final_box = Geometry.Rect.zero;
+    measured_text = None;
   }
 
-(* Helper: Calculate padding dimensions *)
+let resolve_non_fit_size = fun sizing available ->
+  match sizing with
+  | Style.Fixed value -> Some value
+  | Style.Percent ratio -> map_option available (fun value -> value *. ratio)
+  | Style.Grow -> available
+  | Style.Fit -> None
 
-let padding_horizontal = fun (p: Style.padding) -> Float.of_int (p.left + p.right)
-
-let padding_vertical = fun (p: Style.padding) -> Float.of_int (p.top + p.bottom)
-
-let float_max = fun left right ->
-  if Float.compare left right >= 0 then
-    left
-  else
-    right
-
-let float_min = fun left right ->
-  if Float.compare left right <= 0 then
-    left
-  else
-    right
-
-(* Helper: Clamp value between min and max *)
-
-let clamp_option = fun value min_opt max_opt ->
-  let v =
-    match min_opt with
-    | Some min -> float_max value min
-    | None -> value
+let resolve_axis_size = fun sizing intrinsic available forced min_opt max_opt ->
+  let value =
+    match forced with
+    | Some value -> value
+    | None -> (
+        match sizing with
+        | Style.Fit -> intrinsic
+        | Style.Fixed value -> value
+        | Style.Percent ratio ->
+            option_default (map_option available (fun value -> value *. ratio)) intrinsic
+        | Style.Grow ->
+            option_default available intrinsic
+      )
   in
-  match max_opt with
-  | Some max -> float_min v max
-  | None -> v
+  clamp_option (clamp_non_negative value) min_opt max_opt
 
-(* Phase 2: Calculate sizes (ported from Clay) *)
+let main_axis_sizing = fun direction (style: Style.t) ->
+  match direction with
+  | Style.LeftToRight -> style.sizing.width
+  | Style.TopToBottom -> style.sizing.height
 
-let rec calculate_sizes: layout_node -> Viewport.t -> Super.Config.t -> unit = fun node available config ->
-  let style = node.style in
-  (* Calculate intrinsic size based on content *)
-  let intrinsic_size =
-    match node.element with
-    | Element.Text { content; _ } -> config.text_measurer content style
-    | Element.Container _ ->
-        if style.sizing.width = Style.Fit || style.sizing.height = Style.Fit then
-          calculate_container_fit_size node available config
-        else
-          Viewport.make ~width:0.0 ~height:0.0
-    | Element.Empty -> Viewport.make ~width:0.0 ~height:0.0
-    | Element.Custom { measure; _ } -> measure ()
+let cross_axis_sizing = fun direction (style: Style.t) ->
+  match direction with
+  | Style.LeftToRight -> style.sizing.height
+  | Style.TopToBottom -> style.sizing.width
+
+let is_main_axis_grow = fun direction (style: Style.t) ->
+  match main_axis_sizing direction style with
+  | Style.Grow -> true
+  | _ -> false
+
+let align_h = fun align leftover ->
+  match align with
+  | Style.Left -> 0.0
+  | Style.Center -> leftover /. 2.0
+  | Style.Right -> leftover
+
+let align_v = fun align leftover ->
+  match align with
+  | Style.Top -> 0.0
+  | Style.Middle -> leftover /. 2.0
+  | Style.Bottom -> leftover
+
+let container_main_offset = fun direction (style: Style.t) leftover ->
+  match direction with
+  | Style.LeftToRight -> align_h style.alignment.x leftover
+  | Style.TopToBottom -> align_v style.alignment.y leftover
+
+let container_cross_offset = fun direction (style: Style.t) leftover ->
+  match direction with
+  | Style.LeftToRight -> align_v style.alignment.y leftover
+  | Style.TopToBottom -> align_h style.alignment.x leftover
+
+let text_align_offset = fun (style: Style.t) leftover ->
+  match style.text_align with
+  | Style.TextLeft -> 0.0
+  | Style.TextCenter -> leftover /. 2.0
+  | Style.TextRight -> leftover
+
+let child_available_width = fun parent_inner_width (style: Style.t) ->
+  option_subtract parent_inner_width (margin_horizontal style.margin)
+
+let child_available_height = fun parent_inner_height (style: Style.t) ->
+  option_subtract parent_inner_height (margin_vertical style.margin)
+
+let content_width_constraint = fun (constraints: layout_constraints) (style: Style.t) ->
+  option_subtract (
+    match constraints.forced_width with
+    | Some width -> Some width
+    | None -> constraints.max_width
+  ) (horizontal_inset style)
+
+let content_height_constraint = fun (constraints: layout_constraints) (style: Style.t) ->
+  option_subtract (
+    match constraints.forced_height with
+    | Some height -> Some height
+    | None -> constraints.max_height
+  ) (vertical_inset style)
+
+let text_width_constraint = fun (constraints: layout_constraints) (style: Style.t) ->
+  let width_hint =
+    match constraints.forced_width with
+    | Some width -> Some width
+    | None -> (
+        match resolve_non_fit_size style.sizing.width constraints.max_width with
+        | Some width -> Some width
+        | None ->
+            match style.text_wrap with
+            | Style.NoWrap -> None
+            | Style.Words
+            | Style.Character -> constraints.max_width
+      )
   in
-  (* Apply sizing rules *)
-  let calculated_width =
-    match style.sizing.width with
-    | Style.Fit -> intrinsic_size.width +. padding_horizontal style.padding
-    | Style.Grow -> available.width
-    | Style.Fixed w -> w
-    | Style.Percent p -> available.width *. p
-  in
-  let calculated_height =
-    match style.sizing.height with
-    | Style.Fit -> intrinsic_size.height +. padding_vertical style.padding
-    | Style.Grow -> available.height
-    | Style.Fixed h -> h
-    | Style.Percent p -> available.height *. p
-  in
-  (* Apply min/max constraints *)
-  let final_width = clamp_option calculated_width style.sizing.min_width style.sizing.max_width in
-  let final_height = clamp_option calculated_height style.sizing.min_height style.sizing.max_height in
-  node.computed_size <- Viewport.make ~width:final_width ~height:final_height;
-  (* Layout children if this is a container *)
+  option_subtract width_hint (horizontal_inset style)
+
+let rec measure_node: layout_node -> layout_constraints -> Super.Config.t -> unit = fun node constraints config ->
   match node.element with
-  | Element.Container _ -> layout_children node config
-  | _ -> ()
+  | Element.Text { content; _ } ->
+      measure_text_node node constraints config content
+  | Element.Empty ->
+      measure_intrinsic_node node constraints zero_viewport
+  | Element.Custom { measure; _ } ->
+      measure_intrinsic_node node constraints (measure ~constraints:(measurement_constraints
+        ?available_width:(content_width_constraint constraints node.style)
+        ?available_height:(content_height_constraint constraints node.style)
+        ()))
+  | Element.Container _ ->
+      measure_container node constraints config
 
-and calculate_container_fit_size: layout_node -> Viewport.t -> Super.Config.t -> Viewport.t = fun node available config ->
+and measure_intrinsic_node: layout_node -> layout_constraints -> Viewport.t -> unit = fun node constraints intrinsic ->
   let style = node.style in
-  (* First calculate all children sizes *)
-  List.iter (fun child -> calculate_sizes child available config) node.children;
-  (* Sum up children based on direction *)
-  let total_width, total_height =
-    List.fold_left node.children ~acc:(0.0, 0.0)
-      ~fn:(fun (w, h) child ->
-        match style.direction with
-        | Style.LeftToRight -> (
-          w +. child.computed_size.width,
-          float_max h child.computed_size.height
-        )
-        | Style.TopToBottom -> (
-          float_max w child.computed_size.width,
-          h +. child.computed_size.height
-        ))
-  in
-  (* Add gaps between children *)
-  let child_count = List.length node.children in
-  let gap_space = Float.of_int (style.child_gap * (child_count - 1)) in
   let width =
-    match style.direction with
-    | Style.LeftToRight -> total_width +. gap_space
-    | Style.TopToBottom -> total_width
+    resolve_axis_size
+      style.sizing.width
+      (intrinsic.width +. horizontal_inset style)
+      constraints.max_width
+      constraints.forced_width
+      style.sizing.min_width
+      style.sizing.max_width
   in
   let height =
-    match style.direction with
-    | Style.LeftToRight -> total_height
-    | Style.TopToBottom -> total_height +. gap_space
+    resolve_axis_size
+      style.sizing.height
+      (intrinsic.height +. vertical_inset style)
+      constraints.max_height
+      constraints.forced_height
+      style.sizing.min_height
+      style.sizing.max_height
   in
-  Viewport.make ~width ~height
+  node.computed_size <- Viewport.make ~width ~height
 
-and layout_children: layout_node -> Super.Config.t -> unit = fun node config ->
+and measure_text_node: layout_node -> layout_constraints -> Super.Config.t -> string -> unit =
+fun node constraints config content ->
   let style = node.style in
-  let available_width = node.computed_size.width -. padding_horizontal style.padding in
-  let available_height = node.computed_size.height -. padding_vertical style.padding in
-  (* Partition children by sizing type *)
-  let fit_children, grow_children, fixed_children, percent_children =
-    List.fold_left node.children ~acc:([], [], [], [])
-      ~fn:(fun (fit, grow, fixed, percent) child ->
-        let child_style = child.style in
-        match style.direction with
-        | Style.LeftToRight -> (
-            match child_style.sizing.width with
-            | Style.Fit -> (child :: fit, grow, fixed, percent)
-            | Style.Grow -> (fit, child :: grow, fixed, percent)
-            | Style.Fixed _ -> (fit, grow, child :: fixed, percent)
-            | Style.Percent _ -> (fit, grow, fixed, child :: percent)
-          )
-        | Style.TopToBottom -> (
-            match child_style.sizing.height with
-            | Style.Fit -> (child :: fit, grow, fixed, percent)
-            | Style.Grow -> (fit, child :: grow, fixed, percent)
-            | Style.Fixed _ -> (fit, grow, child :: fixed, percent)
-            | Style.Percent _ -> (fit, grow, fixed, child :: percent)
+  let measurement =
+    config.Super.Config.text_measurer
+      ~constraints:(measurement_constraints
+        ?available_width:(text_width_constraint constraints style)
+        ?available_height:(content_height_constraint constraints style)
+        ())
+      content
+      style
+  in
+  node.measured_text <- Some measurement;
+  measure_intrinsic_node
+    node
+    constraints
+    measurement.size
+
+and measure_container: layout_node -> layout_constraints -> Super.Config.t -> unit = fun node constraints config ->
+  let style = node.style in
+  let width_probe =
+    match constraints.forced_width with
+    | Some width -> Some width
+    | None -> (
+        match resolve_non_fit_size style.sizing.width constraints.max_width with
+        | Some width -> Some width
+        | None -> constraints.max_width
+      )
+  in
+  let height_probe =
+    match constraints.forced_height with
+    | Some height -> Some height
+    | None -> (
+        match resolve_non_fit_size style.sizing.height constraints.max_height with
+        | Some height -> Some height
+        | None -> constraints.max_height
+      )
+  in
+  measure_children_base
+    node
+    ~parent_inner_width:(option_subtract width_probe (horizontal_inset style))
+    ~parent_inner_height:(option_subtract height_probe (vertical_inset style))
+    config;
+  let intrinsic_width, intrinsic_height = container_intrinsic_size node in
+  let width =
+    resolve_axis_size
+      style.sizing.width
+      (intrinsic_width +. horizontal_inset style)
+      constraints.max_width
+      constraints.forced_width
+      style.sizing.min_width
+      style.sizing.max_width
+  in
+  let height =
+    resolve_axis_size
+      style.sizing.height
+      (intrinsic_height +. vertical_inset style)
+      constraints.max_height
+      constraints.forced_height
+      style.sizing.min_height
+      style.sizing.max_height
+  in
+  node.computed_size <- Viewport.make ~width ~height;
+  measure_children_final
+    node
+    ~parent_inner_width:(Some (clamp_non_negative (width -. horizontal_inset style)))
+    ~parent_inner_height:(Some (clamp_non_negative (height -. vertical_inset style)))
+    config
+
+and measure_children_base: layout_node -> parent_inner_width:float option -> parent_inner_height:float option -> Super.Config.t -> unit =
+fun node ~parent_inner_width ~parent_inner_height config ->
+  let direction = node.style.direction in
+  List.iter
+    (fun child ->
+      let forced_main =
+        if is_main_axis_grow direction child.style then
+          Some 0.0
+        else
+          None
+      in
+      measure_child
+        child
+        direction
+        ~parent_inner_width
+        ~parent_inner_height
+        ~forced_main
+        config)
+    node.children
+
+and measure_children_final: layout_node -> parent_inner_width:float option -> parent_inner_height:float option -> Super.Config.t -> unit =
+fun node ~parent_inner_width ~parent_inner_height config ->
+  let direction = node.style.direction in
+  let gap_count = list_last_index node.children in
+  let gap_space = Float.of_int (node.style.child_gap * gap_count) in
+  List.iter
+    (fun child ->
+      if not (is_main_axis_grow direction child.style) then
+        measure_child
+          child
+          direction
+          ~parent_inner_width
+          ~parent_inner_height
+          ~forced_main:None
+          config)
+    node.children;
+  let fixed_outer_main =
+    List.fold_left node.children ~acc:0.0
+      ~fn:(fun acc child ->
+        if is_main_axis_grow direction child.style then
+          acc
+        else
+          acc +. (
+            match direction with
+            | Style.LeftToRight -> outer_width child
+            | Style.TopToBottom -> outer_height child
           ))
   in
-  (* Calculate space used by FIT and FIXED children *)
-  let fit_space =
-    List.fold_left fit_children ~acc:0.0
+  let grow_margin_main =
+    List.fold_left node.children ~acc:0.0
       ~fn:(fun acc child ->
-        acc +. (
-          match style.direction with
-          | Style.LeftToRight -> child.computed_size.width
-          | Style.TopToBottom -> child.computed_size.height
-        ))
+        if is_main_axis_grow direction child.style then
+          acc +. (
+            match direction with
+            | Style.LeftToRight -> margin_horizontal child.style.margin
+            | Style.TopToBottom -> margin_vertical child.style.margin
+          )
+        else
+          acc)
   in
-  let fixed_space =
-    List.fold_left fixed_children ~acc:0.0
+  let total_weight =
+    List.fold_left node.children ~acc:0.0
       ~fn:(fun acc child ->
-        let size =
-          match style.direction with
-          | Style.LeftToRight -> (
-              match child.style.sizing.width with
-              | Style.Fixed w -> w
-              | _ -> 0.0
-            )
-          | Style.TopToBottom -> (
-              match child.style.sizing.height with
-              | Style.Fixed h -> h
-              | _ -> 0.0
-            )
-        in
-        acc +. size)
+        if is_main_axis_grow direction child.style then
+          acc +. child.style.grow_weight
+        else
+          acc)
   in
-  let percent_space =
-    List.fold_left percent_children ~acc:0.0
-      ~fn:(fun acc child ->
-        let size =
-          match style.direction with
-          | Style.LeftToRight -> (
-              match child.style.sizing.width with
-              | Style.Percent p -> available_width *. p
-              | _ -> 0.0
-            )
-          | Style.TopToBottom -> (
-              match child.style.sizing.height with
-              | Style.Percent p -> available_height *. p
-              | _ -> 0.0
-            )
-        in
-        acc +. size)
-  in
-  (* Calculate gap space *)
-  let child_count = List.length node.children in
-  let gap_space = Float.of_int (style.child_gap * (child_count - 1)) in
-  (* Remaining space for GROW children *)
   let total_available =
-    match style.direction with
-    | Style.LeftToRight -> available_width
-    | Style.TopToBottom -> available_height
+    match direction with
+    | Style.LeftToRight -> option_default parent_inner_width 0.0
+    | Style.TopToBottom -> option_default parent_inner_height 0.0
   in
-  let remaining_space = float_max
-    0.0
-    (total_available -. fit_space -. fixed_space -. percent_space -. gap_space) in
-  (* Distribute to GROW children *)
-  let grow_count = List.length grow_children in
-  let space_per_grow =
-    if grow_count > 0 then
-      remaining_space /. Float.of_int grow_count
-    else
-      0.0
+  let remaining =
+    clamp_non_negative (total_available -. gap_space -. fixed_outer_main -. grow_margin_main)
   in
   List.iter
     (fun child ->
-      match style.direction with
-      | Style.LeftToRight -> child.computed_size <- Viewport.make ~width:space_per_grow ~height:available_height
-      | Style.TopToBottom -> child.computed_size <- Viewport.make ~width:available_width ~height:space_per_grow)
-    grow_children
+      if is_main_axis_grow direction child.style then
+        let share =
+          if Float.compare total_weight 0.0 > 0 then
+            remaining *. (child.style.grow_weight /. total_weight)
+          else
+            0.0
+        in
+        measure_child
+          child
+          direction
+          ~parent_inner_width
+          ~parent_inner_height
+          ~forced_main:(Some share)
+          config)
+    node.children
 
-(* Phase 3: Calculate positions *)
+and measure_child: layout_node -> Style.direction -> parent_inner_width:float option -> parent_inner_height:float option -> forced_main:float option -> Super.Config.t -> unit =
+fun child direction ~parent_inner_width ~parent_inner_height ~forced_main config ->
+  let style = child.style in
+  let available_width = child_available_width parent_inner_width style in
+  let available_height = child_available_height parent_inner_height style in
+  let default_width = resolve_non_fit_size style.sizing.width available_width in
+  let default_height = resolve_non_fit_size style.sizing.height available_height in
+  let forced_width =
+    match direction with
+    | Style.LeftToRight -> (
+        match forced_main with
+        | Some width -> Some width
+        | None -> default_width
+      )
+    | Style.TopToBottom -> default_width
+  in
+  let forced_height =
+    match direction with
+    | Style.LeftToRight -> default_height
+    | Style.TopToBottom -> (
+        match forced_main with
+        | Some height -> Some height
+        | None -> default_height
+      )
+  in
+  measure_node
+    child
+    {
+      max_width = available_width;
+      max_height = available_height;
+      forced_width;
+      forced_height;
+    }
+    config
 
-let rec calculate_positions: layout_node -> Geometry.Point.t -> unit = fun node origin ->
-  let style = node.style in
+and container_intrinsic_size: layout_node -> float * float = fun node ->
+  let direction = node.style.direction in
+  let total_main, max_cross =
+    List.fold_left node.children ~acc:(0.0, 0.0)
+      ~fn:(fun (total_main, max_cross) child ->
+        let child_main, child_cross =
+          match direction with
+          | Style.LeftToRight -> (outer_width child, outer_height child)
+          | Style.TopToBottom -> (outer_height child, outer_width child)
+        in
+        (total_main +. child_main, float_max max_cross child_cross))
+  in
+  let gap_space =
+    Float.of_int (node.style.child_gap * list_last_index node.children)
+  in
+  match direction with
+  | Style.LeftToRight -> (total_main +. gap_space, max_cross)
+  | Style.TopToBottom -> (max_cross, total_main +. gap_space)
+
+let rec arrange_node: layout_node -> Geometry.Point.t -> unit = fun node origin ->
   node.computed_position <- origin;
-  (* Calculate content origin (inside padding) *)
-  let content_origin = Geometry.Point.make
-    ~x:(origin.x +. Float.of_int style.padding.left)
-    ~y:(origin.y +. Float.of_int style.padding.top) in
-  (* Set final bounding box *)
   node.final_box <- Geometry.Rect.make
     ~x:origin.x
     ~y:origin.y
     ~width:node.computed_size.width
     ~height:node.computed_size.height;
-  (* Position children *)
-  let next_x = cell content_origin.x in
-  let next_y = cell content_origin.y in
+  match node.element with
+  | Element.Container _ -> arrange_children node
+  | Element.Text _
+  | Element.Empty
+  | Element.Custom _ -> ()
+
+and arrange_children: layout_node -> unit = fun node ->
+  let style = node.style in
+  let rect = node.final_box in
+  let content_rect = content_box rect style in
+  let inner_main, inner_cross =
+    match style.direction with
+    | Style.LeftToRight -> (content_rect.width, content_rect.height)
+    | Style.TopToBottom -> (content_rect.height, content_rect.width)
+  in
+  let total_children_main =
+    List.fold_left node.children ~acc:0.0
+      ~fn:(fun acc child ->
+        acc +. (
+          match style.direction with
+          | Style.LeftToRight -> outer_width child
+          | Style.TopToBottom -> outer_height child
+        ))
+    +. Float.of_int (style.child_gap * list_last_index node.children)
+  in
+  let main_offset =
+    container_main_offset
+      style.direction
+      style
+      (clamp_non_negative (inner_main -. total_children_main))
+  in
+  let cursor = ref main_offset in
   List.iter
     (fun child ->
-      (* TODO: Apply alignment here *)
-      let child_pos = Geometry.Point.make ~x:!next_x ~y:!next_y in
-      calculate_positions child child_pos;
-      (* Update next position *)
-      match style.direction with
-      | Style.LeftToRight -> next_x := !next_x +. child.computed_size.width +. Float.of_int style.child_gap
-      | Style.TopToBottom -> next_y := !next_y +. child.computed_size.height +. Float.of_int style.child_gap)
+      let child_outer_cross =
+        match style.direction with
+        | Style.LeftToRight -> outer_height child
+        | Style.TopToBottom -> outer_width child
+      in
+      let cross_offset =
+        container_cross_offset
+          style.direction
+          style
+          (clamp_non_negative (inner_cross -. child_outer_cross))
+      in
+      let child_origin =
+        match style.direction with
+        | Style.LeftToRight ->
+            Geometry.Point.make
+              ~x:(content_rect.x +. !cursor +. Float.of_int child.style.margin.left)
+              ~y:(content_rect.y +. cross_offset +. Float.of_int child.style.margin.top)
+        | Style.TopToBottom ->
+            Geometry.Point.make
+              ~x:(content_rect.x +. cross_offset +. Float.of_int child.style.margin.left)
+              ~y:(content_rect.y +. !cursor +. Float.of_int child.style.margin.top)
+      in
+      arrange_node child child_origin;
+      cursor := !cursor +. (
+        match style.direction with
+        | Style.LeftToRight -> outer_width child
+        | Style.TopToBottom -> outer_height child
+      ) +. Float.of_int style.child_gap)
     node.children
 
-(* Phase 4: Generate render commands *)
+let rect_equal = fun (left: Geometry.Rect.t) (right: Geometry.Rect.t) ->
+  Float.compare left.x right.x = 0
+  && Float.compare left.y right.y = 0
+  && Float.compare left.width right.width = 0
+  && Float.compare left.height right.height = 0
 
-let rec generate_commands: layout_node -> Render.command Vector.t -> unit = fun node commands ->
-  let style = node.style in
-  (* Generate background rectangle *)
-  (
-    match style.background with
+let push_annotated = fun commands ~clip_stack command ->
+  Vector.push commands ~value:{ command; clip_stack }
+
+let clip_rect = fun (node: layout_node) ->
+  let rect = content_box node.final_box node.style in
+  if Float.compare rect.width 0.0 > 0 && Float.compare rect.height 0.0 > 0 then
+    Some rect
+  else
+    None
+
+let child_clip_stack = fun (node: layout_node) clip_stack ->
+  match node.style.Style.overflow, clip_rect node with
+  | Style.Clip, Some rect -> clip_stack @ [ rect ]
+  | _ -> clip_stack
+
+let push_background = fun node commands ~clip_stack ->
+  match node.style.background with
+  | Some color when Float.compare node.final_box.width 0.0 > 0 && Float.compare node.final_box.height 0.0 > 0 ->
+      push_annotated commands ~clip_stack {
+        Render.bounding_box = node.final_box;
+        command_type = Render.Rectangle { color; corner_radius = node.style.corner_radius };
+        z_index = node.style.z_index;
+      }
+  | _ -> ()
+
+let push_border = fun node commands ~clip_stack ->
+  let width = border_thickness node.style in
+  if width > 0 then
+    match node.style.border_color with
     | Some color ->
-        let cmd = {
+        push_annotated commands ~clip_stack {
           Render.bounding_box = node.final_box;
-          command_type = Render.Rectangle { color; corner_radius = style.corner_radius };
-          z_index = style.z_index
-        } in
-        Vector.push commands ~value:cmd
+          command_type = Render.Border {
+            width = { left = width; right = width; top = width; bottom = width };
+            color;
+            corner_radius = node.style.corner_radius;
+          };
+          z_index = node.style.z_index;
+        }
     | None -> ()
-  );
-  (* Generate border *)
-  (
-    if style.border_width > 0 then
-      match style.border_color with
-      | Some color ->
-          let cmd = {
-            Render.bounding_box = node.final_box;
-            command_type = Render.Border {
-              width = {
-                left = style.border_width;
-                right = style.border_width;
-                top = style.border_width;
-                bottom = style.border_width
+
+let push_text = fun node commands ~clip_stack content ->
+  let style = node.style in
+  let text_rect = content_box node.final_box style in
+  if Float.compare text_rect.width 0.0 <= 0 || Float.compare text_rect.height 0.0 <= 0 then
+    ()
+  else
+    let measurement =
+      match node.measured_text with
+      | Some measurement -> measurement
+      | None ->
+          Super.Config.default_text_measurer
+            ~constraints:(measurement_constraints
+              ~available_width:text_rect.width
+              ~available_height:text_rect.height
+              ())
+            content
+            style
+    in
+    let max_lines = Int.max 0 (Float.to_int (Float.floor text_rect.height)) in
+    let color = option_default style.foreground (`rgb (255, 255, 255)) in
+    let rec loop line_index = function
+      | [] -> ()
+      | _ when line_index >= max_lines -> ()
+      | line :: rest ->
+          let line_width = Float.of_int (String.width line) in
+          let visible_width = float_min line_width text_rect.width in
+          let line_x =
+            text_rect.x +. text_align_offset style (clamp_non_negative (text_rect.width -. line_width))
+          in
+          if line != "" then
+            push_annotated commands ~clip_stack {
+              Render.bounding_box = Geometry.Rect.make
+                ~x:line_x
+                ~y:(text_rect.y +. Float.of_int line_index)
+                ~width:visible_width
+                ~height:1.0;
+              command_type = Render.Text {
+                content = line;
+                color;
+                size = style.text_size;
+                weight = style.font_weight;
+                decoration = style.text_decoration;
               };
-              color;
-              corner_radius = style.corner_radius
+              z_index = style.z_index;
             };
-            z_index = style.z_index
-          } in
-          Vector.push commands ~value:cmd
-      | None -> ()
-  );
-  (* Generate element-specific commands *)
+          loop (line_index + 1) rest
+    in
+    loop 0 measurement.lines
+
+let rec generate_commands: layout_node -> annotated_command Vector.t -> Geometry.Rect.t list -> unit =
+fun node commands clip_stack ->
+  let child_clip_stack = child_clip_stack node clip_stack in
+  push_background node commands ~clip_stack;
+  push_border node commands ~clip_stack;
   (
     match node.element with
     | Element.Text { content; _ } ->
-        let text_color = Option.unwrap_or style.foreground ~default:(`rgb (255, 255, 255)) in
-        let cmd = {
-          Render.bounding_box = node.final_box;
-          command_type = Render.Text {
-            content;
-            color = text_color;
-            size = style.text_size;
-            weight = style.font_weight
-          };
-          z_index = style.z_index
-        } in
-        Vector.push commands ~value:cmd
+        push_text node commands ~clip_stack:child_clip_stack content
     | Element.Container _ ->
-        (* Recurse into children *)
-        List.iter (fun child -> generate_commands child commands) node.children
+        List.iter (fun child -> generate_commands child commands child_clip_stack) node.children
     | Element.Custom { render; _ } ->
         let custom_commands = render node.final_box in
-        List.iter (fun command -> Vector.push commands ~value:command) custom_commands
-    | Element.Empty ->
-        ()
-  );
-  ()
+        List.iter (fun command -> push_annotated commands ~clip_stack:child_clip_stack command) custom_commands
+    | Element.Empty -> ()
+  )
 
-(* Main compute function *)
+let index_commands = fun commands ->
+  let rec loop index acc =
+    function
+    | [] -> List.rev acc
+    | command :: rest ->
+        loop (index + 1) ((index, command) :: acc) rest
+  in
+  loop 0 [] commands
+
+let rec common_prefix_length = fun left right ->
+  match left, right with
+  | left_head :: left_tail, right_head :: right_tail when rect_equal left_head right_head ->
+      1 + common_prefix_length left_tail right_tail
+  | _ -> 0
+
+let rec drop = fun count values ->
+  if count <= 0 then
+    values
+  else
+    match values with
+    | [] -> []
+    | _ :: rest -> drop (count - 1) rest
+
+let rec emit_scissor_ends = fun output z_index ->
+  function
+  | [] -> ()
+  | _ :: rest ->
+      emit_scissor_ends output z_index rest;
+      Vector.push output ~value:{
+        Render.bounding_box = Geometry.Rect.zero;
+        command_type = Render.ScissorEnd;
+        z_index;
+      }
+
+let emit_scissor_starts = fun output z_index rects ->
+  List.iter (fun rect ->
+    Vector.push output ~value:{
+      Render.bounding_box = rect;
+      command_type = Render.ScissorStart rect;
+      z_index;
+    }) rects
+
+let emit_scissor_transition = fun output ~current ~target ~z_index ->
+  let common = common_prefix_length current target in
+  emit_scissor_ends output z_index (drop common current);
+  emit_scissor_starts output z_index (drop common target)
+
+let linearize_commands = fun commands ->
+  let output = Vector.create () in
+  let rec loop current_clip_stack last_z =
+    function
+    | [] ->
+        emit_scissor_transition output ~current:current_clip_stack ~target:[] ~z_index:last_z
+    | (_, annotated) :: rest ->
+        let z_index = annotated.command.Render.z_index in
+        emit_scissor_transition output ~current:current_clip_stack ~target:annotated.clip_stack ~z_index;
+        Vector.push output ~value:annotated.command;
+        loop annotated.clip_stack z_index rest
+  in
+  loop [] 0 commands;
+  output |> Vector.iter |> Iter.Iterator.to_list
 
 let compute = fun ~config element ->
-  (* Build layout tree *)
   let layout_tree = build_layout_tree element in
-  (* Calculate sizes *)
-  calculate_sizes layout_tree config.Super.Config.viewport config;
-  (* Calculate positions *)
-  calculate_positions layout_tree Geometry.Point.zero;
-  (* Generate render commands *)
+  measure_node layout_tree {
+    zero_constraints with
+    max_width = Some config.Super.Config.viewport.width;
+    max_height = Some config.Super.Config.viewport.height;
+  } config;
+  arrange_node layout_tree Geometry.Point.zero;
   let commands = Vector.create () in
-  generate_commands layout_tree commands;
-  (* Sort by z-index and convert to list *)
-  let cmd_list = commands |> Vector.iter |> Iter.Iterator.to_list in
-  List.sort cmd_list
-    ~compare:(fun a b ->
-      Int.compare a.Render.z_index b.Render.z_index)
+  generate_commands layout_tree commands [];
+  let command_list = commands |> Vector.iter |> Iter.Iterator.to_list in
+  index_commands command_list
+  |> List.sort ~compare:(fun (left_index, left) (right_index, right) ->
+    let by_z = Int.compare left.command.Render.z_index right.command.Render.z_index in
+    if by_z != 0 then
+      by_z
+    else
+      Int.compare left_index right_index)
+  |> linearize_commands

@@ -12,5 +12,6 @@ type layout_node = {
   mutable computed_size: Viewport.t;
   mutable computed_position: Geometry.Point.t;
   mutable final_box: Geometry.Rect.t;
+  mutable measured_text: Super.Config.text_measurement option;
 }
 val compute: config:Config.t -> Element.t -> Render.command_list

@@ -8,7 +8,7 @@ type t =
   | Empty
   | Custom of {
       style: Style.t;
-      measure: unit -> Viewport.t;
+      measure: (constraints:Super.Config.constraints -> Viewport.t);
       render: Geometry.Rect.t -> Render.command list
     }
 
@@ -28,7 +28,7 @@ val empty: t
 (** Empty element (takes no space) *)
 val custom:
   ?style:Style.t ->
-  measure:(unit -> Viewport.t) ->
+  measure:(constraints:Super.Config.constraints -> Viewport.t) ->
   render:(Geometry.Rect.t -> Render.command list) ->
   unit ->
   t
@@ -44,4 +44,4 @@ val column: ?style:Style.t -> t list -> t
 (** Container with TopToBottom direction *)
 val spacer: ?flex:float -> unit -> t
 
-(** Empty container that grows to fill space *)
+(** Empty container that uses its grow weight on the parent's main axis *)

@@ -1,14 +1,31 @@
 (** Configuration for layout computation *)
 open Std
 
-type text_measurer = string -> Style.t -> Viewport.t
-(** Function type for measuring text dimensions *)
+type constraints = {
+  available_width: float option;
+  available_height: float option;
+}
+(** Available content-box space provided during measurement. *)
+
+type text_measurement = {
+  size: Viewport.t;
+  lines: string list;
+}
+(** Measured text size plus the wrapped lines that should be rendered. *)
+
+type text_measurer = constraints:constraints -> string -> Style.t -> text_measurement
+(** Function type for measuring text dimensions. *)
 type t = {
   viewport: Viewport.t;
   text_measurer: text_measurer;
 }
+
+val constraints: ?available_width:float -> ?available_height:float -> unit -> constraints
+
 val make: viewport:Viewport.t -> text_measurer:text_measurer -> unit -> t
 
 val default_text_measurer: text_measurer
 
-(** Simple terminal-based text measurement *)
+(** Terminal-cell-based text measurement.
+    Width is the maximum visible line width and height is the rendered line count.
+    The built-in measurer applies Gooey's wrapping rules and returns the wrapped lines. *)

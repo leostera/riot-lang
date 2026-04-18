@@ -6,7 +6,7 @@ type t =
   | Empty
   | Custom of {
       style: Style.t;
-      measure: unit -> Viewport.t;
+      measure: (constraints:Super.Config.constraints -> Viewport.t);
       render: Geometry.Rect.t -> Render.command list
     }
 
@@ -19,16 +19,16 @@ let empty = Empty
 let custom = fun ?(style = Style.empty) ~measure ~render () -> Custom { style; measure; render }
 
 let row = fun ?(style = Style.empty) children ->
-  let style = Style.(style |> row |> width Grow) in
+  let style = Style.(style |> row) in
   Container { style; children }
 
 let column = fun ?(style = Style.empty) children ->
-  let style = Style.(style |> column |> height Grow) in
+  let style = Style.(style |> column) in
   Container { style; children }
 
 let spacer = fun ?(flex = 1.0) () ->
   Container {
     style =
-      Style.(empty |> size ~width:(Fixed flex) ~height:Grow);
+      Style.(empty |> grow |> grow_weight flex);
     children = [];
   }
