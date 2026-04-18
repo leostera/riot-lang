@@ -7,7 +7,7 @@ Advanced color science library for OCaml providing color space conversions and p
 - **Multiple Color Spaces**: ANSI, RGB, Linear RGB, XYZ, LUV, UV
 - **Perceptually Uniform Blending**: Blend colors the way humans perceive them
 - **Color Space Conversions**: Convenience helpers for `RGB`, `XYZ`, and `LUV`
-- **ANSI Support**: 256-color terminal palette with RGB conversion
+- **ANSI Support**: 256-color terminal palette with RGB conversion and nearest-color lookup
 - **Scientific Foundation**: Based on CIE color space mathematics
 
 ## Quick Start
@@ -115,6 +115,10 @@ let rgb_colors = List.map ANSI.to_rgb ansi_colors in
 let ansi_red = ANSI.to_rgb (`ansi 9) in
 let ansi_blue = ANSI.to_rgb (`ansi 12) in
 let blend = RGB.blend ansi_red ansi_blue ~mix:0.5
+
+(* Map an RGB color back to the nearest palette entry *)
+let nearest = ANSI.nearest (`rgb (250, 10, 10))
+(* Returns: `ansi 9 *)
 ```
 
 ### Custom White Point References
@@ -187,6 +191,7 @@ This library implements standard CIE color space transformations:
 ## Input and Range Semantics
 
 - ANSI indices are clamped to `0..255`
+- `ANSI.nearest` clamps RGB channels to `0..255` and breaks ties toward lower palette indices
 - RGB channels are treated as byte-domain sRGB values
 - Linear RGB channels are clamped to `0.0..1.0` before conversion back to RGB
 - RGB quantization rounds to the nearest byte and clamps to `0..255`

@@ -81,6 +81,18 @@ module ANSI: sig
       ```
   *)
   val to_rgb: ansi -> rgb
+
+  (** Find the nearest ANSI palette entry for an RGB color.
+
+      RGB channels are clamped to `0..255` before matching. Distances are
+      measured in RGB space, and ties resolve to the lowest palette index.
+
+      Example:
+      ```ocaml
+      ANSI.nearest (`rgb (250, 10, 10)) = `ansi 9
+      ```
+  *)
+  val nearest: rgb -> ansi
 end
 
 (** White-point definitions used by XYZ and LUV conversions. *)

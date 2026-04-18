@@ -25,6 +25,10 @@ let expect_int_equal = fun ~label ~expected ~actual ->
     (Int.equal expected actual)
     (label ^ ": expected " ^ Int.to_string expected ^ ", got " ^ Int.to_string actual)
 
+let expect_ansi_equal = fun ~label ~expected ->
+  function
+  | `ansi actual -> expect_int_equal ~label ~expected ~actual
+
 let expect_float_close = fun ~label ~epsilon ~expected ~actual ->
   expect
     (Float.abs (expected -. actual) <= epsilon)
@@ -102,6 +106,9 @@ let expect_luv_finite = fun ~label ->
       let* () = expect_finite ~label:(label ^ " u") u in
       expect_finite ~label:(label ^ " v") v
 
+let rgb_tuple_of = function
+  | `rgb (red, green, blue) -> (red, green, blue)
+
 let linearize_channel = fun channel ->
   match Linear_RGB.linearize (`rgb (channel, channel, channel)) with
   | `lrgb (value, _, _) -> value
@@ -163,6 +170,18 @@ let rec for_each = fun items ~fn ->
   | item :: rest ->
       let* () = fn item in
       for_each rest ~fn
+
+let canonical_palette_index_for_rgb = fun rgb ->
+  let target = rgb_tuple_of rgb in
+  let rec loop index =
+    if index > 255 then
+      None
+    else if rgb_tuple_of (ANSI.to_rgb (`ansi index)) = target then
+      Some index
+    else
+      loop (index + 1)
+  in
+  loop 0
 
 let test_to_string_formats_public_variants = fun _ctx ->
   let* () = expect_string_equal
@@ -258,6 +277,75 @@ let test_ansi_palette_channels_stay_in_byte_range = fun _ctx ->
           loop (index + 1)
   in
   loop 0
+
+let test_ansi_nearest_canonicalizes_palette_duplicates = fun _ctx ->
+  let canonical_values = [
+    ((0, 0, 0), 0);
+    ((255, 0, 0), 9);
+    ((0, 255, 0), 10);
+    ((255, 255, 0), 11);
+    ((0, 0, 255), 12);
+    ((255, 0, 255), 13);
+    ((0, 255, 255), 14);
+    ((255, 255, 255), 15);
+    ((95, 95, 95), 59);
+    ((135, 135, 175), 103);
+  ]
+  in
+  for_each
+    canonical_values
+    ~fn:(fun ((red, green, blue), expected) ->
+      ANSI.nearest (`rgb (red, green, blue))
+      |> expect_ansi_equal
+        ~label:("ansi nearest exact RGB("
+        ^ Int.to_string red
+        ^ ","
+        ^ Int.to_string green
+        ^ ","
+        ^ Int.to_string blue
+        ^ ")")
+        ~expected)
+
+let test_ansi_nearest_roundtrips_palette_entries_to_canonical_indices = fun _ctx ->
+  let rec loop index =
+    if index > 255 then
+      Ok ()
+    else
+      let palette_rgb = ANSI.to_rgb (`ansi index) in
+      match canonical_palette_index_for_rgb palette_rgb with
+      | None -> Error ("expected palette RGB to appear in the palette table for index "
+      ^ Int.to_string index)
+      | Some expected ->
+          let* () = ANSI.nearest palette_rgb
+          |> expect_ansi_equal ~label:("ansi nearest palette roundtrip " ^ Int.to_string index) ~expected in
+          loop (index + 1)
+  in
+  loop 0
+
+let test_ansi_nearest_representative_inputs = fun _ctx ->
+  let representative_values = [
+    (((-20), (-10), 5), 0);
+    ((250, 10, 10), 9);
+    ((2, 240, 240), 14);
+    ((130, 140, 170), 103);
+    ((100, 100, 100), 241);
+    ((12, 34, 56), 235);
+    ((17, 200, 123), 42);
+    ((90, 40, 210), 56);
+  ] in
+  for_each
+    representative_values
+    ~fn:(fun ((red, green, blue), expected) ->
+      ANSI.nearest (`rgb (red, green, blue))
+      |> expect_ansi_equal
+        ~label:("ansi nearest representative RGB("
+        ^ Int.to_string red
+        ^ ","
+        ^ Int.to_string green
+        ^ ","
+        ^ Int.to_string blue
+        ^ ")")
+        ~expected)
 
 let test_linear_rgb_known_values = fun _ctx ->
   let* () = Linear_RGB.linearize (`rgb (0, 0, 0))
@@ -467,6 +555,9 @@ let tests =
     case "ANSI known values and clamp behavior stay stable" test_ansi_known_values_and_clamping;
     case "ANSI cube and grayscale segments match their formulas" test_ansi_formula_segments;
     case "ANSI palette outputs stay within byte range" test_ansi_palette_channels_stay_in_byte_range;
+    case "ANSI.nearest canonicalizes duplicate palette colors" test_ansi_nearest_canonicalizes_palette_duplicates;
+    case "ANSI.nearest roundtrips palette entries to canonical indices" test_ansi_nearest_roundtrips_palette_entries_to_canonical_indices;
+    case "ANSI.nearest matches representative off-palette inputs" test_ansi_nearest_representative_inputs;
     case "linear RGB known values and clamps stay correct" test_linear_rgb_known_values;
     case "linear RGB roundtrips every byte channel exactly" test_linear_rgb_exhaustive_channel_roundtrip;
     case "XYZ conversions match known matrix values" test_xyz_known_conversions;

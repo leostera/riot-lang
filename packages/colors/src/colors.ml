@@ -77,6 +77,13 @@ let d65_white_uv = `uv (d65_u, d65_v)
 let clamp_int = fun ~min:low ~max:high value ->
   Int.min high (Int.max low value)
 
+let clamp_rgb = fun (`rgb (r, g, b)) ->
+  (
+    clamp_int ~min:rgb_channel_min ~max:rgb_channel_max r,
+    clamp_int ~min:rgb_channel_min ~max:rgb_channel_max g,
+    clamp_int ~min:rgb_channel_min ~max:rgb_channel_max b
+  )
+
 let clamp_float = fun ~min:low ~max:high value ->
   if Float.is_nan value then
     low
@@ -104,6 +111,12 @@ let uv_of_xyz = fun x y z ->
     `uv (0.0, 0.0)
   else
     `uv (4.0 *. x /. denom, 9.0 *. y /. denom)
+
+let rgb_distance = fun (left_r, left_g, left_b) (right_r, right_g, right_b) ->
+  let diff_r = left_r - right_r in
+  let diff_g = left_g - right_g in
+  let diff_b = left_b - right_b in
+  (diff_r * diff_r) + (diff_g * diff_g) + (diff_b * diff_b)
 
 let to_string = fun value ->
   match value with
@@ -136,6 +149,22 @@ module ANSI = struct
   let to_rgb = fun (`ansi i) ->
     let i = clamp_int ~min:0 ~max:(Array.length Ansi_table.to_rgb - 1) i in
     Array.get_unchecked Ansi_table.to_rgb ~at:i
+
+  let nearest = fun rgb ->
+    let source = clamp_rgb rgb in
+    let rec loop index best_index best_distance =
+      if index >= Array.length Ansi_table.to_rgb then
+        `ansi best_index
+      else
+        let (`rgb (red, green, blue)) = Array.get_unchecked Ansi_table.to_rgb ~at:index in
+        let distance = rgb_distance source (red, green, blue) in
+        if distance < best_distance then
+          loop (index + 1) index distance
+        else
+          loop (index + 1) best_index best_distance
+    in
+    let (`rgb (red, green, blue)) = Array.get_unchecked Ansi_table.to_rgb ~at:0 in
+    loop 1 0 (rgb_distance source (red, green, blue))
 end
 
 module White_reference = struct
