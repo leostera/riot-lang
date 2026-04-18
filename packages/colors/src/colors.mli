@@ -32,7 +32,10 @@ type xyz =
 [
   | `xyz of float * float * float
 ]
-(** CIE LUV color. This space is designed to be perceptually uniform. *)
+(** Normalized CIE LUV color.
+
+    This package stores lightness in the range `0.0..1.0` rather than the
+    conventional `0..100`, and scales `u`/`v` accordingly. *)
 type luv =
 [
   | `luv of float * float * float
@@ -46,6 +49,7 @@ type uv =
 type color = [
   | ansi
   | rgb
+  | lrgb
   | xyz
   | luv
   | uv
@@ -68,6 +72,8 @@ module ANSI: sig
   (** Convert an ANSI palette entry to RGB.
 
       Use this when you need a concrete RGB value for a terminal color.
+
+      Indices outside `0..255` are clamped to the nearest valid palette entry.
 
       Example:
       ```ocaml
@@ -97,6 +103,9 @@ module Linear_RGB: sig
 
       Use this before matrix-based color-space conversions such as RGB to XYZ.
 
+      RGB channels are interpreted in the byte domain `0..255`, normalized to
+      `0.0..1.0`, and then converted with the standard sRGB transfer curve.
+
       Example:
       ```ocaml
       let linear = Linear_RGB.linearize (`rgb (128, 128, 128))
@@ -107,7 +116,8 @@ module Linear_RGB: sig
 
   (** Re-apply the sRGB gamma curve and convert linear RGB back to RGB.
 
-      This is the inverse of [linearize].
+      This is the inverse of [linearize]. Linear RGB channels are clamped to
+      `0.0..1.0`, then rounded to the nearest byte in `0..255`.
   *)
   val delinearize: lrgb -> rgb
 
@@ -130,16 +140,23 @@ module XYZ: sig
   *)
   val to_linear_rgb: xyz -> lrgb
 
+  (** Convert XYZ directly to display RGB.
+
+      This composes [to_linear_rgb] with [Linear_RGB.delinearize].
+  *)
+  val to_rgb: xyz -> rgb
+
   (** Convert XYZ to chromaticity coordinates.
 
-      Use this when you only care about chromaticity and not luminance.
+      Use this when you only care about chromaticity and not luminance. The
+      zero XYZ value maps to the sentinel [`uv (0.0, 0.0)].
   *)
   val to_uv: xyz -> uv
 
   (** Convert XYZ to LUV with an explicit white reference.
 
       Use this when your working white point is not the default daylight
-      reference.
+      reference. Invalid white references raise [Invalid_argument].
   *)
   val to_luv_with_ref: xyz -> wref:xyz -> luv
 
@@ -155,11 +172,15 @@ module LUV: sig
   (** Convert LUV back to XYZ with an explicit white reference.
 
       The white reference should match the one used in the forward conversion.
+      Invalid white references raise [Invalid_argument].
   *)
   val to_xyz_with_ref: luv -> wref:xyz -> xyz
 
   (** Convert LUV to XYZ using [White_reference.d65]. *)
   val to_xyz: luv -> xyz
+
+  (** Convert LUV directly to display RGB. *)
+  val to_rgb: luv -> rgb
 
   (** Blend two LUV colors.
 
@@ -171,6 +192,8 @@ module LUV: sig
       - `0.0` returns the first color
       - `0.5` returns the midpoint
       - `1.0` returns the second color
+
+      [`mix`] is clamped to `0.0..1.0`.
 
       Example:
       ```ocaml
@@ -189,13 +212,22 @@ end
     colors but you still want conversions and blending that respect perceptual
     color differences. *)
 module RGB: sig
+  (** Convert RGB to linear RGB. *)
+  val to_linear_rgb: rgb -> lrgb
+
+  (** Convert RGB directly to XYZ. *)
+  val to_xyz: rgb -> xyz
+
+  (** Convert RGB directly to normalized LUV. *)
+  val to_luv: rgb -> luv
+
   (** Blend two RGB colors in perceptually uniform LUV space.
 
       This is the high-level blend function most callers want. It converts RGB
       into LUV, blends there, and converts the result back to RGB.
 
       Use this instead of averaging RGB channels directly when you want a
-      visually smooth transition.
+      visually smooth transition. [`mix`] is clamped to `0.0..1.0`.
 
       Example:
       ```ocaml

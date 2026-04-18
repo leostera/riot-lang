@@ -12,6 +12,7 @@ Use it as a router: pick the most relevant existing AGENTS file before making ch
 - `packages/kernel-new/AGENTS.md`: new platform abstraction layer, Riot-owned native shims, and Unix-first kernel bootstrap
 - `packages/actors/AGENTS.md`: actor runtime, scheduler, mailbox, timers, process lifecycle
 - `packages/std/AGENTS.md`: shared standard library surface used by the rest of the repo
+- `packages/colors/AGENTS.md`: ANSI palette mapping, sRGB/XYZ/LUV conversions, and perceptual color blending
 - `packages/ignore/AGENTS.md`: ignore-aware recursive walking, gitignore-style precedence, and subtree pruning
 - `packages/http/AGENTS.md`: HTTP protocol implementation and wire-level behavior
 - `packages/blink/AGENTS.md`: streaming HTTP client built on actors

@@ -6,7 +6,7 @@ Advanced color science library for OCaml providing color space conversions and p
 
 - **Multiple Color Spaces**: ANSI, RGB, Linear RGB, XYZ, LUV, UV
 - **Perceptually Uniform Blending**: Blend colors the way humans perceive them
-- **Color Space Conversions**: Seamless conversions between all supported spaces
+- **Color Space Conversions**: Convenience helpers for `RGB`, `XYZ`, and `LUV`
 - **ANSI Support**: 256-color terminal palette with RGB conversion
 - **Scientific Foundation**: Based on CIE color space mathematics
 
@@ -21,7 +21,7 @@ let red = ANSI.to_rgb (`ansi 9)
 (* Returns: `rgb (255, 0, 0) *)
 
 (* Perceptually uniform color blending *)
-let blend = RGB.blend 
+let blend = RGB.blend
   (`rgb (0, 0, 255))    (* Blue *)
   (`rgb (255, 255, 0))  (* Yellow *)
   ~mix:0.5
@@ -67,10 +67,12 @@ Linear RGB (0.0-1.0)
   ↓ matrix transformation
 XYZ (device-independent)
   ↓ with white point reference (D65)
-LUV (perceptually uniform)
+LUV (normalized, perceptually uniform)
 ```
 
-Each step is reversible for round-trip conversions.
+Most of the pipeline composes cleanly for round-trip conversions, but integer
+RGB round-trips are approximate because the final step quantizes back to bytes,
+and ANSI conversion is one-way.
 
 ## Usage Examples
 
@@ -83,7 +85,7 @@ let create_gradient start_color end_color steps =
     RGB.blend start_color end_color ~mix
   )
 
-let gradient = create_gradient 
+let gradient = create_gradient
   (`rgb (255, 0, 0))    (* Red *)
   (`rgb (0, 0, 255))    (* Blue *)
   10
@@ -92,20 +94,14 @@ let gradient = create_gradient
 ### Manual Color Space Conversions
 
 ```ocaml
-(* Full conversion pipeline *)
 let rgb = `rgb (200, 150, 100) in
-let lrgb = Linear_RGB.linearize rgb in
-let xyz = Linear_RGB.to_xyz lrgb in
-let luv = XYZ.to_luv xyz in
+let luv = RGB.to_luv rgb in
 
 println (to_string luv)
 (* Output: LUV(0.6532,0.1234,0.3456) *)
 
-(* Convert back *)
-let xyz' = LUV.to_xyz luv in
-let lrgb' = XYZ.to_linear_rgb xyz' in
-let rgb' = Linear_RGB.delinearize lrgb' in
-(* rgb' ≈ rgb (within floating-point precision) *)
+let rgb' = LUV.to_rgb luv in
+(* rgb' ≈ rgb (within 1 byte per channel after quantization) *)
 ```
 
 ### Working with Terminal Colors
@@ -136,6 +132,8 @@ let luv = XYZ.to_luv_with_ref xyz ~wref:custom_white in
 let xyz' = LUV.to_xyz_with_ref luv ~wref:custom_white in
 ```
 
+Custom white references must be finite and have a positive `Y` component.
+
 ## Color Space Details
 
 ### RGB (Standard RGB)
@@ -157,7 +155,8 @@ let xyz' = LUV.to_xyz_with_ref luv ~wref:custom_white in
 - Perceptually uniform color space
 - Equal numeric distances = equal perceived differences
 - Ideal for blending and interpolation
-- L* = lightness, u* and v* = chromaticity
+- This package uses normalized units: `L` is `0.0..1.0` instead of `0..100`
+- `u` and `v` are scaled to match the normalized lightness range
 
 ### ANSI
 - 256-color terminal palette
@@ -185,6 +184,14 @@ This library implements standard CIE color space transformations:
    - L* calculation with cube root for perceptual uniformity
    - u*, v* from chromaticity coordinates
 
+## Input and Range Semantics
+
+- ANSI indices are clamped to `0..255`
+- RGB channels are treated as byte-domain sRGB values
+- Linear RGB channels are clamped to `0.0..1.0` before conversion back to RGB
+- RGB quantization rounds to the nearest byte and clamps to `0..255`
+- Blend `mix` values are clamped to `0.0..1.0`
+
 ## References
 
 - Based on [go-colorful](https://github.com/lucasb-eyer/go-colorful)
@@ -198,11 +205,12 @@ This library implements standard CIE color space transformations:
 - **Color Manipulation**: Blend colors naturally
 - **Terminal Applications**: Convert between ANSI and RGB
 - **Color Science**: Accurate device-independent color representation
-- **Accessibility**: Calculate perceptual color differences
+- **Display Pipelines**: Move between RGB, XYZ, and perceptual blending space
 
 ## When NOT to Use This Library
 
 - Simple RGB color storage (use basic tuples)
 - HSL/HSV color space (not implemented here)
 - Color palette generation (use dedicated tools)
+- Accessibility metrics such as contrast ratio or perceptual distance (not implemented here)
 - Performance-critical inner loops (conversions involve floating-point math)
