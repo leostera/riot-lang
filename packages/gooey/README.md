@@ -32,3 +32,16 @@ event loop for interactive terminal apps.
 - `examples/terminal_demo.ml` is useful if you want to see a fuller interface.
 - the tests under `tests/` are small and readable if you want to understand the
   layout model precisely.
+
+## Benchmarks
+
+Run Gooey's baseline layout and renderer benchmarks with:
+
+```sh
+riot bench -p gooey --json
+```
+
+The benchmark suite covers wide trees, deep nesting, mixed sizing, wrapped
+unicode text, and both built-in terminal renderers. The deep-tree case is
+currently kept as a skipped stress benchmark so the default suite stays within
+the package validation budget.

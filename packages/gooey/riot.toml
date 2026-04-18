@@ -12,3 +12,7 @@ path = "src/gooey.ml"
 std = { path = "../std", version = "*" }
 tty = { path = "../tty", version = "*" }
 colors = { path = "../colors", version = "*" }
+
+[[bin]]
+name = "gooey_bench"
+path = "bench/gooey_bench.ml"
