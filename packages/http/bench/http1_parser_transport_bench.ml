@@ -2,6 +2,7 @@ open Std
 open Http
 
 module Buffer = IO.Buffer
+module IoBuffer = IO.IoBuffer
 
 let build_request = fun ~method_ ~path ~headers ~body ->
   let head =
@@ -68,6 +69,12 @@ let many_headers_request =
     ~headers:(("Host", "example.com") :: build_headers ~count:80)
     ~body:""
 
+let consume_result = fun value remaining ->
+  let _ =
+    (Std.Net.Http.Request.method_ value, Std.Net.Http.Request.version value, String.length remaining)
+  in
+  ()
+
 let bench_reader_parse = fun ~chunk_size payload () ->
   let reader = String.to_reader ~chunk_size payload |> IO.buffered ~chunk_size:4_096 () in
   let buf = Buffer.create ~size:(String.length payload) in
@@ -77,14 +84,42 @@ let bench_reader_parse = fun ~chunk_size payload () ->
   | Ok _ -> (
       match Http1.Request.parse (Buffer.contents buf) with
       | Done { value; remaining } ->
-          let _ =
-            (Std.Net.Http.Request.method_ value, Std.Net.Http.Request.version value, String.length remaining)
-          in
-          ()
+          consume_result value remaining
       | Need_more ->
           panic "http1 parser transport bench expected complete payload"
       | Error error ->
           panic ("http1 parser transport bench parse error: " ^ error)
+    )
+
+let read_to_iobuffer = fun reader ~read_size ->
+  let buffer = IoBuffer.create () in
+  let rec loop () =
+    let writable = IoBuffer.writable_slice ~size:read_size buffer in
+    let bufs = IO.Iovec.from_slices [| writable |] in
+    match IO.read_vectored reader bufs with
+    | Ok 0 ->
+        Ok buffer
+    | Ok count ->
+        IoBuffer.commit_write buffer ~len:count;
+        loop ()
+    | Error _ as error ->
+        error
+  in
+  loop ()
+
+let bench_reader_parse_string_view = fun ~chunk_size payload () ->
+  let reader = String.to_reader ~chunk_size payload |> IO.buffered ~chunk_size:4_096 () in
+  match read_to_iobuffer reader ~read_size:4_096 with
+  | Error error ->
+      panic ("http1 parser transport string_view bench read error: " ^ IO.error_message error)
+  | Ok buffer -> (
+      match Http1.Request.parse_string_view (IO.StringView.of_buffer buffer) with
+      | Done { value; remaining } ->
+          consume_result value remaining
+      | Need_more ->
+          panic "http1 parser transport string_view bench expected complete payload"
+      | Error error ->
+          panic ("http1 parser transport string_view bench parse error: " ^ error)
     )
 
 let benchmarks =
@@ -109,6 +144,26 @@ let benchmarks =
       ~config:{ iterations = 120; warmup = 12 }
       "http1 parser reader-fed: many headers"
       (bench_reader_parse ~chunk_size:64 many_headers_request);
+    with_config
+      ~config:{ iterations = 200; warmup = 20 }
+      "http1 parser reader-fed string_view: small request"
+      (bench_reader_parse_string_view ~chunk_size:32 small_request);
+    with_config
+      ~config:{ iterations = 150; warmup = 15 }
+      "http1 parser reader-fed string_view: 1 KiB body"
+      (bench_reader_parse_string_view ~chunk_size:64 request_1k);
+    with_config
+      ~config:{ iterations = 60; warmup = 6 }
+      "http1 parser reader-fed string_view: 100 KiB body"
+      (bench_reader_parse_string_view ~chunk_size:256 request_100k);
+    with_config
+      ~config:{ iterations = 15; warmup = 3 }
+      "http1 parser reader-fed string_view: 1 MiB body"
+      (bench_reader_parse_string_view ~chunk_size:1024 request_1m);
+    with_config
+      ~config:{ iterations = 120; warmup = 12 }
+      "http1 parser reader-fed string_view: many headers"
+      (bench_reader_parse_string_view ~chunk_size:64 many_headers_request);
   ]
 
 let () =

@@ -66,17 +66,39 @@ let many_headers_request =
     ~headers:(("Host", "example.com") :: build_headers ~count:80)
     ~body:""
 
+let small_request_view = IO.StringView.of_string small_request
+
+let request_1k_view = IO.StringView.of_string request_1k
+
+let request_100k_view = IO.StringView.of_string request_100k
+
+let request_1m_view = IO.StringView.of_string request_1m
+
+let many_headers_request_view = IO.StringView.of_string many_headers_request
+
+let consume_result = fun value remaining ->
+  let _ =
+    (Std.Net.Http.Request.method_ value, Std.Net.Http.Request.version value, String.length remaining)
+  in
+  ()
+
 let bench_parse = fun payload () ->
   match Http1.Request.parse payload with
   | Done { value; remaining } ->
-      let _ =
-        (Std.Net.Http.Request.method_ value, Std.Net.Http.Request.version value, String.length remaining)
-      in
-      ()
+      consume_result value remaining
   | Need_more ->
       panic "http1 parser bench expected complete payload"
   | Error error ->
       panic ("http1 parser bench parse error: " ^ error)
+
+let bench_parse_string_view = fun payload () ->
+  match Http1.Request.parse_string_view payload with
+  | Done { value; remaining } ->
+      consume_result value remaining
+  | Need_more ->
+      panic "http1 string_view parser bench expected complete payload"
+  | Error error ->
+      panic ("http1 string_view parser bench parse error: " ^ error)
 
 let benchmarks =
   Bench.[
@@ -85,6 +107,26 @@ let benchmarks =
     with_config ~config:{ iterations = 60; warmup = 6 } "http1 parser in-memory: 100 KiB body" (bench_parse request_100k);
     with_config ~config:{ iterations = 15; warmup = 3 } "http1 parser in-memory: 1 MiB body" (bench_parse request_1m);
     with_config ~config:{ iterations = 120; warmup = 12 } "http1 parser in-memory: many headers" (bench_parse many_headers_request);
+    with_config
+      ~config:{ iterations = 200; warmup = 20 }
+      "http1 parser in-memory string_view: small request"
+      (bench_parse_string_view small_request_view);
+    with_config
+      ~config:{ iterations = 150; warmup = 15 }
+      "http1 parser in-memory string_view: 1 KiB body"
+      (bench_parse_string_view request_1k_view);
+    with_config
+      ~config:{ iterations = 60; warmup = 6 }
+      "http1 parser in-memory string_view: 100 KiB body"
+      (bench_parse_string_view request_100k_view);
+    with_config
+      ~config:{ iterations = 15; warmup = 3 }
+      "http1 parser in-memory string_view: 1 MiB body"
+      (bench_parse_string_view request_1m_view);
+    with_config
+      ~config:{ iterations = 120; warmup = 12 }
+      "http1 parser in-memory string_view: many headers"
+      (bench_parse_string_view many_headers_request_view);
   ]
 
 let () =
