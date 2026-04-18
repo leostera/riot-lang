@@ -5,6 +5,7 @@ Advanced color science library for OCaml providing color space conversions and p
 ## Features
 
 - **Multiple Color Spaces**: ANSI, RGB, Linear RGB, XYZ, LUV, UV
+- **Hex Helpers**: Parse and render `#rrggbb` RGB strings
 - **Perceptually Uniform Blending**: Blend colors the way humans perceive them
 - **Color Space Conversions**: Convenience helpers for `RGB`, `XYZ`, and `LUV`
 - **ANSI Support**: 256-color terminal palette with RGB conversion and nearest-color lookup
@@ -121,6 +122,16 @@ let nearest = ANSI.nearest (`rgb (250, 10, 10))
 (* Returns: `ansi 9 *)
 ```
 
+### Working with Hex Colors
+
+```ocaml
+let accent = RGB.of_hex "#ff8000"
+(* Returns: Ok (`rgb (255, 128, 0)) *)
+
+let css = RGB.to_hex (`rgb (255, 128, 0))
+(* Returns: "#ff8000" *)
+```
+
 ### Custom White Point References
 
 ```ocaml
@@ -193,6 +204,8 @@ This library implements standard CIE color space transformations:
 - ANSI indices are clamped to `0..255`
 - `ANSI.nearest` clamps RGB channels to `0..255` and breaks ties toward lower palette indices
 - RGB channels are treated as byte-domain sRGB values
+- `RGB.of_hex` accepts `#RRGGBB` and `RRGGBB`, case-insensitively
+- `RGB.to_hex` emits canonical lowercase `#rrggbb`
 - Linear RGB channels are clamped to `0.0..1.0` before conversion back to RGB
 - RGB quantization rounds to the nearest byte and clamps to `0..255`
 - Blend `mix` values are clamped to `0.0..1.0`

@@ -84,6 +84,27 @@ let clamp_rgb = fun (`rgb (r, g, b)) ->
     clamp_int ~min:rgb_channel_min ~max:rgb_channel_max b
   )
 
+let hex_digit_char = fun value ->
+  if value < 10 then
+    Char.from_int_unchecked (Char.to_int '0' + value)
+  else
+    Char.from_int_unchecked (Char.to_int 'a' + (value - 10))
+
+let hex_digit_value = fun digit ->
+  match Char.lowercase_ascii digit with
+  | '0' .. '9' as value -> Ok (Char.to_int value - Char.to_int '0')
+  | 'a' .. 'f' as value -> Ok (10 + Char.to_int value - Char.to_int 'a')
+  | _ -> Error ("invalid hex digit: " ^ String.make ~len:1 ~char:digit)
+
+let parse_hex_byte = fun value ~offset ->
+  match (
+    hex_digit_value (String.get_unchecked value ~at:offset),
+    hex_digit_value (String.get_unchecked value ~at:(offset + 1))
+  ) with
+  | (Ok high, Ok low) -> Ok ((high * 16) + low)
+  | (Error message, _) -> Error message
+  | (_, Error message) -> Error message
+
 let clamp_float = fun ~min:low ~max:high value ->
   if Float.is_nan value then
     low
@@ -294,6 +315,36 @@ module RGB = struct
   let to_xyz = fun rgb -> to_linear_rgb rgb |> Linear_RGB.to_xyz
 
   let to_luv = fun rgb -> to_xyz rgb |> XYZ.to_luv
+
+  let of_hex = fun value ->
+    let trimmed = String.trim value in
+    let normalized =
+      if String.starts_with ~prefix:"#" trimmed then
+        String.sub trimmed ~offset:1 ~len:(String.length trimmed - 1)
+      else
+        trimmed
+    in
+    if String.length normalized != 6 then
+      Error "expected a 6-digit RGB hex string"
+    else
+      match (
+        parse_hex_byte normalized ~offset:0,
+        parse_hex_byte normalized ~offset:2,
+        parse_hex_byte normalized ~offset:4
+      ) with
+      | (Ok red, Ok green, Ok blue) -> Ok (`rgb (red, green, blue))
+      | (Error message, _, _) -> Error message
+      | (_, Error message, _) -> Error message
+      | (_, _, Error message) -> Error message
+
+  let to_hex = fun rgb ->
+    let red, green, blue = clamp_rgb rgb in
+    let byte_to_hex value =
+      let high = value / 16 in
+      let low = value mod 16 in
+      String.make ~len:1 ~char:(hex_digit_char high) ^ String.make ~len:1 ~char:(hex_digit_char low)
+    in
+    "#" ^ byte_to_hex red ^ byte_to_hex green ^ byte_to_hex blue
 
   let blend = fun c1 c2 ~mix ->
     let mix = clamp_float ~min:0.0 ~max:1.0 mix in

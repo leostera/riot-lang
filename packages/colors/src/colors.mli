@@ -233,6 +233,20 @@ module RGB: sig
   (** Convert RGB directly to normalized LUV. *)
   val to_luv: rgb -> luv
 
+  (** Parse a 6-digit RGB hex string.
+
+      Accepts either `#RRGGBB` or `RRGGBB`, ignores ASCII case, and returns
+      [Error _] for invalid lengths or digits.
+  *)
+  val of_hex: string -> (rgb, string) Std.result
+
+  (** Render RGB as a canonical lowercase hex string.
+
+      Channels are clamped to `0..255` before rendering, and the result uses
+      the `#rrggbb` form.
+  *)
+  val to_hex: rgb -> string
+
   (** Blend two RGB colors in perceptually uniform LUV space.
 
       This is the high-level blend function most callers want. It converts RGB

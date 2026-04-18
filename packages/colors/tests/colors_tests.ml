@@ -497,6 +497,49 @@ let test_xyz_luv_roundtrip_corpus_and_finite_values = fun _ctx ->
       in
       LUV.to_rgb luv |> expect_rgb_within ~label:"rgb luv roundtrip" ~tolerance:1 ~expected)
 
+let test_rgb_hex_known_values_and_clamping = fun _ctx ->
+  let* () = expect_string_equal
+    ~label:"to_hex orange"
+    ~expected:"#ff8000"
+    ~actual:(RGB.to_hex (`rgb (255, 128, 0))) in
+  let* () = expect_string_equal
+    ~label:"to_hex clamps channels"
+    ~expected:"#00ff10"
+    ~actual:(RGB.to_hex (`rgb ((-20), 300, 16))) in
+  let* () =
+    match RGB.of_hex "#ff8000" with
+    | Ok rgb -> expect_rgb_equal ~label:"of_hex long lowercase" ~expected:(255, 128, 0) rgb
+    | Error message -> Error ("expected RGB.of_hex #ff8000 to succeed, got error: " ^ message)
+  in
+  let* () =
+    match RGB.of_hex "FF8000" with
+    | Ok rgb -> expect_rgb_equal ~label:"of_hex uppercase without hash" ~expected:(255, 128, 0) rgb
+    | Error message -> Error ("expected RGB.of_hex FF8000 to succeed, got error: " ^ message)
+  in
+  match RGB.of_hex "  #00Ff7F  " with
+  | Ok rgb -> expect_rgb_equal ~label:"of_hex trims whitespace" ~expected:(0, 255, 127) rgb
+  | Error message -> Error ("expected RGB.of_hex whitespace-trimmed input to succeed, got error: "
+  ^ message)
+
+let test_rgb_hex_rejects_invalid_inputs = fun _ctx ->
+  let invalid_values = [ ""; "#12345"; "#1234567"; "#gg0000"; "xyzxyz"; "#12_345" ] in
+  for_each invalid_values
+    ~fn:(fun value ->
+      match RGB.of_hex value with
+      | Ok rgb -> Error ("expected RGB.of_hex to reject "
+      ^ value
+      ^ ", got "
+      ^ to_string ((rgb:> color)))
+      | Error _ -> Ok ())
+
+let test_rgb_hex_roundtrips_edge_case_corpus = fun _ctx ->
+  for_each edge_case_colors
+    ~fn:(fun rgb ->
+      let expected = rgb_tuple_of rgb in
+      match RGB.of_hex (RGB.to_hex rgb) with
+      | Ok parsed -> expect_rgb_equal ~label:"rgb hex roundtrip" ~expected parsed
+      | Error message -> Error ("expected RGB hex roundtrip to parse successfully, got error: " ^ message))
+
 let test_blend_behavior_and_ranges = fun _ctx ->
   let luv_a = `luv (0.2, (-0.4), 0.8) in
   let luv_b = `luv (0.6, 0.2, (-0.4)) in
@@ -565,6 +608,9 @@ let tests =
     case "custom white references roundtrip and invalid refs raise" test_custom_white_reference_roundtrip_and_validation;
     case "RGB XYZ RGB roundtrips stay within quantization tolerance" test_rgb_xyz_roundtrip_corpus;
     case "XYZ and LUV conversions stay finite on an edge-case corpus" test_xyz_luv_roundtrip_corpus_and_finite_values;
+    case "RGB hex codecs handle known values and clamp output" test_rgb_hex_known_values_and_clamping;
+    case "RGB hex parsing rejects invalid inputs" test_rgb_hex_rejects_invalid_inputs;
+    case "RGB hex codecs roundtrip the edge-case corpus" test_rgb_hex_roundtrips_edge_case_corpus;
     case "blend behavior clamps endpoints and keeps outputs in range" test_blend_behavior_and_ranges;
   ]
 
