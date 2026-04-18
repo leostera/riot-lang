@@ -92,15 +92,16 @@ let bench_reader_parse = fun ~chunk_size payload () ->
     )
 
 let read_to_iobuffer = fun reader ~read_size ->
-  let buffer = IoBuffer.create () in
+  let buffer = IoBuffer.create () |> Result.unwrap in
   let rec loop () =
-    let writable = IoBuffer.writable_slice ~size:read_size buffer in
+    let _ = IoBuffer.ensure_free buffer read_size |> Result.unwrap in
+    let writable = IoBuffer.writable buffer in
     let bufs = IO.Iovec.from_slices [| writable |] in
     match IO.read_vectored reader bufs with
     | Ok 0 ->
         Ok buffer
     | Ok count ->
-        IoBuffer.commit_write buffer ~len:count;
+        let _ = IoBuffer.commit buffer count |> Result.unwrap in
         loop ()
     | Error _ as error ->
         error
@@ -113,7 +114,7 @@ let bench_reader_parse_string_view = fun ~chunk_size payload () ->
   | Error error ->
       panic ("http1 parser transport string_view bench read error: " ^ IO.error_message error)
   | Ok buffer -> (
-      match Http1.Request.parse_string_view (IO.StringView.of_buffer buffer) with
+      match Http1.Request.parse_string_view (IO.StringView.from_buffer buffer) with
       | Done { value; remaining } ->
           consume_result value remaining
       | Need_more ->

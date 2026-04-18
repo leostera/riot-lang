@@ -3,6 +3,26 @@ open Std
 
 module View = IO.StringView
 
+let shift_view = fun view by ->
+  match View.shift view by with
+  | Ok view -> view
+  | Error error -> panic ("Http1.Request.shift_view: " ^ Kernel.IO.Error.message error)
+
+let sub_view = fun view ~off ~len ->
+  match View.sub view ~off ~len with
+  | Ok view -> view
+  | Error error -> panic ("Http1.Request.sub_view: " ^ Kernel.IO.Error.message error)
+
+let get_view = fun view ~at ->
+  match View.get view ~at with
+  | Ok char -> char
+  | Error error -> panic ("Http1.Request.get_view: " ^ Kernel.IO.Error.message error)
+
+let from_string_view = fun value ->
+  match View.from_string value with
+  | Ok view -> view
+  | Error error -> panic ("Http1.Request.from_string_view: " ^ Kernel.IO.Error.message error)
+
 type request_line_views = {
   method_: View.t;
   path: View.t;
@@ -32,26 +52,26 @@ module View_cursor = struct
     if View.length cursor < 1 then
       None
     else
-      Some (View.advance cursor ~by:1)
+      Some (shift_view cursor 1)
 
   let advance_by = fun cursor count ->
     if count < 0 || View.length cursor < count then
       None
     else
-      Some (View.advance cursor ~by:count)
+      Some (shift_view cursor count)
 
   let take_n = fun cursor count ->
     if count < 0 || View.length cursor < count then
       None
     else
-      Some (View.sub cursor ~offset:0 ~len:count, View.advance cursor ~by:count)
+      Some (sub_view cursor ~off:0 ~len:count, shift_view cursor count)
 
   let take_until = fun cursor predicate ->
     let rec loop index =
       if index >= View.length cursor then
         None
-      else if predicate (View.get cursor ~at:index) then
-        Some (View.sub cursor ~offset:0 ~len:index, View.advance cursor ~by:index)
+      else if predicate (get_view cursor ~at:index) then
+        Some (sub_view cursor ~off:0 ~len:index, shift_view cursor index)
       else
         loop (index + 1)
     in
@@ -61,10 +81,10 @@ module View_cursor = struct
     let rec loop index =
       if index >= View.length cursor then
         cursor
-      else if predicate (View.get cursor ~at:index) then
+      else if predicate (get_view cursor ~at:index) then
         loop (index + 1)
       else
-        View.advance cursor ~by:index
+        shift_view cursor index
     in
     loop 0
 end
@@ -73,7 +93,7 @@ let string_of_view = fun view -> View.to_string view
 
 let header_pair_of_views = fun (name, value) -> (string_of_view name, string_of_view value)
 
-let view_header_pair = fun (name, value) -> (View.of_string name, View.of_string value)
+let view_header_pair = fun (name, value) -> (from_string_view name, from_string_view value)
 
 let parse_request_line_view = fun ?(max_length = 8_192) input ->
   match View_cursor.take_until input (fun c -> c = '\r') with
@@ -167,7 +187,7 @@ let parse_headers = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) cur
       ~max_length
       ~acc:(List.map acc ~fn:view_header_pair)
       ~count:(List.length acc)
-      (View.of_string input)
+      (from_string_view input)
   with
   | View_need_more ->
       Common.Need_more
@@ -215,4 +235,4 @@ let parse_string_view = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(m
     )
 
 let parse = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
-  parse_string_view ~max_request_line ~max_headers ~max_header_length (View.of_string input)
+  parse_string_view ~max_request_line ~max_headers ~max_header_length (from_string_view input)

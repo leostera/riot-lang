@@ -66,15 +66,15 @@ let many_headers_request =
     ~headers:(("Host", "example.com") :: build_headers ~count:80)
     ~body:""
 
-let small_request_view = IO.StringView.of_string small_request
+let small_request_view = IO.StringView.from_string small_request |> Result.unwrap
 
-let request_1k_view = IO.StringView.of_string request_1k
+let request_1k_view = IO.StringView.from_string request_1k |> Result.unwrap
 
-let request_100k_view = IO.StringView.of_string request_100k
+let request_100k_view = IO.StringView.from_string request_100k |> Result.unwrap
 
-let request_1m_view = IO.StringView.of_string request_1m
+let request_1m_view = IO.StringView.from_string request_1m |> Result.unwrap
 
-let many_headers_request_view = IO.StringView.of_string many_headers_request
+let many_headers_request_view = IO.StringView.from_string many_headers_request |> Result.unwrap
 
 let consume_result = fun value remaining ->
   let _ =

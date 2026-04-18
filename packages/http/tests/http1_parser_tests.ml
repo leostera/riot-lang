@@ -34,7 +34,7 @@ let expect_request_parse = fun input ->
       Result.Error ("Parse error: " ^ error)
 
 let expect_request_parse_view = fun input ->
-  match Http1.Request.parse_string_view (IO.StringView.of_string input) with
+  match Http1.Request.parse_string_view (IO.StringView.from_string input |> Result.unwrap) with
   | Done { value; remaining } ->
       Result.Ok (value, remaining)
   | Need_more ->
