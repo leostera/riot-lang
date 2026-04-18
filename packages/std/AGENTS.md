@@ -46,6 +46,8 @@
 40. `Std.Test.Cli run-tests --json` is a JSONL lifecycle stream, not a single JSON object. Emit per-suite and per-case progress before the final `TestSummary` line, reserve the top-level `"type"` field for event names, keep per-case metadata under fields like `"test_type"`, and treat timed out tests as ordinary case results so the harness continues running the rest of the suite.
 41. Keep `Std.Test` case-level progress structured. Property runners and snapshot helpers should emit shared `Test.Context.progress` values so `Std.Test.Cli` can stream `TestCaseProgress` events uniformly instead of package-specific ad hoc logs.
 42. Code above `std/src/runtime` should use `Std.Exception`, not `Kernel.Exception`. Keep the public backtrace/exception helpers in `Std` so higher layers stay off the kernel boundary.
+43. `Std.Command.output` may stream line-oriented stdout callbacks and idle heartbeats while a child process is still running. Keep that idle callback optional and low-overhead when unused so CLI wrappers can expose long silent subprocess work without penalizing ordinary command calls.
+44. `Std.Command` child stdout/stderr readers must stay on the blocking lane. Pipe and file reads inside command wrappers should use `Runtime.spawn_blocked`, not normal actors, so child-process I/O does not stall schedulers.
 
 ## Validate
 

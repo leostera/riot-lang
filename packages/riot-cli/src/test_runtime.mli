@@ -75,6 +75,7 @@ type test_event =
   | SuiteBinaryResolved of { suite: suite_binary; binary_path: Path.t }
   | RunningSuite of suite_binary
   | ExecutingSuiteBinary of { suite: suite_binary; binary_path: Path.t; args: string list }
+  | SuiteHeartbeat of { suite: suite_binary; binary_path: Path.t; elapsed_us: int }
   | SuiteBinaryFinished of {
       suite: suite_binary;
       binary_path: Path.t;

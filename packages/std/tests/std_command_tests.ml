@@ -77,6 +77,27 @@ let test_command_output_streams_stdout_lines = fun _ctx ->
       else
         Ok ()
 
+let test_command_output_emits_idle_callbacks = fun _ctx ->
+  let seen = ref [] in
+  let cmd = Command.make "sh" ~args:[ "-c"; "sleep 0.05; printf idle-done" ] in
+  match
+    Command.output
+      ~on_idle:(fun elapsed -> seen := Time.Duration.to_micros elapsed :: !seen)
+      ~idle_interval:(Time.Duration.from_millis 10)
+      cmd
+  with
+  | Error (Command.SystemError message) ->
+      Error ("expected idle callback command to succeed, got: " ^ message)
+  | Ok output ->
+      if not (Int.equal output.status 0) then
+        Error ("expected idle callback command to exit 0, got " ^ Int.to_string output.status)
+      else if List.is_empty !seen then
+        Error "expected at least one idle callback"
+      else if not (String.equal output.stdout "idle-done") then
+        Error ("unexpected idle callback stdout payload: " ^ output.stdout)
+      else
+        Ok ()
+
 let test_command_output_handles_parallel_shell_commands = fun _ctx ->
   let parent = Runtime.self () in
   let count = 16 in
@@ -181,6 +202,7 @@ let meta_tests = [
   Test.case "command output drains stdout and stderr without deadlock" test_command_output_drains_stdout_and_stderr;
   Test.case "command output handles delayed shell stdout" test_command_output_handles_delayed_shell_stdout;
   Test.case "command output streams stdout lines" test_command_output_streams_stdout_lines;
+  Test.case "command output emits idle callbacks" test_command_output_emits_idle_callbacks;
   Test.case "command output handles parallel shell commands" test_command_output_handles_parallel_shell_commands;
   Test.case "command output handles parallel fast exit commands" test_command_output_handles_parallel_fast_exit_commands;
 ]

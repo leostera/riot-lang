@@ -104,7 +104,12 @@ val to_string: t -> string
     structured command value and does not invoke a shell. *)
 (** # Execution *)
 
-val output: ?on_stdout_line:(string -> unit) -> t -> (output, error) result
+val output:
+  ?on_stdout_line:(string -> unit) ->
+  ?on_idle:(Time.Duration.t -> unit) ->
+  ?idle_interval:Time.Duration.t ->
+  t ->
+  (output, error) result
 
 (** Executes command and captures its output.
 

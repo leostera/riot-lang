@@ -98,6 +98,7 @@ type test_event =
   | SuiteBinaryResolved of { suite: suite_binary; binary_path: Path.t }
   | RunningSuite of suite_binary
   | ExecutingSuiteBinary of { suite: suite_binary; binary_path: Path.t; args: string list }
+  | SuiteHeartbeat of { suite: suite_binary; binary_path: Path.t; elapsed_us: int }
   | SuiteBinaryFinished of {
       suite: suite_binary;
       binary_path: Path.t;
@@ -618,6 +619,12 @@ let test_event_to_json = function
         ("binary_path", Data.Json.String (Path.to_string binary_path));
         ("args", Data.Json.Array (List.map args ~fn:(fun arg -> Data.Json.String arg)));
       ] @ suite_event_fields suite))
+  | SuiteHeartbeat { suite; binary_path; elapsed_us } ->
+      Some (Data.Json.Object ([
+        ("type", Data.Json.String "SuiteHeartbeat");
+        ("binary_path", Data.Json.String (Path.to_string binary_path));
+        ("elapsed_us", Data.Json.Int elapsed_us);
+      ] @ suite_event_fields suite))
   | SuiteBinaryFinished { suite; binary_path; status; stdout_bytes; stderr_bytes } ->
       Some (Data.Json.Object ([
         ("type", Data.Json.String "SuiteBinaryFinished");
@@ -818,6 +825,12 @@ let run_suite = fun ~on_event ~workspace_root ~suite ~extra_args binary_path ->
     ]
     ~args in
   match Command.output cmd
+    ~on_idle:(fun elapsed ->
+      on_event (SuiteHeartbeat {
+        suite;
+        binary_path;
+        elapsed_us = Time.Duration.to_micros elapsed;
+      }))
     ~on_stdout_line:(fun line ->
       suite_progress_event_of_line line
       |> Option.for_each ~fn:(fun event -> on_event (SuiteProgress { suite; event }))) with

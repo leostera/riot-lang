@@ -269,6 +269,7 @@ let stamp_json_event = fun ~command_started_at ~duration_us (event: Test_runtime
         | Test_runtime.ResolvingSuiteBinary _
         | Test_runtime.SuiteBinaryResolved _
         | Test_runtime.ExecutingSuiteBinary _
+        | Test_runtime.SuiteHeartbeat _
         | Test_runtime.SuiteBinaryFinished _
         | Test_runtime.ParsingSuiteOutput _ -> upsert_int_field "emitted_at_us" elapsed_us fields
         | Test_runtime.SuiteProgress _ -> fields
@@ -547,6 +548,7 @@ let write_test_event = fun ~(suite_labels: suite_source_label_entry list) ~(timi
   | Test_runtime.RunningSuite _ ->
       ()
   | Test_runtime.ExecutingSuiteBinary _
+  | Test_runtime.SuiteHeartbeat _
   | Test_runtime.SuiteBinaryFinished _
   | Test_runtime.ParsingSuiteOutput _
   | Test_runtime.SuiteProgress _ -> ()
