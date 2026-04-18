@@ -652,7 +652,7 @@ let handle_receive = fun k t proc ~selector ~timeout ->
         | `after secs -> install_receive_timeout t proc secs
       );
       if Runtime_process.try_mark_awaiting_message proc then
-        if Runtime_process.has_empty_mailbox proc then
+        if Runtime_process.mailbox_count proc = 0 then
           k Suspend
         else
           (
