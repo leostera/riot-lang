@@ -89,6 +89,10 @@ module Bytes: module type of Bytes
 
 module Iovec = Kernel.IO.Iovec
 
+module IoBuffer: module type of Kernel.IO.Buffer
+
+module StringView: module type of Kernel.IO.StringView
+
 module Reader = Reader
 module BufferedReader = Buffered_reader
 

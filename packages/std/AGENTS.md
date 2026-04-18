@@ -48,6 +48,7 @@
 42. Code above `std/src/runtime` should use `Std.Exception`, not `Kernel.Exception`. Keep the public backtrace/exception helpers in `Std` so higher layers stay off the kernel boundary.
 43. `Std.Command.output` may stream line-oriented stdout callbacks and idle heartbeats while a child process is still running. Keep that idle callback optional and low-overhead when unused so CLI wrappers can expose long silent subprocess work without penalizing ordinary command calls.
 44. `Std.Command` child stdout/stderr readers must stay on the blocking lane. Pipe and file reads inside command wrappers should use `Runtime.spawn_blocked`, not normal actors, so child-process I/O does not stall schedulers.
+45. Keep off-heap syscall-facing byte storage owned by `kernel`, and re-export it from `Std.IO` under explicit names such as `IoBuffer` and `StringView`. Code above `std` should not reach into `Kernel.IO` directly for parsing or buffering primitives.
 
 ## Validate
 
