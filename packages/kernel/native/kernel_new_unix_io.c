@@ -158,6 +158,23 @@ static value kernel_new_copy_string_ok(const char *text) {
   CAMLreturn(kernel_new_result_ok(payload));
 }
 
+static char *kernel_new_copy_ocaml_string_bytes(value string_val, mlsize_t *len_out) {
+  mlsize_t len = caml_string_length(string_val);
+  char *copy = NULL;
+
+  if (len > 0) {
+    copy = malloc((size_t)len);
+    if (copy == NULL) {
+      caml_raise_out_of_memory();
+    }
+
+    memcpy(copy, String_val(string_val), (size_t)len);
+  }
+
+  *len_out = len;
+  return copy;
+}
+
 static int kernel_new_write_all_bytes(int fd, const char *buffer, size_t len) {
   size_t offset = 0;
 
@@ -323,11 +340,15 @@ CAMLprim value kernel_new_fs_file_write(value fd_val, value buffer_val, value po
 
 CAMLprim value kernel_new_stdio_print(value fd_val, value message_val) {
   CAMLparam2(fd_val, message_val);
+  mlsize_t message_len;
+  char *message = kernel_new_copy_ocaml_string_bytes(message_val, &message_len);
 
   int error = kernel_new_write_all_bytes(
     Int_val(fd_val),
-    String_val(message_val),
-    caml_string_length(message_val));
+    message,
+    (size_t)message_len);
+
+  free(message);
 
   if (error < 0) {
     errno = -error;
@@ -341,12 +362,16 @@ CAMLprim value kernel_new_stdio_println(value fd_val, value message_val) {
   CAMLparam2(fd_val, message_val);
 
   static const char newline[] = "\n";
+  mlsize_t message_len;
+  char *message = kernel_new_copy_ocaml_string_bytes(message_val, &message_len);
   int error = kernel_new_writev_all_2(
     Int_val(fd_val),
-    String_val(message_val),
-    caml_string_length(message_val),
+    message,
+    (size_t)message_len,
     newline,
     1);
+
+  free(message);
 
   if (error < 0) {
     errno = -error;
