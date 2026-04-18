@@ -21,6 +21,48 @@ let assert_conflict = fun result ->
   | Ok (Pubgrub.Solver.Success _) -> Error "Expected conflict but found solution"
   | Error err -> Error ("Error: " ^ err)
 
+let ranges_equal = fun left right ->
+  Pubgrub.Ranges.subset_of ~compare_v:Pubgrub.version_compare left right
+  && Pubgrub.Ranges.subset_of ~compare_v:Pubgrub.version_compare right left
+
+let assert_ranges_equal = fun ~expected ~actual ~message ->
+  if ranges_equal expected actual then
+    Ok ()
+  else
+    Error message
+
+let assert_range_membership = fun ~present ~absent ranges ->
+  let rec check_present = function
+    | [] -> Ok ()
+    | version :: rest ->
+        if Pubgrub.Ranges.contains ~compare_v:Pubgrub.version_compare ranges version then
+          check_present rest
+        else
+          Error ("Expected range to contain " ^ Pubgrub.version_to_string version)
+  in
+  let rec check_absent = function
+    | [] -> Ok ()
+    | version :: rest ->
+        if Pubgrub.Ranges.contains ~compare_v:Pubgrub.version_compare ranges version then
+          Error ("Expected range to exclude " ^ Pubgrub.version_to_string version)
+        else
+          check_absent rest
+  in
+  match check_present present with
+  | Ok () -> check_absent absent
+  | Error _ as err -> err
+
+let assert_term = fun ~package ~positive ~ranges term ->
+  if not (String.equal (Pubgrub.Term.package term) package) then
+    Error ("Expected term package " ^ package)
+  else if not (Bool.equal (Pubgrub.Term.is_positive term) positive) then
+    Error ("Unexpected sign for term " ^ package)
+  else
+    assert_ranges_equal
+      ~expected:ranges
+      ~actual:(Pubgrub.Term.ranges term)
+      ~message:("Unexpected ranges for term " ^ package)
+
 let rec equal_string_lists = fun left right ->
   match (left, right) with
   | [], [] -> true
@@ -53,6 +95,190 @@ let assert_raises = fun message fn ->
     Error message
   with
   | _ -> Ok ()
+
+let test_ranges_empty_contains_nothing =
+  Test.case "Ranges: empty contains nothing"
+    (fun _ctx ->
+      assert_range_membership
+        ~present:[]
+        ~absent:[ v 0 0 0; v 1 0 0; v 2 0 0 ]
+        Pubgrub.empty)
+
+let test_ranges_full_contains_everything =
+  Test.case "Ranges: full contains sampled versions"
+    (fun _ctx ->
+      assert_range_membership
+        ~present:[ v 0 0 0; v 1 0 0; v 2 0 0; v 9 0 0 ]
+        ~absent:[]
+        Pubgrub.full)
+
+let test_ranges_singleton_exact =
+  Test.case "Ranges: singleton contains only one version"
+    (fun _ctx ->
+      assert_range_membership
+        ~present:[ v 1 0 0 ]
+        ~absent:[ v 0 9 9; v 1 0 1; v 2 0 0 ]
+        (Pubgrub.singleton (v 1 0 0)))
+
+let test_ranges_higher_than_is_inclusive =
+  Test.case "Ranges: higher_than is inclusive"
+    (fun _ctx ->
+      assert_range_membership
+        ~present:[ v 2 0 0; v 3 0 0 ]
+        ~absent:[ v 1 9 9 ]
+        (Pubgrub.higher_than (v 2 0 0)))
+
+let test_ranges_strictly_higher_than_is_exclusive =
+  Test.case "Ranges: strictly_higher_than is exclusive"
+    (fun _ctx ->
+      assert_range_membership
+        ~present:[ v 2 0 1; v 3 0 0 ]
+        ~absent:[ v 2 0 0; v 1 9 9 ]
+        (Pubgrub.strictly_higher_than (v 2 0 0)))
+
+let test_ranges_lower_than_is_inclusive =
+  Test.case "Ranges: lower_than is inclusive"
+    (fun _ctx ->
+      assert_range_membership
+        ~present:[ v 0 9 9; v 2 0 0 ]
+        ~absent:[ v 2 0 1; v 3 0 0 ]
+        (Pubgrub.lower_than (v 2 0 0)))
+
+let test_ranges_strictly_lower_than_is_exclusive =
+  Test.case "Ranges: strictly_lower_than is exclusive"
+    (fun _ctx ->
+      assert_range_membership
+        ~present:[ v 0 9 9; v 1 9 9 ]
+        ~absent:[ v 2 0 0; v 2 0 1 ]
+        (Pubgrub.strictly_lower_than (v 2 0 0)))
+
+let test_ranges_between_is_half_open =
+  Test.case "Ranges: between is half-open"
+    (fun _ctx ->
+      assert_range_membership
+        ~present:[ v 1 0 0; v 1 9 9 ]
+        ~absent:[ v 0 9 9; v 2 0 0; v 2 0 1 ]
+        (Pubgrub.between (v 1 0 0) (v 2 0 0)))
+
+let test_ranges_intersection_with_empty =
+  Test.case "Ranges: intersection with empty is empty"
+    (fun _ctx ->
+      assert_ranges_equal
+        ~expected:Pubgrub.empty
+        ~actual:(Pubgrub.Ranges.intersection
+          ~compare_v:Pubgrub.version_compare
+          (Pubgrub.higher_than (v 1 0 0))
+          Pubgrub.empty)
+        ~message:"Expected intersection with empty to be empty")
+
+let test_ranges_intersection_with_full =
+  Test.case "Ranges: intersection with full preserves the range"
+    (fun _ctx ->
+      let ranges = Pubgrub.between (v 1 0 0) (v 3 0 0) in
+      assert_ranges_equal
+        ~expected:ranges
+        ~actual:(Pubgrub.Ranges.intersection
+          ~compare_v:Pubgrub.version_compare
+          ranges
+          Pubgrub.full)
+        ~message:"Expected intersection with full to preserve the range")
+
+let test_ranges_union_with_empty =
+  Test.case "Ranges: union with empty preserves the range"
+    (fun _ctx ->
+      let ranges = Pubgrub.between (v 1 0 0) (v 3 0 0) in
+      assert_ranges_equal
+        ~expected:ranges
+        ~actual:(Pubgrub.Ranges.union
+          ~compare_v:Pubgrub.version_compare
+          ranges
+          Pubgrub.empty)
+        ~message:"Expected union with empty to preserve the range")
+
+let test_ranges_complement_of_singleton =
+  Test.case "Ranges: complement of singleton excludes only that version"
+    (fun _ctx ->
+      assert_range_membership
+        ~present:[ v 0 9 9; v 1 0 1; v 2 0 0 ]
+        ~absent:[ v 1 0 0 ]
+        (Pubgrub.Ranges.complement
+          ~compare_v:Pubgrub.version_compare
+          (Pubgrub.singleton (v 1 0 0))))
+
+let test_ranges_touching_exclusive_intersection_is_empty =
+  Test.case "Ranges: touching exclusive bounds intersect to empty"
+    (fun _ctx ->
+      assert_ranges_equal
+        ~expected:Pubgrub.empty
+        ~actual:(Pubgrub.Ranges.intersection
+          ~compare_v:Pubgrub.version_compare
+          (Pubgrub.between (v 1 0 0) (v 2 0 0))
+          (Pubgrub.between (v 2 0 0) (v 3 0 0)))
+        ~message:"Expected touching half-open ranges to be disjoint")
+
+let test_ranges_union_of_overlapping_intervals =
+  Test.case "Ranges: union of overlapping intervals merges semantically"
+    (fun _ctx ->
+      assert_ranges_equal
+        ~expected:(Pubgrub.between (v 1 0 0) (v 4 0 0))
+        ~actual:(Pubgrub.Ranges.union
+          ~compare_v:Pubgrub.version_compare
+          (Pubgrub.between (v 1 0 0) (v 3 0 0))
+          (Pubgrub.between (v 2 0 0) (v 4 0 0)))
+        ~message:"Expected overlapping union to cover the merged interval")
+
+let test_ranges_complement_of_multiple_segments =
+  Test.case "Ranges: complement of multiple segments yields the gaps"
+    (fun _ctx ->
+      let ranges = Pubgrub.Ranges.union
+        ~compare_v:Pubgrub.version_compare
+        (Pubgrub.between (v 1 0 0) (v 2 0 0))
+        (Pubgrub.between (v 3 0 0) (v 4 0 0)) in
+      let expected = Pubgrub.Ranges.union
+        ~compare_v:Pubgrub.version_compare
+        (Pubgrub.strictly_lower_than (v 1 0 0))
+        (Pubgrub.Ranges.union
+          ~compare_v:Pubgrub.version_compare
+          (Pubgrub.between (v 2 0 0) (v 3 0 0))
+          (Pubgrub.higher_than (v 4 0 0))) in
+      assert_ranges_equal
+        ~expected
+        ~actual:(Pubgrub.Ranges.complement ~compare_v:Pubgrub.version_compare ranges)
+        ~message:"Expected complement to preserve the gaps between segments")
+
+let test_ranges_is_disjoint_matches_empty_intersection =
+  Test.case "Ranges: is_disjoint matches intersection emptiness"
+    (fun _ctx ->
+      let left = Pubgrub.between (v 1 0 0) (v 2 0 0) in
+      let right = Pubgrub.between (v 2 0 0) (v 3 0 0) in
+      let intersection = Pubgrub.Ranges.intersection
+        ~compare_v:Pubgrub.version_compare
+        left
+        right in
+      if Bool.equal
+        (Pubgrub.Ranges.is_disjoint ~compare_v:Pubgrub.version_compare left right)
+        (ranges_equal intersection Pubgrub.empty)
+      then
+        Ok ()
+      else
+        Error "Expected is_disjoint to agree with intersection emptiness")
+
+let test_ranges_subset_and_double_complement =
+  Test.case "Ranges: subset_of and double complement are semantic"
+    (fun _ctx ->
+      let base = Pubgrub.between (v 1 0 0) (v 4 0 0) in
+      let subset = Pubgrub.between (v 2 0 0) (v 3 0 0) in
+      let roundtrip = Pubgrub.Ranges.complement
+        ~compare_v:Pubgrub.version_compare
+        (Pubgrub.Ranges.complement ~compare_v:Pubgrub.version_compare base) in
+      if
+        Pubgrub.Ranges.subset_of ~compare_v:Pubgrub.version_compare subset base
+        && not (Pubgrub.Ranges.subset_of ~compare_v:Pubgrub.version_compare base subset)
+        && ranges_equal base roundtrip
+      then
+        Ok ()
+      else
+        Error "Expected subset_of and double complement semantics to hold")
 
 let test_term_positive_full_is_any =
   Test.case "Term: positive full is tautological"
@@ -119,6 +345,108 @@ let test_term_mixed_union_can_be_tautological =
         Ok ()
       else
         Error "Expected positive full union negative full to be tautological")
+
+let test_term_negation_is_involutive =
+  Test.case "Term: negation is involutive"
+    (fun _ctx ->
+      let term = Pubgrub.Term.positive "pkg" (Pubgrub.between (v 1 0 0) (v 3 0 0)) in
+      assert_term
+        ~package:"pkg"
+        ~positive:true
+        ~ranges:(Pubgrub.between (v 1 0 0) (v 3 0 0))
+        (Pubgrub.Term.negate (Pubgrub.Term.negate term)))
+
+let test_term_positive_positive_intersection =
+  Test.case "Term: positive intersection uses range intersection"
+    (fun _ctx ->
+      assert_term
+        ~package:"pkg"
+        ~positive:true
+        ~ranges:(Pubgrub.between (v 2 0 0) (v 3 0 0))
+        (Pubgrub.Term.intersection
+          (Pubgrub.Term.positive "pkg" (Pubgrub.between (v 1 0 0) (v 3 0 0)))
+          (Pubgrub.Term.positive "pkg" (Pubgrub.between (v 2 0 0) (v 4 0 0)))))
+
+let test_term_positive_positive_union =
+  Test.case "Term: positive union uses range union"
+    (fun _ctx ->
+      assert_term
+        ~package:"pkg"
+        ~positive:true
+        ~ranges:(Pubgrub.between (v 1 0 0) (v 4 0 0))
+        (Pubgrub.Term.union
+          (Pubgrub.Term.positive "pkg" (Pubgrub.between (v 1 0 0) (v 3 0 0)))
+          (Pubgrub.Term.positive "pkg" (Pubgrub.between (v 2 0 0) (v 4 0 0)))))
+
+let test_term_negative_negative_intersection =
+  Test.case "Term: negative intersection uses range union semantics"
+    (fun _ctx ->
+      assert_term
+        ~package:"pkg"
+        ~positive:false
+        ~ranges:(Pubgrub.between (v 1 0 0) (v 5 0 0))
+        (Pubgrub.Term.intersection
+          (Pubgrub.Term.negative "pkg" (Pubgrub.between (v 1 0 0) (v 4 0 0)))
+          (Pubgrub.Term.negative "pkg" (Pubgrub.between (v 2 0 0) (v 5 0 0)))))
+
+let test_term_negative_negative_union =
+  Test.case "Term: negative union uses range intersection semantics"
+    (fun _ctx ->
+      assert_term
+        ~package:"pkg"
+        ~positive:false
+        ~ranges:(Pubgrub.between (v 2 0 0) (v 4 0 0))
+        (Pubgrub.Term.union
+          (Pubgrub.Term.negative "pkg" (Pubgrub.between (v 1 0 0) (v 4 0 0)))
+          (Pubgrub.Term.negative "pkg" (Pubgrub.between (v 2 0 0) (v 5 0 0)))))
+
+let test_term_positive_negative_intersection =
+  Test.case "Term: positive-negative intersection excludes the forbidden hole"
+    (fun _ctx ->
+      let term = Pubgrub.Term.intersection
+        (Pubgrub.Term.positive "pkg" (Pubgrub.between (v 1 0 0) (v 4 0 0)))
+        (Pubgrub.Term.negative "pkg" (Pubgrub.between (v 2 0 0) (v 3 0 0))) in
+      if
+        Pubgrub.Term.is_positive term
+        && assert_range_membership
+          ~present:[ v 1 0 0; v 3 0 0 ]
+          ~absent:[ v 2 0 0; v 2 5 0; v 4 0 0 ]
+          (Pubgrub.Term.ranges term) = Ok ()
+      then
+        Ok ()
+      else
+        Error "Expected positive-negative intersection to preserve only the allowed parts")
+
+let test_term_positive_negative_union =
+  Test.case "Term: positive-negative union keeps complement semantics"
+    (fun _ctx ->
+      assert_term
+        ~package:"pkg"
+        ~positive:false
+        ~ranges:(Pubgrub.between (v 1 0 0) (v 2 0 0))
+        (Pubgrub.Term.union
+          (Pubgrub.Term.positive "pkg" (Pubgrub.between (v 2 0 0) (v 4 0 0)))
+          (Pubgrub.Term.negative "pkg" (Pubgrub.between (v 1 0 0) (v 3 0 0)))))
+
+let test_term_union_on_different_packages_raises =
+  Test.case "Term: union on different packages raises"
+    (fun _ctx ->
+      assert_raises
+        "Expected union on different packages to raise"
+        (fun () ->
+          Pubgrub.Term.union
+            (Pubgrub.Term.positive "left" Pubgrub.full)
+            (Pubgrub.Term.positive "right" Pubgrub.full)))
+
+let test_term_intersection_on_different_packages_raises =
+  Test.case "Term: intersection on different packages raises"
+    (fun _ctx ->
+      assert_raises
+        "Expected intersection on different packages to raise"
+        (fun () ->
+          Pubgrub.Term.intersection
+            (Pubgrub.Term.positive "left" Pubgrub.full)
+            (Pubgrub.Term.positive "right" Pubgrub.full)))
 
 let test_partial_solution_missing_derivation_package_raises =
   Test.case "Partial_solution: add_derivation requires matching package term"
@@ -1190,12 +1518,38 @@ let test_ref_confusing_with_holes =
 
 let all_tests =
   let base_tests = [
+    test_ranges_empty_contains_nothing;
+    test_ranges_full_contains_everything;
+    test_ranges_singleton_exact;
+    test_ranges_higher_than_is_inclusive;
+    test_ranges_strictly_higher_than_is_exclusive;
+    test_ranges_lower_than_is_inclusive;
+    test_ranges_strictly_lower_than_is_exclusive;
+    test_ranges_between_is_half_open;
+    test_ranges_intersection_with_empty;
+    test_ranges_intersection_with_full;
+    test_ranges_union_with_empty;
+    test_ranges_complement_of_singleton;
+    test_ranges_touching_exclusive_intersection_is_empty;
+    test_ranges_union_of_overlapping_intervals;
+    test_ranges_complement_of_multiple_segments;
+    test_ranges_is_disjoint_matches_empty_intersection;
+    test_ranges_subset_and_double_complement;
     test_term_positive_full_is_any;
     test_term_negative_empty_is_any;
     test_term_positive_empty_is_not_any;
     test_term_negative_full_is_not_any;
     test_term_structural_package_equality;
     test_term_mixed_union_can_be_tautological;
+    test_term_negation_is_involutive;
+    test_term_positive_positive_intersection;
+    test_term_positive_positive_union;
+    test_term_negative_negative_intersection;
+    test_term_negative_negative_union;
+    test_term_positive_negative_intersection;
+    test_term_positive_negative_union;
+    test_term_union_on_different_packages_raises;
+    test_term_intersection_on_different_packages_raises;
     test_partial_solution_missing_derivation_package_raises;
     test_solution_order_is_deterministic;
     test_conflicting_root_constraints_fail;
