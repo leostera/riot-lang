@@ -1,169 +1,140 @@
 open Std
 open Gooey
 
-let make_config = fun () ->
+let approx_eq = fun left right -> Float.abs (left -. right) < 0.001
+
+let make_config = fun ?(width = 80.0) ?(height = 24.0) () ->
   Config.make
-    ~viewport:(Viewport.make ~width:80.0 ~height:24.0)
+    ~viewport:(Viewport.make ~width ~height)
     ~text_measurer:Config.default_text_measurer
     ()
 
+let rectangles = fun commands ->
+  List.filter_map commands
+    ~fn:(fun command ->
+      match command.Render.command_type with
+      | Render.Rectangle { color; _ } -> Some (color, command.bounding_box)
+      | _ -> None)
+
+let texts = fun commands ->
+  List.filter_map commands
+    ~fn:(fun command ->
+      match command.Render.command_type with
+      | Render.Text { content; _ } -> Some (content, command.bounding_box)
+      | _ -> None)
+
+let text_contents = fun commands ->
+  List.map (texts commands) ~fn:(fun (content, _) -> content)
+
 let test_complex_nested_layout = fun _ctx ->
-  let elem = Element.column
-    [
+  let ui =
+    Element.column ~style:Style.(empty |> width Grow) [
       Element.container
         ~style:Style.(empty |> bg (`rgb (50, 50, 50)) |> padding (Padding.all 2))
         [ Element.text ~style:Style.(empty |> bold) "Header" ];
-      Element.row [ Element.text "A"; Element.text "B"; ];
+      Element.row [ Element.text "A"; Element.text "B" ];
       Element.text "Footer";
-    ] in
-  let commands = layout ~config:(make_config ()) elem in
-  let text_count =
-    List.fold_left commands ~acc:0
-      ~fn:(fun acc cmd ->
-        match cmd.Render.command_type with
-        | Text _ -> acc + 1
-        | _ -> acc)
+    ]
   in
-  if text_count = 4 then
+  let contents = text_contents (layout ~config:(make_config ()) ui) in
+  if contents = [ "Header"; "A"; "B"; "Footer" ] then
     Ok ()
   else
-    Error ("Expected 4 text commands, got " ^ Int.to_string text_count)
+    Error "Nested containers should preserve text ordering through command generation"
 
-let test_flexbox_style_layout = fun _ctx ->
-  let elem = Element.row [ Element.text "Left"; Element.spacer ~flex:1.0 (); Element.text "Right"; ] in
-  let commands = layout ~config:(make_config ()) elem in
-  let text_positions =
-    List.filter_map commands
-      ~fn:(fun cmd ->
-        match cmd.Render.command_type with
-        | Text { content; _ } -> Some (content, cmd.bounding_box.x)
-        | _ -> None)
+let test_card_pattern_has_consistent_content_offsets = fun _ctx ->
+  let card =
+    Element.column
+      ~style:Style.(empty
+      |> width (Fixed 20.0)
+      |> bg (`rgb (255, 255, 255))
+      |> border ~width:1 ~color:(`rgb (200, 200, 200)) ()
+      |> padding (Padding.all 1))
+      [
+        Element.container ~style:Style.(empty |> height (Fixed 3.0) |> bg (`rgb (220, 220, 220))) [];
+        Element.text "Title";
+        Element.text "Description";
+      ]
   in
-  match text_positions with
-  | [("Left", x1);("Right", x2)] when x1 = 0.0 && x2 > 10.0 -> Ok ()
-  | _ -> Error "Spacer should push 'Right' text far to the right"
+  match texts (layout ~config:(make_config ()) card) with
+  | [ ("Title", title); ("Description", body) ] when approx_eq title.x 2.0
+  && approx_eq title.y 5.0
+  && approx_eq body.x 2.0
+  && approx_eq body.y 6.0 -> Ok ()
+  | _ -> Error "Card layouts should use the same content box for nested children"
 
-let test_responsive_percent_sizing = fun _ctx ->
-  let elem = Element.row
-    [
-      Element.container ~style:Style.(empty |> width (Percent 0.3) |> bg (`rgb (255, 0, 0))) [];
-      Element.container ~style:Style.(empty |> width (Percent 0.7) |> bg (`rgb (0, 255, 0))) [];
-    ] in
-  let commands = layout ~config:(make_config ()) elem in
-  let widths =
-    List.filter_map commands
-      ~fn:(fun cmd ->
-        match cmd.Render.command_type with
-        | Rectangle _ -> Some cmd.bounding_box.width
-        | _ -> None)
+let test_grid_like_layout_uses_grow_cells = fun _ctx ->
+  let grid =
+    Element.column ~style:Style.(empty |> grow) [
+      Element.row ~style:Style.(empty |> width Grow |> height Grow) [
+        Element.container ~style:Style.(empty |> width Grow |> height Grow |> bg (`rgb (255, 0, 0))) [];
+        Element.container ~style:Style.(empty |> width Grow |> height Grow |> bg (`rgb (0, 255, 0))) [];
+      ];
+      Element.row ~style:Style.(empty |> width Grow |> height Grow) [
+        Element.container ~style:Style.(empty |> width Grow |> height Grow |> bg (`rgb (0, 0, 255))) [];
+        Element.container ~style:Style.(empty |> width Grow |> height Grow |> bg (`rgb (255, 255, 0))) [];
+      ];
+    ]
   in
-  if widths = [ 24.0; 56.0 ] then
-    Ok ()
-  else
-    Error ("Expected widths [24.0; 56.0] (30% and 70% of 80.0), got ["
-    ^ String.concat "; " (List.map widths ~fn:Float.to_string)
-    ^ "]")
+  match rectangles (layout ~config:(make_config ()) grid) with
+  | [ (c1, r1); (c2, r2); (c3, r3); (c4, r4) ] when c1 = `rgb (255, 0, 0)
+  && c2 = `rgb (0, 255, 0)
+  && c3 = `rgb (0, 0, 255)
+  && c4 = `rgb (255, 255, 0)
+  && approx_eq r1.width 40.0
+  && approx_eq r2.width 40.0
+  && approx_eq r3.height 12.0
+  && approx_eq r4.height 12.0 -> Ok ()
+  | _ -> Error "Grow-based grids should split the viewport evenly across cells"
 
-let test_card_ui_pattern = fun _ctx ->
-  let card = Element.column
-    ~style:Style.(empty
-    |> width (Fixed 60.0)
-    |> bg (`rgb (255, 255, 255))
-    |> border ~width:1 ~color:(`rgb (200, 200, 200)) ()
-    |> padding (Padding.all 4))
-    [
-      Element.container ~style:Style.(empty |> height (Fixed 20.0) |> bg (`rgb (220, 220, 220))) [];
-      Element.text ~style:Style.(empty |> bold) "Card Title";
-      Element.text "Description";
-    ] in
-  let commands = layout ~config:(make_config ()) card in
-  let rect_count =
-    List.fold_left commands ~acc:0
-      ~fn:(fun acc cmd ->
-        match cmd.Render.command_type with
-        | Rectangle _ -> acc + 1
-        | _ -> acc)
+let test_column_alignment_can_center_page_content = fun _ctx ->
+  let ui =
+    Element.column
+      ~style:Style.(empty |> width (Fixed 40.0) |> height (Fixed 12.0) |> align ~x:Center ~y:Middle)
+      [
+        Element.text "Clock";
+        Element.text "Press q";
+      ]
   in
-  let text_count =
-    List.fold_left commands ~acc:0
-      ~fn:(fun acc cmd ->
-        match cmd.Render.command_type with
-        | Text _ -> acc + 1
-        | _ -> acc)
-  in
-  if rect_count >= 2 && text_count = 2 then
-    Ok ()
-  else
-    Error ("Expected >=2 rectangles and 2 texts, got "
-    ^ Int.to_string rect_count
-    ^ " rectangles and "
-    ^ Int.to_string text_count
-    ^ " texts")
+  match texts (layout ~config:(make_config ()) ui) with
+  | [ ("Clock", title); ("Press q", footer) ] when approx_eq title.x 17.5
+  && approx_eq title.y 5.0
+  && approx_eq footer.x 16.5
+  && approx_eq footer.y 6.0 -> Ok ()
+  | _ -> Error "Container alignment should center a whole column of text"
 
-let test_grid_like_layout = fun _ctx ->
-  let grid = Element.column
-    [
-      Element.row
-        [
-          Element.container ~style:Style.(empty |> grow |> bg (`rgb (255, 0, 0))) [];
-          Element.container ~style:Style.(empty |> grow |> bg (`rgb (0, 255, 0))) [];
-        ];
-      Element.row
-        [
-          Element.container ~style:Style.(empty |> grow |> bg (`rgb (0, 0, 255))) [];
-          Element.container ~style:Style.(empty |> grow |> bg (`rgb (255, 255, 0))) [];
-        ];
-    ] in
-  let commands = layout ~config:(make_config ()) grid in
-  let colors =
-    List.filter_map commands
-      ~fn:(fun cmd ->
-        match cmd.Render.command_type with
-        | Rectangle { color; _ } -> Some color
-        | _ -> None)
+let test_responsive_sidebar_layout = fun _ctx ->
+  let ui =
+    Element.row ~style:Style.(empty |> width Grow |> height (Fixed 10.0)) [
+      Element.container ~style:Style.(empty |> width (Percent 0.25) |> height Grow |> bg (`rgb (30, 30, 30))) [];
+      Element.container ~style:Style.(empty |> width Grow |> height Grow |> bg (`rgb (240, 240, 240))) [];
+    ]
   in
-  if colors = [ `rgb (255, 0, 0); `rgb (0, 255, 0); `rgb (0, 0, 255); `rgb (255, 255, 0); ] then
-    Ok ()
-  else
-    Error "Grid layout should produce 4 rectangles with correct colors"
+  match rectangles (layout ~config:(make_config ()) ui) with
+  | [ (_, sidebar); (_, content) ] when approx_eq sidebar.width 20.0
+  && approx_eq content.width 60.0
+  && approx_eq content.x 20.0 -> Ok ()
+  | _ -> Error "Sidebar/content layouts should combine percent and grow sizing cleanly"
 
-let test_alignment_with_fixed_sizes = fun _ctx ->
-  let elem = Element.column
-    [
-      Element.container
-        ~style:Style.(empty |> width (Fixed 30.0) |> height (Fixed 10.0) |> bg (`rgb (255, 0, 0)))
-        [];
-      Element.container
-        ~style:Style.(empty |> width (Fixed 40.0) |> height (Fixed 15.0) |> bg (`rgb (0, 255, 0)))
-        [];
-    ] in
-  let commands = layout ~config:(make_config ()) elem in
-  let boxes =
-    List.filter_map commands
-      ~fn:(fun cmd ->
-        match cmd.Render.command_type with
-        | Rectangle _ -> Some (
-          cmd.bounding_box.x,
-          cmd.bounding_box.y,
-          cmd.bounding_box.width,
-          cmd.bounding_box.height
-        )
-        | _ -> None)
+let test_margin_and_gap_stack_cleanly = fun _ctx ->
+  let ui =
+    Element.column ~style:Style.(empty |> height Grow |> child_gap 1) [
+      Element.container ~style:Style.(empty |> width (Fixed 10.0) |> height (Fixed 2.0) |> margin (Margin.make ~bottom:1 ()) |> bg (`rgb (255, 0, 0))) [];
+      Element.container ~style:Style.(empty |> width (Fixed 10.0) |> height (Fixed 2.0) |> bg (`rgb (0, 255, 0))) [];
+    ]
   in
-  if boxes = [ (0.0, 0.0, 30.0, 10.0); (0.0, 10.0, 40.0, 15.0); ] then
-    Ok ()
-  else
-    Error "Fixed-size elements should be positioned correctly in column"
+  match rectangles (layout ~config:(make_config ()) ui) with
+  | [ (_, first); (_, second) ] when approx_eq first.y 0.0 && approx_eq second.y 4.0 -> Ok ()
+  | _ -> Error "Explicit margins and child_gap should both contribute to vertical placement"
 
-let tests =
-  Test.[
-    case "Complex nested layout" test_complex_nested_layout;
-    case "Flexbox-style layout with spacer" test_flexbox_style_layout;
-    case "Responsive percent sizing" test_responsive_percent_sizing;
-    case "Card UI pattern" test_card_ui_pattern;
-    case "Grid-like layout" test_grid_like_layout;
-    case "Alignment with fixed sizes" test_alignment_with_fixed_sizes;
-  ]
+let tests = Test.[
+  case "complex nested layout" test_complex_nested_layout;
+  case "card pattern has consistent content offsets" test_card_pattern_has_consistent_content_offsets;
+  case "grid like layout uses grow cells" test_grid_like_layout_uses_grow_cells;
+  case "column alignment can center page content" test_column_alignment_can_center_page_content;
+  case "responsive sidebar layout" test_responsive_sidebar_layout;
+  case "margin and gap stack cleanly" test_margin_and_gap_stack_cleanly;
+]
 
 let () =
   Actors.run ~main:(fun ~args -> Test.Cli.main ~name:"integration" ~tests ~args) ~args:Env.args ()

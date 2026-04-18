@@ -1,72 +1,78 @@
 open Std
 open Gooey
 
-(* Test that Grow correctly distributes space *)
+let approx_eq = fun left right -> Float.abs (left -. right) < 0.001
 
-let text_measurer = fun text _style ->
-  let width = float_of_int (String.length text) in
-  let height = 1.0 in
-  Viewport.make ~width ~height
+let make_config = fun ?(width = 80.0) ?(height = 24.0) () ->
+  Config.make
+    ~viewport:(Viewport.make ~width ~height)
+    ~text_measurer:Config.default_text_measurer
+    ()
 
-let test_three_column_with_grow = fun _ctx ->
-  (* Left: Fixed 20, Middle: Grow, Right: Fixed 15
-     In an 80-wide viewport:
-     - Left should be 20
-     - Right should be 15
-     - Middle should be 80 - 20 - 15 = 45
-  *)
-  let ui = Element.row
-    [
-      Element.container
-        ~style:(Style.empty |> Style.width (Style.Fixed 20.0) |> Style.bg (`rgb (255, 0, 0)))
-        [ Element.text "Left" ];
-      Element.container
-        ~style:(Style.empty |> Style.width Style.Grow |> Style.bg (`rgb (0, 255, 0)))
-        [ Element.text "Middle" ];
-      Element.container
-        ~style:(Style.empty |> Style.width (Style.Fixed 15.0) |> Style.bg (`rgb (0, 0, 255)))
-        [ Element.text "Right" ];
-    ] in
-  let viewport = Viewport.make ~width:80.0 ~height:24.0 in
-  let config = Config.make ~viewport ~text_measurer () in
-  let commands = Gooey.layout ~config ui in
-  (* Find the bounding boxes for each container *)
-  let rectangles =
-    List.filter_map commands
-      ~fn:(fun cmd ->
-        match cmd.Render.command_type with
-        | Render.Rectangle _ -> Some cmd.bounding_box
-        | _ -> None)
+let rectangles = fun commands ->
+  List.filter_map commands
+    ~fn:(fun command ->
+      match command.Render.command_type with
+      | Render.Rectangle { color; _ } -> Some (color, command.bounding_box)
+      | _ -> None)
+
+let test_fixed_grow_fixed = fun _ctx ->
+  let ui =
+    Element.row ~style:Style.(empty |> width Grow) [
+      Element.container ~style:Style.(empty |> width (Fixed 20.0) |> height (Fixed 1.0) |> bg (`rgb (255, 0, 0))) [];
+      Element.container ~style:Style.(empty |> width Grow |> height (Fixed 1.0) |> bg (`rgb (0, 255, 0))) [];
+      Element.container ~style:Style.(empty |> width (Fixed 15.0) |> height (Fixed 1.0) |> bg (`rgb (0, 0, 255))) [];
+    ]
   in
-  (* Should have 3 rectangles for the 3 containers *)
-  let rect_count = List.length rectangles in
-  if rect_count != 3 then
-    Error ("Expected 3 rectangles, got " ^ Int.to_string rect_count)
-  else
-    begin
-      (* Get the widths *)
-      let widths =
-        List.map rectangles ~fn:(fun (bbox: Geometry.Rect.t) -> bbox.width)
-      in
-      (* Check widths *)
-      match widths with
-      | [left_width;middle_width;right_width] ->
-          (* Check left width *)
-          if Float.abs (left_width -. 20.0) > 0.01 then
-            Error ("Left width should be 20, got " ^ Float.to_string left_width)
-          else if Float.abs (right_width -. 15.0) > 0.01 then
-            Error ("Right width should be 15, got " ^ Float.to_string right_width)
-          else if Float.abs (middle_width -. 45.0) > 0.01 then
-            Error ("Middle width should be 45 (80 - 20 - 15), got " ^ Float.to_string middle_width)
-          else
-            Ok ()
-      | _ -> Error ("Expected 3 widths, got "
-      ^ Int.to_string (List.length widths)
-      ^ ": "
-      ^ String.concat ", " (List.map widths ~fn:Float.to_string))
-    end
+  match rectangles (layout ~config:(make_config ()) ui) with
+  | [ (_, left); (_, middle); (_, right) ] when approx_eq left.width 20.0
+  && approx_eq middle.width 45.0
+  && approx_eq right.width 15.0 -> Ok ()
+  | _ -> Error "Fixed-grow-fixed arithmetic should match the remaining-space model"
 
-let tests = Test.[ case "Three columns with Grow in middle" test_three_column_with_grow; ]
+let test_equal_grow_children_split_evenly = fun _ctx ->
+  let ui =
+    Element.row ~style:Style.(empty |> width Grow) [
+      Element.container ~style:Style.(empty |> width Grow |> height (Fixed 1.0) |> bg (`rgb (255, 0, 0))) [];
+      Element.container ~style:Style.(empty |> width Grow |> height (Fixed 1.0) |> bg (`rgb (0, 255, 0))) [];
+    ]
+  in
+  match rectangles (layout ~config:(make_config ()) ui) with
+  | [ (_, left); (_, right) ] when approx_eq left.width 40.0 && approx_eq right.width 40.0 -> Ok ()
+  | _ -> Error "Equal grow children should split the remaining width evenly"
+
+let test_grow_children_respect_margins = fun _ctx ->
+  let ui =
+    Element.row ~style:Style.(empty |> width Grow) [
+      Element.container ~style:Style.(empty |> width Grow |> height (Fixed 1.0) |> margin (Margin.make ~right:2 ()) |> bg (`rgb (255, 0, 0))) [];
+      Element.container ~style:Style.(empty |> width Grow |> height (Fixed 1.0) |> bg (`rgb (0, 255, 0))) [];
+    ]
+  in
+  match rectangles (layout ~config:(make_config ()) ui) with
+  | [ (_, left); (_, right) ] when approx_eq left.width 39.0 && approx_eq right.x 41.0 && approx_eq right.width 39.0 ->
+      Ok ()
+  | _ -> Error "Grow allocation should leave room for grow-child margins"
+
+let test_negative_remaining_space_clamps_to_zero = fun _ctx ->
+  let ui =
+    Element.row ~style:Style.(empty |> width (Fixed 10.0)) [
+      Element.container ~style:Style.(empty |> width (Fixed 8.0) |> height (Fixed 1.0) |> bg (`rgb (255, 0, 0))) [];
+      Element.container ~style:Style.(empty |> width Grow |> height (Fixed 1.0) |> bg (`rgb (0, 255, 0))) [];
+      Element.container ~style:Style.(empty |> width (Fixed 8.0) |> height (Fixed 1.0) |> bg (`rgb (0, 0, 255))) [];
+    ]
+  in
+  match rectangles (layout ~config:(make_config ()) ui) with
+  | [ (_, left); (_, right) ] when approx_eq left.width 8.0
+  && approx_eq right.x 8.0
+  && approx_eq right.width 8.0 -> Ok ()
+  | _ -> Error "Grow children should clamp to zero when fixed content already overflows"
+
+let tests = Test.[
+  case "fixed grow fixed arithmetic" test_fixed_grow_fixed;
+  case "equal grow children split evenly" test_equal_grow_children_split_evenly;
+  case "grow children respect margins" test_grow_children_respect_margins;
+  case "negative remaining space clamps to zero" test_negative_remaining_space_clamps_to_zero;
+]
 
 let () =
   Actors.run
