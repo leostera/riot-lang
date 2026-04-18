@@ -24,6 +24,8 @@ let create = fun ?(count = 1) ~size () ->
 
 let with_capacity = fun size -> create ~size ()
 
+let from_slices = fun segments -> segments
+
 let copy_bytes = fun source ->
   let len = Bytes.length source in
   let copy = IoSlice.create ~size:len in

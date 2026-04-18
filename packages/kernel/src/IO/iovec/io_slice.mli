@@ -4,8 +4,18 @@ val create: size:int -> t
 
 val length: t -> int
 
+val get: t -> at:int -> char
+
 val blit_from_bytes:
   bytes ->
+  src_offset:int ->
+  dst:t ->
+  dst_offset:int ->
+  len:int ->
+  unit
+
+val blit:
+  src:t ->
   src_offset:int ->
   dst:t ->
   dst_offset:int ->

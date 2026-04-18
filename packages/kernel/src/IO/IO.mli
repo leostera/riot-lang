@@ -6,8 +6,18 @@ module Iovec: sig
 
     val length: t -> int
 
+    val get: t -> at:int -> char
+
     val blit_from_bytes:
       bytes ->
+      src_offset:int ->
+      dst:t ->
+      dst_offset:int ->
+      len:int ->
+      unit
+
+    val blit:
+      src:t ->
       src_offset:int ->
       dst:t ->
       dst_offset:int ->
@@ -35,6 +45,8 @@ module Iovec: sig
 
   val with_capacity: int -> t
 
+  val from_slices: segment array -> t
+
   val from_bytes: bytes -> t
 
   val from_string: string -> t
@@ -50,6 +62,70 @@ module Iovec: sig
   val sub: ?pos:int -> len:int -> t -> t
 
   val to_bytes: t -> bytes
+
+  val to_string: t -> string
+end
+
+module Buffer: sig
+  module IoSlice = Iovec.IoSlice
+
+  type t
+
+  val create: ?size:int -> unit -> t
+
+  val length: t -> int
+
+  val capacity: t -> int
+
+  val clear: t -> unit
+
+  val append_string: t -> string -> unit
+
+  val append_bytes: t -> bytes -> unit
+
+  val append_slice: t -> IoSlice.t -> unit
+
+  val writable_slice: ?size:int -> t -> IoSlice.t
+
+  val commit_write: t -> len:int -> unit
+
+  val consume: t -> len:int -> unit
+
+  val readable_slice: t -> IoSlice.t
+
+  val to_iovec: t -> Iovec.t
+
+  val to_bytes: t -> bytes
+
+  val to_string: t -> string
+end
+
+module StringView: sig
+  module IoSlice = Iovec.IoSlice
+
+  type t
+
+  val empty: t
+
+  val of_slice: IoSlice.t -> t
+
+  val of_string: string -> t
+
+  val of_buffer: Buffer.t -> t
+
+  val length: t -> int
+
+  val get: t -> at:int -> char
+
+  val sub: t -> offset:int -> len:int -> t
+
+  val advance: t -> by:int -> t
+
+  val starts_with: t -> prefix:string -> bool
+
+  val index_of_char: t -> char -> int option
+
+  val index_of_string: t -> string -> int option
 
   val to_string: t -> string
 end

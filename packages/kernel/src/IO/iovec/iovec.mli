@@ -5,8 +5,18 @@ module IoSlice: sig
 
   val length: t -> int
 
+  val get: t -> at:int -> char
+
   val blit_from_bytes:
     bytes ->
+    src_offset:int ->
+    dst:t ->
+    dst_offset:int ->
+    len:int ->
+    unit
+
+  val blit:
+    src:t ->
     src_offset:int ->
     dst:t ->
     dst_offset:int ->
@@ -34,6 +44,8 @@ type t
 val create: ?count:int -> size:int -> unit -> t
 
 val with_capacity: int -> t
+
+val from_slices: segment array -> t
 
 val from_bytes: bytes -> t
 
