@@ -11,6 +11,9 @@ path = "src/Pubgrub.ml"
 [dependencies]
 std = { path = "../std", version = "*" }
 
+[dev-dependencies]
+propane = { path = "../propane", version = "*" }
+
 [[bin]]
 name = "simple"
 path = "examples/simple.ml"
@@ -18,3 +21,7 @@ path = "examples/simple.ml"
 [[bin]]
 name = "solver_tests"
 path = "tests/solver_tests.ml"
+
+[[bin]]
+name = "pubgrub_bench"
+path = "bench/pubgrub_bench.ml"

@@ -154,6 +154,9 @@ let negate_bound = fun bound ->
 
 let complement = fun ~compare_v ranges ->
   let ranges = normalize ~compare_v ranges in
+  if ranges = [] then
+    full
+  else
   let rec build current_start acc = function
     | [] ->
         List.reverse

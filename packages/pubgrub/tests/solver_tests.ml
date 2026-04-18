@@ -1,6 +1,80 @@
 open Std
+open Propane
 
 let v = fun major minor patch -> Pubgrub.make_version ~major ~minor ~patch
+
+let order_versions = fun left right ->
+  if Pubgrub.version_compare left right <= 0 then
+    (left, right)
+  else
+    (right, left)
+
+let print_range = fun range ->
+  Pubgrub.Ranges.to_string ~to_string_v:Pubgrub.version_to_string range
+
+let version_gen = Generator.map3
+  (fun major minor patch -> v major minor patch)
+  (Generator.int_range 0 3)
+  (Generator.int_range 0 3)
+  (Generator.int_range 0 3)
+
+let version_arb = Arbitrary.make ~print:Pubgrub.version_to_string version_gen
+
+let simple_range_gen =
+  let between_gen = Generator.map2
+    (fun left right ->
+      let low, high = order_versions left right in
+      if Int.equal (Pubgrub.version_compare low high) 0 then
+        Pubgrub.singleton low
+      else
+        Pubgrub.between low high)
+    version_gen
+    version_gen in
+  Generator.one_of
+    [
+      Generator.return Pubgrub.empty;
+      Generator.return Pubgrub.full;
+      Generator.map Pubgrub.singleton version_gen;
+      Generator.map Pubgrub.higher_than version_gen;
+      Generator.map Pubgrub.strictly_higher_than version_gen;
+      Generator.map Pubgrub.lower_than version_gen;
+      Generator.map Pubgrub.strictly_lower_than version_gen;
+      between_gen;
+    ]
+
+let range_gen = Generator.frequency
+  [
+    (6, simple_range_gen);
+    (4, Generator.map2
+      (Pubgrub.Ranges.union ~compare_v:Pubgrub.version_compare)
+      simple_range_gen
+      simple_range_gen);
+  ]
+
+let range_arb = Arbitrary.make ~print:print_range range_gen
+
+let term_gen = Generator.map3
+  (fun positive pkg ranges ->
+    if positive then
+      Pubgrub.Term.positive pkg ranges
+    else
+      Pubgrub.Term.negative pkg ranges)
+  Generator.bool
+  (Generator.one_of [ Generator.return "foo"; Generator.return "bar" ])
+  range_gen
+
+let print_term = fun term ->
+  (
+    if Pubgrub.Term.is_positive term then
+      "+"
+    else
+      "-"
+  )
+  ^ Pubgrub.Term.package term
+  ^ ":"
+  ^ print_range (Pubgrub.Term.ranges term)
+
+let term_arb = Arbitrary.make ~print:print_term term_gen
 
 let assert_solution = fun expected_count result ->
   match result with
@@ -202,6 +276,67 @@ let assert_int_equal = fun ~expected ~actual ~message ->
       ^ Int.to_string actual
       ^ ", expected "
       ^ Int.to_string expected)
+
+let prop_ranges_complement_matches_membership =
+  Propane.property
+    "Property: range complement matches membership negation"
+    Arbitrary.(pair range_arb version_arb)
+    (fun (ranges, version) ->
+      let contains = Pubgrub.Ranges.contains ~compare_v:Pubgrub.version_compare ranges version in
+      let complement_contains = Pubgrub.Ranges.contains
+        ~compare_v:Pubgrub.version_compare
+        (Pubgrub.Ranges.complement ~compare_v:Pubgrub.version_compare ranges)
+        version in
+      Bool.equal complement_contains (not contains))
+
+let prop_ranges_double_complement_is_identity =
+  Propane.property
+    "Property: range double complement is semantic identity"
+    range_arb
+    (fun ranges ->
+      ranges_equal
+        ranges
+        (Pubgrub.Ranges.complement
+           ~compare_v:Pubgrub.version_compare
+           (Pubgrub.Ranges.complement ~compare_v:Pubgrub.version_compare ranges)))
+
+let prop_ranges_union_matches_boolean_or =
+  Propane.property
+    "Property: range union membership matches boolean or"
+    Arbitrary.(triple range_arb range_arb version_arb)
+    (fun (left, right, version) ->
+      let union_contains = Pubgrub.Ranges.contains
+        ~compare_v:Pubgrub.version_compare
+        (Pubgrub.Ranges.union ~compare_v:Pubgrub.version_compare left right)
+        version in
+      Bool.equal
+        union_contains
+        (Pubgrub.Ranges.contains ~compare_v:Pubgrub.version_compare left version
+        || Pubgrub.Ranges.contains ~compare_v:Pubgrub.version_compare right version))
+
+let prop_ranges_intersection_matches_boolean_and =
+  Propane.property
+    "Property: range intersection membership matches boolean and"
+    Arbitrary.(triple range_arb range_arb version_arb)
+    (fun (left, right, version) ->
+      let intersection_contains = Pubgrub.Ranges.contains
+        ~compare_v:Pubgrub.version_compare
+        (Pubgrub.Ranges.intersection ~compare_v:Pubgrub.version_compare left right)
+        version in
+      Bool.equal
+        intersection_contains
+        (Pubgrub.Ranges.contains ~compare_v:Pubgrub.version_compare left version
+        && Pubgrub.Ranges.contains ~compare_v:Pubgrub.version_compare right version))
+
+let prop_term_negation_is_involutive =
+  Propane.property
+    "Property: term negation is involutive"
+    term_arb
+    (fun term ->
+      let twice = Pubgrub.Term.negate (Pubgrub.Term.negate term) in
+      String.equal (Pubgrub.Term.package term) (Pubgrub.Term.package twice)
+      && Bool.equal (Pubgrub.Term.is_positive term) (Pubgrub.Term.is_positive twice)
+      && ranges_equal (Pubgrub.Term.ranges term) (Pubgrub.Term.ranges twice))
 
 let test_ranges_empty_contains_nothing =
   Test.case "Ranges: empty contains nothing"
@@ -2339,6 +2474,11 @@ let all_tests =
     test_trace_conflict_partial_satisfier;
     test_ref_double_choices;
     test_ref_confusing_with_holes;
+    prop_ranges_complement_matches_membership;
+    prop_ranges_double_complement_is_identity;
+    prop_ranges_union_matches_boolean_or;
+    prop_ranges_intersection_matches_boolean_and;
+    prop_term_negation_is_involutive;
   ]
   in
   base_tests @ web_tests @ db_tests @ compiler_tests @ reference_tests
