@@ -142,6 +142,15 @@ let assert_relation = fun expected actual ->
   | `Contradicted expected_pkg, `Contradicted actual_pkg when String.equal expected_pkg actual_pkg -> Ok ()
   | _ -> Error "Unexpected relation result"
 
+let assert_constraint = fun ~expected actual ->
+  match (expected, actual) with
+  | `Undecided, `Undecided -> Ok ()
+  | `Decided expected, `Decided actual ->
+      assert_version_equal ~expected ~actual ~message:"Unexpected decided version"
+  | `Constrained expected, `Constrained actual ->
+      assert_ranges_equal ~expected ~actual ~message:"Unexpected constrained ranges"
+  | _ -> Error "Unexpected constraint state"
+
 let custom_incompat = fun terms ->
   Pubgrub.Incompatibility.create_external
     terms
@@ -965,6 +974,33 @@ let test_relation_constrained_negative_subset_is_contradicted =
       assert_relation
         (`Contradicted "foo")
         (Pubgrub.Partial_solution.relation solution incompat))
+
+let test_partial_solution_cached_constraints_intersect_derivations =
+  Test.case "Partial_solution: cached constraints intersect derivations"
+    (fun _ctx ->
+      let left = custom_incompat
+        [ Pubgrub.Term.negative "foo" (Pubgrub.between (v 1 0 0) (v 4 0 0)) ] in
+      let right = custom_incompat
+        [ Pubgrub.Term.negative "foo" (Pubgrub.between (v 2 0 0) (v 5 0 0)) ] in
+      let solution = Pubgrub.Partial_solution.empty ()
+        |> fun solution -> Pubgrub.Partial_solution.add_derivation solution "foo" left
+        |> fun solution -> Pubgrub.Partial_solution.add_derivation solution "foo" right in
+      assert_constraint
+        ~expected:(`Constrained (Pubgrub.between (v 2 0 0) (v 4 0 0)))
+        (Pubgrub.Partial_solution.get_constraint solution "foo"))
+
+let test_partial_solution_backtrack_restores_cached_derivation =
+  Test.case "Partial_solution: backtrack restores cached derivations"
+    (fun _ctx ->
+      let constraint_incompat = custom_incompat
+        [ Pubgrub.Term.negative "foo" (Pubgrub.between (v 2 0 0) (v 4 0 0)) ] in
+      let solution = Pubgrub.Partial_solution.empty ()
+        |> fun solution -> Pubgrub.Partial_solution.add_derivation solution "foo" constraint_incompat
+        |> fun solution -> Pubgrub.Partial_solution.add_decision solution "foo" (v 2 1 0) in
+      let backtracked = Pubgrub.Partial_solution.backtrack solution 0 in
+      assert_constraint
+        ~expected:(`Constrained (Pubgrub.between (v 2 0 0) (v 4 0 0)))
+        (Pubgrub.Partial_solution.get_constraint backtracked "foo"))
 
 let test_partial_solution_missing_derivation_package_raises =
   Test.case "Partial_solution: add_derivation requires matching package term"
@@ -2236,6 +2272,8 @@ let all_tests =
     test_relation_constrained_positive_overlap_is_almost_satisfied;
     test_relation_constrained_negative_disjoint_is_satisfied;
     test_relation_constrained_negative_subset_is_contradicted;
+    test_partial_solution_cached_constraints_intersect_derivations;
+    test_partial_solution_backtrack_restores_cached_derivation;
     test_partial_solution_missing_derivation_package_raises;
     test_solution_order_is_deterministic;
     test_report_no_versions_includes_requested_range;

@@ -31,9 +31,16 @@ type same_decision_levels = {
   extra_term: Term.t option;
 }
 
+type derived_state = {
+  ranges: version Ranges.t;
+  requires_decision: bool;
+  latest_global_index: int;
+}
+
 type t = {
   assignments: assignment list;
   decisions: (package, version) Collections.HashMap.t;
+  derived: (package, derived_state) Collections.HashMap.t;
   decision_level: decision_level;
   next_global_index: int;
 }
@@ -42,6 +49,7 @@ let empty = fun () ->
   {
     assignments = [];
     decisions = Collections.HashMap.create ();
+    derived = Collections.HashMap.create ();
     decision_level = 0;
     next_global_index = 0
   }
@@ -54,10 +62,48 @@ let version_compare = fun a b ->
   | Eq -> 0
   | Gt -> 1
 
+let merge_derived_state = fun left right ->
+  {
+    ranges = Ranges.intersection ~compare_v:version_compare left.ranges right.ranges;
+    requires_decision = left.requires_decision || right.requires_decision;
+    latest_global_index = Int.max left.latest_global_index right.latest_global_index
+  }
+
+let cache_derivation = fun solution pkg state ->
+  let next_state =
+    match Collections.HashMap.get solution.derived ~key:pkg with
+    | None -> state
+    | Some existing -> merge_derived_state existing state
+  in
+  let _ = Collections.HashMap.insert solution.derived ~key:pkg ~value:next_state in
+  solution
+
+let rebuild_derived = fun assignments ->
+  let derived = Collections.HashMap.create () in
+  let rec loop = function
+    | [] -> derived
+    | Derivation (pkg, ranges, requires_decision, _, _, global_index) :: rest ->
+        let state = {
+          ranges;
+          requires_decision;
+          latest_global_index = global_index
+        } in
+        let next_state =
+          match Collections.HashMap.get derived ~key:pkg with
+          | None -> state
+          | Some existing -> merge_derived_state existing state
+        in
+        let _ = Collections.HashMap.insert derived ~key:pkg ~value:next_state in
+        loop rest
+    | _ :: rest -> loop rest
+  in
+  loop assignments
+
 let add_decision = fun solution pkg ver ->
   let new_level = solution.decision_level + 1 in
   let global_index = solution.next_global_index in
   let _ = Collections.HashMap.insert solution.decisions ~key:pkg ~value:ver in
+  let _ = Collections.HashMap.remove solution.derived ~key:pkg in
   {
     solution
     with assignments = Decision (pkg, ver, new_level, global_index) :: solution.assignments;
@@ -92,6 +138,10 @@ let add_derivation = fun solution pkg incompat ->
             ^ " is missing from incompatibility"
           )
   in
+  let solution = cache_derivation
+    solution
+    pkg
+    { ranges; requires_decision; latest_global_index = global_index } in
   {
     solution
     with assignments = Derivation
@@ -107,22 +157,11 @@ let get_decision = fun solution pkg -> Collections.HashMap.get solution.decision
 let get_constraint = fun solution pkg ->
   match get_decision solution pkg with
   | Some ver -> `Decided ver
-  | None ->
-      let derived_ranges =
-        List.fold_left solution.assignments ~acc:None
-          ~fn:(fun acc ->
-            function
-            | Derivation (p, ranges, _, _, _, _) when p = pkg ->
-                Some (
-                  match acc with
-                  | None -> ranges
-                  | Some existing -> Ranges.intersection ~compare_v:version_compare existing ranges
-                )
-            | _ -> acc)
-      in
-      match derived_ranges with
-      | Some ranges -> `Constrained ranges
+  | None -> (
+      match Collections.HashMap.get solution.derived ~key:pkg with
+      | Some state -> `Constrained state.ranges
       | None -> `Undecided
+    )
 
 let extract_solution = fun solution ->
   let rec collect acc = function
@@ -135,40 +174,17 @@ let extract_solution = fun solution ->
     ~compare:(fun (left, _) (right, _) -> String.compare left right)
 
 let pick_highest_priority_pkg = fun solution prioritizer ->
-  let seen = Collections.HashSet.create () in
   let candidates = ref [] in
-  let package_requires_decision = fun pkg ->
-    List.any solution.assignments ~fn:(
-      function
-      | Derivation (p, _, true, _, _, _) when p = pkg -> true
-      | _ -> false
-    )
-  in
-  List.for_each (List.reverse solution.assignments)
-    ~fn:(
-      function
-      | Derivation (pkg, _, _, _, _, gidx) -> (
-          match Collections.HashMap.get solution.decisions ~key:pkg with
-          | None
-            when not (Collections.HashSet.contains seen ~value:pkg)
-            && package_requires_decision pkg -> (
-              let _ = Collections.HashSet.insert seen ~value:pkg in
-              match get_constraint solution pkg with
-              | `Constrained ranges ->
-                  Log.info ("🔍 pick: found candidate " ^ pkg);
-                  candidates := (pkg, ranges, gidx) :: !candidates
-              | `Undecided ->
-                  ()
-              | `Decided _ ->
-                  ()
-            )
-          | None ->
-              ()
-          | Some _ ->
-              Log.info ("🔍 pick: " ^ pkg ^ " already decided, skipping")
-        )
-      | Decision _ -> ()
-    );
+  Collections.HashMap.for_each solution.derived
+    ~fn:(fun pkg state ->
+      match Collections.HashMap.get solution.decisions ~key:pkg with
+      | Some _ ->
+          Log.info ("🔍 pick: " ^ pkg ^ " already decided, skipping")
+      | None when state.requires_decision ->
+          Log.info ("🔍 pick: found candidate " ^ pkg);
+          candidates := (pkg, state.ranges, state.latest_global_index) :: !candidates
+      | None ->
+          ());
   Log.info ("🔍 pick: found " ^ Int.to_string (List.length !candidates) ^ " total candidates");
   match !candidates with
   | [] -> None
@@ -214,9 +230,11 @@ let backtrack = fun solution target_level ->
         filter_assignments acc []
   in
   let new_assignments = filter_assignments [] solution.assignments in
+  let new_derived = rebuild_derived new_assignments in
   {
     assignments = new_assignments;
     decisions = new_decisions;
+    derived = new_derived;
     decision_level = target_level;
     next_global_index = solution.next_global_index
   }
