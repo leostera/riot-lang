@@ -22,8 +22,7 @@ let assert_conflict = fun result ->
   | Error err -> Error ("Error: " ^ err)
 
 let ranges_equal = fun left right ->
-  Pubgrub.Ranges.subset_of ~compare_v:Pubgrub.version_compare left right
-  && Pubgrub.Ranges.subset_of ~compare_v:Pubgrub.version_compare right left
+  Pubgrub.Ranges.equal ~compare_v:Pubgrub.version_compare left right
 
 let assert_ranges_equal = fun ~expected ~actual ~message ->
   if ranges_equal expected actual then
@@ -279,6 +278,49 @@ let test_ranges_subset_and_double_complement =
         Ok ()
       else
         Error "Expected subset_of and double complement semantics to hold")
+
+let test_ranges_normalize_collapses_semantic_duplicates =
+  Test.case "Ranges: normalize collapses overlapping semantic duplicates"
+    (fun _ctx ->
+      let ranges = Pubgrub.Ranges.union
+        ~compare_v:Pubgrub.version_compare
+        (Pubgrub.between (v 1 0 0) (v 3 0 0))
+        (Pubgrub.between (v 2 0 0) (v 4 0 0)) in
+      let normalized = Pubgrub.Ranges.normalize
+        ~compare_v:Pubgrub.version_compare
+        ranges in
+      assert_ranges_equal
+        ~expected:(Pubgrub.between (v 1 0 0) (v 4 0 0))
+        ~actual:normalized
+        ~message:"Expected normalize to collapse overlapping segments")
+
+let test_ranges_compare_is_semantic =
+  Test.case "Ranges: compare is semantic after normalization"
+    (fun _ctx ->
+      let left = Pubgrub.Ranges.union
+        ~compare_v:Pubgrub.version_compare
+        (Pubgrub.between (v 1 0 0) (v 3 0 0))
+        (Pubgrub.between (v 2 0 0) (v 4 0 0)) in
+      let right = Pubgrub.between (v 1 0 0) (v 4 0 0) in
+      if Int.equal (Pubgrub.Ranges.compare ~compare_v:Pubgrub.version_compare left right) 0 then
+        Ok ()
+      else
+        Error "Expected compare to treat semantically equal ranges as equal")
+
+let test_ranges_to_string_is_stable =
+  Test.case "Ranges: to_string prints canonical segments"
+    (fun _ctx ->
+      let ranges = Pubgrub.Ranges.union
+        ~compare_v:Pubgrub.version_compare
+        (Pubgrub.strictly_lower_than (v 1 0 0))
+        (Pubgrub.higher_than (v 2 0 0)) in
+      let actual = Pubgrub.Ranges.to_string
+        ~to_string_v:Pubgrub.version_to_string
+        ranges in
+      if String.equal actual "(-inf, 1.0.0) | [2.0.0, +inf)" then
+        Ok ()
+      else
+        Error ("Unexpected range string: " ^ actual))
 
 let test_term_positive_full_is_any =
   Test.case "Term: positive full is tautological"
@@ -1535,6 +1577,9 @@ let all_tests =
     test_ranges_complement_of_multiple_segments;
     test_ranges_is_disjoint_matches_empty_intersection;
     test_ranges_subset_and_double_complement;
+    test_ranges_normalize_collapses_semantic_duplicates;
+    test_ranges_compare_is_semantic;
+    test_ranges_to_string_is_stable;
     test_term_positive_full_is_any;
     test_term_negative_empty_is_any;
     test_term_positive_empty_is_not_any;

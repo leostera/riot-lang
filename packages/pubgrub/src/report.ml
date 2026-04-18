@@ -23,13 +23,19 @@ let rec build_derivation_tree = fun incompat ->
 
 let version_to_string = fun ver -> Version.to_string ver
 
+let version_compare = fun a b ->
+  match Version.compare a b with
+  | Lt -> (-1)
+  | Eq -> 0
+  | Gt -> 1
+
 let format_term = fun term ->
   let pkg = Term.package term in
   let ranges = Term.ranges term in
   let is_positive = Term.is_positive term in
   if Ranges.is_empty ranges && is_positive then
     pkg ^ " (no versions)"
-  else if ranges = Ranges.full && is_positive then
+  else if Ranges.equal ~compare_v:version_compare ranges Ranges.full && is_positive then
     pkg ^ " (any version)"
   else if is_positive then
     pkg ^ " in range"

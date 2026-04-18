@@ -3,7 +3,7 @@ type 'v bound =
   | Included of 'v
   | Excluded of 'v
 type 'v range = 'v bound * 'v bound
-type 'v t = 'v range list
+type 'v t
 val empty: 'v t
 
 val full: 'v t
@@ -20,7 +20,11 @@ val strictly_lower_than: 'v -> 'v t
 
 val between: 'v -> 'v -> 'v t
 
+val segments: 'v t -> 'v range list
+
 val is_empty: 'v t -> bool
+
+val normalize: compare_v:('v -> 'v -> int) -> 'v t -> 'v t
 
 val complement: compare_v:('v -> 'v -> int) -> 'v t -> 'v t
 
@@ -33,3 +37,9 @@ val contains: compare_v:('v -> 'v -> int) -> 'v t -> 'v -> bool
 val is_disjoint: compare_v:('v -> 'v -> int) -> 'v t -> 'v t -> bool
 
 val subset_of: compare_v:('v -> 'v -> int) -> 'v t -> 'v t -> bool
+
+val equal: compare_v:('v -> 'v -> int) -> 'v t -> 'v t -> bool
+
+val compare: compare_v:('v -> 'v -> int) -> 'v t -> 'v t -> int
+
+val to_string: to_string_v:('v -> string) -> 'v t -> string

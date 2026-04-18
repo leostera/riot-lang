@@ -223,7 +223,10 @@ let compute_pending state: (package * version Ranges.t) list =
       | None -> (0, 0)
     in
     let total_incompats, pending_conflicts = num_incompats in
-    let is_constrained = not (Ranges.is_empty ranges || ranges = Ranges.full) in
+    let is_constrained =
+      not
+        (Ranges.is_empty ranges
+        || Ranges.equal ~compare_v:version_compare ranges Ranges.full) in
     (* Score: prioritize constrained ranges, then total incompats, *)
     (* but PENALIZE packages involved in pending conflicts (choose them last) *)
     (
@@ -745,7 +748,10 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                           | Error _ -> Int.max_int
                         in
                         let constraint_score =
-                          if Ranges.is_empty ranges || ranges = Ranges.full then
+                          if
+                            Ranges.is_empty ranges
+                            || Ranges.equal ~compare_v:version_compare ranges Ranges.full
+                          then
                             0
                           else
                             1_000_000

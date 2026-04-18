@@ -54,7 +54,7 @@ let bound_to_json = function
     [ ("kind", json_string "excluded"); ("version", version_to_json version) ]
 
 let ranges_to_json = fun ranges ->
-  ranges
+  Ranges.segments ranges
   |> List.map
     ~fn:(fun (start, finish) ->
       json_obj [ ("start", bound_to_json start); ("end", bound_to_json finish) ])
