@@ -2,6 +2,8 @@ open Std
 open Std.Collections
 open Std.IO
 
+module Utils = Terminal_render_utils
+
 type cell = {
   mutable char: string;
   mutable char_width: int;
@@ -15,15 +17,9 @@ type cell = {
 type custom_segment = {
   row: int;
   col: int;
-  index: int;
+  command_order: int;
   data: string;
 }
-
-let start_cell = fun value -> Int.max 0 (Float.to_int (Float.floor value))
-
-let end_cell = fun value -> Int.max 0 (Float.to_int (Float.ceil value))
-
-let rgb_to_color = fun (`rgb (r, g, b)) -> Tty.Color.of_rgb (r, g, b)
 
 let make_cell = fun () -> {
   char = " ";
@@ -38,54 +34,6 @@ let make_cell = fun () -> {
 let get_cell = fun grid ~row ~col ->
   let line = Array.get_unchecked grid ~at:row in
   Array.get_unchecked line ~at:col
-
-let rect_col_start = fun (rect: Geometry.Rect.t) -> start_cell rect.x
-
-let rect_row_start = fun (rect: Geometry.Rect.t) -> start_cell rect.y
-
-let rect_col_end = fun (rect: Geometry.Rect.t) -> end_cell (rect.x +. rect.width)
-
-let rect_row_end = fun (rect: Geometry.Rect.t) -> end_cell (rect.y +. rect.height)
-
-let is_inside_rect = fun col row rect ->
-  let start_col = rect_col_start rect in
-  let end_col = rect_col_end rect in
-  let start_row = rect_row_start rect in
-  let end_row = rect_row_end rect in
-  col >= start_col && col < end_col && row >= start_row && row < end_row
-
-let visible_col_range = fun box scissor width ->
-  let start_col = rect_col_start box in
-  let end_col = Int.min width (rect_col_end box) in
-  match scissor with
-  | None -> (start_col, end_col)
-  | Some scissor ->
-      let visible_start = Int.max start_col (rect_col_start scissor) in
-      let visible_end = Int.min end_col (rect_col_end scissor) in
-      (visible_start, visible_end)
-
-let slice_text_by_cells = fun text ~skip ~take ->
-  if take <= 0 then
-    ""
-  else
-    let graphemes = String.into_grapheme_iter text |> Std.Iter.Iterator.to_list in
-    let rec loop col acc =
-      function
-      | [] -> List.rev acc |> String.concat ""
-      | grapheme :: rest ->
-          let grapheme_string = Std.Unicode.Grapheme.to_string grapheme in
-          let grapheme_width = Std.Unicode.Grapheme.width grapheme in
-          let next_col = col + grapheme_width in
-          if next_col <= skip then
-            loop next_col acc rest
-          else if col < skip then
-            loop next_col acc rest
-          else if next_col > skip + take then
-            List.rev acc |> String.concat ""
-          else
-            loop next_col (grapheme_string :: acc) rest
-    in
-    loop 0 [] graphemes
 
 let reset_text_style = fun cell ->
   cell.bold <- false;
@@ -185,11 +133,11 @@ let render_to_string = fun commands ->
         | Render.ScissorEnd -> ()
         | Render.Custom { data } ->
             let _ = data in
-            max_row := Int.max !max_row (rect_row_end command.bounding_box);
-            max_col := Int.max !max_col (rect_col_end command.bounding_box)
+            max_row := Int.max !max_row (Utils.rect_row_end command.bounding_box);
+            max_col := Int.max !max_col (Utils.rect_col_end command.bounding_box)
         | _ ->
-            max_row := Int.max !max_row (rect_row_end command.bounding_box);
-            max_col := Int.max !max_col (rect_col_end command.bounding_box))
+            max_row := Int.max !max_row (Utils.rect_row_end command.bounding_box);
+            max_col := Int.max !max_col (Utils.rect_col_end command.bounding_box))
       commands;
     if !max_row = 0 || !max_col = 0 then
       ""
@@ -208,42 +156,34 @@ let render_to_string = fun commands ->
         | Render.ScissorEnd ->
             scissor_box := None
         | Render.Rectangle { color; _ } ->
-            let tty_color = rgb_to_color color in
-            let row_start = rect_row_start command.bounding_box in
-            let row_end = Int.min !max_row (rect_row_end command.bounding_box) in
-            let col_start, col_end = visible_col_range command.bounding_box !scissor_box !max_col in
+            let tty_color = Utils.rgb_to_color color in
+            let row_start = Utils.rect_row_start command.bounding_box in
+            let row_end = Int.min !max_row (Utils.rect_row_end command.bounding_box) in
+            let col_start, col_end =
+              Utils.visible_col_range ~box:command.bounding_box ~scissor:!scissor_box ~limit:!max_col
+            in
             for row = row_start to row_end - 1 do
-              if Option.is_none !scissor_box || (
-                  match !scissor_box with
-                  | Some rect -> is_inside_rect col_start row rect || (col_end > col_start && is_inside_rect (col_end - 1) row rect)
-                  | None -> true
-                ) then
+              if Utils.is_inside_scissor ~col:col_start ~row !scissor_box
+                 || (col_end > col_start
+                     && Utils.is_inside_scissor ~col:(col_end - 1) ~row !scissor_box)
+              then
                 begin
                   for col = col_start to col_end - 1 do
-                    if Option.is_none !scissor_box || (
-                        match !scissor_box with
-                        | Some rect -> is_inside_rect col row rect
-                        | None -> true
-                      ) then
+                    if Utils.is_inside_scissor ~col ~row !scissor_box then
                       write_background_cell (get_cell grid ~row ~col) tty_color
                   done
                 end
             done
         | Render.Border { width; color; _ } ->
-            let tty_color = rgb_to_color color in
-            let row_start = rect_row_start command.bounding_box in
-            let row_end = Int.min !max_row (rect_row_end command.bounding_box) in
-            let col_start = rect_col_start command.bounding_box in
-            let col_end = Int.min !max_col (rect_col_end command.bounding_box) in
+            let tty_color = Utils.rgb_to_color color in
+            let row_start = Utils.rect_row_start command.bounding_box in
+            let row_end = Int.min !max_row (Utils.rect_row_end command.bounding_box) in
+            let col_start = Utils.rect_col_start command.bounding_box in
+            let col_end = Int.min !max_col (Utils.rect_col_end command.bounding_box) in
             if width.top > 0 && row_start < row_end then
               begin
                 for col = col_start to col_end - 1 do
-                  let within_scissor =
-                    match !scissor_box with
-                    | Some rect -> is_inside_rect col row_start rect
-                    | None -> true
-                  in
-                  if within_scissor then
+                  if Utils.is_inside_scissor ~col ~row:row_start !scissor_box then
                     let ch =
                       if col = col_start && width.left > 0 then
                         "┌"
@@ -258,12 +198,7 @@ let render_to_string = fun commands ->
             if width.bottom > 0 && row_end - 1 >= row_start then
               begin
                 for col = col_start to col_end - 1 do
-                  let within_scissor =
-                    match !scissor_box with
-                    | Some rect -> is_inside_rect col (row_end - 1) rect
-                    | None -> true
-                  in
-                  if within_scissor then
+                  if Utils.is_inside_scissor ~col ~row:(row_end - 1) !scissor_box then
                     let ch =
                       if col = col_start && width.left > 0 then
                         "└"
@@ -277,38 +212,26 @@ let render_to_string = fun commands ->
               end;
             for row = row_start + 1 to row_end - 2 do
               if width.left > 0 && col_start < col_end then
-                begin
-                  let within_scissor =
-                    match !scissor_box with
-                    | Some rect -> is_inside_rect col_start row rect
-                    | None -> true
-                  in
-                  if within_scissor then
-                    write_border_cell (get_cell grid ~row ~col:col_start) tty_color "│"
-                end;
+                if Utils.is_inside_scissor ~col:col_start ~row !scissor_box then
+                  write_border_cell (get_cell grid ~row ~col:col_start) tty_color "│";
               if width.right > 0 && col_end - 1 >= col_start then
-                begin
-                  let within_scissor =
-                    match !scissor_box with
-                    | Some rect -> is_inside_rect (col_end - 1) row rect
-                    | None -> true
-                  in
-                  if within_scissor then
-                    write_border_cell (get_cell grid ~row ~col:(col_end - 1)) tty_color "│"
-                end
+                if Utils.is_inside_scissor ~col:(col_end - 1) ~row !scissor_box then
+                  write_border_cell (get_cell grid ~row ~col:(col_end - 1)) tty_color "│"
             done
         | Render.Text { content; color; weight; decoration; _ } ->
-            let tty_color = rgb_to_color color in
-            let row_start = rect_row_start command.bounding_box in
-            let row_end = Int.min !max_row (rect_row_end command.bounding_box) in
+            let tty_color = Utils.rgb_to_color color in
+            let row_start = Utils.rect_row_start command.bounding_box in
+            let row_end = Int.min !max_row (Utils.rect_row_end command.bounding_box) in
             let lines = String.split_on_char '\n' content in
             List.iteri
               (fun line_index line ->
                 let row = row_start + line_index in
                 if row < row_end then
-                  let col_start = rect_col_start command.bounding_box in
-                  let col_end = Int.min !max_col (rect_col_end command.bounding_box) in
-                  let visible_col_start, visible_col_end = visible_col_range command.bounding_box !scissor_box !max_col in
+                  let col_start = Utils.rect_col_start command.bounding_box in
+                  let col_end = Int.min !max_col (Utils.rect_col_end command.bounding_box) in
+                  let visible_col_start, visible_col_end =
+                    Utils.visible_col_range ~box:command.bounding_box ~scissor:!scissor_box ~limit:!max_col
+                  in
                   let cursor = ref col_start in
                   let graphemes = String.into_grapheme_iter line |> Std.Iter.Iterator.to_list in
                   List.iter
@@ -344,25 +267,32 @@ let render_to_string = fun commands ->
               lines
         | Render.Custom { data } ->
             let lines = String.split_on_char '\n' data in
-            let row_start = rect_row_start command.bounding_box in
-            let row_end = Int.min !max_row (rect_row_end command.bounding_box) in
-            let col_start = rect_col_start command.bounding_box in
+            let row_start = Utils.rect_row_start command.bounding_box in
+            let row_end = Int.min !max_row (Utils.rect_row_end command.bounding_box) in
+            let col_start = Utils.rect_col_start command.bounding_box in
             List.iteri
               (fun line_index line ->
                 let row = row_start + line_index in
                 if row < row_end then
                   let visible_col_start, visible_col_end =
-                    visible_col_range command.bounding_box !scissor_box !max_col
+                    Utils.visible_col_range ~box:command.bounding_box ~scissor:!scissor_box ~limit:!max_col
                   in
                   if visible_col_end > visible_col_start then
                     let clipped =
-                      slice_text_by_cells
+                      Utils.slice_text_by_cells
                         line
                         ~skip:(visible_col_start - col_start)
                         ~take:(visible_col_end - visible_col_start)
                     in
                     if clipped != "" then
-                      custom_segments := { row; col = visible_col_start; index; data = clipped } :: !custom_segments)
+                      custom_segments :=
+                        {
+                          row;
+                          col = visible_col_start;
+                          command_order = index;
+                          data = clipped;
+                        }
+                        :: !custom_segments)
               lines)
         (index_commands commands);
       let rows =
@@ -378,7 +308,7 @@ let render_to_string = fun commands ->
             if by_col != 0 then
               by_col
             else
-              Int.compare left.index right.index)
+              Int.compare left.command_order right.command_order)
       in
       let render_grid_segment = fun buffer row from_col to_col ->
         for col = from_col to to_col - 1 do

@@ -6,117 +6,124 @@ type layout_node = {
   style: Style.t;
   children: layout_node list;
   mutable computed_size: Viewport.t;
-  mutable computed_position: Geometry.Point.t;
   mutable final_box: Geometry.Rect.t;
   mutable measured_text: Super.Config.text_measurement option;
 }
 
-type layout_constraints = {
+type node_constraints = {
   max_width: float option;
   max_height: float option;
   forced_width: float option;
   forced_height: float option;
 }
 
-type annotated_command = {
+type clipped_command = {
   command: Render.command;
   clip_stack: Geometry.Rect.t list;
 }
 
 let zero_viewport = Viewport.make ~width:0.0 ~height:0.0
 
-let zero_constraints = {
+let empty_node_constraints = {
   max_width = None;
   max_height = None;
   forced_width = None;
   forced_height = None;
 }
 
-let map_option = fun value fn ->
-  match value with
-  | Some value -> Some (fn value)
-  | None -> None
+module Math = struct
+  let map_option = fun value fn ->
+    match value with
+    | Some value -> Some (fn value)
+    | None -> None
 
-let float_max = fun left right ->
-  if Float.compare left right >= 0 then
-    left
-  else
-    right
+  let float_max = fun left right ->
+    if Float.compare left right >= 0 then
+      left
+    else
+      right
 
-let float_min = fun left right ->
-  if Float.compare left right <= 0 then
-    left
-  else
-    right
+  let float_min = fun left right ->
+    if Float.compare left right <= 0 then
+      left
+    else
+      right
 
-let clamp_non_negative = fun value ->
-  if Float.compare value 0.0 < 0 then
-    0.0
-  else
-    value
+  let clamp_non_negative = fun value ->
+    if Float.compare value 0.0 < 0 then
+      0.0
+    else
+      value
 
-let clamp_option = fun value min_opt max_opt ->
-  let value =
-    match min_opt with
-    | Some min -> float_max value min
+  let clamp_between = fun value min_opt max_opt ->
+    let value =
+      match min_opt with
+      | Some min -> float_max value min
+      | None -> value
+    in
+    match max_opt with
+    | Some max -> float_min value max
     | None -> value
-  in
-  match max_opt with
-  | Some max -> float_min value max
-  | None -> value
 
-let option_subtract = fun value delta ->
-  map_option value (fun value -> clamp_non_negative (value -. delta))
+  let option_subtract = fun value delta ->
+    map_option value (fun value -> clamp_non_negative (value -. delta))
 
-let option_default = fun value default ->
-  match value with
-  | Some value -> value
-  | None -> default
+  let option_default = fun value default ->
+    match value with
+    | Some value -> value
+    | None -> default
+
+  let list_last_index = fun values ->
+    let len = List.length values in
+    Int.max 0 (len - 1)
+end
+
+module Box_model = struct
+  let border_thickness = fun (style: Style.t) ->
+    if style.border_width > 0 then
+      1
+    else
+      0
+
+  let horizontal_inset = fun (style: Style.t) ->
+    let border = border_thickness style in
+    Float.of_int (style.padding.left + style.padding.right + border + border)
+
+  let vertical_inset = fun (style: Style.t) ->
+    let border = border_thickness style in
+    Float.of_int (style.padding.top + style.padding.bottom + border + border)
+
+  let content_origin = fun (rect: Geometry.Rect.t) (style: Style.t) ->
+    let border = Float.of_int (border_thickness style) in
+    Geometry.Point.make
+      ~x:(rect.x +. border +. Float.of_int style.padding.left)
+      ~y:(rect.y +. border +. Float.of_int style.padding.top)
+
+  let content_box = fun (rect: Geometry.Rect.t) (style: Style.t) ->
+    let inset_x = horizontal_inset style in
+    let inset_y = vertical_inset style in
+    let origin = content_origin rect style in
+    Geometry.Rect.make
+      ~x:origin.x
+      ~y:origin.y
+      ~width:(Math.clamp_non_negative (rect.width -. inset_x))
+      ~height:(Math.clamp_non_negative (rect.height -. inset_y))
+
+  let margin_horizontal = fun (margin: Style.margin) ->
+    Float.of_int (margin.left + margin.right)
+
+  let margin_vertical = fun (margin: Style.margin) ->
+    Float.of_int (margin.top + margin.bottom)
+
+  let outer_width = fun node ->
+    node.computed_size.width +. margin_horizontal node.style.margin
+
+  let outer_height = fun node ->
+    node.computed_size.height +. margin_vertical node.style.margin
+end
 
 let measurement_constraints = fun ?available_width ?available_height () ->
   Super.Config.constraints ?available_width ?available_height ()
-
-let list_last_index = fun values ->
-  let len = List.length values in
-  Int.max 0 (len - 1)
-
-let border_thickness = fun (style: Style.t) ->
-  if style.border_width > 0 then
-    1
-  else
-    0
-
-let horizontal_inset = fun (style: Style.t) ->
-  let border = border_thickness style in
-  Float.of_int (style.padding.left + style.padding.right + border + border)
-
-let vertical_inset = fun (style: Style.t) ->
-  let border = border_thickness style in
-  Float.of_int (style.padding.top + style.padding.bottom + border + border)
-
-let content_origin = fun (rect: Geometry.Rect.t) (style: Style.t) ->
-  let border = Float.of_int (border_thickness style) in
-  Geometry.Point.make
-    ~x:(rect.x +. border +. Float.of_int style.padding.left)
-    ~y:(rect.y +. border +. Float.of_int style.padding.top)
-
-let content_box = fun (rect: Geometry.Rect.t) (style: Style.t) ->
-  let inset_x = horizontal_inset style in
-  let inset_y = vertical_inset style in
-  let origin = content_origin rect style in
-  Geometry.Rect.make
-    ~x:origin.x
-    ~y:origin.y
-    ~width:(clamp_non_negative (rect.width -. inset_x))
-    ~height:(clamp_non_negative (rect.height -. inset_y))
-
-let margin_horizontal = fun (margin: Style.margin) -> Float.of_int (margin.left + margin.right)
-
-let margin_vertical = fun (margin: Style.margin) -> Float.of_int (margin.top + margin.bottom)
-
-let outer_width = fun node -> node.computed_size.width +. margin_horizontal node.style.margin
-
-let outer_height = fun node -> node.computed_size.height +. margin_vertical node.style.margin
 
 let get_element_style = function
   | Element.Text { style; _ } -> style
@@ -138,7 +145,6 @@ let rec build_layout_tree: Element.t -> layout_node = fun element ->
     style;
     children;
     computed_size = zero_viewport;
-    computed_position = Geometry.Point.zero;
     final_box = Geometry.Rect.zero;
     measured_text = None;
   }
@@ -146,7 +152,7 @@ let rec build_layout_tree: Element.t -> layout_node = fun element ->
 let resolve_non_fit_size = fun sizing available ->
   match sizing with
   | Style.Fixed value -> Some value
-  | Style.Percent ratio -> map_option available (fun value -> value *. ratio)
+  | Style.Percent ratio -> Math.map_option available (fun value -> value *. ratio)
   | Style.Grow -> available
   | Style.Fit -> None
 
@@ -159,12 +165,14 @@ let resolve_axis_size = fun sizing intrinsic available forced min_opt max_opt ->
         | Style.Fit -> intrinsic
         | Style.Fixed value -> value
         | Style.Percent ratio ->
-            option_default (map_option available (fun value -> value *. ratio)) intrinsic
+            Math.option_default
+              (Math.map_option available (fun value -> value *. ratio))
+              intrinsic
         | Style.Grow ->
-            option_default available intrinsic
+            Math.option_default available intrinsic
       )
   in
-  clamp_option (clamp_non_negative value) min_opt max_opt
+  Math.clamp_between (Math.clamp_non_negative value) min_opt max_opt
 
 let main_axis_sizing = fun direction (style: Style.t) ->
   match direction with
@@ -210,26 +218,26 @@ let text_align_offset = fun (style: Style.t) leftover ->
   | Style.TextRight -> leftover
 
 let child_available_width = fun parent_inner_width (style: Style.t) ->
-  option_subtract parent_inner_width (margin_horizontal style.margin)
+  Math.option_subtract parent_inner_width (Box_model.margin_horizontal style.margin)
 
 let child_available_height = fun parent_inner_height (style: Style.t) ->
-  option_subtract parent_inner_height (margin_vertical style.margin)
+  Math.option_subtract parent_inner_height (Box_model.margin_vertical style.margin)
 
-let content_width_constraint = fun (constraints: layout_constraints) (style: Style.t) ->
-  option_subtract (
+let content_width_constraint = fun (constraints: node_constraints) (style: Style.t) ->
+  Math.option_subtract (
     match constraints.forced_width with
     | Some width -> Some width
     | None -> constraints.max_width
-  ) (horizontal_inset style)
+  ) (Box_model.horizontal_inset style)
 
-let content_height_constraint = fun (constraints: layout_constraints) (style: Style.t) ->
-  option_subtract (
+let content_height_constraint = fun (constraints: node_constraints) (style: Style.t) ->
+  Math.option_subtract (
     match constraints.forced_height with
     | Some height -> Some height
     | None -> constraints.max_height
-  ) (vertical_inset style)
+  ) (Box_model.vertical_inset style)
 
-let text_width_constraint = fun (constraints: layout_constraints) (style: Style.t) ->
+let text_width_constraint = fun (constraints: node_constraints) (style: Style.t) ->
   let width_hint =
     match constraints.forced_width with
     | Some width -> Some width
@@ -243,9 +251,10 @@ let text_width_constraint = fun (constraints: layout_constraints) (style: Style.
             | Style.Character -> constraints.max_width
       )
   in
-  option_subtract width_hint (horizontal_inset style)
+  Math.option_subtract width_hint (Box_model.horizontal_inset style)
 
-let rec measure_node: layout_node -> layout_constraints -> Super.Config.t -> unit = fun node constraints config ->
+let rec measure_node: layout_node -> node_constraints -> Super.Config.t -> unit =
+fun node constraints config ->
   match node.element with
   | Element.Text { content; _ } ->
       measure_text_node node constraints config content
@@ -259,12 +268,13 @@ let rec measure_node: layout_node -> layout_constraints -> Super.Config.t -> uni
   | Element.Container _ ->
       measure_container node constraints config
 
-and measure_intrinsic_node: layout_node -> layout_constraints -> Viewport.t -> unit = fun node constraints intrinsic ->
+and measure_intrinsic_node: layout_node -> node_constraints -> Viewport.t -> unit =
+fun node constraints intrinsic ->
   let style = node.style in
   let width =
     resolve_axis_size
       style.sizing.width
-      (intrinsic.width +. horizontal_inset style)
+      (intrinsic.width +. Box_model.horizontal_inset style)
       constraints.max_width
       constraints.forced_width
       style.sizing.min_width
@@ -273,7 +283,7 @@ and measure_intrinsic_node: layout_node -> layout_constraints -> Viewport.t -> u
   let height =
     resolve_axis_size
       style.sizing.height
-      (intrinsic.height +. vertical_inset style)
+      (intrinsic.height +. Box_model.vertical_inset style)
       constraints.max_height
       constraints.forced_height
       style.sizing.min_height
@@ -281,7 +291,7 @@ and measure_intrinsic_node: layout_node -> layout_constraints -> Viewport.t -> u
   in
   node.computed_size <- Viewport.make ~width ~height
 
-and measure_text_node: layout_node -> layout_constraints -> Super.Config.t -> string -> unit =
+and measure_text_node: layout_node -> node_constraints -> Super.Config.t -> string -> unit =
 fun node constraints config content ->
   let style = node.style in
   let measurement =
@@ -299,7 +309,8 @@ fun node constraints config content ->
     constraints
     measurement.size
 
-and measure_container: layout_node -> layout_constraints -> Super.Config.t -> unit = fun node constraints config ->
+and measure_container: layout_node -> node_constraints -> Super.Config.t -> unit =
+fun node constraints config ->
   let style = node.style in
   let width_probe =
     match constraints.forced_width with
@@ -319,16 +330,16 @@ and measure_container: layout_node -> layout_constraints -> Super.Config.t -> un
         | None -> constraints.max_height
       )
   in
-  measure_children_base
+  measure_children_for_intrinsic_size
     node
-    ~parent_inner_width:(option_subtract width_probe (horizontal_inset style))
-    ~parent_inner_height:(option_subtract height_probe (vertical_inset style))
+    ~parent_inner_width:(Math.option_subtract width_probe (Box_model.horizontal_inset style))
+    ~parent_inner_height:(Math.option_subtract height_probe (Box_model.vertical_inset style))
     config;
   let intrinsic_width, intrinsic_height = container_intrinsic_size node in
   let width =
     resolve_axis_size
       style.sizing.width
-      (intrinsic_width +. horizontal_inset style)
+      (intrinsic_width +. Box_model.horizontal_inset style)
       constraints.max_width
       constraints.forced_width
       style.sizing.min_width
@@ -337,20 +348,25 @@ and measure_container: layout_node -> layout_constraints -> Super.Config.t -> un
   let height =
     resolve_axis_size
       style.sizing.height
-      (intrinsic_height +. vertical_inset style)
+      (intrinsic_height +. Box_model.vertical_inset style)
       constraints.max_height
       constraints.forced_height
       style.sizing.min_height
       style.sizing.max_height
   in
   node.computed_size <- Viewport.make ~width ~height;
-  measure_children_final
+  measure_children_for_final_size
     node
-    ~parent_inner_width:(Some (clamp_non_negative (width -. horizontal_inset style)))
-    ~parent_inner_height:(Some (clamp_non_negative (height -. vertical_inset style)))
+    ~parent_inner_width:(Some (Math.clamp_non_negative (width -. Box_model.horizontal_inset style)))
+    ~parent_inner_height:(Some (Math.clamp_non_negative (height -. Box_model.vertical_inset style)))
     config
 
-and measure_children_base: layout_node -> parent_inner_width:float option -> parent_inner_height:float option -> Super.Config.t -> unit =
+and measure_children_for_intrinsic_size:
+  layout_node ->
+  parent_inner_width:float option ->
+  parent_inner_height:float option ->
+  Super.Config.t ->
+  unit =
 fun node ~parent_inner_width ~parent_inner_height config ->
   let direction = node.style.direction in
   List.iter
@@ -370,10 +386,15 @@ fun node ~parent_inner_width ~parent_inner_height config ->
         config)
     node.children
 
-and measure_children_final: layout_node -> parent_inner_width:float option -> parent_inner_height:float option -> Super.Config.t -> unit =
+and measure_children_for_final_size:
+  layout_node ->
+  parent_inner_width:float option ->
+  parent_inner_height:float option ->
+  Super.Config.t ->
+  unit =
 fun node ~parent_inner_width ~parent_inner_height config ->
   let direction = node.style.direction in
-  let gap_count = list_last_index node.children in
+  let gap_count = Math.list_last_index node.children in
   let gap_space = Float.of_int (node.style.child_gap * gap_count) in
   List.iter
     (fun child ->
@@ -394,8 +415,8 @@ fun node ~parent_inner_width ~parent_inner_height config ->
         else
           acc +. (
             match direction with
-            | Style.LeftToRight -> outer_width child
-            | Style.TopToBottom -> outer_height child
+            | Style.LeftToRight -> Box_model.outer_width child
+            | Style.TopToBottom -> Box_model.outer_height child
           ))
   in
   let grow_margin_main =
@@ -404,8 +425,8 @@ fun node ~parent_inner_width ~parent_inner_height config ->
         if is_main_axis_grow direction child.style then
           acc +. (
             match direction with
-            | Style.LeftToRight -> margin_horizontal child.style.margin
-            | Style.TopToBottom -> margin_vertical child.style.margin
+            | Style.LeftToRight -> Box_model.margin_horizontal child.style.margin
+            | Style.TopToBottom -> Box_model.margin_vertical child.style.margin
           )
         else
           acc)
@@ -420,11 +441,11 @@ fun node ~parent_inner_width ~parent_inner_height config ->
   in
   let total_available =
     match direction with
-    | Style.LeftToRight -> option_default parent_inner_width 0.0
-    | Style.TopToBottom -> option_default parent_inner_height 0.0
+    | Style.LeftToRight -> Math.option_default parent_inner_width 0.0
+    | Style.TopToBottom -> Math.option_default parent_inner_height 0.0
   in
   let remaining =
-    clamp_non_negative (total_available -. gap_space -. fixed_outer_main -. grow_margin_main)
+    Math.clamp_non_negative (total_available -. gap_space -. fixed_outer_main -. grow_margin_main)
   in
   List.iter
     (fun child ->
@@ -486,20 +507,19 @@ and container_intrinsic_size: layout_node -> float * float = fun node ->
       ~fn:(fun (total_main, max_cross) child ->
         let child_main, child_cross =
           match direction with
-          | Style.LeftToRight -> (outer_width child, outer_height child)
-          | Style.TopToBottom -> (outer_height child, outer_width child)
+          | Style.LeftToRight -> (Box_model.outer_width child, Box_model.outer_height child)
+          | Style.TopToBottom -> (Box_model.outer_height child, Box_model.outer_width child)
         in
-        (total_main +. child_main, float_max max_cross child_cross))
+        (total_main +. child_main, Math.float_max max_cross child_cross))
   in
   let gap_space =
-    Float.of_int (node.style.child_gap * list_last_index node.children)
+    Float.of_int (node.style.child_gap * Math.list_last_index node.children)
   in
   match direction with
   | Style.LeftToRight -> (total_main +. gap_space, max_cross)
   | Style.TopToBottom -> (max_cross, total_main +. gap_space)
 
 let rec arrange_node: layout_node -> Geometry.Point.t -> unit = fun node origin ->
-  node.computed_position <- origin;
   node.final_box <- Geometry.Rect.make
     ~x:origin.x
     ~y:origin.y
@@ -514,7 +534,7 @@ let rec arrange_node: layout_node -> Geometry.Point.t -> unit = fun node origin 
 and arrange_children: layout_node -> unit = fun node ->
   let style = node.style in
   let rect = node.final_box in
-  let content_rect = content_box rect style in
+  let content_rect = Box_model.content_box rect style in
   let inner_main, inner_cross =
     match style.direction with
     | Style.LeftToRight -> (content_rect.width, content_rect.height)
@@ -525,30 +545,30 @@ and arrange_children: layout_node -> unit = fun node ->
       ~fn:(fun acc child ->
         acc +. (
           match style.direction with
-          | Style.LeftToRight -> outer_width child
-          | Style.TopToBottom -> outer_height child
+          | Style.LeftToRight -> Box_model.outer_width child
+          | Style.TopToBottom -> Box_model.outer_height child
         ))
-    +. Float.of_int (style.child_gap * list_last_index node.children)
+    +. Float.of_int (style.child_gap * Math.list_last_index node.children)
   in
   let main_offset =
     container_main_offset
       style.direction
       style
-      (clamp_non_negative (inner_main -. total_children_main))
+      (Math.clamp_non_negative (inner_main -. total_children_main))
   in
   let cursor = ref main_offset in
   List.iter
     (fun child ->
       let child_outer_cross =
         match style.direction with
-        | Style.LeftToRight -> outer_height child
-        | Style.TopToBottom -> outer_width child
+        | Style.LeftToRight -> Box_model.outer_height child
+        | Style.TopToBottom -> Box_model.outer_width child
       in
       let cross_offset =
         container_cross_offset
           style.direction
           style
-          (clamp_non_negative (inner_cross -. child_outer_cross))
+          (Math.clamp_non_negative (inner_cross -. child_outer_cross))
       in
       let child_origin =
         match style.direction with
@@ -564,8 +584,8 @@ and arrange_children: layout_node -> unit = fun node ->
       arrange_node child child_origin;
       cursor := !cursor +. (
         match style.direction with
-        | Style.LeftToRight -> outer_width child
-        | Style.TopToBottom -> outer_height child
+        | Style.LeftToRight -> Box_model.outer_width child
+        | Style.TopToBottom -> Box_model.outer_height child
       ) +. Float.of_int style.child_gap)
     node.children
 
@@ -579,7 +599,7 @@ let push_annotated = fun commands ~clip_stack command ->
   Vector.push commands ~value:{ command; clip_stack }
 
 let clip_rect = fun (node: layout_node) ->
-  let rect = content_box node.final_box node.style in
+  let rect = Box_model.content_box node.final_box node.style in
   if Float.compare rect.width 0.0 > 0 && Float.compare rect.height 0.0 > 0 then
     Some rect
   else
@@ -601,7 +621,7 @@ let push_background = fun node commands ~clip_stack ->
   | _ -> ()
 
 let push_border = fun node commands ~clip_stack ->
-  let width = border_thickness node.style in
+  let width = Box_model.border_thickness node.style in
   if width > 0 then
     match node.style.border_color with
     | Some color ->
@@ -618,7 +638,7 @@ let push_border = fun node commands ~clip_stack ->
 
 let push_text = fun node commands ~clip_stack content ->
   let style = node.style in
-  let text_rect = content_box node.final_box style in
+  let text_rect = Box_model.content_box node.final_box style in
   if Float.compare text_rect.width 0.0 <= 0 || Float.compare text_rect.height 0.0 <= 0 then
     ()
   else
@@ -635,15 +655,16 @@ let push_text = fun node commands ~clip_stack content ->
             style
     in
     let max_lines = Int.max 0 (Float.to_int (Float.floor text_rect.height)) in
-    let color = option_default style.foreground (`rgb (255, 255, 255)) in
+    let color = Math.option_default style.foreground (`rgb (255, 255, 255)) in
     let rec loop line_index = function
       | [] -> ()
       | _ when line_index >= max_lines -> ()
       | line :: rest ->
           let line_width = Float.of_int (String.width line) in
-          let visible_width = float_min line_width text_rect.width in
+          let visible_width = Math.float_min line_width text_rect.width in
           let line_x =
-            text_rect.x +. text_align_offset style (clamp_non_negative (text_rect.width -. line_width))
+            text_rect.x
+            +. text_align_offset style (Math.clamp_non_negative (text_rect.width -. line_width))
           in
           if line != "" then
             push_annotated commands ~clip_stack {
@@ -665,7 +686,7 @@ let push_text = fun node commands ~clip_stack content ->
     in
     loop 0 measurement.lines
 
-let rec generate_commands: layout_node -> annotated_command Vector.t -> Geometry.Rect.t list -> unit =
+let rec generate_commands: layout_node -> clipped_command Vector.t -> Geometry.Rect.t list -> unit =
 fun node commands clip_stack ->
   let child_clip_stack = child_clip_stack node clip_stack in
   push_background node commands ~clip_stack;
@@ -747,7 +768,7 @@ let linearize_commands = fun commands ->
 let compute = fun ~config element ->
   let layout_tree = build_layout_tree element in
   measure_node layout_tree {
-    zero_constraints with
+    empty_node_constraints with
     max_width = Some config.Super.Config.viewport.width;
     max_height = Some config.Super.Config.viewport.height;
   } config;
