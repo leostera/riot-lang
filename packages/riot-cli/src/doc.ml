@@ -46,8 +46,7 @@ let output_mode_of_matches = fun matches ->
     Human
 
 let write_json_event = fun (json: Data.Json.t) ->
-  print (Data.Json.to_string json);
-  print "\n"
+  println (Data.Json.to_string json)
 
 let write_doc_event = fun ~workspace_root ~mode (event: Riot_doc.event) ->
   match mode with

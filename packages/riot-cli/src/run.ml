@@ -144,8 +144,7 @@ let json_requested_for_child = fun args ->
       String.equal arg "--json")
 
 let write_json_event = fun (json: Data.Json.t) ->
-  print (Data.Json.to_string json);
-  print "\n"
+  println (Data.Json.to_string json)
 
 let run_error_to_json = fun (err: Run_runtime.run_error) ->
   let details =

@@ -94,8 +94,7 @@ let stamp_json_event = fun (json: Data.Json.t) ->
   | other -> other
 
 let write_json_event = fun (json: Data.Json.t) ->
-  print (Data.Json.to_string (stamp_json_event json));
-  print "\n"
+  println (Data.Json.to_string (stamp_json_event json))
 
 let write_build_event_json = fun event ->
   match Riot_build.Event.to_json event with

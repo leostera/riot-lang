@@ -278,8 +278,7 @@ let stamp_json_event = fun ~command_started_at ~duration_us (event: Test_runtime
   | other -> other
 
 let write_json_event = fun ~command_started_at ~duration_us event (json: Data.Json.t) ->
-  print (Data.Json.to_string (stamp_json_event ~command_started_at ~duration_us event json));
-  print "\n"
+  println (Data.Json.to_string (stamp_json_event ~command_started_at ~duration_us event json))
 
 let summary_duration_us = fun ~command_started_at (event: Test_runtime.test_event) ->
   match event with
@@ -390,8 +389,7 @@ let listed_suite_selector = fun (suite: Test_runtime.suite_binary) ->
   Riot_model.Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name
 
 let write_json_line = fun json ->
-  print (Data.Json.to_string json);
-  print "\n"
+  println (Data.Json.to_string json)
 
 let write_test_suite_listed_json = fun ~command_started_at ~(workspace:Riot_model.Workspace.t) (
   suite: Test_runtime.listed_test_suite

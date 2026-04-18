@@ -115,8 +115,7 @@ let listed_suite_selector = fun (suite: Bench_runtime.suite_binary) ->
   Package_name.to_string suite.package_name ^ ":" ^ suite.suite_name
 
 let write_json_line = fun json ->
-  print (Data.Json.to_string json);
-  print "\n"
+  println (Data.Json.to_string json)
 
 let write_bench_suite_listed_json = fun ~command_started_at ~(workspace:Riot_model.Workspace.t) (
   suite: Bench_runtime.listed_bench_suite
@@ -284,8 +283,7 @@ let stamp_json_event = fun ~command_started_at ~duration_us (event: Bench_runtim
   | other -> other
 
 let write_json_event = fun ~command_started_at ~duration_us event (json: Data.Json.t) ->
-  print (Data.Json.to_string (stamp_json_event ~command_started_at ~duration_us event json));
-  print "\n"
+  println (Data.Json.to_string (stamp_json_event ~command_started_at ~duration_us event json))
 
 let summary_duration_us = fun ~command_started_at (event: Bench_runtime.bench_event) ->
   match event with
