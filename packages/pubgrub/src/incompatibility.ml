@@ -68,8 +68,9 @@ let is_terminal = fun incompat root_pkg root_ver ->
       true
   | External { terms=[ term ]; cause=NotRoot (pkg, ver) } -> pkg = root_pkg
   && ver = root_ver
-  && Term.is_positive term
+  && not (Term.is_positive term)
   && Term.package term = root_pkg
+  && Ranges.contains ~compare_v:version_compare (Term.ranges term) root_ver
   | Derived { terms=[ term ]; _ } ->
       (* Derived incompatibility with only root term is terminal *)
       Term.package term = root_pkg

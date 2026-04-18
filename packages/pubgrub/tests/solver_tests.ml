@@ -62,6 +62,91 @@ let assert_term = fun ~package ~positive ~ranges term ->
       ~actual:(Pubgrub.Term.ranges term)
       ~message:("Unexpected ranges for term " ^ package)
 
+let assert_term_incompat = fun ~package ~positive ~ranges incompat ->
+  match Pubgrub.Incompatibility.get_term incompat package with
+  | Some term -> assert_term ~package ~positive ~ranges term
+  | None -> Error ("Expected incompatibility term for package " ^ package)
+
+let assert_version_equal = fun ~expected ~actual ~message ->
+  if Int.equal (Pubgrub.version_compare expected actual) 0 then
+    Ok ()
+  else
+    Error
+      (message
+      ^ ": got "
+      ^ Pubgrub.version_to_string actual
+      ^ ", expected "
+      ^ Pubgrub.version_to_string expected)
+
+let assert_choose_none = fun result ->
+  match result with
+  | Ok None -> Ok ()
+  | Ok (Some version) ->
+      Error ("Expected no version but got " ^ Pubgrub.version_to_string version)
+  | Error err -> Error ("Unexpected provider error: " ^ err)
+
+let assert_choose_version = fun ~expected result ->
+  match result with
+  | Ok (Some actual) ->
+      assert_version_equal
+        ~expected
+        ~actual
+        ~message:"Unexpected chosen version"
+  | Ok None ->
+      Error "Expected a chosen version but got none"
+  | Error err -> Error ("Unexpected provider error: " ^ err)
+
+let assert_count_versions = fun ~expected result ->
+  match result with
+  | Ok actual when Int.equal actual expected -> Ok ()
+  | Ok actual ->
+      Error
+        ("Unexpected version count: got "
+        ^ Int.to_string actual
+        ^ ", expected "
+        ^ Int.to_string expected)
+  | Error err -> Error ("Unexpected provider error: " ^ err)
+
+let rec equal_dependencies = fun expected actual ->
+  match (expected, actual) with
+  | [], [] -> true
+  | (expected_pkg, expected_ranges) :: expected_rest, (actual_pkg, actual_ranges) :: actual_rest ->
+      String.equal expected_pkg actual_pkg
+      && ranges_equal expected_ranges actual_ranges
+      && equal_dependencies expected_rest actual_rest
+  | _ -> false
+
+let assert_dependencies = fun ~expected result ->
+  match result with
+  | Ok (Pubgrub.Provider.Available actual) when equal_dependencies expected actual -> Ok ()
+  | Ok (Pubgrub.Provider.Available _) ->
+      Error "Unexpected dependency list"
+  | Ok (Pubgrub.Provider.Unavailable reason) ->
+      Error ("Expected available dependencies but got unavailable: " ^ reason)
+  | Error err -> Error ("Unexpected provider error: " ^ err)
+
+let assert_unavailable = fun ~expected result ->
+  match result with
+  | Ok (Pubgrub.Provider.Unavailable actual) when String.equal actual expected -> Ok ()
+  | Ok (Pubgrub.Provider.Unavailable actual) ->
+      Error ("Unexpected unavailable reason: " ^ actual)
+  | Ok (Pubgrub.Provider.Available _) ->
+      Error "Expected unavailable provider result"
+  | Error err -> Error ("Unexpected provider error: " ^ err)
+
+let assert_relation = fun expected actual ->
+  match (expected, actual) with
+  | `Satisfied, `Satisfied -> Ok ()
+  | `Unknown, `Unknown -> Ok ()
+  | `AlmostSatisfied expected_pkg, `AlmostSatisfied actual_pkg when String.equal expected_pkg actual_pkg -> Ok ()
+  | `Contradicted expected_pkg, `Contradicted actual_pkg when String.equal expected_pkg actual_pkg -> Ok ()
+  | _ -> Error "Unexpected relation result"
+
+let custom_incompat = fun terms ->
+  Pubgrub.Incompatibility.create_external
+    terms
+    (Pubgrub.Incompatibility.Custom ("custom", Pubgrub.full, "test"))
+
 let rec equal_string_lists = fun left right ->
   match (left, right) with
   | [], [] -> true
@@ -489,6 +574,374 @@ let test_term_intersection_on_different_packages_raises =
           Pubgrub.Term.intersection
             (Pubgrub.Term.positive "left" Pubgrub.full)
             (Pubgrub.Term.positive "right" Pubgrub.full)))
+
+let test_provider_choose_version_missing_package =
+  Test.case "Provider: missing package choose_version returns none"
+    (fun _ctx ->
+      let provider = Pubgrub.to_provider (Pubgrub.create_offline ()) in
+      assert_choose_none (provider.choose_version "missing" Pubgrub.full))
+
+let test_provider_count_versions_missing_package =
+  Test.case "Provider: missing package count_versions returns zero"
+    (fun _ctx ->
+      let provider = Pubgrub.to_provider (Pubgrub.create_offline ()) in
+      assert_count_versions ~expected:0 (provider.count_versions "missing" Pubgrub.full))
+
+let test_provider_get_dependencies_missing_package =
+  Test.case "Provider: missing package get_dependencies returns unavailable"
+    (fun _ctx ->
+      let provider = Pubgrub.to_provider (Pubgrub.create_offline ()) in
+      assert_unavailable
+        ~expected:"Package 'missing' not found"
+        (provider.get_dependencies "missing" (v 1 0 0)))
+
+let test_provider_choose_version_picks_highest_match =
+  Test.case "Provider: choose_version picks the highest matching version"
+    (fun _ctx ->
+      let offline = Pubgrub.create_offline () in
+      Pubgrub.add_package offline "foo" (v 1 0 0) [];
+      Pubgrub.add_package offline "foo" (v 2 0 0) [];
+      Pubgrub.add_package offline "foo" (v 3 0 0) [];
+      let provider = Pubgrub.to_provider offline in
+      assert_choose_version
+        ~expected:(v 3 0 0)
+        (provider.choose_version "foo" (Pubgrub.higher_than (v 2 0 0))))
+
+let test_provider_choose_version_skips_nonmatching_higher =
+  Test.case "Provider: choose_version skips a nonmatching higher version"
+    (fun _ctx ->
+      let offline = Pubgrub.create_offline () in
+      Pubgrub.add_package offline "foo" (v 1 0 0) [];
+      Pubgrub.add_package offline "foo" (v 2 0 0) [];
+      Pubgrub.add_package offline "foo" (v 3 0 0) [];
+      let provider = Pubgrub.to_provider offline in
+      assert_choose_version
+        ~expected:(v 2 0 0)
+        (provider.choose_version "foo" (Pubgrub.strictly_lower_than (v 3 0 0))))
+
+let test_provider_choose_version_exact_match =
+  Test.case "Provider: choose_version respects an exact singleton range"
+    (fun _ctx ->
+      let offline = Pubgrub.create_offline () in
+      Pubgrub.add_package offline "foo" (v 1 0 0) [];
+      Pubgrub.add_package offline "foo" (v 2 0 0) [];
+      Pubgrub.add_package offline "foo" (v 3 0 0) [];
+      let provider = Pubgrub.to_provider offline in
+      assert_choose_version
+        ~expected:(v 2 0 0)
+        (provider.choose_version "foo" (Pubgrub.singleton (v 2 0 0))))
+
+let test_provider_count_versions_across_disjoint_ranges =
+  Test.case "Provider: count_versions handles disjoint semantic ranges"
+    (fun _ctx ->
+      let offline = Pubgrub.create_offline () in
+      Pubgrub.add_package offline "foo" (v 1 0 0) [];
+      Pubgrub.add_package offline "foo" (v 2 0 0) [];
+      Pubgrub.add_package offline "foo" (v 3 0 0) [];
+      let provider = Pubgrub.to_provider offline in
+      let ranges = Pubgrub.Ranges.union
+        ~compare_v:Pubgrub.version_compare
+        (Pubgrub.singleton (v 1 0 0))
+        (Pubgrub.singleton (v 3 0 0)) in
+      assert_count_versions ~expected:2 (provider.count_versions "foo" ranges))
+
+let test_provider_duplicate_version_latest_deps_win =
+  Test.case "Provider: duplicate package versions use deterministic latest deps"
+    (fun _ctx ->
+      let offline = Pubgrub.create_offline () in
+      Pubgrub.add_package offline "foo" (v 1 0 0) [ ("left", Pubgrub.full) ];
+      Pubgrub.add_package offline "foo" (v 1 0 0) [ ("right", Pubgrub.singleton (v 2 0 0)) ];
+      let provider = Pubgrub.to_provider offline in
+      assert_dependencies
+        ~expected:[ ("right", Pubgrub.singleton (v 2 0 0)) ]
+        (provider.get_dependencies "foo" (v 1 0 0)))
+
+let test_provider_insertion_order_is_semantic =
+  Test.case "Provider: insertion order does not affect highest-match selection"
+    (fun _ctx ->
+      let forward = Pubgrub.create_offline () in
+      Pubgrub.add_package forward "foo" (v 1 0 0) [];
+      Pubgrub.add_package forward "foo" (v 3 0 0) [ ("dep", Pubgrub.singleton (v 3 0 0)) ];
+      Pubgrub.add_package forward "foo" (v 2 0 0) [];
+      let reverse = Pubgrub.create_offline () in
+      Pubgrub.add_package reverse "foo" (v 2 0 0) [];
+      Pubgrub.add_package reverse "foo" (v 1 0 0) [];
+      Pubgrub.add_package reverse "foo" (v 3 0 0) [ ("dep", Pubgrub.singleton (v 3 0 0)) ];
+      let forward_provider = Pubgrub.to_provider forward in
+      let reverse_provider = Pubgrub.to_provider reverse in
+      match (
+        forward_provider.choose_version "foo" Pubgrub.full,
+        reverse_provider.choose_version "foo" Pubgrub.full
+      ) with
+      | Ok (Some left), Ok (Some right) ->
+          assert_version_equal
+            ~expected:left
+            ~actual:right
+            ~message:"Expected insertion order to preserve selected version"
+      | _ -> Error "Expected both providers to choose a version")
+
+let test_incompatibility_from_dependency_nonempty =
+  Test.case "Incompatibility: from_dependency encodes parent and dependency terms"
+    (fun _ctx ->
+      let dep_ranges = Pubgrub.between (v 1 0 0) (v 3 0 0) in
+      let incompat = Pubgrub.Incompatibility.from_dependency "root" (v 1 0 0) ("dep", dep_ranges) in
+      let terms = Pubgrub.Incompatibility.terms incompat in
+      if not (Int.equal (List.length terms) 2) then
+        Error "Expected two terms for nonempty dependency incompatibility"
+      else
+        match Pubgrub.Incompatibility.as_dependency incompat with
+        | Some ("root", "dep") -> (
+            match assert_term_incompat
+              ~package:"root"
+              ~positive:true
+              ~ranges:(Pubgrub.singleton (v 1 0 0))
+              incompat with
+            | Error _ as err -> err
+            | Ok () ->
+                assert_term_incompat
+                  ~package:"dep"
+                  ~positive:false
+                  ~ranges:dep_ranges
+                  incompat
+          )
+        | _ -> Error "Expected dependency incompatibility to round-trip through as_dependency")
+
+let test_incompatibility_from_dependency_empty =
+  Test.case "Incompatibility: from_dependency drops empty dependency terms"
+    (fun _ctx ->
+      let incompat = Pubgrub.Incompatibility.from_dependency "root" (v 1 0 0) ("dep", Pubgrub.empty) in
+      if Int.equal (List.length (Pubgrub.Incompatibility.terms incompat)) 1 then
+        assert_term_incompat
+          ~package:"root"
+          ~positive:true
+          ~ranges:(Pubgrub.singleton (v 1 0 0))
+          incompat
+      else
+        Error "Expected empty dependency range to produce only the parent term")
+
+let test_incompatibility_no_versions_preserves_requested_range =
+  Test.case "Incompatibility: no_versions preserves the requested range"
+    (fun _ctx ->
+      let requested = Pubgrub.between (v 2 0 0) (v 4 0 0) in
+      let incompat = Pubgrub.Incompatibility.no_versions "foo" requested in
+      if not (Int.equal (List.length (Pubgrub.Incompatibility.terms incompat)) 1) then
+        Error "Expected no_versions incompatibility to keep a single requested term"
+      else
+        match Pubgrub.Incompatibility.as_dependency incompat with
+        | None ->
+            assert_term_incompat
+              ~package:"foo"
+              ~positive:true
+              ~ranges:requested
+              incompat
+        | Some _ -> Error "Expected no_versions incompatibility not to look like a dependency")
+
+let test_incompatibility_as_dependency_only_for_dependencies =
+  Test.case "Incompatibility: as_dependency only recognizes dependency causes"
+    (fun _ctx ->
+      let dependency = Pubgrub.Incompatibility.from_dependency "root" (v 1 0 0) ("dep", Pubgrub.full) in
+      let no_versions = Pubgrub.Incompatibility.no_versions "dep" Pubgrub.full in
+      match (Pubgrub.Incompatibility.as_dependency dependency, Pubgrub.Incompatibility.as_dependency no_versions) with
+      | Some ("root", "dep"), None -> Ok ()
+      | _ -> Error "Expected only dependency incompatibilities to round-trip via as_dependency")
+
+let test_incompatibility_merge_dependents_matching =
+  Test.case "Incompatibility: merge_dependents merges matching dependency causes"
+    (fun _ctx ->
+      let dep_ranges = Pubgrub.between (v 1 0 0) (v 3 0 0) in
+      let left = Pubgrub.Incompatibility.from_dependency "root" (v 1 0 0) ("dep", dep_ranges) in
+      let right = Pubgrub.Incompatibility.from_dependency "root" (v 2 0 0) ("dep", dep_ranges) in
+      match Pubgrub.Incompatibility.merge_dependents left right with
+      | Some merged -> (
+          match assert_term_incompat
+            ~package:"root"
+            ~positive:false
+            ~ranges:(Pubgrub.Ranges.union
+              ~compare_v:Pubgrub.version_compare
+              (Pubgrub.singleton (v 1 0 0))
+              (Pubgrub.singleton (v 2 0 0)))
+            merged with
+          | Error _ as err -> err
+          | Ok () ->
+              assert_term_incompat
+                ~package:"dep"
+                ~positive:true
+                ~ranges:dep_ranges
+                merged
+        )
+      | None -> Error "Expected matching dependency causes to merge")
+
+let test_incompatibility_merge_dependents_different_ranges =
+  Test.case "Incompatibility: merge_dependents keeps distinct dependency ranges separate"
+    (fun _ctx ->
+      let left = Pubgrub.Incompatibility.from_dependency
+        "root"
+        (v 1 0 0)
+        ("dep", Pubgrub.between (v 1 0 0) (v 2 0 0)) in
+      let right = Pubgrub.Incompatibility.from_dependency
+        "root"
+        (v 2 0 0)
+        ("dep", Pubgrub.between (v 2 0 0) (v 3 0 0)) in
+      match Pubgrub.Incompatibility.merge_dependents left right with
+      | None -> Ok ()
+      | Some _ -> Error "Expected different dependency ranges not to merge")
+
+let test_incompatibility_prior_cause_merges_and_canonicalizes =
+  Test.case "Incompatibility: prior_cause merges target terms and canonicalizes duplicates"
+    (fun _ctx ->
+      let left = custom_incompat
+        [
+          Pubgrub.Term.positive "shared" (Pubgrub.between (v 1 0 0) (v 3 0 0));
+          Pubgrub.Term.positive "left" (Pubgrub.singleton (v 1 0 0));
+          Pubgrub.Term.positive "side" (Pubgrub.between (v 1 0 0) (v 4 0 0));
+        ] in
+      let right = custom_incompat
+        [
+          Pubgrub.Term.positive "shared" (Pubgrub.between (v 2 0 0) (v 5 0 0));
+          Pubgrub.Term.positive "right" (Pubgrub.singleton (v 2 0 0));
+          Pubgrub.Term.positive "side" (Pubgrub.between (v 2 0 0) (v 3 0 0));
+        ] in
+      let prior = Pubgrub.Incompatibility.prior_cause
+        ~extra_term:(Pubgrub.Term.negative "extra" (Pubgrub.singleton (v 9 0 0)))
+        left
+        right
+        "shared" in
+      let terms = Pubgrub.Incompatibility.terms prior in
+      if not (Int.equal (List.length terms) 5) then
+        Error "Expected prior_cause to leave one canonical term per package"
+      else
+        match assert_term_incompat
+          ~package:"shared"
+          ~positive:true
+          ~ranges:(Pubgrub.between (v 1 0 0) (v 5 0 0))
+          prior with
+        | Error _ as err -> err
+        | Ok () -> (
+            match assert_term_incompat
+              ~package:"side"
+              ~positive:true
+              ~ranges:(Pubgrub.between (v 2 0 0) (v 3 0 0))
+              prior with
+            | Error _ as err -> err
+            | Ok () -> (
+                match assert_term_incompat
+                  ~package:"left"
+                  ~positive:true
+                  ~ranges:(Pubgrub.singleton (v 1 0 0))
+                  prior with
+                | Error _ as err -> err
+                | Ok () -> (
+                    match assert_term_incompat
+                      ~package:"right"
+                      ~positive:true
+                      ~ranges:(Pubgrub.singleton (v 2 0 0))
+                      prior with
+                    | Error _ as err -> err
+                    | Ok () ->
+                        assert_term_incompat
+                          ~package:"extra"
+                          ~positive:false
+                          ~ranges:(Pubgrub.singleton (v 9 0 0))
+                          prior
+                  )
+              )
+          )
+    )
+
+let test_incompatibility_not_root_is_terminal_for_root =
+  Test.case "Incompatibility: not_root is terminal for the selected root"
+    (fun _ctx ->
+      let incompat = Pubgrub.Incompatibility.not_root "root" (v 1 0 0) in
+      if Pubgrub.Incompatibility.is_terminal incompat "root" (v 1 0 0) then
+        Ok ()
+      else
+        Error "Expected not_root incompatibility to be terminal for the root decision")
+
+let test_relation_satisfied_when_all_terms_met =
+  Test.case "Partial_solution: relation is satisfied when all terms are met"
+    (fun _ctx ->
+      let solution = Pubgrub.Partial_solution.empty ()
+        |> fun solution -> Pubgrub.Partial_solution.add_decision solution "foo" (v 1 0 0)
+        |> fun solution -> Pubgrub.Partial_solution.add_decision solution "bar" (v 2 0 0) in
+      let incompat = custom_incompat
+        [
+          Pubgrub.Term.positive "foo" (Pubgrub.singleton (v 1 0 0));
+          Pubgrub.Term.negative "bar" (Pubgrub.singleton (v 1 0 0));
+        ] in
+      assert_relation `Satisfied (Pubgrub.Partial_solution.relation solution incompat))
+
+let test_relation_almost_satisfied_with_one_undecided =
+  Test.case "Partial_solution: relation is almost satisfied with one undecided package"
+    (fun _ctx ->
+      let solution = Pubgrub.Partial_solution.empty ()
+        |> fun solution -> Pubgrub.Partial_solution.add_decision solution "foo" (v 1 0 0) in
+      let incompat = custom_incompat
+        [
+          Pubgrub.Term.positive "foo" (Pubgrub.singleton (v 1 0 0));
+          Pubgrub.Term.positive "bar" (Pubgrub.singleton (v 2 0 0));
+        ] in
+      assert_relation
+        (`AlmostSatisfied "bar")
+        (Pubgrub.Partial_solution.relation solution incompat))
+
+let test_relation_contradicted_by_decision =
+  Test.case "Partial_solution: relation is contradicted by a decided version"
+    (fun _ctx ->
+      let solution = Pubgrub.Partial_solution.empty ()
+        |> fun solution -> Pubgrub.Partial_solution.add_decision solution "foo" (v 1 0 0) in
+      let incompat = custom_incompat
+        [ Pubgrub.Term.positive "foo" (Pubgrub.singleton (v 2 0 0)) ] in
+      assert_relation
+        (`Contradicted "foo")
+        (Pubgrub.Partial_solution.relation solution incompat))
+
+let test_relation_constrained_positive_subset_is_satisfied =
+  Test.case "Partial_solution: relation treats constrained positive subsets as satisfied"
+    (fun _ctx ->
+      let constraint_incompat = custom_incompat
+        [ Pubgrub.Term.negative "foo" (Pubgrub.between (v 2 0 0) (v 3 0 0)) ] in
+      let solution = Pubgrub.Partial_solution.empty ()
+        |> fun solution -> Pubgrub.Partial_solution.add_derivation solution "foo" constraint_incompat in
+      let incompat = custom_incompat
+        [ Pubgrub.Term.positive "foo" (Pubgrub.between (v 1 0 0) (v 4 0 0)) ] in
+      assert_relation `Satisfied (Pubgrub.Partial_solution.relation solution incompat))
+
+let test_relation_constrained_positive_overlap_is_almost_satisfied =
+  Test.case "Partial_solution: relation narrows overlapping constrained positives"
+    (fun _ctx ->
+      let constraint_incompat = custom_incompat
+        [ Pubgrub.Term.negative "foo" (Pubgrub.between (v 2 0 0) (v 4 0 0)) ] in
+      let solution = Pubgrub.Partial_solution.empty ()
+        |> fun solution -> Pubgrub.Partial_solution.add_derivation solution "foo" constraint_incompat in
+      let incompat = custom_incompat
+        [ Pubgrub.Term.positive "foo" (Pubgrub.between (v 3 0 0) (v 5 0 0)) ] in
+      assert_relation
+        (`AlmostSatisfied "foo")
+        (Pubgrub.Partial_solution.relation solution incompat))
+
+let test_relation_constrained_negative_disjoint_is_satisfied =
+  Test.case "Partial_solution: relation treats constrained negative disjointness as satisfied"
+    (fun _ctx ->
+      let constraint_incompat = custom_incompat
+        [ Pubgrub.Term.negative "foo" (Pubgrub.between (v 1 0 0) (v 2 0 0)) ] in
+      let solution = Pubgrub.Partial_solution.empty ()
+        |> fun solution -> Pubgrub.Partial_solution.add_derivation solution "foo" constraint_incompat in
+      let incompat = custom_incompat
+        [ Pubgrub.Term.negative "foo" (Pubgrub.between (v 2 0 0) (v 3 0 0)) ] in
+      assert_relation `Satisfied (Pubgrub.Partial_solution.relation solution incompat))
+
+let test_relation_constrained_negative_subset_is_contradicted =
+  Test.case "Partial_solution: relation treats constrained negative subsets as contradicted"
+    (fun _ctx ->
+      let constraint_incompat = custom_incompat
+        [ Pubgrub.Term.negative "foo" (Pubgrub.between (v 2 0 0) (v 3 0 0)) ] in
+      let solution = Pubgrub.Partial_solution.empty ()
+        |> fun solution -> Pubgrub.Partial_solution.add_derivation solution "foo" constraint_incompat in
+      let incompat = custom_incompat
+        [ Pubgrub.Term.negative "foo" (Pubgrub.between (v 2 0 0) (v 4 0 0)) ] in
+      assert_relation
+        (`Contradicted "foo")
+        (Pubgrub.Partial_solution.relation solution incompat))
 
 let test_partial_solution_missing_derivation_package_raises =
   Test.case "Partial_solution: add_derivation requires matching package term"
@@ -1595,6 +2048,30 @@ let all_tests =
     test_term_positive_negative_union;
     test_term_union_on_different_packages_raises;
     test_term_intersection_on_different_packages_raises;
+    test_provider_choose_version_missing_package;
+    test_provider_count_versions_missing_package;
+    test_provider_get_dependencies_missing_package;
+    test_provider_choose_version_picks_highest_match;
+    test_provider_choose_version_skips_nonmatching_higher;
+    test_provider_choose_version_exact_match;
+    test_provider_count_versions_across_disjoint_ranges;
+    test_provider_duplicate_version_latest_deps_win;
+    test_provider_insertion_order_is_semantic;
+    test_incompatibility_from_dependency_nonempty;
+    test_incompatibility_from_dependency_empty;
+    test_incompatibility_no_versions_preserves_requested_range;
+    test_incompatibility_as_dependency_only_for_dependencies;
+    test_incompatibility_merge_dependents_matching;
+    test_incompatibility_merge_dependents_different_ranges;
+    test_incompatibility_prior_cause_merges_and_canonicalizes;
+    test_incompatibility_not_root_is_terminal_for_root;
+    test_relation_satisfied_when_all_terms_met;
+    test_relation_almost_satisfied_with_one_undecided;
+    test_relation_contradicted_by_decision;
+    test_relation_constrained_positive_subset_is_satisfied;
+    test_relation_constrained_positive_overlap_is_almost_satisfied;
+    test_relation_constrained_negative_disjoint_is_satisfied;
+    test_relation_constrained_negative_subset_is_contradicted;
     test_partial_solution_missing_derivation_package_raises;
     test_solution_order_is_deterministic;
     test_conflicting_root_constraints_fail;
