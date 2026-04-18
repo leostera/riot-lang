@@ -670,6 +670,15 @@ let test_provider_duplicate_version_latest_deps_win =
         ~expected:[ ("right", Pubgrub.singleton (v 2 0 0)) ]
         (provider.get_dependencies "foo" (v 1 0 0)))
 
+let test_provider_duplicate_versions_count_once =
+  Test.case "Provider: duplicate package versions count once"
+    (fun _ctx ->
+      let offline = Pubgrub.create_offline () in
+      Pubgrub.add_package offline "foo" (v 1 0 0) [];
+      Pubgrub.add_package offline "foo" (v 1 0 0) [ ("right", Pubgrub.singleton (v 2 0 0)) ];
+      let provider = Pubgrub.to_provider offline in
+      assert_count_versions ~expected:1 (provider.count_versions "foo" Pubgrub.full))
+
 let test_provider_insertion_order_is_semantic =
   Test.case "Provider: insertion order does not affect highest-match selection"
     (fun _ctx ->
@@ -2210,6 +2219,7 @@ let all_tests =
     test_provider_choose_version_exact_match;
     test_provider_count_versions_across_disjoint_ranges;
     test_provider_duplicate_version_latest_deps_win;
+    test_provider_duplicate_versions_count_once;
     test_provider_insertion_order_is_semantic;
     test_incompatibility_from_dependency_nonempty;
     test_incompatibility_from_dependency_empty;

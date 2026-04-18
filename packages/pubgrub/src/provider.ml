@@ -20,26 +20,16 @@ type 'error t = {
   get_dependencies: package -> version -> (dependencies, 'error) result;
 }
 
-type offline_entry = {
-  version: version;
-  deps: dependency_list;
+type offline_package = {
+  versions_desc: version list;
+  deps_by_version: (version, dependency_list) Collections.HashMap.t;
 }
 
 type offline = {
-  packages: (package, offline_entry list) Collections.HashMap.t;
+  packages: (package, offline_package) Collections.HashMap.t;
 }
 
 let create_offline = fun () -> { packages = Collections.HashMap.create () }
-
-let add_package = fun provider pkg ver deps ->
-  let entry = { version = ver; deps } in
-  match Collections.HashMap.get provider.packages ~key:pkg with
-  | None ->
-      let _ = Collections.HashMap.insert provider.packages ~key:pkg ~value:[ entry ] in
-      ()
-  | Some entries ->
-      let _ = Collections.HashMap.insert provider.packages ~key:pkg ~value:(entry :: entries) in
-      ()
 
 let version_compare = fun a b ->
   match Version.compare a b with
@@ -47,47 +37,73 @@ let version_compare = fun a b ->
   | Eq -> 0
   | Gt -> 1
 
+let rec insert_version_desc = fun versions ver ->
+  match versions with
+  | [] -> [ ver ]
+  | current :: rest -> (
+      match version_compare ver current with
+      | 0 -> versions
+      | n when n > 0 -> ver :: versions
+      | _ -> current :: insert_version_desc rest ver
+    )
+
+let create_offline_package = fun ver deps ->
+  let deps_by_version = Collections.HashMap.create () in
+  let _ = Collections.HashMap.insert deps_by_version ~key:ver ~value:deps in
+  { versions_desc = [ ver ]; deps_by_version }
+
+let add_package = fun provider pkg ver deps ->
+  match Collections.HashMap.get provider.packages ~key:pkg with
+  | None ->
+      let offline_pkg = create_offline_package ver deps in
+      let _ = Collections.HashMap.insert provider.packages ~key:pkg ~value:offline_pkg in
+      ()
+  | Some offline_pkg ->
+      let _ = Collections.HashMap.insert offline_pkg.deps_by_version ~key:ver ~value:deps in
+      let updated = {
+        offline_pkg with
+        versions_desc = insert_version_desc offline_pkg.versions_desc ver
+      } in
+      let _ = Collections.HashMap.insert provider.packages ~key:pkg ~value:updated in
+      ()
+
 let to_provider: offline -> string t = fun offline ->
   let choose_version pkg ranges =
     match Collections.HashMap.get offline.packages ~key:pkg with
     | None -> Ok None
-    | Some entries ->
-        let matching =
-          List.filter
-            entries
-            ~fn:(fun entry -> Ranges.contains ~compare_v:version_compare ranges entry.version)
-        in
-        let sorted =
-          List.sort matching ~compare:(fun a b -> version_compare b.version a.version)
-        in
+    | Some offline_pkg ->
         Ok (
-          match sorted with
-          | [] -> None
-          | entry :: _ -> Some entry.version
+          List.find offline_pkg.versions_desc ~fn:(fun version ->
+            Ranges.contains ~compare_v:version_compare ranges version)
         )
   in
   let count_versions pkg ranges =
     match Collections.HashMap.get offline.packages ~key:pkg with
     | None -> Ok 0
-    | Some entries ->
-        let matching =
-          List.filter
-            entries
-            ~fn:(fun entry -> Ranges.contains ~compare_v:version_compare ranges entry.version)
-        in
-        Ok (List.length matching)
+    | Some offline_pkg ->
+        Ok (
+          List.fold_left offline_pkg.versions_desc ~acc:0
+            ~fn:(fun count version ->
+              if Ranges.contains ~compare_v:version_compare ranges version then
+                count + 1
+              else
+                count)
+        )
   in
   let get_dependencies pkg ver =
     match Collections.HashMap.get offline.packages ~key:pkg with
     | None -> Ok (Unavailable ("Package '" ^ pkg ^ "' not found"))
-    | Some entries -> (
-        match List.find entries ~fn:(fun entry -> version_compare entry.version ver = 0) with
-        | None -> Ok (Unavailable ("Version "
-        ^ Version.to_string ver
-        ^ " not found for package '"
-        ^ pkg
-        ^ "'"))
-        | Some entry -> Ok (Available entry.deps)
+    | Some offline_pkg -> (
+        match Collections.HashMap.get offline_pkg.deps_by_version ~key:ver with
+        | None ->
+            Ok
+              (Unavailable
+                 ("Version "
+                 ^ Version.to_string ver
+                 ^ " not found for package '"
+                 ^ pkg
+                 ^ "'"))
+        | Some deps -> Ok (Available deps)
       )
   in
   { choose_version; count_versions; get_dependencies }
