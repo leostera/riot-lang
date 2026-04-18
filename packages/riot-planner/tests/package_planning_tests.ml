@@ -1029,6 +1029,72 @@ let test_underscore_sibling_module_dependency_is_planned = fun _ctx ->
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_nested_library_interfaces_depend_on_inherited_aliases = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_nested_library_aliases"
+      (fun tmpdir ->
+        let package_root = Path.(tmpdir / Path.v "pkg") in
+        let src_dir = Path.(package_root / Path.v "src") in
+        let archive_dir = Path.(src_dir / Path.v "archive") in
+        let _ = Fs.create_dir_all archive_dir |> Result.expect ~msg:"expected archive dir creation to succeed" in
+        let _ = Fs.write
+          "module Archive = Archive\n"
+          Path.(src_dir / Path.v "pkg.ml")
+        |> Result.expect ~msg:"expected pkg.ml write to succeed" in
+        let _ = Fs.write
+          "type t\n"
+          Path.(archive_dir / Path.v "archive.mli")
+        |> Result.expect ~msg:"expected archive.mli write to succeed" in
+        let package = Riot_model.Package.make ~name:(Package_name.from_string "pkg"
+        |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:(Path.v
+          "pkg") ~library:{ path = Path.v "src/pkg.ml" }
+          ~sources:{
+            src = [
+              Path.v "src/pkg.ml";
+              Path.v "src/archive/archive.mli";
+            ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+        in
+        let workspace = make_test_workspace tmpdir [ package ] in
+        let store = Riot_store.Store.create ~workspace in
+        let package_graph = Riot_planner.Package_graph.create
+          ~scope:Riot_planner.Package_graph.Runtime workspace
+        |> Result.expect ~msg:"package graph should build" in
+        let package_key = Riot_planner.Package_graph.package_key
+          ~package_name:(Package_name.to_string package.name)
+          Riot_planner.Package_graph.Runtime in
+        let session_id = Riot_model.Session_id.make () in
+        let profile = Riot_model.Profile.debug in
+        let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+        match plan_graph_package ~workspace ~store ~package_graph ~package_key ~build_ctx with
+        | Error err ->
+            Error ("expected package plan to succeed, got planner error: " ^ err)
+        | Ok (Riot_planner.Package_planner.Planned { module_graph; _ }) -> (
+            match find_module_node_by_label module_graph "MLI(Pkg__Archive)" with
+            | None -> Error "missing MLI(Pkg__Archive) in module graph"
+            | Some node ->
+                let deps = module_dependency_labels module_graph node in
+                if
+                  List.any deps ~fn:(String.equal "ML(Pkg__Aliases)")
+                  && List.any deps ~fn:(String.equal "ML(Pkg__Archive__Aliases)")
+                then
+                  Ok ()
+                else
+                  Error ("expected MLI(Pkg__Archive) to depend on inherited aliases, got ["
+                  ^ String.concat ", " deps
+                  ^ "]")
+          )
+        | Ok _ ->
+            Error "expected Planned result")
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"planner_nested_sibling_legacy_bundle"
@@ -1429,6 +1495,7 @@ let tests =
     case "stale plan bundle version rebuilds plan graphs" test_stale_plan_bundle_version_rebuilds_plan_graphs;
     case "plan bundle cache hit preserves module dependency order" test_plan_bundle_cache_hit_preserves_module_dependency_order;
     case "underscore sibling module dependency is planned" test_underscore_sibling_module_dependency_is_planned;
+    case "nested library interfaces depend on inherited aliases" test_nested_library_interfaces_depend_on_inherited_aliases;
     case "legacy nested sibling plan bundle is ignored after version bump" test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump;
     case ~size:Large "kernel live CreateLibrary orders dependencies before Error" test_kernel_live_create_library_orders_dependencies_before_error;
     case ~size:Large "kernel plan bundle cache hit preserves live CreateLibrary order" test_kernel_plan_bundle_cache_hit_preserves_live_create_library_order;

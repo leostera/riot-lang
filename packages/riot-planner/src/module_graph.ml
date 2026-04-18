@@ -349,8 +349,10 @@ and handle_library = fun ~t ~ctx dir name children ->
       G.add_node t.graph impl
     in
     Module_registry.register t.registry impl_mod impl_node.id;
-    G.add_edge intf_node ~depends_on:aliases_node;
-    G.add_edge impl_node ~depends_on:aliases_node;
+    List.for_each (List.reverse lib_aliases)
+      ~fn:(fun alias_node -> G.add_edge intf_node ~depends_on:alias_node);
+    List.for_each (List.reverse lib_aliases)
+      ~fn:(fun alias_node -> G.add_edge impl_node ~depends_on:alias_node);
     G.add_edge impl_node ~depends_on:intf_node;
     let ctx = {
       ns;
