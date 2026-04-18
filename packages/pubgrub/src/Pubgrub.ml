@@ -53,6 +53,10 @@ let add_package = Provider.add_package
 
 let to_provider = Provider.to_provider
 
+let default_options = Solver.default_options
+
+let solve_with_stats = Solver.solve_with_stats
+
 let solve = Solver.solve
 
 let explain_conflict = Report.explain_conflict

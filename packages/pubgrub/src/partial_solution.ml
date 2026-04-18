@@ -173,19 +173,21 @@ let pick_highest_priority_pkg = fun solution prioritizer ->
   match !candidates with
   | [] -> None
   | _ ->
+      let scored =
+        List.map !candidates
+          ~fn:(fun (pkg, ranges, gidx) -> (pkg, ranges, gidx, prioritizer pkg ranges))
+      in
       let sorted =
-        List.sort !candidates
-          ~compare:(fun ((p1, r1, gidx1)) ((p2, r2, gidx2)) ->
-            let pri1 = prioritizer p1 r1 in
-            let pri2 = prioritizer p2 r2 in
+        List.sort scored
+          ~compare:(fun (_, _, gidx1, pri1) (_, _, gidx2, pri2) ->
             if pri1 = pri2 then
               compare gidx1 gidx2
             else
               compare pri2 pri1)
       in
-      let pkg, _, _ = List.get_unchecked sorted ~at:0 in
+      let pkg, _, _, _ = List.get_unchecked sorted ~at:0 in
       Log.info ("🔍 pick: selected " ^ pkg);
-      let pkg, ranges, _ = List.get_unchecked sorted ~at:0 in
+      let pkg, ranges, _, _ = List.get_unchecked sorted ~at:0 in
       Some (pkg, ranges)
 
 let backtrack = fun solution target_level ->

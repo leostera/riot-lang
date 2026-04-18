@@ -183,6 +183,17 @@ let assert_raises = fun message fn ->
 let assert_inline_text = fun ~ctx ~expected ~actual ->
   Test.Snapshot.assert_inline_text ~ctx ~expected ~actual
 
+let assert_int_equal = fun ~expected ~actual ~message ->
+  if Int.equal expected actual then
+    Ok ()
+  else
+    Error
+      (message
+      ^ ": got "
+      ^ Int.to_string actual
+      ^ ", expected "
+      ^ Int.to_string expected)
+
 let test_ranges_empty_contains_nothing =
   Test.case "Ranges: empty contains nothing"
     (fun _ctx ->
@@ -1011,6 +1022,100 @@ let test_report_derived_explanations_are_readable =
         ~expected:
           "Conflict:\nBecause:\n  root@1.0.0 depends on foo in [1.0.0, 2.0.0).\nAnd because:\n  no versions of foo match [1.0.0, 2.0.0).\nSo root in [1.0.0, 1.0.0].\n\nTherefore, version solving failed."
         ~actual:(Pubgrub.Report.explain_conflict incompat))
+
+let test_solver_stats_expose_structured_counters =
+  Test.case "Solver: solve_with_stats exposes structured counters"
+    (fun _ctx ->
+      let provider = Pubgrub.create_offline () in
+      Pubgrub.add_package provider "root" (v 1 0 0) [ ("foo", Pubgrub.full) ];
+      Pubgrub.add_package provider "foo" (v 1 0 0) [];
+      let outcome = Pubgrub.solve_with_stats (Pubgrub.to_provider provider) "root" (v 1 0 0) in
+      match outcome.result with
+      | Ok (Pubgrub.Solver.Success solution) -> (
+          match assert_int_equal ~expected:2 ~actual:(List.length solution) ~message:"Unexpected package count" with
+          | Error _ as err -> err
+          | Ok () -> (
+              match assert_int_equal ~expected:2 ~actual:outcome.stats.iterations ~message:"Unexpected iteration count" with
+              | Error _ as err -> err
+              | Ok () -> (
+                  match assert_int_equal ~expected:2 ~actual:outcome.stats.decisions ~message:"Unexpected decision count" with
+                  | Error _ as err -> err
+                  | Ok () -> (
+                      match assert_int_equal ~expected:1 ~actual:outcome.stats.derivations ~message:"Unexpected derivation count" with
+                      | Error _ as err -> err
+                      | Ok () -> (
+                          match
+                            assert_int_equal
+                              ~expected:0
+                              ~actual:outcome.stats.conflicts
+                              ~message:"Unexpected conflict count"
+                          with
+                          | Error _ as err -> err
+                          | Ok () -> (
+                              match
+                                assert_int_equal
+                                  ~expected:1
+                                  ~actual:outcome.stats.provider_choose_version_calls
+                                  ~message:"Unexpected choose_version call count"
+                              with
+                              | Error _ as err -> err
+                              | Ok () -> (
+                                  match
+                                    assert_int_equal
+                                      ~expected:1
+                                      ~actual:outcome.stats.provider_count_versions_calls
+                                      ~message:"Unexpected count_versions call count"
+                                  with
+                                  | Error _ as err -> err
+                                  | Ok () -> (
+                                      match
+                                        assert_int_equal
+                                          ~expected:2
+                                          ~actual:outcome.stats.provider_get_dependencies_calls
+                                          ~message:"Unexpected get_dependencies call count"
+                                      with
+                                      | Error _ as err -> err
+                                      | Ok () -> (
+                                          match
+                                            assert_int_equal
+                                              ~expected:4
+                                              ~actual:outcome.stats.provider_calls
+                                              ~message:"Unexpected aggregate provider call count"
+                                          with
+                                          | Error _ as err -> err
+                                          | Ok () ->
+                                              assert_int_equal
+                                                ~expected:2
+                                                ~actual:outcome.stats.max_decision_depth
+                                                ~message:"Unexpected max decision depth"
+                                        )
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+      | Ok (Pubgrub.Solver.Failure incompat) ->
+          Error ("Expected success but got failure: " ^ Pubgrub.Report.explain_conflict incompat)
+      | Error err ->
+          Error ("Unexpected error: " ^ err))
+
+let test_solver_options_control_iteration_limit =
+  Test.case "Solver: max_iterations option is configurable"
+    (fun _ctx ->
+      let provider = Pubgrub.create_offline () in
+      Pubgrub.add_package provider "root" (v 1 0 0) [ ("foo", Pubgrub.full) ];
+      Pubgrub.add_package provider "foo" (v 1 0 0) [];
+      let options = { Pubgrub.default_options with max_iterations = 0 } in
+      match Pubgrub.solve ~options (Pubgrub.to_provider provider) "root" (v 1 0 0) with
+      | Error msg when String.equal msg "Too many iterations - likely infinite loop" -> Ok ()
+      | Error msg -> Error ("Unexpected solver error: " ^ msg)
+      | Ok (Pubgrub.Solver.Success _) ->
+          Error "Expected iteration-limited solve to fail"
+      | Ok (Pubgrub.Solver.Failure incompat) ->
+          Error ("Expected iteration limit error but got conflict: " ^ Pubgrub.Report.explain_conflict incompat))
 
 let test_conflicting_root_constraints_fail =
   Test.case "Solve: conflicting root constraints fail"
@@ -2126,6 +2231,8 @@ let all_tests =
     test_report_no_versions_includes_requested_range;
     test_report_from_dependency_includes_dependency_range;
     test_report_derived_explanations_are_readable;
+    test_solver_stats_expose_structured_counters;
+    test_solver_options_control_iteration_limit;
     test_conflicting_root_constraints_fail;
     test_derivations_are_created;
     test_empty_root;

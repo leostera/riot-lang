@@ -61,6 +61,96 @@ type solve_result =
   | Success of (package * version) list
   | Failure of Incompatibility.t
 
+type options = {
+  max_iterations: int;
+}
+
+type stats = {
+  iterations: int;
+  decisions: int;
+  derivations: int;
+  conflicts: int;
+  learned_incompatibilities: int;
+  backtracks: int;
+  provider_choose_version_calls: int;
+  provider_count_versions_calls: int;
+  provider_get_dependencies_calls: int;
+  provider_calls: int;
+  max_decision_depth: int;
+}
+
+type outcome = {
+  result: (solve_result, string) result;
+  stats: stats;
+}
+
+type stats_acc = {
+  mutable iterations: int;
+  mutable decisions: int;
+  mutable derivations: int;
+  mutable conflicts: int;
+  mutable learned_incompatibilities: int;
+  mutable backtracks: int;
+  mutable provider_choose_version_calls: int;
+  mutable provider_count_versions_calls: int;
+  mutable provider_get_dependencies_calls: int;
+  mutable max_decision_depth: int;
+}
+
+let default_options = { max_iterations = 1_000 }
+
+let empty_stats = fun () ->
+  {
+    iterations = 0;
+    decisions = 0;
+    derivations = 0;
+    conflicts = 0;
+    learned_incompatibilities = 0;
+    backtracks = 0;
+    provider_choose_version_calls = 0;
+    provider_count_versions_calls = 0;
+    provider_get_dependencies_calls = 0;
+    max_decision_depth = 0
+  }
+
+let snapshot_stats = fun stats ->
+  let provider_calls =
+    stats.provider_choose_version_calls
+    + stats.provider_count_versions_calls
+    + stats.provider_get_dependencies_calls
+  in
+  {
+    iterations = stats.iterations;
+    decisions = stats.decisions;
+    derivations = stats.derivations;
+    conflicts = stats.conflicts;
+    learned_incompatibilities = stats.learned_incompatibilities;
+    backtracks = stats.backtracks;
+    provider_choose_version_calls = stats.provider_choose_version_calls;
+    provider_count_versions_calls = stats.provider_count_versions_calls;
+    provider_get_dependencies_calls = stats.provider_get_dependencies_calls;
+    provider_calls;
+    max_decision_depth = stats.max_decision_depth;
+  }
+
+let record_decision = fun stats solution ->
+  stats.decisions <- stats.decisions + 1;
+  stats.max_decision_depth <- Int.max stats.max_decision_depth (Partial_solution.current_decision_level solution)
+
+let record_derivation = fun stats -> stats.derivations <- stats.derivations + 1
+
+let provider_get_dependencies = fun stats provider pkg ver ->
+  stats.provider_get_dependencies_calls <- stats.provider_get_dependencies_calls + 1;
+  provider.Provider.get_dependencies pkg ver
+
+let provider_count_versions = fun stats provider pkg ranges ->
+  stats.provider_count_versions_calls <- stats.provider_count_versions_calls + 1;
+  provider.Provider.count_versions pkg ranges
+
+let provider_choose_version = fun stats provider pkg ranges ->
+  stats.provider_choose_version_calls <- stats.provider_choose_version_calls + 1;
+  provider.Provider.choose_version pkg ranges
+
 (* ============================================================================
    Core Data Structures
    ============================================================================ *)
@@ -275,7 +365,7 @@ let add_incompatibility = fun state package incompat ->
 
 (* This matches Rust's conflict_resolution signature and logic *)
 
-let rec conflict_resolution = fun ~emit root_package root_version state incompat ->
+let rec conflict_resolution = fun ~stats ~emit root_package root_version state incompat ->
   let rec resolve current_incompat current_incompat_changed =
     if Incompatibility.is_terminal current_incompat root_package root_version then
       Error current_incompat
@@ -283,6 +373,7 @@ let rec conflict_resolution = fun ~emit root_package root_version state incompat
       let pkg, search_result = Partial_solution.satisfier_search state.solution current_incompat in
       match search_result with
       | `DifferentDecisionLevels previous_level ->
+          stats.backtracks <- stats.backtracks + 1;
           emit
             (Trace.ConflictResolvedDifferent {
               package = pkg;
@@ -367,7 +458,7 @@ let rec conflict_resolution = fun ~emit root_package root_version state incompat
 
 (* Returns Ok state on success, Error terminal_incompat on terminal failure *)
 
-let unit_propagation = fun ~emit root_package root_version state changed_packages ->
+let unit_propagation = fun ~stats ~emit root_package root_version state changed_packages ->
   Log.info ("🔄 Unit propagation called with packages: " ^ (String.concat ", " changed_packages));
   let rec process_packages = fun state ->
     function
@@ -417,13 +508,15 @@ let unit_propagation = fun ~emit root_package root_version state changed_package
                   );
                   match rel with
                   | `Satisfied -> (
+                      stats.conflicts <- stats.conflicts + 1;
                       Log.info "  CONFLICT: Incompatibility satisfied - resolving";
                       (* Handle conflict resolution internally *)
-                      match conflict_resolution ~emit root_package root_version state incompat with
+                      match conflict_resolution ~stats ~emit root_package root_version state incompat with
                       | Error terminal_incompat ->
                           Log.error "Terminal incompatibility, no solution";
                           Error terminal_incompat
                       | Ok (resolved_pkg, root_cause, backtracked_solution) ->
+                          stats.learned_incompatibilities <- stats.learned_incompatibilities + 1;
                           emit
                             (Trace.LearnedIncompatibility {
                               package = resolved_pkg;
@@ -440,6 +533,8 @@ let unit_propagation = fun ~emit root_package root_version state changed_package
                             resolved_pkg
                             root_cause in
                           let after_constraint = Partial_solution.get_constraint new_solution resolved_pkg in
+                          if not (equal_constraint before_constraint after_constraint) then
+                            record_derivation stats;
                           (* Add the root_cause to incompatibilities so choose_version can see it *)
                           List.for_each (Incompatibility.terms root_cause)
                             ~fn:(fun term ->
@@ -474,6 +569,8 @@ let unit_propagation = fun ~emit root_package root_version state changed_package
                         satisfier_pkg
                         incompat in
                       let after_constraint = Partial_solution.get_constraint new_solution satisfier_pkg in
+                      if not (equal_constraint before_constraint after_constraint) then
+                        record_derivation stats;
                       let new_state =
                         if equal_constraint before_constraint after_constraint then
                           state
@@ -528,7 +625,7 @@ let unit_propagation = fun ~emit root_package root_version state changed_package
    Version Selection
    ============================================================================ *)
 
-let choose_version = fun provider state pkg ranges ->
+let choose_version = fun stats provider state pkg ranges ->
   Log.debug ("Choosing version for " ^ pkg);
   (* Get incompatibilities for this package to constrain the search *)
   let incompats =
@@ -605,7 +702,7 @@ let choose_version = fun provider state pkg ranges ->
         ));
   Log.debug "  Effective ranges computed";
   (* Ask provider for a version in the effective ranges *)
-  match provider.Provider.choose_version pkg !effective_ranges with
+  match provider_choose_version stats provider pkg !effective_ranges with
   | Ok (Some ver) ->
       Log.debug ("Chose " ^ pkg ^ "@" ^ Version.to_string ver);
       Ok (Some ver, !effective_ranges)
@@ -620,7 +717,10 @@ let choose_version = fun provider state pkg ranges ->
    Main Solve Function
    ============================================================================ *)
 
-let solve = fun ?trace_ctx provider root_package root_version ->
+let solve_with_stats = fun ?trace_ctx ?(options = default_options) provider root_package root_version ->
+  let stats = empty_stats () in
+  let finish result = { result; stats = snapshot_stats stats } in
+  let max_iterations = Int.max 0 options.max_iterations in
   let emit event =
     match trace_ctx with
     | Some ctx -> Trace.record ctx event
@@ -635,6 +735,7 @@ let solve = fun ?trace_ctx provider root_package root_version ->
   let incompats = HashMap.create () in
   let solution = Partial_solution.empty () in
   let solution = Partial_solution.add_decision solution root_package root_version in
+  record_decision stats solution;
   let initial_state = {
     solution;
     incompatibilities = incompats;
@@ -642,13 +743,13 @@ let solve = fun ?trace_ctx provider root_package root_version ->
     contradicted = HashMap.create ()
   } in
   (* Get root dependencies *)
-  match provider.Provider.get_dependencies root_package root_version with
+  match provider_get_dependencies stats provider root_package root_version with
   | Error err ->
       Log.error ("Failed to get dependencies for root: " ^ err);
-      Error err
+      finish (Error err)
   | Ok (Provider.Unavailable reason) ->
       Log.error ("Root package unavailable: " ^ reason);
-      Error ("Root package unavailable: " ^ reason)
+      finish (Error ("Root package unavailable: " ^ reason))
   | Ok (Provider.Available deps) -> (
       (* Add root dependencies to graph *)
       let dep_list =
@@ -700,7 +801,7 @@ let solve = fun ?trace_ctx provider root_package root_version ->
             root_version
             (dep_pkg, dep_ranges) in
           Log.error "Impossible root dependency detected, failing";
-          Ok (Failure impossible_incompat)
+          finish (Ok (Failure impossible_incompat))
       | None ->
           (* Add dependency incompatibilities *)
           let dep_packages = ref [] in
@@ -713,27 +814,31 @@ let solve = fun ?trace_ctx provider root_package root_version ->
               add_incompatibility state dep_pkg dep_incompat;
               dep_packages := dep_pkg :: !dep_packages);
           (* Run initial unit propagation on all root dependencies to create derivations *)
-          match unit_propagation ~emit root_package root_version state !dep_packages with
+          match unit_propagation ~stats ~emit root_package root_version state !dep_packages with
           | Error terminal_incompat ->
               Log.error "Terminal incompatibility during initial propagation";
-              Ok (Failure terminal_incompat)
+              finish (Ok (Failure terminal_incompat))
           | Ok state ->
               (* Main solve loop *)
               let rec solve_loop state iteration next_pkg =
-                if iteration > 1_000 then
+                if iteration > max_iterations then
                   (
-                    Log.error "Iteration limit reached after 1000 iterations!";
-                    Error "Too many iterations - likely infinite loop"
+                    Log.error
+                      ("Iteration limit reached after "
+                      ^ Int.to_string max_iterations
+                      ^ " iterations!");
+                    finish (Error "Too many iterations - likely infinite loop")
                   )
                 else (
+                  stats.iterations <- stats.iterations + 1;
                   emit (Trace.Iteration { iteration; next_package = next_pkg });
                   (* Unit propagation on next package *)
                   Log.debug
                     ("Iteration " ^ (Int.to_string iteration) ^ ": unit propagation on " ^ next_pkg);
-                  match unit_propagation ~emit root_package root_version state [ next_pkg ] with
+                  match unit_propagation ~stats ~emit root_package root_version state [ next_pkg ] with
                   | Error terminal_incompat ->
                       Log.error "Terminal incompatibility, no solution";
-                      Ok (Failure terminal_incompat)
+                      finish (Ok (Failure terminal_incompat))
                   | Ok propagated_state -> (
                       (* Pick next highest priority package *)
                       let prioritizer pkg ranges =
@@ -743,7 +848,7 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                           | None -> 0
                         in
                         let matching_versions =
-                          match provider.Provider.count_versions pkg ranges with
+                          match provider_count_versions stats provider pkg ranges with
                           | Ok n -> n
                           | Error _ -> Int.max_int
                         in
@@ -769,14 +874,14 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                           Log.debug "No more pending packages, solution found";
                           let solution = Partial_solution.extract_solution propagated_state.solution in
                           emit (Trace.Solved { solution });
-                          Ok (Success solution)
+                          finish (Ok (Success solution))
                       | Some (pkg, ranges) -> (
                           emit (Trace.PickedPackage { package = pkg; ranges });
                           Log.info ("Choosing version for pending package " ^ pkg);
                           (* Try to choose a version for the pending package *)
-                          match choose_version provider propagated_state pkg ranges with
+                          match choose_version stats provider propagated_state pkg ranges with
                           | Error err ->
-                              Error err
+                              finish (Error err)
                           | Ok (None, effective_ranges) ->
                               emit
                                 (Trace.NoVersionAvailable { package = pkg; ranges = effective_ranges });
@@ -790,9 +895,9 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                           | Ok (Some ver, _) -> (
                               emit (Trace.ChoseVersion { package = pkg; version = ver });
                               (* Get dependencies BEFORE adding decision (like Rust) *)
-                              match provider.Provider.get_dependencies pkg ver with
+                              match provider_get_dependencies stats provider pkg ver with
                               | Error err ->
-                                  Error err
+                                  finish (Error err)
                               | Ok (Provider.Unavailable _reason) ->
                                   (* Package unavailable, treat as no version *)
                                   Log.debug
@@ -847,7 +952,7 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                                         ver
                                         (dep_pkg, dep_ranges) in
                                       Log.error "Impossible dependency detected, failing";
-                                      Ok (Failure impossible_incompat)
+                                      finish (Ok (Failure impossible_incompat))
                                   | None -> (
                                       (* PORT OF RUST: Just add decision and incompatibilities *)
                                       Log.info
@@ -856,6 +961,7 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                                         propagated_state.solution
                                         pkg
                                         ver in
+                                      record_decision stats new_solution;
                                       let new_state = { propagated_state with solution = new_solution } in
                                       (* Add dependencies to graph *)
                                       let dep_list =
@@ -888,6 +994,7 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                                         ^ (String.concat ", " !affected_packages));
                                       (* Run unit propagation on affected packages *)
                                       match unit_propagation
+                                        ~stats
                                         ~emit
                                         root_package
                                         root_version
@@ -898,7 +1005,7 @@ let solve = fun ?trace_ctx provider root_package root_version ->
                                           Log.error
                                             "Terminal incompatibility after adding \
                                              dependencies";
-                                          Ok (Failure terminal_incompat)
+                                          finish (Ok (Failure terminal_incompat))
                                       | Ok propagated_state ->
                                           (* Pick first affected package as next (or pkg if no deps) *)
                                           let next_to_check =
@@ -922,3 +1029,7 @@ let solve = fun ?trace_ctx provider root_package root_version ->
               in
               solve_loop state 0 initial_next
     )
+
+let solve = fun ?trace_ctx ?(options = default_options) provider root_package root_version ->
+  let outcome = solve_with_stats ?trace_ctx ~options provider root_package root_version in
+  outcome.result

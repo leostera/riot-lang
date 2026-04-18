@@ -53,7 +53,17 @@ val add_package: Provider.offline -> package -> version -> Provider.dependency_l
 
 val to_provider: Provider.offline -> string Provider.t
 
+val default_options: Solver.options
+
+val solve_with_stats:
+  ?trace_ctx:Trace.t -> ?options:Solver.options -> string Provider.t -> package -> version -> Solver.outcome
+
 val solve:
-  ?trace_ctx:Trace.t -> string Provider.t -> package -> version -> (Solver.solve_result, string) result
+  ?trace_ctx:Trace.t ->
+  ?options:Solver.options ->
+  string Provider.t ->
+  package ->
+  version ->
+  (Solver.solve_result, string) result
 
 val explain_conflict: Incompatibility.t -> string
