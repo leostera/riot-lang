@@ -33,6 +33,15 @@ let expect_request_parse = fun input ->
   | Error error ->
       Result.Error ("Parse error: " ^ error)
 
+let expect_request_parse_view = fun input ->
+  match Http1.Request.parse_string_view (IO.StringView.of_string input) with
+  | Done { value; remaining } ->
+      Result.Ok (value, remaining)
+  | Need_more ->
+      Result.Error "Unexpected Need_more"
+  | Error error ->
+      Result.Error ("Parse error: " ^ error)
+
 (* HTTP/1 Request Tests *)
 
 let test_request_simple_get = fun _ctx ->
@@ -159,6 +168,23 @@ let test_request_with_1m_body = fun _ctx ->
       if String.length remaining != 1_000_000 then
         Result.Error
           ("Expected 1000000-byte remaining body, got " ^ Int.to_string (String.length remaining))
+      else
+        Result.Ok ()
+
+let test_request_parse_string_view = fun _ctx ->
+  let req = "GET /view HTTP/1.1\r\nHost: example.com\r\n\r\n" in
+  match expect_request_parse_view req with
+  | Error error ->
+      Result.Error error
+  | Ok (parsed, remaining) ->
+      let method_ = NetRequest.method_ parsed |> NetMethod.to_string in
+      let path = NetRequest.uri parsed |> Uri.path in
+      if method_ != "GET" then
+        Result.Error ("Expected GET method, got " ^ method_)
+      else if path != "/view" then
+        Result.Error ("Expected /view path, got " ^ path)
+      else if remaining != "" then
+        Result.Error ("Expected empty remaining body, got " ^ remaining)
       else
         Result.Ok ()
 
@@ -305,6 +331,7 @@ let tests =
     case "request_with_1k_body" test_request_with_1k_body;
     case "request_with_100k_body" test_request_with_100k_body;
     case "request_with_1m_body" test_request_with_1m_body;
+    case "request_parse_string_view" test_request_parse_string_view;
     case
       "request_missing_lf_after_request_line_current_behavior"
       test_request_missing_lf_after_request_line_current_behavior;
