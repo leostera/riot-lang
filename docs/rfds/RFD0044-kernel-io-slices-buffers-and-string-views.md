@@ -83,11 +83,11 @@ The benchmark results from that experiment were decisive:
 - parser-only, `1 MiB` request:
   - old string parser: `3.67 ms`
   - new public `parse`: `24.41 ms`
-  - new direct `parse_string_view`: `11.84 ms`
+  - new direct `parse_slice`: `11.84 ms`
 - reader-fed, `1 MiB` request:
   - old path: `103.78 ms`
   - new public `parse`: `199.88 ms`
-  - new direct `parse_string_view`: `290.60 ms`
+  - new direct `parse_slice`: `290.60 ms`
 
 Those numbers do not justify selling the parser migration as a performance win.
 The real lesson is different: Riot tried to optimize a protocol parser before

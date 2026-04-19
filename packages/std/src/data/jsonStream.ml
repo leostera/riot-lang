@@ -24,26 +24,26 @@ type error = Json.error =
   | Extra_input_after_value of { position: int }
   | Unknown_error of string
 
-module View = StringView
+module Slice = IO.Iovec.IoSlice
 
 let error_to_string = Json.error_to_string
 
-let from_view = fun source ->
-  let len = View.length source in
+let from_slice = fun source ->
+  let len = Slice.length source in
   let pos = cell 0 in
   let peek () =
     if !pos >= len then
       None
     else
-      Some (View.get_unchecked source ~at:!pos)
+      Some (Slice.get_unchecked source ~at:!pos)
   in
   let advance () =
     pos := !pos + 1
   in
   let text_range ~off ~len =
-    match View.sub source ~off ~len with
-    | Ok view -> View.to_string view
-    | Error error -> raise (Failure ("JsonStream.view range invariant failed: " ^ Kernel.IO.Error.message error))
+    match Slice.sub source ~off ~len with
+    | Ok slice -> Slice.to_string slice
+    | Error error -> raise (Failure ("JsonStream.slice range invariant failed: " ^ Kernel.IO.Error.message error))
   in
   let rec skip_whitespace () =
     if !pos >= len then
@@ -66,7 +66,7 @@ let from_view = fun source ->
       let rec loop index =
         if index >= prefix_len then
           true
-        else if View.get_unchecked source ~at:(offset + index) != String.get_unchecked prefix ~at:index then
+        else if Slice.get_unchecked source ~at:(offset + index) != String.get_unchecked prefix ~at:index then
           false
         else
           loop (index + 1)
@@ -90,13 +90,13 @@ let from_view = fun source ->
         raise_error (Unterminated_string { position = !pos })
       else
         let decode_at index =
-          match hex_value (View.get_unchecked source ~at:index) with
+          match hex_value (Slice.get_unchecked source ~at:index) with
           | Some value -> value
           | None ->
               raise_error
                 (Unexpected_character {
                   position = index;
-                  character = View.get_unchecked source ~at:index;
+                  character = Slice.get_unchecked source ~at:index;
                   expected = "hex digit";
                 })
         in
@@ -362,9 +362,7 @@ let from_view = fun source ->
   | Failure message -> Error (Unknown_error message)
   | exn -> Error (Unknown_error (Kernel.Exception.to_string exn))
 
-let from_slice = fun slice -> from_view (View.from_slice slice)
-
 let from_string = fun value ->
-  match View.from_string value with
-  | Ok view -> from_view view
+  match Slice.from_string value with
+  | Ok slice -> from_slice slice
   | Error error -> Error (Unknown_error (Kernel.IO.Error.message error))

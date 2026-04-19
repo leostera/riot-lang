@@ -1,77 +1,77 @@
 (** HTTP/1.1 Request Parser *)
 open Std
 
-module View = IO.StringView
+module Slice = IO.Iovec.IoSlice
 
-let shift_view = fun view by ->
-  match View.shift view by with
-  | Ok view -> view
-  | Error error -> panic ("Http1.Request.shift_view: " ^ Kernel.IO.Error.message error)
+let shift_slice = fun slice by ->
+  match Slice.shift slice by with
+  | Ok slice -> slice
+  | Error error -> panic ("Http1.Request.shift_slice: " ^ Kernel.IO.Error.message error)
 
-let sub_view = fun view ~off ~len ->
-  match View.sub view ~off ~len with
-  | Ok view -> view
-  | Error error -> panic ("Http1.Request.sub_view: " ^ Kernel.IO.Error.message error)
+let sub_slice = fun slice ~off ~len ->
+  match Slice.sub slice ~off ~len with
+  | Ok slice -> slice
+  | Error error -> panic ("Http1.Request.sub_slice: " ^ Kernel.IO.Error.message error)
 
-let get_view = fun view ~at ->
-  match View.get view ~at with
+let get_slice = fun slice ~at ->
+  match Slice.get slice ~at with
   | Ok char -> char
-  | Error error -> panic ("Http1.Request.get_view: " ^ Kernel.IO.Error.message error)
+  | Error error -> panic ("Http1.Request.get_slice: " ^ Kernel.IO.Error.message error)
 
-let from_string_view = fun value ->
-  match View.from_string value with
-  | Ok view -> view
-  | Error error -> panic ("Http1.Request.from_string_view: " ^ Kernel.IO.Error.message error)
+let from_string_slice = fun value ->
+  match Slice.from_string value with
+  | Ok slice -> slice
+  | Error error -> panic ("Http1.Request.from_string_slice: " ^ Kernel.IO.Error.message error)
 
-type request_line_views = {
-  method_: View.t;
-  path: View.t;
-  version: View.t;
-  remaining: View.t;
+type request_line_slices = {
+  method_: Slice.t;
+  path: Slice.t;
+  version: Slice.t;
+  remaining: Slice.t;
 }
 
-type header_line_view = {
-  name: View.t;
-  value: View.t;
-  remaining: View.t;
+type header_line_slice = {
+  name: Slice.t;
+  value: Slice.t;
+  remaining: Slice.t;
 }
 
-type 'a view_parse_result =
-  | View_done of 'a
-  | View_need_more
-  | View_error of string
+type 'a slice_parse_result =
+  | Slice_done of 'a
+  | Slice_need_more
+  | Slice_error of string
 
-module View_cursor = struct
-  type t = View.t
+module Slice_cursor = struct
+  type t = Slice.t
 
-  let length_remaining = View.length
+  let length_remaining = Slice.length
 
   let remaining = fun cursor -> cursor
 
   let advance = fun cursor ->
-    if View.length cursor < 1 then
+    if Slice.length cursor < 1 then
       None
     else
-      Some (shift_view cursor 1)
+      Some (shift_slice cursor 1)
 
   let advance_by = fun cursor count ->
-    if count < 0 || View.length cursor < count then
+    if count < 0 || Slice.length cursor < count then
       None
     else
-      Some (shift_view cursor count)
+      Some (shift_slice cursor count)
 
   let take_n = fun cursor count ->
-    if count < 0 || View.length cursor < count then
+    if count < 0 || Slice.length cursor < count then
       None
     else
-      Some (sub_view cursor ~off:0 ~len:count, shift_view cursor count)
+      Some (sub_slice cursor ~off:0 ~len:count, shift_slice cursor count)
 
   let take_until = fun cursor predicate ->
     let rec loop index =
-      if index >= View.length cursor then
+      if index >= Slice.length cursor then
         None
-      else if predicate (get_view cursor ~at:index) then
-        Some (sub_view cursor ~off:0 ~len:index, shift_view cursor index)
+      else if predicate (get_slice cursor ~at:index) then
+        Some (sub_slice cursor ~off:0 ~len:index, shift_slice cursor index)
       else
         loop (index + 1)
     in
@@ -79,100 +79,100 @@ module View_cursor = struct
 
   let skip_while = fun cursor predicate ->
     let rec loop index =
-      if index >= View.length cursor then
+      if index >= Slice.length cursor then
         cursor
-      else if predicate (get_view cursor ~at:index) then
+      else if predicate (get_slice cursor ~at:index) then
         loop (index + 1)
       else
-        shift_view cursor index
+        shift_slice cursor index
     in
     loop 0
 end
 
-let string_of_view = fun view -> View.to_string view
+let string_of_slice = fun slice -> Slice.to_string slice
 
-let header_pair_of_views = fun (name, value) -> (string_of_view name, string_of_view value)
+let header_pair_of_slices = fun (name, value) -> (string_of_slice name, string_of_slice value)
 
-let view_header_pair = fun (name, value) -> (from_string_view name, from_string_view value)
+let slice_header_pair = fun (name, value) -> (from_string_slice name, from_string_slice value)
 
-let parse_request_line_view = fun ?(max_length = 8_192) input ->
-  match View_cursor.take_until input (fun c -> c = '\r') with
+let parse_request_line_slice = fun ?(max_length = 8_192) input ->
+  match Slice_cursor.take_until input (fun c -> c = '\r') with
   | None ->
-      View_need_more
+      Slice_need_more
   | Some (line, cursor) ->
-      if View_cursor.length_remaining line > max_length then
-        View_error "Request line too long"
+      if Slice_cursor.length_remaining line > max_length then
+        Slice_error "Request line too long"
       else
-        match View_cursor.advance_by cursor 2 with
+        match Slice_cursor.advance_by cursor 2 with
         | None ->
-            View_error "Invalid line ending"
+            Slice_error "Invalid line ending"
         | Some cursor -> (
-            match View_cursor.take_until line (fun c -> c = ' ') with
+            match Slice_cursor.take_until line (fun c -> c = ' ') with
             | None ->
-                View_error "Missing method"
+                Slice_error "Missing method"
             | Some (method_, line_cursor) ->
-                let line_cursor = View_cursor.skip_while line_cursor (fun c -> c = ' ') in
-                match View_cursor.take_until line_cursor (fun c -> c = ' ') with
+                let line_cursor = Slice_cursor.skip_while line_cursor (fun c -> c = ' ') in
+                match Slice_cursor.take_until line_cursor (fun c -> c = ' ') with
                 | None ->
-                    View_error "Missing path"
+                    Slice_error "Missing path"
                 | Some (path, line_cursor) ->
-                    let version = View_cursor.skip_while line_cursor (fun c -> c = ' ') |> View_cursor.remaining in
-                    if View.starts_with version ~prefix:"HTTP/" then
-                      View_done { method_; path; version; remaining = cursor }
+                    let version = Slice_cursor.skip_while line_cursor (fun c -> c = ' ') |> Slice_cursor.remaining in
+                    if Slice.starts_with version ~prefix:"HTTP/" then
+                      Slice_done { method_; path; version; remaining = cursor }
                     else
-                      View_error "Invalid HTTP version"
+                      Slice_error "Invalid HTTP version"
           )
 
-let parse_header_line_view = fun cursor ->
-  match View_cursor.take_until cursor (fun c -> c = '\r') with
+let parse_header_line_slice = fun cursor ->
+  match Slice_cursor.take_until cursor (fun c -> c = '\r') with
   | None ->
-      View_need_more
+      Slice_need_more
   | Some (line, cursor) -> (
-      match View_cursor.advance_by cursor 2 with
+      match Slice_cursor.advance_by cursor 2 with
       | None ->
-          View_error "Invalid line ending"
+          Slice_error "Invalid line ending"
       | Some cursor -> (
-          match View_cursor.take_until line (fun c -> c = ':') with
+          match Slice_cursor.take_until line (fun c -> c = ':') with
           | None ->
-              View_error "Invalid header format (missing colon)"
+              Slice_error "Invalid header format (missing colon)"
           | Some (name, line_cursor) -> (
-              match View_cursor.advance line_cursor with
+              match Slice_cursor.advance line_cursor with
               | None ->
-                  View_error "Invalid header format"
+                  Slice_error "Invalid header format"
               | Some line_cursor ->
                   let value =
-                    View_cursor.skip_while line_cursor (fun c -> c = ' ' || c = '\t')
-                    |> View_cursor.remaining
+                    Slice_cursor.skip_while line_cursor (fun c -> c = ' ' || c = '\t')
+                    |> Slice_cursor.remaining
                   in
                   let name =
-                    View_cursor.skip_while name (fun c -> c = ' ' || c = '\t')
-                    |> View_cursor.remaining
+                    Slice_cursor.skip_while name (fun c -> c = ' ' || c = '\t')
+                    |> Slice_cursor.remaining
                   in
-                  View_done { name; value; remaining = cursor }
+                  Slice_done { name; value; remaining = cursor }
             )
         )
     )
 
-let rec parse_headers_views = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) ?(count = 0) cursor ->
+let rec parse_headers_slices = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) ?(count = 0) cursor ->
   if count >= max_count then
-    View_error "Too many headers"
-  else if View.starts_with cursor ~prefix:"\r\n" then
-    match View_cursor.advance_by cursor 2 with
+    Slice_error "Too many headers"
+  else if Slice.starts_with cursor ~prefix:"\r\n" then
+    match Slice_cursor.advance_by cursor 2 with
     | None ->
-        View_need_more
+        Slice_need_more
     | Some cursor ->
-        View_done (List.reverse acc, cursor)
+        Slice_done (List.reverse acc, cursor)
   else
-    match parse_header_line_view cursor with
-    | View_need_more ->
-        View_need_more
-    | View_error error ->
-        View_error error
-    | View_done { name; value; remaining } ->
-        if View.length name + View.length value > max_length then
-          View_error "Header too long"
+    match parse_header_line_slice cursor with
+    | Slice_need_more ->
+        Slice_need_more
+    | Slice_error error ->
+        Slice_error error
+    | Slice_done { name; value; remaining } ->
+        if Slice.length name + Slice.length value > max_length then
+          Slice_error "Header too long"
         else
-          parse_headers_views
+          parse_headers_slices
             ~max_count
             ~max_length
             ~acc:((name, value) :: acc)
@@ -182,51 +182,51 @@ let rec parse_headers_views = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc
 let parse_headers = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) cursor ->
   let input = Std.Iter.Cursor.remaining_string cursor in
   match
-    parse_headers_views
+    parse_headers_slices
       ~max_count
       ~max_length
-      ~acc:(List.map acc ~fn:view_header_pair)
+      ~acc:(List.map acc ~fn:slice_header_pair)
       ~count:(List.length acc)
-      (from_string_view input)
+      (from_string_slice input)
   with
-  | View_need_more ->
+  | Slice_need_more ->
       Common.Need_more
-  | View_error error ->
+  | Slice_error error ->
       Common.Error error
-  | View_done (headers, remaining) ->
-      Common.Done { value = (List.map headers ~fn:header_pair_of_views, string_of_view remaining); remaining = "" }
+  | Slice_done (headers, remaining) ->
+      Common.Done { value = (List.map headers ~fn:header_pair_of_slices, string_of_slice remaining); remaining = "" }
 
-let parse_string_view = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
-  match parse_request_line_view ~max_length:max_request_line input with
-  | View_need_more ->
+let parse_slice = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
+  match parse_request_line_slice ~max_length:max_request_line input with
+  | Slice_need_more ->
       Common.Need_more
-  | View_error error ->
+  | Slice_error error ->
       Common.Error error
-  | View_done { method_; path; version; remaining } -> (
-      match parse_headers_views ~max_count:max_headers ~max_length:max_header_length remaining with
-      | View_need_more ->
+  | Slice_done { method_; path; version; remaining } -> (
+      match parse_headers_slices ~max_count:max_headers ~max_length:max_header_length remaining with
+      | Slice_need_more ->
           Common.Need_more
-      | View_error error ->
+      | Slice_error error ->
           Common.Error error
-      | View_done (headers_list, body_start) ->
-          let method_ = string_of_view method_ |> Std.Net.Http.Method.of_string in
+      | Slice_done (headers_list, body_start) ->
+          let method_ = string_of_slice method_ |> Std.Net.Http.Method.of_string in
           let uri =
-            string_of_view path
+            string_of_slice path
             |> Std.Net.Uri.of_string
             |> Result.unwrap_or ~default:(Std.Net.Uri.of_string "/" |> Result.unwrap)
           in
           let version =
-            string_of_view version
+            string_of_slice version
             |> Std.Net.Http.Version.of_string
             |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11
           in
-          let headers = List.map headers_list ~fn:header_pair_of_views |> Std.Net.Http.Header.of_list in
-          let body = string_of_view body_start in
+          let headers = List.map headers_list ~fn:header_pair_of_slices |> Std.Net.Http.Header.of_list in
+          let body = string_of_slice body_start in
           let request =
             let request = Std.Net.Http.Request.create method_ uri in
             let request = Std.Net.Http.Request.with_version request version in
             let request = Std.Net.Http.Request.with_headers request headers in
-            if View.length body_start > 0 then
+            if Slice.length body_start > 0 then
               Std.Net.Http.Request.with_body request body
             else
               request
@@ -235,4 +235,4 @@ let parse_string_view = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(m
     )
 
 let parse = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
-  parse_string_view ~max_request_line ~max_headers ~max_header_length (from_string_view input)
+  parse_slice ~max_request_line ~max_headers ~max_header_length (from_string_slice input)

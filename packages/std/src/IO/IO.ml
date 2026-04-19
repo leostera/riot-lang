@@ -4,7 +4,6 @@ module Buffer = Buffer
 module Bytes = Bytes
 module Iovec = Kernel.IO.Iovec
 module IoBuffer = Kernel.IO.Buffer
-module StringView = Kernel.IO.StringView
 module Reader = Reader
 module BufferedReader = Buffered_reader
 module Writer = Writer

@@ -4,7 +4,7 @@ open Std.Data
 type fixture = {
   name: string;
   payload: string;
-  view: IO.StringView.t;
+  slice: IO.Iovec.IoSlice.t;
 }
 
 let make_numeric_array = fun count ->
@@ -14,8 +14,8 @@ let make_string_payload = fun size ->
   {|{"message":"|} ^ String.make ~len:size ~char:'a' ^ "\"}"
 
 let make_fixture = fun name payload ->
-  let view = IO.StringView.from_string payload |> Result.expect ~msg:"failed to create string view" in
-  { name; payload; view }
+  let slice = IO.Iovec.IoSlice.from_string payload |> Result.expect ~msg:"failed to create io slice" in
+  { name; payload; slice }
 
 let fixtures = [
   make_fixture "small object" {|{"ok":true,"id":42,"name":"riot"}|};
@@ -36,11 +36,11 @@ let bench_json_stream_string = fun payload ->
   | Error error ->
       panic ("JsonStream.from_string failed during benchmark: " ^ JsonStream.error_to_string error)
 
-let bench_json_stream_view = fun view ->
-  match JsonStream.from_view view with
+let bench_json_stream_slice = fun slice ->
+  match JsonStream.from_slice slice with
   | Ok _ -> ()
   | Error error ->
-      panic ("JsonStream.from_view failed during benchmark: " ^ JsonStream.error_to_string error)
+      panic ("JsonStream.from_slice failed during benchmark: " ^ JsonStream.error_to_string error)
 
 let config_for = fun fixture ->
   match fixture.name with
@@ -64,7 +64,7 @@ let benchmarks =
         [
           Bench.make_case "Json.of_string" (fun () -> bench_json fixture.payload);
           Bench.make_case "JsonStream.from_string" (fun () -> bench_json_stream_string fixture.payload);
-          Bench.make_case "JsonStream.from_view" (fun () -> bench_json_stream_view fixture.view);
+          Bench.make_case "JsonStream.from_slice" (fun () -> bench_json_stream_slice fixture.slice);
         ])
 
 let () =

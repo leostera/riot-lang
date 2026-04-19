@@ -11,11 +11,11 @@ open Common
 
     Returns [Done request] on success, [Need_more] if more data needed, or
     [Error msg] if parsing fails. *)
-val parse_string_view:
+val parse_slice:
   ?max_request_line:int ->
   ?max_headers:int ->
   ?max_header_length:int ->
-  IO.StringView.t ->
+  IO.Iovec.IoSlice.t ->
   Std.Net.Http.Request.t parse_result
 
 val parse:

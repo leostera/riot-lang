@@ -33,8 +33,8 @@ let expect_request_parse = fun input ->
   | Error error ->
       Result.Error ("Parse error: " ^ error)
 
-let expect_request_parse_view = fun input ->
-  match Http1.Request.parse_string_view (IO.StringView.from_string input |> Result.unwrap) with
+let expect_request_parse_slice = fun input ->
+  match Http1.Request.parse_slice (IO.Iovec.IoSlice.from_string input |> Result.unwrap) with
   | Done { value; remaining } ->
       Result.Ok (value, remaining)
   | Need_more ->
@@ -171,9 +171,9 @@ let test_request_with_1m_body = fun _ctx ->
       else
         Result.Ok ()
 
-let test_request_parse_string_view = fun _ctx ->
+let test_request_parse_slice = fun _ctx ->
   let req = "GET /view HTTP/1.1\r\nHost: example.com\r\n\r\n" in
-  match expect_request_parse_view req with
+  match expect_request_parse_slice req with
   | Error error ->
       Result.Error error
   | Ok (parsed, remaining) ->
@@ -331,7 +331,7 @@ let tests =
     case "request_with_1k_body" test_request_with_1k_body;
     case "request_with_100k_body" test_request_with_100k_body;
     case "request_with_1m_body" test_request_with_1m_body;
-    case "request_parse_string_view" test_request_parse_string_view;
+    case "request_parse_slice" test_request_parse_slice;
     case
       "request_missing_lf_after_request_line_current_behavior"
       test_request_missing_lf_after_request_line_current_behavior;

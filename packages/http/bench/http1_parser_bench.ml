@@ -66,15 +66,15 @@ let many_headers_request =
     ~headers:(("Host", "example.com") :: build_headers ~count:80)
     ~body:""
 
-let small_request_view = IO.StringView.from_string small_request |> Result.unwrap
+let small_request_slice = IO.Iovec.IoSlice.from_string small_request |> Result.unwrap
 
-let request_1k_view = IO.StringView.from_string request_1k |> Result.unwrap
+let request_1k_slice = IO.Iovec.IoSlice.from_string request_1k |> Result.unwrap
 
-let request_100k_view = IO.StringView.from_string request_100k |> Result.unwrap
+let request_100k_slice = IO.Iovec.IoSlice.from_string request_100k |> Result.unwrap
 
-let request_1m_view = IO.StringView.from_string request_1m |> Result.unwrap
+let request_1m_slice = IO.Iovec.IoSlice.from_string request_1m |> Result.unwrap
 
-let many_headers_request_view = IO.StringView.from_string many_headers_request |> Result.unwrap
+let many_headers_request_slice = IO.Iovec.IoSlice.from_string many_headers_request |> Result.unwrap
 
 let consume_result = fun value remaining ->
   let _ =
@@ -91,14 +91,14 @@ let bench_parse = fun payload () ->
   | Error error ->
       panic ("http1 parser bench parse error: " ^ error)
 
-let bench_parse_string_view = fun payload () ->
-  match Http1.Request.parse_string_view payload with
+let bench_parse_slice = fun payload () ->
+  match Http1.Request.parse_slice payload with
   | Done { value; remaining } ->
       consume_result value remaining
   | Need_more ->
-      panic "http1 string_view parser bench expected complete payload"
+      panic "http1 slice parser bench expected complete payload"
   | Error error ->
-      panic ("http1 string_view parser bench parse error: " ^ error)
+      panic ("http1 slice parser bench parse error: " ^ error)
 
 let benchmarks =
   Bench.[
@@ -109,24 +109,24 @@ let benchmarks =
     with_config ~config:{ iterations = 120; warmup = 12 } "http1 parser in-memory: many headers" (bench_parse many_headers_request);
     with_config
       ~config:{ iterations = 200; warmup = 20 }
-      "http1 parser in-memory string_view: small request"
-      (bench_parse_string_view small_request_view);
+      "http1 parser in-memory slice: small request"
+      (bench_parse_slice small_request_slice);
     with_config
       ~config:{ iterations = 150; warmup = 15 }
-      "http1 parser in-memory string_view: 1 KiB body"
-      (bench_parse_string_view request_1k_view);
+      "http1 parser in-memory slice: 1 KiB body"
+      (bench_parse_slice request_1k_slice);
     with_config
       ~config:{ iterations = 60; warmup = 6 }
-      "http1 parser in-memory string_view: 100 KiB body"
-      (bench_parse_string_view request_100k_view);
+      "http1 parser in-memory slice: 100 KiB body"
+      (bench_parse_slice request_100k_slice);
     with_config
       ~config:{ iterations = 15; warmup = 3 }
-      "http1 parser in-memory string_view: 1 MiB body"
-      (bench_parse_string_view request_1m_view);
+      "http1 parser in-memory slice: 1 MiB body"
+      (bench_parse_slice request_1m_slice);
     with_config
       ~config:{ iterations = 120; warmup = 12 }
-      "http1 parser in-memory string_view: many headers"
-      (bench_parse_string_view many_headers_request_view);
+      "http1 parser in-memory slice: many headers"
+      (bench_parse_slice many_headers_request_slice);
   ]
 
 let () =

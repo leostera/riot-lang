@@ -1,7 +1,6 @@
 module Error = Error
 module Iovec = Iovec
 module Buffer = Buffer
-module StringView = String_view
 module Stdin = Stdio.Stdin
 module Stdout = Stdio.Stdout
 module Stderr = Stdio.Stderr

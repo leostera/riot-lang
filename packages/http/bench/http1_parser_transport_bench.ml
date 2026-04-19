@@ -108,19 +108,19 @@ let read_to_iobuffer = fun reader ~read_size ->
   in
   loop ()
 
-let bench_reader_parse_string_view = fun ~chunk_size payload () ->
+let bench_reader_parse_slice = fun ~chunk_size payload () ->
   let reader = String.to_reader ~chunk_size payload |> IO.buffered ~chunk_size:4_096 () in
   match read_to_iobuffer reader ~read_size:4_096 with
   | Error error ->
-      panic ("http1 parser transport string_view bench read error: " ^ IO.error_message error)
+      panic ("http1 parser transport slice bench read error: " ^ IO.error_message error)
   | Ok buffer -> (
-      match Http1.Request.parse_string_view (IO.StringView.from_buffer buffer) with
+      match Http1.Request.parse_slice (IO.IoBuffer.readable buffer) with
       | Done { value; remaining } ->
           consume_result value remaining
       | Need_more ->
-          panic "http1 parser transport string_view bench expected complete payload"
+          panic "http1 parser transport slice bench expected complete payload"
       | Error error ->
-          panic ("http1 parser transport string_view bench parse error: " ^ error)
+          panic ("http1 parser transport slice bench parse error: " ^ error)
     )
 
 let benchmarks =
@@ -147,24 +147,24 @@ let benchmarks =
       (bench_reader_parse ~chunk_size:64 many_headers_request);
     with_config
       ~config:{ iterations = 200; warmup = 20 }
-      "http1 parser reader-fed string_view: small request"
-      (bench_reader_parse_string_view ~chunk_size:32 small_request);
+      "http1 parser reader-fed slice: small request"
+      (bench_reader_parse_slice ~chunk_size:32 small_request);
     with_config
       ~config:{ iterations = 150; warmup = 15 }
-      "http1 parser reader-fed string_view: 1 KiB body"
-      (bench_reader_parse_string_view ~chunk_size:64 request_1k);
+      "http1 parser reader-fed slice: 1 KiB body"
+      (bench_reader_parse_slice ~chunk_size:64 request_1k);
     with_config
       ~config:{ iterations = 60; warmup = 6 }
-      "http1 parser reader-fed string_view: 100 KiB body"
-      (bench_reader_parse_string_view ~chunk_size:256 request_100k);
+      "http1 parser reader-fed slice: 100 KiB body"
+      (bench_reader_parse_slice ~chunk_size:256 request_100k);
     with_config
       ~config:{ iterations = 15; warmup = 3 }
-      "http1 parser reader-fed string_view: 1 MiB body"
-      (bench_reader_parse_string_view ~chunk_size:1024 request_1m);
+      "http1 parser reader-fed slice: 1 MiB body"
+      (bench_reader_parse_slice ~chunk_size:1024 request_1m);
     with_config
       ~config:{ iterations = 120; warmup = 12 }
-      "http1 parser reader-fed string_view: many headers"
-      (bench_reader_parse_string_view ~chunk_size:64 many_headers_request);
+      "http1 parser reader-fed slice: many headers"
+      (bench_reader_parse_slice ~chunk_size:64 many_headers_request);
   ]
 
 let () =

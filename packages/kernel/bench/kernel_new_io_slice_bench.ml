@@ -70,6 +70,6 @@ let benchmarks =
 
 let () =
   Actors.run
-    ~main:(fun ~args -> Bench.Cli.main ~name:"kernel_new_string_view_bench" ~benchmarks ~args)
+    ~main:(fun ~args -> Bench.Cli.main ~name:"kernel_new_io_slice_bench" ~benchmarks ~args)
     ~args:Env.args
     ()

@@ -73,12 +73,12 @@ let test_extra_input_after_value_reports_position = fun _ctx ->
   | Ok value ->
       Error ("expected parsing to fail for trailing input, got " ^ Json.to_string value)
 
-let test_from_view_matches_json = fun _ctx ->
-  let input = {|{"users":[{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}],"ok":true}|} in
-  let view = IO.StringView.from_string input |> Result.expect ~msg:"view creation failed" in
-  compare_with_baseline input (JsonStream.from_view view)
-
 let test_from_slice_matches_json = fun _ctx ->
+  let input = {|{"users":[{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}],"ok":true}|} in
+  let slice = IO.Iovec.IoSlice.from_string input |> Result.expect ~msg:"slice creation failed" in
+  compare_with_baseline input (JsonStream.from_slice slice)
+
+let test_from_slice_matches_json_on_mixed_arrays = fun _ctx ->
   let input = "[1, 2, {\"name\": \"riot\"}, false]" in
   let slice = IO.Iovec.IoSlice.from_string input |> Result.expect ~msg:"slice creation failed" in
   compare_with_baseline input (JsonStream.from_slice slice)
@@ -93,8 +93,8 @@ let tests = Test.[
   case "from_string matches Json on representative inputs" test_from_string_matches_json;
   case "invalid literals report position and text" test_invalid_literal_reports_position_and_text;
   case "extra input after value reports the trailing position" test_extra_input_after_value_reports_position;
-  case "from_view matches Json on nested objects" test_from_view_matches_json;
-  case "from_slice matches Json on mixed arrays" test_from_slice_matches_json;
+  case "from_slice matches Json on nested objects" test_from_slice_matches_json;
+  case "from_slice matches Json on mixed arrays" test_from_slice_matches_json_on_mixed_arrays;
   case "large numeric arrays match Json" test_large_numeric_array_matches_json;
 ]
 
