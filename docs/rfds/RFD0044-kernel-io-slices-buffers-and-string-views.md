@@ -1,6 +1,6 @@
-# RFD0044 - Kernel IO Slices, Buffers, and String Views
+# RFD0044 - Kernel IO Buffers and Slices
 
-- Feature Name: `kernel_io_slices_buffers_and_string_views`
+- Feature Name: `kernel_io_buffers_and_slices`
 - Start Date: `2026-04-19`
 - Status: `presented`
 - RFD PR: `(not yet opened)`
@@ -9,15 +9,14 @@
 ## Summary
 [summary]: #summary
 
-This RFD proposes a redesign of Riot's low-level I/O substrate around off-heap
-byte storage, cheap slice views, and explicit copy boundaries. It is a kernel
+This RFD proposes a redesign of Riot's low-level I/O substrate around owned
+off-heap buffers, borrowed byte slices, and explicit copy boundaries. It is a kernel
 and `std` contract change, not just an internal optimization pass. The goal is
 to make zero-copy or low-copy I/O the default model for hot paths, while making
 heap `string` / `bytes` conversions explicit and teachable.
 
-- `Kernel.IO` should default to off-heap `IoSlice`, `Iovec`, `IoBuffer`, and
-  `StringView` types instead of making heap `string` / `bytes` the normal I/O
-  currency
+- `Kernel.IO` should default to off-heap `IoBuffer`, `IoSlice`, and `Iovec`
+  types instead of making heap `string` / `bytes` the normal I/O currency
 - fallible range-sensitive operations should return `result` values by default,
   with `_unchecked` variants reserved for validated hot loops
 - `from_*` / `to_*` APIs should be the explicit copy boundaries between
@@ -60,7 +59,7 @@ Today Riot has several overlapping patterns:
 
 - some APIs accept or return `string`
 - some accept or return `bytes`
-- some now use `IoSlice`, `Iovec`, or `StringView`
+- some now use `IoSlice`, `Iovec`, or `IoBuffer`
 - some paths convert eagerly at the boundary
 - some keep parsing on heap strings
 
@@ -112,8 +111,8 @@ The opportunity is also structural.
 If Riot adopts one clear I/O model, contributors can build:
 
 - safer `readv` / `writev` paths over stable off-heap slices
-- buffered readers and writers that expose zero-copy views by default
-- parsers that operate on borrowed byte or string views and only materialize
+- buffered readers and writers that expose borrowed slices by default
+- parsers that operate on borrowed byte slices and only materialize
   heap strings when a public API genuinely needs them
 - transport adapters where copying happens at explicit, named conversion points
   instead of being rediscovered ad hoc
@@ -156,8 +155,8 @@ That is easy to write, but it mixes together three concerns:
 With this proposal, contributors should think in a different order:
 
 1. transport fills an `IoBuffer`
-2. code gets an `IoSlice` or `StringView` over the readable bytes
-3. parser scans and slices those views
+2. code gets an `IoSlice` over the readable bytes
+3. parser scans and slices that borrowed byte region
 4. buffer consumption advances without copying
 5. heap `string` / `bytes` values are only created when the API actually wants
    to keep data as normal OCaml values
@@ -165,9 +164,9 @@ With this proposal, contributors should think in a different order:
 The new mental model is:
 
 - `IoBuffer` owns contiguous off-heap bytes
-- `IoSlice` is a cheap byte view over some region of off-heap storage
+- `IoSlice` is a cheap borrowed byte view over some region of off-heap storage
 - `Iovec` is a collection of slices for vectored I/O
-- `StringView` is a read-only string-like view over transport bytes
+- text matching helpers live on `IoSlice` itself rather than on a second view type
 
 So the default transport path should feel like:
 
@@ -176,15 +175,12 @@ let* buf = Std.IO.IoBuffer.create () in
 let* n = Std.IO.Reader.read reader ~dst:(Std.IO.IoBuffer.writable buf) in
 let* () = Std.IO.IoBuffer.commit buf n in
 
-let view =
-  Std.IO.IoBuffer.readable buf
-  |> Std.IO.StringView.from_slice
-in
+let slice = Std.IO.IoBuffer.readable buf in
 
-match Std.IO.StringView.index_string view "\r\n\r\n" with
+match Std.IO.IoSlice.index_string slice "\r\n\r\n" with
 | None -> (* need more bytes *)
 | Some boundary ->
-  let* head = Std.IO.StringView.sub view ~off:0 ~len:boundary in
+  let* head = Std.IO.IoSlice.sub slice ~off:0 ~len:boundary in
   (* parse request head without copying *)
   let* () = Std.IO.IoBuffer.consume buf (boundary + 4) in
   ...
@@ -193,7 +189,7 @@ match Std.IO.StringView.index_string view "\r\n\r\n" with
 When a caller explicitly needs a normal OCaml string, the boundary is obvious:
 
 ```ocaml
-let request_target = Std.IO.StringView.to_string target_view
+let request_target = Std.IO.IoSlice.to_string target_slice
 ```
 
 That explicit `to_string` is important. It says:
@@ -224,8 +220,7 @@ honest about where they happen.
 
 ### What contributors should assume
 
-- hot transport paths should default to `IoBuffer`, `IoSlice`, `Iovec`, and
-  `StringView`
+- hot transport paths should default to `IoBuffer`, `IoSlice`, and `Iovec`
 - `from_*` and `to_*` APIs are copy boundaries
 - range-sensitive operations return `result` by default
 - `_unchecked` variants exist for validated inner loops, not as the normal API
@@ -235,7 +230,7 @@ honest about where they happen.
 ### What contributors should not assume
 
 - that heap `bytes` is the right default buffer type for blocking native I/O
-- that moving one parser onto a view type automatically improves performance
+- that moving one parser onto borrowed slices automatically improves performance
 - that vectored syscalls matter more than contiguous off-heap buffering
 - that zero-copy means "Riot never copies"; it means copies happen at explicit
   boundaries instead of as the default transport model
@@ -245,7 +240,7 @@ honest about where they happen.
 
 ## 1. Core types
 
-This proposal introduces or stabilizes four core low-level types.
+This proposal introduces or stabilizes three core low-level types.
 
 ### 1.1 `Kernel.IO.IoSlice`
 
@@ -347,24 +342,22 @@ It should be the normal substrate for:
 - protocol framing code
 - socket and file ingestion
 
-### 1.4 `Kernel.IO.StringView`
+### 1.4 Text helpers on `Kernel.IO.IoSlice`
 
-`StringView` is a read-only string-like view over an `IoSlice`.
+This design deliberately does not introduce a second string-oriented view type.
+Protocol parsers should operate on `IoSlice` directly and rely on byte-oriented
+text helpers such as:
 
-It exists because protocol parsers often need:
-
-- `length`
-- `get`
-- `sub`
-- `shift`
 - `starts_with`
+- `equal_string`
 - `index_char`
 - `index_string`
 
-but do not actually need to materialize heap strings for those operations.
+That keeps the model tight:
 
-`StringView` should stay small and read-only. It is a parsing aid, not a second
-mutable buffer type.
+- `IoBuffer` owns bytes
+- `IoSlice` borrows bytes
+- `to_string` is the explicit ownership and copy boundary
 
 ## 2. Error and fallibility model
 
@@ -392,24 +385,31 @@ already validated its bounds.
 `to_string` and `to_bytes` remain total APIs. They are explicit copy boundaries
 rather than range-sensitive operations.
 
-## 3. Borrowing and view rules
+## 3. Borrowing and ownership rules
 
 This proposal assumes the simplest useful borrowing model first.
 
 - `IoSlice.sub` is zero-copy and shares backing storage
-- `StringView.sub` is zero-copy and shares backing storage
-- `IoBuffer.readable` and `IoBuffer.writable` return borrowed views into the
+- `IoBuffer.readable` and `IoBuffer.writable` return borrowed slices into the
   buffer's current storage
 
-Those borrowed views are only intended to stay valid until the next mutating
+Those borrowed slices are only intended to stay valid until the next mutating
 operation that may resize, compact, or otherwise change the underlying buffer.
 
 This is deliberately simple. It matches what Riot needs for the initial
 transport and parser work without forcing a segmented or reference-counted
 buffer design immediately.
 
-If Riot later needs long-lived zero-copy views that survive buffer mutation,
+If Riot later needs long-lived zero-copy retained slices that survive buffer
+mutation,
 that should be a follow-up design, not part of this first redesign.
+
+This model also draws an important ownership line:
+
+- when the caller owns the `IoBuffer`, the caller decides how long borrowed
+  slices may remain valid by controlling when that buffer is mutated or dropped
+- when a library owns and reuses the `IoBuffer`, borrowed slices are only valid
+  until the next refill, consume, compact, or other mutation
 
 ## 4. Syscall boundary rules
 
@@ -435,7 +435,7 @@ Above kernel, `std` should re-expose these types as the main I/O substrate.
 
 `Std.IO` should:
 
-- expose `IoSlice`, `Iovec`, `IoBuffer`, and `StringView`
+- expose `IoSlice`, `Iovec`, and `IoBuffer`
 - build reader and writer helpers on those types
 - provide buffered readers and writers that operate on them
 - keep `stdin`, `stdout`, and `stderr` ergonomic while still using the same
@@ -455,7 +455,6 @@ Stabilize the substrate:
 - `IoSlice`
 - `Iovec`
 - `IoBuffer`
-- `StringView`
 - bulk-native `blit*` operations
 
 ### Stage 2
@@ -516,7 +515,7 @@ confuses the transport model.
 
 The recent HTTP experiment already tested this path indirectly.
 
-That experiment showed that moving one parser onto off-heap views before the
+That experiment showed that moving one parser onto borrowed off-heap slices before the
 underlying buffer and copy substrate is mature is the wrong order. Parser
 throughput did not improve, and in several cases it regressed badly.
 
@@ -552,7 +551,7 @@ Eio is the strongest prior art for the low-level direction proposed here.
 It uses:
 
 - bigarray-backed contiguous buffers
-- `Cstruct.t` as the slice/view type
+- `Cstruct.t` as the slice type
 - real `readv` / `writev` in its POSIX backend
 - buffered readers and writers built on that substrate
 
@@ -565,7 +564,7 @@ heap strings or bytes only when crossing that boundary explicitly.
 `bigstringaf` is useful prior art for one narrow piece of the design:
 
 - one off-heap contiguous byte-array type
-- cheap subviews
+- cheap borrowed subslices
 - fast bulk `memcpy` / `memcmp` / `memchr` helpers
 
 It does not define an `iovec` model itself. That is a useful reminder that
@@ -605,8 +604,9 @@ currency.
   layout?
 - Should `IoBuffer` remain strictly contiguous in its first version, or is
   there already enough evidence to justify segmented storage?
-- Which `Std.IO` text operations should return `StringView` first, and which
-  should continue returning `string` for ergonomics?
+- Which `Std.IO` and `Iter` cursor operations should return borrowed `IoSlice`
+  first, and which should continue returning `string` as explicit convenience
+  wrappers?
 - Where should Riot draw the line between transport-oriented APIs and
   application-oriented helpers in `std`?
 - Once the core substrate is stable, which protocol package should be the next
