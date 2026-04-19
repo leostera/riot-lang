@@ -1,0 +1,22 @@
+open Global
+
+(** # Data.JsonStream - JSON parsing over StringView
+
+    `JsonStream` is an additive parser surface that reuses {!Json.t} and
+    {!Json.error}, but parses from `Std.IO.StringView`/`IoSlice` instead of
+    heap strings by default.
+
+    The direct `from_view`/`from_slice` entry points avoid copying the whole
+    source input into a fresh heap string before parsing. `from_string` stays as
+    the convenience adapter for ordinary callers. *)
+
+type t = Json.t
+type error = Json.error
+
+val from_string: string -> (t, error) Result.t
+
+val from_view: IO.StringView.t -> (t, error) Result.t
+
+val from_slice: IO.Iovec.IoSlice.t -> (t, error) Result.t
+
+val error_to_string: error -> string

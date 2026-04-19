@@ -51,6 +51,7 @@
 45. Keep off-heap syscall-facing byte storage owned by `kernel`, and re-export it from `Std.IO` under explicit names such as `IoBuffer` and `StringView`. Code above `std` should not reach into `Kernel.IO` directly for parsing or buffering primitives.
 46. Keep `Std.IO` explicit about copy boundaries. Off-heap buffers and views should flow through `IoSlice`, `Iovec`, `IoBuffer`, and `StringView`; heap conversions should stay on `from_*` / `to_*` names rather than hiding allocations behind generic helpers.
 47. Keep shared reader and writer internals on the checked kernel I/O surface. Bounds-sensitive calls should use `Result`-returning `Kernel.IO` operations by default, and only drop to `_unchecked` helpers after a local invariant has been established in the hot path.
+48. Keep new `Std.Data` parser substrates additive and benchmarked before they replace string-first defaults. View-backed parser experiments such as `JsonStream` should reuse existing value/error models where possible and prove a measurable win before becoming the main public entry point.
 
 ## Validate
 

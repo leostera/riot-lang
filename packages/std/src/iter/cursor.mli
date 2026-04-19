@@ -1,7 +1,14 @@
-(** # Cursor - Immutable string cursor for parsing *)
+(** # Cursor - Immutable string cursor for parsing
+
+    `Cursor` now uses an internal `StringView`-backed representation so
+    navigation is cheap, while the public extraction APIs still materialize
+    owned strings for compatibility. *)
 
 type t
+
 val create: string -> t
+
+val from_string: string -> t
 
 val source: t -> string
 
