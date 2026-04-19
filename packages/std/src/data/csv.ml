@@ -106,7 +106,7 @@ let of_string = fun ?(config = default_config) str ->
         loop ()
     | _ ->
         let field =
-          Iter.MutCursor.take_while cursor (fun c -> c != config.delimiter && c != '\n' && c != '\r')
+          Iter.MutCursor.take_while_string cursor (fun c -> c != config.delimiter && c != '\n' && c != '\r')
         in
         trim field
   in

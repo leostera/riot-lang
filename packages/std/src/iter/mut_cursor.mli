@@ -1,9 +1,17 @@
-(** # MutCursor - Mutable string cursor for parsing *)
+(** # MutCursor - Mutable slice cursor for parsing *)
+
+module IoSlice = Kernel.IO.Iovec.IoSlice
 
 type t
 val create: string -> t
 
-val source: t -> string
+val from_string: string -> t
+
+val from_slice: IoSlice.t -> t
+
+val source: t -> IoSlice.t
+
+val source_string: t -> string
 
 val position: t -> int
 
@@ -19,12 +27,20 @@ val advance: t -> unit
 
 val advance_by: t -> int -> unit
 
-val take_while: t -> (char -> bool) -> string
+val take_while: t -> (char -> bool) -> IoSlice.t
+
+val take_while_string: t -> (char -> bool) -> string
 
 val skip_while: t -> (char -> bool) -> unit
 
-val take_until: t -> (char -> bool) -> string option
+val take_until: t -> (char -> bool) -> IoSlice.t option
 
-val take_n: t -> int -> string option
+val take_until_string: t -> (char -> bool) -> string option
 
-val remaining: t -> string
+val take_n: t -> int -> IoSlice.t option
+
+val take_n_string: t -> int -> string option
+
+val remaining: t -> IoSlice.t
+
+val remaining_string: t -> string

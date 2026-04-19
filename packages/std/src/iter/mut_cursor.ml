@@ -1,24 +1,31 @@
 open Kernel
 
+module IoSlice = Kernel.IO.Iovec.IoSlice
+
 type t = {
-  source: string;
+  source: IoSlice.t;
   mutable pos: int;
   length: int;
 }
 
-let string_length = Kernel.String.length
+let panic = Kernel.SystemError.panic
 
-let string_get = Kernel.String.get_unchecked
+let unwrap_slice = fun context ->
+  function
+  | Kernel.Result.Ok value -> value
+  | Kernel.Result.Error error ->
+      panic (Kernel.String.concat "" [ context; ": "; Kernel.IO.Error.message error ])
 
-let string_sub = fun source start len ->
-  source
-  |> Kernel.Bytes.from_string
-  |> Kernel.Bytes.sub_unchecked ~offset:start ~len
-  |> Kernel.Bytes.to_string
+let from_slice = fun source -> { source; pos = 0; length = IoSlice.length source }
 
-let create = fun source -> { source; pos = 0; length = string_length source }
+let from_string = fun source ->
+  from_slice (unwrap_slice "Iter.MutCursor.from_string" (IoSlice.from_string source))
+
+let create = from_string
 
 let source = fun cursor -> cursor.source
+
+let source_string = fun cursor -> IoSlice.to_string cursor.source
 
 let position = fun cursor -> cursor.pos
 
@@ -30,14 +37,14 @@ let peek = fun cursor ->
   if is_eof cursor then
     None
   else
-    Some (string_get cursor.source ~at:cursor.pos)
+    Some (IoSlice.get_unchecked cursor.source ~at:cursor.pos)
 
 let peek_n = fun cursor count ->
   let target = cursor.pos + count in
   if target >= cursor.length then
     None
   else
-    Some (string_get cursor.source ~at:target)
+    Some (IoSlice.get_unchecked cursor.source ~at:target)
 
 let advance = fun cursor ->
   if not (is_eof cursor) then
@@ -58,7 +65,9 @@ let take_while = fun cursor predicate ->
     | _ -> ()
   in
   loop ();
-  string_sub cursor.source start (cursor.pos - start)
+  IoSlice.sub_unchecked cursor.source ~off:start ~len:(cursor.pos - start)
+
+let take_while_string = fun cursor predicate -> take_while cursor predicate |> IoSlice.to_string
 
 let skip_while = fun cursor predicate ->
   let rec loop () =
@@ -75,7 +84,7 @@ let take_until = fun cursor predicate ->
   let rec loop () =
     if cursor.pos >= cursor.length then
       None
-    else if predicate (string_get cursor.source ~at:cursor.pos) then
+    else if predicate (IoSlice.get_unchecked cursor.source ~at:cursor.pos) then
       Some cursor.pos
     else (
       cursor.pos <- cursor.pos + 1;
@@ -86,20 +95,32 @@ let take_until = fun cursor predicate ->
   | None ->
       cursor.pos <- start;
       None
-  | Some stop -> Some (string_sub cursor.source start (stop - start))
+  | Some stop -> Some (IoSlice.sub_unchecked cursor.source ~off:start ~len:(stop - start))
+
+let take_until_string = fun cursor predicate ->
+  match take_until cursor predicate with
+  | None -> None
+  | Some slice -> Some (IoSlice.to_string slice)
 
 let take_n = fun cursor count ->
   if cursor.pos + count > cursor.length then
     None
   else
     (
-      let taken = string_sub cursor.source cursor.pos count in
+      let taken = IoSlice.sub_unchecked cursor.source ~off:cursor.pos ~len:count in
       cursor.pos <- cursor.pos + count;
       Some taken
     )
 
+let take_n_string = fun cursor count ->
+  match take_n cursor count with
+  | None -> None
+  | Some slice -> Some (IoSlice.to_string slice)
+
 let remaining = fun cursor ->
   if is_eof cursor then
-    ""
+    IoSlice.empty
   else
-    string_sub cursor.source cursor.pos (cursor.length - cursor.pos)
+    IoSlice.sub_unchecked cursor.source ~off:cursor.pos ~len:(cursor.length - cursor.pos)
+
+let remaining_string = fun cursor -> IoSlice.to_string (remaining cursor)

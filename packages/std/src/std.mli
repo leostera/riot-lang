@@ -259,8 +259,8 @@ module Iter = Iter
     
     **Use Iterator when:** You need functional, backtrackable iteration
     **Use MutIterator when:** You need efficient, single-pass iteration
-    **Use Cursor when:** You're parsing strings with backtracking
-    **Use MutCursor when:** You need fast, single-pass string parsing *)
+    **Use Cursor when:** You're parsing borrowed slices with backtracking
+    **Use MutCursor when:** You need fast, single-pass slice parsing *)
 module List = Collections.List
 
 (** **When to use:** Immutable linked lists
