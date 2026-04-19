@@ -1,7 +1,7 @@
 # HTTP Benchmarks
 
 This file tracks the HTTP/1 request-parser migration from heap-string slicing to
-`Std.IO.StringView`.
+`Std.IO.IoSlice`.
 
 Date:
 - 2026-04-19
@@ -56,63 +56,65 @@ Chunk sizes:
 
 ## Current: Public String Entry Point
 
-These are the current means for `Http1.Request.parse`, which now materializes a `StringView`
+These are the current means for `Http1.Request.parse`, which now materializes an `IoSlice`
 internally before parsing.
 
 ### Parser Only
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser in-memory: small request` | `7.95 us` |
-| `http1 parser in-memory: 1 KiB body` | `18.57 us` |
-| `http1 parser in-memory: 100 KiB body` | `104.93 us` |
-| `http1 parser in-memory: 1 MiB body` | `356.53 us` |
-| `http1 parser in-memory: many headers` | `313.85 us` |
+| `http1 parser in-memory: small request` | `6.95 us` |
+| `http1 parser in-memory: 1 KiB body` | `15.16 us` |
+| `http1 parser in-memory: 100 KiB body` | `82.42 us` |
+| `http1 parser in-memory: 1 MiB body` | `333.67 us` |
+| `http1 parser in-memory: many headers` | `203.11 us` |
 
 ### Reader-Fed
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser reader-fed: small request` | `13.50 us` |
-| `http1 parser reader-fed: 1 KiB body` | `30.53 us` |
-| `http1 parser reader-fed: 100 KiB body` | `9.73 ms` |
-| `http1 parser reader-fed: 1 MiB body` | `135.64 ms` |
-| `http1 parser reader-fed: many headers` | `231.92 us` |
+| `http1 parser reader-fed: small request` | `13.75 us` |
+| `http1 parser reader-fed: 1 KiB body` | `27.79 us` |
+| `http1 parser reader-fed: 100 KiB body` | `11.35 ms` |
+| `http1 parser reader-fed: 1 MiB body` | `175.51 ms` |
+| `http1 parser reader-fed: many headers` | `238.73 us` |
 
-## Current: Direct StringView Entry Point
+## Current: Direct Slice Entry Point
 
-These are the current means for `Http1.Request.parse_string_view`.
+These are the current means for `Http1.Request.parse_slice`.
 
 ### Parser Only
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser in-memory string_view: small request` | `9.36 us` |
-| `http1 parser in-memory string_view: 1 KiB body` | `10.85 us` |
-| `http1 parser in-memory string_view: 100 KiB body` | `17.37 us` |
-| `http1 parser in-memory string_view: 1 MiB body` | `250.67 us` |
-| `http1 parser in-memory string_view: many headers` | `239.31 us` |
+| `http1 parser in-memory slice: small request` | `7.67 us` |
+| `http1 parser in-memory slice: 1 KiB body` | `12.29 us` |
+| `http1 parser in-memory slice: 100 KiB body` | `16.80 us` |
+| `http1 parser in-memory slice: 1 MiB body` | `203.80 us` |
+| `http1 parser in-memory slice: many headers` | `210.97 us` |
 
 ### Reader-Fed
 
-The direct reader-fed `StringView` path currently reads into `Std.IO.IoBuffer` with vectored reads
-and then parses `Std.IO.StringView.from_buffer`.
+The direct reader-fed slice path currently reads into `Std.IO.IoBuffer` with vectored reads and
+then parses `Std.IO.IoBuffer.readable`.
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser reader-fed string_view: small request` | `15.96 us` |
-| `http1 parser reader-fed string_view: 1 KiB body` | `26.09 us` |
-| `http1 parser reader-fed string_view: 100 KiB body` | `6.11 ms` |
-| `http1 parser reader-fed string_view: 1 MiB body` | `75.11 ms` |
-| `http1 parser reader-fed string_view: many headers` | `241.80 us` |
+| `http1 parser reader-fed slice: small request` | `11.11 us` |
+| `http1 parser reader-fed slice: 1 KiB body` | `28.85 us` |
+| `http1 parser reader-fed slice: 100 KiB body` | `10.61 ms` |
+| `http1 parser reader-fed slice: 1 MiB body` | `174.78 ms` |
+| `http1 parser reader-fed slice: many headers` | `262.99 us` |
 
 ## Current Read
 
-- Large-body request parsing now benefits clearly from the off-heap path. Both the public parser and
-  the direct `StringView` parser beat the old baseline on `100 KiB` and `1 MiB` request shapes.
-- The direct `parse_string_view` path is now the best measured path for large request bodies,
-  especially on the reader-fed benchmark where `1 MiB` dropped from `103.78 ms` to `75.11 ms`.
-- Tiny requests and header-heavy shapes are still mixed: setup overhead dominates there, so the old
-  string baseline can remain competitive or faster.
-- The next optimization target is still the ingestion path rather than the request parser itself:
-  `IoBuffer` growth, fill, and handoff into `StringView` are where additional wins should come from.
+- Large-body request parsing still benefits clearly from the off-heap slice path in the parser-only
+  benchmark. `parse_slice` is materially faster than the old baseline on `100 KiB` and `1 MiB`
+  shapes.
+- The current reader-fed benchmark regressed versus the earlier `StringView` experiment. Both the
+  public parser and the direct slice parser are now around `175 ms` on the `1 MiB` shape, which
+  points back at the ingestion/buffer handoff path rather than request-line parsing.
+- Tiny requests remain mixed: the slice path is competitive, but setup overhead still dominates the
+  small-request and many-header shapes.
+- The next optimization target is the reader-fed path: `IoBuffer` fill/consume behavior, repeated
+  readable-slice handoff, and any remaining copying or scalar hot loops in the parser stack.
