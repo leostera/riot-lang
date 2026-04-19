@@ -3,85 +3,96 @@ open Std
 open Std.Iter
 open Common
 
-let ( let* ) = Result.and_then
+module Slice = IO.Iovec.IoSlice
 
 type t = Std.Net.Http.Response.t
 
-let parse_status_line = fun input ->
-  let cursor = Cursor.create input in
-  match Cursor.take_until_string cursor (fun c -> c = '\r') with
-  | None -> Need_more
+type status_line_slices = {
+  version: Slice.t;
+  status_code: int;
+  reason: Slice.t;
+  remaining: Cursor.t;
+}
+
+type 'a cursor_parse_result =
+  | Cursor_done of { value: 'a; remaining: Cursor.t }
+  | Cursor_need_more
+  | Cursor_error of string
+
+let slice_of_string = fun value ->
+  match Slice.from_string value with
+  | Ok slice -> slice
+  | Error error -> panic ("Http1.Response.slice_of_string: " ^ Kernel.IO.Error.message error)
+
+let parse_status_line_slice = fun input ->
+  let cursor = Cursor.from_slice input in
+  match Cursor.take_until cursor (fun c -> c = '\r') with
+  | None -> Cursor_need_more
   | Some (line, cursor) -> (
       match Cursor.advance_by cursor 2 with
-      | None -> Error "Invalid line ending"
+      | None -> Cursor_error "Invalid line ending"
       | Some cursor -> (
-          let line_cursor = Cursor.create line in
-          (* Get version *)
-          match Cursor.take_until_string line_cursor (fun c -> c = ' ') with
-          | None -> Error "Missing version"
+          let line_cursor = Cursor.from_slice line in
+          match Cursor.take_until line_cursor (fun c -> c = ' ') with
+          | None -> Cursor_error "Missing version"
           | Some (version, line_cursor) -> (
-              let line_cursor =
-                Cursor.skip_while line_cursor (fun c -> c = ' ')
-              in
-              (* Get status code *)
-              match Cursor.take_until_string line_cursor (fun c -> c = ' ') with
-              | None -> Error "Missing status code"
+              let line_cursor = Cursor.skip_while line_cursor (fun c -> c = ' ') in
+              match Cursor.take_until line_cursor (fun c -> c = ' ') with
+              | None -> Cursor_error "Missing status code"
               | Some (code_str, line_cursor) -> (
-                  let line_cursor =
-                    Cursor.skip_while line_cursor (fun c -> c = ' ')
-                  in
-                  (* Get reason phrase *)
-                  let reason = Cursor.remaining_string line_cursor in
-                  (* Validate HTTP version prefix *)
-                  let version_cursor = Cursor.create version in
-                  match Cursor.take_n_string version_cursor 5 with
-                  | Some ("HTTP/", _) -> (
-                      match Int.parse code_str with
-                      | None -> Error "Invalid status code"
-                      | Some status_code -> Done {
-                        value = (version, status_code, reason);
-                        remaining = Cursor.remaining_string cursor
-                      }
+                  let line_cursor = Cursor.skip_while line_cursor (fun c -> c = ' ') in
+                  let reason = Cursor.remaining line_cursor in
+                  let version_cursor = Cursor.from_slice version in
+                  match Cursor.take_n version_cursor 5 with
+                  | Some (prefix, _) when Slice.equal_string prefix "HTTP/" -> (
+                      match Int.parse (Slice.to_string code_str) with
+                      | None -> Cursor_error "Invalid status code"
+                      | Some status_code ->
+                          Cursor_done {
+                            value = { version; status_code; reason; remaining = cursor };
+                            remaining = cursor;
+                          }
                     )
-                  | _ -> Error "Invalid HTTP version"
+                  | _ -> Cursor_error "Invalid HTTP version"
                 )
             )
         )
     )
 
-let parse = fun input ->
-  match parse_status_line input with
-  | Need_more ->
+let parse_slice = fun input ->
+  match parse_status_line_slice input with
+  | Cursor_need_more ->
       Need_more
-  | Error e ->
-      Error e
-  | Done { value=(version_str, status_code, reason); remaining } -> (
-      let cursor = Cursor.create remaining in
-      match Request.parse_headers cursor with
+  | Cursor_error error ->
+      Error error
+  | Cursor_done { value={ version; status_code; reason; remaining }; _ } -> (
+      match Request.parse_headers remaining with
       | Need_more ->
           Need_more
-      | Error e ->
-          Error e
+      | Error error ->
+          Error error
       | Done { value=(headers_list, body_start); _ } ->
-          (* Build Std.Net.Http.Response.t *)
-          let version = Std.Net.Http.Version.of_string version_str
-          |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11 in
+          let version =
+            Slice.to_string version
+            |> Std.Net.Http.Version.of_string
+            |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11
+          in
           let status = Std.Net.Http.Status.of_int status_code in
           let headers = Std.Net.Http.Header.of_list headers_list in
-          let body_cursor = Cursor.create body_start in
           let response =
             (
-              (
-                Std.Net.Http.Response.create status |> fun res ->
-                  Std.Net.Http.Response.with_version res version
-              ) |> fun res ->
-                Std.Net.Http.Response.with_headers res headers
+              Std.Net.Http.Response.create status
+              |> fun res -> Std.Net.Http.Response.with_version res version
+              |> fun res -> Std.Net.Http.Response.with_headers res headers
             )
             |> fun res ->
-              if Cursor.length_remaining body_cursor > 0 then
+              if String.length body_start > 0 then
                 Std.Net.Http.Response.with_body res body_start
               else
                 res
           in
+          let _ = reason in
           Done { value = response; remaining = body_start }
     )
+
+let parse = fun input -> parse_slice (slice_of_string input)

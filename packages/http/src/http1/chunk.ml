@@ -3,45 +3,60 @@ open Std
 open Std.Iter
 open Common
 
-let ( let* ) = Result.and_then
+module Slice = IO.Iovec.IoSlice
 
 type chunk_result = {
   data: string;
   remaining: string;
 }
 
+type 'a cursor_parse_result =
+  | Cursor_done of { value: 'a; remaining: Cursor.t }
+  | Cursor_need_more
+  | Cursor_error of string
+
+let slice_of_string = fun value ->
+  match Slice.from_string value with
+  | Ok slice -> slice
+  | Error error -> panic ("Http1.Chunk.slice_of_string: " ^ Kernel.IO.Error.message error)
+
 let parse_size = fun cursor ->
-  match Cursor.take_until_string cursor (fun c -> c = '\r') with
-  | None -> Need_more
+  match Cursor.take_until cursor (fun c -> c = '\r') with
+  | None -> Cursor_need_more
   | Some (size_hex, cursor) -> (
       match Cursor.advance_by cursor 2 with
-      | None -> Error "Invalid chunk size line ending"
+      | None -> Cursor_error "Invalid chunk size line ending"
       | Some cursor -> (
-          match Int.parse ("0x" ^ size_hex) with
-          | Some size -> Done { value = size; remaining = Cursor.remaining_string cursor }
-          | None -> Error "Invalid chunk size"
+          match Int.parse ("0x" ^ Slice.to_string size_hex) with
+          | Some size -> Cursor_done { value = size; remaining = cursor }
+          | None -> Cursor_error "Invalid chunk size"
         )
     )
 
-let parse = fun input ->
-  let cursor = Cursor.create input in
+let parse_slice = fun input ->
+  let cursor = Cursor.from_slice input in
   match parse_size cursor with
-  | Need_more ->
+  | Cursor_need_more ->
       Need_more
-  | Error e ->
-      Error e
-  | Done { value=0; remaining } ->
-      Done { value = { data = ""; remaining }; remaining = "" }
-  | Done { value=size; remaining } -> (
-      let cursor = Cursor.create remaining in
-      match Cursor.take_n_string cursor size with
+  | Cursor_error error ->
+      Error error
+  | Cursor_done { value = 0; remaining } ->
+      Done { value = { data = ""; remaining = Slice.to_string (Cursor.remaining remaining) }; remaining = "" }
+  | Cursor_done { value = size; remaining } -> (
+      match Cursor.take_n remaining size with
       | None -> Need_more
       | Some (data, cursor) -> (
           match Cursor.advance_by cursor 2 with
           | None -> Need_more
-          | Some cursor -> Done {
-            value = { data; remaining = Cursor.remaining_string cursor };
-            remaining = ""
-          }
+          | Some cursor ->
+              Done {
+                value = {
+                  data = Slice.to_string data;
+                  remaining = Slice.to_string (Cursor.remaining cursor);
+                };
+                remaining = "";
+              }
         )
     )
+
+let parse = fun input -> parse_slice (slice_of_string input)

@@ -8,4 +8,5 @@ type event = {
   id: string option;
   retry: int option;
 }
+val parse_line_slice: IO.Iovec.IoSlice.t -> event option
 val parse_line: string -> event option

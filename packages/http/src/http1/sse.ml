@@ -2,7 +2,7 @@
 open Std
 open Std.Iter
 
-let ( let* ) = Result.and_then
+module Slice = IO.Iovec.IoSlice
 
 type event = {
   data: string;
@@ -11,29 +11,26 @@ type event = {
   retry: int option;
 }
 
-let parse_line = fun line ->
-  (* Trim line using Cursor *)
-  let line_cursor = Cursor.create line in
-  let line_cursor =
-    Cursor.skip_while line_cursor (fun c -> c = ' ' || c = '\t')
-  in
-  let line = Cursor.remaining_string line_cursor in
-  if line = "" then
+let slice_of_string = fun value ->
+  match Slice.from_string value with
+  | Ok slice -> slice
+  | Error error -> panic ("Http1.Sse.slice_of_string: " ^ Kernel.IO.Error.message error)
+
+let parse_line_slice = fun line ->
+  let line_cursor = Cursor.from_slice line in
+  let line_cursor = Cursor.skip_while line_cursor (fun c -> c = ' ' || c = '\t') in
+  let line = Cursor.remaining line_cursor in
+  if Slice.length line = 0 then
     None
   else
-    let cursor = Cursor.create line in
-    (* Take until colon to get field name *)
-    match Cursor.take_until_string cursor (fun c -> c = ':') with
+    let cursor = Cursor.from_slice line in
+    match Cursor.take_until cursor (fun c -> c = ':') with
     | None -> None
     | Some (field, cursor) -> (
-        (* Skip colon *)
         let cursor = Cursor.advance cursor |> Option.unwrap in
-        (* Skip optional space after colon *)
-        let cursor =
-          Cursor.skip_while cursor (fun c -> c = ' ')
-        in
-        let value = Cursor.remaining_string cursor in
-        match field with
+        let cursor = Cursor.skip_while cursor (fun c -> c = ' ') in
+        let value = Cursor.remaining cursor |> Slice.to_string in
+        match Slice.to_string field with
         | "" ->
             None
         | "data" ->
@@ -50,3 +47,5 @@ let parse_line = fun line ->
         | _ ->
             None
       )
+
+let parse_line = fun line -> parse_line_slice (slice_of_string line)
