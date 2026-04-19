@@ -1,13 +1,14 @@
 open Std
 
 module Cursor = Iter.Cursor
+module IoSlice = IO.Iovec.IoSlice
 
 let is_digit = fun ch -> Char.code ch >= Char.code '0' && Char.code ch <= Char.code '9'
 
 let test_create_sets_source_position_and_length_remaining = fun _ctx ->
   let cursor = Cursor.create "hello" in
   if
-    String.equal (Cursor.source cursor) "hello"
+    String.equal (IoSlice.to_string (Cursor.source cursor)) "hello"
     && Int.equal (Cursor.position cursor) 0
     && Int.equal (Cursor.length_remaining cursor) 5
   then
@@ -28,7 +29,7 @@ let test_peek_n_returns_future_characters_without_advancing = fun _ctx ->
 
 let test_advance_moves_position_by_one = fun _ctx ->
   match Cursor.advance (Cursor.create "hello") with
-  | Some cursor when Int.equal (Cursor.position cursor) 1 && String.equal (Cursor.remaining cursor) "ello" -> Ok ()
+  | Some cursor when Int.equal (Cursor.position cursor) 1 && String.equal (IoSlice.to_string (Cursor.remaining cursor)) "ello" -> Ok ()
   | _ -> Error "Cursor.advance should move the cursor by one position"
 
 let test_advance_at_eof_returns_none = fun _ctx ->
@@ -38,7 +39,7 @@ let test_advance_at_eof_returns_none = fun _ctx ->
 
 let test_advance_by_moves_within_bounds = fun _ctx ->
   match Cursor.advance_by (Cursor.create "hello") 3 with
-  | Some cursor when Int.equal (Cursor.position cursor) 3 && String.equal (Cursor.remaining cursor) "lo" -> Ok ()
+  | Some cursor when Int.equal (Cursor.position cursor) 3 && String.equal (IoSlice.to_string (Cursor.remaining cursor)) "lo" -> Ok ()
   | _ -> Error "Cursor.advance_by should move within bounds"
 
 let test_advance_by_past_eof_returns_none = fun _ctx ->
@@ -48,31 +49,37 @@ let test_advance_by_past_eof_returns_none = fun _ctx ->
 
 let test_take_while_collects_prefix_and_returns_rest = fun _ctx ->
   let taken, cursor = Cursor.take_while (Cursor.create "123abc") is_digit in
-  if String.equal taken "123" && String.equal (Cursor.remaining cursor) "abc" then
+  if String.equal (IoSlice.to_string taken) "123" && String.equal (IoSlice.to_string (Cursor.remaining cursor)) "abc" then
     Ok ()
   else
     Error "Cursor.take_while should collect the matching prefix"
 
 let test_skip_while_advances_without_returning_text = fun _ctx ->
   let cursor = Cursor.skip_while (Cursor.create "   abc") (fun ch -> Char.equal ch ' ') in
-  if String.equal (Cursor.remaining cursor) "abc" then
+  if String.equal (IoSlice.to_string (Cursor.remaining cursor)) "abc" then
     Ok ()
   else
     Error "Cursor.skip_while should advance while the predicate holds"
 
 let test_take_until_stops_before_the_matching_character = fun _ctx ->
   match Cursor.take_until (Cursor.create "alpha:beta") (fun ch -> Char.equal ch ':') with
-  | Some (taken, cursor) when String.equal taken "alpha" && String.equal (Cursor.remaining cursor) ":beta" -> Ok ()
+  | Some (taken, cursor)
+    when String.equal (IoSlice.to_string taken) "alpha"
+         && String.equal (IoSlice.to_string (Cursor.remaining cursor)) ":beta" ->
+      Ok ()
   | _ -> Error "Cursor.take_until should stop before the matching character"
 
 let test_take_n_returns_requested_length = fun _ctx ->
   match Cursor.take_n (Cursor.create "abcdef") 3 with
-  | Some (taken, cursor) when String.equal taken "abc" && String.equal (Cursor.remaining cursor) "def" -> Ok ()
+  | Some (taken, cursor)
+    when String.equal (IoSlice.to_string taken) "abc"
+         && String.equal (IoSlice.to_string (Cursor.remaining cursor)) "def" ->
+      Ok ()
   | _ -> Error "Cursor.take_n should return the requested number of characters"
 
 let test_remaining_is_empty_at_eof = fun _ctx ->
   let cursor = Cursor.advance_by (Cursor.create "abc") 3 |> Option.unwrap in
-  if String.equal (Cursor.remaining cursor) "" && Cursor.is_eof cursor then
+  if String.equal (IoSlice.to_string (Cursor.remaining cursor)) "" && Cursor.is_eof cursor then
     Ok ()
   else
     Error "Cursor.remaining should be empty at EOF"

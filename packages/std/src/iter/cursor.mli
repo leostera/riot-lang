@@ -1,8 +1,6 @@
-(** # Cursor - Immutable string cursor for parsing
+(** # Cursor - Immutable slice cursor for parsing *)
 
-    `Cursor` now uses an internal `StringView`-backed representation so
-    navigation is cheap, while the public extraction APIs still materialize
-    owned strings for compatibility. *)
+module IoSlice = Kernel.IO.Iovec.IoSlice
 
 type t
 
@@ -10,7 +8,11 @@ val create: string -> t
 
 val from_string: string -> t
 
-val source: t -> string
+val from_slice: IoSlice.t -> t
+
+val source: t -> IoSlice.t
+
+val source_string: t -> string
 
 val position: t -> int
 
@@ -26,12 +28,20 @@ val advance: t -> t option
 
 val advance_by: t -> int -> t option
 
-val take_while: t -> (char -> bool) -> string * t
+val take_while: t -> (char -> bool) -> IoSlice.t * t
+
+val take_while_string: t -> (char -> bool) -> string * t
 
 val skip_while: t -> (char -> bool) -> t
 
-val take_until: t -> (char -> bool) -> (string * t) option
+val take_until: t -> (char -> bool) -> (IoSlice.t * t) option
 
-val take_n: t -> int -> (string * t) option
+val take_until_string: t -> (char -> bool) -> (string * t) option
 
-val remaining: t -> string
+val take_n: t -> int -> (IoSlice.t * t) option
+
+val take_n_string: t -> int -> (string * t) option
+
+val remaining: t -> IoSlice.t
+
+val remaining_string: t -> string

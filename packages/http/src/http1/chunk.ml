@@ -11,14 +11,14 @@ type chunk_result = {
 }
 
 let parse_size = fun cursor ->
-  match Cursor.take_until cursor (fun c -> c = '\r') with
+  match Cursor.take_until_string cursor (fun c -> c = '\r') with
   | None -> Need_more
   | Some (size_hex, cursor) -> (
       match Cursor.advance_by cursor 2 with
       | None -> Error "Invalid chunk size line ending"
       | Some cursor -> (
           match Int.parse ("0x" ^ size_hex) with
-          | Some size -> Done { value = size; remaining = Cursor.remaining cursor }
+          | Some size -> Done { value = size; remaining = Cursor.remaining_string cursor }
           | None -> Error "Invalid chunk size"
         )
     )
@@ -34,13 +34,13 @@ let parse = fun input ->
       Done { value = { data = ""; remaining }; remaining = "" }
   | Done { value=size; remaining } -> (
       let cursor = Cursor.create remaining in
-      match Cursor.take_n cursor size with
+      match Cursor.take_n_string cursor size with
       | None -> Need_more
       | Some (data, cursor) -> (
           match Cursor.advance_by cursor 2 with
           | None -> Need_more
           | Some cursor -> Done {
-            value = { data; remaining = Cursor.remaining cursor };
+            value = { data; remaining = Cursor.remaining_string cursor };
             remaining = ""
           }
         )

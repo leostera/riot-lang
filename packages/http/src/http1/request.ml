@@ -180,7 +180,7 @@ let rec parse_headers_views = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc
             remaining
 
 let parse_headers = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) cursor ->
-  let input = Std.Iter.Cursor.remaining cursor in
+  let input = Std.Iter.Cursor.remaining_string cursor in
   match
     parse_headers_views
       ~max_count

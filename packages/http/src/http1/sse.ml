@@ -17,13 +17,13 @@ let parse_line = fun line ->
   let line_cursor =
     Cursor.skip_while line_cursor (fun c -> c = ' ' || c = '\t')
   in
-  let line = Cursor.remaining line_cursor in
+  let line = Cursor.remaining_string line_cursor in
   if line = "" then
     None
   else
     let cursor = Cursor.create line in
     (* Take until colon to get field name *)
-    match Cursor.take_until cursor (fun c -> c = ':') with
+    match Cursor.take_until_string cursor (fun c -> c = ':') with
     | None -> None
     | Some (field, cursor) -> (
         (* Skip colon *)
@@ -32,7 +32,7 @@ let parse_line = fun line ->
         let cursor =
           Cursor.skip_while cursor (fun c -> c = ' ')
         in
-        let value = Cursor.remaining cursor in
+        let value = Cursor.remaining_string cursor in
         match field with
         | "" ->
             None

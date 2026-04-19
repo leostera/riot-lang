@@ -1,32 +1,30 @@
 open Kernel
 
 let panic = Kernel.SystemError.panic
-module View = Kernel.IO.StringView
+module IoSlice = Kernel.IO.Iovec.IoSlice
 
 type t = {
-  source: View.t;
+  source: IoSlice.t;
   pos: int;
   length: int;
 }
 
-let unwrap_view = fun context ->
+let unwrap_slice = fun context ->
   function
   | Kernel.Result.Ok value -> value
   | Kernel.Result.Error error ->
       panic (Kernel.String.concat "" [ context; ": "; Kernel.IO.Error.message error ])
 
-let from_view = fun source -> { source; pos = 0; length = View.length source }
-
-let from_slice = fun source -> from_view (View.from_slice source)
+let from_slice = fun source -> { source; pos = 0; length = IoSlice.length source }
 
 let from_string = fun source ->
-  from_view (unwrap_view "Iter.Cursor.from_string" (View.from_string source))
+  from_slice (unwrap_slice "Iter.Cursor.from_string" (IoSlice.from_string source))
 
 let create = from_string
 
-let source_view = fun cursor -> cursor.source
+let source = fun cursor -> cursor.source
 
-let source = fun cursor -> View.to_string cursor.source
+let source_string = fun cursor -> IoSlice.to_string cursor.source
 
 let position = fun cursor -> cursor.pos
 
@@ -38,14 +36,14 @@ let peek = fun cursor ->
   if is_eof cursor then
     None
   else
-    Some (View.get_unchecked cursor.source ~at:cursor.pos)
+    Some (IoSlice.get_unchecked cursor.source ~at:cursor.pos)
 
 let peek_n = fun cursor count ->
   let target = cursor.pos + count in
   if target >= cursor.length then
     None
   else
-    Some (View.get_unchecked cursor.source ~at:target)
+    Some (IoSlice.get_unchecked cursor.source ~at:target)
 
 let advance = fun cursor ->
   if is_eof cursor then
@@ -60,36 +58,36 @@ let advance_by = fun cursor count ->
   else
     Some { cursor with pos }
 
-let take_while_view = fun cursor predicate ->
+let take_while = fun cursor predicate ->
   let start = cursor.pos in
   let rec loop pos =
     if pos >= cursor.length then
       pos
-    else if predicate (View.get_unchecked cursor.source ~at:pos) then
+    else if predicate (IoSlice.get_unchecked cursor.source ~at:pos) then
       loop (pos + 1)
     else
       pos
   in
   let stop = loop start in
   (
-    unwrap_view "Iter.Cursor.take_while_view" (View.sub cursor.source ~off:start ~len:(stop - start)),
+    IoSlice.sub_unchecked cursor.source ~off:start ~len:(stop - start),
     { cursor with pos = stop }
   )
 
-let take_while = fun cursor predicate ->
-  let taken, cursor = take_while_view cursor predicate in
-  (View.to_string taken, cursor)
+let take_while_string = fun cursor predicate ->
+  let taken, cursor = take_while cursor predicate in
+  (IoSlice.to_string taken, cursor)
 
 let skip_while = fun cursor predicate ->
-  let _, cursor = take_while_view cursor predicate in
+  let _, cursor = take_while cursor predicate in
   cursor
 
-let take_until_view = fun cursor predicate ->
+let take_until = fun cursor predicate ->
   let start = cursor.pos in
   let rec loop pos =
     if pos >= cursor.length then
       None
-    else if predicate (View.get_unchecked cursor.source ~at:pos) then
+    else if predicate (IoSlice.get_unchecked cursor.source ~at:pos) then
       Some pos
     else
       loop (pos + 1)
@@ -98,35 +96,33 @@ let take_until_view = fun cursor predicate ->
   | None -> None
   | Some stop ->
       Some (
-        unwrap_view "Iter.Cursor.take_until_view" (View.sub cursor.source ~off:start ~len:(stop - start)),
+        IoSlice.sub_unchecked cursor.source ~off:start ~len:(stop - start),
         { cursor with pos = stop }
       )
 
-let take_until = fun cursor predicate ->
-  match take_until_view cursor predicate with
+let take_until_string = fun cursor predicate ->
+  match take_until cursor predicate with
   | None -> None
-  | Some (taken, cursor) -> Some (View.to_string taken, cursor)
+  | Some (taken, cursor) -> Some (IoSlice.to_string taken, cursor)
 
-let take_n_view = fun cursor count ->
+let take_n = fun cursor count ->
   if cursor.pos + count > cursor.length then
     None
   else
     Some (
-      unwrap_view "Iter.Cursor.take_n_view" (View.sub cursor.source ~off:cursor.pos ~len:count),
+      IoSlice.sub_unchecked cursor.source ~off:cursor.pos ~len:count,
       { cursor with pos = cursor.pos + count }
     )
 
-let take_n = fun cursor count ->
-  match take_n_view cursor count with
+let take_n_string = fun cursor count ->
+  match take_n cursor count with
   | None -> None
-  | Some (taken, cursor) -> Some (View.to_string taken, cursor)
+  | Some (taken, cursor) -> Some (IoSlice.to_string taken, cursor)
 
-let remaining_view = fun cursor ->
+let remaining = fun cursor ->
   if is_eof cursor then
-    View.empty
+    IoSlice.empty
   else
-    unwrap_view
-      "Iter.Cursor.remaining_view"
-      (View.sub cursor.source ~off:cursor.pos ~len:(cursor.length - cursor.pos))
+    IoSlice.sub_unchecked cursor.source ~off:cursor.pos ~len:(cursor.length - cursor.pos)
 
-let remaining = fun cursor -> View.to_string (remaining_view cursor)
+let remaining_string = fun cursor -> IoSlice.to_string (remaining cursor)

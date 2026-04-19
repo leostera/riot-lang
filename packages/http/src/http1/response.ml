@@ -9,7 +9,7 @@ type t = Std.Net.Http.Response.t
 
 let parse_status_line = fun input ->
   let cursor = Cursor.create input in
-  match Cursor.take_until cursor (fun c -> c = '\r') with
+  match Cursor.take_until_string cursor (fun c -> c = '\r') with
   | None -> Need_more
   | Some (line, cursor) -> (
       match Cursor.advance_by cursor 2 with
@@ -17,30 +17,30 @@ let parse_status_line = fun input ->
       | Some cursor -> (
           let line_cursor = Cursor.create line in
           (* Get version *)
-          match Cursor.take_until line_cursor (fun c -> c = ' ') with
+          match Cursor.take_until_string line_cursor (fun c -> c = ' ') with
           | None -> Error "Missing version"
           | Some (version, line_cursor) -> (
               let line_cursor =
                 Cursor.skip_while line_cursor (fun c -> c = ' ')
               in
               (* Get status code *)
-              match Cursor.take_until line_cursor (fun c -> c = ' ') with
+              match Cursor.take_until_string line_cursor (fun c -> c = ' ') with
               | None -> Error "Missing status code"
               | Some (code_str, line_cursor) -> (
                   let line_cursor =
                     Cursor.skip_while line_cursor (fun c -> c = ' ')
                   in
                   (* Get reason phrase *)
-                  let reason = Cursor.remaining line_cursor in
+                  let reason = Cursor.remaining_string line_cursor in
                   (* Validate HTTP version prefix *)
                   let version_cursor = Cursor.create version in
-                  match Cursor.take_n version_cursor 5 with
+                  match Cursor.take_n_string version_cursor 5 with
                   | Some ("HTTP/", _) -> (
                       match Int.parse code_str with
                       | None -> Error "Invalid status code"
                       | Some status_code -> Done {
                         value = (version, status_code, reason);
-                        remaining = Cursor.remaining cursor
+                        remaining = Cursor.remaining_string cursor
                       }
                     )
                   | _ -> Error "Invalid HTTP version"

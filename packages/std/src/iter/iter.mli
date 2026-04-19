@@ -1,7 +1,7 @@
 (** # Iter - Iteration and Cursor Utilities
 
     This module provides iteration and cursor abstractions for traversing
-    sequences and strings.
+    sequences and IO slices.
 
     ## Iterators
 
@@ -12,7 +12,7 @@
 
     ## Cursors
 
-    Cursors provide string traversal for parsing:
+    Cursors provide byte-slice traversal for parsing:
 
     - {!Cursor} - Immutable cursors (backtrackable parsing)
     - {!MutCursor} - Mutable cursors (efficient single-pass parsing)
@@ -23,27 +23,29 @@
 
     ```ocaml open Std
 
-    let parse_header line = let cursor = Iter.Cursor.create line in match
-    Iter.Cursor.find_char cursor ':' with | None -> Error "Invalid header" |
-    Some offset -> let key = Iter.Cursor.slice cursor 0 offset |> Option.unwrap
-    in let cursor = Iter.Cursor.advance_by cursor (offset + 1) |> Option.unwrap
-    in let (value, _) = Iter.Cursor.take_while cursor (fun c -> c <> '\r') in Ok
-    (String.trim key, String.trim value) ```
+    let parse_header line =
+      let cursor = Iter.Cursor.create line in
+      match Iter.Cursor.take_until cursor (fun c -> c = ':') with
+      | None -> Error "Invalid header"
+      | Some (key, cursor) ->
+          let cursor = Iter.Cursor.advance cursor |> Option.unwrap in
+          let value, _ = Iter.Cursor.take_while_string cursor (fun c -> c <> '\r') in
+          Ok (String.trim (Std.IO.Iovec.IoSlice.to_string key), String.trim value) ```
 
     Efficient parsing with {!MutCursor}:
 
     ```ocaml let parse_request_line line = let cursor = Iter.MutCursor.create
-    line in let method_ = Iter.MutCursor.take_while cursor (fun c -> c <> ' ')
-    in Iter.MutCursor.advance cursor; let path = Iter.MutCursor.take_while
-    cursor (fun c -> c <> ' ') in Iter.MutCursor.advance cursor; let version =
-    Iter.MutCursor.remaining cursor in (method_, path, version) ```
+    line in let method_ = Iter.MutCursor.take_while_string cursor (fun c -> c <> ' ')
+    in Iter.MutCursor.advance cursor; let path = Iter.MutCursor.take_while cursor
+    (fun c -> c <> ' ') in Iter.MutCursor.advance cursor; let version =
+    Iter.MutCursor.remaining_string cursor in (method_, Std.IO.Iovec.IoSlice.to_string path, version) ```
 
     ## When to Use What
 
     | Use Case | Recommendation | |----------|----------------| | Backtracking
     parsers | {!Cursor} | | Single-pass parsers | {!MutCursor} | | Functional
     style | {!Cursor}, {!Iterator} | | Performance-critical | {!MutCursor},
-    {!MutIterator} | | Lazy sequences | {!Iterator}, {!MutIterator} | | String
+    {!MutIterator} | | Lazy sequences | {!Iterator}, {!MutIterator} | | Slice
     parsing | {!Cursor}, {!MutCursor} | *)
 
 module Iterator: module type of Iterator
