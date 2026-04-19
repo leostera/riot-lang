@@ -96,6 +96,14 @@ val from_string: ?off:int -> ?len:int -> string -> (t, error) Result.t
 
 val from_bytes: ?off:int -> ?len:int -> bytes -> (t, error) Result.t
 
+val starts_with: t -> prefix:string -> bool
+
+val equal_string: t -> string -> bool
+
+val index_char: t -> char -> int option
+
+val index_string: t -> string -> int option
+
 val to_string: t -> string
 
 val to_bytes: t -> bytes

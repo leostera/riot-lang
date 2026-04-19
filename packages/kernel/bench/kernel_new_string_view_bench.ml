@@ -14,58 +14,58 @@ let build_request = fun ~header_count ~body_len ->
   ^ "\r\n"
   ^ String.make ~len:body_len ~char:'x'
 
-let small_view = Kernel.IO.StringView.from_string (build_request ~header_count:4 ~body_len:128) |> Result.unwrap
-let medium_view = Kernel.IO.StringView.from_string (build_request ~header_count:32 ~body_len:4_096) |> Result.unwrap
-let large_view = Kernel.IO.StringView.from_string (build_request ~header_count:64 ~body_len:65_536) |> Result.unwrap
+let small_slice = Kernel.IO.Iovec.IoSlice.from_string (build_request ~header_count:4 ~body_len:128) |> Result.unwrap
+let medium_slice = Kernel.IO.Iovec.IoSlice.from_string (build_request ~header_count:32 ~body_len:4_096) |> Result.unwrap
+let large_slice = Kernel.IO.Iovec.IoSlice.from_string (build_request ~header_count:64 ~body_len:65_536) |> Result.unwrap
 
-let bench_index_of_char = fun view needle () ->
-  let _ = Kernel.IO.StringView.index_char view needle in
+let bench_index_of_char = fun slice needle () ->
+  let _ = Kernel.IO.Iovec.IoSlice.index_char slice needle in
   ()
 
-let bench_index_of_string = fun view needle () ->
-  let _ = Kernel.IO.StringView.index_string view needle in
+let bench_index_of_string = fun slice needle () ->
+  let _ = Kernel.IO.Iovec.IoSlice.index_string slice needle in
   ()
 
-let bench_starts_with = fun view prefix () ->
-  let _ = Kernel.IO.StringView.starts_with view ~prefix in
+let bench_starts_with = fun slice prefix () ->
+  let _ = Kernel.IO.Iovec.IoSlice.starts_with slice ~prefix in
   ()
 
-let bench_sub_and_advance = fun view () ->
+let bench_sub_and_advance = fun slice () ->
   let _ =
-    view
-    |> fun view -> Kernel.IO.StringView.shift view 5
+    slice
+    |> fun slice -> Kernel.IO.Iovec.IoSlice.shift slice 5
     |> Result.unwrap
-    |> Kernel.IO.StringView.sub ~off:0 ~len:32
+    |> Kernel.IO.Iovec.IoSlice.sub ~off:0 ~len:32
     |> Result.unwrap
   in
   ()
 
-let bench_to_string = fun view () ->
-  let _ = Kernel.IO.StringView.to_string view in
+let bench_to_string = fun slice () ->
+  let _ = Kernel.IO.Iovec.IoSlice.to_string slice in
   ()
 
 let benchmarks =
   Bench.[
     with_config
       ~config:{ iterations = 20; warmup = 5 }
-      "string_view starts_with: small request"
-      (bench_starts_with small_view "POST ");
+      "io_slice starts_with: small request"
+      (bench_starts_with small_slice "POST ");
     with_config
       ~config:{ iterations = 20; warmup = 5 }
-      "string_view index_of_char ' ': medium request"
-      (bench_index_of_char medium_view ' ');
+      "io_slice index_of_char ' ': medium request"
+      (bench_index_of_char medium_slice ' ');
     with_config
       ~config:{ iterations = 20; warmup = 5 }
-      "string_view index_of_string CRLFCRLF: medium request"
-      (bench_index_of_string medium_view "\r\n\r\n");
+      "io_slice index_of_string CRLFCRLF: medium request"
+      (bench_index_of_string medium_slice "\r\n\r\n");
     with_config
       ~config:{ iterations = 10; warmup = 3 }
-      "string_view sub+advance: large request"
-      (bench_sub_and_advance large_view);
+      "io_slice sub+advance: large request"
+      (bench_sub_and_advance large_slice);
     with_config
       ~config:{ iterations = 10; warmup = 3 }
-      "string_view to_string: medium request"
-      (bench_to_string medium_view);
+      "io_slice to_string: medium request"
+      (bench_to_string medium_slice);
   ]
 
 let () =

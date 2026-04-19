@@ -234,6 +234,58 @@ let from_bytes = fun ?(off = 0) ?len value ->
           Ok slice
     )
 
+let starts_with = fun value ~prefix ->
+  let prefix_len = String.length prefix in
+  if prefix_len > length value then
+    false
+  else
+    let rec loop index =
+      if index >= prefix_len then
+        true
+      else if get_unchecked value ~at:index != String.get_unchecked prefix ~at:index then
+        false
+      else
+        loop (index + 1)
+    in
+    loop 0
+
+let equal_string = fun value string -> starts_with value ~prefix:string && length value = String.length string
+
+let index_char = fun value needle ->
+  let rec loop index =
+    if index >= length value then
+      None
+    else if get_unchecked value ~at:index = needle then
+      Some index
+    else
+      loop (index + 1)
+  in
+  loop 0
+
+let index_string = fun value needle ->
+  let needle_len = String.length needle in
+  if needle_len = 0 then
+    Some 0
+  else
+    let value_len = length value in
+    let rec matches start needle_index =
+      if needle_index >= needle_len then
+        true
+      else if get_unchecked value ~at:(start + needle_index) != String.get_unchecked needle ~at:needle_index then
+        false
+      else
+        matches start (needle_index + 1)
+    in
+    let rec loop index =
+      if index + needle_len > value_len then
+        None
+      else if matches index 0 then
+        Some index
+      else
+        loop (index + 1)
+    in
+    loop 0
+
 let to_string = fun value ->
   let out = Caml_runtime.bytes_create (length value) in
   blit_to_bytes_unchecked value ~src_off:0 out ~dst_off:0 ~len:(length value);
