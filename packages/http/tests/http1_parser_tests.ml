@@ -42,6 +42,15 @@ let expect_request_parse_slice = fun input ->
   | Error error ->
       Result.Error ("Parse error: " ^ error)
 
+let expect_request_parse_slices = fun input ->
+  match Http1.Request.parse_slices (IO.Iovec.IoSlice.from_string input |> Result.unwrap) with
+  | Borrowed_done { value; remaining } ->
+      Result.Ok (value, remaining)
+  | Borrowed_need_more ->
+      Result.Error "Unexpected Borrowed_need_more"
+  | Borrowed_error error ->
+      Result.Error ("Parse error: " ^ error)
+
 (* HTTP/1 Request Tests *)
 
 let test_request_simple_get = fun _ctx ->
@@ -185,6 +194,38 @@ let test_request_parse_slice = fun _ctx ->
         Result.Error ("Expected /view path, got " ^ path)
       else if remaining != "" then
         Result.Error ("Expected empty remaining body, got " ^ remaining)
+      else
+        Result.Ok ()
+
+let test_request_parse_slices = fun _ctx ->
+  let req = "GET /view HTTP/1.1\r\nHost: example.com\r\nX-Test: ok\r\n\r\nbody" in
+  match expect_request_parse_slices req with
+  | Error error ->
+      Result.Error error
+  | Ok (parsed, remaining) ->
+      let method_ = IO.Iovec.IoSlice.to_string parsed.method_ in
+      let path = IO.Iovec.IoSlice.to_string parsed.path in
+      let version = IO.Iovec.IoSlice.to_string parsed.version in
+      let headers =
+        List.map parsed.headers ~fn:(fun (name, value) ->
+          (IO.Iovec.IoSlice.to_string name, IO.Iovec.IoSlice.to_string value))
+      in
+      let body = IO.Iovec.IoSlice.to_string parsed.body in
+      let remaining = IO.Iovec.IoSlice.to_string remaining in
+      if method_ != "GET" then
+        Result.Error ("Expected GET method, got " ^ method_)
+      else if path != "/view" then
+        Result.Error ("Expected /view path, got " ^ path)
+      else if version != "HTTP/1.1" then
+        Result.Error ("Expected HTTP/1.1 version, got " ^ version)
+      else if not (List.exists (fun header -> header = ("Host", "example.com")) headers) then
+        Result.Error "Expected Host header"
+      else if not (List.exists (fun header -> header = ("X-Test", "ok")) headers) then
+        Result.Error "Expected X-Test header"
+      else if body != "body" then
+        Result.Error ("Expected body slice, got " ^ body)
+      else if remaining != "body" then
+        Result.Error ("Expected remaining body slice, got " ^ remaining)
       else
         Result.Ok ()
 
@@ -332,6 +373,7 @@ let tests =
     case "request_with_100k_body" test_request_with_100k_body;
     case "request_with_1m_body" test_request_with_1m_body;
     case "request_parse_slice" test_request_parse_slice;
+    case "request_parse_slices" test_request_parse_slices;
     case
       "request_missing_lf_after_request_line_current_behavior"
       test_request_missing_lf_after_request_line_current_behavior;

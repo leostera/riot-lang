@@ -3,6 +3,19 @@ open Std
 open Std.Iter
 open Common
 
+type request_slices = {
+  method_: IO.Iovec.IoSlice.t;
+  path: IO.Iovec.IoSlice.t;
+  version: IO.Iovec.IoSlice.t;
+  headers: (IO.Iovec.IoSlice.t * IO.Iovec.IoSlice.t) list;
+  body: IO.Iovec.IoSlice.t;
+}
+
+type 'a borrowed_parse_result =
+  | Borrowed_done of { value: 'a; remaining: IO.Iovec.IoSlice.t }
+  | Borrowed_need_more
+  | Borrowed_error of string
+
 (** Parses an HTTP/1.1 request.
 
     @param max_request_line Maximum length of request line (default: 8192)
@@ -11,6 +24,13 @@ open Common
 
     Returns [Done request] on success, [Need_more] if more data needed, or
     [Error msg] if parsing fails. *)
+val parse_slices:
+  ?max_request_line:int ->
+  ?max_headers:int ->
+  ?max_header_length:int ->
+  IO.Iovec.IoSlice.t ->
+  request_slices borrowed_parse_result
+
 val parse_slice:
   ?max_request_line:int ->
   ?max_headers:int ->

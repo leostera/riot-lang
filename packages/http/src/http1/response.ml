@@ -26,18 +26,18 @@ let slice_of_string = fun value ->
 
 let parse_status_line_slice = fun input ->
   let cursor = Cursor.from_slice input in
-  match Cursor.take_until cursor (fun c -> c = '\r') with
+  match Cursor.take_until_char cursor '\r' with
   | None -> Cursor_need_more
   | Some (line, cursor) -> (
       match Cursor.advance_by cursor 2 with
       | None -> Cursor_error "Invalid line ending"
       | Some cursor -> (
           let line_cursor = Cursor.from_slice line in
-          match Cursor.take_until line_cursor (fun c -> c = ' ') with
+          match Cursor.take_until_char line_cursor ' ' with
           | None -> Cursor_error "Missing version"
           | Some (version, line_cursor) -> (
               let line_cursor = Cursor.skip_while line_cursor (fun c -> c = ' ') in
-              match Cursor.take_until line_cursor (fun c -> c = ' ') with
+              match Cursor.take_until_char line_cursor ' ' with
               | None -> Cursor_error "Missing status code"
               | Some (code_str, line_cursor) -> (
                   let line_cursor = Cursor.skip_while line_cursor (fun c -> c = ' ') in
@@ -73,8 +73,7 @@ let parse_slice = fun input ->
           Error error
       | Done { value=(headers_list, body_start); _ } ->
           let version =
-            Slice.to_string version
-            |> Std.Net.Http.Version.of_string
+            Std.Net.Http.Version.from_slice version
             |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11
           in
           let status = Std.Net.Http.Status.of_int status_code in

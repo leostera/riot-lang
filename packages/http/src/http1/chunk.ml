@@ -21,7 +21,7 @@ let slice_of_string = fun value ->
   | Error error -> panic ("Http1.Chunk.slice_of_string: " ^ Kernel.IO.Error.message error)
 
 let parse_size = fun cursor ->
-  match Cursor.take_until cursor (fun c -> c = '\r') with
+  match Cursor.take_until_char cursor '\r' with
   | None -> Cursor_need_more
   | Some (size_hex, cursor) -> (
       match Cursor.advance_by cursor 2 with

@@ -75,6 +75,19 @@ let consume_result = fun value remaining ->
   in
   ()
 
+let consume_borrowed_result = fun (value : Http1.Request.request_slices) remaining ->
+  let _ =
+    (
+      IO.Iovec.IoSlice.length value.method_,
+      IO.Iovec.IoSlice.length value.path,
+      IO.Iovec.IoSlice.length value.version,
+      List.length value.headers,
+      IO.Iovec.IoSlice.length value.body,
+      IO.Iovec.IoSlice.length remaining
+    )
+  in
+  ()
+
 let bench_reader_parse = fun ~chunk_size payload () ->
   let reader = String.to_reader ~chunk_size payload |> IO.buffered ~chunk_size:4_096 () in
   let buf = Buffer.create ~size:(String.length payload) in
@@ -123,6 +136,21 @@ let bench_reader_parse_slice = fun ~chunk_size payload () ->
           panic ("http1 parser transport slice bench parse error: " ^ error)
     )
 
+let bench_reader_parse_slices = fun ~chunk_size payload () ->
+  let reader = String.to_reader ~chunk_size payload |> IO.buffered ~chunk_size:4_096 () in
+  match read_to_iobuffer reader ~read_size:4_096 with
+  | Error error ->
+      panic ("http1 parser transport borrowed slice bench read error: " ^ IO.error_message error)
+  | Ok buffer -> (
+      match Http1.Request.parse_slices (IO.IoBuffer.readable buffer) with
+      | Borrowed_done { value; remaining } ->
+          consume_borrowed_result value remaining
+      | Borrowed_need_more ->
+          panic "http1 parser transport borrowed slice bench expected complete payload"
+      | Borrowed_error error ->
+          panic ("http1 parser transport borrowed slice bench parse error: " ^ error)
+    )
+
 let benchmarks =
   Bench.[
     with_config
@@ -165,6 +193,26 @@ let benchmarks =
       ~config:{ iterations = 120; warmup = 12 }
       "http1 parser reader-fed slice: many headers"
       (bench_reader_parse_slice ~chunk_size:64 many_headers_request);
+    with_config
+      ~config:{ iterations = 200; warmup = 20 }
+      "http1 parser reader-fed borrowed slice: small request"
+      (bench_reader_parse_slices ~chunk_size:32 small_request);
+    with_config
+      ~config:{ iterations = 150; warmup = 15 }
+      "http1 parser reader-fed borrowed slice: 1 KiB body"
+      (bench_reader_parse_slices ~chunk_size:64 request_1k);
+    with_config
+      ~config:{ iterations = 60; warmup = 6 }
+      "http1 parser reader-fed borrowed slice: 100 KiB body"
+      (bench_reader_parse_slices ~chunk_size:256 request_100k);
+    with_config
+      ~config:{ iterations = 15; warmup = 3 }
+      "http1 parser reader-fed borrowed slice: 1 MiB body"
+      (bench_reader_parse_slices ~chunk_size:1024 request_1m);
+    with_config
+      ~config:{ iterations = 120; warmup = 12 }
+      "http1 parser reader-fed borrowed slice: many headers"
+      (bench_reader_parse_slices ~chunk_size:64 many_headers_request);
   ]
 
 let () =

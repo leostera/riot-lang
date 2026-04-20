@@ -24,10 +24,23 @@ type header_line_slice = {
   remaining: Cursor.t;
 }
 
+type request_slices = {
+  method_: Slice.t;
+  path: Slice.t;
+  version: Slice.t;
+  headers: (Slice.t * Slice.t) list;
+  body: Slice.t;
+}
+
 type 'a slice_parse_result =
   | Slice_done of 'a
   | Slice_need_more
   | Slice_error of string
+
+type 'a borrowed_parse_result =
+  | Borrowed_done of { value: 'a; remaining: Slice.t }
+  | Borrowed_need_more
+  | Borrowed_error of string
 
 let header_pair_of_slices = fun (name, value) -> (string_of_slice name, string_of_slice value)
 
@@ -35,7 +48,7 @@ let slice_header_pair = fun (name, value) -> (slice_of_string name, slice_of_str
 
 let parse_request_line_slice = fun ?(max_length = 8_192) input ->
   let cursor = Cursor.from_slice input in
-  match Cursor.take_until cursor (fun c -> c = '\r') with
+  match Cursor.take_until_char cursor '\r' with
   | None ->
       Slice_need_more
   | Some (line, cursor) ->
@@ -47,12 +60,12 @@ let parse_request_line_slice = fun ?(max_length = 8_192) input ->
             Slice_error "Invalid line ending"
         | Some cursor -> (
             let line_cursor = Cursor.from_slice line in
-            match Cursor.take_until line_cursor (fun c -> c = ' ') with
+            match Cursor.take_until_char line_cursor ' ' with
             | None ->
                 Slice_error "Missing method"
             | Some (method_, line_cursor) ->
                 let line_cursor = Cursor.skip_while line_cursor (fun c -> c = ' ') in
-                match Cursor.take_until line_cursor (fun c -> c = ' ') with
+                match Cursor.take_until_char line_cursor ' ' with
                 | None ->
                     Slice_error "Missing path"
                 | Some (path, line_cursor) ->
@@ -64,7 +77,7 @@ let parse_request_line_slice = fun ?(max_length = 8_192) input ->
           )
 
 let parse_header_line_slice = fun cursor ->
-  match Cursor.take_until cursor (fun c -> c = '\r') with
+  match Cursor.take_until_char cursor '\r' with
   | None ->
       Slice_need_more
   | Some (line, cursor) -> (
@@ -73,7 +86,7 @@ let parse_header_line_slice = fun cursor ->
           Slice_error "Invalid line ending"
       | Some cursor -> (
           let line_cursor = Cursor.from_slice line in
-          match Cursor.take_until line_cursor (fun c -> c = ':') with
+          match Cursor.take_until_char line_cursor ':' with
           | None ->
               Slice_error "Invalid header format (missing colon)"
           | Some (name, line_cursor) -> (
@@ -141,44 +154,54 @@ let parse_headers = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) cur
         remaining = "";
       }
 
-let parse_slice = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
+let parse_slices = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
   match parse_request_line_slice ~max_length:max_request_line input with
   | Slice_need_more ->
-      Common.Need_more
+      Borrowed_need_more
   | Slice_error error ->
-      Common.Error error
+      Borrowed_error error
   | Slice_done { method_; path; version; remaining } -> (
       match parse_headers_slices ~max_count:max_headers ~max_length:max_header_length remaining with
       | Slice_need_more ->
-          Common.Need_more
+          Borrowed_need_more
       | Slice_error error ->
-          Common.Error error
+          Borrowed_error error
       | Slice_done (headers_list, remaining) ->
-          let body_start = Cursor.remaining remaining in
-          let method_ = string_of_slice method_ |> Std.Net.Http.Method.of_string in
-          let uri =
-            string_of_slice path
-            |> Std.Net.Uri.of_string
-            |> Result.unwrap_or ~default:(Std.Net.Uri.of_string "/" |> Result.unwrap)
-          in
-          let version =
-            string_of_slice version
-            |> Std.Net.Http.Version.of_string
-            |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11
-          in
-          let headers = List.map headers_list ~fn:header_pair_of_slices |> Std.Net.Http.Header.of_list in
-          let body = string_of_slice body_start in
-          let request =
-            let request = Std.Net.Http.Request.create method_ uri in
-            let request = Std.Net.Http.Request.with_version request version in
-            let request = Std.Net.Http.Request.with_headers request headers in
-            if Slice.length body_start > 0 then
-              Std.Net.Http.Request.with_body request body
-            else
-              request
-          in
-          Common.Done { value = request; remaining = body }
+          let body = Cursor.remaining remaining in
+          Borrowed_done {
+            value = { method_; path; version; headers = headers_list; body };
+            remaining = body;
+          }
     )
+
+let parse_slice = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
+  match parse_slices ~max_request_line ~max_headers ~max_header_length input with
+  | Borrowed_need_more ->
+      Common.Need_more
+  | Borrowed_error error ->
+      Common.Error error
+  | Borrowed_done { value={ method_; path; version; headers = headers_list; body }; _ } ->
+      let method_ = Std.Net.Http.Method.from_slice method_ in
+      let uri =
+        Std.Net.Uri.from_slice path
+        |> Result.unwrap_or ~default:(Std.Net.Uri.of_string "/" |> Result.unwrap)
+      in
+      let version =
+        Std.Net.Http.Version.from_slice version
+        |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11
+      in
+      let headers = List.map headers_list ~fn:header_pair_of_slices |> Std.Net.Http.Header.of_list in
+      let body_string = string_of_slice body in
+      let request =
+        let request = Std.Net.Http.Request.create method_ uri in
+        let request = Std.Net.Http.Request.with_version request version in
+        let request = Std.Net.Http.Request.with_headers request headers in
+        if Slice.length body > 0 then
+          Std.Net.Http.Request.with_body request body_string
+        else
+          request
+      in
+      Common.Done { value = request; remaining = body_string }
 
 let parse = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
   parse_slice ~max_request_line ~max_headers ~max_header_length (slice_of_string input)
