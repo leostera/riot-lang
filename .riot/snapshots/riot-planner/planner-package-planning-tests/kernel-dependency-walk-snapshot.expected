@@ -9,7 +9,7 @@ ML(Kernel__Aliases)
 ML(Kernel__IO__Aliases)
   deps: []
 
-ML(Kernel__IO__Iovec__Aliases)
+ML(Kernel__IO__IoVec__Aliases)
   deps: []
 
 ML(Kernel__Async__Aliases)
@@ -156,11 +156,10 @@ MLI(Kernel__System_error)
   deps:
     - ML(Kernel__Aliases)
 
-MLI(Kernel__IO__Iovec)
+MLI(Kernel__IO__Error)
   deps:
-    - ML(Kernel__Aliases)
     - ML(Kernel__IO__Aliases)
-    - ML(Kernel__IO__Iovec__Aliases)
+    - ML(Kernel__Aliases)
 
 MLI(Kernel__Async__Libc)
   deps:
@@ -366,6 +365,14 @@ ML(Kernel__List)
     - ML(Kernel__Aliases)
     - MLI(Kernel__List)
 
+ML(Kernel__IO__Error)
+  deps:
+    - ML(Kernel__Prelude)
+    - ML(Kernel__Int)
+    - ML(Kernel__IO__Aliases)
+    - ML(Kernel__Aliases)
+    - MLI(Kernel__IO__Error)
+
 ML(Kernel__Async__Token)
   deps:
     - ML(Kernel__Int)
@@ -468,18 +475,6 @@ MLI(Kernel__Time__System_time__Unix)
     - ML(Kernel__Time__Aliases)
     - ML(Kernel__Aliases)
 
-ML(Kernel__IO__Iovec)
-  deps:
-    - ML(Kernel__System_error)
-    - ML(Kernel__Prelude)
-    - ML(Kernel__Caml_runtime)
-    - ML(Kernel__Bytes)
-    - ML(Kernel__Array)
-    - MLI(Kernel__IO__Iovec)
-    - ML(Kernel__Aliases)
-    - ML(Kernel__IO__Aliases)
-    - ML(Kernel__IO__Iovec__Aliases)
-
 ML(Kernel__Unicode__Rune)
   deps:
     - ML(Kernel__System_error)
@@ -490,6 +485,14 @@ ML(Kernel__Unicode__Rune)
     - ML(Kernel__Unicode__Aliases)
     - ML(Kernel__Aliases)
     - MLI(Kernel__Unicode__Rune)
+
+MLI(Kernel__IO__IoVec__Io_slice)
+  deps:
+    - ML(Kernel__Result)
+    - ML(Kernel__IO__Error)
+    - ML(Kernel__IO__IoVec__Aliases)
+    - ML(Kernel__IO__Aliases)
+    - ML(Kernel__Aliases)
 
 MLI(Kernel__Async__Event)
   deps:
@@ -718,6 +721,19 @@ ML(Kernel__Path)
     - ML(Kernel__Aliases)
     - MLI(Kernel__Path)
 
+ML(Kernel__IO__IoVec__Io_slice)
+  deps:
+    - ML(Kernel__System_error)
+    - ML(Kernel__String)
+    - ML(Kernel__Prelude)
+    - ML(Kernel__IO__Error)
+    - ML(Kernel__Caml_runtime)
+    - ML(Kernel__Bytes)
+    - ML(Kernel__IO__IoVec__Aliases)
+    - ML(Kernel__IO__Aliases)
+    - ML(Kernel__Aliases)
+    - MLI(Kernel__IO__IoVec__Io_slice)
+
 ML(Kernel__Net__Ip_addr__Unix)
   deps:
     - ML(Kernel__String)
@@ -808,6 +824,19 @@ MLI(Kernel__Env__Unix)
     - ML(Kernel__Env__Aliases)
     - ML(Kernel__Aliases)
 
+MLI(Kernel__IO__IoVec)
+  deps:
+    - ML(Kernel__Result)
+    - ML(Kernel__IO__Error)
+    - MLI(Kernel__IO__IoVec__Io_slice)
+    - ML(Kernel__IO__IoVec__Io_slice)
+    - MLI(Kernel__IO__IoVec__Io_slice)
+    - ML(Kernel__IO__IoVec__Io_slice)
+    - MLI(Kernel__IO__IoVec__Io_slice)
+    - ML(Kernel__Aliases)
+    - ML(Kernel__IO__Aliases)
+    - ML(Kernel__IO__IoVec__Aliases)
+
 MLI(Kernel__Net__Ip_addr)
   deps:
     - ML(Kernel__Result)
@@ -895,6 +924,25 @@ ML(Kernel__Env__Unix)
     - ML(Kernel__Aliases)
     - MLI(Kernel__Env__Unix)
 
+ML(Kernel__IO__IoVec)
+  deps:
+    - ML(Kernel__System_error)
+    - ML(Kernel__Prelude)
+    - ML(Kernel__List)
+    - ML(Kernel__IO__IoVec__Io_slice)
+    - ML(Kernel__IO__Error)
+    - ML(Kernel__Bytes)
+    - ML(Kernel__Array)
+    - MLI(Kernel__IO__IoVec__Io_slice)
+    - ML(Kernel__IO__IoVec__Io_slice)
+    - MLI(Kernel__IO__IoVec__Io_slice)
+    - ML(Kernel__IO__IoVec__Io_slice)
+    - ML(Kernel__IO__IoVec__Io_slice)
+    - MLI(Kernel__IO__IoVec)
+    - ML(Kernel__Aliases)
+    - ML(Kernel__IO__Aliases)
+    - ML(Kernel__IO__IoVec__Aliases)
+
 ML(Kernel__Net__Ip_addr)
   deps:
     - ML(Kernel__Net__Ip_addr__Unix)
@@ -976,6 +1024,14 @@ MLI(Kernel__Env)
     - ML(Kernel__Aliases)
     - ML(Kernel__Env__Aliases)
 
+MLI(Kernel__IO__Buffer)
+  deps:
+    - ML(Kernel__Result)
+    - ML(Kernel__IO__IoVec)
+    - ML(Kernel__IO__Error)
+    - ML(Kernel__IO__Aliases)
+    - ML(Kernel__Aliases)
+
 MLI(Kernel__Net__Socket_addr)
   deps:
     - ML(Kernel__Result)
@@ -1006,6 +1062,18 @@ ML(Kernel__Env)
     - MLI(Kernel__Env)
     - ML(Kernel__Aliases)
     - ML(Kernel__Env__Aliases)
+
+ML(Kernel__IO__Buffer)
+  deps:
+    - ML(Kernel__String)
+    - ML(Kernel__Result)
+    - ML(Kernel__Prelude)
+    - ML(Kernel__IO__IoVec)
+    - ML(Kernel__IO__Error)
+    - ML(Kernel__Bytes)
+    - ML(Kernel__IO__Aliases)
+    - ML(Kernel__Aliases)
+    - MLI(Kernel__IO__Buffer)
 
 ML(Kernel__Net__Socket_addr)
   deps:
@@ -1175,7 +1243,7 @@ ML(Kernel__IO__Stdio)
     - ML(Kernel__String)
     - ML(Kernel__Result)
     - ML(Kernel__Prelude)
-    - ML(Kernel__IO__Iovec)
+    - ML(Kernel__IO__IoVec)
     - ML(Kernel__Int)
     - ML(Kernel__Bytes)
     - ML(Kernel__Async)
@@ -1227,8 +1295,19 @@ MLI(Kernel__IO)
   deps:
     - ML(Kernel__System_error)
     - ML(Kernel__Result)
+    - ML(Kernel__IO__Error)
     - ML(Kernel__Async)
     - ML(Kernel__IO__Stdio)
+    - MLI(Kernel__IO__Error)
+    - ML(Kernel__IO__Error)
+    - MLI(Kernel__IO__Buffer)
+    - ML(Kernel__IO__Buffer)
+    - MLI(Kernel__IO__Error)
+    - ML(Kernel__IO__Error)
+    - MLI(Kernel__IO__Buffer)
+    - ML(Kernel__IO__Buffer)
+    - MLI(Kernel__IO__Error)
+    - MLI(Kernel__IO__Buffer)
     - ML(Kernel__Aliases)
     - ML(Kernel__IO__Aliases)
 
@@ -1277,9 +1356,21 @@ ML(Kernel__Time__Timer)
 ML(Kernel__IO)
   deps:
     - ML(Kernel__IO__Stdio)
-    - ML(Kernel__IO__Iovec)
+    - ML(Kernel__IO__IoVec)
+    - ML(Kernel__IO__Error)
+    - ML(Kernel__IO__Buffer)
     - ML(Kernel__IO__Stdio)
+    - MLI(Kernel__IO__Error)
+    - ML(Kernel__IO__Error)
+    - MLI(Kernel__IO__Buffer)
+    - ML(Kernel__IO__Buffer)
+    - MLI(Kernel__IO__Error)
+    - ML(Kernel__IO__Error)
+    - MLI(Kernel__IO__Buffer)
+    - ML(Kernel__IO__Buffer)
     - ML(Kernel__IO__Stdio)
+    - ML(Kernel__IO__Error)
+    - ML(Kernel__IO__Buffer)
     - MLI(Kernel__IO)
     - ML(Kernel__Aliases)
     - ML(Kernel__IO__Aliases)
@@ -1955,7 +2046,7 @@ Library(kernel)
   deps:
     - ML(Kernel__Aliases)
     - ML(Kernel__IO__Aliases)
-    - ML(Kernel__IO__Iovec__Aliases)
+    - ML(Kernel__IO__IoVec__Aliases)
     - ML(Kernel__Async__Aliases)
     - ML(Kernel__Async__Adapter__Aliases)
     - ML(Kernel__Domain__Aliases)
@@ -1999,7 +2090,7 @@ Library(kernel)
     - MLI(Kernel__Prelude)
     - MLI(Kernel__Ptr)
     - MLI(Kernel__System_error)
-    - MLI(Kernel__IO__Iovec)
+    - MLI(Kernel__IO__Error)
     - MLI(Kernel__Async__Libc)
     - MLI(Kernel__Async__Non_zero_int)
     - MLI(Kernel__Async__Token)
@@ -2033,6 +2124,7 @@ Library(kernel)
     - ML(Kernel__Array)
     - ML(Kernel__Char)
     - ML(Kernel__List)
+    - ML(Kernel__IO__Error)
     - ML(Kernel__Async__Token)
     - MLI(Kernel__Async__Interest)
     - MLI(Kernel__Regex)
@@ -2045,8 +2137,8 @@ Library(kernel)
     - MLI(Kernel__Time__Common)
     - MLI(Kernel__Time__Monotonic__Unix)
     - MLI(Kernel__Time__System_time__Unix)
-    - ML(Kernel__IO__Iovec)
     - ML(Kernel__Unicode__Rune)
+    - MLI(Kernel__IO__IoVec__Io_slice)
     - MLI(Kernel__Async__Event)
     - ML(Kernel__Async__Interest)
     - ML(Kernel__Regex)
@@ -2069,6 +2161,7 @@ Library(kernel)
     - ML(Kernel__Exception)
     - ML(Kernel__Float)
     - ML(Kernel__Path)
+    - ML(Kernel__IO__IoVec__Io_slice)
     - ML(Kernel__Net__Ip_addr__Unix)
     - ML(Kernel__System__Unix)
     - ML(Kernel__Time__Monotonic__Unix)
@@ -2077,6 +2170,7 @@ Library(kernel)
     - MLI(Kernel__Effect)
     - ML(Kernel__Thread)
     - MLI(Kernel__Env__Unix)
+    - MLI(Kernel__IO__IoVec)
     - MLI(Kernel__Net__Ip_addr)
     - MLI(Kernel__System)
     - MLI(Kernel__Time__Monotonic)
@@ -2085,6 +2179,7 @@ Library(kernel)
     - ML(Kernel__Effect)
     - MLI(Kernel__Domain)
     - ML(Kernel__Env__Unix)
+    - ML(Kernel__IO__IoVec)
     - ML(Kernel__Net__Ip_addr)
     - ML(Kernel__System)
     - ML(Kernel__Time__Monotonic)
@@ -2092,9 +2187,11 @@ Library(kernel)
     - ML(Kernel__Async__Source)
     - ML(Kernel__Domain)
     - MLI(Kernel__Env)
+    - MLI(Kernel__IO__Buffer)
     - MLI(Kernel__Net__Socket_addr)
     - MLI(Kernel__Async__Poll)
     - ML(Kernel__Env)
+    - ML(Kernel__IO__Buffer)
     - ML(Kernel__Net__Socket_addr)
     - ML(Kernel__Async__Poll)
     - MLI(Kernel__Net__Addr__Unix)
@@ -2149,7 +2246,7 @@ CREATE LIBRARY OBJECTS
 
 - Kernel__Aliases.cmx
 - Kernel__IO__Aliases.cmx
-- Kernel__IO__Iovec__Aliases.cmx
+- Kernel__IO__IoVec__Aliases.cmx
 - Kernel__Async__Aliases.cmx
 - Kernel__Async__Adapter__Aliases.cmx
 - Kernel__Domain__Aliases.cmx
@@ -2212,8 +2309,8 @@ CREATE LIBRARY OBJECTS
 - Kernel__Array.cmx
 - Kernel__Char.cmx
 - Kernel__List.cmx
+- Kernel__IO__Error.cmx
 - Kernel__Async__Token.cmx
-- Kernel__IO__Iovec.cmx
 - Kernel__Unicode__Rune.cmx
 - Kernel__Async__Interest.cmx
 - Kernel__Regex.cmx
@@ -2230,6 +2327,7 @@ CREATE LIBRARY OBJECTS
 - Kernel__Exception.cmx
 - Kernel__Float.cmx
 - Kernel__Path.cmx
+- Kernel__IO__IoVec__Io_slice.cmx
 - Kernel__Net__Ip_addr__Unix.cmx
 - Kernel__System__Unix.cmx
 - Kernel__Time__Monotonic__Unix.cmx
@@ -2238,6 +2336,7 @@ CREATE LIBRARY OBJECTS
 - Kernel__Thread.cmx
 - Kernel__Effect.cmx
 - Kernel__Env__Unix.cmx
+- Kernel__IO__IoVec.cmx
 - Kernel__Net__Ip_addr.cmx
 - Kernel__System.cmx
 - Kernel__Time__Monotonic.cmx
@@ -2245,6 +2344,7 @@ CREATE LIBRARY OBJECTS
 - Kernel__Async__Source.cmx
 - Kernel__Domain.cmx
 - Kernel__Env.cmx
+- Kernel__IO__Buffer.cmx
 - Kernel__Net__Socket_addr.cmx
 - Kernel__Async__Poll.cmx
 - Kernel__Net__Addr__Unix.cmx
