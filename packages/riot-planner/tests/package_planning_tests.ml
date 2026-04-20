@@ -349,12 +349,18 @@ let test_kernel_input_hash_is_not_empty_digest = fun _ctx ->
           let session_id = Riot_model.Session_id.make () in
           let profile = Riot_model.Profile.debug in
           let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-          let hash = compute_input_hash ~package ~workspace ~profile ~build_ctx () in
-          let empty_hash = Crypto.hash_string "" in
+          let hash = Riot_planner.Package_planner.compute_input_hash
+            ~package
+            ~depset:[]
+            ~workspace
+            ~profile
+            ~build_ctx
+            ~toolchain:test_toolchain
+            () in
+          let empty_hash = Crypto.Sha256.hash_string "" in
           if Std.Crypto.Hash.compare hash empty_hash = 0 then
-            Error
-              ("expected kernel input hash to differ from empty digest, got "
-              ^ Std.Crypto.Digest.hex hash)
+            Error ("expected kernel input hash to differ from empty digest, got "
+            ^ Std.Crypto.Digest.hex hash)
           else
             Ok ()
     )
@@ -469,50 +475,6 @@ let plan_kernel_runtime_graphs = fun ~workspace ~store ~build_ctx ->
       | Ok _ ->
           Error "expected kernel build-scope plan to return Planned"
 
-let compute_input_hash = fun ?(planner_version = planner_artifacts_version) ?(depset = []) ~package ~workspace ~profile ~build_ctx () ->
-  let module H = Std.Crypto.Sha256 in
-  let state = H.create () in
-  H.write state planner_version;
-  Riot_model.Build_ctx.hash state build_ctx;
-  H.write_hash state (Riot_toolchain.hash test_toolchain);
-  Riot_model.Package.hash state package;
-  let sorted_deps =
-    List.sort (Riot_model.Package.build_graph_dependencies package)
-      ~compare:(fun (a: Riot_model.Package.dependency) (b: Riot_model.Package.dependency) ->
-        Package_name.compare a.name b.name)
-  in
-  List.for_each sorted_deps
-    ~fn:(fun (dep: Riot_model.Package.dependency) ->
-      match dep.source with
-      | { workspace=true; _ } -> (
-          match
-            List.find workspace.Riot_model.Workspace.packages
-              ~fn:(fun (p: Riot_model.Package_manifest.t) ->
-                Package_name.equal p.name dep.name)
-          with
-          | Some dep_pkg ->
-              H.write state (Path.to_string dep_pkg.path);
-              H.write state
-                (
-                  if Option.is_some dep_pkg.library then
-                    "true"
-                  else
-                    "false"
-                )
-          | None -> ()
-        )
-      | { builtin=true; _ } ->
-          ()
-      | _ ->
-          ());
-  let dep_hashes = depset
-  |> List.map ~fn:(fun (dep: Riot_planner.Dependency.t) -> dep.hash)
-  |> List.sort ~compare:Std.Crypto.Hash.compare in
-  List.for_each dep_hashes
-    ~fn:(fun hash ->
-      H.write_hash state hash);
-  H.finish state
-
 let test_plan_bundle_cache_hit_restores_module_and_action_graphs = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"planner_bundle_hit_test"
@@ -523,7 +485,14 @@ let test_plan_bundle_cache_hit_restores_module_and_action_graphs = fun _ctx ->
         let session_id = Riot_model.Session_id.make () in
         let profile = Riot_model.Profile.debug in
         let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-        let input_hash = compute_input_hash ~package ~workspace ~profile ~build_ctx () in
+        let input_hash = Riot_planner.Package_planner.compute_input_hash
+          ~package
+          ~depset:[]
+          ~workspace
+          ~profile
+          ~build_ctx
+          ~toolchain:test_toolchain
+          () in
         let action_graph_json =
           let ag = Riot_planner.Action_graph.create () in
           let action = Riot_planner.Action.WriteFile {
@@ -619,7 +588,14 @@ let test_cached_artifact_and_exports_short_circuit_without_plan_bundle = fun _ct
         let session_id = Riot_model.Session_id.make () in
         let profile = Riot_model.Profile.debug in
         let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-        let input_hash = compute_input_hash ~package ~workspace ~profile ~build_ctx () in
+        let input_hash = Riot_planner.Package_planner.compute_input_hash
+          ~package
+          ~depset:[]
+          ~workspace
+          ~profile
+          ~build_ctx
+          ~toolchain:test_toolchain
+          () in
         let sandbox_dir = Path.(tmpdir / Path.v "sandbox") in
         let output = Path.(sandbox_dir / Path.v "pkg.cma") in
         let _ = Fs.create_dir_all sandbox_dir |> Result.expect ~msg:"sandbox dir creation should succeed" in
@@ -702,12 +678,14 @@ let test_stale_plan_bundle_version_rebuilds_plan_graphs = fun _ctx ->
         let session_id = Riot_model.Session_id.make () in
         let profile = Riot_model.Profile.release in
         let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-        let stale_input_hash = compute_input_hash
+        let stale_input_hash = Riot_planner.Package_planner.compute_input_hash
           ~planner_version:"planner-artifacts:v2"
           ~package
+          ~depset:[]
           ~workspace
           ~profile
           ~build_ctx
+          ~toolchain:test_toolchain
           () in
         let stale_action_graph_json =
           let ag = Riot_planner.Action_graph.create () in
@@ -811,7 +789,14 @@ let test_plan_bundle_cache_hit_preserves_module_dependency_order = fun _ctx ->
         let session_id = Riot_model.Session_id.make () in
         let profile = Riot_model.Profile.debug in
         let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-        let input_hash = compute_input_hash ~package ~workspace ~profile ~build_ctx () in
+        let input_hash = Riot_planner.Package_planner.compute_input_hash
+          ~package
+          ~depset:[]
+          ~workspace
+          ~profile
+          ~build_ctx
+          ~toolchain:test_toolchain
+          () in
         let module_graph_json = Std.Data.Json.Object [
           (
             "nodes",
@@ -1057,22 +1042,14 @@ let test_nested_library_interfaces_depend_on_inherited_aliases = fun _ctx ->
         let src_dir = Path.(package_root / Path.v "src") in
         let archive_dir = Path.(src_dir / Path.v "archive") in
         let _ = Fs.create_dir_all archive_dir |> Result.expect ~msg:"expected archive dir creation to succeed" in
-        let _ = Fs.write
-          "module Archive = Archive\n"
-          Path.(src_dir / Path.v "pkg.ml")
+        let _ = Fs.write "module Archive = Archive\n" Path.(src_dir / Path.v "pkg.ml")
         |> Result.expect ~msg:"expected pkg.ml write to succeed" in
-        let _ = Fs.write
-          "type t\n"
-          Path.(archive_dir / Path.v "archive.mli")
-        |> Result.expect ~msg:"expected archive.mli write to succeed" in
+        let _ = Fs.write "type t\n" Path.(archive_dir / Path.v "archive.mli") |> Result.expect ~msg:"expected archive.mli write to succeed" in
         let package = Riot_model.Package.make ~name:(Package_name.from_string "pkg"
         |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:(Path.v
           "pkg") ~library:{ path = Path.v "src/pkg.ml" }
           ~sources:{
-            src = [
-              Path.v "src/pkg.ml";
-              Path.v "src/archive/archive.mli";
-            ];
+            src = [ Path.v "src/pkg.ml"; Path.v "src/archive/archive.mli"; ];
             native = [];
             tests = [];
             examples = [];
@@ -1164,12 +1141,14 @@ let test_legacy_nested_sibling_plan_bundle_is_ignored_after_version_bump = fun _
         let session_id = Riot_model.Session_id.make () in
         let profile = Riot_model.Profile.debug in
         let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
-        let stale_input_hash = compute_input_hash
+        let stale_input_hash = Riot_planner.Package_planner.compute_input_hash
           ~planner_version:nested_sibling_dependency_fix_planner_artifacts_version
           ~package
+          ~depset:[]
           ~workspace
           ~profile
           ~build_ctx
+          ~toolchain:test_toolchain
           () in
         let stale_action_graph_json =
           let ag = Riot_planner.Action_graph.create () in
@@ -1362,13 +1341,14 @@ let test_legacy_kernel_plan_bundle_is_ignored_after_version_bump = fun _ctx ->
                     let stale_bundle = rewrite_plan_bundle_action_graph
                       bundle
                       ~rewrite:(move_item_to_front "Kernel__Error.cmx") in
-                    let stale_input_hash = compute_input_hash
+                    let stale_input_hash = Riot_planner.Package_planner.compute_input_hash
                       ~planner_version:legacy_planner_artifacts_version
                       ~depset
                       ~package
                       ~workspace:test_workspace
                       ~profile
                       ~build_ctx
+                      ~toolchain:test_toolchain
                       () in
                     let _ = Riot_store.Store.save_plan_bundle
                       test_store
@@ -1463,13 +1443,14 @@ let test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version
             | None -> Error "expected current krasny plan bundle to be persisted"
             | Some bundle ->
                 let stale_bundle = rewrite_plan_bundle_action_graph bundle ~rewrite:rewrite_bad_krasny_root in
-                let stale_input_hash = compute_input_hash
+                let stale_input_hash = Riot_planner.Package_planner.compute_input_hash
                   ~planner_version:explicit_root_library_path_fix_planner_artifacts_version
                   ~depset
                   ~package
                   ~workspace:test_workspace
                   ~profile
                   ~build_ctx
+                  ~toolchain:test_toolchain
                   () in
                 let _ = Riot_store.Store.save_plan_bundle test_store ~hash:stale_input_hash ~plan:stale_bundle
                 |> Result.expect ~msg:"expected legacy krasny plan bundle save to succeed" in

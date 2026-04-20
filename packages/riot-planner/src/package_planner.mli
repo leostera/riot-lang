@@ -56,6 +56,17 @@ and planning_breakdown = {
   plan_bundle_cache_hit: bool;
   module_plan_duration: Time.Duration.t;
 }
+val compute_input_hash:
+  ?planner_version:string ->
+  package:Package.t ->
+  depset:Dependency.t list ->
+  workspace:Workspace.t ->
+  profile:Profile.t ->
+  build_ctx:Build_ctx.t ->
+  toolchain:Riot_toolchain.t ->
+  unit ->
+  Std.Crypto.hash
+
 val plan_package:
   workspace:Workspace.t ->
   toolchain:Riot_toolchain.t ->

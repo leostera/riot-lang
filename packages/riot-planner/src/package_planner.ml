@@ -364,13 +364,13 @@ let plan_bundle_of_json = fun ~(package:Package.t) json ->
     - Action graph (derived from module graph)
 
     If input_hash hasn't changed, we know the full hash is the same! *)
-let compute_input_hash = fun ~package ~depset ~workspace ~profile ~build_ctx ~toolchain ->
+let compute_input_hash = fun ?(planner_version = "planner-artifacts:v14") ~package ~depset ~workspace ~profile ~build_ctx ~toolchain () ->
   let module H = Std.Crypto.Sha256 in
   let state = H.create () in
   (* Planner artifact contract version.
      Bump this when planned output shapes or link-time artifact requirements
      change in ways that must invalidate cached package artifacts. *)
-  H.write state "planner-artifacts:v14";
+  H.write state planner_version;
   (* Build context (includes resolved profile) *)
   Build_ctx.hash state build_ctx;
   (* Toolchain identity must participate in package cache invalidation so
@@ -589,7 +589,14 @@ let plan_package = fun ~workspace ~toolchain ~store ~package_graph ~package_key 
             profile
       in
       let input_hash_started_at = Time.Instant.now () in
-      let input_hash = compute_input_hash ~package ~depset ~workspace ~profile ~build_ctx ~toolchain in
+      let input_hash = compute_input_hash
+        ~package
+        ~depset
+        ~workspace
+        ~profile
+        ~build_ctx
+        ~toolchain
+        () in
       let input_hash_duration = Time.Instant.duration_since
         ~earlier:input_hash_started_at
         (Time.Instant.now ()) in
