@@ -52,7 +52,7 @@ type parse_result =
     Example usage:
     {[
       let parser = Parser_reader.create () in
-      let reader = IO.Reader.create stream in
+      let reader = IO.Reader.from_source source stream in
 
       let rec read_frames () =
         match Parser_reader.parse parser reader with
@@ -73,7 +73,7 @@ type parse_result =
     @param reader The IO reader to read from
     @return Parse result
 *)
-val parse: state -> ('src, 'err) IO.Reader.t -> parse_result
+val parse: state -> IO.Reader.t -> parse_result
 
 (** Reset parser state to initial (for connection reuse) *)
 val reset: state -> unit

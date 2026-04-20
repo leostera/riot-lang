@@ -47,7 +47,7 @@ type decode_result =
     Example usage:
     {[
       let decoder = Hpack_reader.create () in
-      let reader = IO.Reader.create stream in
+      let reader = IO.Reader.from_source source stream in
 
       match Hpack_reader.decode decoder reader with
       | Headers headers -> handle_headers headers
@@ -59,7 +59,7 @@ type decode_result =
     @param reader The IO reader
     @return Decode result
 *)
-val decode: decoder -> ('src, 'err) IO.Reader.t -> decode_result
+val decode: decoder -> IO.Reader.t -> decode_result
 
 (** Update maximum dynamic table size (from SETTINGS frame) *)
 val update_max_table_size: decoder -> int -> unit
