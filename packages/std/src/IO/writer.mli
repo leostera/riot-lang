@@ -1,31 +1,26 @@
 open Prelude
 
-module IoVec = IoVec
+type 'value result = ('value, Error.t) Result.t
 
 module type Write = sig
   type t
-  type err
+  val write: t -> from:Buffer.t -> int result
 
-  val write: t -> from:Buffer.t -> (int, err) result
+  val write_vectored: t -> from:IoVec.t -> int result
 
-  val write_vectored: t -> from:IoVec.t -> (int, err) result
-
-  val flush: t -> (unit, err) result
+  val flush: t -> unit result
 end
 
-type ('dst, 'err) sink = (module Write with type t = 'dst and type err = 'err)
-type 'err t
+type 'dst sink = (module Write with type t = 'dst)
+type t
+val from_sink: 'dst sink -> 'dst -> t
 
-val from_sink: ('dst, 'err) sink -> 'dst -> 'err t
+val write: t -> from:Buffer.t -> int result
 
-val write: 'err t -> from:Buffer.t -> (int, 'err) result
+val write_all: t -> from:Buffer.t -> unit result
 
-val write_all: 'err t -> from:Buffer.t -> (unit, 'err) result
+val write_vectored: t -> from:IoVec.t -> int result
 
-val write_vectored: 'err t -> from:IoVec.t -> (int, 'err) result
+val write_all_vectored: t -> from:IoVec.t -> unit result
 
-val write_all_vectored: 'err t -> from:IoVec.t -> (unit, 'err) result
-
-val map_err: 'a t -> fn:('a -> 'b) -> 'b t
-
-val flush: 'err t -> (unit, 'err) result
+val flush: t -> unit result

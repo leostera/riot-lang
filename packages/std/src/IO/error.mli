@@ -2,6 +2,7 @@ open Prelude
 
 type t =
   | End_of_file
+  | Unexpected_end_of_file
   | Timeout
   | Closed
   | Connection_closed
@@ -67,6 +68,8 @@ type t =
   | No_route_to_host
   | Operation_already_in_progress
   | Operation_now_in_progress
+  | Buffer_full
+  | Invalid_data
   | Unknown_error of string
 
 val of_system_error: Kernel.SystemError.t -> t

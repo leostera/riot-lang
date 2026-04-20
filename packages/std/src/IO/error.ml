@@ -2,6 +2,7 @@ open Prelude
 
 type t =
   | End_of_file
+  | Unexpected_end_of_file
   | Timeout
   | Closed
   | Connection_closed
@@ -67,6 +68,8 @@ type t =
   | No_route_to_host
   | Operation_already_in_progress
   | Operation_now_in_progress
+  | Buffer_full
+  | Invalid_data
   | Unknown_error of string
 
 let of_system_error = function
@@ -107,6 +110,7 @@ let of_async_error = function
 
 let message = function
   | End_of_file -> "End of file"
+  | Unexpected_end_of_file -> "Unexpected end of file"
   | Timeout -> "Timeout"
   | Closed -> "Closed"
   | Connection_closed -> "Connection closed"
@@ -173,4 +177,6 @@ let message = function
   | No_route_to_host -> "No route to host"
   | Operation_already_in_progress -> "Operation already in progress"
   | Operation_now_in_progress -> "Operation now in progress"
+  | Buffer_full -> "Buffer full"
+  | Invalid_data -> "Invalid data"
   | Unknown_error message -> message

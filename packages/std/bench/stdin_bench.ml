@@ -117,12 +117,7 @@ let is_would_block = function
   | Kernel.Fs.File.System system_error -> Kernel.SystemError.would_block system_error
   | _ -> false
 
-let bufreader_error_message = function
-  | IO.BufReader.Source_error error -> IO.error_message error
-  | IO.BufReader.End_of_file -> "end of file"
-  | IO.BufReader.Buffer_full -> "buffer full"
-  | IO.BufReader.Invalid_count count -> "invalid count: " ^ Int.to_string count
-  | IO.BufReader.Invalid_data -> "invalid data"
+let bufreader_error_message = IO.error_message
 
 let status_to_string = function
   | Kernel.Process.Running -> "running"
@@ -402,7 +397,7 @@ let run_std_buffered_chars = fun expected_bytes ->
   let rec loop total =
     match IO.BufReader.read_byte reader with
     | Ok _ -> loop (total + 1)
-    | Error IO.BufReader.End_of_file -> total
+    | Error IO.End_of_file -> total
     | Error error -> panic (bufreader_error_message error)
   in
   let total = loop 0 in
@@ -420,7 +415,7 @@ let run_std_lines = fun expected_bytes expected_lines ->
   let rec loop byte_count line_count =
     match IO.BufReader.read_line reader with
     | Ok line -> loop (byte_count + IO.IoSlice.length line) (line_count + 1)
-    | Error IO.BufReader.End_of_file -> (byte_count, line_count)
+    | Error IO.End_of_file -> (byte_count, line_count)
     | Error error -> panic (bufreader_error_message error)
   in
   let (byte_count, line_count) = loop 0 0 in

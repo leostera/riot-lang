@@ -7,6 +7,7 @@ module Writer = Writer
 
 type t = unit
 type error = Error.t
+type 'value result = ('value, error) Result.t
 
 let write = fun ~from ->
   let source = Kernel.IO.Stdout.to_source () in
@@ -62,7 +63,6 @@ let flush = fun () ->
 let to_writer = fun () ->
   let module Write = struct
     type nonrec t = t
-    type nonrec err = error
 
     let write = fun () ~from ->
       write ~from

@@ -374,7 +374,7 @@ val contains: string -> string -> bool
     testing incremental decoders and other streaming APIs.
 
     @raise Invalid_argument if [chunk_size <= 0]. *)
-val to_reader: ?chunk_size:int -> string -> IO.error IO.Reader.t
+val to_reader: ?chunk_size:int -> string -> IO.Reader.t
 
 module Syntax: sig
   val get: string -> int -> char

@@ -44,7 +44,7 @@ let consume_string_lines = fun payload ~chunk_size ->
     | Ok line ->
         total := !total + String.length line;
         loop ()
-    | Error IO.BufReader.End_of_file ->
+    | Error IO.End_of_file ->
         !total
     | Error _ ->
         panic "std io buffered reader bench: string line read failed"
@@ -65,7 +65,7 @@ let consume_slice_lines = fun payload ~chunk_size ~materialize ->
         else
           total := !total + IO.IoSlice.length line;
         loop ()
-    | Error IO.BufReader.End_of_file ->
+    | Error IO.End_of_file ->
         !total
     | Error _ ->
         panic "std io buffered reader bench: slice line read failed"
@@ -83,7 +83,7 @@ let consume_read_slices = fun payload ~chunk_size ->
     | Ok slice ->
         total := !total + IO.IoSlice.length slice;
         loop ()
-    | Error IO.BufReader.End_of_file ->
+    | Error IO.End_of_file ->
         !total
     | Error _ ->
         panic "std io buf reader bench: read_slice failed"
@@ -101,7 +101,7 @@ let consume_read_runes = fun payload ~chunk_size ->
     | Ok rune ->
         total := !total + Unicode.Rune.to_int rune;
         loop ()
-    | Error IO.BufReader.End_of_file ->
+    | Error IO.End_of_file ->
         !total
     | Error _ ->
         panic "std io buf reader bench: read_rune failed"
@@ -119,7 +119,7 @@ let consume_read_bytes = fun payload ~chunk_size ->
     | Ok byte ->
         total := !total + Char.to_int byte;
         loop ()
-    | Error IO.BufReader.End_of_file ->
+    | Error IO.End_of_file ->
         !total
     | Error _ ->
         panic "std io buf reader bench: read_byte failed"
@@ -142,7 +142,7 @@ let consume_peek_consume_bytes = fun payload ~chunk_size ->
           | Ok _ -> panic "std io buf reader bench: consume returned unexpected count"
           | Error _ -> panic "std io buf reader bench: consume failed"
         end
-    | Error IO.BufReader.End_of_file ->
+    | Error IO.End_of_file ->
         !total
     | Error _ ->
         panic "std io buf reader bench: peek failed"

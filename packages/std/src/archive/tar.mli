@@ -41,14 +41,14 @@ type error =
 val error_to_string: error -> string
 
 (** Errors raised while reading archive metadata from an [`IO.Reader`]. *)
-type 'read_err read_error =
-  | Entries_source_error of 'read_err
+type read_error =
+  | Entries_source_error of IO.error
   (** The upstream reader failed while feeding tar data. *)
   | Entries_error of error
 (** The tar archive itself was invalid or unsafe. *)
 (** Errors raised while extracting archive contents. *)
-type 'read_err extract_error =
-  | Extract_source_error of 'read_err
+type extract_error =
+  | Extract_source_error of IO.error
   (** The upstream reader failed while feeding tar data. *)
   | Extract_fs_error of Fs.error
   (** Filesystem I/O failed while creating directories or writing files. *)
@@ -83,7 +83,7 @@ type 'read_err extract_error =
               | Error _ -> Error "failed to decode tar archive")
     ```
 *)
-val entries: 'read_err IO.Reader.t -> (entry list, 'read_err read_error) result
+val entries: IO.Reader.t -> (entry list, read_error) result
 
 (** Extract a tar archive into a directory.
 
@@ -107,12 +107,12 @@ val entries: 'read_err IO.Reader.t -> (entry list, 'read_err read_error) result
       | Error _ -> Log.error "failed to extract archive"
     ```
 *)
-val extract: 'read_err IO.Reader.t -> into:Path.t -> (unit, 'read_err extract_error) result
+val extract: IO.Reader.t -> into:Path.t -> (unit, extract_error) result
 
 (** Open a tar archive from disk and list its entries.
 
     This is a convenience wrapper around [`entries`] for filesystem paths. *)
-val entries_file: Path.t -> (entry list, Fs.error read_error) result
+val entries_file: Path.t -> (entry list, read_error) result
 
 (** Open a tar archive from disk and extract it into a directory.
 
@@ -129,4 +129,4 @@ val entries_file: Path.t -> (entry list, Fs.error read_error) result
       | Error _ -> Log.error "archive extraction failed"
     ```
 *)
-val extract_file: archive:Path.t -> into:Path.t -> (unit, Fs.error extract_error) result
+val extract_file: archive:Path.t -> into:Path.t -> (unit, extract_error) result

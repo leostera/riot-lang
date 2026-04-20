@@ -91,7 +91,7 @@ let set_result = fun result ->
 
 let decode_bytes: string -> (bytes, [
     `Invalid_base32
-  ]) result = fun str ->
+  ]) Global.result = fun str ->
   let len = String.length str in
   if len mod 8 != 0 then
     Error `Invalid_base32

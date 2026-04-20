@@ -167,7 +167,7 @@ let test_read_rune_reports_invalid_data = fun _ctx ->
     |> IO.BufReader.from_reader ~size:4
   in
   match IO.BufReader.read_rune reader with
-  | Error IO.BufReader.Invalid_data -> Ok ()
+  | Error IO.Invalid_data -> Ok ()
   | Ok _ -> Error "BufReader.read_rune should reject invalid UTF-8 leading bytes"
   | Error _ -> Error "BufReader.read_rune should report invalid UTF-8 as Invalid_data"
 
@@ -177,7 +177,7 @@ let test_read_slice_reports_buffer_full_when_delimiter_does_not_fit = fun _ctx -
     |> IO.BufReader.from_reader ~size:4
   in
   match IO.BufReader.read_slice reader ~until:'\n' with
-  | Error IO.BufReader.Buffer_full -> Ok ()
+  | Error IO.Buffer_full -> Ok ()
   | Ok _ -> Error "BufReader.read_slice should not return a borrowed chunk when the buffer fills first"
   | Error _ -> Error "BufReader.read_slice should report Buffer_full when the delimiter does not fit"
 
@@ -187,11 +187,11 @@ let test_peek_and_consume_validate_counts = fun _ctx ->
     |> IO.BufReader.from_reader ~size:4
   in
   match IO.BufReader.peek reader ~len:5 with
-  | Error IO.BufReader.Buffer_full -> (
+  | Error IO.Buffer_full -> (
       match IO.BufReader.consume reader ~len:(-1) with
-      | Error (IO.BufReader.Invalid_count (-1)) -> Ok ()
+      | Error IO.Invalid_argument -> Ok ()
       | Ok _ -> Error "BufReader.consume should reject negative counts"
-      | Error _ -> Error "BufReader.consume should report Invalid_count for negative lengths")
+      | Error _ -> Error "BufReader.consume should report Invalid_argument for negative lengths")
   | Ok _ -> Error "BufReader.peek should require enough room for the requested exact length"
   | Error _ -> Error "BufReader.peek should report Buffer_full when len exceeds capacity"
 

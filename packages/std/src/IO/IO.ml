@@ -16,6 +16,7 @@ module Stderr = Stderr
 
 type error = Error.t =
   | End_of_file
+  | Unexpected_end_of_file
   | Timeout
   | Closed
   | Connection_closed
@@ -81,9 +82,12 @@ type error = Error.t =
   | No_route_to_host
   | Operation_already_in_progress
   | Operation_now_in_progress
+  | Buffer_full
+  | Invalid_data
   | Unknown_error of string
 
-type nonrec 'value io_result = ('value, error) result
+type nonrec 'value result = ('value, error) Result.t
+type nonrec 'value io_result = 'value result
 
 type file_kind =
   | Regular

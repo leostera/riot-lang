@@ -9,19 +9,17 @@ type error =
 (** The gzip stream ended before the decoder reached a complete end state. *)
 val error_to_string: error -> string
 
-(** Opaque reader state produced by [`to_reader`]. *)
-type 'read_err reader
 (** Errors returned by the reader produced from a gzip source. *)
-type 'read_err read_error =
-  | Source_error of 'read_err
+type read_error =
+  | Source_error of IO.error
   (** The upstream compressed source reader failed. *)
   | Gzip_error of error
 (** The gzip payload was malformed or incomplete. *)
 (** Errors returned by streaming compression or decompression into a writer. *)
-type ('read_err, 'write_err) stream_error =
-  | Stream_source_error of 'read_err
+type stream_error =
+  | Stream_source_error of IO.error
   (** The compressed source reader failed. *)
-  | Stream_destination_error of 'write_err
+  | Stream_destination_error of IO.error
   (** The destination writer failed. *)
   | Stream_gzip_error of error
 (** The gzip engine rejected the payload or output stream. *)
@@ -58,7 +56,7 @@ type file_error =
     ```
 *)
 val to_reader:
-  'read_err IO.Reader.t -> 'read_err read_error IO.Reader.t
+  IO.Reader.t -> IO.Reader.t
 
 (** Stream-compress data from a reader into a gzip writer.
 
@@ -78,9 +76,9 @@ val to_reader:
     ```
 *)
 val compress:
-  'read_err IO.Reader.t ->
-  'write_err IO.Writer.t ->
-  (unit, ('read_err, 'write_err) stream_error) result
+  IO.Reader.t ->
+  IO.Writer.t ->
+  (unit, stream_error) result
 
 (** Stream-decompress gzip data from a reader into a writer.
 
@@ -99,9 +97,9 @@ val compress:
     ```
 *)
 val decompress:
-  'read_err IO.Reader.t ->
-  'write_err IO.Writer.t ->
-  (unit, ('read_err, 'write_err) stream_error) result
+  IO.Reader.t ->
+  IO.Writer.t ->
+  (unit, stream_error) result
 
 (** Compress a file into gzip format.
 

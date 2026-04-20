@@ -4,6 +4,8 @@ open Types
 module IoVec = IoVec
 module IoSlice = IoSlice
 
+type 'value result = ('value, Error.t) Result.t
+
 let default_chunk_size = 4_096
 
 let panic_buffer_error = fun fn error ->
@@ -11,25 +13,20 @@ let panic_buffer_error = fun fn error ->
 
 module type Read = sig
   type t
-  type err
 
-  val read: t -> into:Buffer.t -> (int, err) result
+  val read: t -> into:Buffer.t -> int result
 
-  val read_vectored: t -> into:Kernel.IO.IoVec.t -> (int, err) result
+  val read_vectored: t -> into:IoVec.t -> int result
 
   val is_read_vectored: t -> bool
 end
 
-type ('src, 'err) source = (module Read with type t = 'src and type err = 'err)
+type 'src source = (module Read with type t = 'src)
 
-type 'err t =
-  | Reader: (('src, 'err) source * 'src) -> 'err t
+type t =
+  | Reader: ('src source * 'src) -> t
 
-type 'err exact_error =
-  | Source_error of 'err
-  | Unexpected_end_of_file
-
-type 'err byte_result = (u8, 'err) result
+type byte_result = u8 result
 
 type copy_progress = {
   mutable copied: int;
@@ -39,14 +36,14 @@ type cursor = {
   mutable offset: int;
 }
 
-type 'err chain_state = {
+type chain_state = {
   mutable current_left: bool;
-  left: 'err t;
-  right: 'err t;
+  left: t;
+  right: t;
 }
 
-type 'err take_state = {
-  reader: 'err t;
+type take_state = {
+  reader: t;
   mutable remaining: int;
 }
 
@@ -72,18 +69,17 @@ let limited_writable = fun into limit ->
 let from_source = fun source src ->
   Reader (source, src)
 
-let read: type err. err t -> into:Buffer.t -> (int, err) result =
+let read: t -> into:Buffer.t -> int result =
  fun (Reader (((module Source) as source), src)) ~into ->
   let _ = source in
   Source.read src ~into
 
-let read_vectored: type err. err t -> into:Kernel.IO.IoVec.t -> (int, err) result =
+let read_vectored: t -> into:IoVec.t -> int result =
  fun (Reader (((module Source) as source), src)) ~into ->
   let _ = source in
   Source.read_vectored src ~into
 
-let is_read_vectored: type err. err t -> bool =
- fun (Reader (((module Source) as source), src)) ->
+let is_read_vectored: t -> bool = fun (Reader (((module Source) as source), src)) ->
   let _ = source in
   Source.is_read_vectored src
 
@@ -113,33 +109,31 @@ let read_to_string = fun reader ~into ->
 
 let read_exact = fun reader ~into ~len ->
   if len < 0 then
-    Kernel.SystemError.panic "IO.Reader.read_exact: negative length"
+    Error Error.Invalid_argument
   else
     let rec loop remaining =
       if remaining = 0 then
         Ok ()
       else
         let writable = limited_writable into remaining in
-        let bufs = Kernel.IO.IoVec.from_slices [| writable |] in
+        let bufs = IoVec.from_slices [| writable |] in
         match read_vectored reader ~into:bufs with
-        | Ok 0 ->
-            Error Unexpected_end_of_file
+        | Ok 0 -> Error Error.Unexpected_end_of_file
         | Ok count ->
             commit_into into count;
             loop (remaining - count)
-        | Error err ->
-            Error (Source_error err)
+        | Error _ as error -> error
     in
     loop len
 
-let bytes: type err. err t -> err byte_result Iter.Iterator.t = fun reader ->
+let bytes: t -> byte_result Iter.Iterator.t = fun reader ->
   let module ByteIter = struct
     type state = {
-      reader: err t;
+      reader: t;
       done_: bool;
     }
 
-    type item = err byte_result
+    type item = byte_result
 
     let next = fun state ->
       if state.done_ then
@@ -150,23 +144,21 @@ let bytes: type err. err t -> err byte_result Iter.Iterator.t = fun reader ->
         | Ok () ->
             let byte = Buffer.get_unchecked scratch ~at:0 in
             (Some (Ok byte), state)
-        | Error Unexpected_end_of_file ->
+        | Error Error.Unexpected_end_of_file ->
             (None, { state with done_ = true })
-        | Error (Source_error err) ->
+        | Error err ->
             (Some (Error err), { state with done_ = true })
 
     let size = fun _ -> 0
   end in
   Iter.Iterator.make (module ByteIter) { reader; done_ = false }
 
-let chain: type outer_err. outer_err t -> outer_err t -> outer_err t = fun left right ->
+let chain: t -> t -> t = fun left right ->
   let reader_read = read in
   let reader_read_vectored = read_vectored in
   let reader_is_read_vectored = is_read_vectored in
   let module Chain = struct
-    type t = outer_err chain_state
-
-    type err = outer_err
+    type t = chain_state
 
     let rec read = fun state ~into ->
       if state.current_left then
@@ -202,20 +194,18 @@ let chain: type outer_err. outer_err t -> outer_err t -> outer_err t = fun left 
   end in
   from_source (module Chain) { current_left = true; left; right }
 
-let take: type outer_err. outer_err t -> limit:int -> outer_err t = fun reader ~limit ->
+let take: t -> limit:int -> t = fun reader ~limit ->
   let reader_read_vectored = read_vectored in
   let reader_is_read_vectored = is_read_vectored in
   let module Take = struct
-    type t = outer_err take_state
-
-    type err = outer_err
+    type t = take_state
 
     let read = fun state ~into ->
       if state.remaining <= 0 then
         Ok 0
       else
         let writable = limited_writable into state.remaining in
-        let bufs = Kernel.IO.IoVec.from_slices [| writable |] in
+        let bufs = IoVec.from_slices [| writable |] in
         match reader_read_vectored state.reader ~into:bufs with
         | Ok count ->
             commit_into into count;
@@ -228,7 +218,7 @@ let take: type outer_err. outer_err t -> limit:int -> outer_err t = fun reader ~
       if state.remaining <= 0 then
         Ok 0
       else
-        match Kernel.IO.IoVec.sub ~len:(Int.min state.remaining (Kernel.IO.IoVec.length into)) into with
+        match IoVec.sub ~len:(Int.min state.remaining (IoVec.length into)) into with
         | Ok limited ->
             begin
               match reader_read_vectored state.reader ~into:limited with
@@ -247,31 +237,9 @@ let take: type outer_err. outer_err t -> limit:int -> outer_err t = fun reader ~
   end in
   from_source (module Take) { reader; remaining = Int.max 0 limit }
 
-let map_err: type a b. a t -> fn:(a -> b) -> b t =
- fun (Reader (((module Source) as source), src)) ~fn ->
-  let _ = source in
-  let module Mapped = struct
-    type t = Source.t
-    type err = b
-
-    let read = fun value ~into ->
-      match Source.read value ~into with
-      | Ok count -> Ok count
-      | Error err -> Error (fn err)
-
-    let read_vectored = fun value ~into ->
-      match Source.read_vectored value ~into with
-      | Ok count -> Ok count
-      | Error err -> Error (fn err)
-
-    let is_read_vectored = Source.is_read_vectored
-  end in
-  from_source (module Mapped) src
-
 let empty =
   let module Empty = struct
     type t = unit
-    type err = unit
 
     let read = fun () ~into:_ -> Ok 0
 
@@ -285,12 +253,10 @@ let from_bytes = fun source ->
   let module BytesSource = struct
     type t = cursor
 
-    type err = unit
-
     let copy_into_iovec = fun state ~source into ->
       let available = Bytes.length source - state.offset in
       let progress = { copied = 0 } in
-      Kernel.IO.IoVec.for_each into
+      IoVec.for_each into
         ~fn:(fun segment ->
           let remaining = available - progress.copied in
           if remaining > 0 then

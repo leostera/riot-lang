@@ -1,25 +1,21 @@
 open Prelude
 open Types
 
+module IoVec = IoVec
 module IoSlice = IoSlice
+
+type 'value result = ('value, Error.t) Result.t
 
 type copy_progress = {
   mutable copied: int;
 }
 
-type 'err t = {
-  mutable reader: 'err Reader.t;
+type t = {
+  mutable reader: Reader.t;
   buffer: Buffer.t;
   size: int;
   mutable eof: bool;
 }
-
-type 'err error =
-  | Source_error of 'err
-  | End_of_file
-  | Buffer_full
-  | Invalid_count of int
-  | Invalid_data
 
 let default_size = 4_096
 
@@ -49,8 +45,8 @@ let fill_once = fun state ->
         Ok 0
     | Ok count ->
         Ok count
-    | Error err ->
-        Error (Source_error err)
+    | Error _ as error ->
+        error
   )
 
 let fill = fun state ->
@@ -58,26 +54,26 @@ let fill = fun state ->
     Ok (Buffer.readable_bytes state.buffer)
   else
     match fill_once state with
-    | Ok 0 -> Error End_of_file
+    | Ok 0 -> Error Error.End_of_file
     | Ok _ -> Ok (Buffer.readable_bytes state.buffer)
     | Error _ as error -> error
 
 let ensure_available = fun state needed ->
   if needed < 0 then
-    Error (Invalid_count needed)
+    Error Error.Invalid_argument
   else if needed = 0 then
     Ok ()
   else if needed > state.size then
-    Error Buffer_full
+    Error Error.Buffer_full
   else
     let rec loop () =
       if Buffer.readable_bytes state.buffer >= needed then
         Ok ()
       else if state.eof then
-        Error End_of_file
+        Error Error.End_of_file
       else
         match fill_once state with
-        | Ok 0 -> Error End_of_file
+        | Ok 0 -> Error Error.End_of_file
         | Ok _ -> loop ()
         | Error _ as error -> error
     in
@@ -108,7 +104,7 @@ let peek = fun value ~len ->
 
 let consume = fun value ~len ->
   if len < 0 then
-    Error (Invalid_count len)
+    Error Error.Invalid_argument
   else
     let available = Buffer.readable_bytes value.buffer in
     let count = Int.min len available in
@@ -145,7 +141,7 @@ let rec read = fun value ~into ->
         panic_buffer_error "read.append" error
   ) else
     match fill_once value with
-    | Ok 0 -> Error End_of_file
+    | Ok 0 -> Error Error.End_of_file
     | Ok _ -> read value ~into
     | Error _ as error -> error
 
@@ -181,7 +177,7 @@ let read_rune = fun value ->
   | Ok first ->
       let width = utf8_width (IoSlice.get_unchecked first ~at:0) in
       if width = 0 then
-        Error Invalid_data
+        Error Error.Invalid_data
       else
         match peek value ~len:width with
         | Error _ as error ->
@@ -196,8 +192,7 @@ let read_rune = fun value ->
                     | Ok _ -> Ok rune
                     | Error _ as error -> error
                   end
-              | None ->
-                  Error Invalid_data
+              | None -> Error Error.Invalid_data
             end
 
 let read_slice = fun value ~until ->
@@ -215,7 +210,7 @@ let read_slice = fun value ~until ->
     | None ->
         if value.eof then
           if IoSlice.length readable = 0 then
-            Error End_of_file
+            Error Error.End_of_file
           else
             let tail = readable in
             let _ =
@@ -225,7 +220,7 @@ let read_slice = fun value ~until ->
             in
             Ok tail
         else if Buffer.readable_bytes value.buffer >= value.size then
-          Error Buffer_full
+          Error Error.Buffer_full
         else
           match fill_once value with
           | Ok 0 -> loop ()
@@ -242,26 +237,25 @@ let read_string = fun value ~until ->
   | Ok slice -> Ok (IoSlice.to_string slice)
   | Error _ as error -> error
 
-let to_reader: type outer_err. outer_err t -> outer_err error Reader.t = fun value ->
+let to_reader: t -> Reader.t = fun value ->
   let module Source = struct
-    type nonrec t = outer_err t
-    type err = outer_err error
+    type nonrec t = t
 
     let read = fun source ~into ->
       match read source ~into with
-      | Error End_of_file -> Ok 0
+      | Error Error.End_of_file -> Ok 0
       | Ok _ as ok -> ok
       | Error _ as error -> error
 
     let read_vectored = fun source ~into ->
-      let tmp = Buffer.create ~size:(Kernel.IO.IoVec.length into) in
+      let tmp = Buffer.create ~size:(IoVec.length into) in
       match read source ~into:tmp with
-      | Error End_of_file ->
+      | Error Error.End_of_file ->
           Ok 0
       | Ok count ->
           let readable = Buffer.readable tmp in
           let progress = { copied = 0 } in
-          Kernel.IO.IoVec.for_each into
+          IoVec.for_each into
             ~fn:(fun segment ->
               let remaining = count - progress.copied in
               if remaining > 0 then

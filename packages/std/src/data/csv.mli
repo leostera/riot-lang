@@ -158,7 +158,7 @@ val config: ?delimiter:char -> ?quote:char -> ?escape:char -> ?trim_fields:bool 
     Returns an iterator that yields [Error] items if:
     - Parse errors occur (unterminated quotes, invalid escape sequences, etc.)
     - Reader errors occur during the initial read *)
-val parse: ?config:config -> 'err IO.Reader.t -> (row, error) result Iter.MutIterator.t
+val parse: ?config:config -> IO.Reader.t -> (row, error) result Iter.MutIterator.t
 
 (** Parses a CSV string incrementally, returning a mutable iterator over rows.
     Useful for parsing CSV data from strings, network responses, or testing.
@@ -217,8 +217,8 @@ val error_to_string: error -> string
 val write: ?config:config ->
   ?headers:string list ->
   data:string list list ->
-  'err IO.Writer.t ->
-  (unit, 'err) result
+  IO.Writer.t ->
+  unit IO.result
 
 (** Serializes CSV rows to a string. Fields containing delimiters, quotes, or
     newlines are automatically quoted.

@@ -1,1 +1,3 @@
-include Kernel.IO.IoVec.IoSlice
+module IoVec = IoVec
+
+include IoVec.IoSlice

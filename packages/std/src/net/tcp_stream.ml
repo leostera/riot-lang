@@ -97,8 +97,6 @@ let to_reader = fun stream ->
   let module Read = struct
     type nonrec t = t
 
-    type nonrec err = error
-
     let read = fun t ~into ->
       let writable =
         if IO.Buffer.writable_bytes into = 0 then (
@@ -127,7 +125,7 @@ let to_reader = fun stream ->
               ~interest:Interest.readable
               ~source
               loop
-        | Error err -> Error (System_error (io_error_of_tcp_error err))
+        | Error err -> Error (io_error_of_tcp_error err)
       in
       loop ()
 
@@ -141,7 +139,7 @@ let to_reader = fun stream ->
           ~interest:Interest.readable
           ~source
           loop
-        | Error err -> Error (System_error (io_error_of_tcp_error err))
+        | Error err -> Error (io_error_of_tcp_error err)
       in
       loop ()
 
@@ -152,8 +150,6 @@ let to_reader = fun stream ->
 let to_writer = fun stream ->
   let module Write = struct
     type nonrec t = t
-
-    type nonrec err = error
 
     let write = fun t ~from ->
       let source = Kernel.Net.TcpStream.to_source t in
@@ -166,7 +162,7 @@ let to_writer = fun stream ->
               ~interest:Interest.writable
               ~source
               loop
-        | Error err -> Error (System_error (io_error_of_tcp_error err))
+        | Error err -> Error (io_error_of_tcp_error err)
       in
       loop ()
 
@@ -180,7 +176,7 @@ let to_writer = fun stream ->
           ~interest:Interest.writable
           ~source
           loop
-        | Error err -> Error (System_error (io_error_of_tcp_error err))
+        | Error err -> Error (io_error_of_tcp_error err)
       in
       loop ()
 

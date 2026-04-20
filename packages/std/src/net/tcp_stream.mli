@@ -43,7 +43,7 @@ val close: t -> unit
       | Error `Closed -> handle_closed ()
       | Error (`System_error msg) -> handle_error msg
     ]} *)
-val to_reader: t -> error IO.Reader.t
+val to_reader: t -> IO.Reader.t
 
 (** [to_writer stream] creates a Writer from the TCP stream.
 
@@ -60,4 +60,4 @@ val to_reader: t -> error IO.Reader.t
       | Error `Closed -> handle_closed ()
       | Error (`System_error msg) -> handle_error msg
     ]} *)
-val to_writer: t -> error IO.Writer.t
+val to_writer: t -> IO.Writer.t

@@ -159,7 +159,7 @@ let of_string = fun ?(config = default_config) str ->
   let module CsvIter = struct
     type state = unit
 
-    type item = (row, error) result
+    type item = (row, error) Result.t
 
     let next = fun () ->
       try parse_row () |> Option.map ~fn:(fun row -> Ok row) with

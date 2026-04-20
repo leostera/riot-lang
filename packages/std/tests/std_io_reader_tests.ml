@@ -5,10 +5,9 @@ module Bytes = Kernel.Bytes
 
 module FailingReader = struct
   type t = unit
-  type err = string
 
-  let read = fun () ~into:_ -> Error "boom"
-  let read_vectored = fun () ~into:_ -> Error "boom"
+  let read = fun () ~into:_ -> Error (IO.Unknown_error "boom")
+  let read_vectored = fun () ~into:_ -> Error (IO.Unknown_error "boom")
   let is_read_vectored = fun () -> false
 end
 
@@ -22,9 +21,6 @@ module CountingReader = struct
     mutable offset: int;
     mutable reads: int;
   }
-
-  type err = unit
-
   let create = fun input ->
     {
       data = Bytes.from_string input;
@@ -133,16 +129,13 @@ let test_read_vectored_fills_segments_in_order = fun _ctx ->
   | Ok _ -> Error "IO.Reader.read_vectored should fill segments in order"
   | Error _ -> Error "IO.Reader.read_vectored should not fail for from_string"
 
-let test_map_err_transforms_reader_errors = fun _ctx ->
-  let reader =
-    IO.Reader.from_source (module FailingReader) ()
-    |> IO.Reader.map_err ~fn:String.uppercase_ascii
-  in
+let test_reader_propagates_io_errors = fun _ctx ->
+  let reader = IO.Reader.from_source (module FailingReader) () in
   let buffer = IO.Buffer.create ~size:4 in
   match IO.read reader ~into:buffer with
-  | Error err when String.equal err "BOOM" -> Ok ()
-  | Error _ -> Error "IO.Reader.map_err returned the wrong transformed error"
-  | Ok _ -> Error "IO.Reader.map_err should preserve failures"
+  | Error (IO.Unknown_error "boom") -> Ok ()
+  | Error _ -> Error "IO.Reader should preserve underlying IO.Error values"
+  | Ok _ -> Error "IO.Reader should preserve failures"
 
 let test_from_string_returns_zero_after_eof = fun _ctx ->
   let reader = IO.Reader.from_string "hi" in
@@ -174,7 +167,7 @@ let test_bufreader_amortizes_byte_reads = fun _ctx ->
   let rec loop acc =
     match IO.BufReader.read_byte reader with
     | Ok char -> loop (String.make ~len:1 ~char :: acc)
-    | Error IO.BufReader.End_of_file -> Ok (String.concat "" (List.reverse acc))
+    | Error IO.End_of_file -> Ok (String.concat "" (List.reverse acc))
     | Error _ -> Error "buffered readers should not fail for counting reader"
   in
   match loop [] with
@@ -200,7 +193,7 @@ let tests = Test.[
   case "from_bytes read appends one chunk" test_from_bytes_read_into_buffer_appends_available_content;
   case "from_bytes read_to_end copies the entire content" test_from_bytes_read_to_end_copies_entire_content;
   case "read_vectored fills segments in order" test_read_vectored_fills_segments_in_order;
-  case "map_err transforms reader errors" test_map_err_transforms_reader_errors;
+  case "reader propagates io errors" test_reader_propagates_io_errors;
   case "from_string returns zero after EOF" test_from_string_returns_zero_after_eof;
   case "read_exact reads the requested bytes" test_read_exact_reads_requested_bytes;
   case "BufReader amortizes byte reads" test_bufreader_amortizes_byte_reads;

@@ -309,8 +309,6 @@ let to_reader = fun ?chunk_size value ->
   let module Read = struct
     type t = string
 
-    type err = IO.error
-
     let read = fun _source ~into ->
       let remaining = source_length - Sync.Cell.get offset in
       if Int.equal remaining 0 then

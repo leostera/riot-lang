@@ -10,14 +10,23 @@ type error =
   | Closed
   | Handshake_failed of string
   | System_error of IO.error
-  | Network_read_failed of Tcp_stream.error
-  | Network_write_failed of Tcp_stream.error
+  | Network_read_failed of IO.error
+  | Network_write_failed of IO.error
   | Tls_not_available
   | Unsupported_vectored_operation
 
+let io_error_of_tls_error = function
+  | Closed -> IO.Closed
+  | Handshake_failed message -> IO.Unknown_error ("tls handshake failed: " ^ message)
+  | System_error error -> error
+  | Network_read_failed error -> error
+  | Network_write_failed error -> error
+  | Tls_not_available -> IO.Unknown_error "tls not available"
+  | Unsupported_vectored_operation -> IO.Unknown_error "tls stream does not support vectored io"
+
 type 'src t = {
-  reader: error IO.Reader.t;
-  writer: error IO.Writer.t;
+  reader: IO.Reader.t;
+  writer: IO.Writer.t;
   engine: Tls.engine;
   mutable state: 
     [
@@ -44,7 +53,7 @@ let read_from_network = fun t ->
           let _ = Tls.pump_encrypted_in t.engine t.network_in_buf ~pos:0 ~len:n in
           Ok ()
         )
-  | Error err -> Error err
+  | Error err -> Error (Network_read_failed err)
 
 (* Already wrapped by map_err *)
 
@@ -60,7 +69,7 @@ let flush_to_network = fun t ->
         let data = Bytes.sub_unchecked t.network_out_buf ~offset:0 ~len:n in
         match IO.write_all t.writer ~from:(IO.Buffer.from_bytes data) with
         | Ok () -> flush_loop ()
-        | Error err -> Error err
+        | Error err -> Error (Network_write_failed err)
       )
   in
   flush_loop ()
@@ -138,13 +147,9 @@ let of_server_io = fun ~reader ~writer ~cert_file ~key_file () ->
     | Ok () -> Ok t
     | Error e -> Error e
 
-let network_read_failed = fun x -> Network_read_failed x
-
-let network_write_failed = fun x -> Network_write_failed x
-
 let of_tcp_socket = fun ~mode sock ->
-  let reader = Tcp_stream.to_reader sock |> IO.Reader.map_err ~fn:network_read_failed in
-  let writer = Tcp_stream.to_writer sock |> IO.Writer.map_err ~fn:network_write_failed in
+  let reader = Tcp_stream.to_reader sock in
+  let writer = Tcp_stream.to_writer sock in
   match mode with
   | `Client hostname -> of_client_io ~reader ~writer ~hostname ()
   | `Server (cert_file, key_file) -> of_server_io ~reader ~writer ~cert_file ~key_file ()
@@ -156,7 +161,7 @@ let of_tcp_server = fun ~cert_file ~key_file tcp ->
 
 (* Read plaintext from TLS stream *)
 
-let read_plaintext t dst: (int, error) result =
+let read_plaintext t dst: (int, error) Result.t =
   let rec read_loop () =
     match Tls.read_decrypted t.engine dst ~pos:0 ~len:(Bytes.length dst) with
     | Read n ->
@@ -191,7 +196,7 @@ let read_plaintext t dst: (int, error) result =
 
 (* Write plaintext to TLS stream *)
 
-let write_plaintext t src: (int, error) result =
+let write_plaintext t src: (int, error) Result.t =
   let src_bytes = Bytes.from_string src in
   let src_len = Bytes.length src_bytes in
   let rec write_loop pos remaining =
@@ -227,11 +232,9 @@ let write_plaintext t src: (int, error) result =
 
 (* Expose as reader *)
 
-let to_reader: type src. src t -> error IO.Reader.t = fun tls_stream ->
+let to_reader: type src. src t -> IO.Reader.t = fun tls_stream ->
   let module Read = struct
     type nonrec t = src t
-
-    type err = error
 
     let read = fun (tls: t) ~into ->
       let writable =
@@ -255,9 +258,9 @@ let to_reader: type src. src t -> error IO.Reader.t = fun tls_stream ->
                 Kernel.SystemError.panic
                   ("Net.TlsStream.to_reader.append: " ^ Kernel.IO.Error.message error)
           end
-      | Error err -> Error err
+      | Error err -> Error (io_error_of_tls_error err)
 
-    let read_vectored = fun _t ~into:_ -> Error Unsupported_vectored_operation
+    let read_vectored = fun _t ~into:_ -> Error (io_error_of_tls_error Unsupported_vectored_operation)
 
     let is_read_vectored = fun _t -> false
   end in
@@ -265,15 +268,16 @@ let to_reader: type src. src t -> error IO.Reader.t = fun tls_stream ->
 
 (* Expose as writer *)
 
-let to_writer: type src. src t -> error IO.Writer.t = fun tls ->
+let to_writer: type src. src t -> IO.Writer.t = fun tls ->
   let module Write = struct
     type nonrec t = src t
 
-    type err = error
+    let write = fun t ~from ->
+      match write_plaintext t (IO.Buffer.to_string from) with
+      | Ok written -> Ok written
+      | Error err -> Error (io_error_of_tls_error err)
 
-    let write = fun t ~from -> write_plaintext t (IO.Buffer.to_string from)
-
-    let write_vectored = fun _t ~from:_ -> Error Unsupported_vectored_operation
+    let write_vectored = fun _t ~from:_ -> Error (io_error_of_tls_error Unsupported_vectored_operation)
 
     let flush = fun _t -> Ok ()
   end in

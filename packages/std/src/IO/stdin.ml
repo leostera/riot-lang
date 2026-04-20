@@ -8,6 +8,7 @@ module Runtime_actor = Runtime.Actor
 module Runtime_atomic = Kernel.Atomic
 
 type error = Error.t
+type 'value result = ('value, error) Result.t
 type t = { pid: Runtime.Pid.t }
 
 type request_id = int
@@ -234,7 +235,6 @@ let read = fun (t : t) ~into ->
 let to_reader = fun stdin ->
   let module Source = struct
     type nonrec t = t
-    type nonrec err = error
 
     let read = fun stdin ~into ->
       read stdin ~into

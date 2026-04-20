@@ -85,8 +85,8 @@ type error =
   | Closed
   | Handshake_failed of string
   | System_error of IO.error
-  | Network_read_failed of Tcp_stream.error
-  | Network_write_failed of Tcp_stream.error
+  | Network_read_failed of IO.error
+  | Network_write_failed of IO.error
   | Tls_not_available
   | Unsupported_vectored_operation
 (** {2 Create TLS Streams} *)
@@ -98,8 +98,8 @@ type error =
     @param reader Source of encrypted bytes (from network)
     @param writer Destination for encrypted bytes (to network)
     @param hostname Server hostname for SNI and certificate verification *)
-val of_client_io: reader:error IO.Reader.t ->
-  writer:error IO.Writer.t ->
+val of_client_io: reader:IO.Reader.t ->
+  writer:IO.Writer.t ->
   hostname:string ->
   unit ->
   (Tcp_stream.t t, error) Kernel.result
@@ -109,8 +109,8 @@ val of_client_io: reader:error IO.Reader.t ->
     @param cert_file Path to server certificate (PEM format)
     @param key_file Path to server private key (PEM format) *)
 val of_server_io:
-  reader:error IO.Reader.t ->
-  writer:error IO.Writer.t ->
+  reader:IO.Reader.t ->
+  writer:IO.Writer.t ->
   cert_file:string ->
   key_file:string ->
   unit ->
@@ -158,7 +158,7 @@ val of_tcp_server:
       | Error `Closed -> handle_closed ()
       | Error e -> handle_error e
     ]} *)
-val to_reader: 'src t -> error IO.Reader.t
+val to_reader: 'src t -> IO.Reader.t
 
 (** Convert TLS stream to a generic Writer.
     
@@ -174,7 +174,7 @@ val to_reader: 'src t -> error IO.Reader.t
       let* () = IO.write_all writer ~buf:"Hello, world!" in
       IO.flush writer
     ]} *)
-val to_writer: 'src t -> error IO.Writer.t
+val to_writer: 'src t -> IO.Writer.t
 
 (** {2 TLS Information} *)
 (** Get negotiated ALPN protocol (e.g., "h2", "http/1.1").

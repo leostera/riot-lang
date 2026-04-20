@@ -59,17 +59,17 @@ let error_to_string = function
   | Unsupported_entry_kind kind -> "unsupported archive entry kind '" ^ entry_kind_to_string kind ^ "'"
   | Duplicate_entry path -> "duplicate archive entry '" ^ Path.to_string path ^ "'"
 
-type 'read_err read_error =
-  | Entries_source_error of 'read_err
+type read_error =
+  | Entries_source_error of IO.error
   | Entries_error of error
 
-type 'read_err extract_error =
-  | Extract_source_error of 'read_err
+type extract_error =
+  | Extract_source_error of IO.error
   | Extract_fs_error of Fs.error
   | Extract_error of error
 
-type 'read_err source = {
-  reader: 'read_err Reader.t;
+type source = {
+  reader: Reader.t;
   buffer: Buffer.t;
 }
 
@@ -378,9 +378,7 @@ let entries_file = fun archive ->
         ~finally:(fun () ->
           let _ = Fs.File.close file in
           ())
-        (fun () ->
-          let reader = IO.Reader.map_err (Fs.File.to_reader file) ~fn:fs_error_of_file_error in
-          entries reader)
+        (fun () -> entries (Fs.File.to_reader file))
 
 let extract_file = fun ~archive ~into ->
   match Fs.File.open_read archive with
@@ -390,6 +388,4 @@ let extract_file = fun ~archive ~into ->
         ~finally:(fun () ->
           let _ = Fs.File.close file in
           ())
-        (fun () ->
-          let reader = IO.Reader.map_err (Fs.File.to_reader file) ~fn:fs_error_of_file_error in
-          extract reader ~into)
+        (fun () -> extract (Fs.File.to_reader file) ~into)

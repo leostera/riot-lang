@@ -14,7 +14,6 @@ let sink_contents = fun sink -> String.concat "" sink.chunks
 
 module CollectWriter = struct
   type t = sink
-  type err = string
 
   let write = fun sink ~from ->
     let requested = IO.Buffer.readable_bytes from in
@@ -45,11 +44,10 @@ end
 
 module FailingWriter = struct
   type t = unit
-  type err = string
 
-  let write = fun () ~from:_ -> Error "boom"
-  let write_vectored = fun () ~from:_ -> Error "boom"
-  let flush = fun () -> Error "boom"
+  let write = fun () ~from:_ -> Error (IO.Unknown_error "boom")
+  let write_vectored = fun () ~from:_ -> Error (IO.Unknown_error "boom")
+  let flush = fun () -> Error (IO.Unknown_error "boom")
 end
 
 let test_write_appends_exact_content = fun _ctx ->
@@ -86,15 +84,12 @@ let test_write_all_vectored_handles_partial_writes = fun _ctx ->
   | Ok () -> Error "IO.Writer.write_all_vectored should keep writing until completion"
   | Error _ -> Error "IO.Writer.write_all_vectored should not fail for the collecting sink"
 
-let test_map_err_transforms_writer_errors = fun _ctx ->
-  let writer =
-    IO.Writer.from_sink (module FailingWriter) ()
-    |> IO.Writer.map_err ~fn:String.uppercase_ascii
-  in
+let test_writer_propagates_io_errors = fun _ctx ->
+  let writer = IO.Writer.from_sink (module FailingWriter) () in
   match IO.write writer ~from:(IO.Buffer.from_string "hello") with
-  | Error err when String.equal err "BOOM" -> Ok ()
-  | Error _ -> Error "IO.Writer.map_err returned the wrong transformed error"
-  | Ok _ -> Error "IO.Writer.map_err should preserve failures"
+  | Error (IO.Unknown_error "boom") -> Ok ()
+  | Error _ -> Error "IO.Writer should preserve underlying IO.Error values"
+  | Ok _ -> Error "IO.Writer should preserve failures"
 
 let test_flush_forwards_to_the_underlying_sink = fun _ctx ->
   let sink = create_sink () in
@@ -116,20 +111,20 @@ let test_reader_writer_copy_loop_reconstructs_payload = fun _ctx ->
     | Ok _ -> (
         match IO.write_all writer ~from:buffer with
         | Ok () -> loop ()
-        | Error err -> Error err)
+        | Error _ -> Error "writer unexpectedly failed")
     | Error _ -> Error "reader unexpectedly failed"
   in
   match loop () with
   | Ok () when String.equal (sink_contents sink) "hello world" -> Ok ()
   | Ok () -> Error "copy loop should reconstruct the original payload"
-  | Error err -> Error err
+  | Error message -> Error message
 
 let tests = Test.[
   case "write appends exact content" test_write_appends_exact_content;
   case "write_all handles partial writes" test_write_all_handles_partial_writes;
   case "write_vectored appends segment content" test_write_vectored_appends_segment_content;
   case "write_all_vectored handles partial writes" test_write_all_vectored_handles_partial_writes;
-  case "map_err transforms writer errors" test_map_err_transforms_writer_errors;
+  case "writer propagates io errors" test_writer_propagates_io_errors;
   case "flush forwards to the underlying sink" test_flush_forwards_to_the_underlying_sink;
   case "reader writer copy loops reconstruct payloads" test_reader_writer_copy_loop_reconstructs_payload;
 ]

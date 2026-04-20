@@ -3,66 +3,32 @@ open Types
 
 module IoSlice = IoSlice
 
-type 'err t
+type 'value result = ('value, Error.t) Result.t
 
-type 'err error =
-  | Source_error of 'err
-  | End_of_file
-  | Buffer_full
-  | Invalid_count of int
-  | Invalid_data
+type t
 
-val from_reader:
-  ?size:int ->
-  'err Reader.t ->
-  'err t
+val from_reader: ?size:int -> Reader.t -> t
 
-val to_reader: 'err t -> 'err error Reader.t
+val to_reader: t -> Reader.t
 
-val read:
-  'err t ->
-  into:Buffer.t ->
-  (int, 'err error) Result.t
+val read: t -> into:Buffer.t -> int result
 
-val read_byte:
-  'err t ->
-  (u8, 'err error) Result.t
+val read_byte: t -> u8 result
 
-val size: 'err t -> int
+val size: t -> int
 
-val reset:
-  'err t ->
-  reader:'err Reader.t ->
-  unit
+val reset: t -> reader:Reader.t -> unit
 
-val fill:
-  'err t ->
-  (int, 'err error) Result.t
+val fill: t -> int result
 
-val peek:
-  'err t ->
-  len:int ->
-  (IoSlice.t, 'err error) Result.t
+val peek: t -> len:int -> IoSlice.t result
 
-val consume:
-  'err t ->
-  len:int ->
-  (int, 'err error) Result.t
+val consume: t -> len:int -> int result
 
-val read_rune:
-  'err t ->
-  (Kernel.Unicode.Rune.t, 'err error) Result.t
+val read_rune: t -> Kernel.Unicode.Rune.t result
 
-val read_slice:
-  'err t ->
-  until:u8 ->
-  (IoSlice.t, 'err error) Result.t
+val read_slice: t -> until:u8 -> IoSlice.t result
 
-val read_line:
-  'err t ->
-  (IoSlice.t, 'err error) Result.t
+val read_line: t -> IoSlice.t result
 
-val read_string:
-  'err t ->
-  until:u8 ->
-  (string, 'err error) Result.t
+val read_string: t -> until:u8 -> string result

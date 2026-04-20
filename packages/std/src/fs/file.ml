@@ -83,6 +83,10 @@ let is_would_block = function
   | Kernel.Fs.File.System error -> Kernel.SystemError.would_block error
   | Kernel.Fs.File.InvalidSlice _ -> false
 
+let io_error_of_file_error = function
+  | Kernel.Fs.File.System error -> IO.of_system_error error
+  | Kernel.Fs.File.InvalidSlice _ -> IO.Invalid_argument
+
 let read = fun file buffer ~offset ~len ->
   let source = Kernel.Fs.File.to_source file in
   let rec loop () =
@@ -182,8 +186,6 @@ let to_reader = fun file ->
   let module Read = struct
     type nonrec t = t
 
-    type err = error
-
     let read = fun file ~into ->
       let writable =
         if IO.Buffer.writable_bytes into = 0 then (
@@ -205,9 +207,12 @@ let to_reader = fun file ->
                   ("Fs.File.to_reader.commit: " ^ Kernel.IO.Error.message error)
           end
       | Error err ->
-          Error err
+          Error (io_error_of_file_error err)
 
-    let read_vectored = fun file ~into -> Kernel.Fs.File.read_vectored file into
+    let read_vectored = fun file ~into ->
+      match Kernel.Fs.File.read_vectored file into with
+      | Ok count -> Ok count
+      | Error err -> Error (io_error_of_file_error err)
 
     let is_read_vectored = fun _file -> true
   end in
@@ -217,12 +222,15 @@ let to_writer = fun file ->
   let module Write = struct
     type nonrec t = t
 
-    type err = error
-
     let write = fun file ~from ->
-      Kernel.Fs.File.write_vectored file (IO.Buffer.to_iovec from)
+      match Kernel.Fs.File.write_vectored file (IO.Buffer.to_iovec from) with
+      | Ok count -> Ok count
+      | Error err -> Error (io_error_of_file_error err)
 
-    let write_vectored = fun file ~from -> Kernel.Fs.File.write_vectored file from
+    let write_vectored = fun file ~from ->
+      match Kernel.Fs.File.write_vectored file from with
+      | Ok count -> Ok count
+      | Error err -> Error (io_error_of_file_error err)
 
     let flush = fun _file -> Ok ()
   end in
