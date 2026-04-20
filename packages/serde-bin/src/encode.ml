@@ -5,7 +5,7 @@ module Vector = Collections.Vector
 type encode_target =
   | Buffer_target
   | Bytes_target of { dst: bytes; mutable pos: int }
-  | Writer_target: ('dst, IO.error) IO.Writer.t -> encode_target
+  | Writer_target of IO.Writer.t
 
 type state = {
   target: encode_target;
@@ -46,7 +46,7 @@ let flush_output = fun state ->
   | Bytes_target _ -> ()
   | Writer_target writer ->
       if int_is_nonzero (IO.Buffer.length state.output) then
-        match IO.write_all writer ~buf:(IO.Buffer.contents state.output) with
+        match IO.write_all writer ~from:state.output with
         | Ok () -> IO.Buffer.clear state.output
         | Error err -> raise_io_error err
 

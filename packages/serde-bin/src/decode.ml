@@ -3,8 +3,8 @@ module Array = Collections.Array
 module Vector = Collections.Vector
 module De = Serde.De
 
-type 'src reader_state = {
-  reader: ('src, IO.error) IO.Reader.t;
+type reader_state = {
+  reader: IO.Reader.t;
   buf: bytes;
   view: string;
   mutable base: int;
@@ -15,7 +15,7 @@ type 'src reader_state = {
 
 type input =
   | String_input of { input: string; mutable pos: int }
-  | Reader_input: 'src reader_state -> input
+  | Reader_input of reader_state
 
 type state = {
   input: input;
@@ -52,9 +52,15 @@ let refill = fun state ->
     if Int.equal state.limit (IO.Bytes.length state.buf) then
       false
     else
-      let bufs = IO.Iovec.from_bytes state.buf
-      |> IO.Iovec.sub ~pos:state.limit ~len:(IO.Bytes.length state.buf - state.limit) in
-      match IO.Reader.read_vectored state.reader bufs with
+      let bufs =
+        IO.IoVec.from_bytes state.buf
+        |> Result.expect ~msg:"serde-bin reader state should build an iovec"
+      in
+      let bufs =
+        IO.IoVec.sub bufs ~pos:state.limit ~len:(IO.Bytes.length state.buf - state.limit)
+        |> Result.expect ~msg:"serde-bin reader state should slice its iovec"
+      in
+      match IO.Reader.read_vectored state.reader ~into:bufs with
       | Ok 0 ->
           state.eof <- true;
           false
