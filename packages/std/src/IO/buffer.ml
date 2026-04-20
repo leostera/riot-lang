@@ -75,6 +75,8 @@ let append_bytes = KernelBuffer.append_bytes
 
 let append_slice = KernelBuffer.append_slice
 
+let append_subslice = KernelBuffer.append_subslice
+
 let to_iovec = KernelBuffer.to_iovec
 
 let to_bytes = KernelBuffer.to_bytes

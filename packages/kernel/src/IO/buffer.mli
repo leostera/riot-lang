@@ -33,6 +33,8 @@ val append_bytes: t -> bytes -> (unit, error) Result.t
 
 val append_slice: t -> IoSlice.t -> (unit, error) Result.t
 
+val append_subslice: t -> IoSlice.t -> off:int -> len:int -> (unit, error) Result.t
+
 val to_iovec: t -> IoVec.t
 
 val to_bytes: t -> bytes

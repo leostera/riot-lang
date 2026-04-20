@@ -113,6 +113,14 @@ let append_slice = fun buffer value ->
       IoSlice.blit ~src:value ~src_off:0 ~dst ~dst_off:0 ~len
       |> Result.and_then ~fn:(fun () -> commit buffer len)
 
+let append_subslice = fun buffer value ~off ~len ->
+  match ensure_free buffer len with
+  | Error _ as error -> error
+  | Ok () ->
+      let dst = writable buffer in
+      IoSlice.blit ~src:value ~src_off:off ~dst ~dst_off:0 ~len
+      |> Result.and_then ~fn:(fun () -> commit buffer len)
+
 let consume = fun buffer ~len ->
   if len < 0 then
     Error (Error.Negative_length len)

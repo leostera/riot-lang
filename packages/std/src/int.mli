@@ -45,3 +45,25 @@ val hash: t -> int
 
 (** Use `to_string value` to render `value` in decimal. *)
 val to_string: t -> string
+
+val ( = ): t -> t -> bool
+
+val ( != ): t -> t -> bool
+
+val ( < ): t -> t -> bool
+
+val ( > ): t -> t -> bool
+
+val ( <= ): t -> t -> bool
+
+val ( >= ): t -> t -> bool
+
+val ( + ): t -> t -> t
+
+val ( - ): t -> t -> t
+
+val ( * ): t -> t -> t
+
+val ( / ): t -> t -> t
+
+val ( mod ): t -> t -> t
