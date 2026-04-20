@@ -346,18 +346,18 @@ let consume_result = fun value remaining ->
 let consume_borrowed_result = fun (value : Http1.Request.request_slices) remaining ->
   let _ =
     (
-      IO.Iovec.IoSlice.length value.method_,
-      IO.Iovec.IoSlice.length value.path,
-      IO.Iovec.IoSlice.length value.version,
+      IO.IoVec.IoSlice.length value.method_,
+      IO.IoVec.IoSlice.length value.path,
+      IO.IoVec.IoSlice.length value.version,
       List.length value.headers,
-      IO.Iovec.IoSlice.length value.body,
-      IO.Iovec.IoSlice.length remaining
+      IO.IoVec.IoSlice.length value.body,
+      IO.IoVec.IoSlice.length remaining
     )
   in
   ()
 
 let read_chunk = fun reader scratch ~context ->
-  match IO.read reader scratch with
+  match IO.read reader ~into:scratch with
   | Ok 0 ->
       0
   | Ok count ->
@@ -369,13 +369,13 @@ let read_into_iobuffer_chunk = fun reader buffer ~chunk_size ~context ->
   let _ = IoBuffer.ensure_free buffer chunk_size |> Result.unwrap in
   let writable = IoBuffer.writable buffer in
   let writable =
-    if IO.Iovec.IoSlice.length writable > chunk_size then
-      IO.Iovec.IoSlice.sub_unchecked writable ~off:0 ~len:chunk_size
+    if IO.IoVec.IoSlice.length writable > chunk_size then
+      IO.IoVec.IoSlice.sub_unchecked writable ~off:0 ~len:chunk_size
     else
       writable
   in
-  let bufs = IO.Iovec.from_slices [| writable |] in
-  match IO.read_vectored reader bufs with
+  let bufs = IO.IoVec.from_slices [| writable |] in
+  match IO.read_vectored reader ~into:bufs with
   | Ok 0 ->
       0
   | Ok count ->
@@ -393,9 +393,10 @@ let bench_reader_parse_string =
    ()
  ->
   let reader = String.to_reader ~chunk_size payload in
-  let scratch = IO.Bytes.create ~size:chunk_size in
+  let scratch = IO.Buffer.create ~size:chunk_size in
   let buffer = StringBuilder.create ~size:(String.length payload) in
   let rec loop () =
+    IO.Buffer.clear scratch;
     let count = read_chunk reader scratch ~context:label in
     if count = 0 then
       match parse (StringBuilder.contents buffer) with
@@ -406,7 +407,7 @@ let bench_reader_parse_string =
       | Http1.Common.Error error ->
           panic (label ^ ": parse error: " ^ error)
     else (
-        StringBuilder.add_subbytes buffer scratch 0 count;
+        StringBuilder.add_string buffer (IO.Buffer.to_string scratch);
         loop ()
       )
   in
