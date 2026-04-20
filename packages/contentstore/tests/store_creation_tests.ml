@@ -81,6 +81,16 @@ let test_hash_dir_differs_for_distinct_hashes = fun _ctx ->
       else
         Ok ())
 
+let test_hash_dir_rejects_empty_hash = fun _ctx ->
+  with_root "contentstore-hash-dir-empty-hash"
+    (fun ~tmpdir:_ ~root ->
+      let store = make_store root [ "modules" ] in
+      try
+        let _ = Contentstore.hash_dir_of store (Crypto.hash_string "") in
+        Error "expected hash_dir_of to reject the SHA-256 empty digest"
+      with
+      | _ -> Ok ())
+
 let test_exists_is_false_for_missing_hash = fun _ctx ->
   with_root "contentstore-exists-missing"
     (fun ~tmpdir:_ ~root ->
@@ -155,6 +165,7 @@ let tests = [
   Test.case "root returns configured path" test_root_returns_configured_path;
   Test.case "hash_dir_of is stable for the same hash" test_hash_dir_is_stable_for_same_hash;
   Test.case "hash_dir_of differs for different hashes" test_hash_dir_differs_for_distinct_hashes;
+  Test.case "hash_dir_of rejects the empty hash" test_hash_dir_rejects_empty_hash;
   Test.case "exists returns false for a missing hash" test_exists_is_false_for_missing_hash;
   Test.case "exists returns true after commit_dir" test_exists_is_true_after_commit_dir;
   Test.case "the first write creates a missing root" test_first_write_creates_missing_root;
