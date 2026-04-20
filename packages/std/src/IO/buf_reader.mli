@@ -21,6 +21,8 @@ val reset: t -> reader:Reader.t -> unit
 
 val fill: t -> int result
 
+val buffered: t -> IoSlice.t result
+
 val peek: t -> len:int -> IoSlice.t result
 
 val consume: t -> len:int -> int result

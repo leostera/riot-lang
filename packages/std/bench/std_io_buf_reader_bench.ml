@@ -149,6 +149,29 @@ let consume_peek_consume_bytes = fun payload ~chunk_size ->
   in
   loop ()
 
+let consume_buffered_consume_bytes = fun payload ~chunk_size ->
+  let reader =
+    IO.Reader.from_string payload
+    |> IO.BufReader.from_reader ~size:chunk_size
+  in
+  let total = ref 0 in
+  let rec loop () =
+    match IO.BufReader.buffered reader with
+    | Ok slice ->
+        total := !total + Char.to_int (IO.IoSlice.get_unchecked slice ~at:0);
+        begin
+          match IO.BufReader.consume reader ~len:1 with
+          | Ok 1 -> loop ()
+          | Ok _ -> panic "std io buf reader bench: buffered consume returned unexpected count"
+          | Error _ -> panic "std io buf reader bench: buffered consume failed"
+        end
+    | Error IO.End_of_file ->
+        !total
+    | Error _ ->
+        panic "std io buf reader bench: buffered failed"
+  in
+  loop ()
+
 let config_for = fun fixture ->
   match fixture.name with
   | "1024 x 16B lines" ->
@@ -206,6 +229,9 @@ let benchmarks =
           ());
         Bench.make_case "peek(1)+consume(1)" (fun () ->
           let _ = consume_peek_consume_bytes scan_payload ~chunk_size:scan_chunk_size in
+          ());
+        Bench.make_case "buffered()+consume(1)" (fun () ->
+          let _ = consume_buffered_consume_bytes scan_payload ~chunk_size:scan_chunk_size in
           ());
       ];
   ] in

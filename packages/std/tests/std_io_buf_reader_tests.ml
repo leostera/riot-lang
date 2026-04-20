@@ -127,6 +127,24 @@ let test_fill_reports_buffered_bytes = fun _ctx ->
     | Ok _ -> Error "BufReader.fill should load the first buffered chunk"
     | Error _ -> Error "BufReader.fill should not fail for in-memory readers"
 
+let test_buffered_exposes_current_window = fun _ctx ->
+  let reader =
+    IO.Reader.from_string "abcdef"
+    |> IO.BufReader.from_reader ~size:4
+  in
+  match IO.BufReader.buffered reader with
+  | Ok slice when String.equal (slice_to_string slice) "abcd" -> (
+      match IO.BufReader.consume reader ~len:2 with
+      | Ok 2 -> (
+          match IO.BufReader.buffered reader with
+          | Ok slice when String.equal (slice_to_string slice) "cd" -> Ok ()
+          | Ok _ -> Error "BufReader.buffered should expose the unread suffix after consume"
+          | Error _ -> Error "BufReader.buffered should not fail while bytes remain buffered")
+      | Ok _ -> Error "BufReader.consume should discard the requested prefix from buffered slices"
+      | Error _ -> Error "BufReader.consume should not fail for in-memory readers")
+  | Ok _ -> Error "BufReader.buffered should expose the full current buffered window"
+  | Error _ -> Error "BufReader.buffered should not fail for in-memory readers"
+
 let test_reset_switches_to_a_new_reader = fun _ctx ->
   let reader =
     IO.Reader.from_string "alpha\n"
@@ -203,6 +221,7 @@ let tests = Test.[
   case "BufReader.to_reader round trips through Std.IO" test_to_reader_round_trips_through_generic_io;
   case "BufReader.read copies into owned buffers" test_read_copies_into_owned_buffers;
   case "BufReader.fill reports buffered bytes" test_fill_reports_buffered_bytes;
+  case "BufReader.buffered exposes the current borrowed window" test_buffered_exposes_current_window;
   case "BufReader.reset switches to a new reader" test_reset_switches_to_a_new_reader;
   case "BufReader.read_rune decodes UTF-8 sequences" test_read_rune_decodes_utf8_sequences;
   case "BufReader.read_rune reports invalid data" test_read_rune_reports_invalid_data;

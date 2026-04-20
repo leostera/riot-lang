@@ -58,6 +58,11 @@ let fill = fun state ->
     | Ok _ -> Ok (Buffer.readable_bytes state.buffer)
     | Error _ as error -> error
 
+let buffered = fun state ->
+  match fill state with
+  | Ok _ -> Ok (Buffer.readable state.buffer)
+  | Error _ as error -> error
+
 let ensure_available = fun state needed ->
   if needed < 0 then
     Error Error.Invalid_argument
