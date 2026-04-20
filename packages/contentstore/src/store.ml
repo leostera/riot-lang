@@ -37,7 +37,7 @@ let namespace = fun store -> store.ns
 
 let policy = fun store -> store.policy
 
-let empty_hash_hex = Crypto.hash_string "" |> Crypto.Digest.hex
+let empty_hash_hex = Crypto.Sha256.hash_string "" |> Crypto.Digest.hex
 
 let checked_hash_hex = fun fn hash ->
   let hex = Crypto.Digest.hex hash in

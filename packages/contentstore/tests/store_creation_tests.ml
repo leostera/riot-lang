@@ -64,7 +64,7 @@ let test_hash_dir_is_stable_for_same_hash = fun _ctx ->
   with_root "contentstore-hash-dir-stable"
     (fun ~tmpdir:_ ~root ->
       let store = make_store root [ "modules" ] in
-      let hash = Crypto.hash_string "same-hash" in
+      let hash = Crypto.Sha256.hash_string "same-hash" in
       if Path.equal (Contentstore.hash_dir_of store hash) (Contentstore.hash_dir_of store hash) then
         Ok ()
       else
@@ -74,8 +74,8 @@ let test_hash_dir_differs_for_distinct_hashes = fun _ctx ->
   with_root "contentstore-hash-dir-distinct"
     (fun ~tmpdir:_ ~root ->
       let store = make_store root [ "modules" ] in
-      let left = Crypto.hash_string "left" in
-      let right = Crypto.hash_string "right" in
+      let left = Crypto.Sha256.hash_string "left" in
+      let right = Crypto.Sha256.hash_string "right" in
       if Path.equal (Contentstore.hash_dir_of store left) (Contentstore.hash_dir_of store right) then
         Error "expected different hashes to map to different tree paths"
       else
@@ -86,7 +86,7 @@ let test_hash_dir_rejects_empty_hash = fun _ctx ->
     (fun ~tmpdir:_ ~root ->
       let store = make_store root [ "modules" ] in
       try
-        let _ = Contentstore.hash_dir_of store (Crypto.hash_string "") in
+        let _ = Contentstore.hash_dir_of store (Crypto.Sha256.hash_string "") in
         Error "expected hash_dir_of to reject the SHA-256 empty digest"
       with
       | _ -> Ok ())
@@ -95,7 +95,7 @@ let test_exists_is_false_for_missing_hash = fun _ctx ->
   with_root "contentstore-exists-missing"
     (fun ~tmpdir:_ ~root ->
       let store = make_store root [ "modules" ] in
-      if Contentstore.exists store (Crypto.hash_string "missing") then
+      if Contentstore.exists store (Crypto.Sha256.hash_string "missing") then
         Error "expected exists to report false for missing hashes"
       else
         Ok ())
@@ -104,7 +104,7 @@ let test_exists_is_true_after_commit_dir = fun _ctx ->
   with_root "contentstore-exists-commit-dir"
     (fun ~tmpdir ~root ->
       let store = make_store root [ "modules" ] in
-      let hash = Crypto.hash_string "committed-tree" in
+      let hash = Crypto.Sha256.hash_string "committed-tree" in
       let source_dir = Path.(tmpdir / Path.v "source") in
       let _ = Fs.create_dir_all source_dir |> Result.expect ~msg:"create source dir should succeed" in
       let _ = Fs.write "payload" Path.(source_dir / Path.v "payload.txt") |> Result.expect ~msg:"write payload should succeed" in
@@ -118,7 +118,7 @@ let test_first_write_creates_missing_root = fun _ctx ->
   with_root "contentstore-create-first-write"
     (fun ~tmpdir:_ ~root ->
       let store = make_store root [ "modules" ] in
-      let hash = Crypto.hash_string "first-write" in
+      let hash = Crypto.Sha256.hash_string "first-write" in
       let hex = Crypto.Digest.hex hash in
       let _ = Contentstore.save_object store ~hash ~content:"payload" |> Result.expect ~msg:"save_object should succeed" in
       let exists = Fs.exists root |> Result.expect ~msg:"exists should succeed" in
@@ -139,7 +139,7 @@ let test_reserved_like_namespace_parts_are_isolated = fun _ctx ->
   with_root "contentstore-create-reserved-ns"
     (fun ~tmpdir:_ ~root ->
       let store = make_store root [ "objects"; "__named"; "ab" ] in
-      let hash = Crypto.hash_string "reserved-like" in
+      let hash = Crypto.Sha256.hash_string "reserved-like" in
       let _ = Contentstore.save_object store ~hash ~content:"payload" |> Result.expect ~msg:"save_object should succeed" in
       let hex = Crypto.Digest.hex hash in
       let object_path =
