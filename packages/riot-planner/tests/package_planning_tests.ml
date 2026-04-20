@@ -339,6 +339,26 @@ let load_repo_workspace = fun () ->
         Error ("workspace scan produced load errors: "
         ^ String.concat "; " (List.map errors ~fn:Riot_model.Workspace_manager.load_error_to_string))
 
+let test_kernel_input_hash_is_not_empty_digest = fun _ctx ->
+  match load_repo_workspace () with
+  | Error _ as err -> err
+  | Ok workspace -> (
+      match find_package_by_name workspace "kernel" with
+      | None -> Error "kernel package not found in workspace"
+      | Some package ->
+          let session_id = Riot_model.Session_id.make () in
+          let profile = Riot_model.Profile.debug in
+          let build_ctx = Riot_model.Build_ctx.make ~session_id ~profile () in
+          let hash = compute_input_hash ~package ~workspace ~profile ~build_ctx () in
+          let empty_hash = Crypto.hash_string "" in
+          if Std.Crypto.Hash.compare hash empty_hash = 0 then
+            Error
+              ("expected kernel input hash to differ from empty digest, got "
+              ^ Std.Crypto.Digest.hex hash)
+          else
+            Ok ()
+    )
+
 let plan_kernel_package_with_fresh_store = fun () ->
   match
     Fs.with_tempdir ~prefix:"planner_kernel_order"
@@ -1490,6 +1510,7 @@ let test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version
 
 let tests =
   Test.[
+    case "kernel input hash is not empty digest" test_kernel_input_hash_is_not_empty_digest;
     case "plan bundle cache hit restores module and action graphs" test_plan_bundle_cache_hit_restores_module_and_action_graphs;
     case "cached artifact and exports short-circuit without plan bundle" test_cached_artifact_and_exports_short_circuit_without_plan_bundle;
     case "stale plan bundle version rebuilds plan graphs" test_stale_plan_bundle_version_rebuilds_plan_graphs;
