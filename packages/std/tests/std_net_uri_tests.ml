@@ -491,7 +491,7 @@ let test_uri_with_encoded_query = fun _ctx ->
   | Error _ -> Error "Failed to parse URI"
 
 let test_uri_from_slice = fun _ctx ->
-  let slice = IO.Iovec.IoSlice.from_string "https://example.com:8443/a/b?q=1#frag" |> Result.unwrap in
+  let slice = IO.IoVec.IoSlice.from_string "https://example.com:8443/a/b?q=1#frag" |> Result.unwrap in
   match Uri.from_slice slice with
   | Error _ ->
       Error "Expected URI slice to parse"

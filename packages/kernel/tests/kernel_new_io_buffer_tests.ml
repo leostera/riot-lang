@@ -5,11 +5,11 @@ module Test = Std.Test
 
 let write_string = fun slice value ->
   let len = String.length value in
-  Kernel.IO.Iovec.IoSlice.blit_from_string_unchecked value ~src_off:0 slice ~dst_off:0 ~len
+  Kernel.IO.IoVec.IoSlice.blit_from_string_unchecked value ~src_off:0 slice ~dst_off:0 ~len
 
 let test_append_roundtrip = fun _ctx ->
   let buffer = Kernel.IO.Buffer.create () |> Result.unwrap in
-  let suffix = Kernel.IO.Iovec.IoSlice.create ~size:4 |> Result.unwrap in
+  let suffix = Kernel.IO.IoVec.IoSlice.create ~size:4 |> Result.unwrap in
   write_string suffix "riot";
   let _ = Kernel.IO.Buffer.append_string buffer "hello" |> Result.unwrap in
   let _ = Kernel.IO.Buffer.append_bytes buffer (Kernel.Bytes.from_string " ") |> Result.unwrap in
@@ -53,7 +53,7 @@ let test_to_iovec_views_readable_slice = fun _ctx ->
   let buffer = Kernel.IO.Buffer.create () |> Result.unwrap in
   let _ = Kernel.IO.Buffer.append_string buffer "hello riot" |> Result.unwrap in
   let _ = Kernel.IO.Buffer.consume buffer ~len:6 |> Result.unwrap in
-  let actual = Kernel.IO.Buffer.to_iovec buffer |> Kernel.IO.Iovec.to_string in
+  let actual = Kernel.IO.Buffer.to_iovec buffer |> Kernel.IO.IoVec.to_string in
   if String.equal actual "riot" then
     Ok ()
   else

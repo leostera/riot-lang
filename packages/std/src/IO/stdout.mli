@@ -1,15 +1,15 @@
 open Prelude
 
-module Bytes = Bytes
-module Iovec = Kernel.IO.Iovec
+module Buffer = Buffer
+module IoVec = IoVec
 
 type t = unit
 type error = Error.t
 
-val write: ?offset:int -> ?len:int -> Bytes.t -> (int, error) result
+val write: from:Buffer.t -> (int, error) result
 
-val write_vectored: Iovec.t -> (int, error) result
+val write_vectored: from:IoVec.t -> (int, error) result
 
 val flush: unit -> (unit, error) result
 
-val to_writer: unit -> (t, error) Writer.t
+val to_writer: unit -> error Writer.t

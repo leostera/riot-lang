@@ -15,6 +15,6 @@ type error = Json.error
 
 val from_string: string -> (t, error) Result.t
 
-val from_slice: IO.Iovec.IoSlice.t -> (t, error) Result.t
+val from_slice: IO.IoVec.IoSlice.t -> (t, error) Result.t
 
 val error_to_string: error -> string

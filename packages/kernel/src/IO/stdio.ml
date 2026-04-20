@@ -35,9 +35,9 @@ module FFI = struct
 
   external write: int -> bytes -> int -> int -> (int, int) Result.t = "kernel_new_fs_file_write"
 
-  external readv: int -> Iovec.t -> (int, int) Result.t = "kernel_new_fs_file_readv"
+  external readv: int -> IoVec.t -> (int, int) Result.t = "kernel_new_fs_file_readv"
 
-  external writev: int -> Iovec.t -> (int, int) Result.t = "kernel_new_fs_file_writev"
+  external writev: int -> IoVec.t -> (int, int) Result.t = "kernel_new_fs_file_writev"
 
   external print: int -> string -> (unit, int) Result.t = "kernel_new_stdio_print"
 

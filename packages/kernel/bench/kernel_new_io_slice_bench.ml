@@ -14,34 +14,34 @@ let build_request = fun ~header_count ~body_len ->
   ^ "\r\n"
   ^ String.make ~len:body_len ~char:'x'
 
-let small_slice = Kernel.IO.Iovec.IoSlice.from_string (build_request ~header_count:4 ~body_len:128) |> Result.unwrap
-let medium_slice = Kernel.IO.Iovec.IoSlice.from_string (build_request ~header_count:32 ~body_len:4_096) |> Result.unwrap
-let large_slice = Kernel.IO.Iovec.IoSlice.from_string (build_request ~header_count:64 ~body_len:65_536) |> Result.unwrap
+let small_slice = Kernel.IO.IoVec.IoSlice.from_string (build_request ~header_count:4 ~body_len:128) |> Result.unwrap
+let medium_slice = Kernel.IO.IoVec.IoSlice.from_string (build_request ~header_count:32 ~body_len:4_096) |> Result.unwrap
+let large_slice = Kernel.IO.IoVec.IoSlice.from_string (build_request ~header_count:64 ~body_len:65_536) |> Result.unwrap
 
 let bench_index_of_char = fun slice needle () ->
-  let _ = Kernel.IO.Iovec.IoSlice.index_char slice needle in
+  let _ = Kernel.IO.IoVec.IoSlice.index_char slice needle in
   ()
 
 let bench_index_of_string = fun slice needle () ->
-  let _ = Kernel.IO.Iovec.IoSlice.index_string slice needle in
+  let _ = Kernel.IO.IoVec.IoSlice.index_string slice needle in
   ()
 
 let bench_starts_with = fun slice prefix () ->
-  let _ = Kernel.IO.Iovec.IoSlice.starts_with slice ~prefix in
+  let _ = Kernel.IO.IoVec.IoSlice.starts_with slice ~prefix in
   ()
 
 let bench_sub_and_advance = fun slice () ->
   let _ =
     slice
-    |> fun slice -> Kernel.IO.Iovec.IoSlice.shift slice 5
+    |> fun slice -> Kernel.IO.IoVec.IoSlice.shift slice 5
     |> Result.unwrap
-    |> Kernel.IO.Iovec.IoSlice.sub ~off:0 ~len:32
+    |> Kernel.IO.IoVec.IoSlice.sub ~off:0 ~len:32
     |> Result.unwrap
   in
   ()
 
 let bench_to_string = fun slice () ->
-  let _ = Kernel.IO.Iovec.IoSlice.to_string slice in
+  let _ = Kernel.IO.IoVec.IoSlice.to_string slice in
   ()
 
 let benchmarks =

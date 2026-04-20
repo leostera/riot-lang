@@ -68,14 +68,14 @@ type 'read_err extract_error =
   | Extract_fs_error of Fs.error
   | Extract_error of error
 
-type ('src, 'read_err) source = {
-  reader: ('src, 'read_err) Reader.t;
-  buffer: Bytes.t;
+type 'read_err source = {
+  reader: 'read_err Reader.t;
+  buffer: Buffer.t;
 }
 
 let source_buffer_size = 32 * 1_024
 
-let make_source = fun reader -> { reader; buffer = Bytes.create ~size:source_buffer_size }
+let make_source = fun reader -> { reader; buffer = Buffer.create ~size:source_buffer_size }
 
 let entry_kind_of_engine = function
   | Engine.File -> File
@@ -105,12 +105,14 @@ let entry_of_header = fun (header: Engine.header) ->
   }
 
 let feed_from_source_entries = fun source tar_reader ->
-  match IO.read source.reader source.buffer with
+  Buffer.clear source.buffer;
+  match IO.read source.reader ~into:source.buffer with
   | Ok 0 ->
       Ok 0
   | Ok bytes_read ->
       let () = yield () in
-      let* consumed = Engine.feed_reader tar_reader ~src:source.buffer ~src_pos:0 ~src_len:bytes_read
+      let bytes = Buffer.to_bytes source.buffer in
+      let* consumed = Engine.feed_reader tar_reader ~src:bytes ~src_pos:0 ~src_len:bytes_read
       |> Result.map_err ~fn:(fun err -> Entries_error (Engine_error err)) in
       if consumed = bytes_read then
         Ok bytes_read
@@ -120,12 +122,14 @@ let feed_from_source_entries = fun source tar_reader ->
       Error (Entries_source_error err)
 
 let feed_from_source_extract = fun source tar_reader ->
-  match IO.read source.reader source.buffer with
+  Buffer.clear source.buffer;
+  match IO.read source.reader ~into:source.buffer with
   | Ok 0 ->
       Ok 0
   | Ok bytes_read ->
       let () = yield () in
-      let* consumed = Engine.feed_reader tar_reader ~src:source.buffer ~src_pos:0 ~src_len:bytes_read
+      let bytes = Buffer.to_bytes source.buffer in
+      let* consumed = Engine.feed_reader tar_reader ~src:bytes ~src_pos:0 ~src_len:bytes_read
       |> Result.map_err ~fn:(fun err -> Extract_error (Engine_error err)) in
       if consumed = bytes_read then
         Ok bytes_read

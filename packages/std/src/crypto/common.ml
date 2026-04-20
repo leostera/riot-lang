@@ -1,5 +1,5 @@
 open Kernel
-module Iovec = IO.Iovec
+module IoVec = IO.IoVec
 
 type state = {
   mutable buffers_rev: bytes list;
@@ -102,7 +102,7 @@ let rec reverse_append left right =
 
 let finish_iovec = fun digest state ->
   let buffers = Array.from_list (reverse_append state.buffers_rev []) in
-  match Iovec.from_bytes_array buffers with
+  match IoVec.from_bytes_array buffers with
   | Ok iovec -> digest iovec
   | Error error ->
       SystemError.panic ("Std.Crypto.Common.finish_iovec: " ^ Kernel.IO.Error.message error)
@@ -113,7 +113,7 @@ let hash_string_with = fun digest value ->
   finish_iovec digest state
 
 let hash_bytes_with = fun digest value ->
-  match Iovec.from_bytes (Bytes.sub_unchecked value ~offset:0 ~len:(Bytes.length value)) with
+  match IoVec.from_bytes (Bytes.sub_unchecked value ~offset:0 ~len:(Bytes.length value)) with
   | Ok iovec -> digest iovec
   | Error error ->
       SystemError.panic ("Std.Crypto.Common.hash_bytes_with: " ^ Kernel.IO.Error.message error)

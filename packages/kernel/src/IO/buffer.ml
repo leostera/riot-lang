@@ -1,6 +1,6 @@
 open Prelude
 
-module IoSlice = Iovec.IoSlice
+module IoSlice = IoVec.IoSlice
 
 type t = {
   mutable storage: IoSlice.t;
@@ -126,7 +126,7 @@ let consume = fun buffer ~len ->
     Ok ()
   )
 
-let to_iovec = fun buffer -> Iovec.from_slices [|readable buffer|]
+let to_iovec = fun buffer -> IoVec.from_slices [|readable buffer|]
 
 let to_bytes = fun buffer ->
   let out = Bytes.create ~size:buffer.len in

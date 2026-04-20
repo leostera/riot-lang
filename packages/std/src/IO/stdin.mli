@@ -1,7 +1,7 @@
 open Prelude
 
-module Bytes = Bytes
-module Iovec = Kernel.IO.Iovec
+module Buffer = Buffer
+module IoVec = IoVec
 module Reader = Reader
 
 type error = Error.t
@@ -9,8 +9,8 @@ type t
 
 val open_: ?chunk_size:int -> unit -> t
 
-val read: t -> ?offset:int -> ?len:int -> Bytes.t -> (int, error) result
+val read: t -> into:Buffer.t -> (int, error) result
 
-val read_vectored: t -> Iovec.t -> (int, error) result
+val read_vectored: t -> into:IoVec.t -> (int, error) result
 
-val to_reader: t -> (t, error) Reader.t
+val to_reader: t -> error Reader.t

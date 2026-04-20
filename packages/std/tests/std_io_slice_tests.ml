@@ -3,11 +3,11 @@ open Std
 module Test = Std.Test
 
 let test_io_slice_search_helpers = fun _ctx ->
-  let slice = IO.Iovec.IoSlice.from_string "GET /path HTTP/1.1\r\n\r\n" |> Result.unwrap in
+  let slice = IO.IoVec.IoSlice.from_string "GET /path HTTP/1.1\r\n\r\n" |> Result.unwrap in
   if
-    IO.Iovec.IoSlice.starts_with slice ~prefix:"GET "
-    && IO.Iovec.IoSlice.index_char slice ' ' = Some 3
-    && IO.Iovec.IoSlice.index_string slice "\r\n\r\n" = Some 18
+    IO.IoVec.IoSlice.starts_with slice ~prefix:"GET "
+    && IO.IoVec.IoSlice.index_char slice ' ' = Some 3
+    && IO.IoVec.IoSlice.index_string slice "\r\n\r\n" = Some 18
   then
     Ok ()
   else
@@ -17,7 +17,7 @@ let test_iobuffer_readable_uses_readable_bytes = fun _ctx ->
   let buffer = IO.IoBuffer.create () |> Result.unwrap in
   let _ = IO.IoBuffer.append_string buffer "hello riot" |> Result.unwrap in
   let _ = IO.IoBuffer.consume buffer ~len:6 |> Result.unwrap in
-  let actual = IO.IoBuffer.readable buffer |> IO.Iovec.IoSlice.to_string in
+  let actual = IO.IoBuffer.readable buffer |> IO.IoVec.IoSlice.to_string in
   if String.equal actual "riot" then
     Ok ()
   else

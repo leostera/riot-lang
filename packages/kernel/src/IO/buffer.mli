@@ -1,4 +1,4 @@
-module IoSlice = Iovec.IoSlice
+module IoSlice = IoVec.IoSlice
 
 type t
 type error = Error.t
@@ -33,7 +33,7 @@ val append_bytes: t -> bytes -> (unit, error) Result.t
 
 val append_slice: t -> IoSlice.t -> (unit, error) Result.t
 
-val to_iovec: t -> Iovec.t
+val to_iovec: t -> IoVec.t
 
 val to_bytes: t -> bytes
 

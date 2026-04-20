@@ -1,17 +1,17 @@
 open Prelude
 
-module Bytes = Bytes
+module Buffer = Buffer
 module Error = Error
-module Iovec = Kernel.IO.Iovec
+module IoVec = IoVec
 module Writer = Writer
 
 type t = unit
 type error = Error.t
 
-let write = fun ?offset ?len buffer ->
+let write = fun ~from ->
   let source = Kernel.IO.Stderr.to_source () in
   let rec loop () =
-    match Kernel.IO.Stderr.write ?pos:offset ?len buffer with
+    match Kernel.IO.Stderr.write_vectored (Buffer.to_iovec from) with
     | Ok value -> Ok value
     | Error (Kernel.IO.Stderr.System error) when Kernel.SystemError.would_block error ->
         Runtime.syscall
@@ -19,18 +19,18 @@ let write = fun ?offset ?len buffer ->
           ~interest:Kernel.Async.Interest.writable
           ~source
           loop
-    | Error (Kernel.IO.Stderr.System error) -> Error (Error.of_system_error error)
-    | Error (Kernel.IO.Stderr.InvalidSlice _) -> Error Error.Invalid_argument
+      | Error (Kernel.IO.Stderr.System error) -> Error (Error.of_system_error error)
+      | Error (Kernel.IO.Stderr.InvalidSlice _) -> Error Error.Invalid_argument
   in
   loop ()
 
-let write_vectored = fun bufs ->
-  if Iovec.length bufs = 0 then
+let write_vectored = fun ~from ->
+  if IoVec.length from = 0 then
     Ok 0
   else
     let source = Kernel.IO.Stderr.to_source () in
     let rec loop () =
-      match Kernel.IO.Stderr.write_vectored bufs with
+      match Kernel.IO.Stderr.write_vectored from with
       | Ok value -> Ok value
       | Error (Kernel.IO.Stderr.System error) when Kernel.SystemError.would_block error ->
           Runtime.syscall
@@ -64,13 +64,13 @@ let to_writer = fun () ->
     type nonrec t = t
     type nonrec err = error
 
-    let write = fun () ~buf ->
-      write (Bytes.from_string buf)
+    let write = fun () ~from ->
+      write ~from
 
-    let write_owned_vectored = fun () ~bufs ->
-      write_vectored bufs
+    let write_vectored = fun () ~from ->
+      write_vectored ~from
 
     let flush = fun () ->
       flush ()
   end in
-  Writer.of_write_src (module Write) ()
+  Writer.from_sink (module Write) ()

@@ -8,43 +8,43 @@ let build_bytes = fun ~count ~segment_size ->
   build_strings ~count ~segment_size |> Kernel.Array.map ~fn:Kernel.Bytes.from_string
 
 let build_iovec = fun ~count ~segment_size ->
-  build_strings ~count ~segment_size |> Kernel.IO.Iovec.from_string_array |> Result.unwrap
+  build_strings ~count ~segment_size |> Kernel.IO.IoVec.from_string_array |> Result.unwrap
 
 let bench_from_string_array = fun payload () ->
-  let _ = Kernel.IO.Iovec.from_string_array payload |> Result.unwrap in
+  let _ = Kernel.IO.IoVec.from_string_array payload |> Result.unwrap in
   ()
 
 let bench_from_bytes_array = fun payload () ->
-  let _ = Kernel.IO.Iovec.from_bytes_array payload |> Result.unwrap in
+  let _ = Kernel.IO.IoVec.from_bytes_array payload |> Result.unwrap in
   ()
 
 let bench_to_string = fun iovec () ->
-  let _ = Kernel.IO.Iovec.to_string iovec in
+  let _ = Kernel.IO.IoVec.to_string iovec in
   ()
 
 let bench_to_bytes = fun iovec () ->
-  let _ = Kernel.IO.Iovec.to_bytes iovec in
+  let _ = Kernel.IO.IoVec.to_bytes iovec in
   ()
 
 let bench_sub_middle = fun ~segment_size iovec () ->
-  let total = Kernel.IO.Iovec.length iovec in
-  let _ = Kernel.IO.Iovec.sub ~pos:(segment_size / 2) ~len:(total / 2) iovec |> Result.unwrap in
+  let total = Kernel.IO.IoVec.length iovec in
+  let _ = Kernel.IO.IoVec.sub ~pos:(segment_size / 2) ~len:(total / 2) iovec |> Result.unwrap in
   ()
 
 let bench_for_each = fun iovec () ->
-  Kernel.IO.Iovec.for_each iovec ~fn:(fun _ -> ())
+  Kernel.IO.IoVec.for_each iovec ~fn:(fun _ -> ())
 
 let small_string_segments = build_strings ~count:4_096 ~segment_size:16
 let small_bytes_segments = build_bytes ~count:4_096 ~segment_size:16
-let small_iovec = Kernel.IO.Iovec.from_string_array small_string_segments |> Result.unwrap
+let small_iovec = Kernel.IO.IoVec.from_string_array small_string_segments |> Result.unwrap
 
 let medium_string_segments = build_strings ~count:128 ~segment_size:1_024
 let medium_bytes_segments = build_bytes ~count:128 ~segment_size:1_024
-let medium_iovec = Kernel.IO.Iovec.from_string_array medium_string_segments |> Result.unwrap
+let medium_iovec = Kernel.IO.IoVec.from_string_array medium_string_segments |> Result.unwrap
 
 let large_string_segments = build_strings ~count:32 ~segment_size:4_096
 let large_bytes_segments = build_bytes ~count:32 ~segment_size:4_096
-let large_iovec = Kernel.IO.Iovec.from_string_array large_string_segments |> Result.unwrap
+let large_iovec = Kernel.IO.IoVec.from_string_array large_string_segments |> Result.unwrap
 
 let benchmarks =
   Bench.[

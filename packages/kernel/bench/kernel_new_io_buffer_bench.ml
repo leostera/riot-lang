@@ -6,8 +6,8 @@ let small_chunk = String.make ~len:16 ~char:'x'
 let medium_chunk = String.make ~len:1_024 ~char:'y'
 
 let medium_slice =
-  let slice = Kernel.IO.Iovec.IoSlice.create ~size:(String.length medium_chunk) |> Result.unwrap in
-  Kernel.IO.Iovec.IoSlice.blit_from_string_unchecked
+  let slice = Kernel.IO.IoVec.IoSlice.create ~size:(String.length medium_chunk) |> Result.unwrap in
+  Kernel.IO.IoVec.IoSlice.blit_from_string_unchecked
     medium_chunk
     ~src_off:0
     slice
@@ -35,7 +35,7 @@ let bench_direct_write_commit = fun ~count ~chunk () ->
   for _ = 1 to count do
     let _ = Kernel.IO.Buffer.ensure_free buffer chunk_len |> Result.unwrap in
     let writable = Kernel.IO.Buffer.writable buffer in
-    Kernel.IO.Iovec.IoSlice.blit_from_string_unchecked chunk ~src_off:0 writable ~dst_off:0 ~len:chunk_len;
+    Kernel.IO.IoVec.IoSlice.blit_from_string_unchecked chunk ~src_off:0 writable ~dst_off:0 ~len:chunk_len;
     let _ = Kernel.IO.Buffer.commit buffer chunk_len |> Result.unwrap in
     ()
   done

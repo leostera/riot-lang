@@ -1,7 +1,8 @@
 open Prelude
+module Buffer = Buffer
 module Bytes = Bytes
 module Error = Error
-module Iovec = Kernel.IO.Iovec
+module IoVec = IoVec
 module Reader = Reader
 module Runtime_actor = Runtime.Actor
 module Runtime_atomic = Kernel.Atomic
@@ -22,7 +23,7 @@ type request =
   | Read_vectored of {
       reply_to: Runtime.Pid.t;
       request_id: request_id;
-      bufs: Iovec.t;
+      bufs: IoVec.t;
     }
 
 type Runtime.Message.t +=
@@ -87,13 +88,13 @@ let consume_leftover_vectored = fun state bufs ->
   | Some leftover ->
       let available = Bytes.length leftover in
       let copied = { copied = 0 } in
-      Iovec.for_each bufs
+      IoVec.for_each bufs
         ~fn:(fun segment ->
           let remaining = available - copied.copied in
           if remaining > 0 then
-                let length = Iovec.IoSlice.length segment in
+                let length = IoVec.IoSlice.length segment in
                 let chunk_len = min length remaining in
-                Iovec.IoSlice.blit_from_bytes_unchecked
+                IoVec.IoSlice.blit_from_bytes_unchecked
                   leftover
                   ~src_off:copied.copied
                   segment
@@ -171,7 +172,7 @@ let await = fun t request_id ~selector ->
   Runtime_actor.demonitor monitor;
   result
 
-let read = fun (t : t) ?(offset = 0) ?len buffer ->
+let read_bytes = fun (t : t) ?(offset = 0) ?len buffer ->
   let len =
     match len with
     | Some len -> len
@@ -195,14 +196,14 @@ let read = fun (t : t) ?(offset = 0) ?len buffer ->
                 Some (Error error)
             | _ -> None)
 
-let read_vectored = fun (t : t) bufs ->
-  if Iovec.length bufs = 0 then
+let read_vectored = fun (t : t) ~into ->
+  if IoVec.length into = 0 then
     Ok 0
   else
     let request_id = next_request_id () in
     Runtime.send
       t.pid
-      (IO_stdin_request (Read_vectored { reply_to = Runtime.self (); request_id; bufs }));
+      (IO_stdin_request (Read_vectored { reply_to = Runtime.self (); request_id; bufs = into }));
     await t request_id
       ~selector:(function
         | IO_stdin_read_result { request_id = got; count } when Int.equal got request_id ->
@@ -211,9 +212,36 @@ let read_vectored = fun (t : t) bufs ->
             Some (Error error)
         | _ -> None)
 
+let commit_into = fun into count ->
+  match Buffer.commit into count with
+  | Ok () -> Ok count
+  | Error error ->
+      Kernel.SystemError.panic ("IO.Stdin.read: " ^ Kernel.IO.Error.message error)
+
+let read = fun (t : t) ~into ->
+  if Buffer.writable_bytes into = 0 then (
+    match Buffer.ensure_free into default_chunk_size with
+    | Ok () -> ()
+    | Error error ->
+        Kernel.SystemError.panic ("IO.Stdin.read: " ^ Kernel.IO.Error.message error)
+  );
+  let writable = Buffer.writable into in
+  let bufs = IoVec.from_slices [| writable |] in
+  match read_vectored t ~into:bufs with
+  | Ok count -> commit_into into count
+  | Error _ as error -> error
+
 let to_reader = fun stdin ->
-  let read_bytes = read in
-  Reader.make
-    ~read:(fun stdin ?timeout:_ buf -> read_bytes stdin buf)
-    ~read_vectored:(fun stdin bufs -> read_vectored stdin bufs)
-    stdin
+  let module Source = struct
+    type nonrec t = t
+    type nonrec err = error
+
+    let read = fun stdin ~into ->
+      read stdin ~into
+
+    let read_vectored = fun stdin ~into ->
+      read_vectored stdin ~into
+
+    let is_read_vectored = fun _ -> true
+  end in
+  Reader.from_source (module Source) stdin

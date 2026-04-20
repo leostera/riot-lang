@@ -67,7 +67,7 @@ type t =
 val of_string: string -> t
 
 (** Parses an HTTP method from a borrowed slice, copying only non-standard extensions. *)
-val from_slice: IO.Iovec.IoSlice.t -> t
+val from_slice: IO.IoVec.IoSlice.t -> t
 
 (** Converts HTTP method to uppercase string.
 

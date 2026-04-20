@@ -4,25 +4,25 @@ module Kernel = Kernel
 module Test = Std.Test
 
 let test_of_string_roundtrip = fun _ctx ->
-  let slice = Kernel.IO.Iovec.IoSlice.from_string "hello riot" |> Result.unwrap in
+  let slice = Kernel.IO.IoVec.IoSlice.from_string "hello riot" |> Result.unwrap in
   if
-    Kernel.IO.Iovec.IoSlice.length slice = 10
-    && Kernel.IO.Iovec.IoSlice.get slice ~at:4 = Ok 'o'
-    && String.equal (Kernel.IO.Iovec.IoSlice.to_string slice) "hello riot"
+    Kernel.IO.IoVec.IoSlice.length slice = 10
+    && Kernel.IO.IoVec.IoSlice.get slice ~at:4 = Ok 'o'
+    && String.equal (Kernel.IO.IoVec.IoSlice.to_string slice) "hello riot"
   then
     Ok ()
   else
     Error "expected IoSlice to preserve string contents"
 
 let test_sub_and_advance = fun _ctx ->
-  let slice = Kernel.IO.Iovec.IoSlice.from_string "hello riot" |> Result.unwrap in
+  let slice = Kernel.IO.IoVec.IoSlice.from_string "hello riot" |> Result.unwrap in
   let actual =
     slice
-    |> fun slice -> Kernel.IO.Iovec.IoSlice.shift slice 6
+    |> fun slice -> Kernel.IO.IoVec.IoSlice.shift slice 6
     |> Result.unwrap
-    |> Kernel.IO.Iovec.IoSlice.sub ~off:0 ~len:3
+    |> Kernel.IO.IoVec.IoSlice.sub ~off:0 ~len:3
     |> Result.unwrap
-    |> Kernel.IO.Iovec.IoSlice.to_string
+    |> Kernel.IO.IoVec.IoSlice.to_string
   in
   if String.equal actual "rio" then
     Ok ()
@@ -30,11 +30,11 @@ let test_sub_and_advance = fun _ctx ->
     Error "expected IoSlice slicing to track offsets correctly"
 
 let test_prefix_and_search = fun _ctx ->
-  let slice = Kernel.IO.Iovec.IoSlice.from_string "GET /path HTTP/1.1\r\n\r\n" |> Result.unwrap in
+  let slice = Kernel.IO.IoVec.IoSlice.from_string "GET /path HTTP/1.1\r\n\r\n" |> Result.unwrap in
   if
-    Kernel.IO.Iovec.IoSlice.starts_with slice ~prefix:"GET "
-    && Kernel.IO.Iovec.IoSlice.index_char slice ' ' = Some 3
-    && Kernel.IO.Iovec.IoSlice.index_string slice "\r\n\r\n" = Some 18
+    Kernel.IO.IoVec.IoSlice.starts_with slice ~prefix:"GET "
+    && Kernel.IO.IoVec.IoSlice.index_char slice ' ' = Some 3
+    && Kernel.IO.IoVec.IoSlice.index_string slice "\r\n\r\n" = Some 18
   then
     Ok ()
   else
@@ -44,7 +44,7 @@ let test_of_buffer_tracks_readable_region = fun _ctx ->
   let buffer = Kernel.IO.Buffer.create () |> Result.unwrap in
   let _ = Kernel.IO.Buffer.append_string buffer "hello riot" |> Result.unwrap in
   let _ = Kernel.IO.Buffer.consume buffer ~len:6 |> Result.unwrap in
-  let actual = Kernel.IO.Buffer.readable buffer |> Kernel.IO.Iovec.IoSlice.to_string in
+  let actual = Kernel.IO.Buffer.readable buffer |> Kernel.IO.IoVec.IoSlice.to_string in
   if String.equal actual "riot" then
     Ok ()
   else

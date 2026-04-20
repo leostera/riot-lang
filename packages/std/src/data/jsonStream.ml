@@ -24,7 +24,7 @@ type error = Json.error =
   | Extra_input_after_value of { position: int }
   | Unknown_error of string
 
-module Slice = IO.Iovec.IoSlice
+module Slice = IO.IoVec.IoSlice
 
 let error_to_string = Json.error_to_string
 

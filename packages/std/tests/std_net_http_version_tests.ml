@@ -1,7 +1,7 @@
 open Std
 
 module Version = Std.Net.Http.Version
-module IoSlice = IO.Iovec.IoSlice
+module IoSlice = IO.IoVec.IoSlice
 
 let test_from_slice_standard = fun _ctx ->
   let slice = IoSlice.from_string "HTTP/1.1" |> Result.unwrap in

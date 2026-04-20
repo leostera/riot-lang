@@ -12,7 +12,7 @@ val empty: t
 val from_string: string -> t
 
 (** Wrap a borrowed off-heap slice body without materializing it. *)
-val from_slice: IO.Iovec.IoSlice.t -> t
+val from_slice: IO.IoVec.IoSlice.t -> t
 
 (** Returns the body length in bytes. *)
 val length: t -> int
@@ -24,4 +24,4 @@ val is_empty: t -> bool
 val to_string: t -> string
 
 (** Returns the borrowed slice when the body is already slice-backed. *)
-val to_slice_opt: t -> IO.Iovec.IoSlice.t option
+val to_slice_opt: t -> IO.IoVec.IoSlice.t option

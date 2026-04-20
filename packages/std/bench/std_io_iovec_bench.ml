@@ -9,40 +9,40 @@ let build_bytes = fun ~count ~segment_size ->
   build_strings ~count ~segment_size |> Array.map ~fn:Bytes.from_string
 
 let bench_from_string_array = fun payload () ->
-  let _ = IO.Iovec.from_string_array payload |> Result.unwrap in
+  let _ = IO.IoVec.from_string_array payload |> Result.unwrap in
   ()
 
 let bench_from_bytes_array = fun payload () ->
-  let _ = IO.Iovec.from_bytes_array payload |> Result.unwrap in
+  let _ = IO.IoVec.from_bytes_array payload |> Result.unwrap in
   ()
 
 let bench_to_string = fun iovec () ->
-  let _ = IO.Iovec.to_string iovec in
+  let _ = IO.IoVec.to_string iovec in
   ()
 
 let bench_to_bytes = fun iovec () ->
-  let _ = IO.Iovec.to_bytes iovec in
+  let _ = IO.IoVec.to_bytes iovec in
   ()
 
 let bench_sub_middle = fun ~segment_size iovec () ->
-  let total = IO.Iovec.length iovec in
-  let _ = IO.Iovec.sub ~pos:(segment_size / 2) ~len:(total / 2) iovec |> Result.unwrap in
+  let total = IO.IoVec.length iovec in
+  let _ = IO.IoVec.sub ~pos:(segment_size / 2) ~len:(total / 2) iovec |> Result.unwrap in
   ()
 
 let bench_for_each = fun iovec () ->
-  IO.Iovec.for_each iovec ~fn:(fun _ -> ())
+  IO.IoVec.for_each iovec ~fn:(fun _ -> ())
 
 let small_string_segments = build_strings ~count:4_096 ~segment_size:16
 let small_bytes_segments = build_bytes ~count:4_096 ~segment_size:16
-let small_iovec = IO.Iovec.from_string_array small_string_segments |> Result.unwrap
+let small_iovec = IO.IoVec.from_string_array small_string_segments |> Result.unwrap
 
 let medium_string_segments = build_strings ~count:128 ~segment_size:1_024
 let medium_bytes_segments = build_bytes ~count:128 ~segment_size:1_024
-let medium_iovec = IO.Iovec.from_string_array medium_string_segments |> Result.unwrap
+let medium_iovec = IO.IoVec.from_string_array medium_string_segments |> Result.unwrap
 
 let large_string_segments = build_strings ~count:32 ~segment_size:4_096
 let large_bytes_segments = build_bytes ~count:32 ~segment_size:4_096
-let large_iovec = IO.Iovec.from_string_array large_string_segments |> Result.unwrap
+let large_iovec = IO.IoVec.from_string_array large_string_segments |> Result.unwrap
 
 let benchmarks =
   Bench.[

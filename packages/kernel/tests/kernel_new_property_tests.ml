@@ -166,7 +166,7 @@ let write_all_vectored = fun poll ~token stream iov ->
     if len = 0 then
       ()
     else
-      let slice = Kernel.IO.Iovec.sub ~pos ~len iov |> Result.unwrap in
+      let slice = Kernel.IO.IoVec.sub ~pos ~len iov |> Result.unwrap in
       match Kernel.Net.TcpStream.write_vectored stream slice with
       | Kernel.Result.Ok written ->
           if written <= 0 then
@@ -182,7 +182,7 @@ let write_all_vectored = fun poll ~token stream iov ->
           else
             fail (Kernel.Error.to_string (Kernel.Error.from_net_tcp_stream error))
   in
-  loop 0 (Kernel.IO.Iovec.length iov)
+  loop 0 (Kernel.IO.IoVec.length iov)
 
 let read_exact_stream = fun poll ~token stream buffer ->
   let rec loop pos len =
@@ -211,7 +211,7 @@ let read_exact_vectored = fun poll ~token stream iov ~len ->
     if remaining = 0 then
       ()
     else
-      let slice = Kernel.IO.Iovec.sub ~pos ~len:remaining iov |> Result.unwrap in
+      let slice = Kernel.IO.IoVec.sub ~pos ~len:remaining iov |> Result.unwrap in
       match Kernel.Net.TcpStream.read_vectored stream slice with
       | Kernel.Result.Ok read ->
           if read <= 0 then
@@ -304,23 +304,23 @@ let non_empty_int_array_arb = fun ~max_count ->
     (Arbitrary.array Arbitrary.int)
 
 let iovec_into_string_roundtrips =
-  property "IO.Iovec of_string_array flattens with preserved order" Arbitrary.(array string)
+  property "IO.IoVec of_string_array flattens with preserved order" Arbitrary.(array string)
     (fun values ->
-      let iov = Kernel.IO.Iovec.from_string_array values |> Result.unwrap in
-      Kernel.IO.Iovec.to_string iov = String.concat "" (array_to_list values))
+      let iov = Kernel.IO.IoVec.from_string_array values |> Result.unwrap in
+      Kernel.IO.IoVec.to_string iov = String.concat "" (array_to_list values))
 
 let iovec_sub_matches_flattened_substring =
-  property "IO.Iovec.sub matches the flattened substring" Arbitrary.(pair
+  property "IO.IoVec.sub matches the flattened substring" Arbitrary.(pair
     (bounded_string_array_arb ~min_count:1 ~max_count:6 ~min_len:1 ~max_len:16)
     (pair int int))
     (fun (values, (raw_pos, raw_len)) ->
-      let iov = Kernel.IO.Iovec.from_string_array values |> Result.unwrap in
-      let total = Kernel.IO.Iovec.length iov in
+      let iov = Kernel.IO.IoVec.from_string_array values |> Result.unwrap in
+      let total = Kernel.IO.IoVec.length iov in
       let pos = Int.abs raw_pos mod total in
       let remaining = total - pos in
       let len = Int.abs raw_len mod (remaining + 1) in
-      let expected = String.sub (Kernel.IO.Iovec.to_string iov) ~offset:pos ~len in
-      let actual = Kernel.IO.Iovec.to_string (Kernel.IO.Iovec.sub ~pos ~len iov |> Result.unwrap) in
+      let expected = String.sub (Kernel.IO.IoVec.to_string iov) ~offset:pos ~len in
+      let actual = Kernel.IO.IoVec.to_string (Kernel.IO.IoVec.sub ~pos ~len iov |> Result.unwrap) in
       actual = expected)
 
 let array_of_list_roundtrips =
@@ -572,7 +572,7 @@ let file_vectored_roundtrips =
       in
       with_temp_path "kernel_new_property" "vectored.bin"
         (fun path ->
-          let iov = Kernel.IO.Iovec.from_string_array values |> Result.unwrap in
+          let iov = Kernel.IO.IoVec.from_string_array values |> Result.unwrap in
           match Kernel.Fs.File.open_write path with
           | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
           | Kernel.Result.Ok file ->
@@ -581,7 +581,7 @@ let file_vectored_roundtrips =
                 | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
                 | Kernel.Result.Ok written ->
                     let _ = Kernel.Fs.File.close file in
-                    if written != Kernel.IO.Iovec.length iov then
+                    if written != Kernel.IO.IoVec.length iov then
                       false
                     else
                       match Kernel.Fs.File.open_read path with
@@ -622,13 +622,13 @@ let file_scalar_write_vectored_read_roundtrips =
                       match Kernel.Fs.File.open_read path with
                       | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
                       | Kernel.Result.Ok input ->
-                          let iov = Kernel.IO.Iovec.create ~count:4 ~size:(String.length payload) () |> Result.unwrap in
+                          let iov = Kernel.IO.IoVec.create ~count:4 ~size:(String.length payload) () |> Result.unwrap in
                           match Kernel.Fs.File.read_vectored input iov with
                           | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
                           | Kernel.Result.Ok read ->
                               let _ = Kernel.Fs.File.close input in
                               read = String.length payload
-                              && String.sub (Kernel.IO.Iovec.to_string iov) ~offset:0 ~len:read = payload
+                              && String.sub (Kernel.IO.IoVec.to_string iov) ~offset:0 ~len:read = payload
               with
               | error ->
                   let _ = Kernel.Fs.File.close file in
@@ -639,8 +639,8 @@ let file_scalar_and_vectored_partial_writes_agree =
     (bounded_string_array_arb ~min_count:1 ~max_count:4 ~min_len:1 ~max_len:32)
     (pair int int))
     (fun (values, (raw_pos, raw_len)) ->
-      let iov = Kernel.IO.Iovec.from_string_array values |> Result.unwrap in
-      let payload = Kernel.IO.Iovec.to_string iov in
+      let iov = Kernel.IO.IoVec.from_string_array values |> Result.unwrap in
+      let payload = Kernel.IO.IoVec.to_string iov in
       let total = String.length payload in
       let bytes = Kernel.Bytes.from_string payload in
       let pos = Int.abs raw_pos mod total in
@@ -683,7 +683,7 @@ let file_scalar_and_vectored_partial_writes_agree =
             | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
             | Kernel.Result.Ok file ->
                 try
-                  let slice = Kernel.IO.Iovec.sub ~pos ~len iov |> Result.unwrap in
+                  let slice = Kernel.IO.IoVec.sub ~pos ~len iov |> Result.unwrap in
                   match Kernel.Fs.File.write_vectored file slice with
                   | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
                   | Kernel.Result.Ok written ->
@@ -746,15 +746,15 @@ let file_scalar_and_vectored_partial_reads_agree =
                         match Kernel.Fs.File.open_read path with
                         | Kernel.Result.Error error -> fail (Kernel.Fs.File.error_to_string error)
                         | Kernel.Result.Ok input ->
-                            let iov = Kernel.IO.Iovec.create ~count:3 ~size:(len + 2) () |> Result.unwrap in
-                            let slice = Kernel.IO.Iovec.sub ~pos:1 ~len iov |> Result.unwrap in
+                            let iov = Kernel.IO.IoVec.create ~count:3 ~size:(len + 2) () |> Result.unwrap in
+                            let slice = Kernel.IO.IoVec.sub ~pos:1 ~len iov |> Result.unwrap in
                             match Kernel.Fs.File.read_vectored input slice with
                             | Kernel.Result.Error error -> fail
                               (Kernel.Fs.File.error_to_string error)
                             | Kernel.Result.Ok read ->
                                 let _ = Kernel.Fs.File.close input in
                                 read = len
-                                && String.sub (Kernel.IO.Iovec.to_string iov) ~offset:1 ~len = expected
+                                && String.sub (Kernel.IO.IoVec.to_string iov) ~offset:1 ~len = expected
                       in
                       scalar_result && vectored_result
               with
@@ -826,8 +826,8 @@ let tcp_vectored_loopback_roundtrips_small_payload =
                                 else
                                   4
                               in
-                              let outbound = Kernel.IO.Iovec.from_string_array values |> Result.unwrap in
-                              let inbound = Kernel.IO.Iovec.create ~count ~size:total () |> Result.unwrap in
+                              let outbound = Kernel.IO.IoVec.from_string_array values |> Result.unwrap in
+                              let inbound = Kernel.IO.IoVec.create ~count ~size:total () |> Result.unwrap in
                               write_all_vectored poll ~token:(Kernel.Async.Token.make 806) client outbound;
                               read_exact_vectored
                                 poll
@@ -835,7 +835,7 @@ let tcp_vectored_loopback_roundtrips_small_payload =
                                 server
                                 inbound
                                 ~len:total;
-                              String.sub (Kernel.IO.Iovec.to_string inbound) ~offset:0 ~len:total = payload)))))
+                              String.sub (Kernel.IO.IoVec.to_string inbound) ~offset:0 ~len:total = payload)))))
 
 let tcp_vectored_loopback_roundtrips_offset_receive_slices =
   property "Net.TcpStream loopback roundtrips vectored payloads into offset receive slices" (bounded_string_array_arb
@@ -865,9 +865,9 @@ let tcp_vectored_loopback_roundtrips_offset_receive_slices =
                           let server = accept_stream poll listener in
                           protect ~finally:(fun () -> close_stream server)
                             (fun () ->
-                              let outbound = Kernel.IO.Iovec.from_string_array values |> Result.unwrap in
-                              let inbound = Kernel.IO.Iovec.create ~count:3 ~size:(total + 2) () |> Result.unwrap in
-                              let slice = Kernel.IO.Iovec.sub ~pos:1 ~len:total inbound |> Result.unwrap in
+                              let outbound = Kernel.IO.IoVec.from_string_array values |> Result.unwrap in
+                              let inbound = Kernel.IO.IoVec.create ~count:3 ~size:(total + 2) () |> Result.unwrap in
+                              let slice = Kernel.IO.IoVec.sub ~pos:1 ~len:total inbound |> Result.unwrap in
                               write_all_vectored poll ~token:(Kernel.Async.Token.make 808) client outbound;
                               read_exact_vectored
                                 poll
@@ -875,7 +875,7 @@ let tcp_vectored_loopback_roundtrips_offset_receive_slices =
                                 server
                                 slice
                                 ~len:total;
-                              String.sub (Kernel.IO.Iovec.to_string inbound) ~offset:1 ~len:total = payload)))))
+                              String.sub (Kernel.IO.IoVec.to_string inbound) ~offset:1 ~len:total = payload)))))
 
 let udp_loopback_roundtrips_small_payload =
   property "Net.UdpSocket loopback preserves small datagrams" (bounded_string_arb

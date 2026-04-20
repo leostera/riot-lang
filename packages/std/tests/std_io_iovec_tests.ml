@@ -1,83 +1,83 @@
 open Std
 
-module Iovec = IO.Iovec
+module IoVec = IO.IoVec
 module Bytes = Kernel.Bytes
 
 let test_create_allocates_requested_total_length = fun _ctx ->
-  let iov = Iovec.create ~count:2 ~size:5 () |> Result.unwrap in
-  if Int.equal (Iovec.length iov) 5 then
+  let iov = IoVec.create ~count:2 ~size:5 () |> Result.unwrap in
+  if Int.equal (IoVec.length iov) 5 then
     Ok ()
   else
-    Error "Iovec.create should allocate the requested total length"
+    Error "IoVec.create should allocate the requested total length"
 
 let test_with_capacity_creates_single_segment = fun _ctx ->
-  let iov = Iovec.with_capacity 4 |> Result.unwrap in
-  if Int.equal (Iovec.length iov) 4 then
+  let iov = IoVec.with_capacity 4 |> Result.unwrap in
+  if Int.equal (IoVec.length iov) 4 then
     Ok ()
   else
-    Error "Iovec.with_capacity should create an iovec with the requested length"
+    Error "IoVec.with_capacity should create an iovec with the requested length"
 
 let test_from_bytes_roundtrips_through_to_bytes = fun _ctx ->
   let bytes = Bytes.from_string "hello" in
-  let iov = Iovec.from_bytes bytes |> Result.unwrap in
-  if String.equal (Bytes.to_string (Iovec.to_bytes iov)) "hello" then
+  let iov = IoVec.from_bytes bytes |> Result.unwrap in
+  if String.equal (Bytes.to_string (IoVec.to_bytes iov)) "hello" then
     Ok ()
   else
-    Error "Iovec.from_bytes/to_bytes should roundtrip the content"
+    Error "IoVec.from_bytes/to_bytes should roundtrip the content"
 
 let test_from_string_roundtrips_through_to_string = fun _ctx ->
-  let iov = Iovec.from_string "hello" |> Result.unwrap in
-  if String.equal (Iovec.to_string iov) "hello" then
+  let iov = IoVec.from_string "hello" |> Result.unwrap in
+  if String.equal (IoVec.to_string iov) "hello" then
     Ok ()
   else
-    Error "Iovec.from_string/to_string should roundtrip the content"
+    Error "IoVec.from_string/to_string should roundtrip the content"
 
 let test_from_bytes_array_concatenates_segments = fun _ctx ->
-  let iov = Iovec.from_bytes_array [| Bytes.from_string "ab"; Bytes.from_string "cd" |] |> Result.unwrap in
-  if String.equal (Iovec.to_string iov) "abcd" then
+  let iov = IoVec.from_bytes_array [| Bytes.from_string "ab"; Bytes.from_string "cd" |] |> Result.unwrap in
+  if String.equal (IoVec.to_string iov) "abcd" then
     Ok ()
   else
-    Error "Iovec.from_bytes_array should concatenate segments in order"
+    Error "IoVec.from_bytes_array should concatenate segments in order"
 
 let test_from_string_array_concatenates_segments = fun _ctx ->
-  let iov = Iovec.from_string_array [| "ab"; "cd"; "ef" |] |> Result.unwrap in
-  if String.equal (Iovec.to_string iov) "abcdef" then
+  let iov = IoVec.from_string_array [| "ab"; "cd"; "ef" |] |> Result.unwrap in
+  if String.equal (IoVec.to_string iov) "abcdef" then
     Ok ()
   else
-    Error "Iovec.from_string_array should concatenate segments in order"
+    Error "IoVec.from_string_array should concatenate segments in order"
 
 let test_for_each_visits_segments_in_insertion_order = fun _ctx ->
-  let iov = Iovec.from_string_array [| "ab"; "c"; "def" |] |> Result.unwrap in
+  let iov = IoVec.from_string_array [| "ab"; "c"; "def" |] |> Result.unwrap in
   let seen = Sync.Atomic.make [] in
-  Iovec.for_each iov ~fn:(fun segment ->
-    Sync.Atomic.set seen (Iovec.IoSlice.to_string segment :: Sync.Atomic.get seen));
+  IoVec.for_each iov ~fn:(fun segment ->
+    Sync.Atomic.set seen (IoVec.IoSlice.to_string segment :: Sync.Atomic.get seen));
   let segments = List.reverse (Sync.Atomic.get seen) in
   if segments = [ "ab"; "c"; "def" ] then
     Ok ()
   else
-    Error "Iovec.for_each should visit segments in insertion order"
+    Error "IoVec.for_each should visit segments in insertion order"
 
 let test_sub_returns_prefix = fun _ctx ->
-  let iov = Iovec.from_string "abcdef" |> Result.unwrap in
-  if String.equal (Iovec.to_string (Iovec.sub iov ~len:3 |> Result.unwrap)) "abc" then
+  let iov = IoVec.from_string "abcdef" |> Result.unwrap in
+  if String.equal (IoVec.to_string (IoVec.sub iov ~len:3 |> Result.unwrap)) "abc" then
     Ok ()
   else
-    Error "Iovec.sub should return the requested prefix"
+    Error "IoVec.sub should return the requested prefix"
 
 let test_sub_can_slice_across_segment_boundaries = fun _ctx ->
-  let iov = Iovec.from_string_array [| "ab"; "cd"; "ef" |] |> Result.unwrap in
-  if String.equal (Iovec.to_string (Iovec.sub iov ~pos:1 ~len:4 |> Result.unwrap)) "bcde" then
+  let iov = IoVec.from_string_array [| "ab"; "cd"; "ef" |] |> Result.unwrap in
+  if String.equal (IoVec.to_string (IoVec.sub iov ~pos:1 ~len:4 |> Result.unwrap)) "bcde" then
     Ok ()
   else
-    Error "Iovec.sub should slice across segment boundaries"
+    Error "IoVec.sub should slice across segment boundaries"
 
 let test_sub_full_length_returns_all_bytes = fun _ctx ->
-  let iov = Iovec.from_string_array [| "ab"; "cd"; "ef" |] |> Result.unwrap in
-  let full = Iovec.sub iov ~pos:0 ~len:(Iovec.length iov) |> Result.unwrap in
-  if String.equal (Iovec.to_string full) "abcdef" then
+  let iov = IoVec.from_string_array [| "ab"; "cd"; "ef" |] |> Result.unwrap in
+  let full = IoVec.sub iov ~pos:0 ~len:(IoVec.length iov) |> Result.unwrap in
+  if String.equal (IoVec.to_string full) "abcdef" then
     Ok ()
   else
-    Error "Iovec.sub should return all bytes for a full-length slice"
+    Error "IoVec.sub should return all bytes for a full-length slice"
 
 let tests = Test.[
   case "create allocates the requested total length" test_create_allocates_requested_total_length;

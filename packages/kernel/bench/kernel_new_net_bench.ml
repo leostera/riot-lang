@@ -188,7 +188,7 @@ let rec read_exact_stream = fun poll ~token stream buffer ~pos ~len ->
 
 let rec write_all_vectored = fun poll ~token stream iov ~pos ~len ->
   if len != 0 then
-    let slice = Kernel.IO.Iovec.sub ~pos ~len iov |> Result.unwrap in
+    let slice = Kernel.IO.IoVec.sub ~pos ~len iov |> Result.unwrap in
     match Kernel.Net.TcpStream.write_vectored stream slice with
     | Kernel.Result.Ok written ->
         if written <= 0 then
@@ -205,7 +205,7 @@ let rec write_all_vectored = fun poll ~token stream iov ~pos ~len ->
 
 let rec read_exact_vectored = fun poll ~token stream iov ~pos ~len ->
   if len != 0 then
-    let slice = Kernel.IO.Iovec.sub ~pos ~len iov |> Result.unwrap in
+    let slice = Kernel.IO.IoVec.sub ~pos ~len iov |> Result.unwrap in
     match Kernel.Net.TcpStream.read_vectored stream slice with
     | Kernel.Result.Ok read ->
         if read <= 0 then
@@ -281,38 +281,38 @@ let bench_tcp_vectored_roundtrip = fun () ->
               let server = accept_stream poll listener in
               protect ~finally:(fun () -> close_stream server)
                 (fun () ->
-                  let payload = Kernel.IO.Iovec.from_string_array [|"pi"; "ng"|] |> Result.unwrap in
-                  let reply = Kernel.IO.Iovec.from_string_array [|"po"; "ng"|] |> Result.unwrap in
-                  let server_buf = Kernel.IO.Iovec.create ~count:2 ~size:4 () |> Result.unwrap in
-                  let client_buf = Kernel.IO.Iovec.create ~count:2 ~size:4 () |> Result.unwrap in
+                  let payload = Kernel.IO.IoVec.from_string_array [|"pi"; "ng"|] |> Result.unwrap in
+                  let reply = Kernel.IO.IoVec.from_string_array [|"po"; "ng"|] |> Result.unwrap in
+                  let server_buf = Kernel.IO.IoVec.create ~count:2 ~size:4 () |> Result.unwrap in
+                  let client_buf = Kernel.IO.IoVec.create ~count:2 ~size:4 () |> Result.unwrap in
                   write_all_vectored
                     poll
                     ~token:(Kernel.Async.Token.make 410)
                     client
                     payload
                     ~pos:0
-                    ~len:(Kernel.IO.Iovec.length payload);
+                    ~len:(Kernel.IO.IoVec.length payload);
                   read_exact_vectored
                     poll
                     ~token:(Kernel.Async.Token.make 411)
                     server
                     server_buf
                     ~pos:0
-                    ~len:(Kernel.IO.Iovec.length payload);
+                    ~len:(Kernel.IO.IoVec.length payload);
                   write_all_vectored
                     poll
                     ~token:(Kernel.Async.Token.make 412)
                     server
                     reply
                     ~pos:0
-                    ~len:(Kernel.IO.Iovec.length reply);
+                    ~len:(Kernel.IO.IoVec.length reply);
                   read_exact_vectored
                     poll
                     ~token:(Kernel.Async.Token.make 413)
                     client
                     client_buf
                     ~pos:0
-                    ~len:(Kernel.IO.Iovec.length reply)))))
+                    ~len:(Kernel.IO.IoVec.length reply)))))
 
 let recv_from_udp = fun poll ~token socket buffer ->
   let rec loop () =

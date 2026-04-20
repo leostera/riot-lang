@@ -1,7 +1,7 @@
 open Kernel
 
 let panic = Kernel.SystemError.panic
-module IoSlice = Kernel.IO.Iovec.IoSlice
+module IoSlice = Kernel.IO.IoVec.IoSlice
 
 type t = {
   source: IoSlice.t;

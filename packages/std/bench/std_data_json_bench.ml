@@ -4,7 +4,7 @@ open Std.Data
 type fixture = {
   name: string;
   payload: string;
-  slice: IO.Iovec.IoSlice.t;
+  slice: IO.IoVec.IoSlice.t;
 }
 
 let make_numeric_array = fun count ->
@@ -14,7 +14,7 @@ let make_string_payload = fun size ->
   {|{"message":"|} ^ String.make ~len:size ~char:'a' ^ "\"}"
 
 let make_fixture = fun name payload ->
-  let slice = IO.Iovec.IoSlice.from_string payload |> Result.expect ~msg:"failed to create io slice" in
+  let slice = IO.IoVec.IoSlice.from_string payload |> Result.expect ~msg:"failed to create io slice" in
   { name; payload; slice }
 
 let fixtures = [

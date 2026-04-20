@@ -1,5 +1,5 @@
 open Global
-module Slice = IO.Iovec.IoSlice
+module Slice = IO.IoVec.IoSlice
 
 type t =
   | Get

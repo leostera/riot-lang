@@ -1,9 +1,13 @@
-module IoSlice = Kernel.IO.Iovec.IoSlice
+module IoSlice = IoSlice
+module IoVec = IoVec
 
 type t
 type error = Kernel.IO.Error.t
 
 val create: size:int -> t
+val from_string: string -> t
+val from_bytes: Kernel.Bytes.t -> t
+val from_slice: IoSlice.t -> t
 
 val create_result: ?size:int -> unit -> (t, error) Result.t
 
@@ -35,7 +39,7 @@ val append_bytes: t -> Kernel.Bytes.t -> (unit, error) Result.t
 
 val append_slice: t -> IoSlice.t -> (unit, error) Result.t
 
-val to_iovec: t -> Kernel.IO.Iovec.t
+val to_iovec: t -> IoVec.t
 
 val to_bytes: t -> Kernel.Bytes.t
 

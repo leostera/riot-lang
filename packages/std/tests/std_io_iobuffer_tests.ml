@@ -4,7 +4,7 @@ module Test = Std.Test
 
 let write_string = fun slice value ->
   let len = String.length value in
-  IO.Iovec.IoSlice.blit_from_string_unchecked value ~src_off:0 slice ~dst_off:0 ~len
+  IO.IoVec.IoSlice.blit_from_string_unchecked value ~src_off:0 slice ~dst_off:0 ~len
 
 let test_iobuffer_append_roundtrip = fun _ctx ->
   let buffer = IO.IoBuffer.create () |> Result.unwrap in
@@ -23,7 +23,7 @@ let test_iobuffer_to_iovec_views_readable_region = fun _ctx ->
   let buffer = IO.IoBuffer.create () |> Result.unwrap in
   let _ = IO.IoBuffer.append_string buffer "hello riot" |> Result.unwrap in
   let _ = IO.IoBuffer.consume buffer ~len:6 |> Result.unwrap in
-  let actual = IO.IoBuffer.to_iovec buffer |> IO.Iovec.to_string in
+  let actual = IO.IoBuffer.to_iovec buffer |> IO.IoVec.to_string in
   if String.equal actual "riot" then
     Ok ()
   else

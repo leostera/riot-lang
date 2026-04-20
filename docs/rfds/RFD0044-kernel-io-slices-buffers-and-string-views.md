@@ -1,6 +1,6 @@
-# RFD0044 - Kernel IO Buffers and Slices
+# RFD0044 - Kernel IO Buffers, Slices, and Buffered Readers
 
-- Feature Name: `kernel_io_buffers_and_slices`
+- Feature Name: `kernel_io_buffers_slices_and_buffered_readers`
 - Start Date: `2026-04-19`
 - Status: `presented`
 - RFD PR: `(not yet opened)`
@@ -9,218 +9,126 @@
 ## Summary
 [summary]: #summary
 
-This RFD proposes a redesign of Riot's low-level I/O substrate around owned
-off-heap buffers, borrowed byte slices, and explicit copy boundaries. It is a kernel
-and `std` contract change, not just an internal optimization pass. The goal is
-to make zero-copy or low-copy I/O the default model for hot paths, while making
-heap `string` / `bytes` conversions explicit and teachable.
+This RFD proposes the final shape of Riot's low-level I/O model around owned
+off-heap buffers, borrowed byte slices, and explicit copy boundaries. The
+kernel owns the syscall-facing storage. `std` re-exports that storage and builds
+a small, consistent `Reader` / `Writer` / `BufReader` surface on top. The goal
+is not to make every public API borrowed by default. The goal is to make the
+fast transport path the default substrate, while making ownership changes
+explicit and teachable.
 
-- `Kernel.IO` should default to off-heap `IoBuffer`, `IoSlice`, and `Iovec`
-  types instead of making heap `string` / `bytes` the normal I/O currency
-- fallible range-sensitive operations should return `result` values by default,
-  with `_unchecked` variants reserved for validated hot loops
-- `from_*` / `to_*` APIs should be the explicit copy boundaries between
-  off-heap I/O storage and normal OCaml heap values
-- `std` should build buffered readers and writers on top of these types instead
-  of teaching protocol code to parse transport bytes as heap strings first
-- this RFD does not propose capability-typed slices, a public protocol API
-  migration, or a full parser rewrite rollout yet
+- `Kernel.IO` should expose off-heap `IoSlice`, `IoVec`, and `Buffer` as the
+  syscall-facing byte model
+- `Std.IO.Buffer` should be the default off-heap buffer in `std`, with
+  `Std.StringBuilder` reserved for explicit heap text accumulation
+- `Std.IO.Reader` and `Std.IO.Writer` should be buffer-first; `Std.IO.BufReader`
+  should be the single borrowed-slice layer in the standard library
+- `from_*` / `to_*` APIs should remain the explicit copy boundaries between
+  off-heap storage and normal OCaml heap values
+- this RFD does not propose a generic incremental parser framework, a public
+  borrowed HTTP API by default, or a single global `Std.IO` error type
 
 ## Motivation
 [motivation]: #motivation
 
-Riot is currently paying for an I/O model that is both hard to reason about and
-not yet fast enough to justify its complexity.
+Riot had two intertwined problems.
 
-The immediate trigger for this RFD is recent work on `Kernel.IO`, `Std.IO`, and
-the HTTP/1 parser. That work exposed three structural problems.
+First, the transport substrate was not explicit enough. Heap `string`, heap
+`bytes`, and off-heap syscall buffers kept getting treated as if they were the
+same thing. They are not. Heap values are convenient, but they are the wrong
+thing to retain across blocking native I/O. Off-heap storage is stable at that
+boundary, but until now it was not the obvious default currency of `Std.IO`.
 
-First, the current model makes it too easy to blur together three very
-different kinds of bytes:
+Second, the standard-library surface encouraged accidental ownership changes.
+When a reader returns strings, or a buffered helper materializes by default,
+contributors cannot tell where copies happen without reading the
+implementation. That makes performance regressions hard to spot and harder to
+review.
 
-- heap `string`
-- heap `bytes`
-- off-heap syscall-facing buffers
+Recent HTTP and `Std.IO` benchmark work clarified the actual trade-off.
 
-These are not interchangeable. Heap `string` and `bytes` are convenient OCaml
-values, but they are not stable syscall buffers across
-`caml_enter_blocking_section()`. Off-heap buffers are stable, but they are not
-the default currency of most Riot APIs today. That mismatch has already shown
-up as a real correctness hazard: blocking native I/O paths cannot safely retain
-raw pointers into heap-managed strings or bytes once the runtime lock is
-released. Riot has already had to patch individual print paths to copy into
-C-owned memory before blocking writes. That is a symptom of the wrong default
-model.
+- parser-only large-body request parsing benefits substantially from staying on
+  `IoSlice` until the final ownership boundary
+- full-request reader-driven parsing benefits from the off-heap substrate once
+  ingestion uses caller-owned buffers instead of bouncing through heap strings
+- small and header-heavy workloads still favor a direct string parser, which
+  means the public parser surface should stay ergonomic even if the transport
+  substrate becomes slice-first
 
-Second, the current model forces contributors to guess where copying is
-happening.
+The standard-library benchmarks tell the same story in a smaller setting.
+Borrowed `BufReader` slices are useful, but they are only clearly better when
+they avoid repeated tiny materializations. For larger lines, borrowed slices and
+explicit `to_string` are within a few percent of the owned helper. That means
+the substrate matters, but the public API should stay honest about where
+ownership changes actually pay off.
 
-Today Riot has several overlapping patterns:
+This is the important lesson. Riot does not need every public API to become
+borrowed. Riot does need one clear I/O substrate:
 
-- some APIs accept or return `string`
-- some accept or return `bytes`
-- some now use `IoSlice`, `Iovec`, or `IoBuffer`
-- some paths convert eagerly at the boundary
-- some keep parsing on heap strings
+- kernel owns stable off-heap byte storage
+- `std` re-exports it
+- raw readers and writers fill caller-owned buffers
+- buffered readers borrow slices from their internal buffer
+- string materialization is explicit
 
-That means the performance model is unclear. A contributor looking at an API
-cannot easily answer:
-
-- is this path zero-copy?
-- is this path metadata-only slicing?
-- is this copying heap bytes into off-heap storage?
-- is this converting back to heap strings again?
-
-That uncertainty is not just cosmetic. It makes reviews slower, optimizations
-harder, and regressions easier to hide.
-
-Third, our recent HTTP parser experiment showed that moving one parser onto an
-off-heap view layer is not enough if the surrounding transport substrate is
-still expensive.
-
-The benchmark results from that experiment were decisive:
-
-- parser-only, `1 MiB` request:
-  - old string parser: `3.67 ms`
-  - new public `parse`: `24.41 ms`
-  - new direct `parse_slice`: `11.84 ms`
-- reader-fed, `1 MiB` request:
-  - old path: `103.78 ms`
-  - new public `parse`: `199.88 ms`
-  - new direct `parse_slice`: `290.60 ms`
-
-Those numbers do not justify selling the parser migration as a performance win.
-The real lesson is different: Riot tried to optimize a protocol parser before
-the underlying buffer and copy model had settled. We added off-heap types, but
-we did not yet make off-heap buffers the dominant transport currency.
-
-This cost is structural rather than incidental.
-
-- as long as heap strings and bytes remain the easy default, contributors will
-  keep reaching for them in hot I/O code
-- as long as copy boundaries are implicit, the cost model will stay hard to
-  audit
-- as long as protocol code starts from heap strings, Riot will keep paying to
-  move data into and out of transport buffers instead of parsing closer to the
-  wire
-- as long as syscall-facing code is allowed to drift back toward heap buffers,
-  correctness hazards around blocking sections will keep resurfacing
-
-The opportunity is also structural.
-
-If Riot adopts one clear I/O model, contributors can build:
-
-- safer `readv` / `writev` paths over stable off-heap slices
-- buffered readers and writers that expose borrowed slices by default
-- parsers that operate on borrowed byte slices and only materialize
-  heap strings when a public API genuinely needs them
-- transport adapters where copying happens at explicit, named conversion points
-  instead of being rediscovered ad hoc
-
-That makes the likely benefits of this redesign:
-
-- correctness at the blocking syscall boundary
-- a teachable performance model
-- lower transport overhead once the core buffer types are mature
-- clearer separation between transport bytes and application-facing heap values
-
-If Riot does nothing, we should expect to keep paying in several ways:
-
-- more one-off fixes for unsafe heap-pointer use near blocking syscalls
-- more local reinventions of buffer and slice semantics
-- more protocol experiments that add complexity without delivering throughput
-  wins
-- ongoing confusion about whether `bytes` is "good enough" as a default I/O
-  buffer type
+If Riot does nothing, we should expect more drift back toward heap buffers in
+hot paths, more one-off fixes around blocking writes, and more confusion about
+where ownership changes actually happen.
 
 ## Guide-level explanation
 [guide-level-explanation]: #guide-level-explanation
 
-Suppose a contributor wants to add a fast line-oriented protocol parser on top
-of a socket.
+The intended mental model is the same split that Go and Rust use:
 
-Today the easiest path in Riot is still to think in heap values first:
+- raw readers fill caller-owned buffers
+- buffered readers may hand out borrowed slices from an internal buffer
 
-1. read some bytes
-2. turn them into a `string` or `bytes`
-3. split or slice that heap value
-4. build more heap strings as the parser progresses
+For Riot that means:
 
-That is easy to write, but it mixes together three concerns:
-
-- transport buffering
-- parsing
-- materializing application-facing values
-
-With this proposal, contributors should think in a different order:
-
-1. transport fills an `IoBuffer`
-2. code gets an `IoSlice` over the readable bytes
-3. parser scans and slices that borrowed byte region
-4. buffer consumption advances without copying
-5. heap `string` / `bytes` values are only created when the API actually wants
-   to keep data as normal OCaml values
-
-The new mental model is:
-
-- `IoBuffer` owns contiguous off-heap bytes
-- `IoSlice` is a cheap borrowed byte view over some region of off-heap storage
-- `Iovec` is a collection of slices for vectored I/O
-- text matching helpers live on `IoSlice` itself rather than on a second view type
+- `Std.IO.Buffer` owns contiguous off-heap bytes
+- `Std.IO.IoSlice` is a borrowed byte view
+- `Std.IO.IoVec` is a vectored collection of slices
+- `Std.IO.Reader` fills caller-owned `Buffer` or `IoVec` values
+- `Std.IO.BufReader` borrows `IoSlice`s from its internal buffer
+- `Std.StringBuilder` is the explicit heap text builder
 
 So the default transport path should feel like:
 
 ```ocaml
-let* buf = Std.IO.IoBuffer.create () in
-let* n = Std.IO.Reader.read reader ~dst:(Std.IO.IoBuffer.writable buf) in
-let* () = Std.IO.IoBuffer.commit buf n in
+let buf = Std.IO.Buffer.create ~size:4096 in
+let* _ = Std.IO.Reader.read reader ~into:buf in
 
-let slice = Std.IO.IoBuffer.readable buf in
-
-match Std.IO.IoSlice.index_string slice "\r\n\r\n" with
-| None -> (* need more bytes *)
-| Some boundary ->
-  let* head = Std.IO.IoSlice.sub slice ~off:0 ~len:boundary in
-  (* parse request head without copying *)
-  let* () = Std.IO.IoBuffer.consume buf (boundary + 4) in
+let slice = Std.IO.Buffer.readable buf in
+if Std.IO.IoSlice.starts_with slice ~prefix:"GET " then
   ...
 ```
 
-When a caller explicitly needs a normal OCaml string, the boundary is obvious:
+And the default buffered path should feel like:
 
 ```ocaml
-let request_target = Std.IO.IoSlice.to_string target_slice
+let br = Std.IO.BufReader.from_reader reader in
+let* line = Std.IO.BufReader.read_line br in
+let owned = Std.IO.IoSlice.to_string line in
+...
 ```
 
-That explicit `to_string` is important. It says:
+The important part is what does not happen by default:
 
-- this is where heap allocation happens
-- this is where transport bytes become application-owned text
+- raw `Reader.read` does not allocate and return a hidden borrowed slice
+- `BufReader.read_line` does not materialize a string unless the caller asks for it
+- `Std.IO.Buffer` is not a heap string builder
 
-The same change matters on the write side.
-
-Today it is easy to build up output as repeated heap strings and let the system
-sort it out later. With this proposal, the intended flow is:
-
-1. write into an `IoBuffer`
-2. expose one or more `IoSlice`s
-3. send them with `write` or `writev`
-
-Heap strings are still supported, but they become explicit adapters:
+The ownership boundary is explicit:
 
 ```ocaml
-let* () = Std.IO.IoBuffer.append_string buf "GET / HTTP/1.1\r\n" in
-let* () = Std.IO.IoBuffer.append_string buf "Host: example.com\r\n\r\n" in
-let* () = Std.IO.Writer.write writer ~src:(Std.IO.IoBuffer.readable buf) in
+let path = Std.IO.IoSlice.to_string borrowed_path
 ```
 
-That example still copies from heap strings into the off-heap buffer. The point
-is not that copies disappear completely. The point is that the system becomes
-honest about where they happen.
+That says exactly where transport bytes become application-owned text.
 
 ### What contributors should assume
 
-- hot transport paths should default to `IoBuffer`, `IoSlice`, and `Iovec`
+- hot transport paths should default to `Buffer`, `IoSlice`, and `IoVec`
 - `from_*` and `to_*` APIs are copy boundaries
 - range-sensitive operations return `result` by default
 - `_unchecked` variants exist for validated inner loops, not as the normal API
@@ -231,402 +139,308 @@ honest about where they happen.
 
 - that heap `bytes` is the right default buffer type for blocking native I/O
 - that moving one parser onto borrowed slices automatically improves performance
-- that vectored syscalls matter more than contiguous off-heap buffering
+- that raw `Reader.read` should return a borrowed view
 - that zero-copy means "Riot never copies"; it means copies happen at explicit
   boundaries instead of as the default transport model
 
 ## Reference-level explanation
 [reference-level-explanation]: #reference-level-explanation
 
-## 1. Core types
-
-This proposal introduces or stabilizes three core low-level types.
+## 1. Core kernel types
 
 ### 1.1 `Kernel.IO.IoSlice`
 
-`IoSlice` is the basic byte-view type for low-level I/O.
+`IoSlice` is the basic off-heap byte view. It should:
 
-It should:
-
-- be backed by off-heap storage
 - support zero-copy sub-slicing
-- expose checked-by-default range operations that return `result`
-- provide `_unchecked` operations for validated hot paths
-- expose explicit copy adapters such as `from_string`, `from_bytes`,
-  `to_string`, and `to_bytes`
+- keep text and delimiter helpers directly on the slice
+- use checked-by-default range-sensitive operations
+- keep `_unchecked` variants for hot loops that have already validated bounds
+- treat `from_*` / `to_*` as explicit copy boundaries
 
-It should not:
+### 1.2 `Kernel.IO.IoVec`
 
-- hide copying behind ordinary slicing operations
-- present heap `string` / `bytes` as though they were syscall-safe buffers
+`IoVec` is the narrow vectored-I/O type for `readv` / `writev`. It should stay:
 
-The intended API shape is roughly:
+- syscall-facing
+- off-heap
+- cheap to flatten or sub-slice when needed
 
-```ocaml
-module Kernel.IO.IoSlice : sig
-  type t
-  type error = Kernel.IO.Error.t
+It is not a general string builder and not a parser abstraction.
 
-  val empty : t
-  val create : size:int -> (t, error) result
-  val length : t -> int
+### 1.3 `Kernel.IO.Buffer`
 
-  val sub : t -> off:int -> len:int -> (t, error) result
-  val shift : t -> int -> (t, error) result
-  val split_at : t -> int -> ((t * t), error) result
+`Kernel.IO.Buffer` is the owned contiguous off-heap buffer. It should:
 
-  val get : t -> at:int -> (char, error) result
-  val get_unchecked : t -> at:int -> char
+- expose readable and writable regions as `IoSlice`
+- support compaction and growth
+- be the kernel-side storage primitive that `std` re-exports as `Std.IO.Buffer`
 
-  val set : t -> at:int -> char -> (unit, error) result
-  val set_unchecked : t -> at:int -> char -> unit
+## 2. `std` layering
 
-  val blit :
-    src:t -> src_off:int ->
-    dst:t -> dst_off:int ->
-    len:int ->
-    (unit, error) result
+### 2.1 `Std.IO.Buffer`
 
-  val blit_unchecked :
-    src:t -> src_off:int ->
-    dst:t -> dst_off:int ->
-    len:int ->
-    unit
+`Std.IO.Buffer` is the standard-library default off-heap buffer. It is the
+normal thing `Reader` and `Writer` operate on.
 
-  val blit_from_string :
-    string -> src_off:int -> t -> dst_off:int -> len:int -> (unit, error) result
+`Std.IO.IoBuffer` may remain as the exact kernel-shaped API, but code above
+`std` should normally use `Std.IO.Buffer`.
 
-  val blit_from_bytes :
-    bytes -> src_off:int -> t -> dst_off:int -> len:int -> (unit, error) result
+### 2.2 `Std.StringBuilder`
 
-  val blit_to_bytes :
-    t -> src_off:int -> bytes -> dst_off:int -> len:int -> (unit, error) result
+`Std.StringBuilder` is the explicit heap text builder. It exists for:
 
-  val from_string : ?off:int -> ?len:int -> string -> (t, error) result
-  val from_bytes : ?off:int -> ?len:int -> bytes -> (t, error) result
+- `read_to_string`
+- text rendering
+- string accumulation that is intentionally heap-owned
 
-  val to_string : t -> string
-  val to_bytes : t -> bytes
-end
-```
+It should not be the default transport buffer in `Std.IO`.
 
-### 1.2 `Kernel.IO.Iovec`
+### 2.3 `Std.IO.Reader`
 
-`Iovec` is the syscall-facing vectored I/O shape.
+`Reader` is buffer-first. Its public contract is:
 
-It should be little more than:
+- `read`
+- `read_vectored`
+- `is_read_vectored`
+- `read_to_end`
+- `read_to_string`
+- `read_exact`
+- `bytes`
+- `chain`
+- `take`
 
-- `IoSlice.t array`
-- length accounting
-- shifting after partial writes
+The important rule is that the raw reader does not return hidden borrowed data.
+The caller owns the destination buffer.
 
-This proposal intentionally keeps `Iovec` small. The important work should
-happen in `IoSlice` and `IoBuffer`, not in a complicated vector abstraction.
+### 2.4 `Std.IO.BufReader`
 
-### 1.3 `Kernel.IO.IoBuffer`
+`BufReader` is the only borrowed-slice layer in `std`. Its public contract is:
 
-`IoBuffer` is the main mutable contiguous off-heap buffer type.
-
-It should:
-
-- own contiguous off-heap storage
-- expose readable and writable slices
-- support `ensure_free`, `commit`, `consume`, and `compact`
-- make transport fill and drain operations explicit
-- support explicit append helpers for `string`, `bytes`, and `IoSlice`
-
-It should be the normal substrate for:
-
-- buffered readers
-- buffered writers
-- protocol framing code
-- socket and file ingestion
-
-### 1.4 Text helpers on `Kernel.IO.IoSlice`
-
-This design deliberately does not introduce a second string-oriented view type.
-Protocol parsers should operate on `IoSlice` directly and rely on byte-oriented
-text helpers such as:
-
-- `starts_with`
-- `equal_string`
-- `index_char`
-- `index_string`
-
-That keeps the model tight:
-
-- `IoBuffer` owns bytes
-- `IoSlice` borrows bytes
-- `to_string` is the explicit ownership and copy boundary
-
-## 2. Error and fallibility model
-
-Range-sensitive operations should return `result` values by default.
-
-That includes operations such as:
-
-- `sub`
-- `shift`
-- `split_at`
-- `get`
-- `set`
-- `blit`
+- `from_reader`
+- `read`
+- `read_byte`
+- `size`
+- `reset`
+- `fill`
+- `peek`
 - `consume`
-- `commit`
-- `ensure_free`
+- `read_rune`
+- `read_slice`
+- `read_line`
+- `read_string`
+- `to_reader`
 
-This RFD prefers checked-by-default APIs because the kernel and `std` surfaces
-are shared infrastructure. Unsafe indexing and silent truncation are the wrong
-defaults there.
+`peek` should be exact-or-error. `read_slice` should follow Go's shape:
 
-For hot loops, explicit `_unchecked` variants are allowed when a caller has
-already validated its bounds.
+- return a borrowed slice including the delimiter when found
+- return `Buffer_full` if the internal buffer fills before the delimiter appears
+- return the remaining tail at EOF if any bytes were buffered
 
-`to_string` and `to_bytes` remain total APIs. They are explicit copy boundaries
-rather than range-sensitive operations.
+### 2.5 `Std.IO.Writer`
 
-## 3. Borrowing and ownership rules
+`Writer` is the symmetric buffer-first write surface:
 
-This proposal assumes the simplest useful borrowing model first.
+- `write`
+- `write_vectored`
+- `write_all`
+- `write_all_vectored`
+- `flush`
 
-- `IoSlice.sub` is zero-copy and shares backing storage
-- `IoBuffer.readable` and `IoBuffer.writable` return borrowed slices into the
-  buffer's current storage
+`Writer` accepts `Buffer` and `IoVec`, not heap strings as its core currency.
 
-Those borrowed slices are only intended to stay valid until the next mutating
-operation that may resize, compact, or otherwise change the underlying buffer.
+## 3. Error and fallibility model
 
-This is deliberately simple. It matches what Riot needs for the initial
-transport and parser work without forcing a segmented or reference-counted
-buffer design immediately.
+Range-sensitive operations should return `result`.
 
-If Riot later needs long-lived zero-copy retained slices that survive buffer
-mutation,
-that should be a follow-up design, not part of this first redesign.
+That includes:
 
-This model also draws an important ownership line:
+- `IoSlice.sub`
+- `IoSlice.shift`
+- `IoSlice.split_at`
+- `IoSlice.get`
+- `IoSlice.set`
+- `IoSlice.blit`
+- `IoVec.sub`
+- `Buffer.ensure_free`
+- `Buffer.commit`
+- `Buffer.consume`
 
-- when the caller owns the `IoBuffer`, the caller decides how long borrowed
-  slices may remain valid by controlling when that buffer is mutated or dropped
-- when a library owns and reuses the `IoBuffer`, borrowed slices are only valid
-  until the next refill, consume, compact, or other mutation
+Hot loops that have already validated bounds may use `_unchecked` helpers.
 
-## 4. Syscall boundary rules
+`std` should keep upstream error types where they matter. `Reader.t` and
+`Writer.t` remain parameterized by the source or sink error instead of forcing
+all of `Std.IO` through one broad public sum type. `BufReader` may add its own
+small error layer for buffered-reader-specific failures such as `Buffer_full`,
+but it should not erase meaningful upstream errors.
 
-The kernel boundary should be off-heap-first.
+## 4. Borrowing and ownership rules
 
-That means:
+Borrowed slices are only useful if their lifetime rules are explicit.
 
-- `read` writes into an `IoSlice`
-- `write` reads from an `IoSlice`
-- `readv` and `writev` operate on `Iovec`
+This RFD standardizes the following rule:
 
-The rule at the native boundary is:
+- a slice borrowed from a caller-owned `Std.IO.Buffer` is valid until that
+  buffer is mutated or dropped
+- a slice borrowed from `Std.IO.BufReader` is valid until the next operation
+  that may refill, consume, or reset the internal buffer
 
-- payload pointers that cross `caml_enter_blocking_section()` must be stable
-- heap `string` and `bytes` are not acceptable payload buffers there
-- off-heap `IoSlice` storage is acceptable
+That is the same contract shape as:
 
-This is one of the main reasons to make `IoSlice` the default currency.
+- Go `bufio.Reader.ReadSlice`
+- Rust `BufRead::fill_buf` plus `consume`
 
-## 5. `std` layering
+If a caller wants to keep a value longer, it must either:
 
-Above kernel, `std` should re-expose these types as the main I/O substrate.
+- keep the owning buffer alive and stable
+- or copy with `IoSlice.to_string` / `IoSlice.to_bytes`
 
-`Std.IO` should:
+## 5. Syscall boundary rules
 
-- expose `IoSlice`, `Iovec`, and `IoBuffer`
-- build reader and writer helpers on those types
-- provide buffered readers and writers that operate on them
-- keep `stdin`, `stdout`, and `stderr` ergonomic while still using the same
-  underlying model
+At the blocking syscall boundary:
 
-The key point is that `std` should not reintroduce heap `string` / `bytes` as
-the default transport representation just because those values are ergonomic.
+- payload pointers passed to blocking native calls must come from off-heap
+  storage
+- heap `string` / `bytes` payload pointers must not be retained across
+  `caml_enter_blocking_section()`
+- vectored operations should use `IoVec` / `IoSlice`, not OCaml heap slices
+
+That means the correct low-level path is:
+
+1. allocate or reuse off-heap buffers
+2. expose `IoSlice` / `IoVec` views
+3. call the kernel
+4. materialize heap values only after the I/O boundary when ownership truly changes
 
 ## 6. Migration strategy
 
-This proposal is intentionally staged.
+The intended rollout is:
 
-### Stage 1
-
-Stabilize the substrate:
-
-- `IoSlice`
-- `Iovec`
-- `IoBuffer`
-- bulk-native `blit*` operations
-
-### Stage 2
-
-Move `Std.IO` buffered reader and writer code onto that substrate.
-
-### Stage 3
-
-Re-evaluate hot protocol paths after the buffer model is cheap and explicit.
-
-This RFD does not assume that every existing parser should immediately migrate.
-The HTTP/1 experiment showed that parser-first migration is the wrong order.
+1. stabilize `Kernel.IO.IoSlice`, `Kernel.IO.IoVec`, and `Kernel.IO.Buffer`
+2. keep `Std.IO.Buffer` as the default off-heap buffer surface
+3. keep `Reader` and `Writer` buffer-first
+4. make `BufReader` the single borrowed-slice layer in `std`
+5. move protocol parsers onto `IoSlice` only where benchmarks justify it
+6. keep public string-owning APIs where they remain the ergonomic default
 
 ## Drawbacks
 [drawbacks]: #drawbacks
 
-This redesign has real costs.
+The main cost of this design is cognitive.
 
-- It introduces several new foundational types at once.
-- It makes more of Riot's I/O story explicit, which increases the amount of API
-  surface contributors need to learn.
-- It draws a harder line between transport bytes and heap strings, which can
-  make some application-facing code feel less direct.
-- It will likely force some churn in `Kernel.IO`, `Std.IO`, and packages that
-  currently move freely between `string`, `bytes`, and transport buffers.
-- If the implementation is careless, Riot could end up paying the complexity
-  cost without getting the transport wins.
+Contributors now need to reason about:
 
-There is also a design risk: Riot could overfit to one low-level I/O model and
-make higher-level protocol code less pleasant than it needs to be.
+- the difference between owned buffers and borrowed slices
+- explicit ownership boundaries
+- borrowed slice lifetime rules
+- checked versus `_unchecked` operations
+
+There is also real implementation cost:
+
+- kernel and std migration work
+- benchmark maintenance
+- downstream parser rewrites where the payoff is not guaranteed
+
+Not every parser should become borrowed by default. The HTTP work already
+showed that large-body transport paths benefit, while small and header-heavy
+workloads may still favor a direct string parser.
 
 ## Rationale and alternatives
 [rationale-and-alternatives]: #rationale-and-alternatives
 
-### Do nothing
+### Why not keep `StringView`?
 
-Riot could keep the current mixed model and continue fixing unsafe or slow paths
-locally.
+`StringView` did not carry enough distinct value once `IoSlice` grew the text
+helpers we actually needed.
 
-That would be cheaper short-term, but it would preserve the structural
-problems:
+- it duplicated operations that already belonged naturally on `IoSlice`
+- it added a third concept where two were enough
+- it did not solve the real lifetime problem, which is about who owns the backing buffer
 
-- unclear copy boundaries
-- continued pressure to use heap `bytes` as transport buffers
-- repeated local fixes around blocking syscalls
-- parser and transport work proceeding without one clear low-level contract
+The final design keeps text helpers on `IoSlice` and uses `to_string` as the
+explicit ownership boundary.
 
-### Keep heap `bytes` as the main mutable buffer type
+### Why not make raw `Reader.read` return a slice?
 
-This is attractive because `bytes` is familiar and ergonomic.
+Because that makes ownership less clear.
 
-The problem is that heap `bytes` is not the same thing as a stable off-heap I/O
-buffer. Across blocking native calls, that distinction matters. Using heap
-`bytes` as the default low-level I/O substrate invites correctness hazards and
-confuses the transport model.
+If raw `read` returns a slice, then either:
 
-### Push parser migrations first
+- the reader allocates a fresh buffer every call
+- or it returns a borrowed slice from hidden internal storage
 
-The recent HTTP experiment already tested this path indirectly.
+The first hides allocation in the hot path. The second hides borrowing in the
+raw reader contract. The cleaner split is:
 
-That experiment showed that moving one parser onto borrowed off-heap slices before the
-underlying buffer and copy substrate is mature is the wrong order. Parser
-throughput did not improve, and in several cases it regressed badly.
+- `Reader`: caller-buffered
+- `BufReader`: borrowed-slice layer
 
-### Adopt an existing slice type wholesale
+### Why not collapse all `Std.IO` errors into one type?
 
-Riot could choose to adopt a `Cstruct`-style slice representation or another
-third-party I/O substrate directly instead of designing its own.
+Rust can do that because its standard library owns a much broader cross-cutting
+I/O error model. Riot's `std` surface already carries meaningful domain errors
+from TLS, gzip, command execution, and other sources.
 
-That remains a plausible future direction, but this proposal prefers a
-Riot-owned kernel contract because:
+For Riot the better trade-off is:
 
-- Riot is already redesigning `Kernel.IO`
-- Riot wants `std` to sit almost directly on top of kernel-owned contracts
-- Riot has specific rules around result-valued APIs, naming, and blocking-call
-  safety that may not align exactly with existing libraries
+- keep `Reader.t` and `Writer.t` parameterized by the underlying error
+- let `BufReader` add only the small extra errors it truly owns
 
-### Add capability-typed slices now
+### Why not make every public parser borrowed?
 
-Capability-typed slices may still be worthwhile later, but this RFD leaves them
-out intentionally.
+Because the benchmark evidence does not justify that complexity for every API.
 
-They add API and migration churn before Riot has settled the actual slice and
-buffer model. The current priority is to stabilize the transport currency and
-copy semantics first.
+The right outcome is:
+
+- slice-first transport and buffering
+- borrowed parser paths where they measurably help
+- public string-owning APIs where that remains easier to use and not obviously slower
 
 ## Prior art
 [prior-art]: #prior-art
 
-### Eio
+Riot is converging on the same split used by other high-performance systems.
 
-Eio is the strongest prior art for the low-level direction proposed here.
+### Go
 
-It uses:
+- `io.Reader.Read(p []byte)` fills caller-owned buffers
+- `bufio.Reader.ReadSlice(delim)` returns borrowed slices from an internal buffer
+- converting `[]byte` to `string` is an explicit ownership change
 
-- bigarray-backed contiguous buffers
-- `Cstruct.t` as the slice type
-- real `readv` / `writev` in its POSIX backend
-- buffered readers and writers built on that substrate
+### Rust
 
-The important lesson is not just that Eio uses vectored syscalls. It is that
-Eio makes off-heap slices the default low-level transport currency and copies
-heap strings or bytes only when crossing that boundary explicitly.
+- `Read::read(&mut [u8])`
+- `Read::read_vectored(...)`
+- `BufRead::fill_buf()`
+- `BufRead::consume(n)`
 
-### bigstringaf
+Rust encodes the buffered lifetime rule in the type system. Riot documents the
+same rule in API contracts.
 
-`bigstringaf` is useful prior art for one narrow piece of the design:
+### OCaml ecosystem
 
-- one off-heap contiguous byte-array type
-- cheap borrowed subslices
-- fast bulk `memcpy` / `memcmp` / `memchr` helpers
-
-It does not define an `iovec` model itself. That is a useful reminder that
-Riot's core need is a good off-heap byte substrate first, not a complicated
-vector abstraction first.
-
-### Piaf
-
-Piaf uses `Bigstringaf.t` plus logical iovecs, but it does not itself appear
-to rely on syscall-level `readv` / `writev` in the same way Eio does. Its model
-reinforces another useful lesson:
-
-- stable off-heap buffers matter more than exposing a vector abstraction
-  everywhere
-
-### ocaml-tls
-
-`ocaml-tls` is useful as a counterexample.
-
-Its current core engine has moved toward `string` / `bytes` rather than keeping
-an off-heap slice type in the middle. That makes sense for a pure protocol
-engine, but it also shows a different design choice:
-
-- keep the protocol core simple and pure
-- convert at the transport boundary
-
-Riot should borrow from that lesson selectively. It is a good reason not to
-force every public protocol API to become an off-heap view API. It is not a
-good reason to keep heap `string` / `bytes` as the default low-level transport
-currency.
+- `bigstringaf` provides stable off-heap storage
+- Eio's bigstring / `Cstruct` flow model keeps transport bytes off the OCaml heap
+- higher-level HTTP stacks commonly leave bodies lazy or streaming instead of
+  materializing them during head parsing
 
 ## Unresolved questions
 [unresolved-questions]: #unresolved-questions
 
-- Should `IoSlice` be implemented as a thin wrapper over a bigarray-like slice
-  record, or should it eventually converge more directly on a `Cstruct`-like
-  layout?
-- Should `IoBuffer` remain strictly contiguous in its first version, or is
-  there already enough evidence to justify segmented storage?
-- Which `Std.IO` and `Iter` cursor operations should return borrowed `IoSlice`
-  first, and which should continue returning `string` as explicit convenience
-  wrappers?
-- Where should Riot draw the line between transport-oriented APIs and
-  application-oriented helpers in `std`?
-- Once the core substrate is stable, which protocol package should be the next
-  serious benchmark target after HTTP/1?
+The remaining open questions are:
+
+- should Riot add a `BufWriter` symmetric to `BufReader`?
+- should `bytes()` remain on `Reader`, or stay a convenience adapter outside the core hot path?
+- should Riot add a generic incremental parser substrate later, or keep parser state machines package-specific?
+- should long-lived retained borrowed views eventually gain a first-class retained-buffer type rather than relying on "keep the owning buffer alive"?
 
 ## Future possibilities
 [future-possibilities]: #future-possibilities
 
-If this redesign lands and proves out, there are several natural follow-ons.
+Future follow-up work may include:
 
-- Add capability-typed slices once the underlying slice and buffer contracts
-  have stabilized enough that the extra type churn is worth it.
-- Revisit protocol parsing packages such as HTTP, WebSocket, and framing-heavy
-  tooling on top of the new buffer model once the transport substrate is
-  genuinely cheap.
-- Add borrowed-buffer read hooks in `Std.IO` so copy-free transport-to-transport
-  paths can avoid even temporary `IoBuffer` shuffling where the source already
-  owns readable slices.
-- Explore whether Riot should keep converging toward an Eio- or `Cstruct`-like
-  surface, or whether the long-term value of a Riot-owned shape justifies
-  continuing to diverge.
-- Expand the same model to runtime-owned logging, TLS adapters, and other
-  boundaries where Riot currently converts eagerly into heap strings or bytes.
+- `BufWriter` and other buffered write helpers
+- incremental HTTP head parsers and other stateful streaming parsers on top of `BufReader`
+- retained-view or chunk-retention abstractions for long-lived borrowed values
+- more parser migrations where benchmarks justify the extra complexity
+- clearer public docs that compare Riot's model directly to Go and Rust

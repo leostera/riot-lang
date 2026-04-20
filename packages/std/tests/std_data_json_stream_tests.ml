@@ -75,12 +75,12 @@ let test_extra_input_after_value_reports_position = fun _ctx ->
 
 let test_from_slice_matches_json = fun _ctx ->
   let input = {|{"users":[{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}],"ok":true}|} in
-  let slice = IO.Iovec.IoSlice.from_string input |> Result.expect ~msg:"slice creation failed" in
+  let slice = IO.IoVec.IoSlice.from_string input |> Result.expect ~msg:"slice creation failed" in
   compare_with_baseline input (JsonStream.from_slice slice)
 
 let test_from_slice_matches_json_on_mixed_arrays = fun _ctx ->
   let input = "[1, 2, {\"name\": \"riot\"}, false]" in
-  let slice = IO.Iovec.IoSlice.from_string input |> Result.expect ~msg:"slice creation failed" in
+  let slice = IO.IoVec.IoSlice.from_string input |> Result.expect ~msg:"slice creation failed" in
   compare_with_baseline input (JsonStream.from_slice slice)
 
 let test_large_numeric_array_matches_json = fun _ctx ->

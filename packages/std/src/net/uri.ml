@@ -1,7 +1,7 @@
 open Global
 open IO
 open Collections
-module Slice = Iovec.IoSlice
+module Slice = IoVec.IoSlice
 
 type error =
   | InvalidScheme

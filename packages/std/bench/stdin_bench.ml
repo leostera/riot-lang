@@ -117,6 +117,13 @@ let is_would_block = function
   | Kernel.Fs.File.System system_error -> Kernel.SystemError.would_block system_error
   | _ -> false
 
+let bufreader_error_message = function
+  | IO.BufReader.Source_error error -> IO.error_message error
+  | IO.BufReader.End_of_file -> "end of file"
+  | IO.BufReader.Buffer_full -> "buffer full"
+  | IO.BufReader.Invalid_count count -> "invalid count: " ^ Int.to_string count
+  | IO.BufReader.Invalid_data -> "invalid data"
+
 let status_to_string = function
   | Kernel.Process.Running -> "running"
   | Kernel.Process.Exited code -> "exited(" ^ Int.to_string code ^ ")"
@@ -298,11 +305,12 @@ let run_kernel_chunks = fun expected_bytes ->
 
 let run_std_chunks = fun expected_bytes ->
   let stdin = IO.Stdin.open_ () in
-  let buffer = Bytes.create ~size:4096 in
+  let buffer = IO.Buffer.create ~size:4096 in
   let rec loop total =
-    match IO.Stdin.read stdin ~len:4096 buffer with
+    IO.Buffer.clear buffer;
+    match IO.Stdin.read stdin ~into:buffer with
     | Ok 0 -> total
-    | Ok count -> loop (total + count)
+    | Ok _ -> loop (total + IO.Buffer.readable_bytes buffer)
     | Error error -> panic (IO.error_message error)
   in
   let total = loop 0 in
@@ -317,11 +325,12 @@ let run_std_chunks = fun expected_bytes ->
 
 let run_std_reader_chunks = fun expected_bytes ->
   let reader = IO.stdin () in
-  let buffer = Bytes.create ~size:4096 in
+  let buffer = IO.Buffer.create ~size:4096 in
   let rec loop total =
-    match IO.read reader buffer with
+    IO.Buffer.clear buffer;
+    match IO.read reader ~into:buffer with
     | Ok 0 -> total
-    | Ok count -> loop (total + count)
+    | Ok _ -> loop (total + IO.Buffer.readable_bytes buffer)
     | Error error -> panic (IO.error_message error)
   in
   let total = loop 0 in
@@ -335,9 +344,11 @@ let run_std_reader_chunks = fun expected_bytes ->
        ])
 
 let run_std_read_to_string = fun expected_bytes ->
-  let reader = IO.stdin () |> IO.buffered () in
-  match IO.BufferedReader.read_to_string reader ~len:expected_bytes with
-  | Ok data ->
+  let reader = IO.stdin () in
+  let builder = StringBuilder.create ~size:expected_bytes in
+  match IO.read_to_string reader ~into:builder with
+  | Ok _ ->
+      let data = StringBuilder.contents builder in
       if String.length data != expected_bytes then
         panic
           (format Format.[
@@ -368,11 +379,12 @@ let run_kernel_chars = fun expected_bytes ->
 
 let run_std_chars = fun expected_bytes ->
   let reader = IO.stdin () in
-  let buffer = Bytes.create ~size:1 in
+  let buffer = IO.Buffer.create ~size:1 in
   let rec loop total =
-    match IO.read reader ~len:1 buffer with
+    IO.Buffer.clear buffer;
+    match IO.read reader ~into:buffer with
     | Ok 0 -> total
-    | Ok count -> loop (total + count)
+    | Ok _ -> loop (total + IO.Buffer.readable_bytes buffer)
     | Error error -> panic (IO.error_message error)
   in
   let total = loop 0 in
@@ -386,13 +398,12 @@ let run_std_chars = fun expected_bytes ->
        ])
 
 let run_std_buffered_chars = fun expected_bytes ->
-  let reader = IO.stdin () |> IO.buffered () in
-  let buffer = Bytes.create ~size:1 in
+  let reader = IO.stdin () |> IO.BufReader.from_reader in
   let rec loop total =
-    match IO.BufferedReader.read reader buffer with
-    | Ok 0 -> total
-    | Ok count -> loop (total + count)
-    | Error error -> panic (IO.error_message error)
+    match IO.BufReader.read_byte reader with
+    | Ok _ -> loop (total + 1)
+    | Error IO.BufReader.End_of_file -> total
+    | Error error -> panic (bufreader_error_message error)
   in
   let total = loop 0 in
   if total != expected_bytes then
@@ -405,12 +416,12 @@ let run_std_buffered_chars = fun expected_bytes ->
        ])
 
 let run_std_lines = fun expected_bytes expected_lines ->
-  let reader = IO.stdin () |> IO.buffered () in
+  let reader = IO.stdin () |> IO.BufReader.from_reader in
   let rec loop byte_count line_count =
-    match IO.BufferedReader.read_line reader with
-    | Ok "" -> (byte_count, line_count)
-    | Ok line -> loop (byte_count + String.length line) (line_count + 1)
-    | Error error -> panic (IO.error_message error)
+    match IO.BufReader.read_line reader with
+    | Ok line -> loop (byte_count + IO.IoSlice.length line) (line_count + 1)
+    | Error IO.BufReader.End_of_file -> (byte_count, line_count)
+    | Error error -> panic (bufreader_error_message error)
   in
   let (byte_count, line_count) = loop 0 0 in
   if byte_count != expected_bytes || line_count != expected_lines then

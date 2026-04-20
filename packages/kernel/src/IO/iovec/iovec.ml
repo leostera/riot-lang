@@ -27,7 +27,7 @@ let create = fun ?(count = 1) ~size () ->
           in
           match IoSlice.create ~size:chunk with
           | Ok segment -> segment
-          | Error error -> System_error.panic ("Kernel.IO.Iovec.create: " ^ Error.message error)))
+          | Error error -> System_error.panic ("Kernel.IO.IoVec.create: " ^ Error.message error)))
 
 let with_capacity = fun size -> create ~size ()
 

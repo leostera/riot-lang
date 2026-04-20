@@ -1,7 +1,7 @@
 open Global
 module Buffer = StringBuilder
 module Bytes = Kernel.Bytes
-module Iovec = IO.Iovec
+module IoVec = IO.IoVec
 
 type t = Kernel.Fs.File.t
 
@@ -179,56 +179,53 @@ let write_all = fun file str ->
 let metadata = fun file -> wrap_result (Kernel.Fs.File.fstat file)
 
 let to_reader = fun file ->
-  let read_bytes = read in
   let module Read = struct
     type nonrec t = t
 
     type err = error
 
-    let read = fun file ?timeout:_ buf -> read_bytes file buf ~offset:0 ~len:(Bytes.length buf)
+    let read = fun file ~into ->
+      let writable =
+        if IO.Buffer.writable_bytes into = 0 then (
+          match IO.Buffer.ensure_free into 4_096 with
+          | Ok () -> IO.Buffer.writable into
+          | Error error ->
+              Kernel.SystemError.panic
+                ("Fs.File.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
+        ) else
+          IO.Buffer.writable into
+      in
+      match Kernel.Fs.File.read_vectored file (IO.IoVec.from_slices [| writable |]) with
+      | Ok count ->
+          begin
+            match IO.Buffer.commit into count with
+            | Ok () -> Ok count
+            | Error error ->
+                Kernel.SystemError.panic
+                  ("Fs.File.to_reader.commit: " ^ Kernel.IO.Error.message error)
+          end
+      | Error err ->
+          Error err
 
-    let read_vectored = fun file bufs ->
-      let total_len = Iovec.length bufs in
-      let scratch = Bytes.create ~size:total_len in
-      match read_bytes file scratch ~offset:0 ~len:total_len with
-      | Error err -> Error err
-      | Ok read_len ->
-          let copied = ref 0 in
-          Iovec.for_each bufs
-            ~fn:(fun segment ->
-              let remaining = read_len - !copied in
-              if remaining > 0 then
-                let length = Iovec.IoSlice.length segment in
-                let chunk_len = min length remaining in
-                Iovec.IoSlice.blit_from_bytes_unchecked
-                  scratch
-                  ~src_off:!copied
-                  segment
-                  ~dst_off:0
-                  ~len:chunk_len;
-                copied := !copied + chunk_len);
-          Ok read_len
+    let read_vectored = fun file ~into -> Kernel.Fs.File.read_vectored file into
 
-    let direct_string = fun _file -> None
+    let is_read_vectored = fun _file -> true
   end in
-  IO.Reader.of_read_src (module Read) file
+  IO.Reader.from_source (module Read) file
 
 let to_writer = fun file ->
-  let write_bytes = write in
   let module Write = struct
     type nonrec t = t
 
     type err = error
 
-    let write = fun file ~buf -> write_string file buf
+    let write = fun file ~from ->
+      Kernel.Fs.File.write_vectored file (IO.Buffer.to_iovec from)
 
-    let write_owned_vectored = fun file ~bufs ->
-      let total_len = Iovec.length bufs in
-      let scratch = Iovec.to_bytes bufs in
-      write_bytes file scratch ~offset:0 ~len:total_len
+    let write_vectored = fun file ~from -> Kernel.Fs.File.write_vectored file from
 
     let flush = fun _file -> Ok ()
   end in
-  IO.Writer.of_write_src (module Write) file
+  IO.Writer.from_sink (module Write) file
 
 let close = fun file -> wrap_result (Kernel.Fs.File.close file)

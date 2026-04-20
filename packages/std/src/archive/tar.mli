@@ -83,7 +83,7 @@ type 'read_err extract_error =
               | Error _ -> Error "failed to decode tar archive")
     ```
 *)
-val entries: ('src, 'read_err) IO.Reader.t -> (entry list, 'read_err read_error) result
+val entries: 'read_err IO.Reader.t -> (entry list, 'read_err read_error) result
 
 (** Extract a tar archive into a directory.
 
@@ -107,7 +107,7 @@ val entries: ('src, 'read_err) IO.Reader.t -> (entry list, 'read_err read_error)
       | Error _ -> Log.error "failed to extract archive"
     ```
 *)
-val extract: ('src, 'read_err) IO.Reader.t -> into:Path.t -> (unit, 'read_err extract_error) result
+val extract: 'read_err IO.Reader.t -> into:Path.t -> (unit, 'read_err extract_error) result
 
 (** Open a tar archive from disk and list its entries.
 

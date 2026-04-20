@@ -30,7 +30,7 @@
       | Some (key, cursor) ->
           let cursor = Iter.Cursor.advance cursor |> Option.unwrap in
           let value, _ = Iter.Cursor.take_while_string cursor (fun c -> c <> '\r') in
-          Ok (String.trim (Std.IO.Iovec.IoSlice.to_string key), String.trim value) ```
+          Ok (String.trim (Std.IO.IoVec.IoSlice.to_string key), String.trim value) ```
 
     Efficient parsing with {!MutCursor}:
 
@@ -38,7 +38,7 @@
     line in let method_ = Iter.MutCursor.take_while_string cursor (fun c -> c <> ' ')
     in Iter.MutCursor.advance cursor; let path = Iter.MutCursor.take_while cursor
     (fun c -> c <> ' ') in Iter.MutCursor.advance cursor; let version =
-    Iter.MutCursor.remaining_string cursor in (method_, Std.IO.Iovec.IoSlice.to_string path, version) ```
+    Iter.MutCursor.remaining_string cursor in (method_, Std.IO.IoVec.IoSlice.to_string path, version) ```
 
     ## When to Use What
 

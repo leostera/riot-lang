@@ -1,7 +1,8 @@
 open Prelude
 
 module KernelBuffer = Kernel.IO.Buffer
-module IoSlice = Kernel.IO.Iovec.IoSlice
+module IoVec = IoVec
+module IoSlice = IoSlice
 
 type t = KernelBuffer.t
 type error = Kernel.IO.Error.t
@@ -28,6 +29,21 @@ let panic_invalid_range = fun fn ~offset ~length ~total ->
 let create = fun ~size ->
   let size = Kernel.Int.max 0 size in
   panic_result "create" (KernelBuffer.create ~size ())
+
+let from_string = fun source ->
+  let buffer = create ~size:(Kernel.String.length source) in
+  let _ = KernelBuffer.append_string buffer source |> panic_result "from_string" in
+  buffer
+
+let from_bytes = fun source ->
+  let buffer = create ~size:(Kernel.Bytes.length source) in
+  let _ = KernelBuffer.append_bytes buffer source |> panic_result "from_bytes" in
+  buffer
+
+let from_slice = fun source ->
+  let buffer = create ~size:(IoSlice.length source) in
+  let _ = KernelBuffer.append_slice buffer source |> panic_result "from_slice" in
+  buffer
 
 let create_result = KernelBuffer.create
 

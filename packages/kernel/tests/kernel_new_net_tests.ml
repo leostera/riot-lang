@@ -142,7 +142,7 @@ let rec write_all_vectored = fun poll ~token stream iov ~pos ~len ->
   if len = 0 then
     Ok ()
   else
-    let slice = Kernel.IO.Iovec.sub ~pos ~len iov |> Result.unwrap in
+    let slice = Kernel.IO.IoVec.sub ~pos ~len iov |> Result.unwrap in
     match Kernel.Net.TcpStream.write_vectored stream slice with
     | Kernel.Result.Ok written ->
         if written <= 0 then
@@ -177,7 +177,7 @@ let rec read_exact_vectored = fun poll ~token stream iov ~pos ~len ->
   if len = 0 then
     Ok ()
   else
-    let slice = Kernel.IO.Iovec.sub ~pos ~len iov |> Result.unwrap in
+    let slice = Kernel.IO.IoVec.sub ~pos ~len iov |> Result.unwrap in
     match Kernel.Net.TcpStream.read_vectored stream slice with
     | Kernel.Result.Ok read ->
         if read <= 0 then
@@ -339,7 +339,7 @@ let test_tcp_listener_and_stream_roundtrip = fun _ctx ->
         Error "expected tcp peer addresses to line up across connect and accept"
       else
         let ping = Kernel.Bytes.from_string "ping" in
-        let pong = Kernel.IO.Iovec.from_string_array [|"po"; "ng"|] |> Result.unwrap in
+        let pong = Kernel.IO.IoVec.from_string_array [|"po"; "ng"|] |> Result.unwrap in
         let* () = write_all_stream
           poll
           ~token:(Kernel.Async.Token.make 303)
@@ -361,8 +361,8 @@ let test_tcp_listener_and_stream_roundtrip = fun _ctx ->
           server
           pong
           ~pos:0
-          ~len:(Kernel.IO.Iovec.length pong) in
-        let client_buf = Kernel.IO.Iovec.create ~count:2 ~size:4 () |> Result.unwrap in
+          ~len:(Kernel.IO.IoVec.length pong) in
+        let client_buf = Kernel.IO.IoVec.create ~count:2 ~size:4 () |> Result.unwrap in
         let* () = read_exact_vectored
           poll
           ~token:(Kernel.Async.Token.make 306)
@@ -372,7 +372,7 @@ let test_tcp_listener_and_stream_roundtrip = fun _ctx ->
           ~len:4 in
         if
           Kernel.String.equal (Kernel.Bytes.sub_string server_buf ~offset:0 ~len:4) "ping"
-          && Kernel.String.equal (Kernel.IO.Iovec.to_string client_buf) "pong"
+          && Kernel.String.equal (Kernel.IO.IoVec.to_string client_buf) "pong"
         then
           Ok ()
         else
@@ -382,9 +382,9 @@ let test_tcp_vectored_burst_roundtrip_preserves_order = fun _ctx ->
   with_tcp_pair
     (fun ~poll ~listener:_ ~listener_addr:_ ~client ~server ~peer:_ ->
       let parts = [|"a"; "bb"; "ccc"; "dddd"; "eeeee"|] in
-      let outbound = Kernel.IO.Iovec.from_string_array parts |> Result.unwrap in
-      let payload = Kernel.IO.Iovec.to_string outbound in
-      let total = Kernel.IO.Iovec.length outbound in
+      let outbound = Kernel.IO.IoVec.from_string_array parts |> Result.unwrap in
+      let payload = Kernel.IO.IoVec.to_string outbound in
+      let total = Kernel.IO.IoVec.length outbound in
       let inbound = Kernel.Bytes.create ~size:total in
       let rec write_many remaining =
         if remaining = 0 then

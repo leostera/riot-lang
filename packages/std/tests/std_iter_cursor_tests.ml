@@ -1,7 +1,7 @@
 open Std
 
 module Cursor = Iter.Cursor
-module IoSlice = IO.Iovec.IoSlice
+module IoSlice = IO.IoVec.IoSlice
 
 let is_digit = fun ch -> Char.code ch >= Char.code '0' && Char.code ch <= Char.code '9'
 

@@ -148,9 +148,9 @@ module FFI = struct
 
   external write: t -> bytes -> int -> int -> (int, int) Result.t = "kernel_new_fs_file_write"
 
-  external readv: t -> IO.Iovec.t -> (int, int) Result.t = "kernel_new_fs_file_readv"
+  external readv: t -> IO.IoVec.t -> (int, int) Result.t = "kernel_new_fs_file_readv"
 
-  external writev: t -> IO.Iovec.t -> (int, int) Result.t = "kernel_new_fs_file_writev"
+  external writev: t -> IO.IoVec.t -> (int, int) Result.t = "kernel_new_fs_file_writev"
 
   external pipe: unit -> ((t * t), int) Result.t = "kernel_new_fs_file_pipe"
 

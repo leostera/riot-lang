@@ -33,9 +33,9 @@ val read: t -> ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
 
 val write: t -> ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
 
-val read_vectored: t -> IO.Iovec.t -> (int, error) Result.t
+val read_vectored: t -> IO.IoVec.t -> (int, error) Result.t
 
-val write_vectored: t -> IO.Iovec.t -> (int, error) Result.t
+val write_vectored: t -> IO.IoVec.t -> (int, error) Result.t
 
 val local_addr: t -> (Socket_addr.t, error) Result.t
 

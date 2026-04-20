@@ -2,23 +2,23 @@ open Kernel
 
 external md5_bytes: bytes -> bytes = "std_crypto_md5"
 
-external md5_iovec_bytes: IO.Iovec.t -> bytes = "std_crypto_md5_iovec"
+external md5_iovec_bytes: IO.IoVec.t -> bytes = "std_crypto_md5_iovec"
 
 external sha1_bytes: bytes -> bytes = "std_crypto_sha1"
 
-external sha1_iovec_bytes: IO.Iovec.t -> bytes = "std_crypto_sha1_iovec"
+external sha1_iovec_bytes: IO.IoVec.t -> bytes = "std_crypto_sha1_iovec"
 
 external sha256_bytes: bytes -> bytes = "std_crypto_sha256"
 
-external sha256_iovec_bytes: IO.Iovec.t -> bytes = "std_crypto_sha256_iovec"
+external sha256_iovec_bytes: IO.IoVec.t -> bytes = "std_crypto_sha256_iovec"
 
 external sha512_bytes: bytes -> bytes = "std_crypto_sha512"
 
-external sha512_iovec_bytes: IO.Iovec.t -> bytes = "std_crypto_sha512_iovec"
+external sha512_iovec_bytes: IO.IoVec.t -> bytes = "std_crypto_sha512_iovec"
 
 external simple_hash_bytes: bytes -> bytes = "std_crypto_simple_hash"
 
-external simple_hash_iovec_bytes: IO.Iovec.t -> bytes = "std_crypto_simple_hash_iovec"
+external simple_hash_iovec_bytes: IO.IoVec.t -> bytes = "std_crypto_simple_hash_iovec"
 
 external hmac_sha256_bytes: string -> string -> bytes = "std_crypto_hmac_sha256"
 

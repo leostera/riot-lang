@@ -6,7 +6,7 @@ module Request = Std.Net.Http.Request
 module Response = Std.Net.Http.Response
 module Status = Std.Net.Http.Status
 module Uri = Std.Net.Uri
-module IoSlice = IO.Iovec.IoSlice
+module IoSlice = IO.IoVec.IoSlice
 
 let test_body_from_string = fun _ctx ->
   let body = Body.from_string "hello" in

@@ -50,9 +50,9 @@ module FFI = struct
 
   external write: int -> bytes -> int -> int -> (int, int) Result.t = "kernel_new_net_tcp_stream_write"
 
-  external readv: int -> IO.Iovec.t -> (int, int) Result.t = "kernel_new_net_tcp_stream_readv"
+  external readv: int -> IO.IoVec.t -> (int, int) Result.t = "kernel_new_net_tcp_stream_readv"
 
-  external writev: int -> IO.Iovec.t -> (int, int) Result.t = "kernel_new_net_tcp_stream_writev"
+  external writev: int -> IO.IoVec.t -> (int, int) Result.t = "kernel_new_net_tcp_stream_writev"
 
   external local_addr: int -> ((string * int), int) Result.t = "kernel_new_net_socket_local_addr"
 

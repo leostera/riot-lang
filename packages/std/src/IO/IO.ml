@@ -1,11 +1,13 @@
 open Prelude
-let panic = Kernel.SystemError.panic
+
+module Types = Types
 module Buffer = Buffer
 module Bytes = Bytes
-module Iovec = Kernel.IO.Iovec
+module IoSlice = IoSlice
+module IoVec = IoVec
 module IoBuffer = Kernel.IO.Buffer
 module Reader = Reader
-module BufferedReader = Buffered_reader
+module BufReader = Buf_reader
 module Writer = Writer
 module Error = Error
 module Stdin = Stdin
@@ -93,9 +95,7 @@ type file_kind =
   | Socket
 
 let of_system_error = Error.of_system_error
-
 let of_async_error = Error.of_async_error
-
 let error_message = Error.message
 
 let stdin = fun ?chunk_size () ->
@@ -107,71 +107,14 @@ let stdout = fun () ->
 let stderr = fun () ->
   Stderr.to_writer ()
 
-let buffered = fun ?chunk_size () reader ->
-  BufferedReader.of_reader ?chunk_size reader
-
-let read = fun reader ?timeout ?(offset = 0) ?len buffer ->
-  let buffer_len = Bytes.length buffer in
-  let len =
-    match len with
-    | Some len -> len
-    | None -> buffer_len - offset
-  in
-  if offset < 0 || len < 0 || offset + len > buffer_len then
-    panic "Std.IO.read: invalid buffer slice";
-  if offset = 0 && len = buffer_len then
-    Reader.read reader ?timeout buffer
-  else
-    match timeout with
-    | Some timeout ->
-        let tmp = Bytes.create ~size:len in
-        (
-          match Reader.read reader ~timeout tmp with
-          | Ok count ->
-              Bytes.blit_unchecked tmp ~src_offset:0 ~dst:buffer ~dst_offset:offset ~len:count;
-              Ok count
-          | Error _ as error -> error
-        )
-    | None ->
-        let tmp =
-          match Iovec.with_capacity len with
-          | Ok tmp -> tmp
-          | Error error ->
-              Kernel.SystemError.panic ("Std.IO.read: " ^ Kernel.IO.Error.message error)
-        in
-        (
-          match Reader.read_vectored reader tmp with
-          | Ok count ->
-              let src = Iovec.to_bytes tmp in
-              Bytes.blit_unchecked src ~src_offset:0 ~dst:buffer ~dst_offset:offset ~len:count;
-              Ok count
-          | Error _ as error -> error
-        )
-
+let read = Reader.read
 let read_vectored = Reader.read_vectored
-
-let read_char = Reader.read_char
-
-let read_line = Reader.read_line
-
+let is_read_vectored = Reader.is_read_vectored
+let read_to_end = Reader.read_to_end
 let read_to_string = Reader.read_to_string
 
-let read_into_buffer = Reader.read_into_buffer
-
-let read_all_into_buffer = Reader.read_all_into_buffer
-
-let read_to_end = Reader.read_to_end
-
 let write = Writer.write
-
+let write_vectored = Writer.write_vectored
 let write_all = Writer.write_all
-
-let write_buffer = Writer.write_buffer
-
-let write_all_buffer = Writer.write_all_buffer
-
-let write_owned_vectored = Writer.write_owned_vectored
-
 let write_all_vectored = Writer.write_all_vectored
-
 let flush = Writer.flush

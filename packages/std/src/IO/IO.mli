@@ -1,5 +1,7 @@
 open Prelude
 
+module Types = Types
+
 type error = Error.t =
   | End_of_file
   | Timeout
@@ -68,7 +70,9 @@ type error = Error.t =
   | Operation_already_in_progress
   | Operation_now_in_progress
   | Unknown_error of string
+
 type nonrec 'value io_result = ('value, error) result
+
 type file_kind =
   | Regular
   | Directory
@@ -77,99 +81,61 @@ type file_kind =
   | Character
   | Fifo
   | Socket
+
 val of_system_error: Kernel.SystemError.t -> error
 
 val of_async_error: Kernel.Async.error -> error
 
 val error_message: error -> string
 
+module Error = Error
 module Buffer: module type of Buffer
-
 module Bytes: module type of Bytes
-
-module Iovec = Kernel.IO.Iovec
-
+module IoSlice: module type of IoSlice
+module IoVec: module type of IoVec
 module IoBuffer: module type of Kernel.IO.Buffer
-
 module Reader = Reader
-module BufferedReader = Buffered_reader
-
+module BufReader = Buf_reader
 module Writer = Writer
 
 module Stdin: sig
   type t
   type nonrec error = error
+
   val open_: ?chunk_size:int -> unit -> t
-
-  val read: t -> ?offset:int -> ?len:int -> Bytes.t -> (int, error) result
-
-  val read_vectored: t -> Iovec.t -> (int, error) result
-
-  val to_reader: t -> (t, error) Reader.t
+  val read: t -> into:Buffer.t -> (int, error) result
+  val read_vectored: t -> into:IoVec.t -> (int, error) result
+  val to_reader: t -> error Reader.t
 end
-
-val stdin: ?chunk_size:int -> unit -> (Stdin.t, error) Reader.t
-
-val stdout: unit -> (Stdout.t, error) Writer.t
-
-val stderr: unit -> (Stderr.t, error) Writer.t
-
-val buffered:
-  ?chunk_size:int ->
-  unit ->
-  ('src, 'err) Reader.t ->
-  ('src, 'err) BufferedReader.t
 
 module Stdout: sig
   type nonrec error = error
-  val write: ?offset:int -> ?len:int -> Bytes.t -> (int, error) result
 
-  val write_vectored: Iovec.t -> (int, error) result
-
+  val write: from:Buffer.t -> (int, error) result
+  val write_vectored: from:IoVec.t -> (int, error) result
   val flush: unit -> (unit, error) result
 end
 
 module Stderr: sig
   type nonrec error = error
-  val write: ?offset:int -> ?len:int -> Bytes.t -> (int, error) result
 
-  val write_vectored: Iovec.t -> (int, error) result
-
+  val write: from:Buffer.t -> (int, error) result
+  val write_vectored: from:IoVec.t -> (int, error) result
   val flush: unit -> (unit, error) result
 end
 
-val read:
-  ('src, 'err) Reader.t ->
-  ?timeout:int64 ->
-  ?offset:int ->
-  ?len:int ->
-  bytes ->
-  (int, 'err) result
+val stdin: ?chunk_size:int -> unit -> error Reader.t
+val stdout: unit -> error Writer.t
+val stderr: unit -> error Writer.t
 
-val read_vectored: ('src, 'err) Reader.t -> Iovec.t -> (int, 'err) result
+val read: 'err Reader.t -> into:Buffer.t -> (int, 'err) result
+val read_vectored: 'err Reader.t -> into:IoVec.t -> (int, 'err) result
+val is_read_vectored: 'err Reader.t -> bool
+val read_to_end: 'err Reader.t -> into:Buffer.t -> (int, 'err) result
+val read_to_string: 'err Reader.t -> into:StringBuilder.t -> (int, 'err) result
 
-val read_char: ('src, 'err) Reader.t -> (char option, 'err) result
-
-val read_line: ('src, 'err) Reader.t -> (string, 'err) result
-
-val read_to_string: ('src, 'err) Reader.t -> len:int -> (string, 'err) result
-
-val read_into_buffer: ('src, 'err) Reader.t -> buf:Buffer.t -> (int, 'err) result
-
-val read_all_into_buffer: ('src, 'err) Reader.t -> buf:Buffer.t -> (int, 'err) result
-
-val read_to_end: ('src, 'err) Reader.t -> buf:Buffer.t -> (int, 'err) result
-
-val write: ('dst, 'err) Writer.t -> buf:string -> (int, 'err) result
-
-val write_all: ('dst, 'err) Writer.t -> buf:string -> (unit, 'err) result
-
-val write_buffer: ('dst, 'err) Writer.t -> buf:Buffer.t -> (int, 'err) result
-
-val write_all_buffer: ('dst, 'err) Writer.t -> buf:Buffer.t -> (unit, 'err) result
-
-val write_owned_vectored: ('dst, 'err) Writer.t -> bufs:Iovec.t -> (int, 'err) result
-
-val write_all_vectored: ('dst, 'err) Writer.t -> bufs:Iovec.t -> (unit, 'err) result
-
-val flush: ('dst, 'err) Writer.t -> (unit, 'err) result
+val write: 'err Writer.t -> from:Buffer.t -> (int, 'err) result
+val write_vectored: 'err Writer.t -> from:IoVec.t -> (int, 'err) result
+val write_all: 'err Writer.t -> from:Buffer.t -> (unit, 'err) result
+val write_all_vectored: 'err Writer.t -> from:IoVec.t -> (unit, 'err) result
+val flush: 'err Writer.t -> (unit, 'err) result

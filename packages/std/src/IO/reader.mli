@@ -1,50 +1,52 @@
-open Kernel
+open Prelude
+open Types
+
+module IoVec = IoVec
 
 module type Read = sig
   type t
   type err
-  val read: t -> ?timeout:int64 -> bytes -> (int, err) result
 
-  val read_vectored: t -> Kernel.IO.Iovec.t -> (int, err) result
+  val read: t -> into:Buffer.t -> (int, err) result
+
+  val read_vectored: t -> into:IoVec.t -> (int, err) result
+
+  val is_read_vectored: t -> bool
 end
 
-type ('src, 'err) read = (module Read with type t = 'src and type err = 'err)
-type ('src, 'err) buffered
-type ('src, 'err) t
+type ('src, 'err) source = (module Read with type t = 'src and type err = 'err)
+type 'err t
 
-val make:
-  read:('src -> ?timeout:int64 -> bytes -> (int, 'err) result) ->
-  read_vectored:('src -> Kernel.IO.Iovec.t -> (int, 'err) result) ->
-  'src ->
-  ('src, 'err) t
+type 'err exact_error =
+  | Source_error of 'err
+  | Unexpected_end_of_file
 
-val of_read_src: ('src, 'err) read -> 'src -> ('src, 'err) t
+type 'err byte_result = (u8, 'err) result
 
-val buffered:
-  ?chunk_size:int ->
-  ('src, 'err) t ->
-  (('src, 'err) buffered, 'err) t
+val from_source: ('src, 'err) source -> 'src -> 'err t
 
-val read: ('src, 'err) t -> ?timeout:int64 -> bytes -> (int, 'err) result
+val read: 'err t -> into:Buffer.t -> (int, 'err) result
 
-val read_vectored: ('src, 'err) t -> Kernel.IO.Iovec.t -> (int, 'err) result
+val read_vectored: 'err t -> into:IoVec.t -> (int, 'err) result
 
-val read_char: ('src, 'err) t -> (char option, 'err) result
+val is_read_vectored: 'err t -> bool
 
-val read_line: ('src, 'err) t -> (string, 'err) result
+val read_to_end: 'err t -> into:Buffer.t -> (int, 'err) result
 
-val read_to_string: ('src, 'err) t -> len:int -> (string, 'err) result
+val read_to_string: 'err t -> into:StringBuilder.t -> (int, 'err) result
 
-val read_into_buffer: ('src, 'err) t -> buf:Buffer.t -> (int, 'err) result
+val read_exact: 'err t -> into:Buffer.t -> len:int -> (unit, 'err exact_error) result
 
-val read_all_into_buffer: ('src, 'err) t -> buf:Buffer.t -> (int, 'err) result
+val bytes: 'err t -> 'err byte_result Iter.Iterator.t
 
-val read_to_end: ('src, 'err) t -> buf:Buffer.t -> (int, 'err) result
+val chain: 'err t -> 'err t -> 'err t
 
-val map_err: ('src, 'a) t -> fn:('a -> 'b) -> ('src, 'b) t
+val take: 'err t -> limit:int -> 'err t
 
-val empty: (unit, unit) t
+val map_err: 'a t -> fn:('a -> 'b) -> 'b t
 
-val from_bytes: bytes -> (bytes, unit) t
+val empty: unit t
 
-val from_string: string -> (string, unit) t
+val from_bytes: bytes -> unit t
+
+val from_string: string -> unit t

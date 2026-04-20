@@ -59,10 +59,10 @@ val read: t -> ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
 val write: t -> ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
 
 (** Use `read_vectored stream iov` for one nonblocking vectored read attempt. *)
-val read_vectored: t -> IO.Iovec.t -> (int, error) Result.t
+val read_vectored: t -> IO.IoVec.t -> (int, error) Result.t
 
 (** Use `write_vectored stream iov` for one nonblocking vectored write attempt. *)
-val write_vectored: t -> IO.Iovec.t -> (int, error) Result.t
+val write_vectored: t -> IO.IoVec.t -> (int, error) Result.t
 
 (** Use `local_addr stream` to inspect the bound local socket address immediately. *)
 val local_addr: t -> (Socket_addr.t, error) Result.t

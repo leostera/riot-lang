@@ -170,7 +170,7 @@ val with_body: t -> string -> t
 val with_body_data: t -> Body.t -> t
 
 (** Returns a new request with a borrowed slice body. *)
-val with_body_slice: t -> IO.Iovec.IoSlice.t -> t
+val with_body_slice: t -> IO.IoVec.IoSlice.t -> t
 
 (** Returns a new request without a body.
 
@@ -255,7 +255,7 @@ module Builder: sig
   val body_data: t -> Body.t -> t
 
   (** Sets the request body from a borrowed slice. *)
-  val body_slice: t -> IO.Iovec.IoSlice.t -> t
+  val body_slice: t -> IO.IoVec.IoSlice.t -> t
 
   val build: t -> request
 

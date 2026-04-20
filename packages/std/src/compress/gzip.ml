@@ -18,8 +18,8 @@ type error =
   | Engine_error of Engine.error
   | Truncated_input
 
-type ('src, 'read_err) reader = {
-  src: ('src, 'read_err) Reader.t;
+type 'read_err reader = {
+  src: 'read_err Reader.t;
   decoder: Engine.decoder;
   mutable input: Bytes.t;
   mutable input_pos: int;
@@ -65,11 +65,11 @@ let error_to_string = function
   | Engine_error err -> string_of_engine_error err
   | Truncated_input -> "truncated gzip input"
 
-let buffered_input = fun (t: (_, _) reader) -> t.input_len - t.input_pos
+let buffered_input = fun (t: _ reader) -> t.input_len - t.input_pos
 
-let buffered_output = fun (t: (_, _) reader) -> t.output_len - t.output_pos
+let buffered_output = fun (t: _ reader) -> t.output_len - t.output_pos
 
-let compact_input = fun (t: (_, _) reader) ->
+let compact_input = fun (t: _ reader) ->
   if t.input_pos = 0 then
     ()
   else if t.input_pos >= t.input_len then
@@ -85,7 +85,7 @@ let compact_input = fun (t: (_, _) reader) ->
       t.input_len <- remaining
     )
 
-let ensure_input_capacity = fun (t: (_, _) reader) ->
+let ensure_input_capacity = fun (t: _ reader) ->
   let available = Bytes.length t.input - t.input_len in
   if available > 0 then
     ()
@@ -98,23 +98,24 @@ let ensure_input_capacity = fun (t: (_, _) reader) ->
     t.input_pos <- 0;
     t.input_len <- buffered
 
-let refill_input = fun (t: (_, _) reader) ->
+let refill_input = fun (t: _ reader) ->
   compact_input t;
   ensure_input_capacity t;
   let available = Bytes.length t.input - t.input_len in
-  let chunk = Bytes.create ~size:available in
-  match IO.read t.src chunk with
+  let chunk = Buffer.create ~size:available in
+  match IO.read t.src ~into:chunk with
   | Ok 0 ->
       t.source_eof <- true;
       Ok false
   | Ok bytes_read ->
-      Bytes.blit_unchecked chunk ~src_offset:0 ~dst:t.input ~dst_offset:t.input_len ~len:bytes_read;
+      let chunk_bytes = Buffer.to_bytes chunk in
+      Bytes.blit_unchecked chunk_bytes ~src_offset:0 ~dst:t.input ~dst_offset:t.input_len ~len:bytes_read;
       t.input_len <- t.input_len + bytes_read;
       Ok true
   | Error err ->
       Error (Source_error err)
 
-let read_into = fun (t: (_, _) reader) dst ->
+let read_into = fun (t: _ reader) dst ->
   let copy_from_output () =
     let available = buffered_output t in
     let to_copy = min available (Bytes.length dst) in
@@ -189,8 +190,7 @@ let read_into = fun (t: (_, _) reader) dst ->
   loop ()
 
 let to_reader:
-  type src read_err. (src, read_err) Reader.t ->
-  ((src, read_err) reader, read_err read_error) Reader.t = fun src ->
+  type read_err. read_err Reader.t -> read_err read_error Reader.t = fun src ->
   let decoder =
     match Engine.create_decoder () with
     | Ok decoder -> decoder
@@ -210,26 +210,45 @@ let to_reader:
   }
   in
   let module Read = struct
-    type t = (src, read_err) reader
+    type t = read_err reader
 
     type err = read_err read_error
 
-    let read = fun t ?timeout:_ buf -> read_into t buf
+    let read = fun t ~into ->
+      let requested =
+        let writable = Buffer.writable_bytes into in
+        if writable = 0 then
+          4_096
+        else
+          writable
+      in
+      let scratch = Bytes.create ~size:requested in
+      match read_into t scratch with
+      | Error err ->
+          Error err
+      | Ok read_len ->
+          let chunk = Bytes.sub_unchecked scratch ~offset:0 ~len:read_len in
+          begin
+            match Buffer.append_bytes into chunk with
+            | Ok () -> Ok read_len
+            | Error error ->
+                panic ("Compress.Gzip.to_reader.read: " ^ Kernel.IO.Error.message error)
+          end
 
-    let read_vectored = fun t bufs ->
-      let total_len = Iovec.length bufs in
+    let read_vectored = fun t ~into:bufs ->
+      let total_len = IoVec.length bufs in
       let scratch = Bytes.create ~size:total_len in
       match read_into t scratch with
       | Error err -> Error err
       | Ok read_len ->
           let copied = ref 0 in
-          Iovec.for_each
+          IoVec.for_each
             ~fn:(fun segment ->
               let remaining = read_len - !copied in
               if remaining > 0 then
-                let length = Iovec.IoSlice.length segment in
+                let length = IoVec.IoSlice.length segment in
                 let chunk_len = min length remaining in
-                Iovec.IoSlice.blit_from_bytes_unchecked
+                IoVec.IoSlice.blit_from_bytes_unchecked
                   scratch
                   ~src_off:!copied
                   segment
@@ -239,9 +258,9 @@ let to_reader:
             bufs;
           Ok read_len
 
-    let direct_string = fun _t -> None
+    let is_read_vectored = fun _t -> true
   end in
-  Reader.of_read_src (module Read) state
+  Reader.from_source (module Read) state
 
 let buffer_writer =
   let module Write = struct
@@ -249,23 +268,27 @@ let buffer_writer =
 
     type err = unit
 
-    let write = fun buffer ~buf ->
-      Buffer.add_string buffer buf;
-      Ok (String.length buf)
+    let write = fun buffer ~from ->
+      begin
+        match Buffer.append_slice buffer (Buffer.readable from) with
+        | Ok () -> Ok (Buffer.readable_bytes from)
+        | Error error ->
+            panic ("Compress.Gzip.buffer_writer.write: " ^ Kernel.IO.Error.message error)
+      end
 
-    let write_owned_vectored = fun buffer ~bufs ->
+    let write_vectored = fun buffer ~from:bufs ->
       let written = ref 0 in
-      Iovec.for_each
+      IoVec.for_each
         ~fn:(fun segment ->
-          Buffer.add_string buffer (Iovec.IoSlice.to_string segment);
-          written := !written + Iovec.IoSlice.length segment)
+          Buffer.add_string buffer (IoVec.IoSlice.to_string segment);
+          written := !written + IoVec.IoSlice.length segment)
         bufs;
       Ok !written
 
     let flush = fun _buffer -> Ok ()
   end in
   fun buffer ->
-    Writer.of_write_src (module Write) buffer
+    Writer.from_sink (module Write) buffer
 
 let compress = fun src dst ->
   let encoder =
@@ -280,9 +303,13 @@ let compress = fun src dst ->
       let rec encode_loop ~source_eof ~src_pos ~src_len ~chunk_count =
         let available_src = src_len - src_pos in
         if not source_eof && available_src = 0 then
-          match IO.read src src_buf with
+          let input = Buffer.create ~size:input_buffer_size in
+          match IO.read src ~into:input with
           | Ok 0 -> encode_loop ~source_eof:true ~src_pos:0 ~src_len:0 ~chunk_count
-          | Ok bytes_read -> encode_loop ~source_eof:false ~src_pos:0 ~src_len:bytes_read ~chunk_count
+          | Ok bytes_read ->
+              let bytes = Buffer.to_bytes input in
+              Bytes.blit_unchecked bytes ~src_offset:0 ~dst:src_buf ~dst_offset:0 ~len:bytes_read;
+              encode_loop ~source_eof:false ~src_pos:0 ~src_len:bytes_read ~chunk_count
           | Error err -> Error (Stream_source_error err)
         else
           let flush =
@@ -308,8 +335,8 @@ let compress = fun src dst ->
                 if step.produced = 0 then
                   Ok ()
                 else
-                  let buf = Bytes.sub_unchecked dst_buf ~offset:0 ~len:step.produced |> Bytes.to_string in
-                  IO.write_all dst ~buf
+                  let buf = Bytes.sub_unchecked dst_buf ~offset:0 ~len:step.produced |> Buffer.from_bytes in
+                  IO.write_all dst ~from:buf
                   |> Result.map_err ~fn:(fun err -> Stream_destination_error err)
               in
               let next_chunk_count =
@@ -346,9 +373,10 @@ let compress = fun src dst ->
 
 let decompress = fun src dst ->
   let gzip_reader = to_reader src in
-  let chunk = Bytes.create ~size:input_buffer_size in
+  let chunk = Buffer.create ~size:input_buffer_size in
   let rec loop chunk_count =
-    match IO.read gzip_reader chunk with
+    Buffer.clear chunk;
+    match IO.read gzip_reader ~into:chunk with
     | Ok 0 ->
         IO.flush dst |> Result.map_err ~fn:(fun err -> Stream_destination_error err)
     | Ok bytes_read ->
@@ -356,8 +384,7 @@ let decompress = fun src dst ->
           if chunk_count > 0 && Int.rem chunk_count 32 = 0 then
             yield ()
         in
-        let buf = Bytes.sub_unchecked chunk ~offset:0 ~len:bytes_read |> Bytes.to_string in
-        let* () = IO.write_all dst ~buf
+        let* () = IO.write_all dst ~from:chunk
         |> Result.map_err ~fn:(fun err -> Stream_destination_error err) in
         loop (chunk_count + 1)
     | Error (Source_error err) ->
@@ -425,7 +452,7 @@ let compress_string = fun data ->
 let decompress_string = fun data ->
   let gzip_reader = to_reader (Reader.from_string data) in
   let buffer = Buffer.create ~size:128 in
-  match Reader.read_all_into_buffer gzip_reader ~buf:buffer with
+  match Reader.read_to_end gzip_reader ~into:buffer with
   | Ok _ -> Ok (Buffer.contents buffer)
   | Error (Source_error ()) -> Error (Engine_error (Engine.Unknown_error "unexpected in-memory source error"))
   | Error (Gzip_error err) -> Error err

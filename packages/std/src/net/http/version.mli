@@ -51,7 +51,7 @@ val of_string: string -> (t, [
   ]) Kernel.result
 
 (** Parses an HTTP version from a borrowed slice without materializing a string first. *)
-val from_slice: IO.Iovec.IoSlice.t -> (t, [
+val from_slice: IO.IoVec.IoSlice.t -> (t, [
     `InvalidVersion
   ]) Kernel.result
 

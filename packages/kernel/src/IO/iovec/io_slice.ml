@@ -80,7 +80,7 @@ let sub = fun value ~off ~len ->
 let sub_unchecked = fun value ~off ~len ->
   match sub value ~off ~len with
   | Ok slice -> slice
-  | Error error -> System_error.panic ("Kernel.IO.Iovec.IoSlice.sub_unchecked: " ^ Error.message error)
+  | Error error -> System_error.panic ("Kernel.IO.IoVec.IoSlice.sub_unchecked: " ^ Error.message error)
 
 let shift = fun value by ->
   let value_len = length value in
@@ -92,7 +92,7 @@ let shift = fun value by ->
 let shift_unchecked = fun value by ->
   match shift value by with
   | Ok slice -> slice
-  | Error error -> System_error.panic ("Kernel.IO.Iovec.IoSlice.shift_unchecked: " ^ Error.message error)
+  | Error error -> System_error.panic ("Kernel.IO.IoVec.IoSlice.shift_unchecked: " ^ Error.message error)
 
 let split_at = fun value at ->
   let value_len = length value in
@@ -104,7 +104,7 @@ let split_at = fun value at ->
 let split_at_unchecked = fun value at ->
   match split_at value at with
   | Ok slices -> slices
-  | Error error -> System_error.panic ("Kernel.IO.Iovec.IoSlice.split_at_unchecked: " ^ Error.message error)
+  | Error error -> System_error.panic ("Kernel.IO.IoVec.IoSlice.split_at_unchecked: " ^ Error.message error)
 
 let get = fun value ~at ->
   match validate_index (length value) at with
@@ -114,7 +114,7 @@ let get = fun value ~at ->
 let get_unchecked = fun value ~at ->
   match get value ~at with
   | Ok char -> char
-  | Error error -> System_error.panic ("Kernel.IO.Iovec.IoSlice.get_unchecked: " ^ Error.message error)
+  | Error error -> System_error.panic ("Kernel.IO.IoVec.IoSlice.get_unchecked: " ^ Error.message error)
 
 let set = fun value ~at char ->
   match validate_index (length value) at with
@@ -126,7 +126,7 @@ let set = fun value ~at char ->
 let set_unchecked = fun value ~at char ->
   match set value ~at char with
   | Ok () -> ()
-  | Error error -> System_error.panic ("Kernel.IO.Iovec.IoSlice.set_unchecked: " ^ Error.message error)
+  | Error error -> System_error.panic ("Kernel.IO.IoVec.IoSlice.set_unchecked: " ^ Error.message error)
 
 let validate_bytes_range = fun buffer_len ~off ~len ->
   if off < 0 then
@@ -152,7 +152,7 @@ let blit = fun ~src ~src_off ~dst ~dst_off ~len ->
 let blit_unchecked = fun ~src ~src_off ~dst ~dst_off ~len ->
   match blit ~src ~src_off ~dst ~dst_off ~len with
   | Ok () -> ()
-  | Error error -> System_error.panic ("Kernel.IO.Iovec.IoSlice.blit_unchecked: " ^ Error.message error)
+  | Error error -> System_error.panic ("Kernel.IO.IoVec.IoSlice.blit_unchecked: " ^ Error.message error)
 
 let blit_from_bytes = fun src ~src_off dst ~dst_off ~len ->
   match validate_bytes_range (Bytes.length src) ~off:src_off ~len with
@@ -168,7 +168,7 @@ let blit_from_bytes = fun src ~src_off dst ~dst_off ~len ->
 let blit_from_bytes_unchecked = fun src ~src_off dst ~dst_off ~len ->
   match blit_from_bytes src ~src_off dst ~dst_off ~len with
   | Ok () -> ()
-  | Error error -> System_error.panic ("Kernel.IO.Iovec.IoSlice.blit_from_bytes_unchecked: " ^ Error.message error)
+  | Error error -> System_error.panic ("Kernel.IO.IoVec.IoSlice.blit_from_bytes_unchecked: " ^ Error.message error)
 
 let blit_from_string = fun src ~src_off dst ~dst_off ~len ->
   match validate_bytes_range (String.length src) ~off:src_off ~len with
@@ -184,7 +184,7 @@ let blit_from_string = fun src ~src_off dst ~dst_off ~len ->
 let blit_from_string_unchecked = fun src ~src_off dst ~dst_off ~len ->
   match blit_from_string src ~src_off dst ~dst_off ~len with
   | Ok () -> ()
-  | Error error -> System_error.panic ("Kernel.IO.Iovec.IoSlice.blit_from_string_unchecked: " ^ Error.message error)
+  | Error error -> System_error.panic ("Kernel.IO.IoVec.IoSlice.blit_from_string_unchecked: " ^ Error.message error)
 
 let blit_to_bytes = fun src ~src_off dst ~dst_off ~len ->
   match validate_range (length src) ~off:src_off ~len with
@@ -200,7 +200,7 @@ let blit_to_bytes = fun src ~src_off dst ~dst_off ~len ->
 let blit_to_bytes_unchecked = fun src ~src_off dst ~dst_off ~len ->
   match blit_to_bytes src ~src_off dst ~dst_off ~len with
   | Ok () -> ()
-  | Error error -> System_error.panic ("Kernel.IO.Iovec.IoSlice.blit_to_bytes_unchecked: " ^ Error.message error)
+  | Error error -> System_error.panic ("Kernel.IO.IoVec.IoSlice.blit_to_bytes_unchecked: " ^ Error.message error)
 
 let from_string = fun ?(off = 0) ?len value ->
   let len =

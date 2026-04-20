@@ -10,7 +10,7 @@ type error =
 val error_to_string: error -> string
 
 (** Opaque reader state produced by [`to_reader`]. *)
-type ('src, 'read_err) reader
+type 'read_err reader
 (** Errors returned by the reader produced from a gzip source. *)
 type 'read_err read_error =
   | Source_error of 'read_err
@@ -58,7 +58,7 @@ type file_error =
     ```
 *)
 val to_reader:
-  ('src, 'read_err) IO.Reader.t -> (('src, 'read_err) reader, 'read_err read_error) IO.Reader.t
+  'read_err IO.Reader.t -> 'read_err read_error IO.Reader.t
 
 (** Stream-compress data from a reader into a gzip writer.
 
@@ -78,8 +78,8 @@ val to_reader:
     ```
 *)
 val compress:
-  ('src, 'read_err) IO.Reader.t ->
-  ('dst, 'write_err) IO.Writer.t ->
+  'read_err IO.Reader.t ->
+  'write_err IO.Writer.t ->
   (unit, ('read_err, 'write_err) stream_error) result
 
 (** Stream-decompress gzip data from a reader into a writer.
@@ -99,8 +99,8 @@ val compress:
     ```
 *)
 val decompress:
-  ('src, 'read_err) IO.Reader.t ->
-  ('dst, 'write_err) IO.Writer.t ->
+  'read_err IO.Reader.t ->
+  'write_err IO.Writer.t ->
   (unit, ('read_err, 'write_err) stream_error) result
 
 (** Compress a file into gzip format.

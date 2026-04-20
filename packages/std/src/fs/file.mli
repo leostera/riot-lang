@@ -53,8 +53,8 @@ val metadata: t -> (Metadata.t, error) result
 
 val to_source: t -> Kernel.Async.Source.t
 
-val to_reader: t -> (t, error) IO.Reader.t
+val to_reader: t -> error IO.Reader.t
 
-val to_writer: t -> (t, error) IO.Writer.t
+val to_writer: t -> error IO.Writer.t
 
 val close: t -> (unit, error) result

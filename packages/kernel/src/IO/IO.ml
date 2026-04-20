@@ -1,5 +1,5 @@
 module Error = Error
-module Iovec = Iovec
+module IoVec = IoVec
 module Buffer = Buffer
 module Stdin = Stdio.Stdin
 module Stdout = Stdio.Stdout

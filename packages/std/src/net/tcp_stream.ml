@@ -99,11 +99,39 @@ let to_reader = fun stream ->
 
     type nonrec err = error
 
-    let read = fun t ?timeout:_ buf ->
-      (* Note: timeout parameter ignored for now - Actors handles suspension *)
-      read t buf ()
+    let read = fun t ~into ->
+      let writable =
+        if IO.Buffer.writable_bytes into = 0 then (
+          match IO.Buffer.ensure_free into 4_096 with
+          | Ok () -> IO.Buffer.writable into
+          | Error error ->
+              Kernel.SystemError.panic
+                ("Net.TcpStream.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
+        ) else
+          IO.Buffer.writable into
+      in
+      let source = Kernel.Net.TcpStream.to_source t in
+      let rec loop () =
+        match Kernel.Net.TcpStream.read_vectored t (IO.IoVec.from_slices [| writable |]) with
+        | Ok n ->
+            begin
+              match IO.Buffer.commit into n with
+              | Ok () -> Ok n
+              | Error error ->
+                  Kernel.SystemError.panic
+                    ("Net.TcpStream.to_reader.commit: " ^ Kernel.IO.Error.message error)
+            end
+        | Error Kernel.Net.TcpStream.WouldBlock ->
+            Runtime.syscall
+              ~name:"TcpStream.read"
+              ~interest:Interest.readable
+              ~source
+              loop
+        | Error err -> Error (System_error (io_error_of_tcp_error err))
+      in
+      loop ()
 
-    let read_vectored = fun t bufs ->
+    let read_vectored = fun t ~into:bufs ->
       let source = Kernel.Net.TcpStream.to_source t in
       let rec loop () =
         match Kernel.Net.TcpStream.read_vectored t bufs with
@@ -117,9 +145,9 @@ let to_reader = fun stream ->
       in
       loop ()
 
-    let direct_string = fun _t -> None
+    let is_read_vectored = fun _t -> true
   end in
-  IO.Reader.of_read_src (module Read) stream
+  IO.Reader.from_source (module Read) stream
 
 let to_writer = fun stream ->
   let module Write = struct
@@ -127,13 +155,22 @@ let to_writer = fun stream ->
 
     type nonrec err = error
 
-    let write = fun t ~buf ->
-      let bytes = Bytes.from_string buf in
-      match write t bytes () with
-      | Ok n -> Ok n
-      | Error e -> Error e
+    let write = fun t ~from ->
+      let source = Kernel.Net.TcpStream.to_source t in
+      let rec loop () =
+        match Kernel.Net.TcpStream.write_vectored t (IO.Buffer.to_iovec from) with
+        | Ok n -> Ok n
+        | Error Kernel.Net.TcpStream.WouldBlock ->
+            Runtime.syscall
+              ~name:"TcpStream.write"
+              ~interest:Interest.writable
+              ~source
+              loop
+        | Error err -> Error (System_error (io_error_of_tcp_error err))
+      in
+      loop ()
 
-    let write_owned_vectored = fun t ~bufs ->
+    let write_vectored = fun t ~from:bufs ->
       let source = Kernel.Net.TcpStream.to_source t in
       let rec loop () =
         match Kernel.Net.TcpStream.write_vectored t bufs with
@@ -149,4 +186,4 @@ let to_writer = fun stream ->
 
     let flush = fun _t -> Ok ()
   end in
-  IO.Writer.of_write_src (module Write) stream
+  IO.Writer.from_sink (module Write) stream

@@ -1,31 +1,31 @@
-open Kernel
+open Prelude
+
+module IoVec = IoVec
 
 module type Write = sig
   type t
   type err
-  val write: t -> buf:string -> (int, err) result
 
-  val write_owned_vectored: t -> bufs:Kernel.IO.Iovec.t -> (int, err) result
+  val write: t -> from:Buffer.t -> (int, err) result
+
+  val write_vectored: t -> from:IoVec.t -> (int, err) result
 
   val flush: t -> (unit, err) result
 end
 
-type ('dst, 'err) write = (module Write with type t = 'dst and type err = 'err)
-type ('dst, 'err) t
-val of_write_src: ('dst, 'err) write -> 'dst -> ('dst, 'err) t
+type ('dst, 'err) sink = (module Write with type t = 'dst and type err = 'err)
+type 'err t
 
-val write: ('dst, 'err) t -> buf:string -> (int, 'err) result
+val from_sink: ('dst, 'err) sink -> 'dst -> 'err t
 
-val write_all: ('dst, 'err) t -> buf:string -> (unit, 'err) result
+val write: 'err t -> from:Buffer.t -> (int, 'err) result
 
-val write_buffer: ('dst, 'err) t -> buf:Buffer.t -> (int, 'err) result
+val write_all: 'err t -> from:Buffer.t -> (unit, 'err) result
 
-val write_all_buffer: ('dst, 'err) t -> buf:Buffer.t -> (unit, 'err) result
+val write_vectored: 'err t -> from:IoVec.t -> (int, 'err) result
 
-val write_owned_vectored: ('dst, 'err) t -> bufs:Kernel.IO.Iovec.t -> (int, 'err) result
+val write_all_vectored: 'err t -> from:IoVec.t -> (unit, 'err) result
 
-val write_all_vectored: ('dst, 'err) t -> bufs:Kernel.IO.Iovec.t -> (unit, 'err) result
+val map_err: 'a t -> fn:('a -> 'b) -> 'b t
 
-val map_err: ('dst, 'a) t -> fn:('a -> 'b) -> ('dst, 'b) t
-
-val flush: ('dst, 'err) t -> (unit, 'err) result
+val flush: 'err t -> (unit, 'err) result

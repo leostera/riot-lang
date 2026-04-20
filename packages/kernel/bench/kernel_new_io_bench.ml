@@ -48,7 +48,7 @@ let bench_stderr_write_len_zero = fun () ->
   | Kernel.Result.Error error -> Kernel.SystemError.panic (Kernel.IO.Stderr.error_to_string error)
 
 let bench_stdin_read_vectored_len_zero = fun () ->
-  let iovec = Kernel.IO.Iovec.from_bytes_array [|Kernel.Bytes.create ~size:0|] |> Result.unwrap in
+  let iovec = Kernel.IO.IoVec.from_bytes_array [|Kernel.Bytes.create ~size:0|] |> Result.unwrap in
   match Kernel.IO.Stdin.read_vectored iovec with
   | Kernel.Result.Ok count ->
       if count != 0 then
@@ -58,7 +58,7 @@ let bench_stdin_read_vectored_len_zero = fun () ->
   | Kernel.Result.Error error -> Kernel.SystemError.panic (Kernel.IO.Stdin.error_to_string error)
 
 let bench_stdout_write_vectored_len_zero = fun () ->
-  let iovec = Kernel.IO.Iovec.from_bytes_array [|Kernel.Bytes.create ~size:0|] |> Result.unwrap in
+  let iovec = Kernel.IO.IoVec.from_bytes_array [|Kernel.Bytes.create ~size:0|] |> Result.unwrap in
   match Kernel.IO.Stdout.write_vectored iovec with
   | Kernel.Result.Ok count ->
       if count != 0 then
@@ -68,7 +68,7 @@ let bench_stdout_write_vectored_len_zero = fun () ->
   | Kernel.Result.Error error -> Kernel.SystemError.panic (Kernel.IO.Stdout.error_to_string error)
 
 let bench_stderr_write_vectored_len_zero = fun () ->
-  let iovec = Kernel.IO.Iovec.from_bytes_array [|Kernel.Bytes.create ~size:0|] |> Result.unwrap in
+  let iovec = Kernel.IO.IoVec.from_bytes_array [|Kernel.Bytes.create ~size:0|] |> Result.unwrap in
   match Kernel.IO.Stderr.write_vectored iovec with
   | Kernel.Result.Ok count ->
       if count != 0 then

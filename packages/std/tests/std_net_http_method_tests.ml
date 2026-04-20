@@ -1,7 +1,7 @@
 open Std
 
 module Method = Std.Net.Http.Method
-module IoSlice = IO.Iovec.IoSlice
+module IoSlice = IO.IoVec.IoSlice
 
 let test_from_slice_standard = fun _ctx ->
   let slice = IoSlice.from_string "GET" |> Result.unwrap in

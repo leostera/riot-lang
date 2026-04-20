@@ -1,6 +1,6 @@
 module Error: module type of Error
 
-module Iovec: sig
+module IoVec: sig
   module IoSlice: sig
     type t
 
@@ -143,7 +143,7 @@ module Iovec: sig
 end
 
 module Buffer: sig
-  module IoSlice = Iovec.IoSlice
+  module IoSlice = IoVec.IoSlice
 
   type t
   type error = Error.t
@@ -178,7 +178,7 @@ module Buffer: sig
 
   val append_slice: t -> IoSlice.t -> (unit, error) Result.t
 
-  val to_iovec: t -> Iovec.t
+  val to_iovec: t -> IoVec.t
 
   val to_bytes: t -> bytes
 
@@ -193,7 +193,7 @@ module Stdin: sig
 
   val read: ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
 
-  val read_vectored: Iovec.t -> (int, error) Result.t
+  val read_vectored: IoVec.t -> (int, error) Result.t
 
   val to_source: unit -> Async.Source.t
 end
@@ -206,7 +206,7 @@ module Stdout: sig
 
   val write: ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
 
-  val write_vectored: Iovec.t -> (int, error) Result.t
+  val write_vectored: IoVec.t -> (int, error) Result.t
 
   val print: string -> (unit, error) Result.t
 
@@ -225,7 +225,7 @@ module Stderr: sig
 
   val write: ?pos:int -> ?len:int -> bytes -> (int, error) Result.t
 
-  val write_vectored: Iovec.t -> (int, error) Result.t
+  val write_vectored: IoVec.t -> (int, error) Result.t
 
   val print: string -> (unit, error) Result.t
 

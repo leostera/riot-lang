@@ -200,75 +200,75 @@ let test_path_join_does_not_duplicate_separators = fun _ctx ->
     Error "expected Path.join to avoid duplicate separators when the right side already starts with one"
 
 let test_iovec_with_capacity_matches_create_count_one = fun _ctx ->
-  let left = Kernel.IO.Iovec.with_capacity 7 |> Result.unwrap in
-  let right = Kernel.IO.Iovec.create ~count:1 ~size:7 () |> Result.unwrap in
+  let left = Kernel.IO.IoVec.with_capacity 7 |> Result.unwrap in
+  let right = Kernel.IO.IoVec.create ~count:1 ~size:7 () |> Result.unwrap in
   let count_segments iov =
     let seen = ref 0 in
-    Kernel.IO.Iovec.for_each iov ~fn:(fun _ -> seen := !seen + 1);
+    Kernel.IO.IoVec.for_each iov ~fn:(fun _ -> seen := !seen + 1);
     !seen
   in
   if
-    Kernel.IO.Iovec.length left = Kernel.IO.Iovec.length right
+    Kernel.IO.IoVec.length left = Kernel.IO.IoVec.length right
     && count_segments left = 1
     && count_segments right = 1
   then
     Ok ()
   else
-    Error "expected Iovec.with_capacity to match a single-segment create"
+    Error "expected IoVec.with_capacity to match a single-segment create"
 
 let test_iovec_create_distributes_remainder_deterministically = fun _ctx ->
-  let iov = Kernel.IO.Iovec.create ~count:3 ~size:5 () |> Result.unwrap in
+  let iov = Kernel.IO.IoVec.create ~count:3 ~size:5 () |> Result.unwrap in
   let lengths = ref [] in
-  Kernel.IO.Iovec.for_each iov ~fn:(fun segment ->
-    lengths := Kernel.IO.Iovec.IoSlice.length segment :: !lengths);
+  Kernel.IO.IoVec.for_each iov ~fn:(fun segment ->
+    lengths := Kernel.IO.IoVec.IoSlice.length segment :: !lengths);
   if List.reverse !lengths = [ 2; 2; 1 ] then
     Ok ()
   else
-    Error "expected Iovec.create to distribute remainder bytes from left to right"
+    Error "expected IoVec.create to distribute remainder bytes from left to right"
 
 let test_iovec_of_bytes_array_copies_source_buffers = fun _ctx ->
   let left = Kernel.Bytes.from_string "ri" in
   let right = Kernel.Bytes.from_string "ot" in
-  let iov = Kernel.IO.Iovec.from_bytes_array [|left; right|] |> Result.unwrap in
+  let iov = Kernel.IO.IoVec.from_bytes_array [|left; right|] |> Result.unwrap in
   let _ = Kernel.Bytes.set left ~at:0 ~char:'R' in
-  if Kernel.IO.Iovec.to_string iov = "riot" then
+  if Kernel.IO.IoVec.to_string iov = "riot" then
     Ok ()
   else
-    Error "expected Iovec.of_bytes_array to copy source buffers into owned storage"
+    Error "expected IoVec.of_bytes_array to copy source buffers into owned storage"
 
 let test_iovec_into_bytes_returns_a_fresh_copy = fun _ctx ->
   let source = Kernel.Bytes.from_string "riot" in
-  let iov = Kernel.IO.Iovec.from_bytes_array [|source|] |> Result.unwrap in
-  let flattened = Kernel.IO.Iovec.to_bytes iov in
+  let iov = Kernel.IO.IoVec.from_bytes_array [|source|] |> Result.unwrap in
+  let flattened = Kernel.IO.IoVec.to_bytes iov in
   let _ = Kernel.Bytes.set source ~at:0 ~char:'R' in
   if Kernel.Bytes.to_string flattened = "riot" then
     Ok ()
   else
-    Error "expected Iovec.into_bytes to return a fresh stable copy"
+    Error "expected IoVec.into_bytes to return a fresh stable copy"
 
 let test_iovec_iter_reports_left_to_right_segment_metadata = fun _ctx ->
   let first = Kernel.Bytes.from_string "ab" in
   let second = Kernel.Bytes.from_string "" in
   let third = Kernel.Bytes.from_string "cde" in
-  let iov = Kernel.IO.Iovec.from_bytes_array [|first; second; third|] |> Result.unwrap in
+  let iov = Kernel.IO.IoVec.from_bytes_array [|first; second; third|] |> Result.unwrap in
   let seen = ref [] in
-  Kernel.IO.Iovec.for_each
+  Kernel.IO.IoVec.for_each
     iov
     ~fn:(fun segment ->
-      let len = Kernel.IO.Iovec.IoSlice.length segment in
-      seen := (len, Kernel.IO.Iovec.IoSlice.to_string segment) :: !seen);
+      let len = Kernel.IO.IoVec.IoSlice.length segment in
+      seen := (len, Kernel.IO.IoVec.IoSlice.to_string segment) :: !seen);
   if List.reverse !seen = [ (2, "ab"); (0, ""); (3, "cde") ] then
     Ok ()
   else
-    Error "expected Iovec.for_each to preserve segment order and metadata"
+    Error "expected IoVec.for_each to preserve segment order and metadata"
 
 let test_iovec_sub_zero_length_is_empty = fun _ctx ->
-  let iov = Kernel.IO.Iovec.from_string_array [|"hello"; " "; "riot"|] |> Result.unwrap in
-  let sub = Kernel.IO.Iovec.sub ~pos:3 ~len:0 iov |> Result.unwrap in
-  if Kernel.IO.Iovec.length sub = 0 then
+  let iov = Kernel.IO.IoVec.from_string_array [|"hello"; " "; "riot"|] |> Result.unwrap in
+  let sub = Kernel.IO.IoVec.sub ~pos:3 ~len:0 iov |> Result.unwrap in
+  if Kernel.IO.IoVec.length sub = 0 then
     Ok ()
   else
-    Error "expected Iovec.sub with len=0 to return an empty iovec"
+    Error "expected IoVec.sub with len=0 to return an empty iovec"
 
 let tests = [
   Test.case "Bool.to_string uses stable lowercase literals" test_bool_to_string_uses_stable_lowercase_literals;
@@ -290,12 +290,12 @@ let tests = [
   Test.case "Bytes.sub_string with len=0 is empty" test_bytes_sub_string_zero_length_is_empty;
   Test.case "Path.join keeps the root sane" test_path_join_preserves_root_sanity;
   Test.case "Path.join avoids duplicate separators" test_path_join_does_not_duplicate_separators;
-  Test.case "Iovec.with_capacity matches create count one" test_iovec_with_capacity_matches_create_count_one;
-  Test.case "Iovec.create distributes remainder deterministically" test_iovec_create_distributes_remainder_deterministically;
-  Test.case "Iovec.of_bytes_array copies its source buffers" test_iovec_of_bytes_array_copies_source_buffers;
-  Test.case "Iovec.into_bytes returns a fresh copy" test_iovec_into_bytes_returns_a_fresh_copy;
-  Test.case "Iovec.iter preserves segment order and metadata" test_iovec_iter_reports_left_to_right_segment_metadata;
-  Test.case "Iovec.sub with len=0 is empty" test_iovec_sub_zero_length_is_empty;
+  Test.case "IoVec.with_capacity matches create count one" test_iovec_with_capacity_matches_create_count_one;
+  Test.case "IoVec.create distributes remainder deterministically" test_iovec_create_distributes_remainder_deterministically;
+  Test.case "IoVec.of_bytes_array copies its source buffers" test_iovec_of_bytes_array_copies_source_buffers;
+  Test.case "IoVec.into_bytes returns a fresh copy" test_iovec_into_bytes_returns_a_fresh_copy;
+  Test.case "IoVec.iter preserves segment order and metadata" test_iovec_iter_reports_left_to_right_segment_metadata;
+  Test.case "IoVec.sub with len=0 is empty" test_iovec_sub_zero_length_is_empty;
 ]
 
 let main = fun ~args -> Test.Cli.main ~name:"kernel_new_foundation_tests" ~tests ~args

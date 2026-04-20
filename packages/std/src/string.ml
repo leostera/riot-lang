@@ -311,25 +311,42 @@ let to_reader = fun ?chunk_size value ->
 
     type err = IO.error
 
-    let read = fun _source ?timeout:_ buf ->
+    let read = fun _source ~into ->
       let remaining = source_length - Sync.Cell.get offset in
       if Int.equal remaining 0 then
         Ok 0
       else
-        let to_read = min chunk_size (min remaining (IO.Bytes.length buf)) in
-        Kernel.Bytes.blit_unchecked
+        let writable =
+          if IO.Buffer.writable_bytes into = 0 then (
+            match IO.Buffer.ensure_free into chunk_size with
+            | Ok () -> IO.Buffer.writable into
+            | Error error ->
+                Kernel.SystemError.panic
+                  ("Std.String.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
+          ) else
+            IO.Buffer.writable into
+        in
+        let to_read = min chunk_size (min remaining (IO.IoSlice.length writable)) in
+        IO.IoSlice.blit_from_bytes_unchecked
           source_bytes
-          ~src_offset:(Sync.Cell.get offset)
-          ~dst:buf
-          ~dst_offset:0
+          ~src_off:(Sync.Cell.get offset)
+          writable
+          ~dst_off:0
           ~len:to_read;
+        begin
+          match IO.Buffer.commit into to_read with
+          | Ok () -> ()
+          | Error error ->
+              Kernel.SystemError.panic
+                ("Std.String.to_reader.commit: " ^ Kernel.IO.Error.message error)
+        end;
         Sync.Cell.set offset (Sync.Cell.get offset + to_read);
         Ok to_read
 
-    let read_vectored = fun _source bufs ->
+    let read_vectored = fun _source ~into:bufs ->
       let total = Sync.Cell.create 0 in
       let continue = Sync.Cell.create true in
-      IO.Iovec.for_each
+      IO.IoVec.for_each
         ~fn:(fun segment ->
           if Sync.Cell.get continue then
             (
@@ -337,9 +354,9 @@ let to_reader = fun ?chunk_size value ->
               if Int.equal remaining 0 then
                 Sync.Cell.set continue false
               else
-                let segment_length = IO.Iovec.IoSlice.length segment in
+                let segment_length = IO.IoVec.IoSlice.length segment in
                 let to_read = min chunk_size (min remaining segment_length) in
-                IO.Iovec.IoSlice.blit_from_bytes_unchecked
+                IO.IoVec.IoSlice.blit_from_bytes_unchecked
                   source_bytes
                   ~src_off:(Sync.Cell.get offset)
                   segment
@@ -354,8 +371,10 @@ let to_reader = fun ?chunk_size value ->
             ))
         bufs;
       Ok (Sync.Cell.get total)
+
+    let is_read_vectored = fun _ -> true
   end in
-  IO.Reader.of_read_src (module Read) value
+  IO.Reader.from_source (module Read) value
 
 module Syntax = struct
   let set_unchecked = fun value ~at ~char ->
