@@ -22,25 +22,25 @@ let io_writer_of_buffer =
   let module Write = struct
     type t = IO.Buffer.t
 
-    type err = IO.error
+    let write = fun buffer ~from ->
+      let len = IO.Buffer.length from in
+      IO.Buffer.add_bytes buffer (IO.Buffer.to_bytes from);
+      Ok len
 
-    let write = fun buffer ~buf ->
-      IO.Buffer.add_string buffer buf;
-      Ok (String.length buf)
-
-    let write_owned_vectored = fun buffer ~bufs ->
+    let write_vectored = fun buffer ~from ->
       let written = ref 0 in
-      IO.Iovec.for_each
-        ~fn:(fun { buffer=chunk; offset; length } ->
-          IO.Buffer.add_subbytes buffer chunk offset length;
-          written := !written + length)
-        bufs;
+      IO.IoVec.for_each
+        ~fn:(fun chunk ->
+          let bytes = IO.IoSlice.to_bytes chunk in
+          IO.Buffer.add_bytes buffer bytes;
+          written := !written + IO.IoSlice.length chunk)
+        from;
       Ok !written
 
     let flush = fun _buffer -> Ok ()
   end in
   fun buffer ->
-    IO.Writer.of_write_src (module Write) buffer
+    IO.Writer.from_sink (module Write) buffer
 
 type mode =
   | Idle

@@ -52,19 +52,19 @@ let refill = fun state ->
     if Int.equal state.limit (IO.Bytes.length state.buf) then
       false
     else
-      let bufs =
-        IO.IoVec.from_bytes state.buf
-        |> Result.expect ~msg:"serde-bin reader state should build an iovec"
-      in
-      let bufs =
-        IO.IoVec.sub bufs ~pos:state.limit ~len:(IO.Bytes.length state.buf - state.limit)
-        |> Result.expect ~msg:"serde-bin reader state should slice its iovec"
-      in
-      match IO.Reader.read_vectored state.reader ~into:bufs with
+      let free = IO.Bytes.length state.buf - state.limit in
+      let chunk = IO.Buffer.create ~size:free in
+      match IO.Reader.read state.reader ~into:chunk with
       | Ok 0 ->
           state.eof <- true;
           false
       | Ok read_len ->
+          IO.IoSlice.blit_to_bytes_unchecked
+            (IO.Buffer.readable chunk)
+            ~src_off:0
+            state.buf
+            ~dst_off:state.limit
+            ~len:read_len;
           state.limit <- state.limit + read_len;
           true
       | Error err ->
