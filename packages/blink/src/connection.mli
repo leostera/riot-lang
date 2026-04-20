@@ -11,9 +11,9 @@ type message =
 
 (** Build a connection from reader and writer handles. *)
 val make:
-  reader:('socket, 'err) IO.Reader.t ->
-  writer:('socket, 'err) IO.Writer.t ->
-  of_io_error:('err -> Error.t) ->
+  reader:IO.Reader.t ->
+  writer:IO.Writer.t ->
+  of_io_error:(IO.error -> Error.t) ->
   uri:Net.Uri.t ->
   t
 

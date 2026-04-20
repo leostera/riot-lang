@@ -13,18 +13,18 @@ end
 module Tcp: Intf = struct
   let name = "tcp"
 
-  let tcp_error_to_error = function
-    | Net.TcpStream.Closed -> Error.NetError Net.Closed
-    | Net.TcpStream.Connection_refused -> Error.NetError Net.Connection_refused
-    | Net.TcpStream.System_error s -> Error.NetError (Net.System_error s)
-
   let connect = fun addr uri ->
     match Net.TcpStream.connect addr with
-    | Error e -> Error (tcp_error_to_error e)
+    | Error Net.TcpStream.Closed ->
+        Error (Error.NetError Net.Closed)
+    | Error Net.TcpStream.Connection_refused ->
+        Error (Error.NetError Net.Connection_refused)
+    | Error (Net.TcpStream.System_error error) ->
+        Error (Error.NetError (Net.System_error error))
     | Ok sock ->
         let reader = Net.TcpStream.to_reader sock in
         let writer = Net.TcpStream.to_writer sock in
-        Ok (Connection.make ~reader ~writer ~of_io_error:tcp_error_to_error ~uri)
+        Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_io_error ~uri)
 end
 
 module Tls: Intf = struct
@@ -45,7 +45,7 @@ module Tls: Intf = struct
         | Ok tls ->
             let reader = Net.TlsStream.to_reader tls in
             let writer = Net.TlsStream.to_writer tls in
-            Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_tls_error ~uri)
+            Ok (Connection.make ~reader ~writer ~of_io_error:Error.of_io_error ~uri)
 end
 
 let connect = fun uri ->

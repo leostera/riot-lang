@@ -1,7 +1,7 @@
 open Std
 
 let input_buffer = Utf8_reader.create ()
-type stdin_cell = { mutable current: (IO.Stdin.t, IO.error) IO.Reader.t option }
+type stdin_cell = { mutable current: IO.Stdin.t option }
 
 let stdin_handle = { current = None }
 
@@ -9,16 +9,29 @@ let stdin = fun () ->
   match stdin_handle.current with
   | Some stdin -> stdin
   | None ->
-      let stdin = IO.stdin () in
+      let stdin = IO.Stdin.open_ () in
       stdin_handle.current <- Some stdin;
       stdin
 
+let read_stdin_bytes = fun stdin bytes ~offset ~len ->
+  if len = 0 then
+    `Ok 0
+  else
+    let buffer = IO.Buffer.create ~size:len in
+    match IO.Stdin.read stdin ~into:buffer with
+    | Ok count ->
+        let copied = IO.Buffer.to_bytes buffer in
+        IO.Bytes.blit_unchecked copied ~src_offset:0 ~dst:bytes ~dst_offset:offset ~len:count;
+        `Ok count
+    | Error IO.Operation_would_block
+    | Error IO.Resource_unavailable_try_again ->
+        `Would_block
+    | Error _ ->
+        `Error
+
 let read_utf8 = fun () ->
   Utf8_reader.read input_buffer
-    ~read:(fun bytes ~offset ~len ->
-      match IO.read (stdin ()) ~offset ~len bytes with
-      | Ok count -> `Ok count
-      | Error _ -> `Error)
+    ~read:(fun bytes ~offset ~len -> read_stdin_bytes (stdin ()) bytes ~offset ~len)
 
 let make_raw = fun () ->
   match Platform.open_tty () with

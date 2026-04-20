@@ -2,7 +2,6 @@
 open Std
 open Std.Collections
 open Std.Data
-open Std.IO
 open Std.Result.Syntax
 
 (** Types *)

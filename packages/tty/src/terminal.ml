@@ -44,20 +44,15 @@ let write_with = fun write bytes ->
 
 let write_to_fd = fun fd value ->
   let bytes = IO.Bytes.from_string value in
-  if Platform.fd_equal fd (Platform.stdout_fd ()) then
-    write_with (fun bytes ~offset ~len -> IO.Stdout.write ~offset ~len bytes) bytes
-  else if Platform.fd_equal fd (Platform.stderr_fd ()) then
-    write_with (fun bytes ~offset ~len -> IO.Stderr.write ~offset ~len bytes) bytes
-  else
-    let rec loop offset remaining =
-      if remaining = 0 then
-        ()
-      else
-        match Platform.write fd bytes ~offset ~len:remaining with
-        | Ok 0 -> ()
-        | Ok written -> loop (offset + written) (remaining - written)
-        | Error _ -> ()
-    in
-    loop 0 (IO.Bytes.length bytes)
+  let rec loop offset remaining =
+    if remaining = 0 then
+      ()
+    else
+      match Platform.write fd bytes ~offset ~len:remaining with
+      | Ok 0 -> ()
+      | Ok written -> loop (offset + written) (remaining - written)
+      | Error _ -> ()
+  in
+  loop 0 (IO.Bytes.length bytes)
 
 let write_escape = fun t code -> write_to_fd t.stdout (Escape_seq.csi ^ code)

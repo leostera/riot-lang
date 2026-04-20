@@ -24,7 +24,7 @@ type mode = Terminal.mode =
   | Immediate
 
 type t = Terminal.t
-type stdin_cell = { mutable current: (IO.Stdin.t, IO.error) IO.Reader.t option }
+type stdin_cell = { mutable current: IO.Stdin.t option }
 
 let stdin_handle = { current = None }
 
@@ -32,9 +32,25 @@ let stdin = fun () ->
   match stdin_handle.current with
   | Some stdin -> stdin
   | None ->
-      let stdin = IO.stdin () in
+      let stdin = IO.Stdin.open_ () in
       stdin_handle.current <- Some stdin;
       stdin
+
+let read_stdin_bytes = fun stdin bytes ~offset ~len ->
+  if len = 0 then
+    `Ok 0
+  else
+    let buffer = IO.Buffer.create ~size:len in
+    match IO.Stdin.read stdin ~into:buffer with
+    | Ok count ->
+        let copied = IO.Buffer.to_bytes buffer in
+        IO.Bytes.blit_unchecked copied ~src_offset:0 ~dst:bytes ~dst_offset:offset ~len:count;
+        `Ok count
+    | Error IO.Operation_would_block
+    | Error IO.Resource_unavailable_try_again ->
+        `Would_block
+    | Error _ ->
+        `Error
 
 let io_error_of_system_error = fun error -> IO.of_system_error error
 
@@ -164,9 +180,7 @@ type read =
 
 let read_from_input = fun input_fd bytes ~offset ~len ->
   if Platform.fd_equal input_fd (Platform.stdin_fd ()) then
-    match IO.read (stdin ()) ~offset ~len bytes with
-    | Ok count -> `Ok count
-    | Error _ -> `Error
+    read_stdin_bytes (stdin ()) bytes ~offset ~len
   else
     match Platform.read input_fd bytes ~offset ~len with
     | Ok count -> `Ok count

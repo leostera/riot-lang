@@ -1,5 +1,4 @@
 open Std
-open Std.IO
 
 module Escape_seq = Escape_seq
 

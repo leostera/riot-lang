@@ -12,4 +12,9 @@ type t =
 
 let of_net_error = fun e -> NetError e
 
+let of_io_error = function
+  | IO.Connection_refused -> NetError Net.Connection_refused
+  | IO.Closed -> NetError Net.Closed
+  | error -> NetError (Net.System_error error)
+
 let of_tls_error = fun e -> TlsError e

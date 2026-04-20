@@ -1,5 +1,5 @@
 open Std
-open Std.IO
+module Buffer = IO.Buffer
 
 type message =
   | Data of string
@@ -16,19 +16,19 @@ type response_state =
 type t =
   | Conn: {
       protocol: (module Protocol.Intf);
-      writer: ('socket, 'err) IO.Writer.t;
-      reader: ('socket, 'err) IO.Reader.t;
+      writer: IO.Writer.t;
+      reader: IO.Reader.t;
       uri: Net.Uri.t;
       mutable buffer: Buffer.t;
       mutable state: response_state;
       mutable response: Net.Http.Response.t option;
-      of_io_error: 'err -> Error.t;
+      of_io_error: IO.error -> Error.t;
     } -> t
 
 let make:
-  type socket err. reader:(socket, err) IO.Reader.t ->
-  writer:(socket, err) IO.Writer.t ->
-  of_io_error:(err -> Error.t) ->
+  reader:IO.Reader.t ->
+  writer:IO.Writer.t ->
+  of_io_error:(IO.error -> Error.t) ->
   uri:Net.Uri.t ->
   t = fun ~reader ~writer ~of_io_error ~uri ->
   Conn {
@@ -78,7 +78,8 @@ let request = fun (Conn conn) req ?body () ->
     | Some b -> request ^ b
     | None -> request
   in
-  match IO.write_all conn.writer ~buf:full_request with
+  let request_buffer = IO.Buffer.from_string full_request in
+  match IO.write_all conn.writer ~from:request_buffer with
   | Ok () ->
       conn.state <- WaitingForHeaders;
       conn.response <- None;
@@ -87,12 +88,13 @@ let request = fun (Conn conn) req ?body () ->
   | Error e -> Error (conn.of_io_error e)
 
 let read_more = fun (Conn conn) ->
-  let chunk = Bytes.create ~size:4_096 in
-  match IO.read conn.reader chunk with
+  let chunk = IO.Buffer.create ~size:4_096 in
+  match IO.read conn.reader ~into:chunk with
   | Ok 0 ->
       Error Error.Eof
-  | Ok n ->
-      Buffer.add_subbytes conn.buffer chunk 0 n;
+  | Ok _ ->
+      let readable = IO.Buffer.readable chunk in
+      let _ = Buffer.append_slice conn.buffer readable |> Result.expect ~msg:"failed to append response chunk" in
       Ok ()
   | Error e ->
       Error (conn.of_io_error e)
