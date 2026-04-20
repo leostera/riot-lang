@@ -1,6 +1,219 @@
 open Std
 open Http
 
+module BaselineParser = struct
+  open Http1.Common
+
+  module StringCursor = struct
+    type t = {
+      source: string;
+      pos: int;
+      length: int;
+    }
+
+    let create = fun source -> { source; pos = 0; length = String.length source }
+
+    let is_eof = fun cursor -> cursor.pos >= cursor.length
+
+    let advance = fun cursor ->
+      if is_eof cursor then
+        None
+      else
+        Some { cursor with pos = cursor.pos + 1 }
+
+    let advance_by = fun cursor count ->
+      let pos = cursor.pos + count in
+      if pos > cursor.length then
+        None
+      else
+        Some { cursor with pos }
+
+    let take_until = fun cursor predicate ->
+      let start = cursor.pos in
+      let rec loop pos =
+        if pos >= cursor.length then
+          None
+        else if predicate (String.get_unchecked cursor.source ~at:pos) then
+          Some pos
+        else
+          loop (pos + 1)
+      in
+      match loop start with
+      | None ->
+          None
+      | Some stop ->
+          Some (
+            String.sub cursor.source ~offset:start ~len:(stop - start),
+            { cursor with pos = stop }
+          )
+
+    let take_n = fun cursor count ->
+      if cursor.pos + count > cursor.length then
+        None
+      else
+        Some (
+          String.sub cursor.source ~offset:cursor.pos ~len:count,
+          { cursor with pos = cursor.pos + count }
+        )
+
+    let take_while = fun cursor predicate ->
+      let start = cursor.pos in
+      let rec loop pos =
+        if pos >= cursor.length then
+          pos
+        else if predicate (String.get_unchecked cursor.source ~at:pos) then
+          loop (pos + 1)
+        else
+          pos
+      in
+      let stop = loop start in
+      (
+        String.sub cursor.source ~offset:start ~len:(stop - start),
+        { cursor with pos = stop }
+      )
+
+    let skip_while = fun cursor predicate ->
+      let _, cursor = take_while cursor predicate in
+      cursor
+
+    let remaining = fun cursor ->
+      if is_eof cursor then
+        ""
+      else
+        String.sub cursor.source ~offset:cursor.pos ~len:(cursor.length - cursor.pos)
+  end
+
+  let parse_request_line = fun ?(max_length = 8_192) input ->
+    let cursor = StringCursor.create input in
+    match StringCursor.take_until cursor (fun c -> c = '\r') with
+    | None ->
+        Need_more
+    | Some (line, cursor) ->
+        if String.length line > max_length then
+          Error "Request line too long"
+        else
+          match StringCursor.advance_by cursor 2 with
+          | None ->
+              Error "Invalid line ending"
+          | Some cursor -> (
+              let line_cursor = StringCursor.create line in
+              match StringCursor.take_until line_cursor (fun c -> c = ' ') with
+              | None ->
+                  Error "Missing method"
+              | Some (method_, line_cursor) ->
+                  let line_cursor = StringCursor.skip_while line_cursor (fun c -> c = ' ') in
+                  match StringCursor.take_until line_cursor (fun c -> c = ' ') with
+                  | None ->
+                      Error "Missing path"
+                  | Some (path, line_cursor) ->
+                      let version = StringCursor.skip_while line_cursor (fun c -> c = ' ') |> StringCursor.remaining in
+                      if String.starts_with ~prefix:"HTTP/" version then
+                        Done {
+                          value = (method_, path, version);
+                          remaining = StringCursor.remaining cursor;
+                        }
+                      else
+                        Error "Invalid HTTP version"
+            )
+
+  let parse_header_line = fun cursor ->
+    match StringCursor.take_until cursor (fun c -> c = '\r') with
+    | None ->
+        Need_more
+    | Some (line, cursor) -> (
+        match StringCursor.advance_by cursor 2 with
+        | None ->
+            Error "Invalid line ending"
+        | Some cursor -> (
+            let line_cursor = StringCursor.create line in
+            match StringCursor.take_until line_cursor (fun c -> c = ':') with
+            | None ->
+                Error "Invalid header format (missing colon)"
+            | Some (name, line_cursor) -> (
+                match StringCursor.advance line_cursor with
+                | None ->
+                    Error "Invalid header format"
+                | Some line_cursor ->
+                    let value =
+                      StringCursor.skip_while line_cursor (fun c -> c = ' ' || c = '\t')
+                      |> StringCursor.remaining
+                    in
+                    let name =
+                      StringCursor.skip_while (StringCursor.create name) (fun c -> c = ' ' || c = '\t')
+                      |> StringCursor.remaining
+                    in
+                    Done {
+                      value = (name, value);
+                      remaining = StringCursor.remaining cursor;
+                    }
+              )
+          )
+      )
+
+  let rec parse_headers = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) cursor ->
+    match StringCursor.take_n cursor 2 with
+    | Some ("\r\n", cursor) ->
+        Done { value = (List.rev acc, StringCursor.remaining cursor); remaining = "" }
+    | _ ->
+        if List.length acc >= max_count then
+          Error "Too many headers"
+        else
+          match parse_header_line cursor with
+          | Need_more ->
+              Need_more
+          | Error error ->
+              Error error
+          | Done { value=(name, value); remaining } ->
+              if String.length name + String.length value > max_length then
+                Error "Header too long"
+              else
+                parse_headers
+                  ~max_count
+                  ~max_length
+                  ~acc:((name, value) :: acc)
+                  (StringCursor.create remaining)
+
+  let parse = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
+    match parse_request_line ~max_length:max_request_line input with
+    | Need_more ->
+        Need_more
+    | Error error ->
+        Error error
+    | Done { value=(method_, path, version); remaining } -> (
+        match
+          parse_headers
+            ~max_count:max_headers
+            ~max_length:max_header_length
+            (StringCursor.create remaining)
+        with
+        | Need_more ->
+            Need_more
+        | Error error ->
+            Error error
+        | Done { value=(headers_list, body); _ } ->
+            let method_ = Std.Net.Http.Method.of_string method_ in
+            let uri =
+              Std.Net.Uri.of_string path
+              |> Result.unwrap_or ~default:(Std.Net.Uri.of_string "/" |> Result.unwrap)
+            in
+            let version =
+              Std.Net.Http.Version.of_string version
+              |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11
+            in
+            let headers = Std.Net.Http.Header.of_list headers_list in
+            let request =
+              let request = Std.Net.Http.Request.create method_ uri in
+              let request = Std.Net.Http.Request.with_version request version in
+              let request = Std.Net.Http.Request.with_headers request headers in
+              if not (String.equal body "") then
+                Std.Net.Http.Request.with_body request body
+              else
+                request
+            in
+            Done { value = request; remaining = body }
+      )
+end
+
 let build_request = fun ~method_ ~path ~headers ~body ->
   let head =
     method_ ^ " " ^ path ^ " HTTP/1.1\r\n"
@@ -164,6 +377,15 @@ let bench_parse = fun payload () ->
   | Error error ->
       panic ("http1 parser bench parse error: " ^ error)
 
+let bench_parse_baseline = fun payload () ->
+  match BaselineParser.parse payload with
+  | Done { value; remaining } ->
+      consume_result value remaining
+  | Need_more ->
+      panic "http1 baseline parser bench expected complete payload"
+  | Error error ->
+      panic ("http1 baseline parser bench parse error: " ^ error)
+
 let bench_parse_slice = fun payload () ->
   match Http1.Request.parse_slice payload with
   | Done { value; remaining } ->
@@ -184,6 +406,34 @@ let bench_parse_slices = fun payload () ->
 
 let benchmarks =
   Bench.[
+    with_config
+      ~config:{ iterations = 200; warmup = 20 }
+      "http1 parser in-memory baseline string: small request"
+      (bench_parse_baseline small_request);
+    with_config
+      ~config:{ iterations = 150; warmup = 15 }
+      "http1 parser in-memory baseline string: 1 KiB body"
+      (bench_parse_baseline request_1k);
+    with_config
+      ~config:{ iterations = 60; warmup = 6 }
+      "http1 parser in-memory baseline string: 100 KiB body"
+      (bench_parse_baseline request_100k);
+    with_config
+      ~config:{ iterations = 15; warmup = 3 }
+      "http1 parser in-memory baseline string: 1 MiB body"
+      (bench_parse_baseline request_1m);
+    with_config
+      ~config:{ iterations = 5; warmup = 1 }
+      "http1 parser in-memory baseline string: 10 MiB body"
+      (bench_parse_baseline request_10m);
+    with_config
+      ~config:{ iterations = 120; warmup = 12 }
+      "http1 parser in-memory baseline string: many headers"
+      (bench_parse_baseline many_headers_request);
+    with_config
+      ~config:{ iterations = 120; warmup = 12 }
+      "http1 parser in-memory baseline string: github navigation request"
+      (bench_parse_baseline github_navigation_request);
     with_config ~config:{ iterations = 200; warmup = 20 } "http1 parser in-memory: small request" (bench_parse small_request);
     with_config ~config:{ iterations = 150; warmup = 15 } "http1 parser in-memory: 1 KiB body" (bench_parse request_1k);
     with_config ~config:{ iterations = 60; warmup = 6 } "http1 parser in-memory: 100 KiB body" (bench_parse request_100k);
