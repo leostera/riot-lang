@@ -410,11 +410,8 @@ CAMLprim value std_crypto_simple_hash_iovec(value v_iovs) {
     mlsize_t n_iovs = Wosize_val(v_iovs);
     for (mlsize_t i = 0; i < n_iovs; i++) {
         value v_iov = Field(v_iovs, i);
-        value v_ba = Field(v_iov, 0);
-        value v_off = Field(v_iov, 1);
-        value v_len = Field(v_iov, 2);
-        size_t len = Long_val(v_len);
-        const unsigned char *bytes = (const unsigned char *) Bytes_val(v_ba) + Long_val(v_off);
+        size_t len = (size_t) Caml_ba_array_val(v_iov)->dim[0];
+        const unsigned char *bytes = (const unsigned char *) Caml_ba_data_val(v_iov);
 
         for (size_t j = 0; j < len; j++) {
             hash = ((hash << 5) + hash) + bytes[j];
