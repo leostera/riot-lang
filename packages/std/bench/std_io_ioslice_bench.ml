@@ -3,6 +3,7 @@ open Std
 module Slice = IO.IoVec.IoSlice
 module Method = Net.Http.Method
 module Version = Net.Http.Version
+module Uri = Net.Uri
 module Cursor = Iter.Cursor
 module Array = Collections.Array
 
@@ -26,6 +27,26 @@ let version_tag = function
   | Version.Http11 -> 3
   | Version.Http2 -> 4
   | Version.Http3 -> 5
+
+type origin_form_uri = {
+  path: string;
+  query: string option;
+  fragment: string option;
+}
+
+let origin_form_uri_size = fun uri ->
+  let option_length = function
+    | None -> 0
+    | Some value -> String.length value
+  in
+  String.length uri.path + option_length uri.query + option_length uri.fragment
+
+let std_uri_size = fun uri ->
+  let option_length = function
+    | None -> 0
+    | Some value -> String.length value
+  in
+  String.length (Uri.path uri) + option_length (Uri.query uri) + option_length (Uri.fragment uri)
 
 let current_method_from_slice = fun value ->
   match Slice.length value with
@@ -134,6 +155,49 @@ let optimized_take_until_char = fun value needle ->
   | Some stop -> Some (Slice.sub_unchecked value ~off:0 ~len:stop)
   | None -> None
 
+let optimized_origin_form_uri_from_slice = fun value ->
+  let len = Slice.length value in
+  if len > 65_535 then
+    Error Uri.TooLong
+  else
+    let query_index = Slice.index_char value '?' in
+    let fragment_index = Slice.index_char value '#' in
+    let path_end =
+      match (query_index, fragment_index) with
+      | (Some q, Some f) -> Int.min q f
+      | (Some q, None) -> q
+      | (None, Some f) -> f
+      | (None, None) -> len
+    in
+    let path =
+      if path_end = 0 then
+        "/"
+      else
+        Slice.to_string (Slice.sub_unchecked value ~off:0 ~len:path_end)
+    in
+    let query =
+      match query_index with
+      | None -> None
+      | Some q ->
+          let query_start = q + 1 in
+          let query_end =
+            match fragment_index with
+            | Some f when f > q -> f
+            | _ -> len
+          in
+          Some (Slice.to_string (Slice.sub_unchecked value ~off:query_start ~len:(query_end - query_start)))
+    in
+    let fragment =
+      match fragment_index with
+      | None -> None
+      | Some f ->
+          let fragment_start = f + 1 in
+          Some
+            (Slice.to_string
+               (Slice.sub_unchecked value ~off:fragment_start ~len:(len - fragment_start)))
+    in
+    Ok { path; query; fragment }
+
 let build_slice = fun value ->
   match Slice.from_string value with
   | Ok slice -> slice
@@ -178,6 +242,14 @@ let header_lines = [|
   "X-GitHub-Client-Version: da50e20aef6ab1aa7700fc58a61757b7d7280dfb";
 |]
 
+let origin_form_targets = [|
+  "/";
+  "/health";
+  "/api/v1/items?page=1&limit=10";
+  "/_global-navigation/payloads.json?current_repo_nwo=leostera%2Friot-new&repository=riot-new";
+  "/repos/leostera/riot-new/issues/1?state=open&sort=created";
+|]
+
 let mixed_slices =
   Array.init ~count:100_000
     ~fn:(fun index ->
@@ -201,6 +273,12 @@ let mixed_header_line_slices =
     ~fn:(fun index ->
       build_slice
         (Array.get_unchecked header_lines ~at:(index mod Array.length header_lines)))
+
+let mixed_origin_form_slices =
+  Array.init ~count:100_000
+    ~fn:(fun index ->
+      build_slice
+        (Array.get_unchecked origin_form_targets ~at:(index mod Array.length origin_form_targets)))
 
 let run_dispatch = fun dispatch ->
   let acc = ref 0 in
@@ -245,6 +323,28 @@ let bench_header_line_scan_current () = run_scan mixed_header_line_slices ':' cu
 let bench_header_line_scan_optimized () =
   run_scan mixed_header_line_slices ':' optimized_take_until_char
 
+let run_uri_parse = fun parse ->
+  let acc = ref 0 in
+  for index = 0 to Array.length mixed_origin_form_slices - 1 do
+    match parse (Array.get_unchecked mixed_origin_form_slices ~at:index) with
+    | Ok uri -> acc := !acc + std_uri_size uri
+    | Error _ -> acc := !acc - 1
+  done;
+  sink := !acc
+
+let run_origin_form_uri_parse = fun parse ->
+  let acc = ref 0 in
+  for index = 0 to Array.length mixed_origin_form_slices - 1 do
+    match parse (Array.get_unchecked mixed_origin_form_slices ~at:index) with
+    | Ok uri -> acc := !acc + origin_form_uri_size uri
+    | Error _ -> acc := !acc - 1
+  done;
+  sink := !acc
+
+let bench_uri_current () = run_uri_parse Uri.from_slice
+
+let bench_uri_optimized () = run_origin_form_uri_parse optimized_origin_form_uri_from_slice
+
 let benchmarks =
   Bench.[
     compare_with_config
@@ -274,6 +374,13 @@ let benchmarks =
       [
         make_case "cursor take_until_char" bench_header_line_scan_current;
         make_case "slice index_char+sub" bench_header_line_scan_optimized;
+      ];
+    compare_with_config
+      ~config:{ iterations = 100; warmup = 10 }
+      "std io ioslice uri parse: origin-form targets x 100000"
+      [
+        make_case "Uri.from_slice" bench_uri_current;
+        make_case "optimized origin-form fast path" bench_uri_optimized;
       ];
   ]
 
