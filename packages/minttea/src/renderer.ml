@@ -123,10 +123,14 @@ let paint_frame = fun state ->
   (* Create Gooey viewport from terminal size *)
   let viewport = Gooey.Viewport.make ~width:(float_of_int size.cols) ~height:(float_of_int size.rows) in
   (* Create Gooey config with text measurer *)
-  let text_measurer text _style =
+  let text_measurer ~constraints:_ text _style =
     let width = float_of_int (String.length text) in
     let height = 1.0 in
-    Gooey.Viewport.make ~width ~height
+    let size = Gooey.Viewport.make ~width ~height in
+    {
+      Gooey.Config.size;
+      lines = [ text ];
+    }
   in
   let config = Gooey.Config.make ~viewport ~text_measurer () in
   (* Run Gooey layout to get render commands *)

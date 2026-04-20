@@ -147,7 +147,7 @@ let view = fun t ->
   in
   let progress_string = full_part ^ trail_part ^ empty_part ^ percentage_part in
   (* Use Element.custom with Custom render command to output raw ANSI *)
-  let measure () =
+  let measure ~constraints:_ =
     let visible_width = float_of_int
       (
         t.width + (
