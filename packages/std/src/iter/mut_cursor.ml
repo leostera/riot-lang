@@ -102,6 +102,29 @@ let take_until_string = fun cursor predicate ->
   | None -> None
   | Some slice -> Some (IoSlice.to_string slice)
 
+let take_until_char = fun cursor needle ->
+  let start = cursor.pos in
+  let rec loop () =
+    if cursor.pos >= cursor.length then
+      None
+    else if IoSlice.get_unchecked cursor.source ~at:cursor.pos = needle then
+      Some cursor.pos
+    else (
+      cursor.pos <- cursor.pos + 1;
+      loop ()
+    )
+  in
+  match loop () with
+  | None ->
+      cursor.pos <- start;
+      None
+  | Some stop -> Some (IoSlice.sub_unchecked cursor.source ~off:start ~len:(stop - start))
+
+let take_until_char_string = fun cursor needle ->
+  match take_until_char cursor needle with
+  | None -> None
+  | Some slice -> Some (IoSlice.to_string slice)
+
 let take_n = fun cursor count ->
   if cursor.pos + count > cursor.length then
     None

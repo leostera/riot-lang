@@ -1,6 +1,7 @@
 open Global
 open IO
 open Collections
+module Slice = Iovec.IoSlice
 
 type error =
   | InvalidScheme
@@ -104,13 +105,19 @@ let is_query_char = function
 
 (* Parse helpers *)
 
-let parse_scheme = fun s start_pos ->
-  let len = String.length s in
+type 'source source_ops = {
+  length: 'source -> int;
+  get_unchecked: 'source -> at:int -> char;
+  sub_to_string: 'source -> off:int -> len:int -> string;
+}
+
+let parse_scheme = fun ops source start_pos ->
+  let len = ops.length source in
   let rec find_end pos =
     if pos >= len then
       None
     else
-      match String.get_unchecked s ~at:pos with
+      match ops.get_unchecked source ~at:pos with
       | ':' -> Some pos
       | c when is_scheme_char c -> find_end (pos + 1)
       | _ -> None
@@ -118,21 +125,22 @@ let parse_scheme = fun s start_pos ->
   match find_end start_pos with
   | None -> (None, start_pos)
   | Some end_pos ->
-      let scheme = String.sub s ~offset:start_pos ~len:(end_pos - start_pos) in
+      let scheme = ops.sub_to_string source ~off:start_pos ~len:(end_pos - start_pos) in
       (Some scheme, end_pos + 1)
 
-let parse_authority = fun s start_pos ->
-  let len = String.length s in
+let parse_authority = fun ops source start_pos ->
+  let len = ops.length source in
   if start_pos + 1 < len then
     if
-      String.get_unchecked s ~at:start_pos = '/' && String.get_unchecked s ~at:(start_pos + 1) = '/'
+      ops.get_unchecked source ~at:start_pos = '/'
+      && ops.get_unchecked source ~at:(start_pos + 1) = '/'
     then
       let authority_start = start_pos + 2 in
       let rec find_end pos =
         if pos >= len then
           pos
         else
-          match String.get_unchecked s ~at:pos with
+          match ops.get_unchecked source ~at:pos with
           | '/'
           | '?'
           | '#' -> pos
@@ -140,20 +148,22 @@ let parse_authority = fun s start_pos ->
           | _ -> pos
       in
       let authority_end = find_end authority_start in
-      let authority = String.sub s ~offset:authority_start ~len:(authority_end - authority_start) in
+      let authority =
+        ops.sub_to_string source ~off:authority_start ~len:(authority_end - authority_start)
+      in
       (Some authority, authority_end)
     else
       (None, start_pos)
   else
     (None, start_pos)
 
-let parse_path = fun s start_pos ->
-  let len = String.length s in
+let parse_path = fun ops source start_pos ->
+  let len = ops.length source in
   let rec find_end pos =
     if pos >= len then
       pos
     else
-      match String.get_unchecked s ~at:pos with
+      match ops.get_unchecked source ~at:pos with
       | '?'
       | '#' -> pos
       | c when is_path_char c -> find_end (pos + 1)
@@ -164,38 +174,38 @@ let parse_path = fun s start_pos ->
     if path_end = start_pos then
       "/"
     else
-      String.sub s ~offset:start_pos ~len:(path_end - start_pos)
+      ops.sub_to_string source ~off:start_pos ~len:(path_end - start_pos)
   in
   (path, path_end)
 
-let parse_query = fun s start_pos ->
-  let len = String.length s in
+let parse_query = fun ops source start_pos ->
+  let len = ops.length source in
   if start_pos < len then
-    if String.get_unchecked s ~at:start_pos = '?' then
+    if ops.get_unchecked source ~at:start_pos = '?' then
       let query_start = start_pos + 1 in
       let rec find_end pos =
         if pos >= len then
           pos
         else
-          match String.get_unchecked s ~at:pos with
+          match ops.get_unchecked source ~at:pos with
           | '#' -> pos
           | c when is_query_char c -> find_end (pos + 1)
           | _ -> pos
       in
       let query_end = find_end query_start in
-      let query = String.sub s ~offset:query_start ~len:(query_end - query_start) in
+      let query = ops.sub_to_string source ~off:query_start ~len:(query_end - query_start) in
       (Some query, query_end)
     else
       (None, start_pos)
   else
     (None, start_pos)
 
-let parse_fragment = fun s start_pos ->
-  let len = String.length s in
+let parse_fragment = fun ops source start_pos ->
+  let len = ops.length source in
   if start_pos < len then
-    if String.get_unchecked s ~at:start_pos = '#' then
+    if ops.get_unchecked source ~at:start_pos = '#' then
       let fragment_start = start_pos + 1 in
-      let fragment = String.sub s ~offset:fragment_start ~len:(len - fragment_start) in
+      let fragment = ops.sub_to_string source ~off:fragment_start ~len:(len - fragment_start) in
       (Some fragment, len)
     else
       (None, start_pos)
@@ -204,16 +214,16 @@ let parse_fragment = fun s start_pos ->
 
 (* Main parsing function *)
 
-let of_string = fun s ->
-  if String.length s > 65_535 then
+let parse_with = fun ops source ->
+  if ops.length source > 65_535 then
     Error TooLong
   else
     let pos = 0 in
-    let scheme, pos = parse_scheme s pos in
-    let authority, pos = parse_authority s pos in
-    let path, pos = parse_path s pos in
-    let query, pos = parse_query s pos in
-    let fragment, _ = parse_fragment s pos in
+    let scheme, pos = parse_scheme ops source pos in
+    let authority, pos = parse_authority ops source pos in
+    let path, pos = parse_path ops source pos in
+    let query, pos = parse_query ops source pos in
+    let fragment, _ = parse_fragment ops source pos in
     Ok {
       scheme;
       authority;
@@ -221,6 +231,22 @@ let of_string = fun s ->
       query;
       fragment;
     }
+
+let string_ops = {
+  length = String.length;
+  get_unchecked = String.get_unchecked;
+  sub_to_string = (fun value ~off ~len -> String.sub value ~offset:off ~len);
+}
+
+let slice_ops = {
+  length = Slice.length;
+  get_unchecked = Slice.get_unchecked;
+  sub_to_string = (fun value ~off ~len -> Slice.to_string (Slice.sub_unchecked value ~off ~len));
+}
+
+let of_string = fun s -> parse_with string_ops s
+
+let from_slice = fun value -> parse_with slice_ops value
 
 let to_string = fun url ->
   let buf = Buffer.create ~size:256 in

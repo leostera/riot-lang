@@ -1,4 +1,5 @@
 open Global
+module Slice = IO.Iovec.IoSlice
 
 type t =
   Http09
@@ -15,6 +16,17 @@ let of_string = function
   | "HTTP/2.0" -> Ok Http2
   | "HTTP/3"
   | "HTTP/3.0" -> Ok Http3
+  | _ -> Error `InvalidVersion
+
+let from_slice = fun value ->
+  match Slice.length value with
+  | 8 when Slice.equal_string value "HTTP/0.9" -> Ok Http09
+  | 8 when Slice.equal_string value "HTTP/1.0" -> Ok Http10
+  | 8 when Slice.equal_string value "HTTP/1.1" -> Ok Http11
+  | 6 when Slice.equal_string value "HTTP/2" -> Ok Http2
+  | 8 when Slice.equal_string value "HTTP/2.0" -> Ok Http2
+  | 6 when Slice.equal_string value "HTTP/3" -> Ok Http3
+  | 8 when Slice.equal_string value "HTTP/3.0" -> Ok Http3
   | _ -> Error `InvalidVersion
 
 let to_string = function

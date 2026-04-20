@@ -66,6 +66,9 @@ type t =
     Method.of_string "PURGE" (* Extension "PURGE" *) ``` *)
 val of_string: string -> t
 
+(** Parses an HTTP method from a borrowed slice, copying only non-standard extensions. *)
+val from_slice: IO.Iovec.IoSlice.t -> t
+
 (** Converts HTTP method to uppercase string.
 
     ## Examples

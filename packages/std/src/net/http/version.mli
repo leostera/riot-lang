@@ -50,6 +50,11 @@ val of_string: string -> (t, [
     `InvalidVersion
   ]) Kernel.result
 
+(** Parses an HTTP version from a borrowed slice without materializing a string first. *)
+val from_slice: IO.Iovec.IoSlice.t -> (t, [
+    `InvalidVersion
+  ]) Kernel.result
+
 (** Converts HTTP version to standard string representation.
 
     ## Examples

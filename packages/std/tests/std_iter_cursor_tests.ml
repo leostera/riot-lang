@@ -69,6 +69,14 @@ let test_take_until_stops_before_the_matching_character = fun _ctx ->
       Ok ()
   | _ -> Error "Cursor.take_until should stop before the matching character"
 
+let test_take_until_char_stops_before_the_matching_character = fun _ctx ->
+  match Cursor.take_until_char (Cursor.create "alpha:beta") ':' with
+  | Some (taken, cursor)
+    when String.equal (IoSlice.to_string taken) "alpha"
+         && String.equal (IoSlice.to_string (Cursor.remaining cursor)) ":beta" ->
+      Ok ()
+  | _ -> Error "Cursor.take_until_char should stop before the matching character"
+
 let test_take_n_returns_requested_length = fun _ctx ->
   match Cursor.take_n (Cursor.create "abcdef") 3 with
   | Some (taken, cursor)
@@ -95,6 +103,7 @@ let tests = Test.[
   case "take_while collects prefixes" test_take_while_collects_prefix_and_returns_rest;
   case "skip_while advances without returning text" test_skip_while_advances_without_returning_text;
   case "take_until stops before the matching character" test_take_until_stops_before_the_matching_character;
+  case "take_until_char stops before the matching character" test_take_until_char_stops_before_the_matching_character;
   case "take_n returns the requested number of characters" test_take_n_returns_requested_length;
   case "remaining is empty at EOF" test_remaining_is_empty_at_eof;
 ]

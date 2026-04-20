@@ -490,6 +490,27 @@ let test_uri_with_encoded_query = fun _ctx ->
     )
   | Error _ -> Error "Failed to parse URI"
 
+let test_uri_from_slice = fun _ctx ->
+  let slice = IO.Iovec.IoSlice.from_string "https://example.com:8443/a/b?q=1#frag" |> Result.unwrap in
+  match Uri.from_slice slice with
+  | Error _ ->
+      Error "Expected URI slice to parse"
+  | Ok uri ->
+      if Uri.scheme uri != Some "https" then
+        Error "Expected https scheme"
+      else if Uri.host uri != Some "example.com" then
+        Error "Expected example.com host"
+      else if Uri.port uri != Some 8443 then
+        Error "Expected port 8443"
+      else if Uri.path uri != "/a/b" then
+        Error ("Expected /a/b path, got " ^ Uri.path uri)
+      else if Uri.query uri != Some "q=1" then
+        Error "Expected q=1 query"
+      else if Uri.fragment uri != Some "frag" then
+        Error "Expected frag fragment"
+      else
+        Ok ()
+
 let test_full_roundtrip = fun _ctx ->
   (* Create URI with encoded query *)
   let params = [ ("name", "John Doe"); ("page", "1") ] in
@@ -567,6 +588,7 @@ let tests =
     case "uri parse and decode path" test_uri_parse_and_decode_path;
     case "uri roundtrip with encoded path" test_uri_roundtrip_with_encoded_path;
     case "uri with encoded query" test_uri_with_encoded_query;
+    case "uri from_slice" test_uri_from_slice;
     case "full roundtrip" test_full_roundtrip;
   ]
 

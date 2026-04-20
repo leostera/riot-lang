@@ -69,6 +69,9 @@ type error =
 (** Parse a string into a URL *)
 val of_string: string -> (t, error) Kernel.result
 
+(** Parse a borrowed slice into a URL without first materializing the full input string. *)
+val from_slice: IO.Iovec.IoSlice.t -> (t, error) Kernel.result
+
 (** Convert a URL back to string representation *)
 val to_string: t -> string
 

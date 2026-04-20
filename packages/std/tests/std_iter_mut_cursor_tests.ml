@@ -54,6 +54,15 @@ let test_take_until_stops_before_the_matching_character = fun _ctx ->
       Ok ()
   | _ -> Error "MutCursor.take_until should stop before the matching character"
 
+let test_take_until_char_stops_before_the_matching_character = fun _ctx ->
+  let cursor = MutCursor.create "alpha:beta" in
+  match MutCursor.take_until_char cursor ':' with
+  | Some taken
+    when String.equal (IoSlice.to_string taken) "alpha"
+         && String.equal (IoSlice.to_string (MutCursor.remaining cursor)) ":beta" ->
+      Ok ()
+  | _ -> Error "MutCursor.take_until_char should stop before the matching character"
+
 let test_take_n_returns_requested_length = fun _ctx ->
   let cursor = MutCursor.create "abcdef" in
   match MutCursor.take_n cursor 3 with
@@ -78,6 +87,7 @@ let tests = Test.[
   case "advance_by moves within bounds" test_advance_by_moves_within_bounds;
   case "take_while collects prefixes" test_take_while_collects_prefix_and_advances;
   case "take_until stops before the matching character" test_take_until_stops_before_the_matching_character;
+  case "take_until_char stops before the matching character" test_take_until_char_stops_before_the_matching_character;
   case "take_n returns the requested number of characters" test_take_n_returns_requested_length;
   case "remaining is empty at EOF" test_remaining_is_empty_at_eof;
 ]

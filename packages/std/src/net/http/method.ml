@@ -1,4 +1,5 @@
 open Global
+module Slice = IO.Iovec.IoSlice
 
 type t =
   | Get
@@ -23,6 +24,19 @@ let of_string = function
   | "TRACE" -> Trace
   | "PATCH" -> Patch
   | s -> Extension s
+
+let from_slice = fun value ->
+  match Slice.length value with
+  | 3 when Slice.equal_string value "GET" -> Get
+  | 3 when Slice.equal_string value "PUT" -> Put
+  | 4 when Slice.equal_string value "HEAD" -> Head
+  | 4 when Slice.equal_string value "POST" -> Post
+  | 5 when Slice.equal_string value "PATCH" -> Patch
+  | 5 when Slice.equal_string value "TRACE" -> Trace
+  | 6 when Slice.equal_string value "DELETE" -> Delete
+  | 7 when Slice.equal_string value "CONNECT" -> Connect
+  | 7 when Slice.equal_string value "OPTIONS" -> Options
+  | _ -> Extension (Slice.to_string value)
 
 let to_string = function
   | Get -> "GET"

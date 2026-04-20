@@ -37,6 +37,10 @@ val take_until: t -> (char -> bool) -> IoSlice.t option
 
 val take_until_string: t -> (char -> bool) -> string option
 
+val take_until_char: t -> char -> IoSlice.t option
+
+val take_until_char_string: t -> char -> string option
+
 val take_n: t -> int -> IoSlice.t option
 
 val take_n_string: t -> int -> string option
