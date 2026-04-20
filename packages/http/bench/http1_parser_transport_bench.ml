@@ -357,7 +357,7 @@ let consume_borrowed_result = fun (value : Http1.Request.request_slices) remaini
   ()
 
 let bench_reader_parse = fun ~chunk_size payload () ->
-  let reader = String.to_reader ~chunk_size payload |> IO.buffered ~chunk_size:4_096 () in
+  let reader = String.to_reader payload |> IO.buffered ~chunk_size () in
   let buf = Buffer.create ~size:(String.length payload) in
   match IO.read_to_end reader ~buf with
   | Error error ->
@@ -373,7 +373,7 @@ let bench_reader_parse = fun ~chunk_size payload () ->
     )
 
 let bench_reader_parse_baseline = fun ~chunk_size payload () ->
-  let reader = String.to_reader ~chunk_size payload |> IO.buffered ~chunk_size:4_096 () in
+  let reader = String.to_reader payload |> IO.buffered ~chunk_size () in
   let buf = Buffer.create ~size:(String.length payload) in
   match IO.read_to_end reader ~buf with
   | Error error ->
@@ -388,8 +388,8 @@ let bench_reader_parse_baseline = fun ~chunk_size payload () ->
           panic ("http1 baseline parser transport bench parse error: " ^ error)
     )
 
-let read_to_iobuffer = fun reader ~read_size ->
-  let buffer = IoBuffer.create () |> Result.unwrap in
+let read_to_iobuffer = fun reader ~read_size ~size_hint ->
+  let buffer = IoBuffer.create ~size:size_hint () |> Result.unwrap in
   let rec loop () =
     let _ = IoBuffer.ensure_free buffer read_size |> Result.unwrap in
     let writable = IoBuffer.writable buffer in
@@ -406,8 +406,8 @@ let read_to_iobuffer = fun reader ~read_size ->
   loop ()
 
 let bench_reader_parse_slice = fun ~chunk_size payload () ->
-  let reader = String.to_reader ~chunk_size payload |> IO.buffered ~chunk_size:4_096 () in
-  match read_to_iobuffer reader ~read_size:4_096 with
+  let reader = String.to_reader payload |> IO.buffered ~chunk_size () in
+  match read_to_iobuffer reader ~read_size:4_096 ~size_hint:(String.length payload) with
   | Error error ->
       panic ("http1 parser transport slice bench read error: " ^ IO.error_message error)
   | Ok buffer -> (
@@ -421,8 +421,8 @@ let bench_reader_parse_slice = fun ~chunk_size payload () ->
     )
 
 let bench_reader_parse_slices = fun ~chunk_size payload () ->
-  let reader = String.to_reader ~chunk_size payload |> IO.buffered ~chunk_size:4_096 () in
-  match read_to_iobuffer reader ~read_size:4_096 with
+  let reader = String.to_reader payload |> IO.buffered ~chunk_size () in
+  match read_to_iobuffer reader ~read_size:4_096 ~size_hint:(String.length payload) with
   | Error error ->
       panic ("http1 parser transport borrowed slice bench read error: " ^ IO.error_message error)
   | Ok buffer -> (

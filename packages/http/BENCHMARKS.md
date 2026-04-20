@@ -16,8 +16,12 @@ timeout 120 riot bench http:http1_parser_transport_bench --json
 Notes:
 - `http1_parser_bench` measures parser-only cost on already-materialized request strings.
 - `http1_parser_transport_bench` measures `Std.IO` reader accumulation plus parsing.
-- The reader-fed benchmark currently uses `Std.String.to_reader` with fixed chunk sizes instead of a
-  live socket or server, so it isolates request ingestion overhead without process-management noise.
+- The reader-fed benchmark now uses a single chunking layer:
+  - `Std.String.to_reader` provides the full payload
+  - `Std.IO.buffered ~chunk_size` simulates transport chunking
+- The slice and borrowed reader-fed paths accumulate into a caller-owned `IoBuffer` pre-sized to the
+  known payload length. That keeps the comparison about parser substrate and memory representation,
+  not avoidable destination-buffer growth churn.
 - The benchmark suite now keeps four paths distinct:
   - `baseline string`: the old string-native parser, kept benchmark-only
   - `current parse`: the public `Http1.Request.parse` wrapper, which converts `string -> IoSlice`
@@ -43,13 +47,13 @@ Notes:
 
 | Shape | Baseline String | Current `parse` | `parse_slice` | `parse_slices` |
 | --- | ---: | ---: | ---: | ---: |
-| `small request` | `13.27 us` | `9.28 us` | `15.33 us` | `11.94 us` |
-| `1 KiB body` | `16.48 us` | `17.41 us` | `18.75 us` | `19.23 us` |
-| `100 KiB body` | `349.80 us` | `105.72 us` | `171.03 us` | `377.08 us` |
-| `1 MiB body` | `1.94 ms` | `563.27 us` | `477.07 us` | `762.87 us` |
-| `10 MiB body` | `10.64 ms` | `2.74 ms` | `3.99 ms` | `3.10 ms` |
-| `many headers` | `442.55 us` | `210.09 us` | `208.32 us` | `205.00 us` |
-| `github navigation request` | `85.76 us` | `180.33 us` | `186.58 us` | `188.19 us` |
+| `small request` | `3.69 us` | `8.26 us` | `10.83 us` | `9.86 us` |
+| `1 KiB body` | `13.68 us` | `14.51 us` | `12.89 us` | `11.75 us` |
+| `100 KiB body` | `270.82 us` | `42.40 us` | `19.35 us` | `35.22 us` |
+| `1 MiB body` | `1.35 ms` | `535.67 us` | `252.60 us` | `164.07 us` |
+| `10 MiB body` | `6.98 ms` | `3.33 ms` | `1.47 ms` | `900.20 us` |
+| `many headers` | `103.52 us` | `198.55 us` | `196.68 us` | `190.88 us` |
+| `github navigation request` | `76.80 us` | `169.89 us` | `172.64 us` | `158.46 us` |
 
 ## Current Read
 
@@ -62,13 +66,19 @@ Notes:
   - `10 MiB`: baseline `5.77 ms`, current `243.40 us`, slice `10.20 us`
 - The borrowed parser shows the true request-head parsing floor, but it is not always lower than
   `parse_slice`; once the body is lazy, the owned slice parser is already very close to that floor.
-- Reader-fed results show something different: parser substrate is no longer the only question.
-  `parse` is often faster than `parse_slice` because the current string accumulation path through
-  `IO.Buffer` is cheaper than the current `IoBuffer` accumulation path.
-- That means the next optimization target is clear:
-  - parser-only: the slice parser is already the best real implementation
-  - reader-fed: `IoBuffer` ingestion and commit/ensure-free behavior need work before the slice path
-    wins end to end
+- The earlier reader-fed regression was mostly a benchmark artifact:
+  - it chunked at two layers (`String.to_reader ~chunk_size` and `IO.buffered`)
+  - and it let the slice destination `IoBuffer` grow from zero while the string path pre-sized its
+    `IO.Buffer`
+- With one chunking layer and a caller-owned, pre-sized `IoBuffer`, the slice parser wins clearly
+  on medium and large reader-fed bodies:
+  - `100 KiB`: baseline `270.82 us`, current `42.40 us`, slice `19.35 us`
+  - `1 MiB`: baseline `1.35 ms`, current `535.67 us`, slice `252.60 us`
+  - `10 MiB`: baseline `6.98 ms`, current `3.33 ms`, slice `1.47 ms`
+- The borrowed parser remains the throughput floor for large bodies because it avoids owned request
+  construction:
+  - `1 MiB`: borrowed `164.07 us`
+  - `10 MiB`: borrowed `900.20 us`
 - The sanitized GitHub-like request behaves like the header-heavy case, not the body-heavy case.
   It is dominated by request-line and header handling, so the old string-native parser still looks
   strong there.
@@ -105,13 +115,13 @@ suite as `BaselineParser`.
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser reader-fed baseline string: small request` | `13.27 us` |
-| `http1 parser reader-fed baseline string: 1 KiB body` | `16.48 us` |
-| `http1 parser reader-fed baseline string: 100 KiB body` | `349.80 us` |
-| `http1 parser reader-fed baseline string: 1 MiB body` | `1.94 ms` |
-| `http1 parser reader-fed baseline string: 10 MiB body` | `10.64 ms` |
-| `http1 parser reader-fed baseline string: many headers` | `442.55 us` |
-| `http1 parser reader-fed baseline string: github navigation request` | `85.76 us` |
+| `http1 parser reader-fed baseline string: small request` | `3.69 us` |
+| `http1 parser reader-fed baseline string: 1 KiB body` | `13.68 us` |
+| `http1 parser reader-fed baseline string: 100 KiB body` | `270.82 us` |
+| `http1 parser reader-fed baseline string: 1 MiB body` | `1.35 ms` |
+| `http1 parser reader-fed baseline string: 10 MiB body` | `6.98 ms` |
+| `http1 parser reader-fed baseline string: many headers` | `103.52 us` |
+| `http1 parser reader-fed baseline string: github navigation request` | `76.80 us` |
 
 ## Current: Public String Entry Point
 
@@ -134,13 +144,13 @@ an `IoSlice` and then uses the slice parser.
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser reader-fed: small request` | `9.28 us` |
-| `http1 parser reader-fed: 1 KiB body` | `17.41 us` |
-| `http1 parser reader-fed: 100 KiB body` | `105.72 us` |
-| `http1 parser reader-fed: 1 MiB body` | `563.27 us` |
-| `http1 parser reader-fed: 10 MiB body` | `2.74 ms` |
-| `http1 parser reader-fed: many headers` | `210.09 us` |
-| `http1 parser reader-fed: github navigation request` | `180.33 us` |
+| `http1 parser reader-fed: small request` | `8.26 us` |
+| `http1 parser reader-fed: 1 KiB body` | `14.51 us` |
+| `http1 parser reader-fed: 100 KiB body` | `42.40 us` |
+| `http1 parser reader-fed: 1 MiB body` | `535.67 us` |
+| `http1 parser reader-fed: 10 MiB body` | `3.33 ms` |
+| `http1 parser reader-fed: many headers` | `198.55 us` |
+| `http1 parser reader-fed: github navigation request` | `169.89 us` |
 
 ## Current: Direct Slice Entry Point
 
@@ -161,18 +171,18 @@ head into an owned `Request.t` while keeping the body lazy on `Std.Net.Http.Body
 
 ### Reader-Fed
 
-The direct reader-fed slice path currently reads into `Std.IO.IoBuffer` with vectored reads and
-then parses `Std.IO.IoBuffer.readable`.
+The direct reader-fed slice path currently reads into a caller-owned, pre-sized `Std.IO.IoBuffer`
+with vectored reads and then parses `Std.IO.IoBuffer.readable`.
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser reader-fed slice: small request` | `15.33 us` |
-| `http1 parser reader-fed slice: 1 KiB body` | `18.75 us` |
-| `http1 parser reader-fed slice: 100 KiB body` | `171.03 us` |
-| `http1 parser reader-fed slice: 1 MiB body` | `477.07 us` |
-| `http1 parser reader-fed slice: 10 MiB body` | `3.99 ms` |
-| `http1 parser reader-fed slice: many headers` | `208.32 us` |
-| `http1 parser reader-fed slice: github navigation request` | `186.58 us` |
+| `http1 parser reader-fed slice: small request` | `10.83 us` |
+| `http1 parser reader-fed slice: 1 KiB body` | `12.89 us` |
+| `http1 parser reader-fed slice: 100 KiB body` | `19.35 us` |
+| `http1 parser reader-fed slice: 1 MiB body` | `252.60 us` |
+| `http1 parser reader-fed slice: 10 MiB body` | `1.47 ms` |
+| `http1 parser reader-fed slice: many headers` | `196.68 us` |
+| `http1 parser reader-fed slice: github navigation request` | `172.64 us` |
 
 ## Current: Borrowed Slice Entry Point
 
@@ -195,10 +205,10 @@ headers, and body as borrowed `IoSlice` values instead of materializing a `Reque
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser reader-fed borrowed slice: small request` | `11.94 us` |
-| `http1 parser reader-fed borrowed slice: 1 KiB body` | `19.23 us` |
-| `http1 parser reader-fed borrowed slice: 100 KiB body` | `377.08 us` |
-| `http1 parser reader-fed borrowed slice: 1 MiB body` | `762.87 us` |
-| `http1 parser reader-fed borrowed slice: 10 MiB body` | `3.10 ms` |
-| `http1 parser reader-fed borrowed slice: many headers` | `205.00 us` |
-| `http1 parser reader-fed borrowed slice: github navigation request` | `188.19 us` |
+| `http1 parser reader-fed borrowed slice: small request` | `9.86 us` |
+| `http1 parser reader-fed borrowed slice: 1 KiB body` | `11.75 us` |
+| `http1 parser reader-fed borrowed slice: 100 KiB body` | `35.22 us` |
+| `http1 parser reader-fed borrowed slice: 1 MiB body` | `164.07 us` |
+| `http1 parser reader-fed borrowed slice: 10 MiB body` | `900.20 us` |
+| `http1 parser reader-fed borrowed slice: many headers` | `190.88 us` |
+| `http1 parser reader-fed borrowed slice: github navigation request` | `158.46 us` |
