@@ -39,7 +39,7 @@ let position = function
 let local_index = fun state absolute -> absolute - state.base
 
 let compact = fun state ->
-  if state.pos > 0 then
+  if Int.(state.pos > 0) then
     (
       ignore (IO.BufReader.consume state.reader ~len:state.pos);
       state.base <- state.base + state.pos;
@@ -65,17 +65,17 @@ let refill = fun state ->
 
 let ensure = fun input needed ->
   match input with
-  | String_input state -> state.pos + needed <= String.length state.input
+  | String_input state -> Int.(state.pos + needed <= String.length state.input)
   | Reader_input state ->
       let rec loop () =
-        if state.pos + needed <= IO.IoSlice.length state.view then
+        if Int.(state.pos + needed <= IO.IoSlice.length state.view) then
           true
         else if state.eof then
           false
         else if refill state then
           loop ()
         else
-          state.pos + needed <= IO.IoSlice.length state.view
+          Int.(state.pos + needed <= IO.IoSlice.length state.view)
       in
       loop ()
 
@@ -117,13 +117,15 @@ let slice_to_string = fun input ~start ~stop ->
 
 let copy_range_to_buffer = fun buffer input ~start ~stop ->
   let length = stop - start in
-  if length > 0 then
+  if Int.(length > 0) then
     match input with
     | String_input state -> IO.Buffer.add_substring buffer state.input start length
     | Reader_input state ->
-        IO.Buffer.append_slice
+        IO.Buffer.append_subslice
           buffer
-          (IO.IoSlice.sub_unchecked state.view ~off:(local_index state start) ~len:length)
+          state.view
+          ~off:(local_index state start)
+          ~len:length
         |> Result.expect ~msg:"serde-json buffered input should append borrowed slices"
 
 let match_field_range = fun fields input ~start ~stop ->
@@ -141,7 +143,7 @@ let skip_whitespace = function
       let input = state.input in
       let length = String.length input in
       let rec loop pos =
-        if pos >= length then
+        if Int.(pos >= length) then
           pos
         else
           match String.unsafe_get input pos with
@@ -155,7 +157,7 @@ let skip_whitespace = function
   | Reader_input state ->
       let rec loop () =
         let rec advance_local pos =
-          if pos >= IO.IoSlice.length state.view then
+          if Int.(pos >= IO.IoSlice.length state.view) then
             pos
           else
             match IO.IoSlice.get_unchecked state.view ~at:pos with
@@ -166,7 +168,7 @@ let skip_whitespace = function
             | _ -> pos
         in
         state.pos <- advance_local state.pos;
-        if state.pos >= IO.IoSlice.length state.view && not state.eof && refill state then
+        if Int.(state.pos >= IO.IoSlice.length state.view) && not state.eof && refill state then
           loop ()
       in
       loop ()
@@ -176,7 +178,7 @@ let scan_while = fun input ~continue ->
   | String_input state ->
       let length = String.length state.input in
       let rec loop pos =
-        if pos >= length then
+        if Int.(pos >= length) then
           `Eof pos
         else
           let current = String.unsafe_get state.input pos in
@@ -188,14 +190,14 @@ let scan_while = fun input ~continue ->
       loop state.pos
   | Reader_input state ->
       let rec loop () =
-        if state.pos >= IO.IoSlice.length state.view then
+        if Int.(state.pos >= IO.IoSlice.length state.view) then
           if refill state then
             loop ()
           else
             `Eof (state.base + state.pos)
         else
           let rec scan local =
-            if local >= IO.IoSlice.length state.view then
+            if Int.(local >= IO.IoSlice.length state.view) then
               `Boundary (state.base + local)
             else
               let current = IO.IoSlice.get_unchecked state.view ~at:local in

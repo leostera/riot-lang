@@ -125,7 +125,7 @@ let append_current_range = fun state start stop ->
   Input.copy_range_to_buffer state.scratch state.input ~start ~stop
 
 let reader_current_char: Input.reader_state -> char option = fun reader ->
-  if reader.Input.pos < IO.IoSlice.length reader.Input.view then
+  if Int.(reader.Input.pos < IO.IoSlice.length reader.Input.view) then
     Some (IO.IoSlice.get_unchecked reader.Input.view ~at:reader.Input.pos)
   else if Input.refill reader then
     Some (IO.IoSlice.get_unchecked reader.Input.view ~at:reader.Input.pos)
@@ -140,23 +140,23 @@ let reader_advance_by: Input.reader_state -> int -> unit = fun reader count ->
 
 let reader_append_range: IO.Buffer.t -> Input.reader_state -> int -> int -> unit = fun scratch reader start stop ->
   let length = stop - start in
-  if length > 0 then
-    IO.Buffer.append_slice scratch (IO.IoSlice.sub_unchecked reader.Input.view ~off:start ~len:length)
+  if Int.(length > 0) then
+    IO.Buffer.append_subslice scratch reader.Input.view ~off:start ~len:length
     |> Result.expect ~msg:"serde-json reader should append borrowed slices into scratch buffers"
 
 let rec reader_scan_while: Input.reader_state -> continue:(char -> bool) -> [
     `Stop of int * char
     | `Boundary of int
     | `Eof
-  ] = fun reader ~continue ->
-  if reader.Input.pos >= IO.IoSlice.length reader.Input.view then
+] = fun reader ~continue ->
+  if Int.(reader.Input.pos >= IO.IoSlice.length reader.Input.view) then
     if Input.refill reader then
       reader_scan_while reader ~continue
     else
       `Eof
   else
     let rec loop pos =
-      if pos >= IO.IoSlice.length reader.Input.view then
+      if Int.(pos >= IO.IoSlice.length reader.Input.view) then
         `Boundary pos
       else
         let current = IO.IoSlice.get_unchecked reader.Input.view ~at:pos in
@@ -177,18 +177,18 @@ let reader_expect_char: state -> Input.reader_state -> char -> string -> unit = 
         unexpected_character state actual expected_name
 
 let reader_token_start = fun reader ->
-  if reader.Input.pos >= IO.IoSlice.length reader.Input.view then
+  if Int.(reader.Input.pos >= IO.IoSlice.length reader.Input.view) then
     ignore (Input.refill reader);
   reader.Input.pos
 
 let reader_skip_whitespace: Input.reader_state -> unit = fun reader ->
   let rec loop () =
-    if reader.Input.pos >= IO.IoSlice.length reader.Input.view then
+    if Int.(reader.Input.pos >= IO.IoSlice.length reader.Input.view) then
       if Input.refill reader then
         loop ()
       else
         let rec skip pos =
-          if pos >= IO.IoSlice.length reader.Input.view then
+          if Int.(pos >= IO.IoSlice.length reader.Input.view) then
             pos
           else
             match IO.IoSlice.get_unchecked reader.Input.view ~at:pos with
@@ -199,7 +199,7 @@ let reader_skip_whitespace: Input.reader_state -> unit = fun reader ->
             | _ -> pos
         in
         reader.Input.pos <- skip reader.Input.pos;
-        if reader.Input.pos >= IO.IoSlice.length reader.Input.view && Input.refill reader then
+        if Int.(reader.Input.pos >= IO.IoSlice.length reader.Input.view) && Input.refill reader then
           loop ()
   in
   loop ()
