@@ -349,15 +349,21 @@ module Thrift = struct
   let read_double = fun input ->
     let* bytes = read_string input 8 "double" in
     let open Int64 in
-      let byte index = shift_left (of_int (get_byte bytes index)) (index * 8) in
-      Ok (float_of_bits
-        (logor
-          (byte 0)
-          (logor
-            (byte 1)
+    let byte index =
+      let shift = Std.Int.(index * 8) in
+      shift_left (of_int (get_byte bytes index)) shift
+    in
+    Ok
+      (float_of_bits
+         (logor
+            (byte 0)
             (logor
-              (byte 2)
-              (logor (byte 3) (logor (byte 4) (logor (byte 5) (logor (byte 6) (byte 7)))))))))
+               (byte 1)
+               (logor
+                  (byte 2)
+                  (logor
+                     (byte 3)
+                     (logor (byte 4) (logor (byte 5) (logor (byte 6) (byte 7)))))))))
 
   let read_binary = fun input ->
     let* length = read_vlq input in
