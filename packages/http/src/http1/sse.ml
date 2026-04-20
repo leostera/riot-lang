@@ -2,7 +2,7 @@
 open Std
 open Std.Iter
 
-module Slice = IO.Iovec.IoSlice
+module Slice = IO.IoVec.IoSlice
 
 type event = {
   data: string;

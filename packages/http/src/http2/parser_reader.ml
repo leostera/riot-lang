@@ -63,11 +63,9 @@ let buffered_bytes = fun state ->
 
 (** Read exactly N bytes from reader into buffer, returning number actually read *)
 let read_n_bytes = fun reader buffer n ->
-  let bytes = Bytes.create ~size:n in
-  match IO.Reader.read reader bytes with
+  match IO.Reader.read reader ~into:buffer with
   | Ok bytes_read when bytes_read > 0 ->
-      Buffer.add_subbytes buffer bytes 0 bytes_read;
-      bytes_read
+      Int.min bytes_read n
   | Ok _ ->
       0
   | Error _ ->

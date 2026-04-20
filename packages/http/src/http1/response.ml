@@ -3,7 +3,7 @@ open Std
 open Std.Iter
 open Common
 
-module Slice = IO.Iovec.IoSlice
+module Slice = IO.IoVec.IoSlice
 
 type t = Std.Net.Http.Response.t
 

@@ -35,7 +35,7 @@ let expect_request_parse = fun input ->
       Result.Error ("Parse error: " ^ error)
 
 let expect_request_parse_slice = fun input ->
-  match Http1.Request.parse_slice (IO.Iovec.IoSlice.from_string input |> Result.unwrap) with
+  match Http1.Request.parse_slice (IO.IoVec.IoSlice.from_string input |> Result.unwrap) with
   | Done { value; remaining } ->
       Result.Ok (value, remaining)
   | Need_more ->
@@ -44,7 +44,7 @@ let expect_request_parse_slice = fun input ->
       Result.Error ("Parse error: " ^ error)
 
 let expect_request_parse_slices = fun input ->
-  match Http1.Request.parse_slices (IO.Iovec.IoSlice.from_string input |> Result.unwrap) with
+  match Http1.Request.parse_slices (IO.IoVec.IoSlice.from_string input |> Result.unwrap) with
   | Borrowed_done { value; remaining } ->
       Result.Ok (value, remaining)
   | Borrowed_need_more ->
@@ -216,15 +216,15 @@ let test_request_parse_slices = fun _ctx ->
   | Error error ->
       Result.Error error
   | Ok (parsed, remaining) ->
-      let method_ = IO.Iovec.IoSlice.to_string parsed.method_ in
-      let path = IO.Iovec.IoSlice.to_string parsed.path in
-      let version = IO.Iovec.IoSlice.to_string parsed.version in
+      let method_ = IO.IoVec.IoSlice.to_string parsed.method_ in
+      let path = IO.IoVec.IoSlice.to_string parsed.path in
+      let version = IO.IoVec.IoSlice.to_string parsed.version in
       let headers =
         List.map parsed.headers ~fn:(fun (name, value) ->
-          (IO.Iovec.IoSlice.to_string name, IO.Iovec.IoSlice.to_string value))
+          (IO.IoVec.IoSlice.to_string name, IO.IoVec.IoSlice.to_string value))
       in
-      let body = IO.Iovec.IoSlice.to_string parsed.body in
-      let remaining = IO.Iovec.IoSlice.to_string remaining in
+      let body = IO.IoVec.IoSlice.to_string parsed.body in
+      let remaining = IO.IoVec.IoSlice.to_string remaining in
       if method_ != "GET" then
         Result.Error ("Expected GET method, got " ^ method_)
       else if path != "/view" then

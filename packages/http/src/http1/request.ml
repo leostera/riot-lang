@@ -2,7 +2,7 @@
 open Std
 
 module Cursor = Std.Iter.Cursor
-module Slice = IO.Iovec.IoSlice
+module Slice = IO.IoVec.IoSlice
 
 let slice_of_string = fun value ->
   match Slice.from_string value with

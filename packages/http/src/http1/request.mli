@@ -4,15 +4,15 @@ open Std.Iter
 open Common
 
 type request_slices = {
-  method_: IO.Iovec.IoSlice.t;
-  path: IO.Iovec.IoSlice.t;
-  version: IO.Iovec.IoSlice.t;
-  headers: (IO.Iovec.IoSlice.t * IO.Iovec.IoSlice.t) list;
-  body: IO.Iovec.IoSlice.t;
+  method_: IO.IoVec.IoSlice.t;
+  path: IO.IoVec.IoSlice.t;
+  version: IO.IoVec.IoSlice.t;
+  headers: (IO.IoVec.IoSlice.t * IO.IoVec.IoSlice.t) list;
+  body: IO.IoVec.IoSlice.t;
 }
 
 type 'a borrowed_parse_result =
-  | Borrowed_done of { value: 'a; remaining: IO.Iovec.IoSlice.t }
+  | Borrowed_done of { value: 'a; remaining: IO.IoVec.IoSlice.t }
   | Borrowed_need_more
   | Borrowed_error of string
 
@@ -28,14 +28,14 @@ val parse_slices:
   ?max_request_line:int ->
   ?max_headers:int ->
   ?max_header_length:int ->
-  IO.Iovec.IoSlice.t ->
+  IO.IoVec.IoSlice.t ->
   request_slices borrowed_parse_result
 
 val parse_slice:
   ?max_request_line:int ->
   ?max_headers:int ->
   ?max_header_length:int ->
-  IO.Iovec.IoSlice.t ->
+  IO.IoVec.IoSlice.t ->
   Std.Net.Http.Request.t parse_result
 
 val parse:

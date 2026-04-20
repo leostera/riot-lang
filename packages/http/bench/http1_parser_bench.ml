@@ -330,19 +330,19 @@ let github_navigation_request =
     ]
     ~body:""
 
-let small_request_slice = IO.Iovec.IoSlice.from_string small_request |> Result.unwrap
+let small_request_slice = IO.IoVec.IoSlice.from_string small_request |> Result.unwrap
 
-let request_1k_slice = IO.Iovec.IoSlice.from_string request_1k |> Result.unwrap
+let request_1k_slice = IO.IoVec.IoSlice.from_string request_1k |> Result.unwrap
 
-let request_100k_slice = IO.Iovec.IoSlice.from_string request_100k |> Result.unwrap
+let request_100k_slice = IO.IoVec.IoSlice.from_string request_100k |> Result.unwrap
 
-let request_1m_slice = IO.Iovec.IoSlice.from_string request_1m |> Result.unwrap
+let request_1m_slice = IO.IoVec.IoSlice.from_string request_1m |> Result.unwrap
 
-let request_10m_slice = IO.Iovec.IoSlice.from_string request_10m |> Result.unwrap
+let request_10m_slice = IO.IoVec.IoSlice.from_string request_10m |> Result.unwrap
 
-let many_headers_request_slice = IO.Iovec.IoSlice.from_string many_headers_request |> Result.unwrap
+let many_headers_request_slice = IO.IoVec.IoSlice.from_string many_headers_request |> Result.unwrap
 
-let github_navigation_request_slice = IO.Iovec.IoSlice.from_string github_navigation_request |> Result.unwrap
+let github_navigation_request_slice = IO.IoVec.IoSlice.from_string github_navigation_request |> Result.unwrap
 
 let consume_result = fun value remaining ->
   let _ =
@@ -358,12 +358,12 @@ let consume_result = fun value remaining ->
 let consume_borrowed_result = fun (value : Http1.Request.request_slices) remaining ->
   let _ =
     (
-      IO.Iovec.IoSlice.length value.method_,
-      IO.Iovec.IoSlice.length value.path,
-      IO.Iovec.IoSlice.length value.version,
+      IO.IoVec.IoSlice.length value.method_,
+      IO.IoVec.IoSlice.length value.path,
+      IO.IoVec.IoSlice.length value.version,
       List.length value.headers,
-      IO.Iovec.IoSlice.length value.body,
-      IO.Iovec.IoSlice.length remaining
+      IO.IoVec.IoSlice.length value.body,
+      IO.IoVec.IoSlice.length remaining
     )
   in
   ()

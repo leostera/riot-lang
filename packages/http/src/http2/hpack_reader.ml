@@ -66,9 +66,9 @@ let dynamic_table_size = fun decoder ->
 
 (** Try to read one byte from reader *)
 let read_byte = fun reader ->
-  let buf = Bytes.create ~size:1 in
-  match IO.Reader.read reader buf with
-  | Ok 1 -> Some (Bytes.get_unchecked buf ~at:0 |> Char.to_int)
+  let buf = Buffer.create ~size:1 in
+  match IO.Reader.read reader ~into:buf with
+  | Ok 1 -> Some (Buffer.get_unchecked buf ~at:0 |> Char.to_int)
   | _ -> None
 
 (** Try to read N bytes from reader *)
@@ -76,9 +76,9 @@ let read_n_bytes = fun reader n ->
   if n = 0 then
     Some (Bytes.create ~size:0)
   else
-    let buf = Bytes.create ~size:n in
-    match IO.Reader.read reader buf with
-    | Ok bytes_read when bytes_read = n -> Some buf
+    let buf = Buffer.create ~size:n in
+    match IO.Reader.read reader ~into:buf with
+    | Ok bytes_read when bytes_read = n -> Some (Buffer.to_bytes buf)
     | _ -> None
 
 (** Decode variable-length integer (reentrant) *)
