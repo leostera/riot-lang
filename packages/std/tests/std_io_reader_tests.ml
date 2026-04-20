@@ -147,7 +147,7 @@ let test_buffered_reader_amortizes_char_reads = fun _ctx ->
     |> IO.buffered ~chunk_size:4 ()
   in
   let rec loop acc =
-    match IO.read_char reader with
+    match IO.BufferedReader.read_char reader with
     | Ok None -> Ok (String.concat "" (List.reverse acc))
     | Ok (Some char) -> loop (String.make ~len:1 ~char :: acc)
     | Error () -> Error "buffered readers should not fail for counting reader"
@@ -161,6 +161,7 @@ let test_buffered_reader_read_line_uses_generic_io_surface = fun _ctx ->
   let reader =
     IO.Reader.from_string "alpha\nbeta"
     |> IO.buffered ()
+    |> IO.BufferedReader.to_reader
   in
   match IO.read_line reader with
   | Ok "alpha\n" -> (

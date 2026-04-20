@@ -336,7 +336,7 @@ let run_std_reader_chunks = fun expected_bytes ->
 
 let run_std_read_to_string = fun expected_bytes ->
   let reader = IO.stdin () |> IO.buffered () in
-  match IO.read_to_string reader ~len:expected_bytes with
+  match IO.BufferedReader.read_to_string reader ~len:expected_bytes with
   | Ok data ->
       if String.length data != expected_bytes then
         panic
@@ -389,7 +389,7 @@ let run_std_buffered_chars = fun expected_bytes ->
   let reader = IO.stdin () |> IO.buffered () in
   let buffer = Bytes.create ~size:1 in
   let rec loop total =
-    match IO.read reader ~len:1 buffer with
+    match IO.BufferedReader.read reader buffer with
     | Ok 0 -> total
     | Ok count -> loop (total + count)
     | Error error -> panic (IO.error_message error)
@@ -407,7 +407,7 @@ let run_std_buffered_chars = fun expected_bytes ->
 let run_std_lines = fun expected_bytes expected_lines ->
   let reader = IO.stdin () |> IO.buffered () in
   let rec loop byte_count line_count =
-    match IO.read_line reader with
+    match IO.BufferedReader.read_line reader with
     | Ok "" -> (byte_count, line_count)
     | Ok line -> loop (byte_count + String.length line) (line_count + 1)
     | Error error -> panic (IO.error_message error)
