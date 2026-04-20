@@ -17,11 +17,10 @@ Notes:
 - `http1_parser_bench` measures parser-only cost on prebuilt inputs.
   - request strings are built outside the timed closure
   - `IoSlice` inputs are also prefilled outside the timed closure
-- `http1_parser_transport_bench` now measures true reader-driven head parsing.
+- `http1_parser_transport_bench` measures full-request reader-driven parsing.
   - each path reads incrementally from `Std.String.to_reader ~chunk_size`
-  - the parser is retried as bytes arrive
-  - the benchmark stops as soon as the request head is complete
-  - the body is not eagerly read to EOF first
+  - the whole request is accumulated through a `Reader`
+  - parsing happens only after the full payload has been read
 - The reader-driven suite uses fixture-specific transport chunk sizes:
   - `small request`: `32 B`
   - `1 KiB body`: `64 B`
@@ -51,17 +50,17 @@ Notes:
 | `many headers` | `117.58 us` | `226.62 us` | `197.16 us` | `180.73 us` |
 | `github navigation request` | `80.11 us` | `186.92 us` | `181.18 us` | `158.78 us` |
 
-### Reader-Driven Head Parse
+### Reader-Driven Full Request
 
 | Shape | Baseline String | Current `parse` | `parse_slice` | `parse_slices` |
 | --- | ---: | ---: | ---: | ---: |
-| `small request` | `5.00 us` | `13.25 us` | `12.03 us` | `10.10 us` |
-| `1 KiB body` | `11.27 us` | `20.09 us` | `17.53 us` | `16.49 us` |
-| `100 KiB body` | `4.92 us` | `10.48 us` | `20.23 us` | `9.03 us` |
-| `1 MiB body` | `47.27 us` | `14.13 us` | `13.73 us` | `9.67 us` |
-| `10 MiB body` | `9.60 us` | `12.60 us` | `14.20 us` | `10.40 us` |
-| `many headers` | `1.37 ms` | `2.58 ms` | `2.56 ms` | `2.53 ms` |
-| `github navigation request` | `1.05 ms` | `2.35 ms` | `2.26 ms` | `2.25 ms` |
+| `small request` | `4.12 us` | `7.66 us` | `9.77 us` | `7.75 us` |
+| `1 KiB body` | `7.15 us` | `15.71 us` | `18.71 us` | `16.84 us` |
+| `100 KiB body` | `378.95 us` | `79.02 us` | `170.77 us` | `179.13 us` |
+| `1 MiB body` | `1.27 ms` | `694.00 us` | `476.60 us` | `1.29 ms` |
+| `10 MiB body` | `6.54 ms` | `2.36 ms` | `2.81 ms` | `2.09 ms` |
+| `many headers` | `122.05 us` | `184.67 us` | `205.62 us` | `192.59 us` |
+| `github navigation request` | `76.78 us` | `181.88 us` | `185.43 us` | `172.16 us` |
 
 ## Current Read
 
@@ -73,24 +72,21 @@ Notes:
   do not pay a whole-input `string -> IoSlice` adapter cost and they keep the body lazy:
   - `1 MiB`: baseline `1.17 ms`, current `57.80 us`, slice `10.60 us`, borrowed `7.73 us`
   - `10 MiB`: baseline `4.44 ms`, current `484.60 us`, slice `10.60 us`, borrowed `8.20 us`
-- The reader-driven suite now measures what an actual server head parser cares about:
-  - bytes arrive through a `Reader`
-  - the parser is retried incrementally
-  - parsing stops once the head is complete
-  - the body is left unread
-- Because the body is no longer read to EOF first, the large-body rows are now roughly flat. They
-  are best read as “how expensive is it to reach the end of the head under this transport chunk
-  size,” not as bulk-ingestion timings.
-- The baseline string path is still strong when the head arrives in one or two reads, but it scales
-  poorly for header-heavy streaming because it must repeatedly materialize `StringBuilder.contents`
-  and restart the parser from the beginning on every refill:
-  - `many headers`: baseline `1.37 ms`, current `2.58 ms`, slice `2.56 ms`, borrowed `2.53 ms`
-  - `github navigation request`: baseline `1.05 ms`, current `2.35 ms`, slice `2.26 ms`,
-    borrowed `2.25 ms`
-- The slice and borrowed paths now show the real low-level advantage more honestly:
-  - they no longer pay whole-body accumulation before parsing
-  - borrowed mainly saves result materialization; all four paths still reparse from the beginning
-    on each refill because the current request parser surface is stateless
+- The reader-driven suite now measures what you asked for: a real `Reader` feeding the whole
+  request before parsing. It is explicitly an accumulation-plus-parse benchmark, not a pure parser
+  benchmark.
+- On medium and large bodies, the current and slice-based paths clearly beat the old string-native
+  baseline because they avoid the old parser’s body-sized string slicing costs:
+  - `100 KiB`: baseline `378.95 us`, current `79.02 us`, slice `170.77 us`
+  - `1 MiB`: baseline `1.27 ms`, current `694.00 us`, slice `476.60 us`
+  - `10 MiB`: baseline `6.54 ms`, current `2.36 ms`, slice `2.81 ms`, borrowed `2.09 ms`
+- The borrowed parser is not always the best full-request path because the benchmark still includes
+  transport accumulation, and borrowed only saves result ownership conversion at the parse
+  boundary.
+- The old string-native parser is still hard to beat on tiny and header-heavy shapes, where
+  `String` operations are cheap and the ownership advantages of slices do not buy much:
+  - `small request`: baseline `4.12 us` vs current `7.66 us`, slice `9.77 us`
+  - `github navigation request`: baseline `76.78 us` vs current `181.88 us`, slice `185.43 us`
 
 ## Request Shapes
 
@@ -120,17 +116,17 @@ suite as `BaselineParser`.
 | `http1 parser in-memory baseline string: many headers` | `117.58 us` |
 | `http1 parser in-memory baseline string: github navigation request` | `80.11 us` |
 
-### Reader-Driven Head Parse
+### Reader-Driven Full Request
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser reader-driven baseline string: small request` | `5.00 us` |
-| `http1 parser reader-driven baseline string: 1 KiB body` | `11.27 us` |
-| `http1 parser reader-driven baseline string: 100 KiB body` | `4.92 us` |
-| `http1 parser reader-driven baseline string: 1 MiB body` | `47.27 us` |
-| `http1 parser reader-driven baseline string: 10 MiB body` | `9.60 us` |
-| `http1 parser reader-driven baseline string: many headers` | `1.37 ms` |
-| `http1 parser reader-driven baseline string: github navigation request` | `1.05 ms` |
+| `http1 parser reader-driven baseline string: small request` | `4.12 us` |
+| `http1 parser reader-driven baseline string: 1 KiB body` | `7.15 us` |
+| `http1 parser reader-driven baseline string: 100 KiB body` | `378.95 us` |
+| `http1 parser reader-driven baseline string: 1 MiB body` | `1.27 ms` |
+| `http1 parser reader-driven baseline string: 10 MiB body` | `6.54 ms` |
+| `http1 parser reader-driven baseline string: many headers` | `122.05 us` |
+| `http1 parser reader-driven baseline string: github navigation request` | `76.78 us` |
 
 ## Current: Public String Entry Point
 
@@ -149,17 +145,17 @@ an `IoSlice` and then uses the slice parser.
 | `http1 parser in-memory: many headers` | `226.62 us` |
 | `http1 parser in-memory: github navigation request` | `186.92 us` |
 
-### Reader-Driven Head Parse
+### Reader-Driven Full Request
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser reader-driven: small request` | `13.25 us` |
-| `http1 parser reader-driven: 1 KiB body` | `20.09 us` |
-| `http1 parser reader-driven: 100 KiB body` | `10.48 us` |
-| `http1 parser reader-driven: 1 MiB body` | `14.13 us` |
-| `http1 parser reader-driven: 10 MiB body` | `12.60 us` |
-| `http1 parser reader-driven: many headers` | `2.58 ms` |
-| `http1 parser reader-driven: github navigation request` | `2.35 ms` |
+| `http1 parser reader-driven: small request` | `7.66 us` |
+| `http1 parser reader-driven: 1 KiB body` | `15.71 us` |
+| `http1 parser reader-driven: 100 KiB body` | `79.02 us` |
+| `http1 parser reader-driven: 1 MiB body` | `694.00 us` |
+| `http1 parser reader-driven: 10 MiB body` | `2.36 ms` |
+| `http1 parser reader-driven: many headers` | `184.67 us` |
+| `http1 parser reader-driven: github navigation request` | `181.88 us` |
 
 ## Current: Direct Slice Entry Point
 
@@ -178,20 +174,20 @@ head into an owned `Request.t` while keeping the body lazy on `Std.Net.Http.Body
 | `http1 parser in-memory slice: many headers` | `197.16 us` |
 | `http1 parser in-memory slice: github navigation request` | `181.18 us` |
 
-### Reader-Driven Head Parse
+### Reader-Driven Full Request
 
-The direct reader-driven slice path reads incrementally into a caller-owned `Std.IO.IoBuffer` with
-vectored reads and retries parsing after each refill.
+The direct reader-driven slice path reads the whole payload incrementally into a caller-owned
+`Std.IO.IoBuffer`, then parses `Std.IO.IoBuffer.readable`.
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser reader-driven slice: small request` | `12.03 us` |
-| `http1 parser reader-driven slice: 1 KiB body` | `17.53 us` |
-| `http1 parser reader-driven slice: 100 KiB body` | `20.23 us` |
-| `http1 parser reader-driven slice: 1 MiB body` | `13.73 us` |
-| `http1 parser reader-driven slice: 10 MiB body` | `14.20 us` |
-| `http1 parser reader-driven slice: many headers` | `2.56 ms` |
-| `http1 parser reader-driven slice: github navigation request` | `2.26 ms` |
+| `http1 parser reader-driven slice: small request` | `9.77 us` |
+| `http1 parser reader-driven slice: 1 KiB body` | `18.71 us` |
+| `http1 parser reader-driven slice: 100 KiB body` | `170.77 us` |
+| `http1 parser reader-driven slice: 1 MiB body` | `476.60 us` |
+| `http1 parser reader-driven slice: 10 MiB body` | `2.81 ms` |
+| `http1 parser reader-driven slice: many headers` | `205.62 us` |
+| `http1 parser reader-driven slice: github navigation request` | `185.43 us` |
 
 ## Current: Borrowed Slice Entry Point
 
@@ -210,14 +206,14 @@ headers, and body as borrowed `IoSlice` values instead of materializing a `Reque
 | `http1 parser in-memory borrowed slice: many headers` | `180.73 us` |
 | `http1 parser in-memory borrowed slice: github navigation request` | `158.78 us` |
 
-### Reader-Driven Head Parse
+### Reader-Driven Full Request
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser reader-driven borrowed slice: small request` | `10.10 us` |
-| `http1 parser reader-driven borrowed slice: 1 KiB body` | `16.49 us` |
-| `http1 parser reader-driven borrowed slice: 100 KiB body` | `9.03 us` |
-| `http1 parser reader-driven borrowed slice: 1 MiB body` | `9.67 us` |
-| `http1 parser reader-driven borrowed slice: 10 MiB body` | `10.40 us` |
-| `http1 parser reader-driven borrowed slice: many headers` | `2.53 ms` |
-| `http1 parser reader-driven borrowed slice: github navigation request` | `2.25 ms` |
+| `http1 parser reader-driven borrowed slice: small request` | `7.75 us` |
+| `http1 parser reader-driven borrowed slice: 1 KiB body` | `16.84 us` |
+| `http1 parser reader-driven borrowed slice: 100 KiB body` | `179.13 us` |
+| `http1 parser reader-driven borrowed slice: 1 MiB body` | `1.29 ms` |
+| `http1 parser reader-driven borrowed slice: 10 MiB body` | `2.09 ms` |
+| `http1 parser reader-driven borrowed slice: many headers` | `192.59 us` |
+| `http1 parser reader-driven borrowed slice: github navigation request` | `172.16 us` |

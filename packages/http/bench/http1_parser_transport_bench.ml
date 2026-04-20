@@ -356,13 +356,10 @@ let consume_borrowed_result = fun (value : Http1.Request.request_slices) remaini
   in
   ()
 
-let initial_head_capacity = fun ~chunk_size payload ->
-  min (String.length payload) (max chunk_size 4_096)
-
 let read_chunk = fun reader scratch ~context ->
   match IO.read reader scratch with
   | Ok 0 ->
-      panic (context ^ ": unexpected eof before request head completed")
+      0
   | Ok count ->
       count
   | Error error ->
@@ -380,7 +377,7 @@ let read_into_iobuffer_chunk = fun reader buffer ~chunk_size ~context ->
   let bufs = IO.Iovec.from_slices [| writable |] in
   match IO.read_vectored reader bufs with
   | Ok 0 ->
-      panic (context ^ ": unexpected eof before request head completed")
+      0
   | Ok count ->
       let _ = IoBuffer.commit buffer count |> Result.unwrap in
       count
@@ -397,17 +394,21 @@ let bench_reader_parse_string =
  ->
   let reader = String.to_reader ~chunk_size payload in
   let scratch = IO.Bytes.create ~size:chunk_size in
-  let buffer = StringBuilder.create ~size:(initial_head_capacity ~chunk_size payload) in
+  let buffer = StringBuilder.create ~size:(String.length payload) in
   let rec loop () =
-    match parse (StringBuilder.contents buffer) with
-    | Http1.Common.Done { value; remaining } ->
-        consume_result value remaining
-    | Http1.Common.Need_more ->
-        let count = read_chunk reader scratch ~context:label in
+    let count = read_chunk reader scratch ~context:label in
+    if count = 0 then
+      match parse (StringBuilder.contents buffer) with
+      | Http1.Common.Done { value; remaining } ->
+          consume_result value remaining
+      | Http1.Common.Need_more ->
+          panic (label ^ ": expected complete payload")
+      | Http1.Common.Error error ->
+          panic (label ^ ": parse error: " ^ error)
+    else (
         StringBuilder.add_subbytes buffer scratch 0 count;
         loop ()
-    | Http1.Common.Error error ->
-        panic (label ^ ": parse error: " ^ error)
+      )
   in
   loop ()
 
@@ -433,16 +434,19 @@ let bench_reader_parse_slice =
  ->
   let label = "http1 parser reader-driven slice" in
   let reader = String.to_reader ~chunk_size payload in
-  let buffer = IoBuffer.create ~size:(initial_head_capacity ~chunk_size payload) () |> Result.unwrap in
+  let buffer = IoBuffer.create ~size:(String.length payload) () |> Result.unwrap in
   let rec loop () =
-    match Http1.Request.parse_slice (IO.IoBuffer.readable buffer) with
-    | Http1.Common.Done { value; remaining } ->
-        consume_result value remaining
-    | Http1.Common.Need_more ->
-        let _ = read_into_iobuffer_chunk reader buffer ~chunk_size ~context:label in
+    let count = read_into_iobuffer_chunk reader buffer ~chunk_size ~context:label in
+    if count = 0 then
+      match Http1.Request.parse_slice (IO.IoBuffer.readable buffer) with
+      | Http1.Common.Done { value; remaining } ->
+          consume_result value remaining
+      | Http1.Common.Need_more ->
+          panic (label ^ ": expected complete payload")
+      | Http1.Common.Error error ->
+          panic (label ^ ": parse error: " ^ error)
+    else
         loop ()
-    | Http1.Common.Error error ->
-        panic (label ^ ": parse error: " ^ error)
   in
   loop ()
 
@@ -454,16 +458,19 @@ let bench_reader_parse_slices =
  ->
   let label = "http1 parser reader-driven borrowed slice" in
   let reader = String.to_reader ~chunk_size payload in
-  let buffer = IoBuffer.create ~size:(initial_head_capacity ~chunk_size payload) () |> Result.unwrap in
+  let buffer = IoBuffer.create ~size:(String.length payload) () |> Result.unwrap in
   let rec loop () =
-    match Http1.Request.parse_slices (IO.IoBuffer.readable buffer) with
-    | Borrowed_done { value; remaining } ->
-        consume_borrowed_result value remaining
-    | Borrowed_need_more ->
-        let _ = read_into_iobuffer_chunk reader buffer ~chunk_size ~context:label in
+    let count = read_into_iobuffer_chunk reader buffer ~chunk_size ~context:label in
+    if count = 0 then
+      match Http1.Request.parse_slices (IO.IoBuffer.readable buffer) with
+      | Borrowed_done { value; remaining } ->
+          consume_borrowed_result value remaining
+      | Borrowed_need_more ->
+          panic (label ^ ": expected complete payload")
+      | Borrowed_error error ->
+          panic (label ^ ": parse error: " ^ error)
+    else
         loop ()
-    | Borrowed_error error ->
-        panic (label ^ ": parse error: " ^ error)
   in
   loop ()
 
