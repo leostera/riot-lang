@@ -31,6 +31,14 @@ let parse = fun value ->
 
 let of_string_opt = parse
 
+let add = Caml_runtime.add_float
+
+let sub = Caml_runtime.sub_float
+
+let mul = Caml_runtime.mul_float
+
+let div = Caml_runtime.div_float
+
 let is_finite = fun value -> equal (Caml_runtime.sub_float value value) 0.0
 
 let is_infinite = fun value -> equal (Caml_runtime.div_float 1.0 value) 0.0

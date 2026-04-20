@@ -67,3 +67,25 @@ val equal: t -> t -> bool
 
 (** Use `compare left right` for `Int32` ordering. *)
 val compare: t -> t -> int
+
+val ( = ): t -> t -> bool
+
+val ( != ): t -> t -> bool
+
+val ( < ): t -> t -> bool
+
+val ( > ): t -> t -> bool
+
+val ( <= ): t -> t -> bool
+
+val ( >= ): t -> t -> bool
+
+val ( + ): t -> t -> t
+
+val ( - ): t -> t -> t
+
+val ( * ): t -> t -> t
+
+val ( / ): t -> t -> t
+
+val ( mod ): t -> t -> t

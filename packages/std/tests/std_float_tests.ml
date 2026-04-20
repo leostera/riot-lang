@@ -52,6 +52,13 @@ let test_floor_ceil_round = fun _ctx ->
 let test_pow = fun _ctx ->
   if Float.equal (Float.pow 2.0 5.0) 32.0 then Ok () else Error "expected Float.pow 2 5 = 32"
 
+let test_operator_syntax = fun _ctx ->
+  let open Float in
+  if Float.((7.5 + 0.5) = 8.0 && (7.5 - 0.5) = 7.0 && (3.0 * 2.0) = 6.0 && (7.5 / 2.5) = 3.0 && 7.5 > 2.5) then
+    Ok ()
+  else
+    Error "expected Float operators to mirror the runtime float operations"
+
 let tests =
   Test.[
     case "Float.from_int and Float.to_int convert numerics" test_from_int_and_to_int;
@@ -65,6 +72,7 @@ let tests =
     case "Float.sqrt and Float.cbrt compute roots" test_sqrt_and_cbrt;
     case "Float.floor ceil and round produce expected values" test_floor_ceil_round;
     case "Float.pow exponentiates values" test_pow;
+    case "Float operators mirror runtime float operations" test_operator_syntax;
   ]
 
 let () =

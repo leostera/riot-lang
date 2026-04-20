@@ -58,6 +58,13 @@ let test_basic_arithmetic = fun _ctx ->
   else
     Ok ()
 
+let test_operator_syntax = fun _ctx ->
+  let open Int64 in
+  if Int64.((7L + 3L) = 10L && (7L - 3L) = 4L && (7L * 3L) = 21L && (7L / 3L) = 2L && (7L mod 3L) = 1L && 7L > 3L) then
+    Ok ()
+  else
+    Error "Int64 operators should mirror the named helpers"
+
 let test_succ_and_pred = fun _ctx ->
   if not (Int64.equal (Int64.succ 9L) 10L) then
     Error "Int64.succ returned the wrong next value"
@@ -107,6 +114,7 @@ let tests = Test.[
   case "logical operations return expected results" test_logical_operations;
   case "shift operations preserve int64 semantics" test_shift_operations;
   case "basic arithmetic matches int64 semantics" test_basic_arithmetic;
+  case "operator syntax mirrors named helpers" test_operator_syntax;
   case "succ and pred move by one" test_succ_and_pred;
   case "from_float truncates toward zero" test_from_float_truncates_toward_zero;
   case "parse accepts max_int text" test_parse_accepts_max_int;

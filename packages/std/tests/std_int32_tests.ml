@@ -39,6 +39,13 @@ let test_basic_arithmetic = fun _ctx ->
   else
     Ok ()
 
+let test_operator_syntax = fun _ctx ->
+  let open Int32 in
+  if Int32.((7l + 3l) = 10l && (7l - 3l) = 4l && (7l * 3l) = 21l && (7l / 3l) = 2l && (7l mod 3l) = 1l && 7l > 3l) then
+    Ok ()
+  else
+    Error "Int32 operators should mirror the named helpers"
+
 let test_bitwise_operations = fun _ctx ->
   if not (Int32.equal (Int32.logand 0b1100l 0b1010l) 0b1000l) then
     Error "Int32.logand returned the wrong mask"
@@ -100,6 +107,7 @@ let tests = Test.[
   case "from_int and to_int roundtrip small values" test_from_int_to_int_roundtrip;
   case "neg and abs handle signs" test_neg_and_abs;
   case "basic arithmetic matches int32 semantics" test_basic_arithmetic;
+  case "operator syntax mirrors named helpers" test_operator_syntax;
   case "bitwise operations return expected results" test_bitwise_operations;
   case "shift_left moves bits left" test_shift_left;
   case "shift_right_logical zero-fills the left edge" test_shift_right_logical;

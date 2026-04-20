@@ -75,3 +75,25 @@ val hash: t -> int
 val equal: t -> t -> bool
 
 val compare: t -> t -> int
+
+val ( = ): t -> t -> bool
+
+val ( != ): t -> t -> bool
+
+val ( < ): t -> t -> bool
+
+val ( > ): t -> t -> bool
+
+val ( <= ): t -> t -> bool
+
+val ( >= ): t -> t -> bool
+
+val ( + ): t -> t -> t
+
+val ( - ): t -> t -> t
+
+val ( * ): t -> t -> t
+
+val ( / ): t -> t -> t
+
+val ( mod ): t -> t -> t

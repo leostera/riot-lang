@@ -27,6 +27,14 @@ val of_string: string -> t
 
 val of_string_opt: string -> t option
 
+val add: t -> t -> t
+
+val sub: t -> t -> t
+
+val mul: t -> t -> t
+
+val div: t -> t -> t
+
 val to_string: ?precision:int -> t -> string
 
 val is_finite: t -> bool
