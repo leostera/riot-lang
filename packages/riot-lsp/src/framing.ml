@@ -1,9 +1,9 @@
 open Std
 open Std.Result.Syntax
 
-type reader = (unit, IO.error) IO.Reader.t
+type reader = IO.Reader.t
 
-type writer = (unit, IO.error) IO.Writer.t
+type writer = IO.Writer.t
 
 let strip_line_ending = fun line ->
   let len = String.length line in
@@ -68,17 +68,18 @@ let decode_one = fun framed ->
 
 let read = fun input ->
   let read_line () =
-    let chunk = IO.Bytes.create ~size:1 in
+    let chunk = IO.Buffer.create ~size:1 in
     let buffer = IO.Buffer.create ~size:256 in
     let rec loop () =
-      let* read = IO.Reader.read input chunk |> Result.map_err ~fn:IO.error_message in
+      let* read = IO.Reader.read input ~into:chunk |> Result.map_err ~fn:IO.error_message in
       if read = 0 then
         Ok (IO.Buffer.contents buffer)
       else if not (Int.equal read 1) then
         Error "unexpected short read while reading LSP headers"
       else
         (
-          let char = IO.Bytes.get_unchecked chunk ~at:0 in
+          let char = IO.Buffer.get_unchecked chunk ~at:0 in
+          IO.Buffer.clear chunk;
           IO.Buffer.add_char buffer char;
           if Char.equal char '\n' then
             Ok (IO.Buffer.contents buffer)
@@ -96,12 +97,13 @@ let read = fun input ->
         Ok ()
       else
         let to_read = Int.min remaining chunk_size in
-        let chunk = IO.Bytes.create ~size:to_read in
-        let* read = IO.Reader.read input chunk |> Result.map_err ~fn:IO.error_message in
+        let chunk = IO.Buffer.create ~size:to_read in
+        let* read = IO.Reader.read input ~into:chunk |> Result.map_err ~fn:IO.error_message in
         if read = 0 then
           Error "unexpected EOF while reading LSP payload"
         else (
-          IO.Bytes.blit_unchecked chunk ~src_offset:0 ~dst:buffer ~dst_offset:offset ~len:read;
+          let readable = IO.Buffer.to_bytes chunk in
+          IO.Bytes.blit_unchecked readable ~src_offset:0 ~dst:buffer ~dst_offset:offset ~len:read;
           loop (offset + read) (remaining - read)
         )
     in
@@ -131,4 +133,5 @@ let read = fun input ->
       Ok (Some payload)
 
 let write = fun output payload ->
-  IO.Writer.write_all output ~buf:(encode payload) |> Result.map_err ~fn:IO.error_message
+  let buffer = IO.Buffer.from_string (encode payload) in
+  IO.Writer.write_all output ~from:buffer |> Result.map_err ~fn:IO.error_message
