@@ -592,26 +592,40 @@ let ensure_executable_binary_path = fun ~kind path ->
         |> Result.map_err
           ~fn:(fun err -> "failed to mark " ^ kind ^ " executable: " ^ IO.error_message err)
 
-let find_suite_binary_path_in_output = fun ~(store:Riot_store.Store.t) ~(suite:suite_binary) (
+let materialized_suite_binary_path = fun ~(workspace:Workspace.t) ~profile ~(suite:suite_binary) ->
+  let out_dir = Riot_model.Riot_dirs.out_dir_in_workspace
+    ~workspace
+    ~profile
+    ~target:(Riot_model.Riot_dirs.host_target ()) in
+  Path.(out_dir / Path.v (Package_name.to_string suite.package_name) / Path.v suite.suite_name)
+
+let find_suite_binary_path_in_output = fun ~(workspace:Workspace.t) ~profile ~(store:Riot_store.Store.t) ~(suite:suite_binary) (
   output: Riot_build.Build_result.t
 ) ->
+  let fallback_path = materialized_suite_binary_path ~workspace ~profile ~suite in
+  let ensure_materialized_fallback () =
+    match Fs.exists fallback_path with
+    | Ok true ->
+        ensure_executable_binary_path ~kind:"benchmark binary" fallback_path
+        |> Result.map_err ~fn:(fun reason -> SuiteArtifactNotFound { suite; reason })
+    | Ok false
+    | Error _ ->
+        Error (SuiteArtifactNotFound {
+          suite;
+          reason = "suite '" ^ suite.suite_name ^ "' was not produced by build output"
+        })
+  in
   match
     Riot_build.Build_result.find_package output suite.package_name |> Option.and_then
       ~fn:(fun package_output ->
         Riot_build.Build_result.find_export package_output suite.suite_name)
   with
-  | None -> Error (SuiteArtifactNotFound {
-    suite;
-    reason = "suite '" ^ suite.suite_name ^ "' was not produced by build output"
-  })
+  | None -> ensure_materialized_fallback ()
   | Some export_entry -> (
       match Riot_store.Store.export_source_path store export_entry with
       | Some path -> ensure_executable_binary_path ~kind:"benchmark binary" path
       |> Result.map_err ~fn:(fun reason -> SuiteArtifactNotFound { suite; reason })
-      | None -> Error (SuiteArtifactNotFound {
-        suite;
-        reason = "suite '" ^ suite.suite_name ^ "' resolved to an invalid absolute export path"
-      })
+      | None -> ensure_materialized_fallback ()
     )
 
 let run_suite_binary_capture = fun ~suite ~extra_args binary_path ->
@@ -676,11 +690,11 @@ let store_for_request = fun (request: bench_request) ->
     ~profile:request.profile
     ~target:(Riot_dirs.host_target ())
 
-let resolve_suite_binaries = fun ~store ~suites output ->
+let resolve_suite_binaries = fun ~(workspace:Workspace.t) ~profile ~store ~suites output ->
   let rec loop resolved missing = function
     | [] -> (List.reverse resolved, List.reverse missing)
     | suite :: rest -> (
-        match find_suite_binary_path_in_output ~store ~suite output with
+        match find_suite_binary_path_in_output ~workspace ~profile ~store ~suite output with
         | Ok binary_path -> loop ((suite, binary_path) :: resolved) missing rest
         | Error err -> loop resolved ((suite, err) :: missing) rest
       )
@@ -706,7 +720,13 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
     | Error err -> Error (BuildFailed err)
     | Ok output ->
         let store = store_for_request request in
-        let suite_binaries, missing_suites = resolve_suite_binaries ~store ~suites output in
+        let suite_binaries, missing_suites =
+          resolve_suite_binaries
+            ~workspace:request.workspace
+            ~profile:request.profile
+            ~store
+            ~suites
+            output in
         List.for_each missing_suites ~fn:(fun (suite, err) -> on_suite_error suite err);
         if suite_binaries = [] then
           Ok []
@@ -829,7 +849,12 @@ let bench = fun ?(on_event = no_event) (request: bench_request) ->
               else
                 Ok ()
           | suite :: rest -> (
-              match find_suite_binary_path_in_output ~store ~suite output with
+              match find_suite_binary_path_in_output
+                ~workspace:request.workspace
+                ~profile:request.profile
+                ~store
+                ~suite
+                output with
               | Error _ as err -> err
               | Ok binary_path ->
                   on_event (RunningSuite suite);
