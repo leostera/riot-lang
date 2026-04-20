@@ -239,16 +239,26 @@ let buffered = fun ?(chunk_size = default_chunk_size) reader ->
 
 let read_to_end: type src err. (src, err) t -> buf:Buffer.t -> (int, err) result =
  fun reader ~buf:out ->
-  let chunk = Bytes.create ~size:1_024 in
   let rec loop total =
-    match read reader chunk with
-    | Ok 0 ->
-        Ok total
-    | Ok len ->
-        Buffer.add_subbytes out chunk 0 len;
-        loop (total + len)
-    | Error err ->
-        Error err
+    match Buffer.ensure_free out default_chunk_size with
+    | Error error ->
+        panic ("Reader.read_to_end: " ^ Kernel.IO.Error.message error)
+    | Ok () -> (
+        let writable = Buffer.writable out in
+        let bufs = Iovec.from_slices [| writable |] in
+        match read_vectored reader bufs with
+        | Ok 0 ->
+            Ok total
+        | Ok len -> (
+            match Buffer.commit out len with
+            | Ok () ->
+                loop (total + len)
+            | Error error ->
+                panic ("Reader.read_to_end: " ^ Kernel.IO.Error.message error)
+          )
+        | Error err ->
+            Error err
+      )
   in
   loop 0
 
