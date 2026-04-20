@@ -5,6 +5,7 @@
 #include <caml/alloc.h>
 #include <caml/fail.h>
 #include <caml/custom.h>
+#include <caml/bigarray.h>
 #include <string.h>
 
 #ifdef __APPLE__
@@ -15,12 +16,9 @@ static void std_crypto_for_each_iovec(value v_iovs, void (*f)(const unsigned cha
     mlsize_t n_iovs = Wosize_val(v_iovs);
     for (mlsize_t i = 0; i < n_iovs; i++) {
         value v_iov = Field(v_iovs, i);
-        value v_ba = Field(v_iov, 0);
-        value v_off = Field(v_iov, 1);
-        value v_len = Field(v_iov, 2);
-        size_t len = Long_val(v_len);
+        size_t len = (size_t) Caml_ba_array_val(v_iov)->dim[0];
         if (len == 0) continue;
-        const unsigned char *data = (const unsigned char *) Bytes_val(v_ba) + Long_val(v_off);
+        const unsigned char *data = (const unsigned char *) Caml_ba_data_val(v_iov);
         f(data, len, ctx);
     }
 }
@@ -198,12 +196,9 @@ static void std_crypto_update_iovec_evp(EVP_MD_CTX *ctx, value v_iovs) {
     mlsize_t n_iovs = Wosize_val(v_iovs);
     for (mlsize_t i = 0; i < n_iovs; i++) {
         value v_iov = Field(v_iovs, i);
-        value v_ba = Field(v_iov, 0);
-        value v_off = Field(v_iov, 1);
-        value v_len = Field(v_iov, 2);
-        size_t len = Long_val(v_len);
+        size_t len = (size_t) Caml_ba_array_val(v_iov)->dim[0];
         if (len == 0) continue;
-        unsigned char *data = (unsigned char *) Bytes_val(v_ba) + Long_val(v_off);
+        unsigned char *data = (unsigned char *) Caml_ba_data_val(v_iov);
         if (EVP_DigestUpdate(ctx, data, len) != 1) {
             caml_failwith("EVP_DigestUpdate failed");
         }
