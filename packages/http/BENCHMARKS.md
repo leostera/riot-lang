@@ -19,6 +19,37 @@ Notes:
 - The reader-fed benchmark currently uses `Std.String.to_reader` with fixed chunk sizes instead of a
   live socket or server, so it isolates request ingestion overhead without process-management noise.
 
+## Current Summary
+
+This is the short comparison between the owned-string parser, `Http1.Request.parse`, and the
+full-slice parser entry point, `Http1.Request.parse_slice`.
+
+### Parser Only
+
+| Shape | Strings (`parse`) | Slices (`parse_slice`) |
+| --- | ---: | ---: |
+| `small request` | `7.78 us` | `8.10 us` |
+| `1 KiB body` | `11.57 us` | `12.99 us` |
+| `100 KiB body` | `68.25 us` | `20.38 us` |
+| `1 MiB body` | `362.13 us` | `201.67 us` |
+| `many headers` | `201.88 us` | `207.68 us` |
+
+### Reader-Fed
+
+| Shape | Strings (`parse`) | Slices (`parse_slice`) |
+| --- | ---: | ---: |
+| `small request` | `12.67 us` | `13.14 us` |
+| `1 KiB body` | `20.96 us` | `22.41 us` |
+| `100 KiB body` | `194.22 us` | `255.90 us` |
+| `1 MiB body` | `1.17 ms` | `1.68 ms` |
+| `many headers` | `206.16 us` | `223.90 us` |
+
+- For parser-only work, the slice path is materially better on large bodies because it delays
+  ownership conversion.
+- For reader-fed work, the public string path is now slightly better. The big reader-fed regression
+  was fixed in `Std.String.to_reader`, so the remaining overhead is mostly the cost of building and
+  owning the higher-level values, not the slice substrate itself.
+
 ## Request Shapes
 
 - `small request`: `GET /health` with `Host` and `Accept` headers, no body
