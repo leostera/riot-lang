@@ -164,6 +164,10 @@ val write: ('dst, 'err) Writer.t -> buf:string -> (int, 'err) result
 
 val write_all: ('dst, 'err) Writer.t -> buf:string -> (unit, 'err) result
 
+val write_buffer: ('dst, 'err) Writer.t -> buf:Buffer.t -> (int, 'err) result
+
+val write_all_buffer: ('dst, 'err) Writer.t -> buf:Buffer.t -> (unit, 'err) result
+
 val write_owned_vectored: ('dst, 'err) Writer.t -> bufs:Iovec.t -> (int, 'err) result
 
 val write_all_vectored: ('dst, 'err) Writer.t -> bufs:Iovec.t -> (unit, 'err) result

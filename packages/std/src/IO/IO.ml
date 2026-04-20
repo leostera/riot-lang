@@ -166,6 +166,10 @@ let write = Writer.write
 
 let write_all = Writer.write_all
 
+let write_buffer = Writer.write_buffer
+
+let write_all_buffer = Writer.write_all_buffer
+
 let write_owned_vectored = Writer.write_owned_vectored
 
 let write_all_vectored = Writer.write_all_vectored

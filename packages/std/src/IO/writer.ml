@@ -40,6 +40,10 @@ let write_all: type dst err. (dst, err) t -> buf:string -> (unit, err) result = 
   in
   loop buf
 
+let write_buffer: type dst err. (dst, err) t -> buf:Buffer.t -> (int, err) result =
+ fun writer ~buf ->
+  write_owned_vectored writer ~bufs:(Buffer.to_iovec buf)
+
 let write_all_vectored: type dst err. (dst, err) t -> bufs:Iovec.t -> (unit, err) result = fun (Writer ((module W), dst)) ~bufs ->
   let rec loop remaining =
     if Iovec.length remaining = 0 then
@@ -55,6 +59,10 @@ let write_all_vectored: type dst err. (dst, err) t -> bufs:Iovec.t -> (unit, err
       | Error err -> Error err
   in
   loop bufs
+
+let write_all_buffer: type dst err. (dst, err) t -> buf:Buffer.t -> (unit, err) result =
+ fun writer ~buf ->
+  write_all_vectored writer ~bufs:(Buffer.to_iovec buf)
 
 let map_err: type dst a b. (dst, a) t -> fn:(a -> b) -> (dst, b) t = fun (Writer ((module W), dst)) ~fn ->
   let module Mapped = struct

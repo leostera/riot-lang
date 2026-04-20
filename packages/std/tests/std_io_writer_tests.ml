@@ -79,6 +79,26 @@ let test_write_all_vectored_handles_partial_writes = fun _ctx ->
   | Ok () -> Error "IO.Writer.write_all_vectored should keep writing until completion"
   | Error _ -> Error "IO.Writer.write_all_vectored should not fail for the collecting sink"
 
+let test_write_buffer_appends_buffer_content = fun _ctx ->
+  let sink = create_sink () in
+  let writer = IO.Writer.of_write_src (module CollectWriter) sink in
+  let buffer = IO.Buffer.create ~size:2 in
+  IO.Buffer.add_string buffer "hello";
+  match IO.write_buffer writer ~buf:buffer with
+  | Ok written when Int.equal written 5 && String.equal (sink_contents sink) "hello" -> Ok ()
+  | Ok _ -> Error "IO.Writer.write_buffer should append the readable buffer content"
+  | Error _ -> Error "IO.Writer.write_buffer should not fail for the collecting sink"
+
+let test_write_all_buffer_handles_partial_writes = fun _ctx ->
+  let sink = create_sink ~max_chunk:2 () in
+  let writer = IO.Writer.of_write_src (module CollectWriter) sink in
+  let buffer = IO.Buffer.create ~size:2 in
+  IO.Buffer.add_string buffer "hello";
+  match IO.write_all_buffer writer ~buf:buffer with
+  | Ok () when String.equal (sink_contents sink) "hello" -> Ok ()
+  | Ok () -> Error "IO.Writer.write_all_buffer should keep writing until completion"
+  | Error _ -> Error "IO.Writer.write_all_buffer should not fail for the collecting sink"
+
 let test_map_err_transforms_writer_errors = fun _ctx ->
   let writer =
     IO.Writer.of_write_src (module FailingWriter) ()
@@ -122,6 +142,8 @@ let tests = Test.[
   case "write_all handles partial writes" test_write_all_handles_partial_writes;
   case "write_owned_vectored appends segment content" test_write_owned_vectored_appends_segment_content;
   case "write_all_vectored handles partial writes" test_write_all_vectored_handles_partial_writes;
+  case "write_buffer appends buffer content" test_write_buffer_appends_buffer_content;
+  case "write_all_buffer handles partial writes" test_write_all_buffer_handles_partial_writes;
   case "map_err transforms writer errors" test_map_err_transforms_writer_errors;
   case "flush forwards to the underlying sink" test_flush_forwards_to_the_underlying_sink;
   case "reader writer copy loops reconstruct payloads" test_reader_writer_copy_loop_reconstructs_payload;
