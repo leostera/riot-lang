@@ -211,6 +211,6 @@ let of_string = fun decode input ->
 
 let of_reader = fun decode reader ->
   let buffer = IO.Buffer.create ~size:128 in
-  match IO.read_to_end reader ~buf:buffer with
+  match IO.read_to_end reader ~into:buffer with
   | Ok _ -> of_string decode (IO.Buffer.contents buffer)
   | Error err -> Error (`Io_error err)

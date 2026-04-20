@@ -139,6 +139,7 @@ let to_string = fun encode value ->
 
 let to_writer = fun encode writer value ->
   let* encoded = to_string encode value in
-  match IO.write_all writer ~buf:encoded with
+  let buffer = IO.Buffer.from_string encoded in
+  match IO.write_all writer ~from:buffer with
   | Ok () -> Ok ()
   | Error err -> Error (`Io_error err)
