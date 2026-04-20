@@ -82,7 +82,9 @@ let event_to_json = fun ~root ->
       | _ -> panic "expected JSON object"
     )
 
-let write_line = fun ~writer line -> IO.write_all writer ~buf:(line ^ "\n")
+let write_line = fun ~writer line ->
+  let buffer = IO.Buffer.from_string (line ^ "\n") in
+  IO.write_all writer ~from:buffer
 
 let write_text_file_result = fun ~writer ~root (result: Runner.file_result) ->
   let status_char, suffix =

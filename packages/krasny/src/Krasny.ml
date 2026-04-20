@@ -21,4 +21,6 @@ let syntax_hash = Runner.syntax_hash
 let write = fun ~writer result ->
   match format result with
   | Error err -> Error (`Format err)
-  | Ok formatted -> IO.write_all writer ~buf:formatted |> Result.map_err ~fn:(fun err -> `Write err)
+  | Ok formatted ->
+      let buffer = IO.Buffer.from_string formatted in
+      IO.write_all writer ~from:buffer |> Result.map_err ~fn:(fun err -> `Write err)

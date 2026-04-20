@@ -97,10 +97,11 @@ type t = {
   source: source;
 }
 
-let tcp_stream_error_message = function
-  | Net.TcpStream.Connection_refused -> "connection refused"
-  | Net.TcpStream.Closed -> "connection closed"
-  | Net.TcpStream.System_error io_err -> IO.error_message io_err
+let io_error_message = fun error ->
+  match error with
+  | IO.Connection_refused -> "connection refused"
+  | IO.Closed -> "connection closed"
+  | _ -> IO.error_message error
 
 let blink_error_message = function
   | Blink.Error.NetError Net.Connection_refused -> "connection refused"
@@ -110,9 +111,9 @@ let blink_error_message = function
   | Blink.Error.TlsError (Net.TlsStream.Handshake_failed msg) -> "tls handshake failed: " ^ msg
   | Blink.Error.TlsError (Net.TlsStream.System_error io_err) -> IO.error_message io_err
   | Blink.Error.TlsError (Net.TlsStream.Network_read_failed tcp_err) -> "tls read failed: "
-  ^ tcp_stream_error_message tcp_err
+  ^ io_error_message tcp_err
   | Blink.Error.TlsError (Net.TlsStream.Network_write_failed tcp_err) -> "tls write failed: "
-  ^ tcp_stream_error_message tcp_err
+  ^ io_error_message tcp_err
   | Blink.Error.TlsError Net.TlsStream.Tls_not_available -> "tls not available"
   | Blink.Error.TlsError Net.TlsStream.Unsupported_vectored_operation -> "unsupported vectored tls operation"
   | Blink.Error.ParseError msg -> "parse error: " ^ msg
@@ -719,8 +720,6 @@ let write_release_files = fun ~root (release: release_source) ->
           loop release.files
     )
 
-let gzip_error_message = Compress.Gzip.error_to_string
-
 let tar_entry_kind_to_string = function
   | Archive.Tar.File -> "file"
   | Archive.Tar.Directory -> "directory"
@@ -736,8 +735,7 @@ let tar_extract_file_error_message = function
   | Archive.Tar.Extract_error err -> tar_error_message err
 
 let gzip_tar_extract_error_message = function
-  | Archive.Tar.Extract_source_error (Compress.Gzip.Source_error err) -> Fs.File.error_to_string err
-  | Archive.Tar.Extract_source_error (Compress.Gzip.Gzip_error err) -> gzip_error_message err
+  | Archive.Tar.Extract_source_error err -> IO.error_message err
   | Archive.Tar.Extract_fs_error err -> IO.error_message err
   | Archive.Tar.Extract_error err -> tar_error_message err
 

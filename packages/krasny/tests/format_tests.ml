@@ -29,17 +29,29 @@ let capture_json_event = fun ~root event ->
     let module Write = struct
       type t = IO.Buffer.t
 
-      type err = unit
+      let write = fun buffer ~from ->
+        let len = IO.Buffer.readable_bytes from in
+        let _ =
+          IO.Buffer.append_slice buffer (IO.Buffer.readable from)
+          |> Result.expect ~msg:"failed to append writer buffer"
+        in
+        Ok len
 
-      let write = fun buffer ~buf ->
-        IO.Buffer.add_string buffer buf;
-        Ok (String.length buf)
-
-      let write_owned_vectored = fun _buffer ~bufs:_ -> unimplemented ()
+      let write_vectored = fun buffer ~from ->
+        let written = ref 0 in
+        IO.IoVec.for_each from
+          ~fn:(fun segment ->
+            written := !written + IO.IoSlice.length segment;
+            let _ =
+              IO.Buffer.append_slice buffer segment
+              |> Result.expect ~msg:"failed to append writer iovec segment"
+            in
+            ());
+        Ok !written
 
       let flush = fun _buffer -> Ok ()
     end in
-    IO.Writer.of_write_src (module Write) buffer
+    IO.Writer.from_sink (module Write) buffer
   in
   Krasny.Report.write_json_event ~writer ~root event |> Result.expect ~msg:"failed to serialize json event";
   IO.Buffer.contents buffer |> String.trim

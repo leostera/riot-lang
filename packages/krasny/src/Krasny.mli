@@ -29,9 +29,9 @@ val format: Syn.Parser.parse_result -> (string, format_error) result
 val syntax_hash: Syn.Parser.parse_result -> string
 
 (** `write ~writer result` renders a parse result into the provided writer. *)
-val write: writer:('dst, 'err) IO.Writer.t -> Syn.Parser.parse_result -> (unit, [
+val write: writer:IO.Writer.t -> Syn.Parser.parse_result -> (unit, [
     `Format of format_error
-    | `Write of 'err
+    | `Write of IO.error
   ]) result
 
 module Runner: module type of Runner

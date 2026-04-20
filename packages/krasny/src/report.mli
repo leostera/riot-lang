@@ -5,9 +5,9 @@ type event =
   | File of Runner.file_result
   | Summary of Runner.summary
 val write_text_file_result:
-  writer:('dst, 'err) IO.Writer.t -> root:Path.t -> Runner.file_result -> (unit, 'err) result
+  writer:IO.Writer.t -> root:Path.t -> Runner.file_result -> unit IO.result
 
 val write_text_summary:
-  writer:('dst, 'err) IO.Writer.t -> mode:Runner.run_mode -> Runner.summary -> (unit, 'err) result
+  writer:IO.Writer.t -> mode:Runner.run_mode -> Runner.summary -> unit IO.result
 
-val write_json_event: writer:('dst, 'err) IO.Writer.t -> root:Path.t -> event -> (unit, 'err) result
+val write_json_event: writer:IO.Writer.t -> root:Path.t -> event -> unit IO.result
