@@ -1,6 +1,5 @@
 (** HTTP/1.1 Request Parser *)
 open Std
-
 module Cursor = Std.Iter.Cursor
 module Slice = IO.IoVec.IoSlice
 
@@ -12,6 +11,14 @@ let slice_of_string = fun value ->
 let string_of_slice = Slice.to_string
 
 let default_root_uri = Std.Net.Uri.of_string "/" |> Result.unwrap
+
+let is_space = fun c -> c = ' '
+
+let is_optional_whitespace = fun c -> c = ' ' || c = '\t'
+
+let trim_leading_ows = fun slice ->
+  Cursor.skip_while (Cursor.from_slice slice) is_optional_whitespace
+  |> Cursor.remaining
 
 type request_line_slices = {
   method_: Slice.t;
@@ -44,34 +51,36 @@ type 'a slice_parse_result =
   | Slice_need_more
   | Slice_error of string
 
-let header_pair_of_slices = fun (name, value) -> (string_of_slice name, string_of_slice value)
+let skip_line_ending = fun cursor ->
+  match Cursor.advance_by cursor 2 with
+  | None -> Slice_error "Invalid line ending"
+  | Some cursor -> Slice_done cursor
 
-let slice_header_pair = fun (name, value) -> (slice_of_string name, slice_of_string value)
+let take_header_block_terminator = fun cursor ->
+  match Cursor.take_n cursor 2 with
+  | Some (prefix, cursor) when Slice.equal_string prefix "\r\n" -> Some cursor
+  | _ -> None
 
 let parse_request_line_slice = fun ?(max_length = 8_192) input ->
   let cursor = Cursor.from_slice input in
   match Cursor.take_until_char cursor '\r' with
-  | None ->
-      Slice_need_more
+  | None -> Slice_need_more
   | Some (line, cursor) ->
       if Slice.length line > max_length then
         Slice_error "Request line too long"
       else
-        match Cursor.advance_by cursor 2 with
-        | None ->
-            Slice_error "Invalid line ending"
-        | Some cursor -> (
+        match skip_line_ending cursor with
+        | Slice_need_more | Slice_error _ as result -> result
+        | Slice_done cursor -> (
             let line_cursor = Cursor.from_slice line in
             match Cursor.take_until_char line_cursor ' ' with
-            | None ->
-                Slice_error "Missing method"
+            | None -> Slice_error "Missing method"
             | Some (method_, line_cursor) ->
-                let line_cursor = Cursor.skip_while line_cursor (fun c -> c = ' ') in
+                let line_cursor = Cursor.skip_while line_cursor is_space in
                 match Cursor.take_until_char line_cursor ' ' with
-                | None ->
-                    Slice_error "Missing path"
+                | None -> Slice_error "Missing path"
                 | Some (path, line_cursor) ->
-                    let version = Cursor.skip_while line_cursor (fun c -> c = ' ') |> Cursor.remaining in
+                    let version = Cursor.skip_while line_cursor is_space |> Cursor.remaining in
                     if Slice.starts_with version ~prefix:"HTTP/" then
                       Slice_done { method_; path; version; remaining = cursor }
                     else
@@ -80,31 +89,24 @@ let parse_request_line_slice = fun ?(max_length = 8_192) input ->
 
 let parse_header_line_slice = fun cursor ->
   match Cursor.take_until_char cursor '\r' with
-  | None ->
-      Slice_need_more
+  | None -> Slice_need_more
   | Some (line, cursor) -> (
-      match Cursor.advance_by cursor 2 with
-      | None ->
-          Slice_error "Invalid line ending"
-      | Some cursor -> (
+      match skip_line_ending cursor with
+      | Slice_need_more | Slice_error _ as result -> result
+      | Slice_done cursor -> (
           let line_cursor = Cursor.from_slice line in
           match Cursor.take_until_char line_cursor ':' with
-          | None ->
-              Slice_error "Invalid header format (missing colon)"
+          | None -> Slice_error "Invalid header format (missing colon)"
           | Some (name, line_cursor) -> (
               match Cursor.advance line_cursor with
-              | None ->
-                  Slice_error "Invalid header format"
+              | None -> Slice_error "Invalid header format"
               | Some line_cursor ->
                   let value =
-                    Cursor.skip_while line_cursor (fun c -> c = ' ' || c = '\t')
+                    Cursor.skip_while line_cursor is_optional_whitespace
                     |> Cursor.remaining
                   in
-                  let name =
-                    Cursor.skip_while (Cursor.from_slice name) (fun c -> c = ' ' || c = '\t')
-                    |> Cursor.remaining
-                  in
-                  Slice_done ({ name; value; remaining = cursor } : header_line_slice)
+                  let name = trim_leading_ows name in
+                  Slice_done ({ name; value; remaining = cursor }: header_line_slice)
             )
         )
     )
@@ -117,108 +119,78 @@ let parse_request_line_owned = fun ?(max_length = 8_192) input ->
       Slice_error error
   | Slice_done { method_; path; version; remaining } ->
       let method_ = Std.Net.Http.Method.from_slice method_ in
-      let uri =
-        Std.Net.Uri.from_slice path
-        |> Result.unwrap_or ~default:default_root_uri
-      in
-      let version =
-        Std.Net.Http.Version.from_slice version
-        |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11
-      in
+      let uri = Std.Net.Uri.from_slice path |> Result.unwrap_or ~default:default_root_uri in
+      let version = Std.Net.Http.Version.from_slice version
+      |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11 in
       Slice_done {
         parsed_method = method_;
         parsed_uri = uri;
         parsed_version = version;
-        next_cursor = remaining;
+        next_cursor = remaining
       }
 
 let parse_header_line_owned = fun cursor ->
   match parse_header_line_slice cursor with
-  | Slice_need_more ->
-      Slice_need_more
-  | Slice_error error ->
-      Slice_error error
-  | Slice_done { name; value; remaining } ->
-      Slice_done {
-        header_name = string_of_slice name;
-        header_value = string_of_slice value;
-        next_cursor = remaining;
-      }
+  | Slice_need_more -> Slice_need_more
+  | Slice_error error -> Slice_error error
+  | Slice_done { name; value; remaining } -> Slice_done {
+    header_name = string_of_slice name;
+    header_value = string_of_slice value;
+    next_cursor = remaining
+  }
 
 let rec parse_headers_slices = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) ?(count = 0) cursor ->
   if count >= max_count then
     Slice_error "Too many headers"
   else
-    let remaining = Cursor.remaining cursor in
-    if Slice.starts_with remaining ~prefix:"\r\n" then
-      match Cursor.advance_by cursor 2 with
-      | None ->
-          Slice_need_more
-      | Some cursor ->
-          Slice_done (List.reverse acc, cursor)
-    else
-      match parse_header_line_slice cursor with
-      | Slice_need_more ->
-          Slice_need_more
-      | Slice_error error ->
-          Slice_error error
-      | Slice_done { name; value; remaining } ->
-          if Slice.length name + Slice.length value > max_length then
-            Slice_error "Header too long"
-          else
-            parse_headers_slices
-              ~max_count
-              ~max_length
-              ~acc:((name, value) :: acc)
-              ~count:(count + 1)
-              remaining
+    match take_header_block_terminator cursor with
+    | Some cursor ->
+        Slice_done (List.reverse acc, cursor)
+    | None ->
+        match parse_header_line_slice cursor with
+        | Slice_need_more -> Slice_need_more
+        | Slice_error error -> Slice_error error
+        | Slice_done { name; value; remaining } ->
+            if Slice.length name + Slice.length value > max_length then
+              Slice_error "Header too long"
+            else
+              parse_headers_slices
+                ~max_count
+                ~max_length
+                ~acc:((name, value) :: acc)
+                ~count:(count + 1)
+                remaining
 
 let rec parse_headers_owned = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) ?(count = 0) cursor ->
   if count >= max_count then
     Slice_error "Too many headers"
   else
-    let remaining = Cursor.remaining cursor in
-    if Slice.starts_with remaining ~prefix:"\r\n" then
-      match Cursor.advance_by cursor 2 with
-      | None ->
-          Slice_need_more
-      | Some cursor ->
-          Slice_done (List.reverse acc, cursor)
-    else
-      match parse_header_line_owned cursor with
-      | Slice_need_more ->
-          Slice_need_more
-      | Slice_error error ->
-          Slice_error error
-      | Slice_done { header_name; header_value; next_cursor } ->
-          if String.length header_name + String.length header_value > max_length then
-            Slice_error "Header too long"
-          else
-            parse_headers_owned
-              ~max_count
-              ~max_length
-              ~acc:((header_name, header_value) :: acc)
-              ~count:(count + 1)
-              next_cursor
+    match take_header_block_terminator cursor with
+    | Some cursor ->
+        Slice_done (List.reverse acc, cursor)
+    | None ->
+        match parse_header_line_owned cursor with
+        | Slice_need_more -> Slice_need_more
+        | Slice_error error -> Slice_error error
+        | Slice_done { header_name; header_value; next_cursor } ->
+            if String.length header_name + String.length header_value > max_length then
+              Slice_error "Header too long"
+            else
+              parse_headers_owned
+                ~max_count
+                ~max_length
+                ~acc:((header_name, header_value) :: acc)
+                ~count:(count + 1)
+                next_cursor
 
 let parse_headers = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) cursor ->
-  match
-    parse_headers_slices
-      ~max_count
-      ~max_length
-      ~acc:(List.map acc ~fn:slice_header_pair)
-      ~count:(List.length acc)
-      cursor
-  with
-  | Slice_need_more ->
-      Common.Need_more
-  | Slice_error error ->
-      Common.Error error
-  | Slice_done (headers, remaining) ->
-      Common.Done {
-        value = (List.map headers ~fn:header_pair_of_slices, string_of_slice (Cursor.remaining remaining));
-        remaining = "";
-      }
+  match parse_headers_owned ~max_count ~max_length ~acc ~count:(List.length acc) cursor with
+  | Slice_need_more -> Common.Need_more
+  | Slice_error error -> Common.Error error
+  | Slice_done (headers, remaining) -> Common.Done {
+    value = (headers, string_of_slice (Cursor.remaining remaining));
+    remaining = ""
+  }
 
 module Borrowed = struct
   type t = {
