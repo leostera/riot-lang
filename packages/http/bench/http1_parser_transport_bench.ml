@@ -213,8 +213,8 @@ module BaselineParser = struct
             Done { value = request; remaining = body }
       )
 end
-module Buffer = IO.Buffer
 module IoBuffer = IO.IoBuffer
+module StringBuilder = Std.StringBuilder
 
 let build_request = fun ~method_ ~path ~headers ~body ->
   let head =
@@ -356,198 +356,230 @@ let consume_borrowed_result = fun (value : Http1.Request.request_slices) remaini
   in
   ()
 
-let bench_reader_parse = fun ~chunk_size payload () ->
-  let reader = String.to_reader payload |> IO.buffered ~chunk_size () in
-  let buf = Buffer.create ~size:(String.length payload) in
-  match IO.read_all_into_buffer reader ~buf with
-  | Error error ->
-      panic ("http1 parser transport bench read error: " ^ IO.error_message error)
-  | Ok _ -> (
-      match Http1.Request.parse (Buffer.contents buf) with
-      | Done { value; remaining } ->
-          consume_result value remaining
-      | Need_more ->
-          panic "http1 parser transport bench expected complete payload"
-      | Error error ->
-          panic ("http1 parser transport bench parse error: " ^ error)
-    )
+let initial_head_capacity = fun ~chunk_size payload ->
+  min (String.length payload) (max chunk_size 4_096)
 
-let bench_reader_parse_baseline = fun ~chunk_size payload () ->
-  let reader = String.to_reader payload |> IO.buffered ~chunk_size () in
-  let buf = Buffer.create ~size:(String.length payload) in
-  match IO.read_all_into_buffer reader ~buf with
+let read_chunk = fun reader scratch ~context ->
+  match IO.read reader scratch with
+  | Ok 0 ->
+      panic (context ^ ": unexpected eof before request head completed")
+  | Ok count ->
+      count
   | Error error ->
-      panic ("http1 baseline parser transport bench read error: " ^ IO.error_message error)
-  | Ok _ -> (
-      match BaselineParser.parse (Buffer.contents buf) with
-      | Done { value; remaining } ->
-          consume_result value remaining
-      | Need_more ->
-          panic "http1 baseline parser transport bench expected complete payload"
-      | Error error ->
-          panic ("http1 baseline parser transport bench parse error: " ^ error)
-    )
+      panic (context ^ ": read error: " ^ IO.error_message error)
 
-let read_to_iobuffer = fun reader ~read_size ~size_hint ->
-  let buffer = IoBuffer.create ~size:size_hint () |> Result.unwrap in
+let read_into_iobuffer_chunk = fun reader buffer ~chunk_size ~context ->
+  let _ = IoBuffer.ensure_free buffer chunk_size |> Result.unwrap in
+  let writable = IoBuffer.writable buffer in
+  let writable =
+    if IO.Iovec.IoSlice.length writable > chunk_size then
+      IO.Iovec.IoSlice.sub_unchecked writable ~off:0 ~len:chunk_size
+    else
+      writable
+  in
+  let bufs = IO.Iovec.from_slices [| writable |] in
+  match IO.read_vectored reader bufs with
+  | Ok 0 ->
+      panic (context ^ ": unexpected eof before request head completed")
+  | Ok count ->
+      let _ = IoBuffer.commit buffer count |> Result.unwrap in
+      count
+  | Error error ->
+      panic (context ^ ": read error: " ^ IO.error_message error)
+
+let bench_reader_parse_string =
+ fun
+   ~chunk_size
+   ~label
+   ~parse
+   payload
+   ()
+ ->
+  let reader = String.to_reader ~chunk_size payload in
+  let scratch = IO.Bytes.create ~size:chunk_size in
+  let buffer = StringBuilder.create ~size:(initial_head_capacity ~chunk_size payload) in
   let rec loop () =
-    let _ = IoBuffer.ensure_free buffer read_size |> Result.unwrap in
-    let writable = IoBuffer.writable buffer in
-    let bufs = IO.Iovec.from_slices [| writable |] in
-    match IO.read_vectored reader bufs with
-    | Ok 0 ->
-        Ok buffer
-    | Ok count ->
-        let _ = IoBuffer.commit buffer count |> Result.unwrap in
+    match parse (StringBuilder.contents buffer) with
+    | Http1.Common.Done { value; remaining } ->
+        consume_result value remaining
+    | Http1.Common.Need_more ->
+        let count = read_chunk reader scratch ~context:label in
+        StringBuilder.add_subbytes buffer scratch 0 count;
         loop ()
-    | Error _ as error ->
-        error
+    | Http1.Common.Error error ->
+        panic (label ^ ": parse error: " ^ error)
   in
   loop ()
 
-let bench_reader_parse_slice = fun ~chunk_size payload () ->
-  let reader = String.to_reader payload |> IO.buffered ~chunk_size () in
-  match read_to_iobuffer reader ~read_size:4_096 ~size_hint:(String.length payload) with
-  | Error error ->
-      panic ("http1 parser transport slice bench read error: " ^ IO.error_message error)
-  | Ok buffer -> (
-      match Http1.Request.parse_slice (IO.IoBuffer.readable buffer) with
-      | Done { value; remaining } ->
-          consume_result value remaining
-      | Need_more ->
-          panic "http1 parser transport slice bench expected complete payload"
-      | Error error ->
-          panic ("http1 parser transport slice bench parse error: " ^ error)
-    )
+let bench_reader_parse = fun ~chunk_size payload ->
+  bench_reader_parse_string
+    ~chunk_size
+    ~label:"http1 parser reader-driven current parse"
+    ~parse:Http1.Request.parse
+    payload
 
-let bench_reader_parse_slices = fun ~chunk_size payload () ->
-  let reader = String.to_reader payload |> IO.buffered ~chunk_size () in
-  match read_to_iobuffer reader ~read_size:4_096 ~size_hint:(String.length payload) with
-  | Error error ->
-      panic ("http1 parser transport borrowed slice bench read error: " ^ IO.error_message error)
-  | Ok buffer -> (
-      match Http1.Request.parse_slices (IO.IoBuffer.readable buffer) with
-      | Borrowed_done { value; remaining } ->
-          consume_borrowed_result value remaining
-      | Borrowed_need_more ->
-          panic "http1 parser transport borrowed slice bench expected complete payload"
-      | Borrowed_error error ->
-          panic ("http1 parser transport borrowed slice bench parse error: " ^ error)
-    )
+let bench_reader_parse_baseline = fun ~chunk_size payload ->
+  bench_reader_parse_string
+    ~chunk_size
+    ~label:"http1 parser reader-driven baseline string"
+    ~parse:BaselineParser.parse
+    payload
+
+let bench_reader_parse_slice =
+ fun
+   ~chunk_size
+   payload
+   ()
+ ->
+  let label = "http1 parser reader-driven slice" in
+  let reader = String.to_reader ~chunk_size payload in
+  let buffer = IoBuffer.create ~size:(initial_head_capacity ~chunk_size payload) () |> Result.unwrap in
+  let rec loop () =
+    match Http1.Request.parse_slice (IO.IoBuffer.readable buffer) with
+    | Http1.Common.Done { value; remaining } ->
+        consume_result value remaining
+    | Http1.Common.Need_more ->
+        let _ = read_into_iobuffer_chunk reader buffer ~chunk_size ~context:label in
+        loop ()
+    | Http1.Common.Error error ->
+        panic (label ^ ": parse error: " ^ error)
+  in
+  loop ()
+
+let bench_reader_parse_slices =
+ fun
+   ~chunk_size
+   payload
+   ()
+ ->
+  let label = "http1 parser reader-driven borrowed slice" in
+  let reader = String.to_reader ~chunk_size payload in
+  let buffer = IoBuffer.create ~size:(initial_head_capacity ~chunk_size payload) () |> Result.unwrap in
+  let rec loop () =
+    match Http1.Request.parse_slices (IO.IoBuffer.readable buffer) with
+    | Borrowed_done { value; remaining } ->
+        consume_borrowed_result value remaining
+    | Borrowed_need_more ->
+        let _ = read_into_iobuffer_chunk reader buffer ~chunk_size ~context:label in
+        loop ()
+    | Borrowed_error error ->
+        panic (label ^ ": parse error: " ^ error)
+  in
+  loop ()
 
 let benchmarks =
   Bench.[
     with_config
       ~config:{ iterations = 200; warmup = 20 }
-      "http1 parser reader-fed baseline string: small request"
+      "http1 parser reader-driven baseline string: small request"
       (bench_reader_parse_baseline ~chunk_size:32 small_request);
     with_config
       ~config:{ iterations = 150; warmup = 15 }
-      "http1 parser reader-fed baseline string: 1 KiB body"
+      "http1 parser reader-driven baseline string: 1 KiB body"
       (bench_reader_parse_baseline ~chunk_size:64 request_1k);
     with_config
       ~config:{ iterations = 60; warmup = 6 }
-      "http1 parser reader-fed baseline string: 100 KiB body"
+      "http1 parser reader-driven baseline string: 100 KiB body"
       (bench_reader_parse_baseline ~chunk_size:256 request_100k);
     with_config
       ~config:{ iterations = 15; warmup = 3 }
-      "http1 parser reader-fed baseline string: 1 MiB body"
+      "http1 parser reader-driven baseline string: 1 MiB body"
       (bench_reader_parse_baseline ~chunk_size:1024 request_1m);
     with_config
       ~config:{ iterations = 5; warmup = 1 }
-      "http1 parser reader-fed baseline string: 10 MiB body"
+      "http1 parser reader-driven baseline string: 10 MiB body"
       (bench_reader_parse_baseline ~chunk_size:4096 request_10m);
     with_config
       ~config:{ iterations = 120; warmup = 12 }
-      "http1 parser reader-fed baseline string: many headers"
+      "http1 parser reader-driven baseline string: many headers"
       (bench_reader_parse_baseline ~chunk_size:64 many_headers_request);
     with_config
       ~config:{ iterations = 120; warmup = 12 }
-      "http1 parser reader-fed baseline string: github navigation request"
+      "http1 parser reader-driven baseline string: github navigation request"
       (bench_reader_parse_baseline ~chunk_size:128 github_navigation_request);
     with_config
       ~config:{ iterations = 200; warmup = 20 }
-      "http1 parser reader-fed: small request"
+      "http1 parser reader-driven: small request"
       (bench_reader_parse ~chunk_size:32 small_request);
     with_config
       ~config:{ iterations = 150; warmup = 15 }
-      "http1 parser reader-fed: 1 KiB body"
+      "http1 parser reader-driven: 1 KiB body"
       (bench_reader_parse ~chunk_size:64 request_1k);
     with_config
       ~config:{ iterations = 60; warmup = 6 }
-      "http1 parser reader-fed: 100 KiB body"
+      "http1 parser reader-driven: 100 KiB body"
       (bench_reader_parse ~chunk_size:256 request_100k);
     with_config
       ~config:{ iterations = 15; warmup = 3 }
-      "http1 parser reader-fed: 1 MiB body"
+      "http1 parser reader-driven: 1 MiB body"
       (bench_reader_parse ~chunk_size:1024 request_1m);
     with_config
       ~config:{ iterations = 5; warmup = 1 }
-      "http1 parser reader-fed: 10 MiB body"
+      "http1 parser reader-driven: 10 MiB body"
       (bench_reader_parse ~chunk_size:4096 request_10m);
     with_config
       ~config:{ iterations = 120; warmup = 12 }
-      "http1 parser reader-fed: many headers"
+      "http1 parser reader-driven: many headers"
       (bench_reader_parse ~chunk_size:64 many_headers_request);
     with_config
       ~config:{ iterations = 120; warmup = 12 }
-      "http1 parser reader-fed: github navigation request"
+      "http1 parser reader-driven: github navigation request"
       (bench_reader_parse ~chunk_size:128 github_navigation_request);
     with_config
       ~config:{ iterations = 200; warmup = 20 }
-      "http1 parser reader-fed slice: small request"
+      "http1 parser reader-driven slice: small request"
       (bench_reader_parse_slice ~chunk_size:32 small_request);
     with_config
       ~config:{ iterations = 150; warmup = 15 }
-      "http1 parser reader-fed slice: 1 KiB body"
+      "http1 parser reader-driven slice: 1 KiB body"
       (bench_reader_parse_slice ~chunk_size:64 request_1k);
     with_config
       ~config:{ iterations = 60; warmup = 6 }
-      "http1 parser reader-fed slice: 100 KiB body"
+      "http1 parser reader-driven slice: 100 KiB body"
       (bench_reader_parse_slice ~chunk_size:256 request_100k);
     with_config
       ~config:{ iterations = 15; warmup = 3 }
-      "http1 parser reader-fed slice: 1 MiB body"
+      "http1 parser reader-driven slice: 1 MiB body"
       (bench_reader_parse_slice ~chunk_size:1024 request_1m);
     with_config
       ~config:{ iterations = 5; warmup = 1 }
-      "http1 parser reader-fed slice: 10 MiB body"
+      "http1 parser reader-driven slice: 10 MiB body"
       (bench_reader_parse_slice ~chunk_size:4096 request_10m);
     with_config
       ~config:{ iterations = 120; warmup = 12 }
-      "http1 parser reader-fed slice: many headers"
+      "http1 parser reader-driven slice: many headers"
       (bench_reader_parse_slice ~chunk_size:64 many_headers_request);
     with_config
       ~config:{ iterations = 120; warmup = 12 }
-      "http1 parser reader-fed slice: github navigation request"
+      "http1 parser reader-driven slice: github navigation request"
       (bench_reader_parse_slice ~chunk_size:128 github_navigation_request);
     with_config
       ~config:{ iterations = 200; warmup = 20 }
-      "http1 parser reader-fed borrowed slice: small request"
+      "http1 parser reader-driven borrowed slice: small request"
       (bench_reader_parse_slices ~chunk_size:32 small_request);
     with_config
       ~config:{ iterations = 150; warmup = 15 }
-      "http1 parser reader-fed borrowed slice: 1 KiB body"
+      "http1 parser reader-driven borrowed slice: 1 KiB body"
       (bench_reader_parse_slices ~chunk_size:64 request_1k);
     with_config
       ~config:{ iterations = 60; warmup = 6 }
-      "http1 parser reader-fed borrowed slice: 100 KiB body"
+      "http1 parser reader-driven borrowed slice: 100 KiB body"
       (bench_reader_parse_slices ~chunk_size:256 request_100k);
     with_config
       ~config:{ iterations = 15; warmup = 3 }
-      "http1 parser reader-fed borrowed slice: 1 MiB body"
+      "http1 parser reader-driven borrowed slice: 1 MiB body"
       (bench_reader_parse_slices ~chunk_size:1024 request_1m);
     with_config
       ~config:{ iterations = 5; warmup = 1 }
-      "http1 parser reader-fed borrowed slice: 10 MiB body"
+      "http1 parser reader-driven borrowed slice: 10 MiB body"
       (bench_reader_parse_slices ~chunk_size:4096 request_10m);
     with_config
       ~config:{ iterations = 120; warmup = 12 }
-      "http1 parser reader-fed borrowed slice: many headers"
+      "http1 parser reader-driven borrowed slice: many headers"
       (bench_reader_parse_slices ~chunk_size:64 many_headers_request);
     with_config
       ~config:{ iterations = 120; warmup = 12 }
-      "http1 parser reader-fed borrowed slice: github navigation request"
+      "http1 parser reader-driven borrowed slice: github navigation request"
       (bench_reader_parse_slices ~chunk_size:128 github_navigation_request);
   ]
 
