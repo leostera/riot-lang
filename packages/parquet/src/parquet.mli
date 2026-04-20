@@ -164,19 +164,19 @@ val encode_metadata: file_metadata -> (string, error) result
 module Reader: sig
   val from_string: string -> (t, error) result
 
-  val from_reader: ('src, IO.error) IO.Reader.t -> (t, error) result
+  val from_reader: IO.Reader.t -> (t, error) result
 end
 
 module Writer: sig
   val to_string: t -> (string, error) result
 
-  val to_writer: ('dst, IO.error) IO.Writer.t -> t -> (unit, error) result
+  val to_writer: IO.Writer.t -> t -> (unit, error) result
 end
 
 val from_string: string -> (t, error) result
 
-val from_reader: ('src, IO.error) IO.Reader.t -> (t, error) result
+val from_reader: IO.Reader.t -> (t, error) result
 
 val to_string: t -> (string, error) result
 
-val to_writer: ('dst, IO.error) IO.Writer.t -> t -> (unit, error) result
+val to_writer: IO.Writer.t -> t -> (unit, error) result

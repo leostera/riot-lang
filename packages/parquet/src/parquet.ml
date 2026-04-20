@@ -1749,7 +1749,7 @@ let from_string = fun input ->
 
 let from_reader = fun reader ->
   let buffer = IO.Buffer.create ~size:4_096 in
-  match IO.read_to_end reader ~buf:buffer with
+  match IO.read_to_end reader ~into:buffer with
   | Ok _ -> from_string (IO.Buffer.contents buffer)
   | Error err -> io_error err
 
@@ -1767,24 +1767,22 @@ let to_string = fun (value: t) ->
 let to_writer = fun writer (value: t) ->
   let* metadata_bytes = encode_metadata value.metadata in
   let* footer = encode_footer_tail (String.length metadata_bytes) in
-  let* () =
-    match IO.write_all writer ~buf:magic with
+  let write_string = fun value ->
+    let buffer = IO.Buffer.from_string value in
+    match IO.write_all writer ~from:buffer with
     | Ok () -> Ok ()
     | Error err -> io_error err
   in
   let* () =
-    match IO.write_all writer ~buf:value.body with
-    | Ok () -> Ok ()
-    | Error err -> io_error err
+    write_string magic
   in
   let* () =
-    match IO.write_all writer ~buf:metadata_bytes with
-    | Ok () -> Ok ()
-    | Error err -> io_error err
+    write_string value.body
   in
-  match IO.write_all writer ~buf:footer with
-  | Ok () -> Ok ()
-  | Error err -> io_error err
+  let* () =
+    write_string metadata_bytes
+  in
+  write_string footer
 
 module Reader = struct
   let from_string = from_string
