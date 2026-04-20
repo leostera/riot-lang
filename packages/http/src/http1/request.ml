@@ -191,17 +191,16 @@ let parse_slice = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_hea
         |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11
       in
       let headers = List.map headers_list ~fn:header_pair_of_slices |> Std.Net.Http.Header.of_list in
-      let body_string = string_of_slice body in
       let request =
         let request = Std.Net.Http.Request.create method_ uri in
         let request = Std.Net.Http.Request.with_version request version in
         let request = Std.Net.Http.Request.with_headers request headers in
         if Slice.length body > 0 then
-          Std.Net.Http.Request.with_body request body_string
+          Std.Net.Http.Request.with_body_slice request body
         else
           request
       in
-      Common.Done { value = request; remaining = body_string }
+      Common.Done { value = request; remaining = "" }
 
 let parse = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
   parse_slice ~max_request_line ~max_headers ~max_header_length (slice_of_string input)

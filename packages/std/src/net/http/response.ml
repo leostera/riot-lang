@@ -2,7 +2,7 @@ type t = {
   status: Status.t;
   version: Version.t;
   headers: Header.t;
-  body: string option;
+  body: Body.t option;
 }
 
 let create = fun status -> { status; version = Version.Http11; headers = Header.empty; body = None }
@@ -15,13 +15,19 @@ let headers = fun response -> response.headers
 
 let body = fun response -> response.body
 
+let body_string = fun response -> Option.map ~fn:Body.to_string response.body
+
 let with_status = fun response status -> { response with status }
 
 let with_version = fun response version -> { response with version }
 
 let with_headers = fun response headers -> { response with headers }
 
-let with_body = fun response body -> { response with body = Some body }
+let with_body_data = fun response body -> { response with body = Some body }
+
+let with_body = fun response body -> with_body_data response (Body.from_string body)
+
+let with_body_slice = fun response body -> with_body_data response (Body.from_slice body)
 
 let without_body = fun response -> { response with body = None }
 
@@ -47,7 +53,7 @@ module Builder = struct
     status: Status.t;
     version: Version.t;
     headers: Header.t;
-    body: string option;
+    body: Body.t option;
   }
 
   let create = fun status ->
@@ -59,7 +65,11 @@ module Builder = struct
 
   let headers = fun builder headers -> { builder with headers }
 
-  let body = fun builder body -> { builder with body = Some body }
+  let body_data = fun builder body -> { builder with body = Some body }
+
+  let body = fun builder body -> body_data builder (Body.from_string body)
+
+  let body_slice = fun builder body -> body_data builder (Body.from_slice body)
 
   let header = fun builder name value ->
     { builder with headers = Header.set builder.headers name value }

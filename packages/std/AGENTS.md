@@ -52,6 +52,7 @@
 46. Keep `Std.IO` explicit about copy boundaries. Off-heap buffers and borrowed views should flow through `IoSlice`, `Iovec`, and `IoBuffer`; heap conversions should stay on `from_*` / `to_*` names rather than hiding allocations behind generic helpers.
 47. Keep shared reader and writer internals on the checked kernel I/O surface. Bounds-sensitive calls should use `Result`-returning `Kernel.IO` operations by default, and only drop to `_unchecked` helpers after a local invariant has been established in the hot path.
 48. Keep new `Std.Data` parser substrates additive and benchmarked before they replace string-first defaults. View-backed parser experiments such as `JsonStream` should reuse existing value/error models where possible and prove a measurable win before becoming the main public entry point.
+49. Keep `Std.Net.Http.Body` as the explicit lazy ownership boundary for HTTP payloads. Request and response helpers may accept owned strings for ergonomics, but parser and transport code should prefer carrying `IoSlice`-backed bodies until a caller explicitly asks for `Body.to_string`.
 
 ## Validate
 

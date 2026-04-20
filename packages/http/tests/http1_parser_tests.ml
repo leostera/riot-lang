@@ -10,6 +10,7 @@ open Http1.Common
 
 module NetRequest = Std.Net.Http.Request
 module NetResponse = Std.Net.Http.Response
+module NetBody = Std.Net.Http.Body
 module NetMethod = Std.Net.Http.Method
 module NetVersion = Std.Net.Http.Version
 module NetStatus = Std.Net.Http.Status
@@ -90,12 +91,15 @@ let test_request_post_with_body = fun _ctx ->
       let method_ = NetRequest.method_ parsed |> NetMethod.to_string in
       let uri = NetRequest.uri parsed in
       let path = Uri.path uri in
+      let body = NetRequest.body parsed |> Option.map ~fn:NetBody.to_string in
       if method_ != "POST" then
         Result.Error ("Expected method POST, got " ^ method_)
       else if path != "/api/data" then
         Result.Error ("Expected path /api/data, got " ^ path)
-      else if remaining != "{\"key\":\"value\"}" then
-        Result.Error ("Expected body in remaining, got " ^ remaining)
+      else if remaining != "" then
+        Result.Error ("Expected empty remaining, got " ^ remaining)
+      else if body != Some "{\"key\":\"value\"}" then
+        Result.Error "Expected request body on parsed request"
       else
         Result.Ok ()
   | Need_more ->
@@ -128,11 +132,14 @@ let test_request_with_1k_body = fun _ctx ->
       Result.Error error
   | Ok (parsed, remaining) ->
       let path = NetRequest.uri parsed |> Uri.path in
+      let body_length = match NetRequest.body parsed with None -> 0 | Some body -> NetBody.length body in
       if path != "/upload" then
         Result.Error ("Expected /upload path, got " ^ path)
-      else if String.length remaining != 1_024 then
+      else if remaining != "" then
+        Result.Error ("Expected empty remaining body, got " ^ remaining)
+      else if body_length != 1_024 then
         Result.Error
-          ("Expected 1024-byte remaining body, got " ^ Int.to_string (String.length remaining))
+          ("Expected 1024-byte request body, got " ^ Int.to_string body_length)
       else
         Result.Ok ()
 
@@ -151,10 +158,13 @@ let test_request_with_100k_body = fun _ctx ->
   match expect_request_parse req with
   | Error error ->
       Result.Error error
-  | Ok (_, remaining) ->
-      if String.length remaining != 100_000 then
+  | Ok (parsed, remaining) ->
+      let body_length = match NetRequest.body parsed with None -> 0 | Some body -> NetBody.length body in
+      if remaining != "" then
+        Result.Error ("Expected empty remaining body, got " ^ remaining)
+      else if body_length != 100_000 then
         Result.Error
-          ("Expected 100000-byte remaining body, got " ^ Int.to_string (String.length remaining))
+          ("Expected 100000-byte request body, got " ^ Int.to_string body_length)
       else
         Result.Ok ()
 
@@ -173,10 +183,13 @@ let test_request_with_1m_body = fun _ctx ->
   match expect_request_parse req with
   | Error error ->
       Result.Error error
-  | Ok (_, remaining) ->
-      if String.length remaining != 1_000_000 then
+  | Ok (parsed, remaining) ->
+      let body_length = match NetRequest.body parsed with None -> 0 | Some body -> NetBody.length body in
+      if remaining != "" then
+        Result.Error ("Expected empty remaining body, got " ^ remaining)
+      else if body_length != 1_000_000 then
         Result.Error
-          ("Expected 1000000-byte remaining body, got " ^ Int.to_string (String.length remaining))
+          ("Expected 1000000-byte request body, got " ^ Int.to_string body_length)
       else
         Result.Ok ()
 

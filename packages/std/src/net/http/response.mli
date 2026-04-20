@@ -46,7 +46,7 @@
     ```ocaml
     if Status.is_success (Response.status resp) then
       match Response.body resp with
-      | Some body -> process_success body
+      | Some body -> process_success (Body.to_string body)
       | None -> ()
     else
       Log.error "Request failed: %d" (Status.to_int (Response.status resp))
@@ -91,9 +91,16 @@ val headers: t -> Header.t
 
     ## Examples
 
-    ```ocaml match Response.body resp with | Some body -> Log.info "Body: %s"
-    body | None -> Log.info "No body" ``` *)
-val body: t -> string option
+    ```ocaml
+    match Response.body resp with
+    | Some body -> Log.info "Body: %s" (Body.to_string body)
+    | None -> Log.info "No body"
+    ```
+*)
+val body: t -> Body.t option
+
+(** Returns the response body materialized as a string if present. *)
+val body_string: t -> string option
 
 (** ## Modification *)
 (** Returns a new response with the given status.
@@ -135,6 +142,12 @@ val with_header: t -> Header.name -> Header.value -> t
     ```
 *)
 val with_body: t -> string -> t
+
+(** Returns a new response with the given body representation. *)
+val with_body_data: t -> Body.t -> t
+
+(** Returns a new response with a borrowed slice body. *)
+val with_body_slice: t -> IO.Iovec.IoSlice.t -> t
 
 (** Returns a new response without a body.
 
@@ -208,8 +221,14 @@ module Builder: sig
   (** Sets all headers. *)
   val headers: t -> Header.t -> t
 
-  (** Sets the response body. *)
+  (** Sets the response body from an owned string. *)
   val body: t -> string -> t
+
+  (** Sets the response body representation directly. *)
+  val body_data: t -> Body.t -> t
+
+  (** Sets the response body from a borrowed slice. *)
+  val body_slice: t -> IO.Iovec.IoSlice.t -> t
 
   val build: t -> response
 

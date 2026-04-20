@@ -51,7 +51,7 @@
     let headers = Request.headers req in
     
     match Request.body req with
-    | Some body -> Log.info "Body: %s" body
+    | Some body -> Log.info "Body: %s" (Body.to_string body)
     | None -> Log.info "No body"
     
     match Request.get_header req "Authorization" with
@@ -106,9 +106,16 @@ val headers: t -> Header.t
 
     ## Examples
 
-    ```ocaml match Request.body req with | Some body -> process_body body | None
-    -> () ``` *)
-val body: t -> string option
+    ```ocaml
+    match Request.body req with
+    | Some body -> process_body (Body.to_string body)
+    | None -> ()
+    ```
+*)
+val body: t -> Body.t option
+
+(** Returns the request body materialized as a string if present. *)
+val body_string: t -> string option
 
 (** ## Modification *)
 (** Returns a new request with the given method.
@@ -158,6 +165,12 @@ val with_header: t -> Header.name -> Header.value -> t
     ```
 *)
 val with_body: t -> string -> t
+
+(** Returns a new request with the given body representation. *)
+val with_body_data: t -> Body.t -> t
+
+(** Returns a new request with a borrowed slice body. *)
+val with_body_slice: t -> IO.Iovec.IoSlice.t -> t
 
 (** Returns a new request without a body.
 
@@ -235,8 +248,14 @@ module Builder: sig
   (** Sets all headers. *)
   val headers: t -> Header.t -> t
 
-  (** Sets the request body. *)
+  (** Sets the request body from an owned string. *)
   val body: t -> string -> t
+
+  (** Sets the request body representation directly. *)
+  val body_data: t -> Body.t -> t
+
+  (** Sets the request body from a borrowed slice. *)
+  val body_slice: t -> IO.Iovec.IoSlice.t -> t
 
   val build: t -> request
 

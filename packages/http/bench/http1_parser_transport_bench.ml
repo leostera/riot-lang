@@ -122,7 +122,12 @@ let github_navigation_request =
 
 let consume_result = fun value remaining ->
   let _ =
-    (Std.Net.Http.Request.method_ value, Std.Net.Http.Request.version value, String.length remaining)
+    (
+      Std.Net.Http.Request.method_ value,
+      Std.Net.Http.Request.version value,
+      Option.map ~fn:Std.Net.Http.Body.length (Std.Net.Http.Request.body value),
+      String.length remaining
+    )
   in
   ()
 

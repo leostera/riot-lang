@@ -3,7 +3,7 @@ type t = {
   uri: Uri.t;
   version: Version.t;
   headers: Header.t;
-  body: string option;
+  body: Body.t option;
 }
 
 let create = fun method_ uri ->
@@ -25,6 +25,8 @@ let headers = fun request -> request.headers
 
 let body = fun request -> request.body
 
+let body_string = fun request -> Option.map ~fn:Body.to_string request.body
+
 let with_method = fun request method_ -> { request with method_ }
 
 let with_uri = fun request uri -> { request with uri }
@@ -33,7 +35,11 @@ let with_version = fun request version -> { request with version }
 
 let with_headers = fun request headers -> { request with headers }
 
-let with_body = fun request body -> { request with body = Some body }
+let with_body_data = fun request body -> { request with body = Some body }
+
+let with_body = fun request body -> with_body_data request (Body.from_string body)
+
+let with_body_slice = fun request body -> with_body_data request (Body.from_slice body)
 
 let without_body = fun request -> { request with body = None }
 
@@ -59,7 +65,7 @@ module Builder = struct
     uri: Uri.t;
     version: Version.t;
     headers: Header.t;
-    body: string option;
+    body: Body.t option;
   }
 
   let create = fun method_ uri ->
@@ -79,7 +85,11 @@ module Builder = struct
 
   let headers = fun builder headers -> { builder with headers }
 
-  let body = fun builder body -> { builder with body = Some body }
+  let body_data = fun builder body -> { builder with body = Some body }
+
+  let body = fun builder body -> body_data builder (Body.from_string body)
+
+  let body_slice = fun builder body -> body_data builder (Body.from_slice body)
 
   let header = fun builder name value ->
     { builder with headers = Header.set builder.headers name value }

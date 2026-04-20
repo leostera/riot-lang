@@ -10,6 +10,7 @@
 4. Prefer focused fixtures or protocol-level tests when changing parsing or encoding logic.
 5. Hot parser internals should operate on `Std.IO.IoSlice` or `Iter.Cursor` over slices, but keep public HTTP request/response surfaces stable until there is clear benchmark evidence for a broader API change.
 6. Keep parser-side borrowed slice usage explicit about ownership. `Std.IO.IoSlice` and `IoBuffer` are the internal fast path; public request/response values should still materialize ordinary `string` fields at the boundary where HTTP leaves the protocol layer. Additive borrowed parser helpers such as `Http1.Request.parse_slices` are fine for internal fast paths and benchmarks, but they must not silently change the ownership contract of the public HTTP surface.
+7. Keep HTTP head parsing eager and body materialization lazy. Parsers should build owned request/response head values, but carry payload bytes through `Std.Net.Http.Body.t` or borrowed slices until a higher layer explicitly requests `to_string`, JSON decoding, or some other body materialization.
 
 ## Validate
 
