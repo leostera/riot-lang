@@ -511,6 +511,50 @@ let test_uri_from_slice = fun _ctx ->
       else
         Ok ()
 
+let test_uri_from_slice_origin_form = fun _ctx ->
+  let slice = IO.IoVec.IoSlice.from_string "/a/b?q=1#frag" |> Result.unwrap in
+  match Uri.from_slice slice with
+  | Error _ ->
+      Error "Expected origin-form URI slice to parse"
+  | Ok uri ->
+      if Uri.scheme uri != None then
+        Error "Expected no scheme"
+      else if Uri.authority uri != None then
+        Error "Expected no authority"
+      else if Uri.path uri != "/a/b" then
+        Error ("Expected /a/b path, got " ^ Uri.path uri)
+      else if Uri.query uri != Some "q=1" then
+        Error "Expected q=1 query"
+      else if Uri.fragment uri != Some "frag" then
+        Error "Expected frag fragment"
+      else
+        Ok ()
+
+let test_uri_from_slice_long_origin_form = fun _ctx ->
+  let path =
+    "/_global-navigation/payloads.json?current_repo_nwo=leostera%2Friot-new"
+    ^ "&repository=riot-new"
+    ^ "&return_to=https%3A%2F%2Fgithub.com%2Fleostera%2Friot-new%2Fblob%2Fmain%2Fpackages%2Fhttp%2FBENCHMARKS.md"
+    ^ "&user_id=leostera"
+  in
+  let slice = IO.IoVec.IoSlice.from_string path |> Result.unwrap in
+  match Uri.from_slice slice with
+  | Error _ ->
+      Error "Expected long origin-form URI slice to parse"
+  | Ok uri ->
+      if Uri.scheme uri != None then
+        Error "Expected no scheme"
+      else if Uri.authority uri != None then
+        Error "Expected no authority"
+      else if Uri.path uri != "/_global-navigation/payloads.json" then
+        Error ("Unexpected path: " ^ Uri.path uri)
+      else if not (Option.is_some (Uri.query uri)) then
+        Error "Expected query"
+      else if Uri.fragment uri != None then
+        Error "Expected no fragment"
+      else
+        Ok ()
+
 let test_full_roundtrip = fun _ctx ->
   (* Create URI with encoded query *)
   let params = [ ("name", "John Doe"); ("page", "1") ] in
@@ -589,6 +633,8 @@ let tests =
     case "uri roundtrip with encoded path" test_uri_roundtrip_with_encoded_path;
     case "uri with encoded query" test_uri_with_encoded_query;
     case "uri from_slice" test_uri_from_slice;
+    case "uri from_slice origin-form" test_uri_from_slice_origin_form;
+    case "uri from_slice long origin-form" test_uri_from_slice_long_origin_form;
     case "full roundtrip" test_full_roundtrip;
   ]
 

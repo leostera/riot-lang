@@ -42,25 +42,25 @@ Notes:
 
 | Shape | Baseline String | Current `parse` | `parse_slice` | Bench Borrowed |
 | --- | ---: | ---: | ---: | ---: |
-| `small request` | `3.07 us` | `11.25 us` | `8.73 us` | `5.36 us` |
-| `1 KiB body` | `8.89 us` | `14.17 us` | `11.97 us` | `13.21 us` |
-| `100 KiB body` | `173.45 us` | `13.73 us` | `9.93 us` | `8.70 us` |
-| `1 MiB body` | `1.03 ms` | `57.93 us` | `10.40 us` | `35.13 us` |
-| `10 MiB body` | `6.68 ms` | `302.40 us` | `10.40 us` | `8.80 us` |
-| `many headers` | `119.81 us` | `210.13 us` | `189.89 us` | `197.43 us` |
-| `github navigation request` | `85.09 us` | `185.25 us` | `184.45 us` | `162.22 us` |
+| `small request` | `3.45 us` | `6.93 us` | `9.93 us` | `5.37 us` |
+| `1 KiB body` | `8.64 us` | `10.31 us` | `12.66 us` | `10.66 us` |
+| `100 KiB body` | `157.28 us` | `25.77 us` | `10.28 us` | `8.55 us` |
+| `1 MiB body` | `873.87 us` | `60.53 us` | `10.40 us` | `8.73 us` |
+| `10 MiB body` | `5.71 ms` | `230.00 us` | `10.40 us` | `8.60 us` |
+| `many headers` | `121.52 us` | `198.36 us` | `192.62 us` | `204.25 us` |
+| `github navigation request` | `78.93 us` | `179.26 us` | `180.54 us` | `167.79 us` |
 
 ### Reader-Driven Full Request
 
 | Shape | Baseline String | Current `parse` | `parse_slice` | Bench Borrowed |
 | --- | ---: | ---: | ---: | ---: |
-| `small request` | `4.46 us` | `9.02 us` | `9.42 us` | `6.60 us` |
-| `1 KiB body` | `16.76 us` | `21.48 us` | `20.76 us` | `17.17 us` |
-| `100 KiB body` | `438.83 us` | `265.18 us` | `192.13 us` | `197.58 us` |
-| `1 MiB body` | `2.91 ms` | `1.44 ms` | `855.67 us` | `726.53 us` |
-| `10 MiB body` | `19.98 ms` | `13.94 ms` | `2.64 ms` | `2.79 ms` |
-| `many headers` | `123.05 us` | `205.18 us` | `218.51 us` | `204.12 us` |
-| `github navigation request` | `98.46 us` | `188.10 us` | `183.70 us` | `174.28 us` |
+| `small request` | `4.39 us` | `22.96 us` | `9.25 us` | `7.85 us` |
+| `1 KiB body` | `20.83 us` | `19.15 us` | `20.94 us` | `17.12 us` |
+| `100 KiB body` | `460.98 us` | `280.45 us` | `197.95 us` | `231.47 us` |
+| `1 MiB body` | `2.47 ms` | `1.45 ms` | `762.60 us` | `646.40 us` |
+| `10 MiB body` | `22.32 ms` | `13.59 ms` | `2.72 ms` | `2.25 ms` |
+| `many headers` | `126.01 us` | `202.24 us` | `205.93 us` | `194.01 us` |
+| `github navigation request` | `92.01 us` | `181.53 us` | `187.43 us` | `213.73 us` |
 
 ## Current Read
 
@@ -70,21 +70,21 @@ Notes:
   requests. That is expected: it works directly on the original string and has very little setup.
 - For body-heavy parser-only work, the slice and borrowed parsers are decisively better because they
   do not pay a whole-input `string -> IoSlice` adapter cost and they keep the body lazy:
-  - `1 MiB`: baseline `1.03 ms`, current `57.93 us`, slice `10.40 us`, borrowed `35.13 us`
-  - `10 MiB`: baseline `6.68 ms`, current `302.40 us`, slice `10.40 us`, borrowed `8.80 us`
+  - `1 MiB`: baseline `873.87 us`, current `60.53 us`, slice `10.40 us`, borrowed `8.73 us`
+  - `10 MiB`: baseline `5.71 ms`, current `230.00 us`, slice `10.40 us`, borrowed `8.60 us`
 - The reader-driven suite now measures what you asked for: a real `Reader` feeding the whole
   request before parsing. It is explicitly an accumulation-plus-parse benchmark, not a pure parser
   benchmark.
 - On medium and large bodies, the slice-based paths clearly beat the old string-native baseline.
   The direct slice path is still best at `100 KiB`, and borrowed pulls ahead once the payload is
   larger:
-  - `100 KiB`: baseline `438.83 us`, current `265.18 us`, slice `192.13 us`, borrowed `197.58 us`
-  - `1 MiB`: baseline `2.91 ms`, current `1.44 ms`, slice `855.67 us`, borrowed `726.53 us`
-  - `10 MiB`: baseline `19.98 ms`, current `13.94 ms`, slice `2.64 ms`, borrowed `2.79 ms`
+  - `100 KiB`: baseline `460.98 us`, current `280.45 us`, slice `197.95 us`, borrowed `231.47 us`
+  - `1 MiB`: baseline `2.47 ms`, current `1.45 ms`, slice `762.60 us`, borrowed `646.40 us`
+  - `10 MiB`: baseline `22.32 ms`, current `13.59 ms`, slice `2.72 ms`, borrowed `2.25 ms`
 - The old string-native parser is still hard to beat on tiny and header-heavy shapes, where
   `String` operations are cheap and the ownership advantages of slices do not buy much:
-  - `small request`: baseline `4.46 us` vs current `9.02 us`, slice `9.42 us`
-  - `github navigation request`: baseline `98.46 us` vs current `188.10 us`, slice `183.70 us`
+  - `small request`: baseline `4.39 us` vs current `22.96 us`, slice `9.25 us`
+  - `github navigation request`: baseline `92.01 us` vs current `181.53 us`, slice `187.43 us`
 
 ## Request Shapes
 
@@ -106,25 +106,25 @@ suite as `BaselineParser`.
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser in-memory baseline string: small request` | `3.07 us` |
-| `http1 parser in-memory baseline string: 1 KiB body` | `8.89 us` |
-| `http1 parser in-memory baseline string: 100 KiB body` | `173.45 us` |
-| `http1 parser in-memory baseline string: 1 MiB body` | `1.03 ms` |
-| `http1 parser in-memory baseline string: 10 MiB body` | `6.68 ms` |
-| `http1 parser in-memory baseline string: many headers` | `119.81 us` |
-| `http1 parser in-memory baseline string: github navigation request` | `85.09 us` |
+| `http1 parser in-memory baseline string: small request` | `3.45 us` |
+| `http1 parser in-memory baseline string: 1 KiB body` | `8.64 us` |
+| `http1 parser in-memory baseline string: 100 KiB body` | `157.28 us` |
+| `http1 parser in-memory baseline string: 1 MiB body` | `873.87 us` |
+| `http1 parser in-memory baseline string: 10 MiB body` | `5.71 ms` |
+| `http1 parser in-memory baseline string: many headers` | `121.52 us` |
+| `http1 parser in-memory baseline string: github navigation request` | `78.93 us` |
 
 ### Reader-Driven Full Request
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser reader-driven baseline string: small request` | `4.46 us` |
-| `http1 parser reader-driven baseline string: 1 KiB body` | `16.76 us` |
-| `http1 parser reader-driven baseline string: 100 KiB body` | `438.83 us` |
-| `http1 parser reader-driven baseline string: 1 MiB body` | `2.91 ms` |
-| `http1 parser reader-driven baseline string: 10 MiB body` | `19.98 ms` |
-| `http1 parser reader-driven baseline string: many headers` | `123.05 us` |
-| `http1 parser reader-driven baseline string: github navigation request` | `98.46 us` |
+| `http1 parser reader-driven baseline string: small request` | `4.39 us` |
+| `http1 parser reader-driven baseline string: 1 KiB body` | `20.83 us` |
+| `http1 parser reader-driven baseline string: 100 KiB body` | `460.98 us` |
+| `http1 parser reader-driven baseline string: 1 MiB body` | `2.47 ms` |
+| `http1 parser reader-driven baseline string: 10 MiB body` | `22.32 ms` |
+| `http1 parser reader-driven baseline string: many headers` | `126.01 us` |
+| `http1 parser reader-driven baseline string: github navigation request` | `92.01 us` |
 
 ## Current: Public String Entry Point
 
@@ -135,25 +135,25 @@ an `IoSlice` and then uses the slice parser.
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser in-memory: small request` | `11.25 us` |
-| `http1 parser in-memory: 1 KiB body` | `14.17 us` |
-| `http1 parser in-memory: 100 KiB body` | `13.73 us` |
-| `http1 parser in-memory: 1 MiB body` | `57.93 us` |
-| `http1 parser in-memory: 10 MiB body` | `302.40 us` |
-| `http1 parser in-memory: many headers` | `210.13 us` |
-| `http1 parser in-memory: github navigation request` | `185.25 us` |
+| `http1 parser in-memory: small request` | `6.93 us` |
+| `http1 parser in-memory: 1 KiB body` | `10.31 us` |
+| `http1 parser in-memory: 100 KiB body` | `25.77 us` |
+| `http1 parser in-memory: 1 MiB body` | `60.53 us` |
+| `http1 parser in-memory: 10 MiB body` | `230.00 us` |
+| `http1 parser in-memory: many headers` | `198.36 us` |
+| `http1 parser in-memory: github navigation request` | `179.26 us` |
 
 ### Reader-Driven Full Request
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser reader-driven: small request` | `9.02 us` |
-| `http1 parser reader-driven: 1 KiB body` | `21.48 us` |
-| `http1 parser reader-driven: 100 KiB body` | `265.18 us` |
-| `http1 parser reader-driven: 1 MiB body` | `1.44 ms` |
-| `http1 parser reader-driven: 10 MiB body` | `13.94 ms` |
-| `http1 parser reader-driven: many headers` | `205.18 us` |
-| `http1 parser reader-driven: github navigation request` | `188.10 us` |
+| `http1 parser reader-driven: small request` | `22.96 us` |
+| `http1 parser reader-driven: 1 KiB body` | `19.15 us` |
+| `http1 parser reader-driven: 100 KiB body` | `280.45 us` |
+| `http1 parser reader-driven: 1 MiB body` | `1.45 ms` |
+| `http1 parser reader-driven: 10 MiB body` | `13.59 ms` |
+| `http1 parser reader-driven: many headers` | `202.24 us` |
+| `http1 parser reader-driven: github navigation request` | `181.53 us` |
 
 ## Current: Direct Slice Entry Point
 
@@ -164,13 +164,13 @@ head into an owned `Request.t` while keeping the body lazy on `Std.Net.Http.Body
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser in-memory slice: small request` | `8.73 us` |
-| `http1 parser in-memory slice: 1 KiB body` | `11.97 us` |
-| `http1 parser in-memory slice: 100 KiB body` | `9.93 us` |
+| `http1 parser in-memory slice: small request` | `9.93 us` |
+| `http1 parser in-memory slice: 1 KiB body` | `12.66 us` |
+| `http1 parser in-memory slice: 100 KiB body` | `10.28 us` |
 | `http1 parser in-memory slice: 1 MiB body` | `10.40 us` |
 | `http1 parser in-memory slice: 10 MiB body` | `10.40 us` |
-| `http1 parser in-memory slice: many headers` | `189.89 us` |
-| `http1 parser in-memory slice: github navigation request` | `184.45 us` |
+| `http1 parser in-memory slice: many headers` | `192.62 us` |
+| `http1 parser in-memory slice: github navigation request` | `180.54 us` |
 
 ### Reader-Driven Full Request
 
@@ -179,13 +179,13 @@ The direct reader-driven slice path reads the whole payload incrementally into a
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser reader-driven slice: small request` | `9.42 us` |
-| `http1 parser reader-driven slice: 1 KiB body` | `20.76 us` |
-| `http1 parser reader-driven slice: 100 KiB body` | `192.13 us` |
-| `http1 parser reader-driven slice: 1 MiB body` | `855.67 us` |
-| `http1 parser reader-driven slice: 10 MiB body` | `2.64 ms` |
-| `http1 parser reader-driven slice: many headers` | `218.51 us` |
-| `http1 parser reader-driven slice: github navigation request` | `183.70 us` |
+| `http1 parser reader-driven slice: small request` | `9.25 us` |
+| `http1 parser reader-driven slice: 1 KiB body` | `20.94 us` |
+| `http1 parser reader-driven slice: 100 KiB body` | `197.95 us` |
+| `http1 parser reader-driven slice: 1 MiB body` | `762.60 us` |
+| `http1 parser reader-driven slice: 10 MiB body` | `2.72 ms` |
+| `http1 parser reader-driven slice: many headers` | `205.93 us` |
+| `http1 parser reader-driven slice: github navigation request` | `187.43 us` |
 
 ## Current: Borrowed Slice Entry Point
 
@@ -196,22 +196,22 @@ version, headers, and body as borrowed `IoSlice` values instead of materializing
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser in-memory borrowed slice: small request` | `5.36 us` |
-| `http1 parser in-memory borrowed slice: 1 KiB body` | `13.21 us` |
-| `http1 parser in-memory borrowed slice: 100 KiB body` | `8.70 us` |
-| `http1 parser in-memory borrowed slice: 1 MiB body` | `35.13 us` |
-| `http1 parser in-memory borrowed slice: 10 MiB body` | `8.80 us` |
-| `http1 parser in-memory borrowed slice: many headers` | `197.43 us` |
-| `http1 parser in-memory borrowed slice: github navigation request` | `162.22 us` |
+| `http1 parser in-memory borrowed slice: small request` | `5.37 us` |
+| `http1 parser in-memory borrowed slice: 1 KiB body` | `10.66 us` |
+| `http1 parser in-memory borrowed slice: 100 KiB body` | `8.55 us` |
+| `http1 parser in-memory borrowed slice: 1 MiB body` | `8.73 us` |
+| `http1 parser in-memory borrowed slice: 10 MiB body` | `8.60 us` |
+| `http1 parser in-memory borrowed slice: many headers` | `204.25 us` |
+| `http1 parser in-memory borrowed slice: github navigation request` | `167.79 us` |
 
 ### Reader-Driven Full Request
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser reader-driven borrowed slice: small request` | `6.60 us` |
-| `http1 parser reader-driven borrowed slice: 1 KiB body` | `17.17 us` |
-| `http1 parser reader-driven borrowed slice: 100 KiB body` | `197.58 us` |
-| `http1 parser reader-driven borrowed slice: 1 MiB body` | `726.53 us` |
-| `http1 parser reader-driven borrowed slice: 10 MiB body` | `2.79 ms` |
-| `http1 parser reader-driven borrowed slice: many headers` | `204.12 us` |
-| `http1 parser reader-driven borrowed slice: github navigation request` | `174.28 us` |
+| `http1 parser reader-driven borrowed slice: small request` | `7.85 us` |
+| `http1 parser reader-driven borrowed slice: 1 KiB body` | `17.12 us` |
+| `http1 parser reader-driven borrowed slice: 100 KiB body` | `231.47 us` |
+| `http1 parser reader-driven borrowed slice: 1 MiB body` | `646.40 us` |
+| `http1 parser reader-driven borrowed slice: 10 MiB body` | `2.25 ms` |
+| `http1 parser reader-driven borrowed slice: many headers` | `194.01 us` |
+| `http1 parser reader-driven borrowed slice: github navigation request` | `213.73 us` |

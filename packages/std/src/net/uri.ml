@@ -246,7 +246,93 @@ let slice_ops = {
 
 let of_string = fun s -> parse_with string_ops s
 
-let from_slice = fun value -> parse_with slice_ops value
+let parse_origin_form_slice = fun value ->
+  let len = Slice.length value in
+  let rec scan_path pos =
+    if pos >= len then
+      Ok (`Done pos)
+    else
+      match Slice.get_unchecked value ~at:pos with
+      | '?' -> Ok (`Query pos)
+      | '#' -> Ok (`Fragment pos)
+      | c when is_path_char c -> scan_path (pos + 1)
+      | _ -> Error ()
+  in
+  let rec scan_query pos =
+    if pos >= len then
+      Ok pos
+    else
+      match Slice.get_unchecked value ~at:pos with
+      | '#' -> Ok pos
+      | c when is_query_char c -> scan_query (pos + 1)
+      | _ -> Error ()
+  in
+  match scan_path 0 with
+  | Error () ->
+      parse_with slice_ops value
+  | Ok path_stop -> (
+      let path_end, next =
+        match path_stop with
+        | `Done pos -> (pos, None)
+        | `Query pos -> (pos, Some (`Query, pos + 1))
+        | `Fragment pos -> (pos, Some (`Fragment, pos + 1))
+      in
+      let path =
+        if path_end = 0 then
+          "/"
+        else
+          Slice.to_string (Slice.sub_unchecked value ~off:0 ~len:path_end)
+      in
+      match next with
+      | None ->
+          Ok {
+            scheme = None;
+            authority = None;
+            path;
+            query = None;
+            fragment = None;
+          }
+      | Some (`Fragment, fragment_start) ->
+          Ok {
+            scheme = None;
+            authority = None;
+            path;
+            query = None;
+            fragment = Some (Slice.to_string (Slice.sub_unchecked value ~off:fragment_start ~len:(len - fragment_start)));
+          }
+      | Some (`Query, query_start) -> (
+          match scan_query query_start with
+          | Error () ->
+              parse_with slice_ops value
+          | Ok query_end ->
+              let query =
+                Some (Slice.to_string (Slice.sub_unchecked value ~off:query_start ~len:(query_end - query_start)))
+              in
+              let fragment =
+                if query_end >= len then
+                  None
+                else if Slice.get_unchecked value ~at:query_end = '#' then
+                  Some (Slice.to_string (Slice.sub_unchecked value ~off:(query_end + 1) ~len:(len - query_end - 1)))
+                else
+                  None
+              in
+              Ok {
+                scheme = None;
+                authority = None;
+                path;
+                query;
+                fragment;
+              }
+        )
+    )
+
+let from_slice = fun value ->
+  if Slice.length value > 65_535 then
+    Error TooLong
+  else if Slice.length value > 0 && Slice.get_unchecked value ~at:0 = '/' then
+    parse_origin_form_slice value
+  else
+    parse_with slice_ops value
 
 let to_string = fun url ->
   let buf = Buffer.create ~size:256 in

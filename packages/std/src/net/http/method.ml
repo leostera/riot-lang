@@ -25,17 +25,52 @@ let of_string = function
   | "PATCH" -> Patch
   | s -> Extension s
 
+let equal_tail = fun value ~at suffix ->
+  let suffix_len = String.length suffix in
+  if Slice.length value - at != suffix_len then
+    false
+  else
+    let rec loop index =
+      if index >= suffix_len then
+        true
+      else if Slice.get_unchecked value ~at:(at + index) = String.get_unchecked suffix ~at:index then
+        loop (index + 1)
+      else
+        false
+    in
+    loop 0
+
 let from_slice = fun value ->
   match Slice.length value with
-  | 3 when Slice.equal_string value "GET" -> Get
-  | 3 when Slice.equal_string value "PUT" -> Put
-  | 4 when Slice.equal_string value "HEAD" -> Head
-  | 4 when Slice.equal_string value "POST" -> Post
-  | 5 when Slice.equal_string value "PATCH" -> Patch
-  | 5 when Slice.equal_string value "TRACE" -> Trace
-  | 6 when Slice.equal_string value "DELETE" -> Delete
-  | 7 when Slice.equal_string value "CONNECT" -> Connect
-  | 7 when Slice.equal_string value "OPTIONS" -> Options
+  | 3 -> (
+      match Slice.get_unchecked value ~at:0 with
+      | 'G' when equal_tail value ~at:1 "ET" -> Get
+      | 'P' when equal_tail value ~at:1 "UT" -> Put
+      | _ -> Extension (Slice.to_string value)
+    )
+  | 4 -> (
+      match Slice.get_unchecked value ~at:0 with
+      | 'H' when equal_tail value ~at:1 "EAD" -> Head
+      | 'P' when equal_tail value ~at:1 "OST" -> Post
+      | _ -> Extension (Slice.to_string value)
+    )
+  | 5 -> (
+      match Slice.get_unchecked value ~at:0 with
+      | 'P' when equal_tail value ~at:1 "ATCH" -> Patch
+      | 'T' when equal_tail value ~at:1 "RACE" -> Trace
+      | _ -> Extension (Slice.to_string value)
+    )
+  | 6 ->
+      if Slice.get_unchecked value ~at:0 = 'D' && equal_tail value ~at:1 "ELETE" then
+        Delete
+      else
+        Extension (Slice.to_string value)
+  | 7 -> (
+      match Slice.get_unchecked value ~at:0 with
+      | 'C' when equal_tail value ~at:1 "ONNECT" -> Connect
+      | 'O' when equal_tail value ~at:1 "PTIONS" -> Options
+      | _ -> Extension (Slice.to_string value)
+    )
   | _ -> Extension (Slice.to_string value)
 
 let to_string = function

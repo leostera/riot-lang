@@ -18,15 +18,43 @@ let of_string = function
   | "HTTP/3.0" -> Ok Http3
   | _ -> Error `InvalidVersion
 
+let equal_tail = fun value suffix ->
+  let suffix_len = String.length suffix in
+  if Slice.length value != suffix_len then
+    false
+  else
+    let rec loop index =
+      if index >= suffix_len then
+        true
+      else if Slice.get_unchecked value ~at:index = String.get_unchecked suffix ~at:index then
+        loop (index + 1)
+      else
+        false
+    in
+    loop 0
+
 let from_slice = fun value ->
   match Slice.length value with
-  | 8 when Slice.equal_string value "HTTP/0.9" -> Ok Http09
-  | 8 when Slice.equal_string value "HTTP/1.0" -> Ok Http10
-  | 8 when Slice.equal_string value "HTTP/1.1" -> Ok Http11
-  | 6 when Slice.equal_string value "HTTP/2" -> Ok Http2
-  | 8 when Slice.equal_string value "HTTP/2.0" -> Ok Http2
-  | 6 when Slice.equal_string value "HTTP/3" -> Ok Http3
-  | 8 when Slice.equal_string value "HTTP/3.0" -> Ok Http3
+  | 6 ->
+      if equal_tail value "HTTP/2" then
+        Ok Http2
+      else if equal_tail value "HTTP/3" then
+        Ok Http3
+      else
+        Error `InvalidVersion
+  | 8 ->
+      if equal_tail value "HTTP/0.9" then
+        Ok Http09
+      else if equal_tail value "HTTP/1.0" then
+        Ok Http10
+      else if equal_tail value "HTTP/1.1" then
+        Ok Http11
+      else if equal_tail value "HTTP/2.0" then
+        Ok Http2
+      else if equal_tail value "HTTP/3.0" then
+        Ok Http3
+      else
+        Error `InvalidVersion
   | _ -> Error `InvalidVersion
 
 let to_string = function
