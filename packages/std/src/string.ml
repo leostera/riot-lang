@@ -304,14 +304,15 @@ let to_reader = fun ?chunk_size value ->
         chunk_size
   in
   let offset = Sync.Cell.create 0 in
+  let source_length = length value in
+  let source_bytes = bytes_unsafe_of_string value in
   let module Read = struct
     type t = string
 
     type err = IO.error
 
-    let read = fun source ?timeout:_ buf ->
-      let source_bytes = to_bytes source in
-      let remaining = length source - Sync.Cell.get offset in
+    let read = fun _source ?timeout:_ buf ->
+      let remaining = source_length - Sync.Cell.get offset in
       if Int.equal remaining 0 then
         Ok 0
       else
@@ -325,15 +326,14 @@ let to_reader = fun ?chunk_size value ->
         Sync.Cell.set offset (Sync.Cell.get offset + to_read);
         Ok to_read
 
-    let read_vectored = fun source bufs ->
+    let read_vectored = fun _source bufs ->
       let total = Sync.Cell.create 0 in
       let continue = Sync.Cell.create true in
-      let source_bytes = to_bytes source in
       IO.Iovec.for_each
         ~fn:(fun segment ->
           if Sync.Cell.get continue then
             (
-              let remaining = length source - Sync.Cell.get offset in
+              let remaining = source_length - Sync.Cell.get offset in
               if Int.equal remaining 0 then
                 Sync.Cell.set continue false
               else
