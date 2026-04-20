@@ -213,6 +213,171 @@ module BaselineParser = struct
             Done { value = request; remaining = body }
       )
 end
+
+module BorrowedParser = struct
+  module Cursor = Std.Iter.Cursor
+  module Slice = IO.IoVec.IoSlice
+
+  type t = {
+    method_: Slice.t;
+    path: Slice.t;
+    version: Slice.t;
+    headers: (Slice.t * Slice.t) list;
+    body: Slice.t;
+  }
+
+  type 'a parse_result =
+    | Done of {
+        value: 'a;
+        remaining: Slice.t;
+      }
+    | Need_more
+    | Error of string
+
+  type request_line = {
+    method_: Slice.t;
+    path: Slice.t;
+    version: Slice.t;
+    remaining: Cursor.t;
+  }
+
+  type header_line = {
+    name: Slice.t;
+    value: Slice.t;
+    remaining: Cursor.t;
+  }
+
+  let is_space = fun c -> c = ' '
+  let is_optional_whitespace = fun c -> c = ' ' || c = '\t'
+
+  let trim_leading_ows = fun slice ->
+    Cursor.skip_while (Cursor.from_slice slice) is_optional_whitespace
+    |> Cursor.remaining
+
+  let skip_line_ending = fun cursor ->
+    match Cursor.advance_by cursor 2 with
+    | None -> Error "Invalid line ending"
+    | Some cursor -> Done { value = cursor; remaining = Cursor.remaining cursor }
+
+  let take_header_block_terminator = fun cursor ->
+    match Cursor.take_n cursor 2 with
+    | Some (prefix, cursor) when Slice.equal_string prefix "\r\n" -> Some cursor
+    | _ -> None
+
+  let parse_request_line = fun ?(max_length = 8_192) input ->
+    let cursor = Cursor.from_slice input in
+    match Cursor.take_until_char cursor '\r' with
+    | None ->
+        Need_more
+    | Some (line, cursor) ->
+        if Slice.length line > max_length then
+          Error "Request line too long"
+        else
+          match skip_line_ending cursor with
+          | Need_more | Error _ as result ->
+              result
+          | Done { value = cursor; _ } -> (
+              let line_cursor = Cursor.from_slice line in
+              match Cursor.take_until_char line_cursor ' ' with
+              | None ->
+                  Error "Missing method"
+              | Some (method_, line_cursor) ->
+                  let line_cursor = Cursor.skip_while line_cursor is_space in
+                  match Cursor.take_until_char line_cursor ' ' with
+                  | None ->
+                      Error "Missing path"
+                  | Some (path, line_cursor) ->
+                      let version =
+                        Cursor.skip_while line_cursor is_space |> Cursor.remaining
+                      in
+                      if Slice.starts_with version ~prefix:"HTTP/" then
+                        Done {
+                          value = { method_; path; version; remaining = cursor };
+                          remaining = Cursor.remaining cursor;
+                        }
+                      else
+                        Error "Invalid HTTP version"
+            )
+
+  let parse_header_line = fun cursor ->
+    match Cursor.take_until_char cursor '\r' with
+    | None ->
+        Need_more
+    | Some (line, cursor) -> (
+        match skip_line_ending cursor with
+        | Need_more | Error _ as result ->
+            result
+        | Done { value = cursor; _ } -> (
+            let line_cursor = Cursor.from_slice line in
+            match Cursor.take_until_char line_cursor ':' with
+            | None ->
+                Error "Invalid header format (missing colon)"
+            | Some (name, line_cursor) -> (
+                match Cursor.advance line_cursor with
+                | None ->
+                    Error "Invalid header format"
+                | Some line_cursor ->
+                    let value =
+                      Cursor.skip_while line_cursor is_optional_whitespace
+                      |> Cursor.remaining
+                    in
+                    let name = trim_leading_ows name in
+                    Done {
+                      value = { name; value; remaining = cursor };
+                      remaining = Cursor.remaining cursor;
+                    }
+              )
+          )
+      )
+
+  let rec parse_headers = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) ?(count = 0) cursor ->
+    if count >= max_count then
+      Error "Too many headers"
+    else
+      match take_header_block_terminator cursor with
+      | Some cursor ->
+          Done {
+            value = (List.rev acc, cursor);
+            remaining = Cursor.remaining cursor;
+          }
+      | None ->
+          match parse_header_line cursor with
+          | Need_more ->
+              Need_more
+          | Error error ->
+              Error error
+          | Done { value = { name; value; remaining = next_cursor }; _ } ->
+              if Slice.length name + Slice.length value > max_length then
+                Error "Header too long"
+              else
+                parse_headers
+                  ~max_count
+                  ~max_length
+                  ~acc:((name, value) :: acc)
+                  ~count:(count + 1)
+                  next_cursor
+
+  let parse = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
+    match parse_request_line ~max_length:max_request_line input with
+    | Need_more ->
+        Need_more
+    | Error error ->
+        Error error
+    | Done { value = { method_; path; version; remaining = next_cursor }; _ } -> (
+        match parse_headers ~max_count:max_headers ~max_length:max_header_length next_cursor with
+        | Need_more ->
+            Need_more
+        | Error error ->
+            Error error
+        | Done { value = (headers, remaining); _ } ->
+            let body = Cursor.remaining remaining in
+            Done {
+              value = { method_; path; version; headers; body };
+              remaining = body;
+            }
+      )
+end
+
 module IoBuffer = IO.IoBuffer
 module StringBuilder = Std.StringBuilder
 
@@ -343,9 +508,7 @@ let consume_result = fun value remaining ->
   in
   ()
 
-module BorrowedRequest = Http1.Request.Borrowed
-
-let consume_borrowed_result = fun (value : BorrowedRequest.t) remaining ->
+let consume_borrowed_result = fun (value : BorrowedParser.t) remaining ->
   let _ =
     (
       IO.IoVec.IoSlice.length value.method_,
@@ -465,12 +628,12 @@ let bench_reader_parse_borrowed =
   let rec loop () =
     let count = read_into_iobuffer_chunk reader buffer ~chunk_size ~context:label in
     if count = 0 then
-      match BorrowedRequest.parse (IO.IoBuffer.readable buffer) with
-      | BorrowedRequest.Done { value; remaining } ->
+      match BorrowedParser.parse (IO.IoBuffer.readable buffer) with
+      | BorrowedParser.Done { value; remaining } ->
           consume_borrowed_result value remaining
-      | BorrowedRequest.Need_more ->
+      | BorrowedParser.Need_more ->
           panic (label ^ ": expected complete payload")
-      | BorrowedRequest.Error error ->
+      | BorrowedParser.Error error ->
           panic (label ^ ": parse error: " ^ error)
     else
         loop ()

@@ -3,28 +3,6 @@ open Std
 open Std.Iter
 open Common
 
-module Borrowed : sig
-  type t = {
-    method_: IO.IoVec.IoSlice.t;
-    path: IO.IoVec.IoSlice.t;
-    version: IO.IoVec.IoSlice.t;
-    headers: (IO.IoVec.IoSlice.t * IO.IoVec.IoSlice.t) list;
-    body: IO.IoVec.IoSlice.t;
-  }
-
-  type 'a parse_result =
-    | Done of { value: 'a; remaining: IO.IoVec.IoSlice.t }
-    | Need_more
-    | Error of string
-
-  val parse:
-    ?max_request_line:int ->
-    ?max_headers:int ->
-    ?max_header_length:int ->
-    IO.IoVec.IoSlice.t ->
-    t parse_result
-end
-
 (** Parses an HTTP/1.1 request.
 
     @param max_request_line Maximum length of request line (default: 8192)

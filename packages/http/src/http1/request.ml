@@ -139,28 +139,6 @@ let parse_header_line_owned = fun cursor ->
     next_cursor = remaining
   }
 
-let rec parse_headers_slices = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) ?(count = 0) cursor ->
-  if count >= max_count then
-    Slice_error "Too many headers"
-  else
-    match take_header_block_terminator cursor with
-    | Some cursor ->
-        Slice_done (List.reverse acc, cursor)
-    | None ->
-        match parse_header_line_slice cursor with
-        | Slice_need_more -> Slice_need_more
-        | Slice_error error -> Slice_error error
-        | Slice_done { name; value; remaining } ->
-            if Slice.length name + Slice.length value > max_length then
-              Slice_error "Header too long"
-            else
-              parse_headers_slices
-                ~max_count
-                ~max_length
-                ~acc:((name, value) :: acc)
-                ~count:(count + 1)
-                remaining
-
 let rec parse_headers_owned = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) ?(count = 0) cursor ->
   if count >= max_count then
     Slice_error "Too many headers"
@@ -191,41 +169,6 @@ let parse_headers = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) cur
     value = (headers, string_of_slice (Cursor.remaining remaining));
     remaining = ""
   }
-
-module Borrowed = struct
-  type t = {
-    method_: Slice.t;
-    path: Slice.t;
-    version: Slice.t;
-    headers: (Slice.t * Slice.t) list;
-    body: Slice.t;
-  }
-
-  type 'a parse_result =
-    | Done of { value: 'a; remaining: Slice.t }
-    | Need_more
-    | Error of string
-
-  let parse = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
-    match parse_request_line_slice ~max_length:max_request_line input with
-    | Slice_need_more ->
-        Need_more
-    | Slice_error error ->
-        Error error
-    | Slice_done { method_; path; version; remaining } -> (
-        match parse_headers_slices ~max_count:max_headers ~max_length:max_header_length remaining with
-        | Slice_need_more ->
-            Need_more
-        | Slice_error error ->
-            Error error
-        | Slice_done (headers_list, remaining) ->
-            let body = Cursor.remaining remaining in
-            Done {
-              value = { method_; path; version; headers = headers_list; body };
-              remaining = body;
-            }
-      )
-end
 
 let request_of_parts = fun method_ uri version headers_list body ->
   let headers = Std.Net.Http.Header.of_list headers_list in

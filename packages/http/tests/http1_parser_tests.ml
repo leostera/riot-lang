@@ -15,7 +15,6 @@ module NetMethod = Std.Net.Http.Method
 module NetVersion = Std.Net.Http.Version
 module NetStatus = Std.Net.Http.Status
 module Uri = Std.Net.Uri
-module BorrowedRequest = Http1.Request.Borrowed
 
 let build_request = fun ~method_ ~path ~headers ~body ->
   let head =
@@ -42,15 +41,6 @@ let expect_request_parse_slice = fun input ->
   | Need_more ->
       Result.Error "Unexpected Need_more"
   | Error error ->
-      Result.Error ("Parse error: " ^ error)
-
-let expect_request_parse_borrowed = fun input ->
-  match BorrowedRequest.parse (IO.IoVec.IoSlice.from_string input |> Result.unwrap) with
-  | BorrowedRequest.Done { value; remaining } ->
-      Result.Ok (value, remaining)
-  | BorrowedRequest.Need_more ->
-      Result.Error "Unexpected Borrowed.Need_more"
-  | BorrowedRequest.Error error ->
       Result.Error ("Parse error: " ^ error)
 
 (* HTTP/1 Request Tests *)
@@ -211,38 +201,6 @@ let test_request_parse_slice = fun _ctx ->
       else
         Result.Ok ()
 
-let test_request_parse_borrowed = fun _ctx ->
-  let req = "GET /view HTTP/1.1\r\nHost: example.com\r\nX-Test: ok\r\n\r\nbody" in
-  match expect_request_parse_borrowed req with
-  | Error error ->
-      Result.Error error
-  | Ok (parsed, remaining) ->
-      let method_ = IO.IoVec.IoSlice.to_string parsed.method_ in
-      let path = IO.IoVec.IoSlice.to_string parsed.path in
-      let version = IO.IoVec.IoSlice.to_string parsed.version in
-      let headers =
-        List.map parsed.headers ~fn:(fun (name, value) ->
-          (IO.IoVec.IoSlice.to_string name, IO.IoVec.IoSlice.to_string value))
-      in
-      let body = IO.IoVec.IoSlice.to_string parsed.body in
-      let remaining = IO.IoVec.IoSlice.to_string remaining in
-      if method_ != "GET" then
-        Result.Error ("Expected GET method, got " ^ method_)
-      else if path != "/view" then
-        Result.Error ("Expected /view path, got " ^ path)
-      else if version != "HTTP/1.1" then
-        Result.Error ("Expected HTTP/1.1 version, got " ^ version)
-      else if not (List.exists (fun header -> header = ("Host", "example.com")) headers) then
-        Result.Error "Expected Host header"
-      else if not (List.exists (fun header -> header = ("X-Test", "ok")) headers) then
-        Result.Error "Expected X-Test header"
-      else if body != "body" then
-        Result.Error ("Expected body slice, got " ^ body)
-      else if remaining != "body" then
-        Result.Error ("Expected remaining body slice, got " ^ remaining)
-      else
-        Result.Ok ()
-
 let test_request_missing_lf_after_request_line_current_behavior = fun _ctx ->
   let req = "GET /path HTTP/1.1\rHost: example.com\r\n\r\n" in
   match Http1.Request.parse req with
@@ -387,7 +345,6 @@ let tests =
     case "request_with_100k_body" test_request_with_100k_body;
     case "request_with_1m_body" test_request_with_1m_body;
     case "request_parse_slice" test_request_parse_slice;
-    case "request_parse_borrowed" test_request_parse_borrowed;
     case
       "request_missing_lf_after_request_line_current_behavior"
       test_request_missing_lf_after_request_line_current_behavior;
