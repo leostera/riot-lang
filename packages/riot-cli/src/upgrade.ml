@@ -32,14 +32,6 @@ let path_error_message = function
   ^ path
   | Path.SystemError error -> error
 
-let gzip_error_message = function
-  | Compress.Gzip.Engine_error err -> Compress.Gzip.error_to_string (Compress.Gzip.Engine_error err)
-  | Compress.Gzip.Truncated_input -> "truncated gzip input"
-
-let gzip_read_error_message = function
-  | Compress.Gzip.Source_error err -> Fs.File.error_to_string err
-  | Compress.Gzip.Gzip_error err -> gzip_error_message err
-
 let protect = fun ~finally f ->
   match f () with
   | value ->
@@ -184,7 +176,7 @@ let extract_archive = fun ~archive_path ~into ->
           match Archive.Tar.extract reader ~into with
           | Ok () -> Ok ()
           | Error (Archive.Tar.Extract_source_error err) -> Error ("failed to read archive: "
-          ^ gzip_read_error_message err)
+          ^ IO.error_message err)
           | Error (Archive.Tar.Extract_fs_error err) -> Error ("failed to unpack archive: "
           ^ IO.error_message err)
           | Error (Archive.Tar.Extract_error err) -> Error ("failed to decode archive: "
