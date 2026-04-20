@@ -294,6 +294,84 @@ let contains = fun haystack needle ->
     in
     check 0
 
+module Read = struct
+  type t = {
+    mutable offset: int;
+    chunk_size: int;
+    source: string;
+    source_length: int;
+    source_bytes: bytes;
+  }
+
+  type progress = {
+    mutable total: int;
+    mutable continue_: bool;
+  }
+
+  let panic_buffer_error = fun fn error ->
+    Kernel.SystemError.panic ("Std.String.to_reader." ^ fn ^ ": " ^ Kernel.IO.Error.message error)
+
+  let read = fun state ~into ->
+    let remaining = state.source_length - state.offset in
+    if Int.equal remaining 0 then
+      Ok 0
+    else
+      let writable =
+        if IO.Buffer.writable_bytes into = 0 then
+          (
+            match IO.Buffer.ensure_free into state.chunk_size with
+            | Ok () -> IO.Buffer.writable into
+            | Error error -> panic_buffer_error "ensure_free" error
+          )
+        else
+          IO.Buffer.writable into
+      in
+      let to_read = min state.chunk_size (min remaining (IO.IoSlice.length writable)) in
+      IO.IoSlice.blit_from_bytes_unchecked
+        state.source_bytes
+        ~src_off:state.offset
+        writable
+        ~dst_off:0
+        ~len:to_read;
+      begin
+        match IO.Buffer.commit into to_read with
+        | Ok () -> ()
+        | Error error -> panic_buffer_error "commit" error
+      end;
+      state.offset <- state.offset + to_read;
+      Ok to_read
+
+  let read_vectored = fun state ~into:bufs ->
+    let progress = { total = 0; continue_ = true } in
+    IO.IoVec.for_each
+      ~fn:(fun segment ->
+        if progress.continue_ then
+          (
+            let remaining = state.source_length - state.offset in
+            if Int.equal remaining 0 then
+              progress.continue_ <- false
+            else
+              let segment_length = IO.IoVec.IoSlice.length segment in
+              let to_read = min state.chunk_size (min remaining segment_length) in
+              IO.IoVec.IoSlice.blit_from_bytes_unchecked
+                state.source_bytes
+                ~src_off:state.offset
+                segment
+                ~dst_off:0
+                ~len:to_read;
+              state.offset <- state.offset + to_read;
+              progress.total <- progress.total + to_read;
+              if Int.compare to_read segment_length < 0 then
+                progress.continue_ <- false
+              else
+                ()
+          ))
+      bufs;
+    Ok progress.total
+
+  let is_read_vectored = fun _ -> true
+end
+
 let to_reader = fun ?chunk_size value ->
   let chunk_size =
     match chunk_size with
@@ -303,84 +381,15 @@ let to_reader = fun ?chunk_size value ->
           raise (Invalid_argument "Std.String.to_reader: chunk_size must be positive");
         chunk_size
   in
-  let source_length = length value in
-  let panic_buffer_error = fun fn error ->
-    Kernel.SystemError.panic ("Std.String.to_reader." ^ fn ^ ": " ^ Kernel.IO.Error.message error)
+  let state = {
+    chunk_size;
+    offset = 0;
+    source = value;
+    source_length = length value;
+    source_bytes = bytes_unsafe_of_string value;
+  }
   in
-  let module Read = struct
-    type t = {
-      mutable offset: int;
-      source: string;
-      source_length: int;
-      source_bytes: bytes;
-    }
-
-    type progress = {
-      mutable total: int;
-      mutable continue_: bool;
-    }
-
-    let read = fun state ~into ->
-      let remaining = state.source_length - state.offset in
-      if Int.equal remaining 0 then
-        Ok 0
-      else
-        let writable =
-          if IO.Buffer.writable_bytes into = 0 then (
-            match IO.Buffer.ensure_free into chunk_size with
-            | Ok () -> IO.Buffer.writable into
-            | Error error -> panic_buffer_error "ensure_free" error
-          ) else
-            IO.Buffer.writable into
-        in
-        let to_read = min chunk_size (min remaining (IO.IoSlice.length writable)) in
-        IO.IoSlice.blit_from_bytes_unchecked
-          state.source_bytes
-          ~src_off:state.offset
-          writable
-          ~dst_off:0
-          ~len:to_read;
-        begin
-          match IO.Buffer.commit into to_read with
-          | Ok () -> ()
-          | Error error -> panic_buffer_error "commit" error
-        end;
-        state.offset <- state.offset + to_read;
-        Ok to_read
-
-    let read_vectored = fun state ~into:bufs ->
-      let progress = { total = 0; continue_ = true } in
-      IO.IoVec.for_each
-        ~fn:(fun segment ->
-          if progress.continue_ then
-            (
-              let remaining = state.source_length - state.offset in
-              if Int.equal remaining 0 then
-                progress.continue_ <- false
-              else
-                let segment_length = IO.IoVec.IoSlice.length segment in
-                let to_read = min chunk_size (min remaining segment_length) in
-                IO.IoVec.IoSlice.blit_from_bytes_unchecked
-                  state.source_bytes
-                  ~src_off:state.offset
-                  segment
-                  ~dst_off:0
-                  ~len:to_read;
-                state.offset <- state.offset + to_read;
-                progress.total <- progress.total + to_read;
-                if Int.compare to_read segment_length < 0 then
-                  progress.continue_ <- false
-                else
-                  ()
-            ))
-        bufs;
-      Ok progress.total
-
-    let is_read_vectored = fun _ -> true
-  end in
-  IO.Reader.from_source
-    (module Read)
-    { offset = 0; source = value; source_length; source_bytes = bytes_unsafe_of_string value }
+  IO.Reader.from_source (module Read) state
 
 module Syntax = struct
   let set_unchecked = fun value ~at ~char ->
