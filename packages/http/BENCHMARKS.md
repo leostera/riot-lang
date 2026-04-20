@@ -35,6 +35,8 @@ slice-owning parser entry point, `Http1.Request.parse_slice`, and the borrowed p
 | `1 MiB body` | `394.67 us` | `89.27 us` | `7.60 us` |
 | `10 MiB body` | `2.86 ms` | `1.87 ms` | `7.80 us` |
 | `many headers` | `196.67 us` | `248.45 us` | `173.10 us` |
+| `github navigation request` | `178.29 us` | `171.33 us` | `157.78 us` |
+| `github navigation request` | `178.29 us` | `171.33 us` | `157.78 us` |
 
 ### Reader-Fed
 
@@ -46,6 +48,8 @@ slice-owning parser entry point, `Http1.Request.parse_slice`, and the borrowed p
 | `1 MiB body` | `1.10 ms` | `583.13 us` | `648.53 us` |
 | `10 MiB body` | `7.69 ms` | `4.96 ms` | `5.46 ms` |
 | `many headers` | `208.00 us` | `223.40 us` | `209.98 us` |
+| `github navigation request` | `178.77 us` | `181.94 us` | `171.25 us` |
+| `github navigation request` | `181.43 us` | `187.85 us` | `170.98 us` |
 
 - For parser-only work, the borrowed path makes the underlying parser cost visible. It stays
   effectively flat with body size because it never materializes the body.
@@ -64,6 +68,10 @@ slice-owning parser entry point, `Http1.Request.parse_slice`, and the borrowed p
 - `1 MiB body`: `PATCH /archive` with `Content-Length: 1000000`
 - `10 MiB body`: `PATCH /archive` with `Content-Length: 10000000`
 - `many headers`: `GET /headers` with `Host` plus `80` synthetic headers
+- `github navigation request`: sanitized GitHub-like `GET` with a long query string, many browser
+  headers, and a large synthetic `Cookie` header
+- `github navigation request`: sanitized GitHub-like `GET` with a long query string, many browser
+  headers, and a large synthetic `Cookie` header
 
 ## Baseline: Parser Only
 
@@ -107,6 +115,8 @@ internally before parsing.
 | `http1 parser in-memory: 1 MiB body` | `394.67 us` |
 | `http1 parser in-memory: 10 MiB body` | `2.86 ms` |
 | `http1 parser in-memory: many headers` | `196.67 us` |
+| `http1 parser in-memory: github navigation request` | `178.29 us` |
+| `http1 parser in-memory: github navigation request` | `178.29 us` |
 
 ### Reader-Fed
 
@@ -118,6 +128,8 @@ internally before parsing.
 | `http1 parser reader-fed: 1 MiB body` | `1.10 ms` |
 | `http1 parser reader-fed: 10 MiB body` | `7.69 ms` |
 | `http1 parser reader-fed: many headers` | `208.00 us` |
+| `http1 parser reader-fed: github navigation request` | `178.77 us` |
+| `http1 parser reader-fed: github navigation request` | `181.43 us` |
 
 ## Current: Direct Slice Entry Point
 
@@ -133,6 +145,8 @@ These are the current means for `Http1.Request.parse_slice`.
 | `http1 parser in-memory slice: 1 MiB body` | `89.27 us` |
 | `http1 parser in-memory slice: 10 MiB body` | `1.87 ms` |
 | `http1 parser in-memory slice: many headers` | `248.45 us` |
+| `http1 parser in-memory slice: github navigation request` | `171.33 us` |
+| `http1 parser in-memory slice: github navigation request` | `171.33 us` |
 
 ### Reader-Fed
 
@@ -147,6 +161,8 @@ then parses `Std.IO.IoBuffer.readable`.
 | `http1 parser reader-fed slice: 1 MiB body` | `583.13 us` |
 | `http1 parser reader-fed slice: 10 MiB body` | `4.96 ms` |
 | `http1 parser reader-fed slice: many headers` | `223.40 us` |
+| `http1 parser reader-fed slice: github navigation request` | `181.94 us` |
+| `http1 parser reader-fed slice: github navigation request` | `187.85 us` |
 
 ## Current: Borrowed Slice Entry Point
 
@@ -163,6 +179,8 @@ headers, and body as borrowed `IoSlice` values instead of materializing a `Reque
 | `http1 parser in-memory borrowed slice: 1 MiB body` | `7.60 us` |
 | `http1 parser in-memory borrowed slice: 10 MiB body` | `7.80 us` |
 | `http1 parser in-memory borrowed slice: many headers` | `173.10 us` |
+| `http1 parser in-memory borrowed slice: github navigation request` | `157.78 us` |
+| `http1 parser in-memory borrowed slice: github navigation request` | `157.78 us` |
 
 ### Reader-Fed
 
@@ -174,6 +192,8 @@ headers, and body as borrowed `IoSlice` values instead of materializing a `Reque
 | `http1 parser reader-fed borrowed slice: 1 MiB body` | `648.53 us` |
 | `http1 parser reader-fed borrowed slice: 10 MiB body` | `5.46 ms` |
 | `http1 parser reader-fed borrowed slice: many headers` | `209.98 us` |
+| `http1 parser reader-fed borrowed slice: github navigation request` | `171.25 us` |
+| `http1 parser reader-fed borrowed slice: github navigation request` | `170.98 us` |
 
 ## Current Read
 
@@ -189,3 +209,7 @@ headers, and body as borrowed `IoSlice` values instead of materializing a `Reque
 - Small and many-header cases remain in the same general range across entry points. The slice
   substrate is no longer the bottleneck there; the remaining gains will come from reducing
   ownership conversions or by letting higher layers keep borrowed slices longer.
+- The sanitized GitHub-like request behaves more like the many-header shape than the body-heavy
+  shapes. It stresses long request lines and large header values rather than body materialization.
+- The sanitized GitHub-like request behaves more like the many-header shape than the body-heavy
+  shapes. It stresses long request lines and large header values rather than body materialization.

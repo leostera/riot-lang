@@ -13,6 +13,11 @@ let build_request = fun ~method_ ~path ~headers ~body ->
 let build_headers = fun ~count ->
   List.init ~count ~fn:(fun index -> ("X-Bench-" ^ Int.to_string index, "value-" ^ Int.to_string index))
 
+let build_cookie_header = fun ~count ~value_len ->
+  List.init ~count ~fn:(fun index ->
+    "cookie_" ^ Int.to_string index ^ "=" ^ String.make ~len:value_len ~char:(Char.chr (97 + (index mod 26))))
+  |> String.concat "; "
+
 let small_request =
   build_request
     ~method_:"GET"
@@ -79,6 +84,39 @@ let many_headers_request =
     ~headers:(("Host", "example.com") :: build_headers ~count:80)
     ~body:""
 
+let github_navigation_request =
+  let path =
+    "/_global-navigation/payloads.json?current_repo_nwo=leostera%2Friot-new"
+    ^ "&repository=riot-new"
+    ^ "&return_to=https%3A%2F%2Fgithub.com%2Fleostera%2Friot-new%2Fblob%2Fmain%2Fpackages%2Fhttp%2FBENCHMARKS.md"
+    ^ "&user_id=leostera"
+  in
+  let cookie = build_cookie_header ~count:24 ~value_len:96 in
+  build_request
+    ~method_:"GET"
+    ~path
+    ~headers:[
+      ("Host", "github.com");
+      ("Accept", "application/json");
+      ("Accept-Language", "en-US,en;q=0.9");
+      ("Content-Type", "application/json");
+      ("Cookie", cookie);
+      ("Github-Verified-Fetch", "true");
+      ("Priority", "u=1, i");
+      ("Referer", "https://github.com/leostera/riot-new/blob/main/packages/http/BENCHMARKS.md");
+      ("Sec-CH-UA", "\"Not-A.Brand\";v=\"24\", \"Chromium\";v=\"146\"");
+      ("Sec-CH-UA-Mobile", "?0");
+      ("Sec-CH-UA-Platform", "\"macOS\"");
+      ("Sec-Fetch-Dest", "empty");
+      ("Sec-Fetch-Mode", "cors");
+      ("Sec-Fetch-Site", "same-origin");
+      ("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36");
+      ("X-Fetch-Nonce", "v2:b848b908-2786-d94d-9030-5efcc740d40f");
+      ("X-GitHub-Client-Version", "da50e20aef6ab1aa7700fc58a61757b7d7280dfb");
+      ("X-Requested-With", "XMLHttpRequest");
+    ]
+    ~body:""
+
 let small_request_slice = IO.Iovec.IoSlice.from_string small_request |> Result.unwrap
 
 let request_1k_slice = IO.Iovec.IoSlice.from_string request_1k |> Result.unwrap
@@ -90,6 +128,8 @@ let request_1m_slice = IO.Iovec.IoSlice.from_string request_1m |> Result.unwrap
 let request_10m_slice = IO.Iovec.IoSlice.from_string request_10m |> Result.unwrap
 
 let many_headers_request_slice = IO.Iovec.IoSlice.from_string many_headers_request |> Result.unwrap
+
+let github_navigation_request_slice = IO.Iovec.IoSlice.from_string github_navigation_request |> Result.unwrap
 
 let consume_result = fun value remaining ->
   let _ =
@@ -146,6 +186,10 @@ let benchmarks =
     with_config ~config:{ iterations = 5; warmup = 1 } "http1 parser in-memory: 10 MiB body" (bench_parse request_10m);
     with_config ~config:{ iterations = 120; warmup = 12 } "http1 parser in-memory: many headers" (bench_parse many_headers_request);
     with_config
+      ~config:{ iterations = 120; warmup = 12 }
+      "http1 parser in-memory: github navigation request"
+      (bench_parse github_navigation_request);
+    with_config
       ~config:{ iterations = 200; warmup = 20 }
       "http1 parser in-memory slice: small request"
       (bench_parse_slice small_request_slice);
@@ -170,6 +214,10 @@ let benchmarks =
       "http1 parser in-memory slice: many headers"
       (bench_parse_slice many_headers_request_slice);
     with_config
+      ~config:{ iterations = 120; warmup = 12 }
+      "http1 parser in-memory slice: github navigation request"
+      (bench_parse_slice github_navigation_request_slice);
+    with_config
       ~config:{ iterations = 200; warmup = 20 }
       "http1 parser in-memory borrowed slice: small request"
       (bench_parse_slices small_request_slice);
@@ -193,6 +241,10 @@ let benchmarks =
       ~config:{ iterations = 120; warmup = 12 }
       "http1 parser in-memory borrowed slice: many headers"
       (bench_parse_slices many_headers_request_slice);
+    with_config
+      ~config:{ iterations = 120; warmup = 12 }
+      "http1 parser in-memory borrowed slice: github navigation request"
+      (bench_parse_slices github_navigation_request_slice);
   ]
 
 let () =
