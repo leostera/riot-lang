@@ -30,17 +30,23 @@ let writer_of_emit = fun emit ->
   let module Write = struct
     type t = string -> unit
 
-    type err = unit
+    let write = fun emit ~from ->
+      let contents = IO.Buffer.contents from in
+      emit contents;
+      Ok (String.length contents)
 
-    let write = fun emit ~buf ->
-      emit buf;
-      Ok (String.length buf)
-
-    let write_owned_vectored = fun _ ~bufs:_ -> unimplemented ()
+    let write_vectored = fun emit ~from ->
+      let total = ref 0 in
+      IO.IoVec.for_each from
+        ~fn:(fun segment ->
+          let contents = IO.IoSlice.to_string segment in
+          total := !total + String.length contents;
+          emit contents);
+      Ok !total
 
     let flush = fun _ -> Ok ()
   end in
-  IO.Writer.of_write_src (module Write) emit
+  IO.Writer.from_sink (module Write) emit
 
 let workspace_roots = fun workspace ->
   workspace.Workspace.packages
@@ -157,7 +163,8 @@ let format_failed_file = fun (file_result: Krasny.Runner.file_result) ->
         Syn.DiagnosticReporter.format ~file:(Path.to_string file_result.file) ~source parsed.diagnostics
 
 let write_failed_file = fun ~writer file_result ->
-  IO.write_all writer ~buf:(format_failed_file file_result) |> Result.expect ~msg:"failed to write fmt diagnostics"
+  let buffer = IO.Buffer.from_string (format_failed_file file_result) in
+  IO.write_all writer ~from:buffer |> Result.expect ~msg:"failed to write fmt diagnostics"
 
 let write_silent_failures = fun ~writer (result: Krasny.Runner.run_result) ->
   result.files
