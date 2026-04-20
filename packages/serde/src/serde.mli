@@ -36,6 +36,9 @@ module De: sig
     (** Match a borrowed slice against a compiled field set. *)
     val match_slice: 'tag t -> string -> offset:int -> length:int -> 'tag option
 
+    (** Match a borrowed I/O slice against a compiled field set. *)
+    val match_ioslice: 'tag t -> IO.IoSlice.t -> offset:int -> length:int -> 'tag option
+
     (** Match a borrowed byte slice against a compiled field set. *)
     val match_bytes: 'tag t -> bytes -> offset:int -> length:int -> 'tag option
 

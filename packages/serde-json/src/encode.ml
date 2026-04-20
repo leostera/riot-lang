@@ -5,7 +5,7 @@ open Std.Result.Syntax
 
 type encode_target =
   | Buffer_target
-  | Writer_target: ('dst, IO.error) IO.Writer.t -> encode_target
+  | Writer_target of IO.Writer.t
 
 type state = {
   target: encode_target;
@@ -26,7 +26,7 @@ let flush_output = fun state ->
   | Writer_target writer ->
       if IO.Buffer.length state.output > 0 then
         (
-          match IO.write_all writer ~buf:(IO.Buffer.contents state.output) with
+          match IO.write_all writer ~from:state.output with
           | Ok () -> IO.Buffer.clear state.output
           | Error err -> raise_io_error err
         )

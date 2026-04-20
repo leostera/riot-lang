@@ -168,6 +168,24 @@ module Fields = struct
       in
       loop 0
 
+  let ioslice_equals_string = fun source ~offset ~length other ->
+    if not (Int.equal length (String.length other)) then
+      false
+    else
+      let rec loop index =
+        if Int.equal index length then
+          true
+        else if
+          Char.equal
+            (IO.IoSlice.get_unchecked source ~at:(offset + index))
+            (String.get_unchecked other ~at:index)
+        then
+          loop (index + 1)
+        else
+          false
+      in
+      loop 0
+
   let buffer_equals_string = fun buffer ~offset ~length other ->
     if not (Int.equal length (String.length other)) then
       false
@@ -231,6 +249,25 @@ module Fields = struct
             if label_length > length then
               None
             else if bytes_equals_string source ~offset ~length:label_length edge.label then
+              loop edge.next (offset + label_length) (length - label_length)
+            else
+              None
+    in
+    loop fields.root offset length
+
+  let match_ioslice: 'tag. 'tag t -> IO.IoSlice.t -> offset:int -> length:int -> 'tag option = fun fields source ~offset ~length ->
+    let rec loop (node: 'tag node) offset length =
+      if Int.equal length 0 then
+        node.tag
+      else
+        let first = IO.IoSlice.get_unchecked source ~at:offset in
+        match find_edge node.edges first with
+        | None -> None
+        | Some edge ->
+            let label_length = String.length edge.label in
+            if label_length > length then
+              None
+            else if ioslice_equals_string source ~offset ~length:label_length edge.label then
               loop edge.next (offset + label_length) (length - label_length)
             else
               None
