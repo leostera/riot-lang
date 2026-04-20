@@ -101,19 +101,19 @@ let format_edge = fun edge ->
   | Some label -> "  " ^ edge.from_node ^ " " ^ arrow ^ "|" ^ label ^ "| " ^ edge.to_node
 
 let to_string = fun t ->
-  let buffer = IO.Buffer.create ~size:1_024 in
+  let buffer = StringBuilder.create ~size:1_024 in
   (* Add graph direction *)
-  IO.Buffer.add_string buffer ("graph " ^ direction_to_string t.direction ^ "\n");
+  StringBuilder.add_string buffer ("graph " ^ direction_to_string t.direction ^ "\n");
   (* Add nodes *)
   List.for_each (List.reverse t.nodes)
     ~fn:(fun node ->
-      IO.Buffer.add_string buffer (format_node node);
-      IO.Buffer.add_string buffer "\n");
+      StringBuilder.add_string buffer (format_node node);
+      StringBuilder.add_string buffer "\n");
   (* Add blank line if we have both nodes and edges *)
   if t.nodes != [] && t.edges != [] then
-    IO.Buffer.add_string buffer "\n";
+    StringBuilder.add_string buffer "\n";
   List.for_each (List.reverse t.edges)
     ~fn:(fun edge ->
-      IO.Buffer.add_string buffer (format_edge edge);
-      IO.Buffer.add_string buffer "\n");
-  IO.Buffer.contents buffer
+      StringBuilder.add_string buffer (format_edge edge);
+      StringBuilder.add_string buffer "\n");
+  StringBuilder.contents buffer

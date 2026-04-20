@@ -1,5 +1,5 @@
 open Global
-module Buffer = IO.Buffer
+module Buffer = StringBuilder
 module Bytes = Kernel.Bytes
 module Iovec = IO.Iovec
 

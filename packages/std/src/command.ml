@@ -105,13 +105,13 @@ let spawn_reader = fun ?(line_mode = false) ~parent ~stream file ->
       let result =
         match stream, line_mode with
         | `stdout, true ->
-            let buffer = IO.Buffer.create ~size:4096 in
+            let buffer = StringBuilder.create ~size:4096 in
             let rec loop () =
               match Fs.File.read_line file with
               | Ok line when String.equal line "" ->
-                  Ok (IO.Buffer.contents buffer)
+                  Ok (StringBuilder.contents buffer)
               | Ok line ->
-                  IO.Buffer.add_string buffer line;
+                  StringBuilder.add_string buffer line;
                   send parent (Reader_stdout_line { reader; line });
                   loop ()
               | Error _ as err ->

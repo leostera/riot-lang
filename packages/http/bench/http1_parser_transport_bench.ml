@@ -359,7 +359,7 @@ let consume_borrowed_result = fun (value : Http1.Request.request_slices) remaini
 let bench_reader_parse = fun ~chunk_size payload () ->
   let reader = String.to_reader payload |> IO.buffered ~chunk_size () in
   let buf = Buffer.create ~size:(String.length payload) in
-  match IO.read_to_end reader ~buf with
+  match IO.read_all_into_buffer reader ~buf with
   | Error error ->
       panic ("http1 parser transport bench read error: " ^ IO.error_message error)
   | Ok _ -> (
@@ -375,7 +375,7 @@ let bench_reader_parse = fun ~chunk_size payload () ->
 let bench_reader_parse_baseline = fun ~chunk_size payload () ->
   let reader = String.to_reader payload |> IO.buffered ~chunk_size () in
   let buf = Buffer.create ~size:(String.length payload) in
-  match IO.read_to_end reader ~buf with
+  match IO.read_all_into_buffer reader ~buf with
   | Error error ->
       panic ("http1 baseline parser transport bench read error: " ^ IO.error_message error)
   | Ok _ -> (

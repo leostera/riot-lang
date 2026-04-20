@@ -64,14 +64,14 @@ let default_read_line =
    (read : 'src -> ?timeout:int64 -> bytes -> (int, 'err) result)
    (src : 'src)
  ->
-  let buffer = Buffer.create ~size:128 in
+  let buffer = StringBuilder.create ~size:128 in
   let rec loop () =
     match default_read_char read src with
-    | Ok None -> Ok (Buffer.contents buffer)
+    | Ok None -> Ok (StringBuilder.contents buffer)
     | Ok (Some char) ->
-        Buffer.add_char buffer char;
+        StringBuilder.add_char buffer char;
         if char = '\n' then
-          Ok (Buffer.contents buffer)
+          Ok (StringBuilder.contents buffer)
         else
           loop ()
     | Error err -> Error err
@@ -237,30 +237,44 @@ let buffered = fun ?(chunk_size = default_chunk_size) reader ->
     ~read_vectored:buffered_read_vectored_raw
     state
 
-let read_to_end: type src err. (src, err) t -> buf:Buffer.t -> (int, err) result =
+let commit_buffer_read = fun out len ->
+  match Buffer.commit out len with
+  | Ok () ->
+      Ok len
+  | Error error ->
+      panic ("Reader.read_into_buffer: " ^ Kernel.IO.Error.message error)
+
+let read_into_buffer: type src err. (src, err) t -> buf:Buffer.t -> (int, err) result =
  fun reader ~buf:out ->
-  let rec loop total =
+  if Buffer.writable_bytes out = 0 then (
     match Buffer.ensure_free out default_chunk_size with
     | Error error ->
-        panic ("Reader.read_to_end: " ^ Kernel.IO.Error.message error)
-    | Ok () -> (
-        let writable = Buffer.writable out in
-        let bufs = Iovec.from_slices [| writable |] in
-        match read_vectored reader bufs with
-        | Ok 0 ->
-            Ok total
-        | Ok len -> (
-            match Buffer.commit out len with
-            | Ok () ->
-                loop (total + len)
-            | Error error ->
-                panic ("Reader.read_to_end: " ^ Kernel.IO.Error.message error)
-          )
-        | Error err ->
-            Error err
-      )
+        panic ("Reader.read_into_buffer: " ^ Kernel.IO.Error.message error)
+    | Ok () ->
+        ()
+  );
+  let writable = Buffer.writable out in
+  let bufs = Iovec.from_slices [| writable |] in
+  match read_vectored reader bufs with
+    | Ok len ->
+        commit_buffer_read out len
+    | Error err ->
+        Error err
+
+let read_all_into_buffer: type src err. (src, err) t -> buf:Buffer.t -> (int, err) result =
+ fun reader ~buf:out ->
+  let rec loop total =
+    match read_into_buffer reader ~buf:out with
+    | Ok 0 ->
+        Ok total
+    | Ok len ->
+        loop (total + len)
+    | Error err ->
+        Error err
   in
   loop 0
+
+let read_to_end = read_all_into_buffer
 
 let map_err: type src a b. (src, a) t -> fn:(a -> b) -> (src, b) t =
  fun (Reader { ops; src }) ~fn ->

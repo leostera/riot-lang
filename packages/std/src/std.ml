@@ -47,6 +47,7 @@ module Result = Result
 module Runtime = Runtime
 module Actors = Runtime
 module String = String
+module StringBuilder = StringBuilder
 module Supervisor = Supervisor
 module Sync = Sync
 module System = System

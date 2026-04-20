@@ -154,6 +154,10 @@ val read_line: ('src, 'err) Reader.t -> (string, 'err) result
 
 val read_to_string: ('src, 'err) Reader.t -> len:int -> (string, 'err) result
 
+val read_into_buffer: ('src, 'err) Reader.t -> buf:Buffer.t -> (int, 'err) result
+
+val read_all_into_buffer: ('src, 'err) Reader.t -> buf:Buffer.t -> (int, 'err) result
+
 val read_to_end: ('src, 'err) Reader.t -> buf:Buffer.t -> (int, 'err) result
 
 val write: ('dst, 'err) Writer.t -> buf:string -> (int, 'err) result

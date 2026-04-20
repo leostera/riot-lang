@@ -84,13 +84,21 @@ let test_from_string_reads_small_buffers_sequentially = fun _ctx ->
   | Ok _ -> Error "IO.Reader.from_string should return sequential chunks"
   | Error err -> Error err
 
-let test_from_bytes_read_to_end_copies_entire_content = fun _ctx ->
+let test_from_bytes_read_into_buffer_appends_available_content = fun _ctx ->
   let reader = IO.Reader.from_bytes (Bytes.from_string "hello") in
   let buffer = IO.Buffer.create ~size:2 in
-  match IO.read_to_end reader ~buf:buffer with
+  match IO.read_into_buffer reader ~buf:buffer with
+  | Ok read when Int.equal read 2 && String.equal (IO.Buffer.contents buffer) "he" -> Ok ()
+  | Ok _ -> Error "IO.Reader.read_into_buffer should append one chunk into the destination buffer"
+  | Error () -> Error "IO.Reader.read_into_buffer should not fail for from_bytes"
+
+let test_from_bytes_read_all_into_buffer_copies_entire_content = fun _ctx ->
+  let reader = IO.Reader.from_bytes (Bytes.from_string "hello") in
+  let buffer = IO.Buffer.create ~size:2 in
+  match IO.read_all_into_buffer reader ~buf:buffer with
   | Ok read when Int.equal read 5 && String.equal (IO.Buffer.contents buffer) "hello" -> Ok ()
-  | Ok _ -> Error "IO.Reader.read_to_end should copy the full payload"
-  | Error () -> Error "IO.Reader.read_to_end should not fail for from_bytes"
+  | Ok _ -> Error "IO.Reader.read_all_into_buffer should copy the full payload"
+  | Error () -> Error "IO.Reader.read_all_into_buffer should not fail for from_bytes"
 
 let test_read_vectored_fills_segments_in_order = fun _ctx ->
   let reader = IO.Reader.from_string "hello" in
@@ -177,7 +185,8 @@ let test_reader_make_derives_line_and_string_reads = fun _ctx ->
 let tests = Test.[
   case "empty readers return EOF immediately" test_empty_reader_returns_zero;
   case "from_string reads small buffers sequentially" test_from_string_reads_small_buffers_sequentially;
-  case "from_bytes read_to_end copies the entire content" test_from_bytes_read_to_end_copies_entire_content;
+  case "from_bytes read_into_buffer appends one chunk" test_from_bytes_read_into_buffer_appends_available_content;
+  case "from_bytes read_all_into_buffer copies the entire content" test_from_bytes_read_all_into_buffer_copies_entire_content;
   case "read_vectored fills segments in order" test_read_vectored_fills_segments_in_order;
   case "map_err transforms reader errors" test_map_err_transforms_reader_errors;
   case "from_string returns zero after EOF" test_from_string_returns_zero_after_eof;

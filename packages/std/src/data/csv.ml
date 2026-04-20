@@ -174,7 +174,9 @@ let of_string = fun ?(config = default_config) str ->
 
 let parse = fun ?(config = default_config) reader ->
   let buf = Buffer.create ~size:4_096 in
-  let _ = IO.Reader.read_to_end reader ~buf |> Result.expect ~msg:"Failed to read from Reader" in
+  let _ =
+    IO.Reader.read_all_into_buffer reader ~buf |> Result.expect ~msg:"Failed to read from Reader"
+  in
   let content = Buffer.contents buf in
   of_string ~config content
 

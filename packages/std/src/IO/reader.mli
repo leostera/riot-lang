@@ -35,6 +35,10 @@ val read_line: ('src, 'err) t -> (string, 'err) result
 
 val read_to_string: ('src, 'err) t -> len:int -> (string, 'err) result
 
+val read_into_buffer: ('src, 'err) t -> buf:Buffer.t -> (int, 'err) result
+
+val read_all_into_buffer: ('src, 'err) t -> buf:Buffer.t -> (int, 'err) result
+
 val read_to_end: ('src, 'err) t -> buf:Buffer.t -> (int, 'err) result
 
 val map_err: ('src, 'a) t -> fn:('a -> 'b) -> ('src, 'b) t

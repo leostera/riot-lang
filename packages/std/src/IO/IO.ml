@@ -156,6 +156,10 @@ let read_line = Reader.read_line
 
 let read_to_string = Reader.read_to_string
 
+let read_into_buffer = Reader.read_into_buffer
+
+let read_all_into_buffer = Reader.read_all_into_buffer
+
 let read_to_end = Reader.read_to_end
 
 let write = Writer.write

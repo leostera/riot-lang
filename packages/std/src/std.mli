@@ -231,13 +231,20 @@ module Glob = Glob
     - Mermaid → Markdown-friendly diagrams *)
 module Graph = Graph
 
-module IO = IO
-
 (** **When to use:** Generic I/O abstractions
     
     Use IO for Reader/Writer traits and vectored I/O operations.
     
     **Most users should use:** {!Fs} or {!Net} instead *)
+module IO = IO
+
+(** **When to use:** Building owned heap strings
+
+    Use StringBuilder when you intentionally want to accumulate text into an
+    owned `string`. `Std.IO.Buffer` is the off-heap I/O buffer default; this
+    module is the explicit heap-building boundary. *)
+module StringBuilder = StringBuilder
+
 module Int = Int
 
 (** **When to use:** Integer operations

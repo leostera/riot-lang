@@ -425,7 +425,7 @@ let compress_string = fun data ->
 let decompress_string = fun data ->
   let gzip_reader = to_reader (Reader.from_string data) in
   let buffer = Buffer.create ~size:128 in
-  match Reader.read_to_end gzip_reader ~buf:buffer with
+  match Reader.read_all_into_buffer gzip_reader ~buf:buffer with
   | Ok _ -> Ok (Buffer.contents buffer)
   | Error (Source_error ()) -> Error (Engine_error (Engine.Unknown_error "unexpected in-memory source error"))
   | Error (Gzip_error err) -> Error err
