@@ -303,14 +303,25 @@ let to_reader = fun ?chunk_size value ->
           raise (Invalid_argument "Std.String.to_reader: chunk_size must be positive");
         chunk_size
   in
-  let offset = Sync.Cell.create 0 in
   let source_length = length value in
-  let source_bytes = bytes_unsafe_of_string value in
+  let panic_buffer_error = fun fn error ->
+    Kernel.SystemError.panic ("Std.String.to_reader." ^ fn ^ ": " ^ Kernel.IO.Error.message error)
+  in
   let module Read = struct
-    type t = string
+    type t = {
+      mutable offset: int;
+      source: string;
+      source_length: int;
+      source_bytes: bytes;
+    }
 
-    let read = fun _source ~into ->
-      let remaining = source_length - Sync.Cell.get offset in
+    type progress = {
+      mutable total: int;
+      mutable continue_: bool;
+    }
+
+    let read = fun state ~into ->
+      let remaining = state.source_length - state.offset in
       if Int.equal remaining 0 then
         Ok 0
       else
@@ -318,61 +329,58 @@ let to_reader = fun ?chunk_size value ->
           if IO.Buffer.writable_bytes into = 0 then (
             match IO.Buffer.ensure_free into chunk_size with
             | Ok () -> IO.Buffer.writable into
-            | Error error ->
-                Kernel.SystemError.panic
-                  ("Std.String.to_reader.ensure_free: " ^ Kernel.IO.Error.message error)
+            | Error error -> panic_buffer_error "ensure_free" error
           ) else
             IO.Buffer.writable into
         in
         let to_read = min chunk_size (min remaining (IO.IoSlice.length writable)) in
         IO.IoSlice.blit_from_bytes_unchecked
-          source_bytes
-          ~src_off:(Sync.Cell.get offset)
+          state.source_bytes
+          ~src_off:state.offset
           writable
           ~dst_off:0
           ~len:to_read;
         begin
           match IO.Buffer.commit into to_read with
           | Ok () -> ()
-          | Error error ->
-              Kernel.SystemError.panic
-                ("Std.String.to_reader.commit: " ^ Kernel.IO.Error.message error)
+          | Error error -> panic_buffer_error "commit" error
         end;
-        Sync.Cell.set offset (Sync.Cell.get offset + to_read);
+        state.offset <- state.offset + to_read;
         Ok to_read
 
-    let read_vectored = fun _source ~into:bufs ->
-      let total = Sync.Cell.create 0 in
-      let continue = Sync.Cell.create true in
+    let read_vectored = fun state ~into:bufs ->
+      let progress = { total = 0; continue_ = true } in
       IO.IoVec.for_each
         ~fn:(fun segment ->
-          if Sync.Cell.get continue then
+          if progress.continue_ then
             (
-              let remaining = source_length - Sync.Cell.get offset in
+              let remaining = state.source_length - state.offset in
               if Int.equal remaining 0 then
-                Sync.Cell.set continue false
+                progress.continue_ <- false
               else
                 let segment_length = IO.IoVec.IoSlice.length segment in
                 let to_read = min chunk_size (min remaining segment_length) in
                 IO.IoVec.IoSlice.blit_from_bytes_unchecked
-                  source_bytes
-                  ~src_off:(Sync.Cell.get offset)
+                  state.source_bytes
+                  ~src_off:state.offset
                   segment
                   ~dst_off:0
                   ~len:to_read;
-                Sync.Cell.set offset (Sync.Cell.get offset + to_read);
-                Sync.Cell.set total (Sync.Cell.get total + to_read);
+                state.offset <- state.offset + to_read;
+                progress.total <- progress.total + to_read;
                 if Int.compare to_read segment_length < 0 then
-                  Sync.Cell.set continue false
+                  progress.continue_ <- false
                 else
                   ()
             ))
         bufs;
-      Ok (Sync.Cell.get total)
+      Ok progress.total
 
     let is_read_vectored = fun _ -> true
   end in
-  IO.Reader.from_source (module Read) value
+  IO.Reader.from_source
+    (module Read)
+    { offset = 0; source = value; source_length; source_bytes = bytes_unsafe_of_string value }
 
 module Syntax = struct
   let set_unchecked = fun value ~at ~char ->
