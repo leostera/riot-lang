@@ -60,7 +60,7 @@ Parser-only request parsing on large bodies clearly benefits from staying on
   - baseline string parser: `6.24 ms`
   - public `parse`: `308.80 us`
   - `parse_slice`: `12.60 us`
-  - `parse_slices`: `8.40 us`
+  - `Borrowed.parse`: `8.40 us`
 
 Full-request reader-driven parsing also benefits once ingestion uses caller-owned
 off-heap buffers:
@@ -69,7 +69,7 @@ off-heap buffers:
   - baseline string parser: `23.71 ms`
   - public `parse`: `15.04 ms`
   - `parse_slice`: `2.79 ms`
-  - `parse_slices`: `2.38 ms`
+  - `Borrowed.parse`: `2.38 ms`
 
 But the same benchmarks also show where *not* to overreach:
 
@@ -400,7 +400,7 @@ So the design rule is:
 - transport and buffering should be slice-first
 - public HTTP request and response values should remain owned at the boundary
 - bodies should stay lazy
-- borrowed parser entry points such as `parse_slices` are additive fast paths,
+- borrowed parser entry points such as `Http1.Request.Borrowed.parse` are additive fast paths,
   not the default public contract
 
 ## 6. Migration stance

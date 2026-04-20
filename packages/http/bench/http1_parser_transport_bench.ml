@@ -343,7 +343,9 @@ let consume_result = fun value remaining ->
   in
   ()
 
-let consume_borrowed_result = fun (value : Http1.Request.request_slices) remaining ->
+module BorrowedRequest = Http1.Request.Borrowed
+
+let consume_borrowed_result = fun (value : BorrowedRequest.t) remaining ->
   let _ =
     (
       IO.IoVec.IoSlice.length value.method_,
@@ -451,7 +453,7 @@ let bench_reader_parse_slice =
   in
   loop ()
 
-let bench_reader_parse_slices =
+let bench_reader_parse_borrowed =
  fun
    ~chunk_size
    payload
@@ -463,12 +465,12 @@ let bench_reader_parse_slices =
   let rec loop () =
     let count = read_into_iobuffer_chunk reader buffer ~chunk_size ~context:label in
     if count = 0 then
-      match Http1.Request.parse_slices (IO.IoBuffer.readable buffer) with
-      | Borrowed_done { value; remaining } ->
+      match BorrowedRequest.parse (IO.IoBuffer.readable buffer) with
+      | BorrowedRequest.Done { value; remaining } ->
           consume_borrowed_result value remaining
-      | Borrowed_need_more ->
+      | BorrowedRequest.Need_more ->
           panic (label ^ ": expected complete payload")
-      | Borrowed_error error ->
+      | BorrowedRequest.Error error ->
           panic (label ^ ": parse error: " ^ error)
     else
         loop ()
@@ -564,31 +566,31 @@ let benchmarks =
     with_config
       ~config:{ iterations = 200; warmup = 20 }
       "http1 parser reader-driven borrowed slice: small request"
-      (bench_reader_parse_slices ~chunk_size:32 small_request);
+      (bench_reader_parse_borrowed ~chunk_size:32 small_request);
     with_config
       ~config:{ iterations = 150; warmup = 15 }
       "http1 parser reader-driven borrowed slice: 1 KiB body"
-      (bench_reader_parse_slices ~chunk_size:64 request_1k);
+      (bench_reader_parse_borrowed ~chunk_size:64 request_1k);
     with_config
       ~config:{ iterations = 60; warmup = 6 }
       "http1 parser reader-driven borrowed slice: 100 KiB body"
-      (bench_reader_parse_slices ~chunk_size:256 request_100k);
+      (bench_reader_parse_borrowed ~chunk_size:256 request_100k);
     with_config
       ~config:{ iterations = 15; warmup = 3 }
       "http1 parser reader-driven borrowed slice: 1 MiB body"
-      (bench_reader_parse_slices ~chunk_size:1024 request_1m);
+      (bench_reader_parse_borrowed ~chunk_size:1024 request_1m);
     with_config
       ~config:{ iterations = 5; warmup = 1 }
       "http1 parser reader-driven borrowed slice: 10 MiB body"
-      (bench_reader_parse_slices ~chunk_size:4096 request_10m);
+      (bench_reader_parse_borrowed ~chunk_size:4096 request_10m);
     with_config
       ~config:{ iterations = 120; warmup = 12 }
       "http1 parser reader-driven borrowed slice: many headers"
-      (bench_reader_parse_slices ~chunk_size:64 many_headers_request);
+      (bench_reader_parse_borrowed ~chunk_size:64 many_headers_request);
     with_config
       ~config:{ iterations = 120; warmup = 12 }
       "http1 parser reader-driven borrowed slice: github navigation request"
-      (bench_reader_parse_slices ~chunk_size:128 github_navigation_request);
+      (bench_reader_parse_borrowed ~chunk_size:128 github_navigation_request);
   ]
 
 let () =

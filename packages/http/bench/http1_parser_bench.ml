@@ -344,6 +344,8 @@ let many_headers_request_slice = IO.IoVec.IoSlice.from_string many_headers_reque
 
 let github_navigation_request_slice = IO.IoVec.IoSlice.from_string github_navigation_request |> Result.unwrap
 
+module BorrowedRequest = Http1.Request.Borrowed
+
 let consume_result = fun value remaining ->
   let _ =
     (
@@ -355,7 +357,7 @@ let consume_result = fun value remaining ->
   in
   ()
 
-let consume_borrowed_result = fun (value : Http1.Request.request_slices) remaining ->
+let consume_borrowed_result = fun (value : BorrowedRequest.t) remaining ->
   let _ =
     (
       IO.IoVec.IoSlice.length value.method_,
@@ -395,13 +397,13 @@ let bench_parse_slice = fun payload () ->
   | Error error ->
       panic ("http1 slice parser bench parse error: " ^ error)
 
-let bench_parse_slices = fun payload () ->
-  match Http1.Request.parse_slices payload with
-  | Borrowed_done { value; remaining } ->
+let bench_parse_borrowed = fun payload () ->
+  match BorrowedRequest.parse payload with
+  | BorrowedRequest.Done { value; remaining } ->
       consume_borrowed_result value remaining
-  | Borrowed_need_more ->
+  | BorrowedRequest.Need_more ->
       panic "http1 borrowed slice parser bench expected complete payload"
-  | Borrowed_error error ->
+  | BorrowedRequest.Error error ->
       panic ("http1 borrowed slice parser bench parse error: " ^ error)
 
 let benchmarks =
@@ -475,31 +477,31 @@ let benchmarks =
     with_config
       ~config:{ iterations = 200; warmup = 20 }
       "http1 parser in-memory borrowed slice: small request"
-      (bench_parse_slices small_request_slice);
+      (bench_parse_borrowed small_request_slice);
     with_config
       ~config:{ iterations = 150; warmup = 15 }
       "http1 parser in-memory borrowed slice: 1 KiB body"
-      (bench_parse_slices request_1k_slice);
+      (bench_parse_borrowed request_1k_slice);
     with_config
       ~config:{ iterations = 60; warmup = 6 }
       "http1 parser in-memory borrowed slice: 100 KiB body"
-      (bench_parse_slices request_100k_slice);
+      (bench_parse_borrowed request_100k_slice);
     with_config
       ~config:{ iterations = 15; warmup = 3 }
       "http1 parser in-memory borrowed slice: 1 MiB body"
-      (bench_parse_slices request_1m_slice);
+      (bench_parse_borrowed request_1m_slice);
     with_config
       ~config:{ iterations = 5; warmup = 1 }
       "http1 parser in-memory borrowed slice: 10 MiB body"
-      (bench_parse_slices request_10m_slice);
+      (bench_parse_borrowed request_10m_slice);
     with_config
       ~config:{ iterations = 120; warmup = 12 }
       "http1 parser in-memory borrowed slice: many headers"
-      (bench_parse_slices many_headers_request_slice);
+      (bench_parse_borrowed many_headers_request_slice);
     with_config
       ~config:{ iterations = 120; warmup = 12 }
       "http1 parser in-memory borrowed slice: github navigation request"
-      (bench_parse_slices github_navigation_request_slice);
+      (bench_parse_borrowed github_navigation_request_slice);
   ]
 
 let () =

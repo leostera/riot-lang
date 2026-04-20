@@ -3,18 +3,27 @@ open Std
 open Std.Iter
 open Common
 
-type request_slices = {
-  method_: IO.IoVec.IoSlice.t;
-  path: IO.IoVec.IoSlice.t;
-  version: IO.IoVec.IoSlice.t;
-  headers: (IO.IoVec.IoSlice.t * IO.IoVec.IoSlice.t) list;
-  body: IO.IoVec.IoSlice.t;
-}
+module Borrowed : sig
+  type t = {
+    method_: IO.IoVec.IoSlice.t;
+    path: IO.IoVec.IoSlice.t;
+    version: IO.IoVec.IoSlice.t;
+    headers: (IO.IoVec.IoSlice.t * IO.IoVec.IoSlice.t) list;
+    body: IO.IoVec.IoSlice.t;
+  }
 
-type 'a borrowed_parse_result =
-  | Borrowed_done of { value: 'a; remaining: IO.IoVec.IoSlice.t }
-  | Borrowed_need_more
-  | Borrowed_error of string
+  type 'a parse_result =
+    | Done of { value: 'a; remaining: IO.IoVec.IoSlice.t }
+    | Need_more
+    | Error of string
+
+  val parse:
+    ?max_request_line:int ->
+    ?max_headers:int ->
+    ?max_header_length:int ->
+    IO.IoVec.IoSlice.t ->
+    t parse_result
+end
 
 (** Parses an HTTP/1.1 request.
 
@@ -24,12 +33,6 @@ type 'a borrowed_parse_result =
 
     Returns [Done request] on success, [Need_more] if more data needed, or
     [Error msg] if parsing fails. *)
-val parse_slices:
-  ?max_request_line:int ->
-  ?max_headers:int ->
-  ?max_header_length:int ->
-  IO.IoVec.IoSlice.t ->
-  request_slices borrowed_parse_result
 
 val parse_slice:
   ?max_request_line:int ->

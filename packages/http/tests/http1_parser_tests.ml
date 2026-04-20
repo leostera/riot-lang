@@ -15,6 +15,7 @@ module NetMethod = Std.Net.Http.Method
 module NetVersion = Std.Net.Http.Version
 module NetStatus = Std.Net.Http.Status
 module Uri = Std.Net.Uri
+module BorrowedRequest = Http1.Request.Borrowed
 
 let build_request = fun ~method_ ~path ~headers ~body ->
   let head =
@@ -43,13 +44,13 @@ let expect_request_parse_slice = fun input ->
   | Error error ->
       Result.Error ("Parse error: " ^ error)
 
-let expect_request_parse_slices = fun input ->
-  match Http1.Request.parse_slices (IO.IoVec.IoSlice.from_string input |> Result.unwrap) with
-  | Borrowed_done { value; remaining } ->
+let expect_request_parse_borrowed = fun input ->
+  match BorrowedRequest.parse (IO.IoVec.IoSlice.from_string input |> Result.unwrap) with
+  | BorrowedRequest.Done { value; remaining } ->
       Result.Ok (value, remaining)
-  | Borrowed_need_more ->
-      Result.Error "Unexpected Borrowed_need_more"
-  | Borrowed_error error ->
+  | BorrowedRequest.Need_more ->
+      Result.Error "Unexpected Borrowed.Need_more"
+  | BorrowedRequest.Error error ->
       Result.Error ("Parse error: " ^ error)
 
 (* HTTP/1 Request Tests *)
@@ -210,9 +211,9 @@ let test_request_parse_slice = fun _ctx ->
       else
         Result.Ok ()
 
-let test_request_parse_slices = fun _ctx ->
+let test_request_parse_borrowed = fun _ctx ->
   let req = "GET /view HTTP/1.1\r\nHost: example.com\r\nX-Test: ok\r\n\r\nbody" in
-  match expect_request_parse_slices req with
+  match expect_request_parse_borrowed req with
   | Error error ->
       Result.Error error
   | Ok (parsed, remaining) ->
@@ -386,7 +387,7 @@ let tests =
     case "request_with_100k_body" test_request_with_100k_body;
     case "request_with_1m_body" test_request_with_1m_body;
     case "request_parse_slice" test_request_parse_slice;
-    case "request_parse_slices" test_request_parse_slices;
+    case "request_parse_borrowed" test_request_parse_borrowed;
     case
       "request_missing_lf_after_request_line_current_behavior"
       test_request_missing_lf_after_request_line_current_behavior;

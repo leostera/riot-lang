@@ -24,23 +24,10 @@ type header_line_slice = {
   remaining: Cursor.t;
 }
 
-type request_slices = {
-  method_: Slice.t;
-  path: Slice.t;
-  version: Slice.t;
-  headers: (Slice.t * Slice.t) list;
-  body: Slice.t;
-}
-
 type 'a slice_parse_result =
   | Slice_done of 'a
   | Slice_need_more
   | Slice_error of string
-
-type 'a borrowed_parse_result =
-  | Borrowed_done of { value: 'a; remaining: Slice.t }
-  | Borrowed_need_more
-  | Borrowed_error of string
 
 let header_pair_of_slices = fun (name, value) -> (string_of_slice name, string_of_slice value)
 
@@ -154,53 +141,80 @@ let parse_headers = fun ?(max_count = 100) ?(max_length = 8_192) ?(acc = []) cur
         remaining = "";
       }
 
-let parse_slices = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
+module Borrowed = struct
+  type t = {
+    method_: Slice.t;
+    path: Slice.t;
+    version: Slice.t;
+    headers: (Slice.t * Slice.t) list;
+    body: Slice.t;
+  }
+
+  type 'a parse_result =
+    | Done of { value: 'a; remaining: Slice.t }
+    | Need_more
+    | Error of string
+
+  let parse = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
+    match parse_request_line_slice ~max_length:max_request_line input with
+    | Slice_need_more ->
+        Need_more
+    | Slice_error error ->
+        Error error
+    | Slice_done { method_; path; version; remaining } -> (
+        match parse_headers_slices ~max_count:max_headers ~max_length:max_header_length remaining with
+        | Slice_need_more ->
+            Need_more
+        | Slice_error error ->
+            Error error
+        | Slice_done (headers_list, remaining) ->
+            let body = Cursor.remaining remaining in
+            Done {
+              value = { method_; path; version; headers = headers_list; body };
+              remaining = body;
+            }
+      )
+end
+
+let request_of_slices = fun method_ path version headers_list body ->
+  let method_ = Std.Net.Http.Method.from_slice method_ in
+  let uri =
+    Std.Net.Uri.from_slice path
+    |> Result.unwrap_or ~default:(Std.Net.Uri.of_string "/" |> Result.unwrap)
+  in
+  let version =
+    Std.Net.Http.Version.from_slice version
+    |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11
+  in
+  let headers = List.map headers_list ~fn:header_pair_of_slices |> Std.Net.Http.Header.of_list in
+  let request =
+    let request = Std.Net.Http.Request.create method_ uri in
+    let request = Std.Net.Http.Request.with_version request version in
+    let request = Std.Net.Http.Request.with_headers request headers in
+    if Slice.length body > 0 then
+      Std.Net.Http.Request.with_body_slice request body
+    else
+      request
+  in
+  request
+
+let parse_slice = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
   match parse_request_line_slice ~max_length:max_request_line input with
   | Slice_need_more ->
-      Borrowed_need_more
+      Common.Need_more
   | Slice_error error ->
-      Borrowed_error error
+      Common.Error error
   | Slice_done { method_; path; version; remaining } -> (
       match parse_headers_slices ~max_count:max_headers ~max_length:max_header_length remaining with
       | Slice_need_more ->
-          Borrowed_need_more
+          Common.Need_more
       | Slice_error error ->
-          Borrowed_error error
+          Common.Error error
       | Slice_done (headers_list, remaining) ->
           let body = Cursor.remaining remaining in
-          Borrowed_done {
-            value = { method_; path; version; headers = headers_list; body };
-            remaining = body;
-          }
+          let request = request_of_slices method_ path version headers_list body in
+          Common.Done { value = request; remaining = "" }
     )
-
-let parse_slice = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
-  match parse_slices ~max_request_line ~max_headers ~max_header_length input with
-  | Borrowed_need_more ->
-      Common.Need_more
-  | Borrowed_error error ->
-      Common.Error error
-  | Borrowed_done { value={ method_; path; version; headers = headers_list; body }; _ } ->
-      let method_ = Std.Net.Http.Method.from_slice method_ in
-      let uri =
-        Std.Net.Uri.from_slice path
-        |> Result.unwrap_or ~default:(Std.Net.Uri.of_string "/" |> Result.unwrap)
-      in
-      let version =
-        Std.Net.Http.Version.from_slice version
-        |> Result.unwrap_or ~default:Std.Net.Http.Version.Http11
-      in
-      let headers = List.map headers_list ~fn:header_pair_of_slices |> Std.Net.Http.Header.of_list in
-      let request =
-        let request = Std.Net.Http.Request.create method_ uri in
-        let request = Std.Net.Http.Request.with_version request version in
-        let request = Std.Net.Http.Request.with_headers request headers in
-        if Slice.length body > 0 then
-          Std.Net.Http.Request.with_body_slice request body
-        else
-          request
-      in
-      Common.Done { value = request; remaining = "" }
 
 let parse = fun ?(max_request_line = 8_192) ?(max_headers = 100) ?(max_header_length = 8_192) input ->
   parse_slice ~max_request_line ~max_headers ~max_header_length (slice_of_string input)
