@@ -160,6 +160,18 @@ type Message.t +=
       result: ('work, 'mutation, 'event, 'result, 'error) task_result;
       result_ref: ('work, 'mutation, 'event, 'result, 'error) task_result Ref.t;
     } -> Message.t
+  | GraphRunEvent: {
+      event: 'event;
+      event_ref: 'event Ref.t;
+    } -> Message.t
+  | GraphRunCompleted: {
+      results: ('work, 'result, 'error) run_result;
+      run_ref: (('work, 'result, 'error) run_result) Ref.t;
+    } -> Message.t
+  | GraphRunFailed: {
+      exn: exn;
+      run_ref: (('work, 'result, 'error) run_result) Ref.t;
+    } -> Message.t
 
 type ('work, 'mutation, 'event, 'result, 'error) state = {
   config: Run_config.t;
@@ -389,53 +401,94 @@ let run = fun ~config ~on_event ~graph ~execute ->
   if HashMap.length graph.Graph.nodes = 0 then
     { results = [] }
   else
-    let runtime_nodes: (Node_id.t, ('work, 'result, 'error) runtime_node) HashMap.t = HashMap.create () in
-    HashMap.for_each graph.Graph.nodes
-      ~fn:(fun node_id node ->
-        let _ = HashMap.insert
-          runtime_nodes
-          ~key:node_id
-          ~value:{
-            payload = node.payload;
-            unresolved_dependencies = HashSet.length node.deps;
-            status = `Pending;
-          }
-        in
-        ());
-    let result_ref = Ref.make () in
     let owner = self () in
-    let worker_fn ~owner ~task:(node, payload) =
-      let handle = Handle.create () in
-      let outcome = execute ~graph:handle ~node ~payload in
-      let result = {
-        node;
-        payload;
-        outcome;
-        commands = List.reverse handle.commands;
+    let event_ref: 'event Ref.t = Ref.make () in
+    let run_ref: (('work, 'result, 'error) run_result) Ref.t = Ref.make () in
+    let init_run () =
+      let runtime_nodes: (Node_id.t, ('work, 'result, 'error) runtime_node) HashMap.t = HashMap.create () in
+      HashMap.for_each graph.Graph.nodes
+        ~fn:(fun node_id node ->
+          let _ = HashMap.insert
+            runtime_nodes
+            ~key:node_id
+            ~value:{
+              payload = node.payload;
+              unresolved_dependencies = HashSet.length node.deps;
+              status = `Pending;
+            }
+          in
+          ());
+      let result_ref = Ref.make () in
+      let worker_owner = self () in
+      let worker_fn ~owner ~task:(node, payload) =
+        let handle = Handle.create () in
+        let outcome = execute ~graph:handle ~node ~payload in
+        let result = {
+          node;
+          payload;
+          outcome;
+          commands = List.reverse handle.commands;
+        } in
+        send owner (GraphNodeResult { result; result_ref })
+      in
+      let pool =
+        DynamicWorkerPool.start
+          ~concurrency:(Run_config.parallelism config)
+          ~owner:worker_owner
+          ~worker_fn
+          ()
+      in
+      let state = {
+        config;
+        graph;
+        pool;
+        ready_queue = Queue.create ();
+        idle_workers = Queue.create ();
+        result_ref;
+        runtime_nodes;
+        on_event = (fun event -> send owner (GraphRunEvent { event; event_ref }));
+        tasks_in_flight = 0;
+        fail_fast_triggered = false;
       } in
-      send owner (GraphNodeResult { result; result_ref })
+      HashMap.for_each runtime_nodes
+        ~fn:(fun node_id runtime_node ->
+          if runtime_node.unresolved_dependencies = 0 then
+            Queue.push state.ready_queue ~value:(node_id, runtime_node.payload));
+      match loop state with
+      | results ->
+          send owner (GraphRunCompleted { results; run_ref });
+          Ok ()
+      | exception exn ->
+          send owner (GraphRunFailed { exn; run_ref });
+          Ok ()
     in
-    let pool =
-      DynamicWorkerPool.start
-        ~concurrency:(Run_config.parallelism config)
-        ~owner
-        ~worker_fn
-        ()
+    let _ = spawn init_run in
+    let rec await () =
+      let selector: ([ `Event of 'event | `Completed of ('work, 'result, 'error) run_result | `Failed of exn ]) selector =
+        function
+        | GraphRunEvent { event; event_ref = ref } -> (
+            match Ref.cast ref event_ref event with
+            | Some event -> `select (`Event event)
+            | None -> `skip
+          )
+        | GraphRunCompleted { results; run_ref = ref } -> (
+            match Ref.cast ref run_ref results with
+            | Some results -> `select (`Completed results)
+            | None -> `skip
+          )
+        | GraphRunFailed { exn; run_ref = ref } -> (
+            if Ref.equal run_ref ref then
+              `select (`Failed exn)
+            else
+              `skip
+          )
+        | _ -> `skip
+      in
+      match receive ~selector () with
+      | `Event event ->
+          on_event event;
+          await ()
+      | `Completed results -> results
+      | `Failed exn -> raise exn
     in
-    let state = {
-      config;
-      graph;
-      pool;
-      ready_queue = Queue.create ();
-      idle_workers = Queue.create ();
-      result_ref;
-      runtime_nodes;
-      on_event;
-      tasks_in_flight = 0;
-      fail_fast_triggered = false;
-    } in
-    HashMap.for_each runtime_nodes
-      ~fn:(fun node_id runtime_node ->
-        if runtime_node.unresolved_dependencies = 0 then
-          Queue.push state.ready_queue ~value:(node_id, runtime_node.payload));
-    loop state
+    await ()
