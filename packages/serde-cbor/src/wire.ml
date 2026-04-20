@@ -109,7 +109,8 @@ let to_string = fun value ->
 
 let to_writer = fun writer value ->
   let* encoded = to_string value in
-  match IO.write_all writer ~buf:encoded with
+  let buffer = IO.Buffer.from_string encoded in
+  match IO.write_all writer ~from:buffer with
   | Ok () -> Ok ()
   | Error err -> Error (`Io_error err)
 
@@ -301,6 +302,6 @@ let from_string = fun input ->
 
 let from_reader = fun reader ->
   let buffer = IO.Buffer.create ~size:256 in
-  match IO.read_to_end reader ~buf:buffer with
+  match IO.read_to_end reader ~into:buffer with
   | Ok _ -> from_string (IO.Buffer.contents buffer)
   | Error err -> Error (`Io_error err)
