@@ -59,6 +59,19 @@ let request_1m =
     ]
     ~body:body_1m
 
+let body_10m = String.make ~len:10_000_000 ~char:'d'
+
+let request_10m =
+  build_request
+    ~method_:"PATCH"
+    ~path:"/archive"
+    ~headers:[
+      ("Host", "example.com");
+      ("Content-Type", "application/octet-stream");
+      ("Content-Length", Int.to_string (String.length body_10m));
+    ]
+    ~body:body_10m
+
 let many_headers_request =
   build_request
     ~method_:"GET"
@@ -73,6 +86,8 @@ let request_1k_slice = IO.Iovec.IoSlice.from_string request_1k |> Result.unwrap
 let request_100k_slice = IO.Iovec.IoSlice.from_string request_100k |> Result.unwrap
 
 let request_1m_slice = IO.Iovec.IoSlice.from_string request_1m |> Result.unwrap
+
+let request_10m_slice = IO.Iovec.IoSlice.from_string request_10m |> Result.unwrap
 
 let many_headers_request_slice = IO.Iovec.IoSlice.from_string many_headers_request |> Result.unwrap
 
@@ -128,6 +143,7 @@ let benchmarks =
     with_config ~config:{ iterations = 150; warmup = 15 } "http1 parser in-memory: 1 KiB body" (bench_parse request_1k);
     with_config ~config:{ iterations = 60; warmup = 6 } "http1 parser in-memory: 100 KiB body" (bench_parse request_100k);
     with_config ~config:{ iterations = 15; warmup = 3 } "http1 parser in-memory: 1 MiB body" (bench_parse request_1m);
+    with_config ~config:{ iterations = 5; warmup = 1 } "http1 parser in-memory: 10 MiB body" (bench_parse request_10m);
     with_config ~config:{ iterations = 120; warmup = 12 } "http1 parser in-memory: many headers" (bench_parse many_headers_request);
     with_config
       ~config:{ iterations = 200; warmup = 20 }
@@ -145,6 +161,10 @@ let benchmarks =
       ~config:{ iterations = 15; warmup = 3 }
       "http1 parser in-memory slice: 1 MiB body"
       (bench_parse_slice request_1m_slice);
+    with_config
+      ~config:{ iterations = 5; warmup = 1 }
+      "http1 parser in-memory slice: 10 MiB body"
+      (bench_parse_slice request_10m_slice);
     with_config
       ~config:{ iterations = 120; warmup = 12 }
       "http1 parser in-memory slice: many headers"
@@ -165,6 +185,10 @@ let benchmarks =
       ~config:{ iterations = 15; warmup = 3 }
       "http1 parser in-memory borrowed slice: 1 MiB body"
       (bench_parse_slices request_1m_slice);
+    with_config
+      ~config:{ iterations = 5; warmup = 1 }
+      "http1 parser in-memory borrowed slice: 10 MiB body"
+      (bench_parse_slices request_10m_slice);
     with_config
       ~config:{ iterations = 120; warmup = 12 }
       "http1 parser in-memory borrowed slice: many headers"

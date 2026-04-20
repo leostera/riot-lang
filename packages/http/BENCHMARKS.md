@@ -21,34 +21,40 @@ Notes:
 
 ## Current Summary
 
-This is the short comparison between the owned-string parser, `Http1.Request.parse`, and the
-full-slice parser entry point, `Http1.Request.parse_slice`.
+This is the short comparison between the owned-string parser, `Http1.Request.parse`, the
+slice-owning parser entry point, `Http1.Request.parse_slice`, and the borrowed parser entry point,
+`Http1.Request.parse_slices`.
 
 ### Parser Only
 
-| Shape | Strings (`parse`) | Slices (`parse_slice`) |
-| --- | ---: | ---: |
-| `small request` | `7.78 us` | `8.10 us` |
-| `1 KiB body` | `11.57 us` | `12.99 us` |
-| `100 KiB body` | `68.25 us` | `20.38 us` |
-| `1 MiB body` | `362.13 us` | `201.67 us` |
-| `many headers` | `201.88 us` | `207.68 us` |
+| Shape | Strings (`parse`) | Slices (`parse_slice`) | Borrowed (`parse_slices`) |
+| --- | ---: | ---: | ---: |
+| `small request` | `8.34 us` | `8.43 us` | `9.75 us` |
+| `1 KiB body` | `10.42 us` | `11.96 us` | `7.75 us` |
+| `100 KiB body` | `66.60 us` | `21.10 us` | `12.50 us` |
+| `1 MiB body` | `394.67 us` | `89.27 us` | `7.60 us` |
+| `10 MiB body` | `2.86 ms` | `1.87 ms` | `7.80 us` |
+| `many headers` | `196.67 us` | `248.45 us` | `173.10 us` |
 
 ### Reader-Fed
 
-| Shape | Strings (`parse`) | Slices (`parse_slice`) |
-| --- | ---: | ---: |
-| `small request` | `12.67 us` | `13.14 us` |
-| `1 KiB body` | `20.96 us` | `22.41 us` |
-| `100 KiB body` | `194.22 us` | `255.90 us` |
-| `1 MiB body` | `1.17 ms` | `1.68 ms` |
-| `many headers` | `206.16 us` | `223.90 us` |
+| Shape | Strings (`parse`) | Slices (`parse_slice`) | Borrowed (`parse_slices`) |
+| --- | ---: | ---: | ---: |
+| `small request` | `12.70 us` | `12.39 us` | `8.88 us` |
+| `1 KiB body` | `23.01 us` | `23.85 us` | `17.32 us` |
+| `100 KiB body` | `196.83 us` | `202.03 us` | `186.23 us` |
+| `1 MiB body` | `1.10 ms` | `583.13 us` | `648.53 us` |
+| `10 MiB body` | `7.69 ms` | `4.96 ms` | `5.46 ms` |
+| `many headers` | `208.00 us` | `223.40 us` | `209.98 us` |
 
-- For parser-only work, the slice path is materially better on large bodies because it delays
-  ownership conversion.
-- For reader-fed work, the public string path is now slightly better. The big reader-fed regression
-  was fixed in `Std.String.to_reader`, so the remaining overhead is mostly the cost of building and
-  owning the higher-level values, not the slice substrate itself.
+- For parser-only work, the borrowed path makes the underlying parser cost visible. It stays
+  effectively flat with body size because it never materializes the body.
+- The public string path scales poorly with body size because it does two large boundary copies:
+  `parse` first copies the full request string into an `IoSlice`, then `parse_slice` copies the
+  body slice back out to a heap string.
+- For reader-fed work, the large regression from `Std.String.to_reader` is gone. The remaining
+  differences are now mostly ownership costs and ordinary benchmark variance, not the old read-loop
+  bug.
 
 ## Request Shapes
 
@@ -56,6 +62,7 @@ full-slice parser entry point, `Http1.Request.parse_slice`.
 - `1 KiB body`: `POST /v1/data` with `Content-Length: 1024`
 - `100 KiB body`: `PUT /bulk` with `Content-Length: 100000`
 - `1 MiB body`: `PATCH /archive` with `Content-Length: 1000000`
+- `10 MiB body`: `PATCH /archive` with `Content-Length: 10000000`
 - `many headers`: `GET /headers` with `Host` plus `80` synthetic headers
 
 ## Baseline: Parser Only
@@ -94,21 +101,23 @@ internally before parsing.
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser in-memory: small request` | `7.78 us` |
-| `http1 parser in-memory: 1 KiB body` | `11.57 us` |
-| `http1 parser in-memory: 100 KiB body` | `68.25 us` |
-| `http1 parser in-memory: 1 MiB body` | `362.13 us` |
-| `http1 parser in-memory: many headers` | `201.88 us` |
+| `http1 parser in-memory: small request` | `8.34 us` |
+| `http1 parser in-memory: 1 KiB body` | `10.42 us` |
+| `http1 parser in-memory: 100 KiB body` | `66.60 us` |
+| `http1 parser in-memory: 1 MiB body` | `394.67 us` |
+| `http1 parser in-memory: 10 MiB body` | `2.86 ms` |
+| `http1 parser in-memory: many headers` | `196.67 us` |
 
 ### Reader-Fed
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser reader-fed: small request` | `12.67 us` |
-| `http1 parser reader-fed: 1 KiB body` | `20.96 us` |
-| `http1 parser reader-fed: 100 KiB body` | `194.22 us` |
-| `http1 parser reader-fed: 1 MiB body` | `1.17 ms` |
-| `http1 parser reader-fed: many headers` | `206.16 us` |
+| `http1 parser reader-fed: small request` | `12.70 us` |
+| `http1 parser reader-fed: 1 KiB body` | `23.01 us` |
+| `http1 parser reader-fed: 100 KiB body` | `196.83 us` |
+| `http1 parser reader-fed: 1 MiB body` | `1.10 ms` |
+| `http1 parser reader-fed: 10 MiB body` | `7.69 ms` |
+| `http1 parser reader-fed: many headers` | `208.00 us` |
 
 ## Current: Direct Slice Entry Point
 
@@ -118,11 +127,12 @@ These are the current means for `Http1.Request.parse_slice`.
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser in-memory slice: small request` | `8.10 us` |
-| `http1 parser in-memory slice: 1 KiB body` | `12.99 us` |
-| `http1 parser in-memory slice: 100 KiB body` | `20.38 us` |
-| `http1 parser in-memory slice: 1 MiB body` | `201.67 us` |
-| `http1 parser in-memory slice: many headers` | `207.68 us` |
+| `http1 parser in-memory slice: small request` | `8.43 us` |
+| `http1 parser in-memory slice: 1 KiB body` | `11.96 us` |
+| `http1 parser in-memory slice: 100 KiB body` | `21.10 us` |
+| `http1 parser in-memory slice: 1 MiB body` | `89.27 us` |
+| `http1 parser in-memory slice: 10 MiB body` | `1.87 ms` |
+| `http1 parser in-memory slice: many headers` | `248.45 us` |
 
 ### Reader-Fed
 
@@ -131,11 +141,12 @@ then parses `Std.IO.IoBuffer.readable`.
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser reader-fed slice: small request` | `13.14 us` |
-| `http1 parser reader-fed slice: 1 KiB body` | `22.41 us` |
-| `http1 parser reader-fed slice: 100 KiB body` | `255.90 us` |
-| `http1 parser reader-fed slice: 1 MiB body` | `1.68 ms` |
-| `http1 parser reader-fed slice: many headers` | `223.90 us` |
+| `http1 parser reader-fed slice: small request` | `12.39 us` |
+| `http1 parser reader-fed slice: 1 KiB body` | `23.85 us` |
+| `http1 parser reader-fed slice: 100 KiB body` | `202.03 us` |
+| `http1 parser reader-fed slice: 1 MiB body` | `583.13 us` |
+| `http1 parser reader-fed slice: 10 MiB body` | `4.96 ms` |
+| `http1 parser reader-fed slice: many headers` | `223.40 us` |
 
 ## Current: Borrowed Slice Entry Point
 
@@ -146,29 +157,31 @@ headers, and body as borrowed `IoSlice` values instead of materializing a `Reque
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser in-memory borrowed slice: small request` | `6.44 us` |
-| `http1 parser in-memory borrowed slice: 1 KiB body` | `8.69 us` |
-| `http1 parser in-memory borrowed slice: 100 KiB body` | `14.10 us` |
-| `http1 parser in-memory borrowed slice: 1 MiB body` | `10.47 us` |
-| `http1 parser in-memory borrowed slice: many headers` | `177.80 us` |
+| `http1 parser in-memory borrowed slice: small request` | `9.75 us` |
+| `http1 parser in-memory borrowed slice: 1 KiB body` | `7.75 us` |
+| `http1 parser in-memory borrowed slice: 100 KiB body` | `12.50 us` |
+| `http1 parser in-memory borrowed slice: 1 MiB body` | `7.60 us` |
+| `http1 parser in-memory borrowed slice: 10 MiB body` | `7.80 us` |
+| `http1 parser in-memory borrowed slice: many headers` | `173.10 us` |
 
 ### Reader-Fed
 
 | Benchmark | Mean |
 | --- | ---: |
-| `http1 parser reader-fed borrowed slice: small request` | `9.95 us` |
-| `http1 parser reader-fed borrowed slice: 1 KiB body` | `17.59 us` |
-| `http1 parser reader-fed borrowed slice: 100 KiB body` | `321.60 us` |
-| `http1 parser reader-fed borrowed slice: 1 MiB body` | `1.23 ms` |
-| `http1 parser reader-fed borrowed slice: many headers` | `198.57 us` |
+| `http1 parser reader-fed borrowed slice: small request` | `8.88 us` |
+| `http1 parser reader-fed borrowed slice: 1 KiB body` | `17.32 us` |
+| `http1 parser reader-fed borrowed slice: 100 KiB body` | `186.23 us` |
+| `http1 parser reader-fed borrowed slice: 1 MiB body` | `648.53 us` |
+| `http1 parser reader-fed borrowed slice: 10 MiB body` | `5.46 ms` |
+| `http1 parser reader-fed borrowed slice: many headers` | `209.98 us` |
 
 ## Current Read
 
 - The `Std.String.to_reader` optimization removed the earlier catastrophic reader-fed regression.
-  The `1 MiB` reader-fed public parse is now `1.27 ms`, down from the old `103.78 ms` baseline.
+  The `1 MiB` reader-fed public parse is now `1.10 ms`, down from the old `103.78 ms` baseline.
 - The additive borrowed parser path, `parse_slices`, makes the actual request-head parsing cost
-  visible. Parser-only, it stays in the low-microsecond range even on large bodies: `14.10 us` at
-  `100 KiB` and `10.47 us` at `1 MiB`.
+  visible. Parser-only, it stays in the low-microsecond range even on large bodies: `12.50 us` at
+  `100 KiB`, `7.60 us` at `1 MiB`, and `7.80 us` at `10 MiB`.
 - That result shows the current ceiling clearly: the remaining cost in `parse_slice` and `parse`
   is not delimiter scanning. It is ownership work at the boundary:
   - materializing the body string

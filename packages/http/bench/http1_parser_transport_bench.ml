@@ -62,6 +62,19 @@ let request_1m =
     ]
     ~body:body_1m
 
+let body_10m = String.make ~len:10_000_000 ~char:'d'
+
+let request_10m =
+  build_request
+    ~method_:"PATCH"
+    ~path:"/archive"
+    ~headers:[
+      ("Host", "example.com");
+      ("Content-Type", "application/octet-stream");
+      ("Content-Length", Int.to_string (String.length body_10m));
+    ]
+    ~body:body_10m
+
 let many_headers_request =
   build_request
     ~method_:"GET"
@@ -170,6 +183,10 @@ let benchmarks =
       "http1 parser reader-fed: 1 MiB body"
       (bench_reader_parse ~chunk_size:1024 request_1m);
     with_config
+      ~config:{ iterations = 5; warmup = 1 }
+      "http1 parser reader-fed: 10 MiB body"
+      (bench_reader_parse ~chunk_size:4096 request_10m);
+    with_config
       ~config:{ iterations = 120; warmup = 12 }
       "http1 parser reader-fed: many headers"
       (bench_reader_parse ~chunk_size:64 many_headers_request);
@@ -190,6 +207,10 @@ let benchmarks =
       "http1 parser reader-fed slice: 1 MiB body"
       (bench_reader_parse_slice ~chunk_size:1024 request_1m);
     with_config
+      ~config:{ iterations = 5; warmup = 1 }
+      "http1 parser reader-fed slice: 10 MiB body"
+      (bench_reader_parse_slice ~chunk_size:4096 request_10m);
+    with_config
       ~config:{ iterations = 120; warmup = 12 }
       "http1 parser reader-fed slice: many headers"
       (bench_reader_parse_slice ~chunk_size:64 many_headers_request);
@@ -209,6 +230,10 @@ let benchmarks =
       ~config:{ iterations = 15; warmup = 3 }
       "http1 parser reader-fed borrowed slice: 1 MiB body"
       (bench_reader_parse_slices ~chunk_size:1024 request_1m);
+    with_config
+      ~config:{ iterations = 5; warmup = 1 }
+      "http1 parser reader-fed borrowed slice: 10 MiB body"
+      (bench_reader_parse_slices ~chunk_size:4096 request_10m);
     with_config
       ~config:{ iterations = 120; warmup = 12 }
       "http1 parser reader-fed borrowed slice: many headers"
