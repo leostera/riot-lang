@@ -126,10 +126,12 @@ let tests = [
     (fun _ctx -> assert_property "save_named_object/open_named_object roundtrip" save_named_object_roundtrip);
   Test.property
     "distinct named keys are isolated"
+    ~size:Large
     ~examples
     (fun _ctx -> assert_property "distinct named keys are isolated" distinct_named_keys_are_isolated);
   Test.property
     "named writes survive reopen"
+    ~size:Large
     ~examples
     (fun _ctx -> assert_property "named writes survive reopen" named_writes_survive_reopen);
 ]

@@ -117,10 +117,12 @@ let tests = [
     (fun _ctx -> assert_property "save_object/open_object roundtrip" save_object_roundtrip);
   Test.property
     "save_file/open_object roundtrip"
+    ~size:Large
     ~examples
     (fun _ctx -> assert_property "save_file/open_object roundtrip" save_file_roundtrip);
   Test.property
     "save_object is idempotent for the same hash and content"
+    ~size:Large
     ~examples
     (fun _ctx -> assert_property "save_object is idempotent for the same hash and content" save_object_is_idempotent);
   Test.property

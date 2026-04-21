@@ -740,7 +740,7 @@ let tests =
     [
       case "build runtime: release builds use the release lane" test_release_build_uses_release_lane;
       case "build runtime: custom target_dir is respected" test_build_respects_custom_target_dir;
-      case "build runtime: nested udp workspace succeeds across file creation orders" test_nested_udp_workspace_builds_across_file_creation_orders;
+      case ~size:Large "build runtime: nested udp workspace succeeds across file creation orders" test_nested_udp_workspace_builds_across_file_creation_orders;
       case "build runtime: rejects invalid parallelism" test_execute_rejects_invalid_parallelism;
       case "build runtime: execute does not record cache generation when disabled" test_execute_does_not_record_cache_generation_when_disabled;
       case "build runtime: partial failures fail by default" test_execute_partial_failures_by_default;
