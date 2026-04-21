@@ -92,6 +92,8 @@ module Expr = struct
     | Syntax_kind2.FIRST_CLASS_MODULE_EXPR
     | Syntax_kind2.EXTENSION_EXPR
     | Syntax_kind2.UNREACHABLE_EXPR
+    | Syntax_kind2.OBJECT_EXPR
+    | Syntax_kind2.NEW_EXPR
     | Syntax_kind2.IF_EXPR
     | Syntax_kind2.MATCH_EXPR
     | Syntax_kind2.FUN_EXPR

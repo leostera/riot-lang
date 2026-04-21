@@ -235,6 +235,8 @@ let can_start_atom = function
   | Syntax_kind2.LAZY_KW
   | Syntax_kind2.WHILE_KW
   | Syntax_kind2.FOR_KW
+  | Syntax_kind2.OBJECT_KW
+  | Syntax_kind2.NEW_KW
   | Syntax_kind2.BACKTICK
   | Syntax_kind2.TILDE
   | Syntax_kind2.QUESTION
@@ -631,6 +633,10 @@ and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ->
       parse_while_expr p ~signature ~stop_at_item
   | Syntax_kind2.FOR_KW ->
       parse_for_expr p ~signature ~stop_at_item
+  | Syntax_kind2.OBJECT_KW ->
+      parse_object_expr p
+  | Syntax_kind2.NEW_KW ->
+      parse_new_expr p
   | Syntax_kind2.IDENT ->
       parse_path_expr p
   | Syntax_kind2.INT
@@ -672,6 +678,22 @@ and parse_unreachable_expr = fun p ->
   bump p;
   complete p marker Syntax_kind2.UNREACHABLE_EXPR
 
+and parse_object_expr = fun p ->
+  let marker = start_node p in
+  bump p;
+  consume_balanced_until p ~closer:Syntax_kind2.END_KW 0;
+  expect p Syntax_kind2.END_KW (invalid_expression p);
+  complete p marker Syntax_kind2.OBJECT_EXPR
+
+and parse_new_expr = fun p ->
+  let marker = start_node p in
+  bump p;
+  if at p Syntax_kind2.IDENT then
+    ignore (parse_path_expr p)
+  else
+    Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p);
+  complete p marker Syntax_kind2.NEW_EXPR
+
 and parse_extended_index_expr = fun p lhs ~signature ~stop_at_item:_ ->
   let marker = precede p lhs in
   bump p;
@@ -711,7 +733,10 @@ and parse_poly_variant_expr = fun p ~signature ~stop_at_item ~stop_at_semi ->
   let marker = start_node p in
   bump p;
   expect p Syntax_kind2.IDENT (invalid_expression p);
-  if can_start_atom (current_kind p) then
+  if
+    (not (expression_boundary p ~stop_at_item ~stop_at_semi ~signature))
+    && can_start_atom (current_kind p)
+  then
     ignore (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi);
   complete p marker Syntax_kind2.POLY_VARIANT_EXPR
 
@@ -878,7 +903,10 @@ and parse_let_expr = fun p ~signature ~stop_at_item ->
   else if at p Syntax_kind2.MODULE_KW then
     (
       bump p;
-      expect p Syntax_kind2.IDENT (invalid_expression p);
+      if at p Syntax_kind2.IDENT || at p Syntax_kind2.PERCENT then
+        bump p
+      else
+        expect p Syntax_kind2.IDENT (invalid_expression p);
       consume_balanced_until p ~closer:Syntax_kind2.EQ 0;
       expect p Syntax_kind2.EQ (invalid_expression p);
       consume_balanced_until p ~closer:Syntax_kind2.IN_KW 0;
@@ -1159,6 +1187,7 @@ and parse_pattern_atom = fun p ~stop_type_at_arrow ->
   | Syntax_kind2.CHAR
   | Syntax_kind2.TRUE_KW
   | Syntax_kind2.FALSE_KW -> parse_single_token_pattern p Syntax_kind2.LITERAL_PATTERN
+  | Syntax_kind2.PERCENT -> parse_single_token_pattern p Syntax_kind2.PATH_PATTERN
   | Syntax_kind2.LPAREN -> parse_parenthesized_pattern p
   | Syntax_kind2.LBRACKET ->
       if is_extension_shell p then
@@ -1425,7 +1454,12 @@ and parse_let_binding = fun p ~signature ~top_level ->
   parse_pattern ~stop_type_at_arrow:false p;
   let rec parse_params () =
     if not (at p Syntax_kind2.EQ || is_eof p || (top_level && at_item_boundary p ~signature)) then
-      (
+      if at p Syntax_kind2.COLON then
+        (
+          bump p;
+          parse_type_expr p ~stop_at_arrow:false
+        )
+      else (
         parse_pattern ~stop_type_at_arrow:false p;
         parse_params ()
       )
@@ -1543,10 +1577,10 @@ let parse_structure_item = fun p ->
         parse_opaque_decl p ~signature:false Syntax_kind2.EXTERNAL_DECL (invalid_expression p)
     | Syntax_kind2.EXCEPTION_KW ->
         parse_opaque_decl p ~signature:false Syntax_kind2.EXCEPTION_DECL (invalid_expression p)
-    | Syntax_kind2.CLASS_KW
+    | Syntax_kind2.CLASS_KW ->
+        parse_opaque_decl p ~signature:false Syntax_kind2.CLASS_DECL (invalid_expression p)
     | Syntax_kind2.OBJECT_KW ->
-        Event.Buffer.error p.events (invalid_expression p);
-        parse_opaque_decl p ~signature:false Syntax_kind2.ERROR (invalid_expression p)
+        parse_expr_item p ~signature:false
     | _ ->
         parse_expr_item p ~signature:false
   );
@@ -1574,10 +1608,10 @@ let parse_signature_item = fun p ->
         parse_opaque_decl p ~signature:true Syntax_kind2.EXTERNAL_DECL (invalid_expression p)
     | Syntax_kind2.EXCEPTION_KW ->
         parse_opaque_decl p ~signature:true Syntax_kind2.EXCEPTION_DECL (invalid_expression p)
-    | Syntax_kind2.CLASS_KW
+    | Syntax_kind2.CLASS_KW ->
+        parse_opaque_decl p ~signature:true Syntax_kind2.CLASS_DECL (invalid_expression p)
     | Syntax_kind2.OBJECT_KW ->
-        Event.Buffer.error p.events (invalid_expression p);
-        parse_opaque_decl p ~signature:true Syntax_kind2.ERROR (invalid_expression p)
+        parse_opaque_decl p ~signature:true Syntax_kind2.CLASS_DECL (invalid_expression p)
     | _ ->
         Event.Buffer.error p.events (invalid_expression p);
         parse_opaque_decl p ~signature:true Syntax_kind2.ERROR (invalid_expression p)
