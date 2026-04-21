@@ -3,7 +3,7 @@ module Api = Fixme
 
 let package_name = "std"
 
-let package_rule_id = package_name ^ ":prefer-option-map-over-manual-match"
+let package_rule_id = Api.Rule_id.of_string (package_name ^ ":prefer-option-map-over-manual-match")
 
 let explanation =
   Api.Explanation.{

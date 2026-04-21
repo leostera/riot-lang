@@ -3,8 +3,8 @@ open Std
 type progress_phase =
   | Parsed of { parse_diagnostics: int }
   | CstBuilt
-  | RuleStarted of { rule_id: string }
-  | RuleFinished of { rule_id: string; diagnostics: int }
+  | RuleStarted of { rule_id: Rule_id.t }
+  | RuleFinished of { rule_id: Rule_id.t; diagnostics: int }
 
 type progress_event = {
   timestamp_ms: int;
@@ -68,14 +68,18 @@ let lint_diagnostics = fun ~rules ?filename ?on_progress ~source (
           ~fn:(fun rule ->
             let rule_id = Rule.id rule in
             emit_progress on_progress (RuleStarted { rule_id });
-            trace ?filename ("rule start " ^ rule_id);
+            trace ?filename ("rule start " ^ Rule_id.to_string rule_id);
             let diagnostics = Rule.run rule ctx red_tree in
             emit_progress
               on_progress
               (RuleFinished { rule_id; diagnostics = List.length diagnostics });
             trace
               ?filename
-              ("rule finish " ^ rule_id ^ " (" ^ Int.to_string (List.length diagnostics) ^ " diagnostics)");
+              ("rule finish "
+              ^ Rule_id.to_string rule_id
+              ^ " ("
+              ^ Int.to_string (List.length diagnostics)
+              ^ " diagnostics)");
             diagnostics) |> List.concat
 
 let run = fun ~rules ?filename ?on_progress source ->

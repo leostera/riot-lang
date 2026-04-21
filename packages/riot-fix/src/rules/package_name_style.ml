@@ -1,7 +1,7 @@
 open Std
 module Toml = Data.Toml
 
-let rule_id = "package-name-style"
+let rule_id = Rule_id.of_string "package-name-style"
 
 let rule_description = "Package names should start with a letter, use kebab-case, and avoid trailing separators"
 

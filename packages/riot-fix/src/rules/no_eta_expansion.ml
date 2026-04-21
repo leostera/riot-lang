@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = "no-eta-expansion"
+let rule_id = Rule_id.of_string "no-eta-expansion"
 
 let rule_description = "Eta-expanded functions should be replaced by the function they call"
 

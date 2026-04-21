@@ -75,7 +75,9 @@ let tests = [ Test.case "fix_request_of_matches parses explicit check requests"
       let event = Riot_fix.Event.FileProgress {
         file = Path.v "sample.ml";
         progress = {
-          phase = Fixme.Source_runner.RuleStarted { rule_id = "riot:snake-case-type-names" };
+          phase = Fixme.Source_runner.RuleStarted {
+            rule_id = Fixme.Rule_id.of_string "riot:snake-case-type-names"
+          };
           timestamp_ms = 42
         }
       } in

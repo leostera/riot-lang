@@ -7,7 +7,7 @@ let rec binding_operator_group_items = fun (binding: Syn.Cst.binding_operator_bi
     | None -> []
   )
 
-let rule_id = "prefer-record-destructuring-parameters"
+let rule_id = Rule_id.of_string "prefer-record-destructuring-parameters"
 
 let rule_description = "Functions that immediately destructure a record argument should destructure it in the parameter"
 

@@ -7,7 +7,7 @@ module Fixture_no_stdlib = struct
 
   let package_name = "std"
 
-  let package_rule_id = package_name ^ ":no-stdlib"
+  let package_rule_id = Api.Rule_id.of_string (package_name ^ ":no-stdlib")
 
   let rule_description = "Detect direct Stdlib, Unix, Sys, and Pervasives usage from the Std package boundary"
 
@@ -105,7 +105,7 @@ Replace direct `Pervasives` references with `Std`.
     List.filter diagnostics
       ~fn:(fun diag ->
         let span = Api.Diagnostic.span diag in
-        let key = Api.Diagnostic.rule_id diag
+        let key = Api.Rule_id.to_string (Api.Diagnostic.rule_id diag)
         ^ ":"
         ^ Int.to_string span.start
         ^ ":"

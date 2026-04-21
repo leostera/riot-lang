@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = "no-public-mutable-fields"
+let rule_id = Rule_id.of_string "no-public-mutable-fields"
 
 let rule_description = "Interface types should not expose mutable record fields"
 

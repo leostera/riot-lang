@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = "no-redundant-else-unit"
+let rule_id = Rule_id.of_string "no-redundant-else-unit"
 
 let rule_description = "Else branches that only return unit should be omitted"
 

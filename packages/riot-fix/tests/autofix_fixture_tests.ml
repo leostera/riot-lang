@@ -38,14 +38,14 @@ let rule_id_of_fixture = fun path ->
     | None -> basename
   in
   match split_on_double_underscore stem with
-  | Some (rule_id, _) when not (String.equal rule_id "") -> Ok rule_id
+  | Some (rule_id, _) when not (String.equal rule_id "") -> Ok (Riot_fix.Rule_id.of_string rule_id)
   | _ -> Error ("invalid autofix fixture name: " ^ basename)
 
 let find_rule = fun rule_id ->
   Riot_fix.Pipeline.default_rules () |> List.find
     ~fn:(fun rule ->
-      String.equal (Riot_fix.Rule.id rule) rule_id) |> Option.ok_or
-    ~error:("unknown rule fixture id: " ^ rule_id)
+      Riot_fix.Rule_id.equal (Riot_fix.Rule.id rule) rule_id) |> Option.ok_or
+    ~error:("unknown rule fixture id: " ^ Riot_fix.Rule_id.to_string rule_id)
 
 let result_to_json = fun result ->
   Json.obj
@@ -84,13 +84,15 @@ let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let* () =
     match result.fixed_source with
     | Some _ -> Ok ()
-    | None -> Error ("autofix fixture did not apply a fix for rule " ^ rule_id)
+    | None -> Error ("autofix fixture did not apply a fix for rule " ^ Riot_fix.Rule_id.to_string rule_id)
   in
   let* () =
     match result.after with
     | Some after when List.is_empty after.parse_diagnostics -> Ok ()
-    | Some _ -> Error ("autofix fixture rewrote to invalid OCaml for rule " ^ rule_id)
-    | None -> Error ("autofix fixture did not produce a post-fix analysis for rule " ^ rule_id)
+    | Some _ -> Error ("autofix fixture rewrote to invalid OCaml for rule "
+    ^ Riot_fix.Rule_id.to_string rule_id)
+    | None -> Error ("autofix fixture did not produce a post-fix analysis for rule "
+    ^ Riot_fix.Rule_id.to_string rule_id)
   in
   Test.Snapshot.assert_text
     ~ctx:ctx.test

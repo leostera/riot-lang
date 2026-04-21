@@ -12,8 +12,8 @@ type severity =
     [Generic] is the fallback for ad-hoc diagnostics.
 *)
 type kind =
-  | Known of { rule_id: string; message: string }
-  | Generic of { rule_id: string; message: string }
+  | Known of { rule_id: Rule_id.t; message: string }
+  | Generic of { rule_id: Rule_id.t; message: string }
 (** Diagnostic reported by a rule or traversal. *)
 type t
 
@@ -44,7 +44,7 @@ val message: t -> string
 val span: t -> Syn.Ceibo.Span.t
 
 (** Return the rule identifier associated with the diagnostic. *)
-val rule_id: t -> string
+val rule_id: t -> Rule_id.t
 
 (** Return the optional suggestion attached to the diagnostic. *)
 val suggestion: t -> string option

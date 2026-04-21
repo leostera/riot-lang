@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 
-let rule_id = "snake-case-argument-names"
+let rule_id = Rule_id.of_string "snake-case-argument-names"
 
 let rule_description = "Argument names should use snake_case instead of camelCase"
 

@@ -13,12 +13,12 @@ val run:
 
 val builtin_rules: unit -> Rule.t list
 
-val builtin_rule_category: string -> string option
+val builtin_rule_category: Rule_id.t -> string option
 
 val default_rules: unit -> Rule.t list
 
-val default_rule_ids: unit -> string list
+val default_rule_ids: unit -> Rule_id.t list
 
-val rules_by_id: string list -> Rule.t list
+val rules_by_id: Rule_id.t list -> Rule.t list
 
 val default: unit -> t

@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = "prefer-sequences-over-let-unit"
+let rule_id = Rule_id.of_string "prefer-sequences-over-let-unit"
 
 let rule_description = "Effectful let-unit bindings should be written as `;` sequences"
 

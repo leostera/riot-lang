@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = "alphabetized-named-arguments"
+let rule_id = Rule_id.of_string "alphabetized-named-arguments"
 
 let rule_description = "Labeled and optional arguments should be alphabetized within their groups"
 

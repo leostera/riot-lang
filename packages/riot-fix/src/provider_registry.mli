@@ -10,4 +10,4 @@ val register_providers: Provider.t list -> unit
 
 val rules: unit -> Rule.t list
 
-val rule_ids: unit -> string list
+val rule_ids: unit -> Rule_id.t list

@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = "prefer-pipelines-for-nested-calls"
+let rule_id = Rule_id.of_string "prefer-pipelines-for-nested-calls"
 
 let rule_description = "Deeply nested function calls should usually be written as pipelines"
 

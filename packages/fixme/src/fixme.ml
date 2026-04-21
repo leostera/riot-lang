@@ -1,4 +1,5 @@
 module Fix = Fix
+module Rule_id = Rule_id
 module Explanation = Explanation
 module Diagnostic = Diagnostic
 module Rule = Rule

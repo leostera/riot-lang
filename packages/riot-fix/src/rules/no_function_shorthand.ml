@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = "no-function-shorthand"
+let rule_id = Rule_id.of_string "no-function-shorthand"
 
 let rule_description = "Named functions should avoid `function` shorthand and use explicit parameters instead"
 

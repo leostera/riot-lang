@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = "no-redundant-parentheses"
+let rule_id = Rule_id.of_string "no-redundant-parentheses"
 
 let rule_description = "Obvious grouping parentheses should be removed"
 

@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = "no-unnecessary-rec"
+let rule_id = Rule_id.of_string "no-unnecessary-rec"
 
 let rule_description = "Recursive bindings should only use rec when they actually self-reference"
 

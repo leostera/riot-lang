@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 
-let rule_id = "prefer-t-for-single-type-modules"
+let rule_id = Rule_id.of_string "prefer-t-for-single-type-modules"
 
 let rule_description = "Modules with a single type definition should usually call it t"
 

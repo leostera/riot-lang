@@ -44,11 +44,11 @@ let to_json event =
           | CstBuilt -> [ ("stage", String "cst_built") ]
           | RuleStarted { rule_id } -> [
             ("stage", String "rule_started");
-            ("rule_id", String rule_id)
+            ("rule_id", String (Rule_id.to_string rule_id))
           ]
           | RuleFinished { rule_id; diagnostics } -> [
             ("stage", String "rule_finished");
-            ("rule_id", String rule_id);
+            ("rule_id", String (Rule_id.to_string rule_id));
             ("diagnostics", Int diagnostics);
           ]
         in

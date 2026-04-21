@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = "limit-parenthesis-depth"
+let rule_id = Rule_id.of_string "limit-parenthesis-depth"
 
 let rule_description = "Deep chains of parenthesized expressions should be avoided"
 

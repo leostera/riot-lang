@@ -1,12 +1,6 @@
 open Std
 
-let split_rule_id = fun rule_id ->
-  match String.index_of rule_id ~char:':' with
-  | Some idx ->
-      let package_name = String.sub rule_id ~offset:0 ~len:idx in
-      let local_id = String.sub rule_id ~offset:(idx + 1) ~len:(String.length rule_id - idx - 1) in
-      (package_name, local_id)
-  | None -> ("riot", rule_id)
+let split_rule_id = fun rule_id -> Rule_id.split ~default_package:"riot" rule_id
 
 let compare_package_name = fun left right ->
   match left = "riot", right = "riot" with
@@ -30,8 +24,9 @@ let sorted_rules = fun () ->
       if package_cmp != 0 then
         package_cmp
       else if String.equal left_package "riot" then
-        let left_category = Pipeline.builtin_rule_category left_local |> Option.unwrap_or ~default:"Other" in
-        let right_category = Pipeline.builtin_rule_category right_local
+        let left_category = Pipeline.builtin_rule_category (Rule.id left)
+        |> Option.unwrap_or ~default:"Other" in
+        let right_category = Pipeline.builtin_rule_category (Rule.id right)
         |> Option.unwrap_or ~default:"Other" in
         let category_cmp = String.compare left_category right_category in
         if category_cmp != 0 then
@@ -59,7 +54,7 @@ let rule_to_json = fun rule ->
         "category",
         (
           if String.equal package_name "riot" then
-            match Pipeline.builtin_rule_category local_id with
+            match Pipeline.builtin_rule_category (Rule.id rule) with
             | Some category -> string category
             | None -> Null
           else
@@ -85,7 +80,7 @@ let list_rules_text = fun rules ->
         let package_name, local_id = split_rule_id (Rule.id rule) in
         let category =
           if String.equal package_name "riot" then
-            Pipeline.builtin_rule_category local_id
+            Pipeline.builtin_rule_category (Rule.id rule)
           else
             None
         in
@@ -153,4 +148,4 @@ let explain_rule = fun rule_id ->
   | Some entry ->
       print (Explanations.format entry);
       Ok ()
-  | None -> Error (Failure ("Unknown riot-fix rule id: " ^ rule_id))
+  | None -> Error (Failure ("Unknown riot-fix rule id: " ^ Rule_id.to_string rule_id))

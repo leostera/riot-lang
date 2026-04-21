@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = "no-boolean-comparisons-in-conditionals"
+let rule_id = Rule_id.of_string "no-boolean-comparisons-in-conditionals"
 
 let rule_description = "Boolean conditions should not be compared explicitly to true or false"
 

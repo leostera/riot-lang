@@ -22,6 +22,7 @@ let warning_diagnostic = fun ~rule_id ~message ~token ~fix ->
     ()
 
 let replace_token_rule = fun ~rule_id ~needle ~replacement ->
+  let rule_id = Riot_fix.Rule_id.of_string rule_id in
   let message = "Replace " ^ needle ^ " with " ^ replacement in
   Riot_fix.Rule.make ~id:rule_id ~description:message ~explain:message
     ~run:(fun _ctx red_root ->
@@ -35,6 +36,7 @@ let replace_token_rule = fun ~rule_id ~needle ~replacement ->
     ()
 
 let overlapping_replace_rule = fun ~rule_id ~needle ~replacement ~overlap_text ->
+  let rule_id = Riot_fix.Rule_id.of_string rule_id in
   let message = "Apply an overlapping replacement to " ^ needle in
   Riot_fix.Rule.make ~id:rule_id ~description:message ~explain:message
     ~run:(fun _ctx red_root ->

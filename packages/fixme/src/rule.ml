@@ -11,7 +11,7 @@ type context = {
 }
 
 type t = {
-  id: string;
+  id: Rule_id.t;
   description: string;
   explain: string;
   enabled: bool;

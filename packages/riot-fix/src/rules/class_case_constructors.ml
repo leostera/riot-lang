@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 
-let rule_id = "class-case-constructors"
+let rule_id = Rule_id.of_string "class-case-constructors"
 
 let rule_description = "Variant constructors should use ClassCase instead of underscores"
 

@@ -22,7 +22,7 @@ type context = {
     provide the longer markdown explanation shown when the rule is documented.
 *)
 val make:
-  id:string ->
+  id:Rule_id.t ->
   description:string ->
   explain:string ->
   ?enabled:bool ->
@@ -31,7 +31,7 @@ val make:
   t
 
 (** Return the stable rule identifier. *)
-val id: t -> string
+val id: t -> Rule_id.t
 
 (** Return the short rule description. *)
 val description: t -> string

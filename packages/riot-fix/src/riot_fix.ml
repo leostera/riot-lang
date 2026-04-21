@@ -1,6 +1,7 @@
 open Std
 
 (** Riot-Fix - OCaml Linter and Code Fixer *)
+module Rule_id = Rule_id
 module Diagnostic = Diagnostic
 module Fix = Fix
 module Pipeline = Pipeline
@@ -34,7 +35,7 @@ type fix_output_mode = Api.fix_output_mode =
 type fix_action = Api.fix_action =
   | ListRules of { format: Reporter.format }
   | ListDiagnostics of { format: Reporter.format }
-  | ExplainRule of { rule_id: string }
+  | ExplainRule of { rule_id: Rule_id.t }
   | Run of {
       mode: Runner.mode;
       limit: int option;
@@ -53,7 +54,7 @@ type fix_response = Api.fix_response =
   | Completed
   | ListedRules of { format: Reporter.format; output: string }
   | ListedDiagnostics of { format: Reporter.format; output: string }
-  | ExplainedRule of { rule_id: string; output: string }
+  | ExplainedRule of { rule_id: Rule_id.t; output: string }
 
 let check_request = Api.check_request
 

@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 
-let rule_id = "prefer-opaque-record-types"
+let rule_id = Rule_id.of_string "prefer-opaque-record-types"
 
 let rule_description = "Interfaces that already expose accessor functions should usually keep record types opaque"
 

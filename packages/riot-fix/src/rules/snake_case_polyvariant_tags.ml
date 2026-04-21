@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 
-let rule_id = "snake-case-polyvariant-tags"
+let rule_id = Rule_id.of_string "snake-case-polyvariant-tags"
 
 let rule_description = "Polymorphic variant tags should use snake_case instead of camelCase"
 

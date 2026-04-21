@@ -282,7 +282,7 @@ let apply_rule_overrides = fun states overrides ->
       |> List.fold_left ~init:acc ~fn:(fun acc rule_name -> set_rule_state acc rule_name enabled))
 
 let default_rule_states = fun () ->
-  Pipeline.default_rule_ids () |> List.map ~fn:(fun name -> (name, true))
+  Pipeline.default_rule_ids () |> List.map ~fn:(fun name -> (Rule_id.to_string name, true))
 
 let effective_rule_states = fun scope file ->
   match scope with
@@ -300,7 +300,7 @@ let pipeline_for_file = fun scope file ->
     |> List.filter_map
       ~fn:(fun (name, enabled) ->
         if enabled then
-          Some name
+          Some (Rule_id.of_string name)
         else
           None)
   in

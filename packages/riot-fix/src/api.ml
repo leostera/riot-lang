@@ -9,7 +9,7 @@ type fix_output_mode = Cli.Types.output_mode =
 type fix_action = Cli.Request.action =
   | ListRules of { format: Reporter.format }
   | ListDiagnostics of { format: Reporter.format }
-  | ExplainRule of { rule_id: string }
+  | ExplainRule of { rule_id: Rule_id.t }
   | Run of {
       mode: Runner.mode;
       limit: int option;
@@ -28,7 +28,7 @@ type fix_response =
   | Completed
   | ListedRules of { format: Reporter.format; output: string }
   | ListedDiagnostics of { format: Reporter.format; output: string }
-  | ExplainedRule of { rule_id: string; output: string }
+  | ExplainedRule of { rule_id: Rule_id.t; output: string }
 
 let unavailable_build_package = fun ~workspace:_ ~package_name:_ ~profile:_ ?transform_workspace:_ () ->
   Error (Failure "No build_package callback was provided")
@@ -47,7 +47,7 @@ let output_mode_of_request = fun request ->
 let explain_rule_output = fun rule_id ->
   match Explanations.explain rule_id with
   | Some entry -> Ok (Explanations.format entry)
-  | None -> Error (Failure ("Unknown riot-fix rule id: " ^ rule_id))
+  | None -> Error (Failure ("Unknown riot-fix rule id: " ^ Rule_id.to_string rule_id))
 
 let response_output response =
   match response with

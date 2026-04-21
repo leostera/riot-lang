@@ -219,7 +219,7 @@ let lint_diagnostic_to_lsp = fun text ->
         ~start_offset:span.start
         ~end_offset:span.end_;
       severity = Some (lint_diagnostic_severity (Riot_fix.Diagnostic.severity diagnostic));
-      code = Some (Riot_fix.Diagnostic.rule_id diagnostic);
+      code = Some (Riot_fix.Rule_id.to_string (Riot_fix.Diagnostic.rule_id diagnostic));
       source = Some "riot-fix";
       message = Riot_fix.Diagnostic.message diagnostic;
       tags = None;

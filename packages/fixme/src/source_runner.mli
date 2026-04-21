@@ -4,8 +4,8 @@ open Std
 type progress_phase =
   | Parsed of { parse_diagnostics: int }
   | CstBuilt
-  | RuleStarted of { rule_id: string }
-  | RuleFinished of { rule_id: string; diagnostics: int }
+  | RuleStarted of { rule_id: Rule_id.t }
+  | RuleFinished of { rule_id: Rule_id.t; diagnostics: int }
 (** Timestamped progress event emitted by [run] or [run_rule]. *)
 type progress_event = {
   timestamp_ms: int;

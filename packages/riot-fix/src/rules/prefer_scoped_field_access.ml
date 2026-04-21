@@ -7,7 +7,7 @@ let rec binding_operator_group_items = fun (binding: Syn.Cst.binding_operator_bi
     | None -> []
   )
 
-let rule_id = "prefer-scoped-field-access"
+let rule_id = Rule_id.of_string "prefer-scoped-field-access"
 
 let rule_description = "Module-qualified field access should use scoped qualification syntax"
 

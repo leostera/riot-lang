@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 
-let rule_id = "prefer-named-closed-polyvariants"
+let rule_id = Rule_id.of_string "prefer-named-closed-polyvariants"
 
 let rule_description = "Closed polymorphic variants should usually be named instead of written inline"
 

@@ -11,7 +11,7 @@
 5. Package-provided rules are compiled into a generated `fixme-runner` under `_build`; keep that runner as a direct lint engine, not a second wrapper that re-enters generated-runner selection, and avoid designs that require one subprocess per rule or per file.
 6. Materialize the generated runner as a synthetic package inside the active workspace build lane, not as a detached synthetic workspace. It should reuse the real workspace lockfile, target dir, and shared build cache.
 7. Shared rule-authoring types live in `fixme`; keep `riot-fix` runtime/reporting helpers layered on top of that shared surface.
-8. Explain text belongs with the rule definition. `fixme` should carry rule ids, descriptions, and explanation types, not a built-in diagnostic-code registry.
+8. Explain text belongs with the rule definition. `fixme` should carry typed `Rule_id.t` values, descriptions, and explanation types, not a built-in diagnostic-code registry.
 9. `--explain` works on rule ids. Keep the CLI surfaces user-facing and consistent about package-qualified ids like `riot:snake-case-type-names`.
 10. `--list-rules` is rule-oriented and `--list-diagnostics` is diagnostic-oriented; today they are both keyed by rule id because each built-in rule emits one diagnostic kind.
 11. Prefer `Rule_query` and `Syn.Visit` over hand-written `match ctx.cst` boilerplate or bespoke recursive descent inside individual rules.

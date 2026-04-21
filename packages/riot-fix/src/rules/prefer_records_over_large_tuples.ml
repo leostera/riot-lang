@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 
-let rule_id = "prefer-records-over-large-tuples"
+let rule_id = Rule_id.of_string "prefer-records-over-large-tuples"
 
 let rule_description = "Large tuple type aliases should usually be records"
 

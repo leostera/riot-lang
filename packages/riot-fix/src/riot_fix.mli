@@ -4,6 +4,9 @@ open Std
     
     A pipeline-based linter and code fixer for OCaml, built on top of the syn parser.
 *)
+module Rule_id: module type of Rule_id
+
+(** Typed rule identifiers shared across lint surfaces *)
 module Diagnostic: module type of Diagnostic
 
 (** Structured diagnostic information for lint errors *)
@@ -80,7 +83,7 @@ type fix_output_mode = Api.fix_output_mode =
 type fix_action = Api.fix_action =
   | ListRules of { format: Reporter.format }
   | ListDiagnostics of { format: Reporter.format }
-  | ExplainRule of { rule_id: string }
+  | ExplainRule of { rule_id: Rule_id.t }
   | Run of {
       mode: Runner.mode;
       limit: int option;
@@ -97,7 +100,7 @@ type fix_response = Api.fix_response =
   | Completed
   | ListedRules of { format: Reporter.format; output: string }
   | ListedDiagnostics of { format: Reporter.format; output: string }
-  | ExplainedRule of { rule_id: string; output: string }
+  | ExplainedRule of { rule_id: Rule_id.t; output: string }
 val check_request: cwd:Path.t -> target:Path.t -> fix_request
 
 val fix_request_of_matches: ArgParser.matches -> (fix_request, exn) result

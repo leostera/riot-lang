@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 
-let rule_id = "no-open-bang"
+let rule_id = Rule_id.of_string "no-open-bang"
 
 let rule_description = "Avoid open! and prefer plain open or explicit qualification"
 

@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = "avoid-single-letter-function-names"
+let rule_id = Rule_id.of_string "avoid-single-letter-function-names"
 
 let rule_description = "Function names should be descriptive instead of using single-letter placeholders"
 

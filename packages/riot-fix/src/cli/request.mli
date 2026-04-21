@@ -3,7 +3,7 @@ open Std
 type action =
   | ListRules of { format: Reporter.format }
   | ListDiagnostics of { format: Reporter.format }
-  | ExplainRule of { rule_id: string }
+  | ExplainRule of { rule_id: Rule_id.t }
   | Run of {
       mode: Runner.mode;
       limit: int option;

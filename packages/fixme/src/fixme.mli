@@ -4,6 +4,9 @@
 (** Rewrite operations and fix application helpers. *)
 module Fix: module type of Fix
 
+(** Typed rule identifiers shared across lint surfaces. *)
+module Rule_id: module type of Rule_id
+
 (** Long-form rule explanations. *)
 module Explanation: module type of Explanation
 

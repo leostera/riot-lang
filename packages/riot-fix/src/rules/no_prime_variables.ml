@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 
-let rule_id = "no-prime-variables"
+let rule_id = Rule_id.of_string "no-prime-variables"
 
 let rule_description = "Variable names should not contain apostrophes"
 

@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = "avoid-single-letter-type-names"
+let rule_id = Rule_id.of_string "avoid-single-letter-type-names"
 
 let rule_description = "Type names should be descriptive instead of using single-letter placeholders, except for t"
 

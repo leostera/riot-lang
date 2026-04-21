@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 
-let rule_id = "no-inline-parameter-type-annotations"
+let rule_id = Rule_id.of_string "no-inline-parameter-type-annotations"
 
 let rule_description = "Function parameter type annotations should live in the function signature, not inline on each parameter"
 

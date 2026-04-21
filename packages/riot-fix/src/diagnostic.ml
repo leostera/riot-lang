@@ -9,8 +9,8 @@ type severity = Fixme.Diagnostic.severity =
   | Hint
 
 type kind = Fixme.Diagnostic.kind =
-  | Known of { rule_id: string; message: string }
-  | Generic of { rule_id: string; message: string }
+  | Known of { rule_id: Rule_id.t; message: string }
+  | Generic of { rule_id: Rule_id.t; message: string }
 
 type t = Fixme.Diagnostic.t
 
@@ -49,16 +49,17 @@ let message = Fixme.Diagnostic.message
 
 let rule_id = Fixme.Diagnostic.rule_id
 
-let header_label = fun severity rule_id -> "[" ^ severity_to_string severity ^ "] " ^ rule_id
+let header_label = fun severity rule_id ->
+  "[" ^ severity_to_string severity ^ "] " ^ Rule_id.to_string rule_id
 
 let colored_header_label = fun severity rule_id ->
-  "[" ^ severity_to_colored_string severity ^ "] " ^ rule_id
+  "[" ^ severity_to_colored_string severity ^ "] " ^ Rule_id.to_string rule_id
 
 let explain_hint = fun severity rule_id ->
   "  For more information about this "
   ^ severity_to_string severity
   ^ ", try `riot fix --explain "
-  ^ rule_id
+  ^ Rule_id.to_string rule_id
   ^ "`"
 
 let to_string = fun diag ->
@@ -72,7 +73,7 @@ let to_string = fun diag ->
     ^ " at "
     ^ span_str
     ^ " ("
-    ^ rule_id diag
+    ^ Rule_id.to_string (rule_id diag)
     ^ ")"
   in
   match suggestion diag, fix diag with
@@ -210,7 +211,7 @@ let to_json = fun diag ->
         let span = span diag in
         Object [ ("start", Int span.start); ("end", Int span.end_) ]
       );
-      ("rule_id", String (rule_id diag));
+      ("rule_id", String (Rule_id.to_string (rule_id diag)));
       (
         "suggestion",
         match suggestion diag with
@@ -231,7 +232,7 @@ type grouped = {
   severity: severity;
   message: string;
   spans: Syn.Ceibo.Span.t list;
-  rule_id: string;
+  rule_id: Rule_id.t;
   suggestion: string option;
   fix: Fix.fix option;
 }

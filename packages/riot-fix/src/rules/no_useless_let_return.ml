@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = "no-useless-let-return"
+let rule_id = Rule_id.of_string "no-useless-let-return"
 
 let rule_description = "Bindings that immediately return the bound name should be collapsed"
 

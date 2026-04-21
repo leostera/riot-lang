@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = "no-custom-operators"
+let rule_id = Rule_id.of_string "no-custom-operators"
 
 let rule_description = "Custom infix operators should be avoided in favor of named functions"
 

@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = "prefer-if-over-bool-match"
+let rule_id = Rule_id.of_string "prefer-if-over-bool-match"
 
 let rule_description = "Matching on booleans should be written as `if` expressions"
 

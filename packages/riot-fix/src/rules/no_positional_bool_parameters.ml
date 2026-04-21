@@ -4,7 +4,7 @@ open Std.Collections
 let is_trivia = fun kind ->
   let open Syn.SyntaxKind in kind = WHITESPACE || kind = COMMENT || kind = DOCSTRING
 
-let rule_id = "no-positional-bool-parameters"
+let rule_id = Rule_id.of_string "no-positional-bool-parameters"
 
 let rule_description = "Positional bool parameters should be replaced with a named parameter or an enum"
 

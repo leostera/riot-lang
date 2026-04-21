@@ -8,12 +8,8 @@ let package_entries = fun () ->
 let all = fun () -> builtin_entries () @ package_entries ()
 
 let normalize_rule_id = fun rule_id ->
-  let riot_prefix = "riot:" in
-  if String.starts_with ~prefix:riot_prefix rule_id then
-    String.sub
-      rule_id
-      ~offset:(String.length riot_prefix)
-      ~len:(String.length rule_id - String.length riot_prefix)
+  if String.equal (Rule_id.package_name ~default_package:"riot" rule_id) "riot" then
+    Rule_id.of_string (Rule_id.local_id rule_id)
   else
     rule_id
 
@@ -21,6 +17,6 @@ let explain = fun rule_id ->
   let normalized = normalize_rule_id rule_id in
   all () |> List.find
     ~fn:(fun entry ->
-      String.equal Explanation.(entry.rule_id) normalized)
+      Rule_id.equal Explanation.(entry.rule_id) normalized)
 
 let format = Explanation.format

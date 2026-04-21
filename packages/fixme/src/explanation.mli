@@ -3,7 +3,7 @@ open Std
 (** Expanded guidance for a lint or fix rule. *)
 type t = {
   (** Rule identifier this explanation belongs to. *)
-  rule_id: string;
+  rule_id: Rule_id.t;
   (** Longer explanation body, usually rendered as markdown. *)
   body: string;
   (** Short summary message shown alongside the rule. *)

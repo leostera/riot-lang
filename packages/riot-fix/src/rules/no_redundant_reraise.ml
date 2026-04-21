@@ -1,6 +1,6 @@
 open Std
 
-let rule_id = "no-redundant-reraise"
+let rule_id = Rule_id.of_string "no-redundant-reraise"
 
 let rule_description = "try handlers that only re-raise the same exception should be removed"
 

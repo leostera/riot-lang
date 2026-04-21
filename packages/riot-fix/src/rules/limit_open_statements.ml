@@ -1,7 +1,7 @@
 open Std
 open Std.Collections
 
-let rule_id = "limit-open-statements"
+let rule_id = Rule_id.of_string "limit-open-statements"
 
 let rule_description = "Prefer no more than two open statements per file"
 

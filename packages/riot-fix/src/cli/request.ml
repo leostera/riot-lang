@@ -3,7 +3,7 @@ open Std
 type action =
   | ListRules of { format: Reporter.format }
   | ListDiagnostics of { format: Reporter.format }
-  | ExplainRule of { rule_id: string }
+  | ExplainRule of { rule_id: Rule_id.t }
   | Run of {
       mode: Runner.mode;
       limit: int option;
@@ -73,7 +73,7 @@ let of_matches = fun matches ->
           | false, true, _ ->
               ListDiagnostics { format }
           | false, false, Some rule_id ->
-              ExplainRule { rule_id }
+              ExplainRule { rule_id = Rule_id.of_string rule_id }
           | false, false, None ->
               let mode =
                 if apply then

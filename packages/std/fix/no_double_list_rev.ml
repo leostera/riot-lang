@@ -4,7 +4,7 @@ module Api = Fixme
 
 let package_name = "std"
 
-let package_rule_id = package_name ^ ":no-double-list-rev"
+let package_rule_id = Api.Rule_id.of_string (package_name ^ ":no-double-list-rev")
 
 let explanation =
   Api.Explanation.{

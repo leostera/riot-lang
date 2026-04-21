@@ -30,11 +30,14 @@ let with_tempdir = fun prefix fn ->
   | Error err -> Error (IO.error_message err)
 
 let diagnostic_rule_ids = fun diagnostics ->
-  diagnostics |> List.map ~fn:Riot_fix.Diagnostic.rule_id |> List.sort ~compare:String.compare
+  diagnostics
+  |> List.map ~fn:(fun diag -> Riot_fix.Rule_id.to_string (Riot_fix.Diagnostic.rule_id diag))
+  |> List.sort ~compare:String.compare
 
 let assert_explanation_contains = fun ~rule_id ~snippet ->
+  let rule_id = Riot_fix.Rule_id.of_string rule_id in
   match Riot_fix.Explanations.explain rule_id with
-  | None -> Error ("Expected explanation for " ^ rule_id)
+  | None -> Error ("Expected explanation for " ^ Riot_fix.Rule_id.to_string rule_id)
   | Some entry ->
       Test.assert_equal ~expected:rule_id ~actual:Riot_fix.Explanation.(entry.rule_id);
       let body = String.trim Riot_fix.Explanation.(entry.body) in
@@ -2352,7 +2355,9 @@ let render x y z =
         Riot_fix.Pipeline.default_rules ()
         |> List.filter
           ~fn:(fun rule ->
-            String.equal (Riot_fix.Rule.id rule) "std:prefer-result-map-over-manual-match")
+            Riot_fix.Rule_id.equal
+              (Riot_fix.Rule.id rule)
+              (Riot_fix.Rule_id.of_string "std:prefer-result-map-over-manual-match"))
       in
       let pipeline = Riot_fix.Pipeline.make ~rules () in
       let result = Riot_fix.Pipeline.run pipeline source in
