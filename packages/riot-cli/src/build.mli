@@ -45,6 +45,9 @@ val write_build_event:
   Riot_build.Event.t ->
   unit
 
+(** Render a build phase event in the selected output mode. *)
+val write_build_phase_event: mode:output_mode -> Riot_build.Event.runtime_phase -> unit
+
 (** Render a package-manager event in the selected output mode. *)
 val write_pm_event:
   mode:output_mode ->
