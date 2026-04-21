@@ -84,7 +84,7 @@ let run_fixture = fun path ->
     exit_code = None
   } in
   Ok (
-    List.fold_left lines ~acc:initial
+    List.fold_left lines ~init:initial
       ~fn:(fun acc line ->
         let outcome = Riot_lsp.Session.handle_payload acc.Riot_lsp.Session.state line in
         {

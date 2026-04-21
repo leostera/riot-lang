@@ -78,10 +78,10 @@ let default_text_measurer = fun ~constraints text style ->
   in
   let paragraphs = String.split_on_char '\n' text in
   let lines_rev =
-    List.fold_left paragraphs ~acc:[]
+    List.fold_left paragraphs ~init:[]
       ~fn:(fun acc paragraph ->
         let wrapped = wrap_paragraph style width_hint paragraph in
-        List.fold_left wrapped ~acc ~fn:(fun acc line -> line :: acc))
+        List.fold_left wrapped ~init:acc ~fn:(fun acc line -> line :: acc))
   in
   let lines =
     match List.rev lines_rev with
@@ -89,7 +89,7 @@ let default_text_measurer = fun ~constraints text style ->
     | lines -> lines
   in
   let width =
-    List.fold_left lines ~acc:0
+    List.fold_left lines ~init:0
       ~fn:(fun acc line ->
         Int.max acc (String.width line))
     |> Float.of_int

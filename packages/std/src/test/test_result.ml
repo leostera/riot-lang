@@ -41,7 +41,7 @@ let make_summary = fun results ->
   in
   let skipped = List.filter results ~fn:(fun r -> r.result = Skipped) |> List.length in
   let duration =
-    List.fold_left results ~acc:Time.Duration.zero
+    List.fold_left results ~init:Time.Duration.zero
       ~fn:(fun acc (result: t) ->
         Time.Duration.add acc result.duration)
   in

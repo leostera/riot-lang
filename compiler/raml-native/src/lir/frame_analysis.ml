@@ -56,9 +56,7 @@ let collect_instruction = fun (contains_calls, virtual_names) instruction ->
       (contains_calls, collect_operand_registers virtual_names src)
   | Lir.Instruction.Call { dst; callee; arguments } ->
       let virtual_names = collect_callee_registers virtual_names callee in
-      let virtual_names =
-        List.fold_left arguments ~acc:virtual_names ~fn:collect_operand_registers
-      in
+      let virtual_names = List.fold_left arguments ~init:virtual_names ~fn:collect_operand_registers in
       let virtual_names =
         match dst with
         | Some (Lir.Destination.Register name) -> add_slot virtual_names name
@@ -76,11 +74,10 @@ let collect_instruction = fun (contains_calls, virtual_names) instruction ->
       )
 
 let analyze_procedure = fun (procedure: Lir.Procedure.t) ->
-  let initial_slots =
-    List.fold_left procedure.params ~acc:(empty_slots ()) ~fn:add_slot
-  in
-  let contains_calls, virtual_names =
-    List.fold_left procedure.body ~acc:(false, initial_slots) ~fn:collect_instruction
-  in
+  let initial_slots = List.fold_left procedure.params ~init:(empty_slots ()) ~fn:add_slot in
+  let contains_calls, virtual_names = List.fold_left
+    procedure.body
+    ~init:(false, initial_slots)
+    ~fn:collect_instruction in
   let virtual_names = ordered_slots virtual_names in
   { contains_calls; virtual_names }

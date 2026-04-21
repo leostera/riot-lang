@@ -1648,7 +1648,7 @@ let autodiscovered_binaries_for_intent = fun ~(intent:realization_intent) ~(sour
 let merge_binaries: declared:binary list -> autodiscovered:binary list -> binary list = fun ~declared ~autodiscovered ->
   let seen_paths = declared |> List.map ~fn:(fun (bin: binary) -> Path.to_string bin.path) in
   let _, discovered =
-    List.fold_left autodiscovered ~acc:(seen_paths, [])
+    List.fold_left autodiscovered ~init:(seen_paths, [])
       ~fn:(fun (seen_paths, acc) (bin: binary) ->
         let path = Path.to_string bin.path in
         if List.contains seen_paths ~value:path then

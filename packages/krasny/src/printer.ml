@@ -32,7 +32,10 @@ let to_string = fun doc ->
     | Doc.Group doc ->
         write ~line_start ~indent doc
     | Doc.Concat docs ->
-        List.fold_left docs ~acc:line_start ~fn:(fun line_start doc -> write ~line_start ~indent doc)
+        List.fold_left
+          docs
+          ~init:line_start
+          ~fn:(fun line_start doc -> write ~line_start ~indent doc)
     | Doc.Indent (extra, doc) ->
         write ~line_start ~indent:(indent + extra) doc
   and write_text ~line_start ~indent value =

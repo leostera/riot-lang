@@ -33,7 +33,7 @@ val capacity: 'value t -> int
 
 val for_each: 'value t -> fn:('value -> unit) -> unit
 
-val fold_left: 'value t -> acc:'acc -> fn:('acc -> 'value -> 'acc) -> 'acc
+val fold_left: 'value t -> init:'acc -> fn:('acc -> 'value -> 'acc) -> 'acc
 
 val to_list: 'value t -> 'value list
 

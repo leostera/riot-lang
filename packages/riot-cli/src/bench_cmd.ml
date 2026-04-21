@@ -419,7 +419,7 @@ let noise_margin_percent = fun ~current_cv ~baseline_cv ->
   match values with
   | [] -> 0.0
   | values ->
-      List.fold_left values ~acc:0.0
+      List.fold_left values ~init:0.0
         ~fn:(fun acc value ->
           if Float.compare value acc > 0 then
             value

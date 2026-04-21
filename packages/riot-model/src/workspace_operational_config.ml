@@ -47,7 +47,7 @@ let normalize_size = fun raw ->
           count
         else
           count + 1)
-      ~acc:0
+      ~init:0
       raw
   in
   let compact = Kernel.Bytes.create ~size:compact_length in
@@ -60,7 +60,7 @@ let normalize_size = fun raw ->
           Kernel.Bytes.set_unchecked compact ~at:index ~char:c;
           index + 1
         ))
-      ~acc:0
+      ~init:0
       raw
   in
   String.lowercase_ascii (Kernel.Bytes.to_string compact)
@@ -145,7 +145,7 @@ let normalize_duration = fun raw ->
           count
         else
           count + 1)
-      ~acc:0
+      ~init:0
       raw
   in
   let compact = Kernel.Bytes.create ~size:compact_length in
@@ -158,7 +158,7 @@ let normalize_duration = fun raw ->
           Kernel.Bytes.set_unchecked compact ~at:index ~char:c;
           index + 1
         ))
-      ~acc:0
+      ~init:0
       raw
   in
   String.lowercase_ascii (Kernel.Bytes.to_string compact)

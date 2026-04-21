@@ -75,7 +75,7 @@ let uses_of_instruction = fun instruction ->
         | Lir.Callee.Direct _ -> empty ()
         | Lir.Callee.Indirect operand -> add_operand_uses (empty ()) operand
       in
-      List.fold_left arguments ~acc:live ~fn:add_operand_uses
+      List.fold_left arguments ~init:live ~fn:add_operand_uses
   | Lir.Instruction.Branch_if_zero { operand; _ } ->
       add_operand_uses (empty ()) operand
   | Lir.Instruction.Return operand -> (
@@ -108,8 +108,7 @@ let label_index_map = fun instructions ->
     | Lir.Instruction.Label name ->
         let _ = HashMap.insert labels ~key:name ~value:index in
         ()
-    | _ ->
-        ()
+    | _ -> ()
   done;
   labels
 
@@ -173,12 +172,7 @@ let update_bounds = fun bounds_map name position ->
       let _ = HashMap.insert bounds_map ~key:name ~value:{ start; finish } in
       ()
   | None ->
-      let _ =
-        HashMap.insert
-          bounds_map
-          ~key:name
-          ~value:{ start = position; finish = position }
-      in
+      let _ = HashMap.insert bounds_map ~key:name ~value:{ start = position; finish = position } in
       ()
 
 type analysis = {
@@ -204,10 +198,8 @@ let analyze_procedure = fun (procedure: Lir.Procedure.t) ->
       let instruction = Array.get_unchecked instructions ~at:index in
       let next_live_after = successors_of_instruction ~label_indices instructions index instruction
       |> List.fold_left
-           ~acc:(empty ())
-           ~fn:(fun live successor ->
-             union live (Array.get_unchecked live_before ~at:successor))
-      in
+        ~init:(empty ())
+        ~fn:(fun live successor -> union live (Array.get_unchecked live_before ~at:successor)) in
       let next_live_before = union
         (uses_of_instruction instruction)
         (difference next_live_after (defs_of_instruction instruction)) in
@@ -244,11 +236,9 @@ let intervals_of_procedure = fun procedure ->
     let instruction = Array.get_unchecked analysis.instructions ~at:index in
     let live_before = Array.get_unchecked analysis.live_before ~at:index in
     let live_after = Array.get_unchecked analysis.live_after ~at:index in
-    let mentioned =
-      union
-        (union live_before live_after)
-        (union (uses_of_instruction instruction) (defs_of_instruction instruction))
-    in
+    let mentioned = union
+      (union live_before live_after)
+      (union (uses_of_instruction instruction) (defs_of_instruction instruction)) in
     HashSet.for_each mentioned ~fn:(fun name -> update_bounds bounds name index);
     HashSet.for_each (live_across_call_names instruction live_after)
       ~fn:(fun name ->

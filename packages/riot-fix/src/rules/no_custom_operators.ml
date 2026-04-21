@@ -57,7 +57,7 @@ let make_diagnostic = fun expr ->
   let span =
     match Syn.Cst.InfixExpression.operator_tokens expr with
     | first :: rest ->
-        List.fold_left rest ~acc:(Syn.Cst.Token.span first)
+        List.fold_left rest ~init:(Syn.Cst.Token.span first)
           ~fn:(fun span token ->
             Ceibo.Span.union span (Syn.Cst.Token.span token))
     | [] -> Syn.Cst.Expression.syntax_node (Syn.Cst.Expression.Infix expr) |> Syn.Cst.token_body_span

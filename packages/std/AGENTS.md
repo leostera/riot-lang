@@ -54,6 +54,7 @@
 48. Keep shared reader and writer internals on the checked kernel I/O surface. Bounds-sensitive calls should use `Result`-returning `Kernel.IO` operations by default, and only drop to `_unchecked` helpers after a local invariant has been established in the hot path.
 49. Keep new `Std.Data` parser substrates additive and benchmarked before they replace string-first defaults. View-backed parser experiments such as `JsonStream` should reuse existing value/error models where possible and prove a measurable win before becoming the main public entry point.
 50. Keep `Std.Net.Http.Body` as the explicit lazy ownership boundary for HTTP payloads. Request and response helpers may accept owned strings for ergonomics, but parser and transport code should prefer carrying `IoSlice`-backed bodies until a caller explicitly asks for `Body.to_string`.
+51. Keep public `Std` fold surfaces consistent on `~init` for the initial accumulator. Collection and string folds in `Std` should use `~init`; reserve kernel-only `~acc` labels for the lower-level kernel boundary.
 
 ## Validate
 

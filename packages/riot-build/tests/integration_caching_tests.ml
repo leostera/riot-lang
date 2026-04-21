@@ -261,7 +261,7 @@ let test_dependency_change_invalidates_cached_compile_actions = fun _ctx ->
                         |> List.map
                           ~fn:(fun completed_action -> completed_action.Action_scheduler.result.status) in
                         let cached_count =
-                          List.fold_left statuses ~acc:0
+                          List.fold_left statuses ~init:0
                             ~fn:(fun count status ->
                               match status with
                               | Action_scheduler.Cached _ -> count + 1
@@ -290,4 +290,5 @@ let tests =
 
 let name = "riot-build:integration-caching"
 
-let () = Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

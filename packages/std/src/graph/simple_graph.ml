@@ -83,7 +83,7 @@ let topo_sort = fun graph ->
   (* Find nodes with no incoming edges *)
   let queue = Queue.create () in
   let initial_nodes =
-    HashMap.fold_left in_degree ~acc:[]
+    HashMap.fold_left in_degree ~init:[]
       ~fn:(fun acc id count ->
         if count = 0 then
           id :: acc
@@ -124,7 +124,7 @@ let topo_sort = fun graph ->
       (* Find actual cycle using DFS from a node involved in the cycle *)
       let find_cycle () =
         let start_node =
-          HashMap.fold_left in_degree ~acc:None
+          HashMap.fold_left in_degree ~init:None
             ~fn:(fun acc id count ->
               match acc with
               | Some _ -> acc
@@ -160,7 +160,7 @@ let topo_sort = fun graph ->
                   let _ = HashMap.insert rec_stack ~key:node_id ~value:() in
                   let node = HashMap.get graph.nodes ~key:node_id |> Option.unwrap in
                   let result =
-                    List.fold_left node.deps ~acc:None
+                    List.fold_left node.deps ~init:None
                       ~fn:(fun acc dep_id ->
                         match acc with
                         | Some _ -> acc
@@ -195,4 +195,4 @@ let reachable_from = fun graph start_nodes ->
       )
   in
   List.for_each start_nodes ~fn:(fun node -> visit node.id);
-  HashMap.fold_left visited ~acc:[] ~fn:(fun acc node_id () -> node_id :: acc) |> List.reverse
+  HashMap.fold_left visited ~init:[] ~fn:(fun acc node_id () -> node_id :: acc) |> List.reverse

@@ -152,7 +152,7 @@ let test_for_each = fun _ctx ->
 let test_fold_left = fun _ctx ->
   let heap = Heap.from_list [ 3; 1; 2 ] in
   if
-    String.equal (Heap.fold_left heap ~acc:"" ~fn:(fun acc value -> acc ^ Int.to_string value)) "123"
+    String.equal (Heap.fold_left heap ~init:"" ~fn:(fun acc value -> acc ^ Int.to_string value)) "123"
   then
     Ok ()
   else

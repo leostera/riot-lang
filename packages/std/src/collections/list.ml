@@ -74,9 +74,9 @@ let iteri = fun fn values ->
   in
   loop 0 values
 
-let fold_left = fun values ~acc ~fn -> Kernel.List.fold_left values ~acc ~fn
+let fold_left = fun values ~init ~fn -> Kernel.List.fold_left values ~acc:init ~fn:fn
 
-let fold_right = fun values ~acc ~fn -> Kernel.List.fold_right values ~acc ~fn
+let fold_right = fun values ~init ~fn -> Kernel.List.fold_right values ~acc:init ~fn:fn
 
 let all = fun values ~fn ->
   let rec loop values =

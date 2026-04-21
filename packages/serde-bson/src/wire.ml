@@ -147,7 +147,7 @@ and encode_element = fun (key, value) ->
 
 and encode_document = fun fields ->
   let* encoded_fields =
-    List.fold_left fields ~acc:(Ok [])
+    List.fold_left fields ~init:(Ok [])
       ~fn:(fun acc field ->
         let* acc = acc in
         let* encoded = encode_element field in
@@ -155,7 +155,7 @@ and encode_document = fun fields ->
   in
   let encoded_fields = List.rev encoded_fields in
   let payload_len =
-    List.fold_left encoded_fields ~acc:0 ~fn:(fun total field -> total + String.length field)
+    List.fold_left encoded_fields ~init:0 ~fn:(fun total field -> total + String.length field)
   in
   let* encoded_length = int32_of_length "document" (payload_len + 5) in
   let buffer = IO.Buffer.create ~size:(payload_len + 5) in

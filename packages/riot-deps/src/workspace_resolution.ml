@@ -11,7 +11,7 @@ let duration_ms_since = fun started ->
 let resolved_edge_count = fun (lockfile: Riot_model.Lockfile.t) ->
   List.fold_left
     lockfile.packages
-    ~acc:0
+    ~init:0
     ~fn:(fun total (pkg: Riot_model.Lockfile.package) ->
       total + List.length pkg.dependencies + List.length pkg.build_dependencies + List.length pkg.dev_dependencies)
 
@@ -54,7 +54,7 @@ let lock_package_version_map = fun (lockfile_opt: Riot_model.Lockfile.t option) 
   match lockfile_opt with
   | None -> []
   | Some (lockfile: Riot_model.Lockfile.t) ->
-      List.fold_left lockfile.packages ~acc:[]
+      List.fold_left lockfile.packages ~init:[]
         ~fn:(fun acc (pkg: Riot_model.Lockfile.package) ->
           match lock_package_key pkg, pkg.id.version with
           | Some key, Some version -> (key, version) :: acc

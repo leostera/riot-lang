@@ -39,7 +39,8 @@ let eof_token = fun () ->
 
 let token_at = fun tokens index -> Array.get_unchecked tokens ~at:index
 
-let array_to_list = fun values -> Array.fold_right values ~acc:[] ~fn:(fun value acc -> value :: acc)
+let array_to_list = fun values ->
+  Array.fold_right values ~init:[] ~fn:(fun value acc -> value :: acc)
 
 let peek = fun t ->
   if is_eof t then

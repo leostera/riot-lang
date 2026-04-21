@@ -525,7 +525,10 @@ let compile_interface = fun t ~cwd ~includes ~flags ~output source ->
   let args = [ "-bin-annot"; "-c" ]
   @ warning_baseline_flags source
   @ flags_to_string flags
-  @ List.fold_right includes_with_dot ~acc:[] ~fn:(fun dir acc -> [ "-I"; Path.to_string dir ] @ acc)
+  @ List.fold_right
+    includes_with_dot
+    ~init:[]
+    ~fn:(fun dir acc -> [ "-I"; Path.to_string dir ] @ acc)
   @ [ "-o"; Path.to_string output ]
   @ if has_impl_flag then
     []
@@ -547,7 +550,10 @@ let compile_impl = fun t ~cwd ~includes ~flags ~output source ->
   let args = [ "-bin-annot"; "-c" ]
   @ warning_baseline_flags source
   @ flags_to_string flags
-  @ List.fold_right includes_with_dot ~acc:[] ~fn:(fun dir acc -> [ "-I"; Path.to_string dir ] @ acc)
+  @ List.fold_right
+    includes_with_dot
+    ~init:[]
+    ~fn:(fun dir acc -> [ "-I"; Path.to_string dir ] @ acc)
   @ [ "-o"; Path.to_string output ]
   @ if has_impl_flag then
     []
@@ -561,7 +567,10 @@ let generate_interface = fun t ~cwd ~includes ~flags ~output source ->
   let args = [ "-i" ]
   @ warning_baseline_flags source
   @ flags_to_string flags
-  @ List.fold_right includes_with_dot ~acc:[] ~fn:(fun dir acc -> [ "-I"; Path.to_string dir ] @ acc)
+  @ List.fold_right
+    includes_with_dot
+    ~init:[]
+    ~fn:(fun dir acc -> [ "-I"; Path.to_string dir ] @ acc)
   @ [ Path.to_string source ] in
   make_invocation
     ~output_mode:(WriteStdoutToFile output)

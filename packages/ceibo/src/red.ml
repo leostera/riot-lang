@@ -52,7 +52,7 @@ module SyntaxNode = struct
             offset = !running_offset
             + List.fold_left
               (Green.leading_trivia token)
-              ~acc:0
+              ~init:0
               ~fn:(fun acc trivia -> acc + Green.trivia_width trivia)
           }
           | Green.Node child_node -> Node {
@@ -78,7 +78,7 @@ module SyntaxNode = struct
               offset = running_offset
               + List.fold_left
                 (Green.leading_trivia token)
-                ~acc:0
+                ~init:0
                 ~fn:(fun acc trivia -> acc + Green.trivia_width trivia)
             }
             | Green.Node child_node -> Node {
@@ -239,7 +239,7 @@ module SyntaxToken = struct
     let total_width =
       List.fold_left
         (Green.leading_trivia green_token)
-        ~acc:0
+        ~init:0
         ~fn:(fun acc trivia -> acc + Green.trivia_width trivia)
     in
     let running_offset = ref (token.offset - total_width) in

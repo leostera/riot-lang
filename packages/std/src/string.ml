@@ -70,6 +70,8 @@ let into_iter = fun source ->
 
 let iter = fun fn value -> for_each ~fn value
 
+let fold_left = fun ~fn ~init value -> Kernel.String.fold_left ~fn:fn ~acc:init value
+
 let split_on_char = fun separator value -> split ~by:(from_char separator) value
 
 (* Unicode-aware operations *)
@@ -78,7 +80,7 @@ let width = fun s ->
   (* Calculate display width by summing rune widths *)
   into_iter s
   |> Iterator.to_list
-  |> List.fold_left ~acc:0 ~fn:(fun acc rune -> acc + Unicode.Rune.width rune)
+  |> List.fold_left ~init:0 ~fn:(fun acc rune -> acc + Unicode.Rune.width rune)
 
 let rune_count = fun s -> into_iter s |> Iterator.to_list |> List.length
 

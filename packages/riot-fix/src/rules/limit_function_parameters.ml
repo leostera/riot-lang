@@ -35,7 +35,7 @@ let count_parameter = fun counts parameter ->
 
 let parameter_counts = fun binding ->
   Syn.Cst.LetBinding.parameters binding
-  |> List.fold_left ~acc:{ positional_count = 0; named_count = 0 } ~fn:count_parameter
+  |> List.fold_left ~init:{ positional_count = 0; named_count = 0 } ~fn:count_parameter
 
 let exceeds_limit = fun counts ->
   let total = counts.positional_count + counts.named_count in

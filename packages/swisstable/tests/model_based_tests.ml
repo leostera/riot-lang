@@ -230,7 +230,7 @@ let fold_equivalence_prop =
         Swisstable.fold (fun _ _ acc -> acc + 1) swiss 0
       in
       let hash_count =
-        Collections.HashMap.fold_left hash ~acc:0 ~fn:(fun acc _ _ -> acc + 1)
+        Collections.HashMap.fold_left hash ~init:0 ~fn:(fun acc _ _ -> acc + 1)
       in
       if not (swiss_count = hash_count) then
         fail "fold counts differ";
@@ -238,7 +238,7 @@ let fold_equivalence_prop =
         Swisstable.fold (fun _ v acc -> acc + v) swiss 0
       in
       let hash_sum =
-        Collections.HashMap.fold_left hash ~acc:0 ~fn:(fun acc _ value -> acc + value)
+        Collections.HashMap.fold_left hash ~init:0 ~fn:(fun acc _ value -> acc + value)
       in
       swiss_sum = hash_sum)
 

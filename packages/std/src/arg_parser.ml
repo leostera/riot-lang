@@ -319,7 +319,7 @@ and print_help = fun cmd ->
     (
       println "\nArguments:";
       let max_arg_width: int =
-        List.fold_left positionals ~acc:0
+        List.fold_left positionals ~init:0
           ~fn:(fun (acc: int) (arg: unit arg) ->
             let name =
               if arg.multiple then
@@ -357,7 +357,7 @@ and print_help = fun cmd ->
       println "\nOptions:";
       (* Calculate max width for alignment *)
       let max_opt_width =
-        List.fold_left options ~acc:0
+        List.fold_left options ~init:0
           ~fn:(fun acc arg ->
             let short_len =
               match arg.short with
@@ -403,7 +403,7 @@ and print_help = fun cmd ->
             String.compare a.name b.name)
       in
       let max_name_len =
-        List.fold_left sorted_subs ~acc:0 ~fn:(fun acc sub -> max acc (String.length sub.name))
+        List.fold_left sorted_subs ~init:0 ~fn:(fun acc sub -> max acc (String.length sub.name))
       in
       List.for_each sorted_subs
         ~fn:(fun sub ->

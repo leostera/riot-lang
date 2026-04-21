@@ -13,4 +13,4 @@ let entity = fun entity_id ->
     | Modules.Identifier entity_id -> Jir.Expr.Identifier entity_id
     | Modules.Namespace module_ref -> Jir.Expr.Imported (Modules.namespace_import module_ref)
   in
-  List.fold_left reference.properties ~acc:base ~fn:named_property_access
+  List.fold_left reference.properties ~init:base ~fn:named_property_access

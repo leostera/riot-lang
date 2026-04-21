@@ -34,7 +34,8 @@ let clear = Hashmap.clear
 
 let for_each = fun set ~fn -> Hashmap.for_each set ~fn:(fun value () -> fn value)
 
-let fold_left = fun set ~acc ~fn -> Hashmap.fold_left set ~acc ~fn:(fun acc value () -> fn acc value)
+let fold_left = fun set ~init ~fn ->
+  Hashmap.fold_left set ~init ~fn:(fun acc value () -> fn acc value)
 
 let to_list = fun set -> Hashmap.keys set
 
@@ -79,12 +80,12 @@ let symmetric_difference = fun left right ->
   result
 
 let is_subset = fun left right ->
-  fold_left left ~acc:true ~fn:(fun acc value -> acc && contains right ~value)
+  fold_left left ~init:true ~fn:(fun acc value -> acc && contains right ~value)
 
 let is_superset = fun left right -> is_subset right left
 
 let is_disjoint = fun left right ->
-  fold_left left ~acc:true ~fn:(fun acc value -> acc && not (contains right ~value))
+  fold_left left ~init:true ~fn:(fun acc value -> acc && not (contains right ~value))
 
 let iter: type value. value t -> value Iter.Iterator.t = fun set ->
   let module SetIter = struct

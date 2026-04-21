@@ -570,7 +570,7 @@ let choose_version = fun stats provider state pkg ranges ->
               let conflict_ranges =
                 List.fold_left
                   rest
-                  ~acc:(term_satisfying_ranges term)
+                  ~init:(term_satisfying_ranges term)
                   ~fn:(fun acc term ->
                     Ranges.intersection ~compare_v:version_compare acc (term_satisfying_ranges term))
               in

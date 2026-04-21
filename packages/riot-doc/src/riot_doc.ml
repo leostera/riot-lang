@@ -214,7 +214,7 @@ let map_dependencies = fun ~release ~(dependency_map:(Package_name.t * string) l
 ) ->
   documentation_dependencies package |> List.unique
     ~compare:(fun (left: Riot_model.Package.dependency) (right: Riot_model.Package.dependency) ->
-      Package_name.compare left.name right.name) |> List.fold_left ~acc:(Ok [])
+      Package_name.compare left.name right.name) |> List.fold_left ~init:(Ok [])
     ~fn:(fun acc (dependency: Riot_model.Package.dependency) ->
       let* links = acc in
       let* link = dependency_link_for ~release dependency_map dependency.name in
@@ -334,7 +334,7 @@ let selected_packages = fun (request: request) ->
         Ok workspace_members
 
 let write_assets = fun output_dir ->
-  Html.assets |> List.fold_left ~acc:(Ok ())
+  Html.assets |> List.fold_left ~init:(Ok ())
     ~fn:(fun acc (relative_path, content) ->
       match acc with
       | Error _ as err -> err
@@ -343,7 +343,7 @@ let write_assets = fun output_dir ->
           write_output ~path content)
 
 let write_pages = fun ~output_dir package_doc ->
-  Doctree.flatten_modules package_doc.Doctree.modules |> List.fold_left ~acc:(Ok [])
+  Doctree.flatten_modules package_doc.Doctree.modules |> List.fold_left ~init:(Ok [])
     ~fn:(fun acc module_doc ->
       match acc with
       | Error _ as err -> err
@@ -492,7 +492,7 @@ let run = fun ?on_event (request: request) ->
     ~profile:(resolve_profile request.release)
     ~target:(Riot_dirs.host_target ()) in
   let cache_allowed = not request.no_cache in
-  packages |> List.fold_left ~acc:(Ok [])
+  packages |> List.fold_left ~init:(Ok [])
     ~fn:(fun acc package ->
       let* summaries = acc in
       let* summary = run_for_package ~on_event ~store ~cache_allowed ~request ~package ~lockfile_opt in

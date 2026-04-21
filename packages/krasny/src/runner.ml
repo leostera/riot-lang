@@ -461,7 +461,7 @@ let start_dispatcher = fun ~owner ~run_ref ~concurrency ~roots ~should_ignore ~c
 
 let summarize = fun ~duration files ->
   List.fold_left files
-    ~acc:{
+    ~init:{
       total_files = 0;
       already_formatted = 0;
       needs_formatting = 0;

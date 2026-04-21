@@ -92,8 +92,7 @@ let allocation_for_procedure = fun register_policy analysis (procedure: Lir.Proc
   let virtual_names = names_for_procedure analysis procedure.name in
   let intervals_by_name =
     Liveness.intervals_of_procedure procedure
-    |> List.fold_left
-      ~acc:(HashMap.create ())
+    |> List.fold_left ~init:(HashMap.create ())
       ~fn:(fun intervals (interval: Liveness.interval) ->
         let _ = HashMap.insert intervals ~key:interval.name ~value:interval in
         intervals)
@@ -109,9 +108,7 @@ let allocation_for_procedure = fun register_policy analysis (procedure: Lir.Proc
   in
   let assignments = HashMap.create () in
   let _, assignments =
-    List.fold_left
-      sorted_intervals
-      ~acc:([], assignments)
+    List.fold_left sorted_intervals ~init:([], assignments)
       ~fn:(fun (active, assignments) (interval: Liveness.interval) ->
         let active = expire_finished active ~before:interval.start in
         let register_pool =
@@ -170,9 +167,7 @@ let stack_slots_for_spills = fun virtual_names intervals_by_name assignments ->
   List.iter
     (fun (interval: Liveness.interval) ->
       let still_active, expired =
-        List.fold_left
-          ~acc:([], [])
-          !active
+        List.fold_left ~init:([], []) !active
           ~fn:(fun (still_active, expired) active_interval ->
             if active_interval.finish >= interval.start then
               (active_interval :: still_active, expired)
@@ -241,8 +236,9 @@ let homes_for_procedure = fun register_policy analysis (procedure: Lir.Procedure
         Lir.Home_binding.{ name; home })
   in
   let saved_registers =
-    List.filter register_policy.callee_saved_registers ~fn:(fun register ->
-      HashSet.contains used_callee_saved ~value:register)
+    List.filter
+      register_policy.callee_saved_registers
+      ~fn:(fun register -> HashSet.contains used_callee_saved ~value:register)
   in
   let slots = List.init ~count:slot_count ~fn:slot in
   (homes, slots, saved_registers)
@@ -254,8 +250,7 @@ let rewrite_procedure = fun register_policy analysis (procedure: Lir.Procedure.t
   let frame_required =
     procedure.frame.contains_calls
     || not (List.is_empty slots)
-    || not (List.is_empty saved_registers)
-  in
+    || not (List.is_empty saved_registers) in
   {
     procedure
     with frame =

@@ -20,9 +20,9 @@ let add_name = fun names name ->
       { names with ordered_rev = name :: names.ordered_rev }
     )
 
-let add_names = fun names more -> List.fold_left more ~acc:names ~fn:add_name
+let add_names = fun names more -> List.fold_left more ~init:names ~fn:add_name
 
-let merge_names = fun left right -> List.fold_left (ordered_names right) ~acc:left ~fn:add_name
+let merge_names = fun left right -> List.fold_left (ordered_names right) ~init:left ~fn:add_name
 
 let bound_of_list = HashSet.from_list
 
@@ -30,9 +30,9 @@ let extend_bound = fun bound names ->
   let bound = HashSet.from_list (HashSet.to_list bound) in
   let () =
     List.for_each names
-    ~fn:(fun name ->
-      let _ = HashSet.insert bound ~value:name in
-      ())
+      ~fn:(fun name ->
+        let _ = HashSet.insert bound ~value:name in
+        ())
   in
   bound
 
@@ -52,13 +52,13 @@ let rec collect_free_vars = fun ~name_of_entity ~bound expr ->
   | Core.Expr.Apply { callee=Core.Expr.Direct _; arguments } ->
       List.fold_left
         arguments
-        ~acc:(empty_names ())
+        ~init:(empty_names ())
         ~fn:(fun names argument ->
           merge_names names (collect_free_vars ~name_of_entity ~bound argument))
   | Core.Expr.Apply { callee=Core.Expr.Indirect callee; arguments } ->
       List.fold_left
         arguments
-        ~acc:(collect_free_vars ~name_of_entity ~bound callee)
+        ~init:(collect_free_vars ~name_of_entity ~bound callee)
         ~fn:(fun names expr -> merge_names names (collect_free_vars ~name_of_entity ~bound expr))
   | Core.Expr.Lambda lambda ->
       collect_free_vars
@@ -77,7 +77,7 @@ let rec collect_free_vars = fun ~name_of_entity ~bound expr ->
       let binding_free_vars =
         List.fold_left
           let_.bindings
-          ~acc:(empty_names ())
+          ~init:(empty_names ())
           ~fn:(fun names (binding: Core.Expr.binding) ->
             merge_names names (collect_free_vars ~name_of_entity ~bound:binding_scope binding.expr))
       in
@@ -91,14 +91,14 @@ let rec collect_free_vars = fun ~name_of_entity ~bound expr ->
   | Core.Expr.Tuple tuple ->
       List.fold_left
         tuple
-        ~acc:(empty_names ())
+        ~init:(empty_names ())
         ~fn:(fun names expr -> merge_names names (collect_free_vars ~name_of_entity ~bound expr))
   | Core.Expr.Tuple_get tuple_get ->
       collect_free_vars ~name_of_entity ~bound tuple_get.tuple
   | Core.Expr.Record record ->
       List.fold_left
         record
-        ~acc:(empty_names ())
+        ~init:(empty_names ())
         ~fn:(fun names (field: Core.Expr.record_field) ->
           merge_names names (collect_free_vars ~name_of_entity ~bound field.value))
   | Core.Expr.Record_get record_get ->
@@ -112,7 +112,7 @@ let rec collect_free_vars = fun ~name_of_entity ~bound expr ->
   | Core.Expr.Primitive primitive ->
       List.fold_left
         primitive.arguments
-        ~acc:(empty_names ())
+        ~init:(empty_names ())
         ~fn:(fun names expr -> merge_names names (collect_free_vars ~name_of_entity ~bound expr))
 
 let free_vars = fun ~name_of_entity ~bound expr ->

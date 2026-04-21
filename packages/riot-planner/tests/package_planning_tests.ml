@@ -207,7 +207,7 @@ let validate_create_library_topological_order = fun graph objects ->
 
 let move_item_to_front = fun needle items ->
   let matches, rest =
-    List.fold_right items ~acc:([], [])
+    List.fold_right items ~init:([], [])
       ~fn:(fun item (matches, rest) ->
         if String.equal item needle then
           (item :: matches, rest)

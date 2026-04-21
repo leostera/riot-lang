@@ -302,7 +302,7 @@ let render_to_string = fun commands ->
                 lines)
         (index_commands commands);
       let rows =
-        List.fold_left !custom_segments ~acc:[] ~fn:(fun acc segment -> segment :: acc)
+        List.fold_left !custom_segments ~init:[] ~fn:(fun acc segment -> segment :: acc)
         |> List.sort
           ~compare:(fun left right ->
             let by_row = Int.compare left.row right.row in

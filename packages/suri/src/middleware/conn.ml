@@ -117,7 +117,7 @@ let sent = fun t -> t.sent
 
 let render_component = fun ?(headers = []) status component t ->
   let t =
-    List.fold_left headers ~acc:t ~fn:(fun acc ((name, value)) -> with_header name value acc)
+    List.fold_left headers ~init:t ~fn:(fun acc ((name, value)) -> with_header name value acc)
   in
   t
   |> with_status status
@@ -127,7 +127,7 @@ let render_component = fun ?(headers = []) status component t ->
 
 let render_json = fun ?(headers = []) status json t ->
   let t =
-    List.fold_left headers ~acc:t ~fn:(fun acc ((name, value)) -> with_header name value acc)
+    List.fold_left headers ~init:t ~fn:(fun acc ((name, value)) -> with_header name value acc)
   in
   t
   |> with_status status
@@ -137,7 +137,7 @@ let render_json = fun ?(headers = []) status json t ->
 
 let render_text = fun ?(headers = []) status text t ->
   let t =
-    List.fold_left headers ~acc:t ~fn:(fun acc ((name, value)) -> with_header name value acc)
+    List.fold_left headers ~init:t ~fn:(fun acc ((name, value)) -> with_header name value acc)
   in
   t
   |> with_status status
@@ -147,7 +147,7 @@ let render_text = fun ?(headers = []) status text t ->
 
 let redirect = fun ?(headers = []) path t ->
   let t =
-    List.fold_left headers ~acc:t ~fn:(fun acc ((name, value)) -> with_header name value acc)
+    List.fold_left headers ~init:t ~fn:(fun acc ((name, value)) -> with_header name value acc)
   in
   t |> with_status Found |> with_header "Location" path |> with_body "" |> send
 

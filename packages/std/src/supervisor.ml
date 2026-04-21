@@ -309,21 +309,21 @@ let handle_count_children = fun state reply_to ->
   let children: child_state list = Cell.get state.children in
   let specs = List.length children in
   let active =
-    List.fold_left children ~acc:0
+    List.fold_left children ~init:0
       ~fn:(fun acc (child: child_state) ->
         match child.pid with
         | Some _ -> acc + 1
         | None -> acc)
   in
   let supervisors =
-    List.fold_left children ~acc:0
+    List.fold_left children ~init:0
       ~fn:(fun acc (child: child_state) ->
         match child.spec.child_type with
         | Supervisor -> acc + 1
         | _ -> acc)
   in
   let workers =
-    List.fold_left children ~acc:0
+    List.fold_left children ~init:0
       ~fn:(fun acc (child: child_state) ->
         match child.spec.child_type with
         | Worker -> acc + 1

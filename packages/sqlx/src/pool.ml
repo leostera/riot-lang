@@ -164,7 +164,7 @@ let check_connections = fun state ->
 let get_stats = fun state ->
   let total = List.length (Cell.get state.connections) in
   let available =
-    List.fold_left (Cell.get state.connections) ~acc:0
+    List.fold_left (Cell.get state.connections) ~init:0
       ~fn:(fun acc ->
         function
         | Available _ -> acc + 1

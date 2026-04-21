@@ -296,7 +296,7 @@ let source_text_from_syntax_tokens = fun syntax_tokens ->
   in
   let source_length =
     pieces
-    |> List.fold_left ~acc:0
+    |> List.fold_left ~init:0
       ~fn:(fun acc ((span: Ceibo.Span.t), _text) ->
         Int.max acc span.end_)
   in
@@ -461,7 +461,7 @@ let source_file_items_from_child = fun ~comment_item_of_comment ~docstring_item_
         | [] -> full_span.end_
         | first :: rest ->
             let last =
-              List.fold_left rest ~acc:first ~fn:(fun _ token -> token)
+              List.fold_left rest ~init:first ~fn:(fun _ token -> token)
             in
             (Ceibo.Red.SyntaxToken.span last).end_
       in
@@ -729,7 +729,7 @@ let span_of_syntax_node_nontrivia_bounds = fun syntax_node ->
   | [] -> full_span
   | first :: rest ->
       let last =
-        List.fold_left rest ~acc:first ~fn:(fun _ token -> token)
+        List.fold_left rest ~init:first ~fn:(fun _ token -> token)
       in
       {
         Ceibo.Span.start = (Ceibo.Red.SyntaxToken.span first).start;
@@ -890,7 +890,7 @@ let type_declaration_owned_trivia_spans =
   fun decl -> collect [] decl
 
 let type_definition_owned_trivia_end = fun type_definition ->
-  type_definition_owned_trivia_spans type_definition |> List.fold_left ~acc:0
+  type_definition_owned_trivia_spans type_definition |> List.fold_left ~init:0
     ~fn:(fun acc (span: Ceibo.Span.t) ->
       Int.max acc span.end_)
 
@@ -2010,7 +2010,7 @@ let ident_path_from_node = fun node ->
             let text = tokens |> List.map ~fn:Ceibo.Red.SyntaxToken.text |> String.concat "" in
             let start_offset = (Ceibo.Red.SyntaxToken.span first).start in
             let last =
-              List.fold_left rest ~acc:first ~fn:(fun _ token -> token)
+              List.fold_left rest ~init:first ~fn:(fun _ token -> token)
             in
             let end_offset = (Ceibo.Red.SyntaxToken.span last).end_ in
             synthetic_token ~kind:Syntax_kind.IDENT_EXPR ~text ~start_offset ~end_offset
@@ -2365,7 +2365,7 @@ let is_initializer_node = fun node ->
 let class_field_with_attributes = fun field attributes ->
   List.fold_left
     attributes
-    ~acc:field
+    ~init:field
     ~fn:(fun field attribute ->
       Cst.ClassField.Attribute { syntax_node = Cst.ClassField.syntax_node field; field; attribute })
 
@@ -4885,7 +4885,7 @@ and rebuild_apply_chain = fun ~syntax_node callee ->
   | [] -> callee
   | arguments -> List.fold_left
     arguments
-    ~acc:callee
+    ~init:callee
     ~fn:(fun callee argument ->
       Cst.Expression.Apply { syntax_node; callee; argument; attributes = [] })
 

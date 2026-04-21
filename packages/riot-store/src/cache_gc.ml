@@ -109,9 +109,7 @@ let size_to_string = fun size_bytes ->
 
 let summary_message = fun summary ->
   if not summary.ran_gc then
-    "tracked cache is already within policy ("
-    ^ size_to_string summary.size_after_bytes
-    ^ "); build root kept"
+    "tracked cache is already within policy (" ^ size_to_string summary.size_after_bytes ^ "); build root kept"
   else
     "removed "
     ^ Int.to_string summary.deleted_entries
@@ -450,14 +448,14 @@ let load_receipts = fun ~(workspace:Workspace.t) ->
   loop [] paths
 
 let write_canonical_receipts = fun ~(workspace:Workspace.t) receipts ->
-  List.fold_left receipts ~acc:(Ok ())
+  List.fold_left receipts ~init:(Ok ())
     ~fn:(fun acc_result (receipt_file: receipt_file) ->
       let* () = acc_result in
       write_receipt ~workspace receipt_file.receipt)
 
 let generation_hashes_of_receipts = fun receipts ->
   let seen = HashSet.create () in
-  List.fold_left receipts ~acc:[]
+  List.fold_left receipts ~init:[]
     ~fn:(fun acc (receipt_file: receipt_file) ->
       if HashSet.contains seen ~value:receipt_file.receipt.hash then
         acc
@@ -508,7 +506,7 @@ let collect_cache_entries = fun ~(workspace:Workspace.t) ->
         let hash_dirs = list_subdirectories cache_dir
         |> List.filter ~fn:(fun dir -> is_hash_dir_name (Path.basename dir)) in
         let* acc =
-          List.fold_left hash_dirs ~acc:(Ok acc)
+          List.fold_left hash_dirs ~init:(Ok acc)
             ~fn:(fun acc_result dir ->
               let* acc = acc_result in
               let* size_bytes = path_size_bytes dir in
@@ -519,7 +517,7 @@ let collect_cache_entries = fun ~(workspace:Workspace.t) ->
   collect_profiles [] profile_dirs
 
 let total_size = fun entries ->
-  List.fold_left entries ~acc:0L
+  List.fold_left entries ~init:0L
     ~fn:(fun acc (entry: cache_entry) ->
       Int64.add acc entry.size_bytes)
 
@@ -653,13 +651,13 @@ let run_gc = fun ~(workspace:Workspace.t) ~policy ~generation_hashes ->
       ~fn:(fun path -> not (HashSet.contains kept_paths ~value:(Path.to_string path)))
   in
   let* () =
-    List.fold_left deleted_entries ~acc:(Ok ())
+    List.fold_left deleted_entries ~init:(Ok ())
       ~fn:(fun acc (entry: cache_entry) ->
         let* () = acc in
         delete_path entry.dir ~kind:"directory")
   in
   let* () =
-    List.fold_left deleted_receipts ~acc:(Ok ())
+    List.fold_left deleted_receipts ~init:(Ok ())
       ~fn:(fun acc receipt_path ->
         let* () = acc in
         delete_path receipt_path ~kind:"file")
@@ -764,7 +762,7 @@ let new_entry_dir = fun ~(workspace:Workspace.t) (entry: new_cache_entry) ->
 
 let added_size_for_new_entries = fun ~(workspace:Workspace.t) new_entries ->
   let seen = HashSet.create () in
-  List.fold_left new_entries ~acc:(Ok 0L)
+  List.fold_left new_entries ~init:(Ok 0L)
     ~fn:(fun acc_result (entry: new_cache_entry) ->
       let* acc = acc_result in
       let dir = new_entry_dir ~workspace entry in

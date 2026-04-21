@@ -469,7 +469,7 @@ let execute_node = fun ~completed ~store ~session_id toolchain sandbox_dir (node
               action = node
             });
           let copy_result: (unit, string) Result.t =
-            List.fold_left sources ~acc:(Ok ())
+            List.fold_left sources ~init:(Ok ())
               ~fn:(fun acc src_path ->
                 match acc with
                 | Error _ -> acc

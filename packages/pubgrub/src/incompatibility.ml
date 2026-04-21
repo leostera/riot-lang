@@ -105,7 +105,7 @@ let merge_dependents = fun incompat1 incompat2 ->
   | _ -> None
 
 let normalize_terms = fun terms ->
-  List.fold_left terms ~acc:[]
+  List.fold_left terms ~init:[]
     ~fn:(fun acc term ->
       match List.find acc ~fn:(fun existing -> Term.package existing = Term.package term) with
       | None ->
@@ -185,7 +185,7 @@ let prior_cause = fun ?extra_term incompat satisfier_cause package ->
         | None -> term :: acc
       in
       let all_terms =
-        List.fold_left incompat_terms ~acc:[]
+        List.fold_left incompat_terms ~init:[]
           ~fn:(fun acc term ->
             if String.equal (Term.package term) package then
               acc
@@ -193,7 +193,7 @@ let prior_cause = fun ?extra_term incompat satisfier_cause package ->
               add_or_merge_term acc term)
       in
       let all_terms =
-        List.fold_left satisfier_terms ~acc:all_terms
+        List.fold_left satisfier_terms ~init:all_terms
           ~fn:(fun acc term ->
             if String.equal (Term.package term) package then
               acc

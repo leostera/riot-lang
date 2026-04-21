@@ -31,7 +31,7 @@ val to_list_unordered: 'value t -> 'value list
 
 val for_each: 'value t -> fn:('value -> unit) -> unit
 
-val fold_left: 'value t -> acc:'acc -> fn:('acc -> 'value -> 'acc) -> 'acc
+val fold_left: 'value t -> init:'acc -> fn:('acc -> 'value -> 'acc) -> 'acc
 
 val iter: 'value t -> 'value Iter.Iterator.t
 

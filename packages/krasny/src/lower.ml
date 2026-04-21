@@ -1627,7 +1627,7 @@ let render_single_type_declaration_with_keyword = fun ~leading_after _keyword de
   in
   let with_constraints = Syn.Cst.TypeDeclaration.constraints decl
   |> List.fold_left
-    ~acc:with_definition
+    ~init:with_definition
     ~fn:(fun acc constraint_ ->
       Doc.concat [ acc; Doc.line; Doc.indent 2 (render_type_constraint constraint_) ]) in
   with_constraints

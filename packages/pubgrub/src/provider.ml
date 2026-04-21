@@ -80,7 +80,7 @@ let to_provider: offline -> string t = fun offline ->
     | None -> Ok 0
     | Some offline_pkg ->
         Ok (
-          List.fold_left offline_pkg.versions_desc ~acc:0
+          List.fold_left offline_pkg.versions_desc ~init:0
             ~fn:(fun count version ->
               if Ranges.contains ~compare_v:version_compare ranges version then
                 count + 1

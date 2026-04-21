@@ -439,7 +439,7 @@ let satisfier_search = fun solution incompat ->
     match package_satisfiers with
     | [] -> panic "No satisfier found for empty incompatibility"
     | first :: rest ->
-        List.fold_left rest ~acc:first
+        List.fold_left rest ~init:first
           ~fn:(fun ((current_term, current_info)) ((candidate_term, candidate_info)) ->
             if candidate_info.global_index > current_info.global_index then
               (candidate_term, candidate_info)
@@ -448,7 +448,7 @@ let satisfier_search = fun solution incompat ->
   in
   let satisfier_pkg = Term.package satisfier_term in
   let _, previous_level =
-    List.fold_left package_satisfiers ~acc:((-1), 1)
+    List.fold_left package_satisfiers ~init:((-1), 1)
       ~fn:(fun ((previous_global_index, previous_level)) ((term, info)) ->
         let info =
           if String.equal (Term.package term) satisfier_pkg then

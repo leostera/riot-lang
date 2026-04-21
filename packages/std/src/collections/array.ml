@@ -27,9 +27,9 @@ let for_each = fun values ~fn -> Kernel.Array.for_each values ~fn
 
 let map = fun values ~fn -> Kernel.Array.map values ~fn
 
-let fold_left = fun values ~acc ~fn -> Kernel.Array.fold_left values ~fn ~acc
+let fold_left = fun values ~init ~fn -> Kernel.Array.fold_left values ~acc:init ~fn:fn
 
-let fold_right = fun values ~acc ~fn -> Kernel.Array.fold_right values ~fn ~acc
+let fold_right = fun values ~init ~fn -> Kernel.Array.fold_right values ~acc:init ~fn:fn
 
 let from_list = Kernel.Array.from_list
 

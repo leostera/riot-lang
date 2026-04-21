@@ -138,7 +138,7 @@ let test_for_each = fun _ctx ->
 
 let test_fold_left = fun _ctx ->
   let map = HashMap.from_list [ (1, 2); (2, 3) ] in
-  if Int.equal (HashMap.fold_left map ~acc:0 ~fn:(fun acc _key value -> acc + value)) 5 then
+  if Int.equal (HashMap.fold_left map ~init:0 ~fn:(fun acc _key value -> acc + value)) 5 then
     Ok ()
   else
     Error "expected fold_left to accumulate over all entries"

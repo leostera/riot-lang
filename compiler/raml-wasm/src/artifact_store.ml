@@ -166,11 +166,13 @@ module Linked_program_artifact = struct
     let id = payload |> Json.to_string |> Crypto.hash_string |> Crypto.Digest.hex in
     {
       id;
-      unit_names =
-        List.map linked_program.objects ~fn:(fun (object_: Artifacts.Object.t) -> object_.unit_name);
+      unit_names = List.map
+        linked_program.objects
+        ~fn:(fun (object_: Artifacts.Object.t) -> object_.unit_name);
       imports = List.map linked_program.imports ~fn:Wir.Types.Import.key;
-      exports =
-        List.map linked_program.exports ~fn:(fun (export: Raml_core.Core_ir.Export.t) -> export.name);
+      exports = List.map
+        linked_program.exports
+        ~fn:(fun (export: Raml_core.Core_ir.Export.t) -> export.name);
       needs_closure_runtime = linked_program.needs_closure_runtime;
       payload;
     }
@@ -357,14 +359,16 @@ let error_to_json = fun error ->
     ]
 
 let save_named_json = fun store ~namespace ~key ~json ->
-  match Contentstore.Store.save_named_object store.store ~key:(namespace ^ "/" ^ key) ~content:(Json.to_string json) with
+  match Contentstore.Store.save_named_object
+    store.store
+    ~key:(namespace ^ "/" ^ key)
+    ~content:(Json.to_string json) with
   | Ok () -> Ok ()
-  | Error err ->
-      Error (Save_failed {
-        namespace;
-        key;
-        message = Contentstore.Store.error_message err
-      })
+  | Error err -> Error (Save_failed {
+    namespace;
+    key;
+    message = Contentstore.Store.error_message err
+  })
 
 let load_named_json = fun store ~namespace ~key ->
   match Contentstore.Store.open_named_object store.store ~key:(namespace ^ "/" ^ key) with
@@ -372,8 +376,7 @@ let load_named_json = fun store ~namespace ~key ->
   | Ok file -> (
       match Fs.File.read_to_end file with
       | Error _ -> None
-      | Ok content ->
-          Data.Json.of_string content |> Result.to_option
+      | Ok content -> Data.Json.of_string content |> Result.to_option
     )
 
 let save_object = fun store ~(object_:Artifacts.Object.t) ->
@@ -417,8 +420,7 @@ let save_linked_program = fun store ~(linked_program:Artifacts.Linked_program.t)
     ~key:artifact.id
     ~json:(Linked_program_artifact.to_json artifact) in
   let* () =
-    artifact.unit_names |> List.fold_left
-      ~acc:(Ok ())
+    artifact.unit_names |> List.fold_left ~init:(Ok ())
       ~fn:(fun result unit_name ->
         let* () = result in
         save_named_json

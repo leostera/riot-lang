@@ -66,7 +66,7 @@ let bind_binder = fun env (binder: Jir.Binder.t) ->
 
 let bind_binders = fun env binders ->
   let (env, lowered_rev) =
-    List.fold_left binders ~acc:(env, [])
+    List.fold_left binders ~init:(env, [])
       ~fn:(fun (env, lowered_rev) binder ->
         let (env, binder) = bind_binder env binder in
         (env, binder :: lowered_rev))
@@ -173,7 +173,7 @@ and lower_scoped_block = fun env statements ->
 
 let program = fun ~context:_ (program: Jir.Program.t) ->
   let (imports, env) =
-    List.fold_left program.imports ~acc:([], empty)
+    List.fold_left program.imports ~init:([], empty)
       ~fn:(fun (imports_rev, env) import ->
         let (import, env) = lower_import env import in
         (import :: imports_rev, env))

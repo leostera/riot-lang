@@ -62,11 +62,11 @@ and collect_expr_names = fun state expr ->
       let state = collect_expr_names state binary.left in
       collect_expr_names state binary.right
   | Jir.Expr.Array elements ->
-      List.fold_left elements ~acc:state ~fn:collect_array_element_names
+      List.fold_left elements ~init:state ~fn:collect_array_element_names
   | Jir.Expr.Object fields ->
-      List.fold_left fields ~acc:state ~fn:collect_object_field_names
+      List.fold_left fields ~init:state ~fn:collect_object_field_names
   | Jir.Expr.Function function_ ->
-      let state = List.fold_left function_.params ~acc:state ~fn:remember_binder in
+      let state = List.fold_left function_.params ~init:state ~fn:remember_binder in
       collect_statement_names state function_.body
   | Jir.Expr.Member member ->
       collect_expr_names state member.object_
@@ -102,8 +102,7 @@ and collect_statement_name = fun state statement ->
   match statement with
   | Jir.Statement.Declaration declaration ->
       let state = remember_binder state declaration.binder in
-      Option.map declaration.init ~fn:(collect_expr_names state)
-      |> Option.unwrap_or ~default:state
+      Option.map declaration.init ~fn:(collect_expr_names state) |> Option.unwrap_or ~default:state
   | Jir.Statement.Block statements ->
       collect_statement_names state statements
   | Jir.Statement.Expression expr ->
@@ -119,13 +118,13 @@ let collect_program_names = fun (program: Jir.Program.t) ->
   let state =
     List.fold_left
       program.imports
-      ~acc:{ used_names = String_set.empty }
+      ~init:{ used_names = String_set.empty }
       ~fn:(fun state import -> remember_binder state (Jir.Imports.local import))
   in
   let state = collect_statement_names state program.body in
   List.fold_left
     program.exports
-    ~acc:state
+    ~init:state
     ~fn:(fun state (export: Jir.Export.t) -> remember_visible_entity state export.local)
 
 let fresh_name = fun state base ->
@@ -146,13 +145,10 @@ let fresh_name = fun state base ->
 let generated_binder = fun name -> Jir.Binder.generated ~namespace:[ "flatten" ] ~name
 
 let rec lower_expr_list = fun state exprs ->
-  List.fold_left
-    exprs
-    ~acc:([], state)
+  List.fold_left exprs ~init:([], state)
     ~fn:(fun (reversed, state) expr ->
       let (expr, state) = lower_expr state expr in
-      (expr :: reversed, state))
-  |> fun (reversed, state) -> (List.rev reversed, state)
+      (expr :: reversed, state)) |> fun (reversed, state) -> (List.rev reversed, state)
 
 and lower_array_element = fun state element ->
   match element with
@@ -164,26 +160,20 @@ and lower_array_element = fun state element ->
       (Jir.Expr.Spread expr, state)
 
 and lower_array_elements = fun state elements ->
-  List.fold_left
-    elements
-    ~acc:([], state)
+  List.fold_left elements ~init:([], state)
     ~fn:(fun (reversed, state) element ->
       let (element, state) = lower_array_element state element in
-      (element :: reversed, state))
-  |> fun (reversed, state) -> (List.rev reversed, state)
+      (element :: reversed, state)) |> fun (reversed, state) -> (List.rev reversed, state)
 
 and lower_object_field = fun state (field: Jir.Expr.object_field) ->
   let (value, state) = lower_expr state field.value in
   (Jir.Expr.{ field with value }, state)
 
 and lower_object_fields = fun state fields ->
-  List.fold_left
-    fields
-    ~acc:([], state)
+  List.fold_left fields ~init:([], state)
     ~fn:(fun (reversed, state) field ->
       let (field, state) = lower_object_field state field in
-      (field :: reversed, state))
-  |> fun (reversed, state) -> (List.rev reversed, state)
+      (field :: reversed, state)) |> fun (reversed, state) -> (List.rev reversed, state)
 
 and lower_expr = fun state expr ->
   match expr with

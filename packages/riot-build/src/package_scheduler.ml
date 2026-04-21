@@ -471,12 +471,14 @@ let make_graph = fun state lanes ->
 
 let total_package_count = fun lanes ->
   lanes
-  |> List.fold_left ~acc:0 ~fn:(fun count lane -> count + List.length (Build_lane.package_keys lane))
+  |> List.fold_left
+    ~init:0
+    ~fn:(fun count lane -> count + List.length (Build_lane.package_keys lane))
 
 let deferred_package_count = fun lanes ->
   lanes
   |> List.fold_left
-    ~acc:0
+    ~init:0
     ~fn:(fun count lane ->
       count
       + (Build_lane.package_keys lane
@@ -484,9 +486,9 @@ let deferred_package_count = fun lanes ->
       |> List.length))
 
 let pending_counts = fun lanes package_states ->
-  lanes |> List.fold_left ~acc:{ awaiting_plan = 0; awaiting_finalization = 0; finalized = 0 }
+  lanes |> List.fold_left ~init:{ awaiting_plan = 0; awaiting_finalization = 0; finalized = 0 }
     ~fn:(fun counts lane ->
-      Build_lane.package_keys lane |> List.fold_left ~acc:counts
+      Build_lane.package_keys lane |> List.fold_left ~init:counts
         ~fn:(fun counts package_key ->
           match get_package_state package_states lane package_key with
           | Some AwaitingPlan -> { counts with awaiting_plan = counts.awaiting_plan + 1 }
@@ -526,7 +528,7 @@ let cleanup_pending_execution = fun package_states ->
 
 let summarize_planning_results = fun results ->
   List.fold_left results
-    ~acc:{
+    ~init:{
       execution_required_count = 0;
       finalized_count = 0;
       cached_count = 0;
@@ -562,7 +564,7 @@ let summarize_planning_results = fun results ->
       | FinalizePackage _ -> counts)
 
 let summarize_execution_results = fun results ->
-  List.fold_left results ~acc:{
+  List.fold_left results ~init:{
     finalized_count = 0;
     built_count = 0;
     failed_count = 0;

@@ -36,7 +36,7 @@ let get = fun headers name ->
 
 let get_all = fun headers name ->
   let normalized = normalize_name name in
-  List.fold_left headers ~acc:[]
+  List.fold_left headers ~init:[]
     ~fn:(fun acc (n, v) ->
       if String.compare (normalize_name n) normalized = 0 then
         v :: acc
@@ -53,7 +53,7 @@ let has = fun headers name ->
 
 let iter = fun f headers -> List.for_each headers ~fn:(fun (n, v) -> f n v)
 
-let fold = fun f headers acc -> List.fold_left headers ~acc ~fn:(fun acc (n, v) -> f n v acc)
+let fold = fun f headers acc -> List.fold_left headers ~init:acc ~fn:(fun acc (n, v) -> f n v acc)
 
 let length = fun headers -> List.length headers
 
@@ -122,7 +122,7 @@ module Value = struct
       | media_type :: param_parts ->
           let media_type = String.trim media_type in
           let params =
-            List.fold_left param_parts ~acc:[]
+            List.fold_left param_parts ~init:[]
               ~fn:(fun acc part ->
                 let trimmed = String.trim part in
                 match String.index_of trimmed ~char:'=' with
@@ -151,7 +151,7 @@ module Value = struct
 
   let parse_cache_control = fun value ->
     let directives = String.split ~by:"," value in
-    List.fold_left directives ~acc:[]
+    List.fold_left directives ~init:[]
       ~fn:(fun acc directive ->
         let trimmed = String.trim directive in
         match String.index_of trimmed ~char:'=' with
@@ -164,7 +164,7 @@ module Value = struct
 
   let parse_accept = fun value ->
     let entries = String.split ~by:"," value in
-    List.fold_left entries ~acc:[]
+    List.fold_left entries ~init:[]
       ~fn:(fun acc entry ->
         let trimmed = String.trim entry in
         let parts = String.split ~by:";" trimmed in
@@ -174,7 +174,7 @@ module Value = struct
             let media_type = String.trim media_type in
             let quality = ref None in
             let params =
-              List.fold_left param_parts ~acc:[]
+              List.fold_left param_parts ~init:[]
                 ~fn:(fun acc part ->
                   let trimmed = String.trim part in
                   match String.index_of trimmed ~char:'=' with

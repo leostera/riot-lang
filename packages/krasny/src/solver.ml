@@ -15,7 +15,7 @@ let solve = fun ~width doc ->
   let rec push_many indent mode docs rest =
     match List.reverse docs with
     | [] -> rest
-    | docs -> List.fold_left docs ~acc:rest ~fn:(fun acc doc -> (indent, mode, doc) :: acc)
+    | docs -> List.fold_left docs ~init:rest ~fn:(fun acc doc -> (indent, mode, doc) :: acc)
   in
   let rec fits = fun remaining ->
     function

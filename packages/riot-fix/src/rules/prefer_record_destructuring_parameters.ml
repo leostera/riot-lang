@@ -64,7 +64,7 @@ let merge_usage = fun left right ->
     has_whole_value_use = left.has_whole_value_use || right.has_whole_value_use
   }
 
-let merge_all = fun usages -> List.fold_left usages ~acc:empty_usage ~fn:merge_usage
+let merge_all = fun usages -> List.fold_left usages ~init:empty_usage ~fn:merge_usage
 
 let whole_value_use = fun expected_name ->
   function

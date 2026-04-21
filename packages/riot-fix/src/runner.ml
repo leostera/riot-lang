@@ -99,7 +99,7 @@ let run_file = fun ?pipeline ?pipeline_for_file ?on_progress ~mode file ->
 
 let summarize = fun files ->
   List.fold_left files
-    ~acc:{
+    ~init:{
       total_files = 0;
       changed_files = 0;
       remaining_diagnostics = 0;

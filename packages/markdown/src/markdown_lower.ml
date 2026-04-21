@@ -1646,7 +1646,7 @@ let lower_table_row = fun ~flavor ~references row_node ->
   { cells; alignments }
 
 let rec collect_references = fun references nodes ->
-  List.fold_left nodes ~acc:references
+  List.fold_left nodes ~init:references
     ~fn:(fun references node ->
       let references =
         match Ceibo.Red.SyntaxNode.kind node with

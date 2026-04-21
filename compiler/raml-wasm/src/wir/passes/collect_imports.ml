@@ -29,23 +29,23 @@ let rec collect_expr = fun imports expr ->
         | None -> imports
         | Some import -> add_import imports import
       in
-      List.fold_left call.arguments ~acc:imports ~fn:collect_expr
+      List.fold_left call.arguments ~init:imports ~fn:collect_expr
   | Types.Expr.Indirect_call call ->
-      List.fold_left call.arguments ~acc:(collect_expr imports call.callee) ~fn:collect_expr
+      List.fold_left call.arguments ~init:(collect_expr imports call.callee) ~fn:collect_expr
   | Types.Expr.Lambda lambda ->
       collect_expr imports lambda.body
   | Types.Expr.Let let_ ->
       let imports =
         List.fold_left
           let_.bindings
-          ~acc:imports
+          ~init:imports
           ~fn:(fun imports (binding: Types.Expr.binding) -> collect_expr imports binding.expr)
       in
       collect_expr imports let_.body
   | Types.Expr.Sequence sequence ->
       collect_expr (collect_expr imports sequence.first) sequence.second
   | Types.Expr.Tuple elements ->
-      List.fold_left elements ~acc:imports ~fn:collect_expr
+      List.fold_left elements ~init:imports ~fn:collect_expr
   | Types.Expr.Tuple_get tuple_get ->
       collect_expr imports tuple_get.tuple
   | Types.Expr.If_then_else if_then_else ->
@@ -58,7 +58,7 @@ let rec collect_expr = fun imports expr ->
         | None -> imports
         | Some import -> add_import imports import
       in
-      List.fold_left primitive.arguments ~acc:imports ~fn:collect_expr
+      List.fold_left primitive.arguments ~init:imports ~fn:collect_expr
 
 let collect_global = fun imports (global: Types.Global.t) -> collect_expr imports global.expr
 
@@ -72,8 +72,8 @@ let collect_init_item = fun imports item ->
 let program = fun (program: Types.Compilation_unit.t) ->
   let imports = empty_imports ()
   |> fun imports ->
-    List.fold_left program.globals ~acc:imports ~fn:collect_global
+    List.fold_left program.globals ~init:imports ~fn:collect_global
     |> fun imports ->
-      List.fold_left program.functions ~acc:imports ~fn:collect_function
-      |> fun imports -> List.fold_left program.init ~acc:imports ~fn:collect_init_item in
+      List.fold_left program.functions ~init:imports ~fn:collect_function
+      |> fun imports -> List.fold_left program.init ~init:imports ~fn:collect_init_item in
   { program with imports = List.rev imports.ordered_rev }

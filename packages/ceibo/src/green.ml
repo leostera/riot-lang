@@ -36,7 +36,7 @@ let token_full_width = fun (token: ('kind, 'text) token) ->
   token.width
   + List.fold_left
     token.leading_trivia
-    ~acc:0
+    ~init:0
     ~fn:(fun acc (trivia: ('kind, 'text) trivia) -> acc + trivia.width)
 
 let make_token = fun ~leading_trivia ~kind ~text ~width -> { kind; text; width; leading_trivia }
@@ -47,7 +47,7 @@ let rec element_width = fun element ->
   | Node node -> node.width
 
 let compute_width = fun children ->
-  List.fold_left children ~acc:0 ~fn:(fun acc elem -> acc + element_width elem)
+  List.fold_left children ~init:0 ~fn:(fun acc elem -> acc + element_width elem)
 
 let make_node = fun ~kind ~children -> { kind; children; width = compute_width children }
 

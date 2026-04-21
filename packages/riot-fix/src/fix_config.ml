@@ -271,7 +271,7 @@ let matching_rule_names = fun states name ->
         [ name ]
 
 let apply_rule_overrides = fun states overrides ->
-  List.fold_left overrides ~acc:states
+  List.fold_left overrides ~init:states
     ~fn:(fun acc rule_override ->
       let enabled =
         match rule_override.state with
@@ -279,7 +279,7 @@ let apply_rule_overrides = fun states overrides ->
         | Disabled -> false
       in
       matching_rule_names acc rule_override.name
-      |> List.fold_left ~acc ~fn:(fun acc rule_name -> set_rule_state acc rule_name enabled))
+      |> List.fold_left ~init:acc ~fn:(fun acc rule_name -> set_rule_state acc rule_name enabled))
 
 let default_rule_states = fun () ->
   Pipeline.default_rule_ids () |> List.map ~fn:(fun name -> (name, true))

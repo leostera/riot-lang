@@ -41,9 +41,9 @@ val iter: ('value -> unit) -> 'value list -> unit
 
 val iteri: (int -> 'value -> unit) -> 'value list -> unit
 
-val fold_left: 'value list -> acc:'acc -> fn:('acc -> 'value -> 'acc) -> 'acc
+val fold_left: 'value list -> init:'acc -> fn:('acc -> 'value -> 'acc) -> 'acc
 
-val fold_right: 'value list -> acc:'acc -> fn:('value -> 'acc -> 'acc) -> 'acc
+val fold_right: 'value list -> init:'acc -> fn:('value -> 'acc -> 'acc) -> 'acc
 
 val enumerate: 'value list -> (int * 'value) list
 

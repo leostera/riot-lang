@@ -173,8 +173,8 @@ let for_each = fun heap ~fn ->
     | None -> ()
   done
 
-let fold_left = fun heap ~acc ~fn ->
-  let result = box acc in
+let fold_left = fun heap ~init ~fn ->
+  let result = box init in
   while heap.size > 0 do
     match pop heap with
     | Some x -> result.value <- fn result.value x

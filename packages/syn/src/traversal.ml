@@ -185,7 +185,7 @@ let children_of_expression = function
 
 let rec fold_expression = fun f acc expr ->
   let acc = f acc expr in
-  children_of_expression expr |> List.fold_left ~acc ~fn:(fold_expression f)
+  children_of_expression expr |> List.fold_left ~init:acc ~fn:(fold_expression f)
 
 let iter_expression = fun f expr ->
   fold_expression
@@ -235,7 +235,7 @@ let children_of_core_type = function
 
 let rec fold_core_type = fun f acc type_ ->
   let acc = f acc type_ in
-  children_of_core_type type_ |> List.fold_left ~acc ~fn:(fold_core_type f)
+  children_of_core_type type_ |> List.fold_left ~init:acc ~fn:(fold_core_type f)
 
 let iter_core_type = fun f type_ ->
   fold_core_type

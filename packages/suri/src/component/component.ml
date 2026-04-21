@@ -469,7 +469,7 @@ let extract_handlers = fun t ->
     | Text _ ->
         acc
     | Fragment children ->
-        List.fold_left children ~acc:acc ~fn:go
+        List.fold_left children ~init:acc ~fn:go
     | El { attrs; children; _ } ->
         let attr_handlers =
           List.filter_map
@@ -480,6 +480,6 @@ let extract_handlers = fun t ->
             )
             attrs
         in
-        List.fold_left children ~acc:(attr_handlers @ acc) ~fn:go
+        List.fold_left children ~init:(attr_handlers @ acc) ~fn:go
   in
   go [] t

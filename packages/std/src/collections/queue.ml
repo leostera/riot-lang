@@ -61,13 +61,13 @@ let for_each = fun queue ~fn ->
   in
   loop queue.front
 
-let fold_left = fun queue ~acc ~fn ->
+let fold_left = fun queue ~init ~fn ->
   let rec loop node acc =
     match node with
     | None -> acc
     | Some n -> loop n.next (fn acc n.value)
   in
-  loop queue.front acc
+  loop queue.front init
 
 let to_list = fun queue ->
   let rec loop node acc =

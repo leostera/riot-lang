@@ -152,7 +152,7 @@ module Ident = struct
           let first_width = String.length first in
           let first_node = make_node () in
           let initial = Ident { syntax_node = first_node; name_token = first_token } in
-          List.fold_left rest ~acc:(initial, first_width)
+          List.fold_left rest ~init:(initial, first_width)
             ~fn:(fun (prefix, width) segment ->
               if String.length segment = 0 then
                 raise (Failure "Syn.Cst.Ident.from_string does not allow empty path segments");
@@ -2933,7 +2933,7 @@ let token_body_span = fun syntax_node ->
   | [] -> full_span
   | first :: rest ->
       let last =
-        List.fold_left rest ~acc:first ~fn:(fun _ token -> token)
+        List.fold_left rest ~init:first ~fn:(fun _ token -> token)
       in
       {
         Ceibo.Span.start = (Ceibo.Red.SyntaxToken.span first).start;

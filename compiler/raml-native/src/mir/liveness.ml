@@ -8,8 +8,7 @@ type live_set = string HashSet.t
 
 let empty = HashSet.create
 
-let mem = fun live name ->
-  HashSet.contains live ~value:name
+let mem = fun live name -> HashSet.contains live ~value:name
 
 let copy = fun live -> HashSet.from_list (HashSet.to_list live)
 
@@ -39,7 +38,7 @@ let of_callee = fun callee ->
   | Callee.Indirect operand -> of_operand operand
 
 let of_operands = fun operands ->
-  List.fold_left operands ~acc:(empty ()) ~fn:(fun live operand -> union live (of_operand operand))
+  List.fold_left operands ~init:(empty ()) ~fn:(fun live operand -> union live (of_operand operand))
 
 let rec before_instruction = fun ~after instruction ->
   match instruction with
@@ -76,5 +75,5 @@ let rec before_instruction = fun ~after instruction ->
 and before_instructions = fun ~after instructions ->
   List.fold_right
     instructions
-    ~acc:after
+    ~init:after
     ~fn:(fun instruction live_after -> before_instruction ~after:live_after instruction)

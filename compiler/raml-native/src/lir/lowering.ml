@@ -43,9 +43,7 @@ let fresh_label = fun state prefix ->
   (label, { next_label = state.next_label + 1 })
 
 let rec lower_instruction_list = fun state instructions ->
-  List.fold_left
-    instructions
-    ~acc:([], state)
+  List.fold_left instructions ~init:([], state)
     ~fn:(fun (body, state) instruction ->
       let lowered, state = lower_instruction state instruction in
       (body @ lowered, state))

@@ -300,11 +300,11 @@ let apply_command = fun state locals touched ->
 
 let apply_commands = fun state commands ->
   let locals: (Node_id.t, Node_id.t) HashMap.t = HashMap.create () in
-  List.fold_left commands ~acc:[] ~fn:(apply_command state locals)
+  List.fold_left commands ~init:[] ~fn:(apply_command state locals)
 
 let mark_dependents_settled = fun state node_id ->
   let node = Graph.find_node state.graph node_id in
-  HashSet.fold_left node.dependents ~acc:[]
+  HashSet.fold_left node.dependents ~init:[]
     ~fn:(fun acc dependent_id ->
       let dependent = find_runtime_node state dependent_id in
       if dependent.unresolved_dependencies > 0 then

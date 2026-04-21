@@ -40,7 +40,7 @@ module Env = struct
   let add = fun name node env -> (name, node) :: remove name env
 
   let merge = fun left right ->
-    List.fold_left right ~acc:left ~fn:(fun env (name, node) -> add name node env)
+    List.fold_left right ~init:left ~fn:(fun env (name, node) -> add name node env)
 
   let rec add_path = fun env ~path ~free_names ->
     match path with
@@ -71,7 +71,7 @@ module Env = struct
 
   let rec collect_free = function
     | Node (free, children) ->
-        List.fold_left children ~acc:free
+        List.fold_left children ~init:free
           ~fn:(fun acc (_, child) ->
             Names.union acc (collect_free child))
 
@@ -209,13 +209,13 @@ let collect_option = fun f env deps value ->
   | None -> Ok deps
 
 let collect_list = fun f env deps values ->
-  List.fold_left values ~acc:(Ok deps)
+  List.fold_left values ~init:(Ok deps)
     ~fn:(fun acc value ->
       let* deps = acc in
       f env deps value)
 
 let collect_list_with = fun f acc values ->
-  List.fold_left values ~acc:(Ok acc)
+  List.fold_left values ~init:(Ok acc)
     ~fn:(fun acc value ->
       let* acc = acc in
       f acc value)
@@ -356,7 +356,7 @@ and collect_type_declaration env deps declaration =
   | None -> Ok deps
 
 and collect_functor_parameters env deps parameters =
-  List.fold_left parameters ~acc:(Ok (deps, env))
+  List.fold_left parameters ~init:(Ok (deps, env))
     ~fn:(fun acc parameter ->
       let* (deps, env) = acc in
       let* deps = collect_module_type env deps parameter.Cst.FunctorParameter.module_type in
@@ -511,18 +511,18 @@ and bind_pattern_modules env pattern =
   | Cst.Pattern.PolyVariantInherit _ ->
       env
   | Cst.Pattern.Constructor { arguments; _ } ->
-      List.fold_left arguments ~acc:env ~fn:bind_pattern_modules
+      List.fold_left arguments ~init:env ~fn:bind_pattern_modules
   | Cst.Pattern.Tuple { elements; _ } ->
       List.fold_left
         elements
-        ~acc:env
+        ~init:env
         ~fn:(fun env (element: Cst.tuple_pattern_element) -> bind_pattern_modules env element.pattern)
   | Cst.Pattern.List { elements; _ } ->
-      List.fold_left elements ~acc:env ~fn:bind_pattern_modules
+      List.fold_left elements ~init:env ~fn:bind_pattern_modules
   | Cst.Pattern.Array { elements; _ } ->
-      List.fold_left elements ~acc:env ~fn:bind_pattern_modules
+      List.fold_left elements ~init:env ~fn:bind_pattern_modules
   | Cst.Pattern.Record { fields; _ } ->
-      List.fold_left fields ~acc:env
+      List.fold_left fields ~init:env
         ~fn:(fun env (field: Cst.record_pattern_field) ->
           match field.pattern with
           | Some pattern -> bind_pattern_modules env pattern
@@ -531,7 +531,7 @@ and bind_pattern_modules env pattern =
       let env = bind_pattern_modules env head in
       bind_pattern_modules env tail
   | Cst.Pattern.Or { alternatives; _ } ->
-      List.fold_left alternatives ~acc:env ~fn:bind_pattern_modules
+      List.fold_left alternatives ~init:env ~fn:bind_pattern_modules
   | Cst.Pattern.Alias { pattern; _ } ->
       bind_pattern_modules env pattern
   | Cst.Pattern.Typed { pattern; _ } ->
@@ -562,7 +562,7 @@ and bind_parameter_modules env parameter =
       env
 
 and collect_parameters env deps parameters =
-  List.fold_left parameters ~acc:(Ok (deps, env))
+  List.fold_left parameters ~init:(Ok (deps, env))
     ~fn:(fun acc parameter ->
       let* (deps, env) = acc in
       let* deps = collect_parameter env deps parameter in
@@ -622,7 +622,7 @@ and collect_pattern env deps pattern =
       let deps =
         List.fold_left
           fields
-          ~acc:deps
+          ~init:deps
           ~fn:(fun deps (field: Cst.record_pattern_field) -> add_parent env deps field.field_path)
       in
       collect_list
@@ -787,7 +787,7 @@ and collect_expression env deps expression =
       let deps =
         List.fold_left
           fields
-          ~acc:deps
+          ~init:deps
           ~fn:(fun deps (field: Cst.record_expression_field) -> add_parent env deps field.field_path)
       in
       collect_list
@@ -800,7 +800,7 @@ and collect_expression env deps expression =
       let deps =
         List.fold_left
           fields
-          ~acc:deps
+          ~init:deps
           ~fn:(fun deps (field: Cst.record_expression_field) -> add_parent env deps field.field_path)
       in
       collect_list
@@ -849,7 +849,7 @@ and collect_structure env deps items =
   Ok (deps, env)
 
 and collect_structure_binding env deps items =
-  List.fold_left items ~acc:(Ok (deps, env, Env.empty))
+  List.fold_left items ~init:(Ok (deps, env, Env.empty))
     ~fn:(fun acc item ->
       let* (deps, env, bindings) = acc in
       collect_structure_item env deps bindings item)
@@ -966,7 +966,7 @@ and collect_structure_item env deps bindings item =
       Ok (deps, env, bindings)
 
 and collect_signature_binding env deps items =
-  List.fold_left items ~acc:(Ok (deps, env, Env.empty))
+  List.fold_left items ~init:(Ok (deps, env, Env.empty))
     ~fn:(fun acc item ->
       let* (deps, env, bindings) = acc in
       collect_signature_item env deps bindings item)

@@ -85,7 +85,7 @@ let rec rewrite_instruction = fun env instruction ->
       (env, instruction)
 
 and rewrite_instructions = fun env instructions ->
-  List.fold_left instructions ~acc:(env, [])
+  List.fold_left instructions ~init:(env, [])
     ~fn:(fun (env, acc) instruction ->
       let env, instruction = rewrite_instruction env instruction in
       (env, acc @ [ instruction ]))

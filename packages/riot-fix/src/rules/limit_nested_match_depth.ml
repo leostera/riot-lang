@@ -85,7 +85,7 @@ and child_expressions = function
 
 let max_list = function
   | [] -> 0
-  | xs -> List.fold_left xs ~acc:0 ~fn:Int.max
+  | xs -> List.fold_left xs ~init:0 ~fn:Int.max
 
 let rec match_chain_depth = function
   | Syn.Cst.Expression.Match expr -> 1

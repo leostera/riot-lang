@@ -93,7 +93,7 @@ let strip_comments = fun text ->
                   acc
               in
               (depth, Some ch, acc))
-      ~acc:(0, None, [])
+      ~init:(0, None, [])
       text
   in
   let acc =

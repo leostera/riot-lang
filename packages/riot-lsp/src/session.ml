@@ -404,7 +404,7 @@ let range_of_tokens = fun text tokens ->
   | [] -> Lsp.Utf16.range_of_offsets text ~start_offset:0 ~end_offset:0
   | first :: rest ->
       let last =
-        List.fold_left rest ~acc:first ~fn:(fun _ token -> token)
+        List.fold_left rest ~init:first ~fn:(fun _ token -> token)
       in
       let first_span = Syn.Cst.Token.span first in
       let last_span = Syn.Cst.Token.span last in
@@ -849,7 +849,7 @@ let apply_change = fun text ->
 
 let apply_changes = fun text ->
   fun changes ->
-    List.fold_left changes ~acc:(Ok text)
+    List.fold_left changes ~init:(Ok text)
       ~fn:(fun acc change ->
         let* current = acc in
         apply_change current change)

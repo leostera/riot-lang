@@ -12,8 +12,7 @@ end)
 
 type env = string Binding_map.t
 
-let indent = fun level ->
-  String.make ~len:(level * 2) ~char:' '
+let indent = fun level -> String.make ~len:(level * 2) ~char:' '
 
 let lookup_binding_name = fun env binding_id ->
   Binding_map.get env ~key:binding_id
@@ -86,10 +85,8 @@ and emit_object_field = fun ~level env (field: Types.Expr.object_field) ->
       Json.to_string (Json.string field.name)
   in
   match field.value with
-  | Types.Expr.Identifier entity_id
-    when Syntax.can_use_unquoted_object_key field.name
-         && String.equal field.name (emit_entity env entity_id) ->
-      field.name
+  | Types.Expr.Identifier entity_id when Syntax.can_use_unquoted_object_key field.name
+  && String.equal field.name (emit_entity env entity_id) -> field.name
   | _ -> format Format.[ str key; str ": "; str emitted_value ]
 
 and emit_expr = fun ~level env expr ->
@@ -171,7 +168,7 @@ and emit_expr = fun ~level env expr ->
         ]
 
 and emit_function = fun ~level env function_ ->
-  let env = List.fold_left function_.params ~acc:env ~fn:remember_binding in
+  let env = List.fold_left function_.params ~init:env ~fn:remember_binding in
   let body =
     match function_.body with
     | [] -> ""
@@ -183,7 +180,9 @@ and emit_function = fun ~level env function_ ->
     Format.[
       str "(function(";
       str
-        (String.concat ", " (List.map function_.params ~fn:(fun (binder: Types.Binder.t) -> binder.name)));
+        (String.concat
+          ", "
+          (List.map function_.params ~fn:(fun (binder: Types.Binder.t) -> binder.name)));
       str ") {";
       str body;
       str "})";
@@ -301,7 +300,7 @@ let emit_import = fun ~module_format env (import: Types.Import.t) ->
     |> (fun env ->
       List.fold_left
         import.names
-        ~acc:env
+        ~init:env
         ~fn:(fun env (named: Types.Import.named) -> remember_binding env named.local))
   in
   let line =
@@ -370,9 +369,7 @@ let emit_module_item = fun ~module_format env item ->
 let emit_program = fun ~context (program: Types.Program.t) ->
   let module_format = Module_format.of_context context in
   let (sections_rev, _) =
-    List.fold_left
-      program.items
-      ~acc:([], Binding_map.empty)
+    List.fold_left program.items ~init:([], Binding_map.empty)
       ~fn:(fun (sections_rev, env) item ->
         let (section, env) = emit_module_item ~module_format env item in
         if String.equal section "" then

@@ -198,7 +198,7 @@ let green_nontrivia_token_texts = fun element ->
       )
     | Ceibo.Green.Node ((node: (Syntax_kind.t, string) Ceibo.Green.node)) -> List.fold_left
       (Ceibo.Green.children node)
-      ~acc
+      ~init:acc
       ~fn:loop
   in
   loop [] element |> List.reverse

@@ -167,7 +167,7 @@ let test_reachable_from_merges_multiple_start_nodes_without_duplicates = fun _ct
   SimpleGraph.add_edge right ~depends_on:shared;
   let reachable = SimpleGraph.reachable_from graph [ left; right; left ] in
   let shared_count =
-    List.fold_left reachable ~acc:0
+    List.fold_left reachable ~init:0
       ~fn:(fun count id ->
         if SimpleGraph.Node_id.eq id shared.id then
           count + 1

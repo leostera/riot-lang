@@ -111,7 +111,7 @@ let parse_warning_spec = fun ~sign spec ->
   else
     String.split ~by:(String.make ~len:1 ~char:sign) spec
     |> List.filter ~fn:(fun token -> not (String.is_empty token))
-    |> List.fold_left ~acc:(Ok [])
+    |> List.fold_left ~init:(Ok [])
       ~fn:(fun acc token ->
         match (acc, warning_of_code token) with
         | Error _, _ -> acc
@@ -122,7 +122,7 @@ let parse_warning_spec = fun ~sign spec ->
     | Error () -> None
 
 let flags_to_string = fun flags ->
-  List.fold_left flags ~acc:[]
+  List.fold_left flags ~init:[]
     ~fn:(fun acc flag ->
       match flag with
       | Open m -> acc @ [ "-open"; m ]

@@ -117,7 +117,7 @@ let of_json = fun json ->
                       )
                     | _ -> Error "File entry must be an object"
                   in
-                  List.fold_left entries ~acc:(Ok [])
+                  List.fold_left entries ~init:(Ok [])
                     ~fn:(fun acc entry ->
                       match (acc, parse_entry entry) with
                       | Ok entries, Ok e -> Ok (e :: entries)
@@ -129,7 +129,7 @@ let of_json = fun json ->
               match get_field "ocamlc_warnings" with
               | None -> Ok []
               | Some (Array entries) ->
-                  List.fold_left entries ~acc:(Ok [])
+                  List.fold_left entries ~init:(Ok [])
                     ~fn:(fun acc entry ->
                       match (acc, entry) with
                       | Ok messages, String msg -> Ok (msg :: messages)
@@ -164,7 +164,7 @@ let of_json = fun json ->
                       )
                     | _ -> Error "Export entry must be an object"
                   in
-                  List.fold_left entries ~acc:(Ok [])
+                  List.fold_left entries ~init:(Ok [])
                     ~fn:(fun acc entry ->
                       match (acc, parse_entry entry) with
                       | Ok parsed, Ok export -> Ok (export :: parsed)

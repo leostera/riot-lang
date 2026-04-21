@@ -172,7 +172,7 @@ let apply_operation = fun ~source operation ->
           in
           Ok (List.fold_left
             edits_desc
-            ~acc:source
+            ~init:source
             ~fn:(fun acc edit -> apply_text_edit_unchecked ~source:acc edit))
     )
 
@@ -202,7 +202,7 @@ let apply_fix = fun ~source fix ->
       in
       Ok (List.fold_left
         edits_desc
-        ~acc:source
+        ~init:source
         ~fn:(fun acc edit -> apply_text_edit_unchecked ~source:acc edit))
 
 let apply_fixes = fun ~source fixes ->
@@ -216,5 +216,5 @@ let apply_fixes = fun ~source fixes ->
       in
       Ok (List.fold_left
         edits_desc
-        ~acc:source
+        ~init:source
         ~fn:(fun acc edit -> apply_text_edit_unchecked ~source:acc edit))

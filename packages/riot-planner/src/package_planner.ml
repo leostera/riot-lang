@@ -137,7 +137,7 @@ let module_kind_to_json = fun (kind: Module_node.kind) ->
 
 let parse_string_array = function
   | Std.Data.Json.Array xs ->
-      List.fold_left xs ~acc:(Ok [])
+      List.fold_left xs ~init:(Ok [])
         ~fn:(fun acc item ->
           match (acc, item) with
           | Error e, _ -> Error e
@@ -260,7 +260,7 @@ let module_graph_of_json = fun json ->
             let pending_deps: (Module_node.t G.node * int list) vec = vec [] in
             let parse_int_array = function
               | Array xs ->
-                  List.fold_left xs ~acc:(Ok [])
+                  List.fold_left xs ~init:(Ok [])
                     ~fn:(fun acc item ->
                       match (acc, item) with
                       | Error e, _ -> Error e
@@ -269,7 +269,7 @@ let module_graph_of_json = fun json ->
               | _ -> Error "expected int array"
             in
             let result =
-              List.fold_left node_jsons ~acc:(Ok ())
+              List.fold_left node_jsons ~init:(Ok ())
                 ~fn:(fun acc node_json ->
                   match acc with
                   | Error _ -> acc

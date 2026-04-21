@@ -175,7 +175,7 @@ let default_fetch =
       | Error err -> Error (blink_error_message err)
       | Ok conn ->
           let request =
-            List.fold_left headers ~acc:(Net.Http.Request.create method_ uri)
+            List.fold_left headers ~init:(Net.Http.Request.create method_ uri)
               ~fn:(fun request (name, value) ->
                 Net.Http.Request.add_header request name value)
           in

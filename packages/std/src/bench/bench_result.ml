@@ -43,7 +43,7 @@ let make_statistics = fun ?(gc = zero_gc_stats) timings ->
   let sorted = List.sort durations ~compare:Time.Duration.compare in
   (* Calculate total time *)
   let total_nanos =
-    List.fold_left durations ~acc:0L
+    List.fold_left durations ~init:0L
       ~fn:(fun acc d ->
         Int64.add acc (Time.Duration.to_nanos d))
   in
@@ -56,7 +56,7 @@ let make_statistics = fun ?(gc = zero_gc_stats) timings ->
   let median = List.get sorted ~at:(iterations / 2) |> Option.unwrap in
   (* Standard deviation *)
   let variance =
-    List.fold_left durations ~acc:0.0
+    List.fold_left durations ~init:0.0
       ~fn:(fun acc d ->
         let diff = Int64.sub (Time.Duration.to_nanos d) mean_nanos in
         let diff_f = Int64.to_float diff in
@@ -82,7 +82,12 @@ type summary = {
 }
 
 let make_summary = fun results ->
-  List.fold_left results ~acc:{ total = List.length results; completed = 0; skipped = 0; failed = 0 }
+  List.fold_left results ~init:{
+    total = List.length results;
+    completed = 0;
+    skipped = 0;
+    failed = 0
+  }
     ~fn:(fun acc (result: t) ->
       match result.result with
       | Completed _ -> { acc with completed = acc.completed + 1 }

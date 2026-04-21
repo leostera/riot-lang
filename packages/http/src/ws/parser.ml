@@ -54,7 +54,7 @@ let parse = fun input ->
             (* Read 8 bytes, but only use lower 4 bytes for simplicity *)
             let len_bytes = [ byte_at input 6; byte_at input 7; byte_at input 8; byte_at input 9; ] in
             let payload_len =
-              List.fold_left len_bytes ~acc:0 ~fn:(fun acc b -> (acc lsl 8) lor b)
+              List.fold_left len_bytes ~init:0 ~fn:(fun acc b -> (acc lsl 8) lor b)
             in
             (10, payload_len)
         in

@@ -31,9 +31,7 @@ and normalize_call = fun (call: Expr.call) ->
         (bindings, Expr.Indirect expr)
   in
   let argument_bindings, arguments =
-    List.fold_left
-      call.arguments
-      ~acc:([], [])
+    List.fold_left call.arguments ~init:([], [])
       ~fn:(fun (bindings_acc, arguments_acc) argument ->
         let bindings, argument = normalize_expr argument |> lift_let in
         (bindings_acc @ bindings, arguments_acc @ [ argument ]))

@@ -63,7 +63,7 @@ module type S = sig
 
   val for_each: 'value t -> fn:(key -> 'value -> unit) -> unit
 
-  val fold_left: 'value t -> acc:'acc -> fn:('acc -> key -> 'value -> 'acc) -> 'acc
+  val fold_left: 'value t -> init:'acc -> fn:('acc -> key -> 'value -> 'acc) -> 'acc
 
   val map: 'value t -> fn:('value -> 'mapped) -> 'mapped t
 

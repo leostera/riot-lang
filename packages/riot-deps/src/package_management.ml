@@ -1032,7 +1032,7 @@ let lock_package_key_equal = fun left right ->
   String.equal left.registry right.registry && Package_name.equal left.package right.package
 
 let lock_package_version_map = fun (lockfile: Riot_model.Lockfile.t) ->
-  List.fold_left lockfile.packages ~acc:[]
+  List.fold_left lockfile.packages ~init:[]
     ~fn:(fun acc (pkg: Riot_model.Lockfile.package) ->
       match lock_package_key pkg, pkg.id.version with
       | Some key, Some version -> (key, version) :: acc
@@ -1042,7 +1042,7 @@ let emit_updated_packages = fun ~(emit:event_sink) ~(previous:Riot_model.Lockfil
   current: Riot_model.Lockfile.t
 ) ->
   let previous_versions = lock_package_version_map previous in
-  List.fold_left current.packages ~acc:0
+  List.fold_left current.packages ~init:0
     ~fn:(fun updates (pkg: Riot_model.Lockfile.package) ->
       match lock_package_key pkg, pkg.id.version with
       | Some key, Some to_version -> (

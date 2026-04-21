@@ -785,7 +785,7 @@ module Query = struct
     | Some (_, value) -> Some value
 
   let get_all = fun params key ->
-    List.fold_left params ~acc:[]
+    List.fold_left params ~init:[]
       ~fn:(fun acc ((k, v)) ->
         if String.equal k key then
           v :: acc

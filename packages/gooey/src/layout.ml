@@ -375,7 +375,7 @@ and measure_children_for_final_size:
         measure_child child direction ~parent_inner_width ~parent_inner_height ~forced_main:None config)
     node.children;
   let fixed_outer_main =
-    List.fold_left node.children ~acc:0.0
+    List.fold_left node.children ~init:0.0
       ~fn:(fun acc child ->
         if is_main_axis_grow direction child.style then
           acc
@@ -387,7 +387,7 @@ and measure_children_for_final_size:
           ))
   in
   let grow_margin_main =
-    List.fold_left node.children ~acc:0.0
+    List.fold_left node.children ~init:0.0
       ~fn:(fun acc child ->
         if is_main_axis_grow direction child.style then
           acc +. (
@@ -399,7 +399,7 @@ and measure_children_for_final_size:
           acc)
   in
   let total_weight =
-    List.fold_left node.children ~acc:0.0
+    List.fold_left node.children ~init:0.0
       ~fn:(fun acc child ->
         if is_main_axis_grow direction child.style then
           acc +. child.style.grow_weight
@@ -470,7 +470,7 @@ and measure_child:
 and container_intrinsic_size: layout_node -> float * float = fun node ->
   let direction = node.style.direction in
   let total_main, max_cross =
-    List.fold_left node.children ~acc:(0.0, 0.0)
+    List.fold_left node.children ~init:(0.0, 0.0)
       ~fn:(fun (total_main, max_cross) child ->
         let child_main, child_cross =
           match direction with
@@ -505,7 +505,7 @@ and arrange_children: layout_node -> unit = fun node ->
     | Style.LeftToRight -> (content_rect.width, content_rect.height)
     | Style.TopToBottom -> (content_rect.height, content_rect.width)
   in
-  let total_children_main = List.fold_left node.children ~acc:0.0
+  let total_children_main = List.fold_left node.children ~init:0.0
     ~fn:(fun acc child ->
       acc +. (
         match style.direction with

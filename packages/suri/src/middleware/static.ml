@@ -552,7 +552,7 @@ and serve_regular_file = fun config path meta conn ->
         (* Send response *)
         let conn = Conn.respond conn ~status:Net.Http.Status.Ok ~body:content in
         let conn =
-          List.fold_left headers ~acc:conn
+          List.fold_left headers ~init:conn
             ~fn:(fun c ((name, value)) ->
               Conn.with_header name value c)
         in

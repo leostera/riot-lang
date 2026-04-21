@@ -31,7 +31,7 @@ val values: ('key, 'value) t -> 'value list
 
 val for_each: ('key, 'value) t -> fn:('key -> 'value -> unit) -> unit
 
-val fold_left: ('key, 'value) t -> acc:'acc -> fn:('acc -> 'key -> 'value -> 'acc) -> 'acc
+val fold_left: ('key, 'value) t -> init:'acc -> fn:('acc -> 'key -> 'value -> 'acc) -> 'acc
 
 val to_list: ('key, 'value) t -> ('key * 'value) list
 

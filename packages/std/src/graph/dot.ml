@@ -54,7 +54,7 @@ let escape_string = fun s ->
       | '\n' -> acc ^ "\\n"
       | '\t' -> acc ^ "\\t"
       | c -> acc ^ String.make ~len:1 ~char:c)
-    ~acc:""
+    ~init:""
     s
 
 let format_attrs = fun attrs ->

@@ -401,7 +401,7 @@ let path_fold_join_preserves_many_segment_order =
     (fun segments ->
       let values = array_to_list segments in
       let actual =
-        List.fold_left values ~acc:None
+        List.fold_left values ~init:None
           ~fn:(fun acc part ->
             match acc with
             | None -> Some part
@@ -570,7 +570,7 @@ let file_vectored_roundtrips =
     (fun values ->
       let pieces = array_to_list values in
       let total =
-        List.fold_left pieces ~acc:0 ~fn:(fun size part -> size + String.length part)
+        List.fold_left pieces ~init:0 ~fn:(fun size part -> size + String.length part)
       in
       with_temp_path "kernel_new_property" "vectored.bin"
         (fun path ->

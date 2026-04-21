@@ -106,13 +106,13 @@ let test_for_each_order = fun _ctx ->
     Error "expected List.for_each to preserve left-to-right order"
 
 let test_fold_left = fun _ctx ->
-  if Int.equal (List.fold_left [ 1; 2; 3 ] ~acc:0 ~fn:(fun acc value -> acc - value)) (-6) then
+  if Int.equal (List.fold_left [ 1; 2; 3 ] ~init:0 ~fn:(fun acc value -> acc - value)) (-6) then
     Ok ()
   else
     Error "expected List.fold_left to associate from the left"
 
 let test_fold_right = fun _ctx ->
-  if List.fold_right [ 1; 2; 3 ] ~acc:[] ~fn:(fun value acc -> value :: acc) = [ 1; 2; 3 ] then
+  if List.fold_right [ 1; 2; 3 ] ~init:[] ~fn:(fun value acc -> value :: acc) = [ 1; 2; 3 ] then
     Ok ()
   else
     Error "expected List.fold_right to rebuild original order"

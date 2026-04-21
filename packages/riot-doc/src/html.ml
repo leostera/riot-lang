@@ -12,7 +12,7 @@ let escape_html = fun input ->
         | '\'' -> "&#39;"
         | _ -> String.make ~len:1 ~char:ch
       ))
-    ~acc:""
+    ~init:""
     input
 
 let assets = [ (

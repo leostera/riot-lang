@@ -280,7 +280,7 @@ let grouped_to_formatted_output = fun ~file ~source grouped ->
         Int.compare left.start right.start)
   in
   let lines_with_snippets =
-    List.fold_left spans ~acc:basic_info
+    List.fold_left spans ~init:basic_info
       ~fn:(fun acc span ->
         match extract_code_snippet_from_layout layout span with
         | Some (code_line, pointer_line, line_num) -> acc
@@ -313,7 +313,7 @@ let grouped_to_formatted_output_with_layout = fun ~file ~layout grouped ->
         Int.compare left.start right.start)
   in
   let lines_with_snippets =
-    List.fold_left spans ~acc:basic_info
+    List.fold_left spans ~init:basic_info
       ~fn:(fun acc span ->
         match extract_code_snippet_from_layout layout span with
         | Some (code_line, pointer_line, line_num) -> acc

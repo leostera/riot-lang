@@ -88,9 +88,9 @@ let first_failure_of_completed_actions = fun completed_actions ->
 
 let ocamlc_warnings_of_completed_actions = fun completed_actions ->
   let seen = HashSet.create () in
-  completed_actions |> List.fold_left ~acc:[]
+  completed_actions |> List.fold_left ~init:[]
     ~fn:(fun acc completed_action ->
-      List.fold_left completed_action.result.ocamlc_warnings ~acc
+      List.fold_left completed_action.result.ocamlc_warnings ~init:acc
         ~fn:(fun acc warning ->
           if HashSet.contains seen ~value:warning then
             acc

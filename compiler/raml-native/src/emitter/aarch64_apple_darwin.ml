@@ -127,10 +127,8 @@ let encode_symbol_name = fun name ->
     if index = String.length name then
       String.concat "" (List.rev parts)
     else
-      let char =
-        String.get name ~at:index
-        |> Option.expect ~msg:(format Format.[ str "missing symbol char at "; int index ])
-      in
+      let char = String.get name ~at:index
+      |> Option.expect ~msg:(format Format.[ str "missing symbol char at "; int index ]) in
       loop (index + 1) (hex_escape (Char.code char) :: parts)
   in
   loop 0 []
@@ -242,7 +240,8 @@ let move_int64_into = fun register value ->
   | Some (first_shift, first_imm) ->
       instruction (Asm.Instruction.Movz { dst = register; imm = first_imm; shift = first_shift })
       :: (
-        parts |> List.filter_map ~fn:(fun (shift, imm) ->
+        parts |> List.filter_map
+          ~fn:(fun (shift, imm) ->
             if shift = first_shift then
               None
             else if imm = 0 then
@@ -304,8 +303,9 @@ and materialize_literal = fun _layout strings register literal ->
   match literal with
   | Lir.Literal.String value -> (
       match
-        List.find strings ~fn:(fun constant -> String.equal constant.value value)
-        |> Option.map ~fn:(fun constant -> constant.label)
+        List.find strings
+          ~fn:(fun constant ->
+            String.equal constant.value value) |> Option.map ~fn:(fun constant -> constant.label)
       with
       | Some label -> Ok (load_symbol_address register label)
       | None -> Ok (load_symbol_address register (mangle_symbol "__missing_string_literal"))
@@ -532,9 +532,7 @@ let emit_procedure = fun strings (procedure: Lir.Procedure.t) ->
   let layout = procedure.frame in
   let* prologue = emit_prologue layout in
   let* body =
-    List.fold_left
-      procedure.body
-      ~acc:(Ok [])
+    List.fold_left procedure.body ~init:(Ok [])
       ~fn:(fun acc instruction_ ->
         let* acc = acc in
         let* emitted = emit_instruction layout strings procedure instruction_ in
@@ -574,7 +572,9 @@ let emit_poll_stub = fun () ->
 
 let add_string_constant = fun constants value ->
   match
-    List.find constants ~fn:(fun constant -> String.equal constant.value value)
+    List.find constants
+      ~fn:(fun constant ->
+        String.equal constant.value value)
   with
   | Some _ -> constants
   | None -> constants
@@ -608,7 +608,7 @@ let collect_instruction_strings = fun constants instruction_ ->
         | Lir.Callee.Direct _ -> constants
         | Lir.Callee.Indirect operand -> collect_operand_strings constants operand
       in
-      List.fold_left arguments ~acc:constants ~fn:collect_operand_strings
+      List.fold_left arguments ~init:constants ~fn:collect_operand_strings
   | Lir.Instruction.Branch_if_zero { operand; _ } ->
       collect_operand_strings constants operand
   | Lir.Instruction.Jump _ ->
@@ -619,9 +619,9 @@ let collect_instruction_strings = fun constants instruction_ ->
 let string_constants_of_program = fun (program: Lir.Program.t) ->
   List.fold_left
     program.procedures
-    ~acc:[]
+    ~init:[]
     ~fn:(fun constants (procedure: Lir.Procedure.t) ->
-      List.fold_left procedure.body ~acc:constants ~fn:collect_instruction_strings)
+      List.fold_left procedure.body ~init:constants ~fn:collect_instruction_strings)
 
 type ordered_names = {
   seen: string HashSet.t;
@@ -642,24 +642,21 @@ let add_name = fun names name ->
 let ordered_names = fun names -> List.rev names.ordered_rev
 
 let global_symbols_of_program = fun (program: Lir.Program.t) ->
-  List.fold_left
-    program.procedures
-    ~acc:(empty_names ())
+  List.fold_left program.procedures ~init:(empty_names ())
     ~fn:(fun symbols (procedure: Lir.Procedure.t) ->
-      List.fold_left
-        procedure.body
-        ~acc:symbols
+      List.fold_left procedure.body ~init:symbols
         ~fn:(fun symbols instruction_ ->
           match instruction_ with
           | Lir.Instruction.Store_global { symbol; _ } -> add_name symbols symbol
-          | _ -> symbols))
-  |> ordered_names
+          | _ -> symbols)) |> ordered_names
 
 let emit_string_constants = fun strings ->
   match strings with
   | [] -> []
   | _ -> [ directive ".section" ~args:[ "__TEXT"; "__cstring"; "cstring_literals" ] (); ]
-  @ List.flat_map strings ~fn:(fun constant ->
+  @ List.flat_map
+    strings
+    ~fn:(fun constant ->
       [
         directive ".p2align" ~args:[ "0" ] ();
         label constant.label;
@@ -674,7 +671,8 @@ let emit_global_data = fun globals ->
   match globals with
   | [] -> []
   | _ ->
-      [ directive ".data" () ] @ List.flat_map globals ~fn:(fun symbol ->
+      [ directive ".data" () ] @ List.flat_map globals
+        ~fn:(fun symbol ->
           let symbol = mangle_symbol symbol in
           [
             directive ".globl" ~args:[ symbol ] ();
@@ -685,9 +683,7 @@ let emit_global_data = fun globals ->
 
 let emit_text = fun strings (program: Lir.Program.t) ->
   let* procedures =
-    List.fold_left
-      program.procedures
-      ~acc:(Ok [])
+    List.fold_left program.procedures ~init:(Ok [])
       ~fn:(fun acc procedure ->
         let* acc = acc in
         let* emitted = emit_procedure strings procedure in

@@ -258,7 +258,7 @@ let promote = fun store hash ~target_dir ->
     |> Result.map_err ~fn:(fun cause -> CreateParentDirFailed { path = dst_parent; cause }) in
     copy_with_permissions ~src ~dst ~copy_error:(fun cause -> CopyArtifactFailed { src; dst; cause })
   in
-  List.fold_left manifest.files ~acc:(Ok ())
+  List.fold_left manifest.files ~init:(Ok ())
     ~fn:(fun acc entry ->
       let* () = acc in
       promote_one entry)
@@ -430,7 +430,7 @@ let materialize_package_exports = fun store ~exports ~target_dir ->
         | Ok false
         | Error _ -> Error (ExportSourceMissing { path = src })
   in
-  List.fold_left exports ~acc:(Ok ())
+  List.fold_left exports ~init:(Ok ())
     ~fn:(fun acc entry ->
       let* () = acc in
       copy_one entry)

@@ -117,7 +117,7 @@ let test_map = fun _ctx ->
     Error "expected Array.map to build a fresh mapped array"
 
 let test_fold_left = fun _ctx ->
-  if Int.equal (Array.fold_left [|1; 2; 3|] ~acc:0 ~fn:(fun acc value -> acc + value)) 6 then
+  if Int.equal (Array.fold_left [|1; 2; 3|] ~init:0 ~fn:(fun acc value -> acc + value)) 6 then
     Ok ()
   else
     Error "expected Array.fold_left to accumulate left-to-right"
@@ -125,7 +125,7 @@ let test_fold_left = fun _ctx ->
 let test_fold_right = fun _ctx ->
   if
     String.equal
-      (Array.fold_right [|1; 2; 3|] ~acc:"" ~fn:(fun value acc -> Int.to_string value ^ acc))
+      (Array.fold_right [|1; 2; 3|] ~init:"" ~fn:(fun value acc -> Int.to_string value ^ acc))
       "123"
   then
     Ok ()

@@ -235,7 +235,7 @@ let is_relative = fun path -> Path.is_relative path
 let join = fun paths ->
   match paths with
   | [] -> Path.v ""
-  | path :: rest -> List.fold_left rest ~acc:path ~fn:Path.join
+  | path :: rest -> List.fold_left rest ~init:path ~fn:Path.join
 
 let read = fun path ->
   match File.open_read path with

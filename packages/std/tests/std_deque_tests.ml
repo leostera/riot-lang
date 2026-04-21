@@ -198,7 +198,7 @@ let test_for_each_wraparound = fun _ctx ->
 
 let test_fold_left_wraparound = fun _ctx ->
   let deque = wraparound_deque () in
-  if Int.equal (Deque.fold_left deque ~acc:0 ~fn:(fun acc value -> acc + value)) 12 then
+  if Int.equal (Deque.fold_left deque ~init:0 ~fn:(fun acc value -> acc + value)) 12 then
     Ok ()
   else
     Error "expected fold_left after wrap-around to preserve logical order"

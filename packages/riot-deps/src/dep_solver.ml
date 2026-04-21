@@ -73,7 +73,7 @@ let relative_path_from = fun ~base path ->
       in
       let rec build_path = function
         | [] -> Path.v "."
-        | first :: rest -> List.fold_left rest ~acc:first ~fn:Path.join
+        | first :: rest -> List.fold_left rest ~init:first ~fn:Path.join
       in
       let base_parts, path_parts = drop_common (Path.components base) (Path.components path) in
       let base_parts =
@@ -279,7 +279,7 @@ let merge_lock_packages = fun packages ->
 let dependency_counts = fun (packages: Riot_model.Lockfile.package list) ->
   List.fold_left
     packages
-    ~acc:(0, 0, 0)
+    ~init:(0, 0, 0)
     ~fn:(fun (runtime, build, dev) (pkg: Riot_model.Lockfile.package) ->
       (
         runtime + List.length pkg.dependencies,

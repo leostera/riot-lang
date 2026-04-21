@@ -521,7 +521,7 @@ let from_json = fun json ->
         let parse_actions actions_json =
           match actions_json with
           | Array action_jsons ->
-              List.fold_left action_jsons ~acc:(Ok [])
+              List.fold_left action_jsons ~init:(Ok [])
                 ~fn:(fun acc action_json ->
                   match acc with
                   | Error _ -> acc
@@ -548,7 +548,7 @@ let from_json = fun json ->
         let parse_dependencies deps_json =
           match deps_json with
           | Array dep_jsons ->
-              List.fold_left dep_jsons ~acc:(Ok [])
+              List.fold_left dep_jsons ~init:(Ok [])
                 ~fn:(fun acc dep_json ->
                   match (acc, dep_json) with
                   | Error e, _ -> Error e
@@ -557,7 +557,7 @@ let from_json = fun json ->
           | _ -> Error "dependencies must be array"
         in
         match
-          List.fold_left node_jsons ~acc:(Ok ())
+          List.fold_left node_jsons ~init:(Ok ())
             ~fn:(fun acc node_json ->
               match acc with
               | Error _ -> acc

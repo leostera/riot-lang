@@ -53,7 +53,7 @@ let rec lower_expr = fun ~assigned expr ->
       let used =
         List.fold_left
           function_.params
-          ~acc:lowered_body.used
+          ~init:lowered_body.used
           ~fn:(fun used (binder: Jir.Binder.t) -> forget_binding used binder.binding_id)
       in
       (Jir.Expr.Function Jir.Expr.{ function_ with body = lowered_body.statements }, used)
@@ -178,22 +178,16 @@ and lower_declaration = fun ~protected ~assigned used_after (declaration: Jir.De
         (Some init, used)
   in
   match (declaration.kind, init) with
-  | (Jir.Declaration.Const, Some init)
-    when not (Entity_set.mem binder_entity protected)
-         && not (Entity_set.mem binder_entity used_after)
-         && Analysis.is_pure_expr init ->
-      { statements = []; used = used_after }
-  | (Jir.Declaration.Let, None)
-    when not (Entity_set.mem binder_entity protected)
-         && not (Entity_set.mem binder_entity used_after)
-         && not (Entity_set.mem binder_entity assigned) ->
-      { statements = []; used = used_after }
-  | (Jir.Declaration.Let, Some init)
-    when not (Entity_set.mem binder_entity protected)
-         && not (Entity_set.mem binder_entity used_after)
-         && not (Entity_set.mem binder_entity assigned)
-         && Analysis.is_pure_expr init ->
-      { statements = []; used = used_after }
+  | (Jir.Declaration.Const, Some init) when not (Entity_set.mem binder_entity protected)
+  && not (Entity_set.mem binder_entity used_after)
+  && Analysis.is_pure_expr init -> { statements = []; used = used_after }
+  | (Jir.Declaration.Let, None) when not (Entity_set.mem binder_entity protected)
+  && not (Entity_set.mem binder_entity used_after)
+  && not (Entity_set.mem binder_entity assigned) -> { statements = []; used = used_after }
+  | (Jir.Declaration.Let, Some init) when not (Entity_set.mem binder_entity protected)
+  && not (Entity_set.mem binder_entity used_after)
+  && not (Entity_set.mem binder_entity assigned)
+  && Analysis.is_pure_expr init -> { statements = []; used = used_after }
   | _ -> {
     statements = [ Jir.Statement.Declaration Jir.Declaration.{ declaration with init } ];
     used = Entity_set.union (forget_binding used_after declaration.binder.binding_id) init_used
@@ -228,10 +222,9 @@ and lower_block = fun ~protected ~assigned statements ->
 
 let program = fun ~context:_ (program: Jir.Program.t) ->
   let protected =
-    List.fold_left
-      program.exports
-      ~acc:Entity_set.empty
-      ~fn:(fun set (export: Jir.Export.t) -> Entity_set.add export.local set)
+    List.fold_left program.exports ~init:Entity_set.empty
+      ~fn:(fun set (export: Jir.Export.t) ->
+        Entity_set.add export.local set)
   in
   let assigned = Analysis.program_assigned_entities program in
   let lowered_body = lower_block ~protected ~assigned program.body in

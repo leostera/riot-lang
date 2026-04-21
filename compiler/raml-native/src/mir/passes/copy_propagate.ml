@@ -16,9 +16,9 @@ module Literal = Types.Literal
 type env = (string * Operand.t) list
 
 let find = fun env name ->
-  env
-  |> List.find ~fn:(fun (bound_name, _) -> String.equal bound_name name)
-  |> Option.map ~fn:(fun (_, operand) -> operand)
+  env |> List.find
+    ~fn:(fun (bound_name, _) ->
+      String.equal bound_name name) |> Option.map ~fn:(fun (_, operand) -> operand)
 
 let remove = fun env name ->
   List.filter env ~fn:(fun (bound_name, _) -> not (String.equal bound_name name))
@@ -78,8 +78,7 @@ let rewrite_callee = fun env callee ->
   | Callee.Direct _ -> callee
   | Callee.Indirect operand -> Callee.Indirect (resolve_operand env operand)
 
-let rewrite_operands = fun env operands ->
-  List.map operands ~fn:(resolve_operand env)
+let rewrite_operands = fun env operands -> List.map operands ~fn:(resolve_operand env)
 
 let rec rewrite_instruction = fun env instruction ->
   match instruction with
@@ -127,16 +126,13 @@ let rec rewrite_instruction = fun env instruction ->
       (env, [])
 
 and rewrite_instructions = fun env instructions ->
-  List.fold_left
-    instructions
-    ~acc:(env, [])
+  List.fold_left instructions ~init:(env, [])
     ~fn:(fun (env, acc) instruction ->
       let env, rewritten = rewrite_instruction env instruction in
       (env, acc @ rewritten))
 
 and merge_env = fun left right ->
-  left
-  |> List.filter_map
+  left |> List.filter_map
     ~fn:(fun (name, _) ->
       let left_resolved = resolve_operand left (Operand.Register name) in
       match resolve_operand right (Operand.Register name) with

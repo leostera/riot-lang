@@ -48,9 +48,7 @@ let rec rewrite_instruction = fun live_after instruction ->
       (None, live_after)
 
 and rewrite_instructions = fun instructions live_after ->
-  List.fold_right
-    instructions
-    ~acc:([], live_after)
+  List.fold_right instructions ~init:([], live_after)
     ~fn:(fun instruction (kept, live_after) ->
       let rewritten, live_before = rewrite_instruction live_after instruction in
       let kept =

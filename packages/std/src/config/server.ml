@@ -74,7 +74,7 @@ let apply_patches (base_value: Spec.value) updates: Spec.value =
   match base_value with
   | Map kvs ->
       let updated_kvs =
-        List.fold_left updates ~acc:kvs
+        List.fold_left updates ~init:kvs
           ~fn:(fun acc ((key, new_value)) ->
             (* Replace or add the key *)
             List.filter acc ~fn:(fun ((k, _)) -> not (String.equal k key)) @ [ (key, new_value) ])

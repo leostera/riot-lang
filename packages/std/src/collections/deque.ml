@@ -172,8 +172,8 @@ let for_each = fun deque ~fn ->
     | None -> ()
   done
 
-let fold_left = fun deque ~acc ~fn ->
-  let result = box acc in
+let fold_left = fun deque ~init ~fn ->
+  let result = box init in
   for i = 0 to deque.size - 1 do
     let index = (deque.front + i) mod Array.length deque.data in
     match get_slot deque index with

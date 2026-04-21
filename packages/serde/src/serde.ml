@@ -87,7 +87,7 @@ module Fields = struct
   let longest_common_prefix_length = function
     | [] -> 0
     | first :: rest ->
-        List.fold_left rest ~acc:(String.length first.suffix)
+        List.fold_left rest ~init:(String.length first.suffix)
           ~fn:(fun prefix_length entry ->
             let shared = common_prefix_length first.suffix entry.suffix in
             if shared < prefix_length then
@@ -103,11 +103,11 @@ module Fields = struct
       | (current, group) :: rest when Char.equal current first -> (current, entry :: group) :: rest
       | head :: rest -> head :: insert entry rest
     in
-    List.fold_left entries ~acc:[] ~fn:(fun groups entry -> insert entry groups)
+    List.fold_left entries ~init:[] ~fn:(fun groups entry -> insert entry groups)
 
   let rec build_node: 'tag. 'tag pending list -> 'tag node = fun entries ->
     let (tag, non_empty_entries) =
-      List.fold_left entries ~acc:(None, [])
+      List.fold_left entries ~init:(None, [])
         ~fn:(fun (tag, non_empty_entries) entry ->
           if Int.equal (String.length entry.suffix) 0 then
             match tag with

@@ -76,11 +76,11 @@ let module_full_name = fun (module_doc: module_doc) ->
 let rec flatten_modules = fun (modules: module_doc list) ->
   modules
   |> List.fold_left
-    ~acc:[]
+    ~init:[]
     ~fn:(fun acc (module_doc: module_doc) -> acc @ [ module_doc ] @ flatten_modules module_doc.modules)
 
 let rec flatten_items = fun (modules: module_doc list) ->
-  modules |> List.fold_left ~acc:[]
+  modules |> List.fold_left ~init:[]
     ~fn:(fun acc (module_doc: module_doc) ->
       let own_items = module_doc.items |> List.map ~fn:(fun item -> (module_doc, item)) in
       acc @ own_items @ flatten_items module_doc.modules)
@@ -146,17 +146,17 @@ let relative_item_href = fun ~from_module item -> item_file_name item
 
 let module_output_path = fun ~output_dir module_doc ->
   let module_dir = module_doc.path
-  |> List.fold_left ~acc:output_dir ~fn:(fun acc segment -> Path.(acc / Path.v segment)) in
+  |> List.fold_left ~init:output_dir ~fn:(fun acc segment -> Path.(acc / Path.v segment)) in
   Path.(module_dir / Path.v "index.html")
 
 let module_source_output_path = fun ~output_dir module_doc ->
   let module_dir = module_doc.path
-  |> List.fold_left ~acc:output_dir ~fn:(fun acc segment -> Path.(acc / Path.v segment)) in
+  |> List.fold_left ~init:output_dir ~fn:(fun acc segment -> Path.(acc / Path.v segment)) in
   Path.(module_dir / Path.v "source.html")
 
 let item_output_path = fun ~output_dir ~module_doc item ->
   let module_dir = module_doc.path
-  |> List.fold_left ~acc:output_dir ~fn:(fun acc segment -> Path.(acc / Path.v segment)) in
+  |> List.fold_left ~init:output_dir ~fn:(fun acc segment -> Path.(acc / Path.v segment)) in
   Path.(module_dir / Path.v (item_file_name item))
 
 let module_summary = fun (module_doc: module_doc) ->

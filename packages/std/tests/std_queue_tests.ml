@@ -88,7 +88,7 @@ let test_for_each = fun _ctx ->
 let test_fold_left = fun _ctx ->
   let queue = Queue.from_list [ 1; 2; 3 ] in
   if
-    String.equal (Queue.fold_left queue ~acc:"" ~fn:(fun acc value -> acc ^ Int.to_string value)) "123"
+    String.equal (Queue.fold_left queue ~init:"" ~fn:(fun acc value -> acc ^ Int.to_string value)) "123"
   then
     Ok ()
   else

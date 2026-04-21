@@ -118,7 +118,7 @@ let lower_init_item = fun (item: Core.Init_item.t) ->
       (`Eval expr, Some (Wasm_types.Init_item.Eval expr))
 
 let lower_binding_group = fun (group: Core.Binding_group.t) ->
-  List.fold_left group.items ~acc:([], [], [])
+  List.fold_left group.items ~init:([], [], [])
     ~fn:(fun (functions, globals, init_items) item ->
       match lower_init_item item with
       | (`Function function_, None) -> (functions @ [ function_ ], globals, init_items)
@@ -138,7 +138,7 @@ let lower_binding_group = fun (group: Core.Binding_group.t) ->
 
 let lower_compilation_unit = fun (compilation_unit: Core.Compilation_unit.t) ->
   let functions, globals, init =
-    List.fold_left compilation_unit.init ~acc:([], [], [])
+    List.fold_left compilation_unit.init ~init:([], [], [])
       ~fn:(fun (functions, globals, init_items) group ->
         let group_functions, group_globals, group_init = lower_binding_group group in
         (functions @ group_functions, globals @ group_globals, init_items @ group_init))

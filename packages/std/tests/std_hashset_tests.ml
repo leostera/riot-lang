@@ -97,7 +97,7 @@ let test_for_each = fun _ctx ->
 
 let test_fold_left = fun _ctx ->
   let set = HashSet.from_list [ 1; 2; 3 ] in
-  if Int.equal (HashSet.fold_left set ~acc:0 ~fn:(fun acc value -> acc + value)) 6 then
+  if Int.equal (HashSet.fold_left set ~init:0 ~fn:(fun acc value -> acc + value)) 6 then
     Ok ()
   else
     Error "expected fold_left to accumulate all members"

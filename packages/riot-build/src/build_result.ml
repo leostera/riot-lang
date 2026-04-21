@@ -76,7 +76,7 @@ let should_prefer = fun current incoming ->
     Int.compare (status_priority incoming.status) (status_priority current.status) > 0
 
 let merge_artifacts = fun current incoming ->
-  List.fold_left incoming ~acc:current
+  List.fold_left incoming ~init:current
     ~fn:(fun acc (artifact: Riot_store.Artifact.t) ->
       if List.any acc
           ~fn:(fun existing ->
@@ -121,7 +121,7 @@ let of_build_results = fun results ->
   {
     packages = List.fold_left
       results
-      ~acc:[]
+      ~init:[]
       ~fn:(fun acc result -> upsert_package_result acc (package_result_of_build_result result))
   }
 

@@ -38,7 +38,7 @@ let test_from_string_matches_json = fun _ctx ->
     "  \n  {\"nested\": [1, {\"ok\": false}, null]}  \n  ";
   ]
   in
-  List.fold_left cases ~acc:(Ok ())
+  List.fold_left cases ~init:(Ok ())
     ~fn:(fun acc input ->
       match acc with
       | Error _ as error -> error

@@ -107,7 +107,7 @@ val exists: fn:(char -> bool) -> t -> bool
 
 val for_all: fn:(char -> bool) -> t -> bool
 
-val fold_left: fn:('acc -> char -> 'acc) -> acc:'acc -> t -> 'acc
+val fold_left: fn:('acc -> char -> 'acc) -> init:'acc -> t -> 'acc
 
 val escaped: t -> t
 

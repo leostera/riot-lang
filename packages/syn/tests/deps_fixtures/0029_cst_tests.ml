@@ -85,7 +85,7 @@ let green_token_kinds = fun node ->
   let rec loop = fun acc ->
     function
     | Ceibo.Green.Token token -> token.kind :: acc
-    | Ceibo.Green.Node node -> Ceibo.Green.children node |> List.fold_left ~acc ~fn:loop
+    | Ceibo.Green.Node node -> Ceibo.Green.children node |> List.fold_left ~init:acc ~fn:loop
   in
   loop [] (Ceibo.Green.Node node) |> List.rev
 

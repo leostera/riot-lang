@@ -446,7 +446,7 @@ let parse = fun content ->
     in
     (* Convert sections to nested tables *)
     let items =
-      List.fold_left all_sections ~acc:[]
+      List.fold_left all_sections ~init:[]
         ~fn:(fun acc section ->
           if section.name = "" then
             section.items @ acc
@@ -457,7 +457,7 @@ let parse = fun content ->
     in
     (* Add array sections as arrays *)
     let items_with_arrays =
-      List.fold_left !array_sections ~acc:items
+      List.fold_left !array_sections ~init:items
         ~fn:(fun acc ((name, tables)) ->
           (* Split dotted array section names (e.g., "log.handler" -> ["log"; "handler"]) *)
           let path = String.split ~by:"." name in

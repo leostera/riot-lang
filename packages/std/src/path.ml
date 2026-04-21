@@ -247,7 +247,7 @@ let strip_prefix = fun path ~prefix ->
   | Ok remaining ->
       let result =
         match remaining with
-        | first :: rest -> List.fold_left rest ~acc:first ~fn:join
+        | first :: rest -> List.fold_left rest ~init:first ~fn:join
         | [] -> ""
       in
       Result.ok result

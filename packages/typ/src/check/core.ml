@@ -349,7 +349,7 @@ let import_scheme = fun scheme ->
 let env_of_typing_context = fun typing_context ->
   List.fold_left
     typing_context.Typing_context.values
-    ~acc:[]
+    ~init:[]
     ~fn:(fun env (value_binding: Typing_context.value_binding) ->
       {
         binding_id = value_binding.binding_id;
@@ -480,13 +480,13 @@ let rec lower_core_type = fun state ~level vars core_type ->
 let extend_mono = fun (env: env) (bindings: binding list) ->
   List.fold_left
     bindings
-    ~acc:env
+    ~init:env
     ~fn:(fun (extended_env: env) (binding: binding) -> binding :: extended_env)
 
 let extend_generalized = fun (env: env) ~level (bindings: binding list) ->
   List.fold_left
     bindings
-    ~acc:env
+    ~init:env
     ~fn:(fun (extended_env: env) (binding: binding) ->
       { binding with ty = generalize level binding.ty } :: extended_env)
 
@@ -992,7 +992,7 @@ let check_implementation = fun ~typing_context (implementation: Cst.implementati
   let state = make_state ~next_binding_stamp:typing_context.Typing_context.next_binding_stamp in
   let env = env_of_typing_context typing_context in
   let _, bindings =
-    List.fold_left implementation.items ~acc:(env, [])
+    List.fold_left implementation.items ~init:(env, [])
       ~fn:(fun (env, bindings) item ->
         let next_env, item_bindings = infer_structure_item state env ~level:0 item in
         (next_env, List.append bindings item_bindings))
@@ -1062,7 +1062,7 @@ let check_interface = fun ~typing_context (interface: Cst.interface) ->
   let state = make_state ~next_binding_stamp:typing_context.Typing_context.next_binding_stamp in
   let env = env_of_typing_context typing_context in
   let _, bindings =
-    List.fold_left interface.items ~acc:(env, [])
+    List.fold_left interface.items ~init:(env, [])
       ~fn:(fun (env, bindings) item ->
         let next_env, item_bindings = check_signature_item state env ~level:0 item in
         (next_env, List.append bindings item_bindings))

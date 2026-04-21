@@ -415,7 +415,7 @@ module RawTable = struct
   (* Fold over all key-value pairs *)
 
   let fold = fun f table acc ->
-    Array.fold_left table.buckets ~acc
+    Array.fold_left table.buckets ~init:acc
       ~fn:(fun acc bucket ->
         match bucket with
         | Some (k, v) -> f k v acc
@@ -424,7 +424,7 @@ module RawTable = struct
   (* Convert to list *)
 
   let to_list = fun table ->
-    Array.fold_left table.buckets ~acc:[]
+    Array.fold_left table.buckets ~init:[]
       ~fn:(fun acc bucket ->
         match bucket with
         | Some (k, v) -> (k, v) :: acc

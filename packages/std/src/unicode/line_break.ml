@@ -275,7 +275,7 @@ let wrap_lines = fun ~width s ->
                 wrap_text (pos + rune_len) 0 (pos + rune_len) (line :: lines) breaks
               else if new_width > width then
                 let last_break =
-                  List.fold_left breaks ~acc:None
+                  List.fold_left breaks ~init:None
                     ~fn:(fun acc (break_pos, _) ->
                       if break_pos > line_start && break_pos < pos then
                         Some break_pos

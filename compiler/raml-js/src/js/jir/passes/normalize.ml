@@ -83,9 +83,9 @@ and collect_expr_imports = fun expr state ->
       let state = collect_expr_imports binary.left state in
       collect_expr_imports binary.right state
   | Jir.Expr.Array elements ->
-      List.fold_left elements ~acc:state ~fn:collect_array_element_imports
+      List.fold_left elements ~init:state ~fn:collect_array_element_imports
   | Jir.Expr.Object fields ->
-      List.fold_left fields ~acc:state ~fn:collect_object_field_imports
+      List.fold_left fields ~init:state ~fn:collect_object_field_imports
   | Jir.Expr.Function function_ ->
       collect_statement_import_list function_.body state
   | Jir.Expr.Member member ->
@@ -138,7 +138,7 @@ and collect_statement_imports = fun statement state ->
 let collect_program_imports = fun program ->
   List.fold_left
     Jir.Program.(program.body)
-    ~acc:empty_import_state
+    ~init:empty_import_state
     ~fn:(fun state statement -> collect_statement_imports statement state)
 
 let rec normalize_array_element = fun element ->
@@ -214,8 +214,7 @@ and normalize_statement = fun statement ->
       let else_ = normalize_statement_list if_.else_ in
       Simplify.conditional ~condition ~then_ ~else_
 
-and normalize_statement_list = fun statements ->
-  List.flat_map statements ~fn:normalize_statement
+and normalize_statement_list = fun statements -> List.flat_map statements ~fn:normalize_statement
 
 let program = fun ~context:_ (program: Jir.Program.t) ->
   let body = normalize_statement_list program.body in

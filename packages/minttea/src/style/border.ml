@@ -24,7 +24,7 @@ let split_lines = fun text ->
         line)
 
 let get_width = fun text ->
-  List.fold_left (split_lines text) ~acc:0
+  List.fold_left (split_lines text) ~init:0
     ~fn:(fun acc line ->
       let len = utf8_len (remove_color_sequences line) in
       if acc < len then

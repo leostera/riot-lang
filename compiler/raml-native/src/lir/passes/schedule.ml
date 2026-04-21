@@ -74,9 +74,7 @@ let remove_fallthrough_jumps = fun instructions ->
   loop [] instructions
 
 let used_labels = fun instructions ->
-  List.fold_left
-    instructions
-    ~acc:(HashSet.create ())
+  List.fold_left instructions ~init:(HashSet.create ())
     ~fn:(fun used instruction ->
       match instruction with
       | Instruction.Branch_if_zero branch ->

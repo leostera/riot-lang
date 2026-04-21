@@ -65,7 +65,7 @@ module type S = sig
 
   val for_each: 'value t -> fn:(key -> 'value -> unit) -> unit
 
-  val fold_left: 'value t -> acc:'acc -> fn:('acc -> key -> 'value -> 'acc) -> 'acc
+  val fold_left: 'value t -> init:'acc -> fn:('acc -> key -> 'value -> 'acc) -> 'acc
 
   val map: 'value t -> fn:('value -> 'mapped) -> 'mapped t
 
@@ -575,9 +575,9 @@ module Make (Order : Order.Ordered) = struct
         fn key value;
         for_each right ~fn
 
-  let rec fold_left = fun map ~acc ~fn ->
+  let rec fold_left = fun map ~init ~fn ->
     match map with
-    | Empty -> acc
+    | Empty -> init
     | Node {
       left;
       key;
@@ -585,9 +585,9 @@ module Make (Order : Order.Ordered) = struct
       right;
       _
     } ->
-        let acc = fold_left left ~acc ~fn in
+        let acc = fold_left left ~init ~fn in
         let acc = fn acc key value in
-        fold_left right ~acc ~fn
+        fold_left right ~init:acc ~fn
 
   let rec map = fun values ~fn ->
     match values with
@@ -753,7 +753,7 @@ module Make (Order : Order.Ordered) = struct
   let from_list = fun entries ->
     List.fold_left entries ~acc:empty ~fn:(fun map (key, value) -> insert map ~key ~value)
 
-  let all = fun map ~fn -> fold_left map ~acc:true ~fn:(fun acc key value -> acc && fn key value)
+  let all = fun map ~fn -> fold_left map ~init:true ~fn:(fun acc key value -> acc && fn key value)
 
-  let any = fun map ~fn -> fold_left map ~acc:false ~fn:(fun acc key value -> acc || fn key value)
+  let any = fun map ~fn -> fold_left map ~init:false ~fn:(fun acc key value -> acc || fn key value)
 end

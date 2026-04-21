@@ -66,7 +66,7 @@ let payload_summary = fun payload ->
     )
 
 let write_outbound = fun output messages ->
-  List.fold_left messages ~acc:(Ok ())
+  List.fold_left messages ~init:(Ok ())
     ~fn:(fun acc json ->
       let* () = acc in
       Framing.write output (Std.Data.Json.to_string json)

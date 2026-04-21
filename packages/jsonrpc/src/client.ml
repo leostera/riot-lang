@@ -219,7 +219,7 @@ let call_batch: type req res. (req, res) t -> req list -> (res Common.response l
           match json with
           | Json.Array responses ->
               let parsed_responses =
-                List.fold_left responses ~acc:(Ok [])
+                List.fold_left responses ~init:(Ok [])
                   ~fn:(fun acc json_resp ->
                     let* responses = acc in
                     match json_resp with

@@ -15,19 +15,14 @@ module Entity_set = struct
 
   let add = fun entity set -> Storage.insert set ~key:entity ~value:()
 
-  let singleton = fun entity ->
-    Storage.singleton ~key:entity ~value:()
+  let singleton = fun entity -> Storage.singleton ~key:entity ~value:()
 
   let mem = fun entity set -> Storage.has_key set ~key:entity
 
   let union = fun left right ->
-    Storage.union
-      ~left
-      ~right
-      ~fn:(fun ~key:_ ~left:() ~right:() -> Some ())
+    Storage.union ~left ~right ~fn:(fun ~key:_ ~left:(()) ~right:(()) -> Some ())
 
-  let filter = fun predicate set ->
-    Storage.filter set ~fn:(fun entity () -> predicate entity)
+  let filter = fun predicate set -> Storage.filter set ~fn:(fun entity () -> predicate entity)
 end
 
 let rec is_pure_expr = fun expr ->
@@ -165,10 +160,9 @@ and statements_read_entities = fun statements used ->
 
 let program_read_entities = fun (program: Jir.Program.t) ->
   let used = statements_read_entities program.body Entity_set.empty in
-  List.fold_left
-    program.exports
-    ~acc:used
-    ~fn:(fun used (export: Jir.Export.t) -> Entity_set.add export.local used)
+  List.fold_left program.exports ~init:used
+    ~fn:(fun used (export: Jir.Export.t) ->
+      Entity_set.add export.local used)
 
 let rec expr_assigned_entities = fun expr entities ->
   match expr with

@@ -161,7 +161,7 @@ let rec descend_attribute = fun walk ctx (attribute: Cst.attribute) ->
   | None -> ctx
 
 and descend_extension = fun walk ctx (extension: Cst.extension) ->
-  let ctx = List.fold_left extension.attributes ~acc:ctx ~fn:walk.attribute in
+  let ctx = List.fold_left extension.attributes ~init:ctx ~fn:walk.attribute in
   match extension.payload with
   | Some payload -> walk.payload ctx payload
   | None -> ctx
@@ -177,7 +177,7 @@ and descend_parameter = fun walk ctx parameter ->
   | Cst.Parameter.Positional _
   | Cst.Parameter.Labeled _
   | Cst.Parameter.Optional _ -> ctx
-  | Cst.Parameter.LocallyAbstract { binders; _ } -> List.fold_left binders ~acc:ctx ~fn:walk.type_binder
+  | Cst.Parameter.LocallyAbstract { binders; _ } -> List.fold_left binders ~init:ctx ~fn:walk.type_binder
 
 and descend_pattern = fun walk ctx (pattern: Cst.Pattern.t) ->
   match pattern with
@@ -187,21 +187,21 @@ and descend_pattern = fun walk ctx (pattern: Cst.Pattern.t) ->
   | Cst.Pattern.Operator { attributes; _ }
   | Cst.Pattern.Range { attributes; _ }
   | Cst.Pattern.PolyVariantInherit { attributes; _ } ->
-      List.fold_left attributes ~acc:ctx ~fn:walk.attribute
+      List.fold_left attributes ~init:ctx ~fn:walk.attribute
   | Cst.Pattern.Extension { extension; attributes; _ } ->
       let ctx = walk.extension ctx extension in
-      List.fold_left attributes ~acc:ctx ~fn:walk.attribute
+      List.fold_left attributes ~init:ctx ~fn:walk.attribute
   | Cst.Pattern.Lazy { pattern; attributes; _ }
   | Cst.Pattern.Exception { pattern; attributes; _ }
   | Cst.Pattern.LocalOpen { pattern; attributes; _ }
   | Cst.Pattern.Parenthesized { inner=pattern; attributes; _ } ->
       let ctx = walk.pattern ctx pattern in
-      List.fold_left attributes ~acc:ctx ~fn:walk.attribute
+      List.fold_left attributes ~init:ctx ~fn:walk.attribute
   | Cst.Pattern.FirstClassModule { package_type; attributes; _ } ->
       let ctx =
         match package_type with
         | Some package_type ->
-            let ctx = List.fold_left package_type.constraints ~acc:ctx ~fn:walk.module_type_constraint in
+            let ctx = List.fold_left package_type.constraints ~init:ctx ~fn:walk.module_type_constraint in
             begin
               match package_type.attribute with
               | Some attribute -> walk.attribute ctx attribute
@@ -209,58 +209,58 @@ and descend_pattern = fun walk ctx (pattern: Cst.Pattern.t) ->
             end
         | None -> ctx
       in
-      List.fold_left attributes ~acc:ctx ~fn:walk.attribute
+      List.fold_left attributes ~init:ctx ~fn:walk.attribute
   | Cst.Pattern.PolyVariant { payload; attributes; _ } ->
       let ctx =
         match payload with
         | Some payload -> walk.pattern ctx payload
         | None -> ctx
       in
-      List.fold_left attributes ~acc:ctx ~fn:walk.attribute
+      List.fold_left attributes ~init:ctx ~fn:walk.attribute
   | Cst.Pattern.Constructor { existentials; arguments; attributes; _ } ->
       let ctx =
         match existentials with
-        | Some existentials -> List.fold_left existentials.binders ~acc:ctx ~fn:walk.type_binder
+        | Some existentials -> List.fold_left existentials.binders ~init:ctx ~fn:walk.type_binder
         | None -> ctx
       in
-      let ctx = List.fold_left arguments ~acc:ctx ~fn:walk.pattern in
-      List.fold_left attributes ~acc:ctx ~fn:walk.attribute
+      let ctx = List.fold_left arguments ~init:ctx ~fn:walk.pattern in
+      List.fold_left attributes ~init:ctx ~fn:walk.attribute
   | Cst.Pattern.Tuple { elements; attributes; _ } ->
       let ctx =
-        List.fold_left elements ~acc:ctx
+        List.fold_left elements ~init:ctx
           ~fn:(fun ctx (element: Cst.tuple_pattern_element) ->
             walk.pattern ctx element.pattern)
       in
-      List.fold_left attributes ~acc:ctx ~fn:walk.attribute
+      List.fold_left attributes ~init:ctx ~fn:walk.attribute
   | Cst.Pattern.List { elements; attributes; _ }
   | Cst.Pattern.Array { elements; attributes; _ }
   | Cst.Pattern.Or { alternatives=elements; attributes; _ } ->
-      let ctx = List.fold_left elements ~acc:ctx ~fn:walk.pattern in
-      List.fold_left attributes ~acc:ctx ~fn:walk.attribute
+      let ctx = List.fold_left elements ~init:ctx ~fn:walk.pattern in
+      List.fold_left attributes ~init:ctx ~fn:walk.attribute
   | Cst.Pattern.Record { fields; attributes; _ } ->
       let ctx =
-        List.fold_left fields ~acc:ctx
+        List.fold_left fields ~init:ctx
           ~fn:(fun ctx (field: Cst.record_pattern_field) ->
             match field.pattern with
             | Some pattern -> walk.pattern ctx pattern
             | None -> ctx)
       in
-      List.fold_left attributes ~acc:ctx ~fn:walk.attribute
+      List.fold_left attributes ~init:ctx ~fn:walk.attribute
   | Cst.Pattern.Cons { head; tail; attributes; _ } ->
       let ctx = walk.pattern ctx head in
       let ctx = walk.pattern ctx tail in
-      List.fold_left attributes ~acc:ctx ~fn:walk.attribute
+      List.fold_left attributes ~init:ctx ~fn:walk.attribute
   | Cst.Pattern.Alias { pattern; attributes; _ } ->
       let ctx = walk.pattern ctx pattern in
-      List.fold_left attributes ~acc:ctx ~fn:walk.attribute
+      List.fold_left attributes ~init:ctx ~fn:walk.attribute
   | Cst.Pattern.Typed { pattern; type_; attributes; _ } ->
       let ctx = walk.pattern ctx pattern in
       let ctx = walk.core_type ctx type_ in
-      List.fold_left attributes ~acc:ctx ~fn:walk.attribute
+      List.fold_left attributes ~init:ctx ~fn:walk.attribute
   | Cst.Pattern.Effect { effect_pattern; continuation; attributes; _ } ->
       let ctx = walk.pattern ctx effect_pattern in
       let ctx = walk.pattern ctx continuation in
-      List.fold_left attributes ~acc:ctx ~fn:walk.attribute
+      List.fold_left attributes ~init:ctx ~fn:walk.attribute
 
 and descend_core_type = fun walk ctx (core_type: Cst.CoreType.t) ->
   match core_type with
@@ -271,7 +271,7 @@ and descend_core_type = fun walk ctx (core_type: Cst.CoreType.t) ->
       walk.extension ctx extension
   | Cst.CoreType.Constr { arguments; _ }
   | Cst.CoreType.Class { arguments; _ } ->
-      List.fold_left arguments ~acc:ctx ~fn:walk.core_type
+      List.fold_left arguments ~init:ctx ~fn:walk.core_type
   | Cst.CoreType.Alias { type_; _ }
   | Cst.CoreType.Parenthesized { inner=type_; _ } ->
       walk.core_type ctx type_
@@ -279,26 +279,26 @@ and descend_core_type = fun walk ctx (core_type: Cst.CoreType.t) ->
       let ctx = walk.core_type ctx type_ in
       walk.attribute ctx attribute
   | Cst.CoreType.Poly { body; binders; _ } ->
-      let ctx = List.fold_left binders ~acc:ctx ~fn:walk.type_binder in
+      let ctx = List.fold_left binders ~init:ctx ~fn:walk.type_binder in
       walk.core_type ctx body
   | Cst.CoreType.Arrow { parameter_type; result_type; _ } ->
       let ctx = walk.core_type ctx parameter_type in
       walk.core_type ctx result_type
   | Cst.CoreType.Tuple { elements; _ } ->
-      List.fold_left elements ~acc:ctx ~fn:walk.core_type
+      List.fold_left elements ~init:ctx ~fn:walk.core_type
   | Cst.CoreType.PolyVariant { fields; _ } ->
-      List.fold_left fields ~acc:ctx ~fn:walk.row_field
+      List.fold_left fields ~init:ctx ~fn:walk.row_field
   | Cst.CoreType.Record { fields; _ } ->
-      List.fold_left fields ~acc:ctx ~fn:walk.record_type_field
+      List.fold_left fields ~init:ctx ~fn:walk.record_type_field
   | Cst.CoreType.FirstClassModule { package_type; _ } ->
-      let ctx = List.fold_left package_type.constraints ~acc:ctx ~fn:walk.module_type_constraint in
+      let ctx = List.fold_left package_type.constraints ~init:ctx ~fn:walk.module_type_constraint in
       begin
         match package_type.attribute with
         | Some attribute -> walk.attribute ctx attribute
         | None -> ctx
       end
   | Cst.CoreType.Object { fields; _ } ->
-      List.fold_left fields ~acc:ctx ~fn:walk.object_type_field
+      List.fold_left fields ~init:ctx ~fn:walk.object_type_field
 
 and descend_exception_declaration = fun _walk ctx _decl -> ctx
 
@@ -306,13 +306,13 @@ and descend_object_type_field = fun walk ctx (field: Cst.object_type_field) ->
   walk.core_type ctx field.field_type
 
 and descend_record_type_field = fun walk ctx (field: Cst.record_type_field) ->
-  let ctx = List.fold_left field.attributes ~acc:ctx ~fn:walk.attribute in
+  let ctx = List.fold_left field.attributes ~init:ctx ~fn:walk.attribute in
   walk.core_type ctx field.field_type
 
 and descend_row_field = fun walk ctx row_field ->
   match row_field with
   | Cst.RowField.Tag tag ->
-      let ctx = List.fold_left tag.attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left tag.attributes ~init:ctx ~fn:walk.attribute in
       (
         match tag.payload_type with
         | Some payload_type -> walk.core_type ctx payload_type
@@ -338,11 +338,11 @@ and descend_module_type = fun walk ctx (module_type: Cst.ModuleType.t) ->
   | Cst.ModuleType.Signature _ ->
       ctx
   | Cst.ModuleType.Functor { parameters; result; _ } ->
-      let ctx = List.fold_left parameters ~acc:ctx ~fn:walk.functor_parameter in
+      let ctx = List.fold_left parameters ~init:ctx ~fn:walk.functor_parameter in
       walk.module_type ctx result
   | Cst.ModuleType.With { base; constraints; _ } ->
       let ctx = walk.module_type ctx base in
-      List.fold_left constraints ~acc:ctx ~fn:walk.module_type_constraint
+      List.fold_left constraints ~init:ctx ~fn:walk.module_type_constraint
   | Cst.ModuleType.Parenthesized { inner; _ } ->
       walk.module_type ctx inner
   | Cst.ModuleType.Attribute { module_type; attribute; _ } ->
@@ -356,7 +356,7 @@ and descend_class_type = fun walk ctx (class_type: Cst.ClassType.t) ->
   | Cst.ClassType.Path _ ->
       ctx
   | Cst.ClassType.Signature { fields; _ } ->
-      List.fold_left fields ~acc:ctx ~fn:walk.class_type_field
+      List.fold_left fields ~init:ctx ~fn:walk.class_type_field
   | Cst.ClassType.Arrow { parameter_type; result_type; _ } ->
       let ctx = walk.core_type ctx parameter_type in
       walk.class_type ctx result_type
@@ -392,33 +392,33 @@ and descend_type_definition = fun walk ctx (type_definition: Cst.TypeDefinition.
   | Cst.TypeDefinition.Alias { manifest; _ } ->
       walk.core_type ctx manifest
   | Cst.TypeDefinition.FirstClassModule { package_type; _ } ->
-      let ctx = List.fold_left package_type.constraints ~acc:ctx ~fn:walk.module_type_constraint in
+      let ctx = List.fold_left package_type.constraints ~init:ctx ~fn:walk.module_type_constraint in
       begin
         match package_type.attribute with
         | Some attribute -> walk.attribute ctx attribute
         | None -> ctx
       end
   | Cst.TypeDefinition.Object { fields; _ } ->
-      List.fold_left fields ~acc:ctx ~fn:walk.object_type_field
+      List.fold_left fields ~init:ctx ~fn:walk.object_type_field
   | Cst.TypeDefinition.Record { fields; _ } ->
-      List.fold_left fields ~acc:ctx
+      List.fold_left fields ~init:ctx
         ~fn:(fun ctx field ->
-          let ctx = List.fold_left (Cst.RecordField.attributes field) ~acc:ctx ~fn:walk.attribute in
+          let ctx = List.fold_left (Cst.RecordField.attributes field) ~init:ctx ~fn:walk.attribute in
           walk.core_type ctx (Cst.RecordField.field_type field))
   | Cst.TypeDefinition.Variant { constructors; _ } ->
-      List.fold_left constructors ~acc:ctx ~fn:walk.variant_constructor
+      List.fold_left constructors ~init:ctx ~fn:walk.variant_constructor
   | Cst.TypeDefinition.PolyVariant poly_variant ->
-      List.fold_left (Cst.PolyVariant.fields poly_variant) ~acc:ctx ~fn:walk.row_field
+      List.fold_left (Cst.PolyVariant.fields poly_variant) ~init:ctx ~fn:walk.row_field
 
 and descend_variant_constructor = fun walk ctx (constructor: Cst.VariantConstructor.t) ->
-  let ctx = List.fold_left (Cst.VariantConstructor.attributes constructor) ~acc:ctx ~fn:walk.attribute in
+  let ctx = List.fold_left (Cst.VariantConstructor.attributes constructor) ~init:ctx ~fn:walk.attribute in
   let ctx =
     match Cst.VariantConstructor.arguments constructor with
-    | Some (Cst.ConstructorArguments.Tuple elements) -> List.fold_left elements ~acc:ctx ~fn:walk.core_type
+    | Some (Cst.ConstructorArguments.Tuple elements) -> List.fold_left elements ~init:ctx ~fn:walk.core_type
     | Some (Cst.ConstructorArguments.Record { fields; _ }) ->
-        List.fold_left fields ~acc:ctx
+        List.fold_left fields ~init:ctx
           ~fn:(fun ctx field ->
-            let ctx = List.fold_left (Cst.RecordField.attributes field) ~acc:ctx ~fn:walk.attribute in
+            let ctx = List.fold_left (Cst.RecordField.attributes field) ~init:ctx ~fn:walk.attribute in
             walk.core_type ctx (Cst.RecordField.field_type field))
     | None -> ctx
   in
@@ -432,21 +432,21 @@ and descend_variant_constructor = fun walk ctx (constructor: Cst.VariantConstruc
   | None -> ctx
 
 and descend_type_declaration = fun walk ctx (declaration: Cst.TypeDeclaration.t) ->
-  let ctx = List.fold_left (Cst.TypeDeclaration.type_params declaration) ~acc:ctx ~fn:walk.type_parameter in
+  let ctx = List.fold_left (Cst.TypeDeclaration.type_params declaration) ~init:ctx ~fn:walk.type_parameter in
   let ctx =
     match Cst.TypeDeclaration.manifest_alias declaration with
     | Some manifest_alias -> walk.core_type ctx manifest_alias
     | None -> ctx
   in
   let ctx = walk.type_definition ctx (Cst.TypeDeclaration.type_definition declaration) in
-  let ctx = List.fold_left (Cst.TypeDeclaration.constraints declaration) ~acc:ctx ~fn:walk.type_constraint in
+  let ctx = List.fold_left (Cst.TypeDeclaration.constraints declaration) ~init:ctx ~fn:walk.type_constraint in
   match Cst.TypeDeclaration.next_and_declaration declaration with
   | Some next -> walk.type_declaration ctx next
   | None -> ctx
 
 and descend_type_extension = fun walk ctx (declaration: Cst.TypeExtension.t) ->
-  let ctx = List.fold_left (Cst.TypeExtension.type_params declaration) ~acc:ctx ~fn:walk.type_parameter in
-  List.fold_left (Cst.TypeExtension.constructors declaration) ~acc:ctx ~fn:walk.variant_constructor
+  let ctx = List.fold_left (Cst.TypeExtension.type_params declaration) ~init:ctx ~fn:walk.type_parameter in
+  List.fold_left (Cst.TypeExtension.constructors declaration) ~init:ctx ~fn:walk.variant_constructor
 
 and descend_module_expression = fun walk ctx (module_expression: Cst.ModuleExpression.t) ->
   match module_expression with
@@ -454,7 +454,7 @@ and descend_module_expression = fun walk ctx (module_expression: Cst.ModuleExpre
   | Cst.ModuleExpression.Structure _ ->
       ctx
   | Cst.ModuleExpression.Functor { parameters; body; _ } ->
-      let ctx = List.fold_left parameters ~acc:ctx ~fn:walk.functor_parameter in
+      let ctx = List.fold_left parameters ~init:ctx ~fn:walk.functor_parameter in
       walk.module_expression ctx body
   | Cst.ModuleExpression.Apply { callee; argument; _ } ->
       let ctx = walk.module_expression ctx callee in
@@ -469,7 +469,7 @@ and descend_module_expression = fun walk ctx (module_expression: Cst.ModuleExpre
       (
         match package_type with
         | Some package_type ->
-            let ctx = List.fold_left package_type.constraints ~acc:ctx ~fn:walk.module_type_constraint in
+            let ctx = List.fold_left package_type.constraints ~init:ctx ~fn:walk.module_type_constraint in
             begin
               match package_type.attribute with
               | Some attribute -> walk.attribute ctx attribute
@@ -488,7 +488,7 @@ and descend_module_expression = fun walk ctx (module_expression: Cst.ModuleExpre
 and descend_object_member = fun walk ctx (member: Cst.ObjectMember.t) ->
   match member with
   | Cst.ObjectMember.Method method_ ->
-      let ctx = List.fold_left method_.attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left method_.attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.expression ctx method_.body in
       (
         match method_.type_ with
@@ -496,7 +496,7 @@ and descend_object_member = fun walk ctx (member: Cst.ObjectMember.t) ->
         | None -> ctx
       )
   | Cst.ObjectMember.Value value ->
-      let ctx = List.fold_left value.attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left value.attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.expression ctx value.value in
       (
         match value.type_ with
@@ -504,7 +504,7 @@ and descend_object_member = fun walk ctx (member: Cst.ObjectMember.t) ->
         | None -> ctx
       )
   | Cst.ObjectMember.Inherit inherit_ ->
-      let ctx = List.fold_left inherit_.attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left inherit_.attributes ~init:ctx ~fn:walk.attribute in
       walk.expression ctx inherit_.expression
   | Cst.ObjectMember.Extension extension ->
       walk.extension ctx extension
@@ -524,14 +524,14 @@ and descend_apply_argument = fun walk ctx argument ->
 and descend_record_expression = fun walk ctx (record_expression: Cst.RecordExpression.t) ->
   match record_expression with
   | Cst.RecordExpression.Literal { fields; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
-      List.fold_left fields ~acc:ctx
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
+      List.fold_left fields ~init:ctx
         ~fn:(fun ctx (field: Cst.record_expression_field) ->
           walk.expression ctx field.value)
   | Cst.RecordExpression.Update { base; fields; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.expression ctx base in
-      List.fold_left fields ~acc:ctx
+      List.fold_left fields ~init:ctx
         ~fn:(fun ctx (field: Cst.record_expression_field) ->
           walk.expression ctx field.value)
 
@@ -555,34 +555,34 @@ and descend_expression = fun walk ctx (expression: Cst.Expression.t) ->
   | Cst.Expression.Extension extension ->
       walk.extension ctx extension
   | Cst.Expression.Constructor { payload; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       (
         match payload with
         | Some payload -> walk.expression ctx payload
         | None -> ctx
       )
   | Cst.Expression.Object { self_pattern; members; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx =
         match self_pattern with
         | Some pattern -> walk.pattern ctx pattern
         | None -> ctx
       in
-      List.fold_left members ~acc:ctx ~fn:walk.object_member
+      List.fold_left members ~init:ctx ~fn:walk.object_member
   | Cst.Expression.PolyVariant { payload; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       (
         match payload with
         | Some payload -> walk.expression ctx payload
         | None -> ctx
       )
   | Cst.Expression.ModulePack { module_expression; package_type; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.module_expression ctx module_expression in
       (
         match package_type with
         | Some package_type ->
-            let ctx = List.fold_left package_type.constraints ~acc:ctx ~fn:walk.module_type_constraint in
+            let ctx = List.fold_left package_type.constraints ~init:ctx ~fn:walk.module_type_constraint in
             begin
               match package_type.attribute with
               | Some attribute -> walk.attribute ctx attribute
@@ -591,21 +591,21 @@ and descend_expression = fun walk ctx (expression: Cst.Expression.t) ->
         | None -> ctx
       )
   | Cst.Expression.LetModule { module_expression; body; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.module_expression ctx module_expression in
       walk.expression ctx body
   | Cst.Expression.LetException { exception_declaration; body; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.exception_declaration ctx exception_declaration in
       walk.expression ctx body
   | Cst.Expression.Assert { asserted; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       walk.expression ctx asserted
   | Cst.Expression.Lazy { body; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       walk.expression ctx body
   | Cst.Expression.While { condition; body; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.expression ctx condition in
       walk.expression ctx body
   | Cst.Expression.For {
@@ -615,54 +615,54 @@ and descend_expression = fun walk ctx (expression: Cst.Expression.t) ->
     attributes;
     _
   } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.expression ctx start_expr in
       let ctx = walk.expression ctx end_expr in
       walk.expression ctx body
   | Cst.Expression.Apply { callee; argument; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.expression ctx callee in
       walk.apply_argument ctx argument
   | Cst.Expression.MethodCall { receiver; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       walk.expression ctx receiver
   | Cst.Expression.Prefix { operand; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       walk.expression ctx operand
   | Cst.Expression.FieldAccess { receiver; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       walk.expression ctx receiver
   | Cst.Expression.Index { collection; index; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.expression ctx collection in
       walk.expression ctx index
   | Cst.Expression.ObjectOverride { fields; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
-      List.fold_left fields ~acc:ctx
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
+      List.fold_left fields ~init:ctx
         ~fn:(fun ctx (field: Cst.object_override_field) ->
           match field.value with
           | Some value -> walk.expression ctx value
           | None -> ctx)
   | Cst.Expression.InstanceVariableAssign { value; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       walk.expression ctx value
   | Cst.Expression.FieldAssign { target; value; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.expression ctx (Cst.Expression.FieldAccess target) in
       walk.expression ctx value
   | Cst.Expression.Assign { target; value; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.expression ctx target in
       walk.expression ctx value
   | Cst.Expression.Infix { left; right; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.expression ctx left in
       walk.expression ctx right
   | Cst.Expression.Sequence { expressions; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
-      List.fold_left expressions ~acc:ctx ~fn:walk.expression
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
+      List.fold_left expressions ~init:ctx ~fn:walk.expression
   | Cst.Expression.TypeAscription { expression; kind; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.expression ctx expression in
       (
         match kind with
@@ -673,19 +673,19 @@ and descend_expression = fun walk ctx (expression: Cst.Expression.t) ->
             walk.core_type ctx to_type
       )
   | Cst.Expression.Polymorphic { expression; type_; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.expression ctx expression in
       walk.core_type ctx type_
   | Cst.Expression.Tuple { elements; attributes; _ }
   | Cst.Expression.List { elements; attributes; _ }
   | Cst.Expression.Array { elements; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
-      List.fold_left elements ~acc:ctx ~fn:walk.expression
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
+      List.fold_left elements ~init:ctx ~fn:walk.expression
   | Cst.Expression.Record record_expression ->
       walk.record_expression ctx record_expression
   | Cst.Expression.LocalOpen (Cst.LetOpen { body; attributes; _ })
   | Cst.Expression.LocalOpen (Cst.Delimited { body; attributes; _ }) ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       walk.expression ctx body
   | Cst.Expression.Fun {
     parameters;
@@ -694,8 +694,8 @@ and descend_expression = fun walk ctx (expression: Cst.Expression.t) ->
     attributes;
     _
   } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
-      let ctx = List.fold_left parameters ~acc:ctx ~fn:walk.parameter in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left parameters ~init:ctx ~fn:walk.parameter in
       let ctx =
         match return_type with
         | Some return_type -> walk.core_type ctx return_type
@@ -704,13 +704,13 @@ and descend_expression = fun walk ctx (expression: Cst.Expression.t) ->
       (
         match body with
         | Cst.Expression expression -> walk.expression ctx expression
-        | Cst.Cases { cases; _ } -> List.fold_left cases ~acc:ctx ~fn:walk.match_case
+        | Cst.Cases { cases; _ } -> List.fold_left cases ~init:ctx ~fn:walk.match_case
       )
   | Cst.Expression.Function { cases; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
-      List.fold_left cases ~acc:ctx ~fn:walk.match_case
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
+      List.fold_left cases ~init:ctx ~fn:walk.match_case
   | Cst.Expression.LetOperator { binding; body; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx = fold_binding_operator_chain walk ctx binding in
       walk.expression ctx body
   | Cst.Expression.Let {
@@ -721,8 +721,8 @@ and descend_expression = fun walk ctx (expression: Cst.Expression.t) ->
     attributes;
     _
   } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
-      let ctx = List.fold_left parameters ~acc:ctx ~fn:walk.parameter in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left parameters ~init:ctx ~fn:walk.parameter in
       let ctx = walk.expression ctx bound_value in
       let ctx =
         match and_binding with
@@ -731,13 +731,13 @@ and descend_expression = fun walk ctx (expression: Cst.Expression.t) ->
       in
       walk.expression ctx body
   | Cst.Expression.Match { scrutinee; cases; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.expression ctx scrutinee in
-      List.fold_left cases ~acc:ctx ~fn:walk.match_case
+      List.fold_left cases ~init:ctx ~fn:walk.match_case
   | Cst.Expression.Try { body; cases; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.expression ctx body in
-      List.fold_left cases ~acc:ctx ~fn:walk.match_case
+      List.fold_left cases ~init:ctx ~fn:walk.match_case
   | Cst.Expression.If {
     condition;
     then_branch;
@@ -745,7 +745,7 @@ and descend_expression = fun walk ctx (expression: Cst.Expression.t) ->
     attributes;
     _
   } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       let ctx = walk.expression ctx condition in
       let ctx = walk.expression ctx then_branch in
       (
@@ -754,7 +754,7 @@ and descend_expression = fun walk ctx (expression: Cst.Expression.t) ->
         | None -> ctx
       )
   | Cst.Expression.Parenthesized { inner; attributes; _ } ->
-      let ctx = List.fold_left attributes ~acc:ctx ~fn:walk.attribute in
+      let ctx = List.fold_left attributes ~init:ctx ~fn:walk.attribute in
       walk.expression ctx inner
 
 and descend_binding_operator_binding = fun walk ctx (binding: Cst.binding_operator_binding) ->
@@ -762,9 +762,9 @@ and descend_binding_operator_binding = fun walk ctx (binding: Cst.binding_operat
   walk.expression ctx binding.bound_value
 
 and descend_let_binding = fun walk ctx binding ->
-  let ctx = List.fold_left (Cst.LetBinding.attributes binding) ~acc:ctx ~fn:walk.attribute in
+  let ctx = List.fold_left (Cst.LetBinding.attributes binding) ~init:ctx ~fn:walk.attribute in
   let ctx = walk.pattern ctx (Cst.LetBinding.binding_pattern binding) in
-  let ctx = List.fold_left (Cst.LetBinding.parameters binding) ~acc:ctx ~fn:walk.parameter in
+  let ctx = List.fold_left (Cst.LetBinding.parameters binding) ~init:ctx ~fn:walk.parameter in
   let ctx = walk.expression ctx (Cst.LetBinding.value binding) in
   match Cst.LetBinding.and_binding binding with
   | Some next -> walk.let_binding ctx next
@@ -817,9 +817,9 @@ and descend_class_expression = fun walk ctx (class_expression: Cst.ClassExpressi
         | Some pattern -> walk.pattern ctx pattern
         | None -> ctx
       in
-      List.fold_left fields ~acc:ctx ~fn:walk.class_field
+      List.fold_left fields ~init:ctx ~fn:walk.class_field
   | Cst.ClassExpression.Fun { parameters; body; _ } ->
-      let ctx = List.fold_left parameters ~acc:ctx ~fn:walk.parameter in
+      let ctx = List.fold_left parameters ~init:ctx ~fn:walk.parameter in
       walk.class_expression ctx body
   | Cst.ClassExpression.Apply { callee; argument; _ } ->
       let ctx = walk.class_expression ctx callee in
@@ -831,7 +831,7 @@ and descend_class_expression = fun walk ctx (class_expression: Cst.ClassExpressi
     body;
     _
   } ->
-      let ctx = List.fold_left parameters ~acc:ctx ~fn:walk.parameter in
+      let ctx = List.fold_left parameters ~init:ctx ~fn:walk.parameter in
       let ctx = walk.expression ctx bound_value in
       let ctx =
         match and_binding with
@@ -859,14 +859,14 @@ and descend_value_declaration = fun walk ctx (declaration: Cst.value_declaration
 
 and descend_external_declaration = fun walk ctx (declaration: Cst.external_declaration) ->
   let ctx = walk.core_type ctx declaration.type_ in
-  List.fold_left declaration.attributes ~acc:ctx ~fn:walk.attribute
+  List.fold_left declaration.attributes ~init:ctx ~fn:walk.attribute
 
 and descend_class_declaration = fun walk ctx (declaration: Cst.ClassDeclaration.t) ->
-  let ctx = List.fold_left (Cst.ClassDeclaration.type_params declaration) ~acc:ctx ~fn:walk.type_parameter in
+  let ctx = List.fold_left (Cst.ClassDeclaration.type_params declaration) ~init:ctx ~fn:walk.type_parameter in
   walk.class_type ctx (Cst.ClassDeclaration.class_type declaration)
 
 and descend_class_definition = fun walk ctx (declaration: Cst.ClassDefinition.t) ->
-  let ctx = List.fold_left (Cst.ClassDefinition.type_params declaration) ~acc:ctx ~fn:walk.type_parameter in
+  let ctx = List.fold_left (Cst.ClassDefinition.type_params declaration) ~init:ctx ~fn:walk.type_parameter in
   let ctx =
     match Cst.ClassDefinition.class_type declaration with
     | Some class_type -> walk.class_type ctx class_type
@@ -875,11 +875,11 @@ and descend_class_definition = fun walk ctx (declaration: Cst.ClassDefinition.t)
   walk.class_expression ctx (Cst.ClassDefinition.class_body declaration)
 
 and descend_class_type_declaration = fun walk ctx (declaration: Cst.class_type_declaration) ->
-  let ctx = List.fold_left declaration.type_params ~acc:ctx ~fn:walk.type_parameter in
+  let ctx = List.fold_left declaration.type_params ~init:ctx ~fn:walk.type_parameter in
   walk.class_type ctx declaration.class_type_body
 
 and descend_module_signature = fun walk ctx (declaration: Cst.ModuleSignature.t) ->
-  let ctx = List.fold_left (Cst.ModuleSignature.functor_parameters declaration) ~acc:ctx ~fn:walk.functor_parameter in
+  let ctx = List.fold_left (Cst.ModuleSignature.functor_parameters declaration) ~init:ctx ~fn:walk.functor_parameter in
   let ctx =
     match Cst.ModuleSignature.definition declaration with
     | Cst.ModuleSignature.Signature module_type -> walk.module_type ctx module_type
@@ -890,7 +890,7 @@ and descend_module_signature = fun walk ctx (declaration: Cst.ModuleSignature.t)
   | None -> ctx
 
 and descend_module_structure = fun walk ctx (declaration: Cst.ModuleStructure.t) ->
-  let ctx = List.fold_left (Cst.ModuleStructure.functor_parameters declaration) ~acc:ctx ~fn:walk.functor_parameter in
+  let ctx = List.fold_left (Cst.ModuleStructure.functor_parameters declaration) ~init:ctx ~fn:walk.functor_parameter in
   let ctx =
     match Cst.ModuleStructure.module_type declaration with
     | Some module_type -> walk.module_type ctx module_type
@@ -954,10 +954,10 @@ and descend_signature_item = fun walk ctx (item: Cst.SignatureItem.t) ->
   | Cst.SignatureItem.ExceptionDeclaration declaration -> walk.exception_declaration ctx declaration
 
 and descend_implementation = fun walk ctx (implementation: Cst.implementation) ->
-  List.fold_left implementation.items ~acc:ctx ~fn:walk.structure_item
+  List.fold_left implementation.items ~init:ctx ~fn:walk.structure_item
 
 and descend_interface = fun walk ctx (interface: Cst.interface) ->
-  List.fold_left interface.items ~acc:ctx ~fn:walk.signature_item
+  List.fold_left interface.items ~init:ctx ~fn:walk.signature_item
 
 and descend_source_file = fun walk ctx (source_file: Cst.SourceFile.t) ->
   match source_file with

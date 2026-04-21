@@ -33,21 +33,19 @@ let lower_literal = fun literal ->
   | Source.Literal.String value -> Target.Literal.String value
 
 let operand_of_symbol = fun ~env name ->
-  env
-  |> List.find ~fn:(fun (bound_name, _operand) -> String.equal bound_name name)
-  |> Option.map ~fn:(fun (_bound_name, operand) -> operand)
-  |> Option.unwrap_or ~default:(Target.Operand.Global name)
+  env |> List.find
+    ~fn:(fun (bound_name, _operand) ->
+      String.equal bound_name name) |> Option.map ~fn:(fun (_bound_name, operand) -> operand) |> Option.unwrap_or
+    ~default:(Target.Operand.Global name)
 
 let bind_env = fun env bindings ->
-  List.fold_right bindings ~acc:env ~fn:(fun binding env -> binding :: env)
+  List.fold_right bindings ~init:env ~fn:(fun binding env -> binding :: env)
 
 let env_of_params = fun params ->
   List.map params ~fn:(fun name -> (name, Target.Operand.Register name))
 
 let rec lower_operand_list = fun ~env state values ->
-  List.fold_left
-    values
-    ~acc:([], [], state)
+  List.fold_left values ~init:([], [], state)
     ~fn:(fun (instructions, operands, state) value ->
       let next_instructions, operand, state = lower_expr ~env state value in
       (instructions @ next_instructions, operands @ [ operand ], state))
@@ -79,17 +77,13 @@ and lower_if_then_else = fun ~env state (if_then_else: Source.Expr.if_then_else)
 
 and lower_let = fun ~env state (let_: Source.Expr.let_) ->
   let binding_instructions, binding_values, state =
-    List.fold_left
-      let_.bindings
-      ~acc:([], [], state)
+    List.fold_left let_.bindings ~init:([], [], state)
       ~fn:(fun (instructions, binding_values, state) (binding: Source.Expr.binding) ->
         let next_instructions, operand, state = lower_expr ~env state binding.expr in
         (instructions @ next_instructions, binding_values @ [ (binding.name, operand) ], state))
   in
   let storage_instructions, bound_locals, state =
-    List.fold_left
-      binding_values
-      ~acc:([], [], state)
+    List.fold_left binding_values ~init:([], [], state)
       ~fn:(fun (instructions, bound_locals, state) (name, operand) ->
         let dst, state = fresh_temp state in
         (
@@ -147,9 +141,7 @@ let lower_entry_item = fun state item ->
 
 let lower_entry = fun items ->
   let body, _ =
-    List.fold_left
-      items
-      ~acc:([], { next_temp = 0 })
+    List.fold_left items ~init:([], { next_temp = 0 })
       ~fn:(fun (body, state) item ->
         let instructions, state = lower_entry_item state item in
         (body @ instructions, state))
@@ -208,8 +200,8 @@ let trace_program = fun initial ->
 let lower_program_with_trace = fun (program: Source.Program.t) ->
   let procedures = List.map program.functions ~fn:lower_function
   @ (lower_entry program.entry
-    |> Option.map ~fn:(fun entry -> [ entry ])
-    |> Option.unwrap_or ~default:[]) in
+  |> Option.map ~fn:(fun entry -> [ entry ])
+  |> Option.unwrap_or ~default:[]) in
   Target.Program.{
     module_name = program.module_name;
     procedures;

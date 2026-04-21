@@ -572,7 +572,7 @@ let wire_dependencies = fun t ->
       else
         String.split file_dir ~by:"/" |> List.map ~fn:String.capitalize_ascii
     in
-    List.fold_left subdir_parts ~acc:namespace ~fn:Namespace.append
+    List.fold_left subdir_parts ~init:namespace ~fn:Namespace.append
   in
   let analyze_node path (node: Module_node.t G.node) =
     match raw_source_text node with
@@ -628,7 +628,7 @@ let wire_dependencies = fun t ->
         String.compare (Path.to_string left_path) (Path.to_string right_path))
   in
   let deps =
-    List.fold_left sorted_file_nodes ~acc:(Ok [])
+    List.fold_left sorted_file_nodes ~init:(Ok [])
       ~fn:(fun acc (path, node) ->
         match acc with
         | Error _ as error -> error

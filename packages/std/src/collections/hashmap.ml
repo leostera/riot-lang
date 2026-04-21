@@ -112,23 +112,24 @@ let clear = fun map ->
   map.buckets <- Array.make ~count:(Array.length map.buckets) ~value:[];
   map.size <- 0
 
-let fold_left = fun map ~acc ~fn ->
+let fold_left = fun map ~init ~fn ->
   Array.fold_left
     map.buckets
-    ~acc
-    ~fn:(fun acc bucket -> List.fold_left bucket ~acc ~fn:(fun acc (key, value) -> fn acc key value))
+    ~acc:init
+    ~fn:(fun acc bucket ->
+      List.fold_left bucket ~acc:acc ~fn:(fun acc (key, value) -> fn acc key value))
 
-let keys = fun map -> fold_left map ~acc:[] ~fn:(fun acc key _value -> key :: acc)
+let keys = fun map -> fold_left map ~init:[] ~fn:(fun acc key _value -> key :: acc)
 
-let values = fun map -> fold_left map ~acc:[] ~fn:(fun acc _key value -> value :: acc)
+let values = fun map -> fold_left map ~init:[] ~fn:(fun acc _key value -> value :: acc)
 
 let for_each = fun map ~fn ->
-  fold_left map ~acc:()
+  fold_left map ~init:()
     ~fn:(fun () key value ->
       fn key value;
       ())
 
-let to_list = fun map -> fold_left map ~acc:[] ~fn:(fun acc key value -> (key, value) :: acc)
+let to_list = fun map -> fold_left map ~init:[] ~fn:(fun acc key value -> (key, value) :: acc)
 
 let entry = fun map ~key ->
   match get map ~key with

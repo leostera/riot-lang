@@ -177,7 +177,7 @@ let add_string_literal = fun layout value ->
       let offset =
         Collections.HashMap.fold_left
           layout
-          ~acc:0
+          ~init:0
           ~fn:(fun current _ (info: string_data) -> max current (info.offset + info.length))
       in
       let info = { offset; length = String.length value } in
@@ -205,13 +205,13 @@ let rec collect_strings_from_expr = fun layout expr errors ->
   | Types.Expr.Direct_call call ->
       List.fold_left
         call.arguments
-        ~acc:(layout, errors)
+        ~init:(layout, errors)
         ~fn:(fun (layout, errors) argument -> collect_strings_from_expr layout argument errors)
   | Types.Expr.Indirect_call call ->
       let layout, errors = collect_strings_from_expr layout call.callee errors in
       List.fold_left
         call.arguments
-        ~acc:(layout, errors)
+        ~init:(layout, errors)
         ~fn:(fun (layout, errors) argument -> collect_strings_from_expr layout argument errors)
   | Types.Expr.Lambda lambda ->
       collect_strings_from_expr layout lambda.body errors
@@ -219,7 +219,7 @@ let rec collect_strings_from_expr = fun layout expr errors ->
       let layout, errors =
         List.fold_left
           let_.bindings
-          ~acc:(layout, errors)
+          ~init:(layout, errors)
           ~fn:(fun (layout, errors) (binding: Types.Expr.binding) ->
             collect_strings_from_expr layout binding.expr errors)
       in
@@ -230,7 +230,7 @@ let rec collect_strings_from_expr = fun layout expr errors ->
   | Types.Expr.Tuple items ->
       List.fold_left
         items
-        ~acc:(layout, errors)
+        ~init:(layout, errors)
         ~fn:(fun (layout, errors) item -> collect_strings_from_expr layout item errors)
   | Types.Expr.Tuple_get tuple_get ->
       collect_strings_from_expr layout tuple_get.tuple errors
@@ -241,13 +241,13 @@ let rec collect_strings_from_expr = fun layout expr errors ->
   | Types.Expr.Primitive primitive ->
       List.fold_left
         primitive.arguments
-        ~acc:(layout, errors)
+        ~init:(layout, errors)
         ~fn:(fun (layout, errors) argument -> collect_strings_from_expr layout argument errors)
 
 let collect_strings = fun (linked_program: Artifacts.Linked_program.t) ->
-  List.fold_left linked_program.objects ~acc:(Collections.HashMap.create (), [])
+  List.fold_left linked_program.objects ~init:(Collections.HashMap.create (), [])
     ~fn:(fun (layout, errors) (object_: Artifacts.Object.t) ->
-      List.fold_left object_.program.init ~acc:(layout, errors)
+      List.fold_left object_.program.init ~init:(layout, errors)
         ~fn:(fun (layout, errors) item ->
           match item with
           | Types.Init_item.Global global -> collect_strings_from_expr layout global.expr errors
@@ -367,12 +367,10 @@ let rec compile_expr = fun ~layout ~imports ~env expr ->
       | Core.Rec_flag.Recursive -> Error [ Unsupported_expr { context = "recursive_let"; expr } ]
       | Core.Rec_flag.Nonrecursive ->
           let env' = Collections.HashMap.create () in
-          List.for_each
-            (Collections.HashMap.to_list env)
+          List.for_each (Collections.HashMap.to_list env)
             ~fn:(fun (key, value) ->
               let _ = Collections.HashMap.insert env' ~key ~value in
-              ())
-          ;
+              ());
           let instructions_rev = ref [] in
           let errors_rev = ref [] in
           List.iter
@@ -380,12 +378,10 @@ let rec compile_expr = fun ~layout ~imports ~env expr ->
               match compile_expr ~layout ~imports ~env:env' binding.expr with
               | Ok compiled ->
                   instructions_rev := compiled.instructions :: !instructions_rev;
-                  let _ =
-                    Collections.HashMap.insert
-                      env'
-                      ~key:(entity_key binding.entity_id)
-                      ~value:compiled.value
-                  in
+                  let _ = Collections.HashMap.insert
+                    env'
+                    ~key:(entity_key binding.entity_id)
+                    ~value:compiled.value in
                   ()
               | Error errors -> errors_rev := List.reverse_append errors !errors_rev)
             let_.bindings;
@@ -473,12 +469,7 @@ let compile_init_item = fun ~layout ~imports ~env item ->
       Ok compiled.instructions
   | Types.Init_item.Global global ->
       let* compiled = compile_expr ~layout ~imports ~env global.expr in
-      let _ =
-        Collections.HashMap.insert
-          env
-          ~key:(entity_key global.entity_id)
-          ~value:compiled.value
-      in
+      let _ = Collections.HashMap.insert env ~key:(entity_key global.entity_id) ~value:compiled.value in
       Ok compiled.instructions
 
 let compile_start = fun ~layout ~imports (linked_program: Artifacts.Linked_program.t) ->
@@ -501,7 +492,7 @@ let compile_start = fun ~layout ~imports (linked_program: Artifacts.Linked_progr
 let data_segments = fun layout ->
   Collections.HashMap.fold_left
     layout
-    ~acc:[]
+    ~init:[]
     ~fn:(fun segments value (data: string_data) ->
       Binary.concat
         [
@@ -519,7 +510,7 @@ let memory_pages = fun layout ->
   let bytes =
     Collections.HashMap.fold_left
       layout
-      ~acc:0
+      ~init:0
       ~fn:(fun current _ (data: string_data) -> max current (data.offset + data.length))
   in
   let page_size = 65_536 in
@@ -628,8 +619,7 @@ let emit_linked_program = fun (linked_program: Artifacts.Linked_program.t) ->
     |> List.map ~fn:(fun (object_: Artifacts.Object.t) -> object_.program.globals)
     |> List.concat in
     let unsupported_globals =
-      List.filter_map
-        globals
+      List.filter_map globals
         ~fn:(fun (global: Types.Global.t) ->
           match global.expr with
           | Types.Expr.Constant _

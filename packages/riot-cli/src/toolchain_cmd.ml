@@ -124,7 +124,7 @@ let available_toolchain_rows = fun toolchains ->
   |> sort_available_toolchain_rows
 
 let table_widths = fun rows ->
-  List.fold_left rows ~acc:(String.length "version", String.length "host", String.length "target")
+  List.fold_left rows ~init:(String.length "version", String.length "host", String.length "target")
     ~fn:(fun (version_width, host_width, target_width) row ->
       let host = Riot_model.Target.to_string row.host in
       let target = Riot_model.Target.to_string row.target in

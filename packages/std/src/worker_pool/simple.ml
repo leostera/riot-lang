@@ -101,7 +101,7 @@ let init = fun ~owner ~concurrency ~tasks ~result_ref ~fn () ->
   in
   (* Start dynamic pool with indexed tasks *)
   let indexed_tasks, _ =
-    List.fold_left tasks ~acc:([], 0) ~fn:(fun (acc, idx) task -> ((idx, task) :: acc, idx + 1))
+    List.fold_left tasks ~init:([], 0) ~fn:(fun (acc, idx) task -> ((idx, task) :: acc, idx + 1))
   in
   let indexed_tasks = List.reverse indexed_tasks in
   let task_queue = Queue.create () in

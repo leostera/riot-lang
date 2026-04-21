@@ -61,7 +61,7 @@ let diagnostic_for_binding = fun binding ->
   let labeled_params, optional_params =
     Syn.Cst.LetBinding.parameters binding
     |> List.filter_map ~fn:classify_parameter
-    |> List.fold_left ~acc:([], [])
+    |> List.fold_left ~init:([], [])
       ~fn:(fun (labeled, optional) (kind, parameter) ->
         match kind with
         | `Labeled -> (labeled @ [ parameter ], optional)

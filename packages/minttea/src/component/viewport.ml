@@ -41,7 +41,7 @@ let total_lines = fun t ->
   | `None -> List.length t.lines
   | `Soft ->
       (* Count wrapped lines *)
-      List.fold_left t.lines ~acc:0
+      List.fold_left t.lines ~init:0
         ~fn:(fun acc line ->
           if line = "" then
             acc + 1
@@ -54,7 +54,7 @@ let max_y_offset = fun t ->
     | `None -> List.length t.lines
     | `Soft ->
         (* Count wrapped lines *)
-        List.fold_left t.lines ~acc:0
+        List.fold_left t.lines ~init:0
           ~fn:(fun acc line ->
             if line = "" then
               acc + 1

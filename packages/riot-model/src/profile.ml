@@ -370,7 +370,7 @@ let to_compiler_flags = fun profile ->
       flags
   in
   let flags =
-    List.fold_left profile.open_modules ~acc:flags ~fn:(fun acc m -> Ocaml_compiler.Open m :: acc)
+    List.fold_left profile.open_modules ~init:flags ~fn:(fun acc m -> Ocaml_compiler.Open m :: acc)
   in
   let flags =
     if List.is_empty profile.warnings then

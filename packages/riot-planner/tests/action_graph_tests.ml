@@ -80,7 +80,7 @@ let test_action_graph_json_round_trip_preserves_dependencies = fun _ctx ->
       match Data.Json.get_field "nodes" encoded_decoded with
       | Some (Data.Json.Array node_jsons) ->
           let edge_count =
-            List.fold_left node_jsons ~acc:0
+            List.fold_left node_jsons ~init:0
               ~fn:(fun acc node_json ->
                 match Data.Json.get_field "dependencies" node_json with
                 | Some (Data.Json.Array deps) -> acc + List.length deps
@@ -545,4 +545,5 @@ let tests =
 
 let name = "Planner Action Graph Tests"
 
-let () = Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

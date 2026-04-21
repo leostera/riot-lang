@@ -23,9 +23,9 @@ val for_each: 'value t -> fn:('value -> unit) -> unit
 
 val map: 'value t -> fn:('value -> 'mapped) -> 'mapped t
 
-val fold_left: 'value t -> acc:'acc -> fn:('acc -> 'value -> 'acc) -> 'acc
+val fold_left: 'value t -> init:'acc -> fn:('acc -> 'value -> 'acc) -> 'acc
 
-val fold_right: 'value t -> acc:'acc -> fn:('value -> 'acc -> 'acc) -> 'acc
+val fold_right: 'value t -> init:'acc -> fn:('value -> 'acc -> 'acc) -> 'acc
 
 val from_list: 'value list -> 'value t
 

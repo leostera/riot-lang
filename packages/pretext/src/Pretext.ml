@@ -111,7 +111,7 @@ let solve = fun ~width doc ->
     match List.reverse docs with
     | [] -> rest
     | reversed -> reversed
-    |> List.fold_left ~acc:rest ~fn:(fun acc item -> (indent, mode, item) :: acc)
+    |> List.fold_left ~init:rest ~fn:(fun acc item -> (indent, mode, item) :: acc)
   in
   let rec fits remaining = function
     | _ when remaining < 0 -> false
@@ -215,7 +215,7 @@ let to_string = fun doc ->
     | Concat docs ->
         List.fold_left
           docs
-          ~acc:line_start
+          ~init:line_start
           ~fn:(fun current_line_start child -> write ~line_start:current_line_start ~indent child)
     | Indent (extra, child) ->
         write ~line_start ~indent:(indent + extra) child

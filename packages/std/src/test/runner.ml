@@ -137,7 +137,7 @@ type run_summary = Test_result.summary
 
 let default_policy = {
   small_test_timeout = Some (Time.Duration.from_millis 500);
-  flaky_max_retries = 0;
+  flaky_max_retries = 0
 }
 
 let no_event_handler: event_handler = fun _ -> ()
@@ -145,14 +145,8 @@ let no_event_handler: event_handler = fun _ -> ()
 let heartbeat_interval = Time.Duration.from_secs 1
 
 type Message.t +=
-  | Test_runner_worker_event of {
-      run_ref: unit Ref.t;
-      event: event;
-    }
-  | Test_runner_worker_failed of {
-      run_ref: unit Ref.t;
-      exn: exn;
-    }
+  | Test_runner_worker_event of { run_ref: unit Ref.t; event: event }
+  | Test_runner_worker_failed of { run_ref: unit Ref.t; exn: exn }
 
 let make_ctx = fun ~(suite_info:Reporter.suite_info) ~index (test: Test_case.t) ->
   let current_dir = Env.current_dir () |> Result.to_option in
@@ -206,7 +200,7 @@ let shuffle_list = fun lst ->
     Array.set_unchecked arr ~at:i ~value:(Array.get_unchecked arr ~at:j);
     Array.set_unchecked arr ~at:j ~value:temp
   done;
-  Array.fold_right arr ~acc:[] ~fn:(fun item acc -> item :: acc)
+  Array.fold_right arr ~init:[] ~fn:(fun item acc -> item :: acc)
 
 let render_exception_failure = fun exn ->
   let exn = Exception.to_string exn in
@@ -254,8 +248,7 @@ let wait_for_start = fun () ->
     ()
 
 let cast_worker:
-  type task other.
-  (task, other) Type.eq ->
+  type task other. (task, other) Type.eq ->
   other Worker_pool.DynamicWorkerPool.worker ->
   task Worker_pool.DynamicWorkerPool.worker = fun witness worker ->
   match witness with
@@ -421,27 +414,23 @@ let run_tests_parallel = fun ~(config:config) tests_to_run ->
   let run_ref = Ref.make () in
   let pending = Queue.create () in
   let completed = HashMap.create () in
-  let tests_with_indices =
-    List.enumerate tests_to_run
-    |> List.map ~fn:(fun (idx, test) -> { index = idx + 1; test })
-  in
+  let tests_with_indices = List.enumerate tests_to_run
+  |> List.map ~fn:(fun (idx, test) -> { index = idx + 1; test }) in
   List.for_each tests_with_indices ~fn:(fun scheduled -> Queue.push pending ~value:scheduled);
-  let worker_fn ~owner ~task:({ index; test }: scheduled_test) =
+  let worker_fn ~owner ~task =
+    let { index; test }: scheduled_test = task in
     let on_event event = send owner (Test_runner_worker_event { run_ref; event }) in
     try
       let _ = run_single_test ~suite_info:config.suite_info ~policy:config.policy ~on_event index test in
       ()
     with
-    | exn ->
-        send owner (Test_runner_worker_failed { run_ref; exn })
+    | exn -> send owner (Test_runner_worker_failed { run_ref; exn })
   in
-  let pool =
-    Worker_pool.DynamicWorkerPool.start
-      ~concurrency:(Int.max 1 config.concurrency)
-      ~owner
-      ~worker_fn
-      ()
-  in
+  let pool = Worker_pool.DynamicWorkerPool.start
+    ~concurrency:(Int.max 1 config.concurrency)
+    ~owner
+    ~worker_fn
+    () in
   let state = {
     owner;
     pool;
@@ -454,7 +443,8 @@ let run_tests_parallel = fun ~(config:config) tests_to_run ->
     reporter = config.reporter;
     on_event = config.event_handler;
     run_ref;
-  } in
+  }
+  in
   let rec loop () =
     if Int.equal state.finished_count state.total then
       ()
@@ -465,7 +455,9 @@ let run_tests_parallel = fun ~(config:config) tests_to_run ->
           | `WorkerFailed of exn
         ]) selector = function
         | Worker_pool.DynamicWorkerPool.WorkerReady worker -> (
-            match Ref.type_equal state.pool.task_ref (Worker_pool.DynamicWorkerPool.get_worker_task_ref worker) with
+            match Ref.type_equal
+              state.pool.task_ref
+              (Worker_pool.DynamicWorkerPool.get_worker_task_ref worker) with
             | Some witness -> `select (`WorkerReady (cast_worker witness worker))
             | None -> `skip
           )
@@ -482,8 +474,7 @@ let run_tests_parallel = fun ~(config:config) tests_to_run ->
           | Some task ->
               Worker_pool.DynamicWorkerPool.send_task state.pool worker task;
               loop ()
-          | None ->
-              loop ()
+          | None -> loop ()
         )
       | `WorkerEvent event ->
           state.on_event event;
@@ -494,8 +485,7 @@ let run_tests_parallel = fun ~(config:config) tests_to_run ->
                 state.results_rev <- result :: state.results_rev;
                 let _ = HashMap.insert state.completed ~key:result.index ~value:result in
                 flush_reporter_results state
-            | _ ->
-                ()
+            | _ -> ()
           );
           loop ()
       | `WorkerFailed exn ->
@@ -504,7 +494,8 @@ let run_tests_parallel = fun ~(config:config) tests_to_run ->
   loop ();
   let results =
     List.sort state.results_rev
-      ~compare:(fun (left: Test_result.t) (right: Test_result.t) -> Int.compare left.index right.index)
+      ~compare:(fun (left: Test_result.t) (right: Test_result.t) ->
+        Int.compare left.index right.index)
   in
   let summary = Test_result.make_summary results in
   R.finalize summary;
