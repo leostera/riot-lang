@@ -4273,6 +4273,44 @@ and second x = x
           Test.assert_equal ~expected:(Some "value") ~actual:(Syn.Cst.Ident.name path);
           Ok ()
       | _ -> Error "expected first item to be a let binding with a fun expression");
+  Test.case "cst fun expressions keep nullary constructors and following parameters separate"
+    (fun _ctx ->
+      let source =
+        "let cast_worker : type task other. (task, other) Type.eq -> other -> task = fun Type.Equal worker -> worker\n"
+      in
+      let result = parse_ml source in
+      let cst = expect_some result.cst ~msg:"expected CST for diagnostics-free parse"
+      |> Result.expect ~msg:"expected CST for diagnostics-free parse" in
+      match structure_items cst with
+      | Syn.Cst.StructureItem.LetBinding {
+        value=Syn.Cst.Expression.TypeAscription {
+          expression=Syn.Cst.Expression.Fun {
+            parameters=[
+              Syn.Cst.Parameter.Positional {
+                pattern=Syn.Cst.Pattern.Constructor {
+                  constructor_path;
+                  arguments=[];
+                  _;
+                };
+                _;
+              };
+              Syn.Cst.Parameter.Positional {
+                pattern=Syn.Cst.Pattern.Identifier { name_token=worker_name; _ };
+                _;
+              };
+            ];
+            body=Syn.Cst.Expression (Syn.Cst.Expression.Path { path; _ });
+            _;
+          };
+          _;
+        };
+        _;
+      } :: _ ->
+          Test.assert_equal ~expected:(Some "Equal") ~actual:(Syn.Cst.Ident.name constructor_path);
+          Test.assert_equal ~expected:"worker" ~actual:(Syn.Cst.Token.text worker_name);
+          Test.assert_equal ~expected:(Some "worker") ~actual:(Syn.Cst.Ident.name path);
+          Ok ()
+      | _ -> Error "expected fun parameters to keep nullary constructor and following identifier separate");
   Test.case "cst fun expressions preserve return type annotations"
     (fun _ctx ->
       let source = "let render = fun ~syntax_node syntax_tokens : Cst.extension -> syntax_node\n" in

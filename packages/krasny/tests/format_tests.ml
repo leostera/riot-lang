@@ -275,6 +275,18 @@ type u = {
       Test.assert_equal ~expected:source ~actual;
       assert_idempotent ~source ~msg:"prefix minus with nested prefix operators should stay stable across repeated formatting";
       Ok ());
+  Test.case "format keeps curried nullary constructor fun parameters separate"
+    (fun _ctx ->
+      let source = {|let cast_worker:
+  type task other. (task, other) Type.eq ->
+  other WorkerPool.DynamicWorkerPool.worker ->
+  task WorkerPool.DynamicWorkerPool.worker = fun Type.Equal worker -> worker
+|}
+      in
+      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"curried nullary constructor fun parameters should not collapse into one constructor pattern" in
+      Test.assert_equal ~expected:source ~actual;
+      assert_idempotent ~source ~msg:"curried nullary constructor fun parameters should stay stable across repeated formatting";
+      Ok ());
   Test.case "desugar typed named parameters without duplicating inner annotations"
     (fun ctx ->
       let source = {|type 'a t = 'a list

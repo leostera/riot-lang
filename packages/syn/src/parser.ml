@@ -2384,7 +2384,7 @@ and parse_effect_pattern = fun parser ->
             @ [ Ceibo.Green.Node continuation_pattern ]))
   | _ -> None
 
-and parse_ident_or_constructor_pattern = fun parser ->
+and parse_ident_or_constructor_pattern ?(allow_argument=true) = fun parser ->
   let ident = consume parser in
   let text = token_text parser ident in
   if ident_starts_uppercase text then
@@ -2397,7 +2397,7 @@ and parse_ident_or_constructor_pattern = fun parser ->
         | None -> []
       in
       let argument_nodes =
-        if can_start_pattern_arg parser then
+        if allow_argument && can_start_pattern_arg parser then
           let arg = parse_primary_pattern parser in
           [ Ceibo.Green.Node arg ]
         else
@@ -4105,6 +4105,9 @@ and parse_fun_param = fun parser ->
       match peek_kind parser with
       | Token.Question -> parse_optional_param parser
       | Token.Tilde -> parse_labeled_param parser
+      | Token.Ident _ when ident_starts_uppercase (token_text parser (peek parser)) ->
+          let base = parse_ident_or_constructor_pattern ~allow_argument:false parser in
+          attach_postfix_attributes parser base
       | _ -> parse_pattern parser
     )
 
