@@ -329,6 +329,16 @@ let index_opener = function
   | Syntax_kind2.LBRACE -> true
   | _ -> false
 
+let symbolic_sequence_followed_by_index_opener = fun p offset ->
+  let rec loop offset consumed =
+    let kind = peek_kind p offset in
+    if symbolic_operator_part kind then
+      loop (offset + 1) true
+    else
+      consumed && index_opener kind
+  in
+  loop offset false
+
 let binding_operator_suffix = function
   | Syntax_kind2.STAR
   | Syntax_kind2.PLUS -> true
@@ -437,6 +447,19 @@ let rec consume_extension_sigils = fun p ->
       consume_extension_sigils p
     )
 
+let rec consume_until = fun p closer ->
+  if not (is_eof p || at p closer) then
+    (
+      bump p;
+      consume_until p closer
+    )
+
+let consume_extension_payload = fun p ->
+  if at p Syntax_kind2.LBRACE && peek_kind p 1 = Syntax_kind2.DOT then
+    consume_until p Syntax_kind2.RBRACKET
+  else
+    consume_balanced_until p ~closer:Syntax_kind2.RBRACKET 0
+
 let rec consume_symbolic_operator = fun p ->
   if symbolic_operator_part (current_kind p) then
     (
@@ -503,7 +526,7 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
             loop (complete p marker Syntax_kind2.FIELD_ACCESS_EXPR)
         | Syntax_kind2.BANG ->
             loop (parse_dot_bang_expr p lhs ~signature ~stop_at_item ~stop_at_semi)
-        | kind when symbolic_operator_part kind && index_opener (peek_kind p 2) ->
+        | kind when symbolic_operator_part kind && symbolic_sequence_followed_by_index_opener p 1 ->
             loop (parse_extended_index_expr p lhs ~signature ~stop_at_item)
         | _ -> lhs
       )
@@ -652,7 +675,7 @@ and parse_unreachable_expr = fun p ->
 and parse_extended_index_expr = fun p lhs ~signature ~stop_at_item:_ ->
   let marker = precede p lhs in
   bump p;
-  bump p;
+  consume_symbolic_operator p;
   let closer =
     match current_kind p with
     | Syntax_kind2.LPAREN ->
@@ -771,7 +794,7 @@ and parse_extension_expr = fun p ->
   let marker = start_node p in
   bump p;
   consume_extension_sigils p;
-  consume_balanced_until p ~closer:Syntax_kind2.RBRACKET 0;
+  consume_extension_payload p;
   expect p Syntax_kind2.RBRACKET (invalid_expression p);
   complete p marker Syntax_kind2.EXTENSION_EXPR
 
@@ -1251,7 +1274,7 @@ and parse_extension_pattern = fun p ->
   let marker = start_node p in
   bump p;
   consume_extension_sigils p;
-  consume_balanced_until p ~closer:Syntax_kind2.RBRACKET 0;
+  consume_extension_payload p;
   expect p Syntax_kind2.RBRACKET (invalid_pattern p);
   complete p marker Syntax_kind2.EXTENSION_PATTERN
 
@@ -1483,12 +1506,13 @@ let parse_bracketed_item_shell = fun p kind ->
   (
     match kind with
     | Syntax_kind2.EXTENSION_ITEM ->
-        consume_extension_sigils p
+        consume_extension_sigils p;
+        consume_extension_payload p
     | Syntax_kind2.ATTRIBUTE_ITEM ->
-        consume_attribute_sigils p
+        consume_attribute_sigils p;
+        consume_balanced_until p ~closer:Syntax_kind2.RBRACKET 0
     | _ -> ()
   );
-  consume_balanced_until p ~closer:Syntax_kind2.RBRACKET 0;
   expect p Syntax_kind2.RBRACKET (invalid_expression p);
   ignore (complete p marker kind)
 
