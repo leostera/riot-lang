@@ -201,7 +201,7 @@ let expression_boundary = fun p ~stop_at_item ~stop_at_semi ~signature ->
   | Syntax_kind2.BAR_RBRACKET
   | Syntax_kind2.END_KW
   | Syntax_kind2.DONE_KW -> true
-  | Syntax_kind2.SEMI -> stop_at_semi
+  | Syntax_kind2.SEMI -> stop_at_semi || (stop_at_item && peek_kind p 1 = Syntax_kind2.SEMI)
   | _ -> stop_at_item && at_item_boundary p ~signature
 
 let can_start_atom = function
@@ -307,12 +307,52 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
   let rec loop lhs =
     if expression_boundary p ~stop_at_item ~stop_at_semi ~signature then
       lhs
-    else if at p Syntax_kind2.SEMI && not stop_at_semi then
+    else if at p Syntax_kind2.SEMI && not stop_at_semi && min_bp <= 0 then
       (
         let marker = precede p lhs in
         bump p;
         let _rhs = parse_expression p ~signature ~stop_at_item ~stop_at_semi 0 in
         loop (complete p marker Syntax_kind2.SEQUENCE_EXPR)
+      )
+    else if at p Syntax_kind2.DOT then
+      (
+        match peek_kind p 1 with
+        | Syntax_kind2.LPAREN ->
+            let marker = precede p lhs in
+            bump p;
+            bump p;
+            if not (at p Syntax_kind2.RPAREN || is_eof p) then
+              ignore (parse_expression p ~signature ~stop_at_item:false 0);
+            expect p Syntax_kind2.RPAREN (invalid_expression p);
+            loop (complete p marker Syntax_kind2.ARRAY_INDEX_EXPR)
+        | Syntax_kind2.LBRACKET ->
+            let marker = precede p lhs in
+            bump p;
+            bump p;
+            if not (at p Syntax_kind2.RBRACKET || is_eof p) then
+              ignore (parse_expression p ~signature ~stop_at_item:false 0);
+            expect p Syntax_kind2.RBRACKET (invalid_expression p);
+            loop (complete p marker Syntax_kind2.STRING_INDEX_EXPR)
+        | Syntax_kind2.IDENT ->
+            let marker = precede p lhs in
+            bump p;
+            expect p Syntax_kind2.IDENT (invalid_expression p);
+            loop (complete p marker Syntax_kind2.FIELD_ACCESS_EXPR)
+        | _ -> lhs
+      )
+    else if (at p Syntax_kind2.LEFT_ARROW || at p Syntax_kind2.COLONEQ) && min_bp <= 5 then
+      (
+        let marker = precede p lhs in
+        bump p;
+        let _rhs = parse_expression p ~signature ~stop_at_item ~stop_at_semi 6 in
+        loop (complete p marker Syntax_kind2.ASSIGN_EXPR)
+      )
+    else if at p Syntax_kind2.COLON && min_bp <= 5 then
+      (
+        let marker = precede p lhs in
+        bump p;
+        parse_type_expr p ~stop_at_arrow:false;
+        loop (complete p marker Syntax_kind2.TYPED_EXPR)
       )
     else if can_start_atom (current_kind p) then
       let marker = precede p lhs in
@@ -478,9 +518,33 @@ and parse_record_expr = fun p ~signature ->
         parse_fields ()
       )
   in
-  parse_fields ();
+  let kind =
+    if at p Syntax_kind2.RBRACE || is_eof p then
+      Syntax_kind2.RECORD_EXPR
+    else (
+      let before = p.pos in
+      ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0);
+      if at p Syntax_kind2.WITH_KW then
+        (
+          bump p;
+          parse_fields ();
+          Syntax_kind2.RECORD_UPDATE_EXPR
+        )
+      else (
+        if at p Syntax_kind2.EQ then
+          (
+            bump p;
+            ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0)
+          );
+        ensure_progress p before (invalid_expression p);
+        ignore (bump_if p Syntax_kind2.SEMI);
+        parse_fields ();
+        Syntax_kind2.RECORD_EXPR
+      )
+    )
+  in
   expect p Syntax_kind2.RBRACE (invalid_expression p);
-  complete p marker Syntax_kind2.RECORD_EXPR
+  complete p marker kind
 
 and parse_let_expr = fun p ~signature ->
   let marker = start_node p in
@@ -555,7 +619,7 @@ and parse_fun_expr = fun p ~signature ~stop_at_item ->
   let rec parse_params () =
     if not (at p Syntax_kind2.ARROW || is_eof p) then
       (
-        parse_pattern p;
+        parse_pattern ~stop_type_at_arrow:false p;
         parse_params ()
       )
   in
@@ -588,7 +652,7 @@ and parse_while_expr = fun p ~signature ~stop_at_item ->
 and parse_for_expr = fun p ~signature ~stop_at_item ->
   let marker = start_node p in
   bump p;
-  parse_pattern p;
+  parse_pattern ~stop_type_at_arrow:false p;
   expect p Syntax_kind2.EQ (invalid_expression p);
   ignore (parse_expression p ~signature ~stop_at_item:false 0);
   if at p Syntax_kind2.TO_KW || at p Syntax_kind2.DOWNTO_KW then
@@ -601,9 +665,10 @@ and parse_for_expr = fun p ~signature ~stop_at_item ->
   expect p Syntax_kind2.DONE_KW (invalid_expression p);
   complete p marker Syntax_kind2.FOR_EXPR
 
-and parse_pattern = fun p -> ignore (parse_pattern_bp p 0)
+and parse_pattern = fun ?(stop_type_at_arrow = true) p ->
+  ignore (parse_pattern_bp p ~stop_type_at_arrow 0)
 
-and parse_pattern_bp = fun p min_bp ->
+and parse_pattern_bp = fun p ~stop_type_at_arrow min_bp ->
   let rec loop lhs =
     match pattern_binding_power (current_kind p) with
     | Some bp when bp >= min_bp -> (
@@ -611,49 +676,49 @@ and parse_pattern_bp = fun p min_bp ->
         | Syntax_kind2.COLON ->
             let marker = precede p lhs in
             bump p;
-            parse_type_expr p;
+            parse_type_expr p ~stop_at_arrow:stop_type_at_arrow;
             loop (complete p marker Syntax_kind2.CONSTRAINT_PATTERN)
         | Syntax_kind2.AS_KW ->
             let marker = precede p lhs in
             bump p;
-            ignore (parse_pattern_atom p);
+            ignore (parse_pattern_atom p ~stop_type_at_arrow);
             loop (complete p marker Syntax_kind2.ALIAS_PATTERN)
         | Syntax_kind2.COLONCOLON ->
             let marker = precede p lhs in
             bump p;
-            ignore (parse_pattern_bp p bp);
+            ignore (parse_pattern_bp p ~stop_type_at_arrow bp);
             loop (complete p marker Syntax_kind2.CONS_PATTERN)
         | Syntax_kind2.PIPE ->
             let marker = precede p lhs in
             bump p;
-            ignore (parse_pattern_bp p bp);
+            ignore (parse_pattern_bp p ~stop_type_at_arrow bp);
             loop (complete p marker Syntax_kind2.OR_PATTERN)
         | Syntax_kind2.COMMA ->
             let marker = precede p lhs in
             bump p;
-            ignore (parse_pattern_bp p bp);
+            ignore (parse_pattern_bp p ~stop_type_at_arrow bp);
             loop (complete p marker Syntax_kind2.TUPLE_PATTERN)
         | _ ->
             lhs
       )
     | _ -> lhs
   in
-  loop (parse_pattern_apply p)
+  loop (parse_pattern_apply p ~stop_type_at_arrow)
 
-and parse_pattern_apply = fun p ->
+and parse_pattern_apply = fun p ~stop_type_at_arrow ->
   let rec loop lhs =
     if can_start_pattern_atom (current_kind p) then
       (
         let marker = precede p lhs in
-        ignore (parse_pattern_atom p);
+        ignore (parse_pattern_atom p ~stop_type_at_arrow);
         loop (complete p marker Syntax_kind2.APPLY_PATTERN)
       )
     else
       lhs
   in
-  loop (parse_pattern_atom p)
+  loop (parse_pattern_atom p ~stop_type_at_arrow)
 
-and parse_pattern_atom = fun p ->
+and parse_pattern_atom = fun p ~stop_type_at_arrow ->
   match current_kind p with
   | Syntax_kind2.UNDERSCORE -> parse_single_token_pattern p Syntax_kind2.WILDCARD_PATTERN
   | Syntax_kind2.IDENT -> parse_path_pattern p
@@ -667,9 +732,9 @@ and parse_pattern_atom = fun p ->
   | Syntax_kind2.LBRACKET -> parse_list_pattern p
   | Syntax_kind2.LBRACKET_BAR -> parse_array_pattern p
   | Syntax_kind2.LBRACE -> parse_record_pattern p
-  | Syntax_kind2.BACKTICK -> parse_poly_variant_pattern p
-  | Syntax_kind2.LAZY_KW -> parse_unary_pattern p Syntax_kind2.LAZY_PATTERN
-  | Syntax_kind2.EXCEPTION_KW -> parse_unary_pattern p Syntax_kind2.EXCEPTION_PATTERN
+  | Syntax_kind2.BACKTICK -> parse_poly_variant_pattern p ~stop_type_at_arrow
+  | Syntax_kind2.LAZY_KW -> parse_unary_pattern p ~stop_type_at_arrow Syntax_kind2.LAZY_PATTERN
+  | Syntax_kind2.EXCEPTION_KW -> parse_unary_pattern p ~stop_type_at_arrow Syntax_kind2.EXCEPTION_PATTERN
   | _ -> parse_error_pattern p
 
 and parse_single_token_pattern = fun p kind ->
@@ -694,13 +759,13 @@ and parse_parenthesized_pattern = fun p ->
   bump p;
   let at_closer () = at p Syntax_kind2.RPAREN || is_eof p in
   if not (at_closer ()) then
-    parse_pattern p;
+    parse_pattern ~stop_type_at_arrow:false p;
   let rec parse_comma_tail saw_comma =
     if at p Syntax_kind2.COMMA then
       (
         bump p;
         if not (at_closer ()) then
-          parse_pattern p;
+          parse_pattern ~stop_type_at_arrow:false p;
         parse_comma_tail true
       )
     else
@@ -723,7 +788,7 @@ and parse_list_pattern = fun p ->
     if not (at p Syntax_kind2.RBRACKET || is_eof p) then
       (
         let before = p.pos in
-        parse_pattern p;
+        parse_pattern ~stop_type_at_arrow:false p;
         ensure_progress p before (invalid_pattern p);
         ignore (bump_if p Syntax_kind2.SEMI);
         parse_elements ()
@@ -740,7 +805,7 @@ and parse_array_pattern = fun p ->
     if not (at p Syntax_kind2.BAR_RBRACKET || is_eof p) then
       (
         let before = p.pos in
-        parse_pattern p;
+        parse_pattern ~stop_type_at_arrow:false p;
         ensure_progress p before (invalid_pattern p);
         ignore (bump_if p Syntax_kind2.SEMI);
         parse_elements ()
@@ -764,7 +829,7 @@ and parse_record_pattern = fun p ->
           if at p Syntax_kind2.EQ then
             (
               bump p;
-              parse_pattern p
+              parse_pattern ~stop_type_at_arrow:false p
             )
         );
         ensure_progress p before (invalid_pattern p);
@@ -776,18 +841,18 @@ and parse_record_pattern = fun p ->
   expect p Syntax_kind2.RBRACE (invalid_pattern p);
   complete p marker Syntax_kind2.RECORD_PATTERN
 
-and parse_poly_variant_pattern = fun p ->
+and parse_poly_variant_pattern = fun p ~stop_type_at_arrow ->
   let marker = start_node p in
   bump p;
   expect p Syntax_kind2.IDENT (invalid_pattern p);
   if can_start_pattern_atom (current_kind p) then
-    parse_pattern p;
+    parse_pattern ~stop_type_at_arrow p;
   complete p marker Syntax_kind2.POLY_VARIANT_PATTERN
 
-and parse_unary_pattern = fun p kind ->
+and parse_unary_pattern = fun p ~stop_type_at_arrow kind ->
   let marker = start_node p in
   bump p;
-  ignore (parse_pattern_atom p);
+  ignore (parse_pattern_atom p ~stop_type_at_arrow);
   complete p marker kind
 
 and parse_error_pattern = fun p ->
@@ -799,7 +864,7 @@ and parse_error_pattern = fun p ->
     bump p;
   complete p marker Syntax_kind2.ERROR
 
-and parse_type_expr = fun p ->
+and parse_type_expr = fun p ~stop_at_arrow ->
   let marker = start_node p in
   let boundary depth =
     depth = 0
@@ -807,7 +872,6 @@ and parse_type_expr = fun p ->
     | Syntax_kind2.EOF
     | Syntax_kind2.AS_KW
     | Syntax_kind2.PIPE
-    | Syntax_kind2.ARROW
     | Syntax_kind2.WHEN_KW
     | Syntax_kind2.EQ
     | Syntax_kind2.COMMA
@@ -816,6 +880,7 @@ and parse_type_expr = fun p ->
     | Syntax_kind2.RBRACE
     | Syntax_kind2.BAR_RBRACKET
     | Syntax_kind2.SEMI -> true
+    | Syntax_kind2.ARROW when stop_at_arrow -> true
     | _ -> false
   in
   let next_depth depth =
@@ -854,11 +919,11 @@ and parse_type_expr = fun p ->
 
 and parse_let_binding = fun p ~signature ~top_level ->
   let marker = start_node p in
-  parse_pattern p;
+  parse_pattern ~stop_type_at_arrow:false p;
   let rec parse_params () =
     if not (at p Syntax_kind2.EQ || is_eof p || (top_level && at_item_boundary p ~signature)) then
       (
-        parse_pattern p;
+        parse_pattern ~stop_type_at_arrow:false p;
         parse_params ()
       )
   in
@@ -987,11 +1052,20 @@ let parse_signature_item = fun p ->
   );
   ignore (complete p marker Syntax_kind2.SIGNATURE_ITEM)
 
+let rec consume_phrase_separators = fun p ->
+  if at p Syntax_kind2.SEMI && peek_kind p 1 = Syntax_kind2.SEMI then
+    (
+      bump p;
+      bump p;
+      consume_phrase_separators p
+    )
+
 let parse_file = fun kind source ->
   let p = create source in
   let root = start_node p in
   let body = start_node p in
   let rec parse_structure_items () =
+    consume_phrase_separators p;
     if not (is_eof p) then
       (
         parse_structure_item p;
@@ -999,6 +1073,7 @@ let parse_file = fun kind source ->
       )
   in
   let rec parse_signature_items () =
+    consume_phrase_separators p;
     if not (is_eof p) then
       (
         parse_signature_item p;

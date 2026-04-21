@@ -100,13 +100,17 @@ module Expr = struct
     | Syntax_kind2.PREFIX_EXPR
     | Syntax_kind2.ASSIGN_EXPR
     | Syntax_kind2.FIELD_ACCESS_EXPR
+    | Syntax_kind2.ARRAY_INDEX_EXPR
+    | Syntax_kind2.STRING_INDEX_EXPR
+    | Syntax_kind2.TYPED_EXPR
     | Syntax_kind2.PATH_EXPR
     | Syntax_kind2.LITERAL_EXPR
     | Syntax_kind2.PAREN_EXPR
     | Syntax_kind2.TUPLE_EXPR
     | Syntax_kind2.LIST_EXPR
     | Syntax_kind2.ARRAY_EXPR
-    | Syntax_kind2.RECORD_EXPR -> true
+    | Syntax_kind2.RECORD_EXPR
+    | Syntax_kind2.RECORD_UPDATE_EXPR -> true
     | _ -> false
 
   let cast = fun node ->
