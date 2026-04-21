@@ -62,6 +62,11 @@ let baseline_statistics = fun (history: history_sample list) ->
   |> List.map ~fn:(fun stats -> stats.iterations)
   |> int_median
   |> Option.expect ~msg:"expected non-empty history for iterations" in
+  let gc_field project name = project statistics
+  |> List.map ~fn:Float.of_int
+  |> float_median
+  |> Option.map ~fn:Float.to_int
+  |> Option.expect ~msg:("expected non-empty history for " ^ name) in
   {
     min = duration_field (List.map ~fn:(fun stats -> stats.min)) "min";
     max = duration_field (List.map ~fn:(fun stats -> stats.max)) "max";
@@ -70,4 +75,9 @@ let baseline_statistics = fun (history: history_sample list) ->
     std_dev = duration_field (List.map ~fn:(fun stats -> stats.std_dev)) "std_dev";
     iterations;
     total_time = duration_field (List.map ~fn:(fun stats -> stats.total_time)) "total_time";
+    gc = {
+      minor_collections = gc_field (List.map ~fn:(fun stats -> stats.gc.minor_collections)) "gc.minor_collections";
+      major_collections = gc_field (List.map ~fn:(fun stats -> stats.gc.major_collections)) "gc.major_collections";
+      compactions = gc_field (List.map ~fn:(fun stats -> stats.gc.compactions)) "gc.compactions"
+    };
   }

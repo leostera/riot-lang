@@ -22,6 +22,7 @@
 16. Source-layout and code-hygiene rules do not belong in unit tests. Encode them in docs, review guidance, or separate tooling instead.
 17. Do not add `Backend.ml` shim modules. Prefer local backend files such as `env/unix.ml`; if the current planner cannot support a deeper nested split yet, keep the implementation in the public module rather than introducing a backend shim.
 18. Keep `Kernel.Random.Source` entropy-only. OS randomness belongs here; PRNG policy, distributions, and sampling combinators belong in `std`.
+19. Keep runtime GC control narrow. Expose low-level collection primitives and sampled counters through `Kernel.Gc`, but keep benchmarking or tuning policy in `std` and higher layers.
 
 ## Validate
 

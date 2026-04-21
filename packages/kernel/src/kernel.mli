@@ -29,6 +29,8 @@ module Int64 = Int64
 
 module Float = Float
 
+module Gc = Gc
+
 module List = List
 
 module Mutex = Sync.Mutex

@@ -1,6 +1,11 @@
 open Std
 open Riot_model
 
+type gc_stats = {
+  minor_collections: int;
+  major_collections: int;
+  compactions: int;
+}
 type bench_statistics = {
   min: Time.Duration.t;
   max: Time.Duration.t;
@@ -9,6 +14,7 @@ type bench_statistics = {
   std_dev: Time.Duration.t;
   iterations: int;
   total_time: Time.Duration.t;
+  gc: gc_stats;
 }
 type bench_case_status =
   | Completed of bench_statistics

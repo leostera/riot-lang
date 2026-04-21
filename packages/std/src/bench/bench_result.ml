@@ -6,6 +6,12 @@ type timing = {
   duration: Time.Duration.t;
 }
 
+type gc_stats = Kernel.Gc.quick_stat = {
+  minor_collections: int;
+  major_collections: int;
+  compactions: int;
+}
+
 type statistics = {
   min: Time.Duration.t;
   max: Time.Duration.t;
@@ -14,6 +20,7 @@ type statistics = {
   std_dev: Time.Duration.t;
   iterations: int;
   total_time: Time.Duration.t;
+  gc: gc_stats;
 }
 
 type bench_result =
@@ -27,7 +34,9 @@ type t = {
   result: bench_result;
 }
 
-let make_statistics = fun timings ->
+let zero_gc_stats: gc_stats = { minor_collections = 0; major_collections = 0; compactions = 0 }
+
+let make_statistics = fun ?(gc = zero_gc_stats) timings ->
   let durations =
     List.map timings ~fn:(fun t -> t.duration)
   in
@@ -62,6 +71,7 @@ let make_statistics = fun timings ->
     std_dev = Time.Duration.from_nanos (Int.from_float std_dev_nanos);
     iterations;
     total_time = Time.Duration.from_nanos (Int64.to_int total_nanos);
+    gc;
   }
 
 type summary = {

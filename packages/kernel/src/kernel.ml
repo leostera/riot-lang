@@ -17,6 +17,7 @@ module Error = Error
 module Exception = Exception
 module Float = Float
 module Fs = Fs
+module Gc = Gc
 module IO = IO
 module Int = Int
 module Int32 = Int32

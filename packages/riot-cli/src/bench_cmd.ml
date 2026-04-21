@@ -7,25 +7,27 @@ open Riot_bench
 
 let command =
   let open ArgParser in
-    let open Arg in command "bench"
-    |> about "Run benchmarks with optional case filtering"
-    |> ArgParser.allow_trailing_args
-    |> args
-      [
-        option "package" |> short 'p' |> long "package" |> multiple |> help "Run benchmarks from a specific package. Repeat to run multiple packages.";
-        option "filter" |> short 'f' |> long "filter" |> help "Filter benchmark suites and cases by substring within the selected packages";
-        option "compare" |> long "compare" |> help "Show up to N previous comparable suite runs alongside the current results";
-        option "iterations" |> long "iterations" |> help "Override iteration count for all matched benchmarks";
-        option "warmup" |> long "warmup" |> help "Override warmup count for all matched benchmarks";
-        flag "list" |> long "list" |> help "List benchmark suites and benchmark cases without running them";
-        flag "release" |> long "release" |> help "Use the release build profile";
-        flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
-        flag "verbose"
-        |> short 'v'
-        |> long "verbose"
-        |> help "Enable verbose output for benchmarks"
-        |> count;
-      ]
+    let open Arg in
+      command "bench"
+      |> about "Run benchmarks with optional case filtering"
+      |> ArgParser.allow_trailing_args
+      |> args
+        [
+          option "package" |> short 'p' |> long "package" |> multiple |> help "Run benchmarks from a specific package. Repeat to run multiple packages.";
+          option "filter" |> short 'f' |> long "filter" |> help "Filter benchmark suites and cases by substring within the selected packages";
+          option "compare" |> long "compare" |> help "Show up to N previous comparable suite runs alongside the current results";
+          option "iterations" |> long "iterations" |> help "Override iteration count for all matched benchmarks";
+          option "warmup" |> long "warmup" |> help "Override warmup count for all matched benchmarks";
+          flag "record" |> long "record" |> help "Persist this benchmark run into .riot/bench for later comparison";
+          flag "list" |> long "list" |> help "List benchmark suites and benchmark cases without running them";
+          flag "release" |> long "release" |> help "Use the release build profile";
+          flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
+          flag "verbose"
+          |> short 'v'
+          |> long "verbose"
+          |> help "Enable verbose output for benchmarks"
+          |> count;
+        ]
 
 type invocation_args = {
   parsed: string list;
@@ -34,6 +36,7 @@ type invocation_args = {
 
 let is_known_flag_without_value = function
   | "--list"
+  | "--record"
   | "--release"
   | "--json"
   | "-v"
@@ -281,6 +284,11 @@ let write_bench_list = fun ~(workspace:Riot_model.Workspace.t) suites ->
           in
           println ("  [" ^ Int.to_string item.index ^ "] " ^ kind ^ " " ^ item.name ^ skip_suffix)))
 
+let print_gc = fun ~indent (gc: Bench_runtime.bench_gc_stats) ->
+  println (indent ^ "gc.minor:   " ^ Int.to_string gc.minor_collections);
+  println (indent ^ "gc.major:   " ^ Int.to_string gc.major_collections);
+  println (indent ^ "gc.compact: " ^ Int.to_string gc.compactions)
+
 let print_bench_result = fun (result: Bench_runtime.bench_case_result) ->
   match result.result with
   | Bench_runtime.Completed stats ->
@@ -291,6 +299,7 @@ let print_bench_result = fun (result: Bench_runtime.bench_case_result) ->
       println ("  min:        " ^ print_duration stats.min);
       println ("  max:        " ^ print_duration stats.max);
       println ("  std_dev:    " ^ print_duration stats.std_dev);
+      print_gc ~indent:"  " stats.gc;
       println ""
   | Bench_runtime.Skipped ->
       println ("[" ^ Int.to_string result.index ^ "] " ^ result.name ^ ": SKIPPED");
@@ -311,7 +320,8 @@ let print_comparison = fun (result: Bench_runtime.bench_comparison_result) ->
       println
         ("    mean:       " ^ print_duration stats.mean ^ " ± " ^ print_duration stats.std_dev);
       println ("    min:        " ^ print_duration stats.min);
-      println ("    max:        " ^ print_duration stats.max));
+      println ("    max:        " ^ print_duration stats.max);
+      print_gc ~indent:"    " stats.gc);
   if not (result.speedup_ratios = []) then
     (
       println "  Relative speed:";
@@ -579,6 +589,14 @@ let history_statistics_json = fun (stats: History.bench_statistics) ->
     ("std_dev_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.std_dev)));
     ("iterations", Data.Json.Int stats.iterations);
     ("total_time_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.total_time)));
+    (
+      "gc",
+      Data.Json.Object [
+        ("minor_collections", Data.Json.Int stats.gc.minor_collections);
+        ("major_collections", Data.Json.Int stats.gc.major_collections);
+        ("compactions", Data.Json.Int stats.gc.compactions);
+      ]
+    );
   ]
 
 let history_sample_json = fun (sample: History.history_sample) ->
@@ -840,6 +858,13 @@ let bench_history_context = fun ~(workspace:Riot_model.Workspace.t) ~profile (
     ~argv
     ()
 
+let bench_history_of_gc = fun (gc: Bench_runtime.bench_gc_stats) : History.gc_stats ->
+  {
+    minor_collections = gc.minor_collections;
+    major_collections = gc.major_collections;
+    compactions = gc.compactions
+  }
+
 let bench_history_of_statistics = fun (stats: Bench_runtime.bench_statistics) : History.bench_statistics ->
   {
     min = stats.min;
@@ -849,6 +874,7 @@ let bench_history_of_statistics = fun (stats: Bench_runtime.bench_statistics) : 
     std_dev = stats.std_dev;
     iterations = stats.iterations;
     total_time = stats.total_time;
+    gc = bench_history_of_gc stats.gc;
   }
 
 let bench_history_of_result = fun (result: Bench_runtime.bench_case_result) : History.bench_case_result ->
@@ -1032,7 +1058,13 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
         Error (Failure (Bench_runtime.bench_error_message err))
   else
     let history_partial = bench_history_partial request in
-    let history_context = bench_history_context ~workspace ~profile request ~argv:Env.args in
+    let record_history = ArgParser.get_flag matches "record" in
+    let history_context =
+      if record_history || Option.is_some compare_limit then
+        Some (bench_history_context ~workspace ~profile request ~argv:Env.args)
+      else
+        None
+    in
     let human_render_state = create_human_render_state () in
     let on_event (event: Bench_runtime.bench_event) =
       match event with
@@ -1049,20 +1081,21 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
         summary;
         _
       } ->
-          let history_comparison = compare_limit
-          |> Option.map
-            ~fn:(fun compare_limit ->
-              bench_history_compare
-                history_context
-                ~suite
-                ~limit:compare_limit
-                status
-                started_at_us
-                completed_at_us
-                duration_us
-                results
-                comparisons
-                summary) in
+          let history_comparison =
+            match compare_limit, history_context with
+            | Some compare_limit, Some history_context -> Some (bench_history_compare
+              history_context
+              ~suite
+              ~limit:compare_limit
+              status
+              started_at_us
+              completed_at_us
+              duration_us
+              results
+              comparisons
+              summary)
+            | _ -> None
+          in
           let history_comparison =
             match history_comparison with
             | None ->
@@ -1079,25 +1112,29 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
                   ^ error);
                 None
           in
-          save_bench_history
+          if record_history then
             history_context
-            ~suite
-            status
-            started_at_us
-            completed_at_us
-            duration_us
-            results
-            comparisons
-            summary
-          |> Result.iter_err
-            ~fn:(fun error ->
-              bench_history_warning
-                ("failed to save benchmark history for "
-                ^ Package_name.to_string suite.package_name
-                ^ "/"
-                ^ suite.suite_name
-                ^ ": "
-                ^ error));
+            |> Option.for_each
+              ~fn:(fun history_context ->
+                save_bench_history
+                  history_context
+                  ~suite
+                  status
+                  started_at_us
+                  completed_at_us
+                  duration_us
+                  results
+                  comparisons
+                  summary
+                |> Result.iter_err
+                  ~fn:(fun error ->
+                    bench_history_warning
+                      ("failed to save benchmark history for "
+                      ^ Package_name.to_string suite.package_name
+                      ^ "/"
+                      ^ suite.suite_name
+                      ^ ": "
+                      ^ error)));
           (
             match output_mode with
             | Build.Json ->

@@ -7,6 +7,12 @@ type timing = {
   (** Measured duration for the iteration. *)
   duration: Time.Duration.t;
 }
+(** GC collection counters observed while measuring a benchmark case. *)
+type gc_stats = Kernel.Gc.quick_stat = {
+  minor_collections: int;
+  major_collections: int;
+  compactions: int;
+}
 (** Statistical summary of benchmark timings. *)
 type statistics = {
   (** Fastest recorded duration. *)
@@ -23,6 +29,8 @@ type statistics = {
   iterations: int;
   (** Total duration across all iterations. *)
   total_time: Time.Duration.t;
+  (** GC collection deltas observed across the measured iterations. *)
+  gc: gc_stats;
 }
 (** The outcome of running a benchmark. *)
 type bench_result =
@@ -48,7 +56,7 @@ type t = {
     let stats = Bench_result.make_statistics timings
     ```
 *)
-val make_statistics: timing list -> statistics
+val make_statistics: ?gc:gc_stats -> timing list -> statistics
 
 (** Summary of all benchmark results. *)
 type summary = {

@@ -1,6 +1,11 @@
 open Global
 open Collections
 
+let print_gc = fun ~indent (gc: Bench_result.gc_stats) ->
+  println (indent ^ "gc.minor:   " ^ Int.to_string gc.minor_collections);
+  println (indent ^ "gc.major:   " ^ Int.to_string gc.major_collections);
+  println (indent ^ "gc.compact: " ^ Int.to_string gc.compactions)
+
 let init = fun (info: Intf.suite_info) count ->
   println "";
   println ("Running " ^ Int.to_string count ^ " benchmarks from " ^ info.name ^ "...");
@@ -18,6 +23,7 @@ let on_result = fun index (result: Bench_result.t) ->
       println ("  min:        " ^ Time.Duration.to_secs_string ~precision:6 stats.min);
       println ("  max:        " ^ Time.Duration.to_secs_string ~precision:6 stats.max);
       println ("  std_dev:    " ^ Time.Duration.to_secs_string ~precision:6 stats.std_dev);
+      print_gc ~indent:"  " stats.gc;
       println ""
   | Bench_result.Skipped ->
       println ("[" ^ Int.to_string index ^ "] " ^ result.name ^ ": SKIPPED");
@@ -57,6 +63,7 @@ let on_comparison_case_result = fun index name (stats: Bench_result.statistics) 
     ^ Time.Duration.to_secs_string ~precision:6 stats.std_dev);
   println ("    min:        " ^ Time.Duration.to_secs_string ~precision:6 stats.min);
   println ("    max:        " ^ Time.Duration.to_secs_string ~precision:6 stats.max);
+  print_gc ~indent:"    " stats.gc;
   println ""
 
 let on_comparison_summary = fun (result: Bench_result.comparison_result) ->

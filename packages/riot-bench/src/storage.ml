@@ -101,6 +101,13 @@ let json_of_option = fun value ~some ->
 
 let duration_nanos = fun duration -> Int64.to_int (Time.Duration.to_nanos duration)
 
+let gc_to_json = fun (gc: gc_stats) ->
+  Data.Json.Object [
+    ("minor_collections", Data.Json.Int gc.minor_collections);
+    ("major_collections", Data.Json.Int gc.major_collections);
+    ("compactions", Data.Json.Int gc.compactions);
+  ]
+
 let statistics_to_json = fun (stats: bench_statistics) ->
   Data.Json.Object [
     ("min_nanos", Data.Json.Int (duration_nanos stats.min));
@@ -110,6 +117,7 @@ let statistics_to_json = fun (stats: bench_statistics) ->
     ("std_dev_nanos", Data.Json.Int (duration_nanos stats.std_dev));
     ("iterations", Data.Json.Int stats.iterations);
     ("total_time_nanos", Data.Json.Int (duration_nanos stats.total_time));
+    ("gc", gc_to_json stats.gc);
   ]
 
 let benchmark_to_json = fun (benchmark: bench_case_result) ->
@@ -258,6 +266,10 @@ let statistics_of_json = fun json ->
   let* std_dev = duration_field "std_dev_nanos" in
   let* iterations = required_int fields "iterations" in
   let* total_time = duration_field "total_time_nanos" in
+  let* gc_fields = required_object fields "gc" in
+  let* minor_collections = required_int gc_fields "minor_collections" in
+  let* major_collections = required_int gc_fields "major_collections" in
+  let* compactions = required_int gc_fields "compactions" in
   Ok {
     min;
     max;
@@ -266,6 +278,7 @@ let statistics_of_json = fun json ->
     std_dev;
     iterations;
     total_time;
+    gc = { minor_collections; major_collections; compactions };
   }
 
 let bench_case_result_of_json = fun json ->

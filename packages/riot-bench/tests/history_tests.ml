@@ -27,6 +27,7 @@ let sample_stats = fun nanos ->
     std_dev = Time.Duration.from_nanos 5;
     iterations = 100;
     total_time = Time.Duration.from_nanos ((nanos + 20) * 100);
+    gc = { minor_collections = 1; major_collections = 0; compactions = 0 };
   }
 
 let stats = fun ~min ~max ~mean ~median ~std_dev ~iterations ~total_time ->
@@ -38,6 +39,7 @@ let stats = fun ~min ~max ~mean ~median ~std_dev ~iterations ~total_time ->
     std_dev = Time.Duration.from_nanos std_dev;
     iterations;
     total_time = Time.Duration.from_nanos total_time;
+    gc = { minor_collections = 1; major_collections = 0; compactions = 0 };
   }
 
 let benchmark = fun ~index ~name nanos ->
@@ -134,6 +136,7 @@ let test_save_suite_run_writes_self_contained_json = fun _ctx ->
                   std_dev = Time.Duration.from_nanos 3;
                   iterations = 100;
                   total_time = Time.Duration.from_nanos 1_500;
+                  gc = { minor_collections = 1; major_collections = 0; compactions = 0 };
                 };
             } ];
         comparisons = [];

@@ -15,6 +15,12 @@ type bench_request = {
   extra_args: string list;
 }
 
+type bench_gc_stats = {
+  minor_collections: int;
+  major_collections: int;
+  compactions: int;
+}
+
 type bench_statistics = {
   min: Time.Duration.t;
   max: Time.Duration.t;
@@ -23,6 +29,7 @@ type bench_statistics = {
   std_dev: Time.Duration.t;
   iterations: int;
   total_time: Time.Duration.t;
+  gc: bench_gc_stats;
 }
 
 type bench_case_status =
@@ -342,6 +349,16 @@ let duration_of_nanos_json = fun json ->
   let* nanos = get_int json in
   Ok (Time.Duration.from_nanos nanos)
 
+let gc_stats_of_json = fun json ->
+  let* fields = get_object json in
+  let* minor_collections_json = field "minor_collections" fields in
+  let* major_collections_json = field "major_collections" fields in
+  let* compactions_json = field "compactions" fields in
+  let* minor_collections = get_int minor_collections_json in
+  let* major_collections = get_int major_collections_json in
+  let* compactions = get_int compactions_json in
+  Ok { minor_collections; major_collections; compactions }
+
 let statistics_of_json = fun json ->
   let* fields = get_object json in
   let* min_json = field "min_nanos" fields in
@@ -351,6 +368,7 @@ let statistics_of_json = fun json ->
   let* std_dev_json = field "std_dev_nanos" fields in
   let* iterations_json = field "iterations" fields in
   let* total_time_json = field "total_time_nanos" fields in
+  let* gc_json = field "gc" fields in
   let* min = duration_of_nanos_json min_json in
   let* max = duration_of_nanos_json max_json in
   let* mean = duration_of_nanos_json mean_json in
@@ -358,6 +376,7 @@ let statistics_of_json = fun json ->
   let* std_dev = duration_of_nanos_json std_dev_json in
   let* iterations = get_int iterations_json in
   let* total_time = duration_of_nanos_json total_time_json in
+  let* gc = gc_stats_of_json gc_json in
   Ok {
     min;
     max;
@@ -366,6 +385,7 @@ let statistics_of_json = fun json ->
     std_dev;
     iterations;
     total_time;
+    gc;
   }
 
 let bench_status_of_json = fun json ->
@@ -595,6 +615,14 @@ let bench_event_to_json = function
         ("std_dev_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.std_dev)));
         ("iterations", Data.Json.Int stats.iterations);
         ("total_time_nanos", Data.Json.Int (Int64.to_int (Time.Duration.to_nanos stats.total_time)));
+        (
+          "gc",
+          Data.Json.Object [
+            ("minor_collections", Data.Json.Int stats.gc.minor_collections);
+            ("major_collections", Data.Json.Int stats.gc.major_collections);
+            ("compactions", Data.Json.Int stats.gc.compactions);
+          ]
+        );
       ] in
       let result_to_json (result: bench_case_result) =
         let base_fields = [

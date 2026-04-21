@@ -88,6 +88,34 @@ external argv: string array = "%sys_argv"
 
 external recommended_domain_count: unit -> int = "caml_recommended_domain_count" [@@noalloc]
 
+type gc_stat = {
+  minor_words: float;
+  promoted_words: float;
+  major_words: float;
+  minor_collections: int;
+  major_collections: int;
+  heap_words: int;
+  heap_chunks: int;
+  live_words: int;
+  live_blocks: int;
+  free_words: int;
+  free_blocks: int;
+  largest_free: int;
+  fragments: int;
+  compactions: int;
+  top_heap_words: int;
+  stack_size: int;
+  forced_major_collections: int;
+}
+
+external gc_quick_stat: unit -> gc_stat = "caml_gc_quick_stat"
+
+external gc_major: unit -> unit = "caml_gc_major"
+
+external gc_full_major: unit -> unit = "caml_gc_full_major"
+
+external gc_compact: unit -> unit = "caml_gc_compaction"
+
 external string_length: string -> int = "%string_length"
 
 external string_get: string -> int -> char = "%string_safe_get"

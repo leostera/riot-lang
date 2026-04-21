@@ -8,6 +8,12 @@ type config = {
 
 type run_summary = Bench_result.summary
 
+let gc_delta ~(before:Kernel.Gc.quick_stat) ~(after_:Kernel.Gc.quick_stat) : Bench_result.gc_stats = {
+  minor_collections = Int.max 0 (after_.minor_collections - before.minor_collections);
+  major_collections = Int.max 0 (after_.major_collections - before.major_collections);
+  compactions = Int.max 0 (after_.compactions - before.compactions)
+}
+
 let run_single_benchmark = fun index (bench: Bench_case.t) ->
   if bench.skip then
     Bench_result.{ index; name = bench.name; result = Skipped }
@@ -16,6 +22,7 @@ let run_single_benchmark = fun index (bench: Bench_case.t) ->
       for _i = 1 to bench.config.warmup do
         bench.fn ()
       done;
+      let gc_before = Kernel.Gc.quick_stat () in
       (* Measurement phase *)
       let timings = ref [] in
       for i = 1 to bench.config.iterations do
@@ -25,8 +32,11 @@ let run_single_benchmark = fun index (bench: Bench_case.t) ->
         let duration = Time.Instant.duration_since ~earlier:start finish in
         timings := Bench_result.{ iteration = i; duration } :: !timings
       done;
+      let gc_after = Kernel.Gc.quick_stat () in
       (* Calculate statistics *)
-      let stats = Bench_result.make_statistics (List.reverse !timings) in
+      let stats = Bench_result.make_statistics
+        ~gc:(gc_delta ~before:gc_before ~after_:gc_after)
+        (List.reverse !timings) in
       Bench_result.{ index; name = bench.name; result = Completed stats }
     with
     | exn ->

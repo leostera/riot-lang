@@ -174,6 +174,32 @@ let test_run_benchmarks_json_includes_timing_fields = fun _ctx ->
     else
       Error "expected benchmark json output to include timing fields"
 
+let test_run_benchmarks_json_includes_gc_fields = fun _ctx ->
+  let output = run_sample_capture [ "run-benchmarks"; "_long"; "--json" ] in
+  if not (Int.equal output.status 0) then
+    Error ("expected filtered benchmark json run to succeed, got " ^ Int.to_string output.status)
+  else
+    match Data.Json.get_field "benchmarks" (parse_json_output output.stdout) with
+    | Some (Data.Json.Array ((Data.Json.Object first) :: _)) -> (
+        match Data.Json.get_field "statistics" (Data.Json.Object first) with
+        | Some (Data.Json.Object stats) -> (
+            match assoc_value "gc" stats with
+            | Some (Data.Json.Object gc_fields) ->
+                if
+                  assoc_value "minor_collections" gc_fields
+                  |> Option.is_some && assoc_value "major_collections" gc_fields
+                  |> Option.is_some && assoc_value "compactions" gc_fields
+                  |> Option.is_some
+                then
+                  Ok ()
+                else
+                  Error "expected benchmark json output to include gc fields"
+            | _ -> Error "expected benchmark statistics to include a gc object"
+          )
+        | _ -> Error "expected completed benchmark statistics in benchmark json output"
+      )
+    | _ -> Error "expected benchmark json output to include at least one benchmark"
+
 let test_run_benchmarks_json_emits_case_started_progress = fun _ctx ->
   let output = run_sample_capture [ "run-benchmarks"; "_long"; "--json" ] in
   if not (Int.equal output.status 0) then
@@ -215,6 +241,7 @@ let meta_tests = [
   Test.case "run-benchmarks --json filters results" test_run_benchmarks_json_flag_filters_results;
   Test.case "run-benchmarks --json reports zero matches" test_run_benchmarks_json_flag_reports_zero_matches;
   Test.case "run-benchmarks --json includes timing fields" test_run_benchmarks_json_includes_timing_fields;
+  Test.case "run-benchmarks --json includes gc fields" test_run_benchmarks_json_includes_gc_fields;
   Test.case "run-benchmarks --json emits case started progress" test_run_benchmarks_json_emits_case_started_progress;
 ]
 

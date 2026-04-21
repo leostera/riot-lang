@@ -33,6 +33,14 @@ let on_case_start = fun index name ~iterations ~warmup ->
         ("emitted_at_us", int (event_elapsed_us ()));
       ])
 
+let gc_to_json = fun (gc: Bench_result.gc_stats) ->
+  let open Data.Json in obj
+    [
+      ("minor_collections", int gc.minor_collections);
+      ("major_collections", int gc.major_collections);
+      ("compactions", int gc.compactions);
+    ]
+
 let statistics_to_json = fun (stats: Bench_result.statistics) ->
   let open Data.Json in obj
     [
@@ -43,6 +51,7 @@ let statistics_to_json = fun (stats: Bench_result.statistics) ->
       ("std_dev_nanos", int (Int64.to_int (Time.Duration.to_nanos stats.std_dev)));
       ("iterations", int stats.iterations);
       ("total_time_nanos", int (Int64.to_int (Time.Duration.to_nanos stats.total_time)));
+      ("gc", gc_to_json stats.gc);
     ]
 
 let benchmark_result_to_json = fun (result: Bench_result.t) ->

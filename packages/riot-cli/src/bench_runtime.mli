@@ -24,6 +24,11 @@ type bench_request = {
   (** Additional CLI arguments forwarded to each suite binary. *)
   extra_args: string list;
 }
+type bench_gc_stats = {
+  minor_collections: int;
+  major_collections: int;
+  compactions: int;
+}
 type bench_statistics = {
   (** Fastest measured iteration. *)
   min: Time.Duration.t;
@@ -39,6 +44,8 @@ type bench_statistics = {
   iterations: int;
   (** Total wall-clock time spent benchmarking the case. *)
   total_time: Time.Duration.t;
+  (** GC collection deltas observed across the measured iterations. *)
+  gc: bench_gc_stats;
 }
 type bench_case_status =
   | Completed of bench_statistics
