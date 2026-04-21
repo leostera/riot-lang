@@ -16,6 +16,7 @@ These are the RFDs that are still only `presented` and therefore the most obviou
 - `RFD0035` - New Test, Bench, and Example Target Layout
 - `RFD0041` - A New Kernel for Riot
 - `RFD0043` - Unified Build Session and Work Scheduler
+- `RFD0045` - Target-Specific Module Reachability
 
 ## Rejected
 
