@@ -5,6 +5,11 @@ type t = {
   file: Fs.File.t;
 }
 
+type lane = {
+  profile: string;
+  target: Riot_model.Target.t;
+}
+
 let in_process_lock_counts = Collections.HashMap.create ()
 
 let in_process_lock_counts_lock = Sync.LazyCell.create Actor_mutex.create
@@ -25,6 +30,42 @@ let retry_interval = Time.Duration.from_millis 500
 
 let path = fun ~target_dir_root ~profile ~target ->
   Path.(target_dir_root / Path.v profile / Path.v (Riot_model.Target.to_string target) / Path.v "riot.lock")
+
+let path_exists = fun path -> Fs.exists path |> Result.unwrap_or ~default:false
+
+let path_is_directory = fun path ->
+  Fs.metadata path |> Result.map ~fn:Fs.Metadata.is_dir |> Result.unwrap_or ~default:false
+
+let list_children = fun dir ->
+  if not (path_exists dir) then
+    []
+  else
+    match Fs.read_dir dir with
+    | Error _ -> []
+    | Ok reader -> Iter.MutIterator.to_list reader |> List.map ~fn:(Path.join dir)
+
+let list_subdirectories = fun dir -> list_children dir |> List.filter ~fn:path_is_directory
+
+let compare_lane = fun left right ->
+  match String.compare left.profile right.profile with
+  | 0 -> Riot_model.Target.compare left.target right.target
+  | order -> order
+
+let existing_lanes = fun ~target_dir_root ->
+  list_subdirectories target_dir_root
+  |> List.filter ~fn:(fun dir -> not (String.equal (Path.basename dir) "cache"))
+  |> List.flat_map ~fn:(fun profile_dir ->
+    let profile = Path.basename profile_dir in
+    list_subdirectories profile_dir
+    |> List.filter_map ~fn:(fun target_dir ->
+      let lock_path = Path.(target_dir / Path.v "riot.lock") in
+      if not (path_exists lock_path) then
+        None
+      else
+        Riot_model.Target.from_string (Path.basename target_dir)
+        |> Result.map ~fn:(fun target -> { profile; target })
+        |> Result.to_option))
+  |> List.sort ~compare:compare_lane
 
 let path_key = fun path -> Path.to_string path
 
@@ -132,3 +173,12 @@ let acquire = fun ~on_waiting ~target_dir_root ~profile ~target fn ->
             let _ = decrement_in_process_lock_count lock_path in
             release t;
             raise exn
+
+let acquire_existing_lanes = fun ~on_waiting ~target_dir_root fn ->
+  let rec loop = function
+    | [] -> fn ()
+    | lane :: rest ->
+        acquire ~on_waiting ~target_dir_root ~profile:lane.profile ~target:lane.target
+          (fun () -> loop rest)
+  in
+  loop (existing_lanes ~target_dir_root)

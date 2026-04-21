@@ -1,6 +1,7 @@
 open Std
 module Test = Std.Test
 module BuildLock = Riot_build.BuildLock
+module ResultSyntax = Std.Result.Syntax
 
 type Message.t +=
   | BuildLockAcquired of Time.Duration.t
@@ -17,10 +18,10 @@ let target = fun triple ->
 let with_tempdir = fun prefix fn ->
   match Fs.with_tempdir ~prefix fn with
   | Ok result -> result
-  | Error _ -> Error "Tempdir creation failed"
+  | Error err -> Error (IO.error_message err)
 
 let test_reentrant_acquire_in_same_process = fun _ctx ->
-  with_tempdir "riot_build_lock"
+  with_tempdir "riot_build_lock_reentrant"
     (fun tmpdir ->
       let workspace = make_workspace tmpdir in
       let host_target = target "aarch64-apple-darwin" in
@@ -63,7 +64,7 @@ let test_reentrant_acquire_in_same_process = fun _ctx ->
           | None -> Error "Reentrant acquire in the same process should complete promptly"))
 
 let test_releases_lock_on_exception = fun _ctx ->
-  with_tempdir "riot_build_lock"
+  with_tempdir "riot_build_lock_exception"
     (fun tmpdir ->
       let workspace = make_workspace tmpdir in
       let host_target = target "aarch64-apple-darwin" in
@@ -91,7 +92,7 @@ let test_releases_lock_on_exception = fun _ctx ->
         ))
 
 let test_different_targets_do_not_block_each_other = fun _ctx ->
-  with_tempdir "riot_build_lock"
+  with_tempdir "riot_build_lock_targets"
     (fun tmpdir ->
       let workspace = make_workspace tmpdir in
       let host_target = target "aarch64-apple-darwin" in
@@ -131,11 +132,52 @@ let test_different_targets_do_not_block_each_other = fun _ctx ->
                 Error "Different target locks should not block each other"
           | Error reason -> Error reason))
 
+let test_existing_lanes_lists_sorted_targets = fun _ctx ->
+  with_tempdir "riot_build_lock_existing_lanes"
+    (fun tmpdir ->
+      let workspace = make_workspace tmpdir in
+      let host_target = target "aarch64-apple-darwin" in
+      let linux_target = target "aarch64-unknown-linux-gnu" in
+      let open ResultSyntax in
+      let* () =
+        BuildLock.acquire ~on_waiting:(fun _ -> ()) ~target_dir_root:(target_dir_root workspace) ~profile:"release"
+          ~target:linux_target (fun () -> Ok ())
+      in
+      let* () =
+        BuildLock.acquire ~on_waiting:(fun _ -> ()) ~target_dir_root:(target_dir_root workspace) ~profile:"debug"
+          ~target:host_target (fun () -> Ok ())
+      in
+      let cache_dir = Path.(target_dir_root workspace / Path.v "cache") in
+      let junk_dir = Path.(target_dir_root workspace / Path.v "debug" / Path.v "not-a-target") in
+      let _ = Fs.create_dir_all cache_dir in
+      let _ = Fs.create_dir_all junk_dir in
+      let actual =
+        BuildLock.existing_lanes ~target_dir_root:(target_dir_root workspace)
+        |> List.map ~fn:(fun (lane: BuildLock.lane) ->
+          lane.profile ^ ":" ^ Riot_model.Target.to_string lane.target)
+      in
+      let expected = [ "debug:aarch64-apple-darwin"; "release:aarch64-unknown-linux-gnu" ] in
+      if actual = expected then
+        Ok ()
+      else
+        Error
+          ("Expected existing_lanes to return sorted profile/target lanes, got "
+          ^ String.concat ", " actual))
+
+let test_acquire_existing_lanes_succeeds_when_no_lanes_exist = fun _ctx ->
+  with_tempdir "riot_build_lock_empty_lanes"
+    (fun tmpdir ->
+      let workspace = make_workspace tmpdir in
+      BuildLock.acquire_existing_lanes ~on_waiting:(fun _ -> ()) ~target_dir_root:(target_dir_root workspace)
+        (fun () -> Ok ()))
+
 let tests =
   Test.[
     case "build lock: reentrant acquire in same process" test_reentrant_acquire_in_same_process;
     case "build lock: releases on exception" test_releases_lock_on_exception;
     case "build lock: different targets do not block each other" test_different_targets_do_not_block_each_other;
+    case "build lock: existing lanes list sorted targets" test_existing_lanes_lists_sorted_targets;
+    case "build lock: acquire existing lanes succeeds when none exist" test_acquire_existing_lanes_succeeds_when_no_lanes_exist;
   ]
 
 let name = "Riot CLI Build Lock Tests"

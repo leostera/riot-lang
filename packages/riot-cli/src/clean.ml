@@ -19,11 +19,15 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
       Build.Human
   in
   let on_event event = Build.write_cache_gc_event ~mode event in
-  if ArgParser.get_flag matches "force" then
-    match Riot_store.Cache_gc.force_clean_with_events ~workspace ~on_event with
-    | Ok () -> Ok ()
-    | Error error -> Error (Failure error)
-  else
-    match Riot_store.Cache_gc.clean_with_events ~workspace ~on_event with
-    | Ok _ -> Ok ()
-    | Error error -> Error (Failure error)
+  Riot_build.BuildLock.acquire_existing_lanes
+    ~on_waiting:(fun _ -> ())
+    ~target_dir_root:workspace.target_dir_root
+    (fun () ->
+      if ArgParser.get_flag matches "force" then
+        match Riot_store.Cache_gc.force_clean_with_events ~workspace ~on_event with
+        | Ok () -> Ok ()
+        | Error error -> Error (Failure error)
+      else
+        match Riot_store.Cache_gc.clean_with_events ~workspace ~on_event with
+        | Ok _ -> Ok ()
+        | Error error -> Error (Failure error))
