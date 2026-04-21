@@ -610,6 +610,7 @@ let tests = [
   Test.case "Reregistering a one-shot before fire resets the deadline" test_reregistering_one_shot_before_fire_resets_the_deadline;
 ]
 
-let main = fun ~args -> Test.Cli.main ~name:"kernel_new_system_time_tests" ~tests ~args ()
+let main = fun ~args ->
+  Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"kernel_new_system_time_tests" ~tests ~args ()
 
 let () = Actors.run ~main ~args:Env.args ()
