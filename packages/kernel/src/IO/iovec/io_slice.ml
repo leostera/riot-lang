@@ -112,9 +112,7 @@ let get = fun value ~at ->
   | Error _ as error -> error
 
 let get_unchecked = fun value ~at ->
-  match get value ~at with
-  | Ok char -> char
-  | Error error -> System_error.panic ("Kernel.IO.IoVec.IoSlice.get_unchecked: " ^ Error.message error)
+  unsafe_get value at
 
 let set = fun value ~at char ->
   match validate_index (length value) at with
