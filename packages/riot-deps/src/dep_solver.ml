@@ -910,6 +910,7 @@ type catalog = {
   local_by_name: (string, local_entry) HashMap.t;
   mutable local_order: string list;
   registry_documents: (string, Pkgs_ml.Sparse_index.package_document option) HashMap.t;
+  registry_manifests: (string, Riot_model.Package_manifest.t) HashMap.t;
   required_by: (string, Riot_model.Pm_error.required_by option) HashMap.t;
   requested_requirements: (string, string list) HashMap.t;
 }
@@ -939,9 +940,89 @@ let create_catalog = fun ~(ctx:context) ->
     local_by_name = HashMap.create ();
     local_order = [];
     registry_documents = HashMap.create ();
+    registry_manifests = HashMap.create ();
     required_by = HashMap.create ();
     requested_requirements = HashMap.create ();
   }
+
+let registry_manifest_key = fun ~registry_name ~package_name ~version ->
+  registry_name ^ ":" ^ Pkgs_ml.Sparse_index.normalized_name package_name ^ ":" ^ version
+
+let load_registry_package_manifest = fun (catalog: catalog) ~package_name ~version ->
+  let registry_name = Pkgs_ml.Registry.name catalog.ctx.registry in
+  let cache_key = registry_manifest_key ~registry_name ~package_name ~version in
+  match HashMap.get catalog.registry_manifests ~key:cache_key with
+  | Some manifest -> Ok manifest
+  | None ->
+      let* package_name_t = event_package_name package_name in
+      let lock_package =
+        Riot_model.Lockfile.{
+          id = {
+            registry = Some registry_name;
+            name = package_name_t;
+            version = Some version;
+            sha256 = None
+          };
+          root = None;
+          provenance = Registry { registry = registry_name };
+          dependencies = [];
+          build_dependencies = [];
+          dev_dependencies = [];
+        }
+      in
+      let* package_root = Materializer.ensure_registry_package
+        ~emit:catalog.ctx.emit
+        ~registry:catalog.ctx.registry
+        ~pkg:lock_package
+        ()
+      |> Result.map_err ~fn:(fun err -> Error.MaterializationFailed { error = Error.message err }) in
+      let started = Time.Instant.now () in
+      catalog.ctx.emit
+        (Riot_model.Event.PackageManifestFetchStarted { package = package_name_t; version });
+      let manifest_path = Path.(package_root / Path.v "riot.toml") in
+      match load_manifest_toml ~manifest_path with
+      | Error err ->
+          catalog.ctx.emit
+            (Riot_model.Event.PackageManifestFetchFailed {
+              package = package_name_t;
+              version = Some version;
+              error = err
+            });
+          Error err
+      | Ok toml -> (
+          match Riot_model.Package_manifest.from_toml
+            toml
+            ~workspace_deps:[]
+            ~workspace_dev_deps:[]
+            ~workspace_build_deps:[]
+            ~path:package_root
+            ~relative_path:package_root with
+          | Ok manifest ->
+              let _ = HashMap.insert catalog.registry_manifests ~key:cache_key ~value:manifest in
+              catalog.ctx.emit
+                (Riot_model.Event.PackageManifestFetchFinished {
+                  package = package_name_t;
+                  version;
+                  duration_ms = duration_ms_since started
+                });
+              Ok manifest
+          | Error err ->
+              let error = Error.Unexpected {
+                error = "failed to decode registry package manifest '"
+                ^ package_name
+                ^ "@"
+                ^ version
+                ^ "': "
+                ^ err
+              } in
+              catalog.ctx.emit
+                (Riot_model.Event.PackageManifestFetchFailed {
+                  package = package_name_t;
+                  version = Some version;
+                  error
+                });
+              Error error
+        )
 
 let register_local_entry = fun (catalog: catalog) (entry: local_entry) ->
   match HashMap.get catalog.local_by_name ~key:(Riot_model.Package_name.to_string entry.package.name) with
@@ -1387,78 +1468,15 @@ let highest_version = fun versions ->
   |> List.head
   |> Option.unwrap
 
-let registry_provider_dependencies_of_locked_dependency = fun (dep: Riot_model.Lockfile.dependency) ->
-  match dep.package.registry, dep.package.version with
-  | Some _, Some version_string ->
-      let package_name = Riot_model.Package_name.to_string dep.package.name in
-      let* version = parse_registry_version ~package_name version_string in
-      Ok (package_name, Pubgrub.singleton version)
-  | _ -> Ok (Riot_model.Package_name.to_string dep.package.name, Pubgrub.full)
-
 let provider_dependencies_of_registry_package = fun (catalog: catalog) ~package_name version ->
-  let registry_name = Pkgs_ml.Registry.name catalog.ctx.registry in
   let version_string = Std.Version.to_string version in
-  let* package_name_t = event_package_name package_name in
-  match find_existing_registry_package_version
-    ~registry_name
-    ~existing_lock:catalog.ctx.existing_lock
-    ~package_name:package_name_t
-    ~version:version_string with
-  | Some pkg when catalog.ctx.mode = Refresh ->
-      let rec loop acc = function
-        | [] -> Ok (List.reverse acc)
-        | dep :: rest ->
-            let* provider_dep = registry_provider_dependencies_of_locked_dependency dep in
-            loop (provider_dep :: acc) rest
-      in
-      loop [] (pkg.dependencies @ pkg.build_dependencies @ pkg.dev_dependencies)
-      |> Result.map ~fn:(fun deps -> Pubgrub.Provider.Available deps)
-  | _ ->
-      let* document_opt = read_registry_document catalog ~package_name in
-      (
-        match document_opt with
-        | None -> Ok (Pubgrub.Provider.Unavailable ("package '" ^ package_name ^ "' was not found"))
-        | Some document -> (
-            match
-              List.find document.releases
-                ~fn:(fun (release: Pkgs_ml.Sparse_index.release) ->
-                  String.equal release.version version_string)
-            with
-            | None ->
-                Ok (Pubgrub.Provider.Unavailable ("package '"
-                ^ package_name
-                ^ "@"
-                ^ version_string
-                ^ "' is unavailable"))
-            | Some release when release.yanked ->
-                Ok (Pubgrub.Provider.Unavailable ("package '"
-                ^ package_name
-                ^ "@"
-                ^ version_string
-                ^ "' was yanked"))
-            | Some release ->
-                let rec loop acc = function
-                  | [] -> Ok (Pubgrub.Provider.Available (List.reverse acc))
-                  | (dep: Pkgs_ml.Sparse_index.dependency) :: rest ->
-                      if Riot_model.Package.is_builtin_dependency_name dep.name then
-                        loop acc rest
-                      else
-                        (
-                          let () = record_required_by
-                            catalog
-                            ~package_name:dep.name
-                            (Some Riot_model.Pm_error.{ package = package_name; path = None }) in
-                          let ranges =
-                            match HashMap.get catalog.local_by_name ~key:dep.name with
-                            | Some _ -> Pubgrub.full
-                            | None -> Pubgrub.full
-                          in
-                          loop ((dep.name, ranges) :: acc) rest
-                        )
-                in
-                loop [] release.dependencies
-          )
-      )
+  let* manifest = load_registry_package_manifest catalog ~package_name ~version:version_string in
+  provider_dependencies_of_manifest
+    catalog
+    ~declared_from:manifest.path
+    ~required_by:(Some Riot_model.Pm_error.{ package = package_name; path = None })
+    (Riot_model.Package_manifest.all_dependencies manifest)
+  |> Result.map ~fn:(fun deps -> Pubgrub.Provider.Available deps)
 
 let provider_dependencies_of_local_entry = fun (catalog: catalog) (entry: local_entry) ->
   provider_dependencies_of_manifest
@@ -1728,42 +1746,31 @@ let pm_error_of_pubgrub_failure = fun (catalog: catalog) incompat ->
 let lock_registry_package = fun (catalog: catalog) ~selected_versions ~package_name version ->
   let registry_name = Pkgs_ml.Registry.name catalog.ctx.registry in
   let version_string = Std.Version.to_string version in
-  let* package_name_t = event_package_name package_name in
-  match find_existing_registry_package_version
-    ~registry_name
-    ~existing_lock:catalog.ctx.existing_lock
-    ~package_name:package_name_t
-    ~version:version_string with
-  | Some pkg when catalog.ctx.mode = Refresh -> Ok pkg
-  | _ ->
-      let* package_id = registry_package_id_of_solution catalog ~package_name version in
-      let* dependencies_result = provider_dependencies_of_registry_package catalog ~package_name version in
-      let dependency_specs =
-        match dependencies_result with
-        | Pubgrub.Provider.Available dependency_specs -> dependency_specs
-        | Pubgrub.Provider.Unavailable reason -> []
-      in
-      let rec loop acc = function
-        | [] -> Ok (List.reverse acc)
-        | (dependency_name, _ranges) :: rest ->
-            let* package = selected_package_id catalog ~selected_versions ~package_name:dependency_name in
-            let* dependency_name = Riot_model.Package_name.from_string dependency_name
-            |> Result.map_err
-              ~fn:(fun error ->
-                Error.Unexpected {
-                  error = "invalid package name '" ^ dependency_name ^ "': " ^ error
-                }) in
-            loop (Riot_model.Lockfile.{ name = dependency_name; package } :: acc) rest
-      in
-      let* dependencies = loop [] dependency_specs in
-      Ok Riot_model.Lockfile.{
-        id = package_id;
-        root = None;
-        provenance = Riot_model.Lockfile.Registry { registry = registry_name };
-        dependencies;
-        build_dependencies = [];
-        dev_dependencies = [];
-      }
+  let* package_id = registry_package_id_of_solution catalog ~package_name version in
+  let* manifest = load_registry_package_manifest catalog ~package_name ~version:version_string in
+  let* dependencies = lock_dependencies_of_manifest
+    catalog
+    ~selected_versions
+    ~declared_from:manifest.path
+    manifest.dependencies in
+  let* build_dependencies = lock_dependencies_of_manifest
+    catalog
+    ~selected_versions
+    ~declared_from:manifest.path
+    manifest.build_dependencies in
+  let* dev_dependencies = lock_dependencies_of_manifest
+    catalog
+    ~selected_versions
+    ~declared_from:manifest.path
+    manifest.dev_dependencies in
+  Ok Riot_model.Lockfile.{
+    id = package_id;
+    root = None;
+    provenance = Riot_model.Lockfile.Registry { registry = registry_name };
+    dependencies;
+    build_dependencies;
+    dev_dependencies;
+  }
 
 let lock_deps = fun ?(emit = no_emit) ~mode ~registry ~existing_lock ~workspace () ->
   let started = Time.Instant.now () in

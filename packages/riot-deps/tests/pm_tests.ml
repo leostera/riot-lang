@@ -56,6 +56,9 @@ let make_registry_cache = fun () ->
   Pkgs_ml.Registry_cache.create ~riot_home:(Path.v "/Users/example/.riot") ~registry_name:"pkgs.ml" ()
   |> Result.expect ~msg:"expected registry cache to initialize"
 
+let make_registry_cache_at = fun riot_home ->
+  Pkgs_ml.Registry_cache.create ~riot_home ~registry_name:"pkgs.ml" () |> Result.expect ~msg:"expected registry cache to initialize"
+
 let make_release = fun ?(dependencies = []) ?(yanked = false) ~version () ->
   Pkgs_ml.Sparse_index.{
     version;
@@ -104,6 +107,9 @@ let make_registry = fun packages ->
 
 let make_registry_with_releases = fun ~packages ~releases ->
   Pkgs_ml.Registry.in_memory ~cache:(make_registry_cache ()) ~packages ~releases ()
+
+let make_release_source = fun ?(files = []) ~package_name ~version manifest_toml : Pkgs_ml.Registry.release_source ->
+  { package_name; version; manifest_toml; files }
 
 let write_package_manifest = fun ~root contents ->
   Fs.create_dir_all root |> Result.expect ~msg:"expected package root to be created";
@@ -975,14 +981,22 @@ let test_lock_deps_falls_back_to_registry_when_path_dependency_is_missing = fun 
           }
         ]
         () in
-      let registry = make_registry
-        [
-          make_registry_document
-            ~name:"std"
-            ~latest:"0.2.0"
-            ~releases:[ make_release ~version:"0.2.0" () ]
-            ();
-        ] in
+      let registry = Pkgs_ml.Registry.in_memory ~cache:(make_registry_cache_at
+        Path.(workspace_root / Path.v ".riot")) ~packages:[
+        make_registry_document
+          ~name:"std"
+          ~latest:"0.2.0"
+          ~releases:[ make_release ~version:"0.2.0" () ]
+          ();
+      ]
+        ~releases:[ make_release_source ~package_name:"std" ~version:"0.2.0"
+            {|
+[package]
+name = "std"
+version = "0.2.0"
+|}; ]
+        ()
+      in
       match run_lock_deps ~registry ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
       | Error err -> Error ("expected missing path+version dependency to fall back to registry: "
       ^ pm_error_message err)
@@ -1058,70 +1072,90 @@ let test_lock_deps_collapses_workspace_path_dependencies = fun _ctx ->
     )
 
 let test_lock_deps_resolves_registry_dependencies_to_exact_versions = fun _ctx ->
-  let app_pkg = make_package
-    ~name:"app"
-    ~path:(Path.v "/workspace/packages/app")
-    ~dependencies:[ dependency "std" (source ~version:Std.Version.any ()) ]
-    () in
-  let registry = make_registry
-    [
-      make_registry_document
-        ~name:"std"
-        ~latest:"0.2.0"
-        ~releases:[
-          make_release ~version:"0.2.0" ~dependencies:[ make_registry_dependency "kernel" ] ();
-        ]
-        ();
-      make_registry_document
-        ~name:"kernel"
-        ~latest:"1.0.0"
-        ~releases:[ make_release ~version:"1.0.0" () ]
-        ();
-    ] in
-  match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
-  | Error err -> Error ("expected registry dependency locking to succeed: " ^ pm_error_message err)
-  | Ok lockfile -> (
-      let app_lock =
-        List.find lockfile.packages ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name)
+  with_tempdir "riot_deps_registry_exact_versions"
+    (fun workspace_root ->
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[ dependency "std" (source ~version:Std.Version.any ()) ]
+        () in
+      let registry = Pkgs_ml.Registry.in_memory ~cache:(make_registry_cache_at
+        Path.(workspace_root / Path.v ".riot")) ~packages:[
+        make_registry_document
+          ~name:"std"
+          ~latest:"0.2.0"
+          ~releases:[
+            make_release ~version:"0.2.0" ~dependencies:[ make_registry_dependency "kernel" ] ();
+          ]
+          ();
+        make_registry_document
+          ~name:"kernel"
+          ~latest:"1.0.0"
+          ~releases:[ make_release ~version:"1.0.0" () ]
+          ();
+      ]
+        ~releases:[ make_release_source ~package_name:"std" ~version:"0.2.0"
+            {|
+[package]
+name = "std"
+version = "0.2.0"
+
+[dependencies]
+kernel = { path = "../kernel", version = "*" }
+|}; make_release_source ~package_name:"kernel" ~version:"1.0.0"
+            {|
+[package]
+name = "kernel"
+version = "1.0.0"
+|}; ]
+        ()
       in
-      let std_lock =
-        List.find
-          lockfile.packages
-          ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
-            has_name "std" pkg.id.name && pkg.id.version = Some "0.2.0")
-      in
-      let kernel_lock =
-        List.find
-          lockfile.packages
-          ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
-            has_name "kernel" pkg.id.name && pkg.id.version = Some "1.0.0")
-      in
-      match app_lock, std_lock, kernel_lock with
-      | Some app_lock, Some std_lock, Some kernel_lock ->
-          let app_dependency =
-            match app_lock.dependencies with
-            | [ dep ] -> Some dep.package
-            | _ -> None
+      match run_lock_deps ~registry ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+      | Error err -> Error ("expected registry dependency locking to succeed: " ^ pm_error_message err)
+      | Ok lockfile -> (
+          let app_lock =
+            List.find
+              lockfile.packages
+              ~fn:(fun (pkg: Lockfile.package) -> has_name "app" pkg.id.name)
           in
-          let std_dependency =
-            match std_lock.dependencies with
-            | [ dep ] -> Some dep.package
-            | _ -> None
+          let std_lock =
+            List.find
+              lockfile.packages
+              ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
+                has_name "std" pkg.id.name && pkg.id.version = Some "0.2.0")
           in
-          if List.length lockfile.packages = 3 && (
-              match app_dependency with
-              | Some dependency -> has_name "std" dependency.name && dependency.version = Some "0.2.0"
-              | None -> false
-            ) && std_lock.id.version = Some "0.2.0" && std_lock.root = None && (
-              match std_dependency with
-              | Some dependency -> has_name "kernel" dependency.name
-              | None -> false
-            ) && kernel_lock.id.version = Some "1.0.0" then
-            Ok ()
-          else
-            Error "expected registry dependency to resolve to exact external lock packages"
-      | _ -> Error "expected workspace and transitive registry lock packages"
-    )
+          let kernel_lock =
+            List.find
+              lockfile.packages
+              ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
+                has_name "kernel" pkg.id.name && pkg.id.version = Some "1.0.0")
+          in
+          match app_lock, std_lock, kernel_lock with
+          | Some app_lock, Some std_lock, Some kernel_lock ->
+              let app_dependency =
+                match app_lock.dependencies with
+                | [ dep ] -> Some dep.package
+                | _ -> None
+              in
+              let std_dependency =
+                match std_lock.dependencies with
+                | [ dep ] -> Some dep.package
+                | _ -> None
+              in
+              if List.length lockfile.packages = 3 && (
+                  match app_dependency with
+                  | Some dependency -> has_name "std" dependency.name && dependency.version = Some "0.2.0"
+                  | None -> false
+                ) && std_lock.id.version = Some "0.2.0" && std_lock.root = None && (
+                  match std_dependency with
+                  | Some dependency -> has_name "kernel" dependency.name
+                  | None -> false
+                ) && kernel_lock.id.version = Some "1.0.0" then
+                Ok ()
+              else
+                Error "expected registry dependency to resolve to exact external lock packages"
+          | _ -> Error "expected workspace and transitive registry lock packages"
+        ))
 
 let test_lock_deps_reports_missing_registry_package_with_required_by = fun _ctx ->
   let app_root = Path.v "/workspace/packages/app" in
@@ -1389,103 +1423,139 @@ let test_lock_deps_ignores_builtin_dependencies = fun _ctx ->
     )
 
 let test_lock_deps_ignores_builtin_registry_release_dependencies = fun _ctx ->
-  let app_pkg = make_package
-    ~name:"app"
-    ~path:(Path.v "/workspace/packages/app")
-    ~dependencies:[ dependency "std" (source ~version:Std.Version.any ()) ]
-    () in
-  let registry = make_registry
-    [
-      make_registry_document
-        ~name:"std"
-        ~latest:"0.1.0"
-        ~releases:[
-          make_release
-            ~version:"0.1.0"
-            ~dependencies:[ make_registry_dependency "stdlib"; make_registry_dependency "unix" ]
-            ();
-        ]
-        ();
-    ] in
-  match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
-  | Error err -> Error ("expected builtin registry dependencies to be ignored: " ^ pm_error_message err)
-  | Ok lockfile -> (
-      let std_lock =
-        List.find
-          lockfile.packages
-          ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
-            has_name "std" pkg.id.name && pkg.id.version = Some "0.1.0")
+  with_tempdir "riot_deps_builtin_registry_deps"
+    (fun workspace_root ->
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[ dependency "std" (source ~version:Std.Version.any ()) ]
+        () in
+      let registry = Pkgs_ml.Registry.in_memory ~cache:(make_registry_cache_at
+        Path.(workspace_root / Path.v ".riot")) ~packages:[
+        make_registry_document
+          ~name:"std"
+          ~latest:"0.1.0"
+          ~releases:[
+            make_release
+              ~version:"0.1.0"
+              ~dependencies:[ make_registry_dependency "stdlib"; make_registry_dependency "unix" ]
+              ();
+          ]
+          ();
+      ]
+        ~releases:[ make_release_source ~package_name:"std" ~version:"0.1.0"
+            {|
+[package]
+name = "std"
+version = "0.1.0"
+
+[dependencies]
+stdlib = "*"
+unix = "*"
+|}; ]
+        ()
       in
-      match std_lock with
-      | Some pkg when pkg.dependencies = [] && List.length lockfile.packages = 2 -> Ok ()
-      | Some _ -> Error "expected builtin registry release dependencies to stay out of the lock graph"
-      | None -> Error "expected std registry package to be locked"
-    )
+      match run_lock_deps ~registry ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+      | Error err -> Error ("expected builtin registry dependencies to be ignored: "
+      ^ pm_error_message err)
+      | Ok lockfile -> (
+          let std_lock =
+            List.find
+              lockfile.packages
+              ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
+                has_name "std" pkg.id.name && pkg.id.version = Some "0.1.0")
+          in
+          match std_lock with
+          | Some pkg when pkg.dependencies = [] && List.length lockfile.packages = 2 -> Ok ()
+          | Some _ -> Error "expected builtin registry release dependencies to stay out of the lock graph"
+          | None -> Error "expected std registry package to be locked"
+        ))
 
 let test_lock_deps_handles_cyclic_registry_dependencies = fun _ctx ->
-  let app_pkg = make_package
-    ~name:"app"
-    ~path:(Path.v "/workspace/packages/app")
-    ~dependencies:[ dependency "foo" (source ~version:Std.Version.any ()) ]
-    () in
-  let registry = make_registry
-    [
-      make_registry_document
-        ~name:"foo"
-        ~latest:"1.0.0"
-        ~releases:[
-          make_release ~version:"1.0.0" ~dependencies:[ make_registry_dependency "bar" ] ();
-        ]
-        ();
-      make_registry_document
-        ~name:"bar"
-        ~latest:"2.0.0"
-        ~releases:[
-          make_release ~version:"2.0.0" ~dependencies:[ make_registry_dependency "foo" ] ();
-        ]
-        ();
-    ] in
-  match run_lock_deps ~registry ~mode:Refresh ~existing_lock:None [ app_pkg ] with
-  | Error err -> Error ("expected cyclic registry dependencies to resolve: " ^ pm_error_message err)
-  | Ok lockfile -> (
-      let foo_lock =
-        List.find
-          lockfile.packages
-          ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
-            has_name "foo" pkg.id.name && pkg.id.version = Some "1.0.0")
+  with_tempdir "riot_deps_cyclic_registry"
+    (fun workspace_root ->
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[ dependency "foo" (source ~version:Std.Version.any ()) ]
+        () in
+      let registry = Pkgs_ml.Registry.in_memory ~cache:(make_registry_cache_at
+        Path.(workspace_root / Path.v ".riot")) ~packages:[
+        make_registry_document
+          ~name:"foo"
+          ~latest:"1.0.0"
+          ~releases:[
+            make_release ~version:"1.0.0" ~dependencies:[ make_registry_dependency "bar" ] ();
+          ]
+          ();
+        make_registry_document
+          ~name:"bar"
+          ~latest:"2.0.0"
+          ~releases:[
+            make_release ~version:"2.0.0" ~dependencies:[ make_registry_dependency "foo" ] ();
+          ]
+          ();
+      ]
+        ~releases:[ make_release_source ~package_name:"foo" ~version:"1.0.0"
+            {|
+[package]
+name = "foo"
+version = "1.0.0"
+
+[dependencies]
+bar = { path = "../bar", version = "*" }
+|}; make_release_source ~package_name:"bar" ~version:"2.0.0"
+            {|
+[package]
+name = "bar"
+version = "2.0.0"
+
+[dependencies]
+foo = { path = "../foo", version = "*" }
+|}; ]
+        ()
       in
-      let bar_lock =
-        List.find
-          lockfile.packages
-          ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
-            has_name "bar" pkg.id.name && pkg.id.version = Some "2.0.0")
-      in
-      match foo_lock, bar_lock with
-      | Some foo_lock, Some bar_lock ->
-          let foo_dependency =
-            match foo_lock.dependencies with
-            | [ dep ] -> Some dep.package
-            | _ -> None
+      match run_lock_deps ~registry ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+      | Error err -> Error ("expected cyclic registry dependencies to resolve: " ^ pm_error_message err)
+      | Ok lockfile -> (
+          let foo_lock =
+            List.find
+              lockfile.packages
+              ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
+                has_name "foo" pkg.id.name && pkg.id.version = Some "1.0.0")
           in
-          let bar_dependency =
-            match bar_lock.dependencies with
-            | [ dep ] -> Some dep.package
-            | _ -> None
+          let bar_lock =
+            List.find
+              lockfile.packages
+              ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
+                has_name "bar" pkg.id.name && pkg.id.version = Some "2.0.0")
           in
-          if List.length lockfile.packages = 3 && (
-              match foo_dependency with
-              | Some dependency -> has_name "bar" dependency.name && dependency.version = Some "2.0.0"
-              | None -> false
-            ) && (
-              match bar_dependency with
-              | Some dependency -> has_name "foo" dependency.name && dependency.version = Some "1.0.0"
-              | None -> false
-            ) then
-            Ok ()
-          else
-            Error "expected cyclic registry dependencies to terminate with exact cross-links"
-      | _ -> Error "expected foo and bar to appear in the cyclic lockfile"
-    )
+          match foo_lock, bar_lock with
+          | Some foo_lock, Some bar_lock ->
+              let foo_dependency =
+                match foo_lock.dependencies with
+                | [ dep ] -> Some dep.package
+                | _ -> None
+              in
+              let bar_dependency =
+                match bar_lock.dependencies with
+                | [ dep ] -> Some dep.package
+                | _ -> None
+              in
+              if List.length lockfile.packages = 3 && (
+                  match foo_dependency with
+                  | Some dependency -> has_name "bar" dependency.name && dependency.version = Some "2.0.0"
+                  | None -> false
+                ) && (
+                  match bar_dependency with
+                  | Some dependency -> has_name "foo" dependency.name && dependency.version = Some "1.0.0"
+                  | None -> false
+                ) then
+                Ok ()
+              else
+                Error "expected cyclic registry dependencies to terminate with exact cross-links"
+          | _ -> Error "expected foo and bar to appear in the cyclic lockfile"
+        ))
 
 let test_lock_deps_handles_cyclic_local_path_dependencies = fun _ctx ->
   with_tempdir "riot_deps_cyclic_local_path_dep"
@@ -1547,71 +1617,92 @@ std = { path = "../std" }
         ))
 
 let test_lock_refresh_preserves_existing_registry_version = fun _ctx ->
-  let requirement = Std.Version.parse_requirement "*" |> Result.expect ~msg:"expected requirement to parse" in
-  let app_pkg = make_package
-    ~name:"app"
-    ~path:(Path.v "/workspace/packages/app")
-    ~dependencies:[ dependency "std" (source ~version:requirement ()) ]
-    () in
-  let existing_lock =
-    Riot_model.Lockfile.{
-      format_version = 1;
-      dependency_hash = "test";
-      packages =
-        [ {
-            id = { registry = None; name = package_name "app"; version = None; sha256 = None };
-            root = Some (Path.v "packages/app");
-            provenance = Workspace;
-            dependencies = [
-              {
-                name = package_name "std";
-                package = {
+  with_tempdir "riot_deps_refresh_preserve_registry"
+    (fun workspace_root ->
+      let requirement = Std.Version.parse_requirement "*" |> Result.expect ~msg:"expected requirement to parse" in
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[ dependency "std" (source ~version:requirement ()) ]
+        () in
+      let existing_lock =
+        Riot_model.Lockfile.{
+          format_version = 1;
+          dependency_hash = "test";
+          packages =
+            [ {
+                id = { registry = None; name = package_name "app"; version = None; sha256 = None };
+                root = Some (Path.v "packages/app");
+                provenance = Workspace;
+                dependencies = [
+                  {
+                    name = package_name "std";
+                    package = {
+                      registry = Some "pkgs.ml";
+                      name = package_name "std";
+                      version = Some "0.1.0";
+                      sha256 = None
+                    }
+                  }
+                ];
+                build_dependencies = [];
+                dev_dependencies = [];
+              }; {
+                id = {
                   registry = Some "pkgs.ml";
                   name = package_name "std";
                   version = Some "0.1.0";
                   sha256 = None
-                }
-              }
-            ];
-            build_dependencies = [];
-            dev_dependencies = [];
-          }; {
-            id = {
-              registry = Some "pkgs.ml";
-              name = package_name "std";
-              version = Some "0.1.0";
-              sha256 = None
-            };
-            root = None;
-            provenance = Registry { registry = "pkgs.ml" };
-            dependencies = [];
-            build_dependencies = [];
-            dev_dependencies = [];
-          } ];
-    }
-  in
-  let registry = make_registry
-    [
-      make_registry_document
-        ~name:"std"
-        ~latest:"0.2.0"
-        ~releases:[ make_release ~version:"0.2.0" () ]
-        ();
-    ] in
-  match run_lock_deps ~registry ~mode:Refresh ~existing_lock:(Some existing_lock) [ app_pkg ] with
-  | Error err -> Error ("expected refresh lock to preserve registry version: " ^ pm_error_message err)
-  | Ok lockfile ->
-      let app_lock = List.head lockfile.packages |> Option.expect ~msg:"expected app lock package" in
-      if
-        List.length lockfile.packages = 2
-        && (List.head app_lock.dependencies |> Option.expect ~msg:"expected app dependency").package.version
-        = Some "0.1.0"
-        && ((List.get lockfile.packages ~at:1 |> Option.expect ~msg:"expected std lock package").id.version
-        = Some "0.1.0")
-      then
-        Ok ()
-      else
-        Error "expected refresh to preserve existing locked registry selections"
+                };
+                root = None;
+                provenance = Registry { registry = "pkgs.ml" };
+                dependencies = [];
+                build_dependencies = [];
+                dev_dependencies = [];
+              } ];
+        }
+      in
+      let registry = Pkgs_ml.Registry.in_memory ~cache:(make_registry_cache_at
+        Path.(workspace_root / Path.v ".riot")) ~packages:[
+        make_registry_document
+          ~name:"std"
+          ~latest:"0.2.0"
+          ~releases:[ make_release ~version:"0.1.0" (); make_release ~version:"0.2.0" (); ]
+          ();
+      ]
+        ~releases:[ make_release_source ~package_name:"std" ~version:"0.1.0"
+            {|
+[package]
+name = "std"
+version = "0.1.0"
+|}; make_release_source ~package_name:"std" ~version:"0.2.0"
+            {|
+[package]
+name = "std"
+version = "0.2.0"
+|}; ]
+        ()
+      in
+      match run_lock_deps
+        ~registry
+        ~workspace_root
+        ~mode:Refresh
+        ~existing_lock:(Some existing_lock)
+        [ app_pkg ] with
+      | Error err -> Error ("expected refresh lock to preserve registry version: "
+      ^ pm_error_message err)
+      | Ok lockfile ->
+          let app_lock = List.head lockfile.packages |> Option.expect ~msg:"expected app lock package" in
+          if
+            List.length lockfile.packages = 2
+            && (List.head app_lock.dependencies |> Option.expect ~msg:"expected app dependency").package.version
+            = Some "0.1.0"
+            && ((List.get lockfile.packages ~at:1 |> Option.expect ~msg:"expected std lock package").id.version
+            = Some "0.1.0")
+          then
+            Ok ()
+          else
+            Error "expected refresh to preserve existing locked registry selections")
 
 let test_lock_refresh_preserves_existing_external_nodes = fun _ctx ->
   let app_pkg = make_package ~name:"app" ~path:(Path.v "/workspace/packages/app") () in
@@ -2163,7 +2254,7 @@ let test_ensure_lock_uses_existing_fresh_lock = fun _ctx ->
           if
             List.length lockfile.packages = 2
             && List.length resolved = 2
-            && not (List.contains event_names ~value:"riot.pm.resolution.using_existing_lock")
+            && List.contains event_names ~value:"riot.pm.resolution.using_existing_lock"
             && not (List.contains event_names ~value:"riot.pm.lockfile.write.started")
             && not (List.contains event_names ~value:"riot.pm.resolution.finished")
           then
@@ -2284,14 +2375,24 @@ let test_ensure_lock_reuses_existing_lock_and_repairs_missing_registry_packages 
         |> Result.expect ~msg:"expected dependency hash to compute"
       } in
       Riot_deps.Lockfile_store.write ~workspace_root existing_lock |> Result.expect ~msg:"expected initial lockfile write to succeed";
+      let materialized_std_root = Pkgs_ml.Registry_cache.package_src_dir
+        registry_cache
+        ~package_name:"std"
+        ~version:"0.2.0" in
+      Fs.remove_dir_all materialized_std_root |> Result.expect ~msg:"expected materialized registry package to be removed";
       match collect_event_names (fun emit -> ensure_lock ~emit ~registry ~workspace_root [ app_pkg ]) with
       | Error err -> Error ("expected ensure_lock to reuse lock and materialize missing packages: "
       ^ pm_error_message err)
       | Ok ((_, resolved), event_names) ->
           if
             List.length resolved = 2
-            && not (List.contains event_names ~value:"riot.pm.resolution.using_existing_lock")
+            && List.contains event_names ~value:"riot.pm.resolution.using_existing_lock"
+            && not (List.contains event_names ~value:"riot.pm.resolution.refreshing_lock")
+            && Result.unwrap_or
+              ~default:false
+              (Fs.exists Path.(materialized_std_root / Path.v "riot.toml"))
             && List.contains event_names ~value:"riot.pm.package_materialization.finished"
+            && not (List.contains event_names ~value:"riot.pm.lockfile.write.started")
           then
             Ok ()
           else
@@ -2382,6 +2483,197 @@ version = "0.2.0"
               else
                 Error "expected ensure_workspace to return a build-ready workspace with registry packages"
           | None -> Error "expected ensure_workspace to project std into the workspace")
+
+let test_ensure_lock_repairs_broken_registry_dependency_scopes = fun _ctx ->
+  with_tempdir "riot_deps_repair_registry_scopes"
+    (fun workspace_root ->
+      let workspace_manifest = Path.(workspace_root / Path.v "riot.toml") in
+      Fs.write "[workspace]\nmembers = [\"packages/app\"]\n" workspace_manifest
+      |> Result.expect ~msg:"expected workspace manifest to be written";
+      write_file Path.(workspace_root / Path.v "packages/app/riot.toml") "[package]\nname = \"app\"\n";
+      let requirement = Std.Version.parse_requirement "*" |> Result.expect ~msg:"expected requirement to parse" in
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[ dependency "std" (source ~version:requirement ()) ]
+        () in
+      let registry_cache = Pkgs_ml.Registry_cache.create
+        ~riot_home:Path.(workspace_root / Path.v ".riot")
+        ~registry_name:"pkgs.ml"
+        ()
+      |> Result.expect ~msg:"expected registry cache to initialize" in
+      let registry = Pkgs_ml.Registry.in_memory ~cache:registry_cache ~packages:[
+        make_registry_document
+          ~name:"std"
+          ~latest:"0.2.0"
+          ~releases:[ make_release ~version:"0.2.0" () ]
+          ();
+        make_registry_document
+          ~name:"kernel"
+          ~latest:"1.0.0"
+          ~releases:[ make_release ~version:"1.0.0" () ]
+          ();
+        make_registry_document
+          ~name:"fixme"
+          ~latest:"0.5.0"
+          ~releases:[ make_release ~version:"0.5.0" () ]
+          ();
+        make_registry_document
+          ~name:"propane"
+          ~latest:"0.3.0"
+          ~releases:[ make_release ~version:"0.3.0" () ]
+          ();
+      ]
+        ~releases:[ {
+            Pkgs_ml.Registry.package_name = "std";
+            version = "0.2.0";
+            manifest_toml =
+              {|
+[package]
+name = "std"
+version = "0.2.0"
+
+[dependencies]
+kernel = { path = "../kernel", version = "*" }
+
+[build-dependencies]
+fixme = { path = "../fixme", version = "*" }
+
+[dev-dependencies]
+propane = { path = "../propane", version = "*" }
+|};
+            files = [];
+          }; {
+            Pkgs_ml.Registry.package_name = "kernel";
+            version = "1.0.0";
+            manifest_toml =
+              {|
+[package]
+name = "kernel"
+version = "1.0.0"
+|};
+            files = [];
+          }; {
+            Pkgs_ml.Registry.package_name = "fixme";
+            version = "0.5.0";
+            manifest_toml =
+              {|
+[package]
+name = "fixme"
+version = "0.5.0"
+|};
+            files = [];
+          }; {
+            Pkgs_ml.Registry.package_name = "propane";
+            version = "0.3.0";
+            manifest_toml =
+              {|
+[package]
+name = "propane"
+version = "0.3.0"
+|};
+            files = [];
+          }; ]
+        ()
+      in
+      let existing_lock =
+        Riot_model.Lockfile.{
+          format_version = 1;
+          dependency_hash = Riot_deps.Lock_refresh.dependency_hash
+            ~workspace_manager:(workspace_manager ())
+            ~workspace_root
+            ~manifest_paths:[
+              workspace_manifest;
+              Path.(workspace_root / Path.v "packages/app/riot.toml")
+            ]
+          |> Result.expect ~msg:"expected dependency hash to compute";
+          packages =
+            [ {
+                id = { registry = None; name = package_name "app"; version = None; sha256 = None };
+                root = Some (Path.v "packages/app");
+                provenance = Workspace;
+                dependencies = [
+                  {
+                    name = package_name "std";
+                    package = {
+                      registry = Some "pkgs.ml";
+                      name = package_name "std";
+                      version = Some "0.2.0";
+                      sha256 = None
+                    }
+                  }
+                ];
+                build_dependencies = [];
+                dev_dependencies = [];
+              }; {
+                id = {
+                  registry = Some "pkgs.ml";
+                  name = package_name "std";
+                  version = Some "0.2.0";
+                  sha256 = None
+                };
+                root = None;
+                provenance = Registry { registry = "pkgs.ml" };
+                dependencies = [
+                  {
+                    name = package_name "kernel";
+                    package = {
+                      registry = Some "pkgs.ml";
+                      name = package_name "kernel";
+                      version = Some "1.0.0";
+                      sha256 = None
+                    }
+                  }
+                ];
+                build_dependencies = [];
+                dev_dependencies = [];
+              }; {
+                id = {
+                  registry = Some "pkgs.ml";
+                  name = package_name "kernel";
+                  version = Some "1.0.0";
+                  sha256 = None
+                };
+                root = None;
+                provenance = Registry { registry = "pkgs.ml" };
+                dependencies = [];
+                build_dependencies = [];
+                dev_dependencies = [];
+              }; ];
+        }
+      in
+      Riot_deps.Lockfile_store.write ~workspace_root existing_lock |> Result.expect ~msg:"expected initial lockfile write to succeed";
+      match Riot_deps.ensure_lock
+        ~workspace_manager:(workspace_manager ())
+        ~mode:Riot_deps.Dep_solver.Refresh
+        ~registry
+        ~workspace:(make_workspace_manifest ~workspace_root [ app_pkg ])
+        () with
+      | Error err -> Error ("expected ensure_lock to repair broken registry dependency scopes: "
+      ^ pm_error_message err)
+      | Ok (lockfile, resolved) ->
+          let std_lock =
+            List.find
+              lockfile.packages
+              ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
+                has_name "std" pkg.id.name && pkg.id.version = Some "0.2.0")
+          in
+          match std_lock with
+          | Some std_lock ->
+              if
+                List.length resolved = 5
+                && List.length lockfile.packages = 5
+                && List.length std_lock.build_dependencies = 1
+                && List.length std_lock.dev_dependencies = 1
+                && (List.head std_lock.build_dependencies |> Option.expect ~msg:"expected repaired build dependency").name
+                |> has_name "fixme"
+                && (List.head std_lock.dev_dependencies |> Option.expect ~msg:"expected repaired dev dependency").name
+                |> has_name "propane"
+              then
+                Ok ()
+              else
+                Error "expected ensure_lock to rewrite stale registry dependency scopes"
+          | None -> Error "expected repaired lockfile to include std")
 
 let test_ensure_workspace_preserves_declared_external_binaries = fun _ctx ->
   with_tempdir "riot_deps_ensure_workspace_bins"
@@ -2684,6 +2976,123 @@ version = "0.5.0"
                 Error "expected projection to include external lockfile packages"
           | _ -> Error "expected projection to resolve std, kernel, and fixme from external manifests")
 
+let test_lock_deps_preserves_registry_build_and_dev_dependencies = fun _ctx ->
+  with_tempdir "riot_deps_registry_scopes"
+    (fun workspace_root ->
+      let requirement = Std.Version.parse_requirement "*" |> Result.expect ~msg:"expected requirement to parse" in
+      let app_pkg = make_package
+        ~name:"app"
+        ~path:Path.(workspace_root / Path.v "packages/app")
+        ~dependencies:[ dependency "std" (source ~version:requirement ()) ]
+        () in
+      let registry_cache = Pkgs_ml.Registry_cache.create
+        ~riot_home:Path.(workspace_root / Path.v ".riot")
+        ~registry_name:"pkgs.ml"
+        ()
+      |> Result.expect ~msg:"expected registry cache to initialize" in
+      let registry = Pkgs_ml.Registry.in_memory ~cache:registry_cache ~packages:[
+        make_registry_document
+          ~name:"std"
+          ~latest:"0.2.0"
+          ~releases:[ make_release ~version:"0.2.0" () ]
+          ();
+        make_registry_document
+          ~name:"kernel"
+          ~latest:"1.0.0"
+          ~releases:[ make_release ~version:"1.0.0" () ]
+          ();
+        make_registry_document
+          ~name:"fixme"
+          ~latest:"0.5.0"
+          ~releases:[ make_release ~version:"0.5.0" () ]
+          ();
+        make_registry_document
+          ~name:"propane"
+          ~latest:"0.3.0"
+          ~releases:[ make_release ~version:"0.3.0" () ]
+          ();
+      ]
+        ~releases:[ {
+            Pkgs_ml.Registry.package_name = "std";
+            version = "0.2.0";
+            manifest_toml =
+              {|
+[package]
+name = "std"
+version = "0.2.0"
+
+[dependencies]
+kernel = { path = "../kernel", version = "*" }
+
+[build-dependencies]
+fixme = { path = "../fixme", version = "*" }
+
+[dev-dependencies]
+propane = { path = "../propane", version = "*" }
+|};
+            files = [];
+          }; {
+            Pkgs_ml.Registry.package_name = "kernel";
+            version = "1.0.0";
+            manifest_toml =
+              {|
+[package]
+name = "kernel"
+version = "1.0.0"
+|};
+            files = [];
+          }; {
+            Pkgs_ml.Registry.package_name = "fixme";
+            version = "0.5.0";
+            manifest_toml =
+              {|
+[package]
+name = "fixme"
+version = "0.5.0"
+|};
+            files = [];
+          }; {
+            Pkgs_ml.Registry.package_name = "propane";
+            version = "0.3.0";
+            manifest_toml =
+              {|
+[package]
+name = "propane"
+version = "0.3.0"
+|};
+            files = [];
+          }; ]
+        ()
+      in
+      match run_lock_deps ~registry ~workspace_root ~mode:Refresh ~existing_lock:None [ app_pkg ] with
+      | Error err -> Error ("expected lock solve to preserve registry dependency scopes: "
+      ^ pm_error_message err)
+      | Ok lockfile ->
+          let std_lock =
+            List.find
+              lockfile.packages
+              ~fn:(fun (pkg: Riot_model.Lockfile.package) ->
+                has_name "std" pkg.id.name && pkg.id.version = Some "0.2.0")
+          in
+          match std_lock with
+          | Some std_lock ->
+              if
+                List.length lockfile.packages = 5
+                && List.length std_lock.dependencies = 1
+                && List.length std_lock.build_dependencies = 1
+                && List.length std_lock.dev_dependencies = 1
+                && (List.head std_lock.dependencies |> Option.expect ~msg:"expected std runtime dependency").name
+                |> has_name "kernel"
+                && (List.head std_lock.build_dependencies |> Option.expect ~msg:"expected std build dependency").name
+                |> has_name "fixme"
+                && (List.head std_lock.dev_dependencies |> Option.expect ~msg:"expected std dev dependency").name
+                |> has_name "propane"
+              then
+                Ok ()
+              else
+                Error "expected registry lock package to preserve runtime, build, and dev dependencies"
+          | None -> Error "expected std to appear in the solved lockfile")
+
 let test_projection_bubbles_external_manifest_errors = fun _ctx ->
   with_tempdir "riot_deps_projection_manifest_error"
     (fun workspace_root ->
@@ -2934,10 +3343,12 @@ let tests =
     case "ensure lock: uses existing fresh lock" test_ensure_lock_uses_existing_fresh_lock;
     case "ensure lock: materializes registry packages during projection" test_ensure_lock_materializes_registry_packages_during_projection;
     case "ensure lock: reuses existing lock and repairs missing registry packages" test_ensure_lock_reuses_existing_lock_and_repairs_missing_registry_packages;
+    case "ensure lock: repairs broken registry dependency scopes" test_ensure_lock_repairs_broken_registry_dependency_scopes;
     case "ensure workspace: projects materialized registry packages" test_ensure_workspace_projects_materialized_registry_packages;
     case "ensure workspace: preserves declared external binaries" test_ensure_workspace_preserves_declared_external_binaries;
     case "package management: load registry workspace materializes release" test_load_registry_workspace_materializes_release;
     case "package management: load registry workspace rejects yanked release" test_load_registry_workspace_rejects_yanked_release;
+    case "lock deps: preserves registry build and dev dependencies" test_lock_deps_preserves_registry_build_and_dev_dependencies;
     case "registry package spec: bare names roundtrip without synthetic any markers" test_registry_package_spec_roundtrips_bare_name;
     case "registry package spec: explicit requirements roundtrip" test_registry_package_spec_preserves_explicit_requirement;
     case "projection: resolves workspace packages from lockfile" test_projection_resolves_workspace_packages;
