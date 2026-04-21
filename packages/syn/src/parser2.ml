@@ -314,6 +314,21 @@ let operator_pattern_token = function
   | Syntax_kind2.SLASHDOT -> true
   | _ -> false
 
+let symbolic_operator_part = function
+  | kind when operator_pattern_token kind -> true
+  | _ -> false
+
+let parenthesized_operator_start = fun p ->
+  at p Syntax_kind2.DOT
+  || (operator_pattern_token (current_kind p)
+     && (peek_kind p 1 = Syntax_kind2.RPAREN || symbolic_operator_part (peek_kind p 1)))
+
+let index_opener = function
+  | Syntax_kind2.LPAREN
+  | Syntax_kind2.LBRACKET
+  | Syntax_kind2.LBRACE -> true
+  | _ -> false
+
 let binding_operator_suffix = function
   | Syntax_kind2.STAR
   | Syntax_kind2.PLUS -> true
@@ -422,6 +437,13 @@ let rec consume_extension_sigils = fun p ->
       consume_extension_sigils p
     )
 
+let rec consume_symbolic_operator = fun p ->
+  if symbolic_operator_part (current_kind p) then
+    (
+      bump p;
+      consume_symbolic_operator p
+    )
+
 let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false) min_bp ->
   let rec loop lhs =
     if expression_boundary p ~stop_at_item ~stop_at_semi ~signature then
@@ -481,15 +503,27 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
             loop (complete p marker Syntax_kind2.FIELD_ACCESS_EXPR)
         | Syntax_kind2.BANG ->
             loop (parse_dot_bang_expr p lhs ~signature ~stop_at_item ~stop_at_semi)
+        | kind when symbolic_operator_part kind && index_opener (peek_kind p 2) ->
+            loop (parse_extended_index_expr p lhs ~signature ~stop_at_item)
         | _ -> lhs
       )
     else if at p Syntax_kind2.HASH then
-      (
-        let marker = precede p lhs in
-        bump p;
-        expect p Syntax_kind2.IDENT (invalid_expression p);
-        loop (complete p marker Syntax_kind2.METHOD_CALL_EXPR)
-      )
+      if peek_kind p 1 = Syntax_kind2.IDENT then
+        (
+          let marker = precede p lhs in
+          bump p;
+          expect p Syntax_kind2.IDENT (invalid_expression p);
+          loop (complete p marker Syntax_kind2.METHOD_CALL_EXPR)
+        )
+      else if min_bp <= 50 then
+        (
+          let marker = precede p lhs in
+          consume_symbolic_operator p;
+          let _rhs = parse_expression p ~signature ~stop_at_item ~stop_at_semi 51 in
+          loop (complete p marker Syntax_kind2.INFIX_EXPR)
+        )
+      else
+        lhs
     else if (at p Syntax_kind2.LEFT_ARROW || at p Syntax_kind2.COLONEQ) && min_bp <= 5 then
       (
         let marker = precede p lhs in
@@ -531,10 +565,15 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
 and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ->
   match current_kind p with
   | kind when prefix_operator kind ->
-      let marker = start_node p in
-      bump p;
-      let _operand = parse_expression p ~signature ~stop_at_item ~stop_at_semi 70 in
-      complete p marker Syntax_kind2.PREFIX_EXPR
+      if symbolic_operator_part (peek_kind p 1) then
+        parse_symbolic_prefix_expr p ~signature ~stop_at_item ~stop_at_semi
+      else
+        (
+          let marker = start_node p in
+          bump p;
+          let _operand = parse_expression p ~signature ~stop_at_item ~stop_at_semi 70 in
+          complete p marker Syntax_kind2.PREFIX_EXPR
+        )
   | Syntax_kind2.LET_KW ->
       parse_let_expr p ~signature ~stop_at_item
   | Syntax_kind2.DOT ->
@@ -542,12 +581,15 @@ and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ->
   | Syntax_kind2.BACKTICK ->
       parse_poly_variant_expr p ~signature ~stop_at_item ~stop_at_semi
   | Syntax_kind2.TILDE ->
-      if prefix_operator (peek_kind p 1) then
-        parse_tilde_prefix_expr p ~signature ~stop_at_item ~stop_at_semi
+      if symbolic_operator_part (peek_kind p 1) then
+        parse_symbolic_prefix_expr p ~signature ~stop_at_item ~stop_at_semi
       else
         parse_label_arg_expr p ~signature ~stop_at_item ~stop_at_semi Syntax_kind2.LABELED_ARG
   | Syntax_kind2.QUESTION ->
-      parse_label_arg_expr p ~signature ~stop_at_item ~stop_at_semi Syntax_kind2.OPTIONAL_ARG
+      if symbolic_operator_part (peek_kind p 1) then
+        parse_symbolic_prefix_expr p ~signature ~stop_at_item ~stop_at_semi
+      else
+        parse_label_arg_expr p ~signature ~stop_at_item ~stop_at_semi Syntax_kind2.OPTIONAL_ARG
   | Syntax_kind2.IF_KW ->
       parse_if_expr p ~signature ~stop_at_item
   | Syntax_kind2.MATCH_KW ->
@@ -596,10 +638,9 @@ and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ->
         Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p);
       complete p marker Syntax_kind2.ERROR
 
-and parse_tilde_prefix_expr = fun p ~signature ~stop_at_item ~stop_at_semi ->
+and parse_symbolic_prefix_expr = fun p ~signature ~stop_at_item ~stop_at_semi ->
   let marker = start_node p in
-  bump p;
-  bump p;
+  consume_symbolic_operator p;
   let _operand = parse_expression p ~signature ~stop_at_item ~stop_at_semi 70 in
   complete p marker Syntax_kind2.PREFIX_EXPR
 
@@ -607,6 +648,30 @@ and parse_unreachable_expr = fun p ->
   let marker = start_node p in
   bump p;
   complete p marker Syntax_kind2.UNREACHABLE_EXPR
+
+and parse_extended_index_expr = fun p lhs ~signature ~stop_at_item:_ ->
+  let marker = precede p lhs in
+  bump p;
+  bump p;
+  let closer =
+    match current_kind p with
+    | Syntax_kind2.LPAREN ->
+        bump p;
+        Syntax_kind2.RPAREN
+    | Syntax_kind2.LBRACKET ->
+        bump p;
+        Syntax_kind2.RBRACKET
+    | Syntax_kind2.LBRACE ->
+        bump p;
+        Syntax_kind2.RBRACE
+    | _ ->
+        Event.Buffer.error p.events (invalid_expression p);
+        Syntax_kind2.RPAREN
+  in
+  if not (at p closer || is_eof p) then
+    ignore (parse_expression p ~signature ~stop_at_item:false 0);
+  expect p closer (invalid_expression p);
+  complete p marker Syntax_kind2.ARRAY_INDEX_EXPR
 
 and parse_path_expr = fun p ->
   let marker = start_node p in
@@ -649,6 +714,12 @@ and parse_parenthesized_expr = fun p ~signature ~stop_at_item ->
       consume_balanced_until p ~closer:Syntax_kind2.RPAREN 0;
       expect p Syntax_kind2.RPAREN (invalid_expression p);
       complete p marker Syntax_kind2.FIRST_CLASS_MODULE_EXPR
+    )
+  else if opener = Syntax_kind2.LPAREN && parenthesized_operator_start p then
+    (
+      consume_balanced_until p ~closer:Syntax_kind2.RPAREN 0;
+      expect p Syntax_kind2.RPAREN (invalid_expression p);
+      complete p marker Syntax_kind2.PATH_EXPR
     )
   else (
     if not (at_closer ()) then
@@ -983,7 +1054,17 @@ and parse_pattern = fun ?(stop_type_at_arrow = true) p ->
 
 and parse_pattern_bp = fun p ~stop_type_at_arrow min_bp ->
   let rec loop lhs =
-    match pattern_binding_power (current_kind p) with
+    if is_attribute_suffix p then
+      (
+        let marker = precede p lhs in
+        bump p;
+        consume_attribute_sigils p;
+        consume_balanced_until p ~closer:Syntax_kind2.RBRACKET 0;
+        expect p Syntax_kind2.RBRACKET (invalid_pattern p);
+        loop (complete p marker Syntax_kind2.ATTRIBUTE_PATTERN)
+      )
+    else
+      match pattern_binding_power (current_kind p) with
     | Some bp when bp >= min_bp -> (
         match current_kind p with
         | Syntax_kind2.COLON ->
@@ -1025,7 +1106,16 @@ and parse_pattern_bp = fun p ~stop_type_at_arrow min_bp ->
 
 and parse_pattern_apply = fun p ~stop_type_at_arrow ->
   let rec loop lhs =
-    if can_start_pattern_atom (current_kind p) then
+    if is_attribute_suffix p then
+      (
+        let marker = precede p lhs in
+        bump p;
+        consume_attribute_sigils p;
+        consume_balanced_until p ~closer:Syntax_kind2.RBRACKET 0;
+        expect p Syntax_kind2.RBRACKET (invalid_pattern p);
+        loop (complete p marker Syntax_kind2.ATTRIBUTE_PATTERN)
+      )
+    else if can_start_pattern_atom (current_kind p) then
       (
         let marker = precede p lhs in
         ignore (parse_pattern_atom p ~stop_type_at_arrow);
@@ -1047,7 +1137,11 @@ and parse_pattern_atom = fun p ~stop_type_at_arrow ->
   | Syntax_kind2.TRUE_KW
   | Syntax_kind2.FALSE_KW -> parse_single_token_pattern p Syntax_kind2.LITERAL_PATTERN
   | Syntax_kind2.LPAREN -> parse_parenthesized_pattern p
-  | Syntax_kind2.LBRACKET -> parse_list_pattern p
+  | Syntax_kind2.LBRACKET ->
+      if is_extension_shell p then
+        parse_extension_pattern p
+      else
+        parse_list_pattern p
   | Syntax_kind2.LBRACKET_BAR -> parse_array_pattern p
   | Syntax_kind2.LBRACE -> parse_record_pattern p
   | Syntax_kind2.TILDE -> parse_label_pattern p ~stop_type_at_arrow Syntax_kind2.LABELED_PARAM
@@ -1125,7 +1219,9 @@ and parse_parenthesized_pattern = fun p ->
     )
   else (
     if not (at_closer ()) then
-      if operator_pattern_token (current_kind p) && peek_kind p 1 = Syntax_kind2.RPAREN then
+      if parenthesized_operator_start p then
+        consume_balanced_until p ~closer:Syntax_kind2.RPAREN 0
+      else if operator_pattern_token (current_kind p) && peek_kind p 1 = Syntax_kind2.RPAREN then
         ignore (parse_single_token_pattern p Syntax_kind2.PATH_PATTERN)
       else
         parse_pattern ~stop_type_at_arrow:false p;
@@ -1150,6 +1246,14 @@ and parse_parenthesized_pattern = fun p ->
           Syntax_kind2.PAREN_PATTERN
       )
   )
+
+and parse_extension_pattern = fun p ->
+  let marker = start_node p in
+  bump p;
+  consume_extension_sigils p;
+  consume_balanced_until p ~closer:Syntax_kind2.RBRACKET 0;
+  expect p Syntax_kind2.RBRACKET (invalid_pattern p);
+  complete p marker Syntax_kind2.EXTENSION_PATTERN
 
 and parse_list_pattern = fun p ->
   let marker = start_node p in
