@@ -227,6 +227,9 @@ let can_start_atom = function
   | Syntax_kind2.LAZY_KW
   | Syntax_kind2.WHILE_KW
   | Syntax_kind2.FOR_KW
+  | Syntax_kind2.BACKTICK
+  | Syntax_kind2.TILDE
+  | Syntax_kind2.QUESTION
   | Syntax_kind2.MINUS
   | Syntax_kind2.PLUSDOT
   | Syntax_kind2.MINUSDOT
@@ -247,6 +250,8 @@ let can_start_pattern_atom = function
   | Syntax_kind2.LBRACKET_BAR
   | Syntax_kind2.LBRACE
   | Syntax_kind2.BACKTICK
+  | Syntax_kind2.TILDE
+  | Syntax_kind2.QUESTION
   | Syntax_kind2.LAZY_KW
   | Syntax_kind2.EXCEPTION_KW -> true
   | _ -> false
@@ -256,6 +261,46 @@ let prefix_operator = function
   | Syntax_kind2.PLUSDOT
   | Syntax_kind2.MINUSDOT
   | Syntax_kind2.BANG -> true
+  | _ -> false
+
+let operator_pattern_token = function
+  | Syntax_kind2.PLUS
+  | Syntax_kind2.MINUS
+  | Syntax_kind2.STAR
+  | Syntax_kind2.SLASH
+  | Syntax_kind2.PERCENT
+  | Syntax_kind2.CARET
+  | Syntax_kind2.EQ
+  | Syntax_kind2.LT
+  | Syntax_kind2.GT
+  | Syntax_kind2.LTE
+  | Syntax_kind2.GTE
+  | Syntax_kind2.NE
+  | Syntax_kind2.BANG
+  | Syntax_kind2.AMPAMP
+  | Syntax_kind2.BARBAR
+  | Syntax_kind2.PIPE
+  | Syntax_kind2.AMPERSAND
+  | Syntax_kind2.AT
+  | Syntax_kind2.HASH
+  | Syntax_kind2.TILDE
+  | Syntax_kind2.QUESTION
+  | Syntax_kind2.DOLLAR
+  | Syntax_kind2.COLONCOLON
+  | Syntax_kind2.COLONEQ
+  | Syntax_kind2.ARROW
+  | Syntax_kind2.LEFT_ARROW
+  | Syntax_kind2.STARSTAR
+  | Syntax_kind2.EQEQ
+  | Syntax_kind2.BANGEQ
+  | Syntax_kind2.ATAT
+  | Syntax_kind2.PIPEGT
+  | Syntax_kind2.PERCENTGT
+  | Syntax_kind2.LTPERCENT
+  | Syntax_kind2.PLUSDOT
+  | Syntax_kind2.MINUSDOT
+  | Syntax_kind2.STARDOT
+  | Syntax_kind2.SLASHDOT -> true
   | _ -> false
 
 let infix_binding_power = function
@@ -268,11 +313,14 @@ let infix_binding_power = function
   | Syntax_kind2.LT
   | Syntax_kind2.GT
   | Syntax_kind2.LTE
-  | Syntax_kind2.GTE -> Some 20
+  | Syntax_kind2.GTE
+  | Syntax_kind2.LTPERCENT -> Some 20
   | Syntax_kind2.COLONCOLON
   | Syntax_kind2.AT
   | Syntax_kind2.ATAT
   | Syntax_kind2.PIPEGT -> Some 30
+  | Syntax_kind2.DOLLAR -> Some 30
+  | Syntax_kind2.AMPERSAND -> Some 35
   | Syntax_kind2.PLUS
   | Syntax_kind2.MINUS
   | Syntax_kind2.CARET -> Some 40
@@ -283,6 +331,7 @@ let infix_binding_power = function
   | Syntax_kind2.MINUSDOT
   | Syntax_kind2.STARDOT
   | Syntax_kind2.SLASHDOT
+  | Syntax_kind2.PERCENTGT
   | Syntax_kind2.OPERATOR_KW -> Some 50
   | Syntax_kind2.STARSTAR -> Some 60
   | _ -> None
@@ -333,12 +382,38 @@ let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false
               ignore (parse_expression p ~signature ~stop_at_item:false 0);
             expect p Syntax_kind2.RBRACKET (invalid_expression p);
             loop (complete p marker Syntax_kind2.STRING_INDEX_EXPR)
+        | Syntax_kind2.LBRACKET_BAR ->
+            let marker = precede p lhs in
+            bump p;
+            bump p;
+            let rec parse_elements () =
+              if not (at p Syntax_kind2.BAR_RBRACKET || is_eof p) then
+                (
+                  let before = p.pos in
+                  ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0);
+                  ensure_progress p before (invalid_expression p);
+                  ignore (bump_if p Syntax_kind2.SEMI);
+                  parse_elements ()
+                )
+            in
+            parse_elements ();
+            expect p Syntax_kind2.BAR_RBRACKET (invalid_expression p);
+            loop (complete p marker Syntax_kind2.LOCAL_OPEN_EXPR)
         | Syntax_kind2.IDENT ->
             let marker = precede p lhs in
             bump p;
             expect p Syntax_kind2.IDENT (invalid_expression p);
             loop (complete p marker Syntax_kind2.FIELD_ACCESS_EXPR)
+        | Syntax_kind2.BANG ->
+            loop (parse_dot_bang_expr p lhs ~signature ~stop_at_item ~stop_at_semi)
         | _ -> lhs
+      )
+    else if at p Syntax_kind2.HASH then
+      (
+        let marker = precede p lhs in
+        bump p;
+        expect p Syntax_kind2.IDENT (invalid_expression p);
+        loop (complete p marker Syntax_kind2.METHOD_CALL_EXPR)
       )
     else if (at p Syntax_kind2.LEFT_ARROW || at p Syntax_kind2.COLONEQ) && min_bp <= 5 then
       (
@@ -378,6 +453,12 @@ and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ->
       complete p marker Syntax_kind2.PREFIX_EXPR
   | Syntax_kind2.LET_KW ->
       parse_let_expr p ~signature
+  | Syntax_kind2.BACKTICK ->
+      parse_poly_variant_expr p ~signature ~stop_at_item ~stop_at_semi
+  | Syntax_kind2.TILDE ->
+      parse_label_arg_expr p ~signature ~stop_at_item ~stop_at_semi Syntax_kind2.LABELED_ARG
+  | Syntax_kind2.QUESTION ->
+      parse_label_arg_expr p ~signature ~stop_at_item ~stop_at_semi Syntax_kind2.OPTIONAL_ARG
   | Syntax_kind2.IF_KW ->
       parse_if_expr p ~signature ~stop_at_item
   | Syntax_kind2.MATCH_KW ->
@@ -433,6 +514,25 @@ and parse_literal_expr = fun p ->
   let marker = start_node p in
   bump p;
   complete p marker Syntax_kind2.LITERAL_EXPR
+
+and parse_poly_variant_expr = fun p ~signature ~stop_at_item ~stop_at_semi ->
+  let marker = start_node p in
+  bump p;
+  expect p Syntax_kind2.IDENT (invalid_expression p);
+  if can_start_atom (current_kind p) then
+    ignore (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi);
+  complete p marker Syntax_kind2.POLY_VARIANT_EXPR
+
+and parse_label_arg_expr = fun p ~signature ~stop_at_item ~stop_at_semi kind ->
+  let marker = start_node p in
+  bump p;
+  expect p Syntax_kind2.IDENT (invalid_expression p);
+  if at p Syntax_kind2.COLON then
+    (
+      bump p;
+      ignore (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi)
+    );
+  complete p marker kind
 
 and parse_parenthesized_expr = fun p ~signature ~stop_at_item ->
   let marker = start_node p in
@@ -549,20 +649,74 @@ and parse_record_expr = fun p ~signature ->
 and parse_let_expr = fun p ~signature ->
   let marker = start_node p in
   bump p;
-  ignore (bump_if p Syntax_kind2.REC_KW);
-  parse_let_binding p ~signature ~top_level:false;
-  let rec parse_and_bindings () =
-    if at p Syntax_kind2.AND_KW then
+  if at p Syntax_kind2.OPEN_KW then
+    (
+      bump p;
+      ignore (bump_if p Syntax_kind2.BANG);
+      ignore (parse_path_expr p);
+      expect p Syntax_kind2.IN_KW (invalid_expression p);
+      ignore (parse_expression p ~signature ~stop_at_item:false 0);
+      complete p marker Syntax_kind2.LOCAL_OPEN_EXPR
+    )
+  else (
+    ignore (bump_if p Syntax_kind2.REC_KW);
+    parse_let_binding p ~signature ~top_level:false;
+    let rec parse_and_bindings () =
+      if at p Syntax_kind2.AND_KW then
+        (
+          bump p;
+          parse_let_binding p ~signature ~top_level:false;
+          parse_and_bindings ()
+        )
+    in
+    parse_and_bindings ();
+    expect p Syntax_kind2.IN_KW (invalid_expression p);
+    ignore (parse_expression p ~signature ~stop_at_item:false 0);
+    complete p marker Syntax_kind2.LET_EXPR
+  )
+
+and parse_dot_bang_expr = fun p lhs ~signature ~stop_at_item ~stop_at_semi ->
+  let marker = precede p lhs in
+  bump p;
+  bump p;
+  if at p Syntax_kind2.LPAREN then
+    (
+      bump p;
+      if not (at p Syntax_kind2.RPAREN || is_eof p) then
+        ignore (parse_expression p ~signature ~stop_at_item:false 0);
+      expect p Syntax_kind2.RPAREN (invalid_expression p)
+    )
+  else if can_start_atom (current_kind p) then
+    ignore (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi)
+  else
+    Event.Buffer.error p.events (invalid_expression p);
+  complete p marker Syntax_kind2.LOCAL_OPEN_EXPR
+
+and parse_label_pattern = fun p ~stop_type_at_arrow kind ->
+  let marker = start_node p in
+  bump p;
+  if at p Syntax_kind2.LPAREN then
+    (
+      bump p;
+      if not (at p Syntax_kind2.RPAREN || is_eof p) then
+        parse_pattern ~stop_type_at_arrow:false p;
+      if at p Syntax_kind2.EQ then
+        (
+          bump p;
+          ignore (parse_expression p ~signature:false ~stop_at_item:false ~stop_at_semi:true 0)
+        );
+      expect p Syntax_kind2.RPAREN (invalid_pattern p);
+      complete p marker Syntax_kind2.OPTIONAL_PARAM_DEFAULT
+    )
+  else (
+    expect p Syntax_kind2.IDENT (invalid_pattern p);
+    if at p Syntax_kind2.COLON then
       (
         bump p;
-        parse_let_binding p ~signature ~top_level:false;
-        parse_and_bindings ()
-      )
-  in
-  parse_and_bindings ();
-  expect p Syntax_kind2.IN_KW (invalid_expression p);
-  ignore (parse_expression p ~signature ~stop_at_item:false 0);
-  complete p marker Syntax_kind2.LET_EXPR
+        parse_pattern ~stop_type_at_arrow p
+      );
+    complete p marker kind
+  )
 
 and parse_if_expr = fun p ~signature ~stop_at_item ->
   let marker = start_node p in
@@ -732,6 +886,8 @@ and parse_pattern_atom = fun p ~stop_type_at_arrow ->
   | Syntax_kind2.LBRACKET -> parse_list_pattern p
   | Syntax_kind2.LBRACKET_BAR -> parse_array_pattern p
   | Syntax_kind2.LBRACE -> parse_record_pattern p
+  | Syntax_kind2.TILDE -> parse_label_pattern p ~stop_type_at_arrow Syntax_kind2.LABELED_PARAM
+  | Syntax_kind2.QUESTION -> parse_label_pattern p ~stop_type_at_arrow Syntax_kind2.OPTIONAL_PARAM
   | Syntax_kind2.BACKTICK -> parse_poly_variant_pattern p ~stop_type_at_arrow
   | Syntax_kind2.LAZY_KW -> parse_unary_pattern p ~stop_type_at_arrow Syntax_kind2.LAZY_PATTERN
   | Syntax_kind2.EXCEPTION_KW -> parse_unary_pattern p ~stop_type_at_arrow Syntax_kind2.EXCEPTION_PATTERN
@@ -759,7 +915,10 @@ and parse_parenthesized_pattern = fun p ->
   bump p;
   let at_closer () = at p Syntax_kind2.RPAREN || is_eof p in
   if not (at_closer ()) then
-    parse_pattern ~stop_type_at_arrow:false p;
+    if operator_pattern_token (current_kind p) && peek_kind p 1 = Syntax_kind2.RPAREN then
+      ignore (parse_single_token_pattern p Syntax_kind2.PATH_PATTERN)
+    else
+      parse_pattern ~stop_type_at_arrow:false p;
   let rec parse_comma_tail saw_comma =
     if at p Syntax_kind2.COMMA then
       (
