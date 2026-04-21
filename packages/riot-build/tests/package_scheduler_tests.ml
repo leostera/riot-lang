@@ -596,28 +596,17 @@ let test_package_scheduler_reports_stalled_pending_work = fun _ctx ->
 
 let tests =
   let open Test in [
-    case
-      ~size:Large
-      "package scheduler: follows finalized dependency frontiers"
-      test_package_scheduler_follows_finalized_dependency_frontiers;
-    case
-      ~size:Large
-      "package scheduler: succeeds for dependency chain"
-      test_package_scheduler_succeeds_for_dependency_chain;
+    case ~size:Large "package scheduler: follows finalized dependency frontiers" test_package_scheduler_follows_finalized_dependency_frontiers;
+    case ~size:Large "package scheduler: succeeds for dependency chain" test_package_scheduler_succeeds_for_dependency_chain;
     case "package scheduler: skips dependents after failed dependency" test_package_scheduler_skips_dependents_after_failed_dependency;
-    case
-      ~size:Large
-      "package scheduler: phase events have consistent counts"
-      test_package_scheduler_phase_events_have_consistent_counts;
-    case "package scheduler: keeps multi-lane results isolated" test_package_scheduler_keeps_multi_lane_results_isolated;
-    case
-      ~size:Large
-      "package scheduler: rerun uses cached dependency frontiers"
-      test_package_scheduler_rerun_uses_cached_dependency_frontiers;
-    case "package scheduler: cached rerun preserves multi-lane isolation" test_package_scheduler_cached_rerun_preserves_multi_lane_isolation;
+    case ~size:Large "package scheduler: phase events have consistent counts" test_package_scheduler_phase_events_have_consistent_counts;
+    case ~size:Large "package scheduler: keeps multi-lane results isolated" test_package_scheduler_keeps_multi_lane_results_isolated;
+    case ~size:Large "package scheduler: rerun uses cached dependency frontiers" test_package_scheduler_rerun_uses_cached_dependency_frontiers;
+    case ~size:Large "package scheduler: cached rerun preserves multi-lane isolation" test_package_scheduler_cached_rerun_preserves_multi_lane_isolation;
     case "package scheduler: reports stalled pending work" test_package_scheduler_reports_stalled_pending_work;
   ]
 
 let name = "Riot Package Scheduler Tests"
 
-let () = Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

@@ -445,6 +445,77 @@ let test_module_graph_uses_explicit_root_library_path_case_insensitively = fun _
   | Ok x -> x
   | Error _ -> Error "tempdir creation failed"
 
+let test_module_graph_root_library_alias_depends_on_child_module = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"module_graph_root_library_alias_depends_on_child_module"
+      (fun tmpdir ->
+        let package_root = Path.(tmpdir / Path.v "pkg") in
+        let src_dir = Path.(package_root / Path.v "src") in
+        let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"expected src dir creation to succeed" in
+        let _ = Fs.write "module A = A\n" Path.(src_dir / Path.v "lib_with_deps.ml")
+        |> Result.expect ~msg:"expected lib_with_deps.ml write to succeed" in
+        let _ = Fs.write "let value = 42\n" Path.(src_dir / Path.v "a.ml") |> Result.expect ~msg:"expected a.ml write to succeed" in
+        let package = Riot_model.Package.make ~name:(Package_name.from_string "lib_with_deps"
+        |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:(Path.v
+          "pkg") ~library:{ path = Path.v "src/lib_with_deps.ml" }
+          ~sources:{
+            src = [ Path.v "src/lib_with_deps.ml"; Path.v "src/a.ml" ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+        in
+        let workspace = Riot_model.Workspace.make_realized
+          ~root:tmpdir
+          ~packages:[ package ]
+          ~target_dir:"target"
+          () in
+        let toolchain = Riot_toolchain.init ~config:Riot_model.Toolchain_config.default
+        |> Result.expect ~msg:"expected toolchain init to succeed" in
+        let graph_builder = Riot_planner.Module_graph.create
+          Riot_planner.Module_graph.{
+            root = package_root;
+            source_dir = Path.v "src";
+            allowed_source_files = package.sources.src;
+            root_mode = Riot_planner.Module_graph.Library_root {
+              library_name = Package_name.to_string package.name
+            };
+            namespace = "Lib_with_deps";
+            package;
+            toolchain;
+            workspace;
+          }
+        in
+        match Riot_planner.Module_graph.wire_dependencies graph_builder with
+        | Error err -> Error (Riot_planner.Planning_error.to_string err)
+        | Ok () ->
+            let graph = Riot_planner.Module_graph.graph graph_builder in
+            let find_ml qualified_name =
+              let matches ((_id, (node: Riot_planner.Module_node.t G.node))) =
+                match node.value.kind with
+                | Riot_planner.Module_node.ML mod_ -> String.equal
+                  (Riot_model.Module.namespaced_name mod_)
+                  qualified_name
+                | _ -> false
+              in
+              match List.find (G.map graph ~fn:(fun x -> x)) ~fn:matches with
+              | Some (_node_id, node) -> Ok node
+              | None -> Error ("expected module not found: " ^ qualified_name)
+            in
+            match (find_ml "Lib_with_deps", find_ml "Lib_with_deps__A") with
+            | Ok root_node, Ok a_node ->
+                if List.any root_node.deps ~fn:(G.Node_id.eq a_node.id) then
+                  Ok ()
+                else
+                  Error "expected Lib_with_deps root module to depend on Lib_with_deps__A"
+            | (Error msg, _)
+            | (_, Error msg) -> Error msg)
+  with
+  | Ok x -> x
+  | Error _ -> Error "tempdir creation failed"
+
 let test_module_graph_resolves_deeply_nested_modules_namespace_first = fun _ctx ->
   match
     Fs.with_tempdir ~prefix:"module_graph_deeply_nested_modules"
@@ -756,6 +827,7 @@ let tests =
     case "module graph prefers implementation when interface exists" test_module_graph_prefers_implementation_when_interface_exists;
     case "module graph uses explicit root library path" test_module_graph_uses_explicit_root_library_path;
     case "module graph uses explicit root library path despite case mismatch" test_module_graph_uses_explicit_root_library_path_case_insensitively;
+    case "module graph root library alias depends on child module" test_module_graph_root_library_alias_depends_on_child_module;
     case "module graph resolves nested local unix backend" test_module_graph_resolves_nested_local_unix_backend;
     case "module graph resolves deeply nested modules namespace-first" test_module_graph_resolves_deeply_nested_modules_namespace_first;
     case "module graph keeps nested sibling dependency across allowed source orders" test_module_graph_keeps_nested_sibling_dependency_across_allowed_source_orders;
@@ -763,4 +835,5 @@ let tests =
 
 let name = "Planner Dependency Resolution Tests"
 
-let () = Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
