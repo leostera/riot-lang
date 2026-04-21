@@ -133,11 +133,12 @@ module Fields = struct
     { tag; edges = Array.init ~count:(List.length edges) ~fn:(fun index -> list_nth edges index) }
 
   let string_equals_slice = fun source ~offset ~length other ->
-    if not (Int.equal length (String.length other)) then
+    let open Std.Int in
+    if length != String.length other then
       false
     else
       let rec loop index =
-        if Int.equal index length then
+        if index = length then
           true
         else if
           Char.equal
@@ -151,11 +152,12 @@ module Fields = struct
       loop 0
 
   let bytes_equals_string = fun source ~offset ~length other ->
-    if not (Int.equal length (String.length other)) then
+    let open Std.Int in
+    if length != String.length other then
       false
     else
       let rec loop index =
-        if Int.equal index length then
+        if index = length then
           true
         else if
           Char.equal
@@ -169,11 +171,12 @@ module Fields = struct
       loop 0
 
   let ioslice_equals_string = fun source ~offset ~length other ->
-    if not (Int.equal length (String.length other)) then
+    let open Std.Int in
+    if length != String.length other then
       false
     else
       let rec loop index =
-        if Int.equal index length then
+        if index = length then
           true
         else if
           Char.equal
@@ -187,11 +190,12 @@ module Fields = struct
       loop 0
 
   let buffer_equals_string = fun buffer ~offset ~length other ->
-    if not (Int.equal length (String.length other)) then
+    let open Std.Int in
+    if length != String.length other then
       false
     else
       let rec loop index =
-        if Int.equal index length then
+        if index = length then
           true
         else if
           Char.equal
@@ -205,8 +209,9 @@ module Fields = struct
       loop 0
 
   let find_edge: 'tag. 'tag edge array -> char -> 'tag edge option = fun edges first ->
+    let open Std.Int in
     let rec loop index =
-      if Int.equal index (Array.length edges) then
+      if index = Array.length edges then
         None
       else
         let edge = Array.get_unchecked edges ~at:index in
@@ -218,8 +223,9 @@ module Fields = struct
     loop 0
 
   let match_slice: 'tag. 'tag t -> string -> offset:int -> length:int -> 'tag option = fun fields source ~offset ~length ->
+    let open Std.Int in
     let rec loop (node: 'tag node) offset length =
-      if Int.equal length 0 then
+      if length = 0 then
         node.tag
       else
         let first = String.get_unchecked source ~at:offset in
@@ -237,8 +243,9 @@ module Fields = struct
     loop fields.root offset length
 
   let match_bytes: 'tag. 'tag t -> bytes -> offset:int -> length:int -> 'tag option = fun fields source ~offset ~length ->
+    let open Std.Int in
     let rec loop (node: 'tag node) offset length =
-      if Int.equal length 0 then
+      if length = 0 then
         node.tag
       else
         let first = IO.Bytes.get_unchecked source ~at:offset in
@@ -256,8 +263,9 @@ module Fields = struct
     loop fields.root offset length
 
   let match_ioslice: 'tag. 'tag t -> IO.IoSlice.t -> offset:int -> length:int -> 'tag option = fun fields source ~offset ~length ->
+    let open Std.Int in
     let rec loop (node: 'tag node) offset length =
-      if Int.equal length 0 then
+      if length = 0 then
         node.tag
       else
         let first = IO.IoSlice.get_unchecked source ~at:offset in
@@ -275,8 +283,9 @@ module Fields = struct
     loop fields.root offset length
 
   let match_buffer: 'tag. 'tag t -> IO.Buffer.t -> 'tag option = fun fields buffer ->
+    let open Std.Int in
     let rec loop (node: 'tag node) offset length =
-      if Int.equal length 0 then
+      if length = 0 then
         node.tag
       else
         let first = IO.Buffer.get_unchecked buffer ~at:offset in
@@ -292,6 +301,27 @@ module Fields = struct
               None
     in
     loop fields.root 0 (IO.Buffer.length buffer)
+
+  let match_buffer_range: 'tag. 'tag t -> IO.Buffer.t -> offset:int -> length:int -> 'tag option =
+   fun fields buffer ~offset ~length ->
+    let open Std.Int in
+    let rec loop (node: 'tag node) offset length =
+      if length = 0 then
+        node.tag
+      else
+        let first = IO.Buffer.get_unchecked buffer ~at:offset in
+        match find_edge node.edges first with
+        | None -> None
+        | Some edge ->
+            let label_length = String.length edge.label in
+            if label_length > length then
+              None
+            else if buffer_equals_string buffer ~offset ~length:label_length edge.label then
+              loop edge.next (offset + label_length) (length - label_length)
+            else
+              None
+    in
+    loop fields.root offset length
 
   let make = fun cases ->
     let root = List.map cases ~fn:(fun case -> { suffix = case.key; tag = case.tag }) |> build_node in

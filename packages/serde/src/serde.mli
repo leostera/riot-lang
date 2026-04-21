@@ -45,6 +45,9 @@ module De: sig
     (** Match buffered key contents against a compiled field set. *)
     val match_buffer: 'tag t -> IO.Buffer.t -> 'tag option
 
+    (** Match a buffered key range against a compiled field set. *)
+    val match_buffer_range: 'tag t -> IO.Buffer.t -> offset:int -> length:int -> 'tag option
+
     (** Compile a list of fields into a matcher. *)
     val make: 'tag case list -> 'tag t
 

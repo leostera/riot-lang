@@ -66,7 +66,7 @@ let reader_append_range = fun dst state ~start ~stop ->
     |> Result.expect ~msg:"serde-json buffered input should append borrowed slices"
 
 let reader_match_field_range = fun fields state ~offset ~length ->
-  Serde.De.Fields.match_ioslice fields (reader_slice state) ~offset ~length
+  Serde.De.Fields.match_buffer_range fields state.buffer ~offset ~length
 
 let refill = fun state ->
   if state.eof then
