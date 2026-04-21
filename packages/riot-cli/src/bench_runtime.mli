@@ -15,8 +15,8 @@ type suite_binary = Test_runtime.suite_binary = {
 type bench_request = {
   (** Workspace providing the packages and build configuration. *)
   workspace: Workspace.t;
-  (** Optional package filter narrowing which suites should run. *)
-  package_filter: Package_name.t option;
+  (** Optional package filters narrowing which suites should run. *)
+  package_filters: Package_name.t list;
   (** Optional suite filter narrowing which benchmark binary should run. *)
   suite_filter: string option;
   (** Build profile used for the benchmark run. *)
@@ -120,10 +120,10 @@ type bench_error =
 
 (** Collect benchmark suites available in the workspace.
 
-    Use [package_filter] to restrict discovery to one package.
+    Use [package_filters] to restrict discovery to selected packages.
 *)
 val collect_suite_binaries:
-  Workspace.t -> ?package_filter:Package_name.t -> ?suite_filter:string -> unit -> suite_binary list
+  Workspace.t -> ?package_filters:Package_name.t list -> ?suite_filter:string -> unit -> suite_binary list
 
 (** Render a user-facing error message for a benchmark failure. *)
 val bench_error_message: bench_error -> string

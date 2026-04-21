@@ -149,6 +149,19 @@ let test_test_command_parses_repeated_packages_and_filter = fun _ctx ->
       | None -> Error "expected top-level subcommand"
     )
 
+let test_bench_command_parses_repeated_packages_and_filter = fun _ctx ->
+  match parse_cli [ "riot"; "bench"; "-p"; "std"; "-p"; "syn"; "-f"; "probe" ] with
+  | Error err -> Error ("expected bench args to parse: " ^ err)
+  | Ok matches -> (
+      match ArgParser.get_subcommand matches with
+      | Some ("bench", bench_matches) ->
+          Test.assert_equal ~expected:[ "std"; "syn" ] ~actual:(ArgParser.get_many bench_matches "package");
+          Test.assert_equal ~expected:(Some "probe") ~actual:(ArgParser.get_one bench_matches "filter");
+          Ok ()
+      | Some (name, _) -> Error ("expected bench command, got: " ^ name)
+      | None -> Error "expected top-level subcommand"
+    )
+
 let tests =
   Test.[
     case "test selection: keep global query" test_parse_request_keeps_global_query;
@@ -162,6 +175,7 @@ let tests =
     case "test selection: include selection flags" test_extra_args_include_selection_flags;
     case "test selection: include policy flags" test_extra_args_include_policy_flags;
     case "cli: test parses repeated packages and filter" test_test_command_parses_repeated_packages_and_filter;
+    case "cli: bench parses repeated packages and filter" test_bench_command_parses_repeated_packages_and_filter;
   ]
 
 let name = "Riot CLI Test Selection Tests"

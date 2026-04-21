@@ -9,7 +9,7 @@ type suite_binary = Test_runtime.suite_binary = {
 
 type bench_request = {
   workspace: Workspace.t;
-  package_filter: Package_name.t option;
+  package_filters: Package_name.t list;
   suite_filter: string option;
   profile: string;
   extra_args: string list;
@@ -125,17 +125,22 @@ let profile_of_name = function
   | "release" -> Riot_model.Profile.release
   | _ -> Riot_model.Profile.debug
 
-let realized_bench_packages = fun ?package_filter (workspace: Workspace.t) ->
+let matches_package_filters = fun package_filters package_name ->
+  List.is_empty package_filters
+  || List.exists (fun package_filter -> Package_name.equal package_filter package_name) package_filters
+
+let selected_package_name = function
+  | [ package_name ] -> Some package_name
+  | _ -> None
+
+let realized_bench_packages = fun ?(package_filters = []) (workspace: Workspace.t) ->
   Workspace.realize_packages ~intent:Package.Bench workspace
   |> List.filter ~fn:Package.is_workspace_member
   |> List.filter
-    ~fn:(fun (pkg: Package.t) ->
-      match package_filter with
-      | None -> true
-      | Some package_name -> Package_name.equal pkg.name package_name)
+    ~fn:(fun (pkg: Package.t) -> matches_package_filters package_filters pkg.name)
 
-let collect_suite_binaries = fun (workspace: Workspace.t) ?package_filter ?suite_filter () ->
-  realized_bench_packages ?package_filter workspace |> List.flat_map
+let collect_suite_binaries = fun (workspace: Workspace.t) ?(package_filters = []) ?suite_filter () ->
+  realized_bench_packages ~package_filters workspace |> List.flat_map
     ~fn:(fun (pkg: Package.t) ->
       List.filter_map pkg.binaries
         ~fn:(fun (bin: Package.binary) ->
@@ -704,7 +709,7 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
 ) ->
   let suites = collect_suite_binaries
     request.workspace
-    ?package_filter:request.package_filter
+    ~package_filters:request.package_filters
     ?suite_filter:request.suite_filter
     () in
   if suites = [] then
@@ -810,12 +815,12 @@ let list_benchmarks = fun ?(on_suite = no_listed_suite) ?(on_suite_error = no_li
 let bench = fun ?(on_event = no_event) (request: bench_request) ->
   let suites = collect_suite_binaries
     request.workspace
-    ?package_filter:request.package_filter
+    ~package_filters:request.package_filters
     ?suite_filter:request.suite_filter
     () in
   if suites = [] then
     (
-      on_event (NoSuitesFound { package_name = request.package_filter });
+      on_event (NoSuitesFound { package_name = selected_package_name request.package_filters });
       Ok ()
     )
   else

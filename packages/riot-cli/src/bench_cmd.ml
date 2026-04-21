@@ -8,13 +8,18 @@ let command =
   let open ArgParser in
     let open Arg in
       command "bench"
-      |> about "Run benchmarks with optional substring matching"
+      |> about "Run benchmarks with optional case filtering"
       |> ArgParser.allow_trailing_args
       |> args
-        [ positional "pattern" |> required false |> help
-            "Benchmark query passed to every benchmark suite binary. Use \
-               package:suite or -p/--package to narrow execution. Omit to run \
-               all benchmarks."; option "package" |> short 'p' |> long "package" |> help "Run benchmarks from a specific package"; flag
+        [ option "package"
+          |> short 'p'
+          |> long "package"
+          |> multiple
+          |> help "Run benchmarks from a specific package. Repeat to run multiple packages."; option
+            "filter"
+          |> short 'f'
+          |> long "filter"
+          |> help "Filter benchmark suites and cases by substring within the selected packages"; flag
             "list"
           |> long "list"
           |> help "List benchmark suites and benchmark cases without running them"; flag "release"
@@ -364,7 +369,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
       Build.Human
   in
   let list_mode = ArgParser.get_flag matches "list" in
-  let pattern = ArgParser.get_one matches "pattern" in
+  let pattern = ArgParser.get_one matches "filter" in
   let package_filters = parse_package_names (ArgParser.get_many matches "package") in
   let profile = profile_of_matches matches in
   let* package_filters = package_filters in
@@ -413,7 +418,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
         )
         {
           workspace;
-          package_filter = request.package_filter;
+          package_filters = request.package_filters;
           suite_filter = request.suite_filter;
           profile;
           extra_args;
@@ -471,7 +476,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
       Bench_runtime.bench ~on_event
         {
           workspace;
-          package_filter = request.package_filter;
+          package_filters = request.package_filters;
           suite_filter = request.suite_filter;
           profile;
           extra_args;

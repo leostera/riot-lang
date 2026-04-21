@@ -273,27 +273,21 @@ _riot() {
             esac
             ;;
         bench)
-            # Check if we're completing the benchmark pattern (position 3)
-            if [[ $CURRENT -eq 3 ]]; then
-                local -a benches
-                benches=(${(f)"$(riot completions --benchmarks 2>/dev/null)"})
-                compadd -a benches
-            else
-                _arguments \
-                    '(-p --package)'{-p,--package}'[Run benchmarks from package]:package:->packages' \
-                    '--list[List benchmark suites and cases without running them]' \
-                    '--release[Use the release build profile]' \
-                    '--json[Emit machine-readable JSONL events]' \
-                    '(-v --verbose)'{-v,--verbose}'[Verbose output]'
-                
-                case $state in
-                    packages)
-                        local -a packages
-                        packages=(${(f)"$(riot completions --packages 2>/dev/null)"})
-                        _describe 'package' packages
-                        ;;
-                esac
-            fi
+            _arguments \
+                '(-p --package)'{-p,--package}'[Run benchmarks from package]:package:->packages' \
+                '(-f --filter)'{-f,--filter}'[Filter benchmark suites and cases by substring]:filter:' \
+                '--list[List benchmark suites and cases without running them]' \
+                '--release[Use the release build profile]' \
+                '--json[Emit machine-readable JSONL events]' \
+                '(-v --verbose)'{-v,--verbose}'[Verbose output]'
+            
+            case $state in
+                packages)
+                    local -a packages
+                    packages=(${(f)"$(riot completions --packages 2>/dev/null)"})
+                    _describe 'package' packages
+                    ;;
+            esac
             ;;
         search)
             _arguments \
