@@ -2957,7 +2957,10 @@ let tests =
     case "publisher: workspace publish order ignores dev and build dependencies" test_publisher_workspace_publish_order_ignores_dev_and_build_dependencies;
     case "publisher: workspace publish order reports cycles" test_publisher_workspace_publish_order_reports_cycles;
     case "publisher: validate registry deps skips workspace publish set" test_publisher_validate_registry_dependencies_skips_workspace_publish_set;
-    case "git provenance: discovers nested package locator" test_git_provenance_discovers_nested_package_locator;
+    case
+      ~size:Large
+      "git provenance: discovers nested package locator"
+      test_git_provenance_discovers_nested_package_locator;
     case "git provenance: discovers repo root locator" test_git_provenance_discovers_repo_root_locator;
     case "publisher: prepare_publish discovers git provenance automatically" test_publisher_prepare_publish_discovers_git_provenance_without_registry;
     case "publisher: publish discovers git provenance automatically" test_publisher_publish_discovers_git_provenance;
