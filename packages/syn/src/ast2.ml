@@ -10,31 +10,36 @@ type token = {
   id: int;
 }
 
-let root = fun tree -> { tree; id = tree.Syntax_tree.root }
+let root = fun tree -> ({ tree; id = tree.Syntax_tree.root }: node)
 
-let wrap_node = fun tree id -> { tree; id }
+let wrap_node = fun tree id -> ({ tree; id }: node)
 
-let wrap_token = fun tree id -> { tree; id }
+let wrap_token = fun tree id -> ({ tree; id }: token)
 
-let syntax_node = fun node -> Syntax_tree.node node.tree node.id
+let syntax_node = fun (node: node) ->
+  Syntax_tree.node node.tree node.id
 
 module Node = struct
   type t = node
 
-  let kind = fun node -> (syntax_node node).Syntax_tree.kind
+  let kind = fun (node: t) -> (syntax_node node).Syntax_tree.kind
 
-  let text = fun node -> Syntax_tree.node_text node.tree (syntax_node node)
+  let text = fun (node: t) ->
+    Syntax_tree.node_text node.tree (syntax_node node)
 
-  let for_each_child = fun node ~fn -> Syntax_tree.for_each_child node.tree (syntax_node node) ~fn
+  let for_each_child = fun (node: t) ~fn ->
+    Syntax_tree.for_each_child node.tree (syntax_node node) ~fn
 
-  let for_each_child_node = fun node ~fn ->
+  let for_each_child_node = fun (node: t) ~fn ->
     for_each_child node
-      ~fn:(function
+      ~fn:(
+        function
         | Syntax_tree.Node id -> fn (wrap_node node.tree id)
         | Syntax_tree.Token _
-        | Syntax_tree.Missing _ -> ())
+        | Syntax_tree.Missing _ -> ()
+      )
 
-  let first_child_node = fun node ~kind:expected_kind ->
+  let first_child_node = fun (node: t) ~kind:expected_kind ->
     let found = ref None in
     for_each_child_node node
       ~fn:(fun child ->
@@ -49,11 +54,13 @@ end
 module Token = struct
   type t = token
 
-  let leaf = fun token -> Syntax_tree.token token.tree token.id
+  let leaf = fun (token: t) ->
+    Syntax_tree.token token.tree token.id
 
-  let kind = fun token -> (leaf token).Syntax_tree.kind
+  let kind = fun (token: t) -> (leaf token).Syntax_tree.kind
 
-  let text = fun token -> Syntax_tree.token_text token.tree (leaf token)
+  let text = fun (token: t) ->
+    Syntax_tree.token_text token.tree (leaf token)
 end
 
 module Expr = struct
@@ -142,32 +149,31 @@ module Expr = struct
 
   let view = fun expr ->
     match Node.kind expr with
-    | Syntax_kind2.LET_EXPR ->
-        Let {
-          binding = Node.first_child_node expr ~kind:Syntax_kind2.LET_BINDING;
-          body = nth_expr_child expr 0;
-        }
-    | Syntax_kind2.IF_EXPR ->
-        If {
-          condition = nth_expr_child expr 0;
-          then_branch = nth_expr_child expr 1;
-          else_branch = nth_expr_child expr 2;
-        }
-    | Syntax_kind2.MATCH_EXPR ->
-        Match { scrutinee = first_expr_child expr }
+    | Syntax_kind2.LET_EXPR -> Let {
+      binding = Node.first_child_node expr ~kind:Syntax_kind2.LET_BINDING;
+      body = nth_expr_child expr 0
+    }
+    | Syntax_kind2.IF_EXPR -> If {
+      condition = nth_expr_child expr 0;
+      then_branch = nth_expr_child expr 1;
+      else_branch = nth_expr_child expr 2
+    }
+    | Syntax_kind2.MATCH_EXPR -> Match { scrutinee = first_expr_child expr }
     | Syntax_kind2.FUN_EXPR
-    | Syntax_kind2.FUNCTION_EXPR ->
-        Fun { body = first_expr_child expr }
-    | Syntax_kind2.APPLY_EXPR ->
-        Apply { callee = nth_expr_child expr 0; argument = nth_expr_child expr 1 }
-    | Syntax_kind2.INFIX_EXPR ->
-        Infix {
-          left = nth_expr_child expr 0;
-          operator = first_token_child expr;
-          right = nth_expr_child expr 1;
-        }
-    | Syntax_kind2.PREFIX_EXPR ->
-        Prefix { operator = first_token_child expr; operand = first_expr_child expr }
+    | Syntax_kind2.FUNCTION_EXPR -> Fun { body = first_expr_child expr }
+    | Syntax_kind2.APPLY_EXPR -> Apply {
+      callee = nth_expr_child expr 0;
+      argument = nth_expr_child expr 1
+    }
+    | Syntax_kind2.INFIX_EXPR -> Infix {
+      left = nth_expr_child expr 0;
+      operator = first_token_child expr;
+      right = nth_expr_child expr 1
+    }
+    | Syntax_kind2.PREFIX_EXPR -> Prefix {
+      operator = first_token_child expr;
+      operand = first_expr_child expr
+    }
     | Syntax_kind2.PATH_EXPR -> Path
     | Syntax_kind2.LITERAL_EXPR -> Literal
     | Syntax_kind2.TUPLE_EXPR -> Tuple
@@ -197,4 +203,3 @@ module SourceFile = struct
                 | _ -> ())
         | _ -> ())
 end
-

@@ -58,7 +58,7 @@ let raw_end = fun raw_tokens raw_index ->
   else
     (raw_at raw_tokens raw_index).Raw_token.span.Ceibo.Span.end_
 
-let child_range = fun nodes tokens child ->
+let child_range = fun (nodes: node Vector.t) (tokens: token_leaf Vector.t) child ->
   match child with
   | Token token_id ->
       let token = Vector.get_unchecked tokens ~at:token_id in
@@ -69,15 +69,13 @@ let child_range = fun nodes tokens child ->
   | Missing _ ->
       None
 
-let finish_frame = fun ~raw_tokens ~nodes ~tokens ~children_store frame ->
+let finish_frame = fun ~raw_tokens ~(nodes:node Vector.t) ~(tokens:token_leaf Vector.t) ~(children_store:child Vector.t) frame ->
   let first_child = Vector.length children_store in
   Vector.iter frame.children
-  |> Iterator.for_each
-    ~fn:(fun child -> Vector.push children_store ~value:child);
+  |> Iterator.for_each ~fn:(fun child -> Vector.push children_store ~value:child);
   let child_count = Vector.length frame.children in
   let range = ref None in
-  Vector.iter frame.children
-  |> Iterator.for_each
+  Vector.iter frame.children |> Iterator.for_each
     ~fn:(fun child ->
       match child_range nodes tokens child with
       | None -> ()
@@ -108,9 +106,9 @@ let finish_frame = fun ~raw_tokens ~nodes ~tokens ~children_store frame ->
   }
 
 let build = fun ~source ~token_stream ~events ->
-  let tokens = Vector.create () in
-  let nodes = Vector.create () in
-  let children_store = Vector.create () in
+  let tokens: token_leaf Vector.t = Vector.create () in
+  let nodes: node Vector.t = Vector.create () in
+  let children_store: child Vector.t = Vector.create () in
   let stack = ref [] in
   let root = ref None in
   let next_raw_lo = ref 0 in
@@ -121,7 +119,7 @@ let build = fun ~source ~token_stream ~events ->
     | [] -> ()
   in
   let push_node kind =
-    stack := { kind; children = Vector.create () } :: !stack
+    stack := { kind; children = (Vector.create (): child Vector.t) } :: !stack
   in
   let pop_node () =
     match !stack with
@@ -145,21 +143,22 @@ let build = fun ~source ~token_stream ~events ->
         kind = raw.Raw_token.kind;
         raw_lo = !next_raw_lo;
         raw_hi = raw_index + 1;
-        body_raw = raw_index;
+        body_raw = raw_index
       } in
       next_raw_lo := raw_index + 1;
       Vector.push tokens ~value:token;
       push_child (Token token_id)
   in
-  Event.Buffer.iter events
-  |> Iterator.for_each
-    ~fn:(function
+  Event.Buffer.iter events |> Iterator.for_each
+    ~fn:(
+      function
       | Event.StartNode (Some kind) -> push_node kind
       | Event.StartNode None -> push_node Syntax_kind2.ERROR
       | Event.FinishNode -> pop_node ()
       | Event.Token raw_index -> push_token raw_index
       | Event.Missing (kind, offset) -> push_child (Missing { kind; offset })
-      | Event.Error _ -> ());
+      | Event.Error _ -> ()
+    );
   let root =
     match !root with
     | Some root -> root
@@ -171,7 +170,8 @@ let build = fun ~source ~token_stream ~events ->
           raw_lo = 0;
           raw_hi = 0;
           full_width = 0;
-        } in
+        }
+        in
         Vector.push nodes ~value:node;
         0
   in
@@ -185,21 +185,21 @@ let build = fun ~source ~token_stream ~events ->
     root;
   }
 
-let root = fun tree -> Vector.get_unchecked tree.nodes ~at:tree.root
+let root = fun (tree: t) -> Vector.get_unchecked tree.nodes ~at:tree.root
 
-let node = fun tree node_id -> Vector.get_unchecked tree.nodes ~at:node_id
+let node = fun (tree: t) node_id -> Vector.get_unchecked tree.nodes ~at:node_id
 
-let token = fun tree token_id -> Vector.get_unchecked tree.tokens ~at:token_id
+let token = fun (tree: t) token_id -> Vector.get_unchecked tree.tokens ~at:token_id
 
-let child = fun tree child_id -> Vector.get_unchecked tree.children ~at:child_id
+let child = fun (tree: t) child_id -> Vector.get_unchecked tree.children ~at:child_id
 
-let child_at = fun tree node index ->
+let child_at = fun (tree: t) (node: node) index ->
   if index < 0 || index >= node.child_count then
     None
   else
     Some (Vector.get_unchecked tree.children ~at:(node.first_child + index))
 
-let for_each_child = fun tree node ~fn ->
+let for_each_child = fun (tree: t) (node: node) ~fn ->
   for index = 0 to node.child_count - 1 do
     fn (Vector.get_unchecked tree.children ~at:(node.first_child + index))
   done
@@ -212,7 +212,8 @@ let raw_range_text = fun tree ~raw_lo ~raw_hi ->
     let end_ = raw_end tree.raw_tokens (raw_hi - 1) in
     String.sub tree.source ~offset:start ~len:(end_ - start)
 
-let token_text = fun tree token -> Raw_token.text ~source:tree.source (raw_at tree.raw_tokens token.body_raw)
+let token_text = fun tree token ->
+  Raw_token.text ~source:tree.source (raw_at tree.raw_tokens token.body_raw)
 
 let node_text = fun tree node -> raw_range_text tree ~raw_lo:node.raw_lo ~raw_hi:node.raw_hi
 
@@ -249,7 +250,10 @@ let rec child_json = fun tree child ->
 and node_json = fun tree node_id ->
   let node = node tree node_id in
   let children_json = ref [] in
-  for_each_child tree node ~fn:(fun child -> children_json := child_json tree child :: !children_json);
+  for_each_child
+    tree
+    node
+    ~fn:(fun child -> children_json := child_json tree child :: !children_json);
   Json.Object [
     ("kind", Json.String (Syntax_kind2.to_string node.kind));
     ("raw_lo", Json.Int node.raw_lo);
@@ -263,8 +267,4 @@ let to_json = fun tree ->
   for index = Vector.length tree.raw_tokens - 1 downto 0 do
     raw_tokens_json := raw_token_json tree index (raw_at tree.raw_tokens index) :: !raw_tokens_json
   done;
-  Json.Object [
-    ("raw_tokens", Json.Array !raw_tokens_json);
-    ("tree", node_json tree tree.root)
-  ]
-
+  Json.Object [ ("raw_tokens", Json.Array !raw_tokens_json); ("tree", node_json tree tree.root) ]

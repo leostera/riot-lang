@@ -8,6 +8,8 @@ type t =
   | Missing of Syntax_kind2.t * int
   | Error of Diagnostic.t
 
+type event = t
+
 module Buffer = struct
   type event = t
 
@@ -57,4 +59,3 @@ module Buffer = struct
 
   let diagnostics = fun t -> t.diagnostics
 end
-
