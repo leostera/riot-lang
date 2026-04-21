@@ -25,6 +25,69 @@ let command =
         |> count;
       ]
 
+type invocation_args = {
+  parsed: string list;
+  trailing: string list;
+}
+
+let is_known_flag_without_value = function
+  | "--list"
+  | "--release"
+  | "--json"
+  | "-v"
+  | "--verbose"
+  | "-h"
+  | "--help" -> true
+  | _ -> false
+
+let is_known_flag_with_value = function
+  | "-p"
+  | "--package"
+  | "-f"
+  | "--filter"
+  | "--compare" -> true
+  | _ -> false
+
+let looks_like_flag = fun value -> String.starts_with ~prefix:"-" value
+
+let bench_invocation_args = fun argv ->
+  let rec loop parsed trailing = function
+    | [] -> { parsed = List.reverse parsed; trailing = List.reverse trailing }
+    | "--" :: rest -> { parsed = List.reverse parsed; trailing = List.reverse_append trailing rest }
+    | arg :: rest when is_known_flag_without_value arg -> loop (arg :: parsed) trailing rest
+    | arg :: value :: rest when is_known_flag_with_value arg -> loop
+      (value :: arg :: parsed)
+      trailing
+      rest
+    | arg :: value :: rest when looks_like_flag arg && not (looks_like_flag value) -> loop
+      parsed
+      (value :: arg :: trailing)
+      rest
+    | arg :: rest -> loop parsed (arg :: trailing) rest
+  in
+  match argv with
+  | [] -> { parsed = []; trailing = [] }
+  | command_name :: rest ->
+      let result = loop [ command_name ] [] rest in
+      { parsed = result.parsed; trailing = result.trailing }
+
+let extract_bench_argv = fun argv ->
+  let rec loop = function
+    | [] -> None
+    | "bench" :: _ as bench_argv -> Some bench_argv
+    | _ :: rest -> loop rest
+  in
+  loop argv
+
+let reparsed_matches = fun matches ->
+  match extract_bench_argv Env.args with
+  | None -> Ok (matches, trailing_args matches)
+  | Some bench_argv ->
+      let invocation = bench_invocation_args bench_argv in
+      ArgParser.get_matches command invocation.parsed
+      |> Result.map ~fn:(fun matches -> (matches, invocation.trailing))
+      |> Result.map_err ~fn:(fun err -> Failure (ArgParser.error_message err))
+
 let trailing_args = fun matches ->
   let args = ArgParser.trailing_args matches in
   match args with
@@ -263,6 +326,56 @@ let metric_specs = [
   ("std_dev", fun stats -> stats.std_dev);
 ]
 
+let json_of_option = fun value ~some ->
+  match value with
+  | Some value -> some value
+  | None -> Data.Json.Null
+
+let print_percent = fun value -> Float.to_string ~precision:1 (value *. 100.0) ^ "%"
+
+let terminal_profile = Tty.Profile.from_env ()
+
+let styled = fun color_hex text ->
+  let color = Tty.Color.make color_hex |> Tty.Profile.convert terminal_profile in
+  Tty.Style.default |> Tty.Style.fg color |> Tty.Style.bold |> fun style ->
+    Tty.Style.styled style text
+
+type cv_band =
+  | Great
+  | Good
+  | Meh
+  | Bad
+
+let classify_cv = fun value ->
+  if Float.compare value 0.02 < 0 then
+    Great
+  else if Float.compare value 0.05 <= 0 then
+    Good
+  else if Float.compare value 0.10 <= 0 then
+    Meh
+  else
+    Bad
+
+let style_cv_text = fun cv_value text ->
+  match cv_value with
+  | None -> text
+  | Some value -> (
+      match classify_cv value with
+      | Great -> styled "#98C379" text
+      | Good -> styled "#61AFEF" text
+      | Meh -> styled "#E5C07B" text
+      | Bad -> styled "#E06C75" text
+    )
+
+let render_cv = fun cv_value ->
+  match cv_value with
+  | None -> "n/a"
+  | Some value -> print_percent value
+
+let styled_stability_label = function
+  | History.Stable -> styled "#98C379" "stable"
+  | History.Noisy -> styled "#E5C07B" "noisy"
+
 let delta_percent = fun current previous ->
   let previous_nanos = Time.Duration.to_nanos previous |> Int64.to_float in
   if Float.equal previous_nanos 0.0 then
@@ -271,17 +384,42 @@ let delta_percent = fun current previous ->
     let current_nanos = Time.Duration.to_nanos current |> Int64.to_float in
     Some (((current_nanos -. previous_nanos) /. previous_nanos) *. 100.0)
 
-let render_delta = fun current previous ->
-  match delta_percent current previous with
+let noise_margin_percent = fun ~current_cv ~baseline_cv ->
+  let values = [ current_cv; baseline_cv ]
+  |> List.filter_map ~fn:(fun value -> value)
+  |> List.map ~fn:(fun value -> value *. 100.0) in
+  match values with
+  | [] -> 0.0
+  | values ->
+      List.fold_left values ~acc:0.0
+        ~fn:(fun acc value ->
+          if Float.compare value acc > 0 then
+            value
+          else
+            acc)
+
+let render_delta_text = fun delta_value ->
+  match delta_value with
   | None -> "n/a"
   | Some value ->
       let sign =
-        if Float.(value > 0.0) then
+        if Float.compare value 0.0 > 0 then
           "+"
         else
           ""
       in
       sign ^ Float.to_string ~precision:1 value ^ "%"
+
+let style_delta_cell = fun delta_value ~noise_margin_percent text ->
+  match delta_value with
+  | None -> text
+  | Some value ->
+      if Float.compare (Float.abs value) noise_margin_percent <= 0 then
+        styled "#E5C07B" text
+      else if Float.compare value 0.0 < 0 then
+        styled "#98C379" text
+      else
+        styled "#E06C75" text
 
 let history_column_label = fun index (sample: History.history_sample) ->
   let base =
@@ -295,7 +433,9 @@ let history_column_label = fun index (sample: History.history_sample) ->
   else
     base
 
-let print_history_table = fun ~current_partial current (history: History.history_sample list) ->
+let print_history_table = fun ~current_partial ~baseline ~current_cv ~baseline_cv current (
+  history: History.history_sample list
+) ->
   let label_width = 10 in
   let column_width = 12 in
   let current_label =
@@ -315,35 +455,101 @@ let print_history_table = fun ~current_partial current (history: History.history
     ~fn:(fun (index, sample) ->
       String.pad_left ~width:column_width ' ' (history_column_label index sample)))
   |> String.concat " " in
+  let noise_margin_percent = noise_margin_percent ~current_cv ~baseline_cv in
   println header;
   metric_specs |> List.iter
     (fun (label, project) ->
       let current_value = project current in
-      let delta_value =
-        match history with
-        | [] -> "n/a"
-        | previous :: _ -> render_delta current_value (project previous.statistics)
-      in
+      let delta_value = delta_percent current_value (project baseline) in
+      let delta_cell = render_delta_text delta_value
+      |> String.pad_left ~width:column_width ' '
+      |> style_delta_cell delta_value ~noise_margin_percent in
       let values = [ String.pad_right ~width:label_width ' ' label ]
-      @ [
-        String.pad_left ~width:column_width ' ' delta_value;
-        String.pad_left ~width:column_width ' ' (print_duration current_value);
-      ]
+      @ [ delta_cell; String.pad_left ~width:column_width ' ' (print_duration current_value); ]
       @ (history
       |> List.map
         ~fn:(fun (sample: History.history_sample) ->
           String.pad_left ~width:column_width ' ' (print_duration (project sample.statistics))))
       |> String.concat " " in
-      println values)
+      println values);
+  let current_cv_value = Statistics.coefficient_of_variation current in
+  let baseline_cv_value = Statistics.coefficient_of_variation baseline in
+  let current_cv = render_cv current_cv_value
+  |> String.pad_left ~width:column_width ' '
+  |> style_cv_text current_cv_value in
+  let cv_delta =
+    match current_cv_value, baseline_cv_value with
+    | Some current_cv, Some baseline_cv when not (Float.equal baseline_cv 0.0) ->
+        let change = ((current_cv -. baseline_cv) /. baseline_cv) *. 100.0 in
+        let sign =
+          if Float.compare change 0.0 > 0 then
+            "+"
+          else
+            ""
+        in
+        sign ^ Float.to_string ~precision:1 change ^ "%"
+    | _ -> "n/a"
+  in
+  let cv_history =
+    history
+    |> List.map
+      ~fn:(fun (sample: History.history_sample) ->
+        let value = Statistics.coefficient_of_variation sample.statistics in
+        render_cv value |> String.pad_left ~width:column_width ' ' |> style_cv_text value)
+    |> String.concat " "
+  in
+  println
+    ([ String.pad_right ~width:label_width ' ' "cv" ]
+    @ [ String.pad_left ~width:column_width ' ' cv_delta; current_cv; ]
+    @ [ cv_history ]
+    |> String.concat " ")
 
 let print_benchmark_history = fun ~current_partial (history: History.benchmark_history) ->
   println "  history:";
-  print_history_table ~current_partial history.current history.history;
+  println ("  baseline: median of previous " ^ Int.to_string (List.length history.history) ^ " runs");
+  println
+    ("  noise margin: "
+    ^ print_percent
+      ((noise_margin_percent ~current_cv:history.current_cv ~baseline_cv:history.baseline_cv) /. 100.0));
+  println
+    ("  stability: "
+    ^ styled_stability_label history.stability
+    ^ " (cv "
+    ^ style_cv_text history.current_cv (render_cv history.current_cv)
+    ^ ", previous median "
+    ^ style_cv_text history.baseline_cv (render_cv history.baseline_cv)
+    ^ ")");
+  print_history_table
+    ~current_partial
+    ~baseline:history.baseline
+    ~current_cv:history.current_cv
+    ~baseline_cv:history.baseline_cv
+    history.current
+    history.history;
   println ""
 
 let print_comparison_case_history = fun ~current_partial (history: History.comparison_case_history) ->
   println ("  history: " ^ history.description ^ " / " ^ history.name);
-  print_history_table ~current_partial history.current history.history;
+  println ("  baseline: median of previous " ^ Int.to_string (List.length history.history) ^ " runs");
+  println
+    ("  noise margin: "
+    ^ print_percent
+      ((noise_margin_percent ~current_cv:history.current_cv ~baseline_cv:history.baseline_cv) /. 100.0));
+  println
+    ("  stability: "
+    ^ styled_stability_label history.stability
+    ^ " (cv "
+    ^ style_cv_text history.current_cv (render_cv history.current_cv)
+    ^ ", previous median "
+    ^ style_cv_text history.baseline_cv (render_cv history.baseline_cv)
+    ^ ")");
+  print_history_table
+    ~current_partial
+    ~baseline:history.baseline
+    ~current_cv:history.current_cv
+    ~baseline_cv:history.baseline_cv
+    history.current
+    history.history;
   println ""
 
 let history_statistics_json = fun (stats: History.bench_statistics) ->
@@ -369,6 +575,17 @@ let benchmark_history_json = fun (history: History.benchmark_history) ->
     ("index", Data.Json.Int history.index);
     ("name", Data.Json.String history.name);
     ("current", history_statistics_json history.current);
+    ("baseline", history_statistics_json history.baseline);
+    ("current_cv", json_of_option history.current_cv ~some:(fun value -> Data.Json.Float value));
+    ("baseline_cv", json_of_option history.baseline_cv ~some:(fun value -> Data.Json.Float value));
+    (
+      "stability",
+      Data.Json.String (
+        match history.stability with
+        | History.Stable -> "stable"
+        | History.Noisy -> "noisy"
+      )
+    );
     ("history", Data.Json.Array (List.map history.history ~fn:history_sample_json));
   ]
 
@@ -377,6 +594,17 @@ let comparison_case_history_json = fun (history: History.comparison_case_history
     ("description", Data.Json.String history.description);
     ("name", Data.Json.String history.name);
     ("current", history_statistics_json history.current);
+    ("baseline", history_statistics_json history.baseline);
+    ("current_cv", json_of_option history.current_cv ~some:(fun value -> Data.Json.Float value));
+    ("baseline_cv", json_of_option history.baseline_cv ~some:(fun value -> Data.Json.Float value));
+    (
+      "stability",
+      Data.Json.String (
+        match history.stability with
+        | History.Stable -> "stable"
+        | History.Noisy -> "noisy"
+      )
+    );
     ("history", Data.Json.Array (List.map history.history ~fn:history_sample_json));
   ]
 
@@ -688,7 +916,8 @@ let bench_history_compare = fun context ~(suite:Bench_runtime.suite_binary) ~lim
 
 let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
   let seen_registry_updates = Collections.HashSet.create () in
-  let extra_args = trailing_args matches in
+  let* (matches, trailing) = reparsed_matches matches in
+  let extra_args = trailing in
   let verbose = ArgParser.get_count matches "verbose" in
   let _ = verbose in
   let output_mode =

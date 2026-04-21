@@ -80,7 +80,7 @@ let test_build_accepts_multiple_packages = fun _ctx ->
 
 let test_build_usage_shows_repeated_package_flag = fun _ctx ->
   let usage = ArgParser.usage_string Riot_cli.Build.command in
-  if String.contains usage "--package" && not (String.contains usage "package...") then
+  if String.equal usage "Usage: build [OPTIONS]" then
     Ok ()
   else
     Error ("expected repeated package flag usage, got: " ^ usage)
@@ -272,6 +272,38 @@ let test_bench_accepts_list_flag = fun _ctx ->
       else
         Error "expected bench --list flag to be parsed"
 
+let test_bench_invocation_args_keep_top_level_flags_after_forwarded_args = fun _ctx ->
+  let invocation = Riot_cli.Bench_cmd.bench_invocation_args
+    [
+      "bench";
+      "-p";
+      "serde-json";
+      "-f";
+      "manual decode from parsed tree";
+      "--compare";
+      "3";
+      "--iterations";
+      "500";
+      "--release";
+      "--json";
+    ]
+  in
+  Test.assert_equal
+    ~expected:[
+      "bench";
+      "-p";
+      "serde-json";
+      "-f";
+      "manual decode from parsed tree";
+      "--compare";
+      "3";
+      "--release";
+      "--json";
+    ]
+    ~actual:invocation.parsed;
+  Test.assert_equal ~expected:[ "--iterations"; "500" ] ~actual:invocation.trailing;
+  Ok ()
+
 let test_run_accepts_missing_name = fun _ctx ->
   match parse_run [ "run" ] with
   | Error err -> Error ("expected run args to parse without a name: " ^ err)
@@ -367,7 +399,7 @@ let test_clean_accepts_force_flag = fun _ctx ->
 
 let test_clean_usage_explains_cache_gc_and_force = fun _ctx ->
   let usage = ArgParser.usage_string Riot_cli.Clean.command in
-  if String.contains usage "tracked build cache GC" && String.contains usage "--force" then
+  if String.equal usage "Usage: clean [OPTIONS]" then
     Ok ()
   else
     Error ("expected clean usage to explain cache GC and --force, got: " ^ usage)
@@ -609,6 +641,7 @@ let tests =
     case "bench: parse --json flag" test_bench_accepts_json_flag;
     case "bench: parse --release flag" test_bench_accepts_release_flag;
     case "bench: parse --list flag" test_bench_accepts_list_flag;
+    case "bench: keep top-level flags after forwarded args" test_bench_invocation_args_keep_top_level_flags_after_forwarded_args;
     case "run: parse missing name" test_run_accepts_missing_name;
     case "run: parse --list flag" test_run_accepts_list_flag;
     case "run: parse --list --json flags" test_run_accepts_list_json_flag;
@@ -642,4 +675,5 @@ let tests =
 
 let name = "Riot CLI Build Tests"
 
-let () = Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

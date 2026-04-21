@@ -1,7 +1,6 @@
 open Std
 open Riot_model
-
-include module type of Model
+open Model
 
 type run_context
 val create_run_context:
@@ -24,14 +23,6 @@ val load_recent_suite_runs:
   suite_name:string ->
   limit:int ->
   (stored_suite_run list, string) result
-
-val compare_suite_run:
-  run_context ->
-  package_name:Package_name.t ->
-  suite_name:string ->
-  current:suite_run ->
-  limit:int ->
-  (suite_history, string) result
 
 val save_suite_run:
   run_context ->

@@ -323,13 +323,9 @@ let command =
     |> about "Build packages"
     |> args
       [
-        option "package"
-        |> short 'p'
-        |> long "package"
-        |> multiple
-        |> help "Build a specific package. Repeat to build multiple packages; omit to build all packages.";
+        option "package" |> short 'p' |> long "package" |> multiple |> help "Build a specific package. Repeat to build multiple packages; omit to build all packages.";
         option "target" |> short 'x' |> long "target" |> help "Target architecture (exact triple, pattern like 'linux'/'aarch64', or 'all')";
-        flag "all-targets" |> help "Build for all configured targets";
+        flag "all-targets" |> long "all-targets" |> help "Build for all configured targets";
         flag "release" |> long "release" |> help "Use the release build profile";
         option "jobs" |> short 'j' |> long "jobs" |> help "Limit parallel workers";
         flag "json" |> long "json" |> help "Emit machine-readable JSONL events";
@@ -448,8 +444,7 @@ let write_cache_gc_event = fun ~mode event ->
   | Json -> write_json_event (Riot_store.Cache_gc.event_to_json event)
   | Human -> (
       match event with
-      | Riot_store.Cache_gc.GcStarted { trigger=Manual } -> out
-        "    Running tracked cache GC (build root kept; use --force to remove it)"
+      | Riot_store.Cache_gc.GcStarted { trigger=Manual } -> out "    Running tracked cache GC (build root kept; use --force to remove it)"
       | Riot_store.Cache_gc.GcStarted { trigger=Post_build } -> ()
       | Riot_store.Cache_gc.GcSkipped { trigger=Post_build; _ } -> ()
       | Riot_store.Cache_gc.GcSkipped { summary; _ } -> out
@@ -457,9 +452,7 @@ let write_cache_gc_event = fun ~mode event ->
         ^ size_to_string summary.size_after_bytes
         ^ "). Build root kept; use --force to remove it.")
       | Riot_store.Cache_gc.GcCompleted { summary; _ } -> out
-        ("    \027[1;32mCleaned\027[0m tracked cache: "
-        ^ format_cache_gc_cleanup summary
-        ^ ". Build root kept.")
+        ("    \027[1;32mCleaned\027[0m tracked cache: " ^ format_cache_gc_cleanup summary ^ ". Build root kept.")
       | Riot_store.Cache_gc.GcFailed { error; _ } -> out
         ("\027[1;31mError\027[0m: cache GC failed: " ^ error)
       | Riot_store.Cache_gc.ForceCleanStarted { build_root } -> out
