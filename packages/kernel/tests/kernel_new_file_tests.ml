@@ -1473,7 +1473,7 @@ let tests = [
   Test.case "Fs.File copy preserves payloads larger than the internal chunk size" test_copy_preserves_large_payloads_beyond_the_internal_chunk_size;
   Test.case "Fs.File copy preserves source permissions" test_copy_preserves_source_permissions;
   Test.case "Fs.File fstat continues to describe the open file after rename" test_fstat_continues_to_describe_the_open_file_after_rename;
-  Test.case ~size:Test.Large "Fs.File repeated pipe open and close stays healthy" test_repeated_pipe_open_and_close_stays_healthy;
+  Test.case "Fs.File repeated pipe open and close stays healthy" test_repeated_pipe_open_and_close_stays_healthy;
 ]
 
 let main = fun ~args ->

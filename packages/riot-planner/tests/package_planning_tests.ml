@@ -1491,10 +1491,7 @@ let test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version
 
 let tests =
   Test.[
-    case
-      ~size:Large
-      "kernel input hash is not empty digest"
-      test_kernel_input_hash_is_not_empty_digest;
+    case ~size:Large "kernel input hash is not empty digest" test_kernel_input_hash_is_not_empty_digest;
     case "plan bundle cache hit restores module and action graphs" test_plan_bundle_cache_hit_restores_module_and_action_graphs;
     case "cached artifact and exports short-circuit without plan bundle" test_cached_artifact_and_exports_short_circuit_without_plan_bundle;
     case "stale plan bundle version rebuilds plan graphs" test_stale_plan_bundle_version_rebuilds_plan_graphs;
@@ -1508,9 +1505,10 @@ let tests =
     case ~size:Large "kernel CreateLibrary dependencies are unique" test_kernel_create_library_dependencies_are_unique;
     case ~size:Large "kernel dependency walk snapshot" test_kernel_dependency_walk_snapshot;
     case ~size:Large "legacy kernel plan bundle is ignored after version bump" test_legacy_kernel_plan_bundle_is_ignored_after_version_bump;
-    case ~size:Large "legacy krasny plan bundle with bad root module is ignored after version bump" test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version_bump;
+    case "legacy krasny plan bundle with bad root module is ignored after version bump" test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version_bump;
   ]
 
 let name = "Planner Package Planning Tests"
 
-let () = Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

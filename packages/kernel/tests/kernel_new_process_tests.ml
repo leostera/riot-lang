@@ -1360,8 +1360,8 @@ let tests = [
   Test.case "Process try_wait is stable after exit" test_try_wait_is_stable_after_exit;
   Test.case "Process kill after exit reports no-such-process" test_kill_after_exit_reports_no_such_process;
   Test.case "Process close is idempotent" test_process_close_is_idempotent;
-  Test.case ~size:Test.Large "Process many sources report burst exit readiness" test_many_process_sources_report_burst_exit_readiness;
-  Test.case ~size:Test.Large "Process many sources report burst signals" test_many_process_sources_report_burst_signals;
+  Test.case "Process many sources report burst exit readiness" test_many_process_sources_report_burst_exit_readiness;
+  Test.case "Process many sources report burst signals" test_many_process_sources_report_burst_signals;
   Test.case ~size:Test.Large "Process repeated spawn and poll exit stays healthy" test_repeated_spawn_and_poll_exit_stays_healthy;
 ]
 

@@ -191,7 +191,7 @@ let unknown_sequences_are_not_dropped_or_duplicated =
 
 let tests = [
   Test.property
-    "strip is idempotent"
+    ~size:Test.Large "strip is idempotent"
     ~examples
     (fun _ctx -> assert_property "strip is idempotent" strip_is_idempotent);
   Test.property
@@ -203,15 +203,15 @@ let tests = [
     ~examples
     (fun _ctx -> assert_property "style default is identity" style_default_is_identity);
   Test.property
-    "styled width matches plain width"
+    ~size:Test.Large "styled width matches plain width"
     ~examples
     (fun _ctx -> assert_property "styled width matches plain width" styled_width_matches_plain_width);
   Test.property
-    "styled non-default wraps with escape and reset"
+    ~size:Test.Large "styled non-default wraps with escape and reset"
     ~examples
     (fun _ctx -> assert_property "styled non-default wraps with escape and reset" styled_non_default_wraps_with_escape_and_reset);
   Test.property
-    "styled output does not inject newline or nul"
+    ~size:Test.Large "styled output does not inject newline or nul"
     ~examples
     (fun _ctx -> assert_property "styled output does not inject newline or nul" styled_does_not_inject_newline_or_nul);
   Test.property

@@ -1759,15 +1759,15 @@ let tests = [
   Test.case "Net.UdpSocket connected socket delivers its peer after filtering foreign datagrams" test_udp_connected_socket_delivers_connected_peer_after_filtering_foreign_datagrams;
   Test.case "Net.UdpSocket connected ipv6 socket ignores other peers" test_udp_connected_ipv6_socket_ignores_other_peers;
   Test.case "Async poll handles many udp sockets" test_async_poll_handles_many_udp_sockets;
-  Test.case ~size:Test.Large "Async poll handles many tcp streams" test_async_poll_handles_many_tcp_streams;
+  Test.case "Async poll handles many tcp streams" test_async_poll_handles_many_tcp_streams;
   Test.case "Async poll tolerates closed registered udp sockets" test_async_poll_tolerates_closed_registered_udp_sockets;
   Test.case "Net.UdpSocket source deregister after close is harmless" test_udp_socket_source_deregister_after_close_is_harmless;
   Test.case "Net.UdpSocket source deregister before close is harmless" test_udp_socket_source_deregister_before_close_is_harmless;
   Test.case "Async poll tolerates closed registered tcp streams" test_async_poll_tolerates_closed_registered_tcp_streams;
   Test.case "Net.TcpStream source deregister after close is harmless" test_tcp_stream_source_deregister_after_close_is_harmless;
   Test.case "Net.TcpStream source deregister before close is harmless" test_tcp_stream_source_deregister_before_close_is_harmless;
-  Test.case ~size:Test.Large "Net.TcpListener repeated bind and close stays healthy" test_tcp_listener_repeated_bind_and_close_stays_healthy;
-  Test.case ~size:Test.Large "Net.UdpSocket repeated bind and close stays healthy" test_udp_socket_repeated_bind_and_close_stays_healthy;
+  Test.case "Net.TcpListener repeated bind and close stays healthy" test_tcp_listener_repeated_bind_and_close_stays_healthy;
+  Test.case "Net.UdpSocket repeated bind and close stays healthy" test_udp_socket_repeated_bind_and_close_stays_healthy;
   Test.case "Net.UdpSocket bind rejects address already in use" test_udp_bind_rejects_in_use_address;
   Test.case "Net.UdpSocket send requires a connected peer" test_udp_send_requires_connected_peer;
   Test.case "Net.UdpSocket send and recv reject invalid slices" test_udp_send_and_recv_reject_invalid_slices;

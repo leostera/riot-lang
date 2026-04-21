@@ -738,20 +738,25 @@ let test_execute_multi_target_success_records_cache_generation = fun _ctx ->
 let tests =
   let open Test in
     [
-      case "build runtime: release builds use the release lane" test_release_build_uses_release_lane;
+      case ~size:Large "build runtime: release builds use the release lane" test_release_build_uses_release_lane;
       case "build runtime: custom target_dir is respected" test_build_respects_custom_target_dir;
       case ~size:Large "build runtime: nested udp workspace succeeds across file creation orders" test_nested_udp_workspace_builds_across_file_creation_orders;
       case "build runtime: rejects invalid parallelism" test_execute_rejects_invalid_parallelism;
       case "build runtime: execute does not record cache generation when disabled" test_execute_does_not_record_cache_generation_when_disabled;
-      case "build runtime: partial failures fail by default" test_execute_partial_failures_by_default;
+      case ~size:Large "build runtime: partial failures fail by default" test_execute_partial_failures_by_default;
       case "build runtime: allow partial failures returns partial results" test_execute_allows_partial_failures;
       case ~size:Large "build runtime: multi-target partial failures can succeed with allow flag" test_execute_allows_multi_target_partial_failures;
-      case ~size:Large "build runtime: multi-target partial build returns aggregated returning results" test_execute_multi_target_reports_global_returning_results;
-      case ~size:Large "build runtime: multi-target successful build returns aggregated returning results" test_execute_multi_target_all_success_reports_aggregated_results;
+      case
+        ~size:Large "build runtime: multi-target partial build returns aggregated returning results"
+        test_execute_multi_target_reports_global_returning_results;
+      case
+        ~size:Large "build runtime: multi-target successful build returns aggregated returning results"
+        test_execute_multi_target_all_success_reports_aggregated_results;
       case ~size:Large "build runtime: multi-target partial failures skip cache recording" test_execute_multi_target_partial_failures_skip_cache_recording;
       case ~size:Large "build runtime: multi-target success records cache generation" test_execute_multi_target_success_records_cache_generation;
     ]
 
 let name = "Riot Build Runtime Tests"
 
-let () = Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

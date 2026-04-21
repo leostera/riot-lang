@@ -944,10 +944,10 @@ let tests = [
   Test.case "A closed poller rejects later operations consistently" test_closed_poller_rejects_later_operations;
   Test.case "Async poll handles mixed pipe, timer, udp, and process sources" test_poll_handles_mixed_source_types;
   Test.case "Async poll tolerates closed registered pipe sources" test_poll_tolerates_closed_registered_pipe_sources;
-  Test.case ~size:Test.Large "Async poll handles many timer sources" test_poll_handles_many_timer_sources;
+  Test.case "Async poll handles many timer sources" test_poll_handles_many_timer_sources;
   Test.case ~size:Test.Large "Async poll handles many process exits" test_poll_handles_many_process_exits;
-  Test.case ~size:Test.Large "Async repeated register and deregister stays healthy" test_repeated_register_and_deregister_stays_healthy;
-  Test.case ~size:Test.Large "Async repeated register, reregister, and deregister stays healthy" test_repeated_register_reregister_and_deregister_stays_healthy;
+  Test.case "Async repeated register and deregister stays healthy" test_repeated_register_and_deregister_stays_healthy;
+  Test.case "Async repeated register, reregister, and deregister stays healthy" test_repeated_register_reregister_and_deregister_stays_healthy;
 ]
 
 let main = fun ~args ->

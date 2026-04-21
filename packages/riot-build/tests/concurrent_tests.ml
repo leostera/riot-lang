@@ -376,11 +376,12 @@ let test_concurrent_builds_with_shared_cache = fun _ctx ->
 
 let tests =
   let open Test in [
-    case "concurrent: different packages don't interfere" test_concurrent_builds_different_packages;
-    case "concurrent: same package builds safely" test_concurrent_builds_same_package;
+    case ~size:Large "concurrent: different packages don't interfere" test_concurrent_builds_different_packages;
+    case ~size:Large "concurrent: same package builds safely" test_concurrent_builds_same_package;
     case "concurrent: shared cache works correctly" test_concurrent_builds_with_shared_cache;
   ]
 
 let name = "Concurrent Build Tests"
 
-let () = Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
