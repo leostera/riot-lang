@@ -1,0 +1,30 @@
+open Std
+
+type t =
+  | StartNode of Syntax_kind2.t option
+  | FinishNode
+  | Token of int
+  | Missing of Syntax_kind2.t * int
+  | Error of Diagnostic.t
+module Buffer: sig
+  type t
+  type marker
+  type completed
+  val create: unit -> t
+
+  val start_node: t -> marker
+
+  val complete: t -> marker -> Syntax_kind2.t -> completed
+
+  val precede: t -> completed -> marker
+
+  val token: t -> raw_index:int -> unit
+
+  val missing: t -> kind:Syntax_kind2.t -> offset:int -> unit
+
+  val error: t -> Diagnostic.t -> unit
+
+  val to_array: t -> t array
+
+  val diagnostics: t -> Diagnostic.t list
+end
