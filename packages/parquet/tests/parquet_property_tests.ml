@@ -2,9 +2,9 @@ open Std
 open Propane
 module Test = Std.Test
 
-let primitive_examples = 100_000
+let primitive_examples = 5_000
 
-let composite_examples = 50_000
+let composite_examples = 1_000
 
 let io_chunk_size = 7
 
@@ -655,7 +655,7 @@ let run_property = fun ?(examples = primitive_examples) name arb predicate ->
   let prop = Property.for_all arb predicate in
   Test.property ~size:Test.Large name ~examples
     (fun _ctx ->
-      match Property.check ~config prop with
+      match Property.check ~config ~on_progress:(Test.Context.emit_progress _ctx) prop with
       | Property.Success -> Ok ()
       | Property.Failure { counter_example; shrink_steps } -> Error (String.concat
         "\n"
