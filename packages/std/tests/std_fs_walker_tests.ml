@@ -248,7 +248,7 @@ let tests = [ Test.case "fs walker rejects invalid depth ranges"
                 ^ String.concat ", " actual
                 ^ "]")
           in
-          run 25)); Test.case "fs walker packages file set is stable across sort modes"
+          run 25)); Test.case ~size:Large "fs walker packages file set is stable across sort modes"
     (fun _ctx ->
       let* packages_root = find_packages_root () in
       let configs = [ ("sort=true", true); ("sort=false", false) ] in
@@ -261,6 +261,6 @@ let tests = [ Test.case "fs walker rejects invalid depth ranges"
       let* labeled_sets = collect [] configs in
       compare_labeled_sets labeled_sets); ]
 
-let main = fun ~args -> Test.Cli.main ~name:"std_fs_walker_tests" ~tests ~args
+let main = fun ~args -> Test.Cli.main ~name:"std_fs_walker_tests" ~tests ~args ()
 
 let () = Runtime.run ~main ~args:Env.args ()

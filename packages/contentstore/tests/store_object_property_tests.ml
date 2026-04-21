@@ -113,6 +113,7 @@ let successful_object_writes_leave_no_temp_files =
 let tests = [
   Test.property
     "save_object/open_object roundtrip"
+    ~size:Large
     ~examples
     (fun _ctx -> assert_property "save_object/open_object roundtrip" save_object_roundtrip);
   Test.property
@@ -127,6 +128,7 @@ let tests = [
     (fun _ctx -> assert_property "save_object is idempotent for the same hash and content" save_object_is_idempotent);
   Test.property
     "object roundtrip survives reopen"
+    ~size:Large
     ~examples
     (fun _ctx -> assert_property "object roundtrip survives reopen" object_roundtrip_survives_reopen);
   Test.property

@@ -200,7 +200,7 @@ let meta_tests = [
   Test.case "command output streams stdout lines" test_command_output_streams_stdout_lines;
   Test.case "command output emits idle callbacks" test_command_output_emits_idle_callbacks;
   Test.case "command output handles parallel shell commands" test_command_output_handles_parallel_shell_commands;
-  Test.case "command output handles parallel fast exit commands" test_command_output_handles_parallel_fast_exit_commands;
+  Test.case ~size:Large "command output handles parallel fast exit commands" test_command_output_handles_parallel_fast_exit_commands;
 ]
 
 let capture_main = fun () ->
@@ -220,7 +220,7 @@ let meta_main = fun ~args ->
     | [ exe ] -> [ exe; "run-tests" ]
     | args -> args
   in
-  Test.Cli.main ~name:"std_command_tests" ~tests:meta_tests ~args:(normalize_args args)
+  Test.Cli.main ~name:"std_command_tests" ~tests:meta_tests ~args:(normalize_args args) ()
 
 let main = fun ~args ->
   match args with

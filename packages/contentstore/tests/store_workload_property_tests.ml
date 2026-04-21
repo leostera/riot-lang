@@ -231,6 +231,7 @@ let tests = [
   Test.case "commit order preserves observable objects" test_commit_order_preserves_observable_objects;
   Test.property
     "mixed workload leaves no temp files"
+    ~size:Large
     ~examples
     (fun _ctx -> assert_property "mixed workload leaves no temp files" mixed_workload_leaves_no_temp_files);
   Test.property
