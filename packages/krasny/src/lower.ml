@@ -2340,6 +2340,12 @@ let expression_can_use_delimited_local_open_sugar = function
   | Syn.Cst.Expression.Parenthesized _ -> true
   | _ -> false
 
+let prefix_operator_needs_space_before_operand = fun operator_token operand ->
+  match Syn.Cst.Token.fixed_operator operator_token, operand with
+  | (Some Syn.Cst.Token.PrefixMinus | Some Syn.Cst.Token.PrefixNegate), Syn.Cst.Expression.Prefix _ ->
+      true
+  | _ -> false
+
 let rec collapse_redundant_parenthesized_expression = function
   | Syn.Cst.Expression.Parenthesized { grouping=Syn.Cst.Parens; inner; _ } -> collapse_redundant_parenthesized_expression
     inner
@@ -2611,7 +2617,13 @@ let make_lowerer =
                   [ Doc.lparen; render_expression operand; Doc.rparen ]
                 | _ -> render_expression operand
               in
-              Doc.concat [ doc_of_token operator_token; operand_doc ]
+              let separator =
+                if prefix_operator_needs_space_before_operand operator_token operand then
+                  Doc.space
+                else
+                  Doc.empty
+              in
+              Doc.concat [ doc_of_token operator_token; separator; operand_doc ]
         )
       | Syn.Cst.Expression.FieldAssign { target; operator_token; value; _ } ->
           Doc.concat

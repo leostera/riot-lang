@@ -266,6 +266,15 @@ type u = {
         ~actual;
       assert_idempotent ~source:actual ~msg:"record field attributes should remain stable across repeated formatting";
       Ok ());
+  Test.case "format keeps prefix minus separated from nested prefix expressions"
+    (fun _ctx ->
+      let source = {|let value = - !acc
+|}
+      in
+      let actual = parse_ml source |> Krasny.format |> Result.expect ~msg:"prefix minus should not merge with nested prefix operators" in
+      Test.assert_equal ~expected:source ~actual;
+      assert_idempotent ~source ~msg:"prefix minus with nested prefix operators should stay stable across repeated formatting";
+      Ok ());
   Test.case "desugar typed named parameters without duplicating inner annotations"
     (fun ctx ->
       let source = {|type 'a t = 'a list
