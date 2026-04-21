@@ -531,6 +531,128 @@ let test_create_library_preserves_module_dependency_order = fun _ctx ->
   | Ok result -> result
   | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
 
+let test_library_actions_exclude_unreachable_modules = fun _ctx ->
+  match
+    Fs.with_tempdir ~prefix:"planner_library_reachability"
+      (fun tmpdir ->
+        let package_root = Path.(tmpdir / Path.v "packages" / Path.v "lib_with_unreachable") in
+        let src_dir = Path.(package_root / Path.v "src") in
+        let _ = Fs.create_dir_all src_dir |> Result.expect ~msg:"create src dir failed" in
+        let _ = Fs.write "module A = A\n" Path.(src_dir / Path.v "lib_with_unreachable.ml")
+        |> Result.expect ~msg:"write root library source failed" in
+        let _ = Fs.write "let used = 42\n" Path.(src_dir / Path.v "a.ml") |> Result.expect ~msg:"write a.ml failed" in
+        let _ = Fs.write "let unused = 7\n" Path.(src_dir / Path.v "orphan.ml")
+        |> Result.expect ~msg:"write orphan.ml failed" in
+        let workspace = Riot_model.Workspace.make ~root:tmpdir ~packages:[] () in
+        let store = Riot_store.Store.create ~workspace in
+        let package = Riot_model.Package.make ~name:(Package_name.from_string "lib_with_unreachable"
+        |> Result.expect ~msg:"expected valid package name") ~path:package_root ~relative_path:(Path.v
+          "packages/lib_with_unreachable") ~library:{ path = Path.v "src/lib_with_unreachable.ml" }
+          ~sources:{
+            src = [
+              Path.v "src/lib_with_unreachable.ml";
+              Path.v "src/a.ml";
+              Path.v "src/orphan.ml";
+            ];
+            native = [];
+            tests = [];
+            examples = [];
+            bench = [];
+          }
+          ()
+        in
+        let build_ctx = Riot_model.Build_ctx.make
+          ~session_id:(Riot_model.Session_id.of_string "test-session")
+          ~profile:Riot_model.Profile.release
+          () in
+        let graph_builder = Riot_planner.Module_graph.create
+          Riot_planner.Module_graph.{
+            root = package_root;
+            source_dir = Path.v "src";
+            allowed_source_files = package.sources.src;
+            root_mode = Riot_planner.Module_graph.Library_root {
+              library_name = Package_name.to_string package.name
+            };
+            namespace = "Lib_with_unreachable";
+            package;
+            toolchain = test_toolchain;
+            workspace;
+          }
+        in
+        match Riot_planner.Module_graph.wire_dependencies graph_builder with
+        | Error err -> Error ("dependency wiring failed: " ^ Riot_planner.Planning_error.to_string err)
+        | Ok () ->
+            Riot_planner.Module_graph.add_library_node
+              graph_builder
+              ~name:(Package_name.to_string package.name)
+              ~includes:[];
+            let action_graph, _ = Riot_planner.Action_graph.from_module_graph
+              ~analyzed_modules:(Riot_planner.Module_graph.analyzed_modules graph_builder)
+              ~package
+              ~profile:Riot_model.Profile.release
+              ~ctx:build_ctx
+              ~toolchain:test_toolchain
+              ~store
+              ~depset:[]
+              ~needs_unix:false
+              ~needs_dynlink:false
+              (Riot_planner.Module_graph.graph graph_builder) in
+            let actions = Riot_planner.Action_graph.to_action_list action_graph in
+            let compiles_orphan =
+              List.any actions
+                ~fn:(
+                  function
+                  | Riot_planner.Action.CompileImplementation { source; _ } -> Path.equal
+                    source
+                    (Path.v "src/orphan.ml")
+                  | _ -> false
+                )
+            in
+            let compiled_sources =
+              List.filter_map actions
+                ~fn:(
+                  function
+                  | Riot_planner.Action.CompileImplementation { source; _ } -> Some (Path.to_string source)
+                  | _ -> None
+                )
+            in
+            let create_library =
+              List.find actions
+                ~fn:(
+                  function
+                  | Riot_planner.Action.CreateLibrary _ -> true
+                  | _ -> false
+                )
+            in
+            match create_library with
+            | Some (Riot_planner.Action.CreateLibrary { objects; _ }) ->
+                let has_a = List.any objects ~fn:(Path.equal (Path.v "Lib_with_unreachable__A.cmx")) in
+                let has_orphan = List.any
+                  objects
+                  ~fn:(Path.equal (Path.v "Lib_with_unreachable__Orphan.cmx")) in
+                let object_names = List.map objects ~fn:Path.to_string |> String.concat ", " in
+                let compiled_source_names = String.concat ", " compiled_sources in
+                if compiles_orphan then
+                  Error ("did not expect compile action for unreachable orphan module; compiled sources: "
+                  ^ compiled_source_names)
+                else if not has_a then
+                  Error ("expected CreateLibrary to include reachable module A; objects: "
+                  ^ object_names
+                  ^ "; compiled sources: "
+                  ^ compiled_source_names)
+                else if has_orphan then
+                  Error ("did not expect CreateLibrary to include unreachable orphan module; objects: "
+                  ^ object_names)
+                else
+                  Ok ()
+            | Some _ ->
+                Error "expected CreateLibrary action"
+            | None ->
+                Error "missing CreateLibrary action")
+  with
+  | Ok result -> result
+  | Error err -> Error ("tempdir creation failed: " ^ IO.error_message err)
+
 let tests =
   Test.[
     case "action graph json round-trip preserves edges" test_action_graph_json_round_trip_preserves_dependencies;
@@ -539,6 +661,7 @@ let tests =
     case "action hash tracks package-relative source contents" test_action_hash_tracks_package_relative_source_contents;
     case "library builds skip shared native plugin artifacts by default" test_library_builds_do_not_emit_shared_library_actions;
     case "library actions exclude ML object files while keeping native stubs" test_library_actions_exclude_ml_object_files;
+    case "library actions exclude unreachable modules" test_library_actions_exclude_unreachable_modules;
     case "CreateLibrary preserves module dependency order" test_create_library_preserves_module_dependency_order;
     case "release profile flags flow into compile actions" test_release_profile_flags_flow_into_compile_actions;
   ]

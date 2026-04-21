@@ -120,6 +120,10 @@ MLI(Kernel__Float)
   deps:
     - ML(Kernel__Aliases)
 
+MLI(Kernel__Gc)
+  deps:
+    - ML(Kernel__Aliases)
+
 MLI(Kernel__Int)
   deps:
     - ML(Kernel__Aliases)
@@ -223,6 +227,12 @@ ML(Kernel__Sync__Mutex)
     - ML(Kernel__Sync__Aliases)
     - ML(Kernel__Aliases)
     - MLI(Kernel__Sync__Mutex)
+
+ML(Kernel__Gc)
+  deps:
+    - ML(Kernel__Caml_runtime)
+    - ML(Kernel__Aliases)
+    - MLI(Kernel__Gc)
 
 ML(Kernel__Int32)
   deps:
@@ -1782,6 +1792,7 @@ MLI(Kernel)
     - ML(Kernel__Int32)
     - ML(Kernel__Int)
     - ML(Kernel__IO)
+    - ML(Kernel__Gc)
     - ML(Kernel__Fs)
     - ML(Kernel__Float)
     - ML(Kernel__Exception)
@@ -1817,6 +1828,8 @@ MLI(Kernel)
     - ML(Kernel__Int32)
     - MLI(Kernel__Int)
     - ML(Kernel__Int)
+    - MLI(Kernel__Gc)
+    - ML(Kernel__Gc)
     - MLI(Kernel__Float)
     - ML(Kernel__Float)
     - MLI(Kernel__Exception)
@@ -1859,6 +1872,8 @@ MLI(Kernel)
     - ML(Kernel__Int32)
     - MLI(Kernel__Int)
     - ML(Kernel__Int)
+    - MLI(Kernel__Gc)
+    - ML(Kernel__Gc)
     - MLI(Kernel__Float)
     - ML(Kernel__Float)
     - MLI(Kernel__Exception)
@@ -1889,6 +1904,7 @@ MLI(Kernel)
     - MLI(Kernel__Int64)
     - MLI(Kernel__Int32)
     - MLI(Kernel__Int)
+    - MLI(Kernel__Gc)
     - MLI(Kernel__Float)
     - MLI(Kernel__Exception)
     - MLI(Kernel__Error)
@@ -1923,6 +1939,7 @@ ML(Kernel)
     - ML(Kernel__Int32)
     - ML(Kernel__Int)
     - ML(Kernel__IO)
+    - ML(Kernel__Gc)
     - ML(Kernel__Fs)
     - ML(Kernel__Float)
     - ML(Kernel__Exception)
@@ -1958,6 +1975,8 @@ ML(Kernel)
     - ML(Kernel__Int32)
     - MLI(Kernel__Int)
     - ML(Kernel__Int)
+    - MLI(Kernel__Gc)
+    - ML(Kernel__Gc)
     - MLI(Kernel__Float)
     - ML(Kernel__Float)
     - MLI(Kernel__Exception)
@@ -2000,6 +2019,8 @@ ML(Kernel)
     - ML(Kernel__Int32)
     - MLI(Kernel__Int)
     - ML(Kernel__Int)
+    - MLI(Kernel__Gc)
+    - ML(Kernel__Gc)
     - MLI(Kernel__Float)
     - ML(Kernel__Float)
     - MLI(Kernel__Exception)
@@ -2030,6 +2051,7 @@ ML(Kernel)
     - ML(Kernel__Int64)
     - ML(Kernel__Int32)
     - ML(Kernel__Int)
+    - ML(Kernel__Gc)
     - ML(Kernel__Float)
     - ML(Kernel__Exception)
     - ML(Kernel__Error)
@@ -2081,6 +2103,7 @@ Library(kernel)
     - MLI(Kernel__Char)
     - MLI(Kernel__Exception)
     - MLI(Kernel__Float)
+    - MLI(Kernel__Gc)
     - MLI(Kernel__Int)
     - MLI(Kernel__Int32)
     - MLI(Kernel__Int64)
@@ -2103,6 +2126,7 @@ Library(kernel)
     - ML(Kernel__Async__Libc)
     - ML(Kernel__Sync__Atomic)
     - ML(Kernel__Sync__Mutex)
+    - ML(Kernel__Gc)
     - ML(Kernel__Int32)
     - ML(Kernel__Int64)
     - ML(Kernel__Prelude)
@@ -2249,7 +2273,6 @@ CREATE LIBRARY OBJECTS
 - Kernel__IO__IoVec__Aliases.cmx
 - Kernel__Async__Aliases.cmx
 - Kernel__Async__Adapter__Aliases.cmx
-- Kernel__Domain__Aliases.cmx
 - Kernel__Env__Aliases.cmx
 - Kernel__Fs__Aliases.cmx
 - Kernel__Fs__Events__Aliases.cmx
@@ -2293,6 +2316,7 @@ CREATE LIBRARY OBJECTS
 - Kernel__Async__Libc.cmx
 - Kernel__Sync__Atomic.cmx
 - Kernel__Sync__Mutex.cmx
+- Kernel__Gc.cmx
 - Kernel__Int32.cmx
 - Kernel__Int64.cmx
 - Kernel__Prelude.cmx
@@ -2342,7 +2366,6 @@ CREATE LIBRARY OBJECTS
 - Kernel__Time__Monotonic.cmx
 - Kernel__Time__System_time.cmx
 - Kernel__Async__Source.cmx
-- Kernel__Domain.cmx
 - Kernel__Env.cmx
 - Kernel__IO__Buffer.cmx
 - Kernel__Net__Socket_addr.cmx

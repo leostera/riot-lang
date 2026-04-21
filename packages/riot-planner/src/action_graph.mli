@@ -37,6 +37,7 @@ val hash_action_node: t -> Action_node.t -> Crypto.hash
     between them can be built in parallel.
 *)
 val from_module_graph:
+  ?analyzed_modules:(G.Node_id.t * Module_graph.analyzed_module) list ->
   package:Package.t ->
   profile:Profile.t ->
   ctx:Build_ctx.t ->

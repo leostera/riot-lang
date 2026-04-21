@@ -370,7 +370,7 @@ let module_to_actions ~package ~profile ~ctx ~dep_includes ~get_dep_outputs ~get
       in
       ([ compile_action; link_action ], [ binary_output ], sources)
 
-let from_module_graph ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_unix ~needs_dynlink (
+let from_module_graph ?analyzed_modules ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_unix ~needs_dynlink (
   module_graph: Module_node.t G.t
 ):
   t * Path.t list =
@@ -405,6 +405,240 @@ let from_module_graph ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_un
         (* Cycle should have been caught earlier in module planning *)
         panic "Unexpected cycle in action graph - should have been caught in module planning"
   in
+  let analyzed_modules_by_id = HashMap.create () in
+  let () =
+    match analyzed_modules with
+    | Some analyzed_modules ->
+        List.for_each analyzed_modules
+          ~fn:(fun (node_id, analyzed_module) ->
+            let _ = HashMap.insert analyzed_modules_by_id ~key:node_id ~value:analyzed_module in
+            ())
+    | None -> ()
+  in
+  let package_namespace = Package.root_module_name package in
+  let library_root_candidates =
+    List.filter sorted_modules
+      ~fn:(fun (node: Module_node.t G.node) ->
+        match node.value.kind with
+        | Module_node.ML mod_
+        | Module_node.MLI mod_ ->
+            String.equal
+              (Module.module_name mod_ |> Module_name.to_string)
+              package_namespace
+        | _ -> false)
+  in
+  let concrete_library_root_modules =
+    List.filter library_root_candidates
+      ~fn:(fun (node: Module_node.t G.node) ->
+        match node.value.file with
+        | Module_node.Concrete _ -> true
+        | Module_node.Generated _ -> false)
+  in
+  let library_root_modules =
+    if List.is_empty concrete_library_root_modules then
+      library_root_candidates
+    else
+      concrete_library_root_modules
+  in
+  let concrete_root_ids = HashSet.create () in
+  let () =
+    List.for_each concrete_library_root_modules
+      ~fn:(fun (node: Module_node.t G.node) ->
+        let _ = HashSet.insert concrete_root_ids ~value:node.id in
+        ())
+  in
+  let root_candidate_ids = HashSet.create () in
+  let () =
+    List.for_each library_root_candidates
+      ~fn:(fun (node: Module_node.t G.node) ->
+        let _ = HashSet.insert root_candidate_ids ~value:node.id in
+        ())
+  in
+  let root_support_dependency_ids (node: Module_node.t G.node) =
+    let keep_ids = HashSet.create () in
+    let () =
+      List.for_each node.value.open_modules
+        ~fn:(fun open_module ->
+          let _ = HashSet.insert keep_ids ~value:open_module.id in
+          ())
+    in
+    let () =
+      match node.value.kind with
+      | Module_node.ML mod_ ->
+          List.for_each node.deps
+            ~fn:(fun dep_id ->
+              match G.get_node module_graph dep_id with
+              | Some dep_node -> (
+                  match dep_node.value.kind with
+                  | Module_node.MLI dep_mod when Module_name.qualified_name
+                    (Module.module_name dep_mod)
+                  = Module_name.qualified_name (Module.module_name mod_) ->
+                      let _ = HashSet.insert keep_ids ~value:dep_id in
+                      ()
+                  | _ -> ()
+                )
+              | None -> ())
+      | _ -> ()
+    in
+    keep_ids
+  in
+  let dependency_ids_for_resolved_deps (node: Module_node.t G.node) resolved_deps =
+    let keep_ids = HashSet.create () in
+    let resolved_qualified_names = HashSet.create () in
+    let () =
+      List.for_each resolved_deps
+        ~fn:(fun dep_mod_name ->
+          let _ = HashSet.insert
+            resolved_qualified_names
+            ~value:(Module_name.qualified_name dep_mod_name) in
+          ())
+    in
+    let matching_deps_for qualified_name =
+      List.filter_map node.deps
+        ~fn:(fun dep_id ->
+          match G.get_node module_graph dep_id with
+          | Some dep_node -> (
+              match dep_node.value.kind with
+              | Module_node.ML dep_mod
+              | Module_node.MLI dep_mod when String.equal (Module.namespaced_name dep_mod) qualified_name -> Some (
+                dep_id,
+                dep_node
+              )
+              | _ -> None
+            )
+          | None -> None)
+    in
+    let preferred_ids matches =
+      if List.any matches
+          ~fn:(fun (_dep_id, (dep_node: Module_node.t G.node)) ->
+            match dep_node.value.kind with
+            | Module_node.ML _ -> true
+            | _ -> false) then
+        List.filter_map matches
+          ~fn:(fun (dep_id, (dep_node: Module_node.t G.node)) ->
+            match dep_node.value.kind with
+            | Module_node.ML _ -> Some dep_id
+            | _ -> None)
+      else
+        List.map matches ~fn:(fun (dep_id, _dep_node) -> dep_id)
+    in
+    let () =
+      HashSet.to_list resolved_qualified_names
+      |> List.for_each
+        ~fn:(fun qualified_name ->
+          matching_deps_for qualified_name |> preferred_ids |> List.for_each
+            ~fn:(fun dep_id ->
+              let _ = HashSet.insert keep_ids ~value:dep_id in
+              ()))
+    in
+    keep_ids
+  in
+  let concrete_root_dependency_ids (node: Module_node.t G.node) =
+    let keep_ids = root_support_dependency_ids node in
+    let () =
+      match HashMap.get analyzed_modules_by_id ~key:node.id with
+      | Some analyzed_module ->
+          dependency_ids_for_resolved_deps node analyzed_module.Module_graph.resolved_deps
+          |> HashSet.to_list
+          |> List.for_each
+            ~fn:(fun dep_id ->
+              let _ = HashSet.insert keep_ids ~value:dep_id in
+              ())
+      | None -> ()
+    in
+    List.filter node.deps ~fn:(fun dep_id -> HashSet.contains keep_ids ~value:dep_id)
+  in
+  let traversal_deps (node: Module_node.t G.node) =
+    if HashSet.contains concrete_root_ids ~value:node.id then
+      concrete_root_dependency_ids node
+    else if
+      not (List.is_empty concrete_library_root_modules)
+      && HashSet.contains root_candidate_ids ~value:node.id
+    then
+      let keep_ids = root_support_dependency_ids node in
+      List.filter node.deps ~fn:(fun dep_id -> HashSet.contains keep_ids ~value:dep_id)
+    else
+      node.deps
+  in
+  let library_reachable_ids =
+    if List.is_empty library_root_modules then
+      []
+    else
+      let visited = HashSet.create () in
+      let rec visit node_id =
+        if HashSet.insert visited ~value:node_id then
+          match G.get_node module_graph node_id with
+          | Some node -> List.for_each (traversal_deps node) ~fn:visit
+          | None -> ()
+      in
+      let () =
+        List.for_each library_root_modules ~fn:(fun node -> visit node.id)
+      in
+      HashSet.to_list visited
+  in
+  let library_reachable_set = HashSet.create () in
+  let () =
+    List.for_each library_reachable_ids
+      ~fn:(fun node_id ->
+        let _ = HashSet.insert library_reachable_set ~value:node_id in
+        ())
+  in
+  let effective_deps (node: Module_node.t G.node) =
+    match node.value.kind with
+    | _ when HashSet.contains concrete_root_ids ~value:node.id ->
+        concrete_root_dependency_ids node
+    | _ when not (List.is_empty concrete_library_root_modules)
+    && HashSet.contains root_candidate_ids ~value:node.id ->
+        let keep_ids = root_support_dependency_ids node in
+        List.filter node.deps ~fn:(fun dep_id -> HashSet.contains keep_ids ~value:dep_id)
+    | Module_node.Library _ when List.is_empty library_root_modules ->
+        node.deps
+    | Module_node.Library _ ->
+        List.filter node.deps
+          ~fn:(fun dep_id ->
+            match G.get_node module_graph dep_id with
+            | Some dep_node -> (
+                match dep_node.value.kind with
+                | Module_node.ML _
+                | Module_node.MLI _ -> HashSet.contains library_reachable_set ~value:dep_id
+                | Module_node.Root -> false
+                | _ -> true
+              )
+            | None -> false)
+    | _ ->
+        node.deps
+  in
+  let target_nodes =
+    List.filter sorted_modules
+      ~fn:(fun (node: Module_node.t G.node) ->
+        match node.value.kind with
+        | Module_node.Library _
+        | Module_node.Binary _ -> true
+        | _ -> false)
+  in
+  let included_node_ids =
+    if List.is_empty target_nodes then
+      List.map sorted_modules ~fn:(fun (node: Module_node.t G.node) -> node.id)
+    else
+      let visited = HashSet.create () in
+      let rec visit node_id =
+        if HashSet.insert visited ~value:node_id then
+          match G.get_node module_graph node_id with
+          | Some node -> List.for_each (effective_deps node) ~fn:visit
+          | None -> ()
+      in
+      let () =
+        List.for_each target_nodes ~fn:(fun node -> visit node.id)
+      in
+      HashSet.to_list visited
+  in
+  let included_node_ids_set = HashSet.create () in
+  let () =
+    List.for_each included_node_ids
+      ~fn:(fun node_id ->
+        let _ = HashSet.insert included_node_ids_set ~value:node_id in
+        ())
+  in
   let get_dep_hash dep_id =
     match HashMap.get action_spec_hashes ~key:dep_id with
     | Some h -> h
@@ -424,42 +658,44 @@ let from_module_graph ~package ~profile ~ctx ~toolchain ~store ~depset ~needs_un
   let get_dep_kind dep_id = HashMap.get module_kinds ~key:dep_id in
   List.for_each sorted_modules
     ~fn:(fun (module_node: Module_node.t G.node) ->
-      let actions, outputs, sources = module_to_actions
-        ~package
-        ~profile
-        ~ctx
-        ~dep_includes
-        ~get_dep_outputs
-        ~get_dep_kind
-        ~depset
-        ~needs_unix
-        ~needs_dynlink
-        module_node.value
-        module_node.deps in
-      let _ = HashMap.insert node_outputs ~key:module_node.id ~value:outputs in
-      if actions = [] then
-        let placeholder_hash = Crypto.hash_string
-          ("no-actions:" ^ G.Node_id.to_string module_node.id) in
-        let _ = HashMap.insert action_spec_hashes ~key:module_node.id ~value:placeholder_hash in
-        ()
-      else
-        let action_spec = Action_node.make
-          ~actions
-          ~outs:outputs
-          ~srcs:sources
+      if HashSet.contains included_node_ids_set ~value:module_node.id then
+        let deps = effective_deps module_node in
+        let actions, outputs, sources = module_to_actions
           ~package
-          ~toolchain
-          ~dependency_hashes:get_dep_hash
-          ~deps:module_node.deps in
-        let action_node = add_node action_graph action_spec in
-        List.for_each module_node.deps
-          ~fn:(fun dep_id ->
-            match HashMap.get node_mapping ~key:dep_id with
-            | Some dep_action_node -> add_dependency action_graph action_node ~depends_on:dep_action_node
-            | None -> ());
-        let _ = HashMap.insert node_mapping ~key:module_node.id ~value:action_node in
-        let _ = HashMap.insert action_spec_hashes ~key:module_node.id ~value:action_spec.hash in
-        Cell.set all_outputs (outputs @ Cell.get all_outputs));
+          ~profile
+          ~ctx
+          ~dep_includes
+          ~get_dep_outputs
+          ~get_dep_kind
+          ~depset
+          ~needs_unix
+          ~needs_dynlink
+          module_node.value
+          deps in
+        let _ = HashMap.insert node_outputs ~key:module_node.id ~value:outputs in
+        if actions = [] then
+          let placeholder_hash = Crypto.hash_string
+            ("no-actions:" ^ G.Node_id.to_string module_node.id) in
+          let _ = HashMap.insert action_spec_hashes ~key:module_node.id ~value:placeholder_hash in
+          ()
+        else
+          let action_spec = Action_node.make
+            ~actions
+            ~outs:outputs
+            ~srcs:sources
+            ~package
+            ~toolchain
+            ~dependency_hashes:get_dep_hash
+            ~deps in
+          let action_node = add_node action_graph action_spec in
+          List.for_each deps
+            ~fn:(fun dep_id ->
+              match HashMap.get node_mapping ~key:dep_id with
+              | Some dep_action_node -> add_dependency action_graph action_node ~depends_on:dep_action_node
+              | None -> ());
+          let _ = HashMap.insert node_mapping ~key:module_node.id ~value:action_node in
+          let _ = HashMap.insert action_spec_hashes ~key:module_node.id ~value:action_spec.hash in
+          Cell.set all_outputs (outputs @ Cell.get all_outputs));
   (action_graph, Cell.get all_outputs)
 
 let to_json = fun t ->

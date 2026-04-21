@@ -57,6 +57,7 @@ type analyzed_module = {
   parse_result: Syn.Parser.parse_result;
   cst: (Syn.Cst.source_file, Syn.build_cst_error) result;
   deps: (Syn.Deps.t, Syn.Deps.parse_error) result;
+  resolved_deps: Module_name.t list;
 }
 
 type t = {
@@ -508,7 +509,12 @@ let wire_dependencies = fun t ->
           )
         | _ -> None)
   in
-  let namespace = Namespace.of_string t.config.namespace in
+  let namespace =
+    if String.is_empty t.config.namespace then
+      Namespace.empty
+    else
+      Namespace.of_list [ t.config.namespace ]
+  in
   let source_dir_prefix = Path.to_string t.config.source_dir ^ "/" in
   let stringify_dependency_error = fun path ->
     function
@@ -594,6 +600,14 @@ let wire_dependencies = fun t ->
           | Ok cst -> source_hash ~implicit_opens ~cst
           | Error _ -> Crypto.hash_string ""
         in
+        let resolved_deps =
+          match deps, node.value.file with
+          | Ok deps, Module_node.Concrete _ -> Syn.Deps.modules deps
+          |> List.map
+            ~fn:(fun modname -> Module_name.of_string ~namespace:(file_namespace path) modname)
+          | Ok _, Module_node.Generated _ -> []
+          | Error _, _ -> []
+        in
         let analyzed = {
           display_path;
           source_hash;
@@ -601,25 +615,19 @@ let wire_dependencies = fun t ->
           parse_result;
           cst;
           deps;
+          resolved_deps;
         }
         in
         let _ = HashMap.insert t.analyzed_modules ~key:node.id ~value:analyzed in
         match deps, node.value.file with
-        | Ok deps, Module_node.Concrete _ ->
-            let names = Syn.Deps.modules deps
-            |> List.map
-              ~fn:(fun modname -> Module_name.of_string ~namespace:(file_namespace path) modname) in
-            Ok names
-        | Error err, Module_node.Concrete _ ->
-            Error (Planning_error.DependencyAnalysisFailed {
-              reason = stringify_dependency_error path err
-            })
-        | Ok _, Module_node.Generated _ ->
-            Ok []
-        | Error err, Module_node.Generated _ ->
-            Error (Planning_error.DependencyAnalysisFailed {
-              reason = stringify_dependency_error path err
-            })
+        | Ok _, Module_node.Concrete _ -> Ok resolved_deps
+        | Error err, Module_node.Concrete _ -> Error (Planning_error.DependencyAnalysisFailed {
+          reason = stringify_dependency_error path err
+        })
+        | Ok _, Module_node.Generated _ -> Ok []
+        | Error err, Module_node.Generated _ -> Error (Planning_error.DependencyAnalysisFailed {
+          reason = stringify_dependency_error path err
+        })
   in
   (* Sort files deterministically to ensure consistent hashing *)
   let sorted_file_nodes =

@@ -194,6 +194,7 @@ let plan_node = fun input ->
               Error (Planning_error.CyclicDependency { cycle })
           | Ok sorted_modules -> (
               let action_graph, _outputs = Action_graph.from_module_graph
+                ~analyzed_modules
                 ~package:input.package
                 ~profile:input.profile
                 ~ctx:input.ctx
