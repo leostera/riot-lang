@@ -200,9 +200,14 @@ let child_at = fun (tree: t) (node: node) index ->
     Some (Vector.get_unchecked tree.children ~at:(node.first_child + index))
 
 let for_each_child = fun (tree: t) (node: node) ~fn ->
-  for index = 0 to node.child_count - 1 do
-    fn (Vector.get_unchecked tree.children ~at:(node.first_child + index))
-  done
+  let rec loop index =
+    if index < node.child_count then
+      (
+        fn (Vector.get_unchecked tree.children ~at:(node.first_child + index));
+        loop (index + 1)
+      )
+  in
+  loop 0
 
 let raw_range_text = fun tree ~raw_lo ~raw_hi ->
   if raw_hi <= raw_lo then
@@ -263,8 +268,15 @@ and node_json = fun tree node_id ->
   ]
 
 let to_json = fun tree ->
-  let raw_tokens_json = ref [] in
-  for index = Vector.length tree.raw_tokens - 1 downto 0 do
-    raw_tokens_json := raw_token_json tree index (raw_at tree.raw_tokens index) :: !raw_tokens_json
-  done;
-  Json.Object [ ("raw_tokens", Json.Array !raw_tokens_json); ("tree", node_json tree tree.root) ]
+  let rec collect_raw_tokens index acc =
+    if index < 0 then
+      acc
+    else
+      collect_raw_tokens
+        (index - 1)
+        (raw_token_json tree index (raw_at tree.raw_tokens index) :: acc)
+  in
+  Json.Object [
+    ("raw_tokens", Json.Array (collect_raw_tokens (Vector.length tree.raw_tokens - 1) []));
+    ("tree", node_json tree tree.root)
+  ]

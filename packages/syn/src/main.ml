@@ -1,5 +1,7 @@
 open Syn
 open Std
+open Std.Collections
+module Iterator = Iter.Iterator
 
 let now_nanos = fun () -> Time.SystemTime.now () |> Time.SystemTime.nanos
 
@@ -76,6 +78,24 @@ let parse_result_to_ceibo_json = fun result ->
     ("diagnostics", Data.Json.Array (List.map result.diagnostics ~fn:Diagnostic.to_json))
   ]
 
+let vector_to_json = fun vector ~fn ->
+  let items = ref [] in
+  Vector.iter vector |> Iterator.for_each ~fn:(fun value -> items := fn value :: !items);
+  Data.Json.Array (List.reverse !items)
+
+let parse2_result_to_json = fun result ->
+  Data.Json.Object [ (
+      "kind",
+      Data.Json.String (
+        match result.Parser2.kind with
+        | `Implementation -> "implementation"
+        | `Interface -> "interface"
+      )
+    ); ("diagnostics", vector_to_json result.Parser2.diagnostics ~fn:Diagnostic.to_json); (
+      "tree",
+      SyntaxTree.to_json result.Parser2.tree
+    ) ]
+
 let handle_token_stream = fun sub_matches ->
   let file = ArgParser.get_one sub_matches "FILE" |> Option.expect ~msg:"FILE required" in
   let json = ArgParser.get_flag sub_matches "json" in
@@ -117,6 +137,16 @@ let handle_parse = fun sub_matches ->
         let width = Ceibo.Green.width (Ceibo.Green.Node result.tree) in
         Log.info ("Tree width: " ^ Int.to_string width ^ " bytes")
       )
+
+let handle_parse2 = fun sub_matches ->
+  let file = ArgParser.get_one sub_matches "FILE" |> Option.expect ~msg:"FILE required" in
+  match Fs.read (Path.v file) with
+  | Error _err ->
+      Log.error ("Error reading file " ^ file);
+      System.exit 1
+  | Ok source ->
+      let result = Syn.parse2 ~filename:(Path.v file) source in
+      println (Data.Json.to_string (parse2_result_to_json result))
 
 let handle_print_ceibo = fun sub_matches ->
   let file = ArgParser.get_one sub_matches "FILE" |> Option.expect ~msg:"FILE required" in
@@ -216,6 +246,9 @@ let main ~args =
               flag "json" |> long "json" |> help "Output syntax tree as JSON";
               flag "red-tree" |> long "red-tree" |> help "Output red tree (with spans) instead of green tree"
             ];
+          command "parse2"
+          |> about "Parse file with replacement parser and print JSON"
+          |> args [ positional "FILE" |> help "OCaml source file to parse" |> required true ];
           command "print-ceibo"
           |> about "Print lossless Ceibo parse result as JSON"
           |> args [ positional "FILE" |> help "OCaml source file to parse" |> required true ];
@@ -242,6 +275,9 @@ let main ~args =
           Ok ()
       | Some ("parse", sub_matches) ->
           handle_parse sub_matches;
+          Ok ()
+      | Some ("parse2", sub_matches) ->
+          handle_parse2 sub_matches;
           Ok ()
       | Some ("print-ceibo", sub_matches) ->
           handle_print_ceibo sub_matches;
