@@ -17,11 +17,14 @@ type t = {
   resolved_version: string option;
   root: Path.t;
   relative_path: string option;
+  workspace_root: Path.t option;
+  package_path: string option;
   manifest_path: Path.t;
   manifest: Data.Toml.value option;
   manifest_error: string option;
-  registry_name: string;
-  registry_root: Path.t;
+  is_public: bool option;
+  registry_name: string option;
+  registry_root: Path.t option;
   registry_package_path: Path.t option;
   description: string option;
   license: string option;

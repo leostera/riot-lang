@@ -186,18 +186,33 @@ let print_package = fun (info: Info_package.t) ->
     | Some version -> println ("Version: " ^ version)
     | None -> ()
   );
-  println ("Root: " ^ Path.to_string info.root);
   (
-    match info.relative_path with
-    | Some relative_path -> println ("Relative path: " ^ relative_path)
-    | None -> ()
-  );
-  println ("Manifest: " ^ Path.to_string info.manifest_path);
-  println ("Registry root: " ^ Path.to_string info.registry_root);
-  (
-    match info.registry_package_path with
-    | Some path -> println ("Registry package path: " ^ Path.to_string path)
-    | None -> ()
+    match info.source_kind with
+    | Info_package.Workspace ->
+        println ("Public: " ^ Bool.to_string (Option.unwrap_or ~default:false info.is_public));
+        (
+          match info.workspace_root with
+          | Some workspace_root -> println ("Workspace root: " ^ Path.to_string workspace_root)
+          | None -> ()
+        );
+        (
+          match info.package_path with
+          | Some package_path -> println ("Package path: " ^ package_path)
+          | None -> println ("Package path: " ^ Path.to_string info.manifest_path)
+        )
+    | Info_package.Registry ->
+        println ("Root: " ^ Path.to_string info.root);
+        println ("Manifest: " ^ Path.to_string info.manifest_path);
+        (
+          match info.registry_root with
+          | Some registry_root -> println ("Registry root: " ^ Path.to_string registry_root)
+          | None -> ()
+        );
+        (
+          match info.registry_package_path with
+          | Some path -> println ("Registry package path: " ^ Path.to_string path)
+          | None -> ()
+        )
   );
   (
     match info.description with

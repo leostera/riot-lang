@@ -15,6 +15,7 @@
 8. Keep `--json` machine-readable, line-delimited, timestamped, and incrementally emitted as `start`/`file`/`summary` events. Failed file events should carry structured diagnostics when the formatter failure came from `syn` parse diagnostics.
 9. Do not reintroduce an `ocamlformat` dependency here; `krasny` is the formatter backend.
 10. Keep `riot fmt --explain <id>` as a thin in-process pass-through to `Syn.Error.explain`; do not shell out to the `syn` binary.
+11. Default workspace scans must stay scoped to workspace members only. Do not traverse materialized registry caches, detached dependency trees, or other non-member package roots just because they were loaded into the resolved workspace graph.
 
 ## Validate
 

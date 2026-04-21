@@ -102,6 +102,12 @@ let test_info_package_prefers_local_workspace_package = fun _ctx ->
           Test.assert_equal ~expected:Riot_cli.Info_package.Workspace ~actual:info.source_kind;
           Test.assert_equal ~expected:(Some "0.1.0") ~actual:info.resolved_version;
           Test.assert_equal ~expected:(Some "demo") ~actual:info.relative_path;
+          Test.assert_equal ~expected:(Some tempdir) ~actual:info.workspace_root;
+          Test.assert_equal ~expected:(Some "demo/riot.toml") ~actual:info.package_path;
+          Test.assert_equal ~expected:(Some false) ~actual:info.is_public;
+          Test.assert_equal ~expected:None ~actual:info.registry_root;
+          Test.assert_equal ~expected:None ~actual:info.registry_name;
+          Test.assert_equal ~expected:None ~actual:info.registry_package_path;
           if Option.is_some info.links.docs_url || Option.is_some info.links.package_url then
             Error "expected local package to omit registry docs/package links"
           else
@@ -175,12 +181,35 @@ let test_info_package_json_includes_registry_paths_and_links = fun _ctx ->
           | Some (Data.Json.String _), Some (Data.Json.String _) -> Ok ()
           | _ -> Error "expected registry root and docs url in package json")
 
+let test_info_package_json_omits_registry_for_workspace_package = fun _ctx ->
+  with_tempdir_result "riot_cli_info_json_local"
+    (fun tempdir ->
+      let riot_home = Path.(tempdir / Path.v ".riot") in
+      let registry = sample_registry ~riot_home in
+      let workspace = make_local_workspace tempdir in
+      match Riot_cli.Info_package.resolve
+        ~registry
+        ~local_workspace:(Some (workspace, []))
+        ~target:"demo"
+        () with
+      | Error err -> Error err.message
+      | Ok info ->
+          let json = Riot_cli.Info_package.to_json info in
+          let registry_json = Data.Json.get_field "registry" json in
+          let workspace_root = Data.Json.get_field "workspace_root" json in
+          let package_path = Data.Json.get_field "package_path" json in
+          let public = Data.Json.get_field "public" json in
+          match registry_json, workspace_root, package_path, public with
+          | Some Data.Json.Null, Some (Data.Json.String _), Some (Data.Json.String "demo/riot.toml"), Some (Data.Json.Bool false) -> Ok ()
+          | _ -> Error "expected workspace package json to omit registry paths and include workspace path metadata")
+
 let tests =
   Test.[
     case "info package: bare local package prefers workspace metadata" test_info_package_prefers_local_workspace_package;
     case "info package: private local package omits registry links" test_info_package_private_local_package_omits_registry_links;
     case "info package: registry target materializes release and paths" test_info_package_loads_registry_release_and_paths;
     case "info package: json includes registry paths and links" test_info_package_json_includes_registry_paths_and_links;
+    case "info package: workspace json omits registry paths" test_info_package_json_omits_registry_for_workspace_package;
   ]
 
 let name = "Riot CLI Info Tests"

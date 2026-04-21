@@ -302,12 +302,6 @@ let run = fun ~args ->
         let () = trace_cli "workspace-scan-cache-store" in
         workspace_scan
   in
-  let workspace_manifest_opt () =
-    match get_workspace_scan () with
-    | Loaded (workspace, _) -> Some workspace
-    | NoWorkspace
-    | ScanFailed _ -> None
-  in
   (* Check if first arg is a package command (format: package:command) before ArgParser *)
   match normalized_args with
   | _ :: "completions" :: "install" :: rest ->
@@ -469,9 +463,10 @@ let run = fun ~args ->
               let explicit_paths = ArgParser.get_many fmt_matches "path" in
               let workspace =
                 if List.is_empty explicit_paths then
-                  match workspace_manifest_opt () with
-                  | Some workspace -> ensure_workspace workspace |> Result.to_option
-                  | None -> None
+                  match get_workspace_scan () with
+                  | Loaded (workspace, _load_errors) -> ensure_workspace workspace |> Result.to_option
+                  | NoWorkspace
+                  | ScanFailed _ -> None
                 else
                   None
               in

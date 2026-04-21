@@ -21,6 +21,17 @@ let parse_jsonl = fun output ->
   |> List.filter ~fn:(fun line -> not (String.equal line ""))
   |> List.map ~fn:(fun line -> Data.Json.of_string line |> Result.expect ~msg:"parse json line")
 
+let parse_package_manifest = fun ~path ~relative_path toml ->
+  Data.Toml.parse toml
+  |> Result.expect ~msg:"parse package manifest toml"
+  |> Riot_model.Package_manifest.from_toml
+    ~workspace_deps:[]
+    ~workspace_dev_deps:[]
+    ~workspace_build_deps:[]
+    ~path
+    ~relative_path
+  |> Result.expect ~msg:"package manifest"
+
 let test_fmt_accepts_multiple_paths = fun _ctx ->
   match parse_fmt [ "fmt"; "packages/blink/src/connection.ml"; "packages/syn/src/parser.ml" ] with
   | Error err -> Error ("expected fmt args to parse: " ^ err)
@@ -215,6 +226,46 @@ let test_fmt_explain_rejects_unknown_error_id = fun _ctx ->
         Ok ()
   )
 
+let test_fmt_workspace_scan_ignores_external_packages = fun _ctx ->
+  with_tempdir "riot_fmt_workspace_scan"
+    (fun tmpdir ->
+      let workspace_root = tmpdir in
+      let package_root = Path.(workspace_root / Path.v "packages/demo") in
+      let package_src = Path.(package_root / Path.v "src") in
+      let external_root = Path.(workspace_root / Path.v ".external/dep") in
+      let external_tests = Path.(external_root / Path.v "tests/diagnostics") in
+      Fs.create_dir_all package_src |> Result.expect ~msg:"create package src";
+      Fs.create_dir_all external_tests |> Result.expect ~msg:"create external tests";
+      Fs.write
+        "[workspace]\nmembers = [\"packages/demo\"]\n"
+        Path.(workspace_root / Path.v "riot.toml")
+      |> Result.expect ~msg:"write workspace manifest";
+      Fs.write
+        "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n"
+        Path.(package_root / Path.v "riot.toml")
+      |> Result.expect ~msg:"write package manifest";
+      Fs.write "let x = 1 + 2\n\nlet f x = x + 1\n" Path.(package_src / Path.v "demo.ml")
+      |> Result.expect ~msg:"write local source";
+      Fs.write
+        "[package]\nname = \"dep\"\nversion = \"0.1.0\"\n"
+        Path.(external_root / Path.v "riot.toml")
+      |> Result.expect ~msg:"write external manifest";
+      Fs.write "let x as = 5\n" Path.(external_tests / Path.v "broken.ml") |> Result.expect ~msg:"write external broken file";
+      let workspace = Riot_model.Workspace.make
+        ~root:workspace_root
+        ~packages:[
+          parse_package_manifest ~path:package_root ~relative_path:(Path.v "packages/demo") "[package]\nname = \"demo\"\nversion = \"0.1.0\"\n";
+          parse_package_manifest ~path:external_root ~relative_path:external_root "[package]\nname = \"dep\"\nversion = \"0.1.0\"\n";
+        ]
+        () in
+      let matches = parse_fmt [ "fmt" ] |> Result.expect ~msg:"parse fmt args" in
+      let stdout, stdout_contents = make_capture_writer () in
+      let stderr, stderr_contents = make_capture_writer () in
+      Riot_fmt.run ~workspace ~stdout ~stderr matches |> Result.expect ~msg:"workspace fmt should ignore external packages";
+      Test.assert_equal ~expected:"" ~actual:(stdout_contents ());
+      Test.assert_equal ~expected:"" ~actual:(stderr_contents ());
+      Ok ())
+
 let tests =
   Test.[
     case "fmt: accept multiple path arguments" test_fmt_accepts_multiple_paths;
@@ -229,8 +280,10 @@ let tests =
     case "fmt: json syntax errors include structured syn diagnostics" test_fmt_json_includes_structured_syn_diagnostics_for_syntax_errors;
     case "fmt: explain prints syn explanation" test_fmt_explain_prints_syn_explanation;
     case "fmt: explain rejects unknown error id" test_fmt_explain_rejects_unknown_error_id;
+    case "fmt: workspace scan ignores external packages" test_fmt_workspace_scan_ignores_external_packages;
   ]
 
 let name = "Riot Fmt Tests"
 
-let () = Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()
+let () =
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

@@ -50,7 +50,8 @@ let writer_of_emit = fun emit ->
 
 let workspace_roots = fun workspace ->
   workspace.Workspace.packages
-  |> List.map ~fn:(fun (pkg: Package_manifest.t) -> Path.(workspace.root / pkg.path))
+  |> List.filter ~fn:Package_manifest.is_workspace_member
+  |> List.map ~fn:(Workspace.package_root workspace)
 
 type package_scope = {
   package_root: Path.t;
@@ -77,10 +78,12 @@ let load_fmt_scope = function
       let workspace_toml = Path.(workspace.Workspace.root / Path.v "riot.toml") in
       let packages =
         workspace.Workspace.packages
+        |> List.filter ~fn:Package_manifest.is_workspace_member
         |> List.map
           ~fn:(fun (pkg: Package_manifest.t) ->
-            let package_toml = Path.(pkg.path / Path.v "riot.toml") in
-            { package_root = pkg.path; config = Fmt_config.load package_toml })
+            let package_root = Workspace.package_root workspace pkg in
+            let package_toml = Path.(package_root / Path.v "riot.toml") in
+            { package_root; config = Fmt_config.load package_toml })
       in
       Some {
         workspace_root = workspace.Workspace.root;
