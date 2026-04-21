@@ -1,5 +1,7 @@
 val init: Intf.suite_info -> int -> unit
 
+val on_case_start: int -> string -> iterations:int -> warmup:int -> unit
+
 val on_result: int -> Bench_result.t -> unit
 
 val finalize: Bench_result.summary -> unit

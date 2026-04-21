@@ -6,6 +6,8 @@ let init = fun (info: Intf.suite_info) count ->
   println ("Running " ^ Int.to_string count ^ " benchmarks from " ^ info.name ^ "...");
   println ""
 
+let on_case_start = fun _index _name ~iterations:_ ~warmup:_ -> ()
+
 let on_result = fun index (result: Bench_result.t) ->
   match result.result with
   | Bench_result.Completed stats ->

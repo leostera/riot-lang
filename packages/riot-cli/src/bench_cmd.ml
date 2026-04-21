@@ -250,6 +250,42 @@ let print_summary = fun ~total ~completed ~skipped ~failed ->
 
 let bench_history_warning = fun message -> eprintln ("warning: " ^ message)
 
+type human_render_state = {
+  mutable active_suite: Bench_runtime.suite_binary option;
+  mutable suite_header_printed: bool;
+  mutable active_case: Bench_runtime.running_bench_case option;
+  mutable active_case_line_open: bool;
+}
+
+let create_human_render_state = fun () ->
+  {
+    active_suite = None;
+    suite_header_printed = false;
+    active_case = None;
+    active_case_line_open = false
+  }
+
+let ensure_suite_header = fun state suite ->
+  if not state.suite_header_printed then
+    (
+      print_run_label suite;
+      state.active_suite <- Some suite;
+      state.suite_header_printed <- true
+    )
+
+let reset_active_case_line = fun state ->
+  if state.active_case_line_open then
+    (
+      println "";
+      state.active_case_line_open <- false
+    );
+  state.active_case <- None
+
+let reset_suite_render = fun state ->
+  reset_active_case_line state;
+  state.active_suite <- None;
+  state.suite_header_printed <- false
+
 let json_int_field = fun name fields ->
   match
     List.find fields
@@ -280,6 +316,8 @@ let stamp_json_event = fun ~command_started_at ~duration_us (event: Bench_runtim
       let fields =
         match event with
         | Bench_runtime.RunningSuite _ -> upsert_int_field "started_at_us" elapsed_us fields
+        | Bench_runtime.SuiteHeartbeat _ -> upsert_int_field "emitted_at_us" elapsed_us fields
+        | Bench_runtime.SuiteProgress _ -> fields
         | Bench_runtime.SuiteCompleted _ -> fields
         |> upsert_int_field "started_at_us" (Int.max 0 (elapsed_us - duration_us))
         |> upsert_int_field "completed_at_us" elapsed_us
@@ -300,14 +338,32 @@ let summary_duration_us = fun ~command_started_at (event: Bench_runtime.bench_ev
   | Bench_runtime.Summary _ -> Some (Time.Instant.elapsed command_started_at |> Time.Duration.to_micros)
   | _ -> None
 
-let write_bench_event = fun (event: Bench_runtime.bench_event) ->
+let write_bench_event = fun state (event: Bench_runtime.bench_event) ->
   match event with
   | Bench_runtime.Build _ ->
       ()
   | Bench_runtime.NoSuitesFound { package_name } ->
+      reset_suite_render state;
       print_empty_hint package_name
-  | Bench_runtime.RunningSuite _ ->
-      ()
+  | Bench_runtime.RunningSuite suite ->
+      reset_suite_render state;
+      state.active_suite <- Some suite
+  | Bench_runtime.SuiteHeartbeat { suite; active_case; _ } ->
+      if Option.is_some active_case && state.active_case_line_open then
+        (
+          ensure_suite_header state suite;
+          print "."
+        )
+  | Bench_runtime.SuiteProgress { suite; event } ->
+      Bench_runtime.suite_progress_active_case event |> Result.iter
+        ~fn:(fun active_case ->
+          active_case |> Option.for_each
+            ~fn:(fun (active_case: Bench_runtime.running_bench_case) ->
+              ensure_suite_header state suite;
+              reset_active_case_line state;
+              print ("[" ^ Int.to_string active_case.index ^ "] " ^ active_case.name);
+              state.active_case <- Some active_case;
+              state.active_case_line_open <- true))
   | Bench_runtime.SuiteCompleted {
     suite;
     stdout;
@@ -321,14 +377,17 @@ let write_bench_event = fun (event: Bench_runtime.bench_event) ->
         || not (comparisons = [])
         || not (String.equal stdout "")
         || not (String.equal stderr "") in
+      reset_active_case_line state;
       if should_print_suite then
         (
-          print_run_label suite;
+          ensure_suite_header state suite;
           List.for_each results ~fn:print_bench_result;
           List.for_each comparisons ~fn:print_comparison;
           print_command_output Command.{ stdout; stderr; status = 0 }
-        )
+        );
+      reset_suite_render state
   | Bench_runtime.Summary { total; completed; skipped; failed } ->
+      reset_suite_render state;
       print_summary ~total ~completed ~skipped ~failed
 
 let write_bench_error = fun err -> println ("error: " ^ Bench_runtime.bench_error_message err)
@@ -521,6 +580,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
         Error (Failure (Bench_runtime.bench_error_message err))
   else
     let history_context = bench_history_context ~workspace ~profile request ~argv:Env.args in
+    let human_render_state = create_human_render_state () in
     let on_event (event: Bench_runtime.bench_event) =
       match event with
       | Bench_runtime.Build build_event ->
@@ -565,7 +625,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
                   ~duration_us:(summary_duration_us ~command_started_at event)
                   event
                   json)
-            | Build.Human -> write_bench_event event
+            | Build.Human -> write_bench_event human_render_state event
           )
       | _ -> (
           match output_mode with
@@ -577,7 +637,7 @@ let run = fun ~(workspace:Riot_model.Workspace.t) matches ->
                 ~duration_us:(summary_duration_us ~command_started_at event)
                 event
                 json)
-          | Build.Human -> write_bench_event event
+          | Build.Human -> write_bench_event human_render_state event
         )
     in
     match

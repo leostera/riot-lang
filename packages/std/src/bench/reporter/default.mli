@@ -1,6 +1,9 @@
 (** Default terminal reporter for benchmark runs. *)
 val init: Intf.suite_info -> int -> unit
 
+(** Called when a benchmark case starts running. *)
+val on_case_start: int -> string -> iterations:int -> warmup:int -> unit
+
 (** Report one completed benchmark result. *)
 val on_result: int -> Bench_result.t -> unit
 

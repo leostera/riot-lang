@@ -18,7 +18,14 @@ let run_sample_capture = fun args ->
   let cmd = Command.make (self_executable ()) ~args:("sample" :: args) in
   Command.output cmd |> Result.expect ~msg:"failed to run sample bench cli"
 
-let parse_json_output = fun stdout -> Data.Json.of_string stdout |> Result.expect ~msg:"failed to parse json output"
+let json_output_lines = fun stdout ->
+  stdout
+  |> String.split ~by:"\n"
+  |> List.filter ~fn:(fun line -> not (String.equal (String.trim line) ""))
+
+let parse_json_output = fun stdout ->
+  let line = json_output_lines stdout |> List.rev |> List.get ~at:0 |> Option.unwrap_or ~default:stdout in
+  Data.Json.of_string line |> Result.expect ~msg:"failed to parse json output"
 
 let assoc_value = fun key entries ->
   match
@@ -167,6 +174,38 @@ let test_run_benchmarks_json_includes_timing_fields = fun _ctx ->
     else
       Error "expected benchmark json output to include timing fields"
 
+let test_run_benchmarks_json_emits_case_started_progress = fun _ctx ->
+  let output = run_sample_capture [ "run-benchmarks"; "_long"; "--json" ] in
+  if not (Int.equal output.status 0) then
+    Error ("expected filtered benchmark json run to succeed, got " ^ Int.to_string output.status)
+  else
+    let progress_lines =
+      json_output_lines output.stdout
+      |> List.filter_map
+        ~fn:(fun line ->
+          match Data.Json.of_string line with
+          | Ok (Data.Json.Object _ as json) -> Some json
+          | Ok _
+          | Error _ -> None)
+      |> List.filter
+        ~fn:(fun json ->
+          match Data.Json.get_field "type" json with
+          | Some (Data.Json.String "BenchCaseStarted") -> true
+          | _ -> false)
+    in
+    match progress_lines with
+    | first :: _ ->
+        if
+          Data.Json.get_field "index" first = Some (Data.Json.Int 1)
+          && Data.Json.get_field "name" first = Some (Data.Json.String "alpha_long")
+          && Data.Json.get_field "iterations" first = Some (Data.Json.Int 1)
+          && Data.Json.get_field "warmup" first = Some (Data.Json.Int 0)
+        then
+          Ok ()
+        else
+          Error "expected BenchCaseStarted progress to include benchmark metadata"
+    | [] -> Error "expected run-benchmarks --json to emit BenchCaseStarted progress"
+
 let meta_tests = [
   Test.case "list-benchmarks lists all sample cases" test_list_benchmarks_lists_all_cases;
   Test.case "list-benchmarks --json includes metadata" test_list_benchmarks_json_includes_metadata;
@@ -176,6 +215,7 @@ let meta_tests = [
   Test.case "run-benchmarks --json filters results" test_run_benchmarks_json_flag_filters_results;
   Test.case "run-benchmarks --json reports zero matches" test_run_benchmarks_json_flag_reports_zero_matches;
   Test.case "run-benchmarks --json includes timing fields" test_run_benchmarks_json_includes_timing_fields;
+  Test.case "run-benchmarks --json emits case started progress" test_run_benchmarks_json_emits_case_started_progress;
 ]
 
 let sample_main = fun ~args ->

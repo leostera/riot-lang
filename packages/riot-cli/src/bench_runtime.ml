@@ -75,10 +75,24 @@ type bench_suite_summary = {
   failed: int;
 }
 
+type running_bench_case = {
+  index: int;
+  name: string;
+  iterations: int;
+  warmup: int;
+}
+
 type bench_event =
   | Build of Riot_build.Event.t
   | NoSuitesFound of { package_name: Package_name.t option }
   | RunningSuite of suite_binary
+  | SuiteHeartbeat of {
+      suite: suite_binary;
+      binary_path: Path.t;
+      elapsed_us: int;
+      active_case: running_bench_case option
+    }
+  | SuiteProgress of { suite: suite_binary; event: Data.Json.t }
   | SuiteCompleted of {
       suite: suite_binary;
       status: int;
@@ -108,6 +122,41 @@ let no_listed_suite: listed_bench_suite -> unit = fun _ -> ()
 
 let no_list_error: suite_binary -> bench_error -> unit = fun _ _ -> ()
 
+let upsert_json_field = fun name value fields ->
+  let filtered =
+    List.filter fields ~fn:(fun (field_name, _) -> not (String.equal field_name name))
+  in
+  filtered @ [ (name, value) ]
+
+let json_event_type = fun json ->
+  match Data.Json.get_field "type" json with
+  | Some (Data.Json.String value) -> Some value
+  | _ -> None
+
+let suite_progress_event_of_line = fun line ->
+  let trimmed = String.trim line in
+  if String.equal trimmed "" then
+    None
+  else
+    match Data.Json.of_string trimmed with
+    | Ok (Data.Json.Object _ as json) -> (
+        match json_event_type json with
+        | Some _ -> Some json
+        | None -> None
+      )
+    | Ok _
+    | Error _ -> None
+
+let strip_progress_json_lines = fun lines ->
+  lines |> List.filter ~fn:(fun line -> Option.is_none (suite_progress_event_of_line line))
+
+let bench_progress_json = fun (suite: suite_binary) (json: Data.Json.t) ->
+  match json with
+  | Data.Json.Object fields -> Data.Json.Object (fields
+  |> upsert_json_field "package" (Data.Json.String (Package_name.to_string suite.package_name))
+  |> upsert_json_field "suite" (Data.Json.String suite.suite_name))
+  | other -> other
+
 let is_benchmark_binary_name = fun name ->
   String.ends_with ~suffix:"_bench" name || String.ends_with ~suffix:"-bench" name
 
@@ -126,8 +175,10 @@ let profile_of_name = function
   | _ -> Riot_model.Profile.debug
 
 let matches_package_filters = fun package_filters package_name ->
-  List.is_empty package_filters
-  || List.exists (fun package_filter -> Package_name.equal package_filter package_name) package_filters
+  List.is_empty package_filters || List.exists
+    (fun package_filter ->
+      Package_name.equal package_filter package_name)
+    package_filters
 
 let selected_package_name = function
   | [ package_name ] -> Some package_name
@@ -136,8 +187,7 @@ let selected_package_name = function
 let realized_bench_packages = fun ?(package_filters = []) (workspace: Workspace.t) ->
   Workspace.realize_packages ~intent:Package.Bench workspace
   |> List.filter ~fn:Package.is_workspace_member
-  |> List.filter
-    ~fn:(fun (pkg: Package.t) -> matches_package_filters package_filters pkg.name)
+  |> List.filter ~fn:(fun (pkg: Package.t) -> matches_package_filters package_filters pkg.name)
 
 let collect_suite_binaries = fun (workspace: Workspace.t) ?(package_filters = []) ?suite_filter () ->
   realized_bench_packages ~package_filters workspace |> List.flat_map
@@ -228,6 +278,25 @@ let optional_int_field = fun name fields ->
   | Some (_, value) -> get_int value |> Result.map ~fn:Option.some
   | None -> Ok None
 
+let running_bench_case_of_json = fun json ->
+  let* fields = get_object json in
+  let* type_json = field "type" fields in
+  let* event_type = get_string type_json in
+  if not (String.equal event_type "BenchCaseStarted") then
+    Ok None
+  else
+    let* index_json = field "index" fields in
+    let* name_json = field "name" fields in
+    let* iterations_json = field "iterations" fields in
+    let* warmup_json = field "warmup" fields in
+    let* index = get_int index_json in
+    let* name = get_string name_json in
+    let* iterations = get_int iterations_json in
+    let* warmup = get_int warmup_json in
+    Ok (Some { index; name; iterations; warmup })
+
+let suite_progress_active_case = running_bench_case_of_json
+
 let split_json_stdout = fun stdout ->
   let lines = String.split stdout ~by:"\n" in
   let indexed = List.enumerate lines in
@@ -244,6 +313,7 @@ let split_json_stdout = fun stdout ->
               Some line
             else
               None)
+        |> strip_progress_json_lines
         |> String.concat "\n"
       in
       Ok (prefix, json_line)
@@ -482,6 +552,29 @@ let bench_event_to_json = function
         ("package", Data.Json.String (Riot_model.Package_name.to_string package_name));
         ("suite", Data.Json.String suite_name);
       ])
+  | SuiteHeartbeat { suite; binary_path; elapsed_us; active_case } ->
+      let active_case_fields =
+        match active_case with
+        | Some case -> [
+          ("index", Data.Json.Int case.index);
+          ("name", Data.Json.String case.name);
+          ("iterations", Data.Json.Int case.iterations);
+          ("warmup", Data.Json.Int case.warmup);
+        ]
+        | None -> []
+      in
+      Some (Data.Json.Object ([
+        ("type", Data.Json.String "BenchCaseHeartbeat");
+        ("binary_path", Data.Json.String (Path.to_string binary_path));
+        ("elapsed_us", Data.Json.Int elapsed_us);
+      ]
+      @ active_case_fields
+      @ [
+        ("package", Data.Json.String (Riot_model.Package_name.to_string suite.package_name));
+        ("suite", Data.Json.String suite.suite_name);
+      ]))
+  | SuiteProgress { suite; event } ->
+      Some (bench_progress_json suite event)
   | SuiteCompleted {
     suite;
     status;
@@ -631,13 +724,36 @@ let find_suite_binary_path_in_output = fun ~(workspace:Workspace.t) ~profile ~(s
       | None -> ensure_materialized_fallback ()
     )
 
-let run_suite_binary_capture = fun ~suite ~extra_args binary_path ->
-  let extra_args = remove_json_args extra_args @ [ "--json" ] in
+let run_suite_args = fun extra_args -> "run-benchmarks" :: remove_json_args extra_args @ [ "--json" ]
+
+let run_suite = fun ~on_event ~suite ~extra_args binary_path ->
+  let args = run_suite_args extra_args in
   let cmd = Command.make
     (Path.to_string binary_path)
     ~env:[ ("RIOT_PACKAGE_NAME", Package_name.to_string suite.package_name) ]
-    ~args:("run-benchmarks" :: extra_args) in
-  Command.output cmd
+    ~args in
+  let active_case = ref None in
+  match
+    Command.output cmd ~on_idle:(fun elapsed ->
+      on_event
+        (SuiteHeartbeat {
+          suite;
+          binary_path;
+          elapsed_us = Time.Duration.to_micros elapsed;
+          active_case = !active_case
+        }))
+      ~on_stdout_line:(fun line ->
+        suite_progress_event_of_line line |> Option.for_each
+          ~fn:(fun event ->
+            running_bench_case_of_json event
+            |> Result.iter
+              ~fn:(fun current_case ->
+                current_case
+                |> Option.for_each ~fn:(fun current_case -> active_case := Some current_case));
+            on_event (SuiteProgress { suite; event })))
+  with
+  | Error (Command.SystemError reason) -> Error (SuiteExecutionError { suite; reason })
+  | Ok output -> Ok output
 
 let list_suite_binary_capture = fun ~suite ~extra_args binary_path ->
   let extra_args = remove_list_args extra_args @ [ "--json" ] in
@@ -860,11 +976,8 @@ let bench = fun ?(on_event = no_event) (request: bench_request) ->
               | Error _ as err -> err
               | Ok binary_path ->
                   on_event (RunningSuite suite);
-                  match run_suite_binary_capture ~suite ~extra_args:request.extra_args binary_path with
-                  | Error (Command.SystemError reason) -> Error (SuiteExecutionError {
-                    suite;
-                    reason
-                  })
+                  match run_suite ~on_event ~suite ~extra_args:request.extra_args binary_path with
+                  | Error err -> Error err
                   | Ok output -> (
                       match parse_bench_suite_output output.stdout with
                       | Error reason -> Error (SuiteExecutionError {

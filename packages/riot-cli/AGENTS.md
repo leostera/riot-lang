@@ -61,6 +61,7 @@
 52. When suite binaries emit their own JSONL lifecycle stream, `riot test --json` should forward those non-summary child events as suite-scoped progress instead of hiding them in raw stdout. Strip forwarded child progress lines back out of `SuiteCompleted.stdout` so consumers do not have to deduplicate them.
 53. `riot test --json` should also emit parent-side suite heartbeats while a suite process is alive but quiet. Keep them structured (`SuiteHeartbeat`) so long silent startup or teardown gaps are distinguishable from real hangs even before suite-local progress events appear.
 54. `riot bench` should delegate benchmark-history persistence into `riot-bench`. Keep the CLI responsible only for collecting invocation context and forwarding normalized per-suite results to the storage package.
+55. `riot bench --json` should forward child benchmark progress events such as `BenchCaseStarted` and emit parent-side `BenchCaseHeartbeat` idle events while a suite is quiet. Strip forwarded child progress lines back out of `BenchSuiteCompleted.stdout` so consumers do not have to deduplicate them.
 
 ## Validate
 

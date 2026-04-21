@@ -31,6 +31,13 @@ module type Intf = sig
       The integer argument is the total number of benchmark items. *)
   val init: suite_info -> int -> unit
 
+  (** Called when a benchmark case starts running.
+
+      The arguments are the outer benchmark index, the case name, the measured
+      iteration count, and the warmup count. Comparison cases reuse the outer
+      comparison index and report the individual case name. *)
+  val on_case_start: int -> string -> iterations:int -> warmup:int -> unit
+
   (** Called when a single benchmark finishes. *)
   val on_result: int -> Bench_result.t -> unit
 

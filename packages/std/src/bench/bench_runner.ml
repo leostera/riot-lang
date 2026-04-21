@@ -41,7 +41,9 @@ let run_comparison = fun index ((module R : Reporter.Intf.Intf)) (comp: Bench_co
   let case_results =
     let rec loop i acc = function
       | [] -> List.reverse acc
-      | case :: rest ->
+      | (case: Bench_case.t) :: rest ->
+          if not case.skip then
+            R.on_case_start index case.name ~iterations:case.config.iterations ~warmup:case.config.warmup;
           (* Reuse run_single_benchmark but ignore the index *)
           let result = run_single_benchmark (i + 1) case in
           let mapped =
@@ -86,8 +88,14 @@ let run_benchmarks = fun ~config benchmarks ->
   List.for_each benchmarks
     ~fn:(fun item ->
       match item with
-      | Single bench ->
+      | Single (bench: Bench_case.t) ->
           global_index := !global_index + 1;
+          if not bench.skip then
+            R.on_case_start
+              !global_index
+              bench.name
+              ~iterations:bench.config.iterations
+              ~warmup:bench.config.warmup;
           let result = run_single_benchmark !global_index bench in
           R.on_result result.index result;
           results := result :: !results

@@ -5,6 +5,8 @@ type suite_info = {
 module type Intf = sig
   val init: suite_info -> int -> unit
 
+  val on_case_start: int -> string -> iterations:int -> warmup:int -> unit
+
   val on_result: int -> Bench_result.t -> unit
 
   val finalize: Bench_result.summary -> unit (* Comparison reporting *)

@@ -95,10 +95,27 @@ type bench_suite_summary = {
   (** Number of failed benchmark cases. *)
   failed: int;
 }
+type running_bench_case = {
+  (** Outer benchmark index within the suite output. *)
+  index: int;
+  (** Name of the currently running benchmark case. *)
+  name: string;
+  (** Configured measured iteration count. *)
+  iterations: int;
+  (** Configured warmup count. *)
+  warmup: int;
+}
 type bench_event =
   | Build of Riot_build.Event.t
   | NoSuitesFound of { package_name: Package_name.t option }
   | RunningSuite of suite_binary
+  | SuiteHeartbeat of {
+      suite: suite_binary;
+      binary_path: Path.t;
+      elapsed_us: int;
+      active_case: running_bench_case option
+    }
+  | SuiteProgress of { suite: suite_binary; event: Data.Json.t }
   | SuiteCompleted of {
       suite: suite_binary;
       status: int;
@@ -123,13 +140,20 @@ type bench_error =
     Use [package_filters] to restrict discovery to selected packages.
 *)
 val collect_suite_binaries:
-  Workspace.t -> ?package_filters:Package_name.t list -> ?suite_filter:string -> unit -> suite_binary list
+  Workspace.t ->
+  ?package_filters:Package_name.t list ->
+  ?suite_filter:string ->
+  unit ->
+  suite_binary list
 
 (** Render a user-facing error message for a benchmark failure. *)
 val bench_error_message: bench_error -> string
 
 (** Convert a benchmark event into JSON when it has a machine-readable form. *)
 val bench_event_to_json: bench_event -> Data.Json.t option
+
+(** Parse a forwarded benchmark progress event into the active case metadata. *)
+val suite_progress_active_case: Data.Json.t -> (running_bench_case option, string) result
 
 val list_benchmarks:
   ?on_suite:(listed_bench_suite -> unit) ->

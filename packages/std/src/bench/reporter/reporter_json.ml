@@ -9,10 +9,29 @@ let suite_started_monotonic = ref None
 
 let duration_us = fun duration -> Time.Duration.to_micros duration
 
+let event_elapsed_us = fun () ->
+  match !suite_started_monotonic with
+  | Some start -> Time.Instant.elapsed start |> duration_us
+  | None -> 0
+
 let reset = fun () ->
   benchmark_results := [];
   comparison_results := [];
   suite_started_monotonic := Some (Time.Instant.now ())
+
+let write_json_line = fun json -> println (Data.Json.to_string json)
+
+let on_case_start = fun index name ~iterations ~warmup ->
+  let open Data.Json in write_json_line
+    (obj
+      [
+        ("type", string "BenchCaseStarted");
+        ("index", int index);
+        ("name", string name);
+        ("iterations", int iterations);
+        ("warmup", int warmup);
+        ("emitted_at_us", int (event_elapsed_us ()));
+      ])
 
 let statistics_to_json = fun (stats: Bench_result.statistics) ->
   let open Data.Json in obj
@@ -68,11 +87,7 @@ let on_result = fun _index result -> benchmark_results := result :: !benchmark_r
 
 let finalize = fun (summary: Bench_result.summary) ->
   let open Data.Json in
-    let duration_us =
-      match !suite_started_monotonic with
-      | Some start -> Time.Instant.elapsed start |> duration_us
-      | None -> 0
-    in
+    let duration_us = event_elapsed_us () in
     let benchmarks = List.map (List.reverse !benchmark_results) ~fn:benchmark_result_to_json in
     let comparisons = List.map (List.reverse !comparison_results) ~fn:comparison_result_to_json in
     let summary_json = obj
