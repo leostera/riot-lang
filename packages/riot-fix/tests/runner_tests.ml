@@ -2388,6 +2388,7 @@ let render x y z =
 
 let () =
   Actors.run
-    ~main:(fun ~args:_ -> Test.Cli.main ~name:"riot-fix:runner" ~tests ~args:Env.args ())
+    ~main:(fun ~args:_ ->
+      Test.Cli.main ~execution_mode:Test.Cli.Linear ~name:"riot-fix:runner" ~tests ~args:Env.args ())
     ~args:Env.args
     ()

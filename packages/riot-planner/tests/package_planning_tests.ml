@@ -1491,7 +1491,10 @@ let test_legacy_krasny_plan_bundle_with_bad_root_module_is_ignored_after_version
 
 let tests =
   Test.[
-    case "kernel input hash is not empty digest" test_kernel_input_hash_is_not_empty_digest;
+    case
+      ~size:Large
+      "kernel input hash is not empty digest"
+      test_kernel_input_hash_is_not_empty_digest;
     case "plan bundle cache hit restores module and action graphs" test_plan_bundle_cache_hit_restores_module_and_action_graphs;
     case "cached artifact and exports short-circuit without plan bundle" test_cached_artifact_and_exports_short_circuit_without_plan_bundle;
     case "stale plan bundle version rebuilds plan graphs" test_stale_plan_bundle_version_rebuilds_plan_graphs;

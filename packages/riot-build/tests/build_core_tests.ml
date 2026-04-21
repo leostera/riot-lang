@@ -966,11 +966,20 @@ let tests =
       case "build core: build reports missing multiple packages" test_build_reports_missing_multiple_packages;
       case "build core: build reports target selection failures before execution" test_build_reports_target_selection_failures_before_execution;
       case "build core: build failure surfaces compiler errors" test_build_failure_surfaces_compiler_errors;
-      case "build core: repeated builds return cached outputs" test_build_can_return_cached_outputs_on_repeat_builds;
-      case "build core: cached builds do not emit generation recording events" test_cached_build_does_not_emit_generation_recording_events;
+      case
+        ~size:Large
+        "build core: repeated builds return cached outputs"
+        test_build_can_return_cached_outputs_on_repeat_builds;
+      case
+        ~size:Large
+        "build core: cached builds do not emit generation recording events"
+        test_cached_build_does_not_emit_generation_recording_events;
       case "build core: build emits runtime phases in order" test_build_emits_runtime_phases_in_order;
       case ~size:Large "build core: build emits detailed telemetry events" test_build_emits_detailed_build_telemetry;
-      case "build core: build preserves exact target subsets" test_build_preserves_exact_target_subset;
+      case
+        ~size:Large
+        "build core: build preserves exact target subsets"
+        test_build_preserves_exact_target_subset;
       case "build core: build emits multi-target lane outputs and events" test_build_multi_target_outputs_and_events;
       case "build core: default partial failure defaults to failing in multi-target builds" test_build_multi_target_partial_failures_fail_by_default;
       case "build core: rejects zero jobs requests" test_build_rejects_zero_jobs;

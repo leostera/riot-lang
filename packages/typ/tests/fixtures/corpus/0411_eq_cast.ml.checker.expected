@@ -5,14 +5,14 @@
         "name": [
           "cast"
         ],
-        "stamp": 0
+        "stamp": 1
       },
       "entity_id": {
         "binding_id": {
           "name": [
             "cast"
           ],
-          "stamp": 0
+          "stamp": 1
         },
         "surface_path": [
           "cast"
@@ -25,7 +25,14 @@
               "Var": 1
             },
             "result": {
-              "Var": 0
+              "Arrow": {
+                "parameter": {
+                  "Var": 0
+                },
+                "result": {
+                  "Var": 0
+                }
+              }
             }
           }
         },
@@ -40,26 +47,22 @@
         "name": [
           "answer"
         ],
-        "stamp": 1
+        "stamp": 2
       },
       "entity_id": {
         "binding_id": {
           "name": [
             "answer"
           ],
-          "stamp": 1
+          "stamp": 2
         },
         "surface_path": [
           "answer"
         ]
       },
       "scheme": {
-        "body": {
-          "Var": 0
-        },
-        "forall": [
-          0
-        ]
+        "body": "Int",
+        "forall": []
       }
     }
   ],
@@ -78,19 +81,10 @@
       "UnsupportedSyntax": {
         "kind": "CONSTRUCTOR_PATTERN",
         "span": {
-          "end": 236,
+          "end": 234,
           "start": 230
         },
         "summary": "unsupported constructor pattern Refl"
-      }
-    },
-    {
-      "UnsupportedType": {
-        "span": {
-          "end": 241,
-          "start": 240
-        },
-        "summary": "unbound value x"
       }
     },
     {
@@ -114,21 +108,21 @@
     }
   ],
   "typing_context": {
-    "next_binding_stamp": 2,
+    "next_binding_stamp": 3,
     "values": [
       {
         "binding_id": {
           "name": [
             "cast"
           ],
-          "stamp": 0
+          "stamp": 1
         },
         "entity_id": {
           "binding_id": {
             "name": [
               "cast"
             ],
-            "stamp": 0
+            "stamp": 1
           },
           "surface_path": [
             "cast"
@@ -141,7 +135,14 @@
                 "Var": 1
               },
               "result": {
-                "Var": 0
+                "Arrow": {
+                  "parameter": {
+                    "Var": 0
+                  },
+                  "result": {
+                    "Var": 0
+                  }
+                }
               }
             }
           },
@@ -156,26 +157,22 @@
           "name": [
             "answer"
           ],
-          "stamp": 1
+          "stamp": 2
         },
         "entity_id": {
           "binding_id": {
             "name": [
               "answer"
             ],
-            "stamp": 1
+            "stamp": 2
           },
           "surface_path": [
             "answer"
           ]
         },
         "scheme": {
-          "body": {
-            "Var": 0
-          },
-          "forall": [
-            0
-          ]
+          "body": "Int",
+          "forall": []
         }
       }
     ]
