@@ -1,0 +1,164 @@
+open Std
+module Test = Std.Test
+
+let package_name = fun name ->
+  Riot_model.Package_name.from_string name |> Result.expect ~msg:("invalid package name: " ^ name)
+
+let with_tempdir_result = fun prefix fn ->
+  match Fs.with_tempdir ~prefix fn with
+  | Ok result -> result
+  | Error err -> Error (IO.error_message err)
+
+let make_registry_cache = fun riot_home ->
+  Pkgs_ml.Registry_cache.create ~riot_home ~registry_name:"pkgs.ml" () |> Result.expect ~msg:"expected registry cache"
+
+let sample_release = fun ~version ->
+  Pkgs_ml.Sparse_index.{
+    version;
+    published_at = "2026-04-21T00:00:00Z";
+    canonical_locator = "github.com/leostera/serde-json";
+    repo_url = "https://github.com/leostera/serde-json";
+    subdir = "";
+    artifact_sha256 = "deadbeef";
+    description = Some "serde json";
+    license = Some "Apache-2.0";
+    homepage = Some "https://serde-json.dev";
+    repository = Some "https://github.com/leostera/serde-json";
+    root_module = Some "Serde_json";
+    categories = [ "serialization" ];
+    keywords = [ "json" ];
+    manifest_key = "packages/serde-json/" ^ version ^ "/deadbeef.manifest.json";
+    source_key = "sources/serde-json/" ^ version ^ "/deadbeef.tar.gz";
+    dependencies = [];
+    yanked = false;
+    yanked_at = None;
+    yanked_by_github_login = None;
+  }
+
+let sample_document = fun () ->
+  Pkgs_ml.Sparse_index.{
+    schema_version = 1;
+    name = "serde-json";
+    latest = "1.2.0";
+    updated_at = "2026-04-21T00:00:00Z";
+    releases = [ sample_release ~version:"1.0.0"; sample_release ~version:"1.2.0" ];
+  }
+
+let sample_registry = fun ~riot_home ->
+  let cache = make_registry_cache riot_home in
+  Pkgs_ml.Registry.in_memory
+    ~cache
+    ~packages:[ sample_document () ]
+    ~releases:[
+      {
+        Pkgs_ml.Registry.package_name = "serde-json";
+        version = "1.2.0";
+        manifest_toml = "[package]\nname = \"serde-json\"\nversion = \"1.2.0\"\ndescription = \"serde json\"\nlicense = \"Apache-2.0\"\n";
+        files = [ { path = Path.v "src/serde_json.ml"; contents = "let decode = fun _ -> ()\n" }; ]
+      };
+    ]
+    ()
+
+let make_local_workspace = fun root ->
+  let package_root = Path.(root / Path.v "demo") in
+  let src_dir = Path.(package_root / Path.v "src") in
+  let manifest_path = Path.(package_root / Path.v "riot.toml") in
+  Fs.create_dir_all src_dir |> Result.expect ~msg:"expected src dir";
+  Fs.write
+    "[package]\nname = \"demo\"\nversion = \"0.1.0\"\ndescription = \"demo package\"\nlicense = \"Apache-2.0\"\n\n[lib]\npath = \"src/demo.ml\"\n"
+    manifest_path
+  |> Result.expect ~msg:"expected manifest write";
+  Fs.write "let value = 42\n" Path.(src_dir / Path.v "demo.ml") |> Result.expect ~msg:"expected source write";
+  let manifest = Data.Toml.parse "[package]\nname = \"demo\"\nversion = \"0.1.0\"\ndescription = \"demo package\"\nlicense = \"Apache-2.0\"\n\n[lib]\npath = \"src/demo.ml\"\n"
+  |> Result.expect ~msg:"expected toml parse"
+  |> Riot_model.Package_manifest.from_toml
+    ~workspace_deps:[]
+    ~workspace_dev_deps:[]
+    ~workspace_build_deps:[]
+    ~path:package_root
+    ~relative_path:(Path.v "demo")
+  |> Result.expect ~msg:"expected package manifest" in
+  Riot_model.Workspace_manifest.make ~root ~packages:[ manifest ] ()
+
+let test_info_package_prefers_local_workspace_package = fun _ctx ->
+  with_tempdir_result "riot_cli_info_local"
+    (fun tempdir ->
+      let riot_home = Path.(tempdir / Path.v ".riot") in
+      let registry = sample_registry ~riot_home in
+      let workspace = make_local_workspace tempdir in
+      match Riot_cli.Info_package.resolve
+        ~registry
+        ~local_workspace:(Some (workspace, []))
+        ~target:"demo"
+        () with
+      | Error err -> Error err.message
+      | Ok info ->
+          Test.assert_equal ~expected:Riot_cli.Info_package.Workspace ~actual:info.source_kind;
+          Test.assert_equal ~expected:(Some "0.1.0") ~actual:info.resolved_version;
+          Test.assert_equal ~expected:(Some "demo") ~actual:info.relative_path;
+          if not (Option.is_some info.links.docs_url) then
+            Error "expected local package docs url"
+          else
+            Ok ())
+
+let test_info_package_loads_registry_release_and_paths = fun _ctx ->
+  with_tempdir_result "riot_cli_info_registry"
+    (fun tempdir ->
+      let riot_home = Path.(tempdir / Path.v ".riot") in
+      let registry = sample_registry ~riot_home in
+      match Riot_cli.Info_package.resolve
+        ~registry
+        ~local_workspace:None
+        ~target:"serde-json@1.2.0"
+        () with
+      | Error err -> Error err.message
+      | Ok info ->
+          Test.assert_equal ~expected:Riot_cli.Info_package.Registry ~actual:info.source_kind;
+          Test.assert_equal ~expected:(Some "1.2.0") ~actual:info.resolved_version;
+          match Fs.exists info.root with
+          | Error err -> Error (IO.error_message err)
+          | Ok false -> Error "expected registry package root to be materialized"
+          | Ok true ->
+              if not (Option.is_some info.registry_package_path) then
+                Error "expected registry package path"
+              else if not (Option.is_some info.links.docs_url) then
+                Error "expected docs url for registry package"
+              else
+                Ok ())
+
+let test_info_package_json_includes_registry_paths_and_links = fun _ctx ->
+  with_tempdir_result "riot_cli_info_json"
+    (fun tempdir ->
+      let riot_home = Path.(tempdir / Path.v ".riot") in
+      let registry = sample_registry ~riot_home in
+      match Riot_cli.Info_package.resolve ~registry ~local_workspace:None ~target:"serde-json" () with
+      | Error err -> Error err.message
+      | Ok info ->
+          let json = Riot_cli.Info_package.to_json info in
+          let registry_root =
+            match Data.Json.get_field "registry" json with
+            | Some (Data.Json.Object fields) -> Data.Json.get_field "root" (Data.Json.Object fields)
+            | _ -> None
+          in
+          let docs_link =
+            match Data.Json.get_field "links" json with
+            | Some (Data.Json.Object fields) -> Data.Json.get_field
+              "docs_url"
+              (Data.Json.Object fields)
+            | _ -> None
+          in
+          match registry_root, docs_link with
+          | Some (Data.Json.String _), Some (Data.Json.String _) -> Ok ()
+          | _ -> Error "expected registry root and docs url in package json")
+
+let tests =
+  Test.[
+    case "info package: bare local package prefers workspace metadata" test_info_package_prefers_local_workspace_package;
+    case "info package: registry target materializes release and paths" test_info_package_loads_registry_release_and_paths;
+    case "info package: json includes registry paths and links" test_info_package_json_includes_registry_paths_and_links;
+  ]
+
+let name = "Riot CLI Info Tests"
+
+let () =
+  Actors.run ~main:(fun ~args -> Test.Cli.main ~name ~tests ~args ()) ~args:Env.args ()

@@ -159,7 +159,7 @@ _riot() {
         'yank:Yank a published package version'
         'new:Create new package'
         'search:Search registry packages'
-        'info:Show resolved workspace information'
+        'info:Show resolved workspace or package information'
         'toolchain:Manage OCaml toolchains'
         'toolchains:Manage OCaml toolchains'
         'completions:Generate shell completions'

@@ -399,6 +399,24 @@ let test_info_accepts_json_flag = fun _ctx ->
       else
         Error "expected info --json flag to be parsed"
 
+let test_info_accepts_workspace_target = fun _ctx ->
+  match parse_info [ "info"; "workspace" ] with
+  | Error err -> Error ("expected info workspace target to parse: " ^ err)
+  | Ok matches ->
+      Test.assert_equal
+        ~expected:Riot_cli.Info_cmd.Workspace_target
+        ~actual:(Riot_cli.Info_cmd.target_of_matches matches);
+      Ok ()
+
+let test_info_accepts_package_target = fun _ctx ->
+  match parse_info [ "info"; "serde-json@1.0.0" ] with
+  | Error err -> Error ("expected info package target to parse: " ^ err)
+  | Ok matches ->
+      Test.assert_equal
+        ~expected:(Riot_cli.Info_cmd.Package_target "serde-json@1.0.0")
+        ~actual:(Riot_cli.Info_cmd.target_of_matches matches);
+      Ok ()
+
 let test_clean_accepts_json_flag = fun _ctx ->
   match parse_clean [ "clean"; "--json" ] with
   | Error err -> Error ("expected clean args to parse with --json: " ^ err)
@@ -673,6 +691,8 @@ let tests =
     case "install: parse --update flag" test_install_accepts_update_flag;
     case "install: parse --package flag" test_install_accepts_package_flag;
     case "info: parse --json flag" test_info_accepts_json_flag;
+    case "info: parse workspace target" test_info_accepts_workspace_target;
+    case "info: parse package target" test_info_accepts_package_target;
     case "clean: parse --json flag" test_clean_accepts_json_flag;
     case "clean: parse --force flag" test_clean_accepts_force_flag;
     case "clean: usage explains cache gc and --force" test_clean_usage_explains_cache_gc_and_force;

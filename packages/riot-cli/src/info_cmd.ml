@@ -2,9 +2,13 @@ open Std
 open Riot_model
 open ArgParser
 
+type target =
+  | Workspace_target
+  | Package_target of string
+
 type workspace_kind =
   | Workspace
-  | Package
+  | Standalone_package
 
 type workspace_scan =
   | NoWorkspace
@@ -14,8 +18,18 @@ type workspace_scan =
 let command =
   let open ArgParser in
     let open Arg in command "info"
-    |> about "Show resolved workspace information"
-    |> args [ flag "json" |> long "json" |> help "Emit machine-readable JSON output"; ]
+    |> about "Show resolved workspace or package information"
+    |> args
+      [
+        positional "target" |> required false |> help "workspace or <pkg>[@<version>]";
+        flag "json" |> long "json" |> help "Emit machine-readable JSON output";
+      ]
+
+let target_of_matches: ArgParser.matches -> target = fun matches ->
+  match ArgParser.get_one matches "target" with
+  | None
+  | Some "workspace" -> Workspace_target
+  | Some target -> Package_target target
 
 let rec toml_json = function
   | Data.Toml.String value -> Data.Json.String value
@@ -34,13 +48,13 @@ let workspace_kind = fun ~(workspace_manager:Workspace_manager.t) (workspace: Wo
       | Some fields when List.any fields
         ~fn:(fun (name, _) ->
           String.equal name "workspace") -> Workspace
-      | _ -> Package
+      | _ -> Standalone_package
     )
   | Error _ -> Workspace
 
 let workspace_kind_string = function
   | Workspace -> "workspace"
-  | Package -> "package"
+  | Standalone_package -> "package"
 
 let json_string_or_null = function
   | Some value -> Data.Json.String value
@@ -157,26 +171,123 @@ let print_workspace = fun ~(load_errors:Workspace_manager.load_error list) (
 
 let print_json = fun json -> println (Data.Json.to_string json)
 
+let print_package = fun (info: Info_package.t) ->
+  println ("Package: " ^ Riot_model.Package_name.to_string info.name);
+  println
+    (
+      "Source: " ^ (
+        match info.source_kind with
+        | Info_package.Workspace -> "workspace"
+        | Info_package.Registry -> "registry"
+      )
+    );
+  (
+    match info.resolved_version with
+    | Some version -> println ("Version: " ^ version)
+    | None -> ()
+  );
+  println ("Root: " ^ Path.to_string info.root);
+  (
+    match info.relative_path with
+    | Some relative_path -> println ("Relative path: " ^ relative_path)
+    | None -> ()
+  );
+  println ("Manifest: " ^ Path.to_string info.manifest_path);
+  println ("Registry root: " ^ Path.to_string info.registry_root);
+  (
+    match info.registry_package_path with
+    | Some path -> println ("Registry package path: " ^ Path.to_string path)
+    | None -> ()
+  );
+  (
+    match info.description with
+    | Some description -> println ("Description: " ^ description)
+    | None -> ()
+  );
+  (
+    match info.license with
+    | Some license -> println ("License: " ^ license)
+    | None -> ()
+  );
+  let link_lines =
+    [
+      ("docs", info.links.docs_url);
+      ("package", info.links.package_url);
+      ("homepage", info.links.homepage_url);
+      ("repository", info.links.repository_url);
+      ("source", info.links.source_url);
+    ]
+    |> List.filter_map
+      ~fn:(fun (label, value) ->
+        match value with
+        | Some value -> Some ("  " ^ label ^ ": " ^ value)
+        | None -> None)
+  in
+  if not (List.is_empty link_lines) then
+    (
+      println "";
+      println "Links:";
+      List.for_each link_lines ~fn:println
+    );
+  (
+    match info.manifest_error with
+    | Some err ->
+        println "";
+        println ("Manifest error: " ^ err)
+    | None -> ()
+  );
+  if not (List.is_empty info.load_errors) then
+    (
+      println "";
+      println "Load errors:";
+      List.for_each info.load_errors ~fn:(fun err -> println ("  - " ^ err))
+    )
+
 let run = fun ~(workspace_scan:workspace_scan) matches ->
   let json = ArgParser.get_flag matches "json" in
-  match workspace_scan with
-  | Loaded (workspace, load_errors) ->
-      let workspace_manager = Workspace_manager.create () in
-      if json then
-        print_json (workspace_json ~workspace_manager ~load_errors workspace)
-      else
-        print_workspace ~load_errors workspace;
-      Ok ()
-  | NoWorkspace ->
-      let message = "Not in a riot workspace" in
-      if json then
-        print_json (error_json ~kind:"no_workspace" ~message)
-      else
-        eprintln "❌ Not in a riot workspace";
-      Error (Failure message)
-  | ScanFailed err ->
-      if json then
-        print_json (error_json ~kind:"scan_failed" ~message:err)
-      else
-        eprintln ("\027[1;31mError\027[0m: " ^ err);
-      Error (Failure err)
+  match target_of_matches matches with
+  | Workspace_target -> (
+      match workspace_scan with
+      | Loaded (workspace, load_errors) ->
+          let workspace_manager = Workspace_manager.create () in
+          if json then
+            print_json (workspace_json ~workspace_manager ~load_errors workspace)
+          else
+            print_workspace ~load_errors workspace;
+          Ok ()
+      | NoWorkspace ->
+          let message = "Not in a riot workspace" in
+          if json then
+            print_json (error_json ~kind:"no_workspace" ~message)
+          else
+            eprintln "❌ Not in a riot workspace";
+          Error (Failure message)
+      | ScanFailed err ->
+          if json then
+            print_json (error_json ~kind:"scan_failed" ~message:err)
+          else
+            eprintln ("\027[1;31mError\027[0m: " ^ err);
+          Error (Failure err)
+    )
+  | Package_target target ->
+      let local_workspace =
+        match workspace_scan with
+        | Loaded (workspace, load_errors) -> Some (workspace, load_errors)
+        | NoWorkspace
+        | ScanFailed _ -> None
+      in
+      (
+        match Info_package.resolve ~local_workspace ~target () with
+        | Ok info ->
+            if json then
+              print_json (Info_package.to_json info)
+            else
+              print_package info;
+            Ok ()
+        | Error err ->
+            if json then
+              print_json (Info_package.error_to_json ~error:err)
+            else
+              eprintln ("\027[1;31mError\027[0m: " ^ err.message);
+            Error (Failure err.message)
+      )
