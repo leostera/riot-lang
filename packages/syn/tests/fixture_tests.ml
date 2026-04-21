@@ -2,56 +2,7 @@ open Std
 open Std.Data
 open Std.Collections
 open Syn
-
-let parse_result_to_json = fun result ->
-  let span_to_json span = Json.Object [
-    ("start", Json.Int span.Ceibo.Span.start);
-    ("end", Json.Int span.Ceibo.Span.end_)
-  ] in
-  let span_text span =
-    let width = span.Ceibo.Span.end_ - span.Ceibo.Span.start in
-    if width <= 0 then
-      ""
-    else
-      String.sub result.Parser.source ~offset:span.Ceibo.Span.start ~len:width
-  in
-  let trivia_kind_to_json = function
-    | Token.CommentTrivia { terminated; _ } -> Json.Object [
-      ("kind", Json.String "comment");
-      ("terminated", Json.Bool terminated)
-    ]
-    | Token.DocstringTrivia { terminated; _ } -> Json.Object [
-      ("kind", Json.String "docstring");
-      ("terminated", Json.Bool terminated)
-    ]
-    | Token.WhitespaceTrivia -> Json.Object [ ("kind", Json.String "whitespace") ]
-  in
-  let trivia_to_json (trivia: Token.trivia) =
-    match trivia_kind_to_json trivia.kind with
-    | Json.Object fields -> Json.Object ([
-      ("span", span_to_json trivia.span);
-      ("text", Json.String (span_text trivia.span))
-    ]
-    @ fields)
-    | json -> json
-  in
-  let token_to_json (token: Token.t) = Json.Object [
-    ("kind", Json.String (Token.show_kind token.kind));
-    ("span", span_to_json token.span);
-    ("text", Json.String (span_text token.span));
-    ("leading_trivia", Json.Array (List.map token.leading_trivia ~fn:trivia_to_json))
-  ] in
-  let kind_to_json kind = Json.String (SyntaxKind.to_string kind) in
-  let text_to_json text = Json.String text in
-  let tree_json = Ceibo.Green.to_json
-    ~kind_to_json
-    ~text_to_json
-    (Ceibo.Green.Node result.Parser.tree) in
-  Json.Object [
-    ("tokens", Json.Array (List.map result.Parser.tokens ~fn:token_to_json));
-    ("tree", tree_json);
-    ("diagnostics", Json.Array (List.map result.Parser.diagnostics ~fn:Diagnostic.to_json))
-  ]
+module Iterator = Iter.Iterator
 
 let append_path_suffix = fun path suffix ->
   Path.to_string path ^ suffix |> Path.from_string |> Result.expect ~msg:"snapshot path should stay valid UTF-8"
@@ -106,14 +57,33 @@ let has_lossless_snapshot = fun modified_fixture_paths path ->
           `skip
   | _ -> `skip
 
+let source_slice = fun source ->
+  match IO.IoVec.IoSlice.from_string source with
+  | Ok slice -> slice
+  | Error error -> panic ("failed to create source slice: " ^ Kernel.IO.Error.message error)
+
+let diagnostics_to_string = fun diagnostics ->
+  let items = ref [] in
+  Vector.iter diagnostics
+  |> Iterator.for_each ~fn:(fun diagnostic -> items := Diagnostic.to_string diagnostic :: !items);
+  List.reverse !items |> String.concat "\n"
+
 let test_fixture = fun ~(ctx:Test.FixtureRunner.ctx) ->
   let source = Fs.read ctx.fixture_path |> Result.expect ~msg:"Failed to read fixture" in
-  let parse_result = Syn.parse ~filename:ctx.fixture_path source in
-  let actual_json = parse_result_to_json parse_result in
-  Test.Snapshot.assert_with
-    ~ctx:ctx.test
-    ~render:(fun json -> Json.to_string_pretty json ^ "\n")
-    ~actual:actual_json
+  let source = source_slice source in
+  let parse_result = Syn.parse2 ~filename:ctx.fixture_path source in
+  if Vector.length parse_result.Parser2.diagnostics > 0 then
+    Error ("unexpected parse2 diagnostics:\n" ^ diagnostics_to_string parse_result.Parser2.diagnostics)
+  else
+    let root = SyntaxTree.root parse_result.Parser2.tree in
+    let source_length = IO.IoVec.IoSlice.length source in
+    if root.SyntaxTree.full_width = source_length then
+      Ok ()
+    else
+      Error ("parse2 root width mismatch: expected "
+      ^ Int.to_string source_length
+      ^ " bytes, got "
+      ^ Int.to_string root.SyntaxTree.full_width)
 
 let test_tagged_quoted_string_cst = fun _ctx ->
   let source = "let explanation = {explain|hello|explain}\n" in

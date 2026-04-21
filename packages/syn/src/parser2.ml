@@ -113,6 +113,19 @@ let expect = fun p kind diagnostic ->
     Event.Buffer.error p.events diagnostic
   )
 
+let recover_current_as_error = fun p diagnostic ->
+  let marker = start_node p in
+  Event.Buffer.error p.events diagnostic;
+  if is_eof p then
+    Event.Buffer.missing p.events ~kind:Syntax_kind2.IDENT ~offset:(current_offset p)
+  else
+    bump p;
+  ignore (complete p marker Syntax_kind2.ERROR)
+
+let ensure_progress = fun p before diagnostic ->
+  if p.pos = before && not (is_eof p) then
+    recover_current_as_error p diagnostic
+
 let starts_structure_item = function
   | Syntax_kind2.LET_KW
   | Syntax_kind2.TYPE_KW
@@ -171,7 +184,7 @@ let at_item_boundary = fun p ~signature ->
   else
     starts_structure_item (current_kind p)
 
-let expression_boundary = fun p ~stop_at_item ~signature ->
+let expression_boundary = fun p ~stop_at_item ~stop_at_semi ~signature ->
   match current_kind p with
   | Syntax_kind2.EOF
   | Syntax_kind2.IN_KW
@@ -182,13 +195,13 @@ let expression_boundary = fun p ~stop_at_item ~signature ->
   | Syntax_kind2.ARROW
   | Syntax_kind2.PIPE
   | Syntax_kind2.COMMA
-  | Syntax_kind2.SEMI
   | Syntax_kind2.RPAREN
   | Syntax_kind2.RBRACKET
   | Syntax_kind2.RBRACE
   | Syntax_kind2.BAR_RBRACKET
   | Syntax_kind2.END_KW
   | Syntax_kind2.DONE_KW -> true
+  | Syntax_kind2.SEMI -> stop_at_semi
   | _ -> stop_at_item && at_item_boundary p ~signature
 
 let can_start_atom = function
@@ -276,6 +289,7 @@ let infix_binding_power = function
 
 let pattern_binding_power = function
   | Syntax_kind2.PIPE -> Some 10
+  | Syntax_kind2.COMMA -> Some 15
   | Syntax_kind2.AS_KW -> Some 20
   | Syntax_kind2.COLONCOLON -> Some 30
   | Syntax_kind2.COLON -> Some 40
@@ -289,31 +303,38 @@ let rec consume_path_segments = fun p ->
       consume_path_segments p
     )
 
-let rec parse_expression = fun p ~signature ~stop_at_item min_bp ->
+let rec parse_expression = fun p ~signature ~stop_at_item ?(stop_at_semi = false) min_bp ->
   let rec loop lhs =
-    if expression_boundary p ~stop_at_item ~signature then
+    if expression_boundary p ~stop_at_item ~stop_at_semi ~signature then
       lhs
+    else if at p Syntax_kind2.SEMI && not stop_at_semi then
+      (
+        let marker = precede p lhs in
+        bump p;
+        let _rhs = parse_expression p ~signature ~stop_at_item ~stop_at_semi 0 in
+        loop (complete p marker Syntax_kind2.SEQUENCE_EXPR)
+      )
     else if can_start_atom (current_kind p) then
       let marker = precede p lhs in
-      let _argument = parse_prefix_or_atom p ~signature ~stop_at_item in
+      let _argument = parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi in
       loop (complete p marker Syntax_kind2.APPLY_EXPR)
     else
       match infix_binding_power (current_kind p) with
       | Some bp when bp >= min_bp ->
           let marker = precede p lhs in
           bump p;
-          let _rhs = parse_expression p ~signature ~stop_at_item (bp + 1) in
+          let _rhs = parse_expression p ~signature ~stop_at_item ~stop_at_semi (bp + 1) in
           loop (complete p marker Syntax_kind2.INFIX_EXPR)
       | _ -> lhs
   in
-  loop (parse_prefix_or_atom p ~signature ~stop_at_item)
+  loop (parse_prefix_or_atom p ~signature ~stop_at_item ~stop_at_semi)
 
-and parse_prefix_or_atom = fun p ~signature ~stop_at_item ->
+and parse_prefix_or_atom = fun p ~signature ~stop_at_item ~stop_at_semi ->
   match current_kind p with
   | kind when prefix_operator kind ->
       let marker = start_node p in
       bump p;
-      let _operand = parse_expression p ~signature ~stop_at_item 70 in
+      let _operand = parse_expression p ~signature ~stop_at_item ~stop_at_semi 70 in
       complete p marker Syntax_kind2.PREFIX_EXPR
   | Syntax_kind2.LET_KW ->
       parse_let_expr p ~signature
@@ -411,7 +432,9 @@ and parse_list_expr = fun p ~signature ->
   let rec parse_elements () =
     if not (at p Syntax_kind2.RBRACKET || is_eof p) then
       (
-        ignore (parse_expression p ~signature ~stop_at_item:false 0);
+        let before = p.pos in
+        ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0);
+        ensure_progress p before (invalid_expression p);
         ignore (bump_if p Syntax_kind2.SEMI);
         parse_elements ()
       )
@@ -426,7 +449,9 @@ and parse_array_expr = fun p ~signature ->
   let rec parse_elements () =
     if not (at p Syntax_kind2.BAR_RBRACKET || is_eof p) then
       (
-        ignore (parse_expression p ~signature ~stop_at_item:false 0);
+        let before = p.pos in
+        ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0);
+        ensure_progress p before (invalid_expression p);
         ignore (bump_if p Syntax_kind2.SEMI);
         parse_elements ()
       )
@@ -441,12 +466,14 @@ and parse_record_expr = fun p ~signature ->
   let rec parse_fields () =
     if not (at p Syntax_kind2.RBRACE || is_eof p) then
       (
-        ignore (parse_expression p ~signature ~stop_at_item:false 0);
+        let before = p.pos in
+        ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0);
         if at p Syntax_kind2.EQ then
           (
             bump p;
-            ignore (parse_expression p ~signature ~stop_at_item:false 0)
+            ignore (parse_expression p ~signature ~stop_at_item:false ~stop_at_semi:true 0)
           );
+        ensure_progress p before (invalid_expression p);
         ignore (bump_if p Syntax_kind2.SEMI);
         parse_fields ()
       )
@@ -601,6 +628,11 @@ and parse_pattern_bp = fun p min_bp ->
             bump p;
             ignore (parse_pattern_bp p bp);
             loop (complete p marker Syntax_kind2.OR_PATTERN)
+        | Syntax_kind2.COMMA ->
+            let marker = precede p lhs in
+            bump p;
+            ignore (parse_pattern_bp p bp);
+            loop (complete p marker Syntax_kind2.TUPLE_PATTERN)
         | _ ->
             lhs
       )
@@ -690,7 +722,9 @@ and parse_list_pattern = fun p ->
   let rec parse_elements () =
     if not (at p Syntax_kind2.RBRACKET || is_eof p) then
       (
+        let before = p.pos in
         parse_pattern p;
+        ensure_progress p before (invalid_pattern p);
         ignore (bump_if p Syntax_kind2.SEMI);
         parse_elements ()
       )
@@ -705,7 +739,9 @@ and parse_array_pattern = fun p ->
   let rec parse_elements () =
     if not (at p Syntax_kind2.BAR_RBRACKET || is_eof p) then
       (
+        let before = p.pos in
         parse_pattern p;
+        ensure_progress p before (invalid_pattern p);
         ignore (bump_if p Syntax_kind2.SEMI);
         parse_elements ()
       )
@@ -720,12 +756,18 @@ and parse_record_pattern = fun p ->
   let rec parse_fields () =
     if not (at p Syntax_kind2.RBRACE || is_eof p) then
       (
-        ignore (parse_path_pattern p);
-        if at p Syntax_kind2.EQ then
-          (
-            bump p;
-            parse_pattern p
-          );
+        let before = p.pos in
+        if at p Syntax_kind2.UNDERSCORE then
+          ignore (parse_single_token_pattern p Syntax_kind2.WILDCARD_PATTERN)
+        else (
+          ignore (parse_path_pattern p);
+          if at p Syntax_kind2.EQ then
+            (
+              bump p;
+              parse_pattern p
+            )
+        );
+        ensure_progress p before (invalid_pattern p);
         ignore (bump_if p Syntax_kind2.SEMI);
         parse_fields ()
       )
@@ -870,7 +912,17 @@ let parse_let_decl = fun p ~signature ->
       )
   in
   parse_and_bindings ();
-  ignore (complete p marker Syntax_kind2.LET_DECL)
+  let kind =
+    if (not signature) && at p Syntax_kind2.IN_KW then
+      (
+        bump p;
+        ignore (parse_expression p ~signature ~stop_at_item:true 0);
+        Syntax_kind2.LET_EXPR
+      )
+    else
+      Syntax_kind2.LET_DECL
+  in
+  ignore (complete p marker kind)
 
 let parse_opaque_decl = fun p ~signature kind diagnostic ->
   consume_opaque_until_item_boundary p ~signature kind diagnostic
