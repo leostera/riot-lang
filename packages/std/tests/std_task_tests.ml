@@ -3,6 +3,10 @@ open Std
 type Message.t +=
   | Task_started
   | Task_unrelated of string
+  | Slow_task_registered
+  | Register_slow of Pid.t
+  | Release_slow
+  | Slow_task_released
 
 let await_message = fun ~what selector ->
   try Ok (receive ~selector ~timeout:(Time.Duration.from_secs 1) ()) with
@@ -51,18 +55,44 @@ let test_await_all_preserves_mixed_success_and_failure = fun _ctx ->
   | _ -> Error "expected Task.await_all to preserve both Ok and Error results"
 
 let test_await_all_preserves_input_order = fun _ctx ->
+  let parent = self () in
+  let gate =
+    spawn
+      (fun () ->
+        let slow_pid = receive ~selector:(function
+          | Register_slow slow_pid -> `select slow_pid
+          | _ -> `skip) ()
+        in
+        send parent Slow_task_registered;
+        receive ~selector:(function
+          | Release_slow -> `select ()
+          | _ -> `skip) ();
+        send slow_pid Slow_task_released;
+        Ok ())
+  in
   let slow =
     Task.async
       (fun () ->
-        sleep (Time.Duration.from_millis 25);
+        send gate (Register_slow (self ()));
+        receive ~selector:(function
+          | Slow_task_released -> `select ()
+          | _ -> `skip) ();
         "slow")
   in
-  let fast =
-    Task.async
-      (fun () ->
-        sleep (Time.Duration.from_millis 1);
-        "fast")
-  in
+  match
+    await_message ~what:"slow task registration"
+      (function
+        | Slow_task_registered -> `select ()
+        | _ -> `skip)
+  with
+  | Error _ as err -> err
+  | Ok () ->
+      let fast =
+        Task.async
+          (fun () ->
+            send gate Release_slow;
+            "fast")
+      in
   match Task.await_all [ slow; fast ] with
   | [Ok "slow";Ok "fast"] -> Ok ()
   | _ -> Error "expected Task.await_all to return results in input order"
@@ -124,4 +154,4 @@ let tests =
     case "Task.async starts eagerly before await" test_async_starts_eagerly;
   ]
 
-let () = Runtime.run ~main:(Test.Cli.main ~name:"Task" ~tests) ~args:Env.args ()
+let () = Runtime.run ~main:(fun ~args -> Test.Cli.main ~name:"Task" ~tests ~args ()) ~args:Env.args ()
